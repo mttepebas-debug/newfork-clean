@@ -3,11 +3,34 @@
 **Created:** 2026-09-02
 **Input:** Phase 14 audit/research and draft specification
 **Plan status:** Ready for review; execution is not authorized by this document
-**Strategy:** repair current correctness first, then build a thin reliable in-app/email vertical slice before advanced channels
+**Cost architecture:** approved — no mandatory paid notification-orchestration dependency
+**Strategy:** repair current correctness first, build a provider-independent in-app vertical slice, then connect the existing Resend capability through an adapter
 
 ## Outcome
 
 Deliver an enterprise-grade notification foundation without extending the current synchronous producer-specific pattern. The plan preserves the existing inbox while incrementally replacing producers with versioned outbox events and an auditable resolver.
+
+## Locked dependency policy
+
+- Newfork owns the catalog, audience rules, policy resolver, outbox, inbox, delivery ledger, retry/DLQ, audit, retention, and worker runtime.
+- No baseline code path imports or requires Knock, Novu, Courier, OneSignal, or another notification-orchestration SaaS.
+- In-app delivery is the minimum reliable product and works without external provider credentials.
+- `NotificationChannelAdapter` is the only boundary through which external providers enter the system.
+- The first email adapter may reuse the existing Resend integration. Missing Resend configuration disables email safely and does not block event capture or in-app delivery.
+- CI and local development use fake adapters and must pass without paid accounts or network access.
+- Push is a later adapter. SMS, Slack, Teams, WhatsApp, and other paid/licensed channels remain blocked behind a separate approval.
+
+## Cost gates
+
+| Gate                            | Default                              | Approval required to change                                      |
+| ------------------------------- | ------------------------------------ | ---------------------------------------------------------------- |
+| Notification orchestration SaaS | Disabled/not installed               | Product + architecture + security + annual TCO review            |
+| In-app notifications            | Enabled on existing stack            | No new vendor budget                                             |
+| Email                           | Disabled when Resend is unconfigured | Existing credential plus usage-budget approval for production    |
+| Push                            | Deferred                             | Mobile/web product approval; FCM/APNs adapter review             |
+| SMS                             | Out of scope                         | Consent/legal review plus per-message budget                     |
+| Slack/Teams                     | Out of scope                         | Enterprise integration demand plus licensing/security review     |
+| Provider migration              | Adapter-controlled                   | Parity, replay, idempotency, data residency, and exit-plan proof |
 
 ## Wave map
 
@@ -17,7 +40,7 @@ Deliver an enterprise-grade notification foundation without extending the curren
 | 1    | 14-01, 14-02 | Wave 0     | Lock catalog/policy contracts and create durable core schema         |
 | 2    | 14-03, 14-04 | Wave 1     | Outbox relay, resolver, inbox projection, and migrated producers     |
 | 3    | 14-05, 14-06 | Wave 2     | Organization and user settings plus inbox/sidebar hardening          |
-| 4    | 14-07, 14-08 | Wave 2     | Email delivery and operations/observability                          |
+| 4    | 14-07, 14-08 | Wave 2     | Optional Resend adapter and operations/observability                 |
 | 5    | 14-09        | Waves 3–4  | Push/endpoints, quiet hours, digest, escalation, enterprise adapters |
 | 6    | 14-10        | All        | Security, load, hosted migration, browser, and release proof         |
 
@@ -64,12 +87,14 @@ Deliver an enterprise-grade notification foundation without extending the curren
 3. Inventory all current producers and map each to a stable `type_key`, schema version, audience contract, deep-link contract, sensitivity, retention class, and dedupe strategy.
 4. Mark types `defined` until producer, template, route, and tests exist; only `active` types appear in organization/user settings.
 5. Add CI tests for unique keys, allowed action routes, catalog/seed parity, and active producer/template coverage.
+6. Add a dependency guard test that fails if a notification-orchestration SaaS SDK is imported into the baseline runtime without an approved ADR.
 
 **Acceptance**
 
 - Every current producer appears in the inventory.
 - No duplicate type keys or undefined categories/channels exist.
 - CI fails on an active type without producer, template, or safe action route.
+- Core notification packages contain no mandatory orchestration SaaS SDK dependency.
 - Product approval checklist decisions are either approved or explicitly recorded as assumptions.
 
 ## Plan 14-02 — Core schema, tenancy, and immutable history
@@ -211,16 +236,20 @@ Deliver an enterprise-grade notification foundation without extending the curren
 
 **Actions**
 
-1. Define a `NotificationChannelAdapter` interface and implement the selected email adapter.
-2. Render versioned templates from semantic payloads with locale fallback and safe variable allow-lists.
-3. Process accepted, delivered, bounce, complaint, and suppression feedback distinctly.
-4. Retry only transient failures with bounded exponential backoff/jitter; route exhausted attempts to DLQ.
-5. Add global/environment/tenant kill switches and non-production redirect.
-6. Make provider credentials and webhook verification tenant-safe and secret-managed.
+1. Define a provider-neutral `NotificationChannelAdapter` interface and a deterministic fake adapter for local/CI verification.
+2. Implement a Resend adapter by extracting/reusing the existing invitation-delivery capability without making Resend imports or credentials part of the core event/inbox path.
+3. Render versioned templates from semantic payloads with locale fallback and safe variable allow-lists.
+4. Process accepted, delivered, bounce, complaint, and suppression feedback distinctly.
+5. Retry only transient failures with bounded exponential backoff/jitter; route exhausted attempts to DLQ.
+6. Add global/environment/tenant kill switches and non-production redirect.
+7. Make provider credentials and webhook verification tenant-safe and secret-managed.
+8. Make `EMAIL_NOTIFICATION_PROVIDER=disabled|fake|resend` explicit; `disabled` is the safe default outside approved production configuration.
 
 **Acceptance**
 
 - Provider HTTP never occurs inside a business transaction.
+- In-app event capture, preference resolution, and inbox projection pass when `EMAIL_NOTIFICATION_PROVIDER=disabled` and no provider credentials exist.
+- Local/CI suites use `EMAIL_NOTIFICATION_PROVIDER=fake` and perform no external network calls.
 - Duplicate worker execution creates at most one logical successful send.
 - Bounce/complaint suppresses future eligible external sends without suppressing required in-app records.
 - Locale/safe-preview/template rollback tests pass.
@@ -271,6 +300,7 @@ Deliver an enterprise-grade notification foundation without extending the curren
 - Critical bypass is narrow, reason-coded, and never bypasses consent/endpoint hard stops.
 - DST boundary, digest grouping, escalation cancellation, and stale-token tests pass.
 - Provider accepted is not reported as device delivered.
+- No push, SMS, Slack, or Teams package is installed before its approval gate passes.
 
 ## Plan 14-10 — Release verification
 
@@ -349,6 +379,7 @@ High-severity threats block execution completion.
 - Do not copy reference-app files wholesale.
 - Do not treat green focused tests, Turbo cache replay, health 200, or dry-run alone as release proof.
 - Do not enable external delivery until kill switch, non-production redirect, consent/suppression, idempotency, and audit controls are working.
+- Do not add a paid orchestration SDK or contract without the cost-gate ADR and an exit/data-export plan.
 
 ## Recommended first execution slice
 

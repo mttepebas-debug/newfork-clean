@@ -1,7 +1,7 @@
 # Phase 14 Notification Platform — Draft Specification
 
 **Created:** 2026-09-02
-**Status:** Draft for product approval
+**Status:** Draft for product approval; no-mandatory-paid-dependency direction approved
 **Requirements:** 14
 **Ambiguity score:** 0.13 using research-selected defaults; decisions marked “Product approval” remain provisional
 
@@ -16,6 +16,17 @@ The current system has a three-category notification table, a permission-gated i
 The legacy/reference application contains useful catalog, policy, inbox, outbox, and preference patterns, but it also contains authorization mismatches and delivery-design debt. This specification selects patterns; it does not authorize wholesale porting.
 
 ## Product decisions
+
+### Dependency and cost architecture
+
+- The Phase 14 baseline has no mandatory paid notification-orchestration dependency.
+- Catalog, audience authorization, `PreferenceResolver`, transactional outbox, inbox, audit, retention, retry/DLQ, and worker runtime are owned by Newfork and stored in the existing Postgres/Supabase stack.
+- Knock, Novu, Courier, OneSignal, and equivalent orchestration products are not baseline runtime dependencies.
+- The system remains fully functional for in-app notifications when no external delivery provider is configured.
+- Email uses the existing Resend integration through `NotificationChannelAdapter` when configured. Resend usage charges are an operating cost, not a core architectural dependency.
+- Push is deferred until the core path is stable. FCM/APNs are accessed only through the same adapter boundary.
+- SMS, Slack, Teams, WhatsApp, and other paid/licensed channels require a separate product, compliance, security, and budget approval.
+- Local development and CI use deterministic fake adapters; tests do not require paid provider accounts.
 
 ### Information architecture
 
@@ -231,6 +242,8 @@ Personal inbox/preferences require active workspace membership and own-user scop
 - AI-generated notification copy — unnecessary for reliable delivery and increases safety/approval scope.
 - WhatsApp and voice calls — no approved use case or consent model.
 - A wholesale port of the legacy notification implementation — known defects and data-model assumptions must not be inherited.
+- A paid notification-orchestration SaaS dependency — not required for the approved baseline.
+- SMS, Slack, Teams, WhatsApp, and voice delivery — require separate budget and product approval.
 - Legal certification — counsel must validate jurisdiction/customer-specific requirements.
 
 ## Acceptance criteria
@@ -264,6 +277,7 @@ Personal inbox/preferences require active workspace membership and own-user scop
 - [ ] Confirm user preferences are workspace-specific with a multi-workspace selector.
 - [ ] Confirm proposed performance targets or replace them with approved budgets.
 - [ ] Confirm 5,000-recipient initial fan-out target.
+- [x] Confirm no paid notification-orchestration SaaS is mandatory for the baseline.
 
 ## Drafting log
 
