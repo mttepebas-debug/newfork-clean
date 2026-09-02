@@ -1,0 +1,381 @@
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
+
+import {
+  createScheduleGridTemplateColumns,
+  type ScheduleGridLocationGroup,
+} from "../lib/scheduleGridLayout";
+
+const horizontalNavMinThumbWidthPx = 34;
+const horizontalNavFallbackTrackWidthPx = 240;
+
+export function ScheduleGridShell({
+  children,
+  columns,
+  dayColumnMinWidth,
+  editing,
+  gridRef,
+  overlays,
+  showTotalHours,
+  view,
+  onClearSelection,
+}: {
+  readonly children: ReactNode;
+  readonly columns: number;
+  readonly dayColumnMinWidth: number;
+  readonly editing: boolean;
+  readonly gridRef: RefObject<HTMLDivElement | null>;
+  readonly overlays?: ReactNode;
+  readonly showTotalHours: boolean;
+  readonly view: "day" | "week";
+  readonly onClearSelection: () => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div
+      ref={scrollRef}
+      className="schedule-grid-scroll"
+      data-testid="schedule-grid-scroll"
+      data-schedule-grid-frame="true"
+      data-schedule-grid-shell="true"
+      data-schedule-horizontal-scroll-source="true"
+    >
+      <div
+        ref={gridRef}
+        className="schedule-grid-exact"
+        role="grid"
+        data-testid="schedule-grid"
+        data-schedule-grid-track="true"
+        data-schedule-column-count={columns}
+        aria-label={`${view === "day" ? "Daily" : "Weekly"} ${
+          editing ? "editable" : "published"
+        } schedule`}
+        style={
+          {
+            "--schedule-day-column-min": `${dayColumnMinWidth}px`,
+            gridTemplateColumns: createScheduleGridTemplateColumns({
+              columns,
+              showTotalHours,
+            }),
+          } as CSSProperties
+        }
+        onPointerDown={(event) => {
+          if (event.target === event.currentTarget) onClearSelection();
+        }}
+      >
+        {children}
+      </div>
+      <ScheduleHorizontalNavigation
+        columns={columns}
+        dayColumnMinWidth={dayColumnMinWidth}
+        scrollRef={scrollRef}
+        showTotalHours={showTotalHours}
+      />
+      {overlays}
+    </div>
+  );
+}
+
+function ScheduleHorizontalNavigation({
+  columns,
+  dayColumnMinWidth,
+  scrollRef,
+  showTotalHours,
+}: {
+  readonly columns: number;
+  readonly dayColumnMinWidth: number;
+  readonly scrollRef: RefObject<HTMLDivElement | null>;
+  readonly showTotalHours: boolean;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<{
+    readonly pointerId: number;
+    readonly startX: number;
+    readonly startScrollLeft: number;
+    readonly maxScrollLeft: number;
+    readonly scale: number;
+    readonly captureTarget: HTMLElement;
+  } | null>(null);
+  const [canScroll, setCanScroll] = useState(false);
+  const [maxScrollLeft, setMaxScrollLeft] = useState(0);
+  const [scrollPositionPx, setScrollPositionPx] = useState(0);
+  const [trackWidthPx, setTrackWidthPx] = useState(
+    horizontalNavFallbackTrackWidthPx,
+  );
+  const [thumbWidthPx, setThumbWidthPx] = useState(
+    horizontalNavMinThumbWidthPx,
+  );
+  const [thumbLeftPx, setThumbLeftPx] = useState(0);
+
+  const syncFromScroll = useCallback(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+
+    const nextScrollWidth = Math.max(0, Math.round(scroll.scrollWidth));
+    const nextMaxScrollLeft = Math.max(
+      0,
+      Math.round(nextScrollWidth - scroll.clientWidth),
+    );
+    const nextCanScroll = nextMaxScrollLeft > 1;
+    setCanScroll(nextCanScroll);
+    setMaxScrollLeft(nextMaxScrollLeft);
+
+    if (!nextCanScroll) {
+      setTrackWidthPx(horizontalNavFallbackTrackWidthPx);
+      setThumbWidthPx(horizontalNavMinThumbWidthPx);
+      setThumbLeftPx(0);
+      setScrollPositionPx(0);
+      return;
+    }
+
+    const nextScrollLeft = clampToRange(
+      Math.round(scroll.scrollLeft),
+      0,
+      nextMaxScrollLeft,
+    );
+    setScrollPositionPx(nextScrollLeft);
+
+    const track = trackRef.current;
+    const measuredTrackWidth = Math.max(
+      1,
+      Math.round(
+        track && track.clientWidth > 0
+          ? track.clientWidth
+          : track?.getBoundingClientRect().width ||
+              scroll.clientWidth ||
+              horizontalNavFallbackTrackWidthPx,
+      ),
+    );
+    const visibilityRatio = Math.min(
+      1,
+      scroll.clientWidth / Math.max(1, nextScrollWidth),
+    );
+    const nextThumbWidth = clampToRange(
+      Math.round(measuredTrackWidth * visibilityRatio),
+      horizontalNavMinThumbWidthPx,
+      Math.max(1, measuredTrackWidth - 12),
+    );
+    const travelRange = Math.max(1, measuredTrackWidth - nextThumbWidth);
+
+    setTrackWidthPx(measuredTrackWidth);
+    setThumbWidthPx(nextThumbWidth);
+    setThumbLeftPx(
+      Math.round((nextScrollLeft / nextMaxScrollLeft) * travelRange),
+    );
+  }, [scrollRef]);
+
+  const setScrollLeft = useCallback(
+    (nextScrollLeft: number) => {
+      const scroll = scrollRef.current;
+      if (!scroll) return;
+      scroll.scrollLeft = clampToRange(
+        Math.round(nextScrollLeft),
+        0,
+        maxScrollLeft,
+      );
+      syncFromScroll();
+    },
+    [maxScrollLeft, scrollRef, syncFromScroll],
+  );
+
+  const stopDrag = useCallback(() => {
+    const dragState = dragStateRef.current;
+    if (dragState?.captureTarget.hasPointerCapture?.(dragState.pointerId)) {
+      dragState.captureTarget.releasePointerCapture(dragState.pointerId);
+    }
+    dragStateRef.current = null;
+  }, []);
+
+  const onPointerMoveWindow = useCallback(
+    (event: PointerEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || event.pointerId !== dragState.pointerId) return;
+      event.preventDefault();
+      setScrollLeft(
+        dragState.startScrollLeft +
+          (event.clientX - dragState.startX) * dragState.scale,
+      );
+    },
+    [setScrollLeft],
+  );
+
+  const onPointerUpWindow = useCallback(
+    (event: PointerEvent) => {
+      if (dragStateRef.current?.pointerId !== event.pointerId) return;
+      stopDrag();
+    },
+    [stopDrag],
+  );
+
+  const startDrag = (
+    event: ReactPointerEvent<HTMLDivElement>,
+    captureTarget: HTMLElement,
+  ): void => {
+    const scroll = scrollRef.current;
+    if (!scroll || maxScrollLeft <= 0) return;
+    const effectiveRange = Math.max(1, trackWidthPx - thumbWidthPx);
+    captureTarget.setPointerCapture?.(event.pointerId);
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: scroll.scrollLeft,
+      maxScrollLeft,
+      scale: maxScrollLeft / effectiveRange,
+      captureTarget,
+    };
+  };
+
+  useEffect(() => {
+    if (!canScroll) return undefined;
+    window.addEventListener("pointermove", onPointerMoveWindow, {
+      passive: false,
+    });
+    window.addEventListener("pointerup", onPointerUpWindow);
+    window.addEventListener("pointercancel", onPointerUpWindow);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMoveWindow);
+      window.removeEventListener("pointerup", onPointerUpWindow);
+      window.removeEventListener("pointercancel", onPointerUpWindow);
+      stopDrag();
+    };
+  }, [canScroll, onPointerMoveWindow, onPointerUpWindow, stopDrag]);
+
+  useLayoutEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return undefined;
+    syncFromScroll();
+    const onScroll = () => syncFromScroll();
+    const onResize = () => syncFromScroll();
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(syncFromScroll);
+
+    scroll.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    observer?.observe(scroll);
+    if (scroll.firstElementChild instanceof HTMLElement) {
+      observer?.observe(scroll.firstElementChild);
+    }
+    if (trackRef.current) observer?.observe(trackRef.current);
+    const frame = window.requestAnimationFrame(syncFromScroll);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+      scroll.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [columns, dayColumnMinWidth, scrollRef, showTotalHours, syncFromScroll]);
+
+  if (!canScroll) return null;
+
+  return (
+    <div
+      data-schedule-horizontal-nav
+      role="navigation"
+      aria-label="Schedule horizontal navigation"
+      className="schedule-horizontal-nav"
+    >
+      <div
+        ref={trackRef}
+        data-schedule-horizontal-nav-track
+        role="scrollbar"
+        tabIndex={0}
+        aria-label="Scroll schedule horizontally"
+        aria-orientation="horizontal"
+        aria-valuemin={0}
+        aria-valuemax={maxScrollLeft}
+        aria-valuenow={scrollPositionPx}
+        className="schedule-horizontal-nav-track"
+        onKeyDown={(event) => {
+          const scroll = scrollRef.current;
+          if (!scroll) return;
+          const pageStep = Math.max(80, Math.round(scroll.clientWidth * 0.85));
+          const smallStep = 48;
+          const nextScrollLeft =
+            event.key === "ArrowLeft"
+              ? scroll.scrollLeft - smallStep
+              : event.key === "ArrowRight"
+                ? scroll.scrollLeft + smallStep
+                : event.key === "PageUp"
+                  ? scroll.scrollLeft - pageStep
+                  : event.key === "PageDown"
+                    ? scroll.scrollLeft + pageStep
+                    : event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? maxScrollLeft
+                        : null;
+          if (nextScrollLeft === null) return;
+          event.preventDefault();
+          setScrollLeft(nextScrollLeft);
+        }}
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          const scroll = scrollRef.current;
+          const track = trackRef.current;
+          if (!scroll || !track) return;
+          const clickOffsetPx =
+            event.clientX - track.getBoundingClientRect().left;
+          const thumbCenterPx = thumbLeftPx + thumbWidthPx / 2;
+          const pageStep = Math.max(80, Math.round(scroll.clientWidth * 0.85));
+          setScrollLeft(
+            clickOffsetPx < thumbCenterPx
+              ? scroll.scrollLeft - pageStep
+              : scroll.scrollLeft + pageStep,
+          );
+          startDrag(event, event.currentTarget);
+        }}
+        onWheel={(event) => {
+          const delta =
+            Math.abs(event.deltaX) > Math.abs(event.deltaY)
+              ? event.deltaX
+              : event.deltaY;
+          if (delta === 0) return;
+          event.preventDefault();
+          setScrollLeft(
+            (scrollRef.current?.scrollLeft ?? scrollPositionPx) + delta,
+          );
+        }}
+      >
+        <div className="schedule-horizontal-nav-rail" aria-hidden="true" />
+        <div
+          data-schedule-horizontal-nav-thumb
+          aria-hidden="true"
+          className="schedule-horizontal-nav-thumb"
+          style={{
+            width: `${thumbWidthPx}px`,
+            transform: `translateX(${thumbLeftPx}px)`,
+          }}
+          onPointerDown={(event) => {
+            if (event.button !== 0) return;
+            event.preventDefault();
+            event.stopPropagation();
+            startDrag(event, event.currentTarget);
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function clampToRange(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+export type ScheduleGridShellColumns = {
+  readonly columns: number;
+  readonly locationGroups: readonly ScheduleGridLocationGroup[];
+};

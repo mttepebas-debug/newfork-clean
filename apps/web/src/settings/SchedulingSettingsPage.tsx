@@ -18,6 +18,7 @@ const defaults: SchedulingSettingsInput = {
   schedule_deadline_day: "sunday",
   conflict_policy: "warn",
   availability_enforcement: "soft",
+  time_format: "12h",
 };
 
 const weekdays = [
@@ -122,6 +123,25 @@ export default function SchedulingSettingsPage() {
                 </option>
               ))}
             </select>
+          </SettingsChoiceRow>
+          <SettingsChoiceRow
+            label="Time format"
+            description="Controls how schedule shift times are displayed while editing."
+          >
+            <SegmentedChoice
+              name="time-format"
+              value={draft.time_format}
+              options={[
+                ["12h", "12-hour"],
+                ["24h", "24-hour"],
+              ]}
+              onChange={(value) =>
+                setDraft((current) => ({
+                  ...current,
+                  time_format: value as SchedulingSettingsInput["time_format"],
+                }))
+              }
+            />
           </SettingsChoiceRow>
           <SettingsChoiceRow
             label="Schedule conflicts"

@@ -2,13 +2,24 @@ import { Button } from "@newfork/ui";
 import { useQuery } from "@tanstack/react-query";
 import {
   Archive,
+  ArrowLeft,
+  ArrowRight,
   BriefcaseBusiness,
+  Columns3,
+  Eye,
   MapPin,
   Plus,
+  RotateCcw,
   Search,
   Users,
 } from "lucide-react";
-import { useDeferredValue } from "react";
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { EmployeeDrawer } from "./EmployeeDrawer";
@@ -16,6 +27,7 @@ import { listEmployees } from "./employee-data";
 import {
   employeeSectionSchema,
   type EmployeeDisplayStatus,
+  type EmployeeSummary,
 } from "@newfork/shared";
 
 const statusFilters = [
@@ -25,6 +37,38 @@ const statusFilters = [
   "needs_attention",
   "active",
 ] as const;
+
+type EmployeeColumnKey =
+  | "employee"
+  | "status"
+  | "location"
+  | "job"
+  | "access"
+  | "start"
+  | "email";
+
+interface EmployeeColumn {
+  readonly key: EmployeeColumnKey;
+  readonly label: string;
+  readonly defaultVisible: boolean;
+  readonly required?: boolean;
+}
+
+const employeeColumns: readonly EmployeeColumn[] = [
+  { key: "employee", label: "Employee", defaultVisible: true, required: true },
+  { key: "status", label: "Status", defaultVisible: true },
+  { key: "location", label: "Primary location", defaultVisible: true },
+  { key: "job", label: "Primary job", defaultVisible: true },
+  { key: "access", label: "Access", defaultVisible: true },
+  { key: "start", label: "Start date", defaultVisible: true },
+  { key: "email", label: "Invite email", defaultVisible: false },
+] as const;
+
+const defaultColumnOrder = employeeColumns.map((column) => column.key);
+const defaultVisibleColumns = employeeColumns
+  .filter((column) => column.defaultVisible)
+  .map((column) => column.key);
+const employeeColumnStorageKey = "newfork.employee-table.columns";
 
 export default function EmployeesPage() {
   const { context } = useAuth();
@@ -41,6 +85,7 @@ export default function EmployeesPage() {
   const parsedSection = employeeSectionSchema.safeParse(params.get("section"));
   const section = parsedSection.success ? parsedSection.data : "profile";
   const canManage = context?.permissions.includes("employees.manage") ?? false;
+  const [columnState, setColumnState] = useState(() => loadColumnState());
 
   const employees = useQuery({
     queryKey: ["employees", workspaceId, archived, deferredSearch, status],
@@ -56,6 +101,76 @@ export default function EmployeesPage() {
     }
     setParams(next, { replace: true });
   };
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        employeeColumnStorageKey,
+        JSON.stringify(columnState),
+      );
+    } catch {
+      // Column preferences are cosmetic; ignore storage failures.
+    }
+  }, [columnState]);
+
+  const columnsByKey = useMemo(
+    () => new Map(employeeColumns.map((column) => [column.key, column])),
+    [],
+  );
+  const visibleKeySet = useMemo(
+    () => new Set(columnState.visible),
+    [columnState.visible],
+  );
+  const visibleColumns = useMemo(
+    () =>
+      columnState.order
+        .map((key) => columnsByKey.get(key))
+        .filter((column): column is EmployeeColumn => {
+          if (!column) return false;
+          return visibleKeySet.has(column.key);
+        }),
+    [columnState.order, columnsByKey, visibleKeySet],
+  );
+  const toggleColumn = (key: EmployeeColumnKey) => {
+    const column = columnsByKey.get(key);
+    if (!column || column.required) return;
+    setColumnState((current) => {
+      const nextVisible = new Set(current.visible);
+      if (nextVisible.has(key)) nextVisible.delete(key);
+      else nextVisible.add(key);
+      return { ...current, visible: [...nextVisible] };
+    });
+  };
+  const moveColumn = (key: EmployeeColumnKey, direction: -1 | 1) => {
+    setColumnState((current) => {
+      const visibleOrder = current.order.filter((item) =>
+        current.visible.includes(item),
+      );
+      const currentVisibleIndex = visibleOrder.indexOf(key);
+      const nextVisibleIndex = currentVisibleIndex + direction;
+      if (currentVisibleIndex < 0 || nextVisibleIndex < 0) return current;
+      if (nextVisibleIndex >= visibleOrder.length) return current;
+
+      const nextOrder = [...current.order];
+      const currentIndex = nextOrder.indexOf(visibleOrder[currentVisibleIndex]!);
+      const swapIndex = nextOrder.indexOf(visibleOrder[nextVisibleIndex]!);
+      [nextOrder[currentIndex], nextOrder[swapIndex]] = [
+        nextOrder[swapIndex]!,
+        nextOrder[currentIndex]!,
+      ];
+      return { ...current, order: nextOrder };
+    });
+  };
+  const showAllColumns = () =>
+    setColumnState((current) => ({
+      ...current,
+      visible: [...defaultColumnOrder],
+    }));
+  const resetColumns = () =>
+    setColumnState({
+      order: [...defaultColumnOrder],
+      visible: [...defaultVisibleColumns],
+    });
 
   const drawerOpen = creating || Boolean(employeeId);
   return (
@@ -100,6 +215,15 @@ export default function EmployeesPage() {
             placeholder="Search name or employee code"
           />
         </label>
+        <EmployeeColumnPicker
+          columns={employeeColumns}
+          visibleKeySet={visibleKeySet}
+          visibleOrder={visibleColumns.map((column) => column.key)}
+          onToggleColumn={toggleColumn}
+          onMoveColumn={moveColumn}
+          onResetColumns={resetColumns}
+          onShowAllColumns={showAllColumns}
+        />
         <div
           className="employee-status-tabs"
           role="group"
@@ -131,14 +255,16 @@ export default function EmployeesPage() {
 
       <div className="employee-table-wrap">
         <table className="employee-table">
+          <colgroup>
+            {visibleColumns.map((column) => (
+              <col key={column.key} style={{ width: columnWidth(column.key) }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>Status</th>
-              <th>Primary location</th>
-              <th>Primary job</th>
-              <th>Access</th>
-              <th>Start date</th>
+              {visibleColumns.map((column) => (
+                <th key={column.key}>{column.label}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -162,62 +288,9 @@ export default function EmployeesPage() {
                     });
                 }}
               >
-                <td>
-                  <span className="employee-table-avatar">
-                    {employee.display_name.slice(0, 1).toUpperCase()}
-                  </span>
-                  <span>
-                    <strong>{employee.display_name}</strong>
-                    <small>{employee.employee_code}</small>
-                  </span>
-                </td>
-                <td>
-                  <span
-                    className={`employee-state state-${employee.display_status}`}
-                  >
-                    {filterLabel(employee.display_status)}
-                  </span>
-                </td>
-                <td
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    updateParams({
-                      employeeId: employee.id,
-                      mode: null,
-                      section: "employment",
-                    });
-                  }}
-                >
-                  <MapPin size={15} aria-hidden />
-                  {employee.primary_location_name ?? "Unassigned"}
-                  {employee.location_count > 1 ? (
-                    <small>+{employee.location_count - 1}</small>
-                  ) : null}
-                </td>
-                <td
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    updateParams({
-                      employeeId: employee.id,
-                      mode: null,
-                      section: "employment",
-                    });
-                  }}
-                >
-                  <BriefcaseBusiness size={15} aria-hidden />
-                  {employee.primary_job_name ?? "Unassigned"}
-                  {employee.job_count > 1 ? (
-                    <small>+{employee.job_count - 1}</small>
-                  ) : null}
-                </td>
-                <td>{employee.role_name ?? "No access"}</td>
-                <td>
-                  {employee.start_date
-                    ? new Date(
-                        `${employee.start_date}T12:00:00`,
-                      ).toLocaleDateString()
-                    : "Not set"}
-                </td>
+                {visibleColumns.map((column) =>
+                  renderEmployeeCell(employee, column.key, updateParams),
+                )}
               </tr>
             ))}
           </tbody>
@@ -271,6 +344,243 @@ export default function EmployeesPage() {
       ) : null}
     </section>
   );
+}
+
+function EmployeeColumnPicker({
+  columns,
+  visibleKeySet,
+  visibleOrder,
+  onToggleColumn,
+  onMoveColumn,
+  onResetColumns,
+  onShowAllColumns,
+}: {
+  readonly columns: readonly EmployeeColumn[];
+  readonly visibleKeySet: Set<EmployeeColumnKey>;
+  readonly visibleOrder: readonly EmployeeColumnKey[];
+  readonly onToggleColumn: (key: EmployeeColumnKey) => void;
+  readonly onMoveColumn: (key: EmployeeColumnKey, direction: -1 | 1) => void;
+  readonly onResetColumns: () => void;
+  readonly onShowAllColumns: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="employee-column-picker">
+      <button
+        type="button"
+        className="secondary-button compact"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Columns3 size={15} aria-hidden />
+        Columns
+      </button>
+      {open ? (
+        <div
+          className="employee-column-popover"
+          role="dialog"
+          aria-label="Employee table columns"
+        >
+          <header>
+            <strong>Columns</strong>
+            <span>
+              {visibleOrder.length} of {columns.length} visible
+            </span>
+          </header>
+          <div className="employee-column-list">
+            {columns.map((column) => {
+              const visibleIndex = visibleOrder.indexOf(column.key);
+              const isVisible = visibleKeySet.has(column.key);
+              return (
+                <div key={column.key} className="employee-column-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={isVisible}
+                      disabled={column.required}
+                      onChange={() => onToggleColumn(column.key)}
+                    />
+                    {column.label}
+                  </label>
+                  {isVisible ? (
+                    <span className="employee-column-move">
+                      <button
+                        type="button"
+                        aria-label={`Move ${column.label} left`}
+                        disabled={visibleIndex <= 0}
+                        onClick={() => onMoveColumn(column.key, -1)}
+                      >
+                        <ArrowLeft size={13} aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Move ${column.label} right`}
+                        disabled={
+                          visibleIndex < 0 ||
+                          visibleIndex >= visibleOrder.length - 1
+                        }
+                        onClick={() => onMoveColumn(column.key, 1)}
+                      >
+                        <ArrowRight size={13} aria-hidden />
+                      </button>
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <footer>
+            <button type="button" onClick={onShowAllColumns}>
+              <Eye size={14} aria-hidden />
+              Show all
+            </button>
+            <button type="button" onClick={onResetColumns}>
+              <RotateCcw size={14} aria-hidden />
+              Reset
+            </button>
+          </footer>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function renderEmployeeCell(
+  employee: EmployeeSummary,
+  key: EmployeeColumnKey,
+  updateParams: (values: Record<string, string | null>) => void,
+): ReactNode {
+  if (key === "employee") {
+    return (
+      <td key={key} className="employee-cell-identity">
+        <span className="employee-table-avatar">
+          {employee.display_name.slice(0, 1).toUpperCase()}
+        </span>
+        <span>
+          <strong>{employee.display_name}</strong>
+          <small>{employee.employee_code}</small>
+        </span>
+      </td>
+    );
+  }
+  if (key === "status") {
+    return (
+      <td key={key}>
+        <span className={`employee-state state-${employee.display_status}`}>
+          {filterLabel(employee.display_status)}
+        </span>
+      </td>
+    );
+  }
+  if (key === "location") {
+    return (
+      <td
+        key={key}
+        className="employee-cell-with-icon"
+        onClick={(event) => {
+          event.stopPropagation();
+          updateParams({
+            employeeId: employee.id,
+            mode: null,
+            section: "employment",
+          });
+        }}
+      >
+        <MapPin size={15} aria-hidden />
+        {employee.primary_location_name ?? "Unassigned"}
+        {employee.location_count > 1 ? (
+          <small>+{employee.location_count - 1}</small>
+        ) : null}
+      </td>
+    );
+  }
+  if (key === "job") {
+    return (
+      <td
+        key={key}
+        className="employee-cell-with-icon"
+        onClick={(event) => {
+          event.stopPropagation();
+          updateParams({
+            employeeId: employee.id,
+            mode: null,
+            section: "employment",
+          });
+        }}
+      >
+        <BriefcaseBusiness size={15} aria-hidden />
+        {employee.primary_job_name ?? "Unassigned"}
+        {employee.job_count > 1 ? <small>+{employee.job_count - 1}</small> : null}
+      </td>
+    );
+  }
+  if (key === "access") {
+    return <td key={key}>{employee.role_name ?? "No access"}</td>;
+  }
+  if (key === "email") {
+    return <td key={key}>{employee.invitation_email ?? "No invite email"}</td>;
+  }
+  return (
+    <td key={key}>
+      {employee.start_date
+        ? new Date(`${employee.start_date}T12:00:00`).toLocaleDateString()
+        : "Not set"}
+    </td>
+  );
+}
+
+function columnWidth(key: EmployeeColumnKey): string {
+  switch (key) {
+    case "employee":
+      return "24%";
+    case "status":
+      return "13%";
+    case "location":
+    case "job":
+      return "17%";
+    case "access":
+      return "15%";
+    case "email":
+      return "20%";
+    case "start":
+      return "14%";
+  }
+}
+
+function loadColumnState(): {
+  readonly order: EmployeeColumnKey[];
+  readonly visible: EmployeeColumnKey[];
+} {
+  try {
+    const raw = window.localStorage.getItem(employeeColumnStorageKey);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (
+      !parsed ||
+      !Array.isArray(parsed.order) ||
+      !Array.isArray(parsed.visible)
+    ) {
+      throw new Error("Missing employee table column preference");
+    }
+    const validKeys = new Set(defaultColumnOrder);
+    const order = parsed.order.filter((key: string): key is EmployeeColumnKey =>
+      validKeys.has(key as EmployeeColumnKey),
+    );
+    const visible = parsed.visible.filter(
+      (key: string): key is EmployeeColumnKey =>
+        validKeys.has(key as EmployeeColumnKey),
+    );
+    if (!visible.includes("employee")) visible.unshift("employee");
+    for (const key of defaultColumnOrder) {
+      if (!order.includes(key)) order.push(key);
+    }
+    return { order, visible: [...new Set<EmployeeColumnKey>(visible)] };
+  } catch {
+    return {
+      order: [...defaultColumnOrder],
+      visible: [...defaultVisibleColumns],
+    };
+  }
 }
 
 function filterLabel(

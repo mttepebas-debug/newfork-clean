@@ -5,6 +5,7 @@ import {
   type EmployeeDetail,
   type EmployeeInput,
   type EmployeeSummary,
+  type WorkspaceRole,
 } from "@newfork/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseClient } from "../lib/supabase";
@@ -18,6 +19,14 @@ export interface EmployeeOption {
 export interface EmployeeReferenceData {
   readonly locations: readonly EmployeeOption[];
   readonly jobs: readonly EmployeeOption[];
+  readonly inviteRoles: readonly InviteRoleOption[];
+}
+
+export interface InviteRoleOption {
+  readonly id: string;
+  readonly name: string;
+  readonly systemKey: WorkspaceRole | null;
+  readonly accessClass: WorkspaceRole;
 }
 
 export interface PreparedInvitation {
@@ -114,7 +123,7 @@ export async function setEmployeeArchived(
 export async function loadEmployeeReferenceData(
   workspaceId: string,
 ): Promise<EmployeeReferenceData> {
-  const [locations, jobs] = await Promise.all([
+  const [locations, jobs, roles] = await Promise.all([
     client()
       .from("locations")
       .select("id,name,archived_at")
@@ -127,9 +136,17 @@ export async function loadEmployeeReferenceData(
       .eq("workspace_id", workspaceId)
       .order("sort_order")
       .order("name"),
+    client()
+      .from("workspace_roles")
+      .select("id,name,system_key,access_class")
+      .eq("workspace_id", workspaceId)
+      .neq("access_class", "owner")
+      .order("sort_order")
+      .order("name"),
   ]);
   check(locations.error);
   check(jobs.error);
+  check(roles.error);
   const map = (row: { id: unknown; name: unknown; archived_at: unknown }) => ({
     id: String(row.id),
     name: String(row.name),
@@ -138,6 +155,14 @@ export async function loadEmployeeReferenceData(
   return {
     locations: (locations.data ?? []).map(map),
     jobs: (jobs.data ?? []).map(map),
+    inviteRoles: (roles.data ?? []).map((role) => ({
+      id: String(role.id),
+      name: String(role.name),
+      systemKey: role.system_key
+        ? (String(role.system_key) as WorkspaceRole)
+        : null,
+      accessClass: String(role.access_class) as WorkspaceRole,
+    })),
   };
 }
 
@@ -145,20 +170,21 @@ export async function prepareEmployeeInvitation(
   workspaceId: string,
   employeeId: string,
   email: string,
+  roleId?: string | null,
 ): Promise<PreparedInvitation> {
   const session = await client().auth.getSession();
   const token = session.data.session?.access_token;
   if (!token)
     throw new Error("A current session is required to invite an employee");
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000"}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`,
+    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`,
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, roleId: roleId ?? null }),
     },
   );
   const body = (await response.json()) as PreparedInvitation & {
@@ -177,7 +203,7 @@ export async function revokeEmployeeInvitation(
   if (!token)
     throw new Error("A current session is required to revoke an invitation");
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000"}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`,
+    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`,
     { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
   );
   if (!response.ok) {
@@ -194,7 +220,7 @@ export async function acceptEmployeeInvitation(
   if (!token)
     throw new Error("Sign in with the invited email before accepting");
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000"}/v1/invitations/accept`,
+    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/v1/invitations/accept`,
     {
       method: "POST",
       headers: {
@@ -217,7 +243,7 @@ export async function previewEmployeeInvitation(
   tokenValue: string,
 ): Promise<InvitationPreview> {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000"}/v1/invitations/preview?token=${encodeURIComponent(tokenValue)}`,
+    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/v1/invitations/preview?token=${encodeURIComponent(tokenValue)}`,
   );
   const body = (await response.json()) as InvitationPreview & {
     error?: string;

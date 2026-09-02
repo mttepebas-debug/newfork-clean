@@ -2,6 +2,7 @@ import type { Permission } from "@newfork/shared";
 import {
   Bell,
   CalendarDays,
+  CalendarCheck,
   ChevronDown,
   Clock3,
   LayoutDashboard,
@@ -43,10 +44,24 @@ const navItems: readonly NavItem[] = [
     roles: ["owner", "admin", "manager"],
   },
   {
+    to: "/app/availability",
+    label: "Availability",
+    icon: CalendarCheck,
+    anyOf: ["schedule.read"],
+    roles: ["owner", "admin", "manager"],
+  },
+  {
     to: "/app/time-entries",
     label: "Time Entries",
     icon: Clock3,
     anyOf: ["time.read.location"],
+    roles: ["owner", "admin", "manager"],
+  },
+  {
+    to: "/app/important-dates",
+    label: "Important Dates",
+    icon: CalendarDays,
+    anyOf: ["workspace.manage", "schedule.read"],
     roles: ["owner", "admin", "manager"],
   },
   {

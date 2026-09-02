@@ -5,6 +5,7 @@ export interface PrepareEmployeeInvitationInput {
   readonly workspaceId: string;
   readonly employeeId: string;
   readonly email: string;
+  readonly roleId?: string | null;
 }
 
 export interface PreparedEmployeeInvitation {
@@ -75,6 +76,7 @@ export function createEmployeeInvitationService(
           target_workspace_id: input.workspaceId,
           target_employee_id: input.employeeId,
           employee_email: input.email.trim().toLowerCase(),
+          target_role_id: input.roleId ?? null,
           invitation_token_hash: tokenHash,
           invitation_expires_at: expiresAt,
         },

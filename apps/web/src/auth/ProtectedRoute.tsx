@@ -28,13 +28,6 @@ export function ProtectedRoute({
   }
 
   if (workspace !== "none" && !context)
-    return <Navigate to="/account/workspaces" replace />;
-  if (
-    workspace === "complete" &&
-    context?.membership.role === "owner" &&
-    context.onboarding.status === "incomplete"
-  )
-    return <Navigate to="/onboarding" replace />;
-
+    return <main className="auth-loading" aria-label="Loading workspace" />;
   return children;
 }

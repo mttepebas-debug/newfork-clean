@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx --env-file=.env.local watch src/server.ts",
+    "dev": "tsx watch --env-file=.env.local src/server.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@aws-sdk/client-kms": "^3.1111.0",
+    "@newfork/scheduling-shared": "workspace:*",
     "@newfork/shared": "workspace:*",
     "@supabase/supabase-js": "^2.112.3",
+    "exceljs": "4.4.0",
     "fastify": "^5.5.0",
     "zod": "^4.0.17"
   },

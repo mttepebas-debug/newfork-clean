@@ -1,11 +1,12 @@
 import { buildApp } from "./app";
 
 const app = buildApp();
-const port = Number.parseInt(process.env.PORT ?? "4000", 10);
+const host = process.env.HOST ?? "localhost";
+const port = Number.parseInt(process.env.PORT ?? "5556", 10);
 
 try {
-  await app.listen({ host: "127.0.0.1", port });
-  app.log.info(`Newfork API listening on ${port}`);
+  await app.listen({ host, port });
+  app.log.info(`Newfork API listening at http://${host}:${port}`);
 } catch (error) {
   app.log.error(error);
   process.exit(1);

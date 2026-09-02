@@ -1,0 +1,184 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import {
+  useSingleShiftPointerDrag,
+  type ShiftDropTarget,
+} from "./useSingleShiftPointerDrag";
+
+function Harness({
+  enabled = true,
+  onDrop = vi.fn(),
+}: {
+  readonly enabled?: boolean;
+  readonly onDrop?: (target: ShiftDropTarget) => void;
+}) {
+  const drag = useSingleShiftPointerDrag({
+    enabled,
+    resolveLabel: () => "Dinner, 4p to 10p",
+    evaluateTarget: (target) => ({
+      allowed: true,
+      targetStatus: "allowed",
+      reason: target.copy ? "Copy" : undefined,
+    }),
+    onDragStart: vi.fn(),
+    onDropAttempt: vi.fn(),
+    onDragEnd: vi.fn(),
+    onDrop,
+  });
+
+  return (
+    <div>
+      <button
+        type="button"
+        onPointerDown={(event) => drag.onShiftPointerDown("shift-1", event)}
+        onMouseDown={(event) => drag.onShiftMouseDown("shift-1", event)}
+      >
+        Shift
+      </button>
+      <div
+        data-testid="drop-cell"
+        data-drop-cell="true"
+        data-location-id="loc-1"
+        data-employee-id="emp-1"
+        data-date="2026-08-17"
+      />
+      <output data-testid="drag-state">
+        {drag.dragState
+          ? `${drag.dragState.label}|${drag.dragState.targetKey}|${drag.dragState.targetStatus}|${drag.dragState.copy}`
+          : "idle"}
+      </output>
+    </div>
+  );
+}
+
+describe("useSingleShiftPointerDrag", () => {
+  afterEach(() => {
+    Reflect.deleteProperty(document, "elementFromPoint");
+    vi.restoreAllMocks();
+  });
+
+  it("starts dragging after the threshold and drops on the resolved cell", async () => {
+    const onDrop = vi.fn();
+    render(<Harness onDrop={onDrop} />);
+    const dropCell = screen.getByTestId("drop-cell");
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: vi.fn(() => dropCell),
+    });
+
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Shift" }), {
+      button: 0,
+      buttons: 1,
+      clientX: 0,
+      clientY: 0,
+    });
+    fireEvent.mouseMove(window, {
+      buttons: 1,
+      clientX: 12,
+      clientY: 12,
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("drag-state").textContent).toBe(
+        "Dinner, 4p to 10p|emp-1|loc-1|2026-08-17|allowed|false",
+      ),
+    );
+
+    fireEvent.mouseUp(window, {
+      button: 0,
+      buttons: 0,
+      clientX: 12,
+      clientY: 12,
+    });
+
+    expect(onDrop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shiftId: "shift-1",
+        employeeId: "emp-1",
+        locationId: "loc-1",
+        date: "2026-08-17",
+        copy: false,
+      }),
+    );
+  });
+
+  it("starts a copy drag when Ctrl is held from pointer down", async () => {
+    const onDrop = vi.fn();
+    render(<Harness onDrop={onDrop} />);
+    const dropCell = screen.getByTestId("drop-cell");
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: vi.fn(() => dropCell),
+    });
+
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Shift" }), {
+      button: 0,
+      buttons: 1,
+      clientX: 0,
+      clientY: 0,
+      ctrlKey: true,
+    });
+    fireEvent.mouseMove(window, {
+      buttons: 1,
+      clientX: 12,
+      clientY: 12,
+      ctrlKey: true,
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("drag-state").textContent).toBe(
+        "Dinner, 4p to 10p|emp-1|loc-1|2026-08-17|allowed|true",
+      ),
+    );
+
+    fireEvent.mouseUp(window, {
+      button: 0,
+      buttons: 0,
+      clientX: 12,
+      clientY: 12,
+      ctrlKey: true,
+    });
+
+    expect(onDrop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shiftId: "shift-1",
+        employeeId: "emp-1",
+        locationId: "loc-1",
+        date: "2026-08-17",
+        copy: true,
+      }),
+    );
+  });
+
+  it("does not start when disabled", () => {
+    const onDrop = vi.fn();
+    render(<Harness enabled={false} onDrop={onDrop} />);
+    const dropCell = screen.getByTestId("drop-cell");
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: vi.fn(() => dropCell),
+    });
+
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Shift" }), {
+      button: 0,
+      buttons: 1,
+      clientX: 0,
+      clientY: 0,
+    });
+    fireEvent.mouseMove(window, {
+      buttons: 1,
+      clientX: 12,
+      clientY: 12,
+    });
+    fireEvent.mouseUp(window, {
+      button: 0,
+      buttons: 0,
+      clientX: 12,
+      clientY: 12,
+    });
+
+    expect(screen.getByTestId("drag-state").textContent).toBe("idle");
+    expect(onDrop).not.toHaveBeenCalled();
+  });
+});

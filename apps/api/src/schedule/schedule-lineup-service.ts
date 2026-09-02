@@ -6,13 +6,14 @@ import {
   scheduleLineupSharePreviewSchema,
   scheduleLineupShareResultSchema,
   type ScheduleLineupEntryInput,
+  type ScheduleLineupEntryMoveInput,
   type ScheduleLineupEntryMutationResult,
   type ScheduleLineupReadModel,
   type ScheduleLineupSection,
   type ScheduleLineupSectionInput,
   type ScheduleLineupSharePreview,
   type ScheduleLineupShareResult,
-} from "@newfork/shared";
+} from "@newfork/shared/schedule";
 import { createClient } from "@supabase/supabase-js";
 
 export interface ScheduleLineupService {
@@ -50,6 +51,11 @@ export interface ScheduleLineupService {
     workspaceId: string;
     entryId: string;
     expectedRevision: number;
+  }): Promise<ScheduleLineupEntryMutationResult>;
+  moveEntry(input: {
+    actorUserId: string;
+    workspaceId: string;
+    move: ScheduleLineupEntryMoveInput;
   }): Promise<ScheduleLineupEntryMutationResult>;
   saveBrief(input: {
     actorUserId: string;
@@ -142,6 +148,15 @@ export function createScheduleLineupService(options: {
           target_workspace_id: input.workspaceId,
           target_entry_id: input.entryId,
           target_expected_revision: input.expectedRevision,
+        }),
+      );
+    },
+    async moveEntry(input) {
+      return scheduleLineupEntryMutationResultSchema.parse(
+        await rpc("move_schedule_lineup_entry_service", {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+          move: input.move,
         }),
       );
     },

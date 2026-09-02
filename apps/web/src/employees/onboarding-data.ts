@@ -10,7 +10,7 @@ import {
 } from "@newfork/shared";
 import { supabaseClient } from "../lib/supabase";
 
-const apiUrl = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000";
+const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:9999";
 
 export async function getMyOnboarding(): Promise<EmployeeOnboarding> {
   return employeeOnboardingSchema.parse(await api("/v1/me/onboarding"));

@@ -1,0 +1,210 @@
+import type {
+  ScheduleLocation,
+  ScheduleReadModel,
+  ScheduleView,
+} from "@newfork/shared/schedule";
+
+import { addDays } from "./scheduleDateTime";
+
+export const scheduleGridEmployeeColumnWidth = 200;
+export const scheduleGridTotalColumnWidth = 120;
+export const scheduleGridMinDayColumnWidth = 112;
+export const scheduleGridPreviewCellHorizontalChrome = 1;
+export const scheduleGridEditCellHorizontalChrome = 13;
+const scheduleGridLocationHeaderBaseWidth = 64;
+const scheduleGridLocationHeaderCharWidth = 9;
+
+export type ScheduleGridLocationGroup = ScheduleLocation & {
+  readonly sourceIds: readonly string[];
+  readonly sourceNames: readonly { readonly id: string; readonly name: string }[];
+};
+
+export function resolveScheduleInteractionLocationId({
+  sourceLocationIds,
+  employeeLocationIds = [],
+  activeInteractionShiftLocationId,
+}: {
+  readonly sourceLocationIds: readonly string[];
+  readonly employeeLocationIds?: readonly string[];
+  readonly activeInteractionShiftLocationId: string | null;
+}): string {
+  if (
+    activeInteractionShiftLocationId &&
+    sourceLocationIds.includes(activeInteractionShiftLocationId)
+  ) {
+    return activeInteractionShiftLocationId;
+  }
+
+  const employeeLocationId = sourceLocationIds.find((locationId) =>
+    employeeLocationIds.includes(locationId),
+  );
+  if (employeeLocationId) return employeeLocationId;
+
+  return sourceLocationIds[0] ?? "";
+}
+
+export function createScheduleGridDays({
+  selectedDate,
+  view,
+  weekStart,
+}: {
+  readonly selectedDate: string;
+  readonly view: ScheduleView;
+  readonly weekStart: string;
+}): readonly string[] {
+  return view === "day"
+    ? [selectedDate]
+    : Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+}
+
+export function createScheduleGridLocationGroups({
+  layout,
+  locations,
+}: {
+  readonly layout: "separate" | "unified";
+  readonly locations: ScheduleReadModel["locations"];
+}): readonly ScheduleGridLocationGroup[] {
+  if (layout === "unified") {
+    return [
+      {
+        id: "unified",
+        name: locations.map((item) => item.name).join(" + "),
+        timezone: "",
+        sort_order: 0,
+        publication_status: locations.every(
+          (item) => item.publication_status === "published",
+        )
+          ? "published"
+          : "unpublished",
+        published_at: null,
+        sourceIds: locations.map((item) => item.id),
+        sourceNames: locations.map((item) => ({
+          id: item.id,
+          name: item.name,
+        })),
+      },
+    ];
+  }
+
+  return locations.map((item) => ({
+    ...item,
+    sourceIds: [item.id],
+    sourceNames: [{ id: item.id, name: item.name }],
+  }));
+}
+
+export function countScheduleGridColumns({
+  days,
+  locationGroups,
+}: {
+  readonly days: readonly string[];
+  readonly locationGroups: readonly ScheduleGridLocationGroup[];
+}): number {
+  return Math.max(1, locationGroups.length * days.length);
+}
+
+export function countScheduleGridTotalColumns({
+  columns,
+  showTotalHours,
+}: {
+  readonly columns: number;
+  readonly showTotalHours: boolean;
+}): number {
+  return columns + (showTotalHours ? 1 : 0);
+}
+
+export function createScheduleGridTemplateColumns({
+  columns,
+  showTotalHours,
+}: {
+  readonly columns: number;
+  readonly showTotalHours: boolean;
+}): string {
+  return `${scheduleGridEmployeeColumnWidth}px repeat(${columns}, minmax(var(--schedule-day-column-min), 1fr))${
+    showTotalHours ? ` ${scheduleGridTotalColumnWidth}px` : ""
+  }`;
+}
+
+export function calculateScheduleDayColumnMinWidth({
+  editing,
+  locationGroups,
+  measuredBadgeWidth,
+  view,
+}: {
+  readonly editing: boolean;
+  readonly locationGroups: readonly ScheduleGridLocationGroup[];
+  readonly measuredBadgeWidth: number;
+  readonly view: ScheduleView;
+}): number {
+  const measuredLocationHeaderWidth = locationGroups.reduce(
+    (maxWidth, location) =>
+      Math.max(
+        maxWidth,
+        scheduleGridLocationHeaderBaseWidth +
+          location.name.length * scheduleGridLocationHeaderCharWidth,
+      ),
+    scheduleGridMinDayColumnWidth,
+  );
+
+  return Math.max(
+    view === "day" ? 168 : scheduleGridMinDayColumnWidth,
+    measuredLocationHeaderWidth,
+    measuredBadgeWidth +
+      (editing
+        ? scheduleGridEditCellHorizontalChrome
+        : scheduleGridPreviewCellHorizontalChrome),
+  );
+}
+
+export function countScheduleGridBodyRows({
+  employeeRowGroupCount,
+  rowCount,
+  showEmployeeGroupHeaders,
+  showTotalHours,
+  showUnassignedRow,
+}: {
+  readonly employeeRowGroupCount: number;
+  readonly rowCount: number;
+  readonly showEmployeeGroupHeaders: boolean;
+  readonly showTotalHours: boolean;
+  readonly showUnassignedRow: boolean;
+}): number {
+  return (
+    rowCount +
+    (showUnassignedRow ? 1 : 0) +
+    (showEmployeeGroupHeaders ? employeeRowGroupCount : 0) +
+    (showTotalHours && rowCount ? 1 : 0)
+  );
+}
+
+export function countScheduleGridFillerRows(bodyRowCount: number): number {
+  return Math.max(0, 8 - bodyRowCount);
+}
+
+export function createScheduleBadgeMeasurementVersion({
+  shifts,
+  jobs,
+  shiftTypes,
+  locationGroups,
+  showShiftTypePresets,
+  showShiftType,
+  showShiftLabels,
+  showClockTimes,
+  timeFormat,
+  showJobColorDot,
+  showLocationInBadge,
+}: {
+  readonly shifts: ScheduleReadModel["shifts"];
+  readonly jobs: ScheduleReadModel["jobs"];
+  readonly shiftTypes: ScheduleReadModel["shift_types"];
+  readonly locationGroups: readonly ScheduleGridLocationGroup[];
+  readonly showShiftTypePresets: boolean;
+  readonly showShiftType: boolean;
+  readonly showShiftLabels: boolean;
+  readonly showClockTimes: boolean;
+  readonly timeFormat: ScheduleReadModel["settings"]["time_format"];
+  readonly showJobColorDot: boolean;
+  readonly showLocationInBadge: boolean;
+}): string {
+  return `${shifts.map((shift) => `${shift.id}:${shift.start_time}:${shift.end_time}:${shift.crosses_midnight}:${shift.hide_time_on_badge}:${shift.shift_type_id ?? ""}:${shift.job_id}:${shift.location_id}:${(shift.label_names ?? []).join(",")}`).join("|")}|${jobs.map((job) => `${job.id}:${job.name}`).join("|")}|${shiftTypes.map((shiftType) => `${shiftType.id}:${shiftType.name}`).join("|")}|${locationGroups.map((location) => `${location.id}:${location.name}:${location.sourceNames.map((source) => `${source.id}:${source.name}`).join(",")}`).join("|")}|${showShiftTypePresets}|${showShiftType}|${showShiftLabels}|${showClockTimes}|${timeFormat}|${showJobColorDot}|${showLocationInBadge}`;
+}

@@ -59,6 +59,10 @@ export const permissionSchema = z.enum([
   "time.correction.review.location",
   "time.review.approve.location",
   "time.audit.read",
+  "time.export.preview.location",
+  "time.export.create.location",
+  "time.export.read.location",
+  "time.export.audit.read",
   "kiosk.device.enroll.location",
   "kiosk.device.read.location",
   "kiosk.device.revoke.location",
@@ -97,6 +101,10 @@ const rolePermissions = {
     "time.amend.location",
     "time.correction.review.location",
     "time.review.approve.location",
+    "time.export.preview.location",
+    "time.export.create.location",
+    "time.export.read.location",
+    "time.export.audit.read",
     "kiosk.device.enroll.location",
     "kiosk.device.read.location",
     "kiosk.device.revoke.location",
@@ -117,8 +125,35 @@ const rolePermissions = {
 export const workspaceSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
+  logo_url: z.string().url().nullable().default(null),
+  logo_file_name: z.string().trim().min(1).max(255).nullable().default(null),
+  logo_updated_at: z
+    .string()
+    .datetime({ offset: true })
+    .nullable()
+    .default(null),
+  schedule_logo_placement: z
+    .object({
+      scale: z.number().min(0.25).max(4),
+      offset_x: z.number().min(-100).max(100),
+      offset_y: z.number().min(-100).max(100),
+    })
+    .default({ scale: 1, offset_x: 0, offset_y: 0 }),
 });
 export type Workspace = z.infer<typeof workspaceSchema>;
+export type ScheduleLogoPlacement = Workspace["schedule_logo_placement"];
+export const defaultScheduleLogoPlacement: ScheduleLogoPlacement = {
+  scale: 1,
+  offset_x: 0,
+  offset_y: 0,
+};
+export const organizationLogoMimeTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/svg+xml",
+] as const;
+export const organizationLogoMaxBytes = 5 * 1024 * 1024;
 
 export const workspaceMembershipSchema = z.object({
   id: z.string().uuid(),
@@ -137,7 +172,7 @@ export type OnboardingStatus = z.infer<typeof onboardingStatusSchema>;
 
 export const workspaceOnboardingSchema = z.object({
   status: onboardingStatusSchema,
-  currentStep: z.number().int().min(1).max(2),
+  currentStep: z.number().int().min(1).max(3),
 });
 export type WorkspaceOnboarding = z.infer<typeof workspaceOnboardingSchema>;
 
@@ -167,7 +202,7 @@ export const workspaceSummaryRowSchema = z.object({
   workspace_role: workspaceRoleSchema,
   is_active: z.boolean(),
   onboarding_status: onboardingStatusSchema,
-  onboarding_current_step: z.coerce.number().int().min(1).max(2),
+  onboarding_current_step: z.coerce.number().int().min(1).max(3),
 });
 
 export function workspaceSummaryFromRow(input: unknown): WorkspaceSummary {
@@ -223,6 +258,27 @@ export const activeWorkspaceRowSchema = z.object({
   user_id: z.string().uuid(),
   workspace_id: z.string().uuid(),
   workspace_name: z.string().trim().min(1).max(120),
+  workspace_logo_storage_path: z
+    .string()
+    .trim()
+    .min(1)
+    .nullable()
+    .default(null),
+  workspace_logo_file_name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(255)
+    .nullable()
+    .default(null),
+  workspace_logo_updated_at: z
+    .string()
+    .datetime({ offset: true })
+    .nullable()
+    .default(null),
+  schedule_logo_scale: z.coerce.number().min(0.25).max(4).default(1),
+  schedule_logo_offset_x: z.coerce.number().min(-100).max(100).default(0),
+  schedule_logo_offset_y: z.coerce.number().min(-100).max(100).default(0),
   membership_id: z.string().uuid(),
   workspace_role: workspaceRoleSchema,
   membership_role_id: z.string().uuid().optional(),
@@ -230,18 +286,29 @@ export const activeWorkspaceRowSchema = z.object({
   permission_keys: z.array(permissionSchema).optional(),
   all_locations: z.boolean(),
   onboarding_status: onboardingStatusSchema.default("complete"),
-  onboarding_current_step: z.coerce.number().int().min(1).max(2).default(2),
+  onboarding_current_step: z.coerce.number().int().min(1).max(3).default(2),
 });
 export type ActiveWorkspaceRow = z.infer<typeof activeWorkspaceRowSchema>;
 
 export function activeWorkspaceContextFromRow(
-  input: ActiveWorkspaceRow,
+  input: unknown,
   locationIds: readonly string[] = [],
 ): ActiveWorkspaceContext {
   const row = activeWorkspaceRowSchema.parse(input);
   return activeWorkspaceContextSchema.parse({
     userId: row.user_id,
-    workspace: { id: row.workspace_id, name: row.workspace_name },
+    workspace: {
+      id: row.workspace_id,
+      name: row.workspace_name,
+      logo_url: null,
+      logo_file_name: row.workspace_logo_file_name,
+      logo_updated_at: row.workspace_logo_updated_at,
+      schedule_logo_placement: {
+        scale: row.schedule_logo_scale,
+        offset_x: row.schedule_logo_offset_x,
+        offset_y: row.schedule_logo_offset_y,
+      },
+    },
     membership: {
       id: row.membership_id,
       userId: row.user_id,
@@ -368,6 +435,7 @@ export const scheduleDeadlineDaySchema = z.enum([
 ]);
 export const conflictPolicySchema = z.enum(["warn", "block"]);
 export const availabilityEnforcementSchema = z.enum(["soft", "hard"]);
+export const scheduleTimeFormatSchema = z.enum(["12h", "24h"]);
 
 export const schedulingSettingsSchema = z.object({
   workspace_id: z.string().uuid(),
@@ -375,6 +443,7 @@ export const schedulingSettingsSchema = z.object({
   schedule_deadline_day: scheduleDeadlineDaySchema,
   conflict_policy: conflictPolicySchema,
   availability_enforcement: availabilityEnforcementSchema,
+  time_format: scheduleTimeFormatSchema,
 });
 export type SchedulingSettings = z.infer<typeof schedulingSettingsSchema>;
 export const schedulingSettingsInputSchema = schedulingSettingsSchema.omit({
@@ -384,7 +453,72 @@ export type SchedulingSettingsInput = z.infer<
   typeof schedulingSettingsInputSchema
 >;
 
+export const importantDateTypeSchema = z.enum([
+  "holiday",
+  "event",
+  "blackout",
+  "closed_day",
+]);
+export type ImportantDateType = z.infer<typeof importantDateTypeSchema>;
+
+export const importantDateRecurrenceSchema = z.enum(["none", "annual"]);
+export type ImportantDateRecurrence = z.infer<
+  typeof importantDateRecurrenceSchema
+>;
+
+export const importantDateSchema = z.object({
+  id: z.string().uuid(),
+  workspace_id: z.string().uuid(),
+  location_id: z.string().uuid().nullable(),
+  location_name: z.string().trim().min(1).max(120).nullable(),
+  title: z.string().trim().min(1).max(120),
+  type: importantDateTypeSchema,
+  starts_on: z.string().date(),
+  ends_on: z.string().date(),
+  recurrence: importantDateRecurrenceSchema,
+  note: z.string().max(500),
+  affects_scheduling: z.boolean(),
+  archived_at: z.string().datetime({ offset: true }).nullable(),
+});
+export type ImportantDate = z.infer<typeof importantDateSchema>;
+
+export const importantDateInputSchema = importantDateSchema
+  .pick({
+    location_id: true,
+    title: true,
+    type: true,
+    starts_on: true,
+    ends_on: true,
+    recurrence: true,
+    note: true,
+    affects_scheduling: true,
+  })
+  .superRefine((value, issue) => {
+    if (value.ends_on < value.starts_on) {
+      issue.addIssue({
+        code: "custom",
+        message: "End date must be on or after the start date",
+        path: ["ends_on"],
+      });
+    }
+    if (value.type === "closed_day" && !value.affects_scheduling) {
+      issue.addIssue({
+        code: "custom",
+        message: "Closed days must affect scheduling",
+        path: ["affects_scheduling"],
+      });
+    }
+  });
+export type ImportantDateInput = z.infer<typeof importantDateInputSchema>;
+
 const timeOfDaySchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const scheduleUnpaidBreakMinutesSchema = z.union([
+  z.literal(0),
+  z.literal(15),
+  z.literal(30),
+  z.literal(45),
+  z.literal(60),
+]);
 export const shiftTypeSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
@@ -453,6 +587,9 @@ export const scheduleShiftTypeSchema = scheduleReferenceSchema.extend({
   default_end_time: timeOfDaySchema.nullable(),
 });
 
+export const scheduleShiftLabelSchema = scheduleReferenceSchema;
+export type ScheduleShiftLabel = z.infer<typeof scheduleShiftLabelSchema>;
+
 export const scheduleAvailabilityDaySchema = z.object({
   day: z.number().int().min(0).max(6),
   mode: z.enum(["unavailable", "unrestricted", "windows"]),
@@ -465,6 +602,9 @@ export const scheduleEmployeeSchema = z.object({
   display_name: z.string().trim().min(1).max(161),
   location_ids: z.array(z.string().uuid()),
   job_ids: z.array(z.string().uuid()),
+  shift_type_ids: z.array(z.string().uuid()).optional(),
+  is_excluded_from_schedule: z.boolean().optional(),
+  primary_job_id: z.string().uuid().nullable().optional(),
   availability: z.array(scheduleAvailabilityDaySchema).length(7).nullable(),
 });
 export type ScheduleEmployee = z.infer<typeof scheduleEmployeeSchema>;
@@ -479,6 +619,10 @@ export const scheduleShiftSchema = z.object({
   start_time: timeOfDaySchema,
   end_time: timeOfDaySchema,
   crosses_midnight: z.boolean(),
+  unpaid_break_minutes: scheduleUnpaidBreakMinutesSchema.optional().default(0),
+  hide_time_on_badge: z.boolean().optional().default(false),
+  label_ids: z.array(z.string().uuid()).optional(),
+  label_names: z.array(z.string().trim().min(1).max(80)).optional(),
   note: z.string().max(500),
   warning_codes: z.array(
     z.enum(["availability", "closed_location", "overlap"]),
@@ -490,21 +634,40 @@ export const scheduleClosureSchema = z.object({
   id: z.string().uuid(),
   location_id: z.string().uuid(),
   closed_date: z.string().date(),
+  end_date: z.string().date().nullable().optional(),
   title: z.string().trim().min(1).max(120),
   is_all_day: z.boolean(),
+  shift_type_ids: z.array(z.string().uuid()).default([]),
+});
+
+export const scheduleImportantDateSchema = z.object({
+  id: z.string().uuid(),
+  location_id: z.string().uuid().nullable(),
+  title: z.string().trim().min(1).max(120),
+  type: importantDateTypeSchema,
+  starts_on: z.string().date(),
+  ends_on: z.string().date(),
+  recurrence: importantDateRecurrenceSchema.default("none"),
 });
 
 export const scheduleReadModelSchema = z.object({
   workspace_id: z.string().uuid(),
   week_start: z.string().date(),
   week_start_day: weekStartDaySchema,
+  settings: z
+    .object({
+      time_format: scheduleTimeFormatSchema,
+    })
+    .default({ time_format: "12h" }),
   locations: z.array(scheduleLocationSchema),
   departments: z.array(scheduleReferenceSchema),
   jobs: z.array(scheduleJobSchema),
   shift_types: z.array(scheduleShiftTypeSchema),
+  shift_labels: z.array(scheduleShiftLabelSchema).optional(),
   employees: z.array(scheduleEmployeeSchema),
   shifts: z.array(scheduleShiftSchema),
   closures: z.array(scheduleClosureSchema),
+  important_dates: z.array(scheduleImportantDateSchema).default([]),
 });
 export type ScheduleReadModel = z.infer<typeof scheduleReadModelSchema>;
 
@@ -531,6 +694,12 @@ export const scheduleEditableShiftSchema = scheduleShiftSchema
   .extend({
     revision: z.coerce.number().int().positive(),
     warning_codes: scheduleShiftSchema.shape.warning_codes,
+    source_published_shift_id: z.string().uuid().nullable().optional(),
+    pending_op_type: z
+      .enum(["create", "update", "delete"])
+      .nullable()
+      .optional(),
+    locked: z.boolean().nullable().optional(),
   });
 export type ScheduleEditableShift = z.infer<typeof scheduleEditableShiftSchema>;
 
@@ -559,6 +728,7 @@ export const scheduleEditAcquireResultSchema = z.discriminatedUnion("status", [
   }),
   z.object({
     status: z.literal("conflict"),
+    session_id: z.string().uuid().optional(),
     holder_name: z.string().trim().min(1).max(161),
     last_heartbeat: z.string().datetime({ offset: true }),
     expires_at: z.string().datetime({ offset: true }),
@@ -566,6 +736,109 @@ export const scheduleEditAcquireResultSchema = z.discriminatedUnion("status", [
 ]);
 export type ScheduleEditAcquireResult = z.infer<
   typeof scheduleEditAcquireResultSchema
+>;
+
+export const schedulePendingOpTypeSchema = z.enum([
+  "create",
+  "update",
+  "delete",
+]);
+export type SchedulePendingOpType = z.infer<typeof schedulePendingOpTypeSchema>;
+export const schedulePendingOpPayloadSchema = z
+  .object({
+    scheduled_date: z.string().date().optional(),
+    start_time: timeOfDaySchema.optional(),
+    end_time: timeOfDaySchema.optional(),
+    unpaid_break_minutes: scheduleUnpaidBreakMinutesSchema.optional(),
+    location_id: z
+      .union([z.string().uuid(), z.literal(""), z.null()])
+      .optional(),
+    employee_id: z
+      .union([z.string().uuid(), z.literal(""), z.null()])
+      .optional(),
+    shift_type_id: z
+      .union([z.string().uuid(), z.literal(""), z.null()])
+      .optional(),
+    job_id: z.union([z.string().uuid(), z.literal(""), z.null()]).optional(),
+    label_ids: z.array(z.string().uuid()).optional(),
+    label_names: z.array(z.string().trim().min(1).max(80)).optional(),
+    source_published_shift_id: z
+      .union([z.string().uuid(), z.literal(""), z.null()])
+      .optional(),
+  })
+  .passthrough();
+export type SchedulePendingOpPayload = z.infer<
+  typeof schedulePendingOpPayloadSchema
+>;
+export const schedulePendingOpSchema = z.object({
+  id: z.string().uuid(),
+  location_id: z.string().uuid(),
+  week_start: z.string().date(),
+  op_type: schedulePendingOpTypeSchema,
+  target_shift_id: z.string().uuid().nullable(),
+  target_draft_id: z.string().uuid().nullable().optional(),
+  payload: schedulePendingOpPayloadSchema,
+  created_by: z.string().uuid(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+export type SchedulePendingOp = z.infer<typeof schedulePendingOpSchema>;
+export const schedulePendingOpListSchema = z.object({
+  pending_ops: z.array(schedulePendingOpSchema),
+});
+export const schedulePendingOpMutationResultSchema = z.object({
+  status: z.string(),
+  op_id: z.string().uuid().optional(),
+});
+export type SchedulePendingOpMutationResult = z.infer<
+  typeof schedulePendingOpMutationResultSchema
+>;
+export const createSchedulePendingOpInputSchema = z.object({
+  lock_id: z.string().uuid(),
+  op_type: schedulePendingOpTypeSchema,
+  target_shift_id: z.string().uuid().nullable().optional(),
+  payload: schedulePendingOpPayloadSchema,
+});
+export type CreateSchedulePendingOpInput = z.infer<
+  typeof createSchedulePendingOpInputSchema
+>;
+export const updateSchedulePendingOpInputSchema = z.object({
+  payload: schedulePendingOpPayloadSchema,
+});
+export type UpdateSchedulePendingOpInput = z.infer<
+  typeof updateSchedulePendingOpInputSchema
+>;
+
+export const schedulePublicationLocationStatusSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  color: colorSchema.nullable(),
+  timezone: z.string().trim().min(1).max(80).nullable(),
+  status: z.enum(["published", "unpublished"]),
+  reason: z.enum([
+    "active_publication_and_shifts",
+    "worked_shifts_kept",
+    "missing_publication",
+    "no_published_shifts",
+    "unpublished_draft",
+  ]),
+  publication_includes_location: z.boolean(),
+  published_shift_count: z.coerce.number().int().nonnegative(),
+  worked_shift_count: z.coerce.number().int().nonnegative(),
+  draft_shift_count: z.coerce.number().int().nonnegative(),
+  published_at: z.string().datetime({ offset: true }).nullable(),
+  published_by_name: z.string().trim().min(1).max(161).nullable(),
+});
+export const schedulePublicationStatusSchema = z.object({
+  week_start: z.string().date(),
+  week_end: z.string().date(),
+  week_start_day: weekStartDaySchema,
+  schedule_deadline_day: scheduleDeadlineDaySchema,
+  is_anchor_only: z.boolean(),
+  locations: z.array(schedulePublicationLocationStatusSchema),
+});
+export type SchedulePublicationStatus = z.infer<
+  typeof schedulePublicationStatusSchema
 >;
 
 export const scheduleShiftMutationInputSchema = scheduleShiftSchema
@@ -577,9 +850,19 @@ export const scheduleShiftMutationInputSchema = scheduleShiftSchema
     scheduled_date: true,
     start_time: true,
     end_time: true,
+    unpaid_break_minutes: true,
+    hide_time_on_badge: true,
+    label_ids: true,
+    label_names: true,
     note: true,
   })
-  .extend({ idempotency_key: z.string().uuid().optional() });
+  .extend({
+    unpaid_break_minutes: scheduleUnpaidBreakMinutesSchema
+      .optional()
+      .default(0),
+    idempotency_key: z.string().uuid().optional(),
+    conflict_override_note: z.string().trim().min(10).max(1000).optional(),
+  });
 export type ScheduleShiftMutationInput = z.infer<
   typeof scheduleShiftMutationInputSchema
 >;
@@ -588,21 +871,80 @@ export const scheduleDraftListSchema = z.object({
   drafts: z.array(scheduleDraftSummarySchema),
 });
 export type ScheduleDraftList = z.infer<typeof scheduleDraftListSchema>;
+export const legacyScheduleShiftListSchema = z.object({
+  shifts: z.array(scheduleShiftSchema),
+  ghost_shifts: z.array(scheduleShiftSchema).optional(),
+});
+export type LegacyScheduleShiftList = z.infer<
+  typeof legacyScheduleShiftListSchema
+>;
+export const scheduleBulkDeleteResultSchema = z.object({
+  deleted_count: z.coerce.number().int().nonnegative(),
+  session: scheduleEditSessionSchema.optional(),
+});
+export type ScheduleBulkDeleteResult = z.infer<
+  typeof scheduleBulkDeleteResultSchema
+>;
+export const scheduleDraftDeleteResultSchema = z.object({
+  status: z.literal("deleted"),
+  draft_id: z.string().uuid(),
+});
+export type ScheduleDraftDeleteResult = z.infer<
+  typeof scheduleDraftDeleteResultSchema
+>;
+export const scheduleAvailabilityConflictSchema = z.object({
+  employee_id: z.string().uuid(),
+  employee_name: z.string().trim().min(1).max(161),
+  shift_id: z.string().uuid(),
+  location_id: z.string().uuid(),
+  location_name: z.string().trim().min(1).max(120),
+  date: z.string().date(),
+  start_time: timeOfDaySchema,
+  end_time: timeOfDaySchema,
+  shift_type_label: z.string().trim().min(1).max(80).nullable(),
+  job_name: z.string().trim().min(1).max(120).nullable(),
+  warning_text: z.string().trim().min(1).max(500),
+  conflict_fingerprint: z.string().min(1).max(64),
+});
+export type ScheduleAvailabilityConflict = z.infer<
+  typeof scheduleAvailabilityConflictSchema
+>;
+export const scheduleAvailabilityConflictResultSchema = z.object({
+  status: z.literal("ok"),
+  conflicts: z.array(scheduleAvailabilityConflictSchema),
+  fingerprint: z.string().min(1).max(64),
+});
+export type ScheduleAvailabilityConflictResult = z.infer<
+  typeof scheduleAvailabilityConflictResultSchema
+>;
 
 export const schedulePublishFindingCodeSchema = z.enum([
   "overlap",
   "availability",
   "closed_location",
+  "double_booking",
+  "time_off",
+  "closed_day",
+  "clopening",
+  "advance_notice",
+  "solo_opener",
 ]);
 export const schedulePublishFindingSchema = z.object({
   id: z.string().min(12).max(64),
   code: schedulePublishFindingCodeSchema,
   severity: z.enum(["hard", "soft"]),
   overrideable: z.boolean(),
+  tier: z.enum(["blocker", "risk", "note"]).optional(),
+  projected: z.boolean().optional(),
+  introduced: z.boolean().optional(),
+  fix_hint: z.string().trim().min(1).max(500).nullable().optional(),
   message: z.string().trim().min(1).max(500),
   location_id: z.string().uuid(),
+  location_name: z.string().trim().min(1).max(120).nullable().optional(),
   employee_id: z.string().uuid().nullable(),
+  employee_name: z.string().trim().min(1).max(161).nullable().optional(),
   scheduled_date: z.string().date(),
+  date: z.string().date().nullable().optional(),
   shift_ids: z.array(z.string().uuid()).min(1),
 });
 export type SchedulePublishFinding = z.infer<
@@ -620,6 +962,7 @@ export const schedulePublicationLocationPreviewSchema = z.object({
   updated: z.coerce.number().int().nonnegative(),
   removed: z.coerce.number().int().nonnegative(),
   unchanged: z.coerce.number().int().nonnegative(),
+  affected_employee_ids: z.array(z.string().uuid()).default([]),
 });
 export type SchedulePublicationLocationPreview = z.infer<
   typeof schedulePublicationLocationPreviewSchema
@@ -652,7 +995,52 @@ export type SchedulePublicationOverrideInput = z.infer<
   typeof schedulePublicationOverrideInputSchema
 >;
 
-export const schedulePublishResultSchema = z.object({
+export const schedulePublicationPreflightAckSchema = z.object({
+  fingerprint: z.string().min(32).max(128),
+  decisions: z
+    .array(schedulePublicationOverrideInputSchema)
+    .max(200)
+    .optional(),
+});
+export type SchedulePublicationPreflightAck = z.infer<
+  typeof schedulePublicationPreflightAckSchema
+>;
+
+export const schedulePublishConflictShiftSummarySchema = z.object({
+  shift_id: z.string().uuid(),
+  location_id: z.string().uuid().optional(),
+  location_name: z.string().trim().min(1).max(120).nullable().optional(),
+  time_range: z.string().trim().min(1).max(80),
+  shift_type: z.string().trim().min(1).max(80).nullable().optional(),
+});
+export type SchedulePublishConflictShiftSummary = z.infer<
+  typeof schedulePublishConflictShiftSummarySchema
+>;
+
+export const schedulePublishConflictSummarySchema = z.object({
+  employee_id: z.string().uuid(),
+  employee_name: z.string().trim().min(1).max(161).nullable(),
+  date: z.string().date(),
+  reason: z.enum(["same_named_shift_type", "time_overlap"]).optional(),
+  first: schedulePublishConflictShiftSummarySchema,
+  second: schedulePublishConflictShiftSummarySchema,
+  introduced: z.boolean().optional(),
+});
+export type SchedulePublishConflictSummary = z.infer<
+  typeof schedulePublishConflictSummarySchema
+>;
+
+export const schedulePublicationPreflightBlockReasonSchema = z.enum([
+  "unacknowledged",
+  "stale_fingerprint",
+  "not_overrideable",
+  "missing_reason",
+]);
+export type SchedulePublicationPreflightBlockReason = z.infer<
+  typeof schedulePublicationPreflightBlockReasonSchema
+>;
+
+export const schedulePublishPublishedResultSchema = z.object({
   status: z.literal("published"),
   workspace_id: z.string().uuid(),
   week_start: z.string().date(),
@@ -661,8 +1049,46 @@ export const schedulePublishResultSchema = z.object({
   location_ids: z.array(z.string().uuid()).min(1),
   publication_ids: z.array(z.string().uuid()).min(1),
   published_shift_count: z.coerce.number().int().nonnegative(),
+  notification_count: z.coerce.number().int().nonnegative().optional(),
   published_at: z.string().datetime({ offset: true }),
 });
+export type SchedulePublishPublishedResult = z.infer<
+  typeof schedulePublishPublishedResultSchema
+>;
+
+export const schedulePublishStaleBaselineResultSchema = z.object({
+  status: z.literal("stale_baseline"),
+  fingerprint: z.string().min(1).max(128).optional(),
+});
+export type SchedulePublishStaleBaselineResult = z.infer<
+  typeof schedulePublishStaleBaselineResultSchema
+>;
+
+export const schedulePublishScheduleConflictsResultSchema = z.object({
+  status: z.literal("schedule_conflicts"),
+  schedule_conflicts: z.array(schedulePublishConflictSummarySchema).default([]),
+});
+export type SchedulePublishScheduleConflictsResult = z.infer<
+  typeof schedulePublishScheduleConflictsResultSchema
+>;
+
+export const schedulePublishPreflightResultSchema = z.object({
+  status: z.literal("preflight"),
+  preflight: schedulePublicationPreviewSchema,
+  preflight_block_reason:
+    schedulePublicationPreflightBlockReasonSchema.optional(),
+  fingerprint: z.string().min(1).max(128).optional(),
+});
+export type SchedulePublishPreflightResult = z.infer<
+  typeof schedulePublishPreflightResultSchema
+>;
+
+export const schedulePublishResultSchema = z.discriminatedUnion("status", [
+  schedulePublishPublishedResultSchema,
+  schedulePublishStaleBaselineResultSchema,
+  schedulePublishScheduleConflictsResultSchema,
+  schedulePublishPreflightResultSchema,
+]);
 export type SchedulePublishResult = z.infer<typeof schedulePublishResultSchema>;
 
 export const scheduleUnpublishPreviewSchema = z.object({
@@ -690,6 +1116,7 @@ export const scheduleUnpublishResultSchema = z.object({
   week_start: z.string().date(),
   location_ids: z.array(z.string().uuid()).min(1),
   publication_ids: z.array(z.string().uuid()).min(1),
+  kept_worked_count: z.coerce.number().int().nonnegative().default(0),
   unpublished_at: z.string().datetime({ offset: true }),
 });
 export type ScheduleUnpublishResult = z.infer<
@@ -743,6 +1170,8 @@ export const scheduleTemplateShiftSchema = z.object({
   start_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   end_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   crosses_midnight: z.boolean(),
+  label_ids: z.array(z.string().uuid()).optional(),
+  label_names: z.array(z.string().trim().min(1).max(80)).optional(),
   note: z.string().max(500),
 });
 export const scheduleTemplateDetailSchema = z.object({
@@ -827,12 +1256,21 @@ export type ScheduleAutoFillApplyResult = z.infer<
 >;
 
 export const scheduleExportSettingsSchema = z.object({
-  format: z.enum(["csv", "print"]),
-  layout: z.enum(["weekly", "daily"]),
+  format: z.enum(["pdf", "csv", "print", "xlsx"]),
+  layout: z.enum(["weekly", "daily", "daily_roster"]),
+  locale: z.enum(["en", "tr", "es"]).optional(),
   time_format: z.enum(["12h", "24h"]),
+  paper_size: z.enum(["a4", "letter"]).optional(),
+  orientation: z.enum(["auto", "portrait", "landscape"]).optional(),
+  fit_mode: z.enum(["auto", "fit_to_page", "one_location_per_page"]).optional(),
   include_unassigned: z.boolean(),
   include_notes: z.boolean(),
   include_scheduled_hours: z.boolean(),
+  show_shift_type: z.boolean().optional(),
+  show_labels: z.boolean().optional(),
+  show_clock_in_out: z.boolean().optional(),
+  show_role_separators: z.boolean().optional(),
+  show_preset_shift_badges: z.boolean().optional(),
   csv_delimiter: z.enum([",", ";"]),
 });
 export type ScheduleExportSettings = z.infer<
@@ -857,6 +1295,7 @@ export const scheduleExportRowSchema = z.object({
   employee_name: z.string().trim().min(1).max(161).nullable(),
   job_name: z.string().trim().min(1).max(120),
   shift_type_name: z.string().trim().min(1).max(80).nullable(),
+  label_names: z.array(z.string().trim().min(1).max(80)).optional(),
   start_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   end_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   crosses_midnight: z.boolean(),
@@ -883,6 +1322,15 @@ export const scheduleExportPreviewSchema = z.object({
     employee_count: z.coerce.number().int().nonnegative(),
     scheduled_minutes: z.coerce.number().int().nonnegative(),
   }),
+  warnings: z
+    .array(
+      z.object({
+        code: z.string().trim().min(1).max(80),
+        severity: z.enum(["info", "warning"]),
+        message: z.string().trim().min(1).max(240),
+      }),
+    )
+    .optional(),
 });
 export type ScheduleExportPreview = z.infer<typeof scheduleExportPreviewSchema>;
 export const scheduleExportPresetSchema = z.object({
@@ -897,6 +1345,65 @@ export type ScheduleExportPreset = z.infer<typeof scheduleExportPresetSchema>;
 export const scheduleExportPresetListSchema = z.object({
   presets: z.array(scheduleExportPresetSchema),
 });
+export const scheduleExportScheduleSchema = z.object({
+  id: z.string().uuid(),
+  workspace_id: z.string().uuid(),
+  preset_id: z.string().uuid(),
+  preset_name: z.string().trim().min(1).max(80).nullable(),
+  name: z.string().trim().min(1).max(80),
+  recipients: z.array(z.string().email()).min(1).max(10),
+  location_ids: z.array(z.string().uuid()).default([]),
+  day_of_week: z.coerce.number().int().min(0).max(6),
+  send_hour: z.coerce.number().int().min(0).max(23),
+  timezone: z.string().trim().min(1).max(80),
+  enabled: z.boolean(),
+  last_sent_at: z.string().datetime({ offset: true }).nullable(),
+  consecutive_failures: z.coerce.number().int().nonnegative(),
+  last_error: z.string().max(500).nullable(),
+  auto_disabled_at: z.string().datetime({ offset: true }).nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+export type ScheduleExportSchedule = z.infer<
+  typeof scheduleExportScheduleSchema
+>;
+export const scheduleExportScheduleListSchema = z.object({
+  schedules: z.array(scheduleExportScheduleSchema),
+});
+export const scheduleRecentExportEventSchema = z.object({
+  id: z.string().uuid(),
+  workspace_id: z.string().uuid(),
+  surface: z.string().trim().min(1).max(80),
+  format: z.string().trim().min(1).max(20),
+  params: z.record(z.string(), z.unknown()),
+  actor_user_id: z.string().uuid().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+});
+export type ScheduleRecentExportEvent = z.infer<
+  typeof scheduleRecentExportEventSchema
+>;
+export const scheduleRecentExportEventListSchema = z.object({
+  events: z.array(scheduleRecentExportEventSchema),
+});
+export const createScheduleExportScheduleInputSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  preset_id: z.string().uuid(),
+  recipients: z.array(z.string().email()).min(1).max(10),
+  location_ids: z.array(z.string().uuid()).min(1).max(100),
+  day_of_week: z.coerce.number().int().min(0).max(6),
+  send_hour: z.coerce.number().int().min(0).max(23),
+  timezone: z.string().trim().min(1).max(80),
+});
+export type CreateScheduleExportScheduleInput = z.infer<
+  typeof createScheduleExportScheduleInputSchema
+>;
+export const updateScheduleExportScheduleInputSchema =
+  createScheduleExportScheduleInputSchema.partial().extend({
+    enabled: z.boolean().optional(),
+  });
+export type UpdateScheduleExportScheduleInput = z.infer<
+  typeof updateScheduleExportScheduleInputSchema
+>;
 
 export const scheduleLineupSectionSchema = z.object({
   id: z.string().uuid(),
@@ -1032,6 +1539,17 @@ export const scheduleLineupEntryInputSchema = z.object({
 });
 export type ScheduleLineupEntryInput = z.infer<
   typeof scheduleLineupEntryInputSchema
+>;
+
+export const scheduleLineupEntryMoveInputSchema = z.object({
+  source_entry_id: z.string().uuid(),
+  target_location_id: z.string().uuid(),
+  target_date: z.string().date(),
+  target_section_id: z.string().uuid().nullable().optional(),
+  display_order: z.number().int().nonnegative().optional(),
+});
+export type ScheduleLineupEntryMoveInput = z.infer<
+  typeof scheduleLineupEntryMoveInputSchema
 >;
 
 export const scheduleLineupEntryMutationResultSchema = z.object({
@@ -1460,12 +1978,25 @@ export const workspaceRoleInputSchema = z
     if (
       (permissions.has("time.amend.location") ||
         permissions.has("time.correction.review.location") ||
-        permissions.has("time.review.approve.location")) &&
+        permissions.has("time.review.approve.location") ||
+        permissions.has("time.export.preview.location") ||
+        permissions.has("time.export.create.location") ||
+        permissions.has("time.export.read.location")) &&
       !permissions.has("time.read.location")
     ) {
       issue.addIssue({
         code: "custom",
         message: "Location time management requires location time access",
+        path: ["permission_keys"],
+      });
+    }
+    if (
+      permissions.has("time.export.audit.read") &&
+      !permissions.has("time.audit.read")
+    ) {
+      issue.addIssue({
+        code: "custom",
+        message: "Time export audit access requires time audit access",
         path: ["permission_keys"],
       });
     }
@@ -1541,6 +2072,7 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
     .object({
       id: z.string().uuid(),
       email: z.string().email(),
+      role_id: z.string().uuid(),
       status: z.enum(["pending", "accepted", "revoked", "expired"]),
       expires_at: z.string().datetime({ offset: true }),
       sent_at: z.string().datetime({ offset: true }),

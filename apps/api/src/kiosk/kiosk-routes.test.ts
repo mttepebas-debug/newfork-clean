@@ -9,7 +9,14 @@ const employeeId = "15000000-0000-4000-8000-000000000001";
 const deviceId = "a8100000-0000-4000-8000-000000000001";
 const context: ActiveWorkspaceContext = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
-  workspace: { id: workspaceId, name: "Meyhouse" },
+  workspace: {
+    id: workspaceId,
+    name: "Meyhouse",
+    logo_url: null,
+    logo_file_name: null,
+    logo_updated_at: null,
+    schedule_logo_placement: { scale: 1, offset_x: 0, offset_y: 0 },
+  },
   membership: {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
@@ -107,7 +114,7 @@ describe("kiosk routes", () => {
     const exchange = await app.inject({
       method: "POST",
       url: "/v1/kiosk/enrollments/exchange",
-      headers: { origin: "http://127.0.0.1:5173" },
+      headers: { origin: "http://127.0.0.1:5555" },
       payload: { code: "ABCDE-FGHIJ-KLMNO-PQRST" },
     });
     expect(exchange.statusCode, exchange.body).toBe(201);

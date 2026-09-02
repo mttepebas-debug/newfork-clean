@@ -32,6 +32,20 @@ export const developmentIdentityAllowed =
   import.meta.env.DEV &&
   import.meta.env.VITE_ALLOW_DEVELOPMENT_IDENTITY !== "false";
 
+export const developmentIdentityRoleStorageKey =
+  "newfork.development.workspaceRole";
+
+export function developmentBearerToken(): string | null {
+  if (!developmentIdentityAllowed || typeof window === "undefined") return null;
+  const role = window.localStorage.getItem(developmentIdentityRoleStorageKey);
+  return role === "owner" ||
+    role === "admin" ||
+    role === "manager" ||
+    role === "employee"
+    ? `development-${role}-token`
+    : null;
+}
+
 export async function resolveWorkspaceContext(
   client: SupabaseClient,
 ): Promise<ActiveWorkspaceContext | null> {
@@ -51,7 +65,18 @@ export async function resolveWorkspaceContext(
     locationIds = (scopes ?? []).map((scope) => String(scope.location_id));
   }
 
-  return activeWorkspaceContextFromRow(row, locationIds);
+  const context = activeWorkspaceContextFromRow(row, locationIds);
+  return {
+    ...context,
+    workspace: {
+      ...context.workspace,
+      logo_url: row.workspace_logo_storage_path
+        ? client.storage
+            .from("workspace-logos")
+            .getPublicUrl(row.workspace_logo_storage_path).data.publicUrl
+        : null,
+    },
+  };
 }
 
 export async function loadAccountProfile(
@@ -139,7 +164,7 @@ export async function saveOwnerOnboarding(
   input: {
     readonly workspaceId: string;
     readonly workspaceName: string;
-    readonly nextStep: 1 | 2;
+    readonly nextStep: 1 | 2 | 3;
     readonly complete: boolean;
   },
 ): Promise<void> {

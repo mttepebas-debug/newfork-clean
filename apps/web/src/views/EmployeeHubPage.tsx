@@ -2,7 +2,7 @@ import type { EmployeeHubReadModel, EmployeeHubShift } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Check, Clock3, RefreshCw } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { NavLink, useLocation } from "react-router";
+import { Link, NavLink, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
   actOnEmployeeRequest,
@@ -107,6 +107,12 @@ export function EmployeeHubPage() {
 
 function Overview({ model }: { model: EmployeeHubReadModel }) {
   const next = model.shifts[0];
+  const today = new Date().toLocaleDateString("en-CA");
+  const weekEnd = addDays(today, 6);
+  const thisWeekShifts = model.shifts.filter(
+    (shift) =>
+      shift.scheduled_date >= today && shift.scheduled_date <= weekEnd,
+  );
   const actions = model.requests.filter(
     (request) =>
       request.can_cancel ||
@@ -154,6 +160,59 @@ function Overview({ model }: { model: EmployeeHubReadModel }) {
           </div>
         ) : (
           <p className="muted">Nothing needs your attention.</p>
+        )}
+      </section>
+      <section className="hub-panel hub-quick-actions">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Quick actions</p>
+            <h2>Get it done</h2>
+          </div>
+        </div>
+        <div className="hub-action-buttons" aria-label="Employee shortcuts">
+          <Link className="secondary-button" to="/app/employee-hub/schedule">
+            My Schedule
+          </Link>
+          <Link
+            className="secondary-button"
+            to="/app/employee-hub/my-availability"
+          >
+            Request time off
+          </Link>
+          <Link
+            className="secondary-button"
+            to="/app/employee-hub/my-availability"
+          >
+            Update availability
+          </Link>
+          <Link className="secondary-button" to="/app/employee-hub/shift-hub">
+            Shift Hub
+          </Link>
+        </div>
+      </section>
+      <section className="hub-panel hub-week-strip">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">This week</p>
+            <h2>{thisWeekShifts.length} shifts</h2>
+          </div>
+        </div>
+        {thisWeekShifts.length ? (
+          <div className="hub-week-list">
+            {thisWeekShifts.map((shift) => (
+              <div key={shift.id}>
+                <time>{formatDate(shift.scheduled_date)}</time>
+                <strong>
+                  {shift.start_time.slice(0, 5)}-{shift.end_time.slice(0, 5)}
+                </strong>
+                <span>
+                  {shift.job_name} · {shift.location_name}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">No shifts are published for this week.</p>
         )}
       </section>
     </div>
@@ -429,6 +488,14 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
       refresh();
     },
   });
+  const actionMutation = useMutation({
+    mutationFn: (action: Parameters<typeof actOnEmployeeRequest>[1]) =>
+      actOnEmployeeRequest(model.workspace_id, action),
+    onSuccess: refresh,
+  });
+  const timeOffRequests = model.requests.filter(
+    (request) => request.kind === "time_off",
+  );
   return (
     <div className="hub-two-column">
       <HubSection
@@ -532,6 +599,45 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
           </button>
         </form>
         {timeOff.error ? <InlineError error={timeOff.error} /> : null}
+      </HubSection>
+      <HubSection
+        title="Time off requests"
+        subtitle="Track submitted requests and cancel anything still under your control."
+      >
+        <div className="hub-action-list time-off-request-list">
+          {timeOffRequests.map((request) => (
+            <div key={request.id}>
+              <strong>{request.title}</strong>
+              <span>{request.detail}</span>
+              <small>
+                {statusLabel(request.status)} · Submitted{" "}
+                {formatDate(request.created_at)}
+              </small>
+              {request.can_cancel ? (
+                <button
+                  className="text-button"
+                  disabled={actionMutation.isPending}
+                  onClick={() =>
+                    actionMutation.mutate({
+                      request_id: request.id,
+                      kind: "time_off",
+                      action: "cancel",
+                      expected_revision: request.revision,
+                    })
+                  }
+                >
+                  Cancel request
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+        {!timeOffRequests.length ? (
+          <Empty text="No time off requests submitted yet." />
+        ) : null}
+        {actionMutation.error ? (
+          <InlineError error={actionMutation.error} />
+        ) : null}
       </HubSection>
     </div>
   );

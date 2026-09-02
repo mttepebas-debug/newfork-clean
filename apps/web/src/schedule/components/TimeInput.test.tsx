@@ -1,0 +1,281 @@
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { TimeInput } from "./TimeInput";
+
+afterEach(() => cleanup());
+
+describe("TimeInput", () => {
+  it("renders a 12h segmented time field", () => {
+    const onChange = vi.fn();
+
+    render(
+      <TimeInput
+        value="17:00"
+        onChange={onChange}
+        timeFormat="12h"
+        ariaLabel="Shift start"
+      />,
+    );
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    expect(input.value).toBe("05:00 PM");
+    expect(getSegment(input, "hour")?.textContent).toBe("05");
+    expect(getSegment(input, "minute")?.textContent).toBe("00");
+    expect(getSegment(input, "period")?.textContent).toBe("PM");
+  });
+
+  it("emits canonical values for shorthand and AM/PM keyboard shortcuts", () => {
+    const onChange = vi.fn();
+
+    render(
+      <TimeInput
+        value=""
+        onChange={onChange}
+        timeFormat="12h"
+        ariaLabel="Shift start"
+      />,
+    );
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "630p" } });
+    expect(onChange).toHaveBeenLastCalledWith("18:30");
+
+    fireEvent.keyDown(input, { key: "a" });
+    expect(onChange).toHaveBeenLastCalledWith("06:30");
+
+    fireEvent.keyDown(input, { key: "p" });
+    expect(onChange).toHaveBeenLastCalledWith("18:30");
+  });
+
+  it("supports segmented typing, arrows, and delete", () => {
+    const onChange = vi.fn();
+
+    render(
+      <TimeInput
+        value="12:30"
+        onChange={onChange}
+        timeFormat="12h"
+        ariaLabel="Shift start"
+      />,
+    );
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    act(() => input.focus());
+    input.setSelectionRange(0, 0);
+    fireEvent.click(input);
+
+    expect(getSegment(input, "hour")?.dataset.active).toBe("true");
+
+    fireEvent.keyDown(input, { key: "ArrowRight" });
+    expect(getSegment(input, "minute")?.dataset.active).toBe("true");
+
+    fireEvent.keyDown(input, { key: "Delete" });
+    expect(getSegment(input, "minute")?.textContent).toBe("MM");
+    expect(input.getAttribute("aria-invalid")).toBeNull();
+  });
+
+  it("waits for the 12h period before auto-advancing typed shorthand", () => {
+    const onChange = vi.fn();
+    const onAutoAdvance = vi.fn();
+
+    render(
+      <TimeInput
+        value=""
+        onChange={onChange}
+        timeFormat="12h"
+        ariaLabel="Shift start"
+        onAutoAdvance={onAutoAdvance}
+      />,
+    );
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "9" } });
+    expect(onChange).toHaveBeenLastCalledWith("09:00");
+    expect(onAutoAdvance).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: "930" } });
+    expect(onChange).toHaveBeenLastCalledWith("09:30");
+    expect(onAutoAdvance).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(input, { key: "p" });
+    expect(onChange).toHaveBeenLastCalledWith("21:30");
+    expect(onAutoAdvance).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves the active segment with Tab and Shift+Tab before leaving the field", () => {
+    const onChange = vi.fn();
+
+    render(
+      <TimeInput
+        value=""
+        onChange={onChange}
+        timeFormat="12h"
+        ariaLabel="Shift start"
+      />,
+    );
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    act(() => input.focus());
+
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(getSegment(input, "minute")?.dataset.active).toBe("true");
+
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(getSegment(input, "period")?.dataset.active).toBe("true");
+
+    fireEvent.keyDown(input, { key: "Tab", shiftKey: true });
+    expect(getSegment(input, "minute")?.dataset.active).toBe("true");
+  });
+
+  it("moves from the end hour segment back to the start AM/PM segment with Shift+Tab", () => {
+    const onChange = vi.fn();
+
+    render(
+      <div>
+        <TimeInput
+          value="16:15"
+          onChange={onChange}
+          timeFormat="12h"
+          ariaLabel="Default start time"
+        />
+        <TimeInput
+          value="18:45"
+          onChange={onChange}
+          timeFormat="12h"
+          ariaLabel="Default end time"
+          onAutoRetreat={() => {
+            const startInput = screen.getByLabelText(
+              "Default start time",
+            ) as HTMLInputElement;
+            startInput.dataset.autoSelectSegment = "period";
+            startInput.focus();
+            fireEvent.focus(startInput);
+          }}
+        />
+      </div>,
+    );
+
+    const startInput = screen.getByLabelText("Default start time");
+    const endInput = screen.getByLabelText(
+      "Default end time",
+    ) as HTMLInputElement;
+    endInput.dataset.autoSelectSegment = "hour";
+    fireEvent.focus(endInput);
+
+    expect(getSegment(endInput, "hour")?.dataset.active).toBe("true");
+    fireEvent.keyDown(endInput, { key: "Tab", shiftKey: true });
+
+    expect(document.activeElement).toBe(startInput);
+    expect(getSegment(startInput, "period")?.dataset.active).toBe("true");
+  });
+
+  it("wraps active segments with mouse wheel scrolling", () => {
+    const onChange = vi.fn();
+
+    render(
+      <TimeInput
+        value="12:59"
+        onChange={onChange}
+        timeFormat="12h"
+        ariaLabel="Shift start"
+      />,
+    );
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    act(() => input.focus());
+    input.setSelectionRange(0, 0);
+    fireEvent.click(input);
+
+    fireEvent.wheel(input, { deltaY: -100 });
+    expect(getSegment(input, "hour")?.textContent).toBe("01");
+    expect(input.value).toBe("01:59 PM");
+    expect(onChange).toHaveBeenLastCalledWith("13:59");
+
+    input.setSelectionRange(3, 3);
+    fireEvent.click(input);
+    fireEvent.wheel(input, { deltaY: -100 });
+    expect(getSegment(input, "minute")?.textContent).toBe("60");
+    expect(input.value).toBe("01:00 PM");
+    expect(onChange).toHaveBeenLastCalledWith("13:00");
+
+    input.setSelectionRange(6, 6);
+    fireEvent.click(input);
+    fireEvent.wheel(input, { deltaY: -100 });
+    expect(getSegment(input, "period")?.textContent).toBe("AM");
+    expect(input.value).toBe("01:00 AM");
+    expect(onChange).toHaveBeenLastCalledWith("01:00");
+  });
+
+  it("blocks page wheel scrolling while a segment selection is active", () => {
+    const onChange = vi.fn();
+
+    render(
+      <TimeInput
+        value="16:15"
+        onChange={onChange}
+        timeFormat="12h"
+        ariaLabel="Shift start"
+      />,
+    );
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    act(() => input.focus());
+    input.setSelectionRange(6, 6);
+    fireEvent.click(input);
+
+    const activeWheel = new WheelEvent("wheel", {
+      deltaY: -100,
+      cancelable: true,
+    });
+    fireEvent(document, activeWheel);
+    expect(activeWheel.defaultPrevented).toBe(true);
+
+    fireEvent.blur(input);
+
+    const inactiveWheel = new WheelEvent("wheel", {
+      deltaY: -100,
+      cancelable: true,
+    });
+    fireEvent(document, inactiveWheel);
+    expect(inactiveWheel.defaultPrevented).toBe(false);
+  });
+
+  it("renders 24h times without an AM/PM segment", () => {
+    const onChange = vi.fn();
+
+    render(
+      <TimeInput
+        value="17:00"
+        onChange={onChange}
+        timeFormat="24h"
+        ariaLabel="Shift start"
+      />,
+    );
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    expect(input.value).toBe("17:00");
+    expect(getSegment(input, "hour")?.textContent).toBe("17");
+    expect(getSegment(input, "minute")?.textContent).toBe("00");
+    expect(getSegment(input, "period")).toBeNull();
+
+    fireEvent.change(input, { target: { value: "0715" } });
+    expect(onChange).toHaveBeenLastCalledWith("07:15");
+  });
+});
+
+function getSegment(
+  input: HTMLElement,
+  segment: "hour" | "minute" | "period",
+): HTMLElement | null {
+  return (
+    input.parentElement?.querySelector(`[data-time-segment="${segment}"]`) ??
+    null
+  );
+}

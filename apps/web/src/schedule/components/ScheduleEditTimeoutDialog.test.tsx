@@ -1,0 +1,81 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { ScheduleEditTimeoutDialog } from "./ScheduleEditTimeoutDialog";
+
+describe("ScheduleEditTimeoutDialog", () => {
+  it("renders the countdown and save/continue actions", () => {
+    const onSaveDraft = vi.fn();
+    const onContinue = vi.fn();
+
+    render(
+      <ScheduleEditTimeoutDialog
+        open
+        secondsRemaining={9}
+        isSaving={false}
+        error={null}
+        onSaveDraft={onSaveDraft}
+        onContinue={onContinue}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Keep editing?" });
+    expect(dialog.className).toContain("schedule-timeout-dialog");
+    expect(screen.getByText("Time left")).toBeTruthy();
+    expect(screen.getByText("9")).toBeTruthy();
+    expect(screen.getByText("No activity for 3 minutes.")).toBeTruthy();
+    expect(
+      dialog.querySelector<HTMLElement>(".schedule-timeout-progress span")?.style
+        .width,
+    ).toBe("60%");
+
+    fireEvent.click(screen.getByRole("button", { name: "SAVE" }));
+    fireEvent.click(screen.getByRole("button", { name: "CONTINUE" }));
+
+    expect(onSaveDraft).toHaveBeenCalledTimes(1);
+    expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not render while closed", () => {
+    render(
+      <ScheduleEditTimeoutDialog
+        open={false}
+        secondsRemaining={9}
+        isSaving={false}
+        error={null}
+        onSaveDraft={vi.fn()}
+        onContinue={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("shows save progress and disables actions while saving", () => {
+    const onSaveDraft = vi.fn();
+    const onContinue = vi.fn();
+
+    render(
+      <ScheduleEditTimeoutDialog
+        open
+        secondsRemaining={4}
+        isSaving
+        error="Save failed"
+        onSaveDraft={onSaveDraft}
+        onContinue={onContinue}
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toBe("Save failed");
+
+    const saveButton = screen.getByRole("button", { name: "SAVING..." });
+    const continueButton = screen.getByRole("button", { name: "CONTINUE" });
+    expect(saveButton).toHaveProperty("disabled", true);
+    expect(continueButton).toHaveProperty("disabled", true);
+
+    fireEvent.click(saveButton);
+    fireEvent.click(continueButton);
+
+    expect(onSaveDraft).not.toHaveBeenCalled();
+    expect(onContinue).not.toHaveBeenCalled();
+  });
+});

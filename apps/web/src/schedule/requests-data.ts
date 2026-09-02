@@ -3,11 +3,11 @@ import {
   scheduleRequestsReadModelSchema,
   type ShiftChangeDecisionInput,
   type TimeOffDecisionInput,
-} from "@newfork/shared";
+} from "@newfork/shared/schedule";
 import { supabaseClient } from "../lib/supabase";
 
 async function request(
-  workspaceId: string,
+  _workspaceId: string,
   path: string,
   init: RequestInit = {},
 ) {
@@ -17,7 +17,7 @@ async function request(
     ?.access_token;
   if (!token) throw new Error("A current session is required");
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000"}/v1/workspaces/${workspaceId}/schedule/requests${path}`,
+    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/schedule/requests${path}`,
     {
       ...init,
       headers: {

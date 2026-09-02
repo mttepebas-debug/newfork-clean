@@ -21,15 +21,19 @@ export function SignInPage() {
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const requestedDestination =
+    (location.state as { from?: string } | null)?.from ?? "/app/workspace";
   const destination =
-    (location.state as { from?: string } | null)?.from ?? "/app/schedule";
+    requestedDestination === "/account/workspaces"
+      ? "/app/workspace"
+      : requestedDestination;
   const inviteFlow = destination.startsWith("/invite/accept");
   const [creatingAccount, setCreatingAccount] = useState(inviteFlow);
 
   if (context) return <Navigate to={destination} replace />;
   if (authenticated)
     return (
-      <Navigate to={inviteFlow ? destination : "/account/workspaces"} replace />
+      <Navigate to={inviteFlow ? destination : "/app/workspace"} replace />
     );
 
   const handleSupabaseSignIn = async (

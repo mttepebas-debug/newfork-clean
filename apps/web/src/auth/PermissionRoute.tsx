@@ -2,6 +2,7 @@ import type { Permission, WorkspaceRole } from "@newfork/shared";
 import type { ReactNode } from "react";
 import { Navigate } from "react-router";
 import { useAuth } from "./AuthContext";
+import { appLandingPath } from "./routeDestinations";
 
 export const settingsEntryPermissions = [
   "workspace.manage",
@@ -30,7 +31,7 @@ export function PermissionRoute({
     (roles && !roles.includes(context.membership.role)) ||
     !anyOf.some((permission) => context.permissions.includes(permission))
   ) {
-    return <Navigate to="/app" replace />;
+    return <Navigate to={appLandingPath(context)} replace />;
   }
   return children;
 }

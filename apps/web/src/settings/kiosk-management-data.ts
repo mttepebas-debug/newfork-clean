@@ -8,7 +8,7 @@ import {
 } from "@newfork/shared";
 import { supabaseClient } from "../lib/supabase";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:9999";
 
 async function request(
   workspaceId: string,

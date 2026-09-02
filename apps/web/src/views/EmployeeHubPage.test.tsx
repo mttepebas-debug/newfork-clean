@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 import { EmployeeHubPage } from "./EmployeeHubPage";
 import {
   captureEmployeeTimeEvent,
+  actOnEmployeeRequest,
   getEmployeeHub,
   getEmployeeTimeTracking,
   requestEmployeeTimeCorrection,
@@ -20,7 +21,14 @@ const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const { context } = vi.hoisted(() => ({
   context: {
     userId: "98000000-0000-4000-8000-000000000001",
-    workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", name: "Meyhouse" },
+    workspace: {
+      id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      name: "Meyhouse",
+      logo_url: null,
+      logo_file_name: null,
+      logo_updated_at: null,
+      schedule_logo_placement: { scale: 1, offset_x: 0, offset_y: 0 },
+    },
     membership: {
       id: "98100000-0000-4000-8000-000000000001",
       userId: "98000000-0000-4000-8000-000000000001",
@@ -86,6 +94,18 @@ const fixture = {
       can_cancel: true,
       can_respond: false,
     },
+    {
+      id: "98200000-0000-4000-8000-000000000003",
+      shift_id: null,
+      kind: "time_off",
+      status: "pending",
+      title: "Time off",
+      detail: "Aug 30 - Aug 31 · Main Dining",
+      revision: 3,
+      created_at: "2026-08-18T12:00:00Z",
+      can_cancel: true,
+      can_respond: false,
+    },
   ],
   availability: null,
   team: [
@@ -137,13 +157,25 @@ function renderPage(path = "/app/employee-hub") {
 
 describe("EmployeeHubPage", () => {
   it("keeps the landing focused on next shift and open actions", async () => {
-    renderPage();
-    expect(
-      await screen.findByRole("heading", { name: "Employee Hub" }),
-    ).toBeTruthy();
-    expect(screen.getByText("Next shift")).toBeTruthy();
-    expect(screen.getByText("Open actions")).toBeTruthy();
-    expect(screen.getByText("Shift swap")).toBeTruthy();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
+    try {
+      renderPage();
+      expect(
+        await screen.findByRole("heading", { name: "Employee Hub" }),
+      ).toBeTruthy();
+      expect(screen.getByText("Next shift")).toBeTruthy();
+      expect(screen.getByText("Open actions")).toBeTruthy();
+      expect(screen.getByText("Shift swap")).toBeTruthy();
+      expect(
+        screen
+          .getByRole("link", { name: "Request time off" })
+          .getAttribute("href"),
+      ).toBe("/app/employee-hub/my-availability");
+      expect(screen.getByRole("heading", { name: "1 shifts" })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("submits open shift pickup from Shift Hub", async () => {
@@ -176,6 +208,23 @@ describe("EmployeeHubPage", () => {
         location_id: "11000000-0000-4000-8000-000000000001",
         reason: "",
         dates: ["2026-08-30", "2026-08-31"],
+      }),
+    );
+  });
+
+  it("shows submitted time off requests and sends revision-guarded cancel", async () => {
+    renderPage("/app/employee-hub/my-availability");
+    expect(
+      await screen.findByRole("heading", { name: "Time off requests" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Aug 30 - Aug 31 · Main Dining")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel request" }));
+    await waitFor(() =>
+      expect(actOnEmployeeRequest).toHaveBeenCalledWith(workspaceId, {
+        request_id: "98200000-0000-4000-8000-000000000003",
+        kind: "time_off",
+        action: "cancel",
+        expected_revision: 3,
       }),
     );
   });

@@ -1,7 +1,9 @@
 import {
+  type ActiveWorkspaceContext,
   activeWorkspaceContextSchema,
   healthResponseSchema,
   permissionsForRole,
+  type WorkspaceRole,
   workspaceRoleSchema,
 } from "@newfork/shared";
 import Fastify from "fastify";
@@ -24,6 +26,10 @@ import {
   createLocalSsnEncryptionService,
 } from "./employees/ssn-encryption";
 import { registerScheduleRoutes } from "./schedule/schedule-routes";
+import {
+  registerScheduleExportCronRoutes,
+  type ScheduleExportCronRouteOptions,
+} from "./schedule/schedule-export-cron-routes";
 import { registerScheduleLineupRoutes } from "./schedule/schedule-lineup-routes";
 import {
   createScheduleLineupService,
@@ -76,6 +82,7 @@ interface BuildAppOptions {
   readonly invitationService?: EmployeeInvitationService | null;
   readonly onboardingService?: EmployeeOnboardingService | null;
   readonly scheduleService?: ScheduleReadService | null;
+  readonly scheduleExportCron?: Partial<ScheduleExportCronRouteOptions>;
   readonly scheduleLineupService?: ScheduleLineupService | null;
   readonly scheduleRequestsService?: ScheduleRequestsService | null;
   readonly employeeHubService?: EmployeeHubService | null;
@@ -88,7 +95,10 @@ const invitationParamsSchema = z.object({
   workspaceId: z.string().uuid(),
   employeeId: z.string().uuid(),
 });
-const invitationBodySchema = z.object({ email: z.string().trim().email() });
+const invitationBodySchema = z.object({
+  email: z.string().trim().email(),
+  roleId: z.string().uuid().nullable().optional(),
+});
 const invitationAcceptanceSchema = z.object({
   token: z.string().trim().min(32).max(256),
 });
@@ -102,8 +112,12 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
   const allowDevelopmentIdentity =
     options.allowDevelopmentIdentity ?? process.env.NODE_ENV !== "production";
-  const contextResolver =
+  const environmentContextResolver =
     options.contextResolver ?? createResolverFromEnvironment();
+  const contextResolver =
+    allowDevelopmentIdentity && process.env.NODE_ENV !== "production"
+      ? createDevelopmentWorkspaceContextResolver(environmentContextResolver)
+      : environmentContextResolver;
   const invitationService =
     options.invitationService ?? createInvitationServiceFromEnvironment();
   const onboardingService =
@@ -127,7 +141,7 @@ export function buildApp(options: BuildAppOptions = {}) {
 
   app.addHook("onSend", async (request, reply, payload) => {
     const origin = request.headers.origin;
-    const allowedOrigin = process.env.APP_URL ?? "http://127.0.0.1:5173";
+    const allowedOrigin = process.env.APP_URL ?? "http://127.0.0.1:5555";
     if (origin === allowedOrigin || isLocalDevelopmentOrigin(origin)) {
       reply.header("Access-Control-Allow-Origin", origin);
       reply.header("Access-Control-Allow-Credentials", "true");
@@ -148,7 +162,7 @@ export function buildApp(options: BuildAppOptions = {}) {
       request.method !== "OPTIONS"
     ) {
       const origin = request.headers.origin;
-      const allowedOrigin = process.env.APP_URL ?? "http://127.0.0.1:5173";
+      const allowedOrigin = process.env.APP_URL ?? "http://127.0.0.1:5555";
       const localDevelopmentOrigin = isLocalDevelopmentOrigin(origin);
       if (origin && origin !== allowedOrigin && !localDevelopmentOrigin)
         return reply
@@ -259,6 +273,7 @@ export function buildApp(options: BuildAppOptions = {}) {
             workspaceId: params.data.workspaceId,
             employeeId: params.data.employeeId,
             email: body.data.email,
+            roleId: body.data.roleId ?? null,
           }),
         );
       } catch (error) {
@@ -376,6 +391,19 @@ export function buildApp(options: BuildAppOptions = {}) {
     service: scheduleService,
     contextResolver,
   });
+  registerScheduleExportCronRoutes(app, {
+    service: scheduleService,
+    cronSecret:
+      options.scheduleExportCron?.cronSecret ?? process.env.CRON_SECRET,
+    delivery: options.scheduleExportCron?.delivery,
+    resendApiKey:
+      options.scheduleExportCron?.resendApiKey ?? process.env.RESEND_API_KEY,
+    emailFrom:
+      options.scheduleExportCron?.emailFrom ??
+      process.env.SCHEDULE_EXPORT_FROM ??
+      process.env.EMPLOYEE_INVITE_FROM,
+    now: options.scheduleExportCron?.now,
+  });
   registerScheduleLineupRoutes(app, {
     service: scheduleLineupService,
     contextResolver,
@@ -441,6 +469,49 @@ function createResolverFromEnvironment(): WorkspaceContextResolver | null {
   return createSupabaseWorkspaceContextResolver({ url, anonKey });
 }
 
+function developmentWorkspaceContext(
+  role: WorkspaceRole,
+): ActiveWorkspaceContext {
+  return activeWorkspaceContextSchema.parse({
+    userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
+    workspace: {
+      id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      name: "Meyhouse",
+      logo_url: null,
+      logo_file_name: null,
+      logo_updated_at: null,
+      schedule_logo_placement: { scale: 1, offset_x: 0, offset_y: 0 },
+    },
+    membership: {
+      id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
+      userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
+      workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      role,
+      status: "active",
+      allLocations: true,
+    },
+    permissions: permissionsForRole(role),
+    onboarding: { status: "complete", currentStep: 2 },
+    locationScope: { allLocations: true, locationIds: [] },
+  });
+}
+
+function createDevelopmentWorkspaceContextResolver(
+  fallback: WorkspaceContextResolver | null,
+): WorkspaceContextResolver {
+  return {
+    async resolve(accessToken) {
+      const match = /^development-(owner|admin|manager|employee)-token$/.exec(
+        accessToken,
+      );
+      if (match) {
+        return developmentWorkspaceContext(match[1] as WorkspaceRole);
+      }
+      return fallback?.resolve(accessToken) ?? null;
+    },
+  };
+}
+
 function createInvitationServiceFromEnvironment(): EmployeeInvitationService | null {
   const url = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -448,7 +519,7 @@ function createInvitationServiceFromEnvironment(): EmployeeInvitationService | n
   return createEmployeeInvitationService({
     url,
     serviceRoleKey,
-    appUrl: process.env.APP_URL ?? "http://127.0.0.1:5173",
+    appUrl: process.env.APP_URL ?? "http://127.0.0.1:5555",
     resendApiKey: process.env.RESEND_API_KEY,
     emailFrom: process.env.EMPLOYEE_INVITE_FROM,
     production: process.env.NODE_ENV === "production",

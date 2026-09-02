@@ -18,29 +18,42 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Copy,
+  FileDown,
   GripVertical,
+  ImageDown,
   Plus,
   Save,
   Send,
   Settings2,
+  Share2,
   Trash2,
   UserPlus,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
+import type { ReactNode, Ref } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
   archiveLineupSection,
   deleteLineupEntry,
   getLineup,
+  moveLineupEntry,
   previewLineupShare,
   saveLineupBrief,
   saveLineupEntry,
   saveLineupSection,
   shareLineup,
 } from "../schedule/lineup-data";
+import {
+  buildLineupShareText,
+  copyLineupPng,
+  downloadLineupPdf,
+  downloadLineupPng,
+  formatLineupShareDate,
+  shareLineupPng,
+} from "../schedule/lineup-share";
 
 export function LineupPage() {
   const { context } = useAuth();
@@ -234,11 +247,31 @@ export function LineupPage() {
             key={location.id}
             location={location}
             model={model}
+            allEntries={model.locations.flatMap((item) => item.entries)}
             canManage={canManage}
             onSave={(
               row: ScheduleLineupEntry,
               patch: Partial<ScheduleLineupEntryInput>,
             ) => save(location, row, patch)}
+            onMove={async (
+              row: ScheduleLineupEntry,
+              target: { sectionId: string | null; displayOrder: number },
+            ) => {
+              const sourceEntryId = row.overlay_id ?? row.id;
+              try {
+                setError("");
+                await moveLineupEntry(context!.workspace.id, {
+                  source_entry_id: sourceEntryId,
+                  target_location_id: location.id,
+                  target_date: date,
+                  target_section_id: target.sectionId,
+                  display_order: target.displayOrder,
+                });
+                await refresh();
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "Line-up row could not be moved");
+              }
+            }}
             onAdd={() => setStaffFor(location)}
             onDelete={async (row: ScheduleLineupEntry) => {
               if (!row.overlay_id || !row.revision) return;
@@ -338,6 +371,8 @@ export function LineupPage() {
       {share ? (
         <ShareDialog
           preview={share}
+          model={model}
+          shareText={buildLineupShareText(model)}
           onClose={() => setShare(null)}
           onConfirm={async () => {
             await shareLineup(
@@ -358,10 +393,15 @@ export function LineupPage() {
 interface LocationBandProps {
   location: ScheduleLineupLocation;
   model: ScheduleLineupReadModel;
+  allEntries: readonly ScheduleLineupEntry[];
   canManage: boolean;
   onSave: (
     row: ScheduleLineupEntry,
     patch: Partial<ScheduleLineupEntryInput>,
+  ) => Promise<void>;
+  onMove: (
+    row: ScheduleLineupEntry,
+    target: { sectionId: string | null; displayOrder: number },
   ) => Promise<void>;
   onAdd: () => void;
   onDelete: (row: ScheduleLineupEntry) => Promise<void>;
@@ -374,8 +414,10 @@ interface LocationBandProps {
 function LocationBand({
   location,
   model,
+  allEntries,
   canManage,
   onSave,
+  onMove,
   onAdd,
   onDelete,
   onBrief,
@@ -459,11 +501,14 @@ function LocationBand({
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     const id = e.dataTransfer.getData("text/lineup-row");
-                    const source = rows.find(
+                    const source = allEntries.find(
                       (candidate) => candidate.id === id,
                     );
                     if (source)
-                      void onSave(source, { display_order: row.display_order });
+                      void onMove(source, {
+                        sectionId: row.section_id,
+                        displayOrder: row.display_order,
+                      });
                   }}
                 >
                   <span className="lineup-person">
@@ -765,13 +810,72 @@ function BriefDialog({
 }
 function ShareDialog({
   preview,
+  model,
+  shareText,
   onClose,
   onConfirm,
 }: {
   preview: ScheduleLineupSharePreview;
+  model: ScheduleLineupReadModel;
+  shareText: string;
   onClose: () => void;
   onConfirm: () => Promise<void>;
 }) {
+  const visualRef = useRef<HTMLDivElement | null>(null);
+  const [status, setStatus] = useState("");
+  const fileBase =
+    `lineup-${model.date}-${preview.locations.length === 1 ? preview.locations[0]!.location_name : `${preview.locations.length}-locations`}`
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "lineup";
+  async function copyShareText() {
+    try {
+      setStatus("");
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Text clipboard is not supported in this browser.");
+      }
+      await navigator.clipboard.writeText(shareText);
+      setStatus("Share text copied.");
+    } catch (error) {
+      setStatus(
+        error instanceof Error ? error.message : "Share text could not be copied.",
+      );
+    }
+  }
+  async function runImageExport(
+    kind: "copy" | "png" | "pdf" | "share",
+  ): Promise<void> {
+    try {
+      setStatus("");
+      if (!visualRef.current) throw new Error("Line-up image is not ready.");
+      if (kind === "copy") {
+        await copyLineupPng(visualRef.current);
+        setStatus("Line-up image copied.");
+        return;
+      }
+      if (kind === "png") {
+        await downloadLineupPng(visualRef.current, `${fileBase}.png`);
+        setStatus("PNG exported.");
+        return;
+      }
+      if (kind === "pdf") {
+        await downloadLineupPdf(visualRef.current, `${fileBase}.pdf`);
+        setStatus("PDF exported.");
+        return;
+      }
+      const nativeShared = await shareLineupPng(
+        visualRef.current,
+        `${fileBase}.png`,
+        shareText,
+      );
+      setStatus(nativeShared ? "Line-up image shared." : "Image downloaded.");
+    } catch (error) {
+      setStatus(
+        error instanceof Error ? error.message : "Line-up image export failed.",
+      );
+    }
+  }
   return (
     <Dialog title="Share Line-up" onClose={onClose}>
       <p className="lineup-share-summary">
@@ -786,10 +890,156 @@ function ShareDialog({
           </small>
         </div>
       ))}
+      <div
+        className="lineup-share-visual-actions"
+        aria-label="Line-up image actions"
+      >
+        <button
+          className="icon-button"
+          type="button"
+          aria-label="Copy Line-up image"
+          title="Copy Line-up image"
+          onClick={() => void runImageExport("copy")}
+        >
+          <Copy size={16} />
+        </button>
+        <button
+          className="icon-button"
+          type="button"
+          aria-label="Share Line-up image"
+          title="Share Line-up image"
+          onClick={() => void runImageExport("share")}
+        >
+          <Share2 size={16} />
+        </button>
+        <button
+          className="icon-button"
+          type="button"
+          aria-label="Download Line-up PNG"
+          title="Download Line-up PNG"
+          onClick={() => void runImageExport("png")}
+        >
+          <ImageDown size={16} />
+        </button>
+        <button
+          className="icon-button"
+          type="button"
+          aria-label="Download Line-up PDF"
+          title="Download Line-up PDF"
+          onClick={() => void runImageExport("pdf")}
+        >
+          <FileDown size={16} />
+        </button>
+      </div>
+      <LineupVisualPreview model={model} ref={visualRef} />
+      <label className="lineup-share-text">
+        Share text
+        <textarea readOnly value={shareText} />
+      </label>
+      <button
+        className="nf-button secondary"
+        type="button"
+        onClick={() => void copyShareText()}
+      >
+        <Copy size={16} /> Copy share text
+      </button>
+      {status ? (
+        <p className="lineup-section-message" role="status">
+          {status}
+        </p>
+      ) : null}
       <button className="nf-button" onClick={() => void onConfirm()}>
         <Send size={16} /> Create share version
       </button>
     </Dialog>
+  );
+}
+
+function LineupVisualPreview({
+  model,
+  ref,
+}: {
+  model: ScheduleLineupReadModel;
+  ref: Ref<HTMLDivElement>;
+}) {
+  return (
+    <div className="lineup-visual-preview" ref={ref}>
+      {model.locations.map((location) => (
+        <section key={location.id}>
+          <header>
+            <div>
+              <strong>{location.name}</strong>
+              <span>{formatLineupShareDate(model.date)}</span>
+            </div>
+            <small>Line-up</small>
+          </header>
+          {model.shift_types.map((shiftType) => {
+            const entries = location.entries
+              .filter(
+                (entry) =>
+                  entry.shift_type_id === shiftType.id &&
+                  entry.employee_id &&
+                  !entry.call_off &&
+                  !entry.hidden,
+              )
+              .sort(
+                (left, right) =>
+                  left.display_order - right.display_order ||
+                  (left.start_time ?? "").localeCompare(right.start_time ?? ""),
+              );
+            const brief = location.briefs.find(
+              (item) => item.shift_type_id === shiftType.id,
+            );
+            if (!entries.length && !brief) return null;
+            return (
+              <div className="lineup-visual-service" key={shiftType.id}>
+                <h3>
+                  <i style={{ backgroundColor: shiftType.color }} />
+                  {shiftType.name}
+                </h3>
+                {brief ? (
+                  <dl>
+                    {brief.out_of_stock.trim() ? (
+                      <div>
+                        <dt>86</dt>
+                        <dd>{brief.out_of_stock}</dd>
+                      </div>
+                    ) : null}
+                    {brief.specials.trim() ? (
+                      <div>
+                        <dt>Specials</dt>
+                        <dd>{brief.specials}</dd>
+                      </div>
+                    ) : null}
+                    {brief.pre_shift_notes.trim() ? (
+                      <div>
+                        <dt>Pre-shift</dt>
+                        <dd>{brief.pre_shift_notes}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                ) : null}
+                <div className="lineup-visual-table">
+                  {entries.map((entry) => (
+                    <div key={entry.id}>
+                      <span>{entry.start_time ?? ""}</span>
+                      <strong>{entry.employee_name}</strong>
+                      <span>{entry.job_name}</span>
+                      <span>
+                        {[entry.section_name, entry.station]
+                          .map((part) => part.trim())
+                          .filter(Boolean)
+                          .join(" - ")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      ))}
+    </div>
   );
 }
 

@@ -10,3 +10,8 @@ supabase/.temp
 *.tsbuildinfo
 
 .vercel
+
+# Local Codex runtime and generated verification evidence
+.codex/
+.planning/
+artifacts/

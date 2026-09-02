@@ -55,6 +55,12 @@ const groups = [
         icon: Clock3,
         permissions: ["workspace.manage"],
       },
+      {
+        to: "/app/important-dates",
+        label: "Important dates",
+        icon: CalendarClock,
+        permissions: ["workspace.manage", "schedule.read"],
+      },
     ],
   },
   {

@@ -1,123 +1,389 @@
 import type {
   ScheduleDraftSummary,
-  ScheduleAutoFillAssignment,
   ScheduleAutoFillPreview,
   ScheduleEditableShift,
   ScheduleEditSession,
   ScheduleExportPreset,
-  ScheduleExportPreview,
-  ScheduleExportRequest,
-  ScheduleExportSettings,
-  SchedulePublicationOverrideInput,
-  SchedulePublicationPreview,
-  ScheduleEmployee,
-  ScheduleLocation,
-  ScheduleReadModel,
+  ScheduleExportSchedule,
+  ScheduleRecentExportEvent,
+  SchedulePublicationStatus,
+  SchedulePendingOp,
   ScheduleShift,
-  ScheduleShiftMutationInput,
   ScheduleView,
-  ScheduleUnpublishPreview,
   ScheduleTemplateSummary,
-} from "@newfork/shared";
-import { useQuery } from "@tanstack/react-query";
+} from "@newfork/shared/schedule";
+import { useToast } from "@newfork/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Check,
   ClipboardPaste,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Edit3,
-  Eye,
-  EyeOff,
   FileDown,
-  Filter,
-  Layers2,
-  MapPin,
   LayoutTemplate,
-  Plus,
-  Rows3,
   Save,
   Send,
-  ShieldAlert,
-  SlidersHorizontal,
   Trash2,
   WandSparkles,
   X,
 } from "lucide-react";
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
-  type CSSProperties,
-  type FormEvent,
-  type ReactNode,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { EmployeeDrawer } from "../employees/EmployeeDrawer";
+import { ScheduleFilterCommandStrip } from "../schedule/components/ScheduleFilterCommandStrip";
+import {
+  ScheduleCellContextMenu,
+  ScheduleContextMenu,
+  type CellContextMenuTarget,
+  type ShiftContextMenuTarget,
+} from "../schedule/components/ScheduleContextMenu";
+import { ScheduleGrid } from "../schedule/components/ScheduleGrid";
+import { ScheduleTopBar } from "../schedule/components/ScheduleTopBar";
+import { ScheduleState } from "../schedule/components/ScheduleState";
+import { ShiftQuickEditor } from "../schedule/components/ShiftQuickEditor";
+import type { PresetCreateTarget } from "../schedule/components/SchedulePresetRows";
 import {
   acquireScheduleEditSession,
   applyScheduleAutoFill,
   applyScheduleTemplate,
+  bulkDeleteShifts,
   createScheduleExportPreset,
+  createScheduleExportSchedule,
   createScheduleTemplate,
   createScheduleShift,
   deleteScheduleShift,
+  deleteScheduleDraft,
   discardScheduleEditSession,
   deleteScheduleExportPreset,
+  deleteScheduleExportSchedule,
   deleteScheduleTemplate,
   downloadScheduleExport,
+  draftsKey,
   heartbeatScheduleEditSession,
   listScheduleDrafts,
   listScheduleExportPresets,
+  listScheduleExportSchedules,
+  listScheduleRecentExports,
   listScheduleTemplates,
+  fetchSchedulePublicationStatus,
+  fetchScheduleDraftShifts,
   previewScheduleAutoFill,
   previewScheduleExport,
+  previewScheduleExportHtml,
   previewSchedulePublication,
   previewScheduleUnpublish,
   publishScheduleDraft,
+  restoreScheduleShift,
   saveScheduleDraft,
+  ScheduleRequestError,
   renameScheduleTemplate,
+  updateScheduleExportSchedule,
   updateScheduleShift,
   unpublishSchedule,
-  getScheduleReadModel,
 } from "../schedule/schedule-data";
+import { AutoFillReviewOverlay } from "../schedule/components/AutoFillReviewOverlay";
+import { DraftDropdownMenu } from "../schedule/components/DraftDropdownMenu";
+import { EnterEditModeDialog } from "../schedule/components/EnterEditModeDialog";
+import { ScheduleConflictSheet } from "../schedule/components/ScheduleConflictSheet";
+import { ScheduleEditLockedDialog as ScheduleEditLockedDialogComponent } from "../schedule/components/ScheduleEditLockedDialog";
+import { ScheduleEditTimeoutDialog as ScheduleEditTimeoutDialogComponent } from "../schedule/components/ScheduleEditTimeoutDialog";
+import { ScheduleExportDialog } from "../schedule/components/ScheduleExportDialog";
+import { ScheduleExportPanel } from "../schedule/components/ScheduleExportPanel";
+import { ScheduleSaveRecoverySheet } from "../schedule/components/ScheduleSaveRecoverySheet";
+import { PublishScheduleDialog } from "../schedule/components/PublishScheduleDialog";
+import { SaveDraftMenu } from "../schedule/components/SaveDraftMenu";
+import { SaveDraftDialog } from "../schedule/components/SaveDraftDialog";
+import { UnpublishScheduleDialog } from "../schedule/components/UnpublishScheduleDialog";
+import {
+  ScheduleLogoUploadDialog,
+  type ScheduleLogoSaveDraft,
+} from "../schedule/components/ScheduleLogoUploadDialog";
+import { ScheduleTemplatesDialog } from "../schedule/components/ScheduleTemplateDialogs";
+import { RetroactiveEditDialog } from "../schedule/components/RetroactiveEditDialog";
+import { useCascadeNotice } from "../schedule/hooks/useCascadeNotice";
+import { useEditIdleTimer } from "../schedule/hooks/useEditIdleTimer";
+import { useEffectiveShifts } from "../schedule/hooks/useEffectiveShifts";
+import { useRetroactiveEditPrompt } from "../schedule/hooks/useRetroactiveEditPrompt";
+import { usePendingOpsQuery } from "../schedule/hooks/usePendingOpsQuery";
+import { useScheduleDrafts } from "../schedule/hooks/useScheduleDrafts";
+import { useScheduleMode } from "../schedule/hooks/useScheduleMode";
+import { useScheduleQuery } from "../schedule/hooks/useScheduleQuery";
+import { useScheduleRealtime } from "../schedule/hooks/useScheduleRealtime";
+import { useScheduleViewerPresence } from "../schedule/hooks/useScheduleViewerPresence";
+import { saveScheduleLogo } from "../settings/organization-data";
+import {
+  evaluateScheduleShiftConflicts,
+  formatScheduleConflictMessage,
+  type ScheduleConflictReason,
+} from "../schedule/schedule-conflicts";
+import {
+  cacheSavedDraftResult,
+  clearPendingOpsCachesForDraft,
+  getSaveDraftFailureMessage,
+  invalidateScheduleCommitCaches,
+  parseSaveDraftNameConflict,
+} from "../schedule/lib/draftSaveFlow";
+import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButton";
+import { resolveScheduleShiftSelectionIds } from "../schedule/lib/scheduleShiftSelection";
+import {
+  applyShiftClipboardSnapshot,
+  createShiftClipboardSnapshot,
+  type ShiftClipboardSnapshot,
+} from "../schedule/lib/shiftClipboard";
+import type { ScheduleShiftEditorState } from "../schedule/lib/shiftEditorState";
+import { createSortedScheduleModel } from "../schedule/lib/scheduleEmployeeSort";
+import {
+  usePersistentScheduleEmployeeSortMode,
+  usePersistentScheduleUiBoolean,
+} from "../schedule/store/scheduleUiStore";
+import {
+  createLocationPublicationChipStatuses,
+  createScheduleCalendarMarkers,
+  createScheduleFilterChips,
+  filterScheduleModel,
+  getSchedulePublicationActionTone,
+  hasUnpublishablePublishedSchedule,
+  validDate,
+  validIds,
+} from "../schedule/lib/scheduleFilterModel";
+import {
+  canExportSchedule,
+  filterScheduleExportLocations,
+} from "../schedule/lib/exportAccess";
+import {
+  addDays,
+  currentWeekStart,
+  formatPeriod,
+  formatTime,
+} from "../schedule/lib/scheduleDateTime";
+import {
+  buildCellPresetMenuItems,
+  formatPresetCreateContext,
+  validatePresetCreateTarget,
+} from "../schedule/lib/schedulePresetTargets";
+import { resolveScheduleDeleteShiftIds } from "../schedule/lib/scheduleDeleteSelection";
+import { scheduleClosureCoversDate } from "../schedule/lib/scheduleClosures";
+import { parseRetroactiveEditError } from "../schedule/lib/retroactiveEditRecovery";
+import { publicationStateForShift } from "../schedule/lib/scheduleShiftMetadata";
+import { toScheduleShiftMutation } from "../schedule/lib/scheduleShiftMutation";
+import {
+  isBlankScheduleDismissTarget,
+  isMatchingScheduleLocationHeaderTarget,
+  isScheduleEditFocusedShiftBlankDismissTarget,
+  isScheduleGridCellActivationTarget,
+  isScheduleInteractionSurface,
+  isSchedulePreviewFocusedShiftBlankDismissTarget,
+  isScheduleSurfaceTarget,
+  isSuppressedScheduleClickTarget,
+  isTextEditingTarget,
+} from "../schedule/lib/scheduleInteractionTargets";
+import {
+  clearFocusedShiftSearchFilters,
+  dismissNextScheduleSearchLayer,
+} from "../schedule/lib/scheduleDismissal";
 
-const warningLabels = {
-  availability: "Outside employee availability",
-  closed_location: "Location is closed",
-  overlap: "Overlapping employee shifts",
-} as const;
+interface ScheduleLockConflict {
+  readonly sessionId?: string;
+  readonly holderName: string;
+  readonly lastHeartbeat: string;
+  readonly expiresAt: string;
+}
+
+type SaveRecoveryIntent =
+  | {
+      readonly kind: "save";
+      readonly name: string;
+      readonly force: boolean;
+      readonly targetDraftId: string | null | undefined;
+    }
+  | {
+      readonly kind: "save-and-publish";
+      readonly name: string;
+      readonly force: boolean;
+      readonly targetDraftId: string | null | undefined;
+    };
+
+type SaveRecoveryState = {
+  readonly intent: SaveRecoveryIntent;
+  readonly retrying: boolean;
+} | null;
+
+const SCHEDULE_TOP_ACTION_SURFACE_SELECTOR = [
+  "[data-schedule-top-action-trigger]",
+  ".schedule-draft-menu",
+  ".schedule-save-menu-anchor",
+  ".schedule-save-draft-menu",
+  ".schedule-action-menu",
+  ".schedule-published-menu",
+  ".schedule-dialog",
+  ".schedule-edit-banner",
+  ".schedule-export-panel",
+].join(",");
+
+const SCHEDULE_FILTER_QUERY_PARAMS = [
+  "locations",
+  "shiftTypes",
+  "jobs",
+  "employees",
+  "hideUnscheduled",
+  "layout",
+] as const;
 
 export function SchedulePage() {
-  const { context } = useAuth();
+  const { account, context, refresh } = useAuth();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [search, setSearch] = useSearchParams();
+  const { activeDraftId, setMode: setScheduleMode } = useScheduleMode();
   const today = new Date().toLocaleDateString("en-CA");
   const selectedDate = validDate(search.get("date")) ?? today;
   const view: ScheduleView = search.get("view") === "day" ? "day" : "week";
   const layout = search.get("layout") === "unified" ? "unified" : "separate";
   const hideUnscheduled = search.get("hideUnscheduled") === "true";
-  const query = useQuery({
-    queryKey: ["schedule-read", context?.workspace.id, selectedDate, view],
-    queryFn: () =>
-      getScheduleReadModel(context!.workspace.id, selectedDate, view),
-    enabled: Boolean(context),
+  const query = useScheduleQuery(
+    context?.workspace.id ?? null,
+    selectedDate,
+    view,
+  );
+  const canExportSchedules = canExportSchedule(context?.permissions);
+  const resolveCascadeActorName = useCallback(
+    (userId: string) =>
+      userId === context?.userId ? account?.displayName : null,
+    [account?.displayName, context?.userId],
+  );
+  useCascadeNotice({
+    workspaceId: context?.workspace.id,
+    actorNameByUserId: resolveCascadeActorName,
   });
   const [session, setSession] = useState<ScheduleEditSession | null>(null);
   const [drafts, setDrafts] = useState<readonly ScheduleDraftSummary[]>([]);
+  const [previewDraftShifts, setPreviewDraftShifts] = useState<
+    readonly ScheduleShift[] | null
+  >(null);
   const [sourceOpen, setSourceOpen] = useState(false);
-  const [editor, setEditor] = useState<ShiftEditorState | null>(null);
+  const [editor, setEditor] = useState<ScheduleShiftEditorState | null>(null);
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [editorDiscardConfirmOpen, setEditorDiscardConfirmOpen] =
+    useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
-  const [conflict, setConflict] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<ScheduleLockConflict | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
+  const [focusedShiftId, setFocusedShiftId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
-  const [clipboard, setClipboard] = useState<ScheduleEditableShift | null>(
+  const selectedIdsRef = useRef<readonly string[]>([]);
+  const [deleteSelectionConfirmOpen, setDeleteSelectionConfirmOpen] =
+    useState(false);
+  const [deleteSelectionIds, setDeleteSelectionIds] = useState<
+    readonly string[]
+  >([]);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const [clipboard, setClipboard] = useState<ShiftClipboardSnapshot | null>(
     null,
   );
-  const [lastActivity, setLastActivity] = useState(() => Date.now());
-  const [idleSeconds, setIdleSeconds] = useState<number | null>(null);
+  const [pasteArmed, setPasteArmed] = useState(false);
+  const [pasteModeNotice, setPasteModeNotice] = useState<string | null>(null);
+  const [pasteBlockedReason, setPasteBlockedReason] = useState<string | null>(
+    null,
+  );
+  const [shiftConflictMessages, setShiftConflictMessages] = useState<
+    readonly ScheduleConflictReason[]
+  >([]);
+  const [pasteConflictContext, setPasteConflictContext] = useState<
+    string | null
+  >(null);
+  const [saveRecovery, setSaveRecovery] = useState<SaveRecoveryState>(null);
+  useEffect(() => {
+    selectedIdsRef.current = selectedIds;
+  }, [selectedIds]);
+  const updateSelectedIds = useCallback(
+    (
+      next:
+        readonly string[] | ((current: readonly string[]) => readonly string[]),
+    ) => {
+      setSelectedIds((_current) => {
+        const resolved =
+          typeof next === "function" ? next(selectedIdsRef.current) : next;
+        selectedIdsRef.current = resolved;
+        return resolved;
+      });
+    },
+    [],
+  );
+  const {
+    state: retroactiveEditState,
+    prompt: promptRetroactiveEdit,
+    onConfirm: confirmRetroactiveEdit,
+    onOpenChange: setRetroactiveEditOpen,
+  } = useRetroactiveEditPrompt();
+  const pasteModeNoticeTimerRef = useRef<number | null>(null);
+  const previousPasteArmedRef = useRef(false);
+  const showPasteModeNotice = useCallback((message: string, durationMs = 0) => {
+    if (pasteModeNoticeTimerRef.current !== null) {
+      window.clearTimeout(pasteModeNoticeTimerRef.current);
+      pasteModeNoticeTimerRef.current = null;
+    }
+    setPasteModeNotice(message);
+    if (durationMs > 0) {
+      pasteModeNoticeTimerRef.current = window.setTimeout(() => {
+        setPasteModeNotice(null);
+        pasteModeNoticeTimerRef.current = null;
+      }, durationMs);
+    }
+  }, []);
+  const [undoSnapshot, setUndoSnapshot] = useState<ScheduleEditSession | null>(
+    null,
+  );
+  const undoSnapshotRef = useRef<ScheduleEditSession | null>(null);
+  const undoStackRef = useRef<ScheduleEditSession[]>([]);
+  const editAcquireRequestRef = useRef<symbol | null>(null);
+  const setUndoSnapshotState = useCallback(
+    (next: ScheduleEditSession | null) => {
+      undoSnapshotRef.current = next;
+      setUndoSnapshot(next);
+    },
+    [],
+  );
+  const clearUndoStack = useCallback(() => {
+    undoStackRef.current = [];
+    setUndoSnapshotState(null);
+  }, [setUndoSnapshotState]);
+  const rememberUndoSnapshot = useCallback(
+    (snapshot: ScheduleEditSession) => {
+      undoStackRef.current = [...undoStackRef.current, snapshot].slice(-25);
+      setUndoSnapshotState(snapshot);
+    },
+    [setUndoSnapshotState],
+  );
+  const popUndoSnapshot = useCallback(() => {
+    const snapshot = undoStackRef.current.pop() ?? null;
+    setUndoSnapshotState(undoStackRef.current.at(-1) ?? null);
+    return snapshot;
+  }, [setUndoSnapshotState]);
+  const [shiftMenu, setShiftMenu] = useState<ShiftContextMenuTarget | null>(
+    null,
+  );
+  const [cellMenu, setCellMenu] = useState<CellContextMenuTarget | null>(null);
+  const lastActivityRef = useRef(Date.now());
   const [publishOpen, setPublishOpen] = useState(false);
+  const [publishDraftOverride, setPublishDraftOverride] =
+    useState<ScheduleDraftSummary | null>(null);
   const [unpublishOpen, setUnpublishOpen] = useState(false);
+  const [isUnpublishing, setIsUnpublishing] = useState(false);
+  const [publicationStatus, setPublicationStatus] =
+    useState<SchedulePublicationStatus | null>(null);
+  const [pendingOps, setPendingOps] = useState<readonly SchedulePendingOp[]>(
+    [],
+  );
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [templates, setTemplates] = useState<
     readonly ScheduleTemplateSummary[]
@@ -126,59 +392,395 @@ export function SchedulePage() {
     null,
   );
   const [exportOpen, setExportOpen] = useState(false);
+  const [newScheduleMenuOpen, setNewScheduleMenuOpen] = useState(false);
+  const [publishMenuOpen, setPublishMenuOpen] = useState(false);
+  const [newScheduleDismissSignal, setNewScheduleDismissSignal] = useState(0);
+  const [publishMenuDismissSignal, setPublishMenuDismissSignal] = useState(0);
+  const topActionBlockedClickTargetRef = useRef<Element | null>(null);
   const [exportPresets, setExportPresets] = useState<
     readonly ScheduleExportPreset[]
   >([]);
+  const [scheduledExports, setScheduledExports] = useState<
+    readonly ScheduleExportSchedule[]
+  >([]);
+  const [recentExportEvents, setRecentExportEvents] = useState<
+    readonly ScheduleRecentExportEvent[]
+  >([]);
+  const closeTopActionSurfaces = useCallback(
+    (
+      keep:
+        | "export"
+        | "templates"
+        | "publish"
+        | "source"
+        | "newSchedule"
+        | null = null,
+    ) => {
+      if (
+        keep !== "export" &&
+        keep !== "templates" &&
+        (location.pathname === "/app/schedule/export" ||
+          location.pathname === "/app/schedule/templates")
+      ) {
+        navigate({ pathname: "/app/schedule", search: location.search });
+      }
+      if (keep !== "export") setExportOpen(false);
+      if (keep !== "templates") setTemplatesOpen(false);
+      if (keep !== "publish") {
+        setPublishOpen(false);
+        setPublishDraftOverride(null);
+      }
+      if (keep !== "source") setSourceOpen(false);
+      if (keep !== "newSchedule") {
+        setNewScheduleMenuOpen(false);
+        setNewScheduleDismissSignal((current) => current + 1);
+      }
+      if (keep !== "publish") {
+        setPublishMenuOpen(false);
+        setPublishMenuDismissSignal((current) => current + 1);
+      }
+    },
+    [location.pathname, location.search, navigate],
+  );
+  const topActionSurfaceOpen =
+    exportOpen ||
+    templatesOpen ||
+    publishOpen ||
+    sourceOpen ||
+    newScheduleMenuOpen ||
+    publishMenuOpen;
+  useEffect(() => {
+    if (!topActionSurfaceOpen) return;
+    const closeFromOutsideTopAction = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest(SCHEDULE_TOP_ACTION_SURFACE_SELECTOR)) return;
+      closeTopActionSurfaces();
+      topActionBlockedClickTargetRef.current = target;
+      suppressedScheduleClickTargetRef.current = target;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    };
+    document.addEventListener("pointerdown", closeFromOutsideTopAction, true);
+    return () =>
+      document.removeEventListener(
+        "pointerdown",
+        closeFromOutsideTopAction,
+        true,
+      );
+  }, [closeTopActionSurfaces, topActionSurfaceOpen]);
+  useEffect(() => {
+    const blockOutsideTopActionClick = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[role='dialog'], [role='alertdialog']")) {
+        topActionBlockedClickTargetRef.current = null;
+        return;
+      }
+      if (
+        (event.ctrlKey || event.metaKey || event.shiftKey) &&
+        target.closest("[data-shift-badge='true']")
+      ) {
+        topActionBlockedClickTargetRef.current = null;
+        return;
+      }
+      const blockedTarget = topActionBlockedClickTargetRef.current;
+      topActionBlockedClickTargetRef.current = null;
+      if (!isSuppressedScheduleClickTarget(blockedTarget, target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    };
+    document.addEventListener("click", blockOutsideTopActionClick, true);
+    return () =>
+      document.removeEventListener("click", blockOutsideTopActionClick, true);
+  }, []);
+  const [isDiscardingEditSession, setIsDiscardingEditSession] = useState(false);
+  const [showShiftType, setShowShiftType] = usePersistentScheduleUiBoolean(
+    "showShiftType",
+    true,
+  );
+  const [showShiftLabels, setShowShiftLabels] = usePersistentScheduleUiBoolean(
+    "showShiftLabels",
+    true,
+  );
+  const [showClockTimes, setShowClockTimes] = usePersistentScheduleUiBoolean(
+    "showClockTimes",
+    true,
+  );
+  const [showTotalHours, setShowTotalHours] = usePersistentScheduleUiBoolean(
+    "showTotalHours",
+    false,
+  );
+  const [showRoleSeparators, setShowRoleSeparators] =
+    usePersistentScheduleUiBoolean("showRoleSeparators", true);
+  const [showPresetShiftBadges, setShowPresetShiftBadges] =
+    usePersistentScheduleUiBoolean("showPresetShiftBadges", true);
+  const [useDefaultTimesForScheduling, setUseDefaultTimesForScheduling] =
+    usePersistentScheduleUiBoolean("useDefaultTimesForScheduling", false);
+  const [showUnassignedShifts, setShowUnassignedShifts] = useState(true);
+  const [employeeCardId, setEmployeeCardId] = useState<string | null>(null);
+  const [employeeCardSection, setEmployeeCardSection] = useState<
+    | "profile"
+    | "employment"
+    | "availability"
+    | "documents"
+    | "access"
+    | "history"
+  >("profile");
+  const [logoOpen, setLogoOpen] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [savingLogo, setSavingLogo] = useState(false);
+  const [unassignedFrozen, setUnassignedFrozen] = useState(true);
+  const [topbarDropdownOpen, setTopbarDropdownOpen] = useState(false);
+  const [topbarDismissSignal, setTopbarDismissSignal] = useState(0);
+  const [employeeSortMode, setEmployeeSortMode] =
+    usePersistentScheduleEmployeeSortMode();
+  const lastPresetDefaultSessionIdRef = useRef<string | null>(null);
+  const dismissOneScheduleLayerRef = useRef<() => boolean>(() => false);
+  const suppressedScheduleClickTargetRef = useRef<Element | null>(null);
+  const pendingOpsCount = pendingOps.length;
+  const currentWeek = currentWeekStart(
+    today,
+    query.data?.week_start_day ?? "monday",
+  );
+  const pastWeek = Boolean(query.data && query.data.week_start < currentWeek);
+  const gridEditSession =
+    session && query.data && session.week_start === query.data.week_start
+      ? session
+      : null;
+  const pendingOpsLocationIds = useMemo(() => {
+    const data = query.data;
+    if (!data) return [];
+    const selectedIds = validIds(
+      search.get("locations"),
+      data.locations.map((item) => item.id),
+    );
+    return selectedIds.length
+      ? selectedIds
+      : data.locations.map((item) => item.id);
+  }, [query.data, search]);
+  useScheduleRealtime({
+    workspaceId: context?.workspace.id ?? null,
+    weekStart: query.data?.week_start ?? selectedDate,
+    selectedDate,
+    view,
+    locationIds: pendingOpsLocationIds,
+    activeDraftId: gridEditSession?.source_draft_id ?? activeDraftId,
+  });
+  const pendingOpsQuery = usePendingOpsQuery(
+    context?.workspace.id ?? null,
+    query.data?.week_start ?? selectedDate,
+    pendingOpsLocationIds,
+    gridEditSession ? "edit" : "preview",
+    gridEditSession?.source_draft_id ?? null,
+  );
+  useEffect(() => {
+    if (!session?.id) {
+      lastPresetDefaultSessionIdRef.current = null;
+      return;
+    }
+    if (lastPresetDefaultSessionIdRef.current === session.id) return;
+    lastPresetDefaultSessionIdRef.current = session.id;
+    setShowPresetShiftBadges(true);
+  }, [session?.id, setShowPresetShiftBadges]);
+  const draftsQuery = useScheduleDrafts(
+    context?.workspace.id ?? null,
+    query.data?.week_start ?? selectedDate,
+    { enabled: Boolean(context && query.data) },
+  );
+  const clearMissingDraftPreview = useCallback(() => {
+    setPreviewDraftShifts(null);
+    setScheduleMode("preview", null);
+    setOperationError(null);
+  }, [setScheduleMode]);
+  const effectiveShifts = useEffectiveShifts(
+    gridEditSession?.shifts ??
+      (activeDraftId && previewDraftShifts
+        ? previewDraftShifts
+        : (query.data?.shifts ?? [])),
+    gridEditSession ? pendingOps : [],
+  );
+  useEffect(() => {
+    if (gridEditSession || !activeDraftId || !context || !query.data) {
+      if (!activeDraftId) setPreviewDraftShifts(null);
+      return;
+    }
+    if (!draftsQuery.data) return;
+    if (!draftsQuery.data.drafts.some((draft) => draft.id === activeDraftId)) {
+      clearMissingDraftPreview();
+      return;
+    }
+    let cancelled = false;
+    void fetchScheduleDraftShifts(
+      context.workspace.id,
+      query.data.week_start,
+      activeDraftId,
+      query.data.locations.map((location) => location.id),
+    )
+      .then((result) => {
+        if (!cancelled) setPreviewDraftShifts(result.shifts);
+      })
+      .catch((error: Error) => {
+        if (cancelled) return;
+        if (isMissingScheduleDraftError(error)) {
+          clearMissingDraftPreview();
+          return;
+        }
+        setOperationError(error.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeDraftId,
+    clearMissingDraftPreview,
+    context,
+    draftsQuery.data,
+    gridEditSession,
+    query.data,
+  ]);
+  const visibleSelectableShiftIds = useMemo(() => {
+    if (!query.data) return [];
+    const filtered = filterScheduleModel(
+      { ...query.data, shifts: effectiveShifts },
+      search,
+    );
+    return filtered.shifts
+      .filter(
+        (shift) => view === "week" || shift.scheduled_date === selectedDate,
+      )
+      .map((shift) => shift.id);
+  }, [effectiveShifts, query.data, search, selectedDate, view]);
+  const updateDraftCache = useCallback(
+    (nextDrafts: readonly ScheduleDraftSummary[]) => {
+      if (!context || !query.data) return;
+      queryClient.setQueryData(
+        draftsKey(context.workspace.id, query.data.week_start),
+        {
+          drafts: nextDrafts,
+        },
+      );
+    },
+    [context, query.data, queryClient],
+  );
+  const invalidateScheduleCaches = useCallback(
+    (draftId = session?.source_draft_id ?? null) => {
+      if (!context || !query.data) return;
+      invalidateScheduleCommitCaches({
+        queryClient,
+        workspaceId: context.workspace.id,
+        weekStart: query.data.week_start,
+        selectedDate,
+        view,
+      });
+      clearPendingOpsCachesForDraft(
+        queryClient,
+        context.workspace.id,
+        query.data.week_start,
+        draftId,
+      );
+    },
+    [
+      context,
+      query.data,
+      queryClient,
+      selectedDate,
+      session?.source_draft_id,
+      view,
+    ],
+  );
+  const presenceLocationId = useMemo(() => {
+    const data = query.data;
+    if (!data) return null;
+    const selectedIds = validIds(
+      search.get("locations"),
+      data.locations.map((item) => item.id),
+    );
+    return selectedIds[0] ?? data.locations[0]?.id ?? null;
+  }, [query.data, search]);
+  const scheduleViewers = useScheduleViewerPresence({
+    workspaceId: context?.workspace.id ?? null,
+    weekStart: query.data?.week_start ?? selectedDate,
+    locationId: presenceLocationId,
+    authUserId: account?.userId ?? context?.userId ?? null,
+    mode: gridEditSession ? "edit" : "preview",
+  });
+  const otherScheduleViewers = useMemo(
+    () =>
+      scheduleViewers.filter(
+        (viewer) => viewer.userId !== (account?.userId ?? context?.userId),
+      ),
+    [account?.userId, context?.userId, scheduleViewers],
+  );
+  const hasUnsavedChanges = Boolean(session?.dirty || pendingOpsCount > 0);
+
+  useEffect(
+    () => () => {
+      if (pasteModeNoticeTimerRef.current !== null) {
+        window.clearTimeout(pasteModeNoticeTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (pasteArmed) {
+      previousPasteArmedRef.current = true;
+      return;
+    }
+    if (!previousPasteArmedRef.current) return;
+    previousPasteArmedRef.current = false;
+    if (pasteModeNotice === "Paste mode off") return;
+    showPasteModeNotice("Paste mode off", 500);
+  }, [pasteArmed, pasteModeNotice, showPasteModeNotice]);
+
+  useEffect(() => {
+    if (!editor) {
+      setEditorDirty(false);
+      setEditorDiscardConfirmOpen(false);
+    }
+  }, [editor]);
 
   useEffect(() => {
     if (!session) return;
     const heartbeat = window.setInterval(() => {
       if (!context) return;
-      if (Date.now() - lastActivity >= 180_000) return;
+      if (Date.now() - lastActivityRef.current >= 15 * 60 * 1000) return;
       void heartbeatScheduleEditSession(context.workspace.id, session.id)
         .then(setSession)
         .catch((error: Error) => setOperationError(error.message));
     }, 60_000);
     return () => window.clearInterval(heartbeat);
-  }, [context, session?.id, lastActivity]);
+  }, [context, session?.id]);
+
+  const handleIdleActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+  }, []);
+  const handleIdleTimeout = useCallback(() => {
+    if (!context || !session) return;
+    void discardScheduleEditSession(context.workspace.id, session.id).finally(
+      () => {
+        setSession(null);
+        setScheduleMode("preview", null);
+        updateSelectedIds([]);
+        clearUndoStack();
+      },
+    );
+  }, [clearUndoStack, context, session, setScheduleMode, updateSelectedIds]);
+  const idleSeconds = useEditIdleTimer({
+    enabled: Boolean(session),
+    onActivity: handleIdleActivity,
+    onTimeout: handleIdleTimeout,
+  });
 
   useEffect(() => {
-    if (!session) return;
-    const active = () => {
-      setLastActivity(Date.now());
-      setIdleSeconds(null);
-    };
-    window.addEventListener("pointerdown", active);
-    window.addEventListener("keydown", active);
-    const timer = window.setInterval(() => {
-      const elapsed = Date.now() - lastActivity;
-      if (elapsed < 180_000) return;
-      const remaining = Math.max(0, Math.ceil((195_000 - elapsed) / 1000));
-      setIdleSeconds(remaining);
-      if (remaining === 0 && context) {
-        void discardScheduleEditSession(
-          context.workspace.id,
-          session.id,
-        ).finally(() => {
-          setSession(null);
-          setIdleSeconds(null);
-          setSelectedIds([]);
-        });
-      }
-    }, 1000);
-    return () => {
-      window.removeEventListener("pointerdown", active);
-      window.removeEventListener("keydown", active);
-      window.clearInterval(timer);
-    };
-  }, [context, session?.id, lastActivity]);
-
-  useEffect(() => {
-    if (!session?.dirty) return;
+    if (!hasUnsavedChanges) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [session?.dirty]);
+  }, [hasUnsavedChanges]);
 
   const changePeriod = (days: number) => {
     const next = new URLSearchParams(search);
@@ -192,23 +794,170 @@ export function SchedulePage() {
     next.set("view", nextView);
     setSearch(next);
   };
-  const setHideUnscheduled = (hidden: boolean) => {
+  const selectScheduleDay = (
+    date: string,
+    locationIds: readonly string[] = [],
+  ) => {
+    if (view === "day") {
+      if (layout === "unified") return;
+      setFocusedShiftId(null);
+      setQueryIds("locations", locationIds);
+      return;
+    }
     const next = new URLSearchParams(search);
-    if (hidden) next.set("hideUnscheduled", "true");
-    else next.delete("hideUnscheduled");
+    next.set("date", date);
+    next.set("view", "day");
+    if (locationIds.length) next.set("locations", locationIds.join(","));
+    else next.delete("locations");
     setSearch(next);
   };
+  const setLayout = (value: "separate" | "unified") => {
+    const next = new URLSearchParams(search);
+    if (value === "separate") next.delete("layout");
+    else next.set("layout", value);
+    setSearch(next);
+  };
+  const toggleHideUnscheduled = () => {
+    const next = new URLSearchParams(search);
+    if (hideUnscheduled) next.delete("hideUnscheduled");
+    else next.set("hideUnscheduled", "true");
+    setSearch(next);
+  };
+  const setQueryIds = (param: string, ids: readonly string[]) => {
+    const next = new URLSearchParams(search);
+    if (ids.length) next.set(param, ids.join(","));
+    else next.delete(param);
+    setSearch(next);
+  };
+  const focusShiftBadge = (shift: ScheduleShift) => {
+    const next = new URLSearchParams(search);
+    if (shift.shift_type_id) next.set("shiftTypes", shift.shift_type_id);
+    else next.delete("shiftTypes");
+    next.set("jobs", shift.job_id);
+    next.delete("employees");
+    setSearch(next);
+    setFocusedShiftId(shift.id);
+    updateSelectedIds([]);
+    setPasteArmed(false);
+    setShiftMenu(null);
+    setCellMenu(null);
+  };
+  const clearPreviewFocusedShift = useCallback(() => {
+    setFocusedShiftId(null);
+    const nextSearch = clearFocusedShiftSearchFilters(search);
+    if (nextSearch) setSearch(nextSearch);
+  }, [search, setSearch]);
+  const clearEditFocusedShiftSelection = useCallback(() => {
+    setFocusedShiftId(null);
+    updateSelectedIds([]);
+    setShiftMenu(null);
+    setCellMenu(null);
+    const nextSearch = clearFocusedShiftSearchFilters(search);
+    if (nextSearch) setSearch(nextSearch);
+  }, [search, setSearch, updateSelectedIds]);
 
-  const openSources = async () => {
+  useEffect(() => {
+    if (gridEditSession || !focusedShiftId) return undefined;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!isSchedulePreviewFocusedShiftBlankDismissTarget(event.target)) {
+        return;
+      }
+      clearPreviewFocusedShift();
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [clearPreviewFocusedShift, focusedShiftId, gridEditSession]);
+
+  useEffect(() => {
+    if (!gridEditSession || (!focusedShiftId && !selectedIds.length)) {
+      return undefined;
+    }
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!isScheduleEditFocusedShiftBlankDismissTarget(event.target)) {
+        return;
+      }
+      clearEditFocusedShiftSelection();
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [
+    clearEditFocusedShiftSelection,
+    focusedShiftId,
+    gridEditSession,
+    selectedIds.length,
+  ]);
+
+  const refreshDrafts = async () => {
+    if (!context || !query.data) return [];
+    const result = await listScheduleDrafts(
+      context.workspace.id,
+      query.data.week_start,
+    );
+    setDrafts(result.drafts);
+    updateDraftCache(result.drafts);
+    return result.drafts;
+  };
+
+  const startBlankDraftFromMenu = async () => {
+    setPreviewDraftShifts(null);
+    await refreshDrafts();
+    await acquire("blank");
+  };
+
+  const previewDraftFromMenu = async (draftId: string | null) => {
     if (!context || !query.data) return;
+    if (!draftId) {
+      setPreviewDraftShifts(null);
+      setScheduleMode("preview", null);
+      return;
+    }
     setOperationError(null);
     try {
-      const result = await listScheduleDrafts(
-        context.workspace.id,
-        query.data.week_start,
-      );
-      setDrafts(result.drafts);
-      setSourceOpen(true);
+      const [draftResult, shiftResult] = await Promise.all([
+        refreshDrafts(),
+        fetchScheduleDraftShifts(
+          context.workspace.id,
+          query.data.week_start,
+          draftId,
+          query.data.locations.map((location) => location.id),
+        ),
+      ]);
+      if (!draftResult.some((draft) => draft.id === draftId)) {
+        throw new Error("Selected draft is no longer available.");
+      }
+      setPreviewDraftShifts(shiftResult.shifts);
+      setScheduleMode("preview", draftId);
+    } catch (error) {
+      if (isMissingScheduleDraftError(error)) {
+        clearMissingDraftPreview();
+        return;
+      }
+      setOperationError((error as Error).message);
+    }
+  };
+
+  const editDraftFromMenu = async (draftId: string | null) => {
+    setPreviewDraftShifts(null);
+    await refreshDrafts();
+    await acquire(draftId ? "draft" : "published", draftId);
+  };
+
+  const deleteDraftFromMenu = async (draft: ScheduleDraftSummary) => {
+    if (!context) return;
+    setOperationError(null);
+    try {
+      await deleteScheduleDraft(context.workspace.id, draft.id);
+      setDrafts((items) => {
+        const next = items.filter((item) => item.id !== draft.id);
+        updateDraftCache(next);
+        return next;
+      });
+      invalidateScheduleCaches(draft.id);
+      toast.success("Draft deleted", { description: draft.name });
     } catch (error) {
       setOperationError((error as Error).message);
     }
@@ -217,12 +966,16 @@ export function SchedulePage() {
   const openPublish = async () => {
     if (!context || !query.data) return;
     setOperationError(null);
+    closeTopActionSurfaces("publish");
     try {
+      setPublishDraftOverride(null);
       const result = await listScheduleDrafts(
         context.workspace.id,
         query.data.week_start,
       );
       setDrafts(result.drafts);
+      updateDraftCache(result.drafts);
+      void refreshPublicationStatus();
       if (!result.drafts.length) {
         setOperationError("Save a named draft before publishing this week.");
         return;
@@ -233,9 +986,23 @@ export function SchedulePage() {
     }
   };
 
+  const refreshPublicationStatus = useCallback(async () => {
+    if (!context || !query.data) {
+      setPublicationStatus(null);
+      return null;
+    }
+    const status = await fetchSchedulePublicationStatus(
+      context.workspace.id,
+      query.data.week_start,
+    );
+    setPublicationStatus(status);
+    return status;
+  }, [context, query.data]);
+
   const openTemplates = async () => {
     if (!context || !query.data) return;
     setOperationError(null);
+    closeTopActionSurfaces("templates");
     try {
       const [templateResult, draftResult] = await Promise.all([
         listScheduleTemplates(context.workspace.id),
@@ -243,6 +1010,7 @@ export function SchedulePage() {
       ]);
       setTemplates(templateResult.templates);
       setDrafts(draftResult.drafts);
+      updateDraftCache(draftResult.drafts);
       setTemplatesOpen(true);
     } catch (error) {
       setOperationError((error as Error).message);
@@ -250,12 +1018,14 @@ export function SchedulePage() {
   };
 
   const openAutoFill = async () => {
-    if (!context || !session) return;
+    const workspaceId = context?.workspace.id ?? query.data?.workspace_id;
+    if (!workspaceId || !session) {
+      setOperationError("Start editing this schedule before auto-fill.");
+      return;
+    }
     setOperationError(null);
     try {
-      setAutoFill(
-        await previewScheduleAutoFill(context.workspace.id, session.id),
-      );
+      setAutoFill(await previewScheduleAutoFill(workspaceId, session.id));
     } catch (error) {
       setOperationError((error as Error).message);
     }
@@ -263,26 +1033,139 @@ export function SchedulePage() {
 
   const openExport = async () => {
     if (!context || !query.data) return;
+    if (!canExportSchedules) {
+      setOperationError("You do not have permission to export schedules.");
+      return;
+    }
     setOperationError(null);
+    setTopbarDropdownOpen(false);
+    setTopbarDismissSignal((current) => current + 1);
+    closeTopActionSurfaces("export");
     try {
-      const [draftResult, presetResult] = await Promise.all([
-        listScheduleDrafts(context.workspace.id, query.data.week_start),
-        listScheduleExportPresets(context.workspace.id),
-      ]);
+      const [draftResult, presetResult, scheduledResult, recentResult] =
+        await Promise.all([
+          listScheduleDrafts(context.workspace.id, query.data.week_start),
+          listScheduleExportPresets(context.workspace.id),
+          listScheduleExportSchedules(context.workspace.id),
+          listScheduleRecentExports(context.workspace.id),
+        ]);
       setDrafts(draftResult.drafts);
+      updateDraftCache(draftResult.drafts);
       setExportPresets(presetResult.presets);
+      setScheduledExports(scheduledResult.schedules);
+      setRecentExportEvents(recentResult.events);
       setExportOpen(true);
     } catch (error) {
       setOperationError((error as Error).message);
     }
   };
 
+  useEffect(() => {
+    if (!context || !query.data || gridEditSession) {
+      setPublicationStatus(null);
+      return;
+    }
+    void refreshPublicationStatus().catch(() => setPublicationStatus(null));
+  }, [context, gridEditSession, query.data, refreshPublicationStatus]);
+
+  useEffect(() => {
+    setPendingOps(pendingOpsQuery.data?.pending_ops ?? []);
+  }, [pendingOpsQuery.data]);
+
+  useEffect(() => {
+    if (draftsQuery.data) setDrafts(draftsQuery.data.drafts);
+  }, [draftsQuery.data]);
+
+  useEffect(() => {
+    if (!context || !query.data) return;
+    if (location.pathname === "/app/schedule/templates" && !templatesOpen) {
+      void openTemplates();
+    }
+    if (
+      location.pathname === "/app/schedule/export" &&
+      !exportOpen &&
+      canExportSchedules
+    ) {
+      void openExport();
+    }
+  }, [
+    context,
+    canExportSchedules,
+    exportOpen,
+    location.pathname,
+    query.data,
+    templatesOpen,
+  ]);
+
+  const leaveScheduleDeepLink = () => {
+    if (
+      location.pathname === "/app/schedule/export" ||
+      location.pathname === "/app/schedule/templates"
+    ) {
+      navigate({ pathname: "/app/schedule", search: location.search });
+    }
+  };
+
+  const closeTemplates = () => {
+    setTemplatesOpen(false);
+    leaveScheduleDeepLink();
+  };
+
+  const closeExport = () => {
+    setExportOpen(false);
+    leaveScheduleDeepLink();
+  };
+
+  const openExportDialog = () => {
+    leaveScheduleDeepLink();
+    void openExport();
+  };
+
+  const openTemplatesDialog = () => {
+    leaveScheduleDeepLink();
+    void openTemplates();
+  };
+
+  const enterEditModeWithResetFilters = useCallback(
+    (sourceDraftId: string | null) => {
+      setFocusedShiftId(null);
+      updateSelectedIds([]);
+      setClipboard(null);
+      setPasteArmed(false);
+      setPasteModeNotice(null);
+      setPasteBlockedReason(null);
+      setShiftMenu(null);
+      setCellMenu(null);
+      setScheduleMode("edit", sourceDraftId);
+      setSearch(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.set("mode", "edit");
+          if (sourceDraftId) next.set("draft", sourceDraftId);
+          else next.delete("draft");
+          for (const param of SCHEDULE_FILTER_QUERY_PARAMS) next.delete(param);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setScheduleMode, setSearch, updateSelectedIds],
+  );
+
   const acquire = async (
     source: "blank" | "published" | "draft",
     draftId: string | null = null,
   ) => {
-    if (!context || !query.data) return;
+    if (!context || !query.data || pastWeek) return;
+    const requestId = Symbol(
+      source === "published"
+        ? "schedule-live-edit-acquire"
+        : "schedule-edit-acquire",
+    );
+    editAcquireRequestRef.current = requestId;
     setOperationError(null);
+    setNewScheduleMenuOpen(false);
+    setNewScheduleDismissSignal((current) => current + 1);
     try {
       const result = await acquireScheduleEditSession(
         context.workspace.id,
@@ -290,51 +1173,590 @@ export function SchedulePage() {
         source,
         draftId,
       );
+      if (editAcquireRequestRef.current !== requestId) return;
       if (result.status === "conflict") {
-        setConflict(
-          `${result.holder_name} is editing this week until ${new Date(result.expires_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`,
-        );
+        setConflict({
+          sessionId: result.session_id,
+          holderName: result.holder_name,
+          lastHeartbeat: result.last_heartbeat,
+          expiresAt: result.expires_at,
+        });
+        setSourceOpen(false);
         return;
       }
       setSession(result.session);
+      enterEditModeWithResetFilters(result.session.source_draft_id);
+      clearUndoStack();
       setSourceOpen(false);
       setConflict(null);
     } catch (error) {
-      setOperationError((error as Error).message);
+      if (editAcquireRequestRef.current === requestId) {
+        setOperationError((error as Error).message);
+      }
+    } finally {
+      if (editAcquireRequestRef.current === requestId) {
+        editAcquireRequestRef.current = null;
+      }
     }
   };
 
-  const mutate = async (action: () => Promise<ScheduleEditSession>) => {
-    setOperationError(null);
+  const discardEditSession = () => {
+    if (!context || !session || isDiscardingEditSession) return;
+    setDiscardConfirmOpen(false);
+    const discardedSession = session;
+    setIsDiscardingEditSession(true);
+    setPreviewDraftShifts(null);
+    setSession(null);
+    const nextSearch = new URLSearchParams(search);
+    nextSearch.set("mode", "preview");
+    nextSearch.delete("draft");
+    nextSearch.set("date", today);
+    nextSearch.set("view", "week");
+    setSearch(nextSearch, { replace: true });
+    setPendingOps([]);
+    updateSelectedIds([]);
+    clearUndoStack();
+    setClipboard(null);
+    setPasteArmed(false);
+    setPasteModeNotice(null);
+    setPasteBlockedReason(null);
+    void discardScheduleEditSession(context.workspace.id, discardedSession.id)
+      .then(() => {
+        invalidateScheduleCaches(discardedSession.source_draft_id);
+        void query.refetch();
+      })
+      .catch((error: Error) => {
+        setOperationError(
+          error.message ||
+            "Discard cleanup failed. Refresh before editing this schedule again.",
+        );
+      })
+      .finally(() => setIsDiscardingEditSession(false));
+  };
+  const requestDiscardEditSession = () => {
+    if (!context || !session || isDiscardingEditSession) return;
+    setDiscardConfirmOpen(true);
+  };
+
+  const saveDraftFromMenu = async (
+    name: string,
+    force: boolean,
+    targetDraftId: string | null | undefined,
+    recoveryKind: "save" | "save-and-publish" = "save",
+  ) => {
+    if (!context || !session) return null;
+    const target =
+      force && targetDraftId
+        ? (drafts.find((item) => item.id === targetDraftId) ?? null)
+        : null;
     try {
-      const next = await action();
-      setSession(next);
-      return next;
+      const saved = await saveDraftWithRetroactivePrompt(name, target);
+      if (!saved) return null;
+      cacheSavedDraftResult({
+        queryClient,
+        workspaceId: context.workspace.id,
+        weekStart: saved.week_start,
+        previousDraftId: session.source_draft_id ?? null,
+        draft: saved,
+      });
+      setDrafts((items) => {
+        const next = [...items.filter((item) => item.id !== saved.id), saved];
+        updateDraftCache(next);
+        return next;
+      });
+      setPreviewDraftShifts(effectiveShifts);
+      setSession(null);
+      setScheduleMode("preview", saved.id);
+      setPendingOps([]);
+      updateSelectedIds([]);
+      clearUndoStack();
+      invalidateScheduleCaches(saved.id);
+      void query.refetch();
+      return saved;
     } catch (error) {
-      setOperationError((error as Error).message);
+      const nameConflict =
+        error instanceof ScheduleRequestError
+          ? parseSaveDraftNameConflict(error.body)
+          : null;
+      if (nameConflict) {
+        const conflictTarget = nameConflict.draftId
+          ? (drafts.find((item) => item.id === nameConflict.draftId) ?? null)
+          : null;
+        if (
+          conflictTarget &&
+          window.confirm(
+            `"${name}" is owned by ${nameConflict.ownerName}. Overwrite it?`,
+          )
+        ) {
+          return saveDraftFromMenu(name, true, conflictTarget.id, recoveryKind);
+        }
+        setOperationError(
+          `"${name}" is owned by ${nameConflict.ownerName}. Choose another name or overwrite the draft from the saved drafts list.`,
+        );
+        return null;
+      }
+      const message =
+        error instanceof ScheduleRequestError
+          ? getSaveDraftFailureMessage(error.body, error.message)
+          : (error as Error).message;
+      setOperationError(message ?? (error as Error).message);
+      setSaveRecovery({
+        intent: { kind: recoveryKind, name, force, targetDraftId },
+        retrying: false,
+      });
       return null;
     }
   };
 
+  async function saveDraftWithRetroactivePrompt(
+    name: string,
+    target: ScheduleDraftSummary | null,
+    acknowledgePastEdits = false,
+  ): Promise<ScheduleDraftSummary | null> {
+    if (!context || !session) return null;
+    try {
+      return await saveScheduleDraft(
+        context.workspace.id,
+        session,
+        name,
+        target,
+        acknowledgePastEdits,
+      );
+    } catch (error) {
+      const retroactiveError = parseRetroactiveEditError(error);
+      if (!retroactiveError) throw error;
+      const confirmed = await promptRetroactiveEdit(
+        retroactiveError.mode,
+        retroactiveError.findings,
+        retroactiveError.messages,
+      );
+      if (!confirmed || retroactiveError.mode === "blocked") return null;
+      return saveDraftWithRetroactivePrompt(name, target, true);
+    }
+  }
+
+  const retrySaveRecovery = async () => {
+    const intent = saveRecovery?.intent;
+    if (!intent) return;
+    setSaveRecovery((current) =>
+      current ? { ...current, retrying: true } : current,
+    );
+    try {
+      const result = await saveDraftFromMenu(
+        intent.name,
+        intent.force,
+        intent.targetDraftId,
+        intent.kind,
+      );
+      if (result) {
+        setSaveRecovery(null);
+        if (intent.kind === "save-and-publish") {
+          setPublishDraftOverride(result);
+          setPublishOpen(true);
+        }
+      }
+    } finally {
+      setSaveRecovery((current) =>
+        current ? { ...current, retrying: false } : current,
+      );
+    }
+  };
+
+  const keepEditingAfterSaveFailure = () => {
+    setSaveRecovery(null);
+  };
+
+  const discardAfterSaveFailure = () => {
+    setSaveRecovery(null);
+    discardEditSession();
+  };
+
+  const saveDraftAndOpenPublish = async (
+    name: string,
+    force: boolean,
+    targetDraftId: string | null | undefined,
+  ) => {
+    const saved = await saveDraftFromMenu(
+      name,
+      force,
+      targetDraftId,
+      "save-and-publish",
+    );
+    if (saved) {
+      setSaveRecovery(null);
+      setPublishDraftOverride(saved);
+      setPublishOpen(true);
+    } else {
+      setSaveRecovery((current) =>
+        current
+          ? {
+              ...current,
+              intent: { kind: "save-and-publish", name, force, targetDraftId },
+            }
+          : current,
+      );
+    }
+    return saved;
+  };
+
+  const mutate = async (
+    action: () => Promise<ScheduleEditSession>,
+    onError?: (error: Error) => void,
+  ) => {
+    setOperationError(null);
+    const previousSession = session;
+    try {
+      const next = await action();
+      if (previousSession) rememberUndoSnapshot(previousSession);
+      setSession(next);
+      return next;
+    } catch (error) {
+      const caught = error as Error;
+      onError?.(caught);
+      setOperationError(caught.message);
+      toast.error("Schedule change could not be saved", {
+        description: formatScheduleConflictMessage(caught.message),
+      });
+      return null;
+    }
+  };
+
+  const resolveDeleteShiftIds = (
+    currentSelectedIds: readonly string[] = selectedIdsRef.current,
+  ) => {
+    if (!session) return [];
+    return resolveScheduleDeleteShiftIds({
+      selectedIds: currentSelectedIds,
+      focusedShiftId,
+      editableShiftIds: session.shifts.map((shift) => shift.id),
+    });
+  };
+
+  const requestDeleteSelected = (
+    currentSelectedIds: readonly string[] = selectedIdsRef.current,
+  ) => {
+    const targetShiftIds = resolveDeleteShiftIds(currentSelectedIds);
+    if (!targetShiftIds.length) return false;
+    setDeleteSelectionIds(targetShiftIds);
+    setDeleteSelectionConfirmOpen(true);
+    return true;
+  };
+
   const removeSelected = async () => {
     if (!context || !session) return;
-    let current = session;
-    for (const id of selectedIds) {
-      const shift = current.shifts.find((item) => item.id === id);
-      if (!shift) continue;
-      const next = await mutate(() =>
-        deleteScheduleShift(
+    setDeleteSelectionConfirmOpen(false);
+    const selectedShiftIds = (
+      deleteSelectionIds.length ? deleteSelectionIds : resolveDeleteShiftIds()
+    ).filter((id) => session.shifts.some((shift) => shift.id === id));
+    setDeleteSelectionIds([]);
+    if (selectedShiftIds.length === 0) {
+      updateSelectedIds([]);
+      return;
+    }
+    const bulkResult = await mutate(async () => {
+      const result = await bulkDeleteShifts(
+        context.workspace.id,
+        selectedShiftIds,
+      );
+      if (result.session) return result.session;
+      let nextSession = session;
+      for (const id of selectedShiftIds) {
+        const shift = nextSession.shifts.find((item) => item.id === id);
+        if (!shift) continue;
+        nextSession = await deleteScheduleShift(
           context.workspace.id,
-          current,
+          nextSession,
           shift.id,
           shift.revision,
-        ),
-      );
-      if (!next) return;
-      current = next;
+        );
+      }
+      return nextSession;
+    });
+    if (!bulkResult) return;
+    updateSelectedIds((current) =>
+      current.filter((id) => !selectedShiftIds.includes(id)),
+    );
+    if (focusedShiftId && selectedShiftIds.includes(focusedShiftId)) {
+      setFocusedShiftId(null);
     }
-    setSelectedIds([]);
   };
+
+  const findEditableShift = (id: string, source = session?.shifts) =>
+    source?.find((item) => item.id === id && "revision" in item) as
+      ScheduleEditableShift | undefined;
+
+  const clearPasteModeWithNotice = () => {
+    setPasteArmed(false);
+    showPasteModeNotice("Paste mode off", 500);
+  };
+
+  const copyShift = (
+    shift: ScheduleEditableShift,
+    options: { readonly armPaste?: boolean } = {},
+  ) => {
+    setClipboard(createShiftClipboardSnapshot(shift));
+    setPasteArmed(Boolean(options.armPaste));
+    setPasteBlockedReason(null);
+    showPasteModeNotice(
+      options.armPaste ? "Paste mode on" : "Shift copied",
+      800,
+    );
+    toast.success("Shift copied");
+  };
+
+  const togglePasteMode = () => {
+    if (!clipboard) {
+      toast.error("Copy a shift first");
+      return;
+    }
+    const next = !pasteArmed;
+    setPasteArmed(next);
+    if (next) setPasteBlockedReason(null);
+    showPasteModeNotice(
+      next ? "Paste mode on" : "Paste mode off",
+      next ? 0 : 500,
+    );
+    toast.info(next ? "Paste mode on" : "Paste mode off");
+  };
+
+  const undoLastEdit = () => {
+    const snapshot = popUndoSnapshot();
+    if (!snapshot) return;
+    setSession(snapshot);
+    setPendingOps([]);
+    toast.success("Last edit undone");
+  };
+
+  const deleteShiftById = async (id: string) => {
+    if (!context || !session) return;
+    const shift = findEditableShift(id);
+    if (!shift) return;
+    await mutate(() =>
+      deleteScheduleShift(
+        context.workspace.id,
+        session,
+        shift.id,
+        shift.revision,
+      ),
+    );
+    updateSelectedIds((current) => current.filter((item) => item !== id));
+  };
+
+  const restoreShiftById = async (id: string) => {
+    if (!context || !session) return;
+    const shift = findEditableShift(id);
+    if (!shift) {
+      toast.error("Shift could not be restored", {
+        description: "The staged shift was not found.",
+      });
+      return;
+    }
+    const next = await mutate(() =>
+      restoreScheduleShift(
+        context.workspace.id,
+        session,
+        shift.id,
+        shift.revision,
+      ),
+    );
+    if (next) toast.success("Shift restored");
+  };
+
+  const openShiftContextMenu = (
+    shift: ScheduleEditableShift,
+    event: MouseEvent<HTMLElement>,
+  ) => {
+    if (!gridEditSession) return;
+    event.preventDefault();
+    event.stopPropagation();
+    updateSelectedIds((current) =>
+      current.includes(shift.id) ? current : [shift.id],
+    );
+    setCellMenu(null);
+    setShiftMenu({
+      shiftId: shift.id,
+      x: event.clientX,
+      y: event.clientY,
+      publicationState: publicationStateForShift(shift),
+    });
+  };
+
+  const openCellContextMenu = (
+    target: Omit<CellContextMenuTarget, "x" | "y">,
+    event: MouseEvent<HTMLElement>,
+  ) => {
+    if (!gridEditSession) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setShiftMenu(null);
+    setCellMenu({ ...target, x: event.clientX, y: event.clientY });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const currentSelectedIds = selectedIdsRef.current;
+      if (isTextEditingTarget(event.target)) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        dismissOneScheduleLayerRef.current();
+        return;
+      }
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "a" &&
+        isScheduleSurfaceTarget(event.target)
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        window.getSelection?.()?.removeAllRanges();
+        if (gridEditSession && visibleSelectableShiftIds.length) {
+          updateSelectedIds(visibleSelectableShiftIds);
+        }
+        return;
+      }
+      if (event.key === "Delete") {
+        if (!gridEditSession) return;
+        if (!requestDeleteSelected(currentSelectedIds)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "z" &&
+        undoSnapshotRef.current
+      ) {
+        if (!gridEditSession) return;
+        event.preventDefault();
+        event.stopPropagation();
+        undoLastEdit();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v") {
+        if (!gridEditSession) return;
+        event.preventDefault();
+        event.stopPropagation();
+        togglePasteMode();
+        return;
+      }
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "c" &&
+        currentSelectedIds.length
+      ) {
+        const firstSelectedId = currentSelectedIds[0];
+        if (!firstSelectedId) return;
+        const shift = findEditableShift(firstSelectedId);
+        if (!shift) return;
+        event.preventDefault();
+        event.stopPropagation();
+        copyShift(shift, { armPaste: true });
+      }
+    };
+    const handleCopy = (event: ClipboardEvent) => {
+      if (!gridEditSession) return;
+      const currentSelectedIds = selectedIdsRef.current;
+      if (isTextEditingTarget(event.target) || !currentSelectedIds.length)
+        return;
+      const firstSelectedId = currentSelectedIds[0];
+      if (!firstSelectedId) return;
+      const shift = findEditableShift(firstSelectedId);
+      if (!shift) return;
+      event.preventDefault();
+      event.stopPropagation();
+      copyShift(shift, { armPaste: true });
+    };
+    const handlePaste = (event: ClipboardEvent) => {
+      if (!gridEditSession) return;
+      if (isTextEditingTarget(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      togglePasteMode();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("copy", handleCopy);
+    window.addEventListener("paste", handlePaste);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("copy", handleCopy);
+      window.removeEventListener("paste", handlePaste);
+    };
+  }, [
+    clipboard,
+    copyShift,
+    findEditableShift,
+    removeSelected,
+    requestDeleteSelected,
+    selectedIds,
+    gridEditSession,
+    togglePasteMode,
+    undoLastEdit,
+    undoSnapshot,
+    visibleSelectableShiftIds,
+  ]);
+
+  useEffect(() => {
+    if (!selectedIds.length && !pasteArmed && !shiftMenu && !cellMenu) {
+      return undefined;
+    }
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest(".schedule-page")) return;
+      if (pasteArmed && target.closest("[data-drop-cell='true']")) return;
+      if (isScheduleInteractionSurface(target)) return;
+      updateSelectedIds([]);
+      if (pasteArmed) clearPasteModeWithNotice();
+      setShiftMenu(null);
+      setCellMenu(null);
+    };
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [cellMenu, pasteArmed, selectedIds.length, shiftMenu]);
+
+  const requestCloseEditor = useCallback(() => {
+    if (editorDirty) {
+      setEditorDiscardConfirmOpen(true);
+      return;
+    }
+    setEditor(null);
+  }, [editorDirty]);
+  const discardEditorChanges = useCallback(() => {
+    setEditorDirty(false);
+    setEditorDiscardConfirmOpen(false);
+    setEditor(null);
+  }, []);
+  const dismissEditorFromBlankSurface = useCallback(
+    (target?: Element) => {
+      if (target && isScheduleSurfaceTarget(target)) {
+        suppressedScheduleClickTargetRef.current = target;
+      }
+      if (editor?.mode === "create") {
+        discardEditorChanges();
+        return;
+      }
+      requestCloseEditor();
+    },
+    [discardEditorChanges, editor?.mode, requestCloseEditor],
+  );
+  const activeEditorTarget = editor
+    ? editor.mode === "edit"
+      ? {
+          locationId: editor.shift.location_id,
+          employeeId: editor.shift.employee_id,
+          date: editor.shift.scheduled_date,
+          shiftId: editor.shift.id,
+        }
+      : {
+          locationId: editor.locationId,
+          employeeId: editor.employeeId,
+          date: editor.date,
+          shiftId: null,
+        }
+    : null;
 
   if (query.isPending)
     return (
@@ -352,190 +1774,759 @@ export function SchedulePage() {
       />
     );
 
-  const model = session
-    ? { ...query.data, shifts: session.shifts }
-    : query.data;
+  const model = { ...query.data, shifts: effectiveShifts };
+  const sortedModel = createSortedScheduleModel(model, employeeSortMode);
+  const publishDrafts = publishDraftOverride
+    ? [
+        ...drafts.filter((draft) => draft.id !== publishDraftOverride.id),
+        publishDraftOverride,
+      ]
+    : drafts;
+  const openPasteEditor = (
+    locationId: string,
+    employeeId: string | null,
+    date: string,
+    _point?: { readonly x: number; readonly y: number },
+  ) => {
+    if (!clipboard) return;
+    if (!employeeId) {
+      const message = "Employee not found";
+      setPasteBlockedReason(formatScheduleConflictMessage(message));
+      setShiftConflictMessages([message]);
+      setPasteConflictContext("Paste shift");
+      toast.error("Paste blocked", {
+        description:
+          "This paste was not applied. Review the reason before scheduling the shift.",
+      });
+      return;
+    }
+    const pasteInput = applyShiftClipboardSnapshot(clipboard, {
+      locationId,
+      employeeId,
+      date,
+    });
+    const conflictReasons = evaluateScheduleShiftConflicts(
+      model,
+      model.shifts,
+      pasteInput,
+      null,
+    );
+    if (conflictReasons.length > 0) {
+      const firstReason = conflictReasons[0];
+      const firstMessage = firstReason
+        ? formatScheduleConflictMessage(firstReason)
+        : "Scheduling policy blocks this assignment.";
+      const employeeLabel =
+        model.employees.find((employee) => employee.id === employeeId)
+          ?.display_name ?? "Open shift";
+      const locationLabel =
+        model.locations.find((location) => location.id === locationId)?.name ??
+        "Selected location";
+      const shiftTypeLabel =
+        model.shift_types.find(
+          (shiftType) => shiftType.id === clipboard.shift_type_id,
+        )?.name ?? "Shift";
+      const jobLabel =
+        model.jobs.find((job) => job.id === clipboard.job_id)?.name ?? "Job";
+      setPasteBlockedReason(firstMessage);
+      setShiftConflictMessages(conflictReasons);
+      setPasteConflictContext(
+        `${shiftTypeLabel} / ${jobLabel} / ${employeeLabel} / ${locationLabel} / ${date}`,
+      );
+      toast.error("Paste blocked", {
+        description:
+          "This paste was not applied. Review the reason before scheduling the shift.",
+      });
+      return;
+    }
+    setPasteBlockedReason(null);
+    setShiftConflictMessages([]);
+    setPasteConflictContext(null);
+    if (!context || !session) return;
+    void mutate(() =>
+      createScheduleShift(context.workspace.id, session, pasteInput),
+    ).then((next) => {
+      if (next) toast.success("Shift pasted");
+    });
+  };
   const periodLabel = formatPeriod(selectedDate, model.week_start, view);
-  const pastWeek =
-    model.week_start < currentWeekStart(today, model.week_start_day);
-
-  return (
-    <section className="schedule-page" aria-labelledby="schedule-title">
-      <header className="schedule-topbar">
-        <div className="schedule-command-group">
-          <button
-            type="button"
-            className="icon-button"
-            aria-label={`Previous ${view}`}
-            onClick={() => changePeriod(view === "day" ? -1 : -7)}
-          >
-            <ChevronLeft size={18} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className="schedule-view-mode"
-            aria-label={`Switch to ${view === "week" ? "daily" : "weekly"} view`}
-            onClick={() => setMode(view === "week" ? "day" : "week")}
-          >
-            {view === "week" ? "Weekly view" : "Daily view"}
-          </button>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label={`Next ${view}`}
-            onClick={() => changePeriod(view === "day" ? 1 : 7)}
-          >
-            <ChevronRight size={18} aria-hidden />
-          </button>
-          <details
-            className="schedule-command-menu"
-            name="schedule-topbar-menu"
-          >
-            <summary role="button">
-              <SlidersHorizontal size={15} aria-hidden /> Settings
-            </summary>
-            <div className="schedule-command-menu-panel">
-              <strong>Schedule</strong>
-              <button
-                type="button"
-                onClick={(event) => {
-                  closeScheduleMenu(event.currentTarget);
-                  const next = new URLSearchParams(search);
-                  next.set("date", today);
-                  next.set("view", view);
-                  setSearch(next);
-                }}
-              >
-                Today
-              </button>
-              {context?.permissions.includes("schedule.lineup.read") ? (
-                <Link to={`/app/schedule/lineup?date=${selectedDate}`}>
-                  Line-up
-                </Link>
-              ) : null}
-              {context?.permissions.some((permission) =>
-                [
-                  "schedule.time_off_requests.read",
-                  "schedule.shift_change_requests.read",
-                ].includes(permission),
-              ) ? (
-                <Link to="/app/schedule/requests">Requests</Link>
-              ) : null}
-            </div>
-          </details>
-          <button
-            type="button"
-            className="schedule-hide-unscheduled"
-            aria-pressed={hideUnscheduled}
-            onClick={() => setHideUnscheduled(!hideUnscheduled)}
-          >
-            {hideUnscheduled ? (
-              <Eye size={15} aria-hidden />
-            ) : (
-              <EyeOff size={15} aria-hidden />
-            )}
-            {hideUnscheduled ? "Show Unscheduled" : "Hide Unscheduled"}
-          </button>
-        </div>
-        <div className="schedule-action-group">
-          {context?.permissions.includes("schedule.export") && !session ? (
+  const isCurrentViewPeriod =
+    view === "day" ? selectedDate === today : model.week_start === currentWeek;
+  const selectedLocationIds = validIds(
+    search.get("locations"),
+    model.locations.map((item) => item.id),
+  );
+  const selectedShiftTypeIds = validIds(
+    search.get("shiftTypes"),
+    model.shift_types.map((item) => item.id),
+  );
+  const selectedJobIds = validIds(
+    search.get("jobs"),
+    model.jobs.map((item) => item.id),
+  );
+  const selectedEmployeeIds = validIds(
+    search.get("employees"),
+    sortedModel.employees.map((item) => item.id),
+  );
+  const exportLocations = filterScheduleExportLocations(
+    model.locations,
+    context?.permissions,
+  );
+  const filterChips = createScheduleFilterChips({
+    locations: model.locations,
+    shiftTypes: model.shift_types,
+    jobs: model.jobs,
+    employees: sortedModel.employees,
+    selectedLocationIds,
+    selectedShiftTypeIds,
+    selectedJobIds,
+    selectedEmployeeIds,
+    setQueryIds,
+  });
+  const publicationChipStatuses = createLocationPublicationChipStatuses(
+    model.locations,
+    gridEditSession?.shifts ?? model.shifts,
+    publicationStatus,
+  );
+  const canUnpublishPublishedSchedule = hasUnpublishablePublishedSchedule(
+    publicationChipStatuses,
+  );
+  const canPublishSchedule =
+    context?.permissions.includes("schedule.publish") && !pastWeek;
+  const publishActionTone = getSchedulePublicationActionTone(
+    publicationChipStatuses,
+  );
+  const publishedScheduleSummary = publicationStatus?.locations.find(
+    (item) => item.status === "published" && item.published_at,
+  );
+  const calendarMarkers = createScheduleCalendarMarkers(
+    model.closures,
+    model.important_dates,
+  );
+  const jumpToCurrentPeriod = () => {
+    const next = new URLSearchParams(search);
+    next.set("date", today);
+    next.set("view", view);
+    setSearch(next);
+  };
+  const toggleCurrentViewPeriod = () => {
+    if (!isCurrentViewPeriod) {
+      jumpToCurrentPeriod();
+      return;
+    }
+    setMode(view === "week" ? "day" : "week");
+  };
+  const dismissOpenTopbarDropdown = (): boolean => {
+    if (!topbarDropdownOpen) return false;
+    setTopbarDropdownOpen(false);
+    setTopbarDismissSignal((current) => current + 1);
+    return true;
+  };
+  const dismissOneScheduleLayer = (
+    preserveMatchingLocationHeader = false,
+    preserveSearchFilters = false,
+  ): boolean => {
+    if (dismissOpenTopbarDropdown()) {
+      return true;
+    }
+    if (topActionSurfaceOpen) {
+      closeTopActionSurfaces();
+      return true;
+    }
+    const liveSearch = new URLSearchParams(window.location.search);
+    if (conflict) {
+      setConflict(null);
+      return true;
+    }
+    if (publishOpen) {
+      setPublishOpen(false);
+      return true;
+    }
+    if (unpublishOpen) {
+      setUnpublishOpen(false);
+      return true;
+    }
+    if (autoFill) {
+      setAutoFill(null);
+      return true;
+    }
+    if (saveOpen) {
+      setSaveOpen(false);
+      return true;
+    }
+    if (sourceOpen) {
+      setSourceOpen(false);
+      return true;
+    }
+    if (templatesOpen) {
+      setTemplatesOpen(false);
+      return true;
+    }
+    if (exportOpen) {
+      setExportOpen(false);
+      return true;
+    }
+    if (logoOpen) {
+      setLogoOpen(false);
+      return true;
+    }
+    if (employeeCardId) {
+      setEmployeeCardId(null);
+      return true;
+    }
+    if (editor) {
+      if (editorDirty) {
+        setEditorDiscardConfirmOpen(true);
+        setShiftMenu(null);
+        setCellMenu(null);
+        return true;
+      }
+      setEditor(null);
+      setShiftMenu(null);
+      setCellMenu(null);
+      return true;
+    }
+    if (shiftMenu || cellMenu) {
+      setShiftMenu(null);
+      setCellMenu(null);
+      return true;
+    }
+    if (pasteArmed || selectedIdsRef.current.length) {
+      if (pasteArmed) clearPasteModeWithNotice();
+      updateSelectedIds([]);
+      return true;
+    }
+    if (preserveMatchingLocationHeader && liveSearch.has("locations")) {
+      const higherPrioritySearchLayer =
+        liveSearch.get("hideUnscheduled") === "true" ||
+        liveSearch.has("shiftTypes") ||
+        liveSearch.has("jobs") ||
+        liveSearch.has("employees");
+      if (!higherPrioritySearchLayer) return false;
+    }
+    if (preserveSearchFilters) return false;
+    const dismissal = dismissNextScheduleSearchLayer({
+      search: liveSearch,
+      modelWeekStart: model.week_start,
+      currentWeekStart: currentWeek,
+      today,
+    });
+    if (!dismissal) return false;
+    setSearch(dismissal.search);
+    if (dismissal.clearFocusedShift) setFocusedShiftId(null);
+    return true;
+  };
+  dismissOneScheduleLayerRef.current = dismissOneScheduleLayer;
+  const dismissFromBlankScheduleSurface = (
+    event: ReactPointerEvent<HTMLElement>,
+  ) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (
+      topActionSurfaceOpen &&
+      !target.closest(SCHEDULE_TOP_ACTION_SURFACE_SELECTOR)
+    ) {
+      closeTopActionSurfaces();
+      suppressedScheduleClickTargetRef.current = target;
+      event.preventDefault();
+      event.stopPropagation();
+      event.nativeEvent.stopImmediatePropagation();
+      return;
+    }
+    if (
+      (event.ctrlKey || event.metaKey || event.shiftKey) &&
+      target.closest("[data-shift-badge='true']")
+    ) {
+      return;
+    }
+    if (pasteArmed && isScheduleGridCellActivationTarget(target)) return;
+    if (!isBlankScheduleDismissTarget(target)) return;
+    const preserveMatchingLocationHeader =
+      isMatchingScheduleLocationHeaderTarget(target, selectedLocationIds);
+    const preserveSearchFilters = isScheduleGridCellActivationTarget(target);
+    if (
+      !dismissOneScheduleLayer(
+        preserveMatchingLocationHeader,
+        preserveSearchFilters,
+      )
+    ) {
+      return;
+    }
+    suppressedScheduleClickTargetRef.current = target;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const consumeDismissedScheduleClick = (event: MouseEvent<HTMLElement>) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest("[role='dialog'], [role='alertdialog']")) {
+      suppressedScheduleClickTargetRef.current = null;
+      return;
+    }
+    if (
+      (event.ctrlKey || event.metaKey || event.shiftKey) &&
+      target.closest("[data-shift-badge='true']")
+    ) {
+      suppressedScheduleClickTargetRef.current = null;
+      return;
+    }
+    const suppressedTarget = suppressedScheduleClickTargetRef.current;
+    suppressedScheduleClickTargetRef.current = null;
+    if (!isSuppressedScheduleClickTarget(suppressedTarget, target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const dismissOpenSurfaceBeforeGridActivation = (): boolean => {
+    if (topbarDropdownOpen) {
+      setTopbarDropdownOpen(false);
+      setTopbarDismissSignal((current) => current + 1);
+      return true;
+    }
+    if (topActionSurfaceOpen) {
+      closeTopActionSurfaces();
+      return true;
+    }
+    return false;
+  };
+  const canOpenLineup =
+    context?.permissions.includes("schedule.lineup.read") ?? false;
+  const canOpenRequests =
+    context?.permissions.some((permission) =>
+      [
+        "schedule.time_off_requests.read",
+        "schedule.shift_change_requests.read",
+      ].includes(permission),
+    ) ?? false;
+  const cellPresetItems =
+    gridEditSession &&
+    employeeSortMode === "byJob" &&
+    showRoleSeparators &&
+    showPresetShiftBadges
+      ? buildCellPresetMenuItems(model, cellMenu, useDefaultTimesForScheduling)
+      : [];
+  const openPresetCreateTarget = (target: PresetCreateTarget): void => {
+    const validation = validatePresetCreateTarget(
+      model,
+      target,
+      useDefaultTimesForScheduling,
+    );
+    if (!validation.allowed) {
+      toast.error("Preset shift is unavailable", {
+        description: validation.reason,
+      });
+      toast.info(formatPresetCreateContext(model, target));
+      return;
+    }
+    if (
+      context &&
+      gridEditSession &&
+      target.preset.startTime &&
+      target.preset.endTime
+    ) {
+      void mutate(() =>
+        createScheduleShift(context.workspace.id, gridEditSession, {
+          location_id: target.locationId,
+          employee_id: target.employeeId,
+          job_id: target.preset.jobId,
+          shift_type_id: target.preset.shiftTypeId,
+          scheduled_date: target.date,
+          start_time: target.preset.startTime!,
+          end_time: target.preset.endTime!,
+          unpaid_break_minutes: 30,
+          hide_time_on_badge: !useDefaultTimesForScheduling,
+          label_ids: [],
+          label_names: [],
+          note: "",
+        }),
+      );
+      return;
+    }
+    setEditor({
+      mode: "create",
+      locationId: target.locationId,
+      employeeId: target.employeeId,
+      date: target.date,
+      preset: target.preset,
+      x: target.point?.x,
+      y: target.point?.y,
+    });
+  };
+  const topBarActions = (
+    <>
+      {!isDiscardingEditSession && canExportSchedules ? (
+        <button
+          className={`schedule-export-action ${SCHEDULE_ACTION_BUTTON_CLASS}`}
+          data-schedule-top-action-trigger="export"
+          type="button"
+          onClick={openExportDialog}
+        >
+          <FileDown size={15} aria-hidden /> Export
+        </button>
+      ) : null}
+      {context?.permissions.includes("schedule.templates.manage") ? (
+        <button
+          type="button"
+          className={`schedule-template-action ${SCHEDULE_ACTION_BUTTON_CLASS}`}
+          data-schedule-top-action-trigger="templates"
+          onClick={openTemplatesDialog}
+        >
+          <LayoutTemplate size={15} aria-hidden /> Templates
+        </button>
+      ) : null}
+      {context?.permissions.includes("schedule.manage") ? (
+        <>
+          <DraftDropdownMenu
+            drafts={drafts}
+            activeDraftId={activeDraftId}
+            triggerLabel={
+              drafts.find((draft) => draft.id === activeDraftId)?.name ??
+              "New Schedule"
+            }
+            canEditPublishedSchedule={
+              !pastWeek &&
+              model.locations.some(
+                (location) => location.publication_status === "published",
+              )
+            }
+            canManageDrafts={!pastWeek && !gridEditSession}
+            canStartDraft={
+              !pastWeek && !gridEditSession && !isDiscardingEditSession
+            }
+            isStartingDraft={isDiscardingEditSession}
+            publishedSchedule={
+              publishedScheduleSummary?.published_at
+                ? {
+                    published_at: publishedScheduleSummary.published_at,
+                    published_by_name:
+                      publishedScheduleSummary.published_by_name,
+                  }
+                : null
+            }
+            publishedLocationStatuses={publicationStatus?.locations ?? []}
+            onOpen={() => {
+              closeTopActionSurfaces("newSchedule");
+              void refreshDrafts();
+            }}
+            onOpenChange={setNewScheduleMenuOpen}
+            dismissSignal={newScheduleDismissSignal}
+            topActionId="new-schedule"
+            onPreviewDraft={(draftId) => {
+              void previewDraftFromMenu(draftId);
+            }}
+            onEditDraft={(draftId) => void editDraftFromMenu(draftId)}
+            onStartBlankDraft={() => void startBlankDraftFromMenu()}
+            onEditPublishedSchedule={() => void editDraftFromMenu(null)}
+            onDeleteDraft={(draft) => void deleteDraftFromMenu(draft)}
+            onUnpublishSchedule={
+              canUnpublishPublishedSchedule
+                ? () => {
+                    setUnpublishOpen(true);
+                  }
+                : undefined
+            }
+            unpublishDisabledReason={
+              canUnpublishPublishedSchedule
+                ? null
+                : "No published schedule can be unpublished."
+            }
+          />
+        </>
+      ) : null}
+      {gridEditSession && !isDiscardingEditSession ? (
+        <SaveDraftMenu
+          drafts={drafts}
+          activeDraftId={gridEditSession.source_draft_id}
+          activeDraftName={
+            drafts.find((item) => item.id === gridEditSession.source_draft_id)
+              ?.name ?? null
+          }
+          publishedSchedule={
+            publishedScheduleSummary?.published_at
+              ? {
+                  published_at: publishedScheduleSummary.published_at,
+                  published_by_name: publishedScheduleSummary.published_by_name,
+                }
+              : null
+          }
+          isWorkingCopy={gridEditSession.source_kind === "published"}
+          trigger={
             <button
-              className="schedule-export-action"
               type="button"
-              onClick={() => void openExport()}
+              className={`schedule-publish-action ${SCHEDULE_ACTION_BUTTON_CLASS}`}
+              data-schedule-top-action-trigger={
+                canPublishSchedule ? "publish" : "save-draft"
+              }
+              data-publication-tone={publishActionTone}
             >
-              <FileDown size={15} aria-hidden /> Export
+              {canPublishSchedule ? (
+                <>
+                  <Send size={15} aria-hidden /> Publish
+                </>
+              ) : (
+                <>
+                  <Save size={15} aria-hidden /> Save draft
+                </>
+              )}
             </button>
-          ) : null}
-          {context?.permissions.includes("schedule.manage") && !session ? (
-            <details
-              className="schedule-action-menu"
-              name="schedule-topbar-menu"
+          }
+          onBeforeOpen={() => closeTopActionSurfaces("publish")}
+          onOpenChange={setPublishMenuOpen}
+          dismissSignal={publishMenuDismissSignal}
+          onSaveDraft={saveDraftFromMenu}
+          onSaveAndPublish={saveDraftAndOpenPublish}
+        />
+      ) : null}
+      {!gridEditSession && !isDiscardingEditSession && canPublishSchedule ? (
+        canUnpublishPublishedSchedule ? (
+          <div className="schedule-action-menu">
+            <button
+              className={`schedule-published-indicator ${SCHEDULE_ACTION_BUTTON_CLASS}`}
+              data-schedule-top-action-trigger="published"
+              data-publication-tone={publishActionTone}
+              type="button"
+              aria-expanded={publishMenuOpen}
+              onClick={() => {
+                const nextOpen = !publishMenuOpen;
+                closeTopActionSurfaces();
+                setPublishMenuOpen(nextOpen);
+              }}
             >
-              <summary role="button">
-                New Schedule <ChevronDown size={15} aria-hidden />
-              </summary>
+              <Check size={15} aria-hidden /> Published
+            </button>
+            {publishMenuOpen ? (
               <div className="schedule-action-menu-panel">
                 <button
                   type="button"
-                  onClick={(event) => {
-                    closeScheduleMenu(event.currentTarget);
-                    void openSources();
+                  onClick={() => {
+                    setPublishMenuOpen(false);
+                    void openPublish();
                   }}
                 >
-                  <Edit3 size={15} aria-hidden /> Edit or create
+                  Publish another draft
                 </button>
-                {context.permissions.includes("schedule.templates.manage") ? (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      closeScheduleMenu(event.currentTarget);
-                      void openTemplates();
-                    }}
-                  >
-                    <LayoutTemplate size={15} aria-hidden /> Templates
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPublishMenuOpen(false);
+                    setUnpublishOpen(true);
+                  }}
+                >
+                  Unpublish schedule
+                </button>
               </div>
-            </details>
-          ) : null}
-          {context?.permissions.includes("schedule.publish") &&
-          !session &&
-          !pastWeek ? (
-            model.locations.some(
-              (location) => location.publication_status === "published",
-            ) ? (
-              <details
-                className="schedule-published-menu"
-                name="schedule-topbar-menu"
-              >
-                <summary role="button">
-                  <Check size={15} aria-hidden /> Published
-                </summary>
-                <div className="schedule-action-menu-panel">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      closeScheduleMenu(event.currentTarget);
-                      setUnpublishOpen(true);
-                    }}
-                  >
-                    <EyeOff size={15} aria-hidden /> Unpublish
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      closeScheduleMenu(event.currentTarget);
-                      void openPublish();
-                    }}
-                  >
-                    <Send size={15} aria-hidden /> Publish another draft
-                  </button>
-                </div>
-              </details>
-            ) : (
-              <button
-                className="schedule-publish-action"
-                type="button"
-                onClick={() => void openPublish()}
-              >
-                <Send size={15} aria-hidden /> Publish
-              </button>
-            )
-          ) : null}
-        </div>
-        <h1 id="schedule-title" className="sr-only">
-          Schedule
-        </h1>
-        <span className="sr-only">{periodLabel}</span>
-      </header>
+            ) : null}
+          </div>
+        ) : (
+          <button
+            className={`schedule-publish-action ${SCHEDULE_ACTION_BUTTON_CLASS}`}
+            data-schedule-top-action-trigger="publish"
+            data-publication-tone={publishActionTone}
+            type="button"
+            onClick={() => void openPublish()}
+          >
+            <Send size={15} aria-hidden /> Publish
+          </button>
+        )
+      ) : null}
+    </>
+  );
+  const submitLogo = async (draft: ScheduleLogoSaveDraft): Promise<void> => {
+    if (!context) return;
+    setSavingLogo(true);
+    setLogoError(null);
+    try {
+      await saveScheduleLogo(context.workspace.id, draft);
+      await refresh();
+      setLogoOpen(false);
+    } catch (error) {
+      setLogoError(scheduleLogoErrorText(error));
+    } finally {
+      setSavingLogo(false);
+    }
+  };
+  const exportSurfaceProps = context
+    ? {
+        weekStart: model.week_start,
+        weekLabel: formatPeriod(selectedDate, model.week_start, "week"),
+        locations: exportLocations,
+        drafts,
+        presets: exportPresets,
+        scheduledExports,
+        recentExportEvents,
+        showShiftType,
+        showShiftLabels,
+        showClockTimes,
+        showRoleSeparators,
+        showPresetShiftBadges:
+          Boolean(gridEditSession) &&
+          employeeSortMode === "byJob" &&
+          showRoleSeparators &&
+          showPresetShiftBadges,
+        onClose: closeExport,
+        onPreview: (request: Parameters<typeof previewScheduleExport>[1]) =>
+          previewScheduleExport(context.workspace.id, request),
+        onPreviewHtml: (
+          request: Parameters<typeof previewScheduleExportHtml>[1],
+        ) => previewScheduleExportHtml(context.workspace.id, request),
+        onDownload: async (
+          request: Parameters<typeof downloadScheduleExport>[1],
+        ) => {
+          const blob = await downloadScheduleExport(
+            context.workspace.id,
+            request,
+          );
+          const recent = await listScheduleRecentExports(context.workspace.id);
+          setRecentExportEvents(recent.events);
+          return blob;
+        },
+        onSavePreset: (
+          name: string,
+          settings: ScheduleExportPreset["settings"],
+        ) =>
+          createScheduleExportPreset(context.workspace.id, name, settings).then(
+            (preset) => setExportPresets((items) => [...items, preset]),
+          ),
+        onDeletePreset: (presetId: string) =>
+          deleteScheduleExportPreset(context.workspace.id, presetId).then(() =>
+            setExportPresets((items) =>
+              items.filter((item) => item.id !== presetId),
+            ),
+          ),
+        onCreateScheduledExport: (
+          input: Parameters<typeof createScheduleExportSchedule>[1],
+        ) =>
+          createScheduleExportSchedule(context.workspace.id, input).then(
+            (schedule) =>
+              setScheduledExports((items) =>
+                [...items, schedule].sort((left, right) =>
+                  left.name.localeCompare(right.name),
+                ),
+              ),
+          ),
+        onToggleScheduledExport: (scheduleId: string, enabled: boolean) =>
+          updateScheduleExportSchedule(context.workspace.id, scheduleId, {
+            enabled,
+          }).then((schedule) =>
+            setScheduledExports((items) =>
+              items.map((item) => (item.id === schedule.id ? schedule : item)),
+            ),
+          ),
+        onDeleteScheduledExport: (scheduleId: string) =>
+          deleteScheduleExportSchedule(context.workspace.id, scheduleId).then(
+            () =>
+              setScheduledExports((items) =>
+                items.filter((item) => item.id !== scheduleId),
+              ),
+          ),
+      }
+    : null;
 
-      <ScheduleToolbar
-        model={model}
-        search={search}
-        setSearch={setSearch}
+  return (
+    <section
+      className="schedule-page"
+      aria-labelledby="schedule-title"
+      onPointerDownCapture={dismissFromBlankScheduleSurface}
+      onPointerCancelCapture={() => {
+        suppressedScheduleClickTargetRef.current = null;
+      }}
+      onClickCapture={consumeDismissedScheduleClick}
+    >
+      {topbarDropdownOpen ? (
+        <button
+          type="button"
+          className="schedule-topbar-dismiss-layer"
+          aria-label="Close open schedule menu"
+          tabIndex={-1}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setTopbarDropdownOpen(false);
+            setTopbarDismissSignal((current) => current + 1);
+          }}
+        />
+      ) : null}
+      <ScheduleTopBar
+        weekLabel={periodLabel}
+        view={view}
+        selectedDate={selectedDate}
+        weekStartDate={model.week_start}
+        weekStartDay={model.week_start_day}
+        calendarMarkers={calendarMarkers}
+        canOpenLineup={canOpenLineup}
+        canOpenRequests={canOpenRequests}
         layout={layout}
+        onLayoutChange={setLayout}
+        onPreviousViewPeriod={() => changePeriod(view === "day" ? -1 : -7)}
+        onNextViewPeriod={() => changePeriod(view === "day" ? 1 : 7)}
+        onCurrentViewPeriodClick={toggleCurrentViewPeriod}
+        isCurrentViewPeriod={isCurrentViewPeriod}
+        onJumpToToday={jumpToCurrentPeriod}
+        onDayPick={(date) => {
+          const next = new URLSearchParams(search);
+          next.set("date", date);
+          next.set("view", "day");
+          setSearch(next);
+        }}
+        onWeekJump={(date) => {
+          const next = new URLSearchParams(search);
+          next.set("date", date);
+          next.set("view", "week");
+          setSearch(next);
+        }}
+        hideUnscheduled={hideUnscheduled}
+        onToggleHideUnscheduled={toggleHideUnscheduled}
+        showUnassignedShifts={showUnassignedShifts}
+        onToggleUnassignedShifts={() =>
+          setShowUnassignedShifts((current) => !current)
+        }
+        unassignedFrozen={unassignedFrozen}
+        onToggleUnassignedFrozen={() =>
+          setUnassignedFrozen((current) => !current)
+        }
+        dropdownDismissSignal={topbarDismissSignal}
+        onDropdownOpenChange={setTopbarDropdownOpen}
+        showShiftType={showShiftType}
+        onToggleShiftType={() => setShowShiftType((current) => !current)}
+        showShiftLabels={showShiftLabels}
+        onToggleShiftLabels={() => setShowShiftLabels((current) => !current)}
+        showClockTimes={showClockTimes}
+        onToggleClockTimes={() => setShowClockTimes((current) => !current)}
+        showTotalHours={showTotalHours}
+        onToggleTotalHours={() => setShowTotalHours((current) => !current)}
+        showRoleSeparators={showRoleSeparators}
+        onToggleRoleSeparators={() =>
+          setShowRoleSeparators((current) => !current)
+        }
+        showPresetShiftBadges={showPresetShiftBadges}
+        onTogglePresetShiftBadges={() =>
+          setShowPresetShiftBadges((current) => !current)
+        }
+        useDefaultTimesForScheduling={useDefaultTimesForScheduling}
+        onToggleUseDefaultTimesForScheduling={() =>
+          setUseDefaultTimesForScheduling((current) => !current)
+        }
+        employeeSortMode={employeeSortMode}
+        onEmployeeSortModeChange={setEmployeeSortMode}
+        locations={model.locations}
+        selectedLocationIds={selectedLocationIds}
+        onLocationFilterChange={(ids) => setQueryIds("locations", ids)}
+        shiftTypes={model.shift_types}
+        selectedShiftTypeIds={selectedShiftTypeIds}
+        onShiftTypeFilterChange={(ids) => setQueryIds("shiftTypes", ids)}
+        jobs={model.jobs}
+        departments={model.departments}
+        selectedJobIds={selectedJobIds}
+        onJobFilterChange={(ids) => setQueryIds("jobs", ids)}
+        employees={sortedModel.employees}
+        selectedEmployeeIds={selectedEmployeeIds}
+        onEmployeeFilterChange={(ids) => setQueryIds("employees", ids)}
+        actions={topBarActions}
       />
+      <ScheduleFilterCommandStrip chips={filterChips} />
       {operationError ? (
         <div className="schedule-operation-error" role="alert">
           {operationError}
@@ -548,108 +2539,177 @@ export function SchedulePage() {
           </button>
         </div>
       ) : null}
-      {session ? (
-        <div className="schedule-edit-banner" role="status">
-          <div>
-            <strong>Editing draft</strong>
-            <span>
-              {session.dirty ? "Unsaved changes" : "Working copy ready"}
-            </span>
-          </div>
-          {selectedIds.length ? (
+      {otherScheduleViewers.length ? (
+        <div className="schedule-viewer-presence" role="status">
+          <span aria-hidden />
+          <strong>
+            {otherScheduleViewers.length} other{" "}
+            {otherScheduleViewers.length === 1 ? "viewer" : "viewers"}
+          </strong>
+          <small>
+            {otherScheduleViewers.some((viewer) => viewer.mode === "edit")
+              ? "Someone is editing this schedule"
+              : "Viewing this schedule"}
+          </small>
+        </div>
+      ) : null}
+      {gridEditSession ? (
+        <div className="schedule-edit-banner" role="toolbar">
+          {gridEditSession && selectedIds.length ? (
             <button
               type="button"
               className="danger"
-              onClick={() => void removeSelected()}
+              onClick={() => void requestDeleteSelected(selectedIds)}
             >
               <Trash2 size={15} /> Delete {selectedIds.length}
             </button>
           ) : null}
-          {context?.permissions.includes("schedule.templates.manage") ? (
-            <button type="button" onClick={() => void openTemplates()}>
-              <LayoutTemplate size={15} /> Templates
+          {gridEditSession && undoSnapshot ? (
+            <button type="button" onClick={undoLastEdit}>
+              Undo
             </button>
           ) : null}
-          <button type="button" onClick={() => void openAutoFill()}>
-            <WandSparkles size={15} /> Auto-fill
-          </button>
-          <button type="button" onClick={() => setSaveOpen(true)}>
-            <Save size={15} /> Save draft
-          </button>
+          {gridEditSession && clipboard ? (
+            <button
+              type="button"
+              aria-pressed={pasteArmed}
+              onClick={togglePasteMode}
+            >
+              <ClipboardPaste size={15} />{" "}
+              {pasteArmed ? "Paste mode on" : "Paste mode off"}
+            </button>
+          ) : null}
+          {gridEditSession ? (
+            <button type="button" onClick={() => void openAutoFill()}>
+              <WandSparkles size={15} /> Auto-fill
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={() =>
-              void (async () => {
-                if (
-                  !context ||
-                  !window.confirm(
-                    session.dirty
-                      ? "Discard all unsaved changes?"
-                      : "Close this editing session?",
-                  )
-                )
-                  return;
-                await discardScheduleEditSession(
-                  context.workspace.id,
-                  session.id,
-                );
-                setSession(null);
-                setSelectedIds([]);
-              })()
-            }
+            disabled={isDiscardingEditSession}
+            onClick={requestDiscardEditSession}
           >
             <X size={15} /> Discard
           </button>
         </div>
-      ) : (
-        <div className="schedule-readonly-banner" role="status">
-          <span>Published schedule</span>
-          <strong>View only</strong>
-        </div>
-      )}
+      ) : null}
       <ScheduleGrid
-        model={model}
+        model={sortedModel}
         search={search}
         selectedDate={selectedDate}
         view={view}
         layout={layout}
         hideUnscheduled={hideUnscheduled}
-        session={session}
-        selectedIds={selectedIds}
-        clipboard={clipboard}
-        onSelect={(id, additive) =>
-          setSelectedIds((current) =>
-            additive
-              ? current.includes(id)
-                ? current.filter((item) => item !== id)
-                : [...current, id]
-              : [id],
-          )
+        showShiftType={showShiftType}
+        showShiftLabels={showShiftLabels}
+        showClockTimes={showClockTimes}
+        showTotalHours={showTotalHours}
+        showUnassignedShifts={showUnassignedShifts}
+        unassignedFrozen={unassignedFrozen}
+        showJobColorDot={false}
+        showRoleSeparators={showRoleSeparators}
+        showPresetShiftBadges={showPresetShiftBadges}
+        useDefaultTimesForScheduling={useDefaultTimesForScheduling}
+        employeeSortMode={employeeSortMode}
+        session={gridEditSession}
+        activeEditorTarget={activeEditorTarget}
+        focusedShiftId={focusedShiftId}
+        selectedIds={gridEditSession ? selectedIds : []}
+        clipboard={gridEditSession ? clipboard : null}
+        pasteArmed={gridEditSession ? pasteArmed : false}
+        organizationName={context?.workspace.name ?? "Workspace"}
+        organizationLogoUrl={context?.workspace.logo_url ?? null}
+        organizationLogoPlacement={
+          context?.workspace.schedule_logo_placement ?? null
         }
-        onEdit={(shift) => setEditor({ mode: "edit", shift })}
-        onCreate={(locationId, employeeId, date) =>
-          setEditor({ mode: "create", locationId, employeeId, date })
+        onManageLogo={
+          context?.permissions.includes("workspace.manage")
+            ? () => setLogoOpen(true)
+            : undefined
         }
-        onCopy={setClipboard}
-        onPaste={(locationId, employeeId, date) =>
-          clipboard &&
+        onOpenEmployeeCard={(employeeId) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
+          setEditor(null);
+          setShiftMenu(null);
+          setCellMenu(null);
+          setEmployeeCardSection("profile");
+          setEmployeeCardId(employeeId);
+        }}
+        onSelect={(id, additive) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
+          updateSelectedIds((current) =>
+            resolveScheduleShiftSelectionIds({
+              currentIds: current,
+              focusedShiftId,
+              shiftId: id,
+              additive,
+            }),
+          );
+        }}
+        onFocusShift={(shift) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
+          focusShiftBadge(shift);
+        }}
+        onEdit={(shift, point) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
+          setEditor({ mode: "edit", shift, x: point?.x, y: point?.y });
+        }}
+        onCreate={(locationId, employeeId, date, point) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
           setEditor({
             mode: "create",
             locationId,
             employeeId,
             date,
-            copy: clipboard,
-          })
-        }
+            x: point?.x,
+            y: point?.y,
+          });
+        }}
+        onPresetCreate={(target) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
+          openPresetCreateTarget(target);
+        }}
+        onCopy={(shift) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
+          copyShift(shift, { armPaste: true });
+        }}
+        onClearSelection={() => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
+          if (!gridEditSession) {
+            clearPreviewFocusedShift();
+            return;
+          }
+          updateSelectedIds([]);
+        }}
+        onShiftContextMenu={(shift, event) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          openShiftContextMenu(shift, event);
+        }}
+        onCellContextMenu={(target, event) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          openCellContextMenu(target, event);
+        }}
+        onPaste={(locationId, employeeId, date, point) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
+          openPasteEditor(locationId, employeeId, date, point);
+        }}
         onMove={(shift, locationId, employeeId, date) => {
-          if (!context || !session) return;
+          if (!context || !gridEditSession) return;
           void mutate(() =>
             updateScheduleShift(
               context.workspace.id,
-              session,
+              gridEditSession,
               shift.id,
               shift.revision,
-              toMutation(shift, {
+              toScheduleShiftMutation(shift, {
                 location_id: locationId,
                 employee_id: employeeId,
                 scheduled_date: date,
@@ -657,66 +2717,370 @@ export function SchedulePage() {
             ),
           );
         }}
+        onCopyMove={(shift, locationId, employeeId, date) => {
+          if (!context || !gridEditSession) return;
+          void mutate(() =>
+            createScheduleShift(
+              context.workspace.id,
+              gridEditSession,
+              toScheduleShiftMutation(shift, {
+                location_id: locationId,
+                employee_id: employeeId,
+                scheduled_date: date,
+              }),
+            ),
+          );
+        }}
+        onDayHeaderClick={(date, locationIds) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
+          selectScheduleDay(date, locationIds);
+        }}
+        onLocationHeaderClick={(locationIds) => {
+          if (dismissOpenSurfaceBeforeGridActivation()) return;
+          setFocusedShiftId(null);
+          setQueryIds("locations", locationIds);
+        }}
       />
-      {sourceOpen ? (
-        <EditSourceDialog
+      {gridEditSession &&
+      (pasteArmed || pasteBlockedReason || pasteModeNotice) ? (
+        <div
+          className="schedule-paste-status"
+          role="status"
+          aria-label="Paste status"
+          data-blocked={pasteBlockedReason ? "true" : "false"}
+        >
+          {pasteBlockedReason ?? pasteModeNotice ?? "Paste mode on"}
+        </div>
+      ) : null}
+      <ScheduleContextMenu
+        target={gridEditSession ? shiftMenu : null}
+        shifts={gridEditSession?.shifts ?? []}
+        onEdit={(shift) => {
+          setShiftMenu(null);
+          setEditor({ mode: "edit", shift, x: shiftMenu?.x, y: shiftMenu?.y });
+        }}
+        onCopy={(shift) => {
+          setShiftMenu(null);
+          copyShift(shift, { armPaste: true });
+        }}
+        onDelete={(shiftId) => {
+          setShiftMenu(null);
+          void deleteShiftById(shiftId);
+        }}
+        onUnpublish={(shiftId) => {
+          setShiftMenu(null);
+          void deleteShiftById(shiftId);
+        }}
+        onRestore={(shiftId) => {
+          setShiftMenu(null);
+          void restoreShiftById(shiftId);
+        }}
+        onDismiss={() => setShiftMenu(null)}
+        publicationStateForShift={publicationStateForShift}
+      />
+      {context ? (
+        <ScheduleLogoUploadDialog
+          open={logoOpen}
+          organizationName={context.workspace.name}
+          logoUrl={context.workspace.logo_url}
+          logoPlacement={context.workspace.schedule_logo_placement}
+          logoFileName={context.workspace.logo_file_name}
+          logoUpdatedAt={context.workspace.logo_updated_at}
+          error={logoError}
+          saving={savingLogo}
+          onOpenChange={setLogoOpen}
+          onSave={(draft) => void submitLogo(draft)}
+        />
+      ) : null}
+      <ScheduleCellContextMenu
+        target={gridEditSession ? cellMenu : null}
+        canPaste={Boolean(gridEditSession && clipboard)}
+        presetItems={cellPresetItems}
+        onPresetSelect={(target, shiftTypeId) => {
+          setCellMenu(null);
+          const shiftType = model.shift_types.find(
+            (item) => item.id === shiftTypeId,
+          );
+          if (!target.jobId || !shiftType) {
+            toast.error("Preset shift type not found");
+            return;
+          }
+          openPresetCreateTarget({
+            locationId: target.locationId,
+            employeeId: target.employeeId,
+            date: target.date,
+            point: { x: target.x, y: target.y },
+            preset: {
+              jobId: target.jobId,
+              shiftTypeId: shiftType.id,
+              startTime: shiftType.default_start_time,
+              endTime: shiftType.default_end_time,
+            },
+          });
+        }}
+        onPaste={(target) => {
+          setCellMenu(null);
+          openPasteEditor(target.locationId, target.employeeId, target.date, {
+            x: target.x,
+            y: target.y,
+          });
+        }}
+        onDismiss={() => setCellMenu(null)}
+      />
+      {sourceOpen && !pastWeek ? (
+        <EnterEditModeDialog
+          open={sourceOpen}
           drafts={drafts}
-          onClose={() => setSourceOpen(false)}
-          onAcquire={acquire}
+          onOpenChange={setSourceOpen}
+          onStartBlank={() => acquire("blank")}
+          onLoadDraft={(draftId) => acquire("draft", draftId)}
+          onDeleteDraft={(draft) => void deleteDraftFromMenu(draft)}
         />
       ) : null}
       {conflict ? (
-        <MessageDialog
-          title="This week is locked"
-          detail={conflict}
-          onClose={() => setConflict(null)}
-        />
-      ) : null}
-      {idleSeconds !== null ? (
-        <IdleDialog
-          seconds={idleSeconds}
-          onContinue={() => {
-            setLastActivity(Date.now());
-            setIdleSeconds(null);
+        <ScheduleEditLockedDialogComponent
+          open
+          holderName={conflict.holderName}
+          scope={activeDraftId ? "draft" : "published"}
+          draftName={
+            drafts.find((draft) => draft.id === activeDraftId)?.name ?? null
+          }
+          weekLabel={formatPeriod(selectedDate, model.week_start, "week")}
+          lastHeartbeat={conflict.lastHeartbeat}
+          onViewSchedule={() => setConflict(null)}
+          onTryAgain={() => {
+            setConflict(null);
+            void acquire("published");
           }}
         />
       ) : null}
-      {editor && session && context ? (
-        <ShiftEditor
-          model={model}
-          state={editor}
-          onClose={() => setEditor(null)}
-          onSubmit={(shift) =>
-            void mutate(() =>
-              editor.mode === "edit"
-                ? updateScheduleShift(
-                    context.workspace.id,
-                    session,
-                    editor.shift.id,
-                    editor.shift.revision,
-                    shift,
-                  )
-                : createScheduleShift(context.workspace.id, session, shift),
-            ).then((next) => next && setEditor(null))
-          }
+      {idleSeconds !== null ? (
+        <ScheduleEditTimeoutDialogComponent
+          open={idleSeconds !== null}
+          secondsRemaining={idleSeconds}
+          isSaving={false}
+          error={null}
+          onSaveDraft={() => {
+            setSaveOpen(true);
+          }}
+          onContinue={() => {
+            lastActivityRef.current = Date.now();
+            window.dispatchEvent(new Event("pointerdown"));
+          }}
         />
       ) : null}
-      {saveOpen && session && context ? (
+      {editor && gridEditSession && context ? (
+        <ShiftQuickEditor
+          model={model}
+          state={editor}
+          timeFormat={model.settings.time_format}
+          formatTime={formatTime}
+          addDays={addDays}
+          scheduleClosureCoversDate={scheduleClosureCoversDate}
+          presentation="floating"
+          onClose={requestCloseEditor}
+          onDismiss={dismissEditorFromBlankSurface}
+          shouldSuppressDismissPointerDown={isScheduleSurfaceTarget}
+          onDirtyChange={setEditorDirty}
+          onReload={() => {
+            setEditorDirty(false);
+            setEditor(null);
+            void query.refetch();
+          }}
+          onBlockedSubmit={(messages) => {
+            setShiftConflictMessages(messages);
+            setPasteConflictContext(null);
+            if (editor.mode === "create" && editor.copy) {
+              setPasteBlockedReason(messages.join(" "));
+            }
+          }}
+          onDelete={async (shiftId) => {
+            let stale = false;
+            const shift = findEditableShift(shiftId);
+            if (!shift) {
+              setEditorDirty(false);
+              setEditor(null);
+              return "saved";
+            }
+            const next = await mutate(
+              () =>
+                deleteScheduleShift(
+                  context.workspace.id,
+                  gridEditSession,
+                  shift.id,
+                  shift.revision,
+                ),
+              (error) => {
+                stale = isScheduleStaleError(error);
+              },
+            );
+            if (stale) return "stale";
+            if (next) {
+              updateSelectedIds((current) =>
+                current.filter((item) => item !== shiftId),
+              );
+              setEditorDirty(false);
+              setEditor(null);
+              return "saved";
+            }
+            return null;
+          }}
+          onSubmit={async (shift, count) => {
+            const run = async () => {
+              if (editor.mode === "edit") {
+                return updateScheduleShift(
+                  context.workspace.id,
+                  gridEditSession,
+                  editor.shift.id,
+                  editor.shift.revision,
+                  shift,
+                );
+              }
+              let nextSession = gridEditSession;
+              for (let index = 0; index < count; index += 1) {
+                nextSession = await createScheduleShift(
+                  context.workspace.id,
+                  nextSession,
+                  shift,
+                );
+              }
+              return nextSession;
+            };
+            let stale = false;
+            const next = await mutate(run, (error) => {
+              stale = isScheduleStaleError(error);
+            });
+            if (stale) return "stale";
+            if (next) {
+              if (editor.mode === "create" && editor.copy) {
+                setPasteBlockedReason(null);
+              }
+              setEditorDirty(false);
+              setEditor(null);
+              return "saved";
+            }
+            return null;
+          }}
+        />
+      ) : null}
+      {editorDiscardConfirmOpen ? (
+        <div className="schedule-discard-layer" role="presentation">
+          <button
+            type="button"
+            className="schedule-discard-backdrop"
+            aria-label="Keep editing shift"
+            onClick={() => setEditorDiscardConfirmOpen(false)}
+          />
+          <section
+            className="schedule-discard-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="schedule-shift-popover-discard-title"
+          >
+            <header>
+              <span>
+                <AlertTriangle size={18} aria-hidden />
+              </span>
+              <div>
+                <h2 id="schedule-shift-popover-discard-title">
+                  Discard unsaved shift changes?
+                </h2>
+                <p>
+                  This shift has unsaved changes. Discard them or keep editing.
+                </p>
+              </div>
+            </header>
+            <footer>
+              <button
+                type="button"
+                onClick={() => setEditorDiscardConfirmOpen(false)}
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={discardEditorChanges}
+              >
+                Discard
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+      <ScheduleConflictSheet
+        open={shiftConflictMessages.length > 0}
+        messages={shiftConflictMessages}
+        description={
+          pasteConflictContext
+            ? "This paste was not applied. Review the reason before scheduling the shift."
+            : undefined
+        }
+        contextLabel={pasteConflictContext ?? undefined}
+        onDismiss={() => {
+          setShiftConflictMessages([]);
+          setPasteConflictContext(null);
+        }}
+      />
+      <ScheduleSaveRecoverySheet
+        open={Boolean(saveRecovery)}
+        isRetrying={saveRecovery?.retrying ?? false}
+        canDiscard={Boolean(session)}
+        onRetry={() => void retrySaveRecovery()}
+        onKeepEditing={keepEditingAfterSaveFailure}
+        onDiscard={discardAfterSaveFailure}
+      />
+      <ScheduleDeleteSelectionDialog
+        open={deleteSelectionConfirmOpen && deleteSelectionIds.length > 0}
+        count={deleteSelectionIds.length}
+        onCancel={() => {
+          setDeleteSelectionConfirmOpen(false);
+          setDeleteSelectionIds([]);
+        }}
+        onConfirm={() => void removeSelected()}
+      />
+      <ScheduleDiscardEditDialog
+        open={discardConfirmOpen && Boolean(session)}
+        isDiscarding={isDiscardingEditSession}
+        onCancel={() => setDiscardConfirmOpen(false)}
+        onConfirm={discardEditSession}
+      />
+      <RetroactiveEditDialog
+        open={retroactiveEditState.open}
+        mode={retroactiveEditState.mode}
+        findings={retroactiveEditState.findings}
+        messages={retroactiveEditState.messages}
+        onConfirm={confirmRetroactiveEdit}
+        onOpenChange={setRetroactiveEditOpen}
+      />
+      {saveOpen && gridEditSession && context ? (
         <SaveDraftDialog
           drafts={drafts}
           initialDraft={
-            drafts.find((item) => item.id === session.source_draft_id) ?? null
+            drafts.find(
+              (item) => item.id === gridEditSession.source_draft_id,
+            ) ?? null
           }
           onClose={() => setSaveOpen(false)}
           onSave={(name, draft) =>
-            void saveScheduleDraft(context.workspace.id, session, name, draft)
+            void saveDraftWithRetroactivePrompt(name, draft)
               .then((saved) => {
-                setDrafts((items) => [
-                  ...items.filter((item) => item.id !== saved.id),
-                  saved,
-                ]);
+                if (!saved) return;
+                setDrafts((items) => {
+                  const next = [
+                    ...items.filter((item) => item.id !== saved.id),
+                    saved,
+                  ];
+                  updateDraftCache(next);
+                  return next;
+                });
                 setSaveOpen(false);
+                setPreviewDraftShifts(effectiveShifts);
                 setSession(null);
+                setScheduleMode("preview", saved.id);
+                setPendingOps([]);
+                clearUndoStack();
+                invalidateScheduleCaches(saved.id);
                 void query.refetch();
               })
               .catch((error: Error) => setOperationError(error.message))
@@ -725,63 +3089,138 @@ export function SchedulePage() {
       ) : null}
       {publishOpen && context ? (
         <PublishScheduleDialog
-          drafts={drafts}
+          drafts={publishDrafts}
+          activeDraftId={publishDraftOverride?.id ?? activeDraftId}
           locations={model.locations}
-          onClose={() => setPublishOpen(false)}
-          onPreview={(draftId, locationIds) =>
+          departments={model.departments}
+          employees={sortedModel.employees}
+          initialLocationIds={pendingOpsLocationIds}
+          onClose={() => {
+            setPublishOpen(false);
+            setPublishDraftOverride(null);
+          }}
+          onPreview={(draftId, locationIds, departmentScope) =>
             previewSchedulePublication(
               context.workspace.id,
               draftId,
               locationIds,
+              departmentScope,
             )
           }
-          onPublish={(preview, overrides) =>
-            publishScheduleDraft(context.workspace.id, preview, overrides).then(
-              () => {
-                setPublishOpen(false);
-                void query.refetch();
-              },
-            )
+          onPublish={(
+            preview,
+            overrides,
+            notifyEmployeeIds,
+            preflightAck,
+            departmentScope,
+          ) =>
+            publishScheduleDraft(
+              context.workspace.id,
+              preview,
+              overrides,
+              notifyEmployeeIds,
+              preflightAck,
+              departmentScope,
+            ).then((result) => {
+              if (result.status !== "published") {
+                throw new ScheduleRequestError(
+                  "Schedule publish requires review",
+                  409,
+                  result,
+                );
+              }
+              toast.success(
+                `Published ${result.location_ids.length} locations · ${result.published_shift_count} changes`,
+                result.notification_count
+                  ? {
+                      description: `${result.notification_count} employees notified`,
+                    }
+                  : undefined,
+              );
+              setPublishOpen(false);
+              setScheduleMode("preview", null);
+              invalidateScheduleCaches(preview.draft_id);
+              void refreshPublicationStatus();
+              void query.refetch();
+            })
           }
         />
       ) : null}
       {unpublishOpen && context ? (
         <UnpublishScheduleDialog
-          weekStart={model.week_start}
-          locations={model.locations.filter(
-            (location) => location.publication_status === "published",
-          )}
-          onClose={() => setUnpublishOpen(false)}
-          onPreview={(locationIds) =>
-            previewScheduleUnpublish(
-              context.workspace.id,
-              model.week_start,
-              locationIds,
-            )
-          }
-          onUnpublish={(preview) =>
-            unpublishSchedule(context.workspace.id, preview).then(() => {
+          open={unpublishOpen}
+          weekLabel={formatPeriod(selectedDate, model.week_start, "week")}
+          locations={model.locations}
+          statuses={publicationChipStatuses}
+          isUnpublishing={isUnpublishing}
+          onOpenChange={setUnpublishOpen}
+          onConfirm={async (locationIds) => {
+            setIsUnpublishing(true);
+            try {
+              const preview = await previewScheduleUnpublish(
+                context.workspace.id,
+                model.week_start,
+                locationIds,
+              );
+              if (preview.status !== "unpublish_ready") {
+                throw new Error("Past schedule weeks cannot be unpublished.");
+              }
+              const result = await unpublishSchedule(
+                context.workspace.id,
+                preview,
+              );
+              toast.success(
+                `Unpublished ${result.location_ids.length} locations · ${result.kept_worked_count ?? 0} worked shifts kept`,
+              );
               setUnpublishOpen(false);
+              invalidateScheduleCaches(null);
+              const refreshedDrafts = await refreshDrafts();
+              const previewDraftId =
+                (activeDraftId &&
+                refreshedDrafts.some((draft) => draft.id === activeDraftId)
+                  ? activeDraftId
+                  : refreshedDrafts[0]?.id) ?? null;
+              if (previewDraftId) {
+                await previewDraftFromMenu(previewDraftId);
+              } else {
+                setPreviewDraftShifts(null);
+                setScheduleMode("preview", null);
+              }
+              void refreshPublicationStatus();
               void query.refetch();
-            })
-          }
+            } finally {
+              setIsUnpublishing(false);
+            }
+          }}
+        />
+      ) : null}
+      {employeeCardId ? (
+        <EmployeeDrawer
+          employeeId={employeeCardId}
+          creating={false}
+          section={employeeCardSection}
+          onSectionChange={setEmployeeCardSection}
+          onClose={() => setEmployeeCardId(null)}
+          onCreated={(employeeId) => setEmployeeCardId(employeeId)}
         />
       ) : null}
       {templatesOpen && context ? (
         <ScheduleTemplatesDialog
           templates={templates}
           drafts={drafts}
-          session={session}
-          onClose={() => setTemplatesOpen(false)}
+          session={gridEditSession}
+          departments={model.departments}
+          onClose={closeTemplates}
           onCreate={(draftId, name, stripAssignments) =>
             createScheduleTemplate(
               context.workspace.id,
               draftId,
               name,
               stripAssignments,
-            ).then((result) =>
-              setTemplates((items) => [...items, result.template]),
-            )
+            ).then((result) => {
+              toast.success(`Template "${name}" saved`);
+              setTemplates((items) => [...items, result.template]);
+            })
           }
           onRename={(template, name) =>
             renameScheduleTemplate(
@@ -789,2233 +3228,237 @@ export function SchedulePage() {
               template.id,
               name,
               template.revision,
-            ).then((result) =>
+            ).then((result) => {
+              toast.success(`Template renamed to "${name}"`);
               setTemplates((items) =>
                 items.map((item) =>
                   item.id === template.id ? result.template : item,
                 ),
-              ),
-            )
+              );
+            })
           }
           onDelete={(template) =>
             deleteScheduleTemplate(
               context.workspace.id,
               template.id,
               template.revision,
-            ).then(() =>
-              setTemplates((items) =>
-                items.filter((item) => item.id !== template.id),
-              ),
             )
+              .then(() => {
+                toast.success(`Template "${template.name}" deleted`);
+                setTemplates((items) =>
+                  items.filter((item) => item.id !== template.id),
+                );
+              })
+              .catch((error: unknown) => {
+                toast.error("The template could not be deleted.");
+                throw error;
+              })
           }
-          onApply={(templateId, mode) =>
-            session
+          onApply={(templateId, mode, departmentKeys) =>
+            gridEditSession
               ? applyScheduleTemplate(
                   context.workspace.id,
-                  session,
+                  gridEditSession,
                   templateId,
                   mode,
-                ).then((result) => {
-                  setSession(result.session);
-                  setTemplatesOpen(false);
-                })
+                  departmentKeys,
+                )
+                  .then((result) => {
+                    const templateName =
+                      templates.find((item) => item.id === templateId)?.name ??
+                      "Template";
+                    toast.success(
+                      `Applied "${templateName}": ${result.applied_shift_count} ${result.applied_shift_count === 1 ? "shift" : "shifts"} added`,
+                    );
+                    rememberUndoSnapshot(gridEditSession);
+                    setSession(result.session);
+                    closeTemplates();
+                  })
+                  .catch((error: unknown) => {
+                    toast.error(
+                      "The template could not be applied. Try again.",
+                    );
+                    throw error;
+                  })
               : Promise.resolve()
           }
         />
       ) : null}
-      {autoFill && context && session ? (
-        <ScheduleAutoFillDialog
+      {autoFill && context && gridEditSession ? (
+        <AutoFillReviewOverlay
           preview={autoFill}
           onClose={() => setAutoFill(null)}
           onApply={(assignments) =>
             applyScheduleAutoFill(
               context.workspace.id,
-              session,
+              gridEditSession,
               autoFill,
               assignments,
             ).then((result) => {
+              rememberUndoSnapshot(gridEditSession);
               setSession(result.session);
-              setAutoFill(null);
               if (result.rejected.length)
                 setOperationError(
                   `${result.rejected.length} auto-fill assignment could not be applied.`,
                 );
+              return result;
             })
           }
         />
       ) : null}
-      {exportOpen && context ? (
-        <ScheduleExportDialog
-          weekStart={model.week_start}
-          locations={model.locations}
-          drafts={drafts}
-          presets={exportPresets}
-          onClose={() => setExportOpen(false)}
-          onPreview={(request) =>
-            previewScheduleExport(context.workspace.id, request)
-          }
-          onDownload={(request) =>
-            downloadScheduleExport(context.workspace.id, request)
-          }
-          onSavePreset={(name, settings) =>
-            createScheduleExportPreset(
-              context.workspace.id,
-              name,
-              settings,
-            ).then((preset) => setExportPresets((items) => [...items, preset]))
-          }
-          onDeletePreset={(presetId) =>
-            deleteScheduleExportPreset(context.workspace.id, presetId).then(
-              () =>
-                setExportPresets((items) =>
-                  items.filter((item) => item.id !== presetId),
-                ),
-            )
-          }
-        />
+      {exportOpen && exportSurfaceProps ? (
+        location.pathname === "/app/schedule/export" ? (
+          <ScheduleExportPanel {...exportSurfaceProps} />
+        ) : (
+          <ScheduleExportDialog {...exportSurfaceProps} />
+        )
       ) : null}
     </section>
   );
 }
 
-function ScheduleToolbar({
-  model,
-  search,
-  setSearch,
-  layout,
-}: {
-  readonly model: ScheduleReadModel;
-  readonly search: URLSearchParams;
-  readonly setSearch: ReturnType<typeof useSearchParams>[1];
-  readonly layout: "separate" | "unified";
-}) {
-  const setLayout = (value: "separate" | "unified") => {
-    const next = new URLSearchParams(search);
-    if (value === "separate") next.delete("layout");
-    else next.set("layout", value);
-    setSearch(next);
-  };
-  return (
-    <div className="schedule-toolbar">
-      <div className="schedule-filter-row" aria-label="Schedule filters">
-        <Filter size={16} aria-hidden />
-        <ScheduleFilter
-          label="Locations"
-          param="locations"
-          options={model.locations.map((item) => ({
-            id: item.id,
-            label: item.name,
-          }))}
-          search={search}
-          setSearch={setSearch}
-        />
-        <ScheduleFilter
-          label="Shift types"
-          param="shiftTypes"
-          options={model.shift_types.map((item) => ({
-            id: item.id,
-            label: item.name,
-          }))}
-          search={search}
-          setSearch={setSearch}
-        />
-        <ScheduleFilter
-          label="Jobs"
-          param="jobs"
-          options={model.jobs.map((item) => ({
-            id: item.id,
-            label: item.name,
-          }))}
-          search={search}
-          setSearch={setSearch}
-        />
-        <ScheduleFilter
-          label="Employees"
-          param="employees"
-          options={model.employees.map((item) => ({
-            id: item.id,
-            label: item.display_name,
-          }))}
-          search={search}
-          setSearch={setSearch}
-        />
-        {hasFilters(search) ? (
-          <button
-            type="button"
-            className="schedule-clear-filters"
-            onClick={() => {
-              const next = new URLSearchParams(search);
-              ["locations", "shiftTypes", "jobs", "employees"].forEach((key) =>
-                next.delete(key),
-              );
-              setSearch(next);
-            }}
-          >
-            Clear filters
-          </button>
-        ) : null}
-      </div>
-      <div className="schedule-layout-control" aria-label="Location layout">
-        <button
-          type="button"
-          title="Separate locations"
-          aria-pressed={layout === "separate"}
-          onClick={() => setLayout("separate")}
-        >
-          <Rows3 size={16} aria-hidden />
-          <span>Separate</span>
-        </button>
-        <button
-          type="button"
-          title="Unified locations"
-          aria-pressed={layout === "unified"}
-          onClick={() => setLayout("unified")}
-        >
-          <Layers2 size={16} aria-hidden />
-          <span>Unified</span>
-        </button>
-      </div>
-    </div>
-  );
+function scheduleLogoErrorText(error: unknown): string {
+  return error instanceof Error ? error.message : "Logo could not be saved.";
 }
 
-function ScheduleFilter({
-  label,
-  param,
-  options,
-  search,
-  setSearch,
+function ScheduleDeleteSelectionDialog({
+  open,
+  count,
+  onCancel,
+  onConfirm,
 }: {
-  readonly label: string;
-  readonly param: string;
-  readonly options: readonly { id: string; label: string }[];
-  readonly search: URLSearchParams;
-  readonly setSearch: ReturnType<typeof useSearchParams>[1];
+  readonly open: boolean;
+  readonly count: number;
+  readonly onCancel: () => void;
+  readonly onConfirm: () => void;
 }) {
-  const selected = parseIds(search.get(param));
-  const active = selected.length > 0;
-  const toggle = (id: string) => {
-    const nextSelected = new Set(
-      active ? selected : options.map((option) => option.id),
-    );
-    if (nextSelected.has(id)) nextSelected.delete(id);
-    else nextSelected.add(id);
-    const next = new URLSearchParams(search);
-    if (nextSelected.size > 0 && nextSelected.size < options.length) {
-      next.set(param, [...nextSelected].join(","));
-    } else {
-      next.delete(param);
-    }
-    setSearch(next);
-  };
-  return (
-    <details className="schedule-filter" data-active={active}>
-      <summary>
-        {active
-          ? `${label} (${selected.length})`
-          : `All ${label.toLowerCase()}`}
-      </summary>
-      <div className="schedule-filter-menu">
-        {options.map((option) => (
-          <label key={option.id}>
-            <input
-              type="checkbox"
-              checked={!active || selected.includes(option.id)}
-              onChange={() => toggle(option.id)}
-            />
-            <span>{option.label}</span>
-          </label>
-        ))}
-      </div>
-    </details>
-  );
-}
-
-function ScheduleGrid({
-  model,
-  search,
-  selectedDate,
-  view,
-  layout,
-  hideUnscheduled,
-  session,
-  selectedIds,
-  clipboard,
-  onSelect,
-  onEdit,
-  onCreate,
-  onCopy,
-  onPaste,
-  onMove,
-}: {
-  readonly model: ScheduleReadModel;
-  readonly search: URLSearchParams;
-  readonly selectedDate: string;
-  readonly view: ScheduleView;
-  readonly layout: "separate" | "unified";
-  readonly hideUnscheduled: boolean;
-  readonly session: ScheduleEditSession | null;
-  readonly selectedIds: readonly string[];
-  readonly clipboard: ScheduleEditableShift | null;
-  readonly onSelect: (id: string, additive: boolean) => void;
-  readonly onEdit: (shift: ScheduleEditableShift) => void;
-  readonly onCreate: (
-    locationId: string,
-    employeeId: string | null,
-    date: string,
-  ) => void;
-  readonly onCopy: (shift: ScheduleEditableShift) => void;
-  readonly onPaste: (
-    locationId: string,
-    employeeId: string | null,
-    date: string,
-  ) => void;
-  readonly onMove: (
-    shift: ScheduleEditableShift,
-    locationId: string,
-    employeeId: string | null,
-    date: string,
-  ) => void;
-}) {
-  const filtered = useMemo(() => filterModel(model, search), [model, search]);
-  const days =
-    view === "day"
-      ? [selectedDate]
-      : Array.from({ length: 7 }, (_, index) =>
-          addDays(model.week_start, index),
-        );
-  const locationGroups =
-    layout === "unified"
-      ? [
-          {
-            id: "unified",
-            name: filtered.locations.map((item) => item.name).join(" + "),
-            timezone: "",
-            sort_order: 0,
-            publication_status: filtered.locations.every(
-              (item) => item.publication_status === "published",
-            )
-              ? ("published" as const)
-              : ("unpublished" as const),
-            published_at: null,
-            sourceIds: filtered.locations.map((item) => item.id),
-          },
-        ]
-      : filtered.locations.map((item) => ({ ...item, sourceIds: [item.id] }));
-  const columns = Math.max(1, locationGroups.length * days.length);
-  const unassigned = filtered.shifts.filter(
-    (shift) => shift.employee_id === null,
-  );
-  const scheduledEmployeeIds = new Set(
-    filtered.shifts.flatMap((shift) =>
-      shift.employee_id ? [shift.employee_id] : [],
-    ),
-  );
-  const visibleEmployees = hideUnscheduled
-    ? filtered.employees.filter((employee) =>
-        scheduledEmployeeIds.has(employee.id),
-      )
-    : filtered.employees;
-  const rows: readonly (ScheduleEmployee | null)[] = unassigned.length
-    ? [null, ...visibleEmployees]
-    : visibleEmployees;
-
-  if (!filtered.locations.length)
-    return (
-      <ScheduleState
-        title="No locations match"
-        detail="Clear the location filter to restore the schedule grid."
-      />
-    );
-
-  return (
-    <div className="schedule-grid-scroll" data-testid="schedule-grid-scroll">
-      <div
-        className="schedule-grid-exact"
-        role="grid"
-        aria-label={`${view === "day" ? "Daily" : "Weekly"} published schedule`}
-        style={{
-          gridTemplateColumns: `220px repeat(${columns}, minmax(126px, 1fr))`,
-        }}
-      >
-        <div
-          className="schedule-grid-corner schedule-grid-sticky"
-          role="columnheader"
-        >
-          Team
-        </div>
-        {locationGroups.map((location) => (
-          <div
-            key={location.id}
-            className="schedule-location-header"
-            role="columnheader"
-            style={{ gridColumn: `span ${days.length}` }}
-          >
-            <span>
-              <MapPin size={13} aria-hidden />
-              {location.name || "Selected locations"}
-            </span>
-            <em data-status={location.publication_status}>
-              {location.publication_status === "published"
-                ? "Published"
-                : "Not published"}
-            </em>
-          </div>
-        ))}
-        <div
-          className="schedule-employee-header schedule-grid-sticky"
-          role="columnheader"
-        >
-          Employees
-        </div>
-        {locationGroups.flatMap((location) =>
-          days.map((day) => (
-            <div
-              key={`${location.id}-${day}`}
-              className="schedule-day-header"
-              role="columnheader"
-              data-today={day === new Date().toLocaleDateString("en-CA")}
-            >
-              <strong>{formatDay(day)}</strong>
-              <span>{formatDateNumber(day)}</span>
-            </div>
-          )),
-        )}
-        {rows.map((employee) => (
-          <ScheduleRow
-            key={employee?.id ?? "unassigned"}
-            employee={employee}
-            shifts={filtered.shifts}
-            locations={locationGroups}
-            days={days}
-            jobs={model.jobs}
-            shiftTypes={model.shift_types}
-            closures={model.closures}
-            editing={Boolean(session)}
-            selectedIds={selectedIds}
-            clipboard={clipboard}
-            onSelect={onSelect}
-            onEdit={onEdit}
-            onCreate={onCreate}
-            onCopy={onCopy}
-            onPaste={onPaste}
-            onMove={onMove}
-          />
-        ))}
-        {!rows.length ? (
-          <>
-            <div className="schedule-empty-row schedule-grid-sticky">
-              No employees
-            </div>
-            {Array.from({ length: columns }, (_, index) => (
-              <div className="schedule-cell" key={index} />
-            ))}
-          </>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ScheduleRow({
-  employee,
-  shifts,
-  locations,
-  days,
-  jobs,
-  shiftTypes,
-  closures,
-  editing,
-  selectedIds,
-  clipboard,
-  onSelect,
-  onEdit,
-  onCreate,
-  onCopy,
-  onPaste,
-  onMove,
-}: {
-  readonly employee: ScheduleEmployee | null;
-  readonly shifts: readonly ScheduleShift[];
-  readonly locations: readonly (ScheduleLocation & {
-    sourceIds: readonly string[];
-  })[];
-  readonly days: readonly string[];
-  readonly jobs: ScheduleReadModel["jobs"];
-  readonly shiftTypes: ScheduleReadModel["shift_types"];
-  readonly closures: ScheduleReadModel["closures"];
-  readonly editing: boolean;
-  readonly selectedIds: readonly string[];
-  readonly clipboard: ScheduleEditableShift | null;
-  readonly onSelect: (id: string, additive: boolean) => void;
-  readonly onEdit: (shift: ScheduleEditableShift) => void;
-  readonly onCreate: (
-    locationId: string,
-    employeeId: string | null,
-    date: string,
-  ) => void;
-  readonly onCopy: (shift: ScheduleEditableShift) => void;
-  readonly onPaste: (
-    locationId: string,
-    employeeId: string | null,
-    date: string,
-  ) => void;
-  readonly onMove: (
-    shift: ScheduleEditableShift,
-    locationId: string,
-    employeeId: string | null,
-    date: string,
-  ) => void;
-}) {
-  const employeeShifts = shifts.filter(
-    (shift) =>
-      shift.employee_id === employee?.id ||
-      (!employee && shift.employee_id === null),
-  );
-  const hours = employeeShifts.reduce(
-    (sum, shift) => sum + shiftHours(shift),
-    0,
-  );
-  return (
-    <>
-      <div
-        className="schedule-employee-cell schedule-grid-sticky"
-        role="rowheader"
-        data-unassigned={!employee}
-      >
-        <strong>{employee?.display_name ?? "Unassigned shifts"}</strong>
-        <span>
-          {employee
-            ? `${employee.employee_code} · ${hours.toFixed(1)}h`
-            : `${employeeShifts.length} open ${employeeShifts.length === 1 ? "shift" : "shifts"}`}
-        </span>
-      </div>
-      {locations.flatMap((location) =>
-        days.map((day) => {
-          const cellShifts = employeeShifts.filter(
-            (shift) =>
-              location.sourceIds.includes(shift.location_id) &&
-              shift.scheduled_date === day,
-          );
-          const closure = closures.find(
-            (item) =>
-              location.sourceIds.includes(item.location_id) &&
-              item.closed_date === day &&
-              item.is_all_day,
-          );
-          return (
-            <div
-              className="schedule-cell"
-              role="gridcell"
-              key={`${employee?.id ?? "open"}-${location.id}-${day}`}
-              data-closed={Boolean(closure)}
-              title={closure?.title}
-              data-editing={editing}
-              onDoubleClick={() =>
-                editing &&
-                onCreate(location.sourceIds[0]!, employee?.id ?? null, day)
-              }
-              onDragOver={(event) => editing && event.preventDefault()}
-              onDrop={(event) => {
-                if (!editing) return;
-                const shift = shifts.find(
-                  (item) =>
-                    item.id ===
-                    event.dataTransfer.getData("text/schedule-shift"),
-                );
-                if (shift && "revision" in shift)
-                  onMove(
-                    shift as ScheduleEditableShift,
-                    location.sourceIds[0]!,
-                    employee?.id ?? null,
-                    day,
-                  );
-              }}
-            >
-              {editing ? (
-                <button
-                  type="button"
-                  className="schedule-cell-add"
-                  aria-label={`Add shift for ${employee?.display_name ?? "unassigned"} on ${day}`}
-                  onClick={() =>
-                    onCreate(location.sourceIds[0]!, employee?.id ?? null, day)
-                  }
-                >
-                  <Plus size={14} aria-hidden />
-                </button>
-              ) : null}
-              {cellShifts.map((shift) => (
-                <ShiftBadge
-                  key={shift.id}
-                  shift={shift}
-                  job={
-                    jobs.find((item) => item.id === shift.job_id)?.name ??
-                    "Shift"
-                  }
-                  type={shiftTypes.find(
-                    (item) => item.id === shift.shift_type_id,
-                  )}
-                  editing={editing}
-                  selected={selectedIds.includes(shift.id)}
-                  onSelect={onSelect}
-                  onEdit={onEdit}
-                  onCopy={onCopy}
-                />
-              ))}
-              {editing && clipboard ? (
-                <button
-                  type="button"
-                  className="schedule-cell-paste"
-                  onClick={() =>
-                    onPaste(location.sourceIds[0]!, employee?.id ?? null, day)
-                  }
-                  title="Paste copied shift"
-                >
-                  <ClipboardPaste size={13} /> Paste
-                </button>
-              ) : null}
-            </div>
-          );
-        }),
-      )}
-    </>
-  );
-}
-
-function ShiftBadge({
-  shift,
-  job,
-  type,
-  editing = false,
-  selected = false,
-  onSelect,
-  onEdit,
-  onCopy,
-}: {
-  readonly shift: ScheduleShift;
-  readonly job: string;
-  readonly type: ScheduleReadModel["shift_types"][number] | undefined;
-  readonly editing?: boolean;
-  readonly selected?: boolean;
-  readonly onSelect?: (id: string, additive: boolean) => void;
-  readonly onEdit?: (shift: ScheduleEditableShift) => void;
-  readonly onCopy?: (shift: ScheduleEditableShift) => void;
-}) {
-  return (
-    <article
-      className="schedule-shift-badge"
-      style={{ "--shift-color": type?.color ?? "#54736a" } as CSSProperties}
-      aria-label={`${job}, ${formatTime(shift.start_time)} to ${formatTime(shift.end_time)}`}
-      data-selected={selected}
-      draggable={editing}
-      tabIndex={editing ? 0 : undefined}
-      onDragStart={(event) =>
-        event.dataTransfer.setData("text/schedule-shift", shift.id)
-      }
-      onClick={(event) => editing && onSelect?.(shift.id, event.shiftKey)}
-      onDoubleClick={() => editing && onEdit?.(shift as ScheduleEditableShift)}
-      onKeyDown={(event) => {
-        if (!editing) return;
-        if (event.key === "Enter") onEdit?.(shift as ScheduleEditableShift);
-        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c")
-          onCopy?.(shift as ScheduleEditableShift);
-      }}
-      onContextMenu={(event) => {
-        if (!editing) return;
-        event.preventDefault();
-        onCopy?.(shift as ScheduleEditableShift);
-      }}
-    >
-      <div>
-        <strong>{type?.name ?? job}</strong>
-        {shift.warning_codes.length ? (
-          <AlertTriangle
-            size={13}
-            aria-label={shift.warning_codes
-              .map((code) => warningLabels[code])
-              .join(", ")}
-          />
-        ) : null}
-      </div>
-      <span>
-        {formatTime(shift.start_time)}–{formatTime(shift.end_time)}
-        {shift.crosses_midnight ? " +1" : ""}
-      </span>
-      {type ? <em>{job}</em> : null}
-    </article>
-  );
-}
-
-type ShiftEditorState =
-  | { mode: "edit"; shift: ScheduleEditableShift }
-  | {
-      mode: "create";
-      locationId: string;
-      employeeId: string | null;
-      date: string;
-      copy?: ScheduleEditableShift;
+  useEffect(() => {
+    if (!open) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing || event.repeat) return;
+      if (event.key !== "Escape" && event.key !== "Enter") return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      if (event.key === "Escape") onCancel();
+      else onConfirm();
     };
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [onCancel, onConfirm, open]);
 
-function EditSourceDialog({
-  drafts,
-  onClose,
-  onAcquire,
-}: {
-  readonly drafts: readonly ScheduleDraftSummary[];
-  readonly onClose: () => void;
-  readonly onAcquire: (
-    source: "blank" | "published" | "draft",
-    draftId?: string | null,
-  ) => void;
-}) {
-  return (
-    <Dialog title="Edit schedule" onClose={onClose}>
-      <div className="schedule-source-list">
-        <button type="button" onClick={() => onAcquire("published")}>
-          <strong>Published schedule</strong>
-          <span>Start from the current published week.</span>
-        </button>
-        <button type="button" onClick={() => onAcquire("blank")}>
-          <strong>Blank schedule</strong>
-          <span>Start with an empty week.</span>
-        </button>
-        {drafts.map((draft) => (
-          <button
-            key={draft.id}
-            type="button"
-            onClick={() => onAcquire("draft", draft.id)}
-          >
-            <strong>{draft.name}</strong>
-            <span>
-              Draft revision {draft.revision} · updated{" "}
-              {new Date(draft.updated_at).toLocaleString()}
-            </span>
-          </button>
-        ))}
-      </div>
-    </Dialog>
-  );
-}
-
-function ShiftEditor({
-  model,
-  state,
-  onClose,
-  onSubmit,
-}: {
-  readonly model: ScheduleReadModel;
-  readonly state: ShiftEditorState;
-  readonly onClose: () => void;
-  readonly onSubmit: (shift: ScheduleShiftMutationInput) => void;
-}) {
-  const base = state.mode === "edit" ? state.shift : state.copy;
-  const [value, setValue] = useState<ScheduleShiftMutationInput>({
-    location_id:
-      state.mode === "edit" ? state.shift.location_id : state.locationId,
-    employee_id:
-      state.mode === "edit" ? state.shift.employee_id : state.employeeId,
-    job_id: base?.job_id ?? model.jobs[0]?.id ?? "",
-    shift_type_id: base?.shift_type_id ?? null,
-    scheduled_date:
-      state.mode === "edit" ? state.shift.scheduled_date : state.date,
-    start_time:
-      base?.start_time ?? model.shift_types[0]?.default_start_time ?? "09:00",
-    end_time:
-      base?.end_time ?? model.shift_types[0]?.default_end_time ?? "17:00",
-    note: base?.note ?? "",
-  });
-  const eligibleEmployees = model.employees.filter((employee) =>
-    employee.location_ids.includes(value.location_id),
-  );
-  const eligibleJobs = model.jobs.filter(
-    (job) =>
-      value.employee_id === null ||
-      model.employees
-        .find((employee) => employee.id === value.employee_id)
-        ?.job_ids.includes(job.id),
-  );
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    onSubmit(value);
-  };
-  return (
-    <Dialog
-      title={
-        state.mode === "edit"
-          ? "Edit shift"
-          : state.copy
-            ? "Paste shift"
-            : "Add shift"
-      }
-      onClose={onClose}
-    >
-      <form className="schedule-shift-form" onSubmit={submit}>
-        <label>
-          Location
-          <select
-            value={value.location_id}
-            onChange={(event) =>
-              setValue({ ...value, location_id: event.target.value })
-            }
-          >
-            {model.locations.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Employee
-          <select
-            value={value.employee_id ?? ""}
-            onChange={(event) =>
-              setValue({ ...value, employee_id: event.target.value || null })
-            }
-          >
-            <option value="">Unassigned</option>
-            {eligibleEmployees.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.display_name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Date
-          <input
-            type="date"
-            value={value.scheduled_date}
-            min={model.week_start}
-            max={addDays(model.week_start, 6)}
-            onChange={(event) =>
-              setValue({ ...value, scheduled_date: event.target.value })
-            }
-            required
-          />
-        </label>
-        <label>
-          Job
-          <select
-            value={value.job_id}
-            onChange={(event) =>
-              setValue({ ...value, job_id: event.target.value })
-            }
-          >
-            {eligibleJobs.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Shift type
-          <select
-            value={value.shift_type_id ?? ""}
-            onChange={(event) =>
-              setValue({ ...value, shift_type_id: event.target.value || null })
-            }
-          >
-            <option value="">No type</option>
-            {model.shift_types.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="schedule-time-fields">
-          <label>
-            Start
-            <input
-              type="time"
-              value={value.start_time}
-              onChange={(event) =>
-                setValue({ ...value, start_time: event.target.value })
-              }
-              required
-            />
-          </label>
-          <label>
-            End
-            <input
-              type="time"
-              value={value.end_time}
-              onChange={(event) =>
-                setValue({ ...value, end_time: event.target.value })
-              }
-              required
-            />
-          </label>
-        </div>
-        <label className="wide">
-          Note
-          <textarea
-            value={value.note}
-            maxLength={500}
-            onChange={(event) =>
-              setValue({ ...value, note: event.target.value })
-            }
-          />
-        </label>
-        <div className="schedule-dialog-actions">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="primary">
-            {state.mode === "edit" ? "Update shift" : "Add shift"}
-          </button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
-
-function SaveDraftDialog({
-  drafts,
-  initialDraft,
-  onClose,
-  onSave,
-}: {
-  readonly drafts: readonly ScheduleDraftSummary[];
-  readonly initialDraft: ScheduleDraftSummary | null;
-  readonly onClose: () => void;
-  readonly onSave: (name: string, draft: ScheduleDraftSummary | null) => void;
-}) {
-  const [targetId, setTargetId] = useState(initialDraft?.id ?? "");
-  const target = drafts.find((item) => item.id === targetId) ?? null;
-  const [name, setName] = useState(initialDraft?.name ?? "");
-  return (
-    <Dialog title="Save draft" onClose={onClose}>
-      <form
-        className="schedule-save-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSave(name, target);
-        }}
-      >
-        <label>
-          Destination
-          <select
-            value={targetId}
-            onChange={(event) => {
-              const draft =
-                drafts.find((item) => item.id === event.target.value) ?? null;
-              setTargetId(event.target.value);
-              if (draft) setName(draft.name);
-            }}
-          >
-            <option value="">New draft</option>
-            {drafts.map((draft) => (
-              <option key={draft.id} value={draft.id}>
-                Overwrite {draft.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Draft name
-          <input
-            value={name}
-            maxLength={80}
-            onChange={(event) => setName(event.target.value)}
-            required
-          />
-        </label>
-        {target ? (
-          <p className="schedule-overwrite-warning">
-            This replaces revision {target.revision} of “{target.name}”.
-            Published shifts are unchanged.
-          </p>
-        ) : null}
-        <div className="schedule-dialog-actions">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="primary">
-            {target ? "Overwrite draft" : "Save draft"}
-          </button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
-
-function PublishScheduleDialog({
-  drafts,
-  locations,
-  onClose,
-  onPreview,
-  onPublish,
-}: {
-  readonly drafts: readonly ScheduleDraftSummary[];
-  readonly locations: readonly ScheduleLocation[];
-  readonly onClose: () => void;
-  readonly onPreview: (
-    draftId: string,
-    locationIds: string[],
-  ) => Promise<SchedulePublicationPreview>;
-  readonly onPublish: (
-    preview: SchedulePublicationPreview,
-    overrides: SchedulePublicationOverrideInput[],
-  ) => Promise<unknown>;
-}) {
-  const [draftId, setDraftId] = useState(drafts[0]?.id ?? "");
-  const [locationIds, setLocationIds] = useState(() =>
-    locations.map((location) => location.id),
-  );
-  const [preview, setPreview] = useState<SchedulePublicationPreview | null>(
-    null,
-  );
-  const [reasons, setReasons] = useState<Record<string, string>>({});
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const softFindings =
-    preview?.findings.filter((finding) => finding.severity === "soft") ?? [];
-  const hasHardBlocker =
-    preview?.findings.some((finding) => finding.severity === "hard") ?? false;
-  const reasonsValid = softFindings.every(
-    (finding) => (reasons[finding.id] ?? "").trim().length >= 10,
-  );
-
-  const toggleLocation = (id: string) => {
-    setLocationIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
-    );
-    setPreview(null);
-  };
-  const loadPreview = async () => {
-    setPending(true);
-    setError(null);
-    try {
-      setPreview(await onPreview(draftId, locationIds));
-      setReasons({});
-    } catch (caught) {
-      setError((caught as Error).message);
-    } finally {
-      setPending(false);
-    }
-  };
-  const publish = async () => {
-    if (!preview) return;
-    setPending(true);
-    setError(null);
-    try {
-      await onPublish(
-        preview,
-        softFindings.map((finding) => ({
-          finding_id: finding.id,
-          reason: reasons[finding.id]!.trim(),
-        })),
-      );
-    } catch (caught) {
-      setError((caught as Error).message);
-      setPreview(null);
-    } finally {
-      setPending(false);
-    }
-  };
-
-  return (
-    <Dialog title="Publish schedule" onClose={onClose}>
-      <div className="schedule-publication-form">
-        {!preview ? (
-          <>
-            <label>
-              Saved draft
-              <select
-                value={draftId}
-                onChange={(event) => setDraftId(event.target.value)}
-              >
-                {drafts.map((draft) => (
-                  <option key={draft.id} value={draft.id}>
-                    {draft.name} · revision {draft.revision}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <fieldset className="schedule-publication-locations">
-              <legend>Locations to publish</legend>
-              {locations.map((location) => (
-                <label
-                  key={location.id}
-                  className="schedule-publication-location"
-                >
-                  <input
-                    type="checkbox"
-                    checked={locationIds.includes(location.id)}
-                    onChange={() => toggleLocation(location.id)}
-                  />
-                  <span>
-                    <strong>{location.name}</strong>
-                    <small>
-                      {location.publication_status === "published"
-                        ? "Published now"
-                        : "Not published"}
-                    </small>
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-          </>
-        ) : (
-          <div className="schedule-publication-review">
-            {preview.status === "past_week_closed" ? (
-              <div className="schedule-finding hard">
-                <ShieldAlert size={18} />
-                <div>
-                  <strong>Past week closed</strong>
-                  <span>Past schedule weeks cannot be published.</span>
-                </div>
-              </div>
-            ) : null}
-            <div className="schedule-publication-diff">
-              {preview.locations.map((location) => (
-                <section key={location.location_id}>
-                  <strong>{location.location_name}</strong>
-                  <span>{location.next_shift_count} shifts after publish</span>
-                  <dl>
-                    <div>
-                      <dt>Added</dt>
-                      <dd>{location.added}</dd>
-                    </div>
-                    <div>
-                      <dt>Updated</dt>
-                      <dd>{location.updated}</dd>
-                    </div>
-                    <div>
-                      <dt>Removed</dt>
-                      <dd>{location.removed}</dd>
-                    </div>
-                    <div>
-                      <dt>Unchanged</dt>
-                      <dd>{location.unchanged}</dd>
-                    </div>
-                  </dl>
-                </section>
-              ))}
-            </div>
-            {preview.findings.map((finding) => (
-              <div
-                key={finding.id}
-                className={`schedule-finding ${finding.severity}`}
-              >
-                <ShieldAlert size={18} aria-hidden />
-                <div>
-                  <strong>
-                    {finding.severity === "hard"
-                      ? "Publication blocked"
-                      : "Override required"}
-                  </strong>
-                  <span>{finding.message}</span>
-                  {finding.severity === "soft" ? (
-                    <label>
-                      Reason
-                      <textarea
-                        value={reasons[finding.id] ?? ""}
-                        minLength={10}
-                        maxLength={500}
-                        onChange={(event) =>
-                          setReasons((current) => ({
-                            ...current,
-                            [finding.id]: event.target.value,
-                          }))
-                        }
-                        placeholder="Explain why this exception is approved"
-                      />
-                    </label>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-            {!preview.findings.length ? (
-              <p className="schedule-publication-clear">
-                No publication blockers found.
-              </p>
-            ) : null}
-          </div>
-        )}
-        {error ? (
-          <p className="schedule-overwrite-warning" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <div className="schedule-dialog-actions">
-          {preview ? (
-            <button
-              type="button"
-              onClick={() => {
-                setPreview(null);
-                setError(null);
-              }}
-            >
-              Back
-            </button>
-          ) : (
-            <button type="button" onClick={onClose}>
-              Cancel
-            </button>
-          )}
-          {preview ? (
-            <button
-              type="button"
-              className="primary"
-              disabled={
-                pending ||
-                hasHardBlocker ||
-                !reasonsValid ||
-                preview.status === "past_week_closed"
-              }
-              onClick={() => void publish()}
-            >
-              <Send size={15} /> {pending ? "Publishing…" : "Publish locations"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="primary"
-              disabled={pending || !draftId || locationIds.length === 0}
-              onClick={() => void loadPreview()}
-            >
-              {pending ? "Checking…" : "Review publication"}
-            </button>
-          )}
-        </div>
-      </div>
-    </Dialog>
-  );
-}
-
-function UnpublishScheduleDialog({
-  weekStart,
-  locations,
-  onClose,
-  onPreview,
-  onUnpublish,
-}: {
-  readonly weekStart: string;
-  readonly locations: readonly ScheduleLocation[];
-  readonly onClose: () => void;
-  readonly onPreview: (
-    locationIds: string[],
-  ) => Promise<ScheduleUnpublishPreview>;
-  readonly onUnpublish: (preview: ScheduleUnpublishPreview) => Promise<unknown>;
-}) {
-  const [locationIds, setLocationIds] = useState<string[]>([]);
-  const [preview, setPreview] = useState<ScheduleUnpublishPreview | null>(null);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const toggleLocation = (id: string) =>
-    setLocationIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
-    );
-  const run = async (action: () => Promise<unknown>) => {
-    setPending(true);
-    setError(null);
-    try {
-      await action();
-    } catch (caught) {
-      setError((caught as Error).message);
-    } finally {
-      setPending(false);
-    }
-  };
-  return (
-    <Dialog title="Unpublish schedule" onClose={onClose}>
-      <div className="schedule-publication-form">
-        {!preview ? (
-          <fieldset className="schedule-publication-locations">
-            <legend>Published locations for week of {weekStart}</legend>
-            {locations.map((location) => (
-              <label
-                key={location.id}
-                className="schedule-publication-location"
-              >
-                <input
-                  type="checkbox"
-                  checked={locationIds.includes(location.id)}
-                  onChange={() => toggleLocation(location.id)}
-                />
-                <span>
-                  <strong>{location.name}</strong>
-                  <small>Published</small>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-        ) : (
-          <div className="schedule-publication-review">
-            {preview.status === "past_week_closed" ? (
-              <div className="schedule-finding hard">
-                <ShieldAlert size={18} />
-                <div>
-                  <strong>Past week closed</strong>
-                  <span>Past schedule weeks cannot be unpublished.</span>
-                </div>
-              </div>
-            ) : null}
-            {preview.locations.map((location) => (
-              <section
-                key={location.location_id}
-                className="schedule-unpublish-summary"
-              >
-                <div>
-                  <strong>{location.location_name}</strong>
-                  <span>
-                    Version {location.version} · {location.shift_count} shifts
-                  </span>
-                </div>
-                <EyeOff size={18} aria-hidden />
-              </section>
-            ))}
-            {preview.status === "unpublish_ready" ? (
-              <p className="schedule-publication-clear">
-                Employees will no longer see these shifts. Publication history
-                is retained.
-              </p>
-            ) : null}
-          </div>
-        )}
-        {error ? (
-          <p className="schedule-overwrite-warning" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <div className="schedule-dialog-actions">
-          {preview ? (
-            <button type="button" onClick={() => setPreview(null)}>
-              Back
-            </button>
-          ) : (
-            <button type="button" onClick={onClose}>
-              Cancel
-            </button>
-          )}
-          {preview ? (
-            <button
-              type="button"
-              className="danger"
-              disabled={pending || preview.status !== "unpublish_ready"}
-              onClick={() => void run(() => onUnpublish(preview))}
-            >
-              <EyeOff size={15} />{" "}
-              {pending ? "Unpublishing…" : "Confirm unpublish"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="primary"
-              disabled={pending || locationIds.length === 0}
-              onClick={() =>
-                void run(async () => setPreview(await onPreview(locationIds)))
-              }
-            >
-              {pending ? "Checking…" : "Review unpublish"}
-            </button>
-          )}
-        </div>
-      </div>
-    </Dialog>
-  );
-}
-
-function ScheduleTemplatesDialog({
-  templates,
-  drafts,
-  session,
-  onClose,
-  onCreate,
-  onRename,
-  onDelete,
-  onApply,
-}: {
-  readonly templates: readonly ScheduleTemplateSummary[];
-  readonly drafts: readonly ScheduleDraftSummary[];
-  readonly session: ScheduleEditSession | null;
-  readonly onClose: () => void;
-  readonly onCreate: (
-    draftId: string,
-    name: string,
-    stripAssignments: boolean,
-  ) => Promise<unknown>;
-  readonly onRename: (
-    template: ScheduleTemplateSummary,
-    name: string,
-  ) => Promise<unknown>;
-  readonly onDelete: (template: ScheduleTemplateSummary) => Promise<unknown>;
-  readonly onApply: (
-    templateId: string,
-    mode: "merge" | "overwrite",
-  ) => Promise<unknown>;
-}) {
-  const [selectedId, setSelectedId] = useState(templates[0]?.id ?? "");
-  const selected = templates.find((item) => item.id === selectedId) ?? null;
-  const [draftId, setDraftId] = useState(drafts[0]?.id ?? "");
-  const [name, setName] = useState("");
-  const [stripAssignments, setStripAssignments] = useState(true);
-  const [rename, setRename] = useState(selected?.name ?? "");
-  const [mode, setMode] = useState<"merge" | "overwrite">("merge");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const run = async (action: () => Promise<unknown>) => {
-    setPending(true);
-    setError(null);
-    try {
-      await action();
-    } catch (caught) {
-      setError((caught as Error).message);
-    } finally {
-      setPending(false);
-    }
-  };
-  const choose = (template: ScheduleTemplateSummary) => {
-    setSelectedId(template.id);
-    setRename(template.name);
-  };
-  return (
-    <Dialog title="Schedule templates" onClose={onClose}>
-      <div className="schedule-tool-dialog schedule-template-dialog">
-        <section>
-          <h3>Saved templates</h3>
-          <div className="schedule-template-list">
-            {templates.map((template) => (
-              <button
-                key={template.id}
-                type="button"
-                aria-pressed={template.id === selectedId}
-                onClick={() => choose(template)}
-              >
-                <span>
-                  <strong>{template.name}</strong>
-                  <small>Revision {template.revision}</small>
-                </span>
-                <span>
-                  {template.shift_count} shifts
-                  <br />
-                  {template.open_slot_count} open
-                </span>
-              </button>
-            ))}
-            {!templates.length ? <p>No templates saved yet.</p> : null}
-          </div>
-          {selected ? (
-            <div className="schedule-template-actions">
-              <label>
-                Template name
-                <input
-                  value={rename}
-                  maxLength={80}
-                  onChange={(event) => setRename(event.target.value)}
-                />
-              </label>
-              <div>
-                <button
-                  type="button"
-                  disabled={pending || !rename.trim()}
-                  onClick={() =>
-                    void run(() => onRename(selected, rename.trim()))
-                  }
-                >
-                  Rename
-                </button>
-                <button
-                  type="button"
-                  className="danger-text"
-                  disabled={pending}
-                  onClick={() =>
-                    window.confirm(`Delete ${selected.name}?`) &&
-                    void run(() => onDelete(selected))
-                  }
-                >
-                  <Trash2 size={14} /> Delete
-                </button>
-              </div>
-              {session ? (
-                <>
-                  <label>
-                    Apply mode
-                    <select
-                      value={mode}
-                      onChange={(event) =>
-                        setMode(event.target.value as "merge" | "overwrite")
-                      }
-                    >
-                      <option value="merge">Merge with working copy</option>
-                      <option value="overwrite">Replace working copy</option>
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="primary-command"
-                    disabled={pending}
-                    onClick={() => void run(() => onApply(selected.id, mode))}
-                  >
-                    Apply template
-                  </button>
-                </>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void run(async () => {
-              await onCreate(draftId, name.trim(), stripAssignments);
-              setName("");
-            });
-          }}
-        >
-          <h3>Create from named draft</h3>
-          <label>
-            Draft
-            <select
-              value={draftId}
-              onChange={(event) => setDraftId(event.target.value)}
-            >
-              <option value="">Select draft</option>
-              {drafts.map((draft) => (
-                <option key={draft.id} value={draft.id}>
-                  {draft.name} · revision {draft.revision}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Template name
-            <input
-              value={name}
-              maxLength={80}
-              onChange={(event) => setName(event.target.value)}
-              required
-            />
-          </label>
-          <label className="schedule-check">
-            <input
-              type="checkbox"
-              checked={stripAssignments}
-              onChange={(event) => setStripAssignments(event.target.checked)}
-            />{" "}
-            Save shifts as open slots
-          </label>
-          <button
-            type="submit"
-            className="primary-command"
-            disabled={pending || !draftId || !name.trim()}
-          >
-            Create template
-          </button>
-        </form>
-        {error ? (
-          <p className="schedule-overwrite-warning" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <div className="schedule-dialog-actions">
-          <button type="button" onClick={onClose}>
-            Close
-          </button>
-        </div>
-      </div>
-    </Dialog>
-  );
-}
-
-function ScheduleAutoFillDialog({
-  preview,
-  onClose,
-  onApply,
-}: {
-  readonly preview: ScheduleAutoFillPreview;
-  readonly onClose: () => void;
-  readonly onApply: (
-    assignments: ScheduleAutoFillAssignment[],
-  ) => Promise<unknown>;
-}) {
-  const [choices, setChoices] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      preview.proposals.map((proposal) => [
-        proposal.shift_id,
-        proposal.recommended_employee_id,
-      ]),
-    ),
-  );
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const assignments = preview.proposals.flatMap((proposal) =>
-    choices[proposal.shift_id]
-      ? [
-          {
-            shift_id: proposal.shift_id,
-            employee_id: choices[proposal.shift_id]!,
-          },
-        ]
-      : [],
-  );
-  const apply = async () => {
-    setPending(true);
-    setError(null);
-    try {
-      await onApply(assignments);
-    } catch (caught) {
-      setError((caught as Error).message);
-      setPending(false);
-    }
-  };
-  return (
-    <Dialog title="Review auto-fill" onClose={onClose}>
-      <div className="schedule-tool-dialog">
-        <p className="schedule-tool-summary">
-          {preview.proposals.length} open shifts have eligible candidates. Clear
-          a selection to leave that shift open.
-        </p>
-        <div className="schedule-autofill-list">
-          {preview.proposals.map((proposal) => (
-            <label key={proposal.shift_id}>
-              <span>
-                <strong>
-                  {proposal.job_name} · {proposal.location_name}
-                </strong>
-                <small>
-                  {proposal.scheduled_date} · {formatTime(proposal.start_time)}–
-                  {formatTime(proposal.end_time)}
-                </small>
-              </span>
-              <select
-                aria-label={`Assignment for ${proposal.job_name} on ${proposal.scheduled_date}`}
-                value={choices[proposal.shift_id] ?? ""}
-                onChange={(event) =>
-                  setChoices((current) => ({
-                    ...current,
-                    [proposal.shift_id]: event.target.value,
-                  }))
-                }
-              >
-                <option value="">Leave open</option>
-                {proposal.candidates.map((candidate) => (
-                  <option
-                    key={candidate.employee_id}
-                    value={candidate.employee_id}
-                  >
-                    {candidate.employee_name} ·{" "}
-                    {(candidate.scheduled_minutes / 60).toFixed(1)}h scheduled
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
-          {!preview.proposals.length ? (
-            <p>No eligible auto-fill proposals for this working copy.</p>
-          ) : null}
-          {preview.unfilled.map((item) => (
-            <p key={item.shift_id} className="schedule-overwrite-warning">
-              Open shift not filled: {item.reason}
-            </p>
-          ))}
-        </div>
-        {error ? (
-          <p className="schedule-overwrite-warning" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <div className="schedule-dialog-actions">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="primary"
-            disabled={pending || !assignments.length}
-            onClick={() => void apply()}
-          >
-            {pending ? "Applying…" : `Apply ${assignments.length} assignments`}
-          </button>
-        </div>
-      </div>
-    </Dialog>
-  );
-}
-
-const defaultExportSettings: ScheduleExportSettings = {
-  format: "csv",
-  layout: "weekly",
-  time_format: "12h",
-  include_unassigned: true,
-  include_notes: false,
-  include_scheduled_hours: true,
-  csv_delimiter: ",",
-};
-
-function ScheduleExportDialog({
-  weekStart,
-  locations,
-  drafts,
-  presets,
-  onClose,
-  onPreview,
-  onDownload,
-  onSavePreset,
-  onDeletePreset,
-}: {
-  readonly weekStart: string;
-  readonly locations: readonly ScheduleLocation[];
-  readonly drafts: readonly ScheduleDraftSummary[];
-  readonly presets: readonly ScheduleExportPreset[];
-  readonly onClose: () => void;
-  readonly onPreview: (
-    request: ScheduleExportRequest,
-  ) => Promise<ScheduleExportPreview>;
-  readonly onDownload: (request: ScheduleExportRequest) => Promise<Blob>;
-  readonly onSavePreset: (
-    name: string,
-    settings: ScheduleExportSettings,
-  ) => Promise<unknown>;
-  readonly onDeletePreset: (presetId: string) => Promise<unknown>;
-}) {
-  const [source, setSource] = useState("published");
-  const [locationIds, setLocationIds] = useState(() =>
-    locations.map((item) => item.id),
-  );
-  const [settings, setSettings] = useState(defaultExportSettings);
-  const [preview, setPreview] = useState<ScheduleExportPreview | null>(null);
-  const [presetName, setPresetName] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const request: ScheduleExportRequest = {
-    week_start: weekStart,
-    source:
-      source === "published"
-        ? { type: "published" }
-        : { type: "draft", draft_id: source },
-    location_ids: locationIds,
-    settings,
-  };
-  const changeSettings = (next: Partial<ScheduleExportSettings>) => {
-    setSettings((current) => ({ ...current, ...next }));
-    setPreview(null);
-  };
-  const run = async (action: () => Promise<void>) => {
-    setPending(true);
-    setError(null);
-    try {
-      await action();
-    } catch (caught) {
-      setError((caught as Error).message);
-    } finally {
-      setPending(false);
-    }
-  };
-  const download = async () => {
-    const blob = await onDownload(request);
-    const url = URL.createObjectURL(blob);
-    if (settings.format === "print")
-      window.open(url, "_blank", "noopener,noreferrer");
-    else {
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `schedule-${weekStart}.csv`;
-      link.click();
-    }
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  };
-  return (
-    <Dialog title="Export schedule" onClose={onClose}>
-      <div className="schedule-tool-dialog schedule-export-dialog">
-        <div className="schedule-export-grid">
-          <label>
-            Source
-            <select
-              value={source}
-              onChange={(event) => {
-                setSource(event.target.value);
-                setPreview(null);
-              }}
-            >
-              <option value="published">Published schedule</option>
-              {drafts.map((draft) => (
-                <option key={draft.id} value={draft.id}>
-                  {draft.name} · revision {draft.revision}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Preset
-            <select
-              defaultValue=""
-              onChange={(event) => {
-                const preset = presets.find(
-                  (item) => item.id === event.target.value,
-                );
-                if (preset) {
-                  setSettings(preset.settings);
-                  setPreview(null);
-                }
-              }}
-            >
-              <option value="">Custom settings</option>
-              {presets.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Format
-            <select
-              value={settings.format}
-              onChange={(event) =>
-                changeSettings({
-                  format: event.target.value as "csv" | "print",
-                })
-              }
-            >
-              <option value="csv">CSV</option>
-              <option value="print">Print / Save as PDF</option>
-            </select>
-          </label>
-          <label>
-            Layout
-            <select
-              value={settings.layout}
-              onChange={(event) =>
-                changeSettings({
-                  layout: event.target.value as "weekly" | "daily",
-                })
-              }
-            >
-              <option value="weekly">Weekly table</option>
-              <option value="daily">Daily sections</option>
-            </select>
-          </label>
-          <label>
-            Time
-            <select
-              value={settings.time_format}
-              onChange={(event) =>
-                changeSettings({
-                  time_format: event.target.value as "12h" | "24h",
-                })
-              }
-            >
-              <option value="12h">12-hour</option>
-              <option value="24h">24-hour</option>
-            </select>
-          </label>
-          {settings.format === "csv" ? (
-            <label>
-              Delimiter
-              <select
-                value={settings.csv_delimiter}
-                onChange={(event) =>
-                  changeSettings({
-                    csv_delimiter: event.target.value as "," | ";",
-                  })
-                }
-              >
-                <option value=",">Comma</option>
-                <option value=";">Semicolon</option>
-              </select>
-            </label>
-          ) : null}
-        </div>
-        <fieldset className="schedule-publication-locations">
-          <legend>Locations</legend>
-          {locations.map((location) => (
-            <label key={location.id} className="schedule-publication-location">
-              <input
-                type="checkbox"
-                checked={locationIds.includes(location.id)}
-                onChange={() => {
-                  setLocationIds((current) =>
-                    current.includes(location.id)
-                      ? current.filter((id) => id !== location.id)
-                      : [...current, location.id],
-                  );
-                  setPreview(null);
-                }}
-              />
-              <span>
-                <strong>{location.name}</strong>
-              </span>
-            </label>
-          ))}
-        </fieldset>
-        <div className="schedule-export-options">
-          <label className="schedule-check">
-            <input
-              type="checkbox"
-              checked={settings.include_unassigned}
-              onChange={(event) =>
-                changeSettings({ include_unassigned: event.target.checked })
-              }
-            />{" "}
-            Include open shifts
-          </label>
-          <label className="schedule-check">
-            <input
-              type="checkbox"
-              checked={settings.include_notes}
-              onChange={(event) =>
-                changeSettings({ include_notes: event.target.checked })
-              }
-            />{" "}
-            Include notes
-          </label>
-          <label className="schedule-check">
-            <input
-              type="checkbox"
-              checked={settings.include_scheduled_hours}
-              onChange={(event) =>
-                changeSettings({
-                  include_scheduled_hours: event.target.checked,
-                })
-              }
-            />{" "}
-            Include scheduled hours
-          </label>
-        </div>
-        <div className="schedule-preset-row">
-          <input
-            aria-label="Preset name"
-            placeholder="Preset name"
-            value={presetName}
-            maxLength={80}
-            onChange={(event) => setPresetName(event.target.value)}
-          />
-          <button
-            type="button"
-            disabled={pending || !presetName.trim()}
-            onClick={() =>
-              void run(async () => {
-                await onSavePreset(presetName.trim(), settings);
-                setPresetName("");
-              })
-            }
-          >
-            Save preset
-          </button>
-        </div>
-        {presets.length ? (
-          <div className="schedule-preset-list">
-            {presets.map((preset) => (
-              <span key={preset.id}>
-                {preset.name}
-                <button
-                  type="button"
-                  aria-label={`Delete ${preset.name}`}
-                  onClick={() =>
-                    void run(async () => {
-                      await onDeletePreset(preset.id);
-                    })
-                  }
-                >
-                  <Trash2 size={13} />
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : null}
-        {preview ? (
-          <section className="schedule-export-preview">
-            <strong>
-              {preview.summary.shift_count} shifts ·{" "}
-              {preview.summary.employee_count} employees ·{" "}
-              {(preview.summary.scheduled_minutes / 60).toFixed(2)} hours
-            </strong>
-            <span>{preview.locations.map((item) => item.name).join(", ")}</span>
-            <div>
-              {preview.rows.slice(0, 5).map((row) => (
-                <p key={row.shift_id}>
-                  <span>{row.scheduled_date}</span>
-                  <strong>{row.employee_name ?? "Open shift"}</strong>
-                  <span>
-                    {row.job_name} · {formatTime(row.start_time)}
-                  </span>
-                </p>
-              ))}
-            </div>
-          </section>
-        ) : null}
-        {error ? (
-          <p className="schedule-overwrite-warning" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <div className="schedule-dialog-actions">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          {preview ? (
-            <button
-              type="button"
-              className="primary"
-              disabled={pending}
-              onClick={() => void run(download)}
-            >
-              <FileDown size={15} />{" "}
-              {settings.format === "csv" ? "Download CSV" : "Open print view"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="primary"
-              disabled={pending || !locationIds.length}
-              onClick={() =>
-                void run(async () => setPreview(await onPreview(request)))
-              }
-            >
-              {pending ? "Preparing…" : "Preview export"}
-            </button>
-          )}
-        </div>
-      </div>
-    </Dialog>
-  );
-}
-
-function MessageDialog({
-  title,
-  detail,
-  onClose,
-}: {
-  readonly title: string;
-  readonly detail: string;
-  readonly onClose: () => void;
-}) {
-  return (
-    <Dialog title={title} onClose={onClose}>
-      <p className="schedule-dialog-message">{detail}</p>
-      <div className="schedule-dialog-actions">
-        <button type="button" className="primary" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    </Dialog>
-  );
-}
-
-function IdleDialog({
-  seconds,
-  onContinue,
-}: {
-  readonly seconds: number;
-  readonly onContinue: () => void;
-}) {
-  return (
-    <Dialog title="Editing session inactive" onClose={onContinue}>
-      <p className="schedule-dialog-message">
-        This editing session will close in {seconds} seconds. Unsaved changes
-        will be recovered as a draft if the lease expires.
-      </p>
-      <div className="schedule-dialog-actions">
-        <button type="button" className="primary" onClick={onContinue}>
-          Continue editing
-        </button>
-      </div>
-    </Dialog>
-  );
-}
-
-function Dialog({
-  title,
-  onClose,
-  children,
-}: {
-  readonly title: string;
-  readonly onClose: () => void;
-  readonly children: ReactNode;
-}) {
-  return (
-    <div className="schedule-dialog-layer" role="presentation">
+  return open ? (
+    <div className="schedule-discard-layer" role="presentation">
       <button
         type="button"
-        className="schedule-dialog-backdrop"
-        aria-label="Close dialog"
-        onClick={onClose}
+        className="schedule-discard-backdrop"
+        aria-label="Cancel shift deletion"
+        onClick={onCancel}
       />
       <section
-        className="schedule-dialog"
-        role="dialog"
+        className="schedule-discard-dialog"
+        role="alertdialog"
         aria-modal="true"
-        aria-labelledby="schedule-dialog-title"
+        aria-labelledby="schedule-delete-selection-title"
+        aria-describedby="schedule-delete-selection-description"
       >
         <header>
-          <h2 id="schedule-dialog-title">{title}</h2>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
+          <span aria-hidden>
+            <AlertTriangle size={18} />
+          </span>
+          <div>
+            <h2 id="schedule-delete-selection-title">
+              Delete selected shifts?
+            </h2>
+            <p id="schedule-delete-selection-description">
+              {count === 1
+                ? "This removes the selected shift from the edit session."
+                : `This removes ${count} selected shifts from the edit session.`}
+            </p>
+          </div>
         </header>
-        {children}
+        <footer>
+          <button type="button" onClick={onCancel}>
+            Keep shifts
+          </button>
+          <button type="button" className="danger" onClick={onConfirm}>
+            <Trash2 size={15} aria-hidden />
+            Delete
+          </button>
+        </footer>
       </section>
     </div>
-  );
+  ) : null;
 }
 
-function toMutation(
-  shift: ScheduleShift,
-  overrides: Partial<ScheduleShiftMutationInput> = {},
-): ScheduleShiftMutationInput {
-  return {
-    location_id: shift.location_id,
-    employee_id: shift.employee_id,
-    job_id: shift.job_id,
-    shift_type_id: shift.shift_type_id,
-    scheduled_date: shift.scheduled_date,
-    start_time: shift.start_time,
-    end_time: shift.end_time,
-    note: shift.note,
-    ...overrides,
-  };
-}
-
-function filterModel(
-  model: ScheduleReadModel,
-  search: URLSearchParams,
-): ScheduleReadModel {
-  const locationIds = validIds(
-    search.get("locations"),
-    model.locations.map((item) => item.id),
-  );
-  const jobIds = validIds(
-    search.get("jobs"),
-    model.jobs.map((item) => item.id),
-  );
-  const shiftTypeIds = validIds(
-    search.get("shiftTypes"),
-    model.shift_types.map((item) => item.id),
-  );
-  const employeeIds = validIds(
-    search.get("employees"),
-    model.employees.map((item) => item.id),
-  );
-  const locations = locationIds.length
-    ? model.locations.filter((item) => locationIds.includes(item.id))
-    : model.locations;
-  const shifts = model.shifts.filter(
-    (shift) =>
-      locations.some((location) => location.id === shift.location_id) &&
-      (!jobIds.length || jobIds.includes(shift.job_id)) &&
-      (!shiftTypeIds.length ||
-        (shift.shift_type_id !== null &&
-          shiftTypeIds.includes(shift.shift_type_id))) &&
-      (!employeeIds.length ||
-        (shift.employee_id !== null &&
-          employeeIds.includes(shift.employee_id))),
-  );
-  const employees = model.employees.filter(
-    (employee) =>
-      (!employeeIds.length || employeeIds.includes(employee.id)) &&
-      (!jobIds.length || employee.job_ids.some((id) => jobIds.includes(id))) &&
-      employee.location_ids.some((id) =>
-        locations.some((location) => location.id === id),
-      ),
-  );
-  return { ...model, locations, employees, shifts };
-}
-
-function ScheduleState({
-  title,
-  detail,
-  error = false,
+function ScheduleDiscardEditDialog({
+  open,
+  isDiscarding,
+  onCancel,
+  onConfirm,
 }: {
-  readonly title: string;
-  readonly detail: string;
-  readonly error?: boolean;
+  readonly open: boolean;
+  readonly isDiscarding: boolean;
+  readonly onCancel: () => void;
+  readonly onConfirm: () => void;
 }) {
-  return (
-    <section className="schedule-state" role={error ? "alert" : "status"}>
-      <strong>{title}</strong>
-      <span>{detail}</span>
-    </section>
-  );
+  return open ? (
+    <div className="schedule-discard-layer" role="presentation">
+      <button
+        type="button"
+        className="schedule-discard-backdrop"
+        aria-label="Keep editing"
+        onClick={onCancel}
+      />
+      <section
+        className="schedule-discard-dialog"
+        data-schedule-discard-edit-dialog="true"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="schedule-discard-edit-title"
+        aria-describedby="schedule-discard-edit-description"
+      >
+        <header>
+          <span aria-hidden>
+            <AlertTriangle size={18} />
+          </span>
+          <div>
+            <h2 id="schedule-discard-edit-title">Discard unsaved changes?</h2>
+            <p id="schedule-discard-edit-description">
+              This closes the edit session and returns to the live weekly
+              schedule. Unsaved schedule changes will be removed.
+            </p>
+          </div>
+        </header>
+        <footer>
+          <button type="button" onClick={onCancel} disabled={isDiscarding}>
+            Keep editing
+          </button>
+          <button
+            type="button"
+            className="danger"
+            onClick={onConfirm}
+            disabled={isDiscarding}
+          >
+            <X size={15} aria-hidden />
+            {isDiscarding ? "Discarding..." : "Discard"}
+          </button>
+        </footer>
+      </section>
+    </div>
+  ) : null;
 }
 
-function parseIds(value: string | null): string[] {
-  return value?.split(",").filter(Boolean) ?? [];
+function isScheduleStaleError(error: Error): boolean {
+  return /stale|conflict|expired/i.test(error.message);
 }
-function closeScheduleMenu(target: HTMLElement): void {
-  target.closest("details")?.removeAttribute("open");
-}
-function validIds(value: string | null, allowed: readonly string[]): string[] {
-  return parseIds(value).filter((id) => allowed.includes(id));
-}
-function hasFilters(search: URLSearchParams): boolean {
-  return ["locations", "shiftTypes", "jobs", "employees"].some((key) =>
-    search.has(key),
+
+function isMissingScheduleDraftError(error: unknown): boolean {
+  return (
+    error instanceof ScheduleRequestError &&
+    error.status === 404 &&
+    /draft not found/i.test(error.message)
   );
-}
-function validDate(value: string | null): string | null {
-  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
-}
-function addDays(iso: string, days: number): string {
-  const date = new Date(`${iso}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-function currentWeekStart(
-  today: string,
-  weekStartDay: ScheduleReadModel["week_start_day"],
-): string {
-  const date = new Date(`${today}T12:00:00Z`);
-  const day = date.getUTCDay();
-  const offset = weekStartDay === "sunday" ? day : (day + 6) % 7;
-  date.setUTCDate(date.getUTCDate() - offset);
-  return date.toISOString().slice(0, 10);
-}
-function formatDay(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", {
-    weekday: "short",
-    timeZone: "UTC",
-  });
-}
-function formatDateNumber(iso: string): string {
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
-function formatPeriod(
-  selected: string,
-  weekStart: string,
-  view: ScheduleView,
-): string {
-  return view === "day"
-    ? new Date(`${selected}T12:00:00Z`).toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        timeZone: "UTC",
-      })
-    : `${formatDateNumber(weekStart)} – ${new Date(`${addDays(weekStart, 6)}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`;
-}
-function formatTime(value: string): string {
-  const [hour, minute] = value.split(":").map(Number);
-  const suffix = (hour ?? 0) >= 12 ? "p" : "a";
-  const display = (hour ?? 0) % 12 || 12;
-  return minute
-    ? `${display}:${String(minute).padStart(2, "0")}${suffix}`
-    : `${display}${suffix}`;
-}
-function shiftHours(shift: ScheduleShift): number {
-  const [startHour, startMinute] = shift.start_time.split(":").map(Number);
-  const [endHour, endMinute] = shift.end_time.split(":").map(Number);
-  let minutes = endHour! * 60 + endMinute! - (startHour! * 60 + startMinute!);
-  if (minutes <= 0) minutes += 1440;
-  return minutes / 60;
 }
 
 export default SchedulePage;

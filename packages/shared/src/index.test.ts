@@ -10,14 +10,21 @@ import {
   employeeAvailabilityInputSchema,
   employeeOnboardingProfileSchema,
   healthResponseSchema,
+  importantDateInputSchema,
   jobInputSchema,
   locationInputSchema,
   permissionsForRole,
   scheduleReadModelSchema,
+  schedulePublicationPreflightAckSchema,
   schedulePublicationOverrideInputSchema,
   schedulePublicationPreviewSchema,
+  schedulePublishResultSchema,
+  scheduleUnpublishResultSchema,
+  scheduleShiftMutationInputSchema,
   scheduleAutoFillPreviewSchema,
+  scheduleExportPreviewSchema,
   scheduleExportRequestSchema,
+  schedulePendingOpPayloadSchema,
   scheduleTemplateDetailSchema,
   workspaceRoleInputSchema,
   productBoundary,
@@ -33,6 +40,34 @@ const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const membershipId = "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4";
 
 describe("shared contracts", () => {
+  it("accepts trimmed schedule shift conflict override notes", () => {
+    const parsed = scheduleShiftMutationInputSchema.parse({
+      location_id: "11111111-1111-4111-8111-111111111111",
+      employee_id: "22222222-2222-4222-8222-222222222222",
+      job_id: "33333333-3333-4333-8333-333333333333",
+      shift_type_id: "44444444-4444-4444-8444-444444444444",
+      scheduled_date: "2026-08-17",
+      start_time: "16:00",
+      end_time: "22:00",
+      unpaid_break_minutes: 30,
+      hide_time_on_badge: false,
+      label_ids: [],
+      label_names: [],
+      note: "",
+      conflict_override_note: "  Employee volunteered for closure coverage.  ",
+    });
+
+    expect(parsed.conflict_override_note).toBe(
+      "Employee volunteered for closure coverage.",
+    );
+    expect(() =>
+      scheduleShiftMutationInputSchema.parse({
+        ...parsed,
+        conflict_override_note: "too short",
+      }),
+    ).toThrow();
+  });
+
   it("validates the current phase health response", () => {
     expect(
       healthResponseSchema.parse({
@@ -93,7 +128,11 @@ describe("shared contracts", () => {
       settings: {
         format: "csv",
         layout: "weekly",
+        locale: "tr",
         time_format: "12h",
+        paper_size: "letter",
+        orientation: "landscape",
+        fit_mode: "fit_to_page",
         include_unassigned: true,
         include_notes: false,
         include_scheduled_hours: true,
@@ -101,6 +140,58 @@ describe("shared contracts", () => {
       },
     });
     expect(request).not.toHaveProperty("payroll");
+    expect(request.settings).toMatchObject({
+      paper_size: "letter",
+      orientation: "landscape",
+      fit_mode: "fit_to_page",
+      locale: "tr",
+    });
+    expect(
+      scheduleExportRequestSchema.parse({
+        ...request,
+        settings: { ...request.settings, format: "pdf" },
+      }).settings.format,
+    ).toBe("pdf");
+    expect(
+      scheduleExportRequestSchema.parse({
+        ...request,
+        settings: { ...request.settings, format: "xlsx" },
+      }).settings.format,
+    ).toBe("xlsx");
+    expect(
+      scheduleExportRequestSchema.parse({
+        ...request,
+        settings: { ...request.settings, layout: "daily_roster" },
+      }).settings.layout,
+    ).toBe("daily_roster");
+    const exportPreview = scheduleExportPreviewSchema.parse({
+      status: "export_ready",
+      workspace_id: workspaceId,
+      workspace_name: "North Store",
+      week_start: "2026-08-17",
+      source: { type: "published" },
+      source_revision: 1,
+      fingerprint: "a".repeat(64),
+      locations: [
+        { id: "11000000-0000-4000-8000-000000000001", name: "Main" },
+      ],
+      rows: [],
+      summary: {
+        shift_count: 0,
+        employee_count: 0,
+        scheduled_minutes: 0,
+      },
+      warnings: [
+        {
+          code: "pdf_fit_to_page_readability",
+          severity: "warning",
+          message: "One-page PDF exports can be hard to read.",
+        },
+      ],
+    });
+    expect(exportPreview.warnings?.[0]?.code).toBe(
+      "pdf_fit_to_page_readability",
+    );
   });
 
   it("validates canonical Schedule publication preview and override contracts", () => {
@@ -129,18 +220,32 @@ describe("shared contracts", () => {
       findings: [
         {
           id: findingId,
-          code: "availability",
+          code: "time_off",
           severity: "soft",
           overrideable: true,
+          tier: "blocker",
+          projected: false,
+          introduced: true,
+          fix_hint: "Approve the time-off exception or reassign the shift.",
           message: "Alex is unavailable for this shift.",
           location_id: "11000000-0000-4000-8000-000000000001",
+          location_name: "Main Dining",
           employee_id: "51000000-0000-4000-8000-000000000001",
+          employee_name: "Alex Rivera",
           scheduled_date: "2026-08-17",
+          date: "2026-08-17",
           shift_ids: ["71000000-0000-4000-8000-000000000001"],
         },
       ],
     });
     expect(preview.status).toBe("override_required");
+    expect(preview.findings[0]).toMatchObject({
+      code: "time_off",
+      tier: "blocker",
+      introduced: true,
+      location_name: "Main Dining",
+      employee_name: "Alex Rivera",
+    });
     expect(
       schedulePublicationOverrideInputSchema.parse({
         finding_id: findingId,
@@ -153,14 +258,90 @@ describe("shared contracts", () => {
         reason: "ok",
       }),
     ).toThrow();
+    expect(
+      schedulePublicationPreflightAckSchema.parse({
+        fingerprint: preview.fingerprint,
+        decisions: [
+          {
+            finding_id: findingId,
+            reason: "Employee confirmed availability for this service.",
+          },
+        ],
+      }),
+    ).toEqual({
+      fingerprint: preview.fingerprint,
+      decisions: [
+        {
+          finding_id: findingId,
+          reason: "Employee confirmed availability for this service.",
+        },
+      ],
+    });
+    expect(
+      schedulePublishResultSchema.parse({
+        status: "schedule_conflicts",
+        schedule_conflicts: [
+          {
+            employee_id: "51000000-0000-4000-8000-000000000001",
+            employee_name: "Alex Rivera",
+            date: "2026-08-17",
+            reason: "time_overlap",
+            first: {
+              shift_id: "71000000-0000-4000-8000-000000000001",
+              location_id: "11000000-0000-4000-8000-000000000001",
+              location_name: "Main Dining",
+              time_range: "4:00 PM - 7:00 PM",
+              shift_type: "Dinner",
+            },
+            second: {
+              shift_id: "71000000-0000-4000-8000-000000000002",
+              location_id: "11000000-0000-4000-8000-000000000001",
+              location_name: "Main Dining",
+              time_range: "6:00 PM - 10:00 PM",
+              shift_type: "Dinner",
+            },
+            introduced: true,
+          },
+        ],
+      }).status,
+    ).toBe("schedule_conflicts");
+    expect(
+      schedulePublishResultSchema.parse({
+        status: "preflight",
+        preflight: preview,
+        preflight_block_reason: "stale_fingerprint",
+        fingerprint: preview.fingerprint,
+      }).status,
+    ).toBe("preflight");
+    expect(
+      scheduleUnpublishResultSchema.parse({
+        status: "unpublished",
+        workspace_id: workspaceId,
+        week_start: "2026-08-17",
+        location_ids: ["11000000-0000-4000-8000-000000000001"],
+        publication_ids: ["86000000-0000-4000-8000-000000000001"],
+        unpublished_at: "2026-08-17T12:00:00.000Z",
+      }).kept_worked_count,
+    ).toBe(0);
+    expect(
+      scheduleUnpublishResultSchema.parse({
+        status: "unpublished",
+        workspace_id: workspaceId,
+        week_start: "2026-08-17",
+        location_ids: ["11000000-0000-4000-8000-000000000001"],
+        publication_ids: ["86000000-0000-4000-8000-000000000001"],
+        kept_worked_count: 2,
+        unpublished_at: "2026-08-17T12:00:00.000Z",
+      }).kept_worked_count,
+    ).toBe(2);
   });
 
   it("validates a location-scoped published schedule read model", () => {
     const locationId = "10000000-0000-4000-8000-000000000001";
     const jobId = "20000000-0000-4000-8000-000000000001";
     const employeeId = "30000000-0000-4000-8000-000000000001";
-    expect(
-      scheduleReadModelSchema.parse({
+    const labelId = "50000000-0000-4000-8000-000000000001";
+    const parsed = scheduleReadModelSchema.parse({
         workspace_id: workspaceId,
         week_start: "2026-08-17",
         week_start_day: "monday",
@@ -185,6 +366,15 @@ describe("shared contracts", () => {
           },
         ],
         shift_types: [],
+        shift_labels: [
+          {
+            id: labelId,
+            name: "Training",
+            color: "#A855F7",
+            sort_order: 0,
+            is_active: true,
+          },
+        ],
         employees: [
           {
             id: employeeId,
@@ -206,13 +396,122 @@ describe("shared contracts", () => {
             start_time: "09:00",
             end_time: "17:00",
             crosses_midnight: false,
+            label_ids: [labelId],
+            label_names: ["Training"],
             note: "",
             warning_codes: [],
           },
         ],
-        closures: [],
-      }).locations[0]?.publication_status,
-    ).toBe("published");
+      closures: [
+        {
+          id: "60000000-0000-4000-8000-000000000001",
+          location_id: locationId,
+          closed_date: "2026-08-18",
+          end_date: "2026-08-19",
+          title: "Renovation",
+          is_all_day: true,
+          shift_type_ids: [],
+        },
+      ],
+      important_dates: [
+        {
+          id: "70000000-0000-4000-8000-000000000001",
+          location_id: locationId,
+          title: "Anniversary",
+          type: "event",
+          starts_on: "2026-08-18",
+          ends_on: "2026-08-18",
+          recurrence: "annual",
+        },
+      ],
+    });
+    expect(parsed.locations[0]?.publication_status).toBe("published");
+    expect(parsed.settings.time_format).toBe("12h");
+    expect(parsed.employees[0]?.shift_type_ids ?? []).toEqual([]);
+    expect(parsed.employees[0]?.is_excluded_from_schedule ?? false).toBe(
+      false,
+    );
+    expect(parsed.shifts[0]?.unpaid_break_minutes).toBe(0);
+    expect(parsed.shifts[0]?.label_names).toEqual(["Training"]);
+    expect(parsed.shift_labels?.[0]?.name).toBe("Training");
+    expect(parsed.closures[0]?.end_date).toBe("2026-08-19");
+    expect(parsed.closures[0]?.shift_type_ids).toEqual([]);
+    expect(parsed.important_dates[0]?.title).toBe("Anniversary");
+    expect(parsed.important_dates[0]?.recurrence).toBe("annual");
+  });
+
+  it("validates partial schedule closures scoped to shift types", () => {
+    const shiftTypeId = "40000000-0000-4000-8000-000000000002";
+    const parsed = scheduleReadModelSchema.parse({
+      workspace_id: workspaceId,
+      week_start: "2026-08-17",
+      week_start_day: "monday",
+      locations: [],
+      departments: [],
+      jobs: [],
+      shift_types: [],
+      employees: [],
+      shifts: [],
+      closures: [
+        {
+          id: "60000000-0000-4000-8000-000000000002",
+          location_id: "10000000-0000-4000-8000-000000000001",
+          closed_date: "2026-08-18",
+          title: "No dinner",
+          is_all_day: false,
+          shift_type_ids: [shiftTypeId],
+        },
+      ],
+    });
+
+    expect(parsed.closures[0]?.shift_type_ids).toEqual([shiftTypeId]);
+  });
+
+  it("validates Schedule pending operation payload labels", () => {
+    const parsed = schedulePendingOpPayloadSchema.parse({
+      scheduled_date: "2026-08-17",
+      start_time: "09:00",
+      end_time: "17:00",
+      label_ids: ["50000000-0000-4000-8000-000000000001"],
+      label_names: ["Training"],
+    });
+    expect(parsed.label_names).toEqual(["Training"]);
+  });
+
+  it("validates Schedule export preview row labels", () => {
+    const parsed = scheduleExportPreviewSchema.parse({
+      status: "export_ready",
+      workspace_id: workspaceId,
+      workspace_name: "Meyhouse",
+      week_start: "2026-08-17",
+      source: { type: "published" },
+      source_revision: 1,
+      fingerprint: "a".repeat(64),
+      locations: [],
+      rows: [
+        {
+          shift_id: "82000000-0000-4000-8000-000000000001",
+          scheduled_date: "2026-08-17",
+          location_name: "Main",
+          employee_name: "Alex Rivera",
+          job_name: "Server",
+          shift_type_name: "Dinner",
+          label_names: ["Training"],
+          start_time: "16:00",
+          end_time: "22:00",
+          crosses_midnight: false,
+          note: "",
+          scheduled_minutes: 360,
+        },
+      ],
+      summary: {
+        shift_count: 1,
+        employee_count: 1,
+        scheduled_minutes: 360,
+      },
+    });
+
+    expect(parsed.rows[0]?.label_names).toEqual(["Training"]);
   });
 
   it("keeps legacy payroll and compliance domains outside the clean rebuild baseline", () => {
@@ -446,8 +745,13 @@ describe("scheduling settings schemas", () => {
         schedule_deadline_day: "friday",
         conflict_policy: "block",
         availability_enforcement: "hard",
+        time_format: "24h",
       }),
-    ).toMatchObject({ week_start_day: "sunday", conflict_policy: "block" });
+    ).toMatchObject({
+      week_start_day: "sunday",
+      conflict_policy: "block",
+      time_format: "24h",
+    });
   });
 
   it("requires paired, distinct shift-type times", () => {
@@ -467,6 +771,51 @@ describe("scheduling settings schemas", () => {
         default_end_time: "09:00",
       }),
     ).toThrow();
+  });
+});
+
+describe("important date schemas", () => {
+  it("accepts annual events and requires closed days to block scheduling", () => {
+    expect(
+      importantDateInputSchema.parse({
+        location_id: null,
+        title: "New Year's Day",
+        type: "holiday",
+        starts_on: "2027-01-01",
+        ends_on: "2027-01-01",
+        recurrence: "annual",
+        note: "",
+        affects_scheduling: true,
+      }),
+    ).toMatchObject({ title: "New Year's Day", recurrence: "annual" });
+
+    expect(() =>
+      importantDateInputSchema.parse({
+        location_id: null,
+        title: "Closed for repairs",
+        type: "closed_day",
+        starts_on: "2027-02-01",
+        ends_on: "2027-02-01",
+        recurrence: "none",
+        note: "",
+        affects_scheduling: false,
+      }),
+    ).toThrow("Closed days must affect scheduling");
+  });
+
+  it("rejects inverted date ranges", () => {
+    expect(() =>
+      importantDateInputSchema.parse({
+        location_id: null,
+        title: "Festival weekend",
+        type: "event",
+        starts_on: "2027-05-03",
+        ends_on: "2027-05-01",
+        recurrence: "none",
+        note: "",
+        affects_scheduling: true,
+      }),
+    ).toThrow("End date must be on or after the start date");
   });
 });
 

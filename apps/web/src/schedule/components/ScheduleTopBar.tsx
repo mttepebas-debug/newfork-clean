@@ -1,0 +1,734 @@
+import type {
+  ScheduleEmployee,
+  ScheduleLocation,
+  ScheduleReadModel,
+} from "@newfork/shared/schedule";
+import {
+  ArrowDownAZ,
+  BriefcaseBusiness,
+  CalendarDays,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Clock3,
+  Eye,
+  EyeOff,
+  Layers2,
+  MapPin,
+  Rows3,
+  SlidersHorizontal,
+  Snowflake,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { Link } from "react-router";
+
+import { type CalendarMarker } from "./MiniCalendar";
+import {
+  ScheduleTopBarFilter,
+  type ScheduleTopBarFilterGroup,
+  type ScheduleTopBarFilterId,
+  type ScheduleTopBarFilterItem,
+} from "./ScheduleTopBarFilter";
+
+type ScheduleLayoutMode = "separate" | "unified";
+type ScheduleEmployeeSortMode = "alphabetical" | "byJob";
+type ScheduleTopBarDropdownId = "settings" | ScheduleTopBarFilterId;
+
+interface ScheduleTopBarProps {
+  readonly weekLabel: string;
+  readonly view: "day" | "week";
+  readonly selectedDate: string;
+  readonly weekStartDate: string;
+  readonly weekStartDay: "monday" | "sunday";
+  readonly calendarMarkers?: readonly CalendarMarker[];
+  readonly canOpenLineup: boolean;
+  readonly canOpenRequests: boolean;
+  readonly layout: ScheduleLayoutMode;
+  readonly onLayoutChange: (layout: ScheduleLayoutMode) => void;
+  readonly onPreviousViewPeriod: () => void;
+  readonly onNextViewPeriod: () => void;
+  readonly onCurrentViewPeriodClick: () => void;
+  readonly isCurrentViewPeriod: boolean;
+  readonly onJumpToToday: () => void;
+  readonly onDayPick: (date: string) => void;
+  readonly onWeekJump: (date: string) => void;
+  readonly hideUnscheduled: boolean;
+  readonly onToggleHideUnscheduled: () => void;
+  readonly showUnassignedShifts: boolean;
+  readonly onToggleUnassignedShifts: () => void;
+  readonly unassignedFrozen: boolean;
+  readonly onToggleUnassignedFrozen: () => void;
+  readonly dropdownDismissSignal?: number;
+  readonly onDropdownOpenChange?: (open: boolean) => void;
+  readonly showShiftType: boolean;
+  readonly onToggleShiftType: () => void;
+  readonly showShiftLabels: boolean;
+  readonly onToggleShiftLabels: () => void;
+  readonly showClockTimes: boolean;
+  readonly onToggleClockTimes: () => void;
+  readonly showTotalHours: boolean;
+  readonly onToggleTotalHours: () => void;
+  readonly showRoleSeparators: boolean;
+  readonly onToggleRoleSeparators: () => void;
+  readonly showPresetShiftBadges: boolean;
+  readonly onTogglePresetShiftBadges: () => void;
+  readonly useDefaultTimesForScheduling: boolean;
+  readonly onToggleUseDefaultTimesForScheduling: () => void;
+  readonly employeeSortMode: ScheduleEmployeeSortMode;
+  readonly onEmployeeSortModeChange: (mode: ScheduleEmployeeSortMode) => void;
+  readonly locations: readonly ScheduleLocation[];
+  readonly selectedLocationIds: readonly string[];
+  readonly onLocationFilterChange: (ids: string[]) => void;
+  readonly shiftTypes: ScheduleReadModel["shift_types"];
+  readonly selectedShiftTypeIds: readonly string[];
+  readonly onShiftTypeFilterChange: (ids: string[]) => void;
+  readonly jobs: ScheduleReadModel["jobs"];
+  readonly departments: ScheduleReadModel["departments"];
+  readonly selectedJobIds: readonly string[];
+  readonly onJobFilterChange: (ids: string[]) => void;
+  readonly employees: readonly ScheduleEmployee[];
+  readonly selectedEmployeeIds: readonly string[];
+  readonly onEmployeeFilterChange: (ids: string[]) => void;
+  readonly actions?: ReactNode;
+}
+
+export function ScheduleTopBar({
+  weekLabel,
+  view,
+  selectedDate,
+  canOpenLineup,
+  canOpenRequests,
+  layout,
+  onLayoutChange,
+  onPreviousViewPeriod,
+  onNextViewPeriod,
+  onCurrentViewPeriodClick,
+  isCurrentViewPeriod,
+  onJumpToToday,
+  hideUnscheduled,
+  onToggleHideUnscheduled,
+  showUnassignedShifts,
+  onToggleUnassignedShifts,
+  unassignedFrozen,
+  onToggleUnassignedFrozen,
+  dropdownDismissSignal,
+  onDropdownOpenChange,
+  showShiftType,
+  onToggleShiftType,
+  showShiftLabels,
+  onToggleShiftLabels,
+  showClockTimes,
+  onToggleClockTimes,
+  showTotalHours,
+  onToggleTotalHours,
+  showRoleSeparators,
+  onToggleRoleSeparators,
+  showPresetShiftBadges,
+  onTogglePresetShiftBadges,
+  useDefaultTimesForScheduling,
+  onToggleUseDefaultTimesForScheduling,
+  employeeSortMode,
+  onEmployeeSortModeChange,
+  locations,
+  selectedLocationIds,
+  onLocationFilterChange,
+  shiftTypes,
+  selectedShiftTypeIds,
+  onShiftTypeFilterChange,
+  jobs,
+  departments,
+  selectedJobIds,
+  onJobFilterChange,
+  employees,
+  selectedEmployeeIds,
+  onEmployeeFilterChange,
+  actions,
+}: ScheduleTopBarProps) {
+  const lastDismissSignalRef = useRef(dropdownDismissSignal);
+  const [openDropdownId, setOpenDropdownId] =
+    useState<ScheduleTopBarDropdownId | null>(null);
+  const viewModeLabel = view === "day" ? "Daily view" : "Weekly view";
+  const viewModeTitle = isCurrentViewPeriod
+    ? `Switch to ${view === "day" ? "weekly" : "daily"} view`
+    : view === "day"
+      ? "Jump to today"
+      : "Jump to this week";
+  const setDropdownOpen = (id: ScheduleTopBarDropdownId, open: boolean) => {
+    const nextOpenDropdownId = open
+      ? id
+      : openDropdownId === id
+        ? null
+        : openDropdownId;
+    setOpenDropdownId(nextOpenDropdownId);
+    onDropdownOpenChange?.(nextOpenDropdownId !== null);
+  };
+  useEffect(() => {
+    onDropdownOpenChange?.(openDropdownId !== null);
+  }, [onDropdownOpenChange, openDropdownId]);
+  useEffect(() => {
+    if (
+      dropdownDismissSignal === undefined ||
+      lastDismissSignalRef.current === dropdownDismissSignal
+    ) {
+      return;
+    }
+    lastDismissSignalRef.current = dropdownDismissSignal;
+    setOpenDropdownId(null);
+  }, [dropdownDismissSignal]);
+  useEffect(() => {
+    if (!openDropdownId) return undefined;
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[data-schedule-filter-command-strip]")) return;
+      const activeSurfaceSelector =
+        openDropdownId === "settings"
+          ? ".schedule-command-menu"
+          : `[data-filter-id="${openDropdownId}"]`;
+      if (target.closest(activeSurfaceSelector)) return;
+      setOpenDropdownId(null);
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      const activeElement = document.activeElement;
+      if (
+        activeElement instanceof HTMLElement &&
+        activeElement.closest(".schedule-topbar")
+      ) {
+        activeElement.blur();
+      }
+      setOpenDropdownId(null);
+    };
+    window.addEventListener("pointerdown", closeOnOutsidePointerDown, true);
+    window.addEventListener("keydown", closeOnEscape, true);
+    return () => {
+      window.removeEventListener(
+        "pointerdown",
+        closeOnOutsidePointerDown,
+        true,
+      );
+      window.removeEventListener("keydown", closeOnEscape, true);
+    };
+  }, [openDropdownId]);
+
+  return (
+    <header className="schedule-topbar" data-schedule-top-bar>
+      <div className="schedule-command-group" data-schedule-top-bar-main-row>
+        <ScheduleViewModeControls
+          viewModeLabel={viewModeLabel}
+          viewModeTitle={viewModeTitle}
+          returnCue={!isCurrentViewPeriod}
+          onToggleViewMode={onCurrentViewPeriodClick}
+          onPrevious={onPreviousViewPeriod}
+          onNext={onNextViewPeriod}
+        />
+        <div className="schedule-command-menu">
+          <button
+            type="button"
+            className="schedule-command-menu-trigger"
+            aria-expanded={openDropdownId === "settings"}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setDropdownOpen("settings", openDropdownId !== "settings");
+            }}
+          >
+            <SlidersHorizontal size={15} aria-hidden /> Settings
+          </button>
+          {openDropdownId === "settings" ? (
+            <SettingsMenuPanel
+              selectedDate={selectedDate}
+              canOpenLineup={canOpenLineup}
+              canOpenRequests={canOpenRequests}
+              employeeSortMode={employeeSortMode}
+              showShiftType={showShiftType}
+              showShiftLabels={showShiftLabels}
+              showClockTimes={showClockTimes}
+              showPresetShiftBadges={showPresetShiftBadges}
+              showTotalHours={showTotalHours}
+              showRoleSeparators={showRoleSeparators}
+              showUnassignedShifts={showUnassignedShifts}
+              unassignedFrozen={unassignedFrozen}
+              useDefaultTimesForScheduling={useDefaultTimesForScheduling}
+              onJumpToToday={onJumpToToday}
+              onEmployeeSortModeChange={onEmployeeSortModeChange}
+              onToggleShiftType={onToggleShiftType}
+              onToggleShiftLabels={onToggleShiftLabels}
+              onToggleClockTimes={onToggleClockTimes}
+              onTogglePresetShiftBadges={onTogglePresetShiftBadges}
+              onToggleTotalHours={onToggleTotalHours}
+              onToggleRoleSeparators={onToggleRoleSeparators}
+              onToggleUnassignedShifts={onToggleUnassignedShifts}
+              onToggleUnassignedFrozen={onToggleUnassignedFrozen}
+              onToggleUseDefaultTimesForScheduling={
+                onToggleUseDefaultTimesForScheduling
+              }
+            />
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="schedule-hide-unscheduled"
+          aria-pressed={hideUnscheduled}
+          onClick={onToggleHideUnscheduled}
+        >
+          {hideUnscheduled ? (
+            <Eye size={15} aria-hidden />
+          ) : (
+            <EyeOff size={15} aria-hidden />
+          )}
+          {hideUnscheduled ? "Show Unscheduled" : "Hide Unscheduled"}
+        </button>
+        {locations.length > 0 ? (
+          <ScheduleTopBarFilter
+            filterId="locations"
+            allLabel="All locations"
+            singularLabel="location"
+            pluralLabel="locations"
+            icon={<MapPin size={15} aria-hidden />}
+            items={locations.map((location) => ({
+              id: location.id,
+              label: location.name,
+            }))}
+            selectedIds={selectedLocationIds}
+            onChange={onLocationFilterChange}
+            open={openDropdownId === "locations"}
+            onOpenChange={(open) => setDropdownOpen("locations", open)}
+            topContent={
+              <ScheduleGridViewModeToggle
+                mode={layout}
+                onChange={onLayoutChange}
+              />
+            }
+          />
+        ) : null}
+        {shiftTypes.length > 0 ? (
+          <ScheduleTopBarFilter
+            filterId="shiftTypes"
+            allLabel="All shifts"
+            singularLabel="shift"
+            pluralLabel="shifts"
+            icon={<Clock3 size={15} aria-hidden />}
+            items={shiftTypes.map((shiftType) => ({
+              id: shiftType.id,
+              label: shiftType.name,
+              color: shiftType.color,
+            }))}
+            selectedIds={selectedShiftTypeIds}
+            onChange={onShiftTypeFilterChange}
+            open={openDropdownId === "shiftTypes"}
+            onOpenChange={(open) => setDropdownOpen("shiftTypes", open)}
+          />
+        ) : null}
+        {jobs.length > 0 ? (
+          <ScheduleTopBarFilter
+            filterId="jobs"
+            allLabel="All jobs"
+            singularLabel="job"
+            pluralLabel="jobs"
+            icon={<BriefcaseBusiness size={15} aria-hidden />}
+            items={flattenGroups(createJobGroups(jobs, departments))}
+            groups={createJobGroups(jobs, departments)}
+            selectedIds={selectedJobIds}
+            onChange={onJobFilterChange}
+            open={openDropdownId === "jobs"}
+            onOpenChange={(open) => setDropdownOpen("jobs", open)}
+          />
+        ) : null}
+        {employees.length > 0 ? (
+          <ScheduleTopBarFilter
+            filterId="employees"
+            allLabel="All employees"
+            singularLabel="employee"
+            pluralLabel="employees"
+            icon={<CalendarDays size={15} aria-hidden />}
+            items={employees.map((employee) => ({
+              id: employee.id,
+              label: employee.display_name,
+            }))}
+            selectedIds={selectedEmployeeIds}
+            onChange={onEmployeeFilterChange}
+            open={openDropdownId === "employees"}
+            onOpenChange={(open) => setDropdownOpen("employees", open)}
+          />
+        ) : null}
+      </div>
+      {actions ? <div className="schedule-action-group">{actions}</div> : null}
+      <h1 id="schedule-title" className="sr-only">
+        Schedule
+      </h1>
+      <span className="sr-only">{weekLabel}</span>
+    </header>
+  );
+}
+
+export function ScheduleViewModeControls({
+  viewModeLabel,
+  viewModeTitle,
+  returnCue = false,
+  showViewToggle = true,
+  onToggleViewMode,
+  onPrevious,
+  onNext,
+}: {
+  readonly viewModeLabel: string;
+  readonly viewModeTitle?: string;
+  readonly returnCue?: boolean;
+  readonly showViewToggle?: boolean;
+  readonly onToggleViewMode: () => void;
+  readonly onPrevious?: () => void;
+  readonly onNext?: () => void;
+}) {
+  const isDailyView = viewModeLabel === "Daily view";
+  const previousLabel = isDailyView ? "Previous day" : "Previous week";
+  const nextLabel = isDailyView ? "Next day" : "Next week";
+
+  return (
+    <div className="schedule-view-mode-controls">
+      {onPrevious ? (
+        <button
+          type="button"
+          className="schedule-view-mode-step"
+          aria-label={previousLabel}
+          title={previousLabel}
+          onClick={(event) => {
+            event.stopPropagation();
+            onPrevious();
+          }}
+        >
+          <ChevronLeft size={18} aria-hidden />
+        </button>
+      ) : null}
+      {showViewToggle ? (
+        <button
+          type="button"
+          className="schedule-view-mode"
+          aria-label={viewModeLabel}
+          title={viewModeTitle}
+          data-return-cue={returnCue}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleViewMode();
+          }}
+        >
+          <CalendarDays size={15} aria-hidden />
+          {viewModeLabel}
+        </button>
+      ) : null}
+      {onNext ? (
+        <button
+          type="button"
+          className="schedule-view-mode-step"
+          aria-label={nextLabel}
+          title={nextLabel}
+          onClick={(event) => {
+            event.stopPropagation();
+            onNext();
+          }}
+        >
+          <ChevronRight size={18} aria-hidden />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function ScheduleGridViewModeToggle({
+  mode,
+  onChange,
+}: {
+  readonly mode: ScheduleLayoutMode;
+  readonly onChange: (mode: ScheduleLayoutMode) => void;
+}) {
+  const isUnified = mode === "unified";
+  const nextMode = isUnified ? "separate" : "unified";
+  const label = isUnified ? "Separate Locations" : "Merge All";
+
+  return (
+    <button
+      type="button"
+      aria-pressed={isUnified}
+      className="schedule-grid-view-mode-toggle"
+      onClick={() => onChange(nextMode)}
+    >
+      {isUnified ? <Layers2 size={15} /> : <Rows3 size={15} />}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function SettingsMenuPanel({
+  selectedDate,
+  canOpenLineup,
+  canOpenRequests,
+  employeeSortMode,
+  showShiftType,
+  showShiftLabels,
+  showClockTimes,
+  showPresetShiftBadges,
+  showTotalHours,
+  showRoleSeparators,
+  showUnassignedShifts,
+  unassignedFrozen,
+  useDefaultTimesForScheduling,
+  onJumpToToday,
+  onEmployeeSortModeChange,
+  onToggleShiftType,
+  onToggleShiftLabels,
+  onToggleClockTimes,
+  onTogglePresetShiftBadges,
+  onToggleTotalHours,
+  onToggleRoleSeparators,
+  onToggleUnassignedShifts,
+  onToggleUnassignedFrozen,
+  onToggleUseDefaultTimesForScheduling,
+}: {
+  readonly selectedDate: string;
+  readonly canOpenLineup: boolean;
+  readonly canOpenRequests: boolean;
+  readonly employeeSortMode: ScheduleEmployeeSortMode;
+  readonly showShiftType: boolean;
+  readonly showShiftLabels: boolean;
+  readonly showClockTimes: boolean;
+  readonly showPresetShiftBadges: boolean;
+  readonly showTotalHours: boolean;
+  readonly showRoleSeparators: boolean;
+  readonly showUnassignedShifts: boolean;
+  readonly unassignedFrozen: boolean;
+  readonly useDefaultTimesForScheduling: boolean;
+  readonly onJumpToToday: () => void;
+  readonly onEmployeeSortModeChange: (mode: ScheduleEmployeeSortMode) => void;
+  readonly onToggleShiftType: () => void;
+  readonly onToggleShiftLabels: () => void;
+  readonly onToggleClockTimes: () => void;
+  readonly onTogglePresetShiftBadges: () => void;
+  readonly onToggleTotalHours: () => void;
+  readonly onToggleRoleSeparators: () => void;
+  readonly onToggleUnassignedShifts: () => void;
+  readonly onToggleUnassignedFrozen: () => void;
+  readonly onToggleUseDefaultTimesForScheduling: () => void;
+}) {
+  return (
+    <div className="schedule-command-menu-panel schedule-settings-menu-panel">
+      <strong>Schedule</strong>
+      <button type="button" onClick={onJumpToToday}>
+        Today
+      </button>
+      {canOpenLineup ? (
+        <Link to={`/app/schedule/lineup?date=${selectedDate}`}>Line-up</Link>
+      ) : null}
+      {canOpenRequests ? (
+        <Link to="/app/schedule/requests">Requests</Link>
+      ) : null}
+      <div className="schedule-menu-separator" />
+      <strong>Sort Employees by</strong>
+      <SettingsRadioRow
+        checked={employeeSortMode === "alphabetical"}
+        icon={<ArrowDownAZ size={15} aria-hidden />}
+        label="A-Z"
+        onClick={() => onEmployeeSortModeChange("alphabetical")}
+      />
+      <SettingsRadioRow
+        checked={employeeSortMode === "byJob"}
+        icon={<BriefcaseBusiness size={15} aria-hidden />}
+        label="Job/Position"
+        onClick={() => onEmployeeSortModeChange("byJob")}
+      />
+      <div className="schedule-menu-separator" />
+      <strong>Shift Badge Settings</strong>
+      <SettingsToggleRow
+        pressed={showShiftType}
+        icon={showShiftType ? <Eye size={15} /> : <EyeOff size={15} />}
+        label={showHideLabel(showShiftType, "Shift type in badges")}
+        onClick={onToggleShiftType}
+      />
+      <SettingsToggleRow
+        pressed={showShiftLabels}
+        icon={showShiftLabels ? <Eye size={15} /> : <EyeOff size={15} />}
+        label={showHideLabel(showShiftLabels, "Labels in badges")}
+        onClick={onToggleShiftLabels}
+      />
+      <SettingsToggleRow
+        pressed={showClockTimes}
+        icon={showClockTimes ? <Clock size={15} /> : <EyeOff size={15} />}
+        label={showHideLabel(showClockTimes, "Clock in/out in badges")}
+        onClick={onToggleClockTimes}
+      />
+      <SettingsToggleRow
+        pressed={showPresetShiftBadges}
+        icon={
+          showPresetShiftBadges ? <Clock3 size={15} /> : <EyeOff size={15} />
+        }
+        label={showHideLabel(showPresetShiftBadges, "Preset Shift Badges")}
+        onClick={onTogglePresetShiftBadges}
+        disabled={employeeSortMode !== "byJob"}
+      />
+      <div className="schedule-menu-separator" />
+      <strong>Schedule Grid Settings</strong>
+      <SettingsToggleRow
+        pressed={showTotalHours}
+        icon={showTotalHours ? <Clock3 size={15} /> : <EyeOff size={15} />}
+        label={showHideLabel(showTotalHours, "Total hours")}
+        onClick={onToggleTotalHours}
+      />
+      <SettingsToggleRow
+        pressed={showRoleSeparators}
+        icon={showRoleSeparators ? <Eye size={15} /> : <EyeOff size={15} />}
+        label={showHideLabel(showRoleSeparators, "Role Seperators")}
+        onClick={onToggleRoleSeparators}
+        disabled={employeeSortMode !== "byJob"}
+      />
+      <SettingsToggleRow
+        pressed={showUnassignedShifts}
+        icon={showUnassignedShifts ? <Eye size={15} /> : <EyeOff size={15} />}
+        label={showHideLabel(showUnassignedShifts, "Unassigned Shifts Row")}
+        onClick={onToggleUnassignedShifts}
+      />
+      <SettingsToggleRow
+        pressed={unassignedFrozen}
+        icon={
+          <span
+            aria-hidden
+            className="schedule-unassigned-freeze-icon"
+            data-frozen={unassignedFrozen}
+          >
+            <Snowflake size={15} strokeWidth={unassignedFrozen ? 2.2 : 1.8} />
+            {!unassignedFrozen ? <span /> : null}
+          </span>
+        }
+        label={`${unassignedFrozen ? "Unfreeze" : "Freeze"} Unassigned Shifts Row`}
+        onClick={onToggleUnassignedFrozen}
+      />
+      <SettingsToggleRow
+        pressed={useDefaultTimesForScheduling}
+        icon={
+          useDefaultTimesForScheduling ? (
+            <Clock3 size={15} />
+          ) : (
+            <EyeOff size={15} />
+          )
+        }
+        label="Use default times for scheduling"
+        onClick={onToggleUseDefaultTimesForScheduling}
+      />
+    </div>
+  );
+}
+
+function SettingsRadioRow({
+  checked,
+  icon,
+  label,
+  onClick,
+}: {
+  readonly checked: boolean;
+  readonly icon: ReactNode;
+  readonly label: string;
+  readonly onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitemradio"
+      aria-checked={checked}
+      className="schedule-settings-row"
+      data-pressed={checked}
+      onClick={onClick}
+    >
+      {icon}
+      <span aria-hidden className="schedule-settings-row-bullet" />
+      <span className="schedule-settings-row-label">{label}</span>
+      {checked ? <Check size={15} aria-hidden /> : null}
+    </button>
+  );
+}
+
+function SettingsToggleRow({
+  pressed,
+  icon,
+  label,
+  onClick,
+  disabled = false,
+}: {
+  readonly pressed: boolean;
+  readonly icon: ReactNode;
+  readonly label: string;
+  readonly onClick: () => void;
+  readonly disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      disabled={disabled}
+      className="schedule-settings-row"
+      data-pressed={pressed}
+      onClick={onClick}
+    >
+      {icon}
+      <span aria-hidden className="schedule-settings-row-bullet" />
+      <span className="schedule-settings-row-label">{label}</span>
+    </button>
+  );
+}
+
+function showHideLabel(visible: boolean, label: string): string {
+  return `${visible ? "Hide" : "Show"} ${label}`;
+}
+
+function createJobGroups(
+  jobs: ScheduleReadModel["jobs"],
+  departments: ScheduleReadModel["departments"],
+): ScheduleTopBarFilterGroup[] {
+  const sortedDepartments = [...departments].sort(
+    (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name),
+  );
+  const departmentIds = new Set(
+    sortedDepartments.map((department) => department.id),
+  );
+  const jobsByDepartment = new Map<string, ScheduleTopBarFilterItem[]>();
+  const ungrouped: ScheduleTopBarFilterItem[] = [];
+
+  for (const job of jobs) {
+    const item = { id: job.id, label: job.name, color: job.color };
+    if (!job.department_id || !departmentIds.has(job.department_id)) {
+      ungrouped.push(item);
+      continue;
+    }
+    const bucket = jobsByDepartment.get(job.department_id);
+    if (bucket) bucket.push(item);
+    else jobsByDepartment.set(job.department_id, [item]);
+  }
+
+  const groups = sortedDepartments
+    .map((department) => ({
+      id: department.id,
+      label: department.name,
+      items: jobsByDepartment.get(department.id) ?? [],
+    }))
+    .filter((group) => group.items.length > 0);
+
+  if (ungrouped.length) {
+    groups.push({
+      id: "__no_department__",
+      label: "No department",
+      items: ungrouped,
+    });
+  }
+
+  return groups;
+}
+
+function flattenGroups(
+  groups: readonly ScheduleTopBarFilterGroup[],
+): ScheduleTopBarFilterItem[] {
+  return groups.flatMap((group) => group.items);
+}

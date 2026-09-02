@@ -12,7 +12,7 @@ import {
 } from "../lib/supabase";
 
 export default function WorkspacesPage() {
-  const { refresh } = useAuth();
+  const { context, refresh } = useAuth();
   const navigate = useNavigate();
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [workspaceName, setWorkspaceName] = useState("");
@@ -20,24 +20,32 @@ export default function WorkspacesPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (context) {
+      navigate(workspaceDestinationFromRole(context.membership.role), {
+        replace: true,
+      });
+      return;
+    }
     if (!supabaseClient) return;
     let active = true;
-    void listAccountWorkspaces(supabaseClient)
-      .then((items) => {
-        if (active) setWorkspaces(items);
-      })
-      .catch((loadError: unknown) => {
+    void (async () => {
+      try {
+        const items = await listAccountWorkspaces(supabaseClient);
+        if (!active) return;
+        setWorkspaces(items);
+      } catch (loadError: unknown) {
         if (active)
           setError(
             loadError instanceof Error
               ? loadError.message
               : "Workspaces could not be loaded",
           );
-      });
+      }
+    })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [context, navigate]);
 
   const createWorkspace = async (
     event: FormEvent<HTMLFormElement>,
@@ -62,14 +70,20 @@ export default function WorkspacesPage() {
   };
 
   const activate = async (workspace: WorkspaceSummary): Promise<void> => {
-    if (!supabaseClient || workspace.isActive) return;
+    if (!supabaseClient) return;
     setError(null);
     try {
-      await selectActiveWorkspace(supabaseClient, workspace.id);
-      await refresh();
-      navigate(
-        workspace.onboarding.status === "incomplete" ? "/onboarding" : "/app",
-      );
+      if (!workspace.isActive) {
+        await selectActiveWorkspace(supabaseClient, workspace.id);
+      }
+      const resolvedContext = await refresh();
+      if (!resolvedContext) {
+        setError("Workspace context could not be loaded");
+        return;
+      }
+      navigate(workspaceDestinationFromRole(resolvedContext.membership.role), {
+        replace: true,
+      });
     } catch (activationError: unknown) {
       setError(
         activationError instanceof Error
@@ -93,9 +107,13 @@ export default function WorkspacesPage() {
               <span>{workspace.role}</span>
             </div>
             {workspace.isActive ? (
-              <span className="active-workspace">
-                <Check size={15} aria-hidden /> Active
-              </span>
+              <Button
+                className="secondary-button compact-button active-workspace"
+                type="button"
+                onClick={() => activate(workspace)}
+              >
+                <Check size={15} aria-hidden /> Open app
+              </Button>
             ) : (
               <Button
                 className="secondary-button compact-button"
@@ -134,4 +152,8 @@ export default function WorkspacesPage() {
       ) : null}
     </section>
   );
+}
+
+function workspaceDestinationFromRole(role: WorkspaceSummary["role"]): string {
+  return role === "employee" ? "/app/employee-hub" : "/app/workspace";
 }

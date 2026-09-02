@@ -5,7 +5,7 @@ import {
   type ScheduleRequestsReadModel,
   type ShiftChangeDecisionInput,
   type TimeOffDecisionInput,
-} from "@newfork/shared";
+} from "@newfork/shared/schedule";
 import { createClient } from "@supabase/supabase-js";
 
 export interface ScheduleRequestsService {

@@ -8,7 +8,7 @@ import {
   type NotificationAction,
   type WorkspaceLayoutInput,
 } from "@newfork/shared";
-import { supabaseClient } from "../lib/supabase";
+import { developmentBearerToken, supabaseClient } from "../lib/supabase";
 
 async function request(
   workspaceId: string,
@@ -17,11 +17,12 @@ async function request(
 ) {
   if (!supabaseClient)
     throw new Error("Communication storage is not configured");
-  const token = (await supabaseClient.auth.getSession()).data.session
-    ?.access_token;
+  const token =
+    (await supabaseClient.auth.getSession()).data.session?.access_token ??
+    developmentBearerToken();
   if (!token) throw new Error("A current session is required");
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000"}/v1/workspaces/${workspaceId}${path}`,
+    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/v1/workspaces/${workspaceId}${path}`,
     {
       ...init,
       headers: {

@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@newfork/ui";
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
@@ -7,6 +8,7 @@ import {
   PermissionRoute,
   settingsEntryPermissions,
 } from "./auth/PermissionRoute";
+import { appLandingPath } from "./auth/routeDestinations";
 import { AppShell } from "./shell/AppShell";
 import { SignInPage } from "./views/SignInPage";
 import "./styles.css";
@@ -55,6 +57,17 @@ const EmployeeOnboardingPage = lazy(
 );
 const OwnerOnboardingPage = lazy(() => import("./views/OwnerOnboardingPage"));
 const SchedulePage = lazy(() => import("./views/SchedulePage"));
+const ScheduleShiftDesignPage = lazy(
+  () => import("./dev/ScheduleShiftDesignPage"),
+);
+const ScheduleTemplatesPage = lazy(
+  () => import("./views/ScheduleTemplatesPage"),
+);
+const AvailabilityPage = lazy(() =>
+  import("./views/AvailabilityPage").then((module) => ({
+    default: module.AvailabilityPage,
+  })),
+);
 const TimeEntriesPage = lazy(() => import("./views/TimeEntriesPage"));
 const LineupPage = lazy(() => import("./views/LineupPage"));
 const ScheduleRequestsPage = lazy(() => import("./views/ScheduleRequestsPage"));
@@ -72,6 +85,9 @@ const SchedulingSettingsPage = lazy(
 const ShiftTypesSettingsPage = lazy(
   () => import("./settings/ShiftTypesSettingsPage"),
 );
+const ImportantDatesSettingsPage = lazy(
+  () => import("./settings/ImportantDatesSettingsPage"),
+);
 const RolesSettingsPage = lazy(() => import("./settings/RolesSettingsPage"));
 const DocumentsSettingsPage = lazy(
   () => import("./settings/DocumentsSettingsPage"),
@@ -87,7 +103,7 @@ const SettingsHomeRedirect = lazy(
   () => import("./settings/SettingsHomeRedirect"),
 );
 
-const queryClient = new QueryClient({
+export const appQueryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: false, staleTime: 30_000 },
   },
@@ -95,9 +111,10 @@ const queryClient = new QueryClient({
 
 export function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={appQueryClient}>
       <BrowserRouter>
         <AuthProvider>
+          <Toaster />
           <Suspense
             fallback={
               <main className="auth-loading" aria-label="Loading page" />
@@ -115,6 +132,12 @@ export function App() {
                 />
               </Route>
               <Route path="/sign-in" element={<SignInPage />} />
+              {import.meta.env.DEV ? (
+                <Route
+                  path="/dev/schedule-shift-design"
+                  element={<ScheduleShiftDesignPage />}
+                />
+              ) : null}
               <Route path="/kiosk" element={<KioskPage />} />
               <Route path="/accept-invite" element={<AcceptInvitationPage />} />
               <Route path="/invite/accept" element={<AcceptInvitationPage />} />
@@ -179,6 +202,28 @@ export function App() {
                   }
                 />
                 <Route
+                  path="schedule/export"
+                  element={
+                    <PermissionRoute
+                      anyOf={["schedule.export", "schedule.read"]}
+                      roles={["owner", "admin", "manager"]}
+                    >
+                      <SchedulePage />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="schedule/templates"
+                  element={
+                    <PermissionRoute
+                      anyOf={["schedule.templates.manage", "schedule.read"]}
+                      roles={["owner", "admin", "manager"]}
+                    >
+                      <ScheduleTemplatesPage />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
                   path="time-entries"
                   element={
                     <PermissionRoute
@@ -207,6 +252,27 @@ export function App() {
                       ]}
                     >
                       <ScheduleRequestsPage />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="availability"
+                  element={
+                    <PermissionRoute
+                      anyOf={["schedule.read"]}
+                      roles={["owner", "admin", "manager"]}
+                    >
+                      <AvailabilityPage />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="important-dates"
+                  element={
+                    <PermissionRoute
+                      anyOf={["workspace.manage", "schedule.read"]}
+                    >
+                      <ImportantDatesSettingsPage />
                     </PermissionRoute>
                   }
                 />
@@ -294,6 +360,18 @@ export function App() {
                     }
                   />
                   <Route
+                    path="important-dates"
+                    element={<Navigate to="/app/important-dates" replace />}
+                  />
+                  <Route
+                    path="closed-days"
+                    element={<Navigate to="/app/important-dates" replace />}
+                  />
+                  <Route
+                    path="important-dates/closed-days"
+                    element={<Navigate to="/app/important-dates" replace />}
+                  />
+                  <Route
                     path="roles"
                     element={
                       <PermissionRoute anyOf={["roles.read"]}>
@@ -362,12 +440,5 @@ export function App() {
 
 function AppHomeRedirect() {
   const { context } = useAuth();
-  return (
-    <Navigate
-      to={
-        context?.membership.role === "employee" ? "employee-hub" : "workspace"
-      }
-      replace
-    />
-  );
+  return <Navigate to={appLandingPath(context)} replace />;
 }

@@ -25,6 +25,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
   getEmployeeDetail,
+  type InviteRoleOption,
   loadEmployeeReferenceData,
   prepareEmployeeInvitation,
   revokeEmployeeInvitation,
@@ -97,6 +98,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     ),
   });
   const [draft, setDraft] = useState<EmployeeInput>(emptyDraft);
+  const [inviteRoleId, setInviteRoleId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [developmentUrl, setDevelopmentUrl] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -113,6 +115,14 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     setError(null);
     setDevelopmentUrl(null);
   }, [detail.data, props.creating, props.employeeId]);
+
+  useEffect(() => {
+    const pendingRoleId = detail.data?.invitation?.role_id;
+    const defaultEmployeeRoleId = references.data?.inviteRoles.find(
+      (role) => role.systemKey === "employee",
+    )?.id;
+    setInviteRoleId(pendingRoleId ?? defaultEmployeeRoleId ?? "");
+  }, [detail.data?.invitation?.role_id, references.data?.inviteRoles]);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
@@ -168,6 +178,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         workspaceId,
         props.employeeId ?? "",
         draft.invitation_email,
+        inviteRoleId || null,
       ),
     onSuccess: async (result) => {
       setDevelopmentUrl(result.developmentUrl ?? null);
@@ -389,6 +400,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       setDraft,
                       detail.data,
                       references.data,
+                      inviteRoleId,
+                      setInviteRoleId,
                       readOnly,
                       canManageAccess,
                       onboardingReview.data,
@@ -469,11 +482,13 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 <Button
                   className="secondary-button"
                   type="button"
-                  disabled={dirty || inviteMutation.isPending}
+                  disabled={dirty || inviteMutation.isPending || !inviteRoleId}
                   title={
                     dirty
                       ? "Save changes before sending the invitation"
-                      : undefined
+                      : !inviteRoleId
+                        ? "Choose a role before sending the invitation"
+                        : undefined
                   }
                   onClick={() => inviteMutation.mutate()}
                 >
@@ -509,6 +524,8 @@ function renderSection(
   setDraft: React.Dispatch<React.SetStateAction<EmployeeInput>>,
   detail: EmployeeDetail | undefined,
   references: Awaited<ReturnType<typeof loadEmployeeReferenceData>> | undefined,
+  inviteRoleId: string,
+  setInviteRoleId: React.Dispatch<React.SetStateAction<string>>,
   readOnly: boolean,
   canManageAccess: boolean,
   onboarding: EmployeeOnboardingManager | undefined,
@@ -532,6 +549,10 @@ function renderSection(
         setDraft={setDraft}
         readOnly={readOnly}
         linked={Boolean(detail?.user_id)}
+        roles={references?.inviteRoles ?? []}
+        inviteRoleId={inviteRoleId}
+        setInviteRoleId={setInviteRoleId}
+        canManageAccess={canManageAccess}
       />
     );
   if (section === "employment")
@@ -575,6 +596,9 @@ function renderSection(
         draft={draft}
         setDraft={setDraft}
         detail={detail}
+        roles={references?.inviteRoles ?? []}
+        inviteRoleId={inviteRoleId}
+        setInviteRoleId={setInviteRoleId}
         readOnly={readOnly || !canManageAccess}
         onRevokeInvitation={onRevokeInvitation}
         revokingInvitation={revokingInvitation}
@@ -719,11 +743,19 @@ function ProfileSection({
   setDraft,
   readOnly,
   linked,
+  roles,
+  inviteRoleId,
+  setInviteRoleId,
+  canManageAccess,
 }: {
   draft: EmployeeInput;
   setDraft: React.Dispatch<React.SetStateAction<EmployeeInput>>;
   readOnly: boolean;
   linked: boolean;
+  roles: readonly InviteRoleOption[];
+  inviteRoleId: string;
+  setInviteRoleId: React.Dispatch<React.SetStateAction<string>>;
+  canManageAccess: boolean;
 }) {
   return (
     <div className="employee-form-grid">
@@ -761,6 +793,14 @@ function ProfileSection({
           setDraft((current) => ({ ...current, invitation_email: value }))
         }
       />
+      {canManageAccess && !linked ? (
+        <InviteRoleField
+          roles={roles}
+          inviteRoleId={inviteRoleId}
+          setInviteRoleId={setInviteRoleId}
+          disabled={readOnly}
+        />
+      ) : null}
     </div>
   );
 }
@@ -837,6 +877,9 @@ function AccessSection({
   draft,
   setDraft,
   detail,
+  roles,
+  inviteRoleId,
+  setInviteRoleId,
   readOnly,
   onRevokeInvitation,
   revokingInvitation,
@@ -844,6 +887,9 @@ function AccessSection({
   draft: EmployeeInput;
   setDraft: React.Dispatch<React.SetStateAction<EmployeeInput>>;
   detail: EmployeeDetail | undefined;
+  roles: readonly InviteRoleOption[];
+  inviteRoleId: string;
+  setInviteRoleId: React.Dispatch<React.SetStateAction<string>>;
   readOnly: boolean;
   onRevokeInvitation: () => void;
   revokingInvitation: boolean;
@@ -871,6 +917,12 @@ function AccessSection({
           setDraft((current) => ({ ...current, invitation_email: value }))
         }
       />
+      <InviteRoleField
+        roles={roles}
+        inviteRoleId={inviteRoleId}
+        setInviteRoleId={setInviteRoleId}
+        disabled={readOnly || Boolean(detail?.user_id)}
+      />
       {detail?.invitation?.status === "pending" && !readOnly ? (
         <Button
           className="secondary-button employee-revoke-invite"
@@ -882,6 +934,40 @@ function AccessSection({
         </Button>
       ) : null}
     </div>
+  );
+}
+
+function InviteRoleField({
+  roles,
+  inviteRoleId,
+  setInviteRoleId,
+  disabled,
+}: {
+  roles: readonly InviteRoleOption[];
+  inviteRoleId: string;
+  setInviteRoleId: React.Dispatch<React.SetStateAction<string>>;
+  disabled: boolean;
+}) {
+  return (
+    <label className="employee-field">
+      <span>Invite role</span>
+      <select
+        aria-label="Invite role"
+        value={inviteRoleId}
+        disabled={disabled || roles.length === 0}
+        onChange={(event) => setInviteRoleId(event.target.value)}
+      >
+        {roles.length === 0 ? (
+          <option value="">No assignable roles</option>
+        ) : null}
+        {roles.map((role) => (
+          <option key={role.id} value={role.id}>
+            {role.name}
+          </option>
+        ))}
+      </select>
+      <small>The selected role is applied when the invite is accepted.</small>
+    </label>
   );
 }
 

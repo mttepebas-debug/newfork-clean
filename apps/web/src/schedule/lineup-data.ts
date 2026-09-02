@@ -1,16 +1,18 @@
 import {
   scheduleLineupEntryMutationResultSchema,
+  scheduleLineupEntryMoveInputSchema,
   scheduleLineupReadModelSchema,
   scheduleLineupSectionSchema,
   scheduleLineupSharePreviewSchema,
   scheduleLineupShareResultSchema,
   type ScheduleLineupEntryInput,
+  type ScheduleLineupEntryMoveInput,
   type ScheduleLineupSectionInput,
-} from "@newfork/shared";
+} from "@newfork/shared/schedule";
 import { supabaseClient } from "../lib/supabase";
 
 async function request(
-  workspaceId: string,
+  _workspaceId: string,
   path: string,
   init: RequestInit = {},
 ) {
@@ -19,7 +21,7 @@ async function request(
     ?.access_token;
   if (!token) throw new Error("A current session is required for Line-up");
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://127.0.0.1:4000"}/v1/workspaces/${workspaceId}/schedule/lineup${path}`,
+    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/schedule/lineups${path}`,
     {
       ...init,
       headers: {
@@ -101,6 +103,17 @@ export async function deleteLineupEntry(
     await request(workspaceId, `/entries/${entryId}`, {
       method: "DELETE",
       body: JSON.stringify({ expected_revision: revision }),
+    }),
+  );
+}
+export async function moveLineupEntry(
+  workspaceId: string,
+  move: ScheduleLineupEntryMoveInput,
+) {
+  return scheduleLineupEntryMutationResultSchema.parse(
+    await request(workspaceId, "/entries/move", {
+      method: "POST",
+      body: JSON.stringify(scheduleLineupEntryMoveInputSchema.parse(move)),
     }),
   );
 }

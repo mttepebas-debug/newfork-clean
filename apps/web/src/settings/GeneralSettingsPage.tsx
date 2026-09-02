@@ -1,15 +1,23 @@
 import { Button } from "@newfork/ui";
-import { Building2, Save } from "lucide-react";
+import { Building2, ImagePlus, Save } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { updateOrganizationName } from "./organization-data";
+import {
+  ScheduleLogoUploadDialog,
+  type ScheduleLogoSaveDraft,
+} from "../schedule/components/ScheduleLogoUploadDialog";
+import { ScheduleLogoFrame } from "../schedule/components/ScheduleLogoFrame";
+import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
 
 export default function GeneralSettingsPage() {
   const { context, refresh } = useAuth();
   const [name, setName] = useState(context?.workspace.name ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [logoOpen, setLogoOpen] = useState(false);
+  const [savingLogo, setSavingLogo] = useState(false);
 
   useEffect(
     () => setName(context?.workspace.name ?? ""),
@@ -32,6 +40,21 @@ export default function GeneralSettingsPage() {
       setSaving(false);
     }
   };
+  const submitLogo = async (draft: ScheduleLogoSaveDraft): Promise<void> => {
+    setSavingLogo(true);
+    setLogoError(null);
+    setSaved(false);
+    try {
+      await saveScheduleLogo(context.workspace.id, draft);
+      await refresh();
+      setLogoOpen(false);
+      setSaved(true);
+    } catch (saveError) {
+      setLogoError(errorText(saveError));
+    } finally {
+      setSavingLogo(false);
+    }
+  };
 
   return (
     <section className="settings-page" aria-labelledby="general-settings-title">
@@ -41,6 +64,27 @@ export default function GeneralSettingsPage() {
         description="Organization identity used across navigation, invitations, and shared workspaces."
       />
       <form className="organization-form" onSubmit={submit}>
+        <div className="organization-form-row organization-logo-row">
+          <div>
+            <label>Schedule logo</label>
+            <p>
+              Logo shown in the sticky top-left corner of the schedule grid and
+              schedule exports.
+            </p>
+          </div>
+          <div className="organization-logo-control">
+            <ScheduleLogoFrame
+              logoUrl={context.workspace.logo_url}
+              organizationName={context.workspace.name}
+              placement={context.workspace.schedule_logo_placement}
+              className="settings-logo-frame"
+            />
+            <Button type="button" onClick={() => setLogoOpen(true)}>
+              <ImagePlus size={16} aria-hidden />
+              Manage logo
+            </Button>
+          </div>
+        </div>
         <div className="organization-form-row">
           <div>
             <label htmlFor="organization-name">Organization name</label>
@@ -62,9 +106,14 @@ export default function GeneralSettingsPage() {
             {error}
           </p>
         ) : null}
+        {logoError ? (
+          <p className="form-error" role="alert">
+            {logoError}
+          </p>
+        ) : null}
         {saved ? (
           <p className="form-success" role="status">
-            Organization name saved.
+            Organization settings saved.
           </p>
         ) : null}
         <div className="organization-form-actions">
@@ -81,6 +130,18 @@ export default function GeneralSettingsPage() {
           </Button>
         </div>
       </form>
+      <ScheduleLogoUploadDialog
+        open={logoOpen}
+        organizationName={context.workspace.name}
+        logoUrl={context.workspace.logo_url}
+        logoPlacement={context.workspace.schedule_logo_placement}
+        logoFileName={context.workspace.logo_file_name}
+        logoUpdatedAt={context.workspace.logo_updated_at}
+        error={logoError}
+        saving={savingLogo}
+        onOpenChange={setLogoOpen}
+        onSave={(draft) => void submitLogo(draft)}
+      />
     </section>
   );
 }
