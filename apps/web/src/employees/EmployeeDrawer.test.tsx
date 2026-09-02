@@ -1,5 +1,9 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ActiveWorkspaceContext, EmployeeDetail } from "@newfork/shared";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type {
+  ActiveWorkspaceContext,
+  EmployeeDetail,
+  EmployeeSection,
+} from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import { EmployeeDrawer } from "./EmployeeDrawer";
@@ -10,6 +14,7 @@ import {
   revokeEmployeeInvitation,
   saveEmployee,
   setEmployeeArchived,
+  terminateEmployee,
 } from "./employee-data";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -35,7 +40,11 @@ const context = {
     status: "active",
     allLocations: true,
   },
-  permissions: ["employees.manage", "employee_access.manage"],
+  permissions: [
+    "employees.manage",
+    "employees.archive",
+    "employee_access.manage",
+  ],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;
@@ -100,12 +109,16 @@ vi.mock("./employee-data", () => ({
   revokeEmployeeInvitation: vi.fn(),
   saveEmployee: vi.fn(),
   setEmployeeArchived: vi.fn(),
+  terminateEmployee: vi.fn(),
 }));
 
-function renderDrawer(section: "profile" | "access" = "access") {
+function renderDrawer(section: EmployeeSection = "access") {
   vi.mocked(getEmployeeDetail).mockResolvedValue(detail);
   vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
-    locations: detail.locations,
+    locations: detail.locations.map((location) => ({
+      ...location,
+      timezone: "America/Los_Angeles",
+    })),
     jobs: detail.jobs,
     inviteRoles: [
       {
@@ -129,6 +142,12 @@ function renderDrawer(section: "profile" | "access" = "access") {
   vi.mocked(revokeEmployeeInvitation).mockResolvedValue();
   vi.mocked(saveEmployee).mockResolvedValue(employeeId);
   vi.mocked(setEmployeeArchived).mockResolvedValue();
+  vi.mocked(terminateEmployee).mockResolvedValue({
+    terminationId: "ca000000-0000-4000-8000-000000000001",
+    effectiveAt: "2026-09-02T19:00:00.000Z",
+    releasedShiftCount: 2,
+    idempotentReplay: false,
+  });
 
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -185,5 +204,43 @@ describe("EmployeeDrawer", () => {
         managerRoleId,
       ),
     );
+  });
+
+  it("requires termination details and submits a worksite-local effective time", async () => {
+    renderDrawer("employment");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Terminate employee" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Terminate employee" });
+    fireEvent.change(within(dialog).getByLabelText("Effective date and time"), {
+      target: { value: "2026-09-01T12:00" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Open time entry handling"), {
+      target: { value: "close_at" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Reason"), {
+      target: { value: "Employment ended" },
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Confirm termination" }),
+    );
+
+    await waitFor(() =>
+      expect(terminateEmployee).toHaveBeenCalledWith(
+        workspaceId,
+        employeeId,
+        expect.objectContaining({
+          effectiveLocal: "2026-09-01T12:00",
+          worksiteTimezone: "America/Los_Angeles",
+          timeEntryAction: "close_at",
+          reason: "Employment ended",
+          idempotencyKey: expect.any(String),
+        }),
+      ),
+    );
+    expect(
+      await screen.findByText("Employee terminated. 2 published shifts released."),
+    ).toBeTruthy();
   });
 });

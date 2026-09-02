@@ -21,7 +21,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
   getEmployeeDetail,
@@ -31,6 +31,8 @@ import {
   revokeEmployeeInvitation,
   saveEmployee,
   setEmployeeArchived,
+  terminateEmployee,
+  type EmployeeTerminationInput,
   type EmployeeOption,
 } from "./employee-data";
 import {
@@ -101,6 +103,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const [inviteRoleId, setInviteRoleId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [developmentUrl, setDevelopmentUrl] = useState<string | null>(null);
+  const [terminationOpen, setTerminationOpen] = useState(false);
+  const [terminationNotice, setTerminationNotice] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const wheelIntent = useRef(0);
 
@@ -126,11 +130,14 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") props.onClose();
+      if (event.key === "Escape") {
+        if (terminationOpen) setTerminationOpen(false);
+        else props.onClose();
+      }
     };
     document.addEventListener("keydown", close);
     return () => document.removeEventListener("keydown", close);
-  }, [props.onClose]);
+  }, [props.onClose, terminationOpen]);
 
   const canManage = context?.permissions.includes("employees.manage") ?? false;
   const canArchive =
@@ -169,6 +176,24 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         queryKey: ["employees", workspaceId],
       });
       props.onClose();
+    },
+    onError: (cause) => setError(errorMessage(cause)),
+  });
+  const terminationMutation = useMutation({
+    mutationFn: (input: EmployeeTerminationInput) =>
+      terminateEmployee(workspaceId, props.employeeId ?? "", input),
+    onSuccess: async (result) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["employee-detail", workspaceId, props.employeeId],
+        }),
+      ]);
+      setTerminationOpen(false);
+      setError(null);
+      setTerminationNotice(
+        `Employee terminated. ${result.releasedShiftCount} published shift${result.releasedShiftCount === 1 ? "" : "s"} released.`,
+      );
     },
     onError: (cause) => setError(errorMessage(cause)),
   });
@@ -430,6 +455,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
               <a href={developmentUrl}>Open acceptance link</a>
             </div>
           ) : null}
+          {terminationNotice ? (
+            <div className="employee-drawer-notice" role="status">
+              <span>{terminationNotice}</span>
+            </div>
+          ) : null}
           {error ? (
             <p className="employee-drawer-error" role="alert">
               {error}
@@ -441,15 +471,25 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 <button
                   type="button"
                   className={`employee-lifecycle-button${archived ? " restore" : ""}`}
-                  disabled={archiveMutation.isPending}
+                  disabled={
+                    archiveMutation.isPending ||
+                    terminationMutation.isPending ||
+                    (!archived && dirty)
+                  }
+                  title={
+                    !archived && dirty
+                      ? "Save profile changes before terminating the employee"
+                      : undefined
+                  }
                   onClick={() => {
-                    const action = archived ? "restore" : "archive";
-                    if (
-                      window.confirm(
-                        `${action === "archive" ? "Archive" : "Restore"} this employee?`,
-                      )
-                    )
-                      archiveMutation.mutate(!archived);
+                    if (!archived) {
+                      setError(null);
+                      setTerminationNotice(null);
+                      setTerminationOpen(true);
+                      return;
+                    }
+                    if (window.confirm("Restore this employee?"))
+                      archiveMutation.mutate(false);
                   }}
                 >
                   {archived ? (
@@ -457,7 +497,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   ) : (
                     <Archive size={16} aria-hidden />
                   )}
-                  {archived ? "Restore employee" : "Archive employee"}
+                  {archived ? "Restore employee" : "Terminate employee"}
                 </button>
               ) : null}
             </div>
@@ -513,9 +553,196 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             </div>
           </footer>
         </form>
+        {terminationOpen && detail.data ? (
+          <EmployeeTerminationDialog
+            employeeName={`${detail.data.first_name} ${detail.data.last_name}`}
+            locations={(references.data?.locations ?? []).filter((location) =>
+              detail.data?.locations.some(
+                (assignment) =>
+                  assignment.id === location.id && !assignment.archived,
+              ),
+            )}
+            primaryLocationId={detail.data.primary_location_id}
+            pending={terminationMutation.isPending}
+            error={terminationMutation.isError ? error : null}
+            onClose={() => setTerminationOpen(false)}
+            onSubmit={(input) => terminationMutation.mutate(input)}
+          />
+        ) : null}
       </aside>
     </div>
   );
+}
+
+function EmployeeTerminationDialog({
+  employeeName,
+  locations,
+  primaryLocationId,
+  pending,
+  error,
+  onClose,
+  onSubmit,
+}: {
+  readonly employeeName: string;
+  readonly locations: readonly EmployeeOption[];
+  readonly primaryLocationId: string | null;
+  readonly pending: boolean;
+  readonly error: string | null;
+  readonly onClose: () => void;
+  readonly onSubmit: (input: EmployeeTerminationInput) => void;
+}) {
+  const titleId = useId();
+  const timezoneOptions = Array.from(
+    new Set(locations.map((location) => location.timezone).filter(Boolean)),
+  ) as string[];
+  const primaryTimezone =
+    locations.find((location) => location.id === primaryLocationId)?.timezone ??
+    timezoneOptions[0] ??
+    "";
+  const [timezone, setTimezone] = useState(primaryTimezone);
+  const [effectiveLocal, setEffectiveLocal] = useState(() =>
+    localDateTimeValue(new Date(), primaryTimezone || undefined),
+  );
+  const [timeEntryAction, setTimeEntryAction] =
+    useState<EmployeeTerminationInput["timeEntryAction"]>("block");
+  const [reason, setReason] = useState("");
+  const idempotencyKey = useRef(crypto.randomUUID());
+
+  return (
+    <div className="employee-termination-layer" role="presentation">
+      <button
+        type="button"
+        className="employee-termination-backdrop"
+        aria-label="Close termination dialog"
+        onClick={onClose}
+      />
+      <section
+        className="employee-termination-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <header>
+          <div>
+            <h2 id={titleId}>Terminate employee</h2>
+            <p>{employeeName}</p>
+          </div>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Close termination dialog"
+            onClick={onClose}
+          >
+            <X size={16} />
+          </button>
+        </header>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit({
+              effectiveLocal,
+              worksiteTimezone: timezone,
+              timeEntryAction,
+              reason,
+              idempotencyKey: idempotencyKey.current,
+            });
+          }}
+        >
+          <label>
+            Effective date and time
+            <input
+              type="datetime-local"
+              value={effectiveLocal}
+              max={localDateTimeValue(new Date(), timezone || undefined)}
+              onChange={(event) => setEffectiveLocal(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Worksite timezone
+            <select
+              value={timezone}
+              onChange={(event) => {
+                const nextTimezone = event.target.value;
+                setTimezone(nextTimezone);
+                setEffectiveLocal(localDateTimeValue(new Date(), nextTimezone));
+              }}
+              required
+            >
+              {timezoneOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Open time entry handling
+            <select
+              value={timeEntryAction}
+              onChange={(event) =>
+                setTimeEntryAction(
+                  event.target.value as EmployeeTerminationInput["timeEntryAction"],
+                )
+              }
+            >
+              <option value="block">Block if a time entry is open</option>
+              <option value="close_at">Close at the effective time</option>
+              <option value="keep_open">Keep open for manager review</option>
+            </select>
+          </label>
+          <label>
+            Reason
+            <textarea
+              value={reason}
+              minLength={3}
+              maxLength={240}
+              onChange={(event) => setReason(event.target.value)}
+              required
+            />
+          </label>
+          <p className="employee-termination-warning">
+            Access will be suspended. Published shifts starting at or after the
+            effective time will become open and create manager follow-ups.
+          </p>
+          {!timezoneOptions.length ? (
+            <p className="employee-drawer-error" role="alert">
+              An active employee location with a timezone is required.
+            </p>
+          ) : null}
+          {error ? (
+            <p className="employee-drawer-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <footer>
+            <Button type="button" className="secondary-button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={pending || !timezoneOptions.length}>
+              {pending ? "Terminating" : "Confirm termination"}
+            </Button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function localDateTimeValue(date: Date, timezone?: string): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
 function renderSection(

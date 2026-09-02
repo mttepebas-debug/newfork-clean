@@ -14,6 +14,7 @@ export interface EmployeeOption {
   readonly id: string;
   readonly name: string;
   readonly archived: boolean;
+  readonly timezone?: string;
 }
 
 export interface EmployeeReferenceData {
@@ -39,6 +40,23 @@ export interface InvitationPreview {
   readonly workspaceName: string;
   readonly emailHint: string;
   readonly expiresAt: string;
+}
+
+export type TerminationTimeEntryAction = "block" | "close_at" | "keep_open";
+
+export interface EmployeeTerminationInput {
+  readonly effectiveLocal: string;
+  readonly worksiteTimezone: string;
+  readonly timeEntryAction: TerminationTimeEntryAction;
+  readonly reason: string;
+  readonly idempotencyKey: string;
+}
+
+export interface EmployeeTerminationResult {
+  readonly terminationId: string;
+  readonly effectiveAt: string;
+  readonly releasedShiftCount: number;
+  readonly idempotentReplay: boolean;
 }
 
 function client(): SupabaseClient {
@@ -120,13 +138,38 @@ export async function setEmployeeArchived(
   check(error);
 }
 
+export async function terminateEmployee(
+  workspaceId: string,
+  employeeId: string,
+  input: EmployeeTerminationInput,
+): Promise<EmployeeTerminationResult> {
+  const { data, error } = await client().rpc("terminate_employee", {
+    target_workspace_id: workspaceId,
+    target_employee_id: employeeId,
+    effective_local: input.effectiveLocal,
+    worksite_timezone: input.worksiteTimezone,
+    time_entry_action: input.timeEntryAction,
+    termination_reason: input.reason,
+    target_idempotency_key: input.idempotencyKey,
+  });
+  check(error);
+  const value = data as Record<string, unknown> | null;
+  if (!value) throw new Error("Termination result is unavailable");
+  return {
+    terminationId: String(value.termination_id),
+    effectiveAt: String(value.effective_at),
+    releasedShiftCount: Number(value.released_shift_count ?? 0),
+    idempotentReplay: Boolean(value.idempotent_replay),
+  };
+}
+
 export async function loadEmployeeReferenceData(
   workspaceId: string,
 ): Promise<EmployeeReferenceData> {
   const [locations, jobs, roles] = await Promise.all([
     client()
       .from("locations")
-      .select("id,name,archived_at")
+      .select("id,name,archived_at,timezone")
       .eq("workspace_id", workspaceId)
       .order("sort_order")
       .order("name"),
@@ -153,7 +196,10 @@ export async function loadEmployeeReferenceData(
     archived: Boolean(row.archived_at),
   });
   return {
-    locations: (locations.data ?? []).map(map),
+    locations: (locations.data ?? []).map((row) => ({
+      ...map(row),
+      timezone: String(row.timezone),
+    })),
     jobs: (jobs.data ?? []).map(map),
     inviteRoles: (roles.data ?? []).map((role) => ({
       id: String(role.id),
