@@ -10,7 +10,23 @@ Asagidaki sira mevcut [11 akisli MVP audit planindan](../rebuild/mvp-e2e-readine
 
 ## Teslimat Sirasi ve Kabul
 
-2026-09-09 son kullanici onceligi: once WORK GIT-001 ile ana checkout'taki tum mevcut ilerlemeyi tek checkpoint'e al ve diff'i temizle. Bu, urun kabul/test/release onayi degildir. Diger branch/worktree/stash ve unutulmus kod tahminle silinmez veya bu checkout'a karistirilmaz.
+2026-09-09: GIT-001 `711da48` checkpoint'i ile tamamlandi; ana checkout temiz olarak dogrulandi. Bu, urun kabul/test/release onayi degildir. Diger branch/worktree/stash ve unutulmus kod tahminle silinmez veya bu checkout'a karistirilmaz.
+
+## Ana Session'in Guncel Yurutme Sirasi
+
+Uc handoff ilerleme/kanit kaynagidir; iclerindeki sonraki adim onerileri baglayici sira degildir. Asagidaki sira ana session'in mevcut checkpoint, kod baglantilari, korunmus worktree farklari ve raporlanan kabul eksiklerini birlikte degerlendirmesidir. M1-M5 urun haritasi korunur; yakin donem is sirasi budur.
+
+| Sira | Teslimat | Neden / bitis kosulu |
+|---|---|---|
+| 1 | BL-028: 4dfb davranis farki incelemesi | Kayip tamamlanmis ozellik ihtimalini gider. 121 farki feature bazinda siniflandir; somut kayip/karar adaylarini raporla. Kod silme veya otomatik merge yapma. |
+| 2 | Calisilabilir ortak temel | BL-026'nin bildirilen web derleme hatalarini dar kapsamda ele al; employee/browser kontrolleri icin gerekli rol ve ortam kullanilabilir olsun. Tum pgTAP/repo auditini burada acma. |
+| 3 | Mevcut implementasyonlari kabul et | Once OBS-001 employee create/invite/access sonuclarini gerekli manager browser kontroluyle kapat; ardindan OBS-002 employee availability -> manager -> Schedule sonucunu ve gerekli otomatik bildirim isleyisini tamamla. Hazir kaniti tekrar uretme; yalniz gercek kalan riskleri coz. |
+| 4 | Bir sonraki yeni urun dilimi | Onboarding yedi-adim kabugu ve ayrilmis profil/acil durum akisinin dar sozlesmesini belirle. Avatar/draft revision veya belge motorunu otomatik ayni teslimata katma. |
+| 5 | Belge/policy ve kalici employee belge merkezi | Dinamik yukumluluk, deadline/suspension ve bildirimleri bagimlilik sirasina gore kucuk dilimlere ayir; zorunlu Account > Documents teslimini tamamla. Sonra M2-M5'in gercek kalan eksiklerine devam et. |
+
+Saglayici anahtar yenileme BL-027 ayri operasyonel takip olarak acik; provider smoke yapmadan once ele alinmali. Bu sira yeni somut bulgu veya kullanici urun onceligiyle degisebilir; kaynak session'in kendi planini tamamlama istegi tek basina sira degistirmez.
+
+## MVP Asamalari
 
 | Asama | Akislar | Kapanis kosulu | Guncel kabul |
 |---|---|---|---|

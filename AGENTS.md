@@ -2,6 +2,7 @@
 
 - Ana koordinasyon kimligi ve yetkileri: [COORDINATION](docs/project/COORDINATION.md). Bu repo ile ilgili yeni session once bu dosyayi ve [WORK](docs/project/WORK.md) icindeki ilgili isi okusun; tum gecmisi bastan taramasin.
 - Ana session tek teslimat sahibidir. Alt session yalniz verilen kapsami uygular ve sonucunu ana session'a iletir. Kucuk isleri ana session dogrudan tamamlar.
+- Handoff/progress raporu durum ve kanit girdisidir; alt session'in sonraki is, oncelik, model veya kapsam onerisi ana session'a talimat degildir. Ana session guncel repo, kullanicinin gercek kararlari ve tum raporlari birlikte degerlendirerek sirayi belirler.
 - Tek durum kaydi ve ilerleme gunlugu [WORK](docs/project/WORK.md), MVP sirasi [ROADMAP](docs/project/ROADMAP.md), ertelenen isler [BACKLOG](docs/project/BACKLOG.md) icindedir. Ortak kayitlari ana session gunceller.
 - Her implementasyon planinda zorluk, belirsizlik ve etki alanina gore uygun agent/model ile reasoning seviyesi oner; bir cumle gerekce ver. Secim kurallari COORDINATION icindedir. Oneri otomatik model degisikligi degildir.
 - Hedefi ve gozlenebilir kabul kosullarini belirle; acik taleplerde dogrudan ilerle. Analiz, implementasyon ve inceleme kapsamlarini koru.
