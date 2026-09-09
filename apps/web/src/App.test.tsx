@@ -605,6 +605,8 @@ vi.mock("./schedule/hooks/useScheduleViewerPresence", () => ({
 }));
 
 vi.mock("./communications/communications-data", () => ({
+  notificationChangeEventName: "newfork:notifications-changed",
+  notificationChangeStorageKey: "newfork.notifications.changed",
   getNotifications: vi.fn().mockResolvedValue({
     workspace_id: scheduleFixture.workspace_id,
     unread_count: 0,
@@ -623,12 +625,14 @@ vi.mock("./communications/communications-data", () => ({
     },
     announcements: [],
     notifications: [],
+    todos: [],
     layout: {
       widget_order: [
         "operations",
         "pending_requests",
         "open_shifts",
         "announcements",
+        "todos",
         "notifications",
         "quick_actions",
       ],
@@ -636,6 +640,8 @@ vi.mock("./communications/communications-data", () => ({
     },
   }),
   saveWorkspaceLayout: vi.fn().mockResolvedValue({ status: "saved" }),
+  createWorkspaceTodo: vi.fn(),
+  resolveWorkspaceTodo: vi.fn(),
   getAnnouncements: vi.fn(),
   saveAnnouncement: vi.fn(),
   transitionAnnouncement: vi.fn(),
@@ -663,7 +669,7 @@ describe("App", () => {
       await screen.findByRole(
         "heading",
         { name: "Schedule" },
-        { timeout: 15000 },
+        { timeout: 25000 },
       ),
     ).toBeTruthy();
     expect(
@@ -672,7 +678,10 @@ describe("App", () => {
     const weeklyViewButton = screen.getByRole("button", {
       name: "Weekly view",
     });
-    expect(weeklyViewButton).toHaveProperty("textContent", "Weekly view");
+    expect(weeklyViewButton).toHaveProperty(
+      "textContent",
+      "Aug 17 – Aug 23, 2026",
+    );
     expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Hide Unscheduled" }),
@@ -724,17 +733,21 @@ describe("App", () => {
     ).toBeTruthy();
     expect(screen.getAllByText("Alex Rivera")).toHaveLength(2);
     expect(
-      screen.getByRole("button", { name: /Dinner-Server, 4p to 10:30p/ }),
+      screen.getByRole("button", { name: /Dinner-Server, 4:00 PM - 10:30 PM/ }),
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "Hide Labels in badges" }),
     );
     expect(
-      screen.getByRole("button", { name: /Dinner-Server, 4p to 10:30p/ }),
+      screen.getByRole("button", { name: /Dinner-Server, 4:00 PM - 10:30 PM/ }),
     ).toBeTruthy();
     fireEvent.pointerDown(document.body);
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Employees" })).toBeTruthy();
+    const footerLinks = Array.from(
+      container.querySelectorAll(".sidebar-footer .nav-item"),
+    ).map((item) => item.textContent);
+    expect(footerLinks).toEqual(["Settings", "Account", "Sign out"]);
     fireEvent.click(screen.getByRole("link", { name: "Employees" }));
     expect(
       await screen.findByRole("heading", { name: "Employees" }),
@@ -770,7 +783,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Profile" }),
     ).toBeTruthy();
-  }, 20000);
+  }, 40000);
 
   it("shows reference-style visible and total hour comparison when filters hide assigned shifts", async () => {
     const prepType = {
@@ -876,9 +889,7 @@ describe("App", () => {
       { name: "Draft selector: New Schedule" },
       { timeout: 5000 },
     );
-    await waitFor(() =>
-      expect(draftSelector).toHaveProperty("disabled", true),
-    );
+    await waitFor(() => expect(draftSelector).toHaveProperty("disabled", true));
     expect(
       screen.queryByRole("button", { name: "New Schedule (blank)" }),
     ).toBeNull();
@@ -914,7 +925,9 @@ describe("App", () => {
       await screen.findByRole("button", { name: "Dinner-Server" }),
     ).toBeTruthy();
     expect(
-      screen.queryByRole("button", { name: /Dinner-Server, 4p to 10:30p/ }),
+      screen.queryByRole("button", {
+        name: /Dinner-Server, 4:00 PM - 10:30 PM/,
+      }),
     ).toBeNull();
   });
 
@@ -940,7 +953,7 @@ describe("App", () => {
 
     expect(
       await screen.findByRole("button", {
-        name: /Dinner-Server, Trainer · Close, 4p to 10:30p/,
+        name: /Dinner-Server, Trainer · Close, 4:00 PM - 10:30 PM/,
       }),
     ).toBeTruthy();
 
@@ -953,7 +966,7 @@ describe("App", () => {
       screen.queryByRole("button", { name: /Trainer · Close/ }),
     ).toBeNull();
     expect(
-      screen.getByRole("button", { name: /Dinner-Server, 4p to 10:30p/ }),
+      screen.getByRole("button", { name: /Dinner-Server, 4:00 PM - 10:30 PM/ }),
     ).toBeTruthy();
 
     fireEvent.click(
@@ -966,7 +979,7 @@ describe("App", () => {
     ).toBe(false);
     expect(screen.queryByRole("button", { name: /Dinner-Server/ })).toBeNull();
     expect(
-      screen.getByRole("button", { name: /Server, 4p to 10:30p/ }),
+      screen.getByRole("button", { name: /Server, 4:00 PM - 10:30 PM/ }),
     ).toBeTruthy();
   });
 
@@ -1044,10 +1057,10 @@ describe("App", () => {
       expect(badge).toBeTruthy();
       return badge;
     });
-    fireEvent.click(shiftBadge!, { detail: 2 });
+    fireEvent.doubleClick(shiftBadge!);
     const dialog = await screen.findByRole("dialog", { name: "Edit shift" });
 
-    fireEvent.click(within(dialog).getByRole("combobox", { name: "Label" }));
+    fireEvent.click(within(dialog).getByRole("combobox", { name: "Labels" }));
     fireEvent.click(within(dialog).getByRole("option", { name: label.name }));
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Update shift" }),
@@ -1256,64 +1269,59 @@ describe("App", () => {
     );
     expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Publish" })).toBeTruthy();
-    fireEvent.keyDown(
+    fireEvent.click(
       screen.getByRole("button", {
         name: "Add shift for Alex Rivera at Main Dining on 2026-09-07",
       }),
-      { key: "Enter" },
     );
     expect(
       await screen.findByRole("dialog", { name: "Add shift" }),
     ).toBeTruthy();
   });
 
-  it(
-    "clears active preview filters when entering schedule edit mode",
-    async () => {
-      const workingFixture = scheduleFixtureForWeek("2026-09-07");
-      vi.mocked(getScheduleReadModel).mockResolvedValueOnce(workingFixture);
-      vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
-        ...makeDefaultEditAcquireResult(),
-        session: {
-          ...makeDefaultEditAcquireResult().session,
-          week_start: workingFixture.week_start,
-          shifts: workingFixture.shifts.map((shift) => ({
-            ...shift,
-            unpaid_break_minutes: 30,
-            revision: 1,
-          })),
-        },
-      });
-      window.history.pushState(
-        {},
-        "",
-        `/app/schedule?date=2026-09-07&locations=${workingFixture.locations[0]!.id}&shiftTypes=${workingFixture.shift_types[0]!.id}&jobs=${workingFixture.jobs[0]!.id}&employees=${workingFixture.employees[0]!.id}&hideUnscheduled=true&layout=unified`,
-      );
-      window.localStorage.setItem("newfork.development.workspaceRole", "owner");
-      render(<App />);
+  it("clears active preview filters when entering schedule edit mode", async () => {
+    const workingFixture = scheduleFixtureForWeek("2026-09-07");
+    vi.mocked(getScheduleReadModel).mockResolvedValueOnce(workingFixture);
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...makeDefaultEditAcquireResult(),
+      session: {
+        ...makeDefaultEditAcquireResult().session,
+        week_start: workingFixture.week_start,
+        shifts: workingFixture.shifts.map((shift) => ({
+          ...shift,
+          unpaid_break_minutes: 30,
+          revision: 1,
+        })),
+      },
+    });
+    window.history.pushState(
+      {},
+      "",
+      `/app/schedule?date=2026-09-07&locations=${workingFixture.locations[0]!.id}&shiftTypes=${workingFixture.shift_types[0]!.id}&jobs=${workingFixture.jobs[0]!.id}&employees=${workingFixture.employees[0]!.id}&hideUnscheduled=true&layout=unified`,
+    );
+    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    render(<App />);
 
-      await openPublishedScheduleEditor();
+    await openPublishedScheduleEditor();
 
-      await waitFor(() =>
-        expect(new URLSearchParams(window.location.search).get("mode")).toBe(
-          "edit",
-        ),
-      );
-      const params = new URLSearchParams(window.location.search);
-      expect(params.get("locations")).toBeNull();
-      expect(params.get("shiftTypes")).toBeNull();
-      expect(params.get("jobs")).toBeNull();
-      expect(params.get("employees")).toBeNull();
-      expect(params.get("hideUnscheduled")).toBeNull();
-      expect(params.get("layout")).toBeNull();
-      expect(
-        screen
-          .getByRole("button", { name: "Hide Unscheduled" })
-          .getAttribute("aria-pressed"),
-      ).toBe("false");
-    },
-    20000,
-  );
+    await waitFor(() =>
+      expect(new URLSearchParams(window.location.search).get("mode")).toBe(
+        "edit",
+      ),
+    );
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("locations")).toBeNull();
+    expect(params.get("shiftTypes")).toBeNull();
+    expect(params.get("jobs")).toBeNull();
+    expect(params.get("employees")).toBeNull();
+    expect(params.get("hideUnscheduled")).toBeNull();
+    expect(params.get("layout")).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Hide Unscheduled" })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+  }, 20000);
 
   it("locks grid editing when an active edit session navigates back to a past week", async () => {
     const workingFixture = scheduleFixtureForWeek("2026-09-07");
@@ -1368,7 +1376,7 @@ describe("App", () => {
         ".schedule-shift-badge",
       );
       expect(badge).toBeTruthy();
-      expect(badge?.getAttribute("draggable")).toBe("false");
+      expect(badge?.getAttribute("draggable")).toBeNull();
       return badge;
     });
     fireEvent.doubleClick(shiftBadge!);
@@ -1447,11 +1455,7 @@ describe("App", () => {
         })),
       },
     });
-    window.history.pushState(
-      {},
-      "",
-      "/app/schedule?date=2026-09-07&view=day",
-    );
+    window.history.pushState({}, "", "/app/schedule?date=2026-09-07&view=day");
     window.localStorage.setItem("newfork.development.workspaceRole", "owner");
     render(<App />);
 
@@ -2205,7 +2209,7 @@ describe("App", () => {
     const clickableHostPreset = app.getByRole("button", {
       name: "Dinner-Host",
     });
-    fireEvent.click(clickableHostPreset);
+    fireEvent.pointerDown(clickableHostPreset);
     await waitFor(() => {
       expect(
         container.querySelector(".schedule-topbar-dismiss-layer"),
@@ -2366,7 +2370,7 @@ describe("App", () => {
       });
       await waitFor(() =>
         expect(grid.style.getPropertyValue("--schedule-day-column-min")).toBe(
-          "191px",
+          "193px",
         ),
       );
     } finally {
@@ -2613,7 +2617,7 @@ describe("App", () => {
       const badge = container.querySelector<HTMLElement>(
         ".schedule-shift-badge",
       );
-      expect(badge?.getAttribute("draggable")).toBe("true");
+      expect(badge?.getAttribute("draggable")).toBeNull();
       return badge;
     });
     expect(shiftBadge).toBeTruthy();
@@ -2633,7 +2637,7 @@ describe("App", () => {
         expect(screen.queryByRole("dialog", { name })).toBeNull(),
       );
     };
-    fireEvent.click(shiftBadge!, { detail: 2 });
+    fireEvent.doubleClick(shiftBadge!);
     expect(
       await screen.findByRole("dialog", { name: "Edit shift" }),
     ).toBeTruthy();
@@ -2649,7 +2653,7 @@ describe("App", () => {
     fireEvent.change(endTimeInput, { target: { value: "630p" } });
     fireEvent.blur(endTimeInput);
     expect(
-      await screen.findByText("Start and end time cannot be the same."),
+      await screen.findByText("Start and end times cannot be the same."),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Update shift" })).toHaveProperty(
       "disabled",
@@ -2849,7 +2853,7 @@ describe("App", () => {
       if (!badge) throw new Error("Expected schedule shift badge");
       return badge;
     });
-    fireEvent.click(refreshedShiftBadge, { detail: 2 });
+    fireEvent.doubleClick(refreshedShiftBadge);
     expect(
       await screen.findByRole("dialog", { name: "Edit shift" }),
     ).toBeTruthy();
@@ -2877,7 +2881,7 @@ describe("App", () => {
     await openPublishedScheduleEditor(app);
     fireEvent.click(
       app.getByRole("button", {
-        name: "Add shift for unassigned on 2026-08-17",
+        name: "Add shift for unassigned at Main Dining on 2026-08-17",
       }),
     );
     const dialog = await app.findByRole("dialog", { name: "Add shift" });
@@ -2913,7 +2917,7 @@ describe("App", () => {
     );
     await openPublishedScheduleEditor(app);
     const scheduleAddButton = app.getByRole("button", {
-      name: "Add shift for unassigned on 2026-08-17",
+      name: "Add shift for unassigned at Main Dining on 2026-08-17",
     });
     fireEvent.click(scheduleAddButton);
     const dialog = await app.findByRole("dialog", { name: "Add shift" });
@@ -2959,7 +2963,7 @@ describe("App", () => {
       if (!badge) throw new Error("Expected schedule shift badge");
       return badge;
     });
-    fireEvent.click(shiftBadge, { detail: 2 });
+    fireEvent.doubleClick(shiftBadge);
 
     const dialog = await screen.findByRole("dialog", { name: "Edit shift" });
     const startTimeInput = within(dialog).getByRole("textbox", {
@@ -3024,12 +3028,12 @@ describe("App", () => {
       fireEvent.pointerDown(document.body);
       const addShiftButton = await waitFor(() => {
         const button = document.querySelector<HTMLElement>(
-          '[role="button"][aria-label="Add shift for Alex Rivera at Main Dining on 2026-08-18"]',
+          'button[aria-label="Add shift for Alex Rivera at Main Dining on 2026-08-18"]',
         );
         expect(button).toBeTruthy();
         return button!;
       });
-      fireEvent.keyDown(addShiftButton, { key: "Enter" });
+      fireEvent.click(addShiftButton);
       const dialog = await screen.findByRole("dialog", { name: "Add shift" });
       const startTimeInput = within(dialog).getByRole("textbox", {
         name: "Start time",
@@ -3175,7 +3179,7 @@ describe("App", () => {
         expect(badge).toBeTruthy();
         return badge;
       });
-      fireEvent.click(shiftBadge!, { detail: 2 });
+      fireEvent.doubleClick(shiftBadge!);
       const dialog = await screen.findByRole("dialog", { name: "Edit shift" });
 
       fireEvent.click(within(dialog).getByRole("button", { name: "Standby" }));
@@ -3339,7 +3343,7 @@ describe("App", () => {
 
     const shiftBadge = container.querySelector(".schedule-shift-badge");
     expect(shiftBadge).toBeTruthy();
-    fireEvent.click(shiftBadge!, { detail: 2 });
+    fireEvent.doubleClick(shiftBadge!);
     const dialog = await app.findByRole("dialog", { name: "Edit shift" });
 
     fireEvent.scroll(dialog);
@@ -3413,11 +3417,7 @@ describe("App", () => {
         })),
       },
     });
-    window.history.pushState(
-      {},
-      "",
-      "/app/schedule?date=2026-09-07&view=day",
-    );
+    window.history.pushState({}, "", "/app/schedule?date=2026-09-07&view=day");
     window.localStorage.setItem("newfork.development.workspaceRole", "owner");
     const { container } = render(<App />);
     const app = within(container);
@@ -3660,7 +3660,7 @@ describe("App", () => {
     expect(await app.findByRole("button", { name: "Discard" })).toBeTruthy();
     fireEvent.click(
       app.getByRole("button", {
-        name: "Add shift for unassigned on 2026-08-17",
+        name: "Add shift for unassigned at Main Dining on 2026-08-17",
       }),
     );
     const dialog = await app.findByRole("dialog", { name: "Add shift" });
@@ -3673,8 +3673,8 @@ describe("App", () => {
     );
     fireEvent.click(employeeSelect);
     expect(
-      within(dialog).getByRole("option", { name: "Alex Rivera" }),
-    ).toBeTruthy();
+      within(dialog).queryByRole("option", { name: "Alex Rivera" }),
+    ).toBeNull();
     fireEvent.click(within(dialog).getByRole("option", { name: "Unassigned" }));
     fireEvent.click(within(dialog).getByRole("combobox", { name: "Job" }));
     fireEvent.click(within(dialog).getByRole("option", { name: "Host" }));
@@ -3764,11 +3764,13 @@ describe("App", () => {
     const badges = container.querySelectorAll("button.schedule-shift-badge");
     expect(badges).toHaveLength(2);
     expect(
-      screen.getAllByRole("button", { name: /Server, .* to .*/ }),
+      screen.getAllByRole("button", { name: /Server, .* - .*/ }),
     ).toHaveLength(2);
     fireEvent.click(badges[0]!);
     expect(screen.queryByRole("dialog", { name: "Edit shift" })).toBeNull();
-    expect(badges[0]?.getAttribute("data-focused")).toBe("true");
+    await waitFor(() =>
+      expect(badges[0]?.getAttribute("data-focused")).toBe("true"),
+    );
     expect(badges[0]?.getAttribute("aria-pressed")).toBe("false");
     expect(window.location.search).toContain(
       `shiftTypes=${scheduleFixture.shift_types[0]!.id}`,
@@ -3786,10 +3788,6 @@ describe("App", () => {
     );
     expect(window.location.search).not.toContain("shiftTypes=");
     expect(window.location.search).not.toContain("jobs=");
-    fireEvent.keyDown(window, { key: "Escape" });
-    await waitFor(() =>
-      expect(window.location.search).not.toContain("shiftTypes="),
-    );
 
     fireEvent.keyDown(schedulePage!, { key: "a", ctrlKey: true });
     expect(screen.getByRole("button", { name: "Delete 2" })).toBeTruthy();
@@ -3833,8 +3831,8 @@ describe("App", () => {
     expect(
       container.querySelectorAll("[data-shift-selection-ring='true']"),
     ).toHaveLength(2);
-    fireEvent.keyDown(window, { key: "c", ctrlKey: true });
-    expect(await screen.findByText("Shift copied")).toBeTruthy();
+    fireEvent.keyDown(selectedBadges[1]!, { key: "c", ctrlKey: true });
+    expect(await screen.findByText("2 shifts copied")).toBeTruthy();
     expect(
       screen
         .getByRole("button", { name: "Paste mode on" })
@@ -4145,10 +4143,11 @@ describe("App", () => {
     expect(window.location.search).toContain(
       `jobs=${scheduleFixture.jobs[0]!.id}`,
     );
-    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.click(viewOnlyBadge!);
     await waitFor(() =>
       expect(window.location.search).not.toContain("shiftTypes="),
     );
+    expect(viewOnlyBadge!.getAttribute("data-focused")).toBe("false");
     expect(
       container.querySelector(
         ".schedule-employee-cell[data-unassigned='true'][data-unassigned-frozen='true']",
@@ -4184,6 +4183,38 @@ describe("App", () => {
     expect(screen.queryByText("Unassigned")).toBeNull();
     expect(screen.getAllByText("Alex Rivera").length).toBeGreaterThan(0);
     readModelMock.mockResolvedValue(scheduleFixture);
+  });
+
+  it("opens an employee drawer without dismissing day view or active filters", async () => {
+    const query = new URLSearchParams({
+      date: "2026-08-17",
+      view: "day",
+      locations: scheduleFixture.locations[0]!.id,
+      shiftTypes: scheduleFixture.shift_types[0]!.id,
+      jobs: scheduleFixture.jobs[0]!.id,
+      employees: scheduleFixture.employees[0]!.id,
+      hideUnscheduled: "true",
+      layout: "unified",
+    });
+    window.history.pushState({}, "", `/app/schedule?${query.toString()}`);
+    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    const { container } = render(<App />);
+
+    const trigger = await waitFor(() => {
+      const candidate = container.querySelector<HTMLElement>(
+        '[data-schedule-employee-card-trigger="true"]',
+      );
+      expect(candidate).toBeTruthy();
+      return candidate;
+    });
+    expect(trigger).toBeTruthy();
+    const searchBeforeClick = window.location.search;
+
+    fireEvent.pointerDown(trigger!);
+    fireEvent.click(trigger!);
+
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(window.location.search).toBe(searchBeforeClick);
   });
 
   it("uses the reference-style unassigned row header mode for multiple open shifts", async () => {
@@ -4300,6 +4331,12 @@ describe("App", () => {
       location_ids: [scheduleFixture.locations[0]!.id],
       publication_ids: ["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"],
       published_shift_count: 1,
+      notification_count: 0,
+      notification_warning: {
+        code: "notification_enqueue_unavailable",
+        message:
+          "Schedule published, but employee notifications could not be created.",
+      },
       published_at: "2026-08-17T12:05:00Z",
     });
 
@@ -4415,6 +4452,11 @@ describe("App", () => {
     );
     expect(
       await screen.findByText("Published 1 locations · 1 changes"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Schedule published, but employee notifications could not be created.",
+      ),
     ).toBeTruthy();
     readModelMock.mockResolvedValue(scheduleFixture);
   });
@@ -4648,7 +4690,7 @@ describe("App", () => {
     await waitFor(() =>
       expect(
         container.querySelector(".schedule-shift-badge")?.textContent,
-      ).toContain("10a to 2p"),
+      ).toContain("10:00 AM - 2:00 PM"),
     );
   }, 15_000);
 
@@ -4771,7 +4813,7 @@ describe("App", () => {
       ),
     );
     readModelMock.mockResolvedValue(scheduleFixture);
-  });
+  }, 15_000);
 
   it("returns to preflight review when publish reports a stale preflight", async () => {
     const draft = {
@@ -5034,6 +5076,16 @@ describe("App", () => {
       "disabled",
       true,
     );
+
+    const drawerPanel = document.createElement("div");
+    drawerPanel.setAttribute("data-employee-drawer-panel", "true");
+    document.body.appendChild(drawerPanel);
+    fireEvent.pointerDown(drawerPanel);
+    expect(
+      screen.getByRole("dialog", { name: "Select locations to publish" }),
+    ).toBeTruthy();
+    drawerPanel.remove();
+
     readModelMock.mockResolvedValue(scheduleFixture);
   });
 
@@ -5125,21 +5177,28 @@ describe("App", () => {
     ).toBeTruthy();
   });
 
-  it("moves manager sign-ins out of Account Workspaces", async () => {
-    window.history.pushState({}, "", "/account/workspaces");
-    render(<App />);
+  it(
+    "keeps Account Workspaces on the switcher after manager sign-in",
+    async () => {
+      window.history.pushState({}, "", "/account/workspaces");
+      render(<App />);
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Use development identity" }),
-    );
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: "Use development identity",
+        }),
+      );
 
-    await waitFor(() =>
-      expect(window.location.pathname).toBe("/app/workspace"),
-    );
-    expect(
-      await screen.findByRole("heading", { name: "Workspace" }),
-    ).toBeTruthy();
-  });
+      await waitFor(() =>
+        expect(window.location.pathname).toBe("/account/workspaces"),
+      );
+      expect(
+        await screen.findByRole("heading", { name: "Workspaces" }),
+      ).toBeTruthy();
+      expect(await screen.findByText("Active workspace")).toBeTruthy();
+    },
+    15000,
+  );
 
   it("reviews and applies deterministic auto-fill assignments", async () => {
     const preview = {

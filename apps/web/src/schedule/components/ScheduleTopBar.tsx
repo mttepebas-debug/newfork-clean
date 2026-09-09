@@ -22,9 +22,8 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 
-import { type CalendarMarker } from "./MiniCalendar";
+import { MiniCalendar, type CalendarMarker } from "./MiniCalendar";
 import {
   ScheduleTopBarFilter,
   type ScheduleTopBarFilterGroup,
@@ -34,24 +33,22 @@ import {
 
 type ScheduleLayoutMode = "separate" | "unified";
 type ScheduleEmployeeSortMode = "alphabetical" | "byJob";
-type ScheduleTopBarDropdownId = "settings" | ScheduleTopBarFilterId;
+type ScheduleTopBarDropdownId =
+  "settings" | "calendar" | ScheduleTopBarFilterId;
 
 interface ScheduleTopBarProps {
   readonly weekLabel: string;
   readonly view: "day" | "week";
-  readonly selectedDate: string;
   readonly weekStartDate: string;
+  readonly selectedDate?: string;
   readonly weekStartDay: "monday" | "sunday";
   readonly calendarMarkers?: readonly CalendarMarker[];
-  readonly canOpenLineup: boolean;
-  readonly canOpenRequests: boolean;
   readonly layout: ScheduleLayoutMode;
   readonly onLayoutChange: (layout: ScheduleLayoutMode) => void;
   readonly onPreviousViewPeriod: () => void;
   readonly onNextViewPeriod: () => void;
   readonly onCurrentViewPeriodClick: () => void;
   readonly isCurrentViewPeriod: boolean;
-  readonly onJumpToToday: () => void;
   readonly onDayPick: (date: string) => void;
   readonly onWeekJump: (date: string) => void;
   readonly hideUnscheduled: boolean;
@@ -97,16 +94,18 @@ interface ScheduleTopBarProps {
 export function ScheduleTopBar({
   weekLabel,
   view,
+  weekStartDate,
   selectedDate,
-  canOpenLineup,
-  canOpenRequests,
+  weekStartDay,
+  calendarMarkers,
+  onDayPick,
+  onWeekJump,
   layout,
   onLayoutChange,
   onPreviousViewPeriod,
   onNextViewPeriod,
   onCurrentViewPeriodClick,
   isCurrentViewPeriod,
-  onJumpToToday,
   hideUnscheduled,
   onToggleHideUnscheduled,
   showUnassignedShifts,
@@ -186,12 +185,18 @@ export function ScheduleTopBar({
       const activeSurfaceSelector =
         openDropdownId === "settings"
           ? ".schedule-command-menu"
-          : `[data-filter-id="${openDropdownId}"]`;
+          : openDropdownId === "calendar"
+            ? ".schedule-date-split"
+            : `[data-filter-id="${openDropdownId}"]`;
       if (target.closest(activeSurfaceSelector)) return;
       setOpenDropdownId(null);
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
+      if (
+        target.closest("[data-schedule-grid-frame], [data-schedule-grid-track]")
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -225,6 +230,37 @@ export function ScheduleTopBar({
         <ScheduleViewModeControls
           viewModeLabel={viewModeLabel}
           viewModeTitle={viewModeTitle}
+          periodLabel={weekLabel}
+          calendarOpen={openDropdownId === "calendar"}
+          onCalendarToggle={() =>
+            setDropdownOpen("calendar", openDropdownId !== "calendar")
+          }
+          calendar={
+            openDropdownId === "calendar" ? (
+              <div
+                className="schedule-mini-calendar-panel"
+                role="dialog"
+                aria-label="Schedule calendar"
+              >
+                <MiniCalendar
+                  selectedDate={
+                    view === "day" ? (selectedDate ?? weekStartDate) : null
+                  }
+                  weekStartDate={weekStartDate}
+                  weekStartDay={weekStartDay}
+                  markers={calendarMarkers}
+                  onDayPick={(date) => {
+                    (view === "week" ? onWeekJump : onDayPick)(date);
+                    setDropdownOpen("calendar", false);
+                  }}
+                  onWeekJump={(date) => {
+                    onWeekJump(date);
+                    setDropdownOpen("calendar", false);
+                  }}
+                />
+              </div>
+            ) : null
+          }
           returnCue={!isCurrentViewPeriod}
           onToggleViewMode={onCurrentViewPeriodClick}
           onPrevious={onPreviousViewPeriod}
@@ -245,9 +281,6 @@ export function ScheduleTopBar({
           </button>
           {openDropdownId === "settings" ? (
             <SettingsMenuPanel
-              selectedDate={selectedDate}
-              canOpenLineup={canOpenLineup}
-              canOpenRequests={canOpenRequests}
               employeeSortMode={employeeSortMode}
               showShiftType={showShiftType}
               showShiftLabels={showShiftLabels}
@@ -258,7 +291,6 @@ export function ScheduleTopBar({
               showUnassignedShifts={showUnassignedShifts}
               unassignedFrozen={unassignedFrozen}
               useDefaultTimesForScheduling={useDefaultTimesForScheduling}
-              onJumpToToday={onJumpToToday}
               onEmployeeSortModeChange={onEmployeeSortModeChange}
               onToggleShiftType={onToggleShiftType}
               onToggleShiftLabels={onToggleShiftLabels}
@@ -378,7 +410,15 @@ export function ScheduleViewModeControls({
   onToggleViewMode,
   onPrevious,
   onNext,
+  periodLabel,
+  calendarOpen,
+  onCalendarToggle,
+  calendar,
 }: {
+  readonly periodLabel?: string;
+  readonly calendarOpen?: boolean;
+  readonly onCalendarToggle?: () => void;
+  readonly calendar?: ReactNode;
   readonly viewModeLabel: string;
   readonly viewModeTitle?: string;
   readonly returnCue?: boolean;
@@ -408,20 +448,40 @@ export function ScheduleViewModeControls({
         </button>
       ) : null}
       {showViewToggle ? (
-        <button
-          type="button"
-          className="schedule-view-mode"
-          aria-label={viewModeLabel}
-          title={viewModeTitle}
-          data-return-cue={returnCue}
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleViewMode();
-          }}
-        >
-          <CalendarDays size={15} aria-hidden />
-          {viewModeLabel}
-        </button>
+        <div className={onCalendarToggle ? "schedule-date-split" : undefined}>
+          {onCalendarToggle ? (
+            <button
+              type="button"
+              className="schedule-view-mode schedule-date-calendar-trigger"
+              aria-label="Open schedule calendar"
+              title="Open calendar"
+              aria-haspopup="dialog"
+              aria-expanded={calendarOpen}
+              data-return-cue={returnCue}
+              onClick={(event) => {
+                event.stopPropagation();
+                onCalendarToggle();
+              }}
+            >
+              <CalendarDays size={15} aria-hidden />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="schedule-view-mode"
+            aria-label={viewModeLabel}
+            title={viewModeTitle}
+            data-return-cue={returnCue}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleViewMode();
+            }}
+          >
+            {!onCalendarToggle ? <CalendarDays size={15} aria-hidden /> : null}
+            {periodLabel ?? viewModeLabel}
+          </button>
+          {calendar}
+        </div>
       ) : null}
       {onNext ? (
         <button
@@ -466,9 +526,6 @@ function ScheduleGridViewModeToggle({
 }
 
 function SettingsMenuPanel({
-  selectedDate,
-  canOpenLineup,
-  canOpenRequests,
   employeeSortMode,
   showShiftType,
   showShiftLabels,
@@ -479,7 +536,6 @@ function SettingsMenuPanel({
   showUnassignedShifts,
   unassignedFrozen,
   useDefaultTimesForScheduling,
-  onJumpToToday,
   onEmployeeSortModeChange,
   onToggleShiftType,
   onToggleShiftLabels,
@@ -491,9 +547,6 @@ function SettingsMenuPanel({
   onToggleUnassignedFrozen,
   onToggleUseDefaultTimesForScheduling,
 }: {
-  readonly selectedDate: string;
-  readonly canOpenLineup: boolean;
-  readonly canOpenRequests: boolean;
   readonly employeeSortMode: ScheduleEmployeeSortMode;
   readonly showShiftType: boolean;
   readonly showShiftLabels: boolean;
@@ -504,7 +557,6 @@ function SettingsMenuPanel({
   readonly showUnassignedShifts: boolean;
   readonly unassignedFrozen: boolean;
   readonly useDefaultTimesForScheduling: boolean;
-  readonly onJumpToToday: () => void;
   readonly onEmployeeSortModeChange: (mode: ScheduleEmployeeSortMode) => void;
   readonly onToggleShiftType: () => void;
   readonly onToggleShiftLabels: () => void;
@@ -518,17 +570,6 @@ function SettingsMenuPanel({
 }) {
   return (
     <div className="schedule-command-menu-panel schedule-settings-menu-panel">
-      <strong>Schedule</strong>
-      <button type="button" onClick={onJumpToToday}>
-        Today
-      </button>
-      {canOpenLineup ? (
-        <Link to={`/app/schedule/lineup?date=${selectedDate}`}>Line-up</Link>
-      ) : null}
-      {canOpenRequests ? (
-        <Link to="/app/schedule/requests">Requests</Link>
-      ) : null}
-      <div className="schedule-menu-separator" />
       <strong>Sort Employees by</strong>
       <SettingsRadioRow
         checked={employeeSortMode === "alphabetical"}

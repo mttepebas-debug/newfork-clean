@@ -1,17 +1,20 @@
 import {
-  employeeAvailabilityInputSchema,
+  buildEmployeeOnboardingDocumentPrefix,
+  employeeOnboardingDocumentBucket,
+  employeeOnboardingDocumentMaxBytes,
+  employeeOnboardingDocumentMimeTypes,
+  employeeOnboardingDocumentSignedUrlTtlSeconds,
   employeeOnboardingManagerSchema,
   employeeOnboardingProfileSchema,
   employeeOnboardingSchema,
-  type EmployeeAvailabilityInput,
+  isEmployeeOnboardingDocumentPath,
   type EmployeeOnboarding,
   type EmployeeOnboardingManager,
   type EmployeeOnboardingProfile,
 } from "@newfork/shared";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { SsnEncryptionService } from "./ssn-encryption";
+import { z } from "zod";
 
-const documentBucket = "employee-onboarding";
 const mediaTypes = {
   pdf: "application/pdf",
   jpeg: "image/jpeg",
@@ -25,12 +28,6 @@ export interface EmployeeOnboardingService {
   saveProfile(
     accessToken: string,
     profile: EmployeeOnboardingProfile,
-    revision: number,
-  ): Promise<number>;
-  saveSsn(accessToken: string, ssn: string, revision: number): Promise<number>;
-  saveAvailability(
-    accessToken: string,
-    availability: EmployeeAvailabilityInput,
     revision: number,
   ): Promise<number>;
   prepareDocumentUpload(
@@ -61,11 +58,19 @@ export interface EmployeeOnboardingService {
     },
   ): Promise<number>;
   submit(accessToken: string, revision: number): Promise<number>;
+  reset(accessToken: string, revision: number): Promise<number>;
+  leave(accessToken: string, revision: number): Promise<{
+    status: "left";
+    workspaceId: string;
+    employeeId: string;
+    membershipId: string;
+    revision: number;
+  }>;
   getReview(
     actorUserId: string,
     workspaceId: string,
     employeeId: string,
-  ): Promise<EmployeeOnboardingManager>;
+  ): Promise<EmployeeOnboardingManager | null>;
   getDocumentDownload(
     actorUserId: string,
     workspaceId: string,
@@ -88,8 +93,6 @@ export interface EmployeeOnboardingService {
 interface OnboardingServiceOptions {
   readonly url: string;
   readonly serviceRoleKey: string;
-  readonly encryption: SsnEncryptionService;
-  readonly environment: string;
   readonly productionReady: boolean;
   readonly ensureDevelopmentBucket?: boolean;
 }
@@ -119,36 +122,6 @@ export function createEmployeeOnboardingService(
         expected_revision: revision,
       });
     },
-    async saveSsn(accessToken, ssn, revision) {
-      const user = await authenticatedUser(client, accessToken);
-      const onboarding = await this.get(accessToken);
-      const envelope = await options.encryption.encrypt(ssn, {
-        workspaceId: onboarding.workspace_id,
-        employeeId: onboarding.employee_id,
-        environment: options.environment,
-      });
-      return numericRpc(client, "save_employee_ssn_envelope_service", {
-        target_user_id: user.id,
-        encrypted_ciphertext: envelope.ciphertext,
-        encrypted_key: envelope.encryptedDataKey,
-        encrypted_nonce: envelope.nonce,
-        encrypted_tag: envelope.authenticationTag,
-        kms_key_id: envelope.keyId,
-        kms_key_version: envelope.keyVersion,
-        ssn_last_four: envelope.lastFour,
-        expected_revision: revision,
-      });
-    },
-    async saveAvailability(accessToken, input, revision) {
-      const user = await authenticatedUser(client, accessToken);
-      const availability = employeeAvailabilityInputSchema.parse(input);
-      return numericRpc(client, "save_employee_availability_service", {
-        target_user_id: user.id,
-        availability_timezone: availability.timezone,
-        availability_days: availability.days,
-        expected_revision: revision,
-      });
-    },
     async prepareDocumentUpload(
       accessToken,
       requirementId,
@@ -167,13 +140,18 @@ export function createEmployeeOnboardingService(
       if (
         !Number.isSafeInteger(sizeBytes) ||
         sizeBytes < 1 ||
-        sizeBytes > 10_485_760
+        sizeBytes > employeeOnboardingDocumentMaxBytes
       )
         throw new Error("Document must be smaller than 10 MB");
       if (options.ensureDevelopmentBucket) await ensurePrivateBucket(client);
-      const path = `${onboarding.workspace_id}/${onboarding.employee_id}/${requirementId}/${crypto.randomUUID()}.${format === "jpeg" ? "jpg" : format}`;
+      const prefix = buildEmployeeOnboardingDocumentPrefix({
+        workspaceId: onboarding.workspace_id,
+        employeeId: onboarding.employee_id,
+        requirementId,
+      });
+      const path = `${prefix}/${crypto.randomUUID()}.${format === "jpeg" ? "jpg" : format}`;
       const { data, error } = await client.storage
-        .from(documentBucket)
+        .from(employeeOnboardingDocumentBucket)
         .createSignedUploadUrl(path);
       if (error)
         throw new Error(
@@ -185,11 +163,13 @@ export function createEmployeeOnboardingService(
       const user = await authenticatedUser(client, accessToken);
       const format = extension(input.filename);
       if (!format) throw new Error("Supported document format required");
+      if (!isEmployeeOnboardingDocumentPath(input.path))
+        throw new Error("Invalid private document upload path");
       const slash = input.path.lastIndexOf("/");
       const prefix = input.path.slice(0, slash);
       const storedName = input.path.slice(slash + 1);
       const { data: objects, error: objectError } = await client.storage
-        .from(documentBucket)
+        .from(employeeOnboardingDocumentBucket)
         .list(prefix, { search: storedName, limit: 2 });
       if (objectError)
         throw new Error("Uploaded document could not be verified");
@@ -246,6 +226,21 @@ export function createEmployeeOnboardingService(
         expected_revision: revision,
       });
     },
+    async reset(accessToken, revision) {
+      const user = await authenticatedUser(client, accessToken);
+      return numericRpc(client, "reset_employee_onboarding_service", {
+        target_user_id: user.id,
+        expected_revision: revision,
+      });
+    },
+    async leave(accessToken, revision) {
+      const user = await authenticatedUser(client, accessToken);
+      const body = await rpc(client, "leave_employee_onboarding_service", {
+        target_user_id: user.id,
+        expected_revision: revision,
+      });
+      return leaveResultSchema.parse(body);
+    },
     async getReview(actorUserId, workspaceId, employeeId) {
       const { data, error } = await client.rpc(
         "get_employee_onboarding_review_service",
@@ -255,6 +250,14 @@ export function createEmployeeOnboardingService(
           target_employee_id: employeeId,
         },
       );
+      // The RPC deliberately uses the same result for absent and out-of-scope
+      // cases. Neither should disclose case data or look like a service outage.
+      if (
+        error?.code === "P0002" &&
+        error.message === "onboarding case unavailable"
+      ) {
+        return null;
+      }
       if (error) throw new Error(error.message);
       return employeeOnboardingManagerSchema.parse(data);
     },
@@ -264,7 +267,8 @@ export function createEmployeeOnboardingService(
       employeeId,
       requirementId,
     ) {
-      await this.getReview(actorUserId, workspaceId, employeeId);
+      const review = await this.getReview(actorUserId, workspaceId, employeeId);
+      if (!review) throw new Error("Employee document is unavailable");
       const document = await client.rpc("get_employee_document_path_service", {
         actor_user_id: actorUserId,
         target_workspace_id: workspaceId,
@@ -275,9 +279,9 @@ export function createEmployeeOnboardingService(
         throw new Error(
           document.error?.message ?? "Employee document is unavailable",
         );
-      const expiresIn = 300;
+      const expiresIn = employeeOnboardingDocumentSignedUrlTtlSeconds;
       const signed = await client.storage
-        .from(documentBucket)
+        .from(employeeOnboardingDocumentBucket)
         .createSignedUrl(String(document.data), expiresIn, {
           download: true,
         });
@@ -300,6 +304,22 @@ export function createEmployeeOnboardingService(
   };
 }
 
+const leaveResultSchema = z
+  .object({
+    status: z.literal("left"),
+    workspace_id: z.string().uuid(),
+    employee_id: z.string().uuid(),
+    membership_id: z.string().uuid(),
+    revision: z.number().int().positive(),
+  })
+  .transform((row) => ({
+    status: row.status,
+    workspaceId: row.workspace_id,
+    employeeId: row.employee_id,
+    membershipId: row.membership_id,
+    revision: row.revision,
+  }));
+
 async function authenticatedUser(client: SupabaseClient, accessToken: string) {
   const { data, error } = await client.auth.getUser(accessToken);
   if (error || !data.user)
@@ -312,12 +332,21 @@ async function numericRpc(
   name: string,
   input: Record<string, unknown>,
 ): Promise<number> {
-  const { data, error } = await client.rpc(name, input);
-  if (error) throw new Error(error.message);
+  const data = await rpc(client, name, input);
   const value = Number(data);
   if (!Number.isSafeInteger(value))
     throw new Error("Invalid onboarding revision");
   return value;
+}
+
+async function rpc(
+  client: SupabaseClient,
+  name: string,
+  input: Record<string, unknown>,
+): Promise<unknown> {
+  const { data, error } = await client.rpc(name, input);
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 function extension(filename: string) {
@@ -334,13 +363,18 @@ function extension(filename: string) {
 }
 
 async function ensurePrivateBucket(client: SupabaseClient): Promise<void> {
-  const current = await client.storage.getBucket(documentBucket);
+  const current = await client.storage.getBucket(
+    employeeOnboardingDocumentBucket,
+  );
   if (!current.error) return;
-  const created = await client.storage.createBucket(documentBucket, {
-    public: false,
-    fileSizeLimit: 10_485_760,
-    allowedMimeTypes: Object.values(mediaTypes),
-  });
+  const created = await client.storage.createBucket(
+    employeeOnboardingDocumentBucket,
+    {
+      public: false,
+      fileSizeLimit: employeeOnboardingDocumentMaxBytes,
+      allowedMimeTypes: [...employeeOnboardingDocumentMimeTypes],
+    },
+  );
   if (created.error && !created.error.message.toLowerCase().includes("already"))
     throw new Error(
       `Private document bucket unavailable: ${created.error.message}`,

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(24);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -69,7 +69,9 @@ with mutated as (
       'job_id', '13000000-0000-4000-8000-000000000001',
       'shift_type_id', '14000000-0000-4000-8000-000000000002',
       'scheduled_date', current_date - (extract(isodow from current_date)::integer - 1) + 2,
-      'start_time', '12:00', 'end_time', '16:00', 'note', 'Created in edit session'
+      'start_time', '12:00', 'end_time', '16:00',
+      'note', 'Created in edit session',
+      'conflict_override_note', 'Manager acknowledged schedule warning.'
     ), '54000000-0000-4000-8000-000000000001'
   ) result from edit_test_state
 )
@@ -82,6 +84,12 @@ select is((select jsonb_array_length(public.get_schedule_edit_session_service(
 select ok((select (public.get_schedule_edit_session_service(
   'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', session_id)->>'dirty')::boolean
   from edit_test_state), 'mutation marks the session dirty');
+
+set local role postgres;
+select is((select count(*)::integer from public.audit_events where action = 'schedule.soft_conflict_overridden'), 1, 'soft conflict override is audited');
+select is((select metadata->>'note' from public.audit_events where action = 'schedule.soft_conflict_overridden' limit 1), 'Manager acknowledged schedule warning.', 'soft conflict override audit uses automatic note');
+
+set local role service_role;
 select throws_ok(
   format($$select public.mutate_schedule_edit_shift_service(
     'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
@@ -95,8 +103,79 @@ select throws_ok(
     '%s', %s, 'update', '%s', 99, '{}'::jsonb, null)$$,
     (select session_id from edit_test_state), (select session_revision from edit_test_state),
     (select shift_id from edit_test_state)),
-  '23503', 'invalid shift reference', 'invalid update payload fails closed before mutation'
+  '23503', 'invalid shift location', 'invalid update payload fails closed before mutation'
 );
+
+set local role postgres;
+insert into public.document_types(
+  id, workspace_id, title, description, required_at_onboarding,
+  requires_review, accepted_formats, tracks_expiry, expiry_warning_days,
+  expiry_schedule_impact, sort_order, created_by
+) values (
+  'e9500000-0000-4000-8000-000000000001',
+  '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  'Edit session hard blocker', 'Hard Schedule edit conflict fixture',
+  true, false, array['pdf'], true, 14, 'block', 400,
+  'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
+);
+insert into public.employee_onboarding_cases(
+  id, workspace_id, employee_id, membership_id, status,
+  submitted_at, approved_at, approved_by
+) values (
+  'e9500000-0000-4000-8000-000000000002',
+  '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  '15000000-0000-4000-8000-000000000001',
+  'a6000000-0000-4000-8000-000000000003',
+  'approved', now(), now(), 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
+);
+insert into public.employee_onboarding_requirements(
+  id, workspace_id, case_id, employee_id, kind, source_id, title,
+  required, blocks_activation, requires_review, sort_order, status
+) values (
+  'e9500000-0000-4000-8000-000000000003',
+  '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  'e9500000-0000-4000-8000-000000000002',
+  '15000000-0000-4000-8000-000000000001',
+  'document', 'e9500000-0000-4000-8000-000000000001',
+  'Edit session hard blocker', true, true, false, 400, 'completed'
+);
+insert into public.employee_documents(
+  id, workspace_id, employee_id, requirement_id, version_number,
+  object_path, original_filename, media_type, size_bytes, review_status,
+  expiry_date, uploaded_by
+) values (
+  'e9500000-0000-4000-8000-000000000004',
+  '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  '15000000-0000-4000-8000-000000000001',
+  'e9500000-0000-4000-8000-000000000003',
+  1,
+  '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/15000000-0000-4000-8000-000000000001/e9500000-0000-4000-8000-000000000003/e9500000-0000-4000-8000-000000000004.pdf',
+  'edit-session-hard-blocker.pdf', 'application/pdf', 1024,
+  'accepted',
+  current_date - (extract(isodow from current_date)::integer - 1) - 1,
+  'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
+);
+
+set local role service_role;
+select throws_ok(
+  format($$select public.mutate_schedule_edit_shift_service(
+    'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5',
+    '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+    '%s', %s, 'create', 'e9500000-0000-4000-8000-000000000005', null,
+    jsonb_build_object(
+      'location_id', '11000000-0000-4000-8000-000000000001',
+      'employee_id', '15000000-0000-4000-8000-000000000001',
+      'job_id', '13000000-0000-4000-8000-000000000001',
+      'shift_type_id', '14000000-0000-4000-8000-000000000002',
+      'scheduled_date', current_date - (extract(isodow from current_date)::integer - 1) + 3,
+      'start_time', '02:00', 'end_time', '03:00', 'note', 'Blocked by expired document'
+    ), 'e9500000-0000-4000-8000-000000000006')$$,
+    (select session_id from edit_test_state),
+    (select session_revision from edit_test_state)),
+  '23514', 'employee document hard conflict',
+  'expired hard-block document prevents assigned shift creation'
+);
+select is((select count(*)::integer from public.schedule_edit_session_shifts where session_id = (select session_id from edit_test_state)), 8, 'hard document conflict leaves working copy unchanged');
 
 with saved as (
   select public.save_schedule_edit_session_service(
@@ -115,7 +194,7 @@ select throws_ok(
     'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
     '%s', %s, 'Opening plan', null, null)$$,
     (select session_id from edit_test_state), (select session_revision from edit_test_state)),
-  '40001', 'edit lease expired', 'closed session cannot save again'
+  'PT409', 'edit lease expired', 'closed session cannot save again'
 );
 
 select is(jsonb_array_length(public.list_schedule_drafts_service(
@@ -141,7 +220,7 @@ select throws_ok(
   $$select public.acquire_schedule_edit_session_service(
     '51000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
     current_date - (extract(isodow from current_date)::integer - 1), 'blank', null)$$,
-  '42501', 'schedule manage access required', 'employee cannot acquire an edit session'
+  '42501', 'schedule manage access denied', 'employee cannot acquire an edit session'
 );
 select throws_ok(
   $$select public.mutate_schedule_edit_shift_service(

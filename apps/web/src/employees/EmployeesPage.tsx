@@ -5,18 +5,19 @@ import {
   ArrowLeft,
   ArrowRight,
   BriefcaseBusiness,
-  Columns3,
   Eye,
   MapPin,
   Plus,
   RotateCcw,
   Search,
+  Settings2,
   Users,
 } from "lucide-react";
 import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -39,13 +40,7 @@ const statusFilters = [
 ] as const;
 
 type EmployeeColumnKey =
-  | "employee"
-  | "status"
-  | "location"
-  | "job"
-  | "access"
-  | "start"
-  | "email";
+  "employee" | "status" | "location" | "job" | "access" | "start" | "email";
 
 interface EmployeeColumn {
   readonly key: EmployeeColumnKey;
@@ -93,13 +88,32 @@ export default function EmployeesPage() {
     enabled: Boolean(workspaceId),
   });
 
-  const updateParams = (values: Record<string, string | null>) => {
+  const nextParams = (values: Record<string, string | null>) => {
     const next = new URLSearchParams(params);
     for (const [key, value] of Object.entries(values)) {
       if (value) next.set(key, value);
       else next.delete(key);
     }
-    setParams(next, { replace: true });
+    return next;
+  };
+
+  const updateParams = (values: Record<string, string | null>) => {
+    setParams(nextParams(values), { replace: true });
+  };
+
+  const navigateEmployeeRoute = (
+    pathname: "/app/employees" | "/app/employees/archive",
+    values: Record<string, string | null>,
+  ) => {
+    const next = nextParams(values);
+    const queryString = next.toString();
+    navigate(
+      {
+        pathname,
+        search: queryString ? `?${queryString}` : "",
+      },
+      { replace: true },
+    );
   };
 
   useEffect(() => {
@@ -152,7 +166,9 @@ export default function EmployeesPage() {
       if (nextVisibleIndex >= visibleOrder.length) return current;
 
       const nextOrder = [...current.order];
-      const currentIndex = nextOrder.indexOf(visibleOrder[currentVisibleIndex]!);
+      const currentIndex = nextOrder.indexOf(
+        visibleOrder[currentVisibleIndex]!,
+      );
       const swapIndex = nextOrder.indexOf(visibleOrder[nextVisibleIndex]!);
       [nextOrder[currentIndex], nextOrder[swapIndex]] = [
         nextOrder[swapIndex]!,
@@ -177,7 +193,6 @@ export default function EmployeesPage() {
     <section className="employees-page" aria-labelledby="employees-title">
       <header className="employees-header">
         <div>
-          <span className="eyebrow">People</span>
           <h1 id="employees-title">
             {archived ? "Archived employees" : "Employees"}
           </h1>
@@ -190,11 +205,13 @@ export default function EmployeesPage() {
         {!archived && canManage ? (
           <Button
             onClick={() =>
-              updateParams({
-                mode: "create",
-                employeeId: null,
-                section: "profile",
-              })
+              setParams(
+                nextParams({
+                  mode: "create",
+                  employeeId: null,
+                  section: "profile",
+                }),
+              )
             }
           >
             <Plus size={17} aria-hidden />
@@ -204,6 +221,60 @@ export default function EmployeesPage() {
       </header>
 
       <div className="employees-toolbar">
+        <div className="employee-toolbar-controls">
+          <div
+            className="employee-status-tabs"
+            role="group"
+            aria-label="Employee status"
+          >
+            {statusFilters.map((value) => (
+              <button
+                type="button"
+                key={value}
+                className={status === value && !archived ? "active" : ""}
+                onClick={() => {
+                  const nextStatus = value === "all" ? null : value;
+                  if (archived) {
+                    navigateEmployeeRoute("/app/employees", {
+                      status: nextStatus,
+                      employeeId: null,
+                      mode: null,
+                      section: null,
+                    });
+                    return;
+                  }
+                  updateParams({ status: nextStatus });
+                }}
+              >
+                {filterLabel(value)}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={archived ? "active" : ""}
+              onClick={() =>
+                navigateEmployeeRoute("/app/employees/archive", {
+                  status: null,
+                  employeeId: null,
+                  mode: null,
+                  section: null,
+                })
+              }
+            >
+              <Archive size={14} aria-hidden />
+              Archived
+            </button>
+          </div>
+          <EmployeeColumnPicker
+            columns={employeeColumns}
+            visibleKeySet={visibleKeySet}
+            visibleOrder={visibleColumns.map((column) => column.key)}
+            onToggleColumn={toggleColumn}
+            onMoveColumn={moveColumn}
+            onResetColumns={resetColumns}
+            onShowAllColumns={showAllColumns}
+          />
+        </div>
         <label className="employee-search">
           <Search size={17} aria-hidden />
           <span className="sr-only">Search employees</span>
@@ -215,49 +286,16 @@ export default function EmployeesPage() {
             placeholder="Search name or employee code"
           />
         </label>
-        <EmployeeColumnPicker
-          columns={employeeColumns}
-          visibleKeySet={visibleKeySet}
-          visibleOrder={visibleColumns.map((column) => column.key)}
-          onToggleColumn={toggleColumn}
-          onMoveColumn={moveColumn}
-          onResetColumns={resetColumns}
-          onShowAllColumns={showAllColumns}
-        />
-        <div
-          className="employee-status-tabs"
-          role="group"
-          aria-label="Employee status"
-        >
-          {statusFilters.map((value) => (
-            <button
-              type="button"
-              key={value}
-              className={status === value && !archived ? "active" : ""}
-              onClick={() => {
-                if (archived) navigate("/app/employees");
-                updateParams({ status: value === "all" ? null : value });
-              }}
-            >
-              {filterLabel(value)}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={archived ? "active" : ""}
-            onClick={() => navigate("/app/employees/archive")}
-          >
-            <Archive size={14} aria-hidden />
-            Archived
-          </button>
-        </div>
       </div>
 
       <div className="employee-table-wrap">
         <table className="employee-table">
           <colgroup>
             {visibleColumns.map((column) => (
-              <col key={column.key} style={{ width: columnWidth(column.key) }} />
+              <col
+                key={column.key}
+                style={{ width: columnWidth(column.key) }}
+              />
             ))}
           </colgroup>
           <thead>
@@ -364,17 +402,30 @@ function EmployeeColumnPicker({
   readonly onShowAllColumns: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const dismissOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !pickerRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", dismissOutside, true);
+    return () => document.removeEventListener("pointerdown", dismissOutside, true);
+  }, [open]);
+
   return (
-    <div className="employee-column-picker">
+    <div className="employee-column-picker" ref={pickerRef}>
       <button
         type="button"
-        className="secondary-button compact"
+        className="secondary-button compact employee-column-trigger"
+        aria-label="Table column settings"
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((value) => !value)}
       >
-        <Columns3 size={15} aria-hidden />
-        Columns
+        <Settings2 size={16} aria-hidden />
       </button>
       {open ? (
         <div
@@ -453,13 +504,15 @@ function renderEmployeeCell(
 ): ReactNode {
   if (key === "employee") {
     return (
-      <td key={key} className="employee-cell-identity">
-        <span className="employee-table-avatar">
-          {employee.display_name.slice(0, 1).toUpperCase()}
-        </span>
-        <span>
-          <strong>{employee.display_name}</strong>
-          <small>{employee.employee_code}</small>
+      <td key={key}>
+        <span className="employee-cell-identity">
+          <span className="employee-table-avatar">
+            {employee.display_name.slice(0, 1).toUpperCase()}
+          </span>
+          <span>
+            <strong>{employee.display_name}</strong>
+            <small>{employee.employee_code}</small>
+          </span>
         </span>
       </td>
     );
@@ -477,7 +530,6 @@ function renderEmployeeCell(
     return (
       <td
         key={key}
-        className="employee-cell-with-icon"
         onClick={(event) => {
           event.stopPropagation();
           updateParams({
@@ -487,11 +539,13 @@ function renderEmployeeCell(
           });
         }}
       >
-        <MapPin size={15} aria-hidden />
-        {employee.primary_location_name ?? "Unassigned"}
-        {employee.location_count > 1 ? (
-          <small>+{employee.location_count - 1}</small>
-        ) : null}
+        <span className="employee-cell-with-icon">
+          <MapPin size={15} aria-hidden />
+          {employee.primary_location_name ?? "Unassigned"}
+          {employee.location_count > 1 ? (
+            <small>+{employee.location_count - 1}</small>
+          ) : null}
+        </span>
       </td>
     );
   }
@@ -499,7 +553,6 @@ function renderEmployeeCell(
     return (
       <td
         key={key}
-        className="employee-cell-with-icon"
         onClick={(event) => {
           event.stopPropagation();
           updateParams({
@@ -509,14 +562,18 @@ function renderEmployeeCell(
           });
         }}
       >
-        <BriefcaseBusiness size={15} aria-hidden />
-        {employee.primary_job_name ?? "Unassigned"}
-        {employee.job_count > 1 ? <small>+{employee.job_count - 1}</small> : null}
+        <span className="employee-cell-with-icon">
+          <BriefcaseBusiness size={15} aria-hidden />
+          {employee.primary_job_name ?? "Unassigned"}
+          {employee.job_count > 1 ? (
+            <small>+{employee.job_count - 1}</small>
+          ) : null}
+        </span>
       </td>
     );
   }
   if (key === "access") {
-    return <td key={key}>{employee.role_name ?? "No access"}</td>;
+    return <td key={key}>{employee.role_name ?? "No app access"}</td>;
   }
   if (key === "email") {
     return <td key={key}>{employee.invitation_email ?? "No invite email"}</td>;

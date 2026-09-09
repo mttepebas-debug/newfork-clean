@@ -2,17 +2,23 @@ import { describe, expect, it } from "vitest";
 import {
   activeWorkspaceContextSchema,
   activeWorkspaceContextFromRow,
+  accountProfileSchema,
+  accountPendingInvitationSchema,
+  announcementListSchema,
+  appActionUrlSchema,
   applyTimeAmendmentInputSchema,
   canAccessWorkspace,
   captureTimeEventInputSchema,
   departmentInputSchema,
   documentTypeInputSchema,
   employeeAvailabilityInputSchema,
+  employeeOnboardingSchema,
   employeeOnboardingProfileSchema,
   healthResponseSchema,
   importantDateInputSchema,
   jobInputSchema,
   locationInputSchema,
+  notificationInboxSchema,
   permissionsForRole,
   scheduleReadModelSchema,
   schedulePublicationPreflightAckSchema,
@@ -26,7 +32,10 @@ import {
   scheduleExportRequestSchema,
   schedulePendingOpPayloadSchema,
   scheduleTemplateDetailSchema,
+  workspaceDashboardSchema,
+  workspaceManualTodoInputSchema,
   workspaceRoleInputSchema,
+  workspaceTodoSchema,
   productBoundary,
   schedulingSettingsInputSchema,
   shiftTypeInputSchema,
@@ -37,6 +46,212 @@ import {
 
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+
+describe("account schemas", () => {
+  it("accepts optional account phone", () => {
+    expect(
+      accountProfileSchema.parse({
+        userId,
+        email: "alex@example.test",
+        displayName: "Alex Kim",
+        phone: "3105550100",
+        theme: "system",
+      }).phone,
+    ).toBe("3105550100");
+    expect(
+      accountProfileSchema.parse({
+        userId,
+        email: "alex@example.test",
+        displayName: "Alex Kim",
+        theme: "system",
+      }).phone,
+    ).toBeNull();
+  });
+});
+
+describe("workspace communication schemas", () => {
+  const announcement = {
+    id: "a8200000-0000-4000-8000-000000000001",
+    workspace_id: workspaceId,
+    title: "Service briefing",
+    body: "Doors open at four.",
+    category: "operations",
+    status: "published",
+    audience_roles: ["employee"],
+    location_ids: [],
+    location_names: [],
+    publish_at: null,
+    published_at: "2026-09-05T12:00:00.000Z",
+    expires_at: null,
+    action_url: "/app/announcements/a8200000-0000-4000-8000-000000000001",
+    author_name: "Taylor",
+    revision: 1,
+    created_at: "2026-09-05T12:00:00.000Z",
+    updated_at: "2026-09-05T12:00:00.000Z",
+    read_at: null,
+    can_edit: false,
+    can_publish: false,
+    can_cancel: false,
+  } as const;
+
+  const notification = {
+    id: "a8300000-0000-4000-8000-000000000001",
+    workspace_id: workspaceId,
+    category: "announcement",
+    type_key: "communications.announcement.available",
+    severity: "info",
+    safe_preview: "Service briefing",
+    title: "Service briefing",
+    body: "Doors open at four.",
+    action_url: "/app/announcements/a8200000-0000-4000-8000-000000000001",
+    group_key: null,
+    source_type: "announcement",
+    source_id: "a8200000-0000-4000-8000-000000000001",
+    created_at: "2026-09-05T12:00:00.000Z",
+    seen_at: null,
+    read_at: null,
+    visibility_state: "visible",
+  } as const;
+
+  const todo = {
+    id: "a9700000-0000-4000-8000-000000000011",
+    workspace_id: workspaceId,
+    title: "Follow up",
+    body: "",
+    severity: "info",
+    status: "open",
+    system_generated: false,
+    source_type: "manual",
+    source_id: "a9700000-0000-4000-8000-000000000012",
+    source_key: "manual:a9700000-0000-4000-8000-000000000012",
+    employee_id: null,
+    due_at: null,
+    action_url: "/app/employees",
+    created_at: "2026-09-05T12:00:00.000Z",
+  } as const;
+
+  it("keeps communication action URLs app-local across projections", () => {
+    expect(appActionUrlSchema.parse("/app")).toBe("/app");
+    expect(appActionUrlSchema.parse("/app?tab=notifications")).toBe(
+      "/app?tab=notifications",
+    );
+    expect(appActionUrlSchema.parse("/app/notifications#today")).toBe(
+      "/app/notifications#today",
+    );
+    for (const actionUrl of [
+      "https://outside.example/todo",
+      "//outside.example/app",
+      "/application/settings",
+      "/welcome/profile",
+    ]) {
+      expect(() => appActionUrlSchema.parse(actionUrl)).toThrow(
+        "Action URL must stay inside the app",
+      );
+    }
+  });
+
+  it("rejects unsafe announcement and notification action links", () => {
+    expect(
+      announcementListSchema.parse({
+        workspace_id: workspaceId,
+        can_manage: false,
+        locations: [],
+        announcements: [announcement],
+      }).announcements[0]!.action_url,
+    ).toBe(announcement.action_url);
+    expect(
+      notificationInboxSchema.parse({
+        workspace_id: workspaceId,
+        unread_count: 1,
+        next_cursor: null,
+        notifications: [notification],
+      }).notifications[0]!.action_url,
+    ).toBe(notification.action_url);
+
+    expect(() =>
+      announcementListSchema.parse({
+        workspace_id: workspaceId,
+        can_manage: false,
+        locations: [],
+        announcements: [
+          {
+            ...announcement,
+            action_url: "https://outside.example/announcement",
+          },
+        ],
+      }),
+    ).toThrow("Action URL must stay inside the app");
+    expect(() =>
+      notificationInboxSchema.parse({
+        workspace_id: workspaceId,
+        unread_count: 1,
+        next_cursor: null,
+        notifications: [
+          {
+            ...notification,
+            action_url: "https://outside.example/notification",
+          },
+        ],
+      }),
+    ).toThrow("Action URL must stay inside the app");
+  });
+
+  it("validates Workspace Todo projections and keeps action links app-local", () => {
+    expect(workspaceTodoSchema.parse(todo).action_url).toBe("/app/employees");
+    expect(() =>
+      workspaceTodoSchema.parse({
+        ...todo,
+        action_url: "https://outside.example/todo",
+      }),
+    ).toThrow();
+  });
+
+  it("normalizes manual Workspace Todo input", () => {
+    expect(
+      workspaceManualTodoInputSchema.parse({
+        title: "  Call Alex  ",
+        body: "  Bring paperwork  ",
+      }),
+    ).toEqual({
+      title: "Call Alex",
+      body: "Bring paperwork",
+      employee_id: null,
+      due_at: null,
+    });
+  });
+
+  it("accepts Workspace dashboard projections with Todos in the widget layout", () => {
+    expect(
+      workspaceDashboardSchema.parse({
+        workspace_id: workspaceId,
+        display_name: "Local Owner",
+        metrics: {
+          today_shift_count: 1,
+          today_open_shift_count: 0,
+          pending_time_off_count: 0,
+          pending_shift_change_count: 0,
+          unread_notification_count: 0,
+        },
+        announcements: [],
+        notifications: [],
+        todos: [todo],
+        layout: {
+          widget_order: [
+            "operations",
+            "pending_requests",
+            "open_shifts",
+            "announcements",
+            "todos",
+            "notifications",
+            "quick_actions",
+          ],
+          hidden_widget_ids: [],
+        },
+      }).todos,
+    ).toHaveLength(1);
+  });
+});
+
 const membershipId = "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4";
 
 describe("shared contracts", () => {
@@ -64,6 +279,31 @@ describe("shared contracts", () => {
       scheduleShiftMutationInputSchema.parse({
         ...parsed,
         conflict_override_note: "too short",
+      }),
+    ).toThrow();
+    const custom = scheduleShiftMutationInputSchema.parse({
+      ...parsed,
+      shift_type_id: null,
+      service_classification_note:
+        "  Inventory work independent of any service.  ",
+      service_classification_fingerprint: "b".repeat(64),
+      service_independent: true,
+    });
+    expect(custom.service_classification_note).toBe(
+      "Inventory work independent of any service.",
+    );
+    expect(custom.service_classification_fingerprint).toBe("b".repeat(64));
+    expect(custom).not.toHaveProperty("service_independent");
+    expect(() =>
+      scheduleShiftMutationInputSchema.parse({
+        ...custom,
+        service_classification_note: "short",
+      }),
+    ).toThrow();
+    expect(() =>
+      scheduleShiftMutationInputSchema.parse({
+        ...custom,
+        service_classification_fingerprint: "stale",
       }),
     ).toThrow();
   });
@@ -172,9 +412,7 @@ describe("shared contracts", () => {
       source: { type: "published" },
       source_revision: 1,
       fingerprint: "a".repeat(64),
-      locations: [
-        { id: "11000000-0000-4000-8000-000000000001", name: "Main" },
-      ],
+      locations: [{ id: "11000000-0000-4000-8000-000000000001", name: "Main" }],
       rows: [],
       summary: {
         shift_count: 0,
@@ -277,34 +515,86 @@ describe("shared contracts", () => {
         },
       ],
     });
-    expect(
-      schedulePublishResultSchema.parse({
-        status: "schedule_conflicts",
-        schedule_conflicts: [
-          {
-            employee_id: "51000000-0000-4000-8000-000000000001",
-            employee_name: "Alex Rivera",
-            date: "2026-08-17",
-            reason: "time_overlap",
-            first: {
-              shift_id: "71000000-0000-4000-8000-000000000001",
-              location_id: "11000000-0000-4000-8000-000000000001",
-              location_name: "Main Dining",
-              time_range: "4:00 PM - 7:00 PM",
-              shift_type: "Dinner",
-            },
-            second: {
-              shift_id: "71000000-0000-4000-8000-000000000002",
-              location_id: "11000000-0000-4000-8000-000000000001",
-              location_name: "Main Dining",
-              time_range: "6:00 PM - 10:00 PM",
-              shift_type: "Dinner",
-            },
-            introduced: true,
+    const published = schedulePublishResultSchema.parse({
+      status: "published",
+      workspace_id: workspaceId,
+      week_start: "2026-08-17",
+      draft_id: "85000000-0000-4000-8000-000000000001",
+      draft_revision: 2,
+      location_ids: ["11000000-0000-4000-8000-000000000001"],
+      publication_ids: ["86000000-0000-4000-8000-000000000001"],
+      published_shift_count: 4,
+      notification_count: 0,
+      notification_warning: {
+        code: "notification_enqueue_unavailable",
+        message:
+          "Schedule published, but employee notifications could not be created.",
+      },
+      published_at: "2026-08-17T12:00:00.000Z",
+    });
+    expect(published.status).toBe("published");
+    if (published.status !== "published") throw new Error("Expected published");
+    expect(published.notification_warning?.code).toBe(
+      "notification_enqueue_unavailable",
+    );
+    const conflictResult = schedulePublishResultSchema.parse({
+      status: "schedule_conflicts",
+      schedule_conflicts: [
+        {
+          employee_id: "51000000-0000-4000-8000-000000000001",
+          employee_name: "Alex Rivera",
+          date: "2026-08-17",
+          reason: "time_overlap",
+          first: {
+            shift_id: "71000000-0000-4000-8000-000000000001",
+            location_id: "11000000-0000-4000-8000-000000000001",
+            location_name: "Main Dining",
+            time_range: "4:00 PM - 7:00 PM",
+            shift_type: "Dinner",
           },
-        ],
-      }).status,
-    ).toBe("schedule_conflicts");
+          second: {
+            shift_id: "71000000-0000-4000-8000-000000000002",
+            location_id: "11000000-0000-4000-8000-000000000001",
+            location_name: "Main Dining",
+            time_range: "6:00 PM - 10:00 PM",
+            shift_type: "Dinner",
+          },
+          introduced: true,
+        },
+        {
+          employee_id: "51000000-0000-4000-8000-000000000002",
+          employee_name: "Kim Nguyen",
+          shift_id: "71000000-0000-4000-8000-000000000003",
+          location_id: "11000000-0000-4000-8000-000000000001",
+          location_name: "Main Dining",
+          date: "2026-08-18",
+          start_time: "10:00",
+          end_time: "14:00",
+          document_type_id: "72000000-0000-4000-8000-000000000001",
+          requirement_id: "72000000-0000-4000-8000-000000000002",
+          document_id: "72000000-0000-4000-8000-000000000003",
+          document_title: "Food handler card",
+          expiry_date: "2026-08-17",
+          expiry_policy_version: 2,
+          pending_document_id: "72000000-0000-4000-8000-000000000004",
+          review_action: "review_document",
+          severity: "soft",
+          overrideable: true,
+          warning_text: "Food handler card is expired.",
+          conflict_fingerprint: "document-fingerprint",
+        },
+      ],
+    });
+    expect(conflictResult.status).toBe("schedule_conflicts");
+    if (conflictResult.status !== "schedule_conflicts") {
+      throw new Error("Expected schedule conflicts");
+    }
+    const documentConflict = conflictResult.schedule_conflicts[1];
+    expect(documentConflict && "document_title" in documentConflict).toBe(true);
+    if (!documentConflict || !("document_title" in documentConflict)) {
+      throw new Error("Expected document conflict");
+    }
+    expect(documentConflict.kind).toBe("document_expiry");
     expect(
       schedulePublishResultSchema.parse({
         status: "preflight",
@@ -342,66 +632,66 @@ describe("shared contracts", () => {
     const employeeId = "30000000-0000-4000-8000-000000000001";
     const labelId = "50000000-0000-4000-8000-000000000001";
     const parsed = scheduleReadModelSchema.parse({
-        workspace_id: workspaceId,
-        week_start: "2026-08-17",
-        week_start_day: "monday",
-        locations: [
-          {
-            id: locationId,
-            name: "Main Room",
-            timezone: "America/Los_Angeles",
-            sort_order: 0,
-            publication_status: "published",
-            published_at: "2026-08-16T18:00:00.000Z",
-          },
-        ],
-        departments: [],
-        jobs: [
-          {
-            id: jobId,
-            name: "Server",
-            color: "#4478A8",
-            sort_order: 0,
-            department_id: null,
-          },
-        ],
-        shift_types: [],
-        shift_labels: [
-          {
-            id: labelId,
-            name: "Training",
-            color: "#A855F7",
-            sort_order: 0,
-            is_active: true,
-          },
-        ],
-        employees: [
-          {
-            id: employeeId,
-            employee_code: "E-0002",
-            display_name: "Alex Kim",
-            location_ids: [locationId],
-            job_ids: [jobId],
-            availability: null,
-          },
-        ],
-        shifts: [
-          {
-            id: "40000000-0000-4000-8000-000000000001",
-            location_id: locationId,
-            employee_id: employeeId,
-            job_id: jobId,
-            shift_type_id: null,
-            scheduled_date: "2026-08-17",
-            start_time: "09:00",
-            end_time: "17:00",
-            crosses_midnight: false,
-            label_ids: [labelId],
-            label_names: ["Training"],
-            note: "",
-            warning_codes: [],
-          },
-        ],
+      workspace_id: workspaceId,
+      week_start: "2026-08-17",
+      week_start_day: "monday",
+      locations: [
+        {
+          id: locationId,
+          name: "Main Room",
+          timezone: "America/Los_Angeles",
+          sort_order: 0,
+          publication_status: "published",
+          published_at: "2026-08-16T18:00:00.000Z",
+        },
+      ],
+      departments: [],
+      jobs: [
+        {
+          id: jobId,
+          name: "Server",
+          color: "#4478A8",
+          sort_order: 0,
+          department_id: null,
+        },
+      ],
+      shift_types: [],
+      shift_labels: [
+        {
+          id: labelId,
+          name: "Training",
+          color: "#A855F7",
+          sort_order: 0,
+          is_active: true,
+        },
+      ],
+      employees: [
+        {
+          id: employeeId,
+          employee_code: "E-0002",
+          display_name: "Alex Kim",
+          location_ids: [locationId],
+          job_ids: [jobId],
+          availability: null,
+        },
+      ],
+      shifts: [
+        {
+          id: "40000000-0000-4000-8000-000000000001",
+          location_id: locationId,
+          employee_id: employeeId,
+          job_id: jobId,
+          shift_type_id: null,
+          scheduled_date: "2026-08-17",
+          start_time: "09:00",
+          end_time: "17:00",
+          crosses_midnight: false,
+          label_ids: [labelId],
+          label_names: ["Training"],
+          note: "",
+          warning_codes: [],
+        },
+      ],
       closures: [
         {
           id: "60000000-0000-4000-8000-000000000001",
@@ -428,9 +718,7 @@ describe("shared contracts", () => {
     expect(parsed.locations[0]?.publication_status).toBe("published");
     expect(parsed.settings.time_format).toBe("12h");
     expect(parsed.employees[0]?.shift_type_ids ?? []).toEqual([]);
-    expect(parsed.employees[0]?.is_excluded_from_schedule ?? false).toBe(
-      false,
-    );
+    expect(parsed.employees[0]?.is_excluded_from_schedule ?? false).toBe(false);
     expect(parsed.shifts[0]?.unpaid_break_minutes).toBe(0);
     expect(parsed.shifts[0]?.label_names).toEqual(["Training"]);
     expect(parsed.shift_labels?.[0]?.name).toBe("Training");
@@ -612,6 +900,23 @@ describe("shared contracts", () => {
     ).toThrow("Membership workspace does not match context");
   });
 
+  it("rejects a membership from another account", () => {
+    expect(() =>
+      activeWorkspaceContextSchema.parse({
+        userId,
+        workspace: { id: workspaceId, name: "Northstar" },
+        membership: {
+          id: membershipId,
+          userId: "16fe2550-8960-480c-9874-cbc76a8e56a9",
+          workspaceId,
+          role: "employee",
+          status: "active",
+        },
+        permissions: permissionsForRole("employee"),
+      }),
+    ).toThrow("Membership user does not match context user");
+  });
+
   it("maps an active workspace RPC row into the shared authorization context", () => {
     const context = activeWorkspaceContextFromRow(
       {
@@ -633,11 +938,68 @@ describe("shared contracts", () => {
     expect(context.membership.role).toBe("employee");
     expect(context.membership.roleName).toBe("Host");
     expect(context.permissions).toEqual(["workspace.read", "roles.read"]);
-    expect(context.onboarding).toEqual({ status: "complete", currentStep: 2 });
+    expect(context.onboarding).toEqual({
+      status: "complete",
+      currentStep: 2,
+      revision: 1,
+    });
     expect(context.locationScope).toEqual({
       allLocations: false,
       locationIds: ["f034b748-2dbc-4f2a-b581-cb24f91d6499"],
     });
+  });
+
+  it("drops stale scoped location IDs from all-location workspace contexts", () => {
+    const context = activeWorkspaceContextFromRow(
+      {
+        user_id: userId,
+        workspace_id: workspaceId,
+        workspace_name: "Northstar",
+        membership_id: membershipId,
+        workspace_role: "admin",
+        all_locations: true,
+        onboarding_status: "complete",
+        onboarding_current_step: 4,
+        onboarding_revision: 3,
+      },
+      ["f034b748-2dbc-4f2a-b581-cb24f91d6499"],
+    );
+
+    expect(context.membership.allLocations).toBe(true);
+    expect(context.onboarding.revision).toBe(3);
+    expect(context.locationScope).toEqual({
+      allLocations: true,
+      locationIds: [],
+    });
+  });
+
+  it("rejects malformed active workspace RPC projections", () => {
+    expect(() =>
+      activeWorkspaceContextFromRow({
+        user_id: userId,
+        workspace_id: workspaceId,
+        workspace_name: "Northstar",
+        membership_id: membershipId,
+        workspace_role: "employee",
+        permission_keys: ["workspace.read", "workspace.delete"],
+        all_locations: true,
+        onboarding_status: "complete",
+        onboarding_current_step: 4,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      activeWorkspaceContextFromRow({
+        user_id: userId,
+        workspace_id: workspaceId,
+        workspace_name: "Northstar",
+        membership_id: membershipId,
+        workspace_role: "employee",
+        all_locations: true,
+        onboarding_status: "complete",
+        onboarding_current_step: 5,
+      }),
+    ).toThrow();
   });
 
   it("maps an account workspace row without leaking tenant details", async () => {
@@ -647,6 +1009,7 @@ describe("shared contracts", () => {
         workspace_id: workspaceId,
         workspace_name: "Northstar",
         workspace_role: "owner",
+        membership_status: "active",
         is_active: true,
         onboarding_status: "incomplete",
         onboarding_current_step: 1,
@@ -655,32 +1018,378 @@ describe("shared contracts", () => {
       id: workspaceId,
       name: "Northstar",
       role: "owner",
+      status: "active",
       isActive: true,
-      onboarding: { status: "incomplete", currentStep: 1 },
+      onboarding: { status: "incomplete", currentStep: 1, revision: 1 },
+      lifecycleStatus: "active",
+      closureEffectiveAt: null,
+      pendingOwnershipTransfer: null,
     });
+    expect(
+      workspaceSummaryFromRow({
+        workspace_id: workspaceId,
+        workspace_name: "Northstar",
+        workspace_role: "admin",
+        membership_status: "active",
+        is_active: false,
+        onboarding_status: "complete",
+        onboarding_current_step: 4,
+        pending_ownership_transfer_id: "81000000-0000-4000-8000-000000000001",
+        pending_ownership_transfer_role: "target",
+        pending_ownership_transfer_expires_at: "2026-09-12T12:00:00.000Z",
+      }).pendingOwnershipTransfer,
+    ).toEqual({
+      id: "81000000-0000-4000-8000-000000000001",
+      role: "target",
+      expiresAt: "2026-09-12T12:00:00.000Z",
+    });
+    const incompleteTransferRows = [
+      {
+        pending_ownership_transfer_id: null,
+        pending_ownership_transfer_role: "target",
+        pending_ownership_transfer_expires_at: "2026-09-12T12:00:00.000Z",
+      },
+      {
+        pending_ownership_transfer_id: "81000000-0000-4000-8000-000000000001",
+        pending_ownership_transfer_role: null,
+        pending_ownership_transfer_expires_at: "2026-09-12T12:00:00.000Z",
+      },
+      {
+        pending_ownership_transfer_id: "81000000-0000-4000-8000-000000000001",
+        pending_ownership_transfer_role: "target",
+        pending_ownership_transfer_expires_at: null,
+      },
+    ] as const;
+
+    for (const pendingTransfer of incompleteTransferRows) {
+      expect(
+        workspaceSummaryFromRow({
+          workspace_id: workspaceId,
+          workspace_name: "Northstar",
+          workspace_role: "admin",
+          membership_status: "active",
+          is_active: false,
+          onboarding_status: "complete",
+          onboarding_current_step: 4,
+          ...pendingTransfer,
+        }).pendingOwnershipTransfer,
+      ).toBeNull();
+    }
+  });
+
+  it("maps non-active account workspace rows to safe switcher statuses", async () => {
+    const { workspaceSummaryFromRow } = await import("./index");
+
+    const cases = [
+      ["active", "active", true],
+      ["invited", "pending", false],
+      ["pending_activation", "pending", false],
+      ["suspended", "suspended", false],
+    ] as const;
+
+    for (const [membershipStatus, summaryStatus, expectedActive] of cases) {
+      const summary = workspaceSummaryFromRow({
+        workspace_id: workspaceId,
+        workspace_name: "Northstar",
+        workspace_role: "employee",
+        membership_status: membershipStatus,
+        is_active: true,
+        onboarding_status:
+          membershipStatus === "active" ? "complete" : "incomplete",
+        onboarding_current_step: membershipStatus === "active" ? 4 : 1,
+        workspace_lifecycle_status:
+          membershipStatus === "active" ? "active" : "closure_scheduled",
+        closure_effective_at:
+          membershipStatus === "active" ? null : "2026-09-19T12:00:00.000Z",
+        pending_ownership_transfer_id: "81000000-0000-4000-8000-000000000001",
+        pending_ownership_transfer_role: "target",
+        pending_ownership_transfer_expires_at: "2026-09-12T12:00:00.000Z",
+      });
+
+      expect(summary.status).toBe(summaryStatus);
+      expect(summary.isActive).toBe(expectedActive);
+      expect(summary.lifecycleStatus).toBe(
+        membershipStatus === "active" ? "active" : "closure_scheduled",
+      );
+      if (summaryStatus !== "active") {
+        expect(summary.pendingOwnershipTransfer).toBeNull();
+      }
+    }
+  });
+
+  it("maps account workspace lifecycle rows without inventing active access", async () => {
+    const { workspaceSummaryFromRow } = await import("./index");
+
+    expect(
+      workspaceSummaryFromRow({
+        workspace_id: workspaceId,
+        workspace_name: "Northstar",
+        workspace_role: "owner",
+        membership_status: "active",
+        is_active: false,
+        onboarding_status: "complete",
+        onboarding_current_step: 4,
+        workspace_lifecycle_status: "closure_scheduled",
+        closure_effective_at: "2026-09-19T12:00:00.000Z",
+      }),
+    ).toMatchObject({
+      status: "active",
+      isActive: false,
+      lifecycleStatus: "closure_scheduled",
+      closureEffectiveAt: "2026-09-19T12:00:00.000Z",
+    });
+
+    expect(() =>
+      workspaceSummaryFromRow({
+        workspace_id: workspaceId,
+        workspace_name: "Northstar",
+        workspace_role: "owner",
+        membership_status: "suspended",
+        is_active: false,
+        onboarding_status: "complete",
+        onboarding_current_step: 4,
+        workspace_lifecycle_status: "deleted",
+        pending_ownership_transfer_id: "81000000-0000-4000-8000-000000000001",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects malformed account workspace rows instead of coercing them into switcher targets", async () => {
+    const { workspaceSummaryFromRow } = await import("./index");
+
+    expect(() =>
+      workspaceSummaryFromRow({
+        workspace_id: workspaceId,
+        workspace_name: "Northstar",
+        workspace_role: "employee",
+        membership_status: "revoked",
+        is_active: true,
+        onboarding_status: "complete",
+        onboarding_current_step: 4,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      workspaceSummaryFromRow({
+        workspace_id: workspaceId,
+        workspace_name: "Northstar",
+        workspace_role: "employee",
+        membership_status: "active",
+        is_active: true,
+        onboarding_status: "complete",
+        onboarding_current_step: 0,
+      }),
+    ).toThrow();
+  });
+
+  it("validates account pending invitation projections without a person name", () => {
+    const projection = accountPendingInvitationSchema.parse({
+      id: "46000000-0000-4000-8000-000000000001",
+      workspaceId: "26000000-0000-4000-8000-000000000001",
+      workspaceName: "Northstar",
+      emailHint: "ne**********@example.test",
+      expiresAt: "2026-09-12T12:00:00.000Z",
+    });
+
+    expect(projection).not.toHaveProperty("employeeName");
   });
 });
 
 describe("employee onboarding schemas", () => {
-  it("requires a complete private profile without accepting an SSN field", () => {
+  it("accepts employee hub as the first action after activation", () => {
+    const parsed = employeeOnboardingSchema.parse({
+      case_id: "26000000-0000-4000-8000-000000000001",
+      workspace_id: "26000000-0000-4000-8000-000000000002",
+      workspace_name: "Northstar",
+      employee_id: "26000000-0000-4000-8000-000000000003",
+      employee_name: "Taylor Reed",
+      membership_id: "26000000-0000-4000-8000-000000000004",
+      membership_status: "active",
+      case_status: "approved",
+      revision: 2,
+      progress_completed: 1,
+      progress_total: 1,
+      first_actionable_path: "/app/employee-hub",
+      ssn_status: { present: false, last_four: null },
+      profile: null,
+      availability: null,
+      assignments: { locations: ["Main"], jobs: ["Cook"] },
+      requirements: [],
+    });
+
+    expect(parsed.first_actionable_path).toBe("/app/employee-hub");
+  });
+
+  it("accepts legacy incomplete address fields in the onboarding read model", () => {
+    const parsed = employeeOnboardingSchema.parse({
+      case_id: "26000000-0000-4000-8000-000000000001",
+      workspace_id: "26000000-0000-4000-8000-000000000002",
+      workspace_name: "Northstar",
+      employee_id: "26000000-0000-4000-8000-000000000003",
+      employee_name: "Taylor Reed",
+      membership_id: "26000000-0000-4000-8000-000000000004",
+      membership_status: "pending_activation",
+      case_status: "in_progress",
+      revision: 2,
+      progress_completed: 0,
+      progress_total: 1,
+      first_actionable_path: "/welcome/profile",
+      ssn_status: { present: false, last_four: null },
+      profile: {
+        legal_first_name: "Taylor",
+        legal_last_name: "Reed",
+        phone: "3105550100",
+        street_address: null,
+        city: null,
+        region: null,
+        postal_code: null,
+        country_code: null,
+        date_of_birth: null,
+        emergency_contact_name: "Morgan Reed",
+        emergency_contact_relationship: "Spouse",
+        emergency_contact_email: "",
+        emergency_contact_phone: "3105550101",
+        share_phone_with_teammates: false,
+        share_email_with_teammates: false,
+      },
+      availability: null,
+      assignments: { locations: ["Main"], jobs: ["Cook"] },
+      requirements: [],
+    });
+
+    expect(parsed.profile?.street_address).toBeNull();
+  });
+
+  it("rejects employee onboarding action paths outside onboarding and employee hub", () => {
+    const base = {
+      case_id: "26000000-0000-4000-8000-000000000001",
+      workspace_id: "26000000-0000-4000-8000-000000000002",
+      workspace_name: "Northstar",
+      employee_id: "26000000-0000-4000-8000-000000000003",
+      employee_name: "Taylor Reed",
+      membership_id: "26000000-0000-4000-8000-000000000004",
+      membership_status: "pending_activation",
+      case_status: "in_progress",
+      revision: 2,
+      progress_completed: 0,
+      progress_total: 1,
+      ssn_status: { present: false, last_four: null },
+      profile: null,
+      availability: null,
+      assignments: { locations: ["Main"], jobs: ["Cook"] },
+      requirements: [],
+    };
+
+    for (const firstActionablePath of [
+      "/welcome",
+      "/welcome/profile",
+      "/welcome/profile?step=documents",
+      "/welcome/profile#documents",
+      "/app/employee-hub",
+      "/app/employee-hub/shift-hub",
+      "/app/employee-hub?tab=shifts",
+      "/app/employee-hub#today",
+    ]) {
+      expect(
+        employeeOnboardingSchema.parse({
+          ...base,
+          first_actionable_path: firstActionablePath,
+        }).first_actionable_path,
+      ).toBe(firstActionablePath);
+    }
+
+    expect(() =>
+      employeeOnboardingSchema.parse({
+        ...base,
+        first_actionable_path: "/app/employees",
+      }),
+    ).toThrow("Employee onboarding action path");
+
+    expect(() =>
+      employeeOnboardingSchema.parse({
+        ...base,
+        first_actionable_path: "https://outside.example/welcome",
+      }),
+    ).toThrow("Employee onboarding action path");
+
+    expect(() =>
+      employeeOnboardingSchema.parse({
+        ...base,
+        first_actionable_path: "/welcomebackdoor",
+      }),
+    ).toThrow("Employee onboarding action path");
+
+    expect(() =>
+      employeeOnboardingSchema.parse({
+        ...base,
+        first_actionable_path: "/app/employee-hubx",
+      }),
+    ).toThrow("Employee onboarding action path");
+  });
+
+  it("requires the V1 private profile without accepting SSN or preferred name", () => {
     const profile = employeeOnboardingProfileSchema.parse({
       legal_first_name: "Taylor",
       legal_last_name: "Reed",
-      preferred_name: "",
       phone: "3105550100",
-      street_address: "1 Main St",
+      street_address: "100 Main Street",
       city: "Los Angeles",
       region: "CA",
-      postal_code: "90001",
+      postal_code: "90012",
       country_code: "US",
       date_of_birth: "1990-01-01",
       emergency_contact_name: "Morgan Reed",
+      emergency_contact_relationship: "Spouse",
+      emergency_contact_email: "",
       emergency_contact_phone: "3105550101",
       share_phone_with_teammates: false,
       share_email_with_teammates: false,
+      preferred_name: "Tay",
       ssn: "123456789",
     });
     expect(profile).not.toHaveProperty("ssn");
+    expect(profile).not.toHaveProperty("preferred_name");
+  });
+
+  it("accepts birthday only as a full date when provided", () => {
+    expect(
+      employeeOnboardingProfileSchema.parse({
+        legal_first_name: "Taylor",
+        legal_last_name: "Reed",
+        phone: "3105550100",
+        street_address: "100 Main Street",
+        city: "Los Angeles",
+        region: "CA",
+        postal_code: "90012",
+        country_code: "US",
+        emergency_contact_name: "Morgan Reed",
+        emergency_contact_relationship: "Spouse",
+        emergency_contact_email: "",
+        emergency_contact_phone: "3105550101",
+        date_of_birth: "1990-01-01",
+        share_phone_with_teammates: false,
+        share_email_with_teammates: false,
+      }).date_of_birth,
+    ).toBe("1990-01-01");
+    expect(() =>
+      employeeOnboardingProfileSchema.parse({
+        legal_first_name: "Taylor",
+        legal_last_name: "Reed",
+        phone: "3105550100",
+        street_address: "100 Main Street",
+        city: "Los Angeles",
+        region: "CA",
+        postal_code: "90012",
+        country_code: "US",
+        emergency_contact_name: "Morgan Reed",
+        emergency_contact_relationship: "Spouse",
+        emergency_contact_email: "",
+        emergency_contact_phone: "3105550101",
+        date_of_birth: "01/01",
+        share_phone_with_teammates: false,
+        share_email_with_teammates: false,
+      }),
+    ).toThrow();
   });
 
   it("requires one explicit state for each weekday", () => {
@@ -717,6 +1426,23 @@ describe("organization basics schemas", () => {
         timezone: "America/Los_Angeles",
       }).name,
     ).toBe("Downtown");
+    expect(
+      locationInputSchema.parse({
+        name: "Patio",
+        street_address: "",
+        city: "",
+        region: "",
+        postal_code: "",
+        country_code: "US",
+        timezone: "America/Los_Angeles",
+      }),
+    ).toMatchObject({
+      name: "Patio",
+      street_address: "",
+      city: "",
+      region: "",
+      postal_code: "",
+    });
   });
 
   it("validates entity colors and optional job departments", () => {
@@ -950,8 +1676,24 @@ describe("document type schemas", () => {
         accepted_formats: ["pdf", "jpeg", "png"],
         tracks_expiry: true,
         expiry_warning_days: 30,
+        expiry_schedule_impact: "warn",
       }).tracks_expiry,
     ).toBe(true);
+  });
+
+  it("rejects optional documents configured as hard schedule conflicts", () => {
+    expect(() =>
+      documentTypeInputSchema.parse({
+        title: "Optional blocker",
+        description: "",
+        required_at_onboarding: false,
+        requires_review: true,
+        accepted_formats: ["pdf"],
+        tracks_expiry: true,
+        expiry_warning_days: 30,
+        expiry_schedule_impact: "block",
+      }),
+    ).toThrow("Only required documents can create hard schedule conflicts");
   });
 
   it("rejects unsupported or duplicate formats", () => {

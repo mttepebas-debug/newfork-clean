@@ -8,6 +8,7 @@ import type { ScheduleRequestsService } from "./schedule/schedule-requests-servi
 import type { EmployeeHubService } from "./employee-hub/employee-hub-service";
 import type { CommunicationService } from "./communications/communication-service";
 import type { TimeEntriesService } from "./time-entries/time-entries-service";
+import type { NotificationSettingsService } from "./notifications/notification-settings-service";
 
 const resolvedContext: ActiveWorkspaceContext = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
@@ -57,6 +58,9 @@ const resolvedContext: ActiveWorkspaceContext = {
     "announcements.read",
     "announcements.manage",
     "notifications.read",
+    "notifications.settings.read",
+    "notifications.settings.write",
+    "notifications.test_send",
     "time.capture.own",
     "time.read.own",
     "time.correction.request.own",
@@ -74,6 +78,18 @@ const resolvedContext: ActiveWorkspaceContext = {
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 };
+
+function workspaceMismatchContext(): ActiveWorkspaceContext {
+  const otherWorkspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fe";
+  return {
+    ...resolvedContext,
+    workspace: { ...resolvedContext.workspace, id: otherWorkspaceId },
+    membership: {
+      ...resolvedContext.membership,
+      workspaceId: otherWorkspaceId,
+    },
+  };
+}
 
 describe("api app", () => {
   it("serves the current phase health endpoint", async () => {
@@ -120,6 +136,7 @@ describe("api app", () => {
               day_of_week: 1,
               send_hour: 8,
               timezone: "America/Los_Angeles",
+              week_start_day: "monday",
               last_sent_at: null,
               consecutive_failures: 0,
             },
@@ -163,6 +180,78 @@ describe("api app", () => {
     );
   });
 
+  it("runs the notification outbox worker only with the cron secret", async () => {
+    const runBatch = vi.fn(async () => ({
+      leased: 2,
+      processed: 1,
+      skipped: 0,
+      retried: 1,
+      dead_lettered: 0,
+      failed: 0,
+    }));
+    const app = buildApp({
+      notificationOutboxWorker: { runBatch },
+      notificationOutboxCron: { cronSecret: "notification-cron-secret" },
+    });
+
+    const denied = await app.inject({
+      method: "POST",
+      url: "/internal/cron/notification-outbox",
+      headers: { authorization: "Bearer wrong" },
+    });
+    expect(denied.statusCode).toBe(401);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/internal/cron/notification-outbox",
+      headers: { authorization: "Bearer notification-cron-secret" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      leased: 2,
+      processed: 1,
+      skipped: 0,
+      retried: 1,
+      dead_lettered: 0,
+      failed: 0,
+    });
+    expect(runBatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs the workspace retention worker only with the cron secret", async () => {
+    const runBatch = vi.fn(async () => ({
+      checked: 2,
+      completed: 1,
+      idempotent: 1,
+      failed: 0,
+    }));
+    const app = buildApp({
+      workspaceRetentionWorker: { runBatch },
+      workspaceRetentionCron: { cronSecret: "retention-cron-secret" },
+    });
+
+    const denied = await app.inject({
+      method: "POST",
+      url: "/internal/cron/workspace-retention",
+      headers: { authorization: "Bearer wrong" },
+    });
+    expect(denied.statusCode).toBe(401);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/internal/cron/workspace-retention",
+      headers: { authorization: "Bearer retention-cron-secret" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      checked: 2,
+      completed: 1,
+      idempotent: 1,
+      failed: 0,
+    });
+    expect(runBatch).toHaveBeenCalledTimes(1);
+  });
+
   it("requires a valid active workspace context", async () => {
     const app = buildApp();
     const unauthorized = await app.inject({
@@ -199,6 +288,28 @@ describe("api app", () => {
     expect(response.statusCode).toBe(404);
   });
 
+  it("does not register development routes in production even when explicitly enabled", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const app = buildApp({ allowDevelopmentIdentity: true });
+      const contextResponse = await app.inject({
+        method: "GET" as const,
+        url: "/v1/development/context",
+      });
+      const invitationResponse = await app.inject({
+        method: "GET",
+        url: "/v1/development/invitations",
+        headers: { authorization: "Bearer development-owner-token" },
+      });
+
+      expect(contextResponse.statusCode).toBe(404);
+      expect(invitationResponse.statusCode).toBe(404);
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
   it("resolves development bearer sessions only when development identity is enabled", async () => {
     const enabled = buildApp();
     const developmentResponse = await enabled.inject({
@@ -211,6 +322,20 @@ describe("api app", () => {
       workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" },
       membership: { role: "owner" },
       permissions: expect.arrayContaining(["schedule.manage"]),
+    });
+    const requestedWorkspaceId = "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+    const explicitDevelopmentResponse = await enabled.inject({
+      method: "GET",
+      url: "/v1/context",
+      headers: {
+        authorization: "Bearer development-owner-token",
+        "x-newfork-workspace-id": requestedWorkspaceId,
+      },
+    });
+    expect(explicitDevelopmentResponse.statusCode).toBe(200);
+    expect(explicitDevelopmentResponse.json()).toMatchObject({
+      workspace: { id: requestedWorkspaceId },
+      membership: { workspaceId: requestedWorkspaceId, role: "owner" },
     });
 
     const disabled = buildApp({
@@ -246,6 +371,105 @@ describe("api app", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(resolvedContext);
+  });
+
+  it("resolves explicit tab workspace context from the request header", async () => {
+    const requestedWorkspaceId = "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+    const resolve = vi.fn(async (token: string, workspaceId?: string | null) =>
+      token === "valid-token"
+        ? ({
+            ...resolvedContext,
+            workspace: {
+              ...resolvedContext.workspace,
+              id: workspaceId ?? resolvedContext.workspace.id,
+            },
+            membership: {
+              ...resolvedContext.membership,
+              workspaceId: workspaceId ?? resolvedContext.workspace.id,
+            },
+          } satisfies ActiveWorkspaceContext)
+        : null,
+    );
+    const app = buildApp({ contextResolver: { resolve } });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/context",
+      headers: {
+        authorization: "Bearer valid-token",
+        "x-newfork-workspace-id": requestedWorkspaceId,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      workspace: { id: requestedWorkspaceId },
+      membership: { workspaceId: requestedWorkspaceId },
+    });
+    expect(resolve).toHaveBeenCalledWith("valid-token", requestedWorkspaceId);
+  });
+
+  it("rejects explicit tab workspace context when the resolver returns another tenant", async () => {
+    const requestedWorkspaceId = "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+    const resolve = vi.fn(async () => resolvedContext);
+    const app = buildApp({ contextResolver: { resolve } });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/context",
+      headers: {
+        authorization: "Bearer valid-token",
+        "x-newfork-workspace-id": requestedWorkspaceId,
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({ error: "Invalid session or membership" });
+    expect(resolve).toHaveBeenCalledWith("valid-token", requestedWorkspaceId);
+  });
+
+  it("rejects malformed explicit tab workspace context before resolving tenancy", async () => {
+    const resolve = vi.fn(async () => resolvedContext);
+    const app = buildApp({ contextResolver: { resolve } });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/context",
+      headers: {
+        authorization: "Bearer valid-token",
+        "x-newfork-workspace-id": "not-a-workspace-id",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: "Valid workspace context required",
+    });
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed resolved workspace context before exposing it", async () => {
+    const resolve = vi.fn(
+      async () =>
+        ({
+          ...resolvedContext,
+          membership: {
+            ...resolvedContext.membership,
+            status: "pending_activation",
+          },
+        }) as unknown as ActiveWorkspaceContext,
+    );
+    const app = buildApp({ contextResolver: { resolve } });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/context",
+      headers: { authorization: "Bearer valid-token" },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({ error: "Invalid session or membership" });
+    expect(resolve).toHaveBeenCalledWith("valid-token", null);
   });
 
   it("derives Employee Hub reads from the authenticated actor", async () => {
@@ -290,6 +514,24 @@ describe("api app", () => {
     ]);
   });
 
+  it("returns a generic not found for Employee Hub workspace mismatches", async () => {
+    const get = vi.fn();
+    const app = buildApp({
+      contextResolver: { resolve: async () => workspaceMismatchContext() },
+      employeeHubService: { get } as unknown as EmployeeHubService,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/employee-hub?from=2026-08-17&to=2026-09-28`,
+      headers: { authorization: "Bearer valid-token" },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "Workspace not found" });
+    expect(get).not.toHaveBeenCalled();
+  });
+
   it("validates employee time off input before the service boundary", async () => {
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
@@ -302,6 +544,54 @@ describe("api app", () => {
       payload: { location_id: "not-a-uuid", dates: [] },
     });
     expect(response.statusCode).toBe(400);
+  });
+
+  it("binds hourly time-off input to the authenticated actor and requires its retry key", async () => {
+    const submitTimeOff = vi
+      .fn()
+      .mockResolvedValue({
+        status: "pending",
+        request_id: "af990000-0000-4000-8000-000000000005",
+        revision: 1,
+      });
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      employeeHubService: { submitTimeOff } as unknown as EmployeeHubService,
+    });
+    const payload = {
+      location_id: "11000000-0000-4000-8000-000000000001",
+      reason: "Appointment",
+      expected_timezone: "UTC",
+      periods: [
+        { segment_date: "2035-01-15", start_time: "10:00", end_time: "14:00" },
+      ],
+    };
+    const url = `/v1/workspaces/${resolvedContext.workspace.id}/employee-hub/time-off`;
+    const missing = await app.inject({
+      method: "POST",
+      url,
+      headers: { authorization: "Bearer valid-token" },
+      payload,
+    });
+    expect(missing.statusCode).toBe(400);
+    expect(submitTimeOff).not.toHaveBeenCalled();
+    const request_id = "af990000-0000-4000-8000-000000000006";
+    const valid = await app.inject({
+      method: "POST",
+      url,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { ...payload, request_id, actor_user_id: request_id },
+    });
+    expect(valid.statusCode).toBe(200);
+    expect(submitTimeOff).toHaveBeenCalledWith({
+      actorUserId: resolvedContext.userId,
+      workspaceId: resolvedContext.workspace.id,
+      request: {
+        ...payload,
+        request_id,
+        periods: [{ ...payload.periods[0], ends_next_day: false }],
+      },
+    });
   });
 
   it("forwards a revision-guarded employee request action", async () => {
@@ -488,12 +778,14 @@ describe("api app", () => {
             },
             announcements: [],
             notifications: [],
+            todos: [],
             layout: {
               widget_order: [
                 "operations",
                 "pending_requests",
                 "open_shifts",
                 "announcements",
+                "todos",
                 "notifications",
                 "quick_actions",
               ],
@@ -515,6 +807,215 @@ describe("api app", () => {
         workspaceId: resolvedContext.workspace.id,
       },
     ]);
+  });
+
+  it("forwards manual Workspace todo actions to the workspace service", async () => {
+    const todoId = "a9700000-0000-4000-8000-000000000011";
+    const todo = {
+      id: todoId,
+      workspace_id: resolvedContext.workspace.id,
+      title: "Follow up",
+      body: "",
+      severity: "info" as const,
+      status: "open" as const,
+      system_generated: false,
+      source_type: "manual",
+      source_id: "a9700000-0000-4000-8000-000000000012",
+      source_key: "manual:a9700000-0000-4000-8000-000000000012",
+      employee_id: null,
+      due_at: null,
+      action_url: null,
+      created_at: "2026-09-05T12:00:00.000Z",
+    };
+    const createWorkspaceTodo = vi.fn(async () => todo);
+    const resolveWorkspaceTodo = vi.fn(async () => ({
+      ...todo,
+      status: "resolved" as const,
+    }));
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      communicationService: {
+        createWorkspaceTodo,
+        resolveWorkspaceTodo,
+      } as unknown as CommunicationService,
+    });
+
+    const created = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace/todos`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: {
+        title: "Follow up",
+        body: "",
+        employee_id: null,
+        due_at: null,
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(createWorkspaceTodo).toHaveBeenCalledWith({
+      actorUserId: resolvedContext.userId,
+      workspaceId: resolvedContext.workspace.id,
+      todo: {
+        title: "Follow up",
+        body: "",
+        employee_id: null,
+        due_at: null,
+      },
+    });
+
+    const resolved = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace/todos/${todoId}/resolve`,
+      headers: { authorization: "Bearer valid-token" },
+    });
+    expect(resolved.statusCode).toBe(200);
+    expect(resolveWorkspaceTodo).toHaveBeenCalledWith({
+      actorUserId: resolvedContext.userId,
+      workspaceId: resolvedContext.workspace.id,
+      todoId,
+    });
+  });
+
+  it("keeps Workspace todo actions unavailable to employee-only roles", async () => {
+    const createWorkspaceTodo = vi.fn();
+    const app = buildApp({
+      contextResolver: {
+        resolve: async () => ({
+          ...resolvedContext,
+          membership: { ...resolvedContext.membership, role: "employee" },
+          permissions: ["workspace.read"],
+        }),
+      },
+      communicationService: {
+        createWorkspaceTodo,
+      } as unknown as CommunicationService,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace/todos`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { title: "Follow up" },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(createWorkspaceTodo).not.toHaveBeenCalled();
+  });
+
+  it("keeps Workspace todo actions inside the resolved tenant context", async () => {
+    const createWorkspaceTodo = vi.fn();
+    const resolveWorkspaceTodo = vi.fn();
+    const app = buildApp({
+      contextResolver: { resolve: async () => workspaceMismatchContext() },
+      communicationService: {
+        createWorkspaceTodo,
+        resolveWorkspaceTodo,
+      } as unknown as CommunicationService,
+    });
+
+    const created = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace/todos`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { title: "Follow up" },
+    });
+    expect(created.statusCode).toBe(404);
+    expect(created.json()).toEqual({ error: "Workspace not found" });
+
+    const resolved = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace/todos/a9700000-0000-4000-8000-000000000011/resolve`,
+      headers: { authorization: "Bearer valid-token" },
+    });
+    expect(resolved.statusCode).toBe(404);
+    expect(resolved.json()).toEqual({ error: "Workspace not found" });
+    expect(createWorkspaceTodo).not.toHaveBeenCalled();
+    expect(resolveWorkspaceTodo).not.toHaveBeenCalled();
+  });
+
+  it("forwards setup checklist reads to the workspace service", async () => {
+    const getOwnerSetupChecklistProgress = vi.fn(async () => ({
+      workspace_id: resolvedContext.workspace.id,
+      user_id: resolvedContext.userId,
+      completed_item_ids: [],
+      closed_at: null,
+    }));
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      communicationService: {
+        getOwnerSetupChecklistProgress,
+      } as unknown as CommunicationService,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace/setup-checklist`,
+      headers: { authorization: "Bearer valid-token" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(getOwnerSetupChecklistProgress).toHaveBeenCalledWith({
+      actorUserId: resolvedContext.userId,
+      workspaceId: resolvedContext.workspace.id,
+    });
+  });
+
+  it("forwards setup checklist item progress to the workspace service", async () => {
+    const markOwnerSetupChecklistItem = vi.fn(async () => ({
+      workspace_id: resolvedContext.workspace.id,
+      user_id: resolvedContext.userId,
+      completed_item_ids: ["schedule"],
+      closed_at: null,
+    }));
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      communicationService: {
+        markOwnerSetupChecklistItem,
+      } as unknown as CommunicationService,
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace/setup-checklist`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { itemId: "schedule" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(markOwnerSetupChecklistItem).toHaveBeenCalledWith({
+      actorUserId: resolvedContext.userId,
+      workspaceId: resolvedContext.workspace.id,
+      itemId: "schedule",
+    });
+  });
+
+  it("registers the organization notification settings surface", async () => {
+    const get = vi.fn().mockResolvedValue({
+      workspace_id: resolvedContext.workspace.id,
+      can_write: true,
+      catalog: [],
+      roles: [],
+      locations: [],
+      audit: [],
+    });
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      notificationSettingsService: {
+        get,
+      } as unknown as NotificationSettingsService,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/notification-settings`,
+      headers: { authorization: "Bearer valid-token" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(get).toHaveBeenCalledWith({
+      actorUserId: resolvedContext.userId,
+      workspaceId: resolvedContext.workspace.id,
+    });
   });
 
   it("validates announcement content before the service boundary", async () => {
@@ -566,6 +1067,65 @@ describe("api app", () => {
         actorUserId: resolvedContext.userId,
         workspaceId: resolvedContext.workspace.id,
         action: { notification_id: notificationId, action: "read" },
+      },
+    ]);
+  });
+
+  it("returns a generic not found for communication workspace mismatches", async () => {
+    const calls: unknown[] = [];
+    const notificationId = "a8300000-0000-4000-8000-000000000001";
+    const app = buildApp({
+      contextResolver: { resolve: async () => workspaceMismatchContext() },
+      communicationService: {
+        actOnNotification: async (input: unknown) => {
+          calls.push(input);
+          return { status: "saved", affected: 1 };
+        },
+      } as unknown as CommunicationService,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/communications/notifications/action`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { notification_id: notificationId, action: "read" },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "Workspace not found" });
+    expect(calls).toEqual([]);
+  });
+
+  it("forwards own notification seen actions for active members without role-gated notification permission", async () => {
+    const calls: unknown[] = [];
+    const notificationId = "a8300000-0000-4000-8000-000000000001";
+    const app = buildApp({
+      contextResolver: {
+        resolve: async () => ({
+          ...resolvedContext,
+          permissions: ["workspace.read"],
+        }),
+      },
+      communicationService: {
+        actOnNotification: async (input: unknown) => {
+          calls.push(input);
+          return { status: "saved", affected: 1 };
+        },
+      } as unknown as CommunicationService,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/communications/notifications/action`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { notification_id: notificationId, action: "seen" },
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(calls).toEqual([
+      {
+        actorUserId: resolvedContext.userId,
+        workspaceId: resolvedContext.workspace.id,
+        action: { notification_id: notificationId, action: "seen" },
       },
     ]);
   });
@@ -738,12 +1298,18 @@ describe("api app", () => {
     const read = await app.inject({
       method: "GET",
       url: "/schedule/lineups?date=2026-08-17&location_ids=11000000-0000-4000-8000-000000000001&shift_type_ids=55000000-0000-4000-8000-000000000001",
-      headers: { authorization: "Bearer valid-token" },
+      headers: {
+        authorization: "Bearer valid-token",
+        "x-newfork-workspace-id": resolvedContext.workspace.id,
+      },
     });
     const section = await app.inject({
       method: "POST",
       url: "/schedule/lineups/sections",
-      headers: { authorization: "Bearer valid-token" },
+      headers: {
+        authorization: "Bearer valid-token",
+        "x-newfork-workspace-id": resolvedContext.workspace.id,
+      },
       payload: {
         expected_revision: null,
         section: { name: "Expo", color: "#336699", sort_order: 20 },
@@ -752,7 +1318,10 @@ describe("api app", () => {
     const share = await app.inject({
       method: "POST",
       url: "/schedule/lineups/share-preview",
-      headers: { authorization: "Bearer valid-token" },
+      headers: {
+        authorization: "Bearer valid-token",
+        "x-newfork-workspace-id": resolvedContext.workspace.id,
+      },
       payload: {
         date: "2026-08-17",
         location_ids: ["11000000-0000-4000-8000-000000000001"],
@@ -761,7 +1330,10 @@ describe("api app", () => {
     const move = await app.inject({
       method: "POST",
       url: "/schedule/lineups/entries/move",
-      headers: { authorization: "Bearer valid-token" },
+      headers: {
+        authorization: "Bearer valid-token",
+        "x-newfork-workspace-id": resolvedContext.workspace.id,
+      },
       payload: {
         source_entry_id: "98000000-0000-4000-8000-000000000001",
         target_location_id: "11000000-0000-4000-8000-000000000001",
@@ -820,6 +1392,159 @@ describe("api app", () => {
         },
       },
     ]);
+  });
+
+  it("returns generic not found for Line-up workspace mismatches", async () => {
+    const get = vi.fn();
+    const saveSection = vi.fn();
+    const archiveSection = vi.fn();
+    const saveEntry = vi.fn();
+    const deleteEntry = vi.fn();
+    const moveEntry = vi.fn();
+    const saveBrief = vi.fn();
+    const previewShare = vi.fn();
+    const share = vi.fn();
+    const app = buildApp({
+      contextResolver: { resolve: async () => workspaceMismatchContext() },
+      scheduleLineupService: {
+        get,
+        saveSection,
+        archiveSection,
+        saveEntry,
+        deleteEntry,
+        moveEntry,
+        saveBrief,
+        previewShare,
+        share,
+      } as unknown as ScheduleLineupService,
+    });
+    const workspaceId = resolvedContext.workspace.id;
+    const sectionId = "96000000-0000-4000-8000-000000000001";
+    const entryId = "98000000-0000-4000-8000-000000000001";
+    const shiftTypeId = "55000000-0000-4000-8000-000000000001";
+    const lineupEntry = {
+      source_shift_id: null,
+      employee_id: "99000000-0000-4000-8000-000000000001",
+      job_id: "22000000-0000-4000-8000-000000000001",
+      shift_type_id: shiftTypeId,
+      start_time: "09:00",
+      end_time: "17:00",
+      section_id: sectionId,
+      station: "Expo",
+      call_off: false,
+      hidden: false,
+      display_order: 1,
+    };
+    const requests = [
+      {
+        method: "GET" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup?date=2026-08-17`,
+      },
+      {
+        method: "POST" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup/sections`,
+        payload: {
+          expected_revision: null,
+          section: { name: "Expo", color: "#336699", sort_order: 20 },
+        },
+      },
+      {
+        method: "PATCH" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup/sections/${sectionId}`,
+        payload: {
+          expected_revision: 1,
+          section: { name: "Expo", color: "#336699", sort_order: 20 },
+        },
+      },
+      {
+        method: "DELETE" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup/sections/${sectionId}`,
+        payload: { expected_revision: 1 },
+      },
+      {
+        method: "POST" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup/entries`,
+        payload: {
+          location_id: "11000000-0000-4000-8000-000000000001",
+          date: "2026-08-17",
+          expected_revision: null,
+          entry: lineupEntry,
+        },
+      },
+      {
+        method: "PUT" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup/entries/${entryId}`,
+        payload: {
+          location_id: "11000000-0000-4000-8000-000000000001",
+          date: "2026-08-17",
+          expected_revision: 1,
+          entry: lineupEntry,
+        },
+      },
+      {
+        method: "DELETE" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup/entries/${entryId}`,
+        payload: { expected_revision: 1 },
+      },
+      {
+        method: "POST" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup/entries/move`,
+        payload: {
+          source_entry_id: entryId,
+          target_location_id: "11000000-0000-4000-8000-000000000001",
+          target_date: "2026-08-17",
+          target_section_id: sectionId,
+          display_order: 3,
+        },
+      },
+      {
+        method: "PUT" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup/briefs/${shiftTypeId}`,
+        payload: {
+          location_id: "11000000-0000-4000-8000-000000000001",
+          date: "2026-08-17",
+          expected_revision: 1,
+          out_of_stock: "",
+          specials: "",
+          pre_shift_notes: "",
+        },
+      },
+      {
+        method: "POST" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup/share-preview`,
+        payload: {
+          date: "2026-08-17",
+          location_ids: ["11000000-0000-4000-8000-000000000001"],
+        },
+      },
+      {
+        method: "POST" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/lineup/share`,
+        payload: {
+          date: "2026-08-17",
+          location_ids: ["11000000-0000-4000-8000-000000000001"],
+          fingerprint: "b".repeat(64),
+        },
+      },
+    ];
+
+    for (const request of requests) {
+      const response = await app.inject({
+        ...request,
+        headers: { authorization: "Bearer valid-token" },
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toEqual({ error: "Workspace not found" });
+    }
+    expect(get).not.toHaveBeenCalled();
+    expect(saveSection).not.toHaveBeenCalled();
+    expect(archiveSection).not.toHaveBeenCalled();
+    expect(saveEntry).not.toHaveBeenCalled();
+    expect(deleteEntry).not.toHaveBeenCalled();
+    expect(moveEntry).not.toHaveBeenCalled();
+    expect(saveBrief).not.toHaveBeenCalled();
+    expect(previewShare).not.toHaveBeenCalled();
+    expect(share).not.toHaveBeenCalled();
   });
 
   it("forwards Schedule Requests filters and cursors", async () => {
@@ -965,6 +1690,203 @@ describe("api app", () => {
     ]);
   });
 
+  it("returns generic not found for Schedule Requests workspace mismatches", async () => {
+    const get = vi.fn();
+    const markTimeOffViewed = vi.fn();
+    const resolveTimeOff = vi.fn();
+    const resolveShiftChange = vi.fn();
+    const app = buildApp({
+      contextResolver: { resolve: async () => workspaceMismatchContext() },
+      scheduleRequestsService: {
+        get,
+        markTimeOffViewed,
+        resolveTimeOff,
+        resolveShiftChange,
+      } as unknown as ScheduleRequestsService,
+    });
+    const workspaceId = resolvedContext.workspace.id;
+    const requestId = "97200000-0000-4000-8000-000000000001";
+    const requests = [
+      {
+        method: "GET" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/requests?time_off_queue=closed&shift_queue=history&search=alex&limit=25`,
+      },
+      {
+        method: "POST" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/requests/time-off/${requestId}/viewed`,
+      },
+      {
+        method: "POST" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/requests/time-off/${requestId}/decision`,
+        payload: {
+          expected_revision: 1,
+          action: "approve",
+          note: "Approved.",
+          segment_decisions: [],
+        },
+      },
+      {
+        method: "POST" as const,
+        url: `/v1/workspaces/${workspaceId}/schedule/requests/shift-changes/${requestId}/decision`,
+        payload: {
+          expected_revision: 1,
+          action: "reject",
+          note: "No coverage.",
+        },
+      },
+    ];
+
+    for (const request of requests) {
+      const response = await app.inject({
+        ...request,
+        headers: { authorization: "Bearer valid-token" },
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toEqual({ error: "Workspace not found" });
+    }
+    expect(get).not.toHaveBeenCalled();
+    expect(markTimeOffViewed).not.toHaveBeenCalled();
+    expect(resolveTimeOff).not.toHaveBeenCalled();
+    expect(resolveShiftChange).not.toHaveBeenCalled();
+  });
+
+  it("rejects duplicate partial time-off decisions before both service routes", async () => {
+    const resolveTimeOff = vi.fn();
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleRequestsService: {
+        resolveTimeOff,
+      } as unknown as ScheduleRequestsService,
+    });
+    const requestId = "97200000-0000-4000-8000-000000000001";
+    for (const prefix of [
+      `/v1/workspaces/${resolvedContext.workspace.id}`,
+      "",
+    ]) {
+      const response = await app.inject({
+        method: "POST",
+        url: `${prefix}/schedule/requests/time-off/${requestId}/decision`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: {
+          expected_revision: 1,
+          action: "partial_approve",
+          segment_decisions: [
+            {
+              segment_id: "ab730000-0000-4000-8000-000000000001",
+              status: "approved",
+            },
+            {
+              segment_id: "AB730000-0000-4000-8000-000000000001",
+              status: "denied",
+            },
+          ],
+        },
+      });
+      expect(response.statusCode).toBe(400);
+    }
+    expect(resolveTimeOff).not.toHaveBeenCalled();
+  });
+
+  it("authorizes time-off assignment previews on both routes and preserves explicit releases", async () => {
+    const requestId = "97200000-0000-4000-8000-000000000001";
+    const operationId = "97200000-0000-4000-8000-000000000002";
+    const previewTimeOffAssignment = vi
+      .fn()
+      .mockResolvedValue({
+        request_id: requestId,
+        revision: 1,
+        fingerprint: "a".repeat(64),
+        restricted_count: 0,
+        affected_shifts: [],
+        approved_intervals: [],
+      });
+    const resolveTimeOff = vi
+      .fn()
+      .mockResolvedValue({
+        request_id: requestId,
+        revision: 2,
+        status: "approved",
+        released_shift_count: 1,
+      });
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleRequestsService: {
+        previewTimeOffAssignment,
+        resolveTimeOff,
+      } as unknown as ScheduleRequestsService,
+    });
+    for (const prefix of [
+      `/v1/workspaces/${resolvedContext.workspace.id}`,
+      "",
+    ]) {
+      const url = `${prefix}/schedule/requests/time-off/${requestId}`;
+      const preview = await app.inject({
+        method: "POST",
+        url: `${url}/assignment-preview`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: {
+          expected_revision: 1,
+          action: "approve",
+          actor_user_id: operationId,
+        },
+      });
+      expect(preview.statusCode).toBe(200);
+      expect(previewTimeOffAssignment).toHaveBeenLastCalledWith({
+        actorUserId: resolvedContext.userId,
+        workspaceId: resolvedContext.workspace.id,
+        requestId,
+        decision: {
+          expected_revision: 1,
+          action: "approve",
+          segment_decisions: [],
+        },
+      });
+      const assignment_decisions = [
+        { shift_id: operationId, action: "release_entire_shift" },
+      ];
+      const decision = await app.inject({
+        method: "POST",
+        url: `${url}/decision`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: {
+          expected_revision: 1,
+          action: "approve",
+          operation_id: operationId,
+          assignment_fingerprint: "a".repeat(64),
+          assignment_decisions,
+        },
+      });
+      expect(decision.statusCode).toBe(200);
+      expect(resolveTimeOff).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          actorUserId: resolvedContext.userId,
+          decision: expect.objectContaining({
+            assignment_fingerprint: "a".repeat(64),
+            assignment_decisions,
+            operation_id: operationId,
+          }),
+        }),
+      );
+      const duplicate = await app.inject({
+        method: "POST",
+        url: `${url}/decision`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: {
+          expected_revision: 1,
+          action: "approve",
+          operation_id: operationId,
+          assignment_fingerprint: "a".repeat(64),
+          assignment_decisions: [
+            ...assignment_decisions,
+            ...assignment_decisions,
+          ],
+        },
+      });
+      expect(duplicate.statusCode).toBe(400);
+    }
+    expect(resolveTimeOff).toHaveBeenCalledTimes(2);
+  });
+
   it("forwards revision-guarded time off decisions", async () => {
     const calls: unknown[] = [];
     const app = buildApp({
@@ -1042,8 +1964,22 @@ describe("api app", () => {
     expect(response.statusCode).toBe(403);
   });
 
-  it("prepares employee invitations only inside the authorized workspace", async () => {
+  it("prepares and retries employee invitations only inside the authorized workspace", async () => {
     const prepared: unknown[] = [];
+    const revoked: unknown[] = [];
+    const prepare = vi.fn(async (input) => {
+      prepared.push(input);
+      return {
+        id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+        expiresAt: "2026-08-24T12:00:00.000Z",
+        developmentUrl: "http://127.0.0.1:5555/accept-invite?token=test",
+      };
+    });
+    const retry = vi.fn(async () => ({
+      id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+      expiresAt: "2026-08-24T12:00:00.000Z",
+    }));
+    const revoke = vi.fn(async (_input: unknown) => undefined);
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       invitationService: {
@@ -1052,18 +1988,20 @@ describe("api app", () => {
           emailHint: "em***@example.test",
           expiresAt: "2026-08-24T12:00:00.000Z",
         }),
-        prepare: async (input) => {
-          prepared.push(input);
-          return {
-            id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
-            expiresAt: "2026-08-24T12:00:00.000Z",
-            developmentUrl: "http://127.0.0.1:5555/accept-invite?token=test",
-          };
+        prepare,
+        retry,
+        revoke: async (input) => {
+          revoked.push(input);
+          return revoke(input);
         },
-        revoke: async () => undefined,
         accept: async () => ({
           workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
         }),
+        listPending: async () => [],
+        acceptPending: async () => ({
+          workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        }),
+        declinePending: async () => undefined,
       },
     });
 
@@ -1074,13 +2012,58 @@ describe("api app", () => {
       payload: {
         email: "employee@example.test",
         roleId: "cb8b3ca2-bdaa-460b-9ae8-ef6b8c049226",
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+        actor_user_id: "11111111-1111-4111-8111-111111111111",
+        workspaceId: "1131ca31-392f-4ea0-bdc2-e1235e1496b1",
+        workspace_id: "1131ca31-392f-4ea0-bdc2-e1235e1496b1",
+        employeeId: "15000000-0000-4000-8000-000000000002",
+        employee_id: "15000000-0000-4000-8000-000000000002",
       },
     });
     expect(response.statusCode).toBe(200);
     expect(prepared).toHaveLength(1);
-    expect(prepared[0]).toMatchObject({
+    expect(prepared[0]).toEqual({
+      actorUserId: resolvedContext.userId,
+      workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+      email: "employee@example.test",
       roleId: "cb8b3ca2-bdaa-460b-9ae8-ef6b8c049226",
     });
+
+    const retryResponse = await app.inject({
+      method: "POST",
+      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/invitations/retry",
+      headers: { authorization: "Bearer valid-token" },
+      payload: {
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+        workspaceId: "1131ca31-392f-4ea0-bdc2-e1235e1496b1",
+      },
+    });
+    expect(retryResponse.statusCode).toBe(200);
+    expect(retry).toHaveBeenCalledWith({
+      actorUserId: resolvedContext.userId,
+      workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+    });
+
+    const revokeResponse = await app.inject({
+      method: "DELETE",
+      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/invitations",
+      headers: { authorization: "Bearer valid-token" },
+      payload: {
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+        workspaceId: "1131ca31-392f-4ea0-bdc2-e1235e1496b1",
+        employeeId: "15000000-0000-4000-8000-000000000002",
+      },
+    });
+    expect(revokeResponse.statusCode).toBe(204);
+    expect(revoked).toEqual([
+      {
+        actorUserId: resolvedContext.userId,
+        workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+      },
+    ]);
 
     const crossWorkspace = await app.inject({
       method: "POST",
@@ -1088,7 +2071,162 @@ describe("api app", () => {
       headers: { authorization: "Bearer valid-token" },
       payload: { email: "employee@example.test" },
     });
-    expect(crossWorkspace.statusCode).toBe(403);
+    expect(crossWorkspace.statusCode).toBe(404);
+    expect(crossWorkspace.json()).toEqual({ error: "Workspace not found" });
+    expect(prepare).toHaveBeenCalledTimes(1);
+
+    const crossWorkspaceRevoke = await app.inject({
+      method: "DELETE",
+      url: "/v1/workspaces/1131ca31-392f-4ea0-bdc2-e1235e1496b1/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/invitations",
+      headers: { authorization: "Bearer valid-token" },
+    });
+    expect(crossWorkspaceRevoke.statusCode).toBe(404);
+    expect(crossWorkspaceRevoke.json()).toEqual({
+      error: "Workspace not found",
+    });
+    expect(revoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("captures development invitation links without exposing person names or full emails", async () => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      invitationService: {
+        preview: async () => {
+          throw new Error("not used");
+        },
+        prepare: async () => ({
+          id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+          expiresAt: "2026-08-24T12:00:00.000Z",
+          developmentUrl:
+            "http://127.0.0.1:5555/invite/accept?token=dev-mailbox-token",
+        }),
+        retry: async () => {
+          throw new Error("not used");
+        },
+        revoke: async () => undefined,
+        accept: async () => ({
+          workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        }),
+        listPending: async () => [],
+        acceptPending: async () => ({
+          workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        }),
+        declinePending: async () => undefined,
+      },
+    });
+
+    const prepared = await app.inject({
+      method: "POST",
+      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/invitations",
+      headers: { authorization: "Bearer valid-token" },
+      payload: {
+        email: "dev-mailbox@example.test",
+        roleId: "cb8b3ca2-bdaa-460b-9ae8-ef6b8c049226",
+      },
+    });
+    expect(prepared.statusCode).toBe(200);
+
+    const unauthorized = await app.inject({
+      method: "GET",
+      url: "/v1/development/invitations?email=dev-mailbox@example.test",
+    });
+    expect(unauthorized.statusCode).toBe(401);
+    const employeeRole = await app.inject({
+      method: "GET",
+      url: "/v1/development/invitations?email=dev-mailbox@example.test",
+      headers: { authorization: "Bearer development-employee-token" },
+    });
+    expect(employeeRole.statusCode).toBe(401);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/development/invitations?email=dev-mailbox@example.test",
+      headers: { authorization: "Bearer development-owner-token" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).not.toContain("employeeName");
+    expect(response.body).not.toContain("firstName");
+    expect(response.body).not.toContain("lastName");
+    expect(response.body).not.toContain("dev-mailbox@example.test");
+    expect(response.json()).toEqual([
+      expect.objectContaining({
+        id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+        workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+        emailHint: "de*********@example.test",
+        developmentUrl:
+          "http://127.0.0.1:5555/invite/accept?token=dev-mailbox-token",
+        expiresAt: "2026-08-24T12:00:00.000Z",
+      }),
+    ]);
+    expect(response.json()[0]).not.toHaveProperty("email");
+  });
+
+  it("captures owner-onboarding dispatched invite links in the development mailbox", async () => {
+    const saveOwnerOnboarding = vi.fn(async () => undefined);
+    const listOwnerOnboardingInvitationIntents = vi.fn(async () => [
+      {
+        employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+        email: "owner-flow@example.test",
+      },
+    ]);
+    const markOwnerOnboardingInvitationIntentDispatched = vi.fn(
+      async () => undefined,
+    );
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      workspaceAccountService: {
+        saveOwnerOnboarding,
+        listOwnerOnboardingInvitationIntents,
+        markOwnerOnboardingInvitationIntentDispatched,
+      } as never,
+      invitationService: {
+        prepare: async () => ({
+          id: "8ce12c4a-216e-4e52-bca4-66c32c996542",
+          expiresAt: "2026-08-24T12:00:00.000Z",
+          developmentUrl:
+            "http://127.0.0.1:5555/invite/accept?token=owner-flow-token",
+        }),
+      } as never,
+    });
+
+    const completed = await app.inject({
+      method: "PATCH",
+      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/owner-onboarding",
+      headers: { authorization: "Bearer valid-token" },
+      payload: {
+        workspaceName: "Meyhouse",
+        nextStep: 4,
+        complete: true,
+      },
+    });
+    expect(completed.statusCode, completed.body).toBe(204);
+
+    const mailbox = await app.inject({
+      method: "GET",
+      url: "/v1/development/invitations?email=owner-flow@example.test",
+      headers: { authorization: "Bearer development-admin-token" },
+    });
+
+    expect(mailbox.statusCode).toBe(200);
+    expect(mailbox.body).not.toContain("owner-flow@example.test");
+    expect(mailbox.json()).toEqual([
+      expect.objectContaining({
+        id: "8ce12c4a-216e-4e52-bca4-66c32c996542",
+        employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+        emailHint: "ow********@example.test",
+        developmentUrl:
+          "http://127.0.0.1:5555/invite/accept?token=owner-flow-token",
+      }),
+    ]);
+    expect(markOwnerOnboardingInvitationIntentDispatched).toHaveBeenCalledWith(
+      "valid-token",
+      {
+        workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+      },
+    );
   });
 
   it("accepts invitation tokens through the authenticated identity boundary", async () => {
@@ -1103,24 +2241,153 @@ describe("api app", () => {
         prepare: async () => {
           throw new Error("not used");
         },
+        retry: async () => {
+          throw new Error("not used");
+        },
         revoke: async () => undefined,
         accept: async (accessToken, token) => {
           expect(accessToken).toBe("employee-token");
           expect(token).toBe("a".repeat(64));
           return { workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" };
         },
+        listPending: async () => [],
+        acceptPending: async () => ({
+          workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        }),
+        declinePending: async () => undefined,
       },
     });
     const response = await app.inject({
       method: "POST",
       url: "/v1/invitations/accept",
       headers: { authorization: "Bearer employee-token" },
-      payload: { token: "a".repeat(64) },
+      payload: {
+        token: "a".repeat(64),
+        accessToken: "spoofed-token",
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+        workspaceId: "1131ca31-392f-4ea0-bdc2-e1235e1496b1",
+      },
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
     });
+  });
+
+  it("reviews pending invitations without exposing an employee name", async () => {
+    const app = buildApp({
+      contextResolver: null,
+      invitationService: {
+        preview: async () => {
+          throw new Error("not used");
+        },
+        prepare: async () => {
+          throw new Error("not used");
+        },
+        retry: async () => {
+          throw new Error("not used");
+        },
+        revoke: async () => undefined,
+        accept: async () => {
+          throw new Error("not used");
+        },
+        listPending: async (accessToken) => {
+          expect(accessToken).toBe("employee-token");
+          return [
+            {
+              id: "46000000-0000-4000-8000-000000000001",
+              workspaceId: "26000000-0000-4000-8000-000000000001",
+              workspaceName: "Northstar",
+              emailHint: "ne**********@example.test",
+              expiresAt: "2026-09-12T12:00:00.000Z",
+            },
+          ];
+        },
+        acceptPending: async () => ({
+          workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        }),
+        declinePending: async () => undefined,
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/invitations/pending",
+      headers: { authorization: "Bearer employee-token" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).not.toContain("employeeName");
+    expect(response.json()).toEqual([
+      {
+        id: "46000000-0000-4000-8000-000000000001",
+        workspaceId: "26000000-0000-4000-8000-000000000001",
+        workspaceName: "Northstar",
+        emailHint: "ne**********@example.test",
+        expiresAt: "2026-09-12T12:00:00.000Z",
+      },
+    ]);
+  });
+
+  it("accepts or declines pending invitations by id through the authenticated account", async () => {
+    const calls: string[] = [];
+    const app = buildApp({
+      contextResolver: null,
+      invitationService: {
+        preview: async () => {
+          throw new Error("not used");
+        },
+        prepare: async () => {
+          throw new Error("not used");
+        },
+        retry: async () => {
+          throw new Error("not used");
+        },
+        revoke: async () => undefined,
+        accept: async () => {
+          throw new Error("not used");
+        },
+        listPending: async () => [],
+        acceptPending: async (accessToken, invitationId) => {
+          calls.push(`accept:${accessToken}:${invitationId}`);
+          return { workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" };
+        },
+        declinePending: async (accessToken, invitationId) => {
+          calls.push(`decline:${accessToken}:${invitationId}`);
+        },
+      },
+    });
+    const invitationId = "46000000-0000-4000-8000-000000000001";
+
+    const accepted = await app.inject({
+      method: "POST",
+      url: `/v1/invitations/${invitationId}/accept`,
+      headers: { authorization: "Bearer employee-token" },
+      payload: {
+        invitationId: "46000000-0000-4000-8000-000000000002",
+        invitation_id: "46000000-0000-4000-8000-000000000002",
+        accessToken: "spoofed-token",
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+      },
+    });
+    const declined = await app.inject({
+      method: "POST",
+      url: `/v1/invitations/${invitationId}/decline`,
+      headers: { authorization: "Bearer employee-token" },
+      payload: {
+        invitationId: "46000000-0000-4000-8000-000000000002",
+        invitation_id: "46000000-0000-4000-8000-000000000002",
+        accessToken: "spoofed-token",
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+      },
+    });
+
+    expect(accepted.statusCode).toBe(200);
+    expect(declined.statusCode).toBe(204);
+    expect(calls).toEqual([
+      `accept:employee-token:${invitationId}`,
+      `decline:employee-token:${invitationId}`,
+    ]);
   });
 
   it("serves self-scoped onboarding without an active workspace context", async () => {
@@ -1138,33 +2405,396 @@ describe("api app", () => {
     });
   });
 
-  it("validates SSN before crossing the encryption service boundary", async () => {
-    let received = "";
+  it("forwards self-scoped onboarding writes only from token, path and validated fields", async () => {
+    const calls: Array<{ kind: string; input: unknown[] }> = [];
     const service = onboardingServiceMock({
-      saveSsn: async (_token, ssn) => {
-        received = ssn;
+      saveProfile: async (...input) => {
+        calls.push({ kind: "profile", input });
         return 2;
       },
+      prepareDocumentUpload: async (...input) => {
+        calls.push({ kind: "prepare-document", input });
+        return { path: "private/path.pdf", token: "upload-token" };
+      },
+      confirmDocument: async (...input) => {
+        calls.push({ kind: "confirm-document", input });
+        return 4;
+      },
+      acknowledge: async (...input) => {
+        calls.push({ kind: "acknowledge", input });
+        return 5;
+      },
+      submit: async (...input) => {
+        calls.push({ kind: "submit", input });
+        return 6;
+      },
+      reset: async (...input) => {
+        calls.push({ kind: "reset", input });
+        return 7;
+      },
+      leave: async (...input) => {
+        calls.push({ kind: "leave", input });
+        return {
+          status: "left",
+          workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+          employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+          membershipId: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
+          revision: 8,
+        };
+      },
     });
-    const app = buildApp({ onboardingService: service });
-    const invalid = await app.inject({
-      method: "PUT",
-      url: "/v1/me/onboarding/ssn",
-      headers: { authorization: "Bearer pending-member-token" },
-      payload: { ssn: "1234", revision: 1 },
-    });
-    expect(invalid.statusCode).toBe(400);
-    expect(received).toBe("");
+    const app = buildApp({ contextResolver: null, onboardingService: service });
+    const requirementId = "97000000-0000-4000-8000-000000000001";
+    const spoofedIdentity = {
+      accessToken: "spoofed-token",
+      actorUserId: "11111111-1111-4111-8111-111111111111",
+      actor_user_id: "11111111-1111-4111-8111-111111111111",
+      userId: "11111111-1111-4111-8111-111111111111",
+      workspaceId: "16fe2550-8960-480c-9874-cbc76a8e56a9",
+      workspace_id: "16fe2550-8960-480c-9874-cbc76a8e56a9",
+      employeeId: "15000000-0000-4000-8000-000000000002",
+      employee_id: "15000000-0000-4000-8000-000000000002",
+      requirementId: "97000000-0000-4000-8000-000000000002",
+      requirement_id: "97000000-0000-4000-8000-000000000002",
+    };
+    const profile = {
+      legal_first_name: "Ada",
+      legal_last_name: "Lovelace",
+      phone: "+14155550100",
+      street_address: "1 Market St",
+      city: "San Francisco",
+      region: "CA",
+      postal_code: "94105",
+      country_code: "US",
+      date_of_birth: "1990-01-01",
+      emergency_contact_name: "Grace Hopper",
+      emergency_contact_relationship: "Friend",
+      emergency_contact_email: "grace@example.test",
+      emergency_contact_phone: "+14155550101",
+      share_phone_with_teammates: true,
+      share_email_with_teammates: false,
+    };
+    const availability = {
+      timezone: "America/Los_Angeles",
+      days: Array.from({ length: 7 }, (_, day) => ({
+        day,
+        mode: "unrestricted",
+        windows: [],
+      })),
+    };
 
-    const valid = await app.inject({
+    const requests = [
+      {
+        method: "PATCH",
+        url: "/v1/me/onboarding/profile",
+        payload: { ...spoofedIdentity, profile, revision: 1 },
+        expectedStatus: 200,
+      },
+      {
+        method: "PUT",
+        url: "/v1/me/onboarding/availability",
+        payload: { ...spoofedIdentity, availability, revision: 2 },
+        expectedStatus: 410,
+      },
+      {
+        method: "POST",
+        url: `/v1/me/onboarding/documents/${requirementId}/upload-url`,
+        payload: {
+          ...spoofedIdentity,
+          filename: "food-handler.pdf",
+          sizeBytes: 1024,
+        },
+        expectedStatus: 200,
+      },
+      {
+        method: "POST",
+        url: `/v1/me/onboarding/documents/${requirementId}/confirm`,
+        payload: {
+          ...spoofedIdentity,
+          filename: "food-handler.pdf",
+          sizeBytes: 1024,
+          path: "workspace/employee/document.pdf",
+          expiryDate: "2027-08-20",
+          revision: 3,
+        },
+        expectedStatus: 200,
+      },
+      {
+        method: "POST",
+        url: `/v1/me/onboarding/acknowledgements/${requirementId}/sign`,
+        payload: {
+          ...spoofedIdentity,
+          typedName: "Ada Lovelace",
+          contentDigest:
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          idempotencyKey: "a6200000-0000-4000-8000-000000000001",
+          revision: 4,
+        },
+        expectedStatus: 200,
+      },
+      {
+        method: "POST",
+        url: "/v1/me/onboarding/submit",
+        payload: { ...spoofedIdentity, revision: 5 },
+        expectedStatus: 200,
+      },
+      {
+        method: "POST",
+        url: "/v1/me/onboarding/reset",
+        payload: { ...spoofedIdentity, revision: 6 },
+        expectedStatus: 200,
+      },
+      {
+        method: "POST",
+        url: "/v1/me/onboarding/leave",
+        payload: { ...spoofedIdentity, revision: 7 },
+        expectedStatus: 200,
+      },
+    ] as const;
+
+    for (const request of requests) {
+      const response = await app.inject({
+        method: request.method,
+        url: request.url,
+        headers: { authorization: "Bearer pending-member-token" },
+        payload: request.payload,
+      });
+      expect(response.statusCode, `${request.method} ${request.url}`).toBe(
+        request.expectedStatus,
+      );
+    }
+
+    expect(calls).toEqual([
+      { kind: "profile", input: ["pending-member-token", profile, 1] },
+      {
+        kind: "prepare-document",
+        input: [
+          "pending-member-token",
+          requirementId,
+          "food-handler.pdf",
+          1024,
+        ],
+      },
+      {
+        kind: "confirm-document",
+        input: [
+          "pending-member-token",
+          {
+            requirementId,
+            filename: "food-handler.pdf",
+            sizeBytes: 1024,
+            path: "workspace/employee/document.pdf",
+            expiryDate: "2027-08-20",
+            revision: 3,
+          },
+        ],
+      },
+      {
+        kind: "acknowledge",
+        input: [
+          "pending-member-token",
+          {
+            requirementId,
+            typedName: "Ada Lovelace",
+            contentDigest:
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            idempotencyKey: "a6200000-0000-4000-8000-000000000001",
+            revision: 4,
+          },
+        ],
+      },
+      { kind: "submit", input: ["pending-member-token", 5] },
+      { kind: "reset", input: ["pending-member-token", 6] },
+      { kind: "leave", input: ["pending-member-token", 7] },
+    ]);
+  });
+
+  it("resets self-scoped onboarding through the authenticated service boundary", async () => {
+    const calls: string[] = [];
+    const service = onboardingServiceMock({
+      reset: async (accessToken, revision) => {
+        calls.push(`${accessToken}:${revision}`);
+        return 3;
+      },
+    });
+    const app = buildApp({ contextResolver: null, onboardingService: service });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/me/onboarding/reset",
+      headers: { authorization: "Bearer pending-member-token" },
+      payload: { revision: 2 },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ revision: 3 });
+    expect(calls).toEqual(["pending-member-token:2"]);
+  });
+
+  it("lets a pending member leave onboarding through the authenticated service boundary", async () => {
+    const calls: string[] = [];
+    const service = onboardingServiceMock({
+      leave: async (accessToken, revision) => {
+        calls.push(`${accessToken}:${revision}`);
+        return {
+          status: "left",
+          workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+          employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+          membershipId: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
+          revision: 3,
+        };
+      },
+    });
+    const app = buildApp({ contextResolver: null, onboardingService: service });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/me/onboarding/leave",
+      headers: { authorization: "Bearer pending-member-token" },
+      payload: { revision: 2 },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      status: "left",
+      workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+      membershipId: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
+      revision: 3,
+    });
+    expect(calls).toEqual(["pending-member-token:2"]);
+  });
+
+  it("keeps the SSN onboarding endpoint disabled for V1", async () => {
+    const service = onboardingServiceMock();
+    const app = buildApp({ onboardingService: service });
+
+    const response = await app.inject({
       method: "PUT",
       url: "/v1/me/onboarding/ssn",
       headers: { authorization: "Bearer pending-member-token" },
       payload: { ssn: "123456789", revision: 1 },
     });
-    expect(valid.statusCode).toBe(200);
-    expect(received).toBe("123456789");
-    expect(valid.body).not.toContain("123456789");
+
+    expect(response.statusCode).toBe(410);
+    expect(response.json()).toEqual({ error: "SSN is deferred from V1" });
+  });
+
+  it("returns generic not found for manager onboarding routes when the active workspace mismatches the path", async () => {
+    const getReview = vi.fn(async () => {
+      throw new Error("not used");
+    });
+    const review = vi.fn(async () => 2);
+    const getDocumentDownload = vi.fn(async () => ({
+      url: "https://storage.example.test/document.pdf",
+      expiresIn: 300,
+    }));
+    const service = onboardingServiceMock({
+      getReview,
+      review,
+      getDocumentDownload,
+    });
+    const app = buildApp({
+      contextResolver: { resolve: async () => workspaceMismatchContext() },
+      onboardingService: service,
+    });
+    const pathWorkspaceId = resolvedContext.workspace.id;
+    const employeeId = "fe201916-aa0e-480b-9144-1e1c8da20a31";
+    const requirementId = "97000000-0000-4000-8000-000000000001";
+
+    const requests = [
+      {
+        method: "GET",
+        url: `/v1/workspaces/${pathWorkspaceId}/employees/${employeeId}/onboarding`,
+      },
+      {
+        method: "POST",
+        url: `/v1/workspaces/${pathWorkspaceId}/employees/${employeeId}/onboarding/review`,
+        payload: {
+          action: "reject_requirement",
+          requirementId,
+          reason: "Wrong file",
+          revision: 1,
+        },
+      },
+      {
+        method: "GET",
+        url: `/v1/workspaces/${pathWorkspaceId}/employees/${employeeId}/onboarding/documents/${requirementId}/download`,
+      },
+    ] as const;
+
+    for (const request of requests) {
+      const response = await app.inject({
+        method: request.method,
+        url: request.url,
+        headers: { authorization: "Bearer valid-token" },
+        payload: "payload" in request ? request.payload : undefined,
+      });
+      expect(response.statusCode, `${request.method} ${request.url}`).toBe(404);
+      expect(response.json()).toEqual({ error: "Workspace not found" });
+    }
+    expect(getReview).not.toHaveBeenCalled();
+    expect(review).not.toHaveBeenCalled();
+    expect(getDocumentDownload).not.toHaveBeenCalled();
+  });
+
+  it("forwards manager onboarding review and document download from context and path identity", async () => {
+    const review = vi.fn(async () => 2);
+    const getDocumentDownload = vi.fn(async () => ({
+      url: "https://storage.example.test/document.pdf",
+      expiresIn: 300,
+    }));
+    const service = onboardingServiceMock({
+      review,
+      getDocumentDownload,
+    });
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      onboardingService: service,
+    });
+    const pathWorkspaceId = resolvedContext.workspace.id;
+    const employeeId = "fe201916-aa0e-480b-9144-1e1c8da20a31";
+    const requirementId = "97000000-0000-4000-8000-000000000001";
+    const reviewInput = {
+      action: "reject_requirement",
+      requirementId,
+      reason: "Wrong file",
+      revision: 1,
+    } as const;
+
+    const reviewResponse = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${pathWorkspaceId}/employees/${employeeId}/onboarding/review`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: {
+        ...reviewInput,
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+        actor_user_id: "11111111-1111-4111-8111-111111111111",
+        workspaceId: "16fe2550-8960-480c-9874-cbc76a8e56a9",
+        workspace_id: "16fe2550-8960-480c-9874-cbc76a8e56a9",
+        employeeId: "15000000-0000-4000-8000-000000000002",
+        employee_id: "15000000-0000-4000-8000-000000000002",
+      },
+    });
+    const downloadResponse = await app.inject({
+      method: "GET",
+      url: `/v1/workspaces/${pathWorkspaceId}/employees/${employeeId}/onboarding/documents/${requirementId}/download`,
+      headers: { authorization: "Bearer valid-token" },
+    });
+
+    expect(reviewResponse.statusCode, reviewResponse.body).toBe(200);
+    expect(reviewResponse.json()).toEqual({ revision: 2 });
+    expect(downloadResponse.statusCode, downloadResponse.body).toBe(200);
+    expect(review).toHaveBeenCalledWith(
+      resolvedContext.userId,
+      pathWorkspaceId,
+      employeeId,
+      reviewInput,
+    );
+    expect(getDocumentDownload).toHaveBeenCalledWith(
+      resolvedContext.userId,
+      pathWorkspaceId,
+      employeeId,
+      requirementId,
+    );
   });
 
   it("serves manager Schedule reads through the authenticated service boundary", async () => {
@@ -1186,6 +2816,22 @@ describe("api app", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().week_start).toBe("2026-08-17");
     expect(calls).toEqual(["2026-08-19"]);
+  });
+
+  it("returns a generic not found for foreign-tenant Schedule paths", async () => {
+    const getReadModel = vi.fn(async () => scheduleServiceMockModel());
+    const app = buildApp({
+      contextResolver: { resolve: async () => workspaceMismatchContext() },
+      scheduleService: scheduleServiceMock({ getReadModel }),
+    });
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule?date=2026-08-19&view=week",
+      headers: { authorization: "Bearer owner-token" },
+    });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "Workspace not found" });
+    expect(getReadModel).not.toHaveBeenCalled();
   });
 
   it("serves reference-style Schedule reads from active workspace context", async () => {
@@ -1212,6 +2858,68 @@ describe("api app", () => {
         date: "2026-08-17",
       },
     ]);
+  });
+
+  it("serves reference-style Schedule reads from explicit tab workspace context", async () => {
+    const requestedWorkspaceId = "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+    const resolve = vi.fn(
+      async (_token: string, workspaceId?: string | null) =>
+        workspaceId === requestedWorkspaceId
+          ? ({
+              ...resolvedContext,
+              workspace: { ...resolvedContext.workspace, id: workspaceId },
+              membership: { ...resolvedContext.membership, workspaceId },
+            } satisfies ActiveWorkspaceContext)
+          : null,
+    );
+    const getReadModel = vi.fn(async () => scheduleServiceMockModel());
+    const app = buildApp({
+      contextResolver: { resolve },
+      scheduleService: scheduleServiceMock({ getReadModel }),
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/schedule/reference?week_start=2026-08-17",
+      headers: {
+        authorization: "Bearer owner-token",
+        "x-newfork-workspace-id": requestedWorkspaceId,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(resolve).toHaveBeenCalledWith("owner-token", requestedWorkspaceId);
+    expect(getReadModel).toHaveBeenCalledWith(
+      resolvedContext.userId,
+      requestedWorkspaceId,
+      "2026-08-17",
+    );
+  });
+
+  it("fails closed when reference-style Schedule explicit context resolves another tenant", async () => {
+    const requestedWorkspaceId = "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+    const resolve = vi.fn(async () => resolvedContext);
+    const getReadModel = vi.fn(async () => scheduleServiceMockModel());
+    const app = buildApp({
+      contextResolver: { resolve },
+      scheduleService: scheduleServiceMock({ getReadModel }),
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/schedule/reference?week_start=2026-08-17",
+      headers: {
+        authorization: "Bearer owner-token",
+        "x-newfork-workspace-id": requestedWorkspaceId,
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: "Manager schedule read access required",
+    });
+    expect(resolve).toHaveBeenCalledWith("owner-token", requestedWorkspaceId);
+    expect(getReadModel).not.toHaveBeenCalled();
   });
 
   it("does not expose manager Schedule reads to employee access class", async () => {
@@ -1541,6 +3249,7 @@ describe("api app", () => {
       headers: { authorization: "Bearer owner-token" },
       payload: {
         draft_id: "85000000-0000-4000-8000-000000000001",
+        week_start: "2026-08-17",
         location_ids: ["11000000-0000-4000-8000-000000000001"],
       },
     });
@@ -1566,6 +3275,7 @@ describe("api app", () => {
       headers: { authorization: "Bearer owner-token" },
       payload: {
         draft_id: "85000000-0000-4000-8000-000000000001",
+        week_start: "2026-08-17",
         location_ids: ["11000000-0000-4000-8000-000000000001"],
       },
     });
@@ -1623,6 +3333,7 @@ describe("api app", () => {
       headers: { authorization: "Bearer manager-token" },
       payload: {
         draft_id: "85000000-0000-4000-8000-000000000001",
+        week_start: "2026-08-17",
         location_ids: ["11000000-0000-4000-8000-000000000001"],
       },
     });
@@ -1657,6 +3368,7 @@ describe("api app", () => {
       headers: { authorization: "Bearer owner-token" },
       payload: {
         draft_id: "85000000-0000-4000-8000-000000000001",
+        week_start: "2026-08-17",
         location_ids: ["11000000-0000-4000-8000-000000000001"],
         expected_draft_revision: 1,
         fingerprint: "a".repeat(64),
@@ -1685,6 +3397,7 @@ describe("api app", () => {
         actorUserId: resolvedContext.userId,
         workspaceId: resolvedContext.workspace.id,
         draftId: "85000000-0000-4000-8000-000000000001",
+        weekStart: "2026-08-17",
         locationIds: ["11000000-0000-4000-8000-000000000001"],
         notifyEmployeeIds: ["15000000-0000-4000-8000-000000000001"],
         preflightAck: {
@@ -1698,6 +3411,53 @@ describe("api app", () => {
         },
       }),
     ]);
+  });
+
+  it("returns a successful publish response with a notification warning", async () => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleService: scheduleServiceMock({
+        publish: async (input) => ({
+          status: "published",
+          workspace_id: resolvedContext.workspace.id,
+          week_start: "2026-08-17",
+          draft_id: input.draftId,
+          draft_revision: input.expectedDraftRevision,
+          location_ids: input.locationIds,
+          publication_ids: ["86000000-0000-4000-8000-000000000001"],
+          published_shift_count: 1,
+          notification_count: 0,
+          notification_warning: {
+            code: "notification_enqueue_unavailable",
+            message:
+              "Schedule published, but employee notifications could not be created.",
+          },
+          published_at: "2026-08-17T12:00:00.000Z",
+        }),
+      }),
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publications",
+      headers: { authorization: "Bearer owner-token" },
+      payload: {
+        draft_id: "85000000-0000-4000-8000-000000000001",
+        location_ids: ["11000000-0000-4000-8000-000000000001"],
+        expected_draft_revision: 1,
+        fingerprint: "a".repeat(64),
+        notify_employee_ids: ["15000000-0000-4000-8000-000000000001"],
+        overrides: [],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      status: "published",
+      notification_count: 0,
+      notification_warning: {
+        code: "notification_enqueue_unavailable",
+      },
+    });
   });
 
   it("maps hard publication blockers and stale previews distinctly", async () => {
@@ -1724,6 +3484,22 @@ describe("api app", () => {
     });
     expect(hard.statusCode).toBe(422);
 
+    const hardDocumentApp = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleService: scheduleServiceMock({
+        publish: async () => {
+          throw new Error("schedule has hard document blockers");
+        },
+      }),
+    });
+    const hardDocument = await hardDocumentApp.inject({
+      method: "POST",
+      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publications",
+      headers: { authorization: "Bearer owner-token" },
+      payload: basePayload,
+    });
+    expect(hardDocument.statusCode).toBe(422);
+
     const staleApp = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
@@ -1742,6 +3518,29 @@ describe("api app", () => {
   });
 
   it("returns structured Schedule publish recovery results as conflicts", async () => {
+    const documentConflict = {
+      kind: "document_expiry" as const,
+      employee_id: "51000000-0000-4000-8000-000000000002",
+      employee_name: "Kim Nguyen",
+      shift_id: "71000000-0000-4000-8000-000000000003",
+      location_id: "11000000-0000-4000-8000-000000000001",
+      location_name: "Main Dining",
+      date: "2026-08-18",
+      start_time: "10:00",
+      end_time: "14:00",
+      document_type_id: "72000000-0000-4000-8000-000000000001",
+      requirement_id: "72000000-0000-4000-8000-000000000002",
+      document_id: "72000000-0000-4000-8000-000000000003",
+      document_title: "Food handler card",
+      expiry_date: "2026-08-17",
+      expiry_policy_version: 2,
+      pending_document_id: "72000000-0000-4000-8000-000000000004",
+      review_action: "review_document" as const,
+      severity: "hard" as const,
+      overrideable: false,
+      warning_text: "Food handler card is expired and blocks scheduling.",
+      conflict_fingerprint: "b".repeat(64),
+    };
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
@@ -1762,6 +3561,7 @@ describe("api app", () => {
                 time_range: "6:00 PM - 10:00 PM",
               },
             },
+            documentConflict,
           ],
         }),
       }),
@@ -1786,6 +3586,14 @@ describe("api app", () => {
         expect.objectContaining({
           employee_name: "Alex Rivera",
           date: "2026-08-17",
+        }),
+        expect.objectContaining({
+          kind: "document_expiry",
+          employee_name: "Kim Nguyen",
+          pending_document_id: "72000000-0000-4000-8000-000000000004",
+          review_action: "review_document",
+          severity: "hard",
+          overrideable: false,
         }),
       ],
     });
@@ -2832,6 +4640,24 @@ describe("api app", () => {
     ]);
   });
 
+  it("returns a generic not found for manager time workspace mismatches", async () => {
+    const get = vi.fn();
+    const app = buildApp({
+      contextResolver: { resolve: async () => workspaceMismatchContext() },
+      timeEntriesService: { get } as unknown as TimeEntriesService,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries?from=2026-08-17&to=2026-08-23`,
+      headers: { authorization: "Bearer manager-token" },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "Workspace not found" });
+    expect(get).not.toHaveBeenCalled();
+  });
+
   it("derives manager manual-entry provenance outside the client payload", async () => {
     const calls: unknown[] = [];
     const service = {
@@ -3504,12 +5330,18 @@ function onboardingServiceMock(
       requirements: [],
     }),
     saveProfile: async () => 2,
-    saveSsn: async () => 2,
-    saveAvailability: async () => 2,
     prepareDocumentUpload: async () => ({ path: "test", token: "test" }),
     confirmDocument: async () => 2,
     acknowledge: async () => 2,
     submit: async () => 2,
+    reset: async () => 2,
+    leave: async () => ({
+      status: "left",
+      workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+      membershipId: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
+      revision: 2,
+    }),
     getReview: async () => {
       throw new Error("not used");
     },

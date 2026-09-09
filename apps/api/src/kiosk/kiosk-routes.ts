@@ -5,7 +5,10 @@ import {
 } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
-import type { WorkspaceContextResolver } from "../auth/workspace-context";
+import {
+  resolveWorkspaceMembership,
+  type WorkspaceContextResolver,
+} from "../auth/workspace-context";
 import type { KioskService } from "./kiosk-service";
 
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
@@ -127,9 +130,10 @@ export function registerKioskRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
+      if (!context) return;
       if (
-        !context ||
         !context.permissions.includes("kiosk.device.enroll.location") ||
         !canAccessLocation(context, body.data.location_id)
       )
@@ -162,9 +166,10 @@ export function registerKioskRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
+      if (!context) return;
       if (
-        !context ||
         !managerPermissions.some((permission) =>
           context.permissions.includes(permission),
         )
@@ -195,11 +200,10 @@ export function registerKioskRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (
-        !context ||
-        !context.permissions.includes("kiosk.device.enroll.location")
-      )
+      if (!context) return;
+      if (!context.permissions.includes("kiosk.device.enroll.location"))
         return reply
           .status(403)
           .send({ error: "Kiosk update access required" });
@@ -229,9 +233,10 @@ export function registerKioskRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
+      if (!context) return;
       if (
-        !context ||
         !context.permissions.includes("kiosk.device.enroll.location") ||
         !context.permissions.includes("kiosk.device.revoke.location")
       )
@@ -311,11 +316,10 @@ export function registerKioskRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (
-        !context ||
-        !context.permissions.includes("kiosk.device.revoke.location")
-      )
+      if (!context) return;
+      if (!context.permissions.includes("kiosk.device.revoke.location"))
         return reply
           .status(403)
           .send({ error: "Kiosk revocation access required" });
@@ -346,9 +350,10 @@ export function registerKioskRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
+      if (!context) return;
       if (
-        !context ||
         !context.permissions.includes("kiosk.pin.reset.location") ||
         !canAccessLocation(context, body.data.location_id)
       )
@@ -410,13 +415,16 @@ async function authorize(
   authorization: string | undefined,
   workspaceId: string,
   resolver: WorkspaceContextResolver | null,
+  reply: FastifyReply,
 ) {
-  if (!resolver || !authorization?.startsWith("Bearer ")) return null;
-  const context = await resolver.resolve(authorization.slice(7).trim());
-  return context?.workspace.id === workspaceId &&
-    context.membership.status === "active"
-    ? context
-    : null;
+  const result = await resolveWorkspaceMembership({
+    authorization,
+    workspaceId,
+    resolver,
+  });
+  if (result.context) return result.context;
+  reply.status(404).send({ error: "Workspace not found" });
+  return null;
 }
 
 function canAccessLocation(

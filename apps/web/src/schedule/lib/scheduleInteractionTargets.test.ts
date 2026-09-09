@@ -43,6 +43,7 @@ describe("scheduleInteractionTargets", () => {
       <section class="schedule-page">
         <div id="blank"></div>
         <button id="button"></button>
+        <button id="employee-trigger" data-schedule-employee-card-trigger="true"></button>
         <div id="cell" class="schedule-cell"></div>
         <button id="paste-button" class="schedule-cell-paste"></button>
         <div id="badge" data-shift-badge="true"></div>
@@ -67,6 +68,7 @@ describe("scheduleInteractionTargets", () => {
 
     const blank = document.getElementById("blank")!;
     const button = document.getElementById("button")!;
+    const employeeTrigger = document.getElementById("employee-trigger")!;
     const cell = document.getElementById("cell")!;
     const pasteButton = document.getElementById("paste-button")!;
     const badge = document.getElementById("badge")!;
@@ -90,6 +92,8 @@ describe("scheduleInteractionTargets", () => {
     expect(isScheduleInteractionSurface(dialogChild)).toBe(true);
     expect(isBlankScheduleDismissTarget(blank)).toBe(true);
     expect(isBlankScheduleDismissTarget(button)).toBe(true);
+    expect(isScheduleInteractionSurface(employeeTrigger)).toBe(true);
+    expect(isBlankScheduleDismissTarget(employeeTrigger)).toBe(false);
     expect(isBlankScheduleDismissTarget(cell)).toBe(true);
     expect(isBlankScheduleDismissTarget(pasteButton)).toBe(false);
     expect(isBlankScheduleDismissTarget(badge)).toBe(false);

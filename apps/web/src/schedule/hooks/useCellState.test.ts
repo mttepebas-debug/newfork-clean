@@ -77,6 +77,19 @@ function model(shifts: readonly ScheduleShift[]): ScheduleReadModel {
 }
 
 describe("buildScheduleCellState", () => {
+  it("uses weekly location/day projections and ignores the old recurring baseline", () => {
+    const base = model([]);
+    const changed: ScheduleReadModel = { ...base, employees: [{ ...base.employees[0]!,
+      availability: [{ day: 1, mode: "unavailable", windows: [] }],
+      weekly_availability: [{ location_id: mainLocationId, location_name: "Main", timezone: "America/Los_Angeles", week_start: base.week_start,
+        status: "ready", unavailable_intervals: [], leave_intervals: [], clock_segments: [], days: [{ date: "2026-08-18", has_unavailable: true, all_day: true }],
+      }],
+    }] };
+    const cells = buildScheduleCellState(changed);
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-18", employeeId))?.hasUnavailability).toBe(true);
+    expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))?.hasUnavailability).toBeUndefined();
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId))?.hasUnavailability).toBeUndefined();
+  });
   it("marks every cell in a multi-day all-day closure range", () => {
     const closedModel = {
       ...model([]),
@@ -276,7 +289,7 @@ describe("buildScheduleCellState", () => {
 });
 
 describe("orderScheduleCellShifts", () => {
-  it("orders real and ghost badges by shift type, start time, then real before ghost", () => {
+  it("orders real and ghost badges by visible start time, then real before ghost", () => {
     const earlyType = "44444444-4444-4444-8444-444444444441";
     const lateType = "44444444-4444-4444-8444-444444444442";
     const realEarly = shift({
@@ -327,6 +340,56 @@ describe("orderScheduleCellShifts", () => {
           },
         ],
       ).map((item) => item.id),
-    ).toEqual(["ghost-early", "real-early", "ghost-matching", "real-late-type"]);
+    ).toEqual(["real-late-type", "ghost-early", "real-early", "ghost-matching"]);
+  });
+
+  it("uses shift type default times for hidden-time badges before deterministic fallback", () => {
+    const breakfastType = "44444444-4444-4444-8444-444444444443";
+    const untimedType = "44444444-4444-4444-8444-444444444444";
+    const hiddenWithDefault = shift({
+      id: "hidden-default",
+      location_id: mainLocationId,
+      shift_type_id: breakfastType,
+      start_time: "23:00",
+      hide_time_on_badge: true,
+    });
+    const visibleShift = shift({
+      id: "visible-late",
+      location_id: mainLocationId,
+      shift_type_id: untimedType,
+      start_time: "10:00",
+    });
+    const hiddenWithoutDefault = shift({
+      id: "hidden-fallback",
+      location_id: mainLocationId,
+      shift_type_id: untimedType,
+      start_time: "07:00",
+      hide_time_on_badge: true,
+    });
+
+    expect(
+      orderScheduleCellShifts(
+        [hiddenWithoutDefault, hiddenWithDefault, visibleShift],
+        [],
+        [
+          {
+            id: breakfastType,
+            name: "Breakfast",
+            color: "#0ea5e9",
+            default_start_time: "06:00",
+            default_end_time: "11:00",
+            sort_order: 1,
+          },
+          {
+            id: untimedType,
+            name: "Untimed",
+            color: "#f97316",
+            default_start_time: null,
+            default_end_time: null,
+            sort_order: 0,
+          },
+        ],
+      ).map((item) => item.id),
+    ).toEqual(["hidden-default", "visible-late", "hidden-fallback"]);
   });
 });

@@ -40,4 +40,24 @@ describe("MiniCalendar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Today" }));
     expect(onDayPick).toHaveBeenLastCalledWith("2026-08-17");
   });
+
+  it("uses Sunday week anchors when the schedule setting starts weeks on Sunday", () => {
+    const onWeekJump = vi.fn();
+
+    render(
+      <MiniCalendar
+        selectedDate="2026-08-16"
+        weekStartDate="2026-08-16"
+        weekStartDay="sunday"
+        onDayPick={vi.fn()}
+        onWeekJump={onWeekJump}
+      />,
+    );
+
+    expect(screen.getAllByText("S")[0]).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Jump to week of August 16" }),
+    );
+    expect(onWeekJump).toHaveBeenCalledWith("2026-08-16");
+  });
 });

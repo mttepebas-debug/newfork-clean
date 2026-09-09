@@ -42,7 +42,9 @@ const shift: ScheduleEditableShift = {
   revision: 1,
 };
 
-function renderShiftCard(overrides: Partial<Parameters<typeof ShiftCard>[0]> = {}) {
+function renderShiftCard(
+  overrides: Partial<Parameters<typeof ShiftCard>[0]> = {},
+) {
   const props: Parameters<typeof ShiftCard>[0] = {
     shift,
     job: "Server",
@@ -70,11 +72,12 @@ describe("ShiftCard", () => {
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });
     expect(screen.getByText("Trainer")).toBeTruthy();
     expect(screen.getByText("Main")).toBeTruthy();
-    expect(screen.getByText("5p to 10:30p")).toBeTruthy();
+    expect(screen.getByText("5:00 PM - 10:30 PM")).toBeTruthy();
     expect(badge.getAttribute("data-shift-badge")).toBe("true");
     expect(badge.getAttribute("data-selected")).toBe("true");
     expect(badge.getAttribute("data-focused")).toBe("true");
     expect(badge.getAttribute("aria-pressed")).toBe("true");
+    expect(badge.getAttribute("draggable")).toBeNull();
     expect(badge.style.getPropertyValue("--schedule-row-badge-height")).toBe(
       "52px",
     );
@@ -106,6 +109,7 @@ describe("ShiftCard", () => {
   });
 
   it("focuses on normal click, multi-selects on modifier click, and copies from keyboard", () => {
+    vi.useFakeTimers();
     const onFocus = vi.fn();
     const onSelect = vi.fn();
     const onCopy = vi.fn();
@@ -113,15 +117,21 @@ describe("ShiftCard", () => {
 
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });
     fireEvent.click(badge);
+    expect(onFocus).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(250);
     fireEvent.click(badge, { ctrlKey: true });
+    fireEvent.click(badge, { shiftKey: true });
     fireEvent.keyDown(badge, { key: "c", ctrlKey: true });
 
     expect(onFocus).toHaveBeenCalledWith(shift);
     expect(onSelect).toHaveBeenCalledWith(shift.id, true);
+    expect(onSelect).toHaveBeenCalledTimes(2);
     expect(onCopy).toHaveBeenCalledWith(shift);
+    vi.useRealTimers();
   });
 
   it("does not let an unpaired modifier pointerdown swallow the next normal click", () => {
+    vi.useFakeTimers();
     const onFocus = vi.fn();
     const onSelect = vi.fn();
     renderShiftCard({ onFocus, onSelect });
@@ -130,20 +140,48 @@ describe("ShiftCard", () => {
     fireEvent.mouseDown(badge, { ctrlKey: true });
     fireEvent.mouseDown(badge);
     fireEvent.click(badge);
+    vi.advanceTimersByTime(250);
 
     expect(onSelect).toHaveBeenCalledWith(shift.id, true);
     expect(onFocus).toHaveBeenCalledWith(shift);
+    vi.useRealTimers();
   });
 
-  it("opens editing from double click and exposes publication state", () => {
+  it("opens editing once from a full double-click sequence without transient focus", () => {
+    vi.useFakeTimers();
+    const onFocus = vi.fn();
     const onEdit = vi.fn();
-    renderShiftCard({ onEdit, publicationState: "locked" });
+    renderShiftCard({ onEdit, onFocus, publicationState: "locked" });
 
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    fireEvent.click(badge, { detail: 1, clientX: 10, clientY: 20 });
+    fireEvent.click(badge, { detail: 2, clientX: 10, clientY: 20 });
     fireEvent.doubleClick(badge, { clientX: 10, clientY: 20 });
+    vi.runAllTimers();
 
     expect(badge.getAttribute("data-publication-state")).toBe("locked");
     expect(onEdit).toHaveBeenCalledWith(shift, { x: 10, y: 20 });
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(onFocus).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("keeps an already-current badge current while opening it on double click", () => {
+    vi.useFakeTimers();
+    const onFocus = vi.fn();
+    const onEdit = vi.fn();
+    renderShiftCard({ focused: true, onEdit, onFocus });
+
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    fireEvent.click(badge, { detail: 1 });
+    fireEvent.click(badge, { detail: 2 });
+    fireEvent.doubleClick(badge);
+    vi.runAllTimers();
+
+    expect(badge.getAttribute("data-current")).toBe("true");
+    expect(onFocus).not.toHaveBeenCalled();
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
   });
 
   it("formats shift badge titles and times like the schedule grid", () => {
@@ -153,23 +191,38 @@ describe("ShiftCard", () => {
     expect(formatScheduleShiftBadgeTitle(shiftType, "Server", false)).toBe(
       "Server",
     );
-    expect(formatScheduleBadgeTime("00:00")).toBe("12a");
-    expect(formatScheduleBadgeTime("12:15")).toBe("12:15p");
+    expect(formatScheduleBadgeTime("00:00")).toBe("12:00 AM");
+    expect(formatScheduleBadgeTime("12:15")).toBe("12:15 PM");
     expect(formatScheduleBadgeTime("17:30", "24h")).toBe("17:30");
     expect(formatScheduleBadgeTimeRange("09:00", "17:00")).toBe(
-      "9a to 5p",
+      "9:00 AM - 5:00 PM",
     );
     expect(formatScheduleBadgeTimeRange("09:00", "17:00", "24h")).toBe(
-      "09:00 to 17:00",
+      "09:00 - 17:00",
     );
   });
 
   it("renders badge clock text with the schedule time format", () => {
     renderShiftCard({ timeFormat: "24h" });
 
-    expect(screen.getByText("17:00 to 22:30")).toBeTruthy();
+    expect(screen.getByText("17:00 - 22:30")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /17:00 - 22:30/i })).toBeTruthy();
+  });
+
+  it("compacts overflowing labels while keeping the full label list accessible", () => {
+    renderShiftCard({
+      shift: {
+        ...shift,
+        label_names: ["Training", "Lead Server", "Close"],
+      },
+    });
+
+    const labels = screen.getByText("Training · Lead Server +1");
+    expect(labels.getAttribute("title")).toBe("Training · Lead Server · Close");
     expect(
-      screen.getByRole("button", { name: /17:00 to 22:30/i }),
+      screen.getByRole("button", {
+        name: /Training · Lead Server · Close/i,
+      }),
     ).toBeTruthy();
   });
 });
@@ -204,7 +257,7 @@ describe("GhostShiftCard", () => {
     expect(badge.getAttribute("data-ghost")).toBe("true");
     expect(document.querySelector(".schedule-shift-color-dot")).toBeNull();
     expect(screen.getByText("Patio")).toBeTruthy();
-    expect(screen.getByText("5p to 10:30p")).toBeTruthy();
+    expect(screen.getByText("5:00 PM - 10:30 PM")).toBeTruthy();
     expect(badge.getAttribute("title")).toContain("Also scheduled at Patio");
     expect(badge.getAttribute("aria-label")).toContain(
       "also scheduled at Patio",

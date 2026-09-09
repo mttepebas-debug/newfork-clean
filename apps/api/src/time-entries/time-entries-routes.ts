@@ -6,7 +6,10 @@ import {
 } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
-import type { WorkspaceContextResolver } from "../auth/workspace-context";
+import {
+  resolveWorkspaceMembership,
+  type WorkspaceContextResolver,
+} from "../auth/workspace-context";
 import type { TimeEntriesService } from "./time-entries-service";
 
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
@@ -37,8 +40,10 @@ export function registerTimeEntriesRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (!context || !context.permissions.includes("time.read.location"))
+      if (!context) return;
+      if (!context.permissions.includes("time.read.location"))
         return reply.status(403).send({ error: "Location time read required" });
       if (!options.service)
         return reply
@@ -74,8 +79,10 @@ export function registerTimeEntriesRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (!context || !context.permissions.includes("time.amend.location"))
+      if (!context) return;
+      if (!context.permissions.includes("time.amend.location"))
         return reply
           .status(403)
           .send({ error: "Location time amendment required" });
@@ -114,8 +121,10 @@ export function registerTimeEntriesRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (!context || !context.permissions.includes("time.amend.location"))
+      if (!context) return;
+      if (!context.permissions.includes("time.amend.location"))
         return reply
           .status(403)
           .send({ error: "Location time amendment required" });
@@ -154,11 +163,10 @@ export function registerTimeEntriesRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (
-        !context ||
-        !context.permissions.includes("time.correction.review.location")
-      )
+      if (!context) return;
+      if (!context.permissions.includes("time.correction.review.location"))
         return reply
           .status(403)
           .send({ error: "Location correction review required" });
@@ -198,11 +206,10 @@ export function registerTimeEntriesRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (
-        !context ||
-        !context.permissions.includes("time.review.approve.location")
-      )
+      if (!context) return;
+      if (!context.permissions.includes("time.review.approve.location"))
         return reply
           .status(403)
           .send({ error: "Location time review approval required" });
@@ -230,13 +237,16 @@ async function authorize(
   authorization: string | undefined,
   workspaceId: string,
   resolver: WorkspaceContextResolver | null,
+  reply: FastifyReply,
 ) {
-  if (!resolver || !authorization?.startsWith("Bearer ")) return null;
-  const context = await resolver.resolve(authorization.slice(7).trim());
-  return context?.workspace.id === workspaceId &&
-    context.membership.status === "active"
-    ? context
-    : null;
+  const result = await resolveWorkspaceMembership({
+    authorization,
+    workspaceId,
+    resolver,
+  });
+  if (result.context) return result.context;
+  reply.status(404).send({ error: "Workspace not found" });
+  return null;
 }
 
 function requestError(reply: FastifyReply, error: unknown) {

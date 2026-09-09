@@ -63,6 +63,19 @@ values (
   '4a000000-0000-4000-8000-000000000001'
 );
 
+-- Establish the capacity used to publish these assignments before publication.
+-- Termination then tests the explicit release decision, without bypassing the
+-- same availability guard used for every published assignment.
+insert into public.employee_schedule_availability_versions (
+  workspace_id, employee_id, version_number, timezone, recurring_rules,
+  source, recorded_by, effective_from
+)
+select '2a000000-0000-4000-8000-000000000001',
+  '7a000000-0000-4000-8000-000000000001', 1, 'America/Los_Angeles',
+  jsonb_agg(jsonb_build_object('day', day, 'mode', 'unrestricted', 'windows', '[]'::jsonb)),
+  'employee', '1a000000-0000-4000-8000-000000000002', '2026-08-31'::date
+from generate_series(0, 6) day;
+
 insert into public.schedule_location_publications (
   id, workspace_id, location_id, week_start, version_number, published_by
 ) values (
@@ -96,11 +109,11 @@ insert into public.time_sessions (
   '2026-09-01 17:00:00+00', '1a000000-0000-4000-8000-000000000001'
 );
 
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '1a000000-0000-4000-8000-000000000001', true);
+set local role service_role;
 
 select throws_ok(
-  $$select public.terminate_employee(
+  $$select public.terminate_employee_service(
+    '1a000000-0000-4000-8000-000000000001',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001',
     '2026-09-01 12:00', 'America/Los_Angeles', 'block', 'Employment ended',
     'ba000000-0000-4000-8000-000000000001'
@@ -112,10 +125,10 @@ set local role postgres;
 select is((select archived_at from public.employee_profiles where id = '7a000000-0000-4000-8000-000000000001'), null, 'failed termination leaves employee active');
 select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000002'), '7a000000-0000-4000-8000-000000000001'::uuid, 'failed termination leaves future shift assigned');
 
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '1a000000-0000-4000-8000-000000000001', true);
+set local role service_role;
 select lives_ok(
-  $$select public.terminate_employee(
+  $$select public.terminate_employee_service(
+    '1a000000-0000-4000-8000-000000000001',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001',
     '2026-09-01 12:00', 'America/Los_Angeles', 'close_at', 'Employment ended',
     'ba000000-0000-4000-8000-000000000002'
@@ -133,13 +146,13 @@ select is((select employee_id from public.schedule_published_shifts where id = '
 select is((select count(*)::integer from public.employee_offboarding_shift_actions), 1, 'released shift has durable audit detail');
 select is((select count(*)::integer from public.employee_offboarding_followups where kind = 'coverage_alert' and status = 'review_required'), 1, 'released shift creates a coverage alert');
 select is((select count(*)::integer from public.employee_offboarding_followups where kind = 'compliance_review' and status = 'review_required'), 1, 'released shift creates a compliance review candidate');
-select is((select count(*)::integer from public.employee_events where action = 'employee.terminated'), 1, 'termination lifecycle event is recorded');
-select is((select count(*)::integer from public.audit_events where action = 'employee.terminated'), 1, 'termination audit event is recorded');
+select is((select count(*)::integer from public.employee_events where workspace_id = '2a000000-0000-4000-8000-000000000001' and action = 'employee.terminated'), 1, 'termination lifecycle event is recorded');
+select is((select count(*)::integer from public.audit_events where workspace_id = '2a000000-0000-4000-8000-000000000001' and action = 'employee.terminated'), 1, 'termination audit event is recorded');
 
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '1a000000-0000-4000-8000-000000000001', true);
+set local role service_role;
 select lives_ok(
-  $$select public.terminate_employee(
+  $$select public.terminate_employee_service(
+    '1a000000-0000-4000-8000-000000000001',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001',
     '2026-09-01 12:00', 'America/Los_Angeles', 'close_at', 'Employment ended',
     'ba000000-0000-4000-8000-000000000002'
@@ -147,13 +160,13 @@ select lives_ok(
   'same idempotency key replays safely'
 );
 set local role postgres;
-select is((select count(*)::integer from public.employee_terminations), 1, 'idempotent replay does not duplicate the termination');
+select is((select count(*)::integer from public.employee_terminations where workspace_id = '2a000000-0000-4000-8000-000000000001'), 1, 'idempotent replay does not duplicate the termination');
 select is((select count(*)::integer from public.employee_offboarding_followups), 2, 'idempotent replay does not duplicate follow-ups');
 
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '1a000000-0000-4000-8000-000000000001', true);
+set local role service_role;
 select throws_ok(
-  $$select public.terminate_employee(
+  $$select public.terminate_employee_service(
+    '1a000000-0000-4000-8000-000000000001',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001',
     '2026-09-01 12:01', 'America/Los_Angeles', 'close_at', 'Employment ended',
     'ba000000-0000-4000-8000-000000000002'
@@ -162,7 +175,8 @@ select throws_ok(
 );
 
 select lives_ok(
-  $$select public.terminate_employee(
+  $$select public.terminate_employee_service(
+    '1a000000-0000-4000-8000-000000000001',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000002',
     '2026-09-01 12:00', 'America/Los_Angeles', 'keep_open', 'Manager will review time',
     'ba000000-0000-4000-8000-000000000003'
@@ -173,10 +187,10 @@ set local role postgres;
 select isnt((select archived_at from public.employee_profiles where id = '7a000000-0000-4000-8000-000000000002'), null, 'keep-open termination still archives the employee');
 select is((select capture_state::text from public.time_sessions where id = 'aa000000-0000-4000-8000-000000000002'), 'open', 'keep-open decision preserves the active session for review');
 
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '1a000000-0000-4000-8000-000000000003', true);
+set local role service_role;
 select throws_ok(
-  $$select public.terminate_employee(
+  $$select public.terminate_employee_service(
+    '1a000000-0000-4000-8000-000000000003',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000002',
     '2026-09-01 12:00', 'America/Los_Angeles', 'keep_open', 'Cross tenant attempt',
     'ba000000-0000-4000-8000-000000000004'

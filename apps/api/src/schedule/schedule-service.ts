@@ -1,4 +1,8 @@
 import {
+  scheduleDefaultHoursPreviewSchema,
+  type ScheduleDefaultHoursInput,
+  type ScheduleDefaultHoursApply,
+  type ScheduleDefaultHoursPreview,
   scheduleDraftListSchema,
   scheduleDraftDeleteResultSchema,
   scheduleAvailabilityConflictResultSchema,
@@ -82,6 +86,7 @@ export const scheduledExportCronCandidateSchema = z.object({
   day_of_week: z.coerce.number().int().min(0).max(6),
   send_hour: z.coerce.number().int().min(0).max(23),
   timezone: z.string().trim().min(1).max(80),
+  week_start_day: z.enum(["sunday", "monday"]).default("monday"),
   last_sent_at: z.string().datetime({ offset: true }).nullable(),
   consecutive_failures: z.coerce.number().int().nonnegative(),
 });
@@ -90,6 +95,11 @@ export type ScheduledExportCronCandidate = z.infer<
 >;
 const scheduledExportCronCandidateListSchema = z.object({
   schedules: z.array(scheduledExportCronCandidateSchema),
+});
+const scheduleDraftDocumentConflictPreviewSchema = z.object({
+  status: z.literal("ok"),
+  conflicts: z.array(z.unknown()).default([]),
+  fingerprint: z.string().min(1).max(128),
 });
 type ScheduleInvalidationTarget =
   | "published_shifts"
@@ -157,11 +167,31 @@ export interface ScheduleReadService {
     shift?: ScheduleShiftMutationInput;
     idempotencyKey?: string;
   }): Promise<ScheduleEditSession>;
+  createShiftsBatch?(input: {
+    actorUserId: string;
+    workspaceId: string;
+    sessionId: string;
+    expectedSessionRevision: number;
+    shifts: ScheduleShiftMutationInput[];
+    idempotencyKey: string;
+  }): Promise<ScheduleEditSession>;
   bulkDeleteShifts(input: {
     actorUserId: string;
     workspaceId: string;
     shiftIds: string[];
   }): Promise<ScheduleBulkDeleteResult>;
+  previewDefaultHours?(input: {
+    actorUserId: string;
+    workspaceId: string;
+    sessionId: string;
+    command: ScheduleDefaultHoursInput;
+  }): Promise<ScheduleDefaultHoursPreview>;
+  applyDefaultHours?(input: {
+    actorUserId: string;
+    workspaceId: string;
+    sessionId: string;
+    command: ScheduleDefaultHoursApply;
+  }): Promise<ScheduleEditSession>;
   saveSession(input: {
     actorUserId: string;
     workspaceId: string;
@@ -228,6 +258,7 @@ export interface ScheduleReadService {
     actorUserId: string;
     workspaceId: string;
     draftId: string;
+    weekStart?: string;
     locationIds: string[];
     departmentIds?: string[];
     includeNoDepartment?: boolean;
@@ -370,6 +401,12 @@ export interface ScheduleReadService {
   listScheduledExportCronCandidates(
     now: Date,
   ): Promise<{ schedules: ScheduledExportCronCandidate[] }>;
+  revalidateScheduledExportCandidate?(input: {
+    workspaceId: string;
+    requesterUserId: string;
+    locationIds: readonly string[];
+    now: Date;
+  }): Promise<boolean>;
   recordScheduledExportSuccess(input: {
     workspaceId: string;
     scheduleId: string;
@@ -396,7 +433,7 @@ export function createScheduleReadService(options: {
   return {
     async getReadModel(actorUserId, workspaceId, targetDate) {
       const { data, error } = await client.rpc(
-        "get_schedule_read_model_service",
+        "get_schedule_read_model_availability_v2_service",
         {
           actor_user_id: actorUserId,
           target_workspace_id: workspaceId,
@@ -426,14 +463,17 @@ export function createScheduleReadService(options: {
             .filter((id: string | null): id is string => Boolean(id))
         : [];
       const weekStart =
-        "week_start" in readModelPayload && typeof readModelPayload.week_start === "string"
+        "week_start" in readModelPayload &&
+        typeof readModelPayload.week_start === "string"
           ? readModelPayload.week_start
           : targetDate;
       const weekEnd = addDaysIso(weekStart, 6);
       const { data: closures, error: closuresError } = allowedLocationIds.length
         ? await client
             .from("schedule_closures")
-            .select("id,location_id,closed_date,end_date,title,is_all_day,shift_type_ids")
+            .select(
+              "id,location_id,closed_date,end_date,title,is_all_day,shift_type_ids",
+            )
             .in("location_id", allowedLocationIds)
             .lte("closed_date", weekEnd)
             .or(`end_date.gte.${weekStart},end_date.is.null`)
@@ -443,7 +483,9 @@ export function createScheduleReadService(options: {
       if (closuresError) throw new Error(closuresError.message);
       const { data: importantDates, error: importantDatesError } = await client
         .from("important_dates")
-        .select("id,location_id,title,type,starts_on,ends_on,recurrence")
+        .select(
+          "id,location_id,location_ids,title,type,starts_on,ends_on,recurrence",
+        )
         .eq("workspace_id", workspaceId)
         .is("archived_at", null)
         .eq("affects_scheduling", true)
@@ -459,9 +501,20 @@ export function createScheduleReadService(options: {
               : "12h",
         },
         closures: closures ?? [],
-        important_dates: (importantDates ?? []).filter((date) =>
-          importantDateTouchesRange(date, weekStart, weekEnd),
-        ),
+        important_dates: (importantDates ?? [])
+          .flatMap((date) => {
+            // Preserve the per-location schedule contract without duplicating stored dates.
+            const locationIds: string[] =
+              date.location_ids ?? (date.location_id ? [date.location_id] : []);
+            return locationIds.length
+              ? locationIds
+                  .filter((id) => allowedLocationIds.includes(id))
+                  .map((location_id) => ({ ...date, location_id }))
+              : [date];
+          })
+          .filter((date) =>
+            importantDateTouchesRange(date, weekStart, weekEnd),
+          ),
       });
     },
     async listDrafts(actorUserId, workspaceId, weekStart) {
@@ -541,7 +594,8 @@ export function createScheduleReadService(options: {
           request_idempotency_key: input.idempotencyKey,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error)
+        throw Object.assign(new Error(error.message), { code: error.code });
       const session = scheduleEditSessionSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -551,6 +605,21 @@ export function createScheduleReadService(options: {
         draft_id: session.source_draft_id,
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
         changed_shift_ids: [input.shiftId],
+      });
+      return session;
+    },
+    async createShiftsBatch(input) {
+      const { data, error } = await client.rpc("create_schedule_shifts_batch_service", {
+        actor: input.actorUserId, w: input.workspaceId, sid: input.sessionId,
+        expected_revision: input.expectedSessionRevision, shifts: input.shifts,
+        request_key: input.idempotencyKey,
+      });
+      if (error) throw Object.assign(new Error(error.message), { code: error.code });
+      const session = scheduleEditSessionSchema.parse(data);
+      await broadcastScheduleInvalidation(client, {
+        workspace_id: input.workspaceId, actor_user_id: input.actorUserId,
+        week_start: session.week_start, location_ids: scheduleSessionLocationIds(session),
+        draft_id: session.source_draft_id, targets: ["draft_shifts", "pending_ops", "edit_lock"],
       });
       return session;
     },
@@ -577,6 +646,44 @@ export function createScheduleReadService(options: {
         changed_shift_ids: input.shiftIds,
       });
       return result;
+    },
+    async previewDefaultHours(input) {
+      const { data, error } = await client.rpc(
+        "preview_schedule_default_hours_service",
+        {
+          actor: input.actorUserId,
+          w: input.workspaceId,
+          sid: input.sessionId,
+          command: input.command,
+        },
+      );
+      if (error)
+        throw Object.assign(new Error(error.message), { code: error.code });
+      return scheduleDefaultHoursPreviewSchema.parse(data);
+    },
+    async applyDefaultHours(input) {
+      const { data, error } = await client.rpc(
+        "apply_schedule_default_hours_service",
+        {
+          actor: input.actorUserId,
+          w: input.workspaceId,
+          sid: input.sessionId,
+          command: input.command,
+        },
+      );
+      if (error)
+        throw Object.assign(new Error(error.message), { code: error.code });
+      const session = scheduleEditSessionSchema.parse(data);
+      await broadcastScheduleInvalidation(client, {
+        workspace_id: input.workspaceId,
+        actor_user_id: input.actorUserId,
+        week_start: session.week_start,
+        location_ids: scheduleSessionLocationIds(session),
+        draft_id: session.source_draft_id,
+        targets: ["draft_shifts", "pending_ops", "edit_lock"],
+        changed_shift_ids: input.command.shift_ids,
+      });
+      return session;
     },
     async saveSession(input) {
       const { data, error } = await client.rpc(
@@ -770,9 +877,30 @@ export function createScheduleReadService(options: {
           expected_draft_revision: input.expectedDraftRevision,
           expected_fingerprint: input.fingerprint,
           override_decisions: input.preflightAck?.decisions ?? input.overrides,
+          target_notify_employee_ids: input.notifyEmployeeIds?.length
+            ? input.notifyEmployeeIds
+            : null,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) {
+        const conflicts = await recoverDocumentPublicationConflicts(
+          client,
+          input,
+          error,
+        );
+        if (conflicts) return conflicts;
+        if (["40001", "PT409"].includes(error.code) && error.message === "stale publication preview") {
+          const refreshed = await client.rpc("preview_schedule_publication_service", {
+            actor_user_id: input.actorUserId, target_workspace_id: input.workspaceId,
+            target_draft_id: input.draftId, target_location_ids: input.locationIds,
+            target_department_ids: input.departmentIds ?? null,
+            include_no_department: input.includeNoDepartment ?? true,
+          });
+          if (refreshed.error) throw Object.assign(new Error(refreshed.error.message), { code: refreshed.error.code });
+          return { status: "preflight", preflight: schedulePublicationPreviewSchema.parse(refreshed.data), preflight_block_reason: "stale_fingerprint" };
+        }
+        throw Object.assign(new Error(error.message), { code: error.code });
+      }
       const result = schedulePublishResultSchema.parse(data);
       if (result.status !== "published") return result;
       await broadcastScheduleInvalidation(client, {
@@ -789,26 +917,6 @@ export function createScheduleReadService(options: {
           "employee_my_schedule",
         ],
       });
-      if (input.notifyEmployeeIds) {
-        const { data: notificationData, error: notificationError } =
-          await client.rpc("create_schedule_publish_notifications_service", {
-            actor_user_id: input.actorUserId,
-            target_workspace_id: input.workspaceId,
-            target_week_start: result.week_start,
-            target_publication_ids: result.publication_ids,
-            target_employee_ids: input.notifyEmployeeIds,
-          });
-        if (notificationError) throw new Error(notificationError.message);
-        return schedulePublishResultSchema.parse({
-          ...result,
-          notification_count:
-            typeof notificationData === "object" &&
-            notificationData !== null &&
-            "notification_count" in notificationData
-              ? notificationData.notification_count
-              : 0,
-        });
-      }
       return result;
     },
     async previewUnpublish(input) {
@@ -970,7 +1078,9 @@ export function createScheduleReadService(options: {
         location_ids: scheduleSessionLocationIds(result.session),
         draft_id: result.session.source_draft_id,
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
-        changed_shift_ids: result.applied.map((assignment) => assignment.shift_id),
+        changed_shift_ids: result.applied.map(
+          (assignment) => assignment.shift_id,
+        ),
       });
       return result;
     },
@@ -1107,7 +1217,91 @@ export function createScheduleReadService(options: {
         { target_now: now.toISOString() },
       );
       if (error) throw new Error(error.message);
-      return scheduledExportCronCandidateListSchema.parse(data);
+      const result = scheduledExportCronCandidateListSchema.parse(data);
+      const workspaceIds = [
+        ...new Set(result.schedules.map((schedule) => schedule.workspace_id)),
+      ];
+      if (!workspaceIds.length) return result;
+      const { data: settings, error: settingsError } = await client
+        .from("workspace_scheduling_settings")
+        .select("workspace_id,week_start_day")
+        .in("workspace_id", workspaceIds);
+      if (settingsError) throw new Error(settingsError.message);
+      const weekStartByWorkspace = new Map<string, "sunday" | "monday">(
+        (settings ?? []).map((row) => [
+          row.workspace_id,
+          row.week_start_day === "sunday" ? "sunday" : "monday",
+        ]),
+      );
+      return {
+        schedules: result.schedules.map((schedule) => ({
+          ...schedule,
+          week_start_day:
+            weekStartByWorkspace.get(schedule.workspace_id) ??
+            schedule.week_start_day,
+        })),
+      };
+    },
+    async revalidateScheduledExportCandidate(input) {
+      const { data: workspace, error: workspaceError } = await client
+        .from("workspaces")
+        .select("id,lifecycle_status,closure_effective_at")
+        .eq("id", input.workspaceId)
+        .maybeSingle();
+      if (workspaceError) throw new Error(workspaceError.message);
+      if (!workspace) return false;
+      if (
+        workspace.lifecycle_status === "deleted" ||
+        (workspace.lifecycle_status === "closure_scheduled" &&
+          workspace.closure_effective_at &&
+          new Date(workspace.closure_effective_at).getTime() <=
+            input.now.getTime())
+      ) {
+        return false;
+      }
+
+      const { data: onboarding, error: onboardingError } = await client
+        .from("workspace_onboarding")
+        .select("status")
+        .eq("workspace_id", input.workspaceId)
+        .maybeSingle();
+      if (onboardingError) throw new Error(onboardingError.message);
+      if (onboarding && onboarding.status !== "complete") return false;
+
+      const { data: membership, error: membershipError } = await client
+        .from("workspace_memberships")
+        .select("id,all_locations,status")
+        .eq("workspace_id", input.workspaceId)
+        .eq("user_id", input.requesterUserId)
+        .maybeSingle();
+      if (membershipError) throw new Error(membershipError.message);
+      if (!membership || membership.status !== "active") return false;
+
+      const { data: canExport, error: permissionError } = await client.rpc(
+        "service_actor_has_permission",
+        {
+          actor_user_id: input.requesterUserId,
+          target_workspace_id: input.workspaceId,
+          permission_key: "schedule.export",
+        },
+      );
+      if (permissionError) throw new Error(permissionError.message);
+      if (canExport !== true) return false;
+
+      if (membership.all_locations) return true;
+      const locationIds = [...new Set(input.locationIds)];
+      if (!locationIds.length) return true;
+      const { data: scopes, error: scopeError } = await client
+        .from("membership_location_scopes")
+        .select("location_id")
+        .eq("workspace_id", input.workspaceId)
+        .eq("membership_id", membership.id)
+        .in("location_id", locationIds);
+      if (scopeError) throw new Error(scopeError.message);
+      return (
+        new Set((scopes ?? []).map((scope) => scope.location_id)).size ===
+        locationIds.length
+      );
     },
     async recordScheduledExportSuccess(input) {
       const { data, error } = await client.rpc(
@@ -1137,6 +1331,36 @@ export function createScheduleReadService(options: {
       return scheduleExportScheduleSchema.parse(data);
     },
   };
+}
+
+async function recoverDocumentPublicationConflicts(
+  client: SupabaseClient,
+  input: Parameters<ScheduleReadService["publish"]>[0],
+  error: { readonly message?: string },
+): Promise<SchedulePublishResult | null> {
+  if (!error.message?.includes("schedule has hard document blockers")) {
+    return null;
+  }
+  if (!input.weekStart) return null;
+  const { data, error: conflictError } = await client.rpc(
+    "list_schedule_draft_document_conflicts_service",
+    {
+      actor_user_id: input.actorUserId,
+      target_workspace_id: input.workspaceId,
+      target_draft_id: input.draftId,
+      target_week_start: input.weekStart,
+      target_location_ids: input.locationIds,
+      target_department_ids: input.departmentIds ?? null,
+      include_no_department: input.includeNoDepartment ?? true,
+    },
+  );
+  if (conflictError) throw new Error(error.message);
+  const preview = scheduleDraftDocumentConflictPreviewSchema.parse(data);
+  if (!preview.conflicts.length) return null;
+  return schedulePublishResultSchema.parse({
+    status: "schedule_conflicts",
+    schedule_conflicts: preview.conflicts,
+  });
 }
 
 function addDaysIso(iso: string, days: number): string {
@@ -1200,13 +1424,21 @@ function importantDateTouchesRange(
 ): boolean {
   if (importantDate.recurrence === "annual") {
     return datesInRange(start, end).some((date) =>
-      annualDateCoversDate(importantDate.starts_on, importantDate.ends_on, date),
+      annualDateCoversDate(
+        importantDate.starts_on,
+        importantDate.ends_on,
+        date,
+      ),
     );
   }
   return importantDate.starts_on <= end && start <= importantDate.ends_on;
 }
 
-function annualDateCoversDate(start: string, end: string, date: string): boolean {
+function annualDateCoversDate(
+  start: string,
+  end: string,
+  date: string,
+): boolean {
   const target = monthDayNumber(date);
   const startMonthDay = monthDayNumber(start);
   const endMonthDay = monthDayNumber(end);

@@ -339,7 +339,7 @@ begin
  return jsonb_build_object('status','saved');
 end; $$;
 
-create function public.get_workspace_dashboard_service(actor_user_id uuid,target_workspace_id uuid)
+create or replace function public.get_workspace_dashboard_service(actor_user_id uuid,target_workspace_id uuid)
 returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare membership public.workspace_memberships%rowtype; role_class public.workspace_role; result jsonb;
 begin

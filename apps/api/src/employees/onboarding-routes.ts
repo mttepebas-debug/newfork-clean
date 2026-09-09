@@ -1,23 +1,15 @@
 import {
-  employeeAvailabilityInputSchema,
   employeeOnboardingProfileSchema,
 } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { WorkspaceContextResolver } from "../auth/workspace-context";
 import type { EmployeeOnboardingService } from "./onboarding-service";
+import { legacyAvailabilityGone } from "../availability/availability-retirement";
 
 const revisionSchema = z.number().int().positive();
 const profileBodySchema = z.object({
   profile: employeeOnboardingProfileSchema,
-  revision: revisionSchema,
-});
-const ssnBodySchema = z.object({
-  ssn: z.string().regex(/^\d{9}$/),
-  revision: revisionSchema,
-});
-const availabilityBodySchema = z.object({
-  availability: employeeAvailabilityInputSchema,
   revision: revisionSchema,
 });
 const requirementParamsSchema = z.object({ requirementId: z.string().uuid() });
@@ -58,8 +50,6 @@ export function registerEmployeeOnboardingRoutes(
     readonly contextResolver: WorkspaceContextResolver | null;
   },
 ): void {
-  const ssnRateLimit = new Map<string, number[]>();
-
   app.get("/v1/me/onboarding", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
     if (!token)
@@ -87,40 +77,16 @@ export function registerEmployeeOnboardingRoutes(
 
   app.put("/v1/me/onboarding/ssn", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
-    const body = ssnBodySchema.safeParse(request.body);
     if (!token)
       return reply.status(401).send({ error: "Valid bearer session required" });
-    if (!body.success)
-      return reply.status(400).send({ error: "Valid nine-digit SSN required" });
-    if (!allowSsnAttempt(ssnRateLimit, token))
-      return reply
-        .status(429)
-        .send({ error: "Try secure identity again later" });
-    return serviceReply(reply, async () => ({
-      revision: await options.service.saveSsn(
-        token,
-        body.data.ssn,
-        body.data.revision,
-      ),
-    }));
+    return reply.status(410).send({ error: "SSN is deferred from V1" });
   });
 
   app.put("/v1/me/onboarding/availability", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
-    const body = availabilityBodySchema.safeParse(request.body);
     if (!token)
       return reply.status(401).send({ error: "Valid bearer session required" });
-    if (!body.success)
-      return reply
-        .status(400)
-        .send({ error: "Complete weekly availability required" });
-    return serviceReply(reply, async () => ({
-      revision: await options.service.saveAvailability(
-        token,
-        body.data.availability,
-        body.data.revision,
-      ),
-    }));
+    return reply.status(410).send(legacyAvailabilityGone);
   });
 
   app.post(
@@ -208,6 +174,34 @@ export function registerEmployeeOnboardingRoutes(
     }));
   });
 
+  app.post("/v1/me/onboarding/reset", async (request, reply) => {
+    const token = bearerToken(request.headers.authorization);
+    const body = submitBodySchema.safeParse(request.body);
+    if (!token)
+      return reply.status(401).send({ error: "Valid bearer session required" });
+    if (!body.success)
+      return reply
+        .status(400)
+        .send({ error: "Current onboarding revision required" });
+    return serviceReply(reply, async () => ({
+      revision: await options.service.reset(token, body.data.revision),
+    }));
+  });
+
+  app.post("/v1/me/onboarding/leave", async (request, reply) => {
+    const token = bearerToken(request.headers.authorization);
+    const body = submitBodySchema.safeParse(request.body);
+    if (!token)
+      return reply.status(401).send({ error: "Valid bearer session required" });
+    if (!body.success)
+      return reply
+        .status(400)
+        .send({ error: "Current onboarding revision required" });
+    return serviceReply(reply, () =>
+      options.service.leave(token, body.data.revision),
+    );
+  });
+
   app.get(
     "/v1/workspaces/:workspaceId/employees/:employeeId/onboarding",
     async (request, reply) => {
@@ -222,10 +216,9 @@ export function registerEmployeeOnboardingRoutes(
         return reply
           .status(401)
           .send({ error: "Valid bearer session required" });
-      if (
-        context.workspace.id !== params.data.workspaceId ||
-        !context.permissions.includes("employee_onboarding.review")
-      )
+      if (context.workspace.id !== params.data.workspaceId)
+        return reply.status(404).send({ error: "Workspace not found" });
+      if (!context.permissions.includes("employee_onboarding.review"))
         return reply
           .status(403)
           .send({ error: "Employee onboarding review required" });
@@ -256,10 +249,9 @@ export function registerEmployeeOnboardingRoutes(
         return reply
           .status(401)
           .send({ error: "Valid bearer session required" });
-      if (
-        context.workspace.id !== params.data.workspaceId ||
-        !context.permissions.includes("employee_onboarding.review")
-      )
+      if (context.workspace.id !== params.data.workspaceId)
+        return reply.status(404).send({ error: "Workspace not found" });
+      if (!context.permissions.includes("employee_onboarding.review"))
         return reply
           .status(403)
           .send({ error: "Employee onboarding review required" });
@@ -290,10 +282,9 @@ export function registerEmployeeOnboardingRoutes(
         return reply
           .status(401)
           .send({ error: "Valid bearer session required" });
-      if (
-        context.workspace.id !== params.data.workspaceId ||
-        !context.permissions.includes("employee_documents.review")
-      )
+      if (context.workspace.id !== params.data.workspaceId)
+        return reply.status(404).send({ error: "Workspace not found" });
+      if (!context.permissions.includes("employee_documents.review"))
         return reply
           .status(403)
           .send({ error: "Employee document review required" });
@@ -337,14 +328,4 @@ function bearerToken(authorization: string | undefined): string {
   return authorization?.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length).trim()
     : "";
-}
-
-function allowSsnAttempt(store: Map<string, number[]>, token: string): boolean {
-  const key = token.slice(-24);
-  const cutoff = Date.now() - 15 * 60 * 1000;
-  const attempts = (store.get(key) ?? []).filter((value) => value >= cutoff);
-  if (attempts.length >= 5) return false;
-  attempts.push(Date.now());
-  store.set(key, attempts);
-  return true;
 }

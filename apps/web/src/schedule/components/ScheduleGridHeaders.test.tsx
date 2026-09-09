@@ -122,6 +122,29 @@ describe("ScheduleGridHeaders", () => {
     expect(screen.queryByRole("columnheader", { name: "Week" })).toBeNull();
   });
 
+  it("falls back to the generated organization logo when the upload fails", () => {
+    render(
+      <ScheduleGridHeaders
+        closures={[]}
+        days={["2026-08-18"]}
+        importantDates={[]}
+        locationGroups={locationGroups.slice(0, 1)}
+        organizationLogoPlacement={null}
+        organizationLogoUrl="https://storage.example/broken-logo.png"
+        organizationName="Meyhouse Jazz"
+        selectedDate="2026-08-18"
+        showTotalHours={false}
+        weekStartDate="2026-08-17"
+        onDayHeaderClick={vi.fn()}
+        onToggleLocationFilter={vi.fn()}
+      />,
+    );
+
+    fireEvent.error(screen.getByRole("img", { name: "Meyhouse Jazz logo" }));
+
+    expect(screen.getByTestId("schedule-generated-organization-logo")).toBeTruthy();
+  });
+
   it("uses the canonical week start for location publication warnings in daily view", () => {
     render(
       <ScheduleGridHeaders

@@ -1,4 +1,11 @@
-import type { ScheduleEmployee, ScheduleReadModel } from "@newfork/shared/schedule";
+import type {
+  ScheduleEmployee,
+  ScheduleReadModel,
+  ScheduleShift,
+  ScheduleShiftMutationInput,
+} from "@newfork/shared/schedule";
+
+import { evaluateScheduleShiftConflicts } from "../schedule-conflicts";
 
 export function getShiftEditorSelectedEmployee(
   employees: readonly ScheduleEmployee[],
@@ -12,16 +19,47 @@ export function getShiftEditorEligibleEmployees({
   employees,
   locationId,
   jobId,
+  model,
+  shifts,
+  value,
+  excludeShiftId = null,
 }: {
   readonly employees: readonly ScheduleEmployee[];
   readonly locationId: string;
   readonly jobId: string | null;
+  readonly model?: ScheduleReadModel;
+  readonly shifts?: readonly ScheduleShift[];
+  readonly value?: ScheduleShiftMutationInput;
+  readonly excludeShiftId?: string | null;
 }): ScheduleEmployee[] {
   return employees.filter(
     (employee) =>
       employee.location_ids.includes(locationId) &&
-      (!jobId || employee.job_ids.includes(jobId)),
+      (!jobId || employee.job_ids.includes(jobId)) &&
+      !employee.is_excluded_from_schedule &&
+      (!value?.shift_type_id ||
+        (employee.shift_type_ids ?? []).length === 0 ||
+        employee.shift_type_ids?.includes(value.shift_type_id)) &&
+      (!model ||
+        !value ||
+        evaluateScheduleShiftConflicts(
+          model,
+          shifts ?? model.shifts,
+          { ...value, employee_id: employee.id },
+          excludeShiftId,
+        ).every((reason) => !isEmployeeEligibilityBlockingConflict(reason))),
   );
+}
+
+function isEmployeeEligibilityBlockingConflict(reason: unknown): boolean {
+  if (!reason || typeof reason !== "object" || Array.isArray(reason)) {
+    return false;
+  }
+
+  const type = (reason as { readonly type?: unknown }).type;
+  // Availability is checked against all effective patterns and timezones by
+  // the server before saving. Cached windows must not hide a reviewable person.
+  return type === "time_overlap" || type === "named_duplicate";
 }
 
 export function getShiftEditorEligibleJobs({
@@ -47,7 +85,9 @@ export function shouldShowShiftEditorCountStepper({
   readonly targetEmployeeId: string | null;
   readonly valueEmployeeId: string | null;
 }): boolean {
-  return mode === "create" && targetEmployeeId === null && valueEmployeeId === null;
+  return (
+    mode === "create" && targetEmployeeId === null && valueEmployeeId === null
+  );
 }
 
 export function clampShiftEditorCount(nextCount: number): number {

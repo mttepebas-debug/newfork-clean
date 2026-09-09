@@ -82,6 +82,7 @@ export function ScheduleGridHeaders({
           role="columnheader"
           aria-label="Total hours"
           data-schedule-total-hours-header="true"
+          data-schedule-total-column-cell="true"
         >
           Total
         </div>
@@ -109,6 +110,7 @@ export function ScheduleGridHeaders({
           className="schedule-total-subheader"
           role="columnheader"
           data-schedule-total-hours-row-gutter="true"
+          data-schedule-total-column-cell="true"
         >
           Week
         </div>

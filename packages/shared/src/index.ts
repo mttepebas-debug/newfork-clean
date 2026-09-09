@@ -1,4 +1,29 @@
 import { z } from "zod";
+import {
+  timeOffCancellationContextSchema,
+  timeOffAssignmentDispositionSchema,
+  timeOffPeriodReadSchema,
+  timeOffReleasedAssignmentSchema,
+  timeOffSegmentDecisionSchema,
+} from "./time-off";
+export * from "./time-off";
+import { shiftAvailabilityAssessmentSchema } from "./availability-assessment";
+import {
+  availabilityDayInputSchema,
+  availabilityDateOverrideSchema,
+  shiftTimeBasisSchema,
+  shiftTimeSnapshotSchema,
+} from "./availability";
+import {
+  employeeAvailabilityContextSchema,
+  employeeHubAvailabilityInputSchema,
+} from "./employee-hub";
+
+export * from "./availability";
+export * from "./availability-lifecycle";
+export * from "./availability-assessment";
+export * from "./availability-calendar";
+export * from "./weekly-preferences";
 
 export const healthResponseSchema = z.object({
   ok: z.literal(true),
@@ -8,8 +33,12 @@ export const healthResponseSchema = z.object({
 
 export * from "./employee-hub";
 export * from "./communications";
+export * from "./notification-catalog";
+export * from "./notification-display";
+export * from "./notification-settings";
 export * from "./time-capture";
 export * from "./kiosk";
+export * from "./storage-access";
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
@@ -21,11 +50,39 @@ export const workspaceRoleSchema = z.enum([
 ]);
 export type WorkspaceRole = z.infer<typeof workspaceRoleSchema>;
 
+export const workspaceMembershipLifecycleStatusSchema = z.enum([
+  "active",
+  "invited",
+  "pending_activation",
+  "suspended",
+]);
+export type WorkspaceMembershipLifecycleStatus = z.infer<
+  typeof workspaceMembershipLifecycleStatusSchema
+>;
+
+export const workspaceSummaryStatusSchema = z.enum([
+  "active",
+  "pending",
+  "suspended",
+]);
+export type WorkspaceSummaryStatus = z.infer<
+  typeof workspaceSummaryStatusSchema
+>;
+
+export const workspaceLifecycleStatusSchema = z.enum([
+  "active",
+  "closure_scheduled",
+]);
+export type WorkspaceLifecycleStatus = z.infer<
+  typeof workspaceLifecycleStatusSchema
+>;
+
 export const permissionSchema = z.enum([
   "workspace.read",
   "workspace.manage",
   "schedule.read",
   "schedule.manage",
+  "schedule.availability.override",
   "schedule.publish",
   "schedule.templates.manage",
   "schedule.export",
@@ -51,6 +108,14 @@ export const permissionSchema = z.enum([
   "announcements.read",
   "announcements.manage",
   "notifications.read",
+  "notifications.read_own",
+  "notifications.preferences.write_own",
+  "notifications.settings.read",
+  "notifications.settings.write",
+  "notifications.test_send",
+  "notifications.delivery_audit.read",
+  "notifications.dlq.replay",
+  "notifications.broadcast.approve",
   "time.capture.own",
   "time.read.own",
   "time.correction.request.own",
@@ -78,6 +143,7 @@ const rolePermissions = {
     "workspace.read",
     "schedule.read",
     "schedule.manage",
+    "schedule.availability.override",
     "schedule.publish",
     "schedule.templates.manage",
     "schedule.export",
@@ -172,7 +238,8 @@ export type OnboardingStatus = z.infer<typeof onboardingStatusSchema>;
 
 export const workspaceOnboardingSchema = z.object({
   status: onboardingStatusSchema,
-  currentStep: z.number().int().min(1).max(3),
+  currentStep: z.number().int().min(1).max(4),
+  revision: z.number().int().positive().optional(),
 });
 export type WorkspaceOnboarding = z.infer<typeof workspaceOnboardingSchema>;
 
@@ -183,6 +250,7 @@ export const accountProfileSchema = z.object({
   userId: z.string().uuid(),
   email: z.string().email(),
   displayName: z.string().trim().min(1).max(100),
+  phone: z.string().trim().min(7).max(30).nullable().default(null),
   theme: themePreferenceSchema,
 });
 export type AccountProfile = z.infer<typeof accountProfileSchema>;
@@ -191,32 +259,106 @@ export const workspaceSummarySchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
   role: workspaceRoleSchema,
+  status: workspaceSummaryStatusSchema.default("active"),
   isActive: z.boolean(),
   onboarding: workspaceOnboardingSchema,
+  lifecycleStatus: workspaceLifecycleStatusSchema.optional(),
+  closureEffectiveAt: z
+    .string()
+    .datetime({ offset: true })
+    .nullable()
+    .optional(),
+  pendingOwnershipTransfer: z
+    .object({
+      id: z.string().uuid(),
+      role: z.enum(["initiator", "target"]),
+      expiresAt: z.string().datetime({ offset: true }),
+    })
+    .nullable()
+    .optional(),
 });
 export type WorkspaceSummary = z.infer<typeof workspaceSummarySchema>;
+
+export const accountPendingInvitationSchema = z.object({
+  id: z.string().uuid(),
+  workspaceId: z.string().uuid(),
+  workspaceName: z.string().trim().min(1).max(120),
+  emailHint: z.string().trim().min(1),
+  expiresAt: z.string().datetime({ offset: true }),
+});
+export type AccountPendingInvitation = z.infer<
+  typeof accountPendingInvitationSchema
+>;
 
 export const workspaceSummaryRowSchema = z.object({
   workspace_id: z.string().uuid(),
   workspace_name: z.string().trim().min(1).max(120),
   workspace_role: workspaceRoleSchema,
+  membership_status: workspaceMembershipLifecycleStatusSchema
+    .optional()
+    .default("active"),
   is_active: z.boolean(),
   onboarding_status: onboardingStatusSchema,
-  onboarding_current_step: z.coerce.number().int().min(1).max(3),
+  onboarding_current_step: z.coerce.number().int().min(1).max(4),
+  workspace_lifecycle_status: workspaceLifecycleStatusSchema
+    .optional()
+    .default("active"),
+  closure_effective_at: z
+    .string()
+    .datetime({ offset: true })
+    .nullable()
+    .optional()
+    .default(null),
+  pending_ownership_transfer_id: z.string().uuid().nullable().optional(),
+  pending_ownership_transfer_role: z
+    .enum(["initiator", "target"])
+    .nullable()
+    .optional(),
+  pending_ownership_transfer_expires_at: z
+    .string()
+    .datetime({ offset: true })
+    .nullable()
+    .optional(),
 });
 
 export function workspaceSummaryFromRow(input: unknown): WorkspaceSummary {
   const row = workspaceSummaryRowSchema.parse(input);
+  const status = workspaceSummaryStatusFromMembershipStatus(
+    row.membership_status,
+  );
   return workspaceSummarySchema.parse({
     id: row.workspace_id,
     name: row.workspace_name,
     role: row.workspace_role,
-    isActive: row.is_active,
+    status,
+    isActive: row.is_active && status === "active",
     onboarding: {
       status: row.onboarding_status,
       currentStep: row.onboarding_current_step,
+      revision: 1,
     },
+    lifecycleStatus: row.workspace_lifecycle_status,
+    closureEffectiveAt: row.closure_effective_at,
+    pendingOwnershipTransfer:
+      status === "active" &&
+      row.pending_ownership_transfer_id &&
+      row.pending_ownership_transfer_role &&
+      row.pending_ownership_transfer_expires_at
+        ? {
+            id: row.pending_ownership_transfer_id,
+            role: row.pending_ownership_transfer_role,
+            expiresAt: row.pending_ownership_transfer_expires_at,
+          }
+        : null,
   });
+}
+
+export function workspaceSummaryStatusFromMembershipStatus(
+  status: WorkspaceMembershipLifecycleStatus,
+): WorkspaceSummaryStatus {
+  if (status === "suspended") return "suspended";
+  if (status === "invited" || status === "pending_activation") return "pending";
+  return "active";
 }
 
 export const activeWorkspaceContextSchema = z
@@ -286,7 +428,8 @@ export const activeWorkspaceRowSchema = z.object({
   permission_keys: z.array(permissionSchema).optional(),
   all_locations: z.boolean(),
   onboarding_status: onboardingStatusSchema.default("complete"),
-  onboarding_current_step: z.coerce.number().int().min(1).max(3).default(2),
+  onboarding_current_step: z.coerce.number().int().min(1).max(4).default(2),
+  onboarding_revision: z.coerce.number().int().positive().default(1),
 });
 export type ActiveWorkspaceRow = z.infer<typeof activeWorkspaceRowSchema>;
 
@@ -323,6 +466,7 @@ export function activeWorkspaceContextFromRow(
     onboarding: {
       status: row.onboarding_status,
       currentStep: row.onboarding_current_step,
+      revision: row.onboarding_revision,
     },
     locationScope: {
       allLocations: row.all_locations,
@@ -367,10 +511,10 @@ export const locationSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
-  street_address: z.string().trim().min(1).max(180),
-  city: z.string().trim().min(1).max(100),
-  region: z.string().trim().min(1).max(100),
-  postal_code: z.string().trim().min(1).max(20),
+  street_address: z.string().trim().max(180),
+  city: z.string().trim().max(100),
+  region: z.string().trim().max(100),
+  postal_code: z.string().trim().max(20),
   country_code: z.string().regex(/^[A-Z]{2}$/),
   timezone: z.string().trim().min(1).max(80),
   sort_order: z.number().int().nonnegative(),
@@ -423,6 +567,148 @@ export const jobInputSchema = jobSchema.pick({
 });
 export type JobInput = z.infer<typeof jobInputSchema>;
 
+export const departmentWithJobsInputSchema = z.object({
+  department: departmentInputSchema,
+  jobs: z.array(jobInputSchema.omit({ department_id: true })).max(500),
+});
+export type DepartmentWithJobsInput = z.infer<
+  typeof departmentWithJobsInputSchema
+>;
+export const jobDeletionResultSchema = z.object({
+  removed_count: z.number().int().nonnegative(),
+});
+export const departmentJobsInputSchema = z.object({
+  jobs: jobInputSchema.omit({ department_id: true }).array().min(1).max(500),
+});
+export const departmentWithJobsResultSchema = z.object({
+  department: departmentSchema,
+  jobs: z.array(jobSchema),
+});
+export const organizationJobCountsSchema = z.object({
+  jobs: z.array(
+    z.object({
+      id: z.string().uuid(),
+      employee_count: z.coerce.number().int().nonnegative(),
+    }),
+  ),
+  departments: z.array(
+    z.object({
+      id: z.string().uuid(),
+      employee_count: z.coerce.number().int().nonnegative(),
+    }),
+  ),
+});
+export type OrganizationJobCounts = z.infer<typeof organizationJobCountsSchema>;
+export const jobAssignmentQuerySchema = z.object({
+  search: z.string().trim().max(100).default(""),
+  location_id: z.string().uuid().optional(),
+  filter: z.enum(["all", "assigned", "unassigned"]).default("all"),
+  page: z.coerce.number().int().min(0).max(100000).default(0),
+});
+export type JobAssignmentQuery = z.infer<typeof jobAssignmentQuerySchema>;
+export const jobAssignmentEmployeeSchema = z.object({
+  employee_id: z.string().uuid(),
+  display_name: z.string(),
+  employee_code: z.string(),
+  location_name: z.string().nullable(),
+  display_status: z.string(),
+  assigned: z.boolean(),
+  is_primary: z.boolean(),
+  revision: z.number().int().positive(),
+  can_manage: z.boolean(),
+  disabled_reason: z.string().nullable(),
+});
+export type JobAssignmentEmployee = z.infer<typeof jobAssignmentEmployeeSchema>;
+export const jobAssignmentPageSchema = z.object({
+  employees: z.array(jobAssignmentEmployeeSchema),
+  total: z.coerce.number().int().nonnegative(),
+  manageable_total: z.coerce.number().int().nonnegative(),
+  assigned_count: z.coerce.number().int().nonnegative(),
+  locations: z.array(z.object({ id: z.string().uuid(), name: z.string() })),
+});
+export type JobAssignmentPage = z.infer<typeof jobAssignmentPageSchema>;
+export const jobAssignmentTargetSchema = jobAssignmentEmployeeSchema.pick({
+  employee_id: true,
+  assigned: true,
+  revision: true,
+});
+export type JobAssignmentTarget = z.infer<typeof jobAssignmentTargetSchema>;
+export const jobAssignmentChangeSchema = z.object({
+  employee_id: z.string().uuid(),
+  assigned: z.boolean(),
+  expected_revision: z.number().int().positive(),
+});
+export type JobAssignmentChange = z.infer<typeof jobAssignmentChangeSchema>;
+export const jobAssignmentChangesSchema = z
+  .object({
+    changes: z.array(jobAssignmentChangeSchema).min(1).max(10000),
+  })
+  .refine(
+    (value) =>
+      new Set(value.changes.map((row) => row.employee_id)).size ===
+      value.changes.length,
+    {
+      message: "An employee may only appear once in a batch",
+      path: ["changes"],
+    },
+  );
+export const jobAssignmentResultSchema = z.object({
+  changed_count: z.number().int().nonnegative(),
+  unchanged_count: z.number().int().nonnegative(),
+});
+
+export const jobDetailsChangesSchema = z
+  .object({
+    job: jobInputSchema.optional(),
+    expected_job: jobInputSchema.optional(),
+    changes: z.array(jobAssignmentChangeSchema).max(10000).default([]),
+  })
+  .superRefine((value, ctx) => {
+    if (Boolean(value.job) !== Boolean(value.expected_job))
+      ctx.addIssue({
+        code: "custom",
+        message: "Job details require their original values",
+        path: ["expected_job"],
+      });
+    if (!value.job && !value.changes.length)
+      ctx.addIssue({
+        code: "custom",
+        message: "Choose at least one change",
+        path: ["changes"],
+      });
+    if (
+      new Set(value.changes.map((row) => row.employee_id)).size !==
+      value.changes.length
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "An employee may only appear once in a batch",
+        path: ["changes"],
+      });
+  });
+export type JobDetailsChanges = z.infer<typeof jobDetailsChangesSchema>;
+export const jobDetailsResultSchema = jobAssignmentResultSchema.extend({
+  job: jobSchema,
+});
+export const jobCreateWithAssignmentsSchema = z
+  .object({
+    job: jobInputSchema,
+    changes: z.array(jobAssignmentChangeSchema).max(10000).default([]),
+  })
+  .refine(
+    (value) =>
+      new Set(value.changes.map((row) => row.employee_id)).size ===
+      value.changes.length,
+    {
+      message: "An employee may only appear once in a batch",
+      path: ["changes"],
+    },
+  );
+export type JobCreateWithAssignments = z.infer<
+  typeof jobCreateWithAssignmentsSchema
+>;
+export const jobCreateWithAssignmentsResultSchema = jobDetailsResultSchema;
+
 export const weekStartDaySchema = z.enum(["sunday", "monday"]);
 export const scheduleDeadlineDaySchema = z.enum([
   "monday",
@@ -443,11 +729,20 @@ export const schedulingSettingsSchema = z.object({
   schedule_deadline_day: scheduleDeadlineDaySchema,
   conflict_policy: conflictPolicySchema,
   availability_enforcement: availabilityEnforcementSchema,
+  availability_ownership: z
+    .enum(["hybrid", "employee_only", "manager_only"])
+    .optional(),
+  availability_approval: z.enum(["none", "narrowing", "all"]).optional(),
+  availability_initial_review: z.boolean().optional(),
+  availability_notice_days: z.number().int().min(0).max(90).optional(),
+  availability_policy_revision: z.number().int().positive().optional(),
+  minimum_travel_minutes: z.number().int().min(0).max(240).optional(),
   time_format: scheduleTimeFormatSchema,
 });
 export type SchedulingSettings = z.infer<typeof schedulingSettingsSchema>;
 export const schedulingSettingsInputSchema = schedulingSettingsSchema.omit({
   workspace_id: true,
+  availability_policy_revision: true,
 });
 export type SchedulingSettingsInput = z.infer<
   typeof schedulingSettingsInputSchema
@@ -470,6 +765,8 @@ export const importantDateSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
   location_id: z.string().uuid().nullable(),
+  location_ids: z.array(z.string().uuid()).max(100).optional(),
+  location_names: z.array(z.string()).optional(),
   location_name: z.string().trim().min(1).max(120).nullable(),
   title: z.string().trim().min(1).max(120),
   type: importantDateTypeSchema,
@@ -485,6 +782,7 @@ export type ImportantDate = z.infer<typeof importantDateSchema>;
 export const importantDateInputSchema = importantDateSchema
   .pick({
     location_id: true,
+    location_ids: true,
     title: true,
     type: true,
     starts_on: true,
@@ -526,6 +824,7 @@ export const shiftTypeSchema = z.object({
   color: colorSchema,
   default_start_time: timeOfDaySchema.nullable(),
   default_end_time: timeOfDaySchema.nullable(),
+  default_revision: z.number().int().positive().optional(),
   crosses_midnight: z.boolean(),
   sort_order: z.number().int().nonnegative(),
   archived_at: z.string().datetime({ offset: true }).nullable(),
@@ -558,6 +857,22 @@ export const shiftTypeInputSchema = shiftTypeSchema
   );
 export type ShiftTypeInput = z.infer<typeof shiftTypeInputSchema>;
 
+export const shiftLabelSchema = z.object({
+  id: z.string().uuid(),
+  workspace_id: z.string().uuid(),
+  name: z.string().trim().min(1).max(60),
+  color: colorSchema,
+  sort_order: z.number().int().nonnegative(),
+  archived_at: z.string().datetime({ offset: true }).nullable(),
+});
+export type ShiftLabel = z.infer<typeof shiftLabelSchema>;
+
+export const shiftLabelInputSchema = shiftLabelSchema.pick({
+  name: true,
+  color: true,
+});
+export type ShiftLabelInput = z.infer<typeof shiftLabelInputSchema>;
+
 export const scheduleViewSchema = z.enum(["day", "week"]);
 export type ScheduleView = z.infer<typeof scheduleViewSchema>;
 
@@ -585,6 +900,7 @@ export const scheduleJobSchema = scheduleReferenceSchema.extend({
 export const scheduleShiftTypeSchema = scheduleReferenceSchema.extend({
   default_start_time: timeOfDaySchema.nullable(),
   default_end_time: timeOfDaySchema.nullable(),
+  default_revision: z.number().int().positive().optional(),
 });
 
 export const scheduleShiftLabelSchema = scheduleReferenceSchema;
@@ -593,8 +909,62 @@ export type ScheduleShiftLabel = z.infer<typeof scheduleShiftLabelSchema>;
 export const scheduleAvailabilityDaySchema = z.object({
   day: z.number().int().min(0).max(6),
   mode: z.enum(["unavailable", "unrestricted", "windows"]),
-  windows: z.array(z.object({ start: timeOfDaySchema, end: timeOfDaySchema })),
+  windows: z.array(availabilityDayInputSchema.shape.windows.element),
+  blocked_shift_type_ids:
+    availabilityDayInputSchema.shape.blocked_shift_type_ids,
 });
+
+const scheduleWeeklyIntervalSchema = z.object({
+  start_at: z.string().datetime({ offset: true }),
+  end_at: z.string().datetime({ offset: true }),
+});
+export const scheduleWeeklyLocationSchema = z
+  .object({
+    location_id: z.string().uuid(),
+    location_name: z.string(),
+    timezone: z.string(),
+    week_start: z.string().date(),
+    status: z.enum(["ready", "unknown"]),
+    unavailable_intervals: z.array(scheduleWeeklyIntervalSchema),
+    leave_intervals: z.array(scheduleWeeklyIntervalSchema),
+    clock_segments: z.array(
+      scheduleWeeklyIntervalSchema.extend({ offset_seconds: z.number().int() }),
+    ),
+    days: z.array(
+      z.object({
+        date: z.string().date(),
+        has_unavailable: z.boolean(),
+        all_day: z.boolean(),
+      }),
+    ),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      [
+        ...value.unavailable_intervals,
+        ...value.leave_intervals,
+        ...value.clock_segments,
+      ].some(
+        (interval) =>
+          Date.parse(interval.end_at) <= Date.parse(interval.start_at),
+      )
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Availability intervals must have a positive duration.",
+      });
+    if (
+      value.status === "ready" &&
+      (!value.clock_segments.length ||
+        value.days.length !== 7 ||
+        new Set(value.days.map((day) => day.date)).size !== 7)
+    )
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "A verified availability projection requires a complete week and clock offsets.",
+      });
+  });
 
 export const scheduleEmployeeSchema = z.object({
   id: z.string().uuid(),
@@ -606,6 +976,22 @@ export const scheduleEmployeeSchema = z.object({
   is_excluded_from_schedule: z.boolean().optional(),
   primary_job_id: z.string().uuid().nullable().optional(),
   availability: z.array(scheduleAvailabilityDaySchema).length(7).nullable(),
+  weekly_availability: z.array(scheduleWeeklyLocationSchema).optional(),
+  availability_versions: z
+    .array(
+      z.object({
+        id: z.string().uuid().optional(),
+        kind: z.enum(["weekly", "temporary"]).optional(),
+        replace_version_ids: z.array(z.string().uuid()).optional(),
+        date_overrides: z.array(availabilityDateOverrideSchema).optional(),
+        revision: z.number().int().positive(),
+        timezone: z.string(),
+        days: z.array(scheduleAvailabilityDaySchema).length(7),
+        effective_from: z.string().date(),
+        effective_until: z.string().date().nullable(),
+      }),
+    )
+    .optional(),
 });
 export type ScheduleEmployee = z.infer<typeof scheduleEmployeeSchema>;
 
@@ -616,9 +1002,22 @@ export const scheduleShiftSchema = z.object({
   job_id: z.string().uuid(),
   shift_type_id: z.string().uuid().nullable(),
   scheduled_date: z.string().date(),
-  start_time: timeOfDaySchema,
-  end_time: timeOfDaySchema,
-  crosses_midnight: z.boolean(),
+  start_time: z.preprocess(
+    (value) => value ?? "",
+    z.union([timeOfDaySchema, z.literal("")]),
+  ),
+  end_time: z.preprocess(
+    (value) => value ?? "",
+    z.union([timeOfDaySchema, z.literal("")]),
+  ),
+  crosses_midnight: z.preprocess((value) => value ?? false, z.boolean()),
+  time_basis: shiftTimeBasisSchema.optional(),
+  time_snapshot: shiftTimeSnapshotSchema.nullable().optional(),
+  time_timezone: z.string().nullable().optional(),
+  availability_assessment: shiftAvailabilityAssessmentSchema
+    .nullable()
+    .optional(),
+  availability_responsibility_retained: z.boolean().optional(),
   unpaid_break_minutes: scheduleUnpaidBreakMinutesSchema.optional().default(0),
   hide_time_on_badge: z.boolean().optional().default(false),
   label_ids: z.array(z.string().uuid()).optional(),
@@ -747,8 +1146,11 @@ export type SchedulePendingOpType = z.infer<typeof schedulePendingOpTypeSchema>;
 export const schedulePendingOpPayloadSchema = z
   .object({
     scheduled_date: z.string().date().optional(),
-    start_time: timeOfDaySchema.optional(),
-    end_time: timeOfDaySchema.optional(),
+    start_time: scheduleShiftSchema.shape.start_time.optional(),
+    end_time: scheduleShiftSchema.shape.end_time.optional(),
+    time_basis: shiftTimeBasisSchema.optional(),
+    time_snapshot: shiftTimeSnapshotSchema.nullable().optional(),
+    time_timezone: z.string().nullable().optional(),
     unpaid_break_minutes: scheduleUnpaidBreakMinutesSchema.optional(),
     location_id: z
       .union([z.string().uuid(), z.literal(""), z.null()])
@@ -852,6 +1254,9 @@ export const scheduleShiftMutationInputSchema = scheduleShiftSchema
     end_time: true,
     unpaid_break_minutes: true,
     hide_time_on_badge: true,
+    time_basis: true,
+    time_snapshot: true,
+    time_timezone: true,
     label_ids: true,
     label_names: true,
     note: true,
@@ -862,6 +1267,15 @@ export const scheduleShiftMutationInputSchema = scheduleShiftSchema
       .default(0),
     idempotency_key: z.string().uuid().optional(),
     conflict_override_note: z.string().trim().min(10).max(1000).optional(),
+    availability_assessment_fingerprint: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+    service_classification_note: z.string().trim().min(10).max(500).optional(),
+    service_classification_fingerprint: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
   });
 export type ScheduleShiftMutationInput = z.infer<
   typeof scheduleShiftMutationInputSchema
@@ -899,12 +1313,19 @@ export const scheduleAvailabilityConflictSchema = z.object({
   location_id: z.string().uuid(),
   location_name: z.string().trim().min(1).max(120),
   date: z.string().date(),
-  start_time: timeOfDaySchema,
-  end_time: timeOfDaySchema,
+  start_time: z.preprocess(
+    (value) => value ?? "",
+    z.union([timeOfDaySchema, z.literal("")]),
+  ),
+  end_time: z.preprocess(
+    (value) => value ?? "",
+    z.union([timeOfDaySchema, z.literal("")]),
+  ),
   shift_type_label: z.string().trim().min(1).max(80).nullable(),
   job_name: z.string().trim().min(1).max(120).nullable(),
   warning_text: z.string().trim().min(1).max(500),
   conflict_fingerprint: z.string().min(1).max(64),
+  assessment: shiftAvailabilityAssessmentSchema.optional(),
 });
 export type ScheduleAvailabilityConflict = z.infer<
   typeof scheduleAvailabilityConflictSchema
@@ -919,6 +1340,9 @@ export type ScheduleAvailabilityConflictResult = z.infer<
 >;
 
 export const schedulePublishFindingCodeSchema = z.enum([
+  "availability_unknown",
+  "availability_review_pending",
+  "time_source_unresolved",
   "overlap",
   "availability",
   "closed_location",
@@ -934,6 +1358,8 @@ export const schedulePublishFindingSchema = z.object({
   code: schedulePublishFindingCodeSchema,
   severity: z.enum(["hard", "soft"]),
   overrideable: z.boolean(),
+  availability_state: z.enum(["new", "accepted"]).optional(),
+  warning_policy: z.enum(["warn", "confirm"]).optional(),
   tier: z.enum(["blocker", "risk", "note"]).optional(),
   projected: z.boolean().optional(),
   introduced: z.boolean().optional(),
@@ -945,7 +1371,7 @@ export const schedulePublishFindingSchema = z.object({
   employee_name: z.string().trim().min(1).max(161).nullable().optional(),
   scheduled_date: z.string().date(),
   date: z.string().date().nullable().optional(),
-  shift_ids: z.array(z.string().uuid()).min(1),
+  shift_ids: z.array(z.string().uuid()),
 });
 export type SchedulePublishFinding = z.infer<
   typeof schedulePublishFindingSchema
@@ -1017,7 +1443,7 @@ export type SchedulePublishConflictShiftSummary = z.infer<
   typeof schedulePublishConflictShiftSummarySchema
 >;
 
-export const schedulePublishConflictSummarySchema = z.object({
+export const schedulePublishShiftConflictSummarySchema = z.object({
   employee_id: z.string().uuid(),
   employee_name: z.string().trim().min(1).max(161).nullable(),
   date: z.string().date(),
@@ -1026,6 +1452,41 @@ export const schedulePublishConflictSummarySchema = z.object({
   second: schedulePublishConflictShiftSummarySchema,
   introduced: z.boolean().optional(),
 });
+export type SchedulePublishShiftConflictSummary = z.infer<
+  typeof schedulePublishShiftConflictSummarySchema
+>;
+
+export const schedulePublishDocumentConflictSummarySchema = z.object({
+  kind: z.literal("document_expiry").default("document_expiry"),
+  employee_id: z.string().uuid(),
+  employee_name: z.string().trim().min(1).max(161).nullable(),
+  shift_id: z.string().uuid(),
+  location_id: z.string().uuid(),
+  location_name: z.string().trim().min(1).max(120),
+  date: z.string().date(),
+  start_time: z.string().trim().min(1).max(16),
+  end_time: z.string().trim().min(1).max(16),
+  document_type_id: z.string().uuid(),
+  requirement_id: z.string().uuid(),
+  document_id: z.string().uuid(),
+  document_title: z.string().trim().min(1).max(160),
+  expiry_date: z.string().date(),
+  expiry_policy_version: z.coerce.number().int().positive(),
+  pending_document_id: z.string().uuid().nullable().optional(),
+  review_action: z.literal("review_document").nullable().optional(),
+  severity: z.enum(["soft", "hard"]),
+  overrideable: z.boolean(),
+  warning_text: z.string().trim().min(1).max(240),
+  conflict_fingerprint: z.string().trim().min(1).max(128).optional(),
+});
+export type SchedulePublishDocumentConflictSummary = z.infer<
+  typeof schedulePublishDocumentConflictSummarySchema
+>;
+
+export const schedulePublishConflictSummarySchema = z.union([
+  schedulePublishShiftConflictSummarySchema,
+  schedulePublishDocumentConflictSummarySchema,
+]);
 export type SchedulePublishConflictSummary = z.infer<
   typeof schedulePublishConflictSummarySchema
 >;
@@ -1050,6 +1511,14 @@ export const schedulePublishPublishedResultSchema = z.object({
   publication_ids: z.array(z.string().uuid()).min(1),
   published_shift_count: z.coerce.number().int().nonnegative(),
   notification_count: z.coerce.number().int().nonnegative().optional(),
+  notification_event_id: z.string().uuid().optional(),
+  notification_enqueued_count: z.coerce.number().int().nonnegative().optional(),
+  notification_warning: z
+    .object({
+      code: z.literal("notification_enqueue_unavailable"),
+      message: z.string().trim().min(1).max(240),
+    })
+    .optional(),
   published_at: z.string().datetime({ offset: true }),
 });
 export type SchedulePublishPublishedResult = z.infer<
@@ -1167,9 +1636,12 @@ export const scheduleTemplateShiftSchema = z.object({
   job_id: z.string().uuid(),
   shift_type_id: z.string().uuid().nullable(),
   day_offset: z.coerce.number().int().min(0).max(6),
-  start_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  end_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  crosses_midnight: z.boolean(),
+  start_time: scheduleShiftSchema.shape.start_time,
+  end_time: scheduleShiftSchema.shape.end_time,
+  crosses_midnight: scheduleShiftSchema.shape.crosses_midnight,
+  time_basis: shiftTimeBasisSchema.optional(),
+  time_snapshot: shiftTimeSnapshotSchema.nullable().optional(),
+  time_timezone: z.string().nullable().optional(),
   label_ids: z.array(z.string().uuid()).optional(),
   label_names: z.array(z.string().trim().min(1).max(80)).optional(),
   note: z.string().max(500),
@@ -1289,6 +1761,9 @@ export const scheduleExportRequestSchema = z.object({
 });
 export type ScheduleExportRequest = z.infer<typeof scheduleExportRequestSchema>;
 export const scheduleExportRowSchema = z.object({
+  time_basis: shiftTimeBasisSchema.optional(),
+  time_snapshot: shiftTimeSnapshotSchema.nullable().optional(),
+  time_timezone: z.string().nullable().optional(),
   shift_id: z.string().uuid(),
   scheduled_date: z.string().date(),
   location_name: z.string().trim().min(1).max(120),
@@ -1296,11 +1771,11 @@ export const scheduleExportRowSchema = z.object({
   job_name: z.string().trim().min(1).max(120),
   shift_type_name: z.string().trim().min(1).max(80).nullable(),
   label_names: z.array(z.string().trim().min(1).max(80)).optional(),
-  start_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  end_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  crosses_midnight: z.boolean(),
+  start_time: scheduleShiftSchema.shape.start_time,
+  end_time: scheduleShiftSchema.shape.end_time,
+  crosses_midnight: scheduleShiftSchema.shape.crosses_midnight,
   note: z.string().max(500),
-  scheduled_minutes: z.coerce.number().int().positive(),
+  scheduled_minutes: z.coerce.number().int().nonnegative(),
 });
 export const scheduleExportPreviewSchema = z.object({
   status: z.literal("export_ready"),
@@ -1405,7 +1880,12 @@ export type UpdateScheduleExportScheduleInput = z.infer<
   typeof updateScheduleExportScheduleInputSchema
 >;
 
+export * from "./lineup-operations";
+
 export const scheduleLineupSectionSchema = z.object({
+  location_ids: z.array(z.string().uuid()).max(100).optional(),
+  shift_type_ids: z.array(z.string().uuid()).max(100).optional(),
+  job_ids: z.array(z.string().uuid()).max(100).optional(),
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
   name: z.string().trim().min(1).max(80),
@@ -1415,6 +1895,9 @@ export const scheduleLineupSectionSchema = z.object({
 });
 export type ScheduleLineupSection = z.infer<typeof scheduleLineupSectionSchema>;
 export const scheduleLineupSectionInputSchema = z.object({
+  location_ids: z.array(z.string().uuid()).max(100).optional(),
+  shift_type_ids: z.array(z.string().uuid()).max(100).optional(),
+  job_ids: z.array(z.string().uuid()).max(100).optional(),
   name: z.string().trim().min(1).max(80),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   sort_order: z.number().int().nonnegative(),
@@ -1445,12 +1928,25 @@ export type ScheduleLineupEmployeeOption = z.infer<
   typeof scheduleLineupEmployeeOptionSchema
 >;
 
+export const lineupPlacementSegmentSchema = z.object({
+  id: z.string().uuid(),
+  start_at: z.string().datetime({ offset: true }),
+  end_at: z.string().datetime({ offset: true }),
+  section_id: z.string().uuid().nullable(),
+  station: z.string().max(80),
+  section_name: z.string().optional(),
+});
 export const scheduleLineupEntrySchema = z.object({
   id: z.string().uuid(),
   overlay_id: z.string().uuid().nullable(),
   source_shift_id: z.string().uuid().nullable(),
   is_manual: z.boolean(),
   orphaned: z.boolean(),
+  source_changed: z.boolean().optional(),
+  placement_segments: z.array(lineupPlacementSegmentSchema).optional(),
+  placement_parent_id: z.string().uuid().optional(),
+  placement_start_at: z.string().optional(),
+  placement_end_at: z.string().optional(),
   employee_id: z.string().uuid().nullable(),
   employee_name: z.string().trim().max(161),
   job_id: z.string().uuid().nullable(),
@@ -1468,6 +1964,7 @@ export const scheduleLineupEntrySchema = z.object({
   section_id: z.string().uuid().nullable(),
   section_name: z.string().trim().max(80),
   station: z.string().trim().max(80),
+  note: z.string().max(500).optional(),
   call_off: z.boolean(),
   hidden: z.boolean(),
   display_order: z.coerce.number().int().nonnegative(),
@@ -1494,6 +1991,19 @@ export const scheduleLineupLocationSchema = z.object({
   share_version: z.coerce.number().int().nonnegative(),
   entries: z.array(scheduleLineupEntrySchema),
   briefs: z.array(scheduleLineupBriefSchema),
+  notes: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        category: z.string(),
+        content: z.string(),
+        section_id: z.string().uuid().nullable(),
+        shift_type_id: z.string().uuid().nullable(),
+        pinned: z.boolean(),
+        expires_at: z.string().nullable().optional(),
+      }),
+    )
+    .optional(),
   summary: z.object({
     active_entries: z.coerce.number().int().nonnegative(),
     open_rows: z.coerce.number().int().nonnegative(),
@@ -1508,6 +2018,11 @@ export const scheduleLineupReadModelSchema = z.object({
   workspace_id: z.string().uuid(),
   date: z.string().date(),
   source: z.literal("published"),
+  settings: z
+    .object({
+      time_format: scheduleTimeFormatSchema,
+    })
+    .default({ time_format: "12h" }),
   locations: z.array(scheduleLineupLocationSchema),
   sections: z.array(scheduleLineupSectionSchema),
   jobs: z.array(scheduleJobSchema),
@@ -1519,6 +2034,13 @@ export type ScheduleLineupReadModel = z.infer<
 >;
 
 export const scheduleLineupEntryInputSchema = z.object({
+  placement_segments: z.array(lineupPlacementSegmentSchema).max(64).optional(),
+  placement_range: z
+    .object({
+      start_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+      end_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    })
+    .optional(),
   source_shift_id: z.string().uuid().nullable(),
   employee_id: z.string().uuid().nullable(),
   job_id: z.string().uuid().nullable(),
@@ -1533,6 +2055,7 @@ export const scheduleLineupEntryInputSchema = z.object({
     .nullable(),
   section_id: z.string().uuid().nullable(),
   station: z.string().trim().max(80),
+  note: z.string().max(500).optional(),
   call_off: z.boolean(),
   hidden: z.boolean(),
   display_order: z.number().int().nonnegative(),
@@ -1568,6 +2091,7 @@ export const scheduleLineupSharePreviewSchema = z.object({
   workspace_id: z.string().uuid(),
   date: z.string().date(),
   fingerprint: z.string().length(64),
+  content: scheduleLineupReadModelSchema.optional(),
   locations: z.array(
     z.object({
       location_id: z.string().uuid(),
@@ -1597,6 +2121,7 @@ export type ScheduleLineupShareResult = z.infer<
 >;
 
 export const scheduleRequestEventSchema = z.object({
+  released_assignments: z.array(timeOffReleasedAssignmentSchema).optional(),
   id: z.string().uuid(),
   action: z.string().trim().min(1).max(48),
   actor_name: z.string().trim().min(1).max(160),
@@ -1617,13 +2142,7 @@ export const timeOffSegmentStatusSchema = z.enum([
   "approved",
   "denied",
 ]);
-export const timeOffRequestSegmentSchema = z.object({
-  id: z.string().uuid(),
-  segment_date: z.string().date(),
-  start_time: z.string().nullable(),
-  end_time: z.string().nullable(),
-  status: timeOffSegmentStatusSchema,
-});
+export const timeOffRequestSegmentSchema = timeOffPeriodReadSchema;
 export const timeOffRequestSchema = z.object({
   id: z.string().uuid(),
   employee_id: z.string().uuid(),
@@ -1631,6 +2150,7 @@ export const timeOffRequestSchema = z.object({
   location_id: z.string().uuid(),
   location_name: z.string().trim().min(1).max(120),
   request_type: z.enum(["time_off", "time_off_cancellation"]),
+  cancellation: timeOffCancellationContextSchema.optional(),
   reason: z.string().max(1000),
   status: timeOffRequestStatusSchema,
   start_date: z.string().date(),
@@ -1694,6 +2214,7 @@ export type ShiftChangeRequest = z.infer<typeof shiftChangeRequestSchema>;
 
 export const scheduleRequestsReadModelSchema = z.object({
   workspace_id: z.string().uuid(),
+  time_format: z.enum(["12h", "24h"]).optional(),
   locations: z.array(
     z.object({
       id: z.string().uuid(),
@@ -1711,25 +2232,66 @@ export type ScheduleRequestsReadModel = z.infer<
   typeof scheduleRequestsReadModelSchema
 >;
 
-export const timeOffSegmentDecisionSchema = z.object({
-  segment_id: z.string().uuid(),
-  status: z.enum(["approved", "denied"]),
-});
-export type TimeOffSegmentDecision = z.infer<
-  typeof timeOffSegmentDecisionSchema
->;
-export const timeOffDecisionInputSchema = z.object({
-  expected_revision: z.number().int().positive(),
-  action: z.enum([
-    "approve",
-    "deny",
-    "partial_approve",
-    "return_to_pending",
-    "revoke",
-  ]),
-  note: z.string().trim().max(1000).default(""),
-  segment_decisions: z.array(timeOffSegmentDecisionSchema).default([]),
-});
+export const timeOffDecisionInputSchema = z
+  .object({
+    operation_id: z.string().uuid().optional(),
+    assignment_fingerprint: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+    assignment_decisions: z
+      .array(timeOffAssignmentDispositionSchema)
+      .max(1000)
+      .optional(),
+    expected_revision: z.number().int().positive(),
+    action: z.enum([
+      "approve",
+      "deny",
+      "partial_approve",
+      "return_to_pending",
+      "revoke",
+    ]),
+    note: z.string().trim().max(1000).default(""),
+    segment_decisions: z.array(timeOffSegmentDecisionSchema).default([]),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      (value.assignment_decisions || value.assignment_fingerprint) &&
+      (!value.assignment_fingerprint ||
+        !value.operation_id ||
+        !["approve", "partial_approve"].includes(value.action))
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["assignment_decisions"],
+        message:
+          "Review the assignment preview before approving and releasing shifts.",
+      });
+    if (
+      value.assignment_decisions &&
+      new Set(value.assignment_decisions.map((s) => s.shift_id.toLowerCase()))
+        .size !== value.assignment_decisions.length
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["assignment_decisions"],
+        message: "Decide each affected assignment exactly once.",
+      });
+    if (value.action !== "partial_approve") return;
+    if (
+      !value.segment_decisions.length ||
+      new Set(
+        value.segment_decisions.map((segment) =>
+          segment.segment_id.toLowerCase(),
+        ),
+      ).size !== value.segment_decisions.length
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["segment_decisions"],
+        message: "Review each requested time-off segment exactly once.",
+      });
+  });
 export type TimeOffDecisionInput = z.infer<typeof timeOffDecisionInputSchema>;
 
 export const shiftChangeDecisionInputSchema = z.object({
@@ -1745,6 +2307,7 @@ export const scheduleRequestMutationResultSchema = z.object({
   status: z.string().trim().min(1).max(48),
   request_id: z.string().uuid(),
   revision: z.number().int().positive(),
+  released_shift_count: z.number().int().nonnegative().optional(),
 });
 export type ScheduleRequestMutationResult = z.infer<
   typeof scheduleRequestMutationResultSchema
@@ -2065,7 +2628,32 @@ export type EmployeeEvent = z.infer<typeof employeeEventSchema>;
 
 export const employeeDetailSchema = employeeSummarySchema.extend({
   user_id: z.string().uuid().nullable(),
+  account_email: z.string().email().nullable().optional(),
   internal_note: z.string().max(1000),
+  is_remote: z.boolean().optional(),
+  is_excluded_from_schedule: z.boolean().optional(),
+  role_id: z.string().uuid().nullable().optional(),
+  private_contact: z
+    .object({
+      legal_first_name: z.string().trim().min(1).max(80).optional(),
+      legal_last_name: z.string().trim().min(1).max(80).optional(),
+      preferred_name: z.string().trim().max(80).optional(),
+      phone: z.string().trim().min(7).max(30),
+      street_address: z.string().trim().max(180).nullable().optional(),
+      city: z.string().trim().max(100).nullable().optional(),
+      region: z.string().trim().max(100).nullable().optional(),
+      postal_code: z.string().trim().max(20).nullable().optional(),
+      country_code: z.string().trim().length(2).nullable().optional(),
+      date_of_birth: z.string().date().nullable(),
+      emergency_contact_name: z.string().trim().min(1).max(120),
+      emergency_contact_relationship: z.string().trim().min(1).max(80),
+      emergency_contact_email: z.string().trim().email().or(z.literal("")),
+      emergency_contact_phone: z.string().trim().min(7).max(30),
+      share_phone_with_teammates: z.boolean(),
+      share_email_with_teammates: z.boolean(),
+    })
+    .nullable()
+    .default(null),
   locations: z.array(employeeAssignmentSchema),
   jobs: z.array(employeeAssignmentSchema),
   invitation: z
@@ -2073,9 +2661,21 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
       id: z.string().uuid(),
       email: z.string().email(),
       role_id: z.string().uuid(),
-      status: z.enum(["pending", "accepted", "revoked", "expired"]),
+      status: z.enum(["pending", "accepted", "revoked", "expired", "declined"]),
       expires_at: z.string().datetime({ offset: true }),
       sent_at: z.string().datetime({ offset: true }),
+      delivery_status: z.enum(["pending", "sent", "failed"]).default("sent"),
+      delivery_attempted_at: z
+        .string()
+        .datetime({ offset: true })
+        .nullable()
+        .optional(),
+      delivery_failed_at: z
+        .string()
+        .datetime({ offset: true })
+        .nullable()
+        .optional(),
+      delivery_error: z.string().max(500).nullable().optional(),
     })
     .nullable(),
   onboarding: z.object({
@@ -2095,20 +2695,79 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
 });
 export type EmployeeDetail = z.infer<typeof employeeDetailSchema>;
 
-export const employeeInputSchema = z.object({
-  first_name: z.string().trim().min(1).max(80),
-  last_name: z.string().trim().min(1).max(80),
-  preferred_name: z.string().trim().max(80),
-  invitation_email: z.string().trim().email().or(z.literal("")),
-  start_date: z.string().date().or(z.literal("")),
-  internal_note: z.string().trim().max(1000),
-  location_ids: z.array(z.string().uuid()),
-  primary_location_id: z.string().uuid().nullable(),
-  job_ids: z.array(z.string().uuid()),
-  primary_job_id: z.string().uuid().nullable(),
-  expected_revision: z.number().int().positive().nullable(),
+export const employeeRoleUpdateInputSchema = z.object({
+  role_id: z.string().uuid(),
 });
+export type EmployeeRoleUpdateInput = z.infer<
+  typeof employeeRoleUpdateInputSchema
+>;
+
+export const employeeInputSchema = z
+  .object({
+    first_name: z.string().trim().min(1).max(80),
+    last_name: z.string().trim().min(1).max(80),
+    preferred_name: z.string().trim().max(80),
+    invitation_email: z.string().trim().email().or(z.literal("")),
+    start_date: z.string().date().or(z.literal("")),
+    internal_note: z.string().trim().max(1000),
+    location_ids: z.array(z.string().uuid()),
+    primary_location_id: z.string().uuid().nullable(),
+    job_ids: z.array(z.string().uuid()),
+    primary_job_id: z.string().uuid().nullable(),
+    is_remote: z.boolean().optional(),
+    is_excluded_from_schedule: z.boolean().optional(),
+    expected_revision: z.number().int().positive().nullable(),
+  })
+  .superRefine((value, issue) => {
+    const assignmentOptional =
+      value.is_remote === true || value.is_excluded_from_schedule === true;
+    if (assignmentOptional) return;
+    if (value.location_ids.length === 0 || value.primary_location_id === null) {
+      issue.addIssue({
+        code: "custom",
+        message:
+          "Employee requires a location unless remote or excluded from schedule",
+        path: ["location_ids"],
+      });
+    }
+    if (value.job_ids.length === 0 || value.primary_job_id === null) {
+      issue.addIssue({
+        code: "custom",
+        message:
+          "Employee requires a job unless remote or excluded from schedule",
+        path: ["job_ids"],
+      });
+    }
+  });
 export type EmployeeInput = z.infer<typeof employeeInputSchema>;
+
+export const employeeCreateCommandSchema = z
+  .object({
+    request_id: z.string().uuid(),
+    employee: employeeInputSchema,
+    invite_role_id: z.string().uuid().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.invite_role_id && !value.employee.invitation_email.trim()) {
+      context.addIssue({
+        code: "custom",
+        path: ["employee", "invitation_email"],
+        message: "Enter a valid email address.",
+      });
+    }
+  });
+export type EmployeeCreateCommand = z.infer<typeof employeeCreateCommandSchema>;
+export const employeeCreateResultSchema = z.object({
+  id: z.string().uuid(),
+  invitation: z
+    .object({
+      id: z.string().uuid(),
+      deliveryStatus: z.enum(["pending", "sent", "failed"]),
+      developmentUrl: z.string().optional(),
+    })
+    .nullable(),
+});
+export type EmployeeCreateResult = z.infer<typeof employeeCreateResultSchema>;
 
 export const employeeOnboardingCaseStatusSchema = z.enum([
   "in_progress",
@@ -2162,74 +2821,99 @@ export type EmployeeOnboardingRequirement = z.infer<
   typeof employeeOnboardingRequirementSchema
 >;
 
-export const employeeOnboardingProfileSchema = z.object({
+const employeeOnboardingProfileObjectSchema = z.object({
   legal_first_name: z.string().trim().min(1).max(80),
   legal_last_name: z.string().trim().min(1).max(80),
-  preferred_name: z.string().trim().max(80),
   phone: z.string().trim().min(7).max(30),
   street_address: z.string().trim().min(1).max(180),
   city: z.string().trim().min(1).max(100),
   region: z.string().trim().min(1).max(100),
   postal_code: z.string().trim().min(1).max(20),
-  country_code: z.string().regex(/^[A-Z]{2}$/),
-  date_of_birth: z.string().date(),
+  country_code: z.literal("US"),
+  date_of_birth: z
+    .string()
+    .date()
+    .refine(
+      (value) => value <= new Date().toISOString().slice(0, 10),
+      "Date of birth cannot be in the future",
+    ),
   emergency_contact_name: z.string().trim().min(1).max(120),
+  emergency_contact_relationship: z.string().trim().min(1).max(80),
+  emergency_contact_email: z.string().trim().email().or(z.literal("")),
   emergency_contact_phone: z.string().trim().min(7).max(30),
   share_phone_with_teammates: z.boolean(),
   share_email_with_teammates: z.boolean(),
 });
+
+const employeeOnboardingProfileReadSchema =
+  employeeOnboardingProfileObjectSchema.partial().extend({
+    street_address: employeeOnboardingProfileObjectSchema.shape.street_address
+      .nullable()
+      .optional(),
+    city: employeeOnboardingProfileObjectSchema.shape.city
+      .nullable()
+      .optional(),
+    region: employeeOnboardingProfileObjectSchema.shape.region
+      .nullable()
+      .optional(),
+    postal_code: employeeOnboardingProfileObjectSchema.shape.postal_code
+      .nullable()
+      .optional(),
+    country_code: employeeOnboardingProfileObjectSchema.shape.country_code
+      .nullable()
+      .optional(),
+    date_of_birth: employeeOnboardingProfileObjectSchema.shape.date_of_birth
+      .nullable()
+      .optional(),
+  });
+
+export const employeeOnboardingProfileSchema =
+  employeeOnboardingProfileObjectSchema.superRefine((profile, context) => {
+    const employeePhone = normalizedUsPhone(profile.phone);
+    const emergencyPhone = normalizedUsPhone(profile.emergency_contact_phone);
+    if (employeePhone && employeePhone === emergencyPhone) {
+      context.addIssue({
+        code: "custom",
+        path: ["emergency_contact_phone"],
+        message: "Emergency phone must be different from your phone",
+      });
+    }
+  });
+
+function normalizedUsPhone(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 11 && digits.startsWith("1")
+    ? digits.slice(1)
+    : digits;
+}
 export type EmployeeOnboardingProfile = z.infer<
   typeof employeeOnboardingProfileSchema
 >;
 
-export const employeeAvailabilityDaySchema = z
-  .object({
-    day: z.number().int().min(0).max(6),
-    mode: z.enum(["unavailable", "unrestricted", "windows"]),
-    windows: z
-      .array(
-        z.object({
-          start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-          end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-        }),
-      )
-      .max(4),
-  })
-  .superRefine((value, issue) => {
-    if (value.mode === "windows" && value.windows.length === 0)
-      issue.addIssue({
-        code: "custom",
-        message: "At least one window is required",
-      });
-    if (value.mode !== "windows" && value.windows.length > 0)
-      issue.addIssue({
-        code: "custom",
-        message: "Only window mode accepts time ranges",
-      });
-    for (const window of value.windows) {
-      if (window.start >= window.end)
-        issue.addIssue({
-          code: "custom",
-          message: "Availability windows must end after they start",
-        });
-    }
-  });
-
-export const employeeAvailabilityInputSchema = z
-  .object({
-    timezone: z.string().trim().min(1).max(80),
-    days: z.array(employeeAvailabilityDaySchema).length(7),
-  })
-  .superRefine((value, issue) => {
-    if (new Set(value.days.map((day) => day.day)).size !== 7)
-      issue.addIssue({
-        code: "custom",
-        message: "Each weekday must be provided once",
-      });
-  });
+export const employeeAvailabilityDaySchema = availabilityDayInputSchema;
+export const employeeAvailabilityInputSchema =
+  employeeHubAvailabilityInputSchema;
 export type EmployeeAvailabilityInput = z.infer<
   typeof employeeAvailabilityInputSchema
 >;
+
+function isPathWithinRoot(path: string, root: string) {
+  return (
+    path === root ||
+    path.startsWith(`${root}/`) ||
+    path.startsWith(`${root}?`) ||
+    path.startsWith(`${root}#`)
+  );
+}
+
+const employeeOnboardingActionPathSchema = z
+  .string()
+  .refine(
+    (path) =>
+      isPathWithinRoot(path, "/welcome") ||
+      isPathWithinRoot(path, "/app/employee-hub"),
+    "Employee onboarding action path must stay in onboarding or employee hub",
+  );
 
 export const employeeOnboardingSchema = z.object({
   case_id: z.string().uuid(),
@@ -2243,7 +2927,7 @@ export const employeeOnboardingSchema = z.object({
   revision: z.number().int().positive(),
   progress_completed: z.number().int().nonnegative(),
   progress_total: z.number().int().nonnegative(),
-  first_actionable_path: z.string().startsWith("/welcome"),
+  first_actionable_path: employeeOnboardingActionPathSchema,
   ssn_status: z.object({
     present: z.boolean(),
     last_four: z
@@ -2251,8 +2935,9 @@ export const employeeOnboardingSchema = z.object({
       .regex(/^\d{4}$/)
       .nullable(),
   }),
-  profile: employeeOnboardingProfileSchema.partial().nullable(),
+  profile: employeeOnboardingProfileReadSchema.nullable(),
   availability: employeeAvailabilityInputSchema.nullable(),
+  availability_context: employeeAvailabilityContextSchema.optional(),
   assignments: z.object({
     locations: z.array(z.string()),
     jobs: z.array(z.string()),
@@ -2279,6 +2964,15 @@ export type EmployeeOnboardingManager = z.infer<
 export const documentFormatSchema = z.enum(["pdf", "jpeg", "png", "webp"]);
 export type DocumentFormat = z.infer<typeof documentFormatSchema>;
 
+export const documentExpiryScheduleImpactSchema = z.enum([
+  "track_only",
+  "warn",
+  "block",
+]);
+export type DocumentExpiryScheduleImpact = z.infer<
+  typeof documentExpiryScheduleImpactSchema
+>;
+
 export const documentTypeSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
@@ -2289,6 +2983,8 @@ export const documentTypeSchema = z.object({
   accepted_formats: z.array(documentFormatSchema).min(1),
   tracks_expiry: z.boolean(),
   expiry_warning_days: z.number().int().min(1).max(365),
+  expiry_schedule_impact:
+    documentExpiryScheduleImpactSchema.default("track_only"),
   sort_order: z.number().int().nonnegative(),
   archived_at: z.string().datetime({ offset: true }).nullable(),
 });
@@ -2303,6 +2999,7 @@ export const documentTypeInputSchema = documentTypeSchema
     accepted_formats: true,
     tracks_expiry: true,
     expiry_warning_days: true,
+    expiry_schedule_impact: true,
   })
   .refine(
     (documentType) =>
@@ -2312,7 +3009,20 @@ export const documentTypeInputSchema = documentTypeSchema
       message: "Document formats must be unique",
       path: ["accepted_formats"],
     },
-  );
+  )
+  .superRefine((documentType, issue) => {
+    if (
+      documentType.tracks_expiry &&
+      documentType.expiry_schedule_impact === "block" &&
+      !documentType.required_at_onboarding
+    ) {
+      issue.addIssue({
+        code: "custom",
+        message: "Only required documents can create hard schedule conflicts",
+        path: ["expiry_schedule_impact"],
+      });
+    }
+  });
 export type DocumentTypeInput = z.infer<typeof documentTypeInputSchema>;
 
 export const signatureRetentionTriggerSchema = z.enum([
@@ -2431,3 +3141,5 @@ export const productBoundary = {
     "employee-drawer-shell",
   ],
 } as const;
+export * from "./shift-exchanges";
+export * from "./schedule-default-hours";

@@ -186,6 +186,22 @@ describe("ScheduleExportPanel", () => {
     ).toContain("Printable schedule");
   });
 
+  it("uses the schedule time format as the default panel export setting", async () => {
+    const onPreviewHtml = vi.fn().mockResolvedValue("<html></html>");
+
+    renderPanel({ defaultTimeFormat: "24h", onPreviewHtml });
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    await waitFor(() =>
+      expect(onPreviewHtml).toHaveBeenCalledWith(
+        expect.objectContaining({
+          settings: expect.objectContaining({ time_format: "24h" }),
+        }),
+      ),
+    );
+  });
+
   it("blocks export when all locations are unchecked", () => {
     renderPanel();
 

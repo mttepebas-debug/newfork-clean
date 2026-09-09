@@ -20,10 +20,10 @@ describe("shiftEditorView", () => {
     ).toEqual({ x: 240, y: 120 });
   });
 
-  it("opens the quick editor down and to the right of the pointer", () => {
+  it("opens the quick editor immediately to the right of the pointer", () => {
     expect(
       getQuickEditorInitialPosition(120, 160, { width: 1024, height: 768 }),
-    ).toEqual({ x: 130, y: 170 });
+    ).toEqual({ x: 130, y: 160 });
   });
 
   it("formats unpaid break options for the editor select", () => {

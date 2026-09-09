@@ -2,7 +2,7 @@ import {
   defaultScheduleLogoPlacement,
   type ScheduleLogoPlacement,
 } from "@newfork/shared";
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 
 export const scheduleLogoFrameAspectRatio = "200 / 79";
 
@@ -35,13 +35,16 @@ export function ScheduleLogoFrame({
 }) {
   const normalizedName = organizationName.trim() || "Workspace";
   const normalizedPlacement = placement ?? defaultScheduleLogoPlacement;
-  const content = logoUrl ? (
+  const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
+  const visibleLogoUrl = logoUrl && logoUrl !== failedLogoUrl ? logoUrl : null;
+  const content = visibleLogoUrl ? (
     <img
-      src={logoUrl}
+      src={visibleLogoUrl}
       alt={alt ?? `${normalizedName} logo`}
       className={imageClassName ?? "schedule-logo-image"}
       data-testid={testId}
       draggable={false}
+      onError={() => setFailedLogoUrl(visibleLogoUrl)}
       style={
         {
           "--schedule-logo-scale": normalizedPlacement.scale,

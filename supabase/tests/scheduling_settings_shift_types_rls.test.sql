@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(25);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -46,13 +46,22 @@ select lives_ok(
 );
 select ok((select crosses_midnight from public.shift_types where name = 'Dinner'), 'overnight shift is derived');
 select is((select count(*)::integer from public.audit_events where action = 'shift_type.created'), 2, 'shift type creation is audited');
+set local role service_role;
+select ok(
+  has_table_privilege('service_role', 'public.workspace_scheduling_settings', 'select')
+  and has_table_privilege('service_role', 'public.workspace_scheduling_settings', 'update'),
+  'service role can read and update scheduling settings through API services'
+);
 select lives_ok(
-  $$select public.reorder_shift_types(
+  $$select public.reorder_shift_types_service(
+    '12000000-0000-4000-8000-000000000001',
     '22000000-0000-4000-8000-000000000001',
     array['42000000-0000-4000-8000-000000000002', '42000000-0000-4000-8000-000000000001']::uuid[]
   )$$,
   'owner can reorder every active shift type'
 );
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '12000000-0000-4000-8000-000000000001', true);
 select is((select name from public.shift_types order by sort_order limit 1), 'Dinner', 'shift type order is persisted');
 select throws_ok(
   $$insert into public.shift_types (workspace_id, name, default_start_time, default_end_time)
@@ -66,6 +75,32 @@ select throws_ok(
   '23505',
   null,
   'active shift type names are unique ignoring case'
+);
+select lives_ok(
+  $$insert into public.shift_labels (id, workspace_id, name, color, sort_order)
+    values
+      ('43000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000001', 'Training', '#54736A', 0),
+      ('43000000-0000-4000-8000-000000000002', '22000000-0000-4000-8000-000000000001', 'Close', '#7B5EA7', 1)$$,
+  'owner can create shift labels'
+);
+select is((select count(*)::integer from public.audit_events where action = 'shift_label.created'), 2, 'shift label creation is audited');
+set local role service_role;
+select lives_ok(
+  $$select public.reorder_shift_labels_service(
+    '12000000-0000-4000-8000-000000000001',
+    '22000000-0000-4000-8000-000000000001',
+    array['43000000-0000-4000-8000-000000000002', '43000000-0000-4000-8000-000000000001']::uuid[]
+  )$$,
+  'owner can reorder every active shift label'
+);
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '12000000-0000-4000-8000-000000000001', true);
+select is((select name from public.shift_labels order by sort_order limit 1), 'Close', 'shift label order is persisted');
+select throws_ok(
+  $$insert into public.shift_labels (workspace_id, name) values ('22000000-0000-4000-8000-000000000001', 'training')$$,
+  '23505',
+  null,
+  'active shift label names are unique ignoring case'
 );
 
 select set_config('request.jwt.claim.sub', '12000000-0000-4000-8000-000000000002', true);
@@ -90,7 +125,15 @@ select throws_ok(
   'manager cannot create a shift type'
 );
 select throws_ok(
-  $$select public.reorder_shift_types(
+  $$insert into public.shift_labels (workspace_id, name) values ('22000000-0000-4000-8000-000000000001', 'Unauthorized')$$,
+  '42501',
+  'new row violates row-level security policy for table "shift_labels"',
+  'manager cannot create a shift label'
+);
+set local role service_role;
+select throws_ok(
+  $$select public.reorder_shift_types_service(
+    '12000000-0000-4000-8000-000000000003',
     '22000000-0000-4000-8000-000000000001',
     array['42000000-0000-4000-8000-000000000001', '42000000-0000-4000-8000-000000000002']::uuid[]
   )$$,
@@ -99,8 +142,10 @@ select throws_ok(
   'manager cannot reorder shift types'
 );
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '12000000-0000-4000-8000-000000000004', true);
 select is((select count(*)::integer from public.shift_types where workspace_id = '22000000-0000-4000-8000-000000000001'), 0, 'other tenant cannot see shift types');
+select is((select count(*)::integer from public.shift_labels where workspace_id = '22000000-0000-4000-8000-000000000001'), 0, 'other tenant cannot see shift labels');
 select is((select count(*)::integer from public.workspace_scheduling_settings where workspace_id = '22000000-0000-4000-8000-000000000001'), 0, 'other tenant cannot see scheduling settings');
 
 select * from finish();

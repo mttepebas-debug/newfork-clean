@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(16);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -19,7 +19,8 @@ values
   ('33000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '31000000-0000-4000-8000-000000000001', 'owner', 'active', true),
   ('33000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '31000000-0000-4000-8000-000000000002', 'manager', 'active', false),
   ('33000000-0000-4000-8000-000000000003', '32000000-0000-4000-8000-000000000001', '31000000-0000-4000-8000-000000000003', 'employee', 'active', true),
-  ('33000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000002', '31000000-0000-4000-8000-000000000004', 'owner', 'active', true);
+  ('33000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000002', '31000000-0000-4000-8000-000000000004', 'owner', 'active', true),
+  ('33000000-0000-4000-8000-000000000005', '32000000-0000-4000-8000-000000000002', '31000000-0000-4000-8000-000000000002', 'employee', 'active', true);
 
 insert into public.locations (
   id, workspace_id, name, street_address, city, region, postal_code, country_code, timezone, sort_order
@@ -38,10 +39,10 @@ insert into public.shift_types (id, workspace_id, name, color, default_start_tim
 values ('37000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', 'Dinner', '#5279A6', '15:00', '23:00', 0);
 
 insert into public.employee_profiles (
-  id, workspace_id, employee_code, first_name, last_name, preferred_name, created_by
+  id, workspace_id, employee_code, first_name, last_name, preferred_name, is_excluded_from_schedule, created_by
 ) values
-  ('38000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', 'E-1001', 'Visible', 'Employee', '', '31000000-0000-4000-8000-000000000001'),
-  ('38000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', 'E-1002', 'Hidden', 'Employee', '', '31000000-0000-4000-8000-000000000001');
+  ('38000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', 'E-1001', 'Visible', 'Employee', '', true, '31000000-0000-4000-8000-000000000001'),
+  ('38000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', 'E-1002', 'Hidden', 'Employee', '', false, '31000000-0000-4000-8000-000000000001');
 insert into public.employee_location_assignments (id, workspace_id, employee_id, location_id, is_primary, created_by)
 values
   ('39000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '38000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', true, '31000000-0000-4000-8000-000000000001'),
@@ -89,6 +90,11 @@ select lives_ok(
 select is((public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->>'week_start'), '2026-08-17', 'target date resolves workspace week start');
 select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'locations'), 2, 'owner receives both locations');
 select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'employees'), 2, 'owner receives both assigned employees');
+select is((
+  select employee->>'is_excluded_from_schedule'
+  from jsonb_array_elements(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'employees') employee
+  where employee->>'id' = '38000000-0000-4000-8000-000000000001'
+), 'true', 'schedule read model projects employee schedule exclusion flag');
 select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'shifts'), 2, 'owner receives both published shifts');
 select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'locations'), 1, 'scoped manager receives one location');
 select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'shifts'), 1, 'scoped manager receives one location shift');
@@ -100,6 +106,10 @@ select throws_ok(
 select throws_ok(
   $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$,
   '42501', 'manager schedule read access required', 'cross-tenant Schedule read is denied'
+);
+select throws_ok(
+  $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000002', '2026-08-19')$$,
+  '42501', 'manager schedule read access required', 'same account employee role in another tenant cannot read manager Schedule'
 );
 
 select * from finish();

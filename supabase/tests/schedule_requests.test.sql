@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(33);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('97000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','phase6b-manager@example.test','','{}','{}',now(),now()),
@@ -22,7 +22,7 @@ select throws_ok($$select * from public.schedule_shift_change_participants$$,'42
 select throws_ok($$select * from public.schedule_shift_change_events$$,'42501',null,'shift events deny authenticated reads');
 reset role;
 
-select is((select count(*)::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key in('owner','admin','manager') and p.permission_key in('schedule.time_off_requests.read','schedule.time_off_requests.manage','schedule.shift_change_requests.read','schedule.shift_change_requests.manage')),12,'manager classes receive four request capabilities');
+select is((select count(distinct (r.system_key, p.permission_key))::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key in('owner','admin','manager') and p.permission_key in('schedule.time_off_requests.read','schedule.time_off_requests.manage','schedule.shift_change_requests.read','schedule.shift_change_requests.manage')),12,'manager classes receive four request capabilities');
 select is((select count(*)::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key='employee' and p.permission_key like 'schedule.%requests.%'),0,'employee receives no manager request capability');
 
 insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,reason,created_by) values
@@ -50,13 +50,20 @@ select is((select count(*)::integer from public.schedule_time_off_events where r
 select lives_ok($$select public.mark_schedule_time_off_viewed_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001')$$,'repeat viewing is idempotent');
 select is((select count(*)::integer from public.schedule_time_off_events where request_id='97200000-0000-4000-8000-000000000001' and action='viewed'),1,'repeat viewing does not duplicate audit');
 
-update phase6b_state set result=public.resolve_schedule_time_off_request_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001',1,'partial_approve','First day approved',jsonb_build_array(jsonb_build_object('segment_id','97300000-0000-4000-8000-000000000001','status','approved'),jsonb_build_object('segment_id','97300000-0000-4000-8000-000000000002','status','denied')));
+do $$ declare actor uuid:='97000000-0000-4000-8000-000000000001'; w uuid:='6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'; rid uuid:='97200000-0000-4000-8000-000000000001'; decisions jsonb; preview jsonb; releases jsonb; begin
+ decisions:=jsonb_build_array(jsonb_build_object('segment_id','97300000-0000-4000-8000-000000000001','status','approved'),jsonb_build_object('segment_id','97300000-0000-4000-8000-000000000002','status','denied'));
+ preview:=public.preview_time_off_assignment_decision_service(actor,w,rid,1,'partial_approve',decisions);
+ select coalesce(jsonb_agg(jsonb_build_object('shift_id',s->>'id','action','release_entire_shift')),'[]') into releases from jsonb_array_elements(preview->'affected_shifts') s;
+ update phase6b_state set result=public.decide_time_off_with_assignments_service(actor,w,rid,1,'partial_approve','First day approved; release the overlapping shift to open coverage.',decisions,gen_random_uuid(),preview->>'fingerprint',releases);
+end $$;
 select is(result->>'status','partially_approved','mixed segment decisions create partial approval') from phase6b_state;
 select is((result->>'revision')::integer,2,'time off decision increments revision') from phase6b_state;
 select is((select count(*)::integer from public.schedule_time_off_segments where request_id='97200000-0000-4000-8000-000000000001' and status='approved'),1,'partial approval persists approved segment');
+select is((select employee_id from public.schedule_published_shifts where id='22000000-0000-4000-8000-000000000001'),null::uuid,'explicit leave disposition releases the overlapping shift');
 select throws_ok($$select public.resolve_schedule_time_off_request_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001',1,'revoke')$$,'40001','stale time off request','stale time off transition fails');
 select is((public.resolve_schedule_time_off_request_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001',2,'return_to_pending')->>'status'),'pending','closed request returns to pending');
 select is((select count(*)::integer from public.schedule_time_off_segments where request_id='97200000-0000-4000-8000-000000000001' and status='pending'),2,'return resets segment decisions');
+select is((select employee_id from public.schedule_published_shifts where id='22000000-0000-4000-8000-000000000001'),null::uuid,'reopening a request does not silently restore a released assignment');
 
 insert into public.schedule_shift_change_requests(id,workspace_id,request_type,offered_shift_id,expected_offered_employee_id,note,created_by) values
 ('97400000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','direct_coverage','22000000-0000-4000-8000-000000000005',null,'Sam offered coverage','97000000-0000-4000-8000-000000000002');

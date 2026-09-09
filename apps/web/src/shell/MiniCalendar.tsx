@@ -11,6 +11,7 @@ export interface CalendarMarker {
 interface MiniCalendarProps {
   readonly selectedDate: string | null;
   readonly weekStartDate: string;
+  readonly weekStartDay?: "monday" | "sunday";
   readonly markers?: readonly CalendarMarker[];
   readonly onDayPick: (date: string) => void;
   readonly onWeekJump: (date: string) => void;
@@ -30,7 +31,8 @@ const monthNames = [
   "November",
   "December",
 ] as const;
-const weekdayLabels = ["M", "T", "W", "T", "F", "S", "S"] as const;
+const mondayWeekdayLabels = ["M", "T", "W", "T", "F", "S", "S"] as const;
+const sundayWeekdayLabels = ["S", "M", "T", "W", "T", "F", "S"] as const;
 
 function toIso(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -46,16 +48,22 @@ function addDays(date: Date, days: number): Date {
   return next;
 }
 
-function startOfWeek(date: Date): Date {
-  const mondayOffset = (date.getUTCDay() + 6) % 7;
-  return addDays(date, -mondayOffset);
+function startOfWeek(date: Date, weekStartDay: "monday" | "sunday"): Date {
+  const offset =
+    weekStartDay === "sunday"
+      ? date.getUTCDay()
+      : (date.getUTCDay() + 6) % 7;
+  return addDays(date, -offset);
 }
 
-function buildCalendarRows(month: Date): readonly (readonly Date[])[] {
+function buildCalendarRows(
+  month: Date,
+  weekStartDay: "monday" | "sunday",
+): readonly (readonly Date[])[] {
   const first = new Date(
     Date.UTC(month.getUTCFullYear(), month.getUTCMonth(), 1, 12),
   );
-  const gridStart = startOfWeek(first);
+  const gridStart = startOfWeek(first, weekStartDay);
   return Array.from({ length: 6 }, (_, row) =>
     Array.from({ length: 7 }, (__, column) =>
       addDays(gridStart, row * 7 + column),
@@ -66,6 +74,7 @@ function buildCalendarRows(month: Date): readonly (readonly Date[])[] {
 export function MiniCalendar({
   selectedDate,
   weekStartDate,
+  weekStartDay = "monday",
   markers = [],
   onDayPick,
   onWeekJump,
@@ -85,9 +94,11 @@ export function MiniCalendar({
         ),
       ),
   );
-  const rows = buildCalendarRows(viewMonth);
+  const rows = buildCalendarRows(viewMonth, weekStartDay);
   const markerMap = new Map(markers.map((marker) => [marker.date, marker]));
-  const activeWeek = startOfWeek(fromIso(weekStartDate));
+  const activeWeek = startOfWeek(fromIso(weekStartDate), weekStartDay);
+  const weekdayLabels =
+    weekStartDay === "sunday" ? sundayWeekdayLabels : mondayWeekdayLabels;
 
   const moveMonth = (offset: number): void => {
     setViewMonth(
@@ -152,7 +163,7 @@ export function MiniCalendar({
           </span>
         ))}
         {rows.map((row) => {
-          const rowStart = startOfWeek(row[0]!);
+          const rowStart = startOfWeek(row[0]!, weekStartDay);
           const rowActive = toIso(rowStart) === toIso(activeWeek);
           return (
             <div className="calendar-row" role="row" key={toIso(rowStart)}>

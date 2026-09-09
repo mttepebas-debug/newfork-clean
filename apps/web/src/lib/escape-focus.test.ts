@@ -1,0 +1,34 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { installEscapeFocus } from "./escape-focus";
+let dispose: (() => void) | undefined;
+afterEach(() => {
+  dispose?.();
+  document.body.replaceChildren();
+});
+describe("Escape focus presentation", () => {
+  it("suppresses Escape rings without losing the restored focus and restores keyboard cues on Tab", () => {
+    dispose = installEscapeFocus(window, document);
+    const button = document.createElement("button");
+    document.body.append(button);
+    button.focus();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    button.focus();
+    expect(document.activeElement).toBe(button);
+    expect(document.documentElement.dataset.escapeFocus).toBe("true");
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift" }));
+    expect(document.documentElement.dataset.escapeFocus).toBe("true");
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Tab", shiftKey: true }),
+    );
+    expect(document.documentElement.dataset.escapeFocus).toBeUndefined();
+  });
+  it("resets presentation for the next pointer interaction and cleans up listeners", () => {
+    dispose = installEscapeFocus(window, document);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    window.dispatchEvent(new Event("pointerdown"));
+    expect(document.documentElement.dataset.escapeFocus).toBeUndefined();
+    dispose();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(document.documentElement.dataset.escapeFocus).toBeUndefined();
+  });
+});

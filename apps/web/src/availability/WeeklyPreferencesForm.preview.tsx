@@ -1,0 +1,199 @@
+import { useState } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  emptyWeeklyPreference,
+  type WeeklyPreferenceRead,
+  type WeeklyPreferenceSave,
+  type WeeklyCommitmentPreview,
+  type WeeklyPreferenceSettingsRead,
+} from "@newfork/shared";
+import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
+import { WeeklyPreferenceSettings } from "./WeeklyPreferenceSettings";
+import { MemoryRouter } from "react-router";
+import { PublishPreflightPanel } from "../schedule/components/PublishPreflightPanel";
+import type { SchedulePublicationPreview } from "@newfork/shared/schedule";
+import { PublishReturnPreview } from "../schedule/components/PublishReturn.preview";
+
+const params = new URLSearchParams(location.search);
+if (["preflight", "publish-return"].includes(params.get("view") ?? "")) void import("../styles.css");
+const mode = params.get("mode") === "time" ? "time_range" : "shift_type";
+const audience = params.get("view") === "employee" ? "employee" : "manager";
+const preflight: SchedulePublicationPreview = {
+  status: "override_required", workspace_id: "ad420000-0000-4000-8000-000000000091",
+  draft_id: "ad420000-0000-4000-8000-000000000092", draft_revision: 1, week_start: "2026-09-14", fingerprint: "a".repeat(64), locations: [],
+  findings: ["Ada Lovelace", "Alexandria Montgomery-Richardson", "Taylor Morgan"].map((name, index) => ({
+    id: `${index}`.repeat(64), code: "availability", severity: "soft", overrideable: true,
+    availability_state: index === 2 ? "accepted" : "new", warning_policy: "confirm", tier: index === 2 ? "note" : "risk",
+    employee_name: name, employee_id: `ad420000-0000-4000-8000-00000000008${index}`,
+    location_id: "ad420000-0000-4000-8000-000000000093", location_name: "Palo Alto extended dining room",
+    scheduled_date: "2026-09-18", shift_ids: [`ad420000-0000-4000-8000-00000000007${index}`],
+    message: "This shift overlaps unavailable hours.",
+  })),
+};
+const review: WeeklyCommitmentPreview = {
+  items: [
+    {
+      kind: "exchange_application",
+      id: "ad420000-0000-4000-8000-000000000071",
+      fingerprint: "a".repeat(64),
+      request_revision: "1",
+      request_type: "cover",
+      location_name: "Downtown",
+      date: "2026-09-18",
+      start_time: "17:00",
+      end_time: "22:00",
+      timezone: "America/Los_Angeles",
+      intervals: [
+        { start_at: "2026-09-19T00:00:00Z", end_at: "2026-09-19T05:00:00Z" },
+      ],
+    },
+    {
+      kind: "lineup_offer",
+      id: "ad420000-0000-4000-8000-000000000072",
+      fingerprint: "b".repeat(64),
+      request_revision: "1",
+      request_type: "lineup_offer",
+      location_name: "Palo Alto extended dining room",
+      date: "2026-09-20",
+      start_time: "11:00",
+      end_time: "16:00",
+      timezone: "America/Los_Angeles",
+      intervals: [
+        { start_at: "2026-09-20T18:00:00Z", end_at: "2026-09-20T23:00:00Z" },
+      ],
+    },
+  ],
+};
+const employee = emptyWeeklyPreference(mode);
+const reminder = emptyWeeklyPreference(mode);
+employee.days[0]!.all_day = true;
+reminder.days[0]!.all_day = true;
+const shiftTypes = [
+  "Lunch",
+  "Dinner",
+  "Late dinner",
+  "Weekend extended service",
+].map((name, index) => ({
+  id: `ad420000-0000-4000-8000-00000000000${index + 1}`,
+  name,
+  start_time: ["11:00", "17:00", "21:00", "10:00"][index]!,
+  end_time: ["16:00", "22:00", "02:00", "23:00"][index]!,
+  archived: false,
+  selectable: true,
+}));
+if (mode === "shift_type") {
+  employee.days[5]!.shift_type_ids = [shiftTypes[1]!.id];
+  reminder.days[6]!.shift_type_ids = [shiftTypes[2]!.id];
+} else {
+  employee.days[5]!.range = { start: "17:00", end: "22:00" };
+  reminder.days[6]!.range = { start: "09:00", end: "17:00" };
+}
+
+function Preview() {
+  const [settingsModel, setSettingsModel] = useState<WeeklyPreferenceSettingsRead>({
+    settings: {
+      input_mode: mode,
+      warning_policy: "warn" as "warn" | "confirm",
+      onboarding_required: false,
+      revision: 0,
+    },
+    can_edit: true,
+    missing_shift_types: params.has("missing")
+      ? [{ id: shiftTypes[0]!.id, name: "Lunch" }]
+      : [],
+  });
+  const [model, setModel] = useState<WeeklyPreferenceRead>({
+    employee_id: "ad420000-0000-4000-8000-000000000099",
+    employee_name: "Ada Lovelace",
+    can_edit_employee: true,
+    can_manage: true,
+    time_format: "24h",
+    settings: {
+      input_mode: mode,
+      warning_policy: "warn",
+      onboarding_required: false,
+      revision: 1,
+    },
+    employee: {
+      submitted: true,
+      revision: 1,
+      updated_at: null,
+      preference: employee,
+    },
+    manager: {
+      submitted: true,
+      revision: 1,
+      updated_at: null,
+      preference: reminder,
+      enabled: true,
+      notes: [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "Confirm the closing shift before publishing.",
+      ],
+    },
+    shift_types: shiftTypes,
+  });
+  async function save(command: WeeklyPreferenceSave) {
+    const next = structuredClone(model);
+    const record = command.source === "manager" ? next.manager! : next.employee;
+    record.preference = command.preference;
+    record.revision += 1;
+    record.submitted = true;
+    if (command.source === "manager") {
+      next.manager!.enabled = command.enabled!;
+      next.manager!.notes = command.notes!;
+    }
+    setModel(next);
+    return next;
+  }
+  if (params.get("view") === "publish-return") return <PublishReturnPreview preview={preflight} />;
+  return (
+    <main
+      style={{
+        maxWidth: audience === "manager" ? 760 : 1000,
+        margin: "24px auto",
+        border: "1px solid #e1e7e3",
+      }}
+    >
+      {params.get("view") === "preflight" ? (
+        <div style={{ padding: 16 }}><PublishPreflightPanel preview={preflight} locations={[]} overrideReasons={{}} onOverrideReasonChange={() => {}} /></div>
+      ) : params.get("view") === "settings" ? (
+        <MemoryRouter>
+          <WeeklyPreferenceSettings
+            model={settingsModel}
+            onReload={async () => settingsModel}
+            onSave={async (command) => {
+              const next = {
+                ...settingsModel,
+                settings: {
+                  input_mode: command.input_mode,
+                  warning_policy: command.warning_policy,
+                  onboarding_required: command.onboarding_required,
+                  revision: settingsModel.settings.revision + 1,
+                },
+              };
+              setSettingsModel(next);
+              return next;
+            }}
+          />
+        </MemoryRouter>
+      ) : (
+        <WeeklyPreferencesForm
+          model={model}
+          audience={audience}
+          onSave={save}
+          onPreview={params.has("review") ? async () => review : undefined}
+        />
+      )}
+    </main>
+  );
+}
+
+// This separate dev entry has no API access and is not an application route.
+if (import.meta.env.DEV)
+  createRoot(document.getElementById("root")!).render(<Preview />);

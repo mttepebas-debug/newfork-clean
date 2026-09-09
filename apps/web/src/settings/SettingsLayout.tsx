@@ -1,7 +1,7 @@
 import {
+  Bell,
   BriefcaseBusiness,
   CalendarClock,
-  Clock3,
   FileText,
   LifeBuoy,
   MapPin,
@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
-import { NavLink, Navigate, Outlet } from "react-router";
+import { NavLink, Navigate, Outlet, useLocation } from "react-router";
 import type { Permission } from "@newfork/shared";
 import { useAuth } from "../auth/AuthContext";
 import { settingsEntryPermissions } from "../auth/PermissionRoute";
@@ -38,6 +38,15 @@ const groups = [
         icon: BriefcaseBusiness,
         permissions: ["workspace.manage"],
       },
+      {
+        to: "/app/settings/notifications",
+        label: "Notifications",
+        icon: Bell,
+        permissions: [
+          "notifications.settings.read",
+          "notifications.settings.write",
+        ],
+      },
     ],
   },
   {
@@ -47,19 +56,14 @@ const groups = [
         to: "/app/settings/scheduling",
         label: "Schedule rules",
         icon: CalendarClock,
+        end: true,
         permissions: ["workspace.manage"],
       },
       {
         to: "/app/settings/scheduling/shift-types",
-        label: "Shift types",
-        icon: Clock3,
-        permissions: ["workspace.manage"],
-      },
-      {
-        to: "/app/important-dates",
-        label: "Important dates",
+        label: "Shift catalog",
         icon: CalendarClock,
-        permissions: ["workspace.manage", "schedule.read"],
+        permissions: ["workspace.manage"],
       },
     ],
   },
@@ -118,6 +122,7 @@ const groups = [
 
 export default function SettingsLayout() {
   const { context } = useAuth();
+  const location = useLocation();
   if (
     !context ||
     !settingsEntryPermissions.some((permission) =>
@@ -156,9 +161,13 @@ export default function SettingsLayout() {
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    className={({ isActive }) =>
-                      `settings-nav-item${isActive ? " active" : ""}`
-                    }
+                    end={"end" in item ? item.end : undefined}
+                    className={({ isActive }) => {
+                      const shiftCatalogActive =
+                        item.label === "Shift catalog" &&
+                        location.pathname.endsWith("/shift-labels");
+                      return `settings-nav-item${isActive || shiftCatalogActive ? " active" : ""}`;
+                    }}
                   >
                     <Icon size={17} aria-hidden />
                     <span>{item.label}</span>

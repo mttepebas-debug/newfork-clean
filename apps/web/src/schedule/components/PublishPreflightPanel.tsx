@@ -2,7 +2,7 @@ import type {
   ScheduleLocation,
   SchedulePublicationPreview,
 } from "@newfork/shared/schedule";
-import { AlertTriangle, CheckCircle2, Info, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, CheckCircle2, Info, ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
 export const publishOverrideReasonMinLength = 10;
@@ -24,6 +24,15 @@ const blockReasonText: Readonly<Record<PublishPreflightBlockReason, string>> = {
 };
 
 type SchedulePublishFinding = SchedulePublicationPreview["findings"][number];
+
+export function isWeeklyAvailabilityFinding(finding: SchedulePublishFinding): boolean {
+  return finding.code === "availability" && finding.severity === "soft" && finding.overrideable &&
+    !!finding.availability_state && !!finding.warning_policy;
+}
+
+export function publishNewAvailabilityFindings(preview: SchedulePublicationPreview) {
+  return preview.findings.filter((finding) => isWeeklyAvailabilityFinding(finding) && finding.availability_state === "new");
+}
 
 type SchedulePublishFindingWithPreflight = SchedulePublishFinding & {
   readonly tier?: PublishPreflightTier;
@@ -53,6 +62,7 @@ export function publishHardBlockers(preview: SchedulePublicationPreview) {
   return preview.findings.filter(
     (finding) =>
       findingGatesPublish(finding) &&
+      !isWeeklyAvailabilityFinding(finding) &&
       preflightTier(finding) === "blocker" &&
       (!finding.overrideable || finding.severity === "hard"),
   );
@@ -64,6 +74,7 @@ export function publishOverrideableBlockers(
   return preview.findings.filter(
     (finding) =>
       findingGatesPublish(finding) &&
+      !isWeeklyAvailabilityFinding(finding) &&
       preflightTier(finding) === "blocker" &&
       finding.overrideable &&
       finding.severity !== "hard",
@@ -73,12 +84,12 @@ export function publishOverrideableBlockers(
 export function publishGatingRisks(preview: SchedulePublicationPreview) {
   return preview.findings.filter(
     (finding) =>
-      findingGatesPublish(finding) && preflightTier(finding) === "risk",
+      !isWeeklyAvailabilityFinding(finding) && findingGatesPublish(finding) && preflightTier(finding) === "risk",
   );
 }
 
 export function publishInformationalFindings(preview: SchedulePublicationPreview) {
-  return preview.findings.filter((finding) => !findingGatesPublish(finding));
+  return preview.findings.filter((finding) => !isWeeklyAvailabilityFinding(finding) && !findingGatesPublish(finding));
 }
 
 export function PublishPreflightPanel({
@@ -89,6 +100,8 @@ export function PublishPreflightPanel({
   risksAcknowledged = false,
   onRisksAcknowledgedChange,
   blockReason = null,
+  onReviewShift,
+  reviewDisabled = false,
 }: {
   readonly preview: SchedulePublicationPreview;
   readonly locations: readonly ScheduleLocation[];
@@ -97,16 +110,21 @@ export function PublishPreflightPanel({
   readonly risksAcknowledged?: boolean;
   readonly onRisksAcknowledgedChange?: (value: boolean) => void;
   readonly blockReason?: PublishPreflightBlockReason | null;
+  readonly onReviewShift?: (finding: SchedulePublishFinding) => void;
+  readonly reviewDisabled?: boolean;
 }) {
   const hard = publishHardBlockers(preview);
   const overrideable = publishOverrideableBlockers(preview);
   const risks = publishGatingRisks(preview);
   const informational = publishInformationalFindings(preview);
+  const newAvailability = publishNewAvailabilityFindings(preview);
+  const acceptedAvailability = preview.findings.filter((finding) => isWeeklyAvailabilityFinding(finding) && finding.availability_state === "accepted");
+  const needsAvailabilityConfirmation = newAvailability.some((finding) => finding.warning_policy === "confirm");
   const ready =
     preview.status === "publish_ready" &&
     !hard.length &&
     !overrideable.length &&
-    !risks.length;
+    !risks.length && !needsAvailabilityConfirmation;
   const blockerCount = hard.length + overrideable.length;
 
   return (
@@ -128,6 +146,7 @@ export function PublishPreflightPanel({
                   risks.length
                     ? `${risks.length} ${risks.length === 1 ? "risk" : "risks"}`
                     : null,
+                  newAvailability.length ? `${newAvailability.length} availability ${newAvailability.length === 1 ? "conflict" : "conflicts"}` : null,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -139,6 +158,8 @@ export function PublishPreflightPanel({
                 ? blockReasonText[blockReason]
               : hard.length
                 ? "Fix hard blockers in the schedule before publishing."
+                : needsAvailabilityConfirmation
+                  ? "Confirm the new availability conflicts to continue."
                 : risks.length
                   ? "Blockers stop the publish. Risks go live once acknowledged."
                   : "Every override is recorded with the published audit trail."}
@@ -182,6 +203,16 @@ export function PublishPreflightPanel({
         />
       ) : null}
 
+      {newAvailability.length ? (
+        <WeeklyAvailabilityGroup findings={newAvailability} locations={locations} title="New availability conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
+      ) : null}
+      {acceptedAvailability.length ? (
+        <details className="schedule-publish-accepted-availability">
+          <summary>Previously accepted ({acceptedAvailability.length})</summary>
+          <WeeklyAvailabilityGroup findings={acceptedAvailability} locations={locations} title="Accepted availability conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
+        </details>
+      ) : null}
+
       {risks.length ? (
         <FindingGroup
           tone="risk"
@@ -220,6 +251,25 @@ export function PublishPreflightPanel({
 
     </section>
   );
+}
+
+function WeeklyAvailabilityGroup({ findings, locations, title, onReviewShift, reviewDisabled }: {
+  readonly findings: readonly SchedulePublishFinding[];
+  readonly locations: readonly ScheduleLocation[];
+  readonly title: string;
+  readonly onReviewShift?: (finding: SchedulePublishFinding) => void;
+  readonly reviewDisabled?: boolean;
+}) {
+  return <section className="schedule-publish-finding-group risk schedule-publish-weekly-availability">
+    <div className="schedule-publish-finding-heading"><AlertTriangle size={16} aria-hidden /><strong>{title}</strong></div>
+    {findings.map((finding) => <div key={finding.id} className="schedule-publish-finding-row schedule-publish-availability-row">
+      <div><strong>{finding.employee_name ?? "Employee"}</strong>
+        <small>{finding.scheduled_date} · {finding.location_name ?? locations.find((location) => location.id === finding.location_id)?.name ?? finding.location_id}</small>
+        <span>{finding.message}</span>
+      </div>
+      {onReviewShift && finding.shift_ids.length ? <button type="button" disabled={reviewDisabled} aria-label={`Show ${finding.employee_name ?? "employee"}'s shift on ${finding.scheduled_date}`} title="Show shift" onClick={() => onReviewShift(finding)}><ArrowUpRight size={16} aria-hidden /></button> : null}
+    </div>)}
+  </section>;
 }
 
 function FindingGroup({

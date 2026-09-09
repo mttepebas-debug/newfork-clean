@@ -206,7 +206,14 @@ describe("ScheduleGrid hour totals parity", () => {
       }),
     );
 
-    expect(screen.getByRole("columnheader", { name: "Total hours" })).toBeTruthy();
+    expect(
+      screen.getByRole("columnheader", { name: "Total hours" }),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("columnheader", { name: "Total hours" })
+        .getAttribute("data-schedule-total-column-cell"),
+    ).toBe("true");
     expect(
       screen.getByRole("gridcell", {
         name: "Alex Rivera total hours 7h 30m",
@@ -220,6 +227,11 @@ describe("ScheduleGrid hour totals parity", () => {
     expect(
       screen.getByRole("gridcell", { name: "Week total hours 7h 30m" }),
     ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("gridcell", { name: "Week total hours 7h 30m" })
+        .getAttribute("data-schedule-total-column-cell"),
+    ).toBe("true");
   });
 
   it("renders visible versus unfiltered comparison labels when filters hide shifts", () => {

@@ -9,14 +9,19 @@ import { addDays } from "./scheduleDateTime";
 export const scheduleGridEmployeeColumnWidth = 200;
 export const scheduleGridTotalColumnWidth = 120;
 export const scheduleGridMinDayColumnWidth = 112;
-export const scheduleGridPreviewCellHorizontalChrome = 1;
-export const scheduleGridEditCellHorizontalChrome = 13;
+export const scheduleGridTotalRowHeight = 40;
+export const scheduleGridHorizontalNavHeight = 17;
+export const scheduleGridPreviewCellHorizontalChrome = 3;
+export const scheduleGridEditCellHorizontalChrome = 9;
 const scheduleGridLocationHeaderBaseWidth = 64;
 const scheduleGridLocationHeaderCharWidth = 9;
 
 export type ScheduleGridLocationGroup = ScheduleLocation & {
   readonly sourceIds: readonly string[];
-  readonly sourceNames: readonly { readonly id: string; readonly name: string }[];
+  readonly sourceNames: readonly {
+    readonly id: string;
+    readonly name: string;
+  }[];
 };
 
 export function resolveScheduleInteractionLocationId({
@@ -115,11 +120,19 @@ export function countScheduleGridTotalColumns({
 
 export function createScheduleGridTemplateColumns({
   columns,
+  fitVisibleColumns = false,
   showTotalHours,
 }: {
   readonly columns: number;
+  readonly fitVisibleColumns?: boolean;
   readonly showTotalHours: boolean;
 }): string {
+  if (fitVisibleColumns) {
+    return `minmax(144px, ${scheduleGridEmployeeColumnWidth}px) repeat(${columns}, minmax(0, 1fr))${
+      showTotalHours ? ` minmax(72px, ${scheduleGridTotalColumnWidth}px)` : ""
+    }`;
+  }
+
   return `${scheduleGridEmployeeColumnWidth}px repeat(${columns}, minmax(var(--schedule-day-column-min), 1fr))${
     showTotalHours ? ` ${scheduleGridTotalColumnWidth}px` : ""
   }`;
@@ -127,11 +140,13 @@ export function createScheduleGridTemplateColumns({
 
 export function calculateScheduleDayColumnMinWidth({
   editing,
+  layout = "separate",
   locationGroups,
   measuredBadgeWidth,
   view,
 }: {
   readonly editing: boolean;
+  readonly layout?: "separate" | "unified";
   readonly locationGroups: readonly ScheduleGridLocationGroup[];
   readonly measuredBadgeWidth: number;
   readonly view: ScheduleView;
@@ -148,7 +163,9 @@ export function calculateScheduleDayColumnMinWidth({
 
   return Math.max(
     view === "day" ? 168 : scheduleGridMinDayColumnWidth,
-    measuredLocationHeaderWidth,
+    layout === "unified" && view === "week"
+      ? scheduleGridMinDayColumnWidth
+      : measuredLocationHeaderWidth,
     measuredBadgeWidth +
       (editing
         ? scheduleGridEditCellHorizontalChrome
@@ -173,12 +190,31 @@ export function countScheduleGridBodyRows({
     rowCount +
     (showUnassignedRow ? 1 : 0) +
     (showEmployeeGroupHeaders ? employeeRowGroupCount : 0) +
-    (showTotalHours && rowCount ? 1 : 0)
+    (showTotalHours ? 1 : 0)
   );
 }
 
-export function countScheduleGridFillerRows(bodyRowCount: number): number {
-  return Math.max(0, 8 - bodyRowCount);
+export function countScheduleGridFillerRows(_bodyRowCount: number): number {
+  return 1;
+}
+
+export function calculateScheduleGridFillerHeight({
+  viewportHeight,
+  fillerStartOffset,
+  totalRowHeight,
+  horizontalNavHeight,
+}: {
+  readonly viewportHeight: number;
+  readonly fillerStartOffset: number;
+  readonly totalRowHeight: number;
+  readonly horizontalNavHeight: number;
+}): number {
+  return Math.max(
+    0,
+    Math.round(
+      viewportHeight - fillerStartOffset - totalRowHeight - horizontalNavHeight,
+    ),
+  );
 }
 
 export function createScheduleBadgeMeasurementVersion({

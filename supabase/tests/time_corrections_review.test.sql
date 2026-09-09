@@ -34,7 +34,13 @@ update correction_state set result=public.request_own_time_correction_service(
 update correction_state set correction_id=(result->'correction'->>'id')::uuid;
 select is(result->'correction'->>'status','pending','employee submits pending correction') from correction_state;
 select is(result->'correction'->>'base_revision','1','request captures session revision') from correction_state;
-select is((select count(*)::integer from public.notifications where source_type='time_correction' and event_key='submitted'),1,'reviewer receives one correction notification');
+update public.notification_outbox set status='leased',lease_owner='correction-submit-test',lease_expires_at=now()+interval '1 minute'
+where type_key='time_tracking.correction.submitted' and subject_id=(select correction_id::text from correction_state);
+do $$ declare outbox_id uuid; begin
+ select id into outbox_id from public.notification_outbox where type_key='time_tracking.correction.submitted' and subject_id=(select correction_id::text from correction_state);
+ perform public.process_notification_outbox_service('correction-submit-test',outbox_id);
+end $$;
+select is((select count(*)::integer from public.notifications notification join public.notification_outbox outbox on outbox.event_id=notification.source_id where outbox.type_key='time_tracking.correction.submitted' and notification.source_type='notification_event'),1,'reviewer receives one correction notification through the outbox bridge');
 select throws_ok(
   (select format($$select public.request_own_time_correction_service('a6000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','%s',1,'2026-08-17 16:30:00+00','2026-08-18 00:00:00+00','Another request','b7000000-0000-4000-8000-000000000003')$$,session_id) from correction_state),
   '23505',null,'only one pending request is allowed per session'
@@ -54,7 +60,13 @@ select is(result->'correction'->>'status','accepted','manager accepts correction
 select is(result->'session'->>'revision','2','accept advances session revision') from correction_state;
 select is((result->'session'->>'effective_started_at')::timestamptz,'2026-08-17 16:15:00+00'::timestamptz,'accept applies requested start') from correction_state;
 select isnt(result->>'amendment',null,'accept creates an amendment') from correction_state;
-select is((select count(*)::integer from public.notifications where source_type='time_correction' and event_key='decided'),1,'employee receives decision notification');
+update public.notification_outbox set status='leased',lease_owner='correction-decision-test',lease_expires_at=now()+interval '1 minute'
+where type_key='time_tracking.correction.decided' and subject_id=(select correction_id::text from correction_state);
+do $$ declare outbox_id uuid; begin
+ select id into outbox_id from public.notification_outbox where type_key='time_tracking.correction.decided' and subject_id=(select correction_id::text from correction_state);
+ perform public.process_notification_outbox_service('correction-decision-test',outbox_id);
+end $$;
+select is((select count(*)::integer from public.notifications notification join public.notification_outbox outbox on outbox.event_id=notification.source_id where outbox.type_key='time_tracking.correction.decided' and notification.source_type='notification_event'),1,'employee receives decision notification through the outbox bridge');
 select throws_ok(
   (select format($$update public.time_correction_requests set reason='Changed' where id='%s'$$,correction_id) from correction_state),
   '42501',null,'submitted correction content is immutable'

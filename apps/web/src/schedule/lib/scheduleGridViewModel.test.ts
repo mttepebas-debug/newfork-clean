@@ -123,7 +123,7 @@ describe("createScheduleGridViewModel", () => {
     expect(view.showUnassignedRow).toBe(true);
     expect(view.showEmployeeGroups).toBe(false);
     expect(view.showShiftTypePresets).toBe(false);
-    expect(view.fillerRowCount).toBe(5);
+    expect(view.fillerRowCount).toBe(1);
   });
 
   it("keeps the unassigned row available in edit mode even when empty", () => {
@@ -158,6 +158,25 @@ describe("createScheduleGridViewModel", () => {
     });
 
     expect(view.showUnassignedRow).toBe(false);
+  });
+
+  it("keeps a filler row when no employees exist so the totals row can stay pinned to the bottom", () => {
+    const view = createScheduleGridViewModel({
+      filtered: model({ employees: [], shifts: [] }),
+      employeeSortMode: "alphabetical",
+      hideUnscheduled: false,
+      layout: "separate",
+      showPresetShiftBadges: false,
+      showRoleSeparators: false,
+      showTotalHours: true,
+      showUnassignedShifts: false,
+      hasEditSession: false,
+      addDays,
+    });
+
+    expect(view.rows).toHaveLength(0);
+    expect(view.showUnassignedRow).toBe(false);
+    expect(view.fillerRowCount).toBe(1);
   });
 
   it("keeps excluded employees visible when they have a shift in the week", () => {

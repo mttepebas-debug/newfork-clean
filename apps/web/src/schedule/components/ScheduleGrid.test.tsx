@@ -2,7 +2,7 @@ import type {
   ScheduleEditSession,
   ScheduleReadModel,
 } from "@newfork/shared/schedule";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ScheduleGrid } from "./ScheduleGrid";
@@ -252,7 +252,7 @@ describe("ScheduleGrid", () => {
       2,
     );
     expect(
-      screen.queryByRole("button", { name: "Dinner-No job/position" }),
+      screen.queryByRole("button", { name: "Dinner-Unassigned job" }),
     ).toBeNull();
     expect(
       screen.getByTestId(`schedule-employee-group-${jobId}`).textContent,
@@ -260,7 +260,7 @@ describe("ScheduleGrid", () => {
     expect(
       container.querySelector("[data-schedule-employee-group='none']")
         ?.textContent,
-    ).toContain("No job/position");
+    ).toContain("Unassigned job");
 
     expect(
       container.querySelector("[data-schedule-role-location-seam]"),
@@ -273,6 +273,184 @@ describe("ScheduleGrid", () => {
     expect(
       container.querySelector("[data-schedule-preset-chip='true']"),
     ).toBeNull();
+  });
+
+  it("fills an empty employee grid down to the sticky totals row", () => {
+    const emptyModel = scheduleModel({ employees: [], shifts: [] });
+    const { container } = renderGrid({
+      model: emptyModel,
+      session: null,
+      employeeSortMode: "alphabetical",
+      showPresetShiftBadges: false,
+      showRoleSeparators: false,
+      showUnassignedShifts: false,
+    });
+
+    const grid = screen.getByRole("grid", {
+      name: "Weekly published schedule",
+    });
+    const gridChildren = Array.from(grid.children);
+    const emptyRowIndex = gridChildren.findIndex((element) =>
+      element.classList.contains("schedule-empty-row"),
+    );
+    const fillerIndex = gridChildren.findIndex(
+      (element) =>
+        element.getAttribute("data-schedule-filler-height-px") === "true",
+    );
+    const totalIndex = gridChildren.findIndex(
+      (element) =>
+        element.getAttribute("data-schedule-total-hours-row-label") === "true",
+    );
+
+    expect(container.querySelector(".schedule-empty-row")?.textContent).toBe(
+      "No employees",
+    );
+    expect(emptyRowIndex).toBeGreaterThan(-1);
+    expect(fillerIndex).toBeGreaterThan(emptyRowIndex);
+    expect(totalIndex).toBeGreaterThan(fillerIndex);
+    const weekTotal = container.querySelector(
+      "[data-schedule-total-hours-week-cell='true']",
+    );
+    expect(weekTotal?.getAttribute("aria-label")).toBe("Week total hours 0h");
+    expect(weekTotal?.textContent).toBe("0h");
+  });
+
+  it("blocks single-shift drag while multiple shifts are selected", async () => {
+    const onMove = vi.fn();
+    const { container } = renderGrid({
+      selectedIds: [
+        "66666666-6666-4666-8666-666666666666",
+        "77777777-7777-4777-8777-777777777779",
+      ],
+      onMove,
+    });
+    const badge = container.querySelector<HTMLElement>(
+      ".schedule-shift-badge[data-shift-badge='true']",
+    );
+    const targetCellSelector =
+      ".schedule-cell[data-drop-cell='true'][data-date='2026-08-18']";
+    const targetCell = container.querySelector<HTMLElement>(targetCellSelector);
+    expect(badge).toBeTruthy();
+    expect(targetCell).toBeTruthy();
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: vi.fn(() => container.querySelector(targetCellSelector)),
+    });
+
+    fireEvent.mouseDown(badge!, {
+      button: 0,
+      buttons: 1,
+      clientX: 10,
+      clientY: 10,
+    });
+    fireEvent.mouseMove(window, {
+      buttons: 1,
+      clientX: 40,
+      clientY: 40,
+    });
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+
+    expect(container.querySelector(".schedule-shift-drag-preview")).toBeNull();
+    expect(onMove).not.toHaveBeenCalled();
+  });
+
+  it("keeps employee rows mounted while a shift is dragged", async () => {
+    const busyEmployeeId = "99999999-9999-4999-8999-999999999997";
+    const wrongLocationEmployeeId = "99999999-9999-4999-8999-999999999998";
+    const model = scheduleModel({
+      locations: [
+        ...scheduleModel().locations,
+        {
+          id: "99999999-9999-4999-8999-999999999999",
+          name: "Patio",
+          timezone: "America/Los_Angeles",
+          sort_order: 1,
+          publication_status: "published",
+          published_at: null,
+        },
+      ],
+      employees: [
+        ...scheduleModel().employees,
+        {
+          id: busyEmployeeId,
+          employee_code: "NF-002",
+          display_name: "Busy Server",
+          location_ids: [locationId],
+          job_ids: [jobId],
+          primary_job_id: jobId,
+          availability: null,
+        },
+        {
+          id: wrongLocationEmployeeId,
+          employee_code: "NF-003",
+          display_name: "Patio Server",
+          location_ids: ["99999999-9999-4999-8999-999999999999"],
+          job_ids: [jobId],
+          primary_job_id: jobId,
+          availability: null,
+        },
+      ],
+      shifts: [
+        ...scheduleModel().shifts,
+        {
+          ...scheduleModel().shifts[0]!,
+          id: "99999999-9999-4999-8999-999999999996",
+          employee_id: busyEmployeeId,
+          start_time: "17:00",
+          end_time: "18:00",
+        },
+      ],
+    });
+    const { container } = renderGrid({
+      model,
+      session: editSession(model),
+      employeeSortMode: "alphabetical",
+      showRoleSeparators: false,
+      showPresetShiftBadges: false,
+    });
+    const badge = container.querySelector<HTMLElement>(
+      ".schedule-shift-badge[data-shift-id='66666666-6666-4666-8666-666666666666']",
+    );
+    const targetCell = container.querySelector<HTMLElement>(
+      ".schedule-cell[data-drop-cell='true'][data-date='2026-08-17']",
+    );
+    expect(badge).toBeTruthy();
+    expect(targetCell).toBeTruthy();
+    expect(screen.getByText("Alex Rivera")).toBeTruthy();
+    expect(screen.getByText("Busy Server")).toBeTruthy();
+    expect(screen.getByText("Patio Server")).toBeTruthy();
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: vi.fn(() => targetCell),
+    });
+
+    fireEvent.mouseDown(badge!, {
+      button: 0,
+      buttons: 1,
+      clientX: 10,
+      clientY: 10,
+    });
+    fireEvent.mouseMove(window, {
+      buttons: 1,
+      clientX: 40,
+      clientY: 40,
+    });
+    await waitFor(() =>
+      expect(container.querySelector(".schedule-shift-drag-preview")).toBeTruthy(),
+    );
+
+    expect(await screen.findByText("Alex Rivera")).toBeTruthy();
+    expect(screen.getByText("Busy Server")).toBeTruthy();
+    expect(screen.getByText("Patio Server")).toBeTruthy();
+
+    fireEvent.mouseUp(window, {
+      button: 0,
+      buttons: 0,
+      clientX: 40,
+      clientY: 40,
+    });
+    await waitFor(() => expect(screen.getByText("Busy Server")).toBeTruthy());
+    expect(screen.getByText("Patio Server")).toBeTruthy();
   });
 
   it("widens day columns when preset badge measurement needs more space", async () => {
@@ -301,7 +479,7 @@ describe("ScheduleGrid", () => {
           screen
             .getByRole("grid", { name: "Weekly editable schedule" })
             .style.getPropertyValue("--schedule-day-column-min"),
-        ).toBe("273px"),
+        ).toBe("269px"),
       );
 
       const presetBadge = screen.getByRole("button", {

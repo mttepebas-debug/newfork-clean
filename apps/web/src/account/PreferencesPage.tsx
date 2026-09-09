@@ -1,8 +1,9 @@
 import type { ThemePreference } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { AccountPageHeader } from "./components";
 
 const themes = [
   { value: "system", label: "System", icon: Monitor },
@@ -18,6 +19,13 @@ export default function PreferencesPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (!account || dirty) return;
+    setTheme(account.theme);
+  }, [account, dirty]);
+
   if (!account) return null;
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -27,6 +35,7 @@ export default function PreferencesPage() {
     setError(null);
     try {
       await updateAccount(account.displayName, theme);
+      setDirty(false);
       setSaved(true);
     } catch (saveError: unknown) {
       setError(
@@ -41,10 +50,11 @@ export default function PreferencesPage() {
 
   return (
     <section className="account-page" aria-labelledby="preferences-title">
-      <header>
-        <p className="eyebrow">Account Center</p>
-        <h1 id="preferences-title">Preferences</h1>
-      </header>
+      <AccountPageHeader
+        title="Preferences"
+        titleId="preferences-title"
+        description="Account-level display settings that follow you between workspaces."
+      />
       <form className="settings-form" onSubmit={submit}>
         <fieldset className="theme-fieldset">
           <legend>Appearance</legend>
@@ -61,7 +71,11 @@ export default function PreferencesPage() {
                     name="theme"
                     value={option.value}
                     checked={theme === option.value}
-                    onChange={() => setTheme(option.value)}
+                    onChange={() => {
+                      setTheme(option.value);
+                      setDirty(true);
+                      setSaved(false);
+                    }}
                   />
                   <Icon size={17} aria-hidden /> {option.label}
                 </label>

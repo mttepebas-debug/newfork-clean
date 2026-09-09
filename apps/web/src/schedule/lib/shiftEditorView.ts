@@ -41,7 +41,7 @@ export function getQuickEditorInitialPosition(
 ): { readonly x: number; readonly y: number } {
   return clampQuickEditorPosition(
     x + quickEditorPointerOffset,
-    y + quickEditorPointerOffset,
+    y,
     viewport,
   );
 }

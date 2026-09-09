@@ -8,9 +8,11 @@ import {
 
 function Harness({
   enabled = true,
+  warning = false,
   onDrop = vi.fn(),
 }: {
   readonly enabled?: boolean;
+  readonly warning?: boolean;
   readonly onDrop?: (target: ShiftDropTarget) => void;
 }) {
   const drag = useSingleShiftPointerDrag({
@@ -18,7 +20,7 @@ function Harness({
     resolveLabel: () => "Dinner, 4p to 10p",
     evaluateTarget: (target) => ({
       allowed: true,
-      targetStatus: "allowed",
+      targetStatus: warning ? "warning" : "allowed",
       reason: target.copy ? "Copy" : undefined,
     }),
     onDragStart: vi.fn(),
@@ -58,9 +60,9 @@ describe("useSingleShiftPointerDrag", () => {
     vi.restoreAllMocks();
   });
 
-  it("starts dragging after the threshold and drops on the resolved cell", async () => {
+  it.each([false, true])("drops on the resolved cell even when warning=%s", async warning => {
     const onDrop = vi.fn();
-    render(<Harness onDrop={onDrop} />);
+    render(<Harness onDrop={onDrop} warning={warning} />);
     const dropCell = screen.getByTestId("drop-cell");
     Object.defineProperty(document, "elementFromPoint", {
       configurable: true,
@@ -81,7 +83,7 @@ describe("useSingleShiftPointerDrag", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("drag-state").textContent).toBe(
-        "Dinner, 4p to 10p|emp-1|loc-1|2026-08-17|allowed|false",
+        `Dinner, 4p to 10p|emp-1|loc-1|2026-08-17|${warning ? "warning" : "allowed"}|false`,
       ),
     );
 
@@ -177,6 +179,48 @@ describe("useSingleShiftPointerDrag", () => {
       clientX: 12,
       clientY: 12,
     });
+
+    expect(screen.getByTestId("drag-state").textContent).toBe("idle");
+    expect(onDrop).not.toHaveBeenCalled();
+  });
+
+  it("does not convert a touch gesture into badge drag", async () => {
+    const onDrop = vi.fn();
+    render(<Harness onDrop={onDrop} />);
+    const shift = screen.getByRole("button", { name: "Shift" });
+
+    const touchStart = new Event("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperties(touchStart, {
+      button: { value: 0 },
+      buttons: { value: 1 },
+      clientX: { value: 0 },
+      clientY: { value: 0 },
+      pointerId: { value: 4 },
+      pointerType: { value: "touch" },
+    });
+    fireEvent(shift, touchStart);
+    fireEvent.pointerMove(window, {
+      buttons: 1,
+      clientX: 20,
+      clientY: 20,
+      pointerId: 4,
+      pointerType: "touch",
+    });
+    fireEvent.mouseDown(shift, {
+      button: 0,
+      buttons: 1,
+      clientX: 0,
+      clientY: 0,
+    });
+    fireEvent.mouseMove(window, {
+      buttons: 1,
+      clientX: 20,
+      clientY: 20,
+    });
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
 
     expect(screen.getByTestId("drag-state").textContent).toBe("idle");
     expect(onDrop).not.toHaveBeenCalled();

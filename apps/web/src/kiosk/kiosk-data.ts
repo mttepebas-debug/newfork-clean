@@ -8,7 +8,9 @@ import {
 } from "@newfork/shared";
 import { supabaseClient } from "../lib/supabase";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:9999";
+const API_URL =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.DEV ? "http://localhost:9999" : "");
 
 export class KioskRequestError extends Error {
   constructor(

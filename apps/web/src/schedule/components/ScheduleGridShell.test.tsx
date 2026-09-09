@@ -8,10 +8,12 @@ function defineScrollBox(
   scroll: HTMLElement,
   {
     clientWidth = 320,
+    clientHeight = 520,
     scrollLeft = 0,
     scrollWidth = 960,
   }: {
     readonly clientWidth?: number;
+    readonly clientHeight?: number;
     readonly scrollLeft?: number;
     readonly scrollWidth?: number;
   } = {},
@@ -20,6 +22,10 @@ function defineScrollBox(
   Object.defineProperty(scroll, "clientWidth", {
     configurable: true,
     value: clientWidth,
+  });
+  Object.defineProperty(scroll, "clientHeight", {
+    configurable: true,
+    value: clientHeight,
   });
   Object.defineProperty(scroll, "scrollWidth", {
     configurable: true,
@@ -90,8 +96,349 @@ describe("ScheduleGridShell", () => {
     expect(grid.style.gridTemplateColumns).toBe(
       "200px repeat(3, minmax(var(--schedule-day-column-min), 1fr)) 120px",
     );
+    expect(scroll.style.getPropertyValue("--schedule-filler-height")).toBe(
+      "0px",
+    );
+    expect(scroll.style.getPropertyValue("--schedule-total-bottom-offset")).toBe(
+      "0px",
+    );
+    expect(scroll.getAttribute("data-schedule-filler-state")).toBe("empty");
     expect(screen.getByTestId("grid-body")).toBeTruthy();
     expect(screen.getByTestId("drag-previews")).toBeTruthy();
+  });
+
+  it("uses visible-width columns for unified weekly fit mode", () => {
+    render(
+      <ScheduleGridShell
+        columns={7}
+        dayColumnMinWidth={220}
+        editing
+        fitVisibleColumns
+        gridRef={createRef<HTMLDivElement>()}
+        showTotalHours
+        view="week"
+        onClearSelection={vi.fn()}
+      >
+        <div data-testid="grid-body" />
+      </ScheduleGridShell>,
+    );
+
+    const grid = screen.getByRole("grid", { name: "Weekly editable schedule" });
+
+    expect(grid.getAttribute("data-schedule-fit-visible-columns")).toBe("true");
+    expect(grid.style.gridTemplateColumns).toBe(
+      "minmax(144px, 200px) repeat(7, minmax(0, 1fr)) minmax(72px, 120px)",
+    );
+  });
+
+  it("measures the elastic filler height above the sticky totals row", async () => {
+    const gridRef = createRef<HTMLDivElement>();
+    const { rerender } = render(
+      <ScheduleGridShell
+        columns={1}
+        dayColumnMinWidth={112}
+        editing={false}
+        gridRef={gridRef}
+        showTotalHours
+        view="week"
+        onClearSelection={vi.fn()}
+      >
+        <div data-schedule-filler-height-px="true" />
+        <div data-schedule-total-hours-row-label="true" />
+      </ScheduleGridShell>,
+    );
+
+    const scroll = screen.getByTestId("schedule-grid-scroll");
+    defineScrollBox(scroll, {
+      clientWidth: 520,
+      clientHeight: 620,
+      scrollWidth: 520,
+    });
+    scroll.getBoundingClientRect = () =>
+      ({
+        bottom: 620,
+        height: 620,
+        left: 0,
+        right: 520,
+        top: 0,
+        width: 520,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    const filler = scroll.querySelector<HTMLElement>(
+      "[data-schedule-filler-height-px='true']",
+    );
+    const total = scroll.querySelector<HTMLElement>(
+      "[data-schedule-total-hours-row-label='true']",
+    );
+    filler!.getBoundingClientRect = () =>
+      ({
+        bottom: 360,
+        height: 0,
+        left: 0,
+        right: 200,
+        top: 360,
+        width: 200,
+        x: 0,
+        y: 360,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    total!.getBoundingClientRect = () =>
+      ({
+        bottom: 400,
+        height: 40,
+        left: 0,
+        right: 200,
+        top: 360,
+        width: 200,
+        x: 0,
+        y: 360,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    rerender(
+      <ScheduleGridShell
+        columns={1}
+        dayColumnMinWidth={113}
+        editing={false}
+        gridRef={gridRef}
+        showTotalHours
+        view="week"
+        onClearSelection={vi.fn()}
+      >
+        <div data-schedule-filler-height-px="true" />
+        <div data-schedule-total-hours-row-label="true" />
+      </ScheduleGridShell>,
+    );
+
+    await waitFor(() =>
+      expect(scroll.style.getPropertyValue("--schedule-filler-height")).toBe(
+        "220px",
+      ),
+    );
+    expect(scroll.getAttribute("data-schedule-filler-state")).toBe("active");
+    expect(scroll.style.getPropertyValue("--schedule-total-bottom-offset")).toBe(
+      "0px",
+    );
+  });
+
+  it("clamps the filler height to zero when the employee rows already fill the viewport", async () => {
+    const gridRef = createRef<HTMLDivElement>();
+    const { rerender } = render(
+      <ScheduleGridShell
+        columns={8}
+        dayColumnMinWidth={180}
+        editing={false}
+        gridRef={gridRef}
+        showTotalHours
+        view="week"
+        onClearSelection={vi.fn()}
+      >
+        <div data-schedule-filler-height-px="true" />
+        <div data-schedule-total-hours-row-label="true" />
+      </ScheduleGridShell>,
+    );
+
+    const scroll = screen.getByTestId("schedule-grid-scroll");
+    defineScrollBox(scroll, {
+      clientWidth: 320,
+      clientHeight: 420,
+      scrollWidth: 960,
+    });
+    scroll.getBoundingClientRect = () =>
+      ({
+        bottom: 420,
+        height: 420,
+        left: 0,
+        right: 320,
+        top: 0,
+        width: 320,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    const filler = scroll.querySelector<HTMLElement>(
+      "[data-schedule-filler-height-px='true']",
+    );
+    const total = scroll.querySelector<HTMLElement>(
+      "[data-schedule-total-hours-row-label='true']",
+    );
+    filler!.getBoundingClientRect = () =>
+      ({
+        bottom: 540,
+        height: 0,
+        left: 0,
+        right: 200,
+        top: 540,
+        width: 200,
+        x: 0,
+        y: 540,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    total!.getBoundingClientRect = () =>
+      ({
+        bottom: 580,
+        height: 40,
+        left: 0,
+        right: 200,
+        top: 540,
+        width: 200,
+        x: 0,
+        y: 540,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    rerender(
+      <ScheduleGridShell
+        columns={8}
+        dayColumnMinWidth={181}
+        editing={false}
+        gridRef={gridRef}
+        showTotalHours
+        view="week"
+        onClearSelection={vi.fn()}
+      >
+        <div data-schedule-filler-height-px="true" />
+        <div data-schedule-total-hours-row-label="true" />
+      </ScheduleGridShell>,
+    );
+
+    await waitFor(() =>
+      expect(scroll.style.getPropertyValue("--schedule-total-bottom-offset")).toBe(
+        "17px",
+      ),
+    );
+    expect(scroll.style.getPropertyValue("--schedule-filler-height")).toBe(
+      "0px",
+    );
+    expect(scroll.getAttribute("data-schedule-filler-state")).toBe("empty");
+  });
+
+  it("remeasures the filler when a real row grows without resizing the grid shell", async () => {
+    const resizeCallbacks = new Map<Element, ResizeObserverCallback>();
+    class TestResizeObserver implements ResizeObserver {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe(target: Element): void {
+        resizeCallbacks.set(target, this.callback);
+      }
+
+      disconnect(): void {}
+      unobserve(target: Element): void {
+        resizeCallbacks.delete(target);
+      }
+    }
+    vi.stubGlobal("ResizeObserver", TestResizeObserver);
+
+    try {
+      const gridRef = createRef<HTMLDivElement>();
+      const { rerender } = render(
+        <ScheduleGridShell
+          columns={1}
+          dayColumnMinWidth={112}
+          editing
+          gridRef={gridRef}
+          showTotalHours
+          view="week"
+          onClearSelection={vi.fn()}
+        >
+          <div data-schedule-real-row-anchor="true" />
+          <div data-schedule-filler-height-px="true" />
+          <div data-schedule-total-hours-row-label="true" />
+        </ScheduleGridShell>,
+      );
+
+      const scroll = screen.getByTestId("schedule-grid-scroll");
+      defineScrollBox(scroll, {
+        clientWidth: 520,
+        clientHeight: 620,
+        scrollWidth: 520,
+      });
+      scroll.getBoundingClientRect = () =>
+        ({
+          bottom: 620,
+          height: 620,
+          left: 0,
+          right: 520,
+          top: 0,
+          width: 520,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect;
+      const filler = scroll.querySelector<HTMLElement>(
+        "[data-schedule-filler-height-px='true']",
+      );
+      const total = scroll.querySelector<HTMLElement>(
+        "[data-schedule-total-hours-row-label='true']",
+      );
+      const rowAnchor = scroll.querySelector<HTMLElement>(
+        "[data-schedule-real-row-anchor='true']",
+      );
+      let fillerTop = 360;
+      filler!.getBoundingClientRect = () =>
+        ({
+          bottom: fillerTop,
+          height: 0,
+          left: 0,
+          right: 200,
+          top: fillerTop,
+          width: 200,
+          x: 0,
+          y: fillerTop,
+          toJSON: () => ({}),
+        }) as DOMRect;
+      total!.getBoundingClientRect = () =>
+        ({
+          bottom: 400,
+          height: 40,
+          left: 0,
+          right: 200,
+          top: 360,
+          width: 200,
+          x: 0,
+          y: 360,
+          toJSON: () => ({}),
+        }) as DOMRect;
+
+      rerender(
+        <ScheduleGridShell
+          columns={1}
+          dayColumnMinWidth={113}
+          editing
+          gridRef={gridRef}
+          showTotalHours
+          view="week"
+          onClearSelection={vi.fn()}
+        >
+          <div data-schedule-real-row-anchor="true" />
+          <div data-schedule-filler-height-px="true" />
+          <div data-schedule-total-hours-row-label="true" />
+        </ScheduleGridShell>,
+      );
+
+      await waitFor(() =>
+        expect(scroll.style.getPropertyValue("--schedule-filler-height")).toBe(
+          "220px",
+        ),
+      );
+
+      const onRowResize = resizeCallbacks.get(rowAnchor!);
+      expect(onRowResize).toBeTypeOf("function");
+      fillerTop = 700;
+      act(() => {
+        onRowResize!([], {} as ResizeObserver);
+      });
+
+      await waitFor(() =>
+        expect(scroll.style.getPropertyValue("--schedule-filler-height")).toBe(
+          "0px",
+        ),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("clears selection only when the blank grid surface is pressed", () => {
@@ -159,6 +506,11 @@ describe("ScheduleGridShell", () => {
       name: "Scroll schedule horizontally",
     });
     expect(nav.getAttribute("data-schedule-horizontal-nav")).toBe("true");
+    await waitFor(() =>
+      expect(scroll.style.getPropertyValue("--schedule-total-bottom-offset")).toBe(
+        "17px",
+      ),
+    );
     expect(track.getAttribute("aria-orientation")).toBe("horizontal");
     expect(track.getAttribute("aria-valuemax")).toBe("640");
     expect(track.getAttribute("aria-valuenow")).toBe("0");

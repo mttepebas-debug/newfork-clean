@@ -83,10 +83,11 @@ export function createScheduleGridViewModel({
     employeeRowGroupCount: employeeRowGroups.length,
     showTotalHours,
   });
+  const fillerRowCount = countScheduleGridFillerRows(bodyRowCount);
 
   return {
     employeeRowGroups,
-    fillerRowCount: countScheduleGridFillerRows(bodyRowCount),
+    fillerRowCount,
     rows,
     showEmployeeGroupHeaders,
     showEmployeeGroups,

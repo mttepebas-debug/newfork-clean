@@ -3,7 +3,7 @@ import type {
   ScheduleLocation,
   ScheduleReadModel,
 } from "@newfork/shared/schedule";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 
@@ -42,18 +42,14 @@ function buildTopBarProps(
   return {
     weekLabel: "Aug 17 - Aug 23",
     view: "week",
-    selectedDate: "2026-08-17",
     weekStartDate: "2026-08-17",
     weekStartDay: "monday" as const,
-    canOpenLineup: true,
-    canOpenRequests: true,
     layout: "separate" as const,
     onLayoutChange: vi.fn(),
     onPreviousViewPeriod: vi.fn(),
     onNextViewPeriod: vi.fn(),
     onCurrentViewPeriodClick: vi.fn(),
     isCurrentViewPeriod: false,
-    onJumpToToday: vi.fn(),
     onDayPick: vi.fn(),
     onWeekJump: vi.fn(),
     hideUnscheduled: false,
@@ -124,7 +120,7 @@ describe("ScheduleTopBar", () => {
     expect(jobsDetails?.hasAttribute("open")).toBe(false);
   });
 
-  it("swallows the outside pointer that closes an open dropdown", () => {
+  it("lets non-grid outside pointer actions continue after closing an open dropdown", () => {
     const onUnderlyingPointerDown = vi.fn();
     render(
       <MemoryRouter>
@@ -149,7 +145,39 @@ describe("ScheduleTopBar", () => {
     );
 
     expect(jobsDetails?.hasAttribute("open")).toBe(false);
-    expect(onUnderlyingPointerDown).not.toHaveBeenCalled();
+    expect(onUnderlyingPointerDown).toHaveBeenCalledTimes(1);
+  });
+
+  it("swallows the grid pointer that closes an open dropdown", () => {
+    const onGridPointerDown = vi.fn();
+    render(
+      <MemoryRouter>
+        <ScheduleTopBar {...buildTopBarProps()} />
+        <button
+          type="button"
+          data-schedule-grid-frame="true"
+          onPointerDown={onGridPointerDown}
+        >
+          underlying grid cell
+        </button>
+      </MemoryRouter>,
+    );
+
+    const jobsDetails = document.querySelector<HTMLElement>(
+      '[data-filter-id="jobs"]',
+    );
+    const jobsTrigger = jobsDetails?.querySelector("summary");
+    expect(jobsTrigger).not.toBeNull();
+    fireEvent.click(jobsTrigger!);
+    expect(jobsDetails?.hasAttribute("open")).toBe(true);
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "underlying grid cell" }),
+      { pointerType: "mouse" },
+    );
+
+    expect(jobsDetails?.hasAttribute("open")).toBe(false);
+    expect(onGridPointerDown).not.toHaveBeenCalled();
   });
 
   it("does not leave focus on a topbar trigger after Escape closes the dropdown", () => {
@@ -214,8 +242,17 @@ describe("ScheduleTopBar", () => {
     const { rerender } = renderTopBar({ onEmployeeSortModeChange });
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const settingsPanel = document.querySelector<HTMLElement>(
+      ".schedule-settings-menu-panel",
+    );
+    expect(settingsPanel).not.toBeNull();
+    const settingsMenu = within(settingsPanel!);
 
-    expect(screen.queryByText(/Job color dot in badges/)).toBeNull();
+    expect(settingsMenu.queryByText(/Job color dot in badges/)).toBeNull();
+    expect(settingsMenu.queryByText("Schedule")).toBeNull();
+    expect(settingsMenu.queryByRole("button", { name: "Today" })).toBeNull();
+    expect(settingsMenu.queryByRole("link", { name: "Line-up" })).toBeNull();
+    expect(settingsMenu.queryByRole("link", { name: "Requests" })).toBeNull();
 
     const alphabetical = screen.getByRole("menuitemradio", { name: /A-Z/ });
     const byJob = screen.getByRole("menuitemradio", {

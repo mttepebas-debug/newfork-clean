@@ -92,12 +92,128 @@ values ('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'Local Owner');
 insert into public.user_preferences (user_id, theme)
 values ('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'system');
 
-insert into public.workspace_onboarding (workspace_id, status, current_step, updated_by)
+insert into public.workspace_onboarding (workspace_id, status, current_step, completed_at, updated_by)
 values (
   '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
-  'incomplete',
-  1,
+  'complete',
+  4,
+  now(),
   'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
+);
+
+-- Synthetic multi-organization memberships for local organization switcher verification.
+insert into auth.users (
+  instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at, is_sso_user, is_anonymous
+) values (
+  '00000000-0000-0000-0000-000000000000',
+  'b0000000-0000-4000-8000-000000000001',
+  'authenticated', 'authenticated', 'external-owner@newfork.test',
+  crypt('newfork-local', gen_salt('bf')), now(),
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{"display_name":"External Owner"}'::jsonb,
+  now(), now(), false, false
+);
+
+insert into auth.identities (
+  id, provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+) values (
+  '40000000-0000-4000-8000-000000000090',
+  'b0000000-0000-4000-8000-000000000001',
+  'b0000000-0000-4000-8000-000000000001',
+  '{"sub":"b0000000-0000-4000-8000-000000000001","email":"external-owner@newfork.test","email_verified":true}'::jsonb,
+  'email', now(), now(), now()
+);
+
+update auth.users
+set confirmation_token = '', recovery_token = '',
+  email_change_token_new = '', email_change = '', email_change_token_current = '',
+  phone = null, phone_change = '', phone_change_token = '', reauthentication_token = ''
+where id = 'b0000000-0000-4000-8000-000000000001';
+
+insert into public.user_profiles (user_id, display_name)
+values ('b0000000-0000-4000-8000-000000000001', 'External Owner');
+
+insert into public.user_preferences (user_id, theme)
+values ('b0000000-0000-4000-8000-000000000001', 'system');
+
+insert into public.workspaces (id, name, created_by)
+values
+  ('7ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Employee Demo', 'b0000000-0000-4000-8000-000000000001'),
+  ('8ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Pending Demo', 'b0000000-0000-4000-8000-000000000001'),
+  ('9ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Suspended Demo', 'b0000000-0000-4000-8000-000000000001');
+
+insert into public.workspace_memberships (id, workspace_id, user_id, role, status)
+values
+  ('b1000000-0000-4000-8000-000000000001', '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'b0000000-0000-4000-8000-000000000001', 'owner', 'active'),
+  ('b1000000-0000-4000-8000-000000000002', '8ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'b0000000-0000-4000-8000-000000000001', 'owner', 'active'),
+  ('b1000000-0000-4000-8000-000000000003', '9ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'b0000000-0000-4000-8000-000000000001', 'owner', 'active'),
+  ('b1000000-0000-4000-8000-000000000004', '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'employee', 'active'),
+  ('b1000000-0000-4000-8000-000000000005', '8ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'employee', 'pending_activation'),
+  ('b1000000-0000-4000-8000-000000000006', '9ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'manager', 'suspended');
+
+insert into public.workspace_onboarding (workspace_id, status, current_step, completed_at, updated_by)
+values
+  ('7ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'complete', 4, now(), 'b0000000-0000-4000-8000-000000000001'),
+  ('8ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'complete', 4, now(), 'b0000000-0000-4000-8000-000000000001'),
+  ('9ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'complete', 4, now(), 'b0000000-0000-4000-8000-000000000001');
+
+insert into public.locations (
+  id, workspace_id, name, street_address, city, region, postal_code,
+  country_code, timezone, sort_order
+) values (
+  '71000000-0000-4000-8000-000000000001',
+  '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  'Employee Demo Floor', '200 Demo St', 'Los Angeles', 'CA', '90001',
+  'US', 'America/Los_Angeles', 0
+);
+
+insert into public.departments (id, workspace_id, name, color, sort_order)
+values (
+  '72000000-0000-4000-8000-000000000001',
+  '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  'Service', '#3C7A68', 0
+);
+
+insert into public.jobs (id, workspace_id, department_id, name, color, sort_order)
+values (
+  '73000000-0000-4000-8000-000000000001',
+  '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  '72000000-0000-4000-8000-000000000001',
+  'Team Member', '#4478A8', 0
+);
+
+insert into public.employee_profiles (
+  id, workspace_id, user_id, employee_code, first_name, last_name,
+  preferred_name, invitation_email, created_by
+) values (
+  'f59127f6-ce6a-44d6-aa10-0387e44805f8',
+  '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5',
+  'E-0001', 'Local', 'Switcher', '', 'owner@newfork.test',
+  'b0000000-0000-4000-8000-000000000001'
+);
+
+insert into public.employee_location_assignments (
+  id, workspace_id, employee_id, location_id, is_primary, created_by
+) values (
+  '74000000-0000-4000-8000-000000000001',
+  '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  'f59127f6-ce6a-44d6-aa10-0387e44805f8',
+  '71000000-0000-4000-8000-000000000001',
+  true,
+  'b0000000-0000-4000-8000-000000000001'
+);
+
+insert into public.employee_job_assignments (
+  id, workspace_id, employee_id, job_id, is_primary, created_by
+) values (
+  '75000000-0000-4000-8000-000000000001',
+  '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  'f59127f6-ce6a-44d6-aa10-0387e44805f8',
+  '73000000-0000-4000-8000-000000000001',
+  true,
+  'b0000000-0000-4000-8000-000000000001'
 );
 
 -- Synthetic pending employee used only for local Phase 4B browser verification.
@@ -157,6 +273,7 @@ select public.initialize_employee_onboarding_service('e44f1741-9d58-4e38-8a62-3b
 do $$
 declare
   schedule_week date := current_date - (extract(isodow from current_date)::integer - 1);
+  availability_seed_shift jsonb;
 begin
   insert into public.locations (
     id, workspace_id, name, street_address, city, region, postal_code,
@@ -185,7 +302,7 @@ begin
     id, workspace_id, employee_code, first_name, last_name, preferred_name, start_date, created_by
   ) values
     ('15000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'E-0002', 'Alex', 'Kim', '', schedule_week - 90, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'),
-    ('15000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'E-0003', 'Jordan', 'Lee', 'Jordy', schedule_week - 60, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'),
+    ('15000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'E-0003', 'Jordan', 'Lee', '', schedule_week - 60, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'),
     ('15000000-0000-4000-8000-000000000003', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'E-0004', 'Sam', 'Rivera', '', schedule_week - 30, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
 
   insert into public.employee_location_assignments (
@@ -204,10 +321,10 @@ begin
     ('17000000-0000-4000-8000-000000000003', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '15000000-0000-4000-8000-000000000003', '13000000-0000-4000-8000-000000000003', true, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
 
   insert into public.employee_schedule_availability_versions (
-    id, workspace_id, employee_id, version_number, timezone, recurring_rules, source, recorded_by
+    id, workspace_id, employee_id, version_number, timezone, recurring_rules, source, recorded_by, effective_from
   ) values
     ('18000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '15000000-0000-4000-8000-000000000001', 1, 'America/Los_Angeles',
-      '[{"day":0,"mode":"unrestricted","windows":[]},{"day":1,"mode":"unrestricted","windows":[]},{"day":2,"mode":"unrestricted","windows":[]},{"day":3,"mode":"unrestricted","windows":[]},{"day":4,"mode":"unrestricted","windows":[]},{"day":5,"mode":"unavailable","windows":[]},{"day":6,"mode":"unrestricted","windows":[]}]', 'manager', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
+      '[{"day":0,"mode":"unrestricted","windows":[]},{"day":1,"mode":"unrestricted","windows":[]},{"day":2,"mode":"unrestricted","windows":[]},{"day":3,"mode":"unrestricted","windows":[]},{"day":4,"mode":"unrestricted","windows":[]},{"day":5,"mode":"unavailable","windows":[]},{"day":6,"mode":"unrestricted","windows":[]}]', 'manager', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', schedule_week);
 
   insert into public.schedule_closures (
     id, workspace_id, location_id, closed_date, title, is_all_day, created_by
@@ -216,6 +333,23 @@ begin
     '11000000-0000-4000-8000-000000000002', schedule_week + 3,
     'Private event setup', true, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
   );
+
+  -- Demo assignments have an explicit capacity baseline before publication.
+  insert into public.employee_schedule_availability_versions (
+    workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from
+  ) select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', employee,1,'America/Los_Angeles',
+    (select jsonb_agg(jsonb_build_object('day',day,'mode','unrestricted','windows','[]'::jsonb)) from generate_series(0,6) day),
+    'manager','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5',schedule_week
+  from unnest(array['15000000-0000-4000-8000-000000000002'::uuid,'15000000-0000-4000-8000-000000000003'::uuid]) employee;
+  -- Keep the intentional Friday availability example with a real, scoped
+  -- synthetic decision, rather than bypassing the assignment guard in seeds.
+  availability_seed_shift:=public.normalize_schedule_time_source('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',jsonb_build_object(
+    'id','23000000-0000-4000-8000-000000000004','location_id','11000000-0000-4000-8000-000000000001',
+    'employee_id','15000000-0000-4000-8000-000000000001','job_id','13000000-0000-4000-8000-000000000001',
+    'shift_type_id','14000000-0000-4000-8000-000000000002','scheduled_date',schedule_week+4,'start_time','15:00','end_time','23:00','time_basis','explicit'));
+  perform public.schedule_prepare_availability_assignment('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+    availability_seed_shift||jsonb_build_object('availability_assessment_fingerprint',public.assess_shift_availability('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','15000000-0000-4000-8000-000000000001',availability_seed_shift-'id')->>'fingerprint',
+    'conflict_override_note','Synthetic demo: employee confirmed this Friday assignment.'),null);
 
   insert into public.schedule_location_publications (
     id, workspace_id, location_id, week_start, version_number, status, published_by, published_at

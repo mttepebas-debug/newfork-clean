@@ -67,6 +67,7 @@ export function ScheduleGrid({
   useDefaultTimesForScheduling,
   employeeSortMode,
   session,
+  dragDisabled = false,
   activeEditorTarget = null,
   focusedShiftId,
   selectedIds,
@@ -110,6 +111,7 @@ export function ScheduleGrid({
   readonly useDefaultTimesForScheduling: boolean;
   readonly employeeSortMode: ScheduleEmployeeSortMode;
   readonly session: ScheduleEditSession | null;
+  readonly dragDisabled?: boolean;
   readonly activeEditorTarget?: ActiveScheduleEditorTarget | null;
   readonly focusedShiftId: string | null;
   readonly selectedIds: readonly string[];
@@ -226,7 +228,7 @@ export function ScheduleGrid({
     setDragOverCell,
     shiftDrag,
   } = useScheduleGridDragControllers({
-    enabled: Boolean(session),
+    enabled: Boolean(session) && !dragDisabled,
     filtered,
     model,
     showShiftTypePresets,
@@ -252,6 +254,18 @@ export function ScheduleGrid({
     shiftId: string,
     event: ReactPointerEvent<HTMLElement>,
   ): void => {
+    if (event.detail > 1) {
+      shiftDrag.endDrag();
+      setActivePointerShiftLocationId(null);
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (selectedIds.length > 1) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     const shift = filtered.shifts.find((item) => item.id === shiftId);
     setActivePointerShiftLocationId(shift?.location_id ?? null);
     shiftDrag.onShiftPointerDown(shiftId, event);
@@ -260,9 +274,29 @@ export function ScheduleGrid({
     shiftId: string,
     event: MouseEvent<HTMLElement>,
   ): void => {
+    if (event.detail > 1) {
+      shiftDrag.endDrag();
+      setActivePointerShiftLocationId(null);
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (selectedIds.length > 1) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     const shift = filtered.shifts.find((item) => item.id === shiftId);
     setActivePointerShiftLocationId(shift?.location_id ?? null);
     shiftDrag.onShiftMouseDown(shiftId, event);
+  };
+  const handleEdit = (
+    shift: ScheduleEditableShift,
+    point?: { readonly x: number; readonly y: number },
+  ): void => {
+    shiftDrag.endDrag();
+    setActivePointerShiftLocationId(null);
+    onEdit(shift, point);
   };
   const measuredBadgeWidth = useUniformScheduleBadgeWidth({
     containerRef: gridRef,
@@ -282,10 +316,12 @@ export function ScheduleGrid({
   });
   const dayColumnMinWidth = calculateScheduleDayColumnMinWidth({
     editing: Boolean(session),
+    layout,
     locationGroups,
     measuredBadgeWidth,
     view,
   });
+  const fitVisibleColumns = layout === "unified" && view === "week";
   const selectedLocationFilterIds = parseIds(search.get("locations"));
   const toggleLocationHeaderFilter = (locationIds: readonly string[]): void => {
     const nextLocationIds = nextScheduleLocationHeaderFilter({
@@ -315,6 +351,7 @@ export function ScheduleGrid({
       columns={columns}
       dayColumnMinWidth={dayColumnMinWidth}
       editing={Boolean(session)}
+      fitVisibleColumns={fitVisibleColumns}
       gridRef={gridRef}
       showTotalHours={showTotalHours}
       view={view}
@@ -381,7 +418,7 @@ export function ScheduleGrid({
         onClearSelection={onClearSelection}
         onCopy={onCopy}
         onCreate={onCreate}
-        onEdit={onEdit}
+        onEdit={handleEdit}
         onFocusShift={onFocusShift}
         onOpenEmployeeCard={onOpenEmployeeCard}
         onPaste={onPaste}

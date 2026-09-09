@@ -1,9 +1,10 @@
 import type { ActiveWorkspaceContext, KioskDevice } from "@newfork/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
 import type { KioskService } from "./kiosk-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+const otherWorkspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fe";
 const locationId = "11000000-0000-4000-8000-000000000001";
 const employeeId = "15000000-0000-4000-8000-000000000001";
 const deviceId = "a8100000-0000-4000-8000-000000000001";
@@ -70,7 +71,13 @@ describe("kiosk routes", () => {
       method: "POST",
       url: `/v1/workspaces/${workspaceId}/kiosk/enrollments`,
       headers: { authorization: "Bearer manager" },
-      payload: { location_id: locationId, label: "Front counter" },
+      payload: {
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+        workspaceId: otherWorkspaceId,
+        workspace_id: otherWorkspaceId,
+        location_id: locationId,
+        label: "Front counter",
+      },
     });
     expect(response.statusCode, response.body).toBe(201);
     expect(calls).toEqual([
@@ -159,7 +166,15 @@ describe("kiosk routes", () => {
       method: "PUT",
       url: `/v1/workspaces/${workspaceId}/kiosk/employees/${employeeId}/pin`,
       headers: { authorization: "Bearer manager" },
-      payload: { location_id: locationId, pin: "123456" },
+      payload: {
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+        workspaceId: otherWorkspaceId,
+        workspace_id: otherWorkspaceId,
+        employeeId: "11111111-1111-4111-8111-111111111111",
+        employee_id: "11111111-1111-4111-8111-111111111111",
+        location_id: locationId,
+        pin: "123456",
+      },
     });
     const revoke = await app.inject({
       method: "DELETE",
@@ -425,7 +440,14 @@ describe("kiosk routes", () => {
       method: "PATCH",
       url: `/v1/workspaces/${workspaceId}/kiosk/devices/${deviceId}`,
       headers,
-      payload: { label: "Host stand" },
+      payload: {
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+        workspaceId: otherWorkspaceId,
+        workspace_id: otherWorkspaceId,
+        deviceId: "11111111-1111-4111-8111-111111111111",
+        device_id: "11111111-1111-4111-8111-111111111111",
+        label: "Host stand",
+      },
     });
     const replace = await app.inject({
       method: "POST",
@@ -470,6 +492,75 @@ describe("kiosk routes", () => {
       headers: { authorization: "Bearer limited" },
     });
     expect(response.statusCode).toBe(403);
+  });
+
+  it("returns a generic not found for every manager route when the active workspace mismatches the path", async () => {
+    const service = kioskService({
+      createEnrollment: vi.fn(),
+      getManagement: vi.fn(),
+      updateLabel: vi.fn(),
+      createReenrollment: vi.fn(),
+      revoke: vi.fn(),
+      setPin: vi.fn(),
+    });
+    const app = buildApp({
+      contextResolver: {
+        resolve: async () => ({
+          ...context,
+          workspace: { ...context.workspace, id: otherWorkspaceId },
+          membership: { ...context.membership, workspaceId: otherWorkspaceId },
+        }),
+      },
+      kioskService: service,
+    });
+    const routes = [
+      {
+        method: "POST",
+        url: `/v1/workspaces/${workspaceId}/kiosk/enrollments`,
+        payload: { location_id: locationId, label: "Front counter" },
+        serviceMethod: "createEnrollment",
+      },
+      {
+        method: "GET",
+        url: `/v1/workspaces/${workspaceId}/kiosk/management`,
+        serviceMethod: "getManagement",
+      },
+      {
+        method: "PATCH",
+        url: `/v1/workspaces/${workspaceId}/kiosk/devices/${deviceId}`,
+        payload: { label: "Host stand" },
+        serviceMethod: "updateLabel",
+      },
+      {
+        method: "POST",
+        url: `/v1/workspaces/${workspaceId}/kiosk/devices/${deviceId}/re-enrollment`,
+        serviceMethod: "createReenrollment",
+      },
+      {
+        method: "DELETE",
+        url: `/v1/workspaces/${workspaceId}/kiosk/devices/${deviceId}`,
+        serviceMethod: "revoke",
+      },
+      {
+        method: "PUT",
+        url: `/v1/workspaces/${workspaceId}/kiosk/employees/${employeeId}/pin`,
+        payload: { location_id: locationId, pin: "123456" },
+        serviceMethod: "setPin",
+      },
+    ] as const;
+
+    for (const route of routes) {
+      const response = await app.inject({
+        method: route.method,
+        url: route.url,
+        headers: { authorization: "Bearer manager" },
+        payload: "payload" in route ? route.payload : undefined,
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toEqual({ error: "Workspace not found" });
+      expect(service[route.serviceMethod]).not.toHaveBeenCalled();
+    }
   });
 });
 

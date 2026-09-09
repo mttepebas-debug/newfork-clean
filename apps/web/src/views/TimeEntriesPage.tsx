@@ -190,8 +190,11 @@ export function TimeEntriesPage() {
     <section className="time-entries-page" aria-labelledby="time-entries-title">
       <header className="time-entries-header">
         <div>
-          <p className="eyebrow">Operational time record</p>
           <h1 id="time-entries-title">Time Entries</h1>
+          <p>
+            Review operational time records, amendments, corrections, and
+            approval status for each location.
+          </p>
         </div>
         {canAmend ? (
           <button

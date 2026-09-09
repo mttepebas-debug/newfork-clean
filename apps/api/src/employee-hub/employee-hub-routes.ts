@@ -1,5 +1,5 @@
 import {
-  employeeHubAvailabilityInputSchema,
+  employeePersonalTaskInputSchema,
   employeeRequestActionInputSchema,
   employeeShiftRequestInputSchema,
   employeeTimeCaptureInputSchema,
@@ -8,8 +8,12 @@ import {
 } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
-import type { WorkspaceContextResolver } from "../auth/workspace-context";
+import {
+  resolveWorkspaceMembership,
+  type WorkspaceContextResolver,
+} from "../auth/workspace-context";
 import type { EmployeeHubService } from "./employee-hub-service";
+import { legacyAvailabilityGone } from "../availability/availability-retirement";
 
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 const rangeQuery = z.object({ from: z.string().date(), to: z.string().date() });
@@ -22,6 +26,48 @@ export function registerEmployeeHubRoutes(
     contextResolver: WorkspaceContextResolver | null;
   },
 ) {
+  app.route({
+    method: ["GET", "POST"],
+    url: "/v1/workspaces/:workspaceId/employee-hub/personal-tasks",
+    handler: async (request, reply) => {
+      const params = workspaceParams.safeParse(request.params);
+      const task =
+        request.method === "POST"
+          ? employeePersonalTaskInputSchema.safeParse(request.body)
+          : null;
+      if (!params.success || (task && !task.success))
+        return reply
+          .status(400)
+          .send({ error: "Valid personal task required" });
+      const context = await authorize(
+        request.headers.authorization,
+        params.data.workspaceId,
+        options.contextResolver,
+        reply,
+      );
+      if (!context) return;
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee Hub service is not configured" });
+      try {
+        const input = {
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+        };
+        return reply.send(
+          task?.success
+            ? await options.service.changePersonalTask({
+                ...input,
+                task: task.data,
+              })
+            : await options.service.getPersonalTasks(input),
+        );
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  });
   app.get(
     "/v1/workspaces/:workspaceId/employee-hub",
     async (request, reply) => {
@@ -35,11 +81,9 @@ export function registerEmployeeHubRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Active employee membership required" });
+      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -61,35 +105,22 @@ export function registerEmployeeHubRoutes(
     "/v1/workspaces/:workspaceId/employee-hub/availability",
     async (request, reply) => {
       const params = workspaceParams.safeParse(request.params);
-      const body = employeeHubAvailabilityInputSchema.safeParse(request.body);
-      if (!params.success || !body.success)
+      if (!params.success)
         return reply
           .status(400)
-          .send({ error: "Complete weekly availability required" });
+          .send({ error: "Valid workspace required" });
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Active employee membership required" });
+      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
           .send({ error: "Employee Hub service is not configured" });
-      try {
-        return reply.send(
-          await options.service.saveAvailability({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            availability: body.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.status(410).send(legacyAvailabilityGone);
     },
   );
   app.post(
@@ -105,11 +136,9 @@ export function registerEmployeeHubRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Active employee membership required" });
+      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -140,11 +169,9 @@ export function registerEmployeeHubRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Active employee membership required" });
+      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -175,11 +202,9 @@ export function registerEmployeeHubRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Active employee membership required" });
+      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -207,8 +232,10 @@ export function registerEmployeeHubRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (!context || !context.permissions.includes("time.read.own"))
+      if (!context) return;
+      if (!context.permissions.includes("time.read.own"))
         return reply.status(403).send({ error: "Own time access required" });
       if (!options.service)
         return reply
@@ -242,8 +269,10 @@ export function registerEmployeeHubRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (!context || !context.permissions.includes("time.capture.own"))
+      if (!context) return;
+      if (!context.permissions.includes("time.capture.own"))
         return reply.status(403).send({ error: "Own time capture required" });
       if (!options.service)
         return reply
@@ -279,11 +308,10 @@ export function registerEmployeeHubRoutes(
         request.headers.authorization,
         params.data.workspaceId,
         options.contextResolver,
+        reply,
       );
-      if (
-        !context ||
-        !context.permissions.includes("time.correction.request.own")
-      )
+      if (!context) return;
+      if (!context.permissions.includes("time.correction.request.own"))
         return reply
           .status(403)
           .send({ error: "Own time correction permission required" });
@@ -311,13 +339,16 @@ async function authorize(
   authorization: string | undefined,
   workspaceId: string,
   resolver: WorkspaceContextResolver | null,
+  reply: FastifyReply,
 ) {
-  if (!resolver || !authorization?.startsWith("Bearer ")) return null;
-  const context = await resolver.resolve(authorization.slice(7).trim());
-  return context?.workspace.id === workspaceId &&
-    context.membership.status === "active"
-    ? context
-    : null;
+  const result = await resolveWorkspaceMembership({
+    authorization,
+    workspaceId,
+    resolver,
+  });
+  if (result.context) return result.context;
+  reply.status(404).send({ error: "Workspace not found" });
+  return null;
 }
 function requestError(reply: FastifyReply, error: unknown) {
   const message =
@@ -333,6 +364,8 @@ function requestError(reply: FastifyReply, error: unknown) {
     return reply.status(404).send({ error: message });
   if (
     message.includes("stale") ||
+    message.includes("refresh") ||
+    message.includes("period is published") ||
     message.includes("exists") ||
     message.includes("no longer")
   )

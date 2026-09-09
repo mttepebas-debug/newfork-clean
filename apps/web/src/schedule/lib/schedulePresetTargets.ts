@@ -1,4 +1,5 @@
 import type { ScheduleReadModel } from "@newfork/shared/schedule";
+import { availabilityForDate } from "@newfork/shared";
 
 import type {
   CellContextMenuTarget,
@@ -51,7 +52,7 @@ export function validatePresetCreateTarget(
   model: ScheduleReadModel,
   target: PresetCreateTarget,
   useDefaultTimesForScheduling: boolean,
-): { readonly allowed: true } | { readonly allowed: false; readonly reason: string } {
+): { readonly allowed: true; readonly warning?: string } | { readonly allowed: false; readonly reason: string } {
   if (target.employeeId) {
     const employee = model.employees.find(
       (candidate) => candidate.id === target.employeeId,
@@ -115,8 +116,7 @@ export function validatePresetCreateTarget(
     };
   }
   if (target.employeeId && target.preset.startTime && target.preset.endTime) {
-    const messages = formatScheduleConflictMessages(
-      evaluateScheduleShiftConflicts(model, model.shifts, {
+    const conflicts = evaluateScheduleShiftConflicts(model, model.shifts, {
         location_id: target.locationId,
         employee_id: target.employeeId,
         job_id: target.preset.jobId,
@@ -126,13 +126,22 @@ export function validatePresetCreateTarget(
         end_time: target.preset.endTime,
         unpaid_break_minutes: 30,
         hide_time_on_badge: !useDefaultTimesForScheduling,
+        time_basis: "type_default",
         label_ids: [],
         note: "",
-      }),
-    );
+      });
+    const messages = formatScheduleConflictMessages(conflicts.filter(reason => typeof reason === "string" || reason.type !== "availability"));
     if (messages.length > 0) {
       return { allowed: false, reason: messages.join(" ") };
     }
+    if (conflicts.length > 0) return { allowed: true, warning: "Employee has unavailable hours. Review on assignment." };
+  }
+  if (target.employeeId && (!target.preset.startTime || !target.preset.endTime)) {
+    const employee = model.employees.find((item) => item.id === target.employeeId);
+    const weekday = new Date(`${target.date}T12:00:00Z`).getUTCDay();
+    if (employee?.weekly_availability !== undefined) return { allowed: true, warning: "Confirm shift hours and availability before assignment." };
+    if (employee && availabilityForDate(employee, target.date)?.find((day) => day.day === weekday)?.mode === "unavailable")
+      return { allowed: true, warning: "Employee is unavailable all day. Review on assignment." };
   }
   return { allowed: true };
 }

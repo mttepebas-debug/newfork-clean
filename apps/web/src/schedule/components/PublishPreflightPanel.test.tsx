@@ -5,6 +5,8 @@ import {
   PublishPreflightPanel,
   publishGatingRisks,
   publishInformationalFindings,
+  publishHardBlockers,
+  publishOverrideableBlockers,
 } from "./PublishPreflightPanel";
 
 const preview: SchedulePublicationPreview = {
@@ -31,6 +33,30 @@ const preview: SchedulePublicationPreview = {
 };
 
 describe("PublishPreflightPanel", () => {
+  it("separates new weekly conflicts from collapsed accepted conflicts without reason inputs", () => {
+    const fresh = { ...preview.findings[0]!, availability_state: "new" as const, warning_policy: "confirm" as const, tier: "risk" as const, employee_name: "Alex" };
+    const accepted = { ...fresh, id: "accepted-00001", availability_state: "accepted" as const, tier: "note" as const, employee_name: "Taylor" };
+    const next = { ...preview, findings: [fresh, accepted] };
+    expect(publishHardBlockers(next)).toEqual([]);
+    expect(publishOverrideableBlockers(next)).toEqual([]);
+    expect(publishGatingRisks(next)).toEqual([]);
+    expect(publishInformationalFindings(next)).toEqual([]);
+    const review = vi.fn();
+    render(<PublishPreflightPanel preview={next} locations={[]} overrideReasons={{}} onOverrideReasonChange={vi.fn()} onReviewShift={review} />);
+    expect(screen.getByText("New availability conflicts")).toBeTruthy();
+    const disclosure = screen.getByText("Previously accepted (1)").closest("details");
+    expect(disclosure).toHaveProperty("open", false);
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show Alex's shift on 2026-08-17" }));
+    expect(review).toHaveBeenCalledExactlyOnceWith(fresh);
+  });
+
+  it("never treats a hard finding as a weekly acknowledgement", () => {
+    const hard = { ...preview.findings[0]!, severity: "hard" as const, availability_state: "accepted" as const, warning_policy: "warn" as const };
+    expect(publishHardBlockers({ ...preview, findings: [hard] })).toEqual([hard]);
+  });
+
   it("groups overrideable blockers with audit reason input", () => {
     const onReason = vi.fn();
 

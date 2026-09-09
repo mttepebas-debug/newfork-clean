@@ -86,12 +86,14 @@ describe("Phase 8 communication pages", () => {
       },
       announcements: [],
       notifications: [],
+      todos: [],
       layout: {
         widget_order: [
           "operations",
           "pending_requests",
           "open_shifts",
           "announcements",
+          "todos",
           "notifications",
           "quick_actions",
         ],
@@ -163,6 +165,9 @@ describe("Phase 8 communication pages", () => {
           id: "a8300000-0000-4000-8000-000000000001",
           workspace_id: workspaceId,
           category: "announcement",
+          type_key: "communications.announcement.available",
+          severity: "info",
+          safe_preview: "Service briefing",
           title: "Service briefing",
           body: "Doors open at four.",
           action_url: "/app/announcements/a8200000-0000-4000-8000-000000000001",
@@ -170,12 +175,15 @@ describe("Phase 8 communication pages", () => {
           source_id: "a8200000-0000-4000-8000-000000000001",
           created_at: new Date().toISOString(),
           read_at: null,
+          visibility_state: "visible",
         },
       ],
     });
     renderRoute("/app/notifications", <NotificationsPage />);
+    expect(await screen.findByText("Announcements · Update")).toBeTruthy();
+    expect(screen.queryByText("communications.announcement.available")).toBeNull();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Mark Service briefing read" }),
+      screen.getByRole("button", { name: "Mark Service briefing read" }),
     );
     await waitFor(() =>
       expect(actOnNotification).toHaveBeenCalledWith(workspaceId, {

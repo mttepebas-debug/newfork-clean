@@ -30,6 +30,11 @@ function makeShift(overrides: Partial<ScheduleShift> = {}): ScheduleShift {
 }
 
 describe("shift occupancy validation", () => {
+  it("uses explicit hours independently of their badge visibility", () => {
+    const shift = makeShift({ time_basis: "explicit", hide_time_on_badge: true });
+    expect(findScheduleShiftOccupancyConflict([shift], { ...shift, shift_type_id: null,
+      start_time: "12:00", end_time: "14:00" })?.kind).toBe("time_overlap");
+  });
   it("blocks duplicate named shift types even when saved clock time is hidden", () => {
     const existing = makeShift({
       location_id: "loc-2",

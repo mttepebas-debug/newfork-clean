@@ -1,6 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ScheduleSaveRecoverySheet } from "./ScheduleSaveRecoverySheet";
+
+beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
+});
 
 describe("ScheduleSaveRecoverySheet", () => {
   it("renders recovery copy and wires retry, keep editing, and discard actions", () => {
@@ -18,10 +23,10 @@ describe("ScheduleSaveRecoverySheet", () => {
     );
 
     const dialog = screen.getByRole("dialog", { name: "Schedule save failed" });
-    expect(dialog.className).toContain("schedule-save-recovery-sheet");
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
     expect(screen.getByText(/Your changes are still here/)).toBeTruthy();
     expect(
-      screen.getByText(/Organizer kept the current edit session open/),
+      screen.getByText(/Your edit session is still open/),
     ).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
@@ -86,5 +91,38 @@ describe("ScheduleSaveRecoverySheet", () => {
     );
 
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("moves focus to the recovery title, preserves it on refresh, and returns to the trigger", () => {
+    const trigger = document.createElement("button");
+    document.body.append(trigger);
+    trigger.focus();
+    const props = { onRetry: vi.fn(), onDiscard: vi.fn(), onKeepEditing: vi.fn() };
+    const { rerender, unmount } = render(<ScheduleSaveRecoverySheet open {...props} />);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Schedule save failed" }));
+    const keep = screen.getByRole("button", { name: "Keep editing" });
+    keep.focus();
+    rerender(<ScheduleSaveRecoverySheet open {...props} onKeepEditing={vi.fn()} canRetry={false} />);
+    expect(document.activeElement).toBe(keep);
+    expect(screen.getByRole("button", { name: "Retry save" })).toHaveProperty("disabled", true);
+    unmount();
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+  });
+
+  it("returns to Publish when the save form that opened recovery has closed", () => {
+    const unrelated = document.createElement("button");
+    unrelated.setAttribute("data-schedule-top-action-trigger", "export");
+    const publish = document.createElement("button");
+    publish.setAttribute("data-schedule-top-action-trigger", "publish");
+    const saveAs = document.createElement("button");
+    document.body.append(unrelated, publish, saveAs);
+    saveAs.focus();
+    const { unmount } = render(<ScheduleSaveRecoverySheet open onRetry={vi.fn()} onDiscard={vi.fn()} onKeepEditing={vi.fn()} />);
+    saveAs.remove();
+    unmount();
+    expect(document.activeElement).toBe(publish);
+    unrelated.remove();
+    publish.remove();
   });
 });

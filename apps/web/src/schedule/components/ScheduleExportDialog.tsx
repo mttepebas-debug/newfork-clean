@@ -8,6 +8,7 @@ import type {
   ScheduleExportSettings,
   ScheduleLocation,
   ScheduleRecentExportEvent,
+  ScheduleReadModel,
 } from "@newfork/shared/schedule";
 import { FileDown, Maximize2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -22,19 +23,24 @@ import {
   scheduleExportFilenameFallback,
 } from "./scheduleExportDownload";
 
-const defaultExportSettings: ScheduleExportSettings = {
+function defaultExportSettings(
+  timeFormat: ScheduleReadModel["settings"]["time_format"],
+): ScheduleExportSettings {
+  return {
   format: "pdf",
   layout: "weekly",
   locale: "en",
-  time_format: "12h",
+  time_format: timeFormat,
   include_unassigned: true,
   include_notes: false,
   include_scheduled_hours: true,
   csv_delimiter: ",",
-};
+  };
+}
 
 export function ScheduleExportDialog({
   weekStart,
+  defaultTimeFormat = "12h",
   locations,
   drafts,
   presets,
@@ -56,6 +62,7 @@ export function ScheduleExportDialog({
   onDeleteScheduledExport,
 }: {
   readonly weekStart: string;
+  readonly defaultTimeFormat?: ScheduleReadModel["settings"]["time_format"];
   readonly locations: readonly ScheduleLocation[];
   readonly drafts: readonly ScheduleDraftSummary[];
   readonly presets: readonly ScheduleExportPreset[];
@@ -90,7 +97,9 @@ export function ScheduleExportDialog({
   const [locationIds, setLocationIds] = useState(() =>
     locations.map((item) => item.id),
   );
-  const [settings, setSettings] = useState(defaultExportSettings);
+  const [settings, setSettings] = useState(() =>
+    defaultExportSettings(defaultTimeFormat),
+  );
   const [preview, setPreview] = useState<ScheduleExportPreview | null>(null);
   const [htmlPreview, setHtmlPreview] = useState<string | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);

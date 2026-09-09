@@ -90,7 +90,7 @@ export function ScheduleConflictSheet({
                 }
               />
               <span>
-                Required for availability and time off overrides. Minimum 10
+                Required for a soft availability override. Minimum 10
                 characters.
               </span>
             </label>

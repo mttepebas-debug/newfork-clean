@@ -1,53 +1,75 @@
-import {
-  departmentInputSchema,
-  jobInputSchema,
-  type Department,
-  type DepartmentInput,
-  type Job,
-  type JobInput,
-} from "@newfork/shared";
-import { Button } from "@newfork/ui";
+import { useDeferredValue, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router";
 import {
-  Archive,
+  BriefcaseBusiness,
   ArrowDown,
   ArrowUp,
-  BriefcaseBusiness,
-  Building,
-  Pencil,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronRight,
+  Folder,
   Plus,
-  RotateCcw,
+  Search,
+  Users,
   X,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import type { Department, Job } from "@newfork/shared";
 import { useAuth } from "../auth/AuthContext";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
   listDepartments,
   listJobs,
   reorderOrganizationEntities,
-  saveDepartment,
-  saveJob,
   setDepartmentArchived,
   setJobArchived,
 } from "./organization-data";
+import { loadJobCounts } from "./jobs-management-data";
+import { JobCatalogEditor, type CatalogEditor } from "./JobCatalogEditor";
+import { JobAssignmentsDrawer } from "./JobAssignmentsDrawer";
+import "./jobs-settings.css";
+import { CatalogRowMenu as RowMenu } from "./CatalogRowMenu";
 
-type View = "departments" | "jobs";
-type Editor = { type: View; item?: Department | Job };
-const defaultDepartment: DepartmentInput = { name: "", color: "#3C7A68" };
-const defaultJob: JobInput = {
-  name: "",
-  color: "#4478A8",
-  department_id: null,
-};
-
+type View = "hierarchy" | "departments" | "jobs";
+type SortKey = "name" | "department" | "jobs" | "employees";
 export default function JobsSettingsPage() {
   const { context } = useAuth();
-  const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
+  const readEmployees = Boolean(
+    context?.permissions.includes("employees.read"),
+  );
+  const queryClient = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const view: View =
+    params.get("view") === "jobs"
+      ? "jobs"
+      : params.get("view") === "departments"
+        ? "departments"
+        : "hierarchy";
+  const search = params.get("q") ?? "";
+  const match = useDeferredValue(search.trim().toLowerCase());
+  const archived = params.get("archived") === "1";
+  const requestedSort = params.get("sort");
+  const sortKey: SortKey | null =
+    view !== "hierarchy" &&
+    (requestedSort === "name" ||
+      requestedSort === "employees" ||
+      (view === "jobs" && requestedSort === "department") ||
+      (view === "departments" && requestedSort === "jobs"))
+      ? requestedSort
+      : null;
+  const sortDescending = params.get("direction") === "desc";
+  const [editor, setEditor] = useState<CatalogEditor | null>(null);
+  const [transientJob, setTransientJob] = useState<Job | null>(null);
+  useEffect(() => {
+    setEditor(null);
+  }, [view]);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [formError, setFormError] = useState<string | null>(null);
   const queryKey = ["organization-jobs", workspaceId];
   const data = useQuery({
     queryKey,
+    enabled: Boolean(workspaceId),
     queryFn: async () => {
       const [departments, jobs] = await Promise.all([
         listDepartments(workspaceId),
@@ -55,407 +77,734 @@ export default function JobsSettingsPage() {
       ]);
       return { departments, jobs };
     },
-    enabled: Boolean(workspaceId),
   });
-  const [view, setView] = useState<View>("departments");
-  const [showArchived, setShowArchived] = useState(false);
-  const [editor, setEditor] = useState<Editor | null>(null);
-  const [departmentDraft, setDepartmentDraft] =
-    useState<DepartmentInput>(defaultDepartment);
-  const [jobDraft, setJobDraft] = useState<JobInput>(defaultJob);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  const refresh = () => queryClient.invalidateQueries({ queryKey });
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      if (!editor) return;
-      if (editor.type === "departments") {
-        await saveDepartment(
-          workspaceId,
-          departmentInputSchema.parse(departmentDraft),
-          editor.item?.id,
-        );
-      } else {
-        await saveJob(
-          workspaceId,
-          jobInputSchema.parse(jobDraft),
-          editor.item?.id,
-        );
-      }
-    },
-    onSuccess: async () => {
-      await refresh();
-      setEditor(null);
-      setFormError(null);
-    },
-    onError: (error) => setFormError(errorText(error)),
+  const counts = useQuery({
+    queryKey: ["organization-job-counts", workspaceId],
+    enabled: Boolean(workspaceId && readEmployees),
+    queryFn: () => loadJobCounts(workspaceId),
   });
-  const archiveMutation = useMutation({
-    mutationFn: async ({
-      type,
-      id,
-      archived,
-    }: {
-      type: View;
-      id: string;
-      archived: boolean;
-    }) => {
-      if (type === "departments")
-        await setDepartmentArchived(workspaceId, id, archived);
-      else await setJobArchived(workspaceId, id, archived);
-    },
-    onSuccess: refresh,
-    onError: (error) => setFormError(errorText(error)),
-  });
-  const reorderMutation = useMutation({
-    mutationFn: ({ type, ids }: { type: View; ids: readonly string[] }) =>
-      reorderOrganizationEntities(workspaceId, type, ids),
-    onSuccess: refresh,
-    onError: (error) => setFormError(errorText(error)),
-  });
-
-  const openEditor = (type: View, item?: Department | Job): void => {
-    setEditor({ type, ...(item ? { item } : {}) });
-    if (type === "departments")
-      setDepartmentDraft(
-        item ? departmentInputSchema.parse(item) : defaultDepartment,
-      );
-    else setJobDraft(item ? jobInputSchema.parse(item) : defaultJob);
-    setFormError(null);
-  };
-  const submit = (event: FormEvent): void => {
-    event.preventDefault();
-    setFormError(null);
-    saveMutation.mutate();
-  };
-
   const departments = data.data?.departments ?? [];
   const jobs = data.data?.jobs ?? [];
-  const rows = (view === "departments" ? departments : jobs).filter(
-    (item) => showArchived || !item.archived_at,
+  const departmentMap = new Map(departments.map((item) => [item.id, item]));
+  const jobCounts = new Map(
+    counts.data?.jobs.map((item) => [item.id, item.employee_count]),
   );
-  const departmentNames = new Map(
-    departments.map((department) => [department.id, department.name]),
+  const departmentCounts = new Map(
+    counts.data?.departments.map((item) => [item.id, item.employee_count]),
   );
-  const activeRows = (view === "departments" ? departments : jobs).filter(
-    (item) => !item.archived_at,
-  );
-  const move = (id: string, offset: -1 | 1): void => {
-    const currentIndex = activeRows.findIndex((item) => item.id === id);
-    const nextIndex = currentIndex + offset;
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= activeRows.length)
-      return;
-    const ids = activeRows.map((item) => item.id);
-    [ids[currentIndex], ids[nextIndex]] = [ids[nextIndex]!, ids[currentIndex]!];
-    reorderMutation.mutate({ type: view, ids });
+  const activeDepartments = departments.filter((item) => !item.archived_at);
+  const activeJobs = jobs.filter((item) => !item.archived_at);
+  const selectedJob =
+    jobs.find((item) => item.id === params.get("jobId")) ??
+    (transientJob?.id === params.get("jobId") ? transientJob : undefined);
+  function updateParams(
+    changes: Record<string, string | null>,
+    replace = false,
+  ) {
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        Object.entries(changes).forEach(([key, value]) =>
+          value === null ? next.delete(key) : next.set(key, value),
+        );
+        return next;
+      },
+      { replace, preventScrollReset: true },
+    );
+  }
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey }),
+      queryClient.invalidateQueries({
+        queryKey: ["organization-job-counts", workspaceId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["employee-reference-data", workspaceId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["schedule-reference", workspaceId],
+      }),
+    ]);
   };
-
+  const mutation = useMutation({
+    mutationFn: async (
+      action:
+        | {
+            kind: "archive";
+            type: "departments" | "jobs";
+            item: Department | Job;
+          }
+        | { kind: "move"; type: "departments" | "jobs"; ids: string[] },
+    ) => {
+      if (action.kind === "move")
+        await reorderOrganizationEntities(workspaceId, action.type, action.ids);
+      else if (action.type === "departments")
+        await setDepartmentArchived(
+          workspaceId,
+          action.item.id,
+          !action.item.archived_at,
+        );
+      else
+        await setJobArchived(
+          workspaceId,
+          action.item.id,
+          !action.item.archived_at,
+        );
+    },
+    onSuccess: async () => {
+      setFormError(null);
+      await refresh();
+    },
+    onError: (cause) => setFormError(errorText(cause)),
+  });
+  function openEditor(next: CatalogEditor) {
+    setFormError(null);
+    if (next.type === "jobs" && next.item) {
+      openJob(next.item as Job);
+      return;
+    }
+    updateParams({ jobId: null }, true);
+    setTransientJob(null);
+    setEditor(next);
+  }
+  function openJob(job: Job) {
+    setEditor(null);
+    updateParams({ jobId: job.id });
+  }
+  function countText(value: number | undefined) {
+    return !readEmployees || counts.isError
+      ? "—"
+      : counts.isPending
+        ? "…"
+        : (value ?? 0);
+  }
+  function menu(
+    item: Job | Department,
+    type: "departments" | "jobs",
+    siblings?: Job[],
+  ) {
+    const canonical = type === "jobs" ? activeJobs : activeDepartments;
+    const ordered = siblings ?? canonical;
+    const index = ordered.findIndex((row) => row.id === item.id);
+    const jobCount = jobs.filter(
+      (job) => job.department_id === item.id && !job.archived_at,
+    ).length;
+    function move(offset: number) {
+      const other = ordered[index + offset];
+      if (!other) return;
+      const ids = canonical.map((row) => row.id);
+      const a = ids.indexOf(item.id),
+        b = ids.indexOf(other.id);
+      [ids[a], ids[b]] = [ids[b]!, ids[a]!];
+      mutation.mutate({ kind: "move", type, ids });
+    }
+    return (
+      <RowMenu name={item.name}>
+        <button type="button" onClick={() => openEditor({ type, item })}>
+          Edit {type === "jobs" ? "job" : "department"}
+        </button>
+        {type === "jobs" && readEmployees && (
+          <button type="button" onClick={() => openJob(item as Job)}>
+            Manage employees
+          </button>
+        )}
+        {!item.archived_at && (
+          <>
+            <button
+              type="button"
+              disabled={
+                Boolean(match || sortKey) || index <= 0 || mutation.isPending
+              }
+              onClick={() => move(-1)}
+            >
+              Move up
+            </button>
+            <button
+              type="button"
+              disabled={
+                Boolean(match || sortKey) ||
+                index === ordered.length - 1 ||
+                mutation.isPending
+              }
+              onClick={() => move(1)}
+            >
+              Move down
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          className={!item.archived_at ? "job-danger-text" : undefined}
+          disabled={
+            mutation.isPending ||
+            (type === "departments" && !item.archived_at && jobCount > 0)
+          }
+          title={
+            type === "departments" && jobCount > 0
+              ? "Archive active jobs first"
+              : undefined
+          }
+          onClick={() => mutation.mutate({ kind: "archive", type, item })}
+        >
+          {item.archived_at ? "Restore" : "Archive"}
+        </button>
+      </RowMenu>
+    );
+  }
+  function jobRow(job: Job, nested = false) {
+    return (
+      <div
+        className={`job-catalog-row${nested ? " job-nested-row" : ""}`}
+        key={job.id}
+        data-archived={Boolean(job.archived_at)}
+        onClick={(event) => {
+          if (
+            (event.target as HTMLElement).closest("button, a, summary, details")
+          )
+            return;
+          event.currentTarget
+            .querySelector<HTMLButtonElement>(".job-row-identity")
+            ?.focus({ preventScroll: true });
+          openJob(job);
+        }}
+      >
+        <button
+          className="job-row-identity"
+          type="button"
+          onClick={() => openJob(job)}
+        >
+          <span
+            className="job-color-dot"
+            style={{ backgroundColor: job.color }}
+          />
+          <span className="job-name-stack">
+            <span className="job-row-name" title={job.name}>
+              {job.name}
+            </span>
+            {!nested && (
+              <span className="job-mobile-meta">
+                {departmentMap.get(job.department_id ?? "")?.name ??
+                  "No department"}
+              </span>
+            )}
+          </span>
+          {job.archived_at && (
+            <span className="job-archived-label">Archived</span>
+          )}
+        </button>
+        {!nested && (
+          <span
+            className="job-department-cell"
+            title={departmentMap.get(job.department_id ?? "")?.name}
+          >
+            {departmentMap.get(job.department_id ?? "")?.name ??
+              "No department"}
+          </span>
+        )}
+        <button
+          className="job-count-button"
+          type="button"
+          disabled={!readEmployees}
+          onClick={() => openJob(job)}
+          aria-label={`Manage employees for ${job.name}`}
+        >
+          <Users size={14} />
+          {countText(jobCounts.get(job.id))}
+        </button>
+        {menu(
+          job,
+          "jobs",
+          nested
+            ? activeJobs.filter(
+                (item) => item.department_id === job.department_id,
+              )
+            : undefined,
+        )}
+      </div>
+    );
+  }
+  function sortCatalog<T extends Job | Department>(items: T[]): T[] {
+    if (!sortKey) return items;
+    const value = (item: T): string | number => {
+      if (sortKey === "employees")
+        return (
+          ("department_id" in item ? jobCounts : departmentCounts).get(
+            item.id,
+          ) ?? 0
+        );
+      if (sortKey === "jobs")
+        return activeJobs.filter((job) => job.department_id === item.id).length;
+      if (sortKey === "department")
+        return (
+          departmentMap.get((item as Job).department_id ?? "")?.name ??
+          "No department"
+        );
+      return item.name;
+    };
+    return [...items].sort((a, b) => {
+      const av = value(a),
+        bv = value(b);
+      const order =
+        typeof av === "number" && typeof bv === "number"
+          ? av - bv
+          : String(av).localeCompare(String(bv), undefined, {
+              numeric: true,
+              sensitivity: "base",
+            });
+      return (
+        (sortDescending ? -order : order) ||
+        a.name.localeCompare(b.name) ||
+        a.id.localeCompare(b.id)
+      );
+    });
+  }
+  function column(key: SortKey, label: string) {
+    const active = sortKey === key;
+    const Icon = active ? (sortDescending ? ArrowDown : ArrowUp) : ArrowUpDown;
+    return (
+      <button
+        type="button"
+        className="job-sort-button"
+        aria-label={`Sort by ${label}`}
+        aria-pressed={active}
+        title={
+          active
+            ? `Sorted ${sortDescending ? "descending" : "ascending"}. Click to reverse.`
+            : "Sort ascending"
+        }
+        disabled={key === "employees" && (!readEmployees || !counts.data)}
+        onClick={() =>
+          updateParams({
+            sort: key,
+            direction: active && !sortDescending ? "desc" : "asc",
+          })
+        }
+      >
+        {label}
+        <Icon size={12} aria-hidden />
+      </button>
+    );
+  }
+  const resetSort = sortKey ? (
+    <button
+      type="button"
+      className="job-icon-button"
+      aria-label="Clear column sorting"
+      title="Restore manual order"
+      onClick={() => updateParams({ sort: null, direction: null })}
+    >
+      <X size={13} />
+    </button>
+  ) : (
+    <span />
+  );
+  const visibleJobs = sortCatalog(
+    jobs.filter(
+      (job) =>
+        (archived || !job.archived_at) &&
+        (!match ||
+          job.name.toLowerCase().includes(match) ||
+          departmentMap
+            .get(job.department_id ?? "")
+            ?.name.toLowerCase()
+            .includes(match)),
+    ),
+  );
+  const visibleDepartments = sortCatalog(
+    departments.filter(
+      (dep) =>
+        (archived || !dep.archived_at) &&
+        (!match ||
+          dep.name.toLowerCase().includes(match) ||
+          visibleJobs.some((job) => job.department_id === dep.id)),
+    ),
+  );
+  const groups: { id: string; department?: Department; rows: Job[] }[] =
+    departments
+      .map((department) => ({
+        id: department.id,
+        department,
+        rows: visibleJobs.filter((job) => job.department_id === department.id),
+      }))
+      .filter(
+        (group) =>
+          group.rows.length > 0 ||
+          visibleDepartments.some((dep) => dep.id === group.id),
+      );
+  const ungrouped = visibleJobs.filter(
+    (job) => !job.department_id || !departmentMap.has(job.department_id),
+  );
+  if (ungrouped.length) groups.push({ id: "none", rows: ungrouped });
+  const noRows =
+    view === "jobs"
+      ? visibleJobs.length === 0
+      : view === "departments"
+        ? visibleDepartments.length === 0
+        : groups.length === 0;
   return (
     <section
-      className="settings-page"
+      className="settings-page jobs-settings-page"
       aria-labelledby="jobs-&-departments-settings-title"
     >
       <SettingsHeader
-        icon={<BriefcaseBusiness size={21} aria-hidden />}
+        icon={<BriefcaseBusiness size={21} />}
         title="Jobs & departments"
-        description="The operating structure used for employee assignments and schedule rows."
+        description="Organize your jobs. Connect the right people to each one."
         action={
-          <Button type="button" onClick={() => openEditor(view)}>
-            <Plus size={16} aria-hidden />
-            Add {view === "jobs" ? "job" : "department"}
-          </Button>
+          <div className="job-create-actions">
+            {view === "hierarchy" ? (
+              <RowMenu name="Create" create>
+                <button
+                  type="button"
+                  onClick={() => openEditor({ type: "departments" })}
+                >
+                  <Folder size={15} />
+                  Department
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openEditor({ type: "jobs" })}
+                >
+                  <BriefcaseBusiness size={15} />
+                  Job
+                </button>
+              </RowMenu>
+            ) : (
+              <button
+                className="job-primary-button"
+                type="button"
+                onClick={() =>
+                  openEditor({ type: view === "jobs" ? "jobs" : "departments" })
+                }
+              >
+                <Plus size={16} />
+                Add {view === "jobs" ? "job" : "department"}
+              </button>
+            )}
+          </div>
         }
       />
-      <div className="settings-toolbar">
+      <div className="job-catalog-toolbar">
         <div
-          className="two-tab-control"
+          className="job-view-control"
           role="tablist"
           aria-label="Jobs settings view"
         >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === "departments"}
-            onClick={() => {
-              setView("departments");
-              setEditor(null);
-            }}
-          >
-            Departments
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === "jobs"}
-            onClick={() => {
-              setView("jobs");
-              setEditor(null);
-            }}
-          >
-            Jobs
-          </button>
+          {(
+            [
+              ["hierarchy", "All"],
+              ["departments", "Departments"],
+              ["jobs", "Jobs"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={view === value}
+              onClick={() => {
+                setEditor(null);
+                updateParams({ view: value });
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        <label className="archive-filter">
+        <label className="job-search">
+          <Search size={16} />
+          <input
+            aria-label="Search jobs and departments"
+            placeholder="Search jobs or departments"
+            value={search}
+            onChange={(event) =>
+              updateParams({ q: event.target.value || null }, true)
+            }
+          />
+          {search && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => updateParams({ q: null }, true)}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </label>
+        <label className="job-archive-filter">
           <input
             type="checkbox"
-            checked={showArchived}
-            onChange={(event) => setShowArchived(event.target.checked)}
+            checked={archived}
+            onChange={(event) =>
+              updateParams({ archived: event.target.checked ? "1" : null })
+            }
           />
           Show archived
         </label>
       </div>
-      {editor ? (
-        <form
-          className="entity-editor compact-editor"
-          onSubmit={submit}
-          aria-label={`${editor.item ? "Edit" : "Add"} ${editor.type === "jobs" ? "job" : "department"}`}
-        >
-          <div className="entity-editor-heading">
-            <div>
-              <strong>
-                {editor.item ? "Edit" : "New"}{" "}
-                {editor.type === "jobs" ? "job" : "department"}
-              </strong>
-              <span>Names must be unique within this organization.</span>
-            </div>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Close editor"
-              title="Close"
-              onClick={() => setEditor(null)}
-            >
-              <X size={17} aria-hidden />
-            </button>
-          </div>
-          <div className="job-fields">
-            <label className="form-field">
-              <span>Name</span>
-              <input
-                value={
-                  editor.type === "jobs" ? jobDraft.name : departmentDraft.name
-                }
-                maxLength={100}
-                onChange={(event) =>
-                  editor.type === "jobs"
-                    ? setJobDraft((current) => ({
-                        ...current,
-                        name: event.target.value,
-                      }))
-                    : setDepartmentDraft((current) => ({
-                        ...current,
-                        name: event.target.value,
-                      }))
-                }
-                required
-              />
-            </label>
-            {editor.type === "jobs" ? (
-              <label className="form-field">
-                <span>Department</span>
-                <select
-                  value={jobDraft.department_id ?? ""}
-                  onChange={(event) =>
-                    setJobDraft((current) => ({
-                      ...current,
-                      department_id: event.target.value || null,
-                    }))
-                  }
-                >
-                  <option value="">No department</option>
-                  {departments
-                    .filter((department) => !department.archived_at)
-                    .map((department) => (
-                      <option key={department.id} value={department.id}>
-                        {department.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            ) : null}
-            <label className="form-field color-field">
-              <span>Color</span>
-              <input
-                type="color"
-                value={
-                  editor.type === "jobs"
-                    ? jobDraft.color
-                    : departmentDraft.color
-                }
-                onChange={(event) =>
-                  editor.type === "jobs"
-                    ? setJobDraft((current) => ({
-                        ...current,
-                        color: event.target.value,
-                      }))
-                    : setDepartmentDraft((current) => ({
-                        ...current,
-                        color: event.target.value,
-                      }))
-                }
-              />
-            </label>
-          </div>
-          {formError ? (
-            <p className="form-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          <div className="entity-editor-actions">
-            <Button
-              className="secondary-button"
-              type="button"
-              onClick={() => setEditor(null)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saveMutation.isPending}>
-              {saveMutation.isPending
-                ? "Saving"
-                : `Save ${editor.type === "jobs" ? "job" : "department"}`}
-            </Button>
-          </div>
-        </form>
+      {editor?.type === "jobs" && !editor.item && !editor.departmentId ? (
+        <JobAssignmentsDrawer
+          key="new-job"
+          workspaceId={workspaceId}
+          initialJob={{ name: "", color: "#4478A8", department_id: null }}
+          departments={departments}
+          onClose={() => setEditor(null)}
+          onCreatedJob={(job) => {
+            setTransientJob(job);
+            setEditor(null);
+            openJob(job);
+          }}
+        />
+      ) : editor ? (
+        <JobCatalogEditor
+          key={`${editor.type}:${editor.item?.id ?? "new"}:${editor.departmentId ?? ""}`}
+          editor={editor}
+          workspaceId={workspaceId}
+          departments={departments}
+          jobs={jobs}
+          onClose={() => setEditor(null)}
+          onSaved={refresh}
+          onCreatedJob={(job) => {
+            setTransientJob(job);
+            setEditor(null);
+            openJob(job);
+          }}
+        />
       ) : null}
-      {!editor && formError ? (
-        <p className="settings-state error" role="alert">
+      {formError && (
+        <p className="job-error" role="alert">
           {formError}
         </p>
-      ) : null}
-      {data.isLoading ? (
-        <p className="settings-state">Loading organization structure...</p>
-      ) : null}
-      {data.error ? (
-        <p className="settings-state error" role="alert">
-          {errorText(data.error)}
+      )}
+      {counts.isError && (
+        <p className="job-error" role="alert">
+          Employee counts could not load.{" "}
+          <button type="button" onClick={() => void counts.refetch()}>
+            Retry
+          </button>
         </p>
-      ) : null}
-      {!data.isLoading && !data.error && rows.length === 0 ? (
-        <div className="settings-empty">
-          {view === "jobs" ? (
-            <BriefcaseBusiness size={22} aria-hidden />
-          ) : (
-            <Building size={22} aria-hidden />
-          )}
-          <strong>
-            {showArchived ? `No archived ${view}` : `No ${view} yet`}
-          </strong>
+      )}
+      {data.isPending ? (
+        <div className="job-empty-state" role="status">
+          Loading your team structure…
+        </div>
+      ) : data.isError ? (
+        <div className="job-error" role="alert">
+          {errorText(data.error)}{" "}
+          <button type="button" onClick={() => void data.refetch()}>
+            Try again
+          </button>
+        </div>
+      ) : noRows ? (
+        <div className="job-empty-state">
+          <BriefcaseBusiness size={26} />
+          <h2>{match ? "No matches found" : "Build your team structure"}</h2>
           <p>
-            {view === "jobs"
-              ? "Add jobs employees can be assigned to on the schedule."
-              : "Group related jobs into departments."}
+            {match
+              ? "Try another name or clear your search."
+              : "Start with a department, then add the jobs your team does."}
           </p>
         </div>
-      ) : null}
-      {rows.length > 0 ? (
-        <div className="entity-list" aria-label={view}>
-          {rows.map((item) => {
-            const isDepartment = view === "departments";
-            const activeJobs = isDepartment
-              ? jobs.filter(
-                  (job) => job.department_id === item.id && !job.archived_at,
-                ).length
-              : 0;
-            const job = isDepartment ? null : (item as Job);
-            const archiveBlocked =
-              isDepartment && !item.archived_at && activeJobs > 0;
-            return (
-              <div
-                className="entity-row"
-                key={item.id}
-                data-archived={Boolean(item.archived_at)}
-              >
-                <span
-                  className="entity-marker"
-                  style={{ backgroundColor: item.color }}
-                  aria-hidden
-                />
-                <div className="entity-summary">
-                  <strong>{item.name}</strong>
-                  <span>
-                    {isDepartment
-                      ? `${activeJobs} active ${activeJobs === 1 ? "job" : "jobs"}`
-                      : job?.department_id
-                        ? (departmentNames.get(job.department_id) ??
-                          "Unknown department")
-                        : "No department"}
-                  </span>
-                </div>
-                {item.archived_at ? (
-                  <span className="status-label">Archived</span>
-                ) : null}
-                <div className="row-actions">
-                  {!item.archived_at ? (
-                    <>
-                      <button
-                        type="button"
-                        className="icon-button"
-                        disabled={
-                          activeRows[0]?.id === item.id ||
-                          reorderMutation.isPending
-                        }
-                        aria-label={`Move ${item.name} up`}
-                        title="Move up"
-                        onClick={() => move(item.id, -1)}
-                      >
-                        <ArrowUp size={16} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-button"
-                        disabled={
-                          activeRows.at(-1)?.id === item.id ||
-                          reorderMutation.isPending
-                        }
-                        aria-label={`Move ${item.name} down`}
-                        title="Move down"
-                        onClick={() => move(item.id, 1)}
-                      >
-                        <ArrowDown size={16} aria-hidden />
-                      </button>
-                    </>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label={`Edit ${item.name}`}
-                    title="Edit"
-                    onClick={() => openEditor(view, item)}
+      ) : (
+        <div className="job-catalog">
+          {view === "hierarchy" ? (
+            <>
+              <div className="job-catalog-caption">
+                <span>
+                  {groups.length} groups · {visibleJobs.length} jobs
+                </span>
+                <button
+                  className="job-text-button"
+                  type="button"
+                  onClick={() =>
+                    setCollapsed((current) =>
+                      current.size
+                        ? new Set()
+                        : new Set(groups.map((group) => group.id)),
+                    )
+                  }
+                >
+                  {collapsed.size ? "Expand all" : "Collapse all"}
+                </button>
+              </div>
+              {groups.map((group) => {
+                const dep = group.department;
+                const open =
+                  Boolean(match || sortKey) || !collapsed.has(group.id);
+                return (
+                  <section
+                    className="job-group"
+                    key={group.id}
+                    aria-label={dep?.name ?? "No department"}
                   >
-                    <Pencil size={16} aria-hidden />
-                  </button>
+                    <div className="job-group-heading">
+                      <button
+                        type="button"
+                        className="job-group-toggle"
+                        aria-expanded={open}
+                        onClick={() =>
+                          setCollapsed((current) => {
+                            const next = new Set(current);
+                            if (next.has(group.id)) next.delete(group.id);
+                            else next.add(group.id);
+                            return next;
+                          })
+                        }
+                      >
+                        {open ? (
+                          <ChevronDown size={16} />
+                        ) : (
+                          <ChevronRight size={16} />
+                        )}
+                        <Folder size={16} style={{ color: dep?.color }} />
+                        <span className="job-row-name" title={dep?.name}>
+                          {dep?.name ?? "No department"}
+                        </span>
+                        {dep?.archived_at && (
+                          <span className="job-archived-label">Archived</span>
+                        )}
+                        <span className="job-group-count">
+                          {
+                            jobs.filter(
+                              (job) =>
+                                (dep
+                                  ? job.department_id === dep.id
+                                  : !job.department_id) && !job.archived_at,
+                            ).length
+                          }{" "}
+                          jobs
+                        </span>
+                      </button>
+                      {dep && (
+                        <span className="job-group-people">
+                          <Users size={14} />
+                          {countText(departmentCounts.get(dep.id))}
+                        </span>
+                      )}
+                      {!dep?.archived_at && (
+                        <button
+                          type="button"
+                          className="job-text-button job-group-add"
+                          aria-label={`Add job to ${dep?.name ?? "No department"}`}
+                          onClick={() =>
+                            openEditor({
+                              type: "jobs",
+                              ...(dep ? { departmentId: dep.id } : {}),
+                            })
+                          }
+                        >
+                          <Plus size={14} />
+                          <span>Add job</span>
+                        </button>
+                      )}
+                      {dep && menu(dep, "departments")}
+                    </div>
+                    {open && (
+                      <div>
+                        {group.rows.map((job) => jobRow(job, true))}
+                        {!group.rows.length && (
+                          <p className="job-group-empty">
+                            No jobs in this department yet.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </>
+          ) : view === "jobs" ? (
+            <>
+              <div className="job-column-headings">
+                {column("name", "Job")}
+                {column("department", "Department")}
+                {column("employees", "Employees")}
+                {resetSort}
+              </div>
+              {visibleJobs.map((job) => jobRow(job))}
+            </>
+          ) : (
+            <>
+              <div className="job-column-headings job-department-columns">
+                {column("name", "Department")}
+                {column("jobs", "Jobs")}
+                {column("employees", "Employees")}
+                {resetSort}
+              </div>
+              {visibleDepartments.map((dep) => (
+                <div
+                  className="job-catalog-row job-department-columns"
+                  key={dep.id}
+                  data-archived={Boolean(dep.archived_at)}
+                >
                   <button
                     type="button"
-                    className="icon-button"
-                    disabled={archiveBlocked}
-                    aria-label={`${item.archived_at ? "Restore" : "Archive"} ${item.name}`}
-                    title={
-                      archiveBlocked
-                        ? "Archive active jobs first"
-                        : item.archived_at
-                          ? "Restore"
-                          : "Archive"
-                    }
+                    className="job-row-identity"
                     onClick={() =>
-                      archiveMutation.mutate({
-                        type: view,
-                        id: item.id,
-                        archived: !item.archived_at,
-                      })
+                      openEditor({ type: "departments", item: dep })
                     }
                   >
-                    {item.archived_at ? (
-                      <RotateCcw size={16} aria-hidden />
-                    ) : (
-                      <Archive size={16} aria-hidden />
+                    <span
+                      className="job-color-dot"
+                      style={{ backgroundColor: dep.color }}
+                    />
+                    <span className="job-row-name" title={dep.name}>
+                      {dep.name}
+                    </span>
+                    {dep.archived_at && (
+                      <span className="job-archived-label">Archived</span>
                     )}
                   </button>
+                  <button
+                    className="job-text-button"
+                    type="button"
+                    aria-label={`Show jobs in ${dep.name}`}
+                    onClick={() => {
+                      setCollapsed((current) => {
+                        const next = new Set(current);
+                        next.delete(dep.id);
+                        return next;
+                      });
+                      updateParams({ view: "hierarchy", q: dep.name });
+                    }}
+                  >
+                    {
+                      activeJobs.filter((job) => job.department_id === dep.id)
+                        .length
+                    }
+                    <span className="job-mobile-meta"> jobs</span>
+                  </button>
+                  <span className="job-count-button">
+                    <Users size={14} />
+                    {countText(departmentCounts.get(dep.id))}
+                  </span>
+                  {menu(dep, "departments")}
                 </div>
-              </div>
-            );
-          })}
+              ))}
+            </>
+          )}
         </div>
-      ) : null}
+      )}
+      {params.get("jobId") && data.isSuccess && !selectedJob && (
+        <p className="job-error" role="alert">
+          This job is no longer available.{" "}
+          <button type="button" onClick={() => updateParams({ jobId: null })}>
+            Dismiss
+          </button>
+        </p>
+      )}
+      {selectedJob && !editor && (
+        <JobAssignmentsDrawer
+          key={`${workspaceId}:${selectedJob.id}`}
+          workspaceId={workspaceId}
+          job={selectedJob}
+          departments={departments}
+          onClose={() => {
+            setTransientJob(null);
+            updateParams({ jobId: null });
+          }}
+        />
+      )}
     </section>
   );
 }

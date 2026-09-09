@@ -25,6 +25,7 @@ export function isScheduleInteractionSurface(target: Element): boolean {
     target.closest("[data-schedule-preset-chip='true']") ||
     target.closest("[data-schedule-preset-cell='true']") ||
     target.closest("[data-preset-drop-cell='true']") ||
+    target.closest("[data-schedule-employee-card-trigger='true']") ||
     target.closest("[data-schedule-top-bar]") ||
     target.closest("[data-schedule-filter-command-strip]") ||
     target.closest(".schedule-topbar-dismiss-layer") ||
@@ -62,6 +63,7 @@ export function isBlankScheduleDismissTarget(target: Element): boolean {
       "[data-schedule-preset-chip='true']",
       "[data-schedule-preset-cell='true']",
       "[data-preset-drop-cell='true']",
+      "[data-schedule-employee-card-trigger='true']",
       "[data-schedule-day-header-content='true']",
       "[data-schedule-location-filter-ids]",
       "[role='menu']",

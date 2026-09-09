@@ -20,6 +20,13 @@ const shift = {
 } as ScheduleShift;
 
 describe("toScheduleShiftMutation", () => {
+  it("retains reference evidence when a drag changes only the employee or date", () => {
+    const source: ScheduleShift = { ...shift, time_basis: "type_default", time_timezone: "America/Los_Angeles",
+      time_snapshot: { shift_type_id: "type-1", default_revision: 2, start_time: "16:00", end_time: "22:00", timezone: "America/Los_Angeles" } };
+    const mutation = toScheduleShiftMutation(source, { employee_id: "emp-2", scheduled_date: "2026-08-18" });
+    expect(mutation.time_basis).toBe("type_default");
+    expect(mutation.time_snapshot).toEqual(source.time_snapshot);
+  });
   it("maps a schedule shift into the mutation input contract", () => {
     expect(toScheduleShiftMutation(shift)).toEqual({
       location_id: "loc-1",

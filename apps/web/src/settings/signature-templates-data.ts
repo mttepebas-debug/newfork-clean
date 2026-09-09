@@ -10,7 +10,7 @@ import {
   type SignatureTemplateDraftInput,
   type SignatureTemplateVersion,
 } from "@newfork/shared";
-import { supabaseClient } from "../lib/supabase";
+import { developmentBearerToken, supabaseClient } from "../lib/supabase";
 
 function client() {
   if (!supabaseClient)
@@ -20,6 +20,37 @@ function client() {
 
 function check(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
+}
+
+async function request(
+  workspaceId: string,
+  path: string,
+  init: RequestInit = {},
+) {
+  const storage = client();
+  const token =
+    (await storage.auth.getSession()).data.session?.access_token ??
+    developmentBearerToken();
+  if (!token) throw new Error("A current session is required");
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/v1/workspaces/${workspaceId}${path}`,
+    {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...init.headers,
+      },
+    },
+  );
+  const body = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok)
+    throw new Error(
+      typeof body === "object" && body && "error" in body
+        ? String(body.error)
+        : "Signature settings operation failed",
+    );
+  return body;
 }
 
 export interface SignatureSettingsData {
@@ -72,31 +103,44 @@ export async function saveSignatureRetentionPolicy(
   policyId?: string,
 ): Promise<string> {
   const policy = signatureRetentionPolicyInputSchema.parse(input);
-  const { data, error } = await client().rpc(
-    "save_signature_retention_policy",
+  const body = (await request(
+    workspaceId,
+    policyId
+      ? `/signature-retention-policies/${policyId}`
+      : "/signature-retention-policies",
     {
-      target_workspace_id: workspaceId,
-      target_policy_id: policyId ?? null,
-      policy_name: policy.name,
-      policy_trigger: policy.retention_trigger,
-      policy_duration_days: policy.duration_days,
-      policy_jurisdiction_scope: policy.jurisdiction_scope,
-      policy_authority_reference: policy.authority_reference,
+      method: policyId ? "PUT" : "POST",
+      body: JSON.stringify(policy),
     },
-  );
-  check(error);
-  return String(data);
+  )) as { id?: unknown };
+  if (!body.id) throw new Error("Retention policy save result is unavailable");
+  return String(body.id);
 }
 
 export async function approveSignatureRetentionPolicy(
   workspaceId: string,
   policyId: string,
 ): Promise<void> {
-  const { error } = await client().rpc("approve_signature_retention_policy", {
-    target_workspace_id: workspaceId,
-    target_policy_id: policyId,
-  });
-  check(error);
+  await request(
+    workspaceId,
+    `/signature-retention-policies/${policyId}/approve`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+export async function unapproveSignatureRetentionPolicy(
+  workspaceId: string,
+  policyId: string,
+): Promise<void> {
+  await request(
+    workspaceId,
+    `/signature-retention-policies/${policyId}/unapprove`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export async function setSignatureRetentionPolicyArchived(
@@ -104,15 +148,14 @@ export async function setSignatureRetentionPolicyArchived(
   policyId: string,
   archived: boolean,
 ): Promise<void> {
-  const { error } = await client().rpc(
-    "set_signature_retention_policy_archived",
+  await request(
+    workspaceId,
+    `/signature-retention-policies/${policyId}/archive`,
     {
-      target_workspace_id: workspaceId,
-      target_policy_id: policyId,
-      should_archive: archived,
+      method: "PATCH",
+      body: JSON.stringify({ archived }),
     },
   );
-  check(error);
 }
 
 export async function saveSignatureTemplateDraft(
@@ -121,32 +164,37 @@ export async function saveSignatureTemplateDraft(
   templateId?: string,
 ): Promise<string> {
   const template = signatureTemplateDraftInputSchema.parse(input);
-  const { data, error } = await client().rpc("save_signature_template_draft", {
-    target_workspace_id: workspaceId,
-    target_template_id: templateId ?? null,
-    template_name: template.title,
-    template_summary: template.summary,
-    template_content: template.content_text,
-    template_intent_statement: template.intent_statement,
-    template_locale: template.locale,
-    template_effective_date: template.effective_date,
-    is_required_at_onboarding: template.required_at_onboarding,
-    should_block_activation: template.blocks_activation,
-    target_retention_policy_id: template.retention_policy_id,
-  });
-  check(error);
-  return String(data);
+  const body = (await request(
+    workspaceId,
+    templateId
+      ? `/signature-templates/${templateId}/draft`
+      : "/signature-templates",
+    {
+      method: templateId ? "PUT" : "POST",
+      body: JSON.stringify(template),
+    },
+  )) as { id?: unknown };
+  if (!body.id)
+    throw new Error("Acknowledgement template save result is unavailable");
+  return String(body.id);
 }
 
 export async function publishSignatureTemplate(
   workspaceId: string,
   templateId: string,
 ): Promise<void> {
-  const { error } = await client().rpc("publish_signature_template", {
-    target_workspace_id: workspaceId,
-    target_template_id: templateId,
+  await request(workspaceId, `/signature-templates/${templateId}/publish`, {
+    method: "POST",
   });
-  check(error);
+}
+
+export async function unpublishSignatureTemplate(
+  workspaceId: string,
+  templateId: string,
+): Promise<void> {
+  await request(workspaceId, `/signature-templates/${templateId}/unpublish`, {
+    method: "POST",
+  });
 }
 
 export async function setSignatureTemplateArchived(
@@ -154,10 +202,8 @@ export async function setSignatureTemplateArchived(
   templateId: string,
   archived: boolean,
 ): Promise<void> {
-  const { error } = await client().rpc("set_signature_template_archived", {
-    target_workspace_id: workspaceId,
-    target_template_id: templateId,
-    should_archive: archived,
+  await request(workspaceId, `/signature-templates/${templateId}/archive`, {
+    method: "PATCH",
+    body: JSON.stringify({ archived }),
   });
-  check(error);
 }

@@ -107,14 +107,14 @@ export function renderScheduleCsv(
         values.push((row.label_names ?? []).join(" · "));
       if (settings.show_clock_in_out !== false) {
         values.push(
-          formatTime(row.start_time, settings.time_format),
-          formatTime(row.end_time, settings.time_format),
+          formatRowTime(row, row.start_time, settings.time_format),
+          formatRowTime(row, row.end_time, settings.time_format),
           row.crosses_midnight ? labels.yes : labels.no,
         );
       }
       if (settings.include_notes) values.push(row.note);
       if (settings.include_scheduled_hours)
-        values.push((row.scheduled_minutes / 60).toFixed(2));
+        values.push(formatRowHours(row));
       lines.push(
         values
           .map((value) => csvCell(value, settings.csv_delimiter))
@@ -152,8 +152,8 @@ export function renderSchedulePdf(
       row.job_name,
       settings.show_clock_in_out === false
         ? ""
-        : `${formatTime(row.start_time, settings.time_format)}-${formatTime(
-            row.end_time,
+        : `${formatRowTime(row, row.start_time, settings.time_format)}-${formatRowTime(
+            row, row.end_time,
             settings.time_format,
           )}`,
     ]
@@ -163,9 +163,7 @@ export function renderSchedulePdf(
   const lines = [
     `${preview.workspace_name} ${labels.scheduleNoun}`,
     `${labels.weekOf} ${preview.week_start}`,
-    `${preview.summary.shift_count} ${labels.shifts} - ${(preview.summary.scheduled_minutes / 60).toFixed(
-      2,
-    )} ${labels.scheduledHours.toLowerCase()}`,
+    `${preview.summary.shift_count} ${labels.shifts} - ${formatExportTotal(preview)} ${labels.scheduledHours.toLowerCase()}`,
     "",
     ...rows,
   ];
@@ -208,7 +206,7 @@ export function renderSchedulePrintHtml(
           )
           .join("")
       : renderPrintTable(preview.rows, settings, labels, true);
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(preview.workspace_name)} ${escapeHtml(labels.scheduleNoun)}</title><style>@page{size:${paperSize} ${orientation};margin:12mm}body{font:12px system-ui;color:#17211d}body.schedule-export-fit-page{font-size:10px}body.schedule-export-fit-page table{font-size:10px}body.schedule-export-location-pages section{break-after:page}h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:18px 0 6px}p{color:#52615a;margin:0 0 16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #aeb9b4;padding:6px;text-align:left}body.schedule-export-fit-page th,body.schedule-export-fit-page td{padding:4px}th{background:#edf1ef}.schedule-export-role-separator td{background:#f6f8f7;color:#24342e;font-weight:700}.schedule-export-shift-type-badge{display:inline-block;border:1px solid #b7c7bf;border-radius:999px;background:#eef4f1;padding:2px 7px;font-size:11px;font-weight:700}section{break-inside:avoid}@media print{button{display:none}}</style></head><body class="${fitClass.trim()}"><button onclick="window.print()">${escapeHtml(labels.printButton)}</button><h1>${escapeHtml(preview.workspace_name)} ${escapeHtml(labels.scheduleNoun)}</h1><p>${escapeHtml(labels.weekOf)} ${escapeHtml(preview.week_start)} · ${preview.summary.shift_count} ${escapeHtml(labels.shifts)} · ${(preview.summary.scheduled_minutes / 60).toFixed(2)} ${escapeHtml(labels.scheduledHours.toLowerCase())}</p>${body}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(preview.workspace_name)} ${escapeHtml(labels.scheduleNoun)}</title><style>@page{size:${paperSize} ${orientation};margin:12mm}body{font:12px system-ui;color:#17211d}body.schedule-export-fit-page{font-size:10px}body.schedule-export-fit-page table{font-size:10px}body.schedule-export-location-pages section{break-after:page}h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:18px 0 6px}p{color:#52615a;margin:0 0 16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #aeb9b4;padding:6px;text-align:left}body.schedule-export-fit-page th,body.schedule-export-fit-page td{padding:4px}th{background:#edf1ef}.schedule-export-role-separator td{background:#f6f8f7;color:#24342e;font-weight:700}.schedule-export-shift-type-badge{display:inline-block;border:1px solid #b7c7bf;border-radius:999px;background:#eef4f1;padding:2px 7px;font-size:11px;font-weight:700}section{break-inside:avoid}@media print{button{display:none}}</style></head><body class="${fitClass.trim()}"><button onclick="window.print()">${escapeHtml(labels.printButton)}</button><h1>${escapeHtml(preview.workspace_name)} ${escapeHtml(labels.scheduleNoun)}</h1><p>${escapeHtml(labels.weekOf)} ${escapeHtml(preview.week_start)} · ${preview.summary.shift_count} ${escapeHtml(labels.shifts)} · ${formatExportTotal(preview)} ${escapeHtml(labels.scheduledHours.toLowerCase())}</p>${body}</body></html>`;
 }
 
 function addScheduleSummarySheet(
@@ -229,7 +227,7 @@ function addScheduleSummarySheet(
     { metric: labels.employees, value: preview.summary.employee_count },
     {
       metric: labels.scheduledHours,
-      value: (preview.summary.scheduled_minutes / 60).toFixed(2),
+      value: formatExportTotal(preview),
     },
   ]);
   styleWorkbookHeader(sheet);
@@ -260,13 +258,13 @@ function addScheduleRowsSheet(
     if (settings.show_labels !== false)
       values.labels = (row.label_names ?? []).join(" · ");
     if (settings.show_clock_in_out !== false) {
-      values.start = formatTime(row.start_time, settings.time_format);
-      values.end = formatTime(row.end_time, settings.time_format);
+      values.start = formatRowTime(row, row.start_time, settings.time_format);
+      values.end = formatRowTime(row, row.end_time, settings.time_format);
       values.overnight = row.crosses_midnight ? labels.yes : labels.no;
     }
     if (settings.include_notes) values.note = row.note;
     if (settings.include_scheduled_hours)
-      values.scheduledHours = Number((row.scheduled_minutes / 60).toFixed(2));
+      values.scheduledHours = (row.time_basis && row.time_basis != "explicit" ? formatRowHours(row) : Number(formatRowHours(row)));
     sheet.addRow(values);
   }
   if (preview.rows.length === 0) {
@@ -391,7 +389,7 @@ function renderPrintRow(
   labels: ReturnType<typeof localizedExportLabels>,
   includeDate: boolean,
 ): string {
-  return `<tr>${includeDate ? `<td>${escapeHtml(row.scheduled_date)}</td>` : ""}<td>${escapeHtml(row.location_name)}</td><td>${escapeHtml(row.employee_name ?? labels.openShift)}</td><td>${escapeHtml(row.job_name)}</td>${settings.show_shift_type !== false ? `<td>${renderShiftType(row.shift_type_name, settings)}</td>` : ""}${settings.show_labels !== false ? `<td>${escapeHtml((row.label_names ?? []).join(" · "))}</td>` : ""}${settings.show_clock_in_out !== false ? `<td>${escapeHtml(`${formatTime(row.start_time, settings.time_format)}-${formatTime(row.end_time, settings.time_format)}${row.crosses_midnight ? " +1" : ""}`)}</td>` : ""}${settings.include_notes ? `<td>${escapeHtml(row.note)}</td>` : ""}${settings.include_scheduled_hours ? `<td>${(row.scheduled_minutes / 60).toFixed(2)}</td>` : ""}</tr>`;
+  return `<tr>${includeDate ? `<td>${escapeHtml(row.scheduled_date)}</td>` : ""}<td>${escapeHtml(row.location_name)}</td><td>${escapeHtml(row.employee_name ?? labels.openShift)}</td><td>${escapeHtml(row.job_name)}</td>${settings.show_shift_type !== false ? `<td>${renderShiftType(row.shift_type_name, settings)}</td>` : ""}${settings.show_labels !== false ? `<td>${escapeHtml((row.label_names ?? []).join(" · "))}</td>` : ""}${settings.show_clock_in_out !== false ? `<td>${escapeHtml(`${formatRowTime(row, row.start_time, settings.time_format)}-${formatRowTime(row, row.end_time, settings.time_format)}${row.crosses_midnight ? " +1" : ""}`)}</td>` : ""}${settings.include_notes ? `<td>${escapeHtml(row.note)}</td>` : ""}${settings.include_scheduled_hours ? `<td>${formatRowHours(row)}</td>` : ""}</tr>`;
 }
 
 function renderShiftType(
@@ -462,9 +460,29 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 function formatTime(value: string, format: "12h" | "24h"): string {
+  if (!value) return "—";
   if (format === "24h") return value;
   const [hour, minute] = value.split(":").map(Number);
   return `${hour! % 12 || 12}:${String(minute).padStart(2, "0")} ${hour! >= 12 ? "PM" : "AM"}`;
+}
+
+function hasUnknownHours(row: ScheduleExportRow): boolean {
+  return row.time_basis === "unresolved" || row.time_basis === "legacy_unverified";
+}
+
+function formatRowTime(row: ScheduleExportRow, time: string, format: "12h" | "24h"): string {
+  if (hasUnknownHours(row)) return "—";
+  return `${row.time_basis === "type_default" ? "~" : ""}${formatTime(time, format)}`;
+}
+
+function formatRowHours(row: ScheduleExportRow): string {
+  if (hasUnknownHours(row)) return "—";
+  return `${row.time_basis === "type_default" ? "~" : ""}${(row.scheduled_minutes / 60).toFixed(2)}`;
+}
+
+function formatExportTotal(preview: ScheduleExportPreview): string {
+  const prefix = preview.rows.some((row) => row.time_basis === "type_default") ? "~" : "";
+  return `${prefix}${(preview.summary.scheduled_minutes / 60).toFixed(2)}`;
 }
 
 function localizedExportLabels(settings: ScheduleExportSettings) {

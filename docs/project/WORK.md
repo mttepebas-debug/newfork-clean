@@ -1,0 +1,82 @@
+# Tek Is Kaydi ve Ilerleme Gunlugu
+
+Kayit sahibi: [ana session](COORDINATION.md). Kurulus: 2026-09-09.
+Bu dosya guncel durumun tek kaynagidir; teknik ayrintilar ilgili plan/patch'e baglanir.
+
+## Kayit Kurallari
+
+- Durumlar: `queued`, `active`, `waiting`, `review`, `done`, `cancelled`. Aktif gorevi olmayan gozlem `observed` olarak tutulur; tamamlanma veya yonetim devri iddiasi degildir.
+- Her is: sabit ID, hedef, kabul kosulu, sorumlu session, branch/checkout, son kanit ve tek sonraki adim tasir. Kucuk isler icin tablodaki kisa kayit yeterlidir.
+- Backlog maddesi ise alininca ayni ID kullanilir; backlog'da yalniz WORK baglantisi kalir, paralel durum takibi yapilmaz.
+- Ana session durumu karar/engel/teslimat aninda gunceller. Her komut veya test icin log yazilmaz.
+- `done` icin kabul kosulu ve gerekli kanit gerekir. Yerel, browser ve hosted kanitlar karistirilmaz; test yapilmamasi dusuk riskli belgelerde tek basina engel degildir.
+
+## Isler
+
+| ID | Durum | Hedef ve kabul kosulu | Sorumlu / ortam | Son kanit | Sonraki adim |
+|---|---|---|---|---|---|
+| GIT-001 | done | Kullanicinin birinci onceligi: ana checkout'taki ilerlemeyi tek checkpoint commit'iyle koru, diff'i temizle. Yeni kaynak kod silinmez; diger worktree/branch/stash'ler tasinmaz. | Ana session; `codex/phase-1-foundation`; bu kaydi iceren `chore: checkpoint current progress` commit'i | 892 dosyalik checkpoint; hedefli gizli-deger kontrolu, dosya/branch envanteri ve statik import incelemesi yapildi. Runtime env korunuyor; 638 yerel dosya ve 4dfb degisiklikleri arsivlendi; 22 yeniden uretilebilir cache temizlendi. Urun testleri tekrarlanmadi. | Urun kabul durumlari OBS-001/002/003'te acik; 4dfb farklari BL-028'de ayri incelenir. |
+| OPS-001 | done | Ana session'i ata/pinle; AGENTS ve dort ortak kaydi olustur; delegasyon, kapsam/test ve agent onerisi kurallarini yaz. Kabul: kimlik dogru, pin uygulanmis, belgeler mevcut ve baglantilar cozuluyor. | Ana session; `codex/phase-1-foundation`, ana checkout | Thread ID ortam ve app listesiyle dogrulandi; yeniden adlandirma ve pin araci basarili. 6 proje belgesinde 23 goreli baglanti kontrol edildi, kirik baglanti yok. Belge degisikligi icin uygulama testi gerekmiyor. | Kurulum kapandi; sonraki urun yonlendirmesinde ilgili dar isi kaydet. |
+| OBS-001 | review | Employee drawer/create, davet/access ve onboarding profil dilimi. Kabul: bu dilimin patch sahipligi incelenmis; create/invite/access ve tenant-private profil sozlesmesi korunmus; gerekli manager browser akisi gorulmus. Yedi adim/avatar upload/draft autosave bu teslimatin kapanisina eklenmez. | `01a0865b-d408-7dc3-a6b4-233723e40391`; ana checkout, `codex/phase-1-foundation`; kabul sahibi ana session | Alt session hedefli PASS ve yerel migration raporu iletti; ana session dosya varligi/branch ve birikmis diff kapsamindan fazlasini henuz dogrulamadi. Asagidaki kanit sinirlari gecerli. | Ilgili patch/hunk sahipligini incele; sonra yalniz kalan manager browser kabul akisini dogrula. |
+| OBS-002 | waiting | Availability dar kapanis: tek employee save -> manager copy/toggle/save -> Schedule/preflight edit-grid return browser akisi ve elle inbox projeksiyonu olmadan otomatik bildirim kontrolu. Yalniz karsilasilan gercek hatalar duzeltilir. | Kaynak `01a080eb-3bc3-73d0-bd51-67ddad4724ce`; teslimat sahibi ana session; ana checkout | Auth/API 22 kontrol + cleanup PASS kaynak raporu; browser save zinciri eksik; local notification cron 503/config eksigi raporlandi. | GIT-001 sonrasi yerel bildirim tetikleme eksigi ve kalan tek browser akisi. Yeni genis test/replay serisi acma. |
+| OBS-003 | queued | Employee invite/onboarding buyuk planinin kismi implementasyon durumunu ve plan/mockup devrini koru; OBS-001'i tum plan tamamlandi diye sunma. | Kaynak `01a0848b-6e14-7ab3-bfc0-e99b9efff877`; teslimat sahibi ana session | Plan + secilen Light & airy mockup; kaynak raporu production yedi-adim ve belge/policy lifecycle'in tamamlanmadigini belirtiyor. | GIT-001 ve ilgili mevcut kabul sonrasi kullanicinin urun onceligine gore dar faz sec; tum plani tek seferde acma. |
+
+OBS-001'in uygulamadaki basligi: `Employee drawer UI envanteri çıkar`. Bu kayit mevcut session'i durdurma veya ona yeni task gonderme islemi degildir.
+
+## OBS-001 Handoff ve Kabul Siniri
+
+Kaynak: `01a0865b-d408-7dc3-a6b4-233723e40391` session'inin 2026-09-09 tarihli ana session'a gonderdigi handoff. Alt session, ilk envanter isinin kullanicinin sonraki yonlendirmeleriyle implementasyona donustugunu bildirdi. Urun kaynagi: [employee invite/onboarding kararlari](../rebuild/employee-invite-onboarding-decisions-2026-09-09.md).
+
+Raporlanan dilim: Remote/Exclude etiketleri; drawer private profil gruplari; e-mailsiz create ve opsiyonel save+invite; access state'leri, retry/resend ayrimi, role/unlink ve avatar goruntuleme-kaldirma; onboarding zorunlu profil/acil durum alanlari; legacy nullable read-model uyumlulugu; Switch organization/Sign out.
+
+Patch kaynaklari: `apps/web/src/employees/EmployeeDrawer.tsx`, `EmployeeOnboardingPage.tsx`, `employee-data.ts`, ilgili testler ve `apps/web/src/styles.css`; `apps/api/src/app.ts`, employee invitation/create/directory servis-route ve testleri; `packages/shared/src/index.ts` ve testi; employee create/directory pgTAP dosyalari. Handoff commit icermiyor; bildirilen HEAD `415b15f77180fbf2f7aaa1a7a9740d886c86a967` birikmis WIP'in tam kimligi degildir.
+
+Ana session branch'i ve dort yeni migration dosyasinin varligini kontrol etti. Alti ortak dosyanin HEAD'e gore toplam diff'i 3982 ekleme/901 silme; bu sayilarin tamami OBS-001'e ait sayilamaz. Hunk sahipligi ve butun davranis incelemesi acik.
+
+Raporlanan migration'lar: `20260909173133_employee_drawer_private_profile_projection.sql`, `20260909180000_employee_invitation_delivery_retry.sql`, `20260909182000_employee_workspace_avatar_control.sql`, `20260909183000_employee_access_unlink.sql`. Alt session dordunu yerel DB'ye uyguladigini bildirdi; ana session DB uygulama durumunu yeniden kontrol etmedi.
+
+| Kanit | Alt session'in bildirdigi sonuc | Ana session kabul siniri |
+|---|---|---|
+| Hedefli testler | API 108/108; Drawer 24/24; Onboarding 13/13; shared 53/53; employee create pgTAP 40/40; directory pgTAP 113/113 PASS | Bu handoff'a ait rapor; burada tekrar calistirilmadi. Sonraki ilgili degisiklikte etkilenen kanit yeniden degerlendirilir. |
+| Typecheck | API/shared PASS; web dort baska dosyada FAIL | Web green degil. ImportantDatesSettingsPage, JobCatalogEditor, JobsManagement.test ve OwnerOnboardingPage.test alt session tarafindan kapsam disi siniflandirildi; ana session bu siniflandirmayi incelemedi. BL-026. |
+| Browser | `/welcome/profile` nullable parse hatasi fix sonrasi kalkti; mevcut aktif employee `/app/employee-hub`'a yonlendi; localhost:5555 200 | Manager drawer UAT ve gercek invite/revoke/remove-access etkileri kontrol edilmedi. Employee redirect kaniti drawer kabulunun yerine gecmez. |
+| Genis DB turu | Yanlis CLI argumaniyla 92 pgTAP dosyasi calisti; bircok suite FAIL; hedef employee dosyalari sonradan ayri PASS | Genis suite hatalarinin nedeni ana session tarafindan dogrulanmadi; tum DB green veya tamamen fixture sorunu iddiasi yok. |
+| Hosted/provider | Bu turda yok | Gercek e-posta teslimi, hosted migration/deploy ve release kabul iddiasi yok. |
+
+Sonraki bagimsiz dilimler BACKLOG BL-007/008/009'da. Account > Documents BL-001 zorunlu takip olarak kalir. Yeni urun implementasyonu bu handoff'un alinmasiyla otomatik baslamaz. Sonraki onboarding/draft dilimi icin alt session onerisi: `gpt-6-astra`, high; gerekce tenant-private veri, global profil, revision ve cok adimli UI etkisi. Bu bir model atamasi degildir.
+
+## OBS-002 ve OBS-003 Devir Sinirlari
+
+Availability kaynaklari: [guncel ilerleme belgesinin ust bolumleri](../rebuild/availability-redesign-progress-2026-09-08.md), [spec](../rebuild/availability-redesign-spec-2026-09-08.md) ve [plan](../rebuild/availability-redesign-plan-2026-09-08.md). Ana session ilerleme belgesinin Migration-First/Latest Acceptance/Current Next Steps bolumlerini okudu. Eski alttaki next-step listeleri guncel gorev degildir.
+
+Availability icin kaynak tarafindan bildirilen 236 migration/0 pending/son `20260909140030` belirli bir kontrol anina aittir; OBS-001 daha sonraki dort migration'i bildirdigi icin bunu bugunun tum repo migration durumu sayma. Yeni kurulum veya temiz replay yapilmadi. Auth/API kanitinda inbox projection elle calistirildi; otomatik bildirim kabulunu karsilamaz. Manager browser'da render ve OFF/Discard goruldu, SAVE yapilmadi. API kaniti publish/release/final exchange kabulunu kapsamaz.
+
+Bildirim kontrolundeki 503 eksik cron konfigurasyonu olarak raporlandi. Yalniz secret eklemek periyodik tetikleyici kaniti degildir; mevcut gercek outbox'i topluca dispatch etme. Kontrollu yerel fixture ve otomatik isleyis kullan. Clean migration replay yayin oncesine ertelendi; race/multi-manager/hosted kanitlar dogrulanmadi fakat dar kapanisi genisletmez. Oneri: orta zorluk, mevcut katalogda `gpt-5.6-sol` veya `gpt-5.6-terra`, medium; yeni model atanmadi.
+
+OBS-003 kaynak session'i kod/plan durumunu hizli degerlendirdi; tum gap listesi veya yeniden audit talebi yok. `apps/web/src/dev/EmployeeOnboardingPreview.tsx` ve `/dev/employee-onboarding` mockup'tir. Yedi adim, profil/account ownership, invite/reinvite, belge/policy lifecycle, notifications/suspension ve Account > Documents ayri sinirli fazlar olarak ele alinacak; bu devir bunlari baslatmaz. Bilinen dar takipler BL-001/007/008/009'da.
+
+## Ilerleme Gunlugu
+
+| Tarih | Is | Karar veya sonuc |
+|---|---|---|
+| 2026-09-09 | OPS-001 | Kullanici bu gorusmeyi ana session atadi; kimlik COORDINATION'a kaydedildi, "Newfork Ana Session" adi ve pin uygulandi. |
+| 2026-09-09 | OPS-001 | Tek WORK/ROADMAP/BACKLOG ve delegasyon modeli kuruldu. Tarihli urun belgeleri referans; eski PASS kayitlari bugunun kabul kaniti sayilmiyor. |
+| 2026-09-09 | OPS-001 | Proje belgelerinin baglantilari kontrol edildi; global AGENTS'e kisa verimlilik/test ve agent onerisi kurallari eklendi. Kurulum kabul kosullari karsilandi. |
+| 2026-09-09 | OBS-001 | Alt session implementasyon handoff'u alindi. Kayit observed -> review; branch/migration dosyalari ve birikmis diff boyutu kontrol edildi. Hedefli PASS raporu tekrar test edilmeden kaydedildi; manager browser kabul ve patch sahipligi acik. |
+| 2026-09-09 | OBS-002/003 | Availability ve buyuk onboarding plan/mockup raporlari devralindi; kaynak session'lar idle. Son kullanici kapsam sinirlari korundu, yeni implementasyon baslatilmadi. |
+| 2026-09-09 | GIT-001 | Kullanici tum isleri ana session'a devretti ve temiz checkpoint'i birinci oncelik yapti. Tek snapshot yeterli; yapay commit bolme, eski kodu tahminle silme veya diger worktree/stash'leri birlestirme yok. |
+| 2026-09-09 | GIT-001 | Diger 13 worktree salt okunur kontrol edildi: 12 temiz; `4dfb` 233 degisiklik iceriyor, 112 dosya ana checkout ile ayni (satir sonu normalize), 121 farkli. Ana checkout'ta olmayan dosya yok; anlamsal esdegerlik/istenen surum karari verilmedi. 4dfb yerinde korundu, ayri inceleme BL-028. |
+| 2026-09-09 | GIT-001 | 354 kaynak dosyada statik import taramasi: cozumlenemeyen yerel import yok; 34 dosya secilen runtime/public-export koklerinden ulasilamiyor. Bu bir silme karari degil. Ornek eski Schedule LineupPage yalniz yeni route'a re-export; diger Schedule/editor/preview dosyalari BL-029'da incelenecek. |
+| 2026-09-09 | GIT-001 | Kullanicinin tek checkpoint karari uygulandi. Commit oncesi indeks disinda kaynak degisikligi/untracked aday kalmadi; sadece onceden var olan iki SSN dosya silinmesi korundu. Bu kaydi iceren checkpoint urun/release kabulunun yerine gecmez. |
+
+## Checkpoint Koruma Siniri
+
+Bu checkpoint ana checkout'un mevcut kaynak/dokuman durumunu korur; birikmis WIP'in urun kabulunu tamamlamaz. Onceki iki SSN dosya silinmesi zaten kullanici/alt session WIP'inde bulunuyordu; checkpoint temizligi yeni urun kaynak dosyasi silmedi. Gizli Resend degeri ornek env'den cikarildi, runtime env korunuyor.
+
+Ignored gecici kod ve kanit dosyalari silinmeden once `artifacts/repo-checkpoint/preserved-local-20260909.zip` icinde 638 dosya arsivlendi. Kaynak `.py` dosyasi mevcut olan Python bytecode cache'leri disinda bu gruptaki dosyalar yerinde tutulur. `.temp` icindeki SQL/Python/JS kaynaklari cop olarak siniflandirilmadi. Gorsel/API kanit payload'lari ile runtime dosyalari Git'e girmez; README ve tekrar kullanilabilir dogrulama kaynaklari girer. Yerel arsivler hassas veri icerebilir; paylasilacak artefakt degildir.
+
+4dfb worktree degisikliklerinin ayri kopyasi `artifacts/repo-checkpoint/worktree-4dfb-preserved-20260909.zip`; karsilastirma `artifacts/repo-checkpoint/worktree-4dfb-comparison.json`. Bu worktree'de commit/switch/reset/merge veya dosya temizligi yapilmadi. Stash listesi bos. Ana checkpoint diger worktree'nin 121 farkini otomatik dahil etmez.
+
+## Siradaki Teslimat
+
+Checkpoint sonrasi devralinan dar kabul isleri OBS-001/002 koordine edilir; ortak dosya degistirmeden once BL-028'deki ilgili 4dfb farki da dikkate alinir. Bir seferde tek ana teslimat ilerler. OBS-003 buyuk planinin bagimsiz yeni ozellikleri bu kabullere eklenmez. Ortam otomasyonu ve tum eski backlog'un canli denetimi ayri backlog isleridir.

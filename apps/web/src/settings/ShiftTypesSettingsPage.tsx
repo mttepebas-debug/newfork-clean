@@ -1,3 +1,4 @@
+import { CatalogDrawer } from "./CatalogDrawer";
 import {
   shiftTypeInputSchema,
   type ShiftType,
@@ -5,19 +6,16 @@ import {
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Archive,
-  ArrowDown,
-  ArrowUp,
-  Clock3,
-  Pencil,
-  Plus,
-  RotateCcw,
-  X,
-} from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { Clock3, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { JobColorInput } from "./JobCatalogEditor";
+import "./jobs-settings.css";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
+import { ShiftCatalogTabs } from "./ShiftCatalogTabs";
+import { CatalogDeleteAction } from "./CatalogDeleteAction";
+import { ShiftCatalogList } from "./ShiftCatalogList";
 import {
   listShiftTypes,
   reorderShiftTypes,
@@ -32,10 +30,20 @@ const defaultDraft: ShiftTypeInput = {
   default_end_time: "17:00",
 };
 
+function sameJson(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export default function ShiftTypesSettingsPage() {
   const { context } = useAuth();
-  const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
+  return <ShiftTypesEditor key={workspaceId} workspaceId={workspaceId} />;
+}
+
+function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedType = searchParams.get("edit");
+  const queryClient = useQueryClient();
   const queryKey = ["shift-types", workspaceId];
   const query = useQuery({
     queryKey,
@@ -46,14 +54,29 @@ export default function ShiftTypesSettingsPage() {
   const [editing, setEditing] = useState<ShiftType | "new" | null>(null);
   const [draft, setDraft] = useState<ShiftTypeInput>(defaultDraft);
   const [formError, setFormError] = useState<string | null>(null);
+  const [deleteLocked, setDeleteLocked] = useState(false);
+  const editorSequence = useRef(0);
+  const handledTypeLink = useRef<string | null>(null);
+  const closeEditor = () => {
+    editorSequence.current += 1;
+    setEditing(null);
+    if (requestedType) setSearchParams(current => { const next = new URLSearchParams(current); next.delete("edit"); return next; }, { replace: true });
+  };
   const refresh = () => queryClient.invalidateQueries({ queryKey });
 
   const saveMutation = useMutation({
-    mutationFn: ({ values, id }: { values: ShiftTypeInput; id?: string }) =>
-      saveShiftType(workspaceId, values, id),
+    mutationFn: ({
+      values,
+      id,
+      revision,
+    }: {
+      values: ShiftTypeInput;
+      id?: string;
+      revision?: number;
+    }) => saveShiftType(workspaceId, values, id, revision),
     onSuccess: async () => {
       await refresh();
-      setEditing(null);
+      closeEditor();
       setFormError(null);
     },
     onError: (error) => setFormError(errorText(error)),
@@ -71,6 +94,8 @@ export default function ShiftTypesSettingsPage() {
   });
 
   const openEditor = (item?: ShiftType): void => {
+    if (deleteLocked || saveMutation.isPending) return;
+    editorSequence.current += 1;
     setEditing(item ?? "new");
     setDraft(item ? shiftTypeInputSchema.parse(item) : defaultDraft);
     setFormError(null);
@@ -78,6 +103,7 @@ export default function ShiftTypesSettingsPage() {
   const submit = (event: FormEvent): void => {
     event.preventDefault();
     const parsed = shiftTypeInputSchema.safeParse(draft);
+    if (!canSave) return;
     if (!parsed.success) {
       setFormError(
         parsed.error.issues[0]?.message ?? "Check the shift type fields",
@@ -86,13 +112,52 @@ export default function ShiftTypesSettingsPage() {
     }
     saveMutation.mutate({
       values: parsed.data,
-      ...(editing !== "new" && editing ? { id: editing.id } : {}),
+      ...(editing !== "new" && editing
+        ? { id: editing.id, revision: editing.default_revision }
+        : {}),
     });
   };
 
   const items = query.data ?? [];
+  useEffect(() => {
+    if (!requestedType) { handledTypeLink.current = null; return; }
+    if (handledTypeLink.current === requestedType || editing || !query.data) return;
+    const requested = query.data.find(type => type.id === requestedType && !type.archived_at);
+    if (!requested) return;
+    handledTypeLink.current = requestedType;
+    editorSequence.current += 1;
+    setEditing(requested);
+    setDraft(shiftTypeInputSchema.parse(requested));
+    setFormError(null);
+  }, [requestedType, editing, query.data]);
   const active = items.filter((item) => !item.archived_at);
-  const visible = items.filter((item) => showArchived || !item.archived_at);
+  const savedType = editing && editing !== "new" ? editing : null;
+  const latestType = savedType
+    ? items.find((item) => item.id === savedType.id)
+    : null;
+  const defaultsStale = Boolean(
+    savedType &&
+    latestType &&
+    savedType.default_revision !== latestType.default_revision,
+  );
+  const defaultsChanged = Boolean(
+    savedType &&
+    (savedType.default_start_time !== draft.default_start_time ||
+      savedType.default_end_time !== draft.default_end_time),
+  );
+  const parsedDraft = shiftTypeInputSchema.safeParse(draft);
+  const canSave =
+    !saveMutation.isPending &&
+    !defaultsStale &&
+    !deleteLocked &&
+    Boolean(editing) &&
+    parsedDraft.success &&
+    Boolean(draft.default_start_time && draft.default_end_time) &&
+    (editing === "new" ||
+      Boolean(
+        savedType &&
+        !sameJson(parsedDraft.data, shiftTypeInputSchema.parse(savedType)),
+      ));
   const move = (id: string, offset: -1 | 1): void => {
     const index = active.findIndex((item) => item.id === id);
     const next = index + offset;
@@ -104,7 +169,7 @@ export default function ShiftTypesSettingsPage() {
 
   return (
     <section
-      className="settings-page"
+      className="settings-page jobs-settings-page shift-catalog-settings-page"
       aria-labelledby="shift-types-settings-title"
     >
       <SettingsHeader
@@ -112,120 +177,214 @@ export default function ShiftTypesSettingsPage() {
         title="Shift types"
         description="Reusable service periods with default times and schedule colors."
         action={
-          <Button type="button" onClick={() => openEditor()}>
-            <Plus size={16} aria-hidden />
-            Add shift type
-          </Button>
+          <div className="shift-catalog-header-actions">
+            <ShiftCatalogTabs
+              disabled={saveMutation.isPending || deleteLocked}
+            />
+            <Button
+              className="job-primary-button"
+              type="button"
+              disabled={saveMutation.isPending || deleteLocked}
+              onClick={() => openEditor()}
+            >
+              <Plus size={16} aria-hidden />
+              Add shift type
+            </Button>
+          </div>
         }
       />
-      <label className="archive-filter">
-        <input
-          type="checkbox"
-          checked={showArchived}
-          onChange={(event) => setShowArchived(event.target.checked)}
-        />
-        Show archived
-      </label>
       {editing ? (
-        <form
-          className="entity-editor"
-          onSubmit={submit}
-          aria-label={
-            editing === "new" ? "Add shift type" : `Edit ${editing.name}`
-          }
+        <CatalogDrawer
+          label={editing === "new" ? "Add shift type" : `Edit ${editing.name}`}
+          className="shift-catalog-settings-page"
+          onClose={closeEditor}
+          busy={saveMutation.isPending || deleteLocked}
         >
-          <div className="entity-editor-heading">
-            <div>
-              <strong>
-                {editing === "new" ? "New shift type" : "Edit shift type"}
-              </strong>
-              <span>Default times may cross midnight.</span>
+          <form
+            className="job-catalog-editor"
+            onSubmit={submit}
+            aria-label={
+              editing === "new" ? "Add shift type" : `Edit ${editing.name}`
+            }
+          >
+            <div className="job-editor-title">
+              <div>
+                <h2>
+                  {editing === "new" ? "New shift type" : "Edit shift type"}
+                </h2>
+                <p>Default times may cross midnight.</p>
+              </div>
+              <button
+                type="button"
+                className="job-icon-button"
+                aria-label="Close shift type editor"
+                title="Close"
+                disabled={saveMutation.isPending || deleteLocked}
+                onClick={closeEditor}
+              >
+                <X size={17} aria-hidden />
+              </button>
             </div>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Close shift type editor"
-              title="Close"
-              onClick={() => setEditing(null)}
-            >
-              <X size={17} aria-hidden />
-            </button>
-          </div>
-          <div className="shift-type-fields">
-            <label className="form-field">
-              <span>Name</span>
-              <input
-                value={draft.name}
-                maxLength={60}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    name: event.target.value,
-                  }))
-                }
-                required
-              />
-            </label>
-            <label className="form-field color-field">
-              <span>Color</span>
-              <input
-                type="color"
-                value={draft.color}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    color: event.target.value,
-                  }))
-                }
-              />
-            </label>
-            <label className="form-field">
-              <span>Starts</span>
-              <input
-                type="time"
-                value={draft.default_start_time ?? ""}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    default_start_time: event.target.value || null,
-                  }))
-                }
-                required
-              />
-            </label>
-            <label className="form-field">
-              <span>Ends</span>
-              <input
-                type="time"
-                value={draft.default_end_time ?? ""}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    default_end_time: event.target.value || null,
-                  }))
-                }
-                required
-              />
-            </label>
-          </div>
-          {formError ? (
-            <p className="form-error" role="alert">
-              {formError}
-            </p>
-          ) : null}
-          <div className="entity-editor-actions">
-            <Button
-              className="secondary-button"
-              type="button"
-              onClick={() => setEditing(null)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? "Saving" : "Save shift type"}
-            </Button>
-          </div>
-        </form>
+            <div className="catalog-drawer-body">
+              <fieldset disabled={saveMutation.isPending || deleteLocked}>
+                <div className="job-field">
+                  <label htmlFor="shift-catalog-name">Name</label>
+                  <div className="job-name-color">
+                    <input
+                      id="shift-catalog-name"
+                      disabled={saveMutation.isPending}
+                      value={draft.name}
+                      maxLength={60}
+                      required
+                      placeholder="Enter a name"
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          name: event.target.value,
+                        }))
+                      }
+                    />
+                    <JobColorInput
+                      label="Color"
+                      disabled={saveMutation.isPending}
+                      value={draft.color}
+                      onChange={(color) =>
+                        setDraft((current) => ({ ...current, color }))
+                      }
+                    />
+                  </div>
+                </div>{" "}
+                <div className="job-shift-times">
+                  <label className="job-field">
+                    <span>Default start</span>
+                    <input
+                      type="time"
+                      required
+                      disabled={saveMutation.isPending}
+                      value={draft.default_start_time ?? ""}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          default_start_time: event.target.value || null,
+                        }))
+                      }
+                    />
+                  </label>
+                  <label className="job-field">
+                    <span>Default end</span>
+                    <input
+                      type="time"
+                      required
+                      disabled={saveMutation.isPending}
+                      value={draft.default_end_time ?? ""}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          default_end_time: event.target.value || null,
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+              </fieldset>
+              <p className="settings-state">
+                Existing shifts keep their saved hours. Weekly availability
+                preferences use these current default hours.
+              </p>
+              {savedType && defaultsChanged ? (
+                <section
+                  className="settings-state"
+                  aria-label="Default hours change"
+                >
+                  <strong>Default hours change</strong>
+                  <p>
+                    Currently saved: {formatRange(savedType)}. After saving:{" "}
+                    {formatRange(draft)}.
+                  </p>
+                  <p>
+                    New uses of {draft.name || "this shift type"} will be
+                    checked against the new hours. Existing shifts keep their
+                    saved reference hours; changing this setting does not
+                    revalidate or update them.
+                  </p>
+                  {!draft.default_start_time && !draft.default_end_time ? (
+                    <p>
+                      Default start and end times are required.
+                    </p>
+                  ) : null}
+                </section>
+              ) : null}
+              {defaultsStale ? (
+                <p role="alert">
+                  The default hours changed while this editor was open. Your
+                  draft is preserved. Reload the latest defaults before saving.
+                </p>
+              ) : null}
+              {savedType && (formError || defaultsStale) ? (
+                <Button
+                  type="button"
+                  className="job-secondary-button"
+                  disabled={
+                    saveMutation.isPending || query.isFetching || deleteLocked
+                  }
+                  onClick={async () => {
+                    const sequence = editorSequence.current;
+                    const refreshed = await query.refetch();
+                    if (sequence !== editorSequence.current) return;
+                    const latest = refreshed.data?.find(
+                      (item) => item.id === savedType.id,
+                    );
+                    if (refreshed.isError || !latest) {
+                      setFormError(
+                        "Unable to reload this shift type. Your draft has been kept.",
+                      );
+                      return;
+                    }
+                    openEditor(latest);
+                  }}
+                >
+                  Discard draft and reload latest
+                </Button>
+              ) : null}
+              {formError ? (
+                <p className="form-error" role="alert">
+                  {formError}
+                </p>
+              ) : null}
+            </div>
+            <div className="job-editor-footer">
+              {savedType && (
+                <CatalogDeleteAction
+                  key={savedType.id}
+                  kind="shift-types"
+                  id={savedType.id}
+                  name={savedType.name}
+                  workspaceId={workspaceId}
+                  disabled={saveMutation.isPending}
+                  onLockChange={setDeleteLocked}
+                  onDeleted={closeEditor}
+                />
+              )}
+              <div className="job-editor-actions">
+                <Button
+                  className="job-secondary-button"
+                  type="button"
+                  disabled={saveMutation.isPending || deleteLocked}
+                  onClick={closeEditor}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="job-primary-button"
+                  type="submit"
+                  disabled={!canSave}
+                >
+                  {saveMutation.isPending ? "Saving" : "Save shift type"}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </CatalogDrawer>
       ) : null}
       {!editing && formError ? (
         <p className="settings-state error" role="alert">
@@ -240,101 +399,22 @@ export default function ShiftTypesSettingsPage() {
           {errorText(query.error)}
         </p>
       ) : null}
-      {!query.isLoading && !query.error && visible.length === 0 ? (
-        <div className="settings-empty">
-          <Clock3 size={22} aria-hidden />
-          <strong>
-            {showArchived ? "No archived shift types" : "No shift types yet"}
-          </strong>
-          <p>Add the service periods used when building schedules.</p>
-        </div>
-      ) : null}
-      {visible.length > 0 ? (
-        <div className="entity-list" aria-label="Shift types">
-          {visible.map((item) => (
-            <div
-              className="entity-row"
-              key={item.id}
-              data-archived={Boolean(item.archived_at)}
-            >
-              <span
-                className="entity-marker"
-                style={{ backgroundColor: item.color }}
-                aria-hidden
-              />
-              <div className="entity-summary">
-                <strong>{item.name}</strong>
-                <span>
-                  {formatTime(item.default_start_time)} -{" "}
-                  {formatTime(item.default_end_time)}
-                  {item.crosses_midnight ? " · Next day" : ""}
-                </span>
-              </div>
-              {item.archived_at ? (
-                <span className="status-label">Archived</span>
-              ) : null}
-              <div className="row-actions">
-                {!item.archived_at ? (
-                  <>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      disabled={
-                        active[0]?.id === item.id || reorderMutation.isPending
-                      }
-                      aria-label={`Move ${item.name} up`}
-                      title="Move up"
-                      onClick={() => move(item.id, -1)}
-                    >
-                      <ArrowUp size={16} aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      disabled={
-                        active.at(-1)?.id === item.id ||
-                        reorderMutation.isPending
-                      }
-                      aria-label={`Move ${item.name} down`}
-                      title="Move down"
-                      onClick={() => move(item.id, 1)}
-                    >
-                      <ArrowDown size={16} aria-hidden />
-                    </button>
-                  </>
-                ) : null}
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={`Edit ${item.name}`}
-                  title="Edit"
-                  onClick={() => openEditor(item)}
-                >
-                  <Pencil size={16} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={`${item.archived_at ? "Restore" : "Archive"} ${item.name}`}
-                  title={item.archived_at ? "Restore" : "Archive"}
-                  onClick={() =>
-                    archiveMutation.mutate({
-                      id: item.id,
-                      archived: !item.archived_at,
-                    })
-                  }
-                >
-                  {item.archived_at ? (
-                    <RotateCcw size={16} aria-hidden />
-                  ) : (
-                    <Archive size={16} aria-hidden />
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {!query.isLoading && !query.error && (
+        <ShiftCatalogList
+          items={items}
+          types
+          showArchived={showArchived}
+          onArchivedChange={setShowArchived}
+          onEdit={openEditor}
+          onMove={move}
+          onArchive={(item) =>
+            archiveMutation.mutate({ id: item.id, archived: !item.archived_at })
+          }
+          disabled={saveMutation.isPending || deleteLocked}
+          reorderPending={reorderMutation.isPending}
+          archivePending={archiveMutation.isPending}
+        />
+      )}
     </section>
   );
 }
@@ -345,4 +425,12 @@ function formatTime(value: string | null): string {
   const suffix = (hour ?? 0) >= 12 ? "PM" : "AM";
   const displayHour = (hour ?? 0) % 12 || 12;
   return `${displayHour}:${String(minute ?? 0).padStart(2, "0")} ${suffix}`;
+}
+
+function formatRange(
+  value: Pick<ShiftTypeInput, "default_start_time" | "default_end_time">,
+): string {
+  if (!value.default_start_time && !value.default_end_time)
+    return "No default hours";
+  return `${formatTime(value.default_start_time)} – ${formatTime(value.default_end_time)}${value.default_start_time && value.default_end_time && value.default_end_time < value.default_start_time ? " (next day)" : ""}`;
 }

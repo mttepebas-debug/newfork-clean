@@ -6,6 +6,7 @@ const model = {
   workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
   date: "2026-05-15",
   source: "published",
+  settings: { time_format: "12h" },
   locations: [
     {
       id: "11000000-0000-4000-8000-000000000001",
@@ -97,6 +98,36 @@ const model = {
 } satisfies ScheduleLineupReadModel;
 
 describe("lineup share text", () => {
+  it("exports the saved assignment note alongside its assignment", () => {
+    const withNote: ScheduleLineupReadModel = structuredClone(model);
+    withNote.locations[0]!.entries[0]!.note =
+      "Cover the private dining entrance";
+    expect(buildLineupShareText(withNote)).toContain(
+      "\n  Cover the private dining entrance",
+    );
+  });
+  it("keeps open coverage and its instruction in the shared export", () => {
+    const open: ScheduleLineupReadModel = structuredClone(model);
+    Object.assign(open.locations[0]!.entries[0]!, {
+      employee_id: null,
+      employee_name: "",
+      note: "Cover the private dining entrance",
+    });
+    const text = buildLineupShareText(open);
+    expect(text).toContain("Open position - Patio - Bar 2");
+    expect(text).toContain("Cover the private dining entrance");
+  });
+  it("includes the actual shared timestamp in the location timezone", () => {
+    const shared: ScheduleLineupReadModel = structuredClone(model);
+    shared.locations[0]!.share_version = 4;
+    shared.locations[0]!.shared_at = "2026-05-15T17:30:00Z";
+    const text = buildLineupShareText(shared, true);
+    expect(text).toContain("SHARED · v4");
+    expect(text).toContain("Shared May 15, 2026");
+    expect(text).toContain("10:30");
+    expect(text).toContain("PDT");
+  });
+
   it("formats Line-up dates as MM/DD/YYYY weekday", () => {
     expect(formatLineupShareDate("2026-05-31")).toBe("05/31/2026 Sunday");
   });
@@ -110,7 +141,24 @@ describe("lineup share text", () => {
     expect(text).toContain("Specials: Lamb ragu");
     expect(text).toContain("Pre-shift: Push patio covers.");
     expect(text).toContain("Server");
-    expect(text).toContain("11:00 AM Ada Server - Patio - Bar 2");
+    expect(text).toContain("11:00 AM–5:00 PM Ada Server - Patio - Bar 2");
     expect(text).not.toContain("Call Off");
+  });
+
+  it("labels immutable exports with their shared version", () => {
+    expect(buildLineupShareText(model, true)).toContain(
+      `SHARED · v${model.locations[0]!.share_version}`,
+    );
+    expect(buildLineupShareText(model, true)).not.toContain("DRAFT");
+  });
+
+  it("uses the schedule 24-hour setting in Line-up share text", () => {
+    const text = buildLineupShareText({
+      ...model,
+      settings: { time_format: "24h" },
+    });
+
+    expect(text).toContain("11:00–17:00 Ada Server - Patio - Bar 2");
+    expect(text).not.toContain("11:00 AM Ada Server");
   });
 });

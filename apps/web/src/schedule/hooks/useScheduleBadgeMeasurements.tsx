@@ -12,10 +12,16 @@ import {
   type RefObject,
 } from "react";
 
-import { formatScheduleShiftBadgeTitle } from "../components/ShiftCard";
-import { formatScheduleBadgeTime } from "../components/ShiftCard";
+import {
+  formatScheduleBadgeTimeRange,
+  formatScheduleShiftBadgeTitle,
+} from "../components/ShiftCard";
 import { escapeAttributeValue } from "../lib/scheduleInteractionTargets";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
+import {
+  isGhostScheduleShift,
+  publicationStateForShift,
+} from "../lib/scheduleShiftMetadata";
 import type { TimeFormat } from "../timeInput";
 
 export const NON_EDIT_SHIFT_BADGE_MIN_HEIGHT = 36;
@@ -62,9 +68,7 @@ export function useUniformScheduleBadgeWidth({
           126,
         ),
       );
-      setWidth((current) =>
-        Math.abs(current - nextWidth) <= 1 ? current : nextWidth,
-      );
+      setWidth((current) => (current === nextWidth ? current : nextWidth));
     });
   }, [containerRef]);
 
@@ -126,6 +130,12 @@ export function renderScheduleBadgeWidthMeasurer({
   readonly showLocationInBadge: boolean;
   readonly showShiftTypePresets: boolean;
 }) {
+  const unassignedStackCounts = new Map<string, number>();
+  for (const shift of shifts) {
+    if (shift.employee_id !== null || isGhostScheduleShift(shift)) continue;
+    const key = scheduleBadgeMeasurementStackKey(shift);
+    unassignedStackCounts.set(key, (unassignedStackCounts.get(key) ?? 0) + 1);
+  }
   const shiftItems = shifts.map((shift) => {
     const job = jobs.find((item) => item.id === shift.job_id)?.name ?? "Shift";
     const type = shiftTypes.find((item) => item.id === shift.shift_type_id);
@@ -144,8 +154,15 @@ export function renderScheduleBadgeWidthMeasurer({
       meta: showShiftLabels && labelNames.length ? labelNames.join(" ") : "",
       time:
         showClockTimes && !shift.hide_time_on_badge
-          ? `${formatScheduleBadgeTime(shift.start_time, timeFormat)}-${formatScheduleBadgeTime(shift.end_time, timeFormat)}${shift.crosses_midnight ? " +1" : ""}`
+          ? `${formatScheduleBadgeTimeRange(shift.start_time, shift.end_time, timeFormat)}${shift.crosses_midnight ? " +1" : ""}`
           : "",
+      hasMarkers: Boolean(
+        publicationStateForShift(shift) || (shift.warning_codes ?? []).length,
+      ),
+      hasStack:
+        shift.employee_id === null &&
+        (unassignedStackCounts.get(scheduleBadgeMeasurementStackKey(shift)) ?? 0) >
+          1,
     };
   });
   const presetItems = showShiftTypePresets
@@ -157,6 +174,8 @@ export function renderScheduleBadgeWidthMeasurer({
           location: "",
           meta: "",
           time: "",
+          hasMarkers: false,
+          hasStack: false,
         })),
       )
     : [];
@@ -176,6 +195,8 @@ export function renderScheduleBadgeWidthMeasurer({
           className="schedule-badge-width-measure"
           data-schedule-badge-width-measure="true"
           data-job-color-dot={showJobColorDot}
+          data-has-markers={item.hasMarkers}
+          data-has-stack={item.hasStack}
           data-measure-label={[item.label, item.location, item.meta, item.time]
             .filter(Boolean)
             .join(" ")}
@@ -195,6 +216,18 @@ export function renderScheduleBadgeWidthMeasurer({
       ))}
     </div>
   );
+}
+
+function scheduleBadgeMeasurementStackKey(shift: ScheduleShift): string {
+  return [
+    shift.location_id,
+    shift.scheduled_date,
+    shift.shift_type_id ?? "",
+    shift.start_time,
+    shift.end_time,
+    shift.hide_time_on_badge ? "clock-hidden" : "clock-visible",
+    shift.crosses_midnight ? "overnight" : "same-day",
+  ].join("|");
 }
 
 export function readMeasuredHeight(
@@ -254,6 +287,21 @@ function measureRowBadgeHeight(
   );
 }
 
+function measureOccupiedActionMinimumHeight(cell: HTMLElement): number {
+  const action = cell.querySelector<HTMLElement>(
+    '[data-schedule-add-shift-control="true"][data-occupied="true"]',
+  );
+  if (!action) return 0;
+  const style = getComputedStyle(action);
+  return [style.minHeight, style.marginTop, style.marginBottom].reduce(
+    (height, value) => {
+      const parsed = Number.parseFloat(value);
+      return height + (Number.isFinite(parsed) ? parsed : 0);
+    },
+    0,
+  );
+}
+
 export function measureRowBadgeStackHeight(
   root: HTMLElement,
   rowKey: string,
@@ -285,26 +333,12 @@ export function measureRowBadgeStackHeight(
         (Number.isFinite(marginBottom) ? marginBottom : 0)
       );
     }, 0);
-    const addShiftControl = cell.querySelector<HTMLElement>(
-      '[data-schedule-add-shift-control="true"]',
-    );
-    const addShiftStyle = addShiftControl
-      ? getComputedStyle(addShiftControl)
-      : null;
-    const addShiftMarginTop = Number.parseFloat(
-      addShiftStyle?.marginTop ?? "0",
-    );
-    const addShiftMarginBottom = Number.parseFloat(
-      addShiftStyle?.marginBottom ?? "0",
-    );
     const cellStyle = getComputedStyle(cell);
     const paddingTop = Number.parseFloat(cellStyle.paddingTop);
     const paddingBottom = Number.parseFloat(cellStyle.paddingBottom);
     const cellContentHeight =
       stackHeight +
-      readMeasuredHeight(addShiftControl) +
-      (Number.isFinite(addShiftMarginTop) ? addShiftMarginTop : 0) +
-      (Number.isFinite(addShiftMarginBottom) ? addShiftMarginBottom : 0) +
+      measureOccupiedActionMinimumHeight(cell) +
       (Number.isFinite(paddingTop) ? paddingTop : 0) +
       (Number.isFinite(paddingBottom) ? paddingBottom : 0);
     rowHeight = Math.max(rowHeight, Math.ceil(cellContentHeight));
@@ -384,13 +418,6 @@ export function useSynchronizedRowBadgeHeight({
       observer.observe(
         badge.querySelector<HTMLElement>("[data-shift-badge-content]") ?? badge,
       );
-    }
-    for (const control of grid.querySelectorAll<HTMLElement>(
-      `[data-schedule-add-shift-control="true"][data-schedule-row-key="${escapeAttributeValue(
-        rowKey,
-      )}"]`,
-    )) {
-      observer.observe(control);
     }
     return () => observer.disconnect();
   }, [enabled, measure, rowKey, version]);

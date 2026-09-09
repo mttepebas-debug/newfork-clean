@@ -5,6 +5,9 @@ export default function SettingsHomeRedirect() {
   const permissions = new Set(useAuth().context?.permissions ?? []);
   const destination = permissions.has("workspace.manage")
     ? "/app/settings/general"
+    : permissions.has("notifications.settings.read") ||
+        permissions.has("notifications.settings.write")
+      ? "/app/settings/notifications"
     : permissions.has("roles.read")
       ? "/app/settings/roles"
       : permissions.has("documents.read")

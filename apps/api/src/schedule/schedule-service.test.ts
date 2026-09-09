@@ -4,15 +4,17 @@ import { createScheduleReadService } from "./schedule-service";
 
 const mocks = vi.hoisted(() => {
   const rpc = vi.fn();
+  const from = vi.fn();
   const send = vi.fn(async () => "ok");
   const channel = { send };
   const removeChannel = vi.fn(async () => "ok");
   const createClient = vi.fn(() => ({
     rpc,
+    from,
     channel: vi.fn(() => channel),
     removeChannel,
   }));
-  return { channel, createClient, removeChannel, rpc, send };
+  return { channel, createClient, from, removeChannel, rpc, send };
 });
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -27,6 +29,7 @@ const departmentId = "22000000-0000-4000-8000-000000000001";
 
 beforeEach(() => {
   mocks.createClient.mockClear();
+  mocks.from.mockReset();
   mocks.rpc.mockReset();
   mocks.send.mockClear();
   mocks.send.mockResolvedValue("ok");
@@ -34,6 +37,38 @@ beforeEach(() => {
 });
 
 describe("createScheduleReadService realtime invalidation", () => {
+  const refreshedPreview = { status: "publish_ready", workspace_id: workspaceId, week_start: "2026-08-17", draft_id: draftId, draft_revision: 2, fingerprint: "b".repeat(64), locations: [], findings: [] };
+  const publishInput = { actorUserId, workspaceId, draftId, locationIds: [locationId], departmentIds: [departmentId], includeNoDepartment: false, expectedDraftRevision: 2, fingerprint: "a".repeat(64), overrides: [] };
+  it.each(["40001", "PT409"])("returns scoped current preflight after a definite %s stale-publication rejection", async code => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code, message: "stale publication preview" } })
+      .mockResolvedValueOnce({ data: refreshedPreview, error: null });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    await expect(service.publish(publishInput)).resolves.toMatchObject({ status: "preflight", preflight: refreshedPreview, preflight_block_reason: "stale_fingerprint" });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, "preview_schedule_publication_service", {
+      actor_user_id: actorUserId, target_workspace_id: workspaceId, target_draft_id: draftId,
+      target_location_ids: [locationId], target_department_ids: [departmentId], include_no_department: false,
+    });
+    expect(mocks.rpc).toHaveBeenCalledTimes(2); expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it("does not retry publication or convert unrelated failures to preflight", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "Approved exchange changed" } });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    await expect(service.publish(publishInput)).rejects.toMatchObject({ code: "PT409", message: "Approved exchange changed" });
+    expect(mocks.rpc).toHaveBeenCalledOnce(); expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it("does not return stale preview when the refreshed read loses access", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "stale publication preview" } })
+      .mockResolvedValueOnce({ data: null, error: { code: "42501", message: "Publish access denied" } });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    await expect(service.publish(publishInput)).rejects.toMatchObject({ code: "42501" });
+    expect(mocks.rpc).toHaveBeenCalledTimes(2); expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it("preserves the database stale-assessment code and does not broadcast a failed mutation", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "40001", message: "Review the current availability assessment before overriding" } });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    await expect(service.mutateShift({ actorUserId, workspaceId, sessionId: draftId, shiftId: departmentId, expectedSessionRevision: 1, operation: "create" })).rejects.toMatchObject({ code: "40001" });
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
   it("broadcasts schedule invalidation after publishing a draft", async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: {
@@ -85,6 +120,360 @@ describe("createScheduleReadService realtime invalidation", () => {
       },
     });
     expect(mocks.removeChannel).toHaveBeenCalledWith(mocks.channel);
+  });
+
+  it("passes notification recipients into the atomic publish RPC", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: {
+        status: "published",
+        workspace_id: workspaceId,
+        week_start: "2026-08-17",
+        draft_id: draftId,
+        draft_revision: 2,
+        location_ids: [locationId],
+        publication_ids: ["86000000-0000-4000-8000-000000000001"],
+        published_shift_count: 4,
+        published_at: "2026-08-17T12:00:00.000Z",
+        notification_event_id: "e1510000-0000-4000-8000-000000000001",
+        notification_enqueued_count: 1,
+      },
+      error: null,
+    });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+    const result = await service.publish({
+      actorUserId,
+      workspaceId,
+      draftId,
+      locationIds: [locationId],
+      expectedDraftRevision: 2,
+      fingerprint: "a".repeat(64),
+      notifyEmployeeIds: ["15000000-0000-4000-8000-000000000001"],
+      overrides: [],
+    });
+
+    expect(result).toMatchObject({
+      status: "published",
+      notification_enqueued_count: 1,
+    });
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      1,
+      "publish_schedule_draft_service",
+      expect.objectContaining({
+        actor_user_id: actorUserId,
+        target_workspace_id: workspaceId,
+        target_notify_employee_ids: ["15000000-0000-4000-8000-000000000001"],
+      }),
+    );
+  });
+
+  it("does not turn an empty recipient selection into a notify-all request", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: {
+        status: "published",
+        workspace_id: workspaceId,
+        week_start: "2026-08-17",
+        draft_id: draftId,
+        draft_revision: 2,
+        location_ids: [locationId],
+        publication_ids: ["86000000-0000-4000-8000-000000000001"],
+        published_shift_count: 4,
+        published_at: "2026-08-17T12:00:00.000Z",
+      },
+      error: null,
+    });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+    const result = await service.publish({
+      actorUserId,
+      workspaceId,
+      draftId,
+      locationIds: [locationId],
+      expectedDraftRevision: 2,
+      fingerprint: "a".repeat(64),
+      notifyEmployeeIds: [],
+      overrides: [],
+    });
+
+    expect(result.status).toBe("published");
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "publish_schedule_draft_service",
+      expect.objectContaining({ target_notify_employee_ids: null }),
+    );
+  });
+
+  it("recovers hard document blockers as scoped publish conflicts", async () => {
+    const documentConflict = {
+      kind: "document_expiry",
+      employee_id: "15000000-0000-4000-8000-000000000001",
+      employee_name: "Alex Rivera",
+      shift_id: "77777777-7777-4777-8777-777777777777",
+      location_id: locationId,
+      location_name: "Downtown",
+      date: "2026-08-17",
+      start_time: "16:00",
+      end_time: "19:00",
+      document_type_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      requirement_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      document_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      document_title: "Food handler card",
+      expiry_date: "2026-08-01",
+      expiry_policy_version: 2,
+      pending_document_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      review_action: "review_document",
+      severity: "hard",
+      overrideable: false,
+      warning_text: "Food handler card is expired and blocks scheduling.",
+      conflict_fingerprint: "b".repeat(64),
+    };
+    mocks.rpc
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: "schedule has hard document blockers" },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          conflicts: [documentConflict],
+          fingerprint: "b".repeat(64),
+        },
+        error: null,
+      });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+    const result = await service.publish({
+      actorUserId,
+      workspaceId,
+      draftId,
+      weekStart: "2026-08-17",
+      locationIds: [locationId],
+      departmentIds: [departmentId],
+      includeNoDepartment: false,
+      expectedDraftRevision: 2,
+      fingerprint: "a".repeat(64),
+      overrides: [],
+    });
+
+    expect(result).toEqual({
+      status: "schedule_conflicts",
+      schedule_conflicts: [documentConflict],
+    });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      2,
+      "list_schedule_draft_document_conflicts_service",
+      {
+        actor_user_id: actorUserId,
+        target_workspace_id: workspaceId,
+        target_draft_id: draftId,
+        target_week_start: "2026-08-17",
+        target_location_ids: [locationId],
+        target_department_ids: [departmentId],
+        include_no_department: false,
+      },
+    );
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it("does not recover hard document blockers without the publish week scope", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: "schedule has hard document blockers" },
+    });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+
+    await expect(
+      service.publish({
+        actorUserId,
+        workspaceId,
+        draftId,
+        locationIds: [locationId],
+        expectedDraftRevision: 2,
+        fingerprint: "a".repeat(64),
+        overrides: [],
+      }),
+    ).rejects.toThrow("schedule has hard document blockers");
+
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "publish_schedule_draft_service",
+      expect.objectContaining({
+        target_workspace_id: workspaceId,
+        target_draft_id: draftId,
+      }),
+    );
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it("does not publish or widen scope when document blocker recovery returns no scoped conflicts", async () => {
+    mocks.rpc
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: "schedule has hard document blockers" },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          conflicts: [],
+          fingerprint: "b".repeat(64),
+        },
+        error: null,
+      });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+
+    await expect(
+      service.publish({
+        actorUserId,
+        workspaceId,
+        draftId,
+        weekStart: "2026-08-17",
+        locationIds: [locationId],
+        departmentIds: [departmentId],
+        includeNoDepartment: false,
+        expectedDraftRevision: 2,
+        fingerprint: "a".repeat(64),
+        overrides: [],
+      }),
+    ).rejects.toThrow("schedule has hard document blockers");
+
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      2,
+      "list_schedule_draft_document_conflicts_service",
+      {
+        actor_user_id: actorUserId,
+        target_workspace_id: workspaceId,
+        target_draft_id: draftId,
+        target_week_start: "2026-08-17",
+        target_location_ids: [locationId],
+        target_department_ids: [departmentId],
+        include_no_department: false,
+      },
+    );
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it("rejects scheduled export candidates for deleted workspaces before exporting", async () => {
+    const maybeSingle = vi.fn(async () => ({
+      data: {
+        id: workspaceId,
+        lifecycle_status: "deleted",
+        closure_effective_at: null,
+      },
+      error: null,
+    }));
+    const eq = vi.fn(() => ({ maybeSingle }));
+    const select = vi.fn(() => ({ eq }));
+    mocks.from.mockReturnValueOnce({ select });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+
+    await expect(
+      service.revalidateScheduledExportCandidate?.({
+        workspaceId,
+        requesterUserId: actorUserId,
+        locationIds: [locationId],
+        now: new Date("2026-09-05T12:00:00.000Z"),
+      }),
+    ).resolves.toBe(false);
+
+    expect(mocks.from).toHaveBeenCalledTimes(1);
+    expect(mocks.from).toHaveBeenCalledWith("workspaces");
+    expect(select).toHaveBeenCalledWith(
+      "id,lifecycle_status,closure_effective_at",
+    );
+    expect(eq).toHaveBeenCalledWith("id", workspaceId);
+  });
+
+  it("rejects scheduled export candidates for incomplete owner onboarding before exporting", async () => {
+    const workspaceMaybeSingle = vi.fn(async () => ({
+      data: {
+        id: workspaceId,
+        lifecycle_status: "active",
+        closure_effective_at: null,
+      },
+      error: null,
+    }));
+    const onboardingMaybeSingle = vi.fn(async () => ({
+      data: { status: "incomplete" },
+      error: null,
+    }));
+    const workspaceEq = vi.fn(() => ({ maybeSingle: workspaceMaybeSingle }));
+    const onboardingEq = vi.fn(() => ({
+      maybeSingle: onboardingMaybeSingle,
+    }));
+    const workspaceSelect = vi.fn(() => ({ eq: workspaceEq }));
+    const onboardingSelect = vi.fn(() => ({ eq: onboardingEq }));
+    mocks.from
+      .mockReturnValueOnce({ select: workspaceSelect })
+      .mockReturnValueOnce({ select: onboardingSelect });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+
+    await expect(
+      service.revalidateScheduledExportCandidate?.({
+        workspaceId,
+        requesterUserId: actorUserId,
+        locationIds: [locationId],
+        now: new Date("2026-09-05T12:00:00.000Z"),
+      }),
+    ).resolves.toBe(false);
+
+    expect(mocks.from).toHaveBeenCalledTimes(2);
+    expect(mocks.from).toHaveBeenNthCalledWith(1, "workspaces");
+    expect(mocks.from).toHaveBeenNthCalledWith(2, "workspace_onboarding");
+    expect(workspaceSelect).toHaveBeenCalledWith(
+      "id,lifecycle_status,closure_effective_at",
+    );
+    expect(onboardingSelect).toHaveBeenCalledWith("status");
+    expect(onboardingEq).toHaveBeenCalledWith("workspace_id", workspaceId);
+  });
+
+  it("fails publish when the atomic publish and enqueue transaction is unavailable", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: "atomic publish unavailable" },
+    });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+    await expect(
+      service.publish({
+        actorUserId,
+        workspaceId,
+        draftId,
+        locationIds: [locationId],
+        expectedDraftRevision: 2,
+        fingerprint: "a".repeat(64),
+        notifyEmployeeIds: ["15000000-0000-4000-8000-000000000001"],
+        overrides: [],
+      }),
+    ).rejects.toThrow("atomic publish unavailable");
   });
 
   it("passes department publish scope to the Supabase RPC", async () => {

@@ -37,7 +37,7 @@ export interface PresetDropTarget extends PresetDragSource {
 export interface PresetDropEvaluation {
   readonly allowed: boolean;
   readonly reason?: string;
-  readonly targetStatus?: "allowed" | "blocked" | null;
+  readonly targetStatus?: "allowed" | "warning" | "blocked" | null;
 }
 
 export interface PresetDragState extends PresetDragSource {
@@ -46,7 +46,7 @@ export interface PresetDragState extends PresetDragSource {
   readonly previewWidth: number;
   readonly previewHeight: number;
   readonly targetKey: string | null;
-  readonly targetStatus: "allowed" | "blocked" | null;
+  readonly targetStatus: "allowed" | "warning" | "blocked" | null;
   readonly reason: string | null;
 }
 
@@ -238,6 +238,7 @@ export function SchedulePresetRows({
         <div
           className="schedule-preset-total-cell"
           role="gridcell"
+          data-schedule-total-column-cell="true"
           aria-hidden="true"
         />
       ) : null}
@@ -299,6 +300,7 @@ export function ScheduleGroupLabelRow({
         <div
           className="schedule-preset-total-cell"
           role="gridcell"
+          data-schedule-total-column-cell="true"
           aria-hidden="true"
         />
       ) : null}

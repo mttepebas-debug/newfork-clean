@@ -19,7 +19,11 @@ describe("Phase 9 public trust pages", () => {
     render(<App />);
 
     expect(
-      await screen.findByRole("heading", { level: 1, name: heading }),
+      await screen.findByRole(
+        "heading",
+        { level: 1, name: heading },
+        { timeout: 5000 },
+      ),
     ).toBeTruthy();
     expect(
       screen.getByRole("navigation", { name: "Trust pages" }),

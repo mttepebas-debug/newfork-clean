@@ -12,6 +12,8 @@ import {
   importantDateSchema,
   schedulingSettingsInputSchema,
   schedulingSettingsSchema,
+  shiftLabelInputSchema,
+  shiftLabelSchema,
   shiftTypeInputSchema,
   shiftTypeSchema,
   workspaceSchema,
@@ -27,11 +29,13 @@ import {
   type Workspace,
   type SchedulingSettings,
   type SchedulingSettingsInput,
+  type ShiftLabel,
+  type ShiftLabelInput,
   type ShiftType,
   type ShiftTypeInput,
 } from "@newfork/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseClient } from "../lib/supabase";
+import { developmentBearerToken, supabaseClient } from "../lib/supabase";
 
 function client(): SupabaseClient {
   if (!supabaseClient)
@@ -44,6 +48,39 @@ function message(error: { message: string } | null): void {
 }
 
 const logoBucket = "workspace-logos";
+
+export async function organizationRequest(
+  workspaceId: string,
+  path: string,
+  init: RequestInit = {},
+) {
+  const storage = client();
+  const token =
+    (await storage.auth.getSession()).data.session?.access_token ??
+    developmentBearerToken();
+  if (!token) throw new Error("A current session is required");
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/v1/workspaces/${workspaceId}${path}`,
+    {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...init.headers,
+      },
+    },
+  );
+  const body = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok)
+    throw new Error(
+      typeof body === "object" && body && "error" in body
+        ? String(body.error)
+        : "Organization settings operation failed",
+    );
+  return body;
+}
+
+const request = organizationRequest;
 
 export async function saveScheduleLogo(
   workspaceId: string,
@@ -204,6 +241,7 @@ export async function listLocations(workspaceId: string): Promise<Location[]> {
     .select(
       "id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone,sort_order,archived_at",
     )
+    .is("deleted_at", null)
     .eq("workspace_id", workspaceId)
     .order("sort_order")
     .order("name");
@@ -252,6 +290,7 @@ export async function listDepartments(
   const { data, error } = await client()
     .from("departments")
     .select("id,workspace_id,name,color,sort_order,archived_at")
+    .is("deleted_at", null)
     .eq("workspace_id", workspaceId)
     .order("sort_order")
     .order("name");
@@ -299,6 +338,7 @@ export async function listJobs(workspaceId: string): Promise<Job[]> {
     .from("jobs")
     .select("id,workspace_id,department_id,name,color,sort_order,archived_at")
     .eq("workspace_id", workspaceId)
+    .is("deleted_at", null)
     .order("sort_order")
     .order("name");
   message(error);
@@ -309,7 +349,7 @@ export async function saveJob(
   workspaceId: string,
   input: JobInput,
   id?: string,
-): Promise<void> {
+): Promise<Job> {
   const values = jobInputSchema.parse(input);
   const query = id
     ? client()
@@ -317,11 +357,20 @@ export async function saveJob(
         .update({ ...values, updated_at: new Date().toISOString() })
         .eq("id", id)
         .eq("workspace_id", workspaceId)
+        .select(
+          "id,workspace_id,department_id,name,color,sort_order,archived_at",
+        )
+        .single()
     : client()
         .from("jobs")
-        .insert({ ...values, workspace_id: workspaceId });
-  const { error } = await query;
+        .insert({ ...values, workspace_id: workspaceId })
+        .select(
+          "id,workspace_id,department_id,name,color,sort_order,archived_at",
+        )
+        .single();
+  const { data, error } = await query;
   message(error);
+  return jobSchema.parse(data);
 }
 
 export async function setJobArchived(
@@ -345,26 +394,18 @@ export async function reorderOrganizationEntities(
   entityType: "departments" | "jobs",
   orderedIds: readonly string[],
 ): Promise<void> {
-  const { error } = await client().rpc("reorder_organization_entities", {
-    target_workspace_id: workspaceId,
-    entity_type: entityType,
-    ordered_ids: [...orderedIds],
+  await request(workspaceId, "/organization/entities/reorder", {
+    method: "POST",
+    body: JSON.stringify({ entityType, orderedIds: [...orderedIds] }),
   });
-  message(error);
 }
 
 export async function loadSchedulingSettings(
   workspaceId: string,
 ): Promise<SchedulingSettings> {
-  const { data, error } = await client()
-    .from("workspace_scheduling_settings")
-    .select(
-      "workspace_id,week_start_day,schedule_deadline_day,conflict_policy,availability_enforcement,time_format",
-    )
-    .eq("workspace_id", workspaceId)
-    .single();
-  message(error);
-  return schedulingSettingsSchema.parse(data);
+  return schedulingSettingsSchema.parse(
+    await request(workspaceId, "/scheduling-settings"),
+  );
 }
 
 export async function saveSchedulingSettings(
@@ -372,20 +413,23 @@ export async function saveSchedulingSettings(
   input: SchedulingSettingsInput,
 ): Promise<void> {
   const values = schedulingSettingsInputSchema.parse(input);
-  const { error } = await client()
-    .from("workspace_scheduling_settings")
-    .update({ ...values, updated_at: new Date().toISOString() })
-    .eq("workspace_id", workspaceId);
-  message(error);
+  await request(workspaceId, "/scheduling-settings", {
+    method: "PUT",
+    body: JSON.stringify(values),
+  });
 }
 
 export async function listImportantDates(
   workspaceId: string,
 ): Promise<ImportantDate[]> {
+  const locations = await listLocations(workspaceId);
+  const locationNames = new Map(
+    locations.map((location) => [location.id, location.name]),
+  );
   const { data, error } = await client()
     .from("important_dates")
     .select(
-      "id,workspace_id,location_id,title,type,starts_on,ends_on,recurrence,note,affects_scheduling,archived_at,locations(name)",
+      "id,workspace_id,location_id,location_ids,title,type,starts_on,ends_on,recurrence,note,affects_scheduling,archived_at,locations(name)",
     )
     .eq("workspace_id", workspaceId)
     .order("starts_on", { ascending: true })
@@ -394,6 +438,9 @@ export async function listImportantDates(
   return importantDateSchema.array().parse(
     (data ?? []).map((row) => ({
       ...row,
+      location_names: (
+        row.location_ids ?? (row.location_id ? [row.location_id] : [])
+      ).map((id: string) => locationNames.get(id) ?? "Archived location"),
       location_name:
         typeof row.locations === "object" &&
         row.locations !== null &&
@@ -410,15 +457,25 @@ export async function saveImportantDate(
   id?: string,
 ): Promise<void> {
   const values = importantDateInputSchema.parse(input);
+  const locationIds = [
+    ...new Set(
+      values.location_ids ?? (values.location_id ? [values.location_id] : []),
+    ),
+  ].sort();
+  const payload = {
+    ...values,
+    location_ids: locationIds,
+    location_id: locationIds.length === 1 ? locationIds[0] : null,
+  };
   const query = id
     ? client()
         .from("important_dates")
-        .update({ ...values, updated_at: new Date().toISOString() })
+        .update({ ...payload, updated_at: new Date().toISOString() })
         .eq("id", id)
         .eq("workspace_id", workspaceId)
     : client()
         .from("important_dates")
-        .insert({ ...values, workspace_id: workspaceId });
+        .insert({ ...payload, workspace_id: workspaceId });
   const { error } = await query;
   message(error);
 }
@@ -445,8 +502,9 @@ export async function listShiftTypes(
   const { data, error } = await client()
     .from("shift_types")
     .select(
-      "id,workspace_id,name,color,default_start_time,default_end_time,crosses_midnight,sort_order,archived_at",
+      "id,workspace_id,name,color,default_start_time,default_end_time,default_revision,crosses_midnight,sort_order,archived_at",
     )
+    .is("deleted_at", null)
     .eq("workspace_id", workspaceId)
     .order("sort_order")
     .order("name");
@@ -470,18 +528,35 @@ export async function saveShiftType(
   workspaceId: string,
   input: ShiftTypeInput,
   id?: string,
+  expectedDefaultRevision?: number,
 ): Promise<void> {
   const values = shiftTypeInputSchema.parse(input);
-  const query = id
-    ? client()
-        .from("shift_types")
-        .update({ ...values, updated_at: new Date().toISOString() })
-        .eq("id", id)
-        .eq("workspace_id", workspaceId)
-    : client()
-        .from("shift_types")
-        .insert({ ...values, workspace_id: workspaceId });
-  const { error } = await query;
+  if (!values.default_start_time || !values.default_end_time)
+    throw new Error("Set default start and end times for this shift type.");
+  if (id) {
+    if (
+      !Number.isInteger(expectedDefaultRevision) ||
+      expectedDefaultRevision! < 1
+    )
+      throw new Error("Reload this shift type before saving its defaults.");
+    const { data, error } = await client()
+      .from("shift_types")
+      .update({ ...values, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("workspace_id", workspaceId)
+      .eq("default_revision", expectedDefaultRevision!)
+      .select("id")
+      .maybeSingle();
+    message(error);
+    if (!data)
+      throw new Error(
+        "This shift type changed or is no longer editable. Reload the latest defaults before saving.",
+      );
+    return;
+  }
+  const { error } = await client()
+    .from("shift_types")
+    .insert({ ...values, workspace_id: workspaceId });
   message(error);
 }
 
@@ -505,9 +580,67 @@ export async function reorderShiftTypes(
   workspaceId: string,
   orderedIds: readonly string[],
 ): Promise<void> {
-  const { error } = await client().rpc("reorder_shift_types", {
-    target_workspace_id: workspaceId,
-    ordered_ids: [...orderedIds],
+  await request(workspaceId, "/shift-types/reorder", {
+    method: "POST",
+    body: JSON.stringify({ orderedIds: [...orderedIds] }),
   });
+}
+
+export async function listShiftLabels(
+  workspaceId: string,
+): Promise<ShiftLabel[]> {
+  const { data, error } = await client()
+    .from("shift_labels")
+    .select("id,workspace_id,name,color,sort_order,archived_at")
+    .is("deleted_at", null)
+    .eq("workspace_id", workspaceId)
+    .order("sort_order")
+    .order("name");
   message(error);
+  return shiftLabelSchema.array().parse(data ?? []);
+}
+
+export async function saveShiftLabel(
+  workspaceId: string,
+  input: ShiftLabelInput,
+  id?: string,
+): Promise<void> {
+  const values = shiftLabelInputSchema.parse(input);
+  const query = id
+    ? client()
+        .from("shift_labels")
+        .update({ ...values, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("workspace_id", workspaceId)
+    : client()
+        .from("shift_labels")
+        .insert({ ...values, workspace_id: workspaceId });
+  const { error } = await query;
+  message(error);
+}
+
+export async function setShiftLabelArchived(
+  workspaceId: string,
+  id: string,
+  archived: boolean,
+): Promise<void> {
+  const { error } = await client()
+    .from("shift_labels")
+    .update({
+      archived_at: archived ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("workspace_id", workspaceId);
+  message(error);
+}
+
+export async function reorderShiftLabels(
+  workspaceId: string,
+  orderedIds: readonly string[],
+): Promise<void> {
+  await request(workspaceId, "/shift-labels/reorder", {
+    method: "POST",
+    body: JSON.stringify({ orderedIds: [...orderedIds] }),
+  });
 }

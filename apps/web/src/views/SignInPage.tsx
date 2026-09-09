@@ -18,31 +18,32 @@ export function SignInPage() {
   const [role, setRole] = useState<WorkspaceRole>("manager");
   const [email, setEmail] = useState("owner@newfork.test");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const requestedDestination =
-    (location.state as { from?: string } | null)?.from ?? "/app/workspace";
-  const destination =
-    requestedDestination === "/account/workspaces"
-      ? "/app/workspace"
-      : requestedDestination;
-  const inviteFlow = destination.startsWith("/invite/accept");
+    (location.state as { from?: string } | null)?.from ?? "/app";
+  const destination = safeSignInDestination(requestedDestination);
+  const inviteFlow = isInviteAcceptDestination(destination);
   const [creatingAccount, setCreatingAccount] = useState(inviteFlow);
 
   if (context) return <Navigate to={destination} replace />;
-  if (authenticated)
+  if (authenticated && !error)
     return (
-      <Navigate to={inviteFlow ? destination : "/app/workspace"} replace />
+      <Navigate to={inviteFlow ? destination : "/invitations/pending"} replace />
     );
 
   const handleSupabaseSignIn = async (
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
+    const ownerDisplayName =
+      creatingAccount && !inviteFlow ? fullName.trim() : undefined;
+    if (creatingAccount && !inviteFlow && !ownerDisplayName) return;
     setSubmitting(true);
     const signedIn = creatingAccount
-      ? await signUp(email, password)
+      ? await signUp(email, password, ownerDisplayName)
       : await signIn(email, password);
     setSubmitting(false);
     if (signedIn) navigate(destination, { replace: true });
@@ -59,7 +60,9 @@ export function SignInPage() {
         <p className="product-mark">NEWFORK</p>
         <h1 id="sign-in-title">
           {creatingAccount
-            ? "Create your employee account"
+            ? inviteFlow
+              ? "Create your employee account"
+              : "Create your business account"
             : "Sign in to your workspace"}
         </h1>
         <p className="muted">
@@ -69,6 +72,19 @@ export function SignInPage() {
         </p>
         {supabaseConfigured ? (
           <form onSubmit={handleSupabaseSignIn}>
+            {creatingAccount && !inviteFlow ? (
+              <>
+                <label htmlFor="full-name">Full name</label>
+                <input
+                  id="full-name"
+                  autoComplete="name"
+                  value={fullName}
+                  maxLength={100}
+                  onChange={(event) => setFullName(event.target.value)}
+                  required
+                />
+              </>
+            ) : null}
             <label htmlFor="email">Email</label>
             <input
               id="email"
@@ -95,24 +111,30 @@ export function SignInPage() {
                 {error}
               </p>
             ) : null}
-            <Button type="submit" disabled={submitting}>
+            <Button
+              type="submit"
+              disabled={
+                submitting ||
+                (creatingAccount && !inviteFlow && fullName.trim().length === 0)
+              }
+            >
               {submitting
                 ? "Please wait"
                 : creatingAccount
                   ? "Create account"
                   : "Sign in"}
             </Button>
-            {inviteFlow ? (
-              <button
-                className="auth-mode-button"
-                type="button"
-                onClick={() => setCreatingAccount((value) => !value)}
-              >
-                {creatingAccount
-                  ? "I already have an account"
-                  : "Create a new account"}
-              </button>
-            ) : null}
+            <button
+              className="auth-mode-button"
+              type="button"
+              onClick={() => setCreatingAccount((value) => !value)}
+            >
+              {creatingAccount
+                ? "I already have an account"
+                : inviteFlow
+                  ? "Create a new account"
+                  : "Create a business account"}
+            </button>
           </form>
         ) : null}
         {developmentIdentityAllowed ? (
@@ -143,4 +165,23 @@ export function SignInPage() {
       </section>
     </main>
   );
+}
+
+function safeSignInDestination(destination: string): string {
+  if (!destination.startsWith("/") || destination.startsWith("//")) return "/app";
+  try {
+    const parsed = new URL(destination, "http://newfork.local");
+    if (parsed.origin !== "http://newfork.local") return "/app";
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return "/app";
+  }
+}
+
+function isInviteAcceptDestination(destination: string): boolean {
+  try {
+    return new URL(destination, "http://newfork.local").pathname === "/invite/accept";
+  } catch {
+    return false;
+  }
 }

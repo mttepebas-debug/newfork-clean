@@ -14,6 +14,7 @@ import { SignInPage } from "./views/SignInPage";
 import "./styles.css";
 
 const AccountLayout = lazy(() => import("./account/AccountLayout"));
+const EmployeeOnboardingPreview = lazy(() => import("./dev/EmployeeOnboardingPreview"));
 const PublicTrustLayout = lazy(() => import("./public/PublicTrustLayout"));
 const PrivacyPage = lazy(() =>
   import("./public/PublicTrustPages").then((module) => ({
@@ -41,8 +42,21 @@ const PrivacyChoicesPage = lazy(() =>
   })),
 );
 const PreferencesPage = lazy(() => import("./account/PreferencesPage"));
+const NotificationPreferencesPage = lazy(
+  () => import("./account/NotificationPreferencesPage"),
+);
 const ProfilePage = lazy(() => import("./account/ProfilePage"));
 const WorkspacesPage = lazy(() => import("./account/WorkspacesPage"));
+const OrganizationSwitcherPage = lazy(
+  () => import("./shell/OrganizationSwitcherPage"),
+);
+const NoOrganizationPage = lazy(() => import("./shell/NoOrganizationPage"));
+const PendingOrganizationStatusPage = lazy(
+  () => import("./shell/PendingOrganizationStatusPage"),
+);
+const SuspendedOrganizationStatusPage = lazy(
+  () => import("./shell/SuspendedOrganizationStatusPage"),
+);
 const EmployeeHubPage = lazy(() => import("./views/EmployeeHubPage"));
 const KioskPage = lazy(() => import("./kiosk/KioskPage"));
 const WorkspacePage = lazy(() => import("./views/WorkspacePage"));
@@ -52,6 +66,9 @@ const EmployeesPage = lazy(() => import("./employees/EmployeesPage"));
 const AcceptInvitationPage = lazy(
   () => import("./employees/AcceptInvitationPage"),
 );
+const PendingInvitationsPage = lazy(
+  () => import("./employees/PendingInvitationsPage"),
+);
 const EmployeeOnboardingPage = lazy(
   () => import("./employees/EmployeeOnboardingPage"),
 );
@@ -59,6 +76,9 @@ const OwnerOnboardingPage = lazy(() => import("./views/OwnerOnboardingPage"));
 const SchedulePage = lazy(() => import("./views/SchedulePage"));
 const ScheduleShiftDesignPage = lazy(
   () => import("./dev/ScheduleShiftDesignPage"),
+);
+const ScheduleShiftBadgeLabPage = lazy(
+  () => import("./dev/ScheduleShiftBadgeLabPage"),
 );
 const ScheduleTemplatesPage = lazy(
   () => import("./views/ScheduleTemplatesPage"),
@@ -79,11 +99,14 @@ const LocationsSettingsPage = lazy(
   () => import("./settings/LocationsSettingsPage"),
 );
 const JobsSettingsPage = lazy(() => import("./settings/JobsSettingsPage"));
+const NotificationSettingsPage = lazy(
+  () => import("./settings/NotificationSettingsPage"),
+);
 const SchedulingSettingsPage = lazy(
   () => import("./settings/SchedulingSettingsPage"),
 );
-const ShiftTypesSettingsPage = lazy(
-  () => import("./settings/ShiftTypesSettingsPage"),
+const ShiftCatalogSettingsPage = lazy(
+  () => import("./settings/ShiftCatalogSettingsPage"),
 );
 const ImportantDatesSettingsPage = lazy(
   () => import("./settings/ImportantDatesSettingsPage"),
@@ -113,7 +136,7 @@ export function App() {
   return (
     <QueryClientProvider client={appQueryClient}>
       <BrowserRouter>
-        <AuthProvider>
+        <AuthProvider queryClient={appQueryClient}>
           <Toaster />
           <Suspense
             fallback={
@@ -133,14 +156,29 @@ export function App() {
               </Route>
               <Route path="/sign-in" element={<SignInPage />} />
               {import.meta.env.DEV ? (
-                <Route
-                  path="/dev/schedule-shift-design"
-                  element={<ScheduleShiftDesignPage />}
-                />
+                <>
+                  <Route
+                    path="/dev/schedule-shift-design"
+                    element={<ScheduleShiftDesignPage />}
+                  />
+                  <Route path="/dev/employee-onboarding" element={<EmployeeOnboardingPreview />} />
+                  <Route
+                    path="/dev/schedule-shift-badge-lab"
+                    element={<Navigate to="/app/schedule-badge-lab" replace />}
+                  />
+                </>
               ) : null}
               <Route path="/kiosk" element={<KioskPage />} />
               <Route path="/accept-invite" element={<AcceptInvitationPage />} />
               <Route path="/invite/accept" element={<AcceptInvitationPage />} />
+              <Route
+                path="/invitations/pending"
+                element={
+                  <ProtectedRoute>
+                    <PendingInvitationsPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/welcome/*"
                 element={
@@ -158,6 +196,54 @@ export function App() {
                 }
               />
               <Route
+                path="/organization-switcher"
+                element={
+                  <ProtectedRoute>
+                    <OrganizationSwitcherPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/no-organization"
+                element={
+                  <ProtectedRoute>
+                    <NoOrganizationPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization-switcher/pending"
+                element={
+                  <ProtectedRoute>
+                    <PendingOrganizationStatusPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization-switcher/pending/:workspaceId"
+                element={
+                  <ProtectedRoute>
+                    <PendingOrganizationStatusPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization-switcher/suspended"
+                element={
+                  <ProtectedRoute>
+                    <SuspendedOrganizationStatusPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/organization-switcher/suspended/:workspaceId"
+                element={
+                  <ProtectedRoute>
+                    <SuspendedOrganizationStatusPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/account"
                 element={
                   <ProtectedRoute>
@@ -168,6 +254,10 @@ export function App() {
                 <Route index element={<Navigate to="profile" replace />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="preferences" element={<PreferencesPage />} />
+                <Route
+                  path="preferences/notifications"
+                  element={<NotificationPreferencesPage />}
+                />
                 <Route path="workspaces" element={<WorkspacesPage />} />
               </Route>
               <Route
@@ -223,6 +313,43 @@ export function App() {
                     </PermissionRoute>
                   }
                 />
+                {import.meta.env.DEV ? (
+                  <>
+                    <Route
+                      path="schedule-badge-lab"
+                      element={
+                        <PermissionRoute
+                          anyOf={["schedule.read"]}
+                          roles={["owner", "admin", "manager"]}
+                        >
+                          <ScheduleShiftBadgeLabPage />
+                        </PermissionRoute>
+                      }
+                    />
+                    <Route
+                      path="schedule-badge-lab/export"
+                      element={
+                        <PermissionRoute
+                          anyOf={["schedule.export", "schedule.read"]}
+                          roles={["owner", "admin", "manager"]}
+                        >
+                          <ScheduleShiftBadgeLabPage />
+                        </PermissionRoute>
+                      }
+                    />
+                    <Route
+                      path="schedule-badge-lab/templates"
+                      element={
+                        <PermissionRoute
+                          anyOf={["schedule.templates.manage", "schedule.read"]}
+                          roles={["owner", "admin", "manager"]}
+                        >
+                          <ScheduleShiftBadgeLabPage />
+                        </PermissionRoute>
+                      }
+                    />
+                  </>
+                ) : null}
                 <Route
                   path="time-entries"
                   element={
@@ -244,16 +371,7 @@ export function App() {
                 />
                 <Route
                   path="schedule/requests"
-                  element={
-                    <PermissionRoute
-                      anyOf={[
-                        "schedule.time_off_requests.read",
-                        "schedule.shift_change_requests.read",
-                      ]}
-                    >
-                      <ScheduleRequestsPage />
-                    </PermissionRoute>
-                  }
+                  element={<ScheduleRequestsPage />}
                 />
                 <Route
                   path="availability"
@@ -292,7 +410,17 @@ export function App() {
                     </PermissionRoute>
                   }
                 />
-                <Route path="employee-hub/*" element={<EmployeeHubPage />} />
+                <Route
+                  path="employee-hub/*"
+                  element={
+                    <PermissionRoute
+                      anyOf={["workspace.read"]}
+                      roles={["employee"]}
+                    >
+                      <EmployeeHubPage />
+                    </PermissionRoute>
+                  }
+                />
                 <Route
                   path="announcements"
                   element={
@@ -344,6 +472,19 @@ export function App() {
                     }
                   />
                   <Route
+                    path="notifications"
+                    element={
+                      <PermissionRoute
+                        anyOf={[
+                          "notifications.settings.read",
+                          "notifications.settings.write",
+                        ]}
+                      >
+                        <NotificationSettingsPage />
+                      </PermissionRoute>
+                    }
+                  />
+                  <Route
                     path="scheduling"
                     element={
                       <PermissionRoute anyOf={["workspace.manage"]}>
@@ -355,10 +496,19 @@ export function App() {
                     path="scheduling/shift-types"
                     element={
                       <PermissionRoute anyOf={["workspace.manage"]}>
-                        <ShiftTypesSettingsPage />
+                        <ShiftCatalogSettingsPage />
                       </PermissionRoute>
                     }
                   />
+                  <Route
+                    path="scheduling/shift-labels"
+                    element={
+                      <PermissionRoute anyOf={["workspace.manage"]}>
+                        <ShiftCatalogSettingsPage />
+                      </PermissionRoute>
+                    }
+                  />
+                  <Route path="scheduling/shift-label" element={<Navigate to="/app/settings/scheduling/shift-labels" replace />} />
                   <Route
                     path="important-dates"
                     element={<Navigate to="/app/important-dates" replace />}

@@ -9,7 +9,13 @@ import { describe, expect, it, vi } from "vitest";
 import { LineupPage } from "./LineupPage";
 import {
   getLineup,
-  moveLineupEntry,
+  getLineupOperations,
+  getLineupDestinations,
+  getLineupCandidates,
+  previewLineupOperation,
+  applyLineupOperation,
+  remindLineupRecipients,
+  saveLineupEntry,
   previewLineupShare,
 } from "../schedule/lineup-data";
 
@@ -52,6 +58,7 @@ const fixture = {
   workspace_id: workspaceId,
   date: "2026-08-17",
   source: "published",
+  settings: { time_format: "12h" },
   locations: [
     {
       id: mainLocationId,
@@ -188,55 +195,412 @@ vi.mock("../schedule/lineup-data", () => ({
   }),
   previewLineupShare: vi.fn(),
   saveLineupBrief: vi.fn(),
-  saveLineupEntry: vi.fn(),
+  saveLineupEntry: vi.fn().mockResolvedValue({
+    status: "saved",
+    lineup_id: "97000000-0000-4000-8000-000000000002",
+    lineup_revision: 2,
+    entry_id: "99000000-0000-4000-8000-000000000002",
+    entry_revision: 1,
+  }),
+  getLineupOperations: vi.fn().mockResolvedValue({
+    notes: [],
+    receipts: [],
+    events: [],
+    unpublished_changes: false,
+  }),
+  getLineupProposals: vi.fn().mockResolvedValue([]),
+  getLineupDestinations: vi.fn().mockResolvedValue([]),
+  submitLineupProposal: vi.fn(),
+  getLineupCandidates: vi.fn().mockResolvedValue([]),
+  previewLineupOperation: vi.fn(),
+  applyLineupOperation: vi.fn(),
+  remindLineupRecipients: vi.fn().mockResolvedValue({ sent: 1 }),
+  saveLineupNote: vi.fn(),
   saveLineupSection: vi.fn(),
   shareLineup: vi.fn(),
 }));
 
-function renderPage() {
-  vi.mocked(getLineup).mockResolvedValue(fixture);
+function renderPage(
+  model: ScheduleLineupReadModel = fixture,
+  initialLocation?: string,
+) {
+  vi.mocked(getLineup).mockResolvedValue(model);
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/app/schedule/lineup?date=2026-08-17"]}>
+      <MemoryRouter
+        initialEntries={[
+          `/app/schedule/lineup?date=2026-08-17${initialLocation ? `&location=${initialLocation}` : ""}`,
+        ]}
+      >
         <LineupPage />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
 
+Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+  configurable: true,
+  value: function () {
+    this.setAttribute("open", "");
+  },
+});
+Object.defineProperty(HTMLDialogElement.prototype, "close", {
+  configurable: true,
+  value: function () {
+    this.removeAttribute("open");
+  },
+});
+
 describe("LineupPage", () => {
-  it("moves published source rows through the active Line-up move endpoint", async () => {
-    const { container } = renderPage();
-    const sourceRow = (await screen.findByText("Alex Kim")).closest(
-      ".lineup-row",
+  it("does not render the old horizontal Schedule section links", async () => {
+    renderPage();
+
+    await screen.findByRole("heading", { name: /Line Up/ });
+
+    expect(
+      screen.queryByRole("navigation", { name: "Schedule sections" }),
+    ).toBeNull();
+  });
+
+  it("opens the location specified by a staffing notification", async () => {
+    renderPage(fixture, patioLocationId);
+    const select = await screen.findByRole("combobox", { name: "Location" });
+    expect((select as HTMLSelectElement).value).toBe(patioLocationId);
+    expect(screen.queryByText("Alex Kim")).toBeNull();
+  });
+  it("reminds the pending recipients of the currently reviewed shared version", async () => {
+    vi.mocked(getLineupOperations).mockResolvedValueOnce({
+      notes: [],
+      events: [],
+      unpublished_changes: false,
+      receipts: [
+        {
+          employee_id: sourceShiftId,
+          employee_name: "Alex Kim",
+          snapshot_id: sectionId,
+          version: 2,
+          viewed_at: null,
+          acknowledged_at: null,
+        },
+      ],
+    });
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Awaiting read/ }),
     );
-    const targetRow = screen.getByText("Jordan Lee").closest(".lineup-row");
-    expect(sourceRow).toBeTruthy();
-    expect(targetRow).toBeTruthy();
-
-    const data = new Map<string, string>();
-    const dataTransfer = {
-      getData: vi.fn((type: string) => data.get(type) ?? ""),
-      setData: vi.fn((type: string, value: string) => data.set(type, value)),
-    };
-
-    fireEvent.dragStart(sourceRow!, { dataTransfer });
-    fireEvent.dragOver(targetRow!, { dataTransfer });
-    fireEvent.drop(targetRow!, { dataTransfer });
-
-    await waitFor(() =>
-      expect(moveLineupEntry).toHaveBeenCalledWith(workspaceId, {
-        source_entry_id: sourceShiftId,
-        target_location_id: patioLocationId,
-        target_date: "2026-08-17",
-        target_section_id: sectionId,
-        display_order: 4,
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remind those awaiting read" }),
+    );
+    await screen.findByText(
+      "1 reminder sent to team members still awaiting acknowledgement.",
+    );
+    expect(remindLineupRecipients).toHaveBeenCalledWith(
+      workspaceId,
+      "2026-08-17",
+      mainLocationId,
+      sectionId,
+    );
+  });
+  it("previews assignment removal and keeps its coverage open before confirming", async () => {
+    vi.mocked(previewLineupOperation).mockResolvedValueOnce({
+      allowed: true,
+      requires_approval: false,
+      fingerprint: "c".repeat(64),
+      effects: [
+        "The same position remains open; earlier and later work stays assigned.",
+      ],
+      blockers: [],
+    });
+    vi.mocked(applyLineupOperation).mockResolvedValueOnce({
+      status: "applied",
+    });
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Manage Alex Kim" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Remove assignment · keep need open",
       }),
     );
-    expect(container.querySelector(".lineup-error")).toBeNull();
+    await screen.findByRole("heading", {
+      name: "Remove assignment · keep need open",
+    });
+    expect(
+      (screen.getByLabelText("Position") as HTMLSelectElement).disabled,
+    ).toBe(true);
+    fireEvent.change(screen.getByLabelText("Reason for change"), {
+      target: { value: "Employee is leaving early" },
+    });
+    fireEvent.change(screen.getByLabelText("Starts"), {
+      target: { value: "19:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Review impact" }));
+    await screen.findByText(
+      "The same position remains open; earlier and later work stays assigned.",
+    );
+    expect(previewLineupOperation).toHaveBeenLastCalledWith(
+      workspaceId,
+      expect.objectContaining({
+        kind: "release",
+        employee_id: null,
+        source_entry_id: sourceShiftId,
+        target: expect.objectContaining({
+          location_id: mainLocationId,
+          start_time: "19:00",
+        }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Confirm change" }));
+    await waitFor(() =>
+      expect(applyLineupOperation).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({ kind: "release" }),
+        "c".repeat(64),
+        expect.any(String),
+      ),
+    );
+  });
+  it("reviews a movable candidate as an explicit source-to-target replacement", async () => {
+    const movingSourceId = "99000000-0000-4000-8000-000000000099";
+    const movingEmployeeId = "15000000-0000-4000-8000-000000000099";
+    vi.mocked(getLineupCandidates).mockResolvedValueOnce([
+      {
+        employee_id: movingEmployeeId,
+        display_name: "Taylor Mover",
+        status: "movable",
+        reasons: ["Moving creates one source gap"],
+        available_start: null,
+        available_end: null,
+        move_source: {
+          entry_id: movingSourceId,
+          location_id: patioLocationId,
+          location_name: "Patio",
+          date: "2026-08-17",
+          timezone: "America/Los_Angeles",
+          job_name: "Server",
+          start_time: "17:00",
+          end_time: "22:00",
+        },
+      },
+    ]);
+    vi.mocked(previewLineupOperation).mockResolvedValueOnce({
+      fingerprint: "b".repeat(64),
+      allowed: true,
+      requires_approval: false,
+      effects: ["Replaces Alex and opens a Patio need"],
+      blockers: [],
+    });
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Manage Alex Kim" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Replacement" }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Taylor Mover.*Review move impact/,
+      }),
+    );
+    expect(
+      screen.getByLabelText("Required travel time (minutes)"),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Reason for change"), {
+      target: { value: "Cover from Patio" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Review impact" }));
+    await waitFor(() =>
+      expect(previewLineupOperation).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({
+          kind: "move",
+          source_entry_id: movingSourceId,
+          target_entry_id: sourceShiftId,
+          employee_id: movingEmployeeId,
+          replace_target: true,
+        }),
+      ),
+    );
+    await screen.findByText("Replaces Alex and opens a Patio need");
+    expect(
+      screen.queryByRole("button", {
+        name: "Send offer for employee response",
+      }),
+    ).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { name: "Review the change" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Edit choices" }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Review impact" }),
+    );
+  });
+  it("previews a transfer using the chosen destination local date", async () => {
+    vi.mocked(getLineupDestinations).mockResolvedValueOnce(
+      fixture.locations.map(({ id, name, timezone }) => ({
+        id,
+        name,
+        timezone,
+      })),
+    );
+    vi.mocked(previewLineupOperation).mockResolvedValueOnce({
+      fingerprint: "a".repeat(64),
+      allowed: true,
+      requires_approval: false,
+      effects: ["Destination local day verified"],
+      blockers: [],
+    });
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Manage Alex Kim" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Move location" }));
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("Destination location").querySelectorAll("option")
+          .length,
+      ).toBe(2),
+    );
+    fireEvent.change(screen.getByLabelText("Destination location"), {
+      target: { value: patioLocationId },
+    });
+    fireEvent.change(screen.getByLabelText(/Assignment date/), {
+      target: { value: "2026-08-18" },
+    });
+    fireEvent.change(screen.getByLabelText("Reason for change"), {
+      target: { value: "Cover the next local day" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Review impact" }));
+    await waitFor(() =>
+      expect(previewLineupOperation).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({
+          source_entry_id: sourceShiftId,
+          target: expect.objectContaining({
+            date: "2026-08-18",
+            location_id: patioLocationId,
+          }),
+        }),
+      ),
+    );
+    expect(
+      await screen.findByText("Destination local day verified"),
+    ).toBeTruthy();
+  });
+  it("preserves the board but removes changes during a location rollout pause", async () => {
+    vi.mocked(getLineupOperations).mockResolvedValueOnce({
+      notes: [],
+      receipts: [],
+      events: [],
+      unpublished_changes: false,
+      read_only: true,
+    });
+    renderPage();
+    await screen.findByText(/Line Up is read-only at this location/);
+    expect(screen.getByText("Alex Kim")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add staff" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Share Line Up" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Manage Alex Kim" }),
+    ).toBeNull();
+  });
+  it("uses the schedule 24-hour setting in Line-up rows", async () => {
+    renderPage({ ...fixture, settings: { time_format: "24h" } });
+
+    expect(await screen.findByText("17:00–22:00")).toBeTruthy();
+    expect(screen.queryByText("5p–10p")).toBeNull();
+  });
+
+  it("saves section placement for a source row without an overlay", async () => {
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Manage Alex Kim" }),
+    );
+    fireEvent.change(screen.getByLabelText("Section", { exact: true }), {
+      target: { value: sectionId },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save assignment" }));
+    await waitFor(() =>
+      expect(saveLineupEntry).toHaveBeenCalledWith(
+        workspaceId,
+        mainLocationId,
+        "2026-08-17",
+        expect.objectContaining({
+          source_shift_id: sourceShiftId,
+          section_id: sectionId,
+          employee_id: fixture.locations[0]!.entries[0]!.employee_id,
+        }),
+        null,
+        null,
+      ),
+    );
+  });
+
+  it("preserves search and position when changing board view", async () => {
+    renderPage();
+    await screen.findByText("Alex Kim");
+    fireEvent.change(screen.getByRole("textbox", { name: "Search team" }), {
+      target: { value: "Nobody" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Staff list" }));
+    expect(screen.queryByText("Alex Kim")).toBeNull();
+    expect(
+      screen.getByText("No assignments match these filters."),
+    ).toBeTruthy();
+  });
+
+  it("starts an extra line without choosing an arbitrary position or service", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Extra line" }));
+    expect(
+      (screen.getByLabelText("Position", { exact: true }) as HTMLSelectElement)
+        .value,
+    ).toBe("");
+    expect(
+      (
+        screen.getByRole("combobox", {
+          name: "Service",
+        }) as HTMLSelectElement
+      ).value,
+    ).toBe("");
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Create extra line",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    fireEvent.change(screen.getByLabelText("Position", { exact: true }), {
+      target: { value: fixture.jobs[0]!.id },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Service" }), {
+      target: { value: fixture.shift_types[0]!.id },
+    });
+    fireEvent.change(screen.getByLabelText("Starts"), {
+      target: { value: "18:00" },
+    });
+    fireEvent.change(screen.getByLabelText("Ends"), {
+      target: { value: "20:00" },
+    });
+    fireEvent.change(screen.getByLabelText("Assignment note (optional)"), {
+      target: { value: "Cover the private dining entrance" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create extra line" }));
+    await waitFor(() =>
+      expect(saveLineupEntry).toHaveBeenLastCalledWith(
+        workspaceId,
+        mainLocationId,
+        "2026-08-17",
+        expect.objectContaining({
+          employee_id: null,
+          note: "Cover the private dining entrance",
+        }),
+        null,
+        null,
+      ),
+    );
   });
 
   it("previews and copies reference-style Line-up share text", async () => {
@@ -264,13 +628,15 @@ describe("LineupPage", () => {
     });
 
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Share" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Share Line Up" }),
+    );
     const textarea = (await screen.findByLabelText(
       "Share text",
     )) as HTMLTextAreaElement;
     expect(textarea.value).toContain("Main Dining - 08/17/2026 Monday");
     expect(textarea.value).toContain("86: 86 salmon");
-    expect(textarea.value).toContain("5:00 PM Alex Kim");
+    expect(textarea.value).toContain("5:00 PM–10:00 PM Alex Kim");
     expect(
       screen.getByRole("button", { name: "Copy Line-up image" }),
     ).toBeTruthy();

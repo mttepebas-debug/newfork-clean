@@ -22,7 +22,7 @@ async function request(
     ?.access_token;
   if (!token) throw new Error("A current session is required");
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/v1/workspaces/${workspaceId}/time-entries${path}`,
+    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/v1/workspaces/${workspaceId}/time-entries${path}`,
     {
       ...init,
       headers: {

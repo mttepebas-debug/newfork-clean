@@ -1,10 +1,22 @@
-import { ArrowLeft, LogOut, Palette, UserRound, Warehouse } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  LogOut,
+  Palette,
+  UserRound,
+  Warehouse,
+} from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 
 const accountNav = [
   { to: "/account/profile", label: "Profile", icon: UserRound },
   { to: "/account/preferences", label: "Preferences", icon: Palette },
+  {
+    to: "/account/preferences/notifications",
+    label: "Notifications",
+    icon: Bell,
+  },
   { to: "/account/workspaces", label: "Workspaces", icon: Warehouse },
 ] as const;
 
@@ -31,6 +43,7 @@ export default function AccountLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={item.to === "/account/preferences"}
                 className={({ isActive }) =>
                   "account-nav-item" + (isActive ? " active" : "")
                 }

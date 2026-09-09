@@ -30,6 +30,12 @@ function shift(overrides: Partial<ScheduleShift> = {}): ScheduleShift {
 }
 
 describe("scheduleHourTotals", () => {
+  it("marks references as estimates and excludes unknown legacy hours", () => {
+    const shifts = [shift({ time_basis: "type_default" }), shift({ time_basis: "legacy_unverified", hide_time_on_badge: true }),
+      shift({ time_basis: "unresolved", start_time: "", end_time: "" })];
+    expect(formatHourTotalValue(buildScheduleHourTotalValue(shifts, shifts))).toBe("~6h · 2 need hours");
+    expect(shiftMinutes(shifts[1]!)).toBe(0);
+  });
   it("deducts unpaid breaks and handles overnight shifts", () => {
     expect(shiftMinutes(shift())).toBe(360);
     expect(

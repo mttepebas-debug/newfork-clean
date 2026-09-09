@@ -17,12 +17,16 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useToast } from "@newfork/ui";
 
 import {
   parsePublishPreflightError,
+  canContinueWarnOnlyPublication,
   parsePublishRecoveryError,
+  publishScheduleConflictKey,
   publishScheduleConflictLabel,
-  type PublishScheduleConflictSummary,
+  type PublishScheduleConflict,
+  type PublishDocumentScheduleConflictSummary,
 } from "../lib/schedulePublishRecovery";
 import {
   PublishPreflightPanel,
@@ -30,11 +34,21 @@ import {
   publishGatingRisks,
   publishHardBlockers,
   publishOverrideableBlockers,
+  publishNewAvailabilityFindings,
+  isWeeklyAvailabilityFinding,
 } from "./PublishPreflightPanel";
 
 export interface SchedulePublicationDepartmentScope {
   readonly departmentIds?: readonly string[];
   readonly includeNoDepartment?: boolean;
+}
+
+export interface SchedulePublicationChoices {
+  readonly draftId: string;
+  readonly locationIds: readonly string[];
+  readonly departmentKeys: readonly string[];
+  readonly notifyEmployeeIds: readonly string[];
+  readonly reasons: Readonly<Record<string, string>>;
 }
 
 const EMPTY_DEPARTMENTS: ScheduleReadModel["departments"] = [];
@@ -76,10 +90,14 @@ export function PublishScheduleDialog({
   departments = EMPTY_DEPARTMENTS,
   employees,
   initialLocationIds,
+  documentReviewVersion = 0,
   isPublishing = false,
   onClose,
   onPreview,
   onPublish,
+  onReviewDocumentConflict,
+  initialChoices,
+  onReviewShift,
 }: {
   readonly drafts: readonly ScheduleDraftSummary[];
   readonly activeDraftId?: string | null;
@@ -87,7 +105,10 @@ export function PublishScheduleDialog({
   readonly departments?: ScheduleReadModel["departments"];
   readonly employees: readonly ScheduleEmployee[];
   readonly initialLocationIds?: readonly string[];
+  readonly documentReviewVersion?: number;
   readonly isPublishing?: boolean;
+  readonly initialChoices?: SchedulePublicationChoices | null;
+  readonly onReviewShift?: (finding: SchedulePublicationPreview["findings"][number], choices: SchedulePublicationChoices) => Promise<void>;
   readonly onClose: () => void;
   readonly onPreview: (
     draftId: string,
@@ -101,12 +122,17 @@ export function PublishScheduleDialog({
     preflightAck?: SchedulePublicationPreflightAck,
     departmentScope?: SchedulePublicationDepartmentScope,
   ) => Promise<unknown>;
+  readonly onReviewDocumentConflict?: (
+    conflict: PublishDocumentScheduleConflictSummary,
+  ) => void;
 }) {
+  const toast = useToast();
   const noDepartmentKey = "__no_department__";
   const initialDraftId =
     (activeDraftId && drafts.some((draft) => draft.id === activeDraftId)
       ? activeDraftId
       : drafts[0]?.id) ?? "";
+  const restoredChoices = initialChoices?.draftId === initialDraftId ? initialChoices : null;
   const [draftId, setDraftId] = useState(initialDraftId);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const allDepartmentKeys = useMemo(
@@ -117,9 +143,11 @@ export function PublishScheduleDialog({
     [departments],
   );
   const [selectedDepartmentKeys, setSelectedDepartmentKeys] =
-    useState<string[]>(allDepartmentKeys);
+    useState<string[]>(restoredChoices ? allDepartmentKeys.filter((key) => restoredChoices.departmentKeys.includes(key)) : allDepartmentKeys);
   const [locationIds, setLocationIds] = useState(() =>
-    initialLocationIds?.length
+    restoredChoices
+      ? locations.map((location) => location.id).filter((id) => restoredChoices.locationIds.includes(id))
+      : initialLocationIds?.length
       ? locations
           .map((location) => location.id)
           .filter((id) => initialLocationIds.includes(id))
@@ -128,19 +156,26 @@ export function PublishScheduleDialog({
   const [preview, setPreview] = useState<SchedulePublicationPreview | null>(
     null,
   );
-  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [reasons, setReasons] = useState<Record<string, string>>({ ...restoredChoices?.reasons });
   const [risksAcknowledged, setRisksAcknowledged] = useState(false);
+  const [availabilityConfirmedFingerprint, setAvailabilityConfirmedFingerprint] = useState<string | null>(null);
   const [preflightBlockReason, setPreflightBlockReason] =
     useState<PublishPreflightBlockReason | null>(null);
   const [staleNotice, setStaleNotice] = useState<string | null>(null);
   const [scheduleConflicts, setScheduleConflicts] = useState<
-    readonly PublishScheduleConflictSummary[]
+    readonly PublishScheduleConflict[]
   >([]);
   const [notifyEmployeeIds, setNotifyEmployeeIds] = useState<string[]>([]);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [pending, setPending] = useState(false);
+  const [reviewingShift, setReviewingShift] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const previewRequestIdRef = useRef(0);
+  const publishingRef = useRef(false);
+  useEffect(() => () => { previewRequestIdRef.current += 1; }, []);
+  const lastDocumentReviewVersionRef = useRef(documentReviewVersion);
+  const previousAffectedIdsRef = useRef<readonly string[] | null>(null);
+  const resumePreviewRef = useRef(Boolean(restoredChoices));
   const hasDrafts = drafts.length > 0;
   const hasDepartmentSelection =
     departments.length === 0 || selectedDepartmentKeys.length > 0;
@@ -171,6 +206,9 @@ export function PublishScheduleDialog({
   const softFindings = preview ? publishOverrideableBlockers(preview) : [];
   const hardFindings = preview ? publishHardBlockers(preview) : [];
   const riskFindings = preview ? publishGatingRisks(preview) : [];
+  const newAvailability = preview ? publishNewAvailabilityFindings(preview) : [];
+  const needsAvailabilityConfirmation = newAvailability.some((finding) => finding.warning_policy === "confirm");
+  const availabilityConfirmed = !needsAvailabilityConfirmation || availabilityConfirmedFingerprint === preview?.fingerprint;
   const hasHardBlocker = hardFindings.length > 0;
   const reasonsValid = softFindings.every(
     (finding) => (reasons[finding.id] ?? "").trim().length >= 10,
@@ -185,7 +223,7 @@ export function PublishScheduleDialog({
     preview?.status === "publish_ready" &&
     hardFindings.length === 0 &&
     softFindings.length === 0 &&
-    riskFindings.length === 0;
+    riskFindings.length === 0 && !needsAvailabilityConfirmation;
   const wizardStep = step;
   const stepOnePreviewPending = wizardStep === 1 && pending;
   const stepOnePreviewError =
@@ -203,6 +241,7 @@ export function PublishScheduleDialog({
           riskFindings.length
             ? `${riskFindings.length} ${riskFindings.length === 1 ? "risk" : "risks"}`
             : null,
+          newAvailability.length ? `${newAvailability.length} availability ${newAvailability.length === 1 ? "conflict" : "conflicts"}` : null,
         ]
           .filter(Boolean)
           .join(" · ")
@@ -241,9 +280,14 @@ export function PublishScheduleDialog({
   }, [affectedEmployeeIds, employeeSearch, employees]);
 
   useEffect(() => {
-    setNotifyEmployeeIds(affectedEmployeeIds);
+    if (!preview) return;
+    const previous = previousAffectedIdsRef.current;
+    setNotifyEmployeeIds((current) => previous === null
+      ? restoredChoices ? affectedEmployeeIds.filter((id) => restoredChoices.notifyEmployeeIds.includes(id)) : affectedEmployeeIds
+      : [...current.filter((id) => affectedEmployeeIds.includes(id)), ...affectedEmployeeIds.filter((id) => !previous.includes(id))]);
+    previousAffectedIdsRef.current = affectedEmployeeIds;
     setEmployeeSearch("");
-  }, [affectedEmployeeIds]);
+  }, [affectedEmployeeIds, preview]);
 
   useEffect(() => {
     const requestedDraftId =
@@ -258,16 +302,18 @@ export function PublishScheduleDialog({
         : nextDraftId;
     });
     setLocationIds(
-      initialLocationIds?.length
+      restoredChoices
+        ? locations.map((location) => location.id).filter((id) => restoredChoices.locationIds.includes(id))
+        : initialLocationIds?.length
         ? locations
             .map((location) => location.id)
             .filter((id) => initialLocationIds.includes(id))
         : locations.map((location) => location.id),
     );
-    setSelectedDepartmentKeys(allDepartmentKeys);
+    setSelectedDepartmentKeys(restoredChoices ? allDepartmentKeys.filter((key) => restoredChoices.departmentKeys.includes(key)) : allDepartmentKeys);
     setPreview(null);
     setStep(1);
-    setReasons({});
+    setReasons({ ...restoredChoices?.reasons });
     setRisksAcknowledged(false);
     setPreflightBlockReason(null);
     setStaleNotice(null);
@@ -316,14 +362,10 @@ export function PublishScheduleDialog({
   const applyPreview = (nextPreview: SchedulePublicationPreview) => {
     setPreview(nextPreview);
     setEmployeeSearch("");
-    setNotifyEmployeeIds([
-      ...new Set(
-        nextPreview.locations.flatMap(
-          (location) => location.affected_employee_ids ?? [],
-        ),
-      ),
-    ]);
-    setReasons({});
+    setReasons((current) => Object.fromEntries(nextPreview.findings.flatMap((finding) => {
+      const reason = current[finding.id] ?? restoredChoices?.reasons[finding.id];
+      return reason !== undefined ? [[finding.id, reason]] : [];
+    })));
     setRisksAcknowledged(false);
     setPreflightBlockReason(null);
   };
@@ -343,7 +385,8 @@ export function PublishScheduleDialog({
       );
       if (requestId !== previewRequestIdRef.current) return;
       applyPreview(nextPreview);
-      if (advance) setStep(2);
+      if (advance || resumePreviewRef.current) setStep(2);
+      resumePreviewRef.current = false;
     } catch (caught) {
       if (requestId !== previewRequestIdRef.current) return;
       setError((caught as Error).message);
@@ -367,39 +410,90 @@ export function PublishScheduleDialog({
     selectedDepartmentKeysKey,
     selectedLocationIdsKey,
   ]);
+
+  useEffect(() => {
+    if (documentReviewVersion === lastDocumentReviewVersionRef.current) return;
+    lastDocumentReviewVersionRef.current = documentReviewVersion;
+    if (
+      !documentReviewVersion ||
+      !scheduleConflicts.length ||
+      !hasDrafts ||
+      !draftId ||
+      locationIds.length === 0 ||
+      !hasDepartmentSelection
+    ) {
+      return;
+    }
+    const requestId = ++previewRequestIdRef.current;
+    setPending(true);
+    setError(null);
+    setStaleNotice(null);
+    setScheduleConflicts([]);
+    onPreview(draftId, locationIds, departmentScope)
+      .then((nextPreview) => {
+        if (requestId !== previewRequestIdRef.current) return;
+        applyPreview(nextPreview);
+      })
+      .catch((caught) => {
+        if (requestId !== previewRequestIdRef.current) return;
+        setError((caught as Error).message);
+      })
+      .finally(() => {
+        if (requestId === previewRequestIdRef.current) setPending(false);
+      });
+  }, [
+    departmentScope,
+    documentReviewVersion,
+    draftId,
+    hasDepartmentSelection,
+    hasDrafts,
+    locationIds,
+    onPreview,
+    scheduleConflicts.length,
+  ]);
   const publish = async () => {
-    if (!preview) return;
+    if (!preview || publishBlocked || !availabilityConfirmed || publishingRef.current) return;
+    publishingRef.current = true;
+    const requestId = ++previewRequestIdRef.current;
+    const isCurrent = () => requestId === previewRequestIdRef.current;
     setPending(true);
     setError(null);
     try {
-      const overrideDecisions = softFindings.map((finding) => ({
-        finding_id: finding.id,
-        reason: reasons[finding.id]!.trim(),
-      }));
-      await onPublish(
-        preview,
-        overrideDecisions,
-        notifyEmployeeIds,
-        {
-          fingerprint: preview.fingerprint,
-          decisions: overrideDecisions,
-        },
-        departmentScope,
-      );
+      let currentPreview = preview;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const overrideDecisions = [...publishOverrideableBlockers(currentPreview).map((finding) => ({
+          finding_id: finding.id,
+          reason: reasons[finding.id]!.trim(),
+        })), ...publishNewAvailabilityFindings(currentPreview).map((finding) => ({
+          finding_id: finding.id,
+          reason: finding.warning_policy === "confirm" ? "Availability conflict confirmed by manager." : "Availability warning acknowledged (warn policy).",
+        }))];
+        try {
+          await onPublish(currentPreview, overrideDecisions, notifyEmployeeIds,
+            { fingerprint: currentPreview.fingerprint, decisions: overrideDecisions }, departmentScope);
+          break;
+        } catch (caught) {
+          if (!isCurrent()) return;
+          const refreshed = parsePublishPreflightError(caught);
+          if (attempt === 0 && refreshed?.blockReason === "stale_fingerprint" && canContinueWarnOnlyPublication(currentPreview, refreshed.preview)) {
+            currentPreview = refreshed.preview;
+            setPreview(currentPreview);
+            const count = publishNewAvailabilityFindings(currentPreview).filter(finding => finding.warning_policy === "warn").length;
+            toast.warning(count ? `Availability updated: ${count} ${count === 1 ? "conflict" : "conflicts"}. Continuing publication.` : "Availability warnings cleared. Continuing publication.");
+            continue;
+          }
+          throw caught;
+        }
+      }
     } catch (caught) {
+      if (!isCurrent()) return;
       const preflightError = parsePublishPreflightError(caught);
       if (preflightError) {
         setPreview(preflightError.preview);
         setStep(2);
         setPreflightBlockReason(preflightError.blockReason);
         setRisksAcknowledged(false);
-        setNotifyEmployeeIds([
-          ...new Set(
-            preflightError.preview.locations.flatMap(
-              (location) => location.affected_employee_ids ?? [],
-            ),
-          ),
-        ]);
+        setAvailabilityConfirmedFingerprint(null);
         setError(null);
       } else {
         const recoveryError = parsePublishRecoveryError(caught);
@@ -410,7 +504,6 @@ export function PublishScheduleDialog({
           setStep(1);
           setError(null);
           if (hasDrafts && draftId && locationIds.length > 0 && hasDepartmentSelection) {
-            const requestId = ++previewRequestIdRef.current;
             try {
               const nextPreview = await onPreview(
                 draftId,
@@ -439,12 +532,13 @@ export function PublishScheduleDialog({
         }
       }
     } finally {
-      setPending(false);
+      publishingRef.current = false;
+      if (isCurrent()) setPending(false);
     }
   };
 
   return (
-    <Dialog title={STEP_TITLES[wizardStep]} onClose={onClose}>
+    <Dialog title={STEP_TITLES[wizardStep]} onClose={reviewingShift ? () => {} : () => { previewRequestIdRef.current += 1; onClose(); }}>
       <div className="schedule-publication-form">
         <div className="schedule-publication-steps" aria-label="Publish steps">
           {[
@@ -634,11 +728,23 @@ export function PublishScheduleDialog({
                   </strong>
                 </div>
                 {scheduleConflicts.slice(0, 8).map((conflict) => (
-                  <p
-                    key={`${conflict.employee_id}-${conflict.first.shift_id}-${conflict.second.shift_id}`}
+                  <div
+                    key={publishScheduleConflictKey(conflict)}
+                    className="schedule-publication-conflict-row"
                   >
-                    {publishScheduleConflictLabel(conflict)}
-                  </p>
+                    <p>{publishScheduleConflictLabel(conflict)}</p>
+                    {conflict.kind === "document_expiry" &&
+                    conflict.review_action === "review_document" &&
+                    conflict.pending_document_id &&
+                    onReviewDocumentConflict ? (
+                      <button
+                        type="button"
+                        onClick={() => onReviewDocumentConflict(conflict)}
+                      >
+                        Review document
+                      </button>
+                    ) : null}
+                  </div>
                 ))}
               </section>
             ) : null}
@@ -648,7 +754,7 @@ export function PublishScheduleDialog({
             className="schedule-publication-review"
             data-testid="schedule-publish-preview"
           >
-            <div
+            {!preview.findings.some(isWeeklyAvailabilityFinding) ? <div
               className="schedule-publication-preflight"
               data-status={preview.status}
             >
@@ -671,7 +777,7 @@ export function PublishScheduleDialog({
                         : "Every override is recorded with the published audit trail."}
                 </small>
               </div>
-            </div>
+            </div> : null}
             <div className="schedule-publication-diff">
               {preview.locations.map((location) => (
                 <section key={location.location_id}>
@@ -711,6 +817,17 @@ export function PublishScheduleDialog({
               risksAcknowledged={risksAcknowledged}
               onRisksAcknowledgedChange={setRisksAcknowledged}
               blockReason={preflightBlockReason}
+              reviewDisabled={pending || reviewingShift || isPublishing}
+              onReviewShift={onReviewShift ? (finding) => {
+                if (pending || reviewingShift || isPublishing) return;
+                setReviewingShift(true);
+                setError(null);
+                void onReviewShift(finding, {
+                  draftId, locationIds, departmentKeys: selectedDepartmentKeys, notifyEmployeeIds, reasons,
+                }).catch((caught: unknown) => {
+                  setError(caught instanceof Error ? caught.message : "The shift could not be opened. Try again.");
+                }).finally(() => setReviewingShift(false));
+              } : undefined}
             />
           </div>
         ) : (
@@ -796,6 +913,7 @@ export function PublishScheduleDialog({
                       ? `${hardFindings.length + softFindings.length} blockers`
                       : null,
                     riskFindings.length ? `${riskFindings.length} risks` : null,
+                    newAvailability.length ? `${newAvailability.length} availability ${newAvailability.length === 1 ? "conflict" : "conflicts"}` : null,
                   ]
                     .filter(Boolean)
                     .join(" · ") || "No blockers or risks"
@@ -804,6 +922,7 @@ export function PublishScheduleDialog({
           {wizardStep > 1 ? (
             <button
               type="button"
+              disabled={pending || reviewingShift || isPublishing}
               onClick={() => {
                 if (wizardStep === 3) {
                   setStep(2);
@@ -820,23 +939,26 @@ export function PublishScheduleDialog({
               Back
             </button>
           ) : null}
-          <button type="button" onClick={onClose}>
+          <button type="button" disabled={reviewingShift} onClick={() => { previewRequestIdRef.current += 1; onClose(); }}>
             Cancel
           </button>
           {wizardStep === 2 ? (
             <button
               type="button"
               className="primary"
-              disabled={pending || isPublishing || publishBlocked}
-              onClick={() => setStep(3)}
+              disabled={pending || reviewingShift || isPublishing || publishBlocked}
+              onClick={() => {
+                setAvailabilityConfirmedFingerprint(preview?.fingerprint ?? null);
+                setStep(3);
+              }}
             >
-              {preflightReady ? "Next" : "Override and continue"}
+              {needsAvailabilityConfirmation ? "Confirm availability and continue" : preflightReady ? "Next" : "Override and continue"}
             </button>
           ) : wizardStep === 3 ? (
             <button
               type="button"
               className="primary"
-              disabled={pending || isPublishing || !preview || publishBlocked}
+              disabled={pending || reviewingShift || isPublishing || !preview || publishBlocked || !availabilityConfirmed}
               onClick={() => void publish()}
             >
               <Check size={15} />{" "}

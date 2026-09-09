@@ -1,3 +1,7 @@
+import {
+  accountPendingInvitationSchema,
+  type AccountPendingInvitation,
+} from "@newfork/shared";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export interface PrepareEmployeeInvitationInput {
@@ -23,11 +27,20 @@ export interface EmployeeInvitationService {
   prepare(
     input: PrepareEmployeeInvitationInput,
   ): Promise<PreparedEmployeeInvitation>;
+  retry(
+    input: Omit<PrepareEmployeeInvitationInput, "email" | "roleId">,
+  ): Promise<PreparedEmployeeInvitation>;
   revoke(input: Omit<PrepareEmployeeInvitationInput, "email">): Promise<void>;
   accept(accessToken: string, token: string): Promise<{ workspaceId: string }>;
+  listPending(accessToken: string): Promise<AccountPendingInvitation[]>;
+  acceptPending(
+    accessToken: string,
+    invitationId: string,
+  ): Promise<{ workspaceId: string }>;
+  declinePending(accessToken: string, invitationId: string): Promise<void>;
 }
 
-interface ServiceOptions {
+export interface ServiceOptions {
   readonly url: string;
   readonly serviceRoleKey: string;
   readonly appUrl: string;
@@ -84,9 +97,36 @@ export function createEmployeeInvitationService(
       if (error) throw new Error(error.message);
       const developmentUrl = `${options.appUrl.replace(/\/$/, "")}/invite/accept?token=${token}`;
       try {
-        await deliverInvitation(options, input.email, developmentUrl);
+        await storeDeliverySecret(client, {
+          actorUserId: input.actorUserId,
+          workspaceId: input.workspaceId,
+          invitationId: String(data),
+          token,
+        });
+        await deliverInvitation(
+          options,
+          input.email,
+          developmentUrl,
+          `employee-invite/${String(data)}`,
+        );
+        await markDelivery(client, {
+          actorUserId: input.actorUserId,
+          workspaceId: input.workspaceId,
+          invitationId: String(data),
+          status: "sent",
+          error: null,
+        });
       } catch (deliveryError) {
-        await revokePrepared(client, input);
+        await markDelivery(client, {
+          actorUserId: input.actorUserId,
+          workspaceId: input.workspaceId,
+          invitationId: String(data),
+          status: "failed",
+          error:
+            deliveryError instanceof Error
+              ? deliveryError.message
+              : "Invitation delivery failed",
+        });
         throw deliveryError;
       }
       return {
@@ -95,37 +135,159 @@ export function createEmployeeInvitationService(
         ...(options.production ? {} : { developmentUrl }),
       };
     },
+    async retry(input) {
+      const { data, error } = await client.rpc(
+        "load_employee_invitation_retry_service",
+        {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+          target_employee_id: input.employeeId,
+        },
+      );
+      if (error || !data)
+        throw new Error(error?.message ?? "Failed invitation not found");
+      const row = data as {
+        id?: unknown;
+        email?: unknown;
+        token?: unknown;
+        expires_at?: unknown;
+      };
+      if (
+        typeof row.id !== "string" ||
+        typeof row.email !== "string" ||
+        typeof row.token !== "string" ||
+        typeof row.expires_at !== "string"
+      ) {
+        throw new Error("Invitation retry state is invalid");
+      }
+      const developmentUrl = `${options.appUrl.replace(/\/$/, "")}/invite/accept?token=${row.token}`;
+      try {
+        await deliverInvitation(
+          options,
+          row.email,
+          developmentUrl,
+          `employee-invite/${row.id}`,
+        );
+        await markDelivery(client, {
+          actorUserId: input.actorUserId,
+          workspaceId: input.workspaceId,
+          invitationId: row.id,
+          status: "sent",
+          error: null,
+        });
+      } catch (deliveryError) {
+        await markDelivery(client, {
+          actorUserId: input.actorUserId,
+          workspaceId: input.workspaceId,
+          invitationId: row.id,
+          status: "failed",
+          error:
+            deliveryError instanceof Error
+              ? deliveryError.message
+              : "Invitation delivery failed",
+        });
+        throw deliveryError;
+      }
+      return {
+        id: row.id,
+        expiresAt: row.expires_at,
+        ...(options.production ? {} : { developmentUrl }),
+      };
+    },
     async revoke(input) {
       await revokePrepared(client, input);
     },
     async accept(accessToken, token) {
-      const user = await client.auth.getUser(accessToken);
-      if (user.error || !user.data.user)
-        throw new Error("Valid authenticated account required");
+      const actor = await resolveActor(client, accessToken);
       const { data, error } = await client.rpc(
         "accept_employee_invitation_service",
         {
-          target_user_id: user.data.user.id,
+          target_user_id: actor.id,
           invitation_token_hash: await sha256(token),
         },
       );
       if (error) throw new Error(error.message);
-      const initialized = await client.rpc(
-        "initialize_employee_onboarding_service",
+      await initializeEmployeeOnboarding(client, actor.id);
+      return { workspaceId: String(data) };
+    },
+    async listPending(accessToken) {
+      const actor = await resolveActor(client, accessToken);
+      const { data, error } = await client.rpc(
+        "list_pending_employee_invitations_for_account_service",
+        { actor_user_id: actor.id },
+      );
+      if (error) throw new Error(error.message);
+      return accountPendingInvitationSchema.array().parse(
+        ((data ?? []) as unknown[]).map((row) => {
+          const value = row as {
+            invitation_id: string;
+            workspace_id: string;
+            workspace_name: string;
+            email: string;
+            expires_at: string;
+          };
+          return {
+            id: value.invitation_id,
+            workspaceId: value.workspace_id,
+            workspaceName: value.workspace_name,
+            emailHint: maskEmail(value.email),
+            expiresAt: value.expires_at,
+          };
+        }),
+      );
+    },
+    async acceptPending(accessToken, invitationId) {
+      const actor = await resolveActor(client, accessToken);
+      const { data, error } = await client.rpc(
+        "accept_employee_invitation_by_id_service",
         {
-          target_user_id: user.data.user.id,
+          target_user_id: actor.id,
+          target_invitation_id: invitationId,
         },
       );
-      if (initialized.error) throw new Error(initialized.error.message);
+      if (error) throw new Error(error.message);
+      await initializeEmployeeOnboarding(client, actor.id);
       return { workspaceId: String(data) };
+    },
+    async declinePending(accessToken, invitationId) {
+      const actor = await resolveActor(client, accessToken);
+      const { error } = await client.rpc(
+        "decline_employee_invitation_service",
+        {
+          target_user_id: actor.id,
+          target_invitation_id: invitationId,
+        },
+      );
+      if (error) throw new Error(error.message);
     },
   };
 }
 
-async function deliverInvitation(
+async function resolveActor(client: SupabaseClient, accessToken: string) {
+  const user = await client.auth.getUser(accessToken);
+  if (user.error || !user.data.user)
+    throw new Error("Valid authenticated account required");
+  return user.data.user;
+}
+
+async function initializeEmployeeOnboarding(
+  client: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  const initialized = await client.rpc(
+    "initialize_employee_onboarding_service",
+    {
+      target_user_id: userId,
+    },
+  );
+  if (initialized.error) throw new Error(initialized.error.message);
+}
+
+export async function deliverInvitation(
   options: ServiceOptions,
   email: string,
   url: string,
+  idempotencyKey?: string,
 ): Promise<void> {
   if (!options.resendApiKey) {
     if (options.production)
@@ -137,6 +299,7 @@ async function deliverInvitation(
     headers: {
       Authorization: `Bearer ${options.resendApiKey}`,
       "Content-Type": "application/json",
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
     body: JSON.stringify({
       from: options.emailFrom ?? "Newfork <onboarding@newfork.app>",
@@ -158,6 +321,50 @@ async function revokePrepared(
     target_workspace_id: input.workspaceId,
     target_employee_id: input.employeeId,
   });
+  if (error) throw new Error(error.message);
+}
+
+async function markDelivery(
+  client: SupabaseClient,
+  input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+    readonly invitationId: string;
+    readonly status: "sent" | "failed";
+    readonly error: string | null;
+  },
+): Promise<void> {
+  const { error } = await client.rpc(
+    "mark_employee_invitation_delivery_service",
+    {
+      actor_user_id: input.actorUserId,
+      target_workspace_id: input.workspaceId,
+      target_invitation_id: input.invitationId,
+      delivery_result: input.status,
+      delivery_failure_message: input.error,
+    },
+  );
+  if (error) throw new Error(error.message);
+}
+
+export async function storeDeliverySecret(
+  client: SupabaseClient,
+  input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+    readonly invitationId: string;
+    readonly token: string;
+  },
+): Promise<void> {
+  const { error } = await client.rpc(
+    "store_employee_invitation_delivery_secret_service",
+    {
+      actor_user_id: input.actorUserId,
+      target_workspace_id: input.workspaceId,
+      target_invitation_id: input.invitationId,
+      invitation_token: input.token,
+    },
+  );
   if (error) throw new Error(error.message);
 }
 

@@ -72,7 +72,7 @@ describe("ScheduleConflictSheet", () => {
     expect(screen.getByText("Add a manager reason to override.")).toBeTruthy();
     expect(
       screen.getByText(
-        "Required for availability and time off overrides. Minimum 10 characters.",
+        "Required for a soft availability override. Minimum 10 characters.",
       ),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Override and save" })).toHaveProperty(

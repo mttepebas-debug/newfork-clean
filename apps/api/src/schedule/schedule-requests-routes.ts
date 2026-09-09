@@ -3,7 +3,8 @@ import {
   timeOffDecisionInputSchema,
 } from "@newfork/shared/schedule";
 import type { Permission } from "@newfork/shared";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import { timeOffAssignmentPreviewInputSchema } from "@newfork/shared";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { WorkspaceContextResolver } from "../auth/workspace-context";
 import type { ScheduleRequestsService } from "./schedule-requests-service";
@@ -11,6 +12,7 @@ import type { ScheduleRequestsService } from "./schedule-requests-service";
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 const requestParams = workspaceParams.extend({ requestId: z.string().uuid() });
 const activeRequestParams = z.object({ requestId: z.string().uuid() });
+const explicitWorkspaceHeaderSchema = z.string().uuid();
 const querySchema = z.object({
   time_off_queue: z.enum(["needs_review", "closed"]).default("needs_review"),
   shift_queue: z.enum(["needs_review", "history"]).default("needs_review"),
@@ -28,6 +30,23 @@ export function registerScheduleRequestsRoutes(
     contextResolver: WorkspaceContextResolver | null;
   },
 ) {
+  for (const explicit of [false, true]) app.post(
+    `${explicit ? "/v1/workspaces/:workspaceId" : ""}/schedule/requests/time-off/:requestId/assignment-preview`,
+    async (request, reply) => {
+      const params = (explicit ? requestParams : activeRequestParams).safeParse(request.params);
+      const body = timeOffAssignmentPreviewInputSchema.safeParse(request.body);
+      if (!params.success || !body.success) return reply.status(400).send({ error: "Valid time off approval preview required" });
+      const context = explicit && "workspaceId" in params.data
+        ? await authorizeAny(request.headers.authorization, params.data.workspaceId as string, ["schedule.time_off_requests.manage"], options)
+        : await authorizeAnyActive(request, ["schedule.time_off_requests.manage"], options);
+      if (context === "workspace_mismatch") return reply.status(404).send({ error: "Workspace not found" });
+      if (!context) return reply.status(403).send({ error: "Time off management access required" });
+      if (!options.service) return reply.status(503).send({ error: "Schedule request service is not configured" });
+      try {
+        return reply.send(await options.service.previewTimeOffAssignment({ actorUserId: context.userId, workspaceId: context.workspace.id, requestId: params.data.requestId, decision: body.data }));
+      } catch (error) { return requestError(reply, error); }
+    },
+  );
   app.get(
     "/v1/workspaces/:workspaceId/schedule/requests",
     async (request, reply) => {
@@ -46,6 +65,8 @@ export function registerScheduleRequestsRoutes(
         ],
         options,
       );
+      if (context === "workspace_mismatch")
+        return reply.status(404).send({ error: "Workspace not found" });
       if (!context)
         return reply
           .status(403)
@@ -86,6 +107,8 @@ export function registerScheduleRequestsRoutes(
         ["schedule.time_off_requests.read"],
         options,
       );
+      if (context === "workspace_mismatch")
+        return reply.status(404).send({ error: "Workspace not found" });
       if (!context)
         return reply
           .status(403)
@@ -123,6 +146,8 @@ export function registerScheduleRequestsRoutes(
         ["schedule.time_off_requests.manage"],
         options,
       );
+      if (context === "workspace_mismatch")
+        return reply.status(404).send({ error: "Workspace not found" });
       if (!context)
         return reply
           .status(403)
@@ -161,6 +186,8 @@ export function registerScheduleRequestsRoutes(
         ["schedule.shift_change_requests.manage"],
         options,
       );
+      if (context === "workspace_mismatch")
+        return reply.status(404).send({ error: "Workspace not found" });
       if (!context)
         return reply
           .status(403)
@@ -191,7 +218,7 @@ export function registerScheduleRequestsRoutes(
         .status(400)
         .send({ error: "Valid schedule request query required" });
     const context = await authorizeAnyActive(
-      request.headers.authorization,
+      request,
       [
         "schedule.time_off_requests.read",
         "schedule.shift_change_requests.read",
@@ -230,7 +257,7 @@ export function registerScheduleRequestsRoutes(
     if (!params.success)
       return reply.status(400).send({ error: "Valid request required" });
     const context = await authorizeAnyActive(
-      request.headers.authorization,
+      request,
       ["schedule.time_off_requests.read"],
       options,
     );
@@ -263,7 +290,7 @@ export function registerScheduleRequestsRoutes(
           .status(400)
           .send({ error: "Valid time off decision required" });
       const context = await authorizeAnyActive(
-        request.headers.authorization,
+      request,
         ["schedule.time_off_requests.manage"],
         options,
       );
@@ -300,7 +327,7 @@ export function registerScheduleRequestsRoutes(
           .status(400)
           .send({ error: "Valid shift change decision required" });
       const context = await authorizeAnyActive(
-        request.headers.authorization,
+      request,
         ["schedule.shift_change_requests.manage"],
         options,
       );
@@ -329,16 +356,29 @@ export function registerScheduleRequestsRoutes(
 }
 
 async function authorizeAnyActive(
-  authorization: string | undefined,
+  source: FastifyRequest | string | undefined,
   permissions: Permission[],
   options: {
     contextResolver: WorkspaceContextResolver | null;
   },
 ) {
+  const authorization =
+    typeof source === "string" || source === undefined
+      ? source
+      : source.headers.authorization;
+  const workspaceId =
+    typeof source === "string" || source === undefined
+      ? null
+      : explicitWorkspaceHeaderSchema.safeParse(
+          Array.isArray(source.headers["x-newfork-workspace-id"])
+            ? source.headers["x-newfork-workspace-id"][0]
+            : source.headers["x-newfork-workspace-id"],
+        );
   if (!options.contextResolver || !authorization?.startsWith("Bearer "))
     return null;
   const context = await options.contextResolver.resolve(
     authorization.slice("Bearer ".length).trim(),
+    workspaceId && workspaceId.success ? workspaceId.data : null,
   );
   return context &&
     permissions.some((permission) => context.permissions.includes(permission))
@@ -358,9 +398,11 @@ async function authorizeAny(
     return null;
   const context = await options.contextResolver.resolve(
     authorization.slice("Bearer ".length).trim(),
+    workspaceId,
   );
-  return context?.workspace.id === workspaceId &&
-    permissions.some((permission) => context.permissions.includes(permission))
+  if (!context) return null;
+  if (context.workspace.id !== workspaceId) return "workspace_mismatch";
+  return permissions.some((permission) => context.permissions.includes(permission))
     ? context
     : null;
 }

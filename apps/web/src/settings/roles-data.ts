@@ -6,7 +6,7 @@ import {
   type WorkspaceRoleInput,
   type WorkspaceRoleRecord,
 } from "@newfork/shared";
-import { supabaseClient } from "../lib/supabase";
+import { developmentBearerToken, supabaseClient } from "../lib/supabase";
 
 function client() {
   if (!supabaseClient) throw new Error("Role storage is not configured");
@@ -15,6 +15,37 @@ function client() {
 
 function check(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
+}
+
+async function request(
+  workspaceId: string,
+  path: string,
+  init: RequestInit = {},
+) {
+  const storage = client();
+  const token =
+    (await storage.auth.getSession()).data.session?.access_token ??
+    developmentBearerToken();
+  if (!token) throw new Error("A current session is required");
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/v1/workspaces/${workspaceId}/roles${path}`,
+    {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...init.headers,
+      },
+    },
+  );
+  const body = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok)
+    throw new Error(
+      typeof body === "object" && body && "error" in body
+        ? String(body.error)
+        : "Role operation failed",
+    );
+  return body;
 }
 
 export async function loadRoleWorkspace(workspaceId: string): Promise<{
@@ -86,25 +117,19 @@ export async function saveWorkspaceRole(
   roleId?: string,
 ): Promise<string> {
   const role = workspaceRoleInputSchema.parse(input);
-  const { data, error } = await client().rpc("save_workspace_role", {
-    target_workspace_id: workspaceId,
-    target_role_id: roleId ?? null,
-    role_name: role.name,
-    role_description: role.description,
-    role_access_class: role.access_class,
-    permission_keys: role.permission_keys,
-  });
-  check(error);
-  return String(data);
+  const body = (await request(workspaceId, roleId ? `/${roleId}` : "", {
+    method: roleId ? "PUT" : "POST",
+    body: JSON.stringify(role),
+  })) as { id?: unknown };
+  if (!body.id) throw new Error("Role save result is unavailable");
+  return String(body.id);
 }
 
 export async function deleteWorkspaceRole(
   workspaceId: string,
   roleId: string,
 ): Promise<void> {
-  const { error } = await client().rpc("delete_workspace_role", {
-    target_workspace_id: workspaceId,
-    target_role_id: roleId,
+  await request(workspaceId, `/${roleId}`, {
+    method: "DELETE",
   });
-  check(error);
 }

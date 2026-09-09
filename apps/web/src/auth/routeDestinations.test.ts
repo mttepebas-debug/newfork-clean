@@ -1,6 +1,10 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
-import { appLandingPath } from "./routeDestinations";
+import {
+  appLandingPath,
+  organizationSwitcherPath,
+  workspaceLandingPathForRole,
+} from "./routeDestinations";
 
 const baseContext: ActiveWorkspaceContext = {
   userId: "88888888-8888-4888-8888-888888888888",
@@ -49,12 +53,23 @@ describe("appLandingPath", () => {
     ).toBe("/app/employee-hub");
   });
 
-  it("sends missing app access to Account Workspaces without looping through /app", () => {
+  it("sends missing app access to the organization switcher without looping through /app", () => {
     expect(
       appLandingPath({
         ...baseContext,
         permissions: [],
       }),
-    ).toBe("/account/workspaces");
+    ).toBe(organizationSwitcherPath);
+  });
+
+  it("sends missing workspace context to the organization switcher", () => {
+    expect(appLandingPath(null)).toBe(organizationSwitcherPath);
+  });
+
+  it("maps roles to their shell landing surfaces", () => {
+    expect(workspaceLandingPathForRole("owner")).toBe("/app/workspace");
+    expect(workspaceLandingPathForRole("admin")).toBe("/app/workspace");
+    expect(workspaceLandingPathForRole("manager")).toBe("/app/workspace");
+    expect(workspaceLandingPathForRole("employee")).toBe("/app/employee-hub");
   });
 });

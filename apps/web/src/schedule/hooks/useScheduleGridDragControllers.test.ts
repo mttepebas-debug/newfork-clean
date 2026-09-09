@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   evaluateSchedulePresetDropTarget,
+  evaluateScheduleShiftGroupDropTarget,
   evaluateScheduleShiftDropTarget,
   formatScheduleDragShiftLabel,
 } from "./useScheduleGridDragControllers";
@@ -15,6 +16,7 @@ const employeeId = "22222222-2222-4222-8222-222222222222";
 const jobId = "33333333-3333-4333-8333-333333333333";
 const shiftTypeId = "44444444-4444-4444-8444-444444444444";
 const shiftId = "55555555-5555-4555-8555-555555555555";
+const secondShiftId = "77777777-7777-4777-8777-777777777779";
 
 const shift: ScheduleEditableShift = {
   id: shiftId,
@@ -91,9 +93,26 @@ const model: ScheduleReadModel = {
 };
 
 describe("useScheduleGridDragControllers helpers", () => {
+  it("keeps an unavailable preset selectable and colors its drop orange", () => {
+    const unavailable = { ...model, employees: model.employees.map(employee => ({ ...employee,
+      availability: [{ day: 2, mode: "unavailable" as const, windows: [] }],
+    })) };
+    expect(evaluateSchedulePresetDropTarget({ model: unavailable, useDefaultTimesForScheduling: true,
+      target: { locationId, employeeId, jobId, shiftTypeId, label: "Dinner", color: "#2563eb", date: "2026-08-18", startTime: "16:00", endTime: "22:00" },
+    })).toMatchObject({ allowed: true, targetStatus: "warning" });
+  });
+  it("marks unavailable hours as an allowed orange drop, not a hard blocker", () => {
+    const unavailable = { ...model, employees: model.employees.map(employee => ({ ...employee,
+      availability: [{ day: 2, mode: "unavailable" as const, windows: [] }],
+    })) };
+    const target = { shiftId, locationId, employeeId, date: "2026-08-18", copy: false };
+    expect(evaluateScheduleShiftDropTarget({ model: unavailable, shift, target })).toMatchObject({ allowed: true, targetStatus: "warning" });
+    const excluded = { ...unavailable, employees: unavailable.employees.map(employee => ({ ...employee, is_excluded_from_schedule: true })) };
+    expect(evaluateScheduleShiftDropTarget({ model: excluded, shift, target })).toMatchObject({ allowed: false, targetStatus: "blocked" });
+  });
   it("formats the reference drag preview label", () => {
     expect(formatScheduleDragShiftLabel(model, shift)).toBe(
-      "Server, 9a to 5:30p",
+      "Server, 9:00 AM - 5:30 PM",
     );
     expect(formatScheduleDragShiftLabel(model, undefined)).toBe("Shift");
   });
@@ -132,6 +151,135 @@ describe("useScheduleGridDragControllers helpers", () => {
         },
       }),
     ).toEqual({ allowed: true, targetStatus: "allowed" });
+  });
+
+  it("allows a group target when the projected group is valid", () => {
+    const secondShift: ScheduleEditableShift = {
+      ...shift,
+      id: secondShiftId,
+      scheduled_date: "2026-08-18",
+    };
+    const groupModel = { ...model, shifts: [shift, secondShift] };
+
+    const evaluation = evaluateScheduleShiftGroupDropTarget({
+      model: groupModel,
+      shifts: [shift, secondShift],
+      targets: [
+        {
+          shiftId,
+          locationId,
+          employeeId,
+          date: "2026-08-18",
+          copy: false,
+        },
+        {
+          shiftId: secondShiftId,
+          locationId,
+          employeeId,
+          date: "2026-08-19",
+          copy: false,
+        },
+      ],
+    });
+
+    expect(evaluation.allowed).toBe(true);
+    expect(evaluation.targetStatus).toBe("allowed");
+    expect(evaluation.members.map((member) => member.targetStatus)).toEqual([
+      "allowed",
+      "allowed",
+    ]);
+  });
+
+  it("blocks the whole group when one projected member is blocked", () => {
+    const secondShift: ScheduleEditableShift = {
+      ...shift,
+      id: secondShiftId,
+      scheduled_date: "2026-08-18",
+    };
+    const groupModel: ScheduleReadModel = {
+      ...model,
+      shifts: [shift, secondShift],
+      closures: [
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          location_id: locationId,
+          closed_date: "2026-08-19",
+          end_date: null,
+          title: "Closed",
+          is_all_day: true,
+          shift_type_ids: [],
+        },
+      ],
+    };
+
+    const evaluation = evaluateScheduleShiftGroupDropTarget({
+      model: groupModel,
+      shifts: [shift, secondShift],
+      targets: [
+        {
+          shiftId,
+          locationId,
+          employeeId,
+          date: "2026-08-18",
+          copy: false,
+        },
+        {
+          shiftId: secondShiftId,
+          locationId,
+          employeeId,
+          date: "2026-08-19",
+          copy: false,
+        },
+      ],
+    });
+
+    expect(evaluation.allowed).toBe(false);
+    expect(evaluation.targetStatus).toBe("blocked");
+    expect(evaluation.reason).toBe(
+      "Location is closed: Closed. Requested: Dinner / Server at Main Dining.",
+    );
+    expect(evaluation.members.map((member) => member.targetStatus)).toEqual([
+      "allowed",
+      "blocked",
+    ]);
+  });
+
+  it("blocks a group when projected members conflict with each other", () => {
+    const secondShift: ScheduleEditableShift = {
+      ...shift,
+      id: secondShiftId,
+      scheduled_date: "2026-08-18",
+    };
+    const groupModel = { ...model, shifts: [shift, secondShift] };
+
+    const evaluation = evaluateScheduleShiftGroupDropTarget({
+      model: groupModel,
+      shifts: [shift, secondShift],
+      targets: [
+        {
+          shiftId,
+          locationId,
+          employeeId,
+          date: "2026-08-19",
+          copy: false,
+        },
+        {
+          shiftId: secondShiftId,
+          locationId,
+          employeeId,
+          date: "2026-08-19",
+          copy: false,
+        },
+      ],
+    });
+
+    expect(evaluation.allowed).toBe(false);
+    expect(evaluation.targetStatus).toBe("blocked");
+    expect(evaluation.members.every((member) => !member.allowed)).toBe(true);
+    expect(evaluation.messages).toEqual([
+      "Employee already has Dinner. Requested: Dinner / Server at Main Dining.",
+      "Alex Morgan already has Dinner 09:00-17:30 at Main Dining on 2026-08-19. Requested: Dinner / Server at Main Dining.",
+    ]);
   });
 
   it("maps closed-location preset validation to blocked drop status", () => {

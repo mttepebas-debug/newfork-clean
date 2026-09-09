@@ -1,332 +1,285 @@
-import type {
-  ScheduleEmployee,
-  ScheduleReadModel,
-  ScheduleShift,
-  ScheduleView,
-} from "@newfork/shared/schedule";
-import { useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle,
-  CalendarCheck,
-  ChevronLeft,
-  ChevronRight,
-  Search,
-} from "lucide-react";
-import { useMemo } from "react";
+  employeeSectionSchema,
+  type WeeklyPreferenceDay,
+  type WeeklyTeamRead,
+} from "@newfork/shared";
+import { useQuery } from "@tanstack/react-query";
+import { CalendarCheck, RotateCcw, Search } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { getScheduleReadModel } from "../schedule/schedule-data";
+import { loadWeeklyTeam } from "../availability/availability-data";
+import { formatTime } from "../schedule/lib/scheduleDateTime";
+import "../availability/weekly-team.css";
 
-const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-const weekdayNames = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
+const EmployeeDrawer = lazy(() =>
+  import("../employees/EmployeeDrawer").then((module) => ({
+    default: module.EmployeeDrawer,
+  })),
+);
+const weekdays = [
+  [1, "Monday"],
+  [2, "Tuesday"],
+  [3, "Wednesday"],
+  [4, "Thursday"],
+  [5, "Friday"],
+  [6, "Saturday"],
+  [0, "Sunday"],
 ] as const;
 
 export function AvailabilityPage() {
   const { context } = useAuth();
   const [search, setSearch] = useSearchParams();
-  const today = new Date().toLocaleDateString("en-CA");
-  const selectedDate = validDate(search.get("date")) ?? today;
+  const workspaceId = context?.workspace.id ?? "";
   const locationId = search.get("location") ?? "all";
   const queryText = search.get("q") ?? "";
+  const submission = search.get("submission") ?? "all";
   const query = useQuery({
-    queryKey: ["availability-board", context?.workspace.id, selectedDate],
-    queryFn: () =>
-      getScheduleReadModel(
-        context!.workspace.id,
-        selectedDate,
-        "week" satisfies ScheduleView,
-      ),
-    enabled: Boolean(context),
+    queryKey: ["weekly-preferences", workspaceId, "team"],
+    queryFn: () => loadWeeklyTeam(workspaceId),
+    enabled: Boolean(workspaceId),
+    retry: false,
   });
-
-  const model = query.data;
-  const visibleEmployees = useMemo(() => {
-    if (!model) return [];
-    const term = queryText.trim().toLowerCase();
-    return model.employees.filter((employee) => {
-      const matchesLocation =
-        locationId === "all" || employee.location_ids.includes(locationId);
-      const matchesSearch =
-        term.length === 0 ||
-        employee.display_name.toLowerCase().includes(term) ||
-        employee.employee_code.toLowerCase().includes(term);
-      return matchesLocation && matchesSearch;
-    });
-  }, [locationId, model, queryText]);
-
-  const summaries = useMemo(
-    () =>
-      model
-        ? visibleEmployees.map((employee) =>
-            summarizeEmployeeAvailability(employee, model),
-          )
-        : [],
-    [model, visibleEmployees],
+  const status =
+    query.error && "status" in query.error ? Number(query.error.status) : 0;
+  const model = [401, 403, 404].includes(status) ? undefined : query.data;
+  const term = queryText.trim().toLocaleLowerCase();
+  const employees =
+    model?.employees.filter(
+      (employee) =>
+        (locationId === "all" || employee.location_ids.includes(locationId)) &&
+        (!term ||
+          employee.display_name.toLocaleLowerCase().includes(term) ||
+          employee.employee_code.toLocaleLowerCase().includes(term)) &&
+        (submission !== "submitted" || employee.submitted) &&
+        (submission !== "missing" || !employee.submitted),
+    ) ?? [];
+  const selectedEmployee = model?.employees.find(
+    (employee) => employee.id === search.get("employeeId") && employee.can_open,
   );
-
-  const updateParams = (values: Record<string, string | null>) => {
+  const parsedSection = employeeSectionSchema.safeParse(search.get("section"));
+  const updateParams = (
+    values: Record<string, string | null>,
+    replace = true,
+  ) => {
     const next = new URLSearchParams(search);
-    Object.entries(values).forEach(([key, value]) => {
-      if (value) next.set(key, value);
-      else next.delete(key);
-    });
-    setSearch(next, { replace: true });
+    next.delete("date");
+    Object.entries(values).forEach(([key, value]) =>
+      value ? next.set(key, value) : next.delete(key),
+    );
+    setSearch(next, { replace });
   };
+  const openEmployee = (id: string) =>
+    updateParams({ employeeId: id, section: "availability" }, false);
 
   return (
-    <section className="availability-page" aria-labelledby="availability-title">
+    <section
+      className="availability-page weekly-team-page"
+      aria-labelledby="availability-title"
+    >
       <header className="page-header">
-        <div>
-          <h1 id="availability-title">Availability</h1>
-          <p>
-            Review team availability, missing submissions, and schedule conflicts
-            for the selected week.
-          </p>
-        </div>
-        <div className="week-controls" aria-label="Availability week">
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="Previous week"
-            onClick={() => updateParams({ date: addDays(selectedDate, -7) })}
-          >
-            <ChevronLeft size={17} aria-hidden />
-          </button>
-          <input
-            aria-label="Availability date"
-            type="date"
-            value={selectedDate}
-            onChange={(event) => updateParams({ date: event.target.value })}
-          />
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="Next week"
-            onClick={() => updateParams({ date: addDays(selectedDate, 7) })}
-          >
-            <ChevronRight size={17} aria-hidden />
-          </button>
-        </div>
+        <h1 id="availability-title">Availability</h1>
       </header>
-
-      <div className="availability-toolbar">
+      <div className="weekly-team-toolbar">
         <label className="search-field">
           <Search size={16} aria-hidden />
           <input
             aria-label="Search employees"
             placeholder="Search employees"
             value={queryText}
-            onChange={(event) => updateParams({ q: event.target.value || null })}
-          />
-        </label>
-        <label className="form-field compact-field">
-          <span>Location</span>
-          <select
-            value={locationId}
             onChange={(event) =>
-              updateParams({
-                location: event.target.value === "all" ? null : event.target.value,
-              })
+              updateParams({ q: event.target.value || null })
             }
-          >
-            <option value="all">All locations</option>
-            {model?.locations.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.name}
-              </option>
-            ))}
-          </select>
+          />
         </label>
-      </div>
-
-      {model ? (
-        <div className="availability-summary-grid">
-          <AvailabilityMetric label="Employees" value={visibleEmployees.length} />
-          <AvailabilityMetric
-            label="Missing availability"
-            value={summaries.filter((summary) => !summary.hasAvailability).length}
-          />
-          <AvailabilityMetric
-            label="Schedule conflicts"
-            value={summaries.reduce(
-              (total, summary) => total + summary.conflicts.length,
-              0,
-            )}
-          />
+        <select
+          aria-label="Location"
+          value={locationId}
+          onChange={(event) =>
+            updateParams({
+              location:
+                event.target.value === "all" ? null : event.target.value,
+            })
+          }
+        >
+          <option value="all">All locations</option>
+          {model?.locations.map((location) => (
+            <option key={location.id} value={location.id}>
+              {location.name}
+            </option>
+          ))}
+        </select>
+        <div
+          className="weekly-team-filters"
+          role="group"
+          aria-label="Submission status"
+        >
+          {(
+            [
+              ["all", "All"],
+              ["submitted", "Submitted"],
+              ["missing", "Not submitted"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={submission === value}
+              onClick={() =>
+                updateParams({ submission: value === "all" ? null : value })
+              }
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      ) : null}
-
-      {query.isLoading ? (
-        <p className="settings-state">Loading availability...</p>
-      ) : null}
-      {query.error ? (
-        <p className="settings-state error" role="alert">
-          {query.error instanceof Error
-            ? query.error.message
-            : "Availability could not be loaded"}
-        </p>
-      ) : null}
-      {model && summaries.length === 0 ? (
+        {model && (
+          <span className="weekly-team-count" role="status">
+            {employees.length} employees
+          </span>
+        )}
+      </div>
+      {query.isPending && <p role="status">Loading availability...</p>}
+      {query.error && (
+        <div className="weekly-team-error" role="alert">
+          <span>
+            {query.error.message || "Team availability could not be loaded."}
+          </span>
+          <button type="button" onClick={() => void query.refetch()}>
+            <RotateCcw size={15} aria-hidden />
+            Retry
+          </button>
+        </div>
+      )}
+      {model && employees.length === 0 && (
         <div className="settings-empty">
           <CalendarCheck size={22} aria-hidden />
           <strong>No employees match this view</strong>
-          <p>Adjust search or location filters to review availability.</p>
         </div>
-      ) : null}
-      {model && summaries.length > 0 ? (
-        <div className="availability-board-list" aria-label="Team availability">
-          {summaries.map((summary) => (
-            <article className="availability-card" key={summary.employee.id}>
-              <div className="availability-person">
-                <div className="avatar" aria-hidden>
-                  {summary.employee.display_name.slice(0, 1)}
-                </div>
-                <div>
-                  <strong>{summary.employee.display_name}</strong>
-                  <span>{summary.employee.employee_code}</span>
-                </div>
-              </div>
-              <div className="availability-week-grid">
-                {summary.days.map((day) => (
-                  <div
-                    className="availability-day-cell"
-                    data-mode={day.mode}
-                    key={day.day}
-                    title={`${weekdayNames[day.day]}: ${day.label}`}
-                  >
-                    <span>{weekdays[day.day]}</span>
-                    <strong>{day.label}</strong>
-                    {day.detail ? <small>{day.detail}</small> : null}
-                  </div>
+      )}
+      {model && employees.length > 0 && (
+        <div
+          className="weekly-team-scroll"
+          role="region"
+          aria-label="Team availability"
+          tabIndex={0}
+        >
+          <table className="weekly-team-table">
+            <thead>
+              <tr>
+                <th scope="col">Employee</th>
+                {weekdays.map(([day, name]) => (
+                  <th key={day} scope="col">
+                    {name.slice(0, 3)}
+                  </th>
                 ))}
-              </div>
-              <div className="availability-card-footer">
-                {summary.hasAvailability ? (
-                  <span>{summary.restrictedDays} restricted days</span>
-                ) : (
-                  <span>Availability not submitted</span>
-                )}
-                {summary.conflicts.length > 0 ? (
-                  <span className="availability-warning">
-                    <AlertTriangle size={14} aria-hidden />
-                    {summary.conflicts.length} scheduled conflict
-                  </span>
-                ) : (
-                  <span>No scheduled conflicts</span>
-                )}
-              </div>
-            </article>
-          ))}
+              </tr>
+            </thead>
+            <tbody>
+              {employees.map((employee) => (
+                <tr key={employee.id}>
+                  <th scope="row">
+                    <button
+                      type="button"
+                      className="weekly-team-person"
+                      disabled={!employee.can_open}
+                      onClick={() => openEmployee(employee.id)}
+                    >
+                      <strong>{employee.display_name}</strong>
+                      <span>{employee.employee_code}</span>
+                      <small>
+                        {employee.submitted ? "Submitted" : "Not submitted"}
+                      </small>
+                    </button>
+                  </th>
+                  {weekdays.map(([day, name]) => {
+                    const rule = employee.preference.days.find(
+                      (item) => item.day === day,
+                    )!;
+                    const parts = dayLabels(rule, model);
+                    const unavailable =
+                      rule.all_day ||
+                      Boolean(rule.range) ||
+                      rule.shift_type_ids.length > 0;
+                    return (
+                      <td key={day} data-unavailable={unavailable}>
+                        <button
+                          type="button"
+                          className="weekly-team-day"
+                          disabled={!employee.can_open}
+                          aria-label={
+                            employee.display_name +
+                            " " +
+                            name +
+                            ": " +
+                            (parts.map((part) => part.label).join(", ") ||
+                              "Available")
+                          }
+                          onClick={() => openEmployee(employee.id)}
+                        >
+                          {parts.length ? (
+                            parts.map((part, index) => (
+                              <span key={index} title={part.detail}>
+                                {part.label}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="weekly-team-available" aria-hidden>
+                              &mdash;
+                            </span>
+                          )}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      ) : null}
+      )}
+      {selectedEmployee && (
+        <Suspense fallback={<p role="status">Loading employee...</p>}>
+          <EmployeeDrawer
+            key={workspaceId + ":" + selectedEmployee.id}
+            employeeId={selectedEmployee.id}
+            creating={false}
+            section={
+              parsedSection.success ? parsedSection.data : "availability"
+            }
+            onSectionChange={(section) => updateParams({ section })}
+            onClose={() => updateParams({ employeeId: null, section: null })}
+            onCreated={() => {}}
+          />
+        </Suspense>
+      )}
     </section>
   );
 }
 
-function AvailabilityMetric({
-  label,
-  value,
-}: {
-  readonly label: string;
-  readonly value: number;
-}) {
-  return (
-    <div className="availability-metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function summarizeEmployeeAvailability(
-  employee: ScheduleEmployee,
-  model: ScheduleReadModel,
-) {
-  const shifts = model.shifts.filter((shift) => shift.employee_id === employee.id);
-  const days = employee.availability
-    ? employee.availability.map((day) => {
-        const shiftsForDay = shifts.filter(
-          (shift) => dayOfWeek(shift.scheduled_date) === day.day,
-        );
-        return {
-          day: day.day,
-          mode: day.mode,
-          label: availabilityLabel(day),
-          detail:
-            day.mode === "windows"
-              ? day.windows
-                  .map((window) => `${window.start.slice(0, 5)}-${window.end.slice(0, 5)}`)
-                  .join(", ")
-              : shiftsForDay.length > 0
-                ? `${shiftsForDay.length} shift${shiftsForDay.length === 1 ? "" : "s"}`
-                : "",
-        };
-      })
-    : [0, 1, 2, 3, 4, 5, 6].map((day) => ({
-        day,
-        mode: "missing" as const,
-        label: "Missing",
-        detail: "",
-      }));
-  const conflicts = employee.availability
-    ? shifts.filter((shift) => shiftConflictsWithAvailability(shift, employee))
-    : [];
-  return {
-    employee,
-    days,
-    conflicts,
-    hasAvailability: Boolean(employee.availability),
-    restrictedDays: days.filter(
-      (day) => day.mode === "unavailable" || day.mode === "windows",
-    ).length,
-  };
-}
-
-function availabilityLabel(day: NonNullable<ScheduleEmployee["availability"]>[number]): string {
-  if (day.mode === "unrestricted") return "Any time";
-  if (day.mode === "unavailable") return "Unavailable";
-  return "Windows";
-}
-
-function shiftConflictsWithAvailability(
-  shift: ScheduleShift,
-  employee: ScheduleEmployee,
-): boolean {
-  const availability = employee.availability?.find(
-    (day) => day.day === dayOfWeek(shift.scheduled_date),
-  );
-  if (!availability) return true;
-  if (availability.mode === "unrestricted") return false;
-  if (availability.mode === "unavailable") return true;
-  return !availability.windows.some(
-    (window) =>
-      timeValue(shift.start_time) >= timeValue(window.start) &&
-      timeValue(shift.end_time) <= timeValue(window.end),
-  );
-}
-
-function timeValue(value: string): number {
-  const [hours = "0", minutes = "0"] = value.split(":");
-  return Number(hours) * 60 + Number(minutes);
-}
-
-function dayOfWeek(isoDate: string): number {
-  return new Date(`${isoDate}T12:00:00.000Z`).getUTCDay();
-}
-
-function addDays(isoDate: string, days: number): string {
-  const date = new Date(`${isoDate}T12:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
-function validDate(value: string | null): string | null {
-  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+function dayLabels(day: WeeklyPreferenceDay, model: WeeklyTeamRead) {
+  const range = (start: string, end: string) =>
+    formatTime(start, model.time_format) +
+    " - " +
+    formatTime(
+      end === "24:00" && model.time_format === "12h" ? "00:00" : end,
+      model.time_format,
+    );
+  if (day.all_day) return [{ label: "All day", detail: "Unavailable all day" }];
+  if (day.range)
+    return [
+      { label: range(day.range.start, day.range.end), detail: "Unavailable" },
+    ];
+  return day.shift_type_ids.map((id) => {
+    const type = model.shift_types.find((item) => item.id === id);
+    return {
+      label: type?.name ?? "Unavailable shift type",
+      detail: type
+        ? (type.start_time && type.end_time
+            ? range(type.start_time, type.end_time)
+            : "Default hours unavailable") +
+          (type.archived ? " (archived)" : "")
+        : "Shift type details unavailable",
+    };
+  });
 }

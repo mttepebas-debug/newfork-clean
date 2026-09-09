@@ -57,6 +57,20 @@ describe("scheduled schedule export cron", () => {
         "America/Los_Angeles",
       ),
     ).toBe("2026-08-17");
+    expect(
+      weekStartForTimezone(
+        new Date("2026-08-17T06:30:00.000Z"),
+        "America/Los_Angeles",
+        "sunday",
+      ),
+    ).toBe("2026-08-16");
+    expect(
+      weekStartForTimezone(
+        new Date("2026-03-08T10:30:00.000Z"),
+        "America/Los_Angeles",
+        "sunday",
+      ),
+    ).toBe("2026-03-08");
   });
 
   it("renders the current published schedule and records success when any recipient succeeds", async () => {
@@ -166,6 +180,35 @@ describe("scheduled schedule export cron", () => {
       }),
     );
   });
+
+  it("skips due exports when execution-time tenant revalidation fails", async () => {
+    const service = scheduleServiceMock([scheduleCandidate()]);
+    service.revalidateScheduledExportCandidate.mockResolvedValueOnce(false);
+    const delivery = { send: vi.fn() };
+
+    const result = await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery,
+    });
+
+    expect(result).toEqual({
+      checked: 1,
+      due: 1,
+      sent: 0,
+      failed: 0,
+      skipped: 1,
+    });
+    expect(service.revalidateScheduledExportCandidate).toHaveBeenCalledWith({
+      workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      requesterUserId: "00000000-0000-4000-8000-000000000001",
+      locationIds: ["11000000-0000-4000-8000-000000000001"],
+      now: new Date("2026-08-17T15:00:00.000Z"),
+    });
+    expect(service.previewExport).not.toHaveBeenCalled();
+    expect(delivery.send).not.toHaveBeenCalled();
+    expect(service.recordScheduledExportFailure).not.toHaveBeenCalled();
+  });
 });
 
 function scheduleServiceMock(candidates: ScheduledExportCronCandidate[]) {
@@ -173,11 +216,13 @@ function scheduleServiceMock(candidates: ScheduledExportCronCandidate[]) {
     listScheduledExportCronCandidates: vi.fn(async () => ({
       schedules: candidates,
     })),
+    revalidateScheduledExportCandidate: vi.fn(async () => true),
     previewExport: vi.fn(async () => preview),
     recordScheduledExportSuccess: vi.fn(async () => schedule),
     recordScheduledExportFailure: vi.fn(async () => schedule),
   } as unknown as ScheduleReadService & {
     listScheduledExportCronCandidates: ReturnType<typeof vi.fn>;
+    revalidateScheduledExportCandidate: ReturnType<typeof vi.fn>;
     previewExport: ReturnType<typeof vi.fn>;
     recordScheduledExportSuccess: ReturnType<typeof vi.fn>;
     recordScheduledExportFailure: ReturnType<typeof vi.fn>;
@@ -201,6 +246,7 @@ function scheduleCandidate(
     day_of_week: 1,
     send_hour: 8,
     timezone: "America/Los_Angeles",
+    week_start_day: "monday",
     last_sent_at: null,
     consecutive_failures: 0,
     ...overrides,

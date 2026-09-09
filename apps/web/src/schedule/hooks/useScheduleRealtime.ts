@@ -85,7 +85,7 @@ export function useScheduleRealtime({
 
         if (payload.targets.includes("employee_my_schedule")) {
           void queryClient.invalidateQueries({
-            queryKey: ["employee-schedule", workspaceId],
+            queryKey: ["employee-hub", workspaceId],
           });
         }
       })

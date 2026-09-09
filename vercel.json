@@ -1,10 +1,32 @@
 {
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @newfork/web build",
+  "buildCommand": "pnpm --filter @newfork/api build:vercel && pnpm --filter @newfork/web build",
   "outputDirectory": "apps/web/dist",
+  "crons": [
+    {
+      "path": "/api/internal/cron/notification-outbox",
+      "schedule": "* * * * *"
+    }
+  ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/:path*",
+      "destination": "/api?__path=/:path*"
+    },
+    {
+      "source": "/v1/:path*",
+      "destination": "/api?__path=/v1/:path*"
+    },
+    {
+      "source": "/schedule/:path*",
+      "destination": "/api?__path=/schedule/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "/api?__path=/health"
+    },
+    {
+      "source": "/((?!api/|v1/|schedule/|health).*)",
       "destination": "/index.html"
     }
   ]

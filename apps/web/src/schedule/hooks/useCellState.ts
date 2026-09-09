@@ -33,15 +33,15 @@ export function orderScheduleCellShifts(
   ghostShifts: readonly ScheduleShift[],
   shiftTypes: ScheduleReadModel["shift_types"],
 ): ScheduleShift[] {
-  const shiftTypeSortOrder = new Map(
-    shiftTypes.map((shiftType) => [shiftType.id, shiftType.sort_order]),
+  const shiftTypesById = new Map(
+    shiftTypes.map((shiftType) => [shiftType.id, shiftType]),
   );
   return [
     ...realShifts.map((shift) => ({ kind: "real" as const, shift })),
     ...ghostShifts.map((shift) => ({ kind: "ghost" as const, shift })),
   ]
     .sort((left, right) =>
-      compareDisplayShiftItems(left, right, shiftTypeSortOrder),
+      compareDisplayShiftItems(left, right, shiftTypesById),
     )
     .map((item) => item.shift);
 }
@@ -49,6 +49,14 @@ export function orderScheduleCellShifts(
 export function buildScheduleCellState(model: ScheduleReadModel): ScheduleCellStateMap {
   const cells = new Map<string, MutableScheduleCellState>();
   for (const employee of model.employees) {
+    if (employee.weekly_availability !== undefined) {
+      for (const location of employee.weekly_availability) {
+        for (const day of location.days) {
+          if (day.has_unavailable) ensureCell(cells, scheduleCellStateKey(location.location_id, day.date, employee.id)).hasUnavailability = true;
+        }
+      }
+      continue;
+    }
     for (const availability of employee.availability ?? []) {
       if (availability.mode === "unrestricted") continue;
       for (const date of weekDatesForDay(model.week_start, availability.day)) {
@@ -313,23 +321,61 @@ function timeMinutes(value: string): number {
 function compareDisplayShiftItems(
   left: DisplayShiftItem,
   right: DisplayShiftItem,
-  shiftTypeSortOrder: ReadonlyMap<string, number>,
+  shiftTypesById: ReadonlyMap<
+    string,
+    ScheduleReadModel["shift_types"][number]
+  >,
 ): number {
-  const leftShiftTypeSort = shiftTypeSort(left.shift, shiftTypeSortOrder);
-  const rightShiftTypeSort = shiftTypeSort(right.shift, shiftTypeSortOrder);
+  const leftScheduleTime = shiftSortTime(left.shift, shiftTypesById);
+  const rightScheduleTime = shiftSortTime(right.shift, shiftTypesById);
+  const byStart = leftScheduleTime.startMinutes - rightScheduleTime.startMinutes;
+  if (byStart !== 0) return byStart;
+  if (leftScheduleTime.sourceRank !== rightScheduleTime.sourceRank) {
+    return leftScheduleTime.sourceRank - rightScheduleTime.sourceRank;
+  }
+  if (left.kind !== right.kind) return left.kind === "real" ? -1 : 1;
+  const leftShiftTypeSort = shiftTypeSort(left.shift, shiftTypesById);
+  const rightShiftTypeSort = shiftTypeSort(right.shift, shiftTypesById);
   if (leftShiftTypeSort !== rightShiftTypeSort) {
     return leftShiftTypeSort - rightShiftTypeSort;
   }
-  const byStart = timeMinutes(left.shift.start_time) - timeMinutes(right.shift.start_time);
-  if (byStart !== 0) return byStart;
-  if (left.kind !== right.kind) return left.kind === "real" ? -1 : 1;
   return left.shift.id.localeCompare(right.shift.id);
 }
 
 function shiftTypeSort(
   shift: ScheduleShift,
-  shiftTypeSortOrder: ReadonlyMap<string, number>,
+  shiftTypesById: ReadonlyMap<
+    string,
+    ScheduleReadModel["shift_types"][number]
+  >,
 ): number {
   if (!shift.shift_type_id) return Number.POSITIVE_INFINITY;
-  return shiftTypeSortOrder.get(shift.shift_type_id) ?? Number.POSITIVE_INFINITY;
+  return shiftTypesById.get(shift.shift_type_id)?.sort_order ?? Number.POSITIVE_INFINITY;
+}
+
+function shiftSortTime(
+  shift: ScheduleShift,
+  shiftTypesById: ReadonlyMap<
+    string,
+    ScheduleReadModel["shift_types"][number]
+  >,
+): { readonly sourceRank: number; readonly startMinutes: number } {
+  if (!shift.hide_time_on_badge) {
+    return { sourceRank: 0, startMinutes: timeMinutes(shift.start_time) };
+  }
+
+  const shiftType = shift.shift_type_id
+    ? shiftTypesById.get(shift.shift_type_id)
+    : null;
+  if (shiftType?.default_start_time) {
+    return {
+      sourceRank: 1,
+      startMinutes: timeMinutes(shiftType.default_start_time),
+    };
+  }
+
+  return {
+    sourceRank: 2,
+    startMinutes: Number.POSITIVE_INFINITY,
+  };
 }

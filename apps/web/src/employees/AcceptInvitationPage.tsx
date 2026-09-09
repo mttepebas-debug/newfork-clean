@@ -14,11 +14,12 @@ import {
 } from "./employee-data";
 
 export default function AcceptInvitationPage() {
-  const { authenticated, ready } = useAuth();
+  const { authenticated, ready, signOut } = useAuth();
   const location = useLocation();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const token = params.get("token") ?? "";
+  const invitePath = `/invite/accept${location.search}`;
   const preview = useQuery({
     queryKey: ["invitation-preview", token],
     queryFn: () => previewEmployeeInvitation(token),
@@ -35,10 +36,16 @@ export default function AcceptInvitationPage() {
       <Navigate
         to="/sign-in"
         replace
-        state={{ from: `/invite/accept${location.search}` }}
+        state={{ from: invitePath }}
       />
     );
   }
+
+  const acceptanceError =
+    acceptance.error instanceof Error ? acceptance.error.message : "";
+  const wrongAccount =
+    acceptanceError ===
+    "invitation email does not match authenticated account";
 
   return (
     <main className="sign-in-page">
@@ -75,20 +82,41 @@ export default function AcceptInvitationPage() {
                   : "Invitation unavailable"}
               </p>
             ) : null}
-            {acceptance.error ? (
+            {wrongAccount ? (
+              <div className="form-error" role="alert">
+                <p>
+                  This invitation is for{" "}
+                  {preview.data?.emailHint ?? "the invited email address"}.
+                </p>
+                <Button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    void signOut().then(() =>
+                      navigate("/sign-in", {
+                        replace: true,
+                        state: { from: invitePath },
+                      }),
+                    );
+                  }}
+                >
+                  Switch account
+                </Button>
+              </div>
+            ) : acceptance.error ? (
               <p className="form-error" role="alert">
-                {acceptance.error instanceof Error
-                  ? acceptance.error.message
-                  : "Invitation acceptance failed"}
+                {acceptanceError || "Invitation acceptance failed"}
               </p>
             ) : null}
-            <Button
-              type="button"
-              disabled={token.length < 32 || acceptance.isPending}
-              onClick={() => acceptance.mutate()}
-            >
-              {acceptance.isPending ? "Accepting" : "Accept invitation"}
-            </Button>
+            {wrongAccount ? null : (
+              <Button
+                type="button"
+                disabled={token.length < 32 || acceptance.isPending}
+                onClick={() => acceptance.mutate()}
+              >
+                {acceptance.isPending ? "Accepting" : "Accept invitation"}
+              </Button>
+            )}
           </>
         )}
       </section>

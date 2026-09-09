@@ -17,12 +17,12 @@ describe("schedule badge accessibility", () => {
       formatScheduleBadgeAriaLabel({
         title: "Lunch-Server",
         labelText: "Trainer",
-        timeText: "10a to 2p",
+        timeText: "10:00 AM - 2:00 PM",
         locationText: "also scheduled at Patio",
         warningText: "conflicts with another shift",
       }),
     ).toBe(
-      "Lunch-Server, Trainer, 10a to 2p, also scheduled at Patio, conflicts with another shift",
+      "Lunch-Server, Trainer, 10:00 AM - 2:00 PM, also scheduled at Patio, conflicts with another shift",
     );
   });
 });

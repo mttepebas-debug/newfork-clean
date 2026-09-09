@@ -1,14 +1,26 @@
 import {
+  accountPendingInvitationSchema,
   employeeDetailSchema,
   employeeInputSchema,
+  employeeCreateCommandSchema,
+  employeeCreateResultSchema,
+  type EmployeeCreateCommand,
+  type EmployeeCreateResult,
+  employeeRoleUpdateInputSchema,
   employeeSummarySchema,
+  type AccountPendingInvitation,
   type EmployeeDetail,
   type EmployeeInput,
   type EmployeeSummary,
   type WorkspaceRole,
 } from "@newfork/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseClient } from "../lib/supabase";
+import {
+  getApiAccessToken,
+  getTabWorkspaceId,
+  newforkApiUrl,
+  supabaseClient,
+} from "../lib/supabase";
 
 export interface EmployeeOption {
   readonly id: string;
@@ -21,6 +33,7 @@ export interface EmployeeReferenceData {
   readonly locations: readonly EmployeeOption[];
   readonly jobs: readonly EmployeeOption[];
   readonly inviteRoles: readonly InviteRoleOption[];
+  readonly inviteRolesError?: boolean;
 }
 
 export interface InviteRoleOption {
@@ -68,34 +81,75 @@ function check(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
 }
 
+async function request(
+  workspaceId: string,
+  path: string,
+  init: RequestInit = {},
+) {
+  const storage = client();
+  const token = await getApiAccessToken(storage);
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const tabWorkspaceId = getTabWorkspaceId();
+  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
+  const response = await fetch(
+    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees${path}`,
+    {
+      ...init,
+      headers,
+    },
+  );
+  const body = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok)
+    throw Object.assign(
+      new Error(
+        typeof body === "object" && body && "error" in body
+          ? String(body.error)
+          : "Employee operation failed",
+      ),
+      { status: response.status },
+    );
+  return body;
+}
+
 export async function listEmployees(
   workspaceId: string,
   archived: boolean,
   search: string,
   status: string,
 ): Promise<EmployeeSummary[]> {
-  const { data, error } = await client().rpc("list_employees", {
-    target_workspace_id: workspaceId,
-    include_archived: archived,
-    search_text: search,
-    status_filter: archived ? "all" : status,
-    page_limit: 100,
-    page_offset: 0,
+  const query = new URLSearchParams({
+    archived: String(archived),
+    search,
+    status,
   });
-  check(error);
-  return employeeSummarySchema.array().parse(data ?? []);
+  return employeeSummarySchema
+    .array()
+    .parse(await request(workspaceId, `?${query.toString()}`));
 }
 
 export async function getEmployeeDetail(
   workspaceId: string,
   employeeId: string,
 ): Promise<EmployeeDetail> {
-  const { data, error } = await client().rpc("get_employee_detail", {
-    target_workspace_id: workspaceId,
-    target_employee_id: employeeId,
-  });
-  check(error);
-  return employeeDetailSchema.parse(data);
+  return employeeDetailSchema.parse(
+    await request(workspaceId, `/${employeeId}`),
+  );
+}
+
+export async function createEmployee(
+  workspaceId: string,
+  command: EmployeeCreateCommand,
+): Promise<EmployeeCreateResult> {
+  return employeeCreateResultSchema.parse(
+    await request(workspaceId, "/create", {
+      method: "POST",
+      body: JSON.stringify(employeeCreateCommandSchema.parse(command)),
+    }),
+  );
 }
 
 export async function saveEmployee(
@@ -104,23 +158,24 @@ export async function saveEmployee(
   employeeId?: string,
 ): Promise<string> {
   const value = employeeInputSchema.parse(input);
-  const { data, error } = await client().rpc("save_employee", {
-    target_workspace_id: workspaceId,
-    target_employee_id: employeeId ?? null,
-    employee_first_name: value.first_name,
-    employee_last_name: value.last_name,
-    employee_preferred_name: value.preferred_name,
-    employee_invitation_email: value.invitation_email,
-    employee_start_date: value.start_date || null,
-    employee_internal_note: value.internal_note,
-    location_ids: value.location_ids,
-    primary_location_id: value.primary_location_id,
-    job_ids: value.job_ids,
-    primary_job_id: value.primary_job_id,
-    expected_revision: value.expected_revision,
+  const body = (await request(workspaceId, employeeId ? `/${employeeId}` : "", {
+    method: employeeId ? "PUT" : "POST",
+    body: JSON.stringify(value),
+  })) as { id?: unknown };
+  if (!body.id) throw new Error("Employee save result is unavailable");
+  return String(body.id);
+}
+
+export async function updateEmployeeRole(
+  workspaceId: string,
+  employeeId: string,
+  roleId: string,
+): Promise<void> {
+  const value = employeeRoleUpdateInputSchema.parse({ role_id: roleId });
+  await request(workspaceId, `/${employeeId}/role`, {
+    method: "PATCH",
+    body: JSON.stringify(value),
   });
-  check(error);
-  return String(data);
 }
 
 export async function setEmployeeArchived(
@@ -129,13 +184,10 @@ export async function setEmployeeArchived(
   archived: boolean,
   restoreAccess = false,
 ): Promise<void> {
-  const { error } = await client().rpc("set_employee_archived", {
-    target_workspace_id: workspaceId,
-    target_employee_id: employeeId,
-    should_archive: archived,
-    restore_access: restoreAccess,
+  await request(workspaceId, `/${employeeId}/archive`, {
+    method: "PATCH",
+    body: JSON.stringify({ archived, restoreAccess }),
   });
-  check(error);
 }
 
 export async function terminateEmployee(
@@ -143,23 +195,16 @@ export async function terminateEmployee(
   employeeId: string,
   input: EmployeeTerminationInput,
 ): Promise<EmployeeTerminationResult> {
-  const { data, error } = await client().rpc("terminate_employee", {
-    target_workspace_id: workspaceId,
-    target_employee_id: employeeId,
-    effective_local: input.effectiveLocal,
-    worksite_timezone: input.worksiteTimezone,
-    time_entry_action: input.timeEntryAction,
-    termination_reason: input.reason,
-    target_idempotency_key: input.idempotencyKey,
-  });
-  check(error);
-  const value = data as Record<string, unknown> | null;
+  const value = (await request(workspaceId, `/${employeeId}/termination`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  })) as Record<string, unknown> | null;
   if (!value) throw new Error("Termination result is unavailable");
   return {
-    terminationId: String(value.termination_id),
-    effectiveAt: String(value.effective_at),
-    releasedShiftCount: Number(value.released_shift_count ?? 0),
-    idempotentReplay: Boolean(value.idempotent_replay),
+    terminationId: String(value.terminationId),
+    effectiveAt: String(value.effectiveAt),
+    releasedShiftCount: Number(value.releasedShiftCount ?? 0),
+    idempotentReplay: Boolean(value.idempotentReplay),
   };
 }
 
@@ -189,19 +234,19 @@ export async function loadEmployeeReferenceData(
   ]);
   check(locations.error);
   check(jobs.error);
-  check(roles.error);
   const map = (row: { id: unknown; name: unknown; archived_at: unknown }) => ({
     id: String(row.id),
     name: String(row.name),
     archived: Boolean(row.archived_at),
   });
   return {
+    ...(roles.error ? { inviteRolesError: true } : {}),
     locations: (locations.data ?? []).map((row) => ({
       ...map(row),
       timezone: String(row.timezone),
     })),
     jobs: (jobs.data ?? []).map(map),
-    inviteRoles: (roles.data ?? []).map((role) => ({
+    inviteRoles: (roles.error ? [] : (roles.data ?? [])).map((role) => ({
       id: String(role.id),
       name: String(role.name),
       systemKey: role.system_key
@@ -218,18 +263,16 @@ export async function prepareEmployeeInvitation(
   email: string,
   roleId?: string | null,
 ): Promise<PreparedInvitation> {
-  const session = await client().auth.getSession();
-  const token = session.data.session?.access_token;
-  if (!token)
-    throw new Error("A current session is required to invite an employee");
+  const token = await getApiAccessToken(client());
+  const headers = new Headers({ Authorization: `Bearer ${token}` });
+  headers.set("Content-Type", "application/json");
+  const tabWorkspaceId = getTabWorkspaceId();
+  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`,
+    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({ email, roleId: roleId ?? null }),
     },
   );
@@ -240,17 +283,37 @@ export async function prepareEmployeeInvitation(
   return body;
 }
 
+export async function retryEmployeeInvitation(
+  workspaceId: string,
+  employeeId: string,
+): Promise<PreparedInvitation> {
+  const token = await getApiAccessToken(client());
+  const headers = new Headers({ Authorization: `Bearer ${token}` });
+  const tabWorkspaceId = getTabWorkspaceId();
+  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
+  const response = await fetch(
+    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations/retry`,
+    { method: "POST", headers },
+  );
+  const body = (await response.json()) as PreparedInvitation & {
+    error?: string;
+  };
+  if (!response.ok)
+    throw new Error(body.error ?? "Invitation delivery retry failed");
+  return body;
+}
+
 export async function revokeEmployeeInvitation(
   workspaceId: string,
   employeeId: string,
 ): Promise<void> {
-  const session = await client().auth.getSession();
-  const token = session.data.session?.access_token;
-  if (!token)
-    throw new Error("A current session is required to revoke an invitation");
+  const token = await getApiAccessToken(client());
+  const headers = new Headers({ Authorization: `Bearer ${token}` });
+  const tabWorkspaceId = getTabWorkspaceId();
+  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`,
-    { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`,
+    { method: "DELETE", headers },
   );
   if (!response.ok) {
     const body = (await response.json()) as { error?: string };
@@ -258,22 +321,119 @@ export async function revokeEmployeeInvitation(
   }
 }
 
+export interface EmployeeAvatarStatus {
+  readonly present: boolean;
+  readonly url: string | null;
+}
+
+export async function getEmployeeAvatar(
+  workspaceId: string,
+  employeeId: string,
+): Promise<EmployeeAvatarStatus> {
+  const token = await getApiAccessToken(client());
+  const headers = new Headers({ Authorization: `Bearer ${token}` });
+  const tabWorkspaceId = getTabWorkspaceId();
+  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
+  const response = await fetch(
+    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/avatar`,
+    { headers },
+  );
+  const body = (await response.json()) as EmployeeAvatarStatus & {
+    error?: string;
+  };
+  if (!response.ok)
+    throw new Error(body.error ?? "Employee profile photo could not be loaded");
+  return { present: Boolean(body.present), url: body.url ?? null };
+}
+
+export async function removeEmployeeAvatar(
+  workspaceId: string,
+  employeeId: string,
+): Promise<void> {
+  const token = await getApiAccessToken(client());
+  const headers = new Headers({ Authorization: `Bearer ${token}` });
+  const tabWorkspaceId = getTabWorkspaceId();
+  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
+  const response = await fetch(
+    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/avatar`,
+    { method: "DELETE", headers },
+  );
+  if (!response.ok) {
+    const body = (await response.json()) as { error?: string };
+    throw new Error(
+      body.error ?? "Employee profile photo could not be removed",
+    );
+  }
+}
+
+export async function removeEmployeeAccess(
+  workspaceId: string,
+  employeeId: string,
+): Promise<void> {
+  const token = await getApiAccessToken(client());
+  const headers = new Headers({ Authorization: `Bearer ${token}` });
+  const tabWorkspaceId = getTabWorkspaceId();
+  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
+  const response = await fetch(
+    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/access`,
+    { method: "DELETE", headers },
+  );
+  if (!response.ok) {
+    const body = (await response.json()) as { error?: string };
+    throw new Error(
+      body.error ?? "Employee workspace access could not be removed",
+    );
+  }
+}
+
 export async function acceptEmployeeInvitation(
   tokenValue: string,
 ): Promise<string> {
-  const session = await client().auth.getSession();
-  const token = session.data.session?.access_token;
-  if (!token)
-    throw new Error("Sign in with the invited email before accepting");
+  const token = await getApiAccessToken(client());
+  const response = await fetch(`${newforkApiUrl}/v1/invitations/accept`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ token: tokenValue }),
+  });
+  const body = (await response.json()) as {
+    workspaceId?: string;
+    error?: string;
+  };
+  if (!response.ok || !body.workspaceId)
+    throw new Error(body.error ?? "Invitation acceptance failed");
+  return body.workspaceId;
+}
+
+export async function listPendingEmployeeInvitations(): Promise<
+  AccountPendingInvitation[]
+> {
+  const token = await getApiAccessToken(client());
+  const response = await fetch(`${newforkApiUrl}/v1/invitations/pending`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = (await response.json()) as unknown;
+  if (!response.ok) {
+    throw new Error(
+      typeof body === "object" && body && "error" in body
+        ? String(body.error)
+        : "Pending invitations could not be loaded",
+    );
+  }
+  return accountPendingInvitationSchema.array().parse(body);
+}
+
+export async function acceptPendingEmployeeInvitation(
+  invitationId: string,
+): Promise<string> {
+  const token = await getApiAccessToken(client());
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/v1/invitations/accept`,
+    `${newforkApiUrl}/v1/invitations/${invitationId}/accept`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token: tokenValue }),
+      headers: { Authorization: `Bearer ${token}` },
     },
   );
   const body = (await response.json()) as {
@@ -285,11 +445,28 @@ export async function acceptEmployeeInvitation(
   return body.workspaceId;
 }
 
+export async function declinePendingEmployeeInvitation(
+  invitationId: string,
+): Promise<void> {
+  const token = await getApiAccessToken(client());
+  const response = await fetch(
+    `${newforkApiUrl}/v1/invitations/${invitationId}/decline`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  if (!response.ok) {
+    const body = (await response.json()) as { error?: string };
+    throw new Error(body.error ?? "Invitation decline failed");
+  }
+}
+
 export async function previewEmployeeInvitation(
   tokenValue: string,
 ): Promise<InvitationPreview> {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/v1/invitations/preview?token=${encodeURIComponent(tokenValue)}`,
+    `${newforkApiUrl}/v1/invitations/preview?token=${encodeURIComponent(tokenValue)}`,
   );
   const body = (await response.json()) as InvitationPreview & {
     error?: string;

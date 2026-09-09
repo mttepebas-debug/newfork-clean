@@ -1,12 +1,16 @@
 import type { ScheduleShift } from "@newfork/shared/schedule";
 import { toInterval } from "@newfork/scheduling-shared";
+import { getShiftTimeBasis } from "@newfork/shared";
 
 export interface ScheduleHourTotalValue {
   readonly visibleMinutes: number;
   readonly totalMinutes: number;
+  readonly containsEstimates?: boolean;
+  readonly unknownShiftCount?: number;
 }
 
 export function shiftMinutes(shift: ScheduleShift): number {
+  if (["unresolved", "legacy_unverified"].includes(getShiftTimeBasis(shift))) return 0;
   const interval = toInterval(
     shift.start_time,
     shift.end_time,
@@ -39,7 +43,12 @@ export function buildScheduleHourTotalValue(
     (sum, shift) => sum + shiftMinutes(shift),
     0,
   );
+  const included = totalShifts.length ? totalShifts : visibleShifts;
+  const containsEstimates = included.some((shift) => getShiftTimeBasis(shift) === "type_default");
+  const unknownShiftCount = included.filter((shift) => ["unresolved", "legacy_unverified"].includes(getShiftTimeBasis(shift))).length;
   return {
+    ...(containsEstimates ? { containsEstimates } : {}),
+    ...(unknownShiftCount ? { unknownShiftCount } : {}),
     visibleMinutes,
     totalMinutes:
       totalMinutes === visibleMinutes || totalMinutes <= 0
@@ -49,8 +58,10 @@ export function buildScheduleHourTotalValue(
 }
 
 export function formatHourTotalValue(total: ScheduleHourTotalValue): string {
+  const prefix = total.containsEstimates ? "~" : "";
+  const suffix = total.unknownShiftCount ? ` · ${total.unknownShiftCount} need hours` : "";
   if (total.totalMinutes !== total.visibleMinutes) {
-    return `${formatHourTotal(total.visibleMinutes)} / ${formatHourTotal(total.totalMinutes)}`;
+    return `${prefix}${formatHourTotal(total.visibleMinutes)} / ${formatHourTotal(total.totalMinutes)}${suffix}`;
   }
-  return formatHourTotal(total.visibleMinutes);
+  return `${prefix}${formatHourTotal(total.visibleMinutes)}${suffix}`;
 }

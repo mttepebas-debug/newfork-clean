@@ -58,5 +58,10 @@ describe("ScheduleFillerRow", () => {
     );
 
     expect(screen.getAllByRole("gridcell", { hidden: true })).toHaveLength(3);
+    expect(
+      document
+        .querySelector("[data-schedule-filler-total-cell='true']")
+        ?.getAttribute("data-schedule-total-column-cell"),
+    ).toBe("true");
   });
 });

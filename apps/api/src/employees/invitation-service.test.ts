@@ -1,0 +1,267 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { createEmployeeInvitationService } from "./invitation-service";
+
+const mocks = vi.hoisted(() => {
+  const rpc = vi.fn();
+  const createClient = vi.fn(() => ({ rpc }));
+  return { createClient, rpc };
+});
+
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: mocks.createClient,
+}));
+
+const actorUserId = "10000000-0000-4000-8000-000000000001";
+const workspaceId = "20000000-0000-4000-8000-000000000001";
+const employeeId = "30000000-0000-4000-8000-000000000001";
+const invitationId = "40000000-0000-4000-8000-000000000001";
+const roleId = "50000000-0000-4000-8000-000000000001";
+
+beforeEach(() => {
+  mocks.rpc.mockReset();
+  mocks.createClient.mockClear();
+  vi.restoreAllMocks();
+});
+
+describe("createEmployeeInvitationService", () => {
+  it("sends the invitation email through Resend and marks delivery sent", async () => {
+    mocks.rpc
+      .mockResolvedValueOnce({ data: invitationId, error: null })
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    const fetch = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+
+    const service = createEmployeeInvitationService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+      appUrl: "https://app.example.test",
+      resendApiKey: "resend-key",
+      emailFrom: "Newfork <invite@example.test>",
+      production: true,
+    });
+
+    await expect(
+      service.prepare({
+        actorUserId,
+        workspaceId,
+        employeeId,
+        email: "Employee@Example.Test",
+        roleId,
+      }),
+    ).resolves.toEqual({
+      id: invitationId,
+      expiresAt: expect.any(String),
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.resend.com/emails",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer resend-key",
+          "Content-Type": "application/json",
+          "Idempotency-Key": `employee-invite/${invitationId}`,
+        }),
+        body: expect.any(String),
+      }),
+    );
+    const [, requestInit] = fetch.mock.calls[0] as unknown as [
+      string,
+      { body: string },
+    ];
+    expect(JSON.parse(requestInit.body)).toMatchObject({
+      from: "Newfork <invite@example.test>",
+      to: ["Employee@Example.Test"],
+      subject: "Join your Newfork workspace",
+    });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      1,
+      "prepare_employee_invitation_service",
+      expect.objectContaining({
+        employee_email: "employee@example.test",
+      }),
+    );
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      2,
+      "store_employee_invitation_delivery_secret_service",
+      expect.objectContaining({
+        actor_user_id: actorUserId,
+        target_workspace_id: workspaceId,
+        target_invitation_id: invitationId,
+        invitation_token: expect.any(String),
+      }),
+    );
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      3,
+      "mark_employee_invitation_delivery_service",
+      {
+        actor_user_id: actorUserId,
+        target_workspace_id: workspaceId,
+        target_invitation_id: invitationId,
+        delivery_result: "sent",
+        delivery_failure_message: null,
+      },
+    );
+  });
+
+  it("marks delivery failure without revoking the prepared invitation", async () => {
+    mocks.rpc
+      .mockResolvedValueOnce({ data: invitationId, error: null })
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: false, status: 503 })),
+    );
+
+    const service = createEmployeeInvitationService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+      appUrl: "https://app.example.test",
+      resendApiKey: "resend-key",
+      production: true,
+    });
+
+    await expect(
+      service.prepare({
+        actorUserId,
+        workspaceId,
+        employeeId,
+        email: "employee@example.test",
+        roleId,
+      }),
+    ).rejects.toThrow("Invitation delivery failed (503)");
+
+    expect(mocks.rpc).toHaveBeenCalledTimes(3);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      1,
+      "prepare_employee_invitation_service",
+      expect.objectContaining({
+        actor_user_id: actorUserId,
+        target_workspace_id: workspaceId,
+        target_employee_id: employeeId,
+        employee_email: "employee@example.test",
+        target_role_id: roleId,
+      }),
+    );
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      2,
+      "store_employee_invitation_delivery_secret_service",
+      expect.objectContaining({
+        target_invitation_id: invitationId,
+      }),
+    );
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      3,
+      "mark_employee_invitation_delivery_service",
+      {
+        actor_user_id: actorUserId,
+        target_workspace_id: workspaceId,
+        target_invitation_id: invitationId,
+        delivery_result: "failed",
+        delivery_failure_message: "Invitation delivery failed (503)",
+      },
+    );
+    expect(mocks.rpc).not.toHaveBeenCalledWith(
+      "revoke_employee_invitation_service",
+      expect.anything(),
+    );
+  });
+
+  it("marks a development invitation as sent after preparing its local link", async () => {
+    mocks.rpc
+      .mockResolvedValueOnce({ data: invitationId, error: null })
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+
+    const service = createEmployeeInvitationService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+      appUrl: "http://127.0.0.1:5555",
+      production: false,
+    });
+
+    const result = await service.prepare({
+      actorUserId,
+      workspaceId,
+      employeeId,
+      email: "employee@example.test",
+      roleId: null,
+    });
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ id: invitationId });
+    expect(result.developmentUrl).toContain("/invite/accept?token=");
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      3,
+      "mark_employee_invitation_delivery_service",
+      {
+        actor_user_id: actorUserId,
+        target_workspace_id: workspaceId,
+        target_invitation_id: invitationId,
+        delivery_result: "sent",
+        delivery_failure_message: null,
+      },
+    );
+  });
+
+  it("retries a failed delivery with the original invitation link", async () => {
+    const originalToken = "a".repeat(64);
+    mocks.rpc
+      .mockResolvedValueOnce({
+        data: {
+          id: invitationId,
+          email: "employee@example.test",
+          token: originalToken,
+          expires_at: "2026-09-16T12:00:00.000Z",
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({ data: null, error: null });
+    const fetch = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+
+    const service = createEmployeeInvitationService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+      appUrl: "https://app.example.test",
+      resendApiKey: "resend-key",
+      production: true,
+    });
+
+    await expect(
+      service.retry({ actorUserId, workspaceId, employeeId }),
+    ).resolves.toEqual({
+      id: invitationId,
+      expiresAt: "2026-09-16T12:00:00.000Z",
+    });
+    const [, requestInit] = fetch.mock.calls[0] as unknown as [
+      string,
+      { body: string; headers: Record<string, string> },
+    ];
+    expect(requestInit.headers).toMatchObject({
+      "Idempotency-Key": `employee-invite/${invitationId}`,
+    });
+    expect(JSON.parse(requestInit.body).html).toContain(
+      `/invite/accept?token=${originalToken}`,
+    );
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      1,
+      "load_employee_invitation_retry_service",
+      {
+        actor_user_id: actorUserId,
+        target_workspace_id: workspaceId,
+        target_employee_id: employeeId,
+      },
+    );
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      2,
+      "mark_employee_invitation_delivery_service",
+      expect.objectContaining({ delivery_result: "sent" }),
+    );
+  });
+});

@@ -3,35 +3,52 @@ import {
   employeeSectionSchema,
   type EmployeeDetail,
   type EmployeeInput,
+  type EmployeeCreateCommand,
+  type EmployeeCreateResult,
   type EmployeeOnboardingManager,
   type EmployeeOnboardingRequirement,
   type EmployeeSection,
+  type WorkspaceRole,
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   Archive,
+  ArrowLeft,
+  ArrowRight,
   BriefcaseBusiness,
   CalendarClock,
+  CheckCircle2,
+  Clock3,
   FileText,
   History,
+  ImageOff,
   KeyRound,
   MailPlus,
+  Pencil,
   RotateCcw,
   UserRound,
   X,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import {
   getEmployeeDetail,
+  getEmployeeAvatar,
+  createEmployee,
   type InviteRoleOption,
   loadEmployeeReferenceData,
   prepareEmployeeInvitation,
+  removeEmployeeAvatar,
+  removeEmployeeAccess,
+  retryEmployeeInvitation,
   revokeEmployeeInvitation,
   saveEmployee,
   setEmployeeArchived,
   terminateEmployee,
+  updateEmployeeRole,
   type EmployeeTerminationInput,
   type EmployeeOption,
 } from "./employee-data";
@@ -40,6 +57,11 @@ import {
   getEmployeeOnboardingReview,
   reviewEmployeeOnboarding,
 } from "./onboarding-data";
+import {
+  canInviteWithRole,
+  employeeCreateReadiness,
+} from "./employee-create-flow";
+import { registerEmployeeHistoryGuard } from "./employee-history-guard";
 
 const sections = [
   ["profile", "Profile", UserRound],
@@ -61,6 +83,8 @@ const emptyDraft: EmployeeInput = {
   primary_location_id: null,
   job_ids: [],
   primary_job_id: null,
+  is_remote: false,
+  is_excluded_from_schedule: false,
   expected_revision: null,
 };
 
@@ -71,10 +95,14 @@ interface EmployeeDrawerProps {
   readonly onSectionChange: (section: EmployeeSection) => void;
   readonly onClose: () => void;
   readonly onCreated: (employeeId: string) => void;
+  readonly onOnboardingReviewSuccess?: (review: {
+    readonly action: "accept_requirement" | "reject_requirement";
+    readonly requirementId: string;
+  }) => void;
 }
 
 export function EmployeeDrawer(props: EmployeeDrawerProps) {
-  const { context } = useAuth();
+  const { context, refresh } = useAuth();
   const workspaceId = context?.workspace.id ?? "";
   const queryClient = useQueryClient();
   const detail = useQuery({
@@ -104,35 +132,113 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const [error, setError] = useState<string | null>(null);
   const [developmentUrl, setDevelopmentUrl] = useState<string | null>(null);
   const [terminationOpen, setTerminationOpen] = useState(false);
-  const [terminationNotice, setTerminationNotice] = useState<string | null>(null);
+  const [terminationNotice, setTerminationNotice] = useState<string | null>(
+    null,
+  );
+  const [inviteRoleDirty, setInviteRoleDirty] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [createResult, setCreateResult] = useState<EmployeeCreateResult | null>(
+    null,
+  );
+  const [uncertainCreate, setUncertainCreate] = useState(false);
+  const commandRef = useRef<EmployeeCreateCommand | null>(null);
+  const submittingCreateRef = useRef(false);
+  const createdIdRef = useRef<string | null>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const focusEmailOnProfileRef = useRef(false);
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<() => void>(() => {});
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const openingFocusRef = useRef<HTMLElement | null>(null);
+  const pendingNavigationRef = useRef<(() => void) | null>(null);
+  const allowNavigationRef = useRef(false);
+  const previousSectionRef = useRef(props.section);
+  const readiness = employeeCreateReadiness(draft);
+  const activeSection =
+    props.creating && (props.section !== "employment" || !readiness.namesReady)
+      ? "profile"
+      : props.section;
+  const visibleSections = props.creating ? sections.slice(0, 2) : sections;
+  const DrawerForm =
+    !props.creating && activeSection === "availability" ? "div" : "form";
   const scrollRef = useRef<HTMLDivElement>(null);
-  const wheelIntent = useRef(0);
+  const draftEditedRef = useRef(false);
+  const draftSubjectKey = `${workspaceId}:${
+    props.creating ? "new" : (props.employeeId ?? "")
+  }`;
+  const lastDraftSubjectKeyRef = useRef<string | null>(null);
+  const lastInviteRoleSubjectKeyRef = useRef<string | null>(null);
+  const allowNextDraftRefreshRef = useRef(false);
+  const baseline = props.creating
+    ? emptyDraft
+    : detail.data
+      ? toDraft(detail.data)
+      : emptyDraft;
+  const baselineKey = JSON.stringify(baseline);
+  const dirty = draftEditedRef.current && JSON.stringify(draft) !== baselineKey;
 
   useEffect(() => {
-    setDraft(
-      props.creating
-        ? emptyDraft
-        : detail.data
-          ? toDraft(detail.data)
-          : emptyDraft,
-    );
-    setError(null);
-    setDevelopmentUrl(null);
-  }, [detail.data, props.creating, props.employeeId]);
+    const subjectChanged = lastDraftSubjectKeyRef.current !== draftSubjectKey;
+    if (
+      !subjectChanged &&
+      draftEditedRef.current &&
+      !allowNextDraftRefreshRef.current
+    ) {
+      return;
+    }
+    setDraft(baseline);
+    draftEditedRef.current = false;
+    allowNextDraftRefreshRef.current = false;
+    lastDraftSubjectKeyRef.current = draftSubjectKey;
+    if (subjectChanged) {
+      setError(null);
+      if (props.employeeId !== createdIdRef.current || props.creating) {
+        setDevelopmentUrl(null);
+        setCreateResult(null);
+        commandRef.current = null;
+      }
+      setUncertainCreate(false);
+      setDiscardOpen(false);
+      setTerminationNotice(null);
+    }
+  }, [baselineKey, draftSubjectKey]);
+
+  const updateDraft = (update: React.SetStateAction<EmployeeInput>): void => {
+    draftEditedRef.current = true;
+    setDraft(update);
+  };
 
   useEffect(() => {
     const pendingRoleId = detail.data?.invitation?.role_id;
     const defaultEmployeeRoleId = references.data?.inviteRoles.find(
       (role) => role.systemKey === "employee",
     )?.id;
+    const subjectChanged =
+      lastInviteRoleSubjectKeyRef.current !== draftSubjectKey;
+    if (
+      subjectChanged &&
+      props.employeeId === createdIdRef.current &&
+      inviteRoleDirty
+    ) {
+      lastInviteRoleSubjectKeyRef.current = draftSubjectKey;
+      return;
+    }
+    if (!subjectChanged && inviteRoleDirty) return;
     setInviteRoleId(pendingRoleId ?? defaultEmployeeRoleId ?? "");
-  }, [detail.data?.invitation?.role_id, references.data?.inviteRoles]);
+    setInviteRoleDirty(false);
+    lastInviteRoleSubjectKeyRef.current = draftSubjectKey;
+  }, [
+    detail.data?.invitation?.role_id,
+    draftSubjectKey,
+    inviteRoleDirty,
+    references.data?.inviteRoles,
+  ]);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (terminationOpen) setTerminationOpen(false);
-        else props.onClose();
+        else closeRef.current();
       }
     };
     document.addEventListener("keydown", close);
@@ -145,18 +251,41 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const canManageAccess =
     context?.permissions.includes("employee_access.manage") ?? false;
   const archived = Boolean(detail.data?.archived_at);
-  const readOnly = archived || (!props.creating && !canManage);
-  const baseline = props.creating
-    ? emptyDraft
-    : detail.data
-      ? toDraft(detail.data)
-      : emptyDraft;
-  const dirty = JSON.stringify(draft) !== JSON.stringify(baseline);
-
+  const readOnly = archived || !canManage;
+  const createMutation = useMutation({
+    mutationFn: (command: EmployeeCreateCommand) =>
+      createEmployee(workspaceId, command),
+    onSuccess: (result) => {
+      createdIdRef.current = result.id;
+      setCreateResult(result);
+      setDevelopmentUrl(result.invitation?.developmentUrl ?? null);
+      setUncertainCreate(false);
+      setError(null);
+      draftEditedRef.current = false;
+      allowNextDraftRefreshRef.current = true;
+      props.onCreated(result.id);
+      void queryClient.invalidateQueries({
+        queryKey: ["employees", workspaceId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["employee-detail", workspaceId, result.id],
+      });
+    },
+    onError: (cause) => {
+      setError(errorMessage(cause));
+      const status = "status" in cause ? Number(cause.status) : 0;
+      setUncertainCreate(![400, 401, 403, 404, 409, 422].includes(status));
+    },
+    onSettled: () => {
+      submittingCreateRef.current = false;
+    },
+  });
   const saveMutation = useMutation({
     mutationFn: () =>
       saveEmployee(workspaceId, draft, props.employeeId ?? undefined),
     onSuccess: async (savedId) => {
+      draftEditedRef.current = false;
+      allowNextDraftRefreshRef.current = true;
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
         queryClient.invalidateQueries({
@@ -165,6 +294,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       ]);
       setError(null);
       if (props.creating) props.onCreated(savedId);
+      else props.onSectionChange("profile");
     },
     onError: (cause) => setError(errorMessage(cause)),
   });
@@ -190,6 +320,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         }),
       ]);
       setTerminationOpen(false);
+      allowNextDraftRefreshRef.current = true;
       setError(null);
       setTerminationNotice(
         `Employee terminated. ${result.releasedShiftCount} published shift${result.releasedShiftCount === 1 ? "" : "s"} released.`,
@@ -198,13 +329,39 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     onError: (cause) => setError(errorMessage(cause)),
   });
   const inviteMutation = useMutation({
-    mutationFn: () =>
-      prepareEmployeeInvitation(
+    mutationFn: () => {
+      setCreateResult(null);
+      return prepareEmployeeInvitation(
         workspaceId,
         props.employeeId ?? "",
         draft.invitation_email,
         inviteRoleId || null,
-      ),
+      );
+    },
+    onSuccess: async (result) => {
+      setDevelopmentUrl(result.developmentUrl ?? null);
+      setInviteRoleDirty(false);
+      setError(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["employee-detail", workspaceId, props.employeeId],
+        }),
+      ]);
+    },
+    onError: async (cause) => {
+      setError(errorMessage(cause));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["employee-detail", workspaceId, props.employeeId],
+        }),
+      ]);
+    },
+  });
+  const retryInvitationMutation = useMutation({
+    mutationFn: () =>
+      retryEmployeeInvitation(workspaceId, props.employeeId ?? ""),
     onSuccess: async (result) => {
       setDevelopmentUrl(result.developmentUrl ?? null);
       setError(null);
@@ -215,19 +372,61 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         }),
       ]);
     },
-    onError: (cause) => setError(errorMessage(cause)),
-  });
-  const revokeMutation = useMutation({
-    mutationFn: () =>
-      revokeEmployeeInvitation(workspaceId, props.employeeId ?? ""),
-    onSuccess: async () => {
-      setDevelopmentUrl(null);
+    onError: async (cause) => {
+      setError(errorMessage(cause));
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
         queryClient.invalidateQueries({
           queryKey: ["employee-detail", workspaceId, props.employeeId],
         }),
       ]);
+    },
+  });
+  const revokeMutation = useMutation({
+    mutationFn: () =>
+      revokeEmployeeInvitation(workspaceId, props.employeeId ?? ""),
+    onSuccess: async () => {
+      setDevelopmentUrl(null);
+      setInviteRoleDirty(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["employee-detail", workspaceId, props.employeeId],
+        }),
+      ]);
+    },
+    onError: (cause) => setError(errorMessage(cause)),
+  });
+  const removeAccessMutation = useMutation({
+    mutationFn: () => removeEmployeeAccess(workspaceId, props.employeeId ?? ""),
+    onSuccess: async () => {
+      setDevelopmentUrl(null);
+      setInviteRoleDirty(false);
+      setError(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["employee-detail", workspaceId, props.employeeId],
+        }),
+      ]);
+    },
+    onError: (cause) => setError(errorMessage(cause)),
+  });
+  const roleMutation = useMutation({
+    mutationFn: (roleId: string) =>
+      updateEmployeeRole(workspaceId, props.employeeId ?? "", roleId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["employee-detail", workspaceId, props.employeeId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["employee-reference-data", workspaceId],
+        }),
+        refresh(),
+      ]);
+      setError(null);
     },
     onError: (cause) => setError(errorMessage(cause)),
   });
@@ -241,7 +440,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         ...input,
         revision: onboardingReview.data?.revision ?? 0,
       }),
-    onSuccess: async () => {
+    onSuccess: async (_revision, input) => {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: [
@@ -255,6 +454,16 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         }),
         queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
       ]);
+      if (
+        input.requirementId &&
+        (input.action === "accept_requirement" ||
+          input.action === "reject_requirement")
+      ) {
+        props.onOnboardingReviewSuccess?.({
+          action: input.action,
+          requirementId: input.requirementId,
+        });
+      }
       setError(null);
     },
     onError: (cause) => setError(errorMessage(cause)),
@@ -270,8 +479,212 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     onError: (cause) => setError(errorMessage(cause)),
   });
 
+  const busy =
+    createMutation.isPending ||
+    saveMutation.isPending ||
+    inviteMutation.isPending ||
+    retryInvitationMutation.isPending ||
+    removeAccessMutation.isPending;
+  const done =
+    !props.creating &&
+    !dirty &&
+    (createResult !== null || saveMutation.isSuccess);
+  const inviteRoles = (references.data?.inviteRoles ?? [])
+    .filter((role) =>
+      canInviteWithRole(
+        context?.membership.role ?? "employee",
+        role.accessClass,
+      ),
+    )
+    .sort((a, b) => {
+      const rank = (key: string | null) =>
+        key === "employee"
+          ? 0
+          : key === "manager"
+            ? 1
+            : key === "admin"
+              ? 2
+              : 3;
+      return (
+        rank(a.systemKey) - rank(b.systemKey) || a.name.localeCompare(b.name)
+      );
+    });
+  const inviteReady =
+    readiness.employeeReady &&
+    readiness.emailReady &&
+    inviteRoles.some((role) => role.id === inviteRoleId) &&
+    canManageAccess &&
+    !readOnly;
+  const changeSection = (section: EmployeeSection) => {
+    if (busy || uncertainCreate) return;
+    if (props.creating && section === "employment" && !readiness.namesReady)
+      return;
+    if (section !== activeSection) props.onSectionChange(section);
+  };
+  useEffect(() => {
+    if (previousSectionRef.current === activeSection) return;
+    previousSectionRef.current = activeSection;
+    requestAnimationFrame(() => {
+      if (
+        activeSection === "profile" &&
+        focusEmailOnProfileRef.current &&
+        emailInputRef.current
+      ) {
+        focusEmailOnProfileRef.current = false;
+        emailInputRef.current.focus();
+      } else if (stepHeadingRef.current?.getClientRects().length)
+        stepHeadingRef.current.focus();
+      else
+        dialogRef.current
+          ?.querySelector<HTMLElement>(
+            '.employee-create-steps [aria-current="step"]',
+          )
+          ?.focus();
+      scrollRef.current?.scrollTo?.(0, 0);
+    });
+  }, [activeSection]);
+  const requestClose = () => {
+    if (busy) return;
+    if (discardOpen) {
+      pendingNavigationRef.current = null;
+      setDiscardOpen(false);
+      return;
+    }
+    if (props.creating && (dirty || inviteRoleDirty)) setDiscardOpen(true);
+    else props.onClose();
+  };
+  closeRef.current = requestClose;
+  useEffect(() => {
+    openingFocusRef.current = document.activeElement as HTMLElement | null;
+    dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+    return () => openingFocusRef.current?.focus();
+  }, []);
+  useEffect(() => {
+    if (!props.creating && props.employeeId === createdIdRef.current) {
+      requestAnimationFrame(() => {
+        if (stepHeadingRef.current?.getClientRects().length)
+          stepHeadingRef.current.focus();
+        else
+          dialogRef.current
+            ?.querySelector<HTMLElement>('[aria-label="Employee section"]')
+            ?.focus();
+      });
+    }
+  }, [props.creating, props.employeeId]);
+  useEffect(() => {
+    if (props.creating && activeSection !== props.section)
+      props.onSectionChange(activeSection);
+  }, [activeSection, props.creating, props.section, props.onSectionChange]);
+  useEffect(() => {
+    if (!props.creating || !dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      if (allowNavigationRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [props.creating, dirty]);
+  useEffect(() => {
+    if (!props.creating || (!dirty && !busy)) return;
+    let index = Number(window.history.state?.idx ?? 0);
+    let restoring = false;
+    const path = window.location.pathname;
+    const pop = (event: PopStateEvent) => {
+      if (allowNavigationRef.current) return;
+      const nextIndex = Number(event.state?.idx ?? index);
+      if (restoring) {
+        restoring = false;
+        event.stopImmediatePropagation();
+        return;
+      }
+      const url = new URL(window.location.href);
+      if (url.pathname === path && url.searchParams.get("mode") === "create") {
+        index = nextIndex;
+        return;
+      }
+      const delta = nextIndex - index;
+      if (!delta) return;
+      // Restore the current entry before asking. The router must not unmount the draft.
+      event.stopImmediatePropagation();
+      restoring = true;
+      window.history.go(-delta);
+      if (!busy) {
+        pendingNavigationRef.current = () => {
+          allowNavigationRef.current = true;
+          window.history.go(delta);
+        };
+        setDiscardOpen(true);
+      }
+    };
+    const follow = (event: MouseEvent) => {
+      if (
+        allowNavigationRef.current ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.button !== 0
+      )
+        return;
+      const anchor = (
+        event.target as Element | null
+      )?.closest<HTMLAnchorElement>("a[href]");
+      if (
+        !anchor ||
+        anchor.target === "_blank" ||
+        dialogRef.current?.contains(anchor)
+      )
+        return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!busy) {
+        pendingNavigationRef.current = () => {
+          allowNavigationRef.current = true;
+          window.location.assign(anchor.href);
+        };
+        setDiscardOpen(true);
+      }
+    };
+    const unregisterHistoryGuard = registerEmployeeHistoryGuard(pop);
+    document.addEventListener("click", follow, true);
+    return () => {
+      unregisterHistoryGuard();
+      document.removeEventListener("click", follow, true);
+    };
+  }, [props.creating, dirty, busy, activeSection]);
+  const startCreate = (invite: boolean) => {
+    if (
+      busy ||
+      submittingCreateRef.current ||
+      uncertainCreate ||
+      readOnly ||
+      !readiness.employeeReady ||
+      (invite && !inviteReady)
+    )
+      return;
+    const command: EmployeeCreateCommand = {
+      request_id: crypto.randomUUID(),
+      employee: employeeInputSchema.parse(draft),
+      invite_role_id: invite ? inviteRoleId : null,
+    };
+    commandRef.current = command;
+    submittingCreateRef.current = true;
+    createMutation.mutate(command);
+  };
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (busy || uncertainCreate || readOnly) return;
+    if (done) {
+      requestClose();
+      return;
+    }
+    if (props.creating) {
+      if (activeSection === "profile" && !readiness.employeeReady) {
+        if (readiness.namesReady) changeSection("employment");
+      } else startCreate(false);
+      return;
+    }
     const parsed = employeeInputSchema.safeParse(draft);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the employee details");
@@ -280,10 +693,13 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     saveMutation.mutate();
   };
 
-  const moveSection = (direction: -1 | 1) => {
-    const index = sections.findIndex(([key]) => key === props.section);
-    const next = sections[index + direction];
-    if (next) props.onSectionChange(next[0]);
+  const handleInviteRoleChange = (roleId: string): void => {
+    setInviteRoleId(roleId);
+    setInviteRoleDirty(true);
+  };
+  const handleAddEmail = (): void => {
+    focusEmailOnProfileRef.current = true;
+    changeSection("profile");
   };
 
   return (
@@ -292,16 +708,64 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         type="button"
         className="employee-drawer-backdrop"
         aria-label="Close employee details"
-        onClick={props.onClose}
+        onClick={requestClose}
       />
       <aside
-        className="employee-drawer"
+        className={`employee-drawer${props.creating ? " employee-drawer-create" : ""}`}
+        ref={dialogRef}
+        onKeyDown={(event) => {
+          if (
+            event.key === "Enter" &&
+            !event.nativeEvent.isComposing &&
+            !event.defaultPrevented &&
+            !terminationOpen &&
+            !discardOpen &&
+            (activeSection === "profile" || activeSection === "employment") &&
+            (event.target instanceof HTMLHeadingElement ||
+              (event.target instanceof HTMLInputElement &&
+                !event.target
+                  .getAttribute("aria-label")
+                  ?.startsWith("Search ")))
+          ) {
+            event.preventDefault();
+            if (!event.repeat) submit(event);
+            return;
+          }
+          if (!props.creating || event.key !== "Tab") return;
+          const root = discardOpen
+            ? dialogRef.current?.querySelector("[data-discard-dialog]")
+            : dialogRef.current;
+          const items = Array.from(
+            root?.querySelectorAll<HTMLElement>(
+              "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]",
+            ) ?? [],
+          ).filter((item) => item.getClientRects().length > 0);
+          const first = items[0],
+            last = items[items.length - 1];
+          if (
+            event.shiftKey &&
+            (document.activeElement === first ||
+              !items.includes(document.activeElement as HTMLElement))
+          ) {
+            event.preventDefault();
+            last?.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+          }
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="employee-drawer-title"
         data-employee-drawer-panel="true"
       >
-        <form onSubmit={submit} className="employee-drawer-form">
+        <DrawerForm
+          {...(DrawerForm === "form"
+            ? { onSubmit: submit, noValidate: props.creating }
+            : {})}
+          className="employee-drawer-form"
+          aria-busy={busy}
+        >
           <div className="employee-drawer-main">
             <nav
               className="employee-summary-rail"
@@ -309,18 +773,18 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             >
               <div className="employee-identity">
                 <span className="employee-avatar" aria-hidden>
-                  {(draft.preferred_name || draft.first_name || "N")
-                    .slice(0, 1)
-                    .toUpperCase()}
+                  {(draft.first_name || "N").slice(0, 1).toUpperCase()}
                 </span>
                 <strong id="employee-drawer-title">
                   {props.creating
                     ? "New employee"
                     : (detail.data?.display_name ?? "Employee details")}
                 </strong>
-                <span>
-                  {detail.data?.employee_code ?? "Code assigned on save"}
-                </span>
+                {!props.creating ? (
+                  <span>
+                    {detail.data?.employee_code ?? "Code assigned on save"}
+                  </span>
+                ) : null}
                 {detail.data ? (
                   <span
                     className={`employee-state state-${detail.data.display_status}`}
@@ -328,15 +792,46 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     {statusLabel(detail.data.display_status)}
                   </span>
                 ) : null}
+                {draft.is_remote || draft.is_excluded_from_schedule ? (
+                  <div
+                    className="employee-work-statuses"
+                    aria-label="Work status"
+                  >
+                    {draft.is_excluded_from_schedule ? (
+                      <span className="employee-work-status danger">
+                        Off schedule
+                      </span>
+                    ) : null}
+                    {draft.is_remote ? (
+                      <span className="employee-work-status warning">
+                        Remote
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               <div className="employee-section-links">
-                {sections.map(([key, label, Icon], index) => (
+                {visibleSections.map(([key, label, Icon], index) => (
                   <button
                     type="button"
                     key={key}
-                    className={props.section === key ? "active" : ""}
+                    className={activeSection === key ? "active" : ""}
+                    aria-current={
+                      activeSection === key
+                        ? props.creating
+                          ? "step"
+                          : "page"
+                        : undefined
+                    }
+                    disabled={
+                      busy ||
+                      uncertainCreate ||
+                      (props.creating &&
+                        key === "employment" &&
+                        !readiness.namesReady)
+                    }
                     data-group-start={index === 3 || index === 4}
-                    onClick={() => props.onSectionChange(key)}
+                    onClick={() => changeSection(key)}
                   >
                     <Icon size={16} aria-hidden />
                     <span>{label}</span>
@@ -347,25 +842,50 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
 
             <div className="employee-drawer-content">
               <div className="employee-drawer-mobile-header">
-                <select
-                  aria-label="Employee section"
-                  value={props.section}
-                  onChange={(event) =>
-                    props.onSectionChange(
-                      employeeSectionSchema.parse(event.target.value),
-                    )
-                  }
-                >
-                  {sections.map(([key, label]) => (
-                    <option key={key} value={key}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                {props.creating ? (
+                  <nav
+                    className="employee-create-steps"
+                    aria-label="Create employee steps"
+                  >
+                    {visibleSections.map(([key, label]) => (
+                      <button
+                        type="button"
+                        key={key}
+                        aria-current={
+                          activeSection === key ? "step" : undefined
+                        }
+                        disabled={
+                          busy ||
+                          uncertainCreate ||
+                          (key === "employment" && !readiness.namesReady)
+                        }
+                        onClick={() => changeSection(key)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </nav>
+                ) : (
+                  <select
+                    aria-label="Employee section"
+                    value={props.section}
+                    onChange={(event) =>
+                      changeSection(
+                        employeeSectionSchema.parse(event.target.value),
+                      )
+                    }
+                  >
+                    {sections.map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <button
                   className="icon-button"
                   type="button"
-                  onClick={props.onClose}
+                  onClick={requestClose}
                   aria-label="Close employee details"
                 >
                   <X size={18} aria-hidden />
@@ -373,15 +893,21 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
               </div>
               <header className="employee-section-header">
                 <div>
-                  <h2>
-                    {sections.find(([key]) => key === props.section)?.[1]}
+                  <h2
+                    tabIndex={-1}
+                    ref={stepHeadingRef}
+                    style={{ outline: "none" }}
+                  >
+                    {sections.find(([key]) => key === activeSection)?.[1]}
                   </h2>
-                  <p>{sectionDescription(props.section)}</p>
+                  {!props.creating ? (
+                    <p>{sectionDescription(props.section)}</p>
+                  ) : null}
                 </div>
                 <button
                   className="icon-button employee-drawer-close"
                   type="button"
-                  onClick={props.onClose}
+                  onClick={requestClose}
                   aria-label="Close employee details"
                   title="Close"
                 >
@@ -390,25 +916,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
               </header>
               <div
                 className="employee-section-scroll"
+                data-section={activeSection}
                 ref={scrollRef}
-                onWheel={(event) => {
-                  const node = scrollRef.current;
-                  if (!node) return;
-                  const atTop = node.scrollTop <= 0 && event.deltaY < 0;
-                  const atBottom =
-                    node.scrollTop + node.clientHeight >=
-                      node.scrollHeight - 1 && event.deltaY > 0;
-                  if (!atTop && !atBottom) {
-                    wheelIntent.current = 0;
-                    return;
-                  }
-                  wheelIntent.current += Math.abs(event.deltaY);
-                  if (wheelIntent.current >= 90) {
-                    moveSection(event.deltaY > 0 ? 1 : -1);
-                    wheelIntent.current = 0;
-                    node.scrollTop = 0;
-                  }
-                }}
               >
                 {detail.isLoading && !props.creating ? (
                   <p className="employee-panel-state">Loading employee...</p>
@@ -420,14 +929,18 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 ) : null}
                 {!detail.isLoading && !detail.error
                   ? renderSection(
-                      props.section,
+                      activeSection,
                       draft,
-                      setDraft,
+                      updateDraft,
                       detail.data,
-                      references.data,
+                      props.creating && references.data
+                        ? { ...references.data, inviteRoles }
+                        : references.data,
                       inviteRoleId,
-                      setInviteRoleId,
-                      readOnly,
+                      handleInviteRoleChange,
+                      emailInputRef,
+                      handleAddEmail,
+                      readOnly || busy || uncertainCreate,
                       canManageAccess,
                       onboardingReview.data,
                       onboardingReview.isLoading,
@@ -441,10 +954,74 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       reviewMutation.isPending,
                       (requirementId) => downloadMutation.mutate(requirementId),
                       downloadMutation.isPending,
+                      () => retryInvitationMutation.mutate(),
+                      retryInvitationMutation.isPending,
                       () => revokeMutation.mutate(),
                       revokeMutation.isPending,
+                      () => removeAccessMutation.mutate(),
+                      removeAccessMutation.isPending,
+                      context?.membership.role ?? "employee",
+                      (roleId) => roleMutation.mutate(roleId),
+                      roleMutation.isPending,
+                      props.creating,
                     )
                   : null}
+                {props.creating && references.isLoading ? (
+                  <p role="status">Loading locations, jobs and roles...</p>
+                ) : null}
+                {props.creating && references.isError ? (
+                  <p role="alert">
+                    Couldn't load locations, jobs or roles.{" "}
+                    <button
+                      type="button"
+                      onClick={() => void references.refetch()}
+                    >
+                      Retry
+                    </button>
+                  </p>
+                ) : null}
+                {props.creating && references.data?.inviteRolesError ? (
+                  <p role="alert">
+                    Couldn't load invite roles.{" "}
+                    <button
+                      type="button"
+                      onClick={() => void references.refetch()}
+                    >
+                      Retry
+                    </button>
+                  </p>
+                ) : null}
+                {props.creating &&
+                activeSection === "employment" &&
+                readiness.emailPresent ? (
+                  <div className="employee-create-invite-summary">
+                    <MailPlus size={18} aria-hidden />
+                    <div>
+                      <strong>{draft.invitation_email}</strong>
+                      <span>
+                        {inviteRoles.find((role) => role.id === inviteRoleId)
+                          ?.name ?? "Choose an invite role"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      title="Edit invitation"
+                      aria-label="Edit invitation"
+                      onClick={() => changeSection("profile")}
+                    >
+                      <Pencil size={16} />
+                    </button>
+                  </div>
+                ) : null}
+                {props.creating &&
+                activeSection === "employment" &&
+                readiness.emailPresent &&
+                !readiness.emailReady ? (
+                  <p className="employee-field-error" role="alert">
+                    Enter a valid email address in Profile.
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
@@ -460,106 +1037,281 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
               <span>{terminationNotice}</span>
             </div>
           ) : null}
+          {createResult ? (
+            <div className="employee-drawer-notice" role="status">
+              <span>
+                {!createResult.invitation
+                  ? "Employee saved."
+                  : createResult.invitation.deliveryStatus === "sent"
+                    ? "Employee saved. Invitation sent."
+                    : createResult.invitation.deliveryStatus === "failed"
+                      ? "Employee saved. Invitation couldn't be sent."
+                      : "Employee saved. Invitation delivery is pending."}
+              </span>
+              {createResult.invitation &&
+              createResult.invitation.deliveryStatus !== "sent" &&
+              commandRef.current ? (
+                <Button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => createMutation.mutate(commandRef.current!)}
+                >
+                  Retry invitation
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           {error ? (
             <p className="employee-drawer-error" role="alert">
               {error}
             </p>
           ) : null}
-          <footer className="employee-drawer-footer">
-            <div>
-              {!props.creating && canArchive ? (
-                <button
-                  type="button"
-                  className={`employee-lifecycle-button${archived ? " restore" : ""}`}
-                  disabled={
-                    archiveMutation.isPending ||
-                    terminationMutation.isPending ||
-                    (!archived && dirty)
-                  }
-                  title={
-                    !archived && dirty
-                      ? "Save profile changes before terminating the employee"
-                      : undefined
-                  }
-                  onClick={() => {
-                    if (!archived) {
-                      setError(null);
-                      setTerminationNotice(null);
-                      setTerminationOpen(true);
-                      return;
-                    }
-                    if (window.confirm("Restore this employee?"))
-                      archiveMutation.mutate(false);
-                  }}
-                >
-                  {archived ? (
-                    <RotateCcw size={16} aria-hidden />
-                  ) : (
-                    <Archive size={16} aria-hidden />
-                  )}
-                  {archived ? "Restore employee" : "Terminate employee"}
-                </button>
-              ) : null}
+          {uncertainCreate ? (
+            <div className="employee-drawer-notice" role="alert">
+              <span>Check the previous request before continuing.</span>
+              <Button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  commandRef.current &&
+                  createMutation.mutate(commandRef.current)
+                }
+              >
+                Retry request
+              </Button>
             </div>
-            <div className="employee-drawer-actions">
-              {dirty && !readOnly ? (
-                <span className="employee-dirty">
-                  <i />
-                  Unsaved changes
-                </span>
-              ) : null}
+          ) : null}
+          {props.creating ? (
+            <footer className="employee-drawer-footer employee-create-footer">
               <Button
                 className="secondary-button"
                 type="button"
-                onClick={props.onClose}
+                disabled={busy || uncertainCreate}
+                onClick={() =>
+                  activeSection === "employment"
+                    ? changeSection("profile")
+                    : requestClose()
+                }
               >
-                Cancel
+                {activeSection === "employment" ? (
+                  <>
+                    <ArrowLeft size={16} aria-hidden />
+                    Back
+                  </>
+                ) : (
+                  "Cancel"
+                )}
               </Button>
-              {!props.creating &&
-              !readOnly &&
-              canManageAccess &&
-              draft.invitation_email ? (
+              {readiness.emailPresent && canManageAccess ? (
+                <div className="employee-create-role">
+                  <InviteRoleField
+                    roles={inviteRoles}
+                    inviteRoleId={inviteRoleId}
+                    onInviteRoleChange={handleInviteRoleChange}
+                    disabled={busy || uncertainCreate || readOnly}
+                  />
+                </div>
+              ) : null}
+              <div className="employee-drawer-actions">
+                {readiness.emailPresent && canManageAccess ? (
+                  <Button
+                    className="secondary-button"
+                    type="button"
+                    disabled={!inviteReady || busy || uncertainCreate}
+                    onClick={() => startCreate(true)}
+                  >
+                    <MailPlus size={16} aria-hidden />
+                    {createMutation.isPending &&
+                    commandRef.current?.invite_role_id
+                      ? "Inviting..."
+                      : "Invite"}
+                  </Button>
+                ) : null}
+                <Button
+                  type="submit"
+                  disabled={
+                    busy ||
+                    uncertainCreate ||
+                    readOnly ||
+                    (activeSection === "profile"
+                      ? !readiness.namesReady
+                      : !readiness.employeeReady)
+                  }
+                >
+                  {activeSection === "profile" && !readiness.employeeReady ? (
+                    <>
+                      Next
+                      <ArrowRight size={16} aria-hidden />
+                    </>
+                  ) : createMutation.isPending ? (
+                    "Saving..."
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
+              </div>
+            </footer>
+          ) : activeSection === "availability" ? null : (
+            <footer className="employee-drawer-footer">
+              <div>
+                {!props.creating && canArchive ? (
+                  <button
+                    type="button"
+                    className={`employee-lifecycle-button${archived ? " restore" : ""}`}
+                    disabled={
+                      archiveMutation.isPending ||
+                      terminationMutation.isPending ||
+                      (!archived && dirty)
+                    }
+                    title={
+                      !archived && dirty
+                        ? "Save profile changes before terminating the employee"
+                        : undefined
+                    }
+                    onClick={() => {
+                      if (!archived) {
+                        setError(null);
+                        setTerminationNotice(null);
+                        setTerminationOpen(true);
+                        return;
+                      }
+                      if (
+                        window.confirm(
+                          "Restore this employee record for rehire? Workspace access stays off until they accept a new invite and complete onboarding.",
+                        )
+                      )
+                        archiveMutation.mutate(false);
+                    }}
+                  >
+                    {archived ? (
+                      <RotateCcw size={16} aria-hidden />
+                    ) : (
+                      <Archive size={16} aria-hidden />
+                    )}
+                    {archived ? "Restore employee" : "Terminate employee"}
+                  </button>
+                ) : null}
+              </div>
+              {!detail.data?.user_id &&
+              readiness.emailPresent &&
+              canManageAccess ? (
+                <div className="employee-create-role">
+                  <InviteRoleField
+                    roles={inviteRoles}
+                    inviteRoleId={inviteRoleId}
+                    onInviteRoleChange={handleInviteRoleChange}
+                    disabled={busy || readOnly}
+                  />
+                </div>
+              ) : null}
+              <div className="employee-drawer-actions">
+                {dirty && !readOnly ? (
+                  <span className="employee-dirty">
+                    <i />
+                    Unsaved changes
+                  </span>
+                ) : null}
                 <Button
                   className="secondary-button"
                   type="button"
-                  disabled={dirty || inviteMutation.isPending || !inviteRoleId}
-                  title={
-                    dirty
-                      ? "Save changes before sending the invitation"
-                      : !inviteRoleId
+                  onClick={props.onClose}
+                >
+                  Cancel
+                </Button>
+                {!props.creating &&
+                !readOnly &&
+                canManageAccess &&
+                draft.invitation_email ? (
+                  <Button
+                    className="secondary-button"
+                    type="button"
+                    disabled={
+                      busy ||
+                      !inviteRoleId ||
+                      !readiness.emailReady ||
+                      (dirty && !readiness.employeeReady)
+                    }
+                    title={
+                      !inviteRoleId
                         ? "Choose a role before sending the invitation"
-                        : undefined
-                  }
-                  onClick={() => inviteMutation.mutate()}
-                >
-                  <MailPlus size={16} aria-hidden />
-                  {detail.data?.invitation?.status === "pending"
-                    ? "Resend"
-                    : "Invite"}
-                </Button>
-              ) : null}
-              {!readOnly ? (
+                        : detail.data?.invitation?.status === "pending"
+                          ? "Create a new link and invalidate the current invitation"
+                          : undefined
+                    }
+                    onClick={async () => {
+                      if (dirty) {
+                        try {
+                          await saveMutation.mutateAsync();
+                        } catch {
+                          return;
+                        }
+                      }
+                      inviteMutation.mutate();
+                    }}
+                  >
+                    <MailPlus size={16} aria-hidden />
+                    {detail.data?.invitation?.status === "pending"
+                      ? "Resend"
+                      : "Invite"}
+                  </Button>
+                ) : null}
+                {!readOnly ? (
+                  <Button type="submit" disabled={busy || (!dirty && !done)}>
+                    {saveMutation.isPending
+                      ? "Saving"
+                      : done
+                        ? "Done"
+                        : props.creating
+                          ? "Save"
+                          : "Save changes"}
+                  </Button>
+                ) : null}
+              </div>
+            </footer>
+          )}
+        </DrawerForm>
+        {discardOpen ? (
+          <div className="employee-discard-overlay">
+            <div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="employee-discard-title"
+              data-discard-dialog
+            >
+              <h2 id="employee-discard-title">Discard new employee?</h2>
+              <div>
                 <Button
-                  type="submit"
-                  disabled={saveMutation.isPending || !dirty}
+                  type="button"
+                  className="secondary-button"
+                  autoFocus
+                  onClick={() => {
+                    pendingNavigationRef.current = null;
+                    setDiscardOpen(false);
+                  }}
                 >
-                  {saveMutation.isPending
-                    ? "Saving"
-                    : props.creating
-                      ? "Save"
-                      : "Save changes"}
+                  Keep editing
                 </Button>
-              ) : null}
+                <Button
+                  type="button"
+                  onClick={() => {
+                    allowNavigationRef.current = true;
+                    if (pendingNavigationRef.current)
+                      pendingNavigationRef.current();
+                    else props.onClose();
+                  }}
+                >
+                  Discard
+                </Button>
+              </div>
             </div>
-          </footer>
-        </form>
+          </div>
+        ) : null}
         {terminationOpen && detail.data ? (
           <EmployeeTerminationDialog
             employeeName={`${detail.data.first_name} ${detail.data.last_name}`}
             locations={(references.data?.locations ?? []).filter((location) =>
               detail.data?.locations.some(
-                (assignment) =>
-                  assignment.id === location.id && !assignment.archived,
+                (assignment) => assignment.id === location.id,
               ),
             )}
             primaryLocationId={detail.data.primary_location_id}
@@ -682,7 +1434,8 @@ function EmployeeTerminationDialog({
               value={timeEntryAction}
               onChange={(event) =>
                 setTimeEntryAction(
-                  event.target.value as EmployeeTerminationInput["timeEntryAction"],
+                  event.target
+                    .value as EmployeeTerminationInput["timeEntryAction"],
                 )
               }
             >
@@ -716,7 +1469,11 @@ function EmployeeTerminationDialog({
             </p>
           ) : null}
           <footer>
-            <Button type="button" className="secondary-button" onClick={onClose}>
+            <Button
+              type="button"
+              className="secondary-button"
+              onClick={onClose}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={pending || !timezoneOptions.length}>
@@ -745,6 +1502,19 @@ function localDateTimeValue(date: Date, timezone?: string): string {
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 
+function DrawerAvailability({ employeeId }: { employeeId: string }) {
+  const { context } = useAuth();
+  return context?.workspace.id ? (
+    <WeeklyPreferencesPanel
+      workspaceId={context.workspace.id}
+      employeeId={employeeId}
+      audience="manager"
+    />
+  ) : (
+    <p role="status">Loading workspace...</p>
+  );
+}
+
 function renderSection(
   section: EmployeeSection,
   draft: EmployeeInput,
@@ -752,10 +1522,12 @@ function renderSection(
   detail: EmployeeDetail | undefined,
   references: Awaited<ReturnType<typeof loadEmployeeReferenceData>> | undefined,
   inviteRoleId: string,
-  setInviteRoleId: React.Dispatch<React.SetStateAction<string>>,
+  onInviteRoleChange: (roleId: string) => void,
+  emailInputRef: React.RefObject<HTMLInputElement | null>,
+  onAddEmail: () => void,
   readOnly: boolean,
   canManageAccess: boolean,
-  onboarding: EmployeeOnboardingManager | undefined,
+  onboarding: EmployeeOnboardingManager | null | undefined,
   onboardingLoading: boolean,
   canReviewDocuments: boolean,
   onReview: (
@@ -766,25 +1538,42 @@ function renderSection(
   reviewing: boolean,
   onOpenDocument: (requirementId: string) => void,
   openingDocument: boolean,
+  onRetryInvitation: () => void,
+  retryingInvitation: boolean,
   onRevokeInvitation: () => void,
   revokingInvitation: boolean,
+  onRemoveAccess: () => void,
+  removingAccess: boolean,
+  actorRole: WorkspaceRole,
+  onRoleChange: (roleId: string) => void,
+  changingRole: boolean,
+  creating = false,
 ) {
   if (section === "profile")
     return (
       <ProfileSection
+        creating={creating}
         draft={draft}
         setDraft={setDraft}
         readOnly={readOnly}
         linked={Boolean(detail?.user_id)}
-        roles={references?.inviteRoles ?? []}
-        inviteRoleId={inviteRoleId}
-        setInviteRoleId={setInviteRoleId}
-        canManageAccess={canManageAccess}
+        identityLocked={detail?.display_status === "active"}
+        accountEmail={detail?.account_email ?? null}
+        privateContact={detail?.private_contact ?? null}
+        emailInputRef={emailInputRef}
+        onboarding={onboarding}
+        onboardingLoading={onboardingLoading}
+        canReviewDocuments={canReviewDocuments}
+        onReview={onReview}
+        reviewing={reviewing}
+        onOpenDocument={onOpenDocument}
+        openingDocument={openingDocument}
       />
     );
   if (section === "employment")
     return (
       <EmploymentSection
+        creating={creating}
         draft={draft}
         setDraft={setDraft}
         readOnly={readOnly}
@@ -792,17 +1581,10 @@ function renderSection(
       />
     );
   if (section === "availability")
-    return (
-      <OnboardingReviewPanel
-        onboarding={onboarding}
-        loading={onboardingLoading}
-        kinds={["availability"]}
-        canReviewDocuments={canReviewDocuments}
-        onReview={onReview}
-        reviewing={reviewing}
-        onOpenDocument={onOpenDocument}
-        openingDocument={openingDocument}
-      />
+    return detail ? (
+      <DrawerAvailability employeeId={detail.id} />
+    ) : (
+      <p>Save the employee first to enter availability.</p>
     );
   if (section === "documents")
     return (
@@ -821,14 +1603,20 @@ function renderSection(
     return (
       <AccessSection
         draft={draft}
-        setDraft={setDraft}
         detail={detail}
         roles={references?.inviteRoles ?? []}
         inviteRoleId={inviteRoleId}
-        setInviteRoleId={setInviteRoleId}
+        onAddEmail={onAddEmail}
         readOnly={readOnly || !canManageAccess}
+        onRetryInvitation={onRetryInvitation}
+        retryingInvitation={retryingInvitation}
         onRevokeInvitation={onRevokeInvitation}
         revokingInvitation={revokingInvitation}
+        onRemoveAccess={onRemoveAccess}
+        removingAccess={removingAccess}
+        actorRole={actorRole}
+        onRoleChange={onRoleChange}
+        changingRole={changingRole}
       />
     );
   return <HistorySection detail={detail} />;
@@ -844,7 +1632,7 @@ function OnboardingReviewPanel({
   onOpenDocument,
   openingDocument,
 }: {
-  readonly onboarding: EmployeeOnboardingManager | undefined;
+  readonly onboarding: EmployeeOnboardingManager | null | undefined;
   readonly loading: boolean;
   readonly kinds: readonly EmployeeOnboardingRequirement["kind"][];
   readonly canReviewDocuments: boolean;
@@ -887,11 +1675,14 @@ function OnboardingReviewPanel({
           {onboarding.progress_completed} of {onboarding.progress_total}{" "}
           complete
         </strong>
-        <span>SSN {onboarding.ssn_present ? "received" : "missing"}</span>
       </div>
       {requirements.length ? (
         requirements.map((requirement) => (
-          <article key={requirement.id} className="manager-onboarding-item">
+          <article
+            key={requirement.id}
+            className="manager-onboarding-item"
+            aria-label={`Review ${requirement.title}`}
+          >
             <div>
               <strong>{requirement.title}</strong>
               <span>{requirement.status.replaceAll("_", " ")}</span>
@@ -906,6 +1697,7 @@ function OnboardingReviewPanel({
                   <Button
                     type="button"
                     className="secondary-button"
+                    aria-label={`Open ${requirement.title}`}
                     disabled={openingDocument}
                     onClick={() => onOpenDocument(requirement.id)}
                   >
@@ -915,6 +1707,7 @@ function OnboardingReviewPanel({
                 <Button
                   type="button"
                   className="secondary-button"
+                  aria-label={`Request changes for ${requirement.title}`}
                   disabled={
                     reviewing ||
                     (requirement.kind === "document" && !canReviewDocuments)
@@ -935,6 +1728,7 @@ function OnboardingReviewPanel({
                 </Button>
                 <Button
                   type="button"
+                  aria-label={`Accept ${requirement.title}`}
                   disabled={
                     reviewing ||
                     (requirement.kind === "document" && !canReviewDocuments)
@@ -966,78 +1760,211 @@ function OnboardingReviewPanel({
 }
 
 function ProfileSection({
+  creating = false,
   draft,
   setDraft,
   readOnly,
   linked,
-  roles,
-  inviteRoleId,
-  setInviteRoleId,
-  canManageAccess,
+  identityLocked,
+  accountEmail,
+  privateContact,
+  emailInputRef,
+  onboarding,
+  onboardingLoading,
+  canReviewDocuments,
+  onReview,
+  reviewing,
+  onOpenDocument,
+  openingDocument,
 }: {
+  creating?: boolean;
   draft: EmployeeInput;
   setDraft: React.Dispatch<React.SetStateAction<EmployeeInput>>;
   readOnly: boolean;
   linked: boolean;
-  roles: readonly InviteRoleOption[];
-  inviteRoleId: string;
-  setInviteRoleId: React.Dispatch<React.SetStateAction<string>>;
-  canManageAccess: boolean;
+  identityLocked: boolean;
+  accountEmail: string | null;
+  privateContact: EmployeeDetail["private_contact"];
+  emailInputRef: React.RefObject<HTMLInputElement | null>;
+  onboarding: EmployeeOnboardingManager | null | undefined;
+  onboardingLoading: boolean;
+  canReviewDocuments: boolean;
+  onReview: (
+    action: "accept_requirement" | "reject_requirement" | "activate",
+    requirementId: string | null,
+    reason: string,
+  ) => void;
+  reviewing: boolean;
+  onOpenDocument: (requirementId: string) => void;
+  openingDocument: boolean;
 }) {
+  const profileReviewVisible = onboarding?.requirements.some(
+    (requirement) =>
+      requirement.kind === "profile" &&
+      requirement.requires_review &&
+      requirement.status !== "completed",
+  );
+  const identityReadOnly = readOnly || identityLocked;
+  const emailValue = linked
+    ? (accountEmail ?? draft.invitation_email)
+    : draft.invitation_email;
   return (
-    <div className="employee-form-grid">
-      <Field
-        label="First name"
-        value={draft.first_name}
-        disabled={readOnly}
-        onChange={(value) =>
-          setDraft((current) => ({ ...current, first_name: value }))
-        }
-      />
-      <Field
-        label="Last name"
-        value={draft.last_name}
-        disabled={readOnly}
-        onChange={(value) =>
-          setDraft((current) => ({ ...current, last_name: value }))
-        }
-      />
-      <Field
-        label="Preferred name"
-        value={draft.preferred_name}
-        disabled={readOnly}
-        onChange={(value) =>
-          setDraft((current) => ({ ...current, preferred_name: value }))
-        }
-      />
-      <Field
-        label="Invitation email"
-        value={draft.invitation_email}
-        type="email"
-        disabled={readOnly || linked}
-        hint={linked ? "Owned by the linked account" : undefined}
-        onChange={(value) =>
-          setDraft((current) => ({ ...current, invitation_email: value }))
-        }
-      />
-      {canManageAccess && !linked ? (
-        <InviteRoleField
-          roles={roles}
-          inviteRoleId={inviteRoleId}
-          setInviteRoleId={setInviteRoleId}
-          disabled={readOnly}
-        />
+    <div className="employee-profile-sections">
+      <ProfileGroup
+        title="Identity"
+        copy="The employee name used across schedules, records, and time history."
+      >
+        <div className="employee-form-grid">
+          <Field
+            label="First name"
+            required={creating}
+            value={draft.first_name}
+            disabled={identityReadOnly}
+            hint={identityLocked ? "Locked after activation" : undefined}
+            onChange={(value) =>
+              setDraft((current) => ({ ...current, first_name: value }))
+            }
+          />
+          <Field
+            label="Last name"
+            required={creating}
+            value={draft.last_name}
+            disabled={identityReadOnly}
+            hint={identityLocked ? "Locked after activation" : undefined}
+            onChange={(value) =>
+              setDraft((current) => ({ ...current, last_name: value }))
+            }
+          />
+          <Field
+            label="Preferred name"
+            value={draft.preferred_name}
+            disabled={identityReadOnly}
+            onChange={(value) =>
+              setDraft((current) => ({ ...current, preferred_name: value }))
+            }
+          />
+          {!creating ? (
+            <ReadOnlyField
+              label="Date of birth"
+              value={privateContact?.date_of_birth ?? null}
+            />
+          ) : null}
+        </div>
+      </ProfileGroup>
+
+      <ProfileGroup
+        title="Contact"
+        copy="Invitation and private contact information for this employee."
+      >
+        <div className="employee-form-grid">
+          <Field
+            label="E-mail"
+            value={emailValue}
+            type="email"
+            disabled={readOnly}
+            readOnly={linked}
+            inputRef={emailInputRef}
+            hint={linked ? "Verified account e-mail" : undefined}
+            onChange={(value) =>
+              setDraft((current) => ({ ...current, invitation_email: value }))
+            }
+          />
+          {!creating ? (
+            <ReadOnlyField
+              label="Phone"
+              value={privateContact?.phone ?? null}
+            />
+          ) : null}
+          {!creating ? (
+            <ReadOnlyField
+              label="Emergency contact"
+              value={privateContact?.emergency_contact_name ?? null}
+            />
+          ) : null}
+          {!creating ? (
+            <ReadOnlyField
+              label="Relationship"
+              value={privateContact?.emergency_contact_relationship ?? null}
+            />
+          ) : null}
+          {!creating ? (
+            <ReadOnlyField
+              label="Emergency phone"
+              value={privateContact?.emergency_contact_phone ?? null}
+            />
+          ) : null}
+          {!creating ? (
+            <ReadOnlyField
+              label="Emergency e-mail"
+              value={privateContact?.emergency_contact_email || null}
+            />
+          ) : null}
+          {!creating ? (
+            <ReadOnlyField
+              label="Coworker sharing"
+              value={
+                privateContact
+                  ? privateContact.share_phone_with_teammates ||
+                    privateContact.share_email_with_teammates
+                    ? "Allowed"
+                    : "Hidden"
+                  : null
+              }
+            />
+          ) : null}
+        </div>
+      </ProfileGroup>
+
+      <ProfileGroup
+        title="Address"
+        copy="Private address supplied by the employee during onboarding."
+      >
+        <div className="employee-form-grid employee-address-grid">
+          <ReadOnlyField
+            label="Street address"
+            value={privateContact?.street_address ?? null}
+            wide
+          />
+          <ReadOnlyField label="City" value={privateContact?.city ?? null} />
+          <ReadOnlyField label="State" value={privateContact?.region ?? null} />
+          <ReadOnlyField
+            label="ZIP code"
+            value={privateContact?.postal_code ?? null}
+          />
+          <ReadOnlyField
+            label="Country"
+            value={privateContact?.country_code ?? null}
+          />
+        </div>
+      </ProfileGroup>
+
+      {profileReviewVisible ? (
+        <section className="employee-readonly-panel">
+          <h3>Legal name review</h3>
+          <OnboardingReviewPanel
+            onboarding={onboarding}
+            loading={onboardingLoading}
+            kinds={["profile"]}
+            canReviewDocuments={canReviewDocuments}
+            onReview={onReview}
+            reviewing={reviewing}
+            onOpenDocument={onOpenDocument}
+            openingDocument={openingDocument}
+          />
+        </section>
       ) : null}
     </div>
   );
 }
 
 function EmploymentSection({
+  creating = false,
   draft,
   setDraft,
   readOnly,
   references,
 }: {
+  creating?: boolean;
   draft: EmployeeInput;
   setDraft: React.Dispatch<React.SetStateAction<EmployeeInput>>;
   readOnly: boolean;
@@ -1045,17 +1972,48 @@ function EmploymentSection({
 }) {
   return (
     <div className="employee-form-stack">
-      <Field
-        label="Start date"
-        type="date"
-        value={draft.start_date}
-        disabled={readOnly}
-        onChange={(value) =>
-          setDraft((current) => ({ ...current, start_date: value }))
-        }
-      />
+      {creating ? (
+        <h3 className="employee-form-section-title">Work mode</h3>
+      ) : null}
+      <div className="employee-toggle-grid">
+        <label
+          className="employee-work-mode remote"
+          data-selected={draft.is_remote ? "true" : "false"}
+        >
+          <input
+            type="checkbox"
+            checked={draft.is_remote ?? false}
+            disabled={readOnly}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                is_remote: event.target.checked,
+              }))
+            }
+          />
+          <span>Remote</span>
+        </label>
+        <label
+          className="employee-work-mode off-schedule"
+          data-selected={draft.is_excluded_from_schedule ? "true" : "false"}
+        >
+          <input
+            type="checkbox"
+            checked={draft.is_excluded_from_schedule ?? false}
+            disabled={readOnly}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                is_excluded_from_schedule: event.target.checked,
+              }))
+            }
+          />
+          <span>Exclude from schedule</span>
+        </label>
+      </div>
       <AssignmentPicker
         label="Locations"
+        required={!draft.is_remote && !draft.is_excluded_from_schedule}
         options={references?.locations ?? []}
         selected={draft.location_ids}
         primary={draft.primary_location_id}
@@ -1070,6 +2028,7 @@ function EmploymentSection({
       />
       <AssignmentPicker
         label="Jobs"
+        required={!draft.is_remote && !draft.is_excluded_from_schedule}
         options={references?.jobs ?? []}
         selected={draft.job_ids}
         primary={draft.primary_job_id}
@@ -1080,6 +2039,15 @@ function EmploymentSection({
             job_ids: ids,
             primary_job_id: primary,
           }))
+        }
+      />
+      <Field
+        label="Start date"
+        type="date"
+        value={draft.start_date}
+        disabled={readOnly}
+        onChange={(value) =>
+          setDraft((current) => ({ ...current, start_date: value }))
         }
       />
       <label className="employee-field">
@@ -1102,77 +2070,397 @@ function EmploymentSection({
 
 function AccessSection({
   draft,
-  setDraft,
   detail,
   roles,
   inviteRoleId,
-  setInviteRoleId,
+  onAddEmail,
   readOnly,
+  onRetryInvitation,
+  retryingInvitation,
   onRevokeInvitation,
   revokingInvitation,
+  onRemoveAccess,
+  removingAccess,
+  actorRole,
+  onRoleChange,
+  changingRole,
 }: {
   draft: EmployeeInput;
-  setDraft: React.Dispatch<React.SetStateAction<EmployeeInput>>;
   detail: EmployeeDetail | undefined;
   roles: readonly InviteRoleOption[];
   inviteRoleId: string;
-  setInviteRoleId: React.Dispatch<React.SetStateAction<string>>;
+  onAddEmail: () => void;
   readOnly: boolean;
+  onRetryInvitation: () => void;
+  retryingInvitation: boolean;
   onRevokeInvitation: () => void;
   revokingInvitation: boolean;
+  onRemoveAccess: () => void;
+  removingAccess: boolean;
+  actorRole: WorkspaceRole;
+  onRoleChange: (roleId: string) => void;
+  changingRole: boolean;
 }) {
+  const linked = Boolean(detail?.user_id);
+  const currentRoleId = detail?.role_id ?? "";
+  const invitation = detail?.invitation ?? null;
+  const email = draft.invitation_email.trim();
+  const assignableRoles = roles.filter((role) =>
+    canAssignRole(actorRole, role.accessClass),
+  );
+  const inviteRoleName = assignableRoles.find(
+    (role) => role.id === inviteRoleId,
+  )?.name;
+  const invitationExpired = Boolean(
+    invitation?.status === "pending" &&
+    Date.parse(invitation.expires_at) <= Date.now(),
+  );
+  const state = linked
+    ? detail?.display_status === "active"
+      ? "linked"
+      : "onboarding"
+    : !email
+      ? "no_email"
+      : invitationExpired || invitation?.status === "expired"
+        ? "expired"
+        : invitation?.status === "pending" &&
+            invitation.delivery_status === "failed"
+          ? "failed"
+          : invitation?.status === "pending"
+            ? "invited"
+            : invitation?.status === "revoked"
+              ? "revoked"
+              : invitation?.status === "declined"
+                ? "declined"
+                : invitation?.status === "accepted"
+                  ? "access_removed"
+                  : "ready";
+
+  const stateContent = {
+    no_email: {
+      icon: <AlertTriangle size={18} aria-hidden />,
+      title: "No email",
+      copy: "Add an email before sending an invite.",
+      tone: "warning",
+    },
+    ready: {
+      icon: <MailPlus size={18} aria-hidden />,
+      title: "Ready to invite",
+      copy: `The invitation will grant the ${inviteRoleName ?? "selected"} role.`,
+      tone: "neutral",
+    },
+    invited: {
+      icon: <Clock3 size={18} aria-hidden />,
+      title: "Invitation sent",
+      copy: invitation
+        ? `Sent to ${invitation.email}. Expires ${formatDateTime(invitation.expires_at)}.`
+        : "The invitation is waiting for acceptance.",
+      tone: "warning",
+    },
+    failed: {
+      icon: <AlertTriangle size={18} aria-hidden />,
+      title: "Invitation delivery failed",
+      copy:
+        invitation?.delivery_error ??
+        "Retry the same link, or use Resend to replace it with a new link.",
+      tone: "danger",
+    },
+    expired: {
+      icon: <AlertTriangle size={18} aria-hidden />,
+      title: "Invitation expired",
+      copy: "Use Resend to create a new invitation link.",
+      tone: "danger",
+    },
+    revoked: {
+      icon: <KeyRound size={18} aria-hidden />,
+      title: "Invitation revoked",
+      copy: "The previous link no longer grants access. Send a new invite when ready.",
+      tone: "neutral",
+    },
+    declined: {
+      icon: <KeyRound size={18} aria-hidden />,
+      title: "Invitation declined",
+      copy: "The employee declined the previous invitation. You can send a new one.",
+      tone: "neutral",
+    },
+    access_removed: {
+      icon: <KeyRound size={18} aria-hidden />,
+      title: "Access removed",
+      copy: "The employee record and work history are preserved. A new invite starts fresh onboarding.",
+      tone: "neutral",
+    },
+    onboarding: {
+      icon: <Clock3 size={18} aria-hidden />,
+      title: "Onboarding in progress",
+      copy: "The account is linked and waiting for onboarding completion.",
+      tone: "warning",
+    },
+    linked: {
+      icon: <CheckCircle2 size={18} aria-hidden />,
+      title: "Onboarded and linked",
+      copy: "This employee has active workspace access.",
+      tone: "success",
+    },
+  }[state];
+
   return (
-    <div className="employee-form-stack">
-      <div className="employee-access-status">
-        <span>Workspace access</span>
-        <strong>{detail?.role_name ?? "No active access"}</strong>
-      </div>
-      <div className="employee-access-status">
-        <span>Invitation</span>
-        <strong>
-          {detail?.invitation
-            ? statusLabel(detail.invitation.status)
-            : "Not sent"}
-        </strong>
-      </div>
-      <Field
-        label="Invitation email"
-        type="email"
-        value={draft.invitation_email}
-        disabled={readOnly || Boolean(detail?.user_id)}
-        onChange={(value) =>
-          setDraft((current) => ({ ...current, invitation_email: value }))
-        }
-      />
-      <InviteRoleField
-        roles={roles}
-        inviteRoleId={inviteRoleId}
-        setInviteRoleId={setInviteRoleId}
-        disabled={readOnly || Boolean(detail?.user_id)}
-      />
-      {detail?.invitation?.status === "pending" && !readOnly ? (
+    <div className="employee-access-sections">
+      <section className="employee-access-group">
+        <header>
+          <div>
+            <h3>Account access</h3>
+            <p>Invitation, onboarding, and workspace role.</p>
+          </div>
+          <KeyRound size={18} aria-hidden />
+        </header>
+        <div className={`employee-access-state ${stateContent.tone}`}>
+          {stateContent.icon}
+          <div>
+            <strong>{stateContent.title}</strong>
+            <p>{stateContent.copy}</p>
+          </div>
+          {state === "no_email" && !readOnly ? (
+            <Button type="button" onClick={onAddEmail}>
+              Add email
+            </Button>
+          ) : state === "failed" && !readOnly ? (
+            <Button
+              type="button"
+              disabled={retryingInvitation}
+              onClick={onRetryInvitation}
+            >
+              <RotateCcw size={15} aria-hidden />
+              {retryingInvitation ? "Retrying" : "Retry"}
+            </Button>
+          ) : null}
+        </div>
+
+        {linked ? (
+          <div className="employee-linked-access-controls">
+            <label className="employee-field">
+              <span>Workspace role</span>
+              <select
+                aria-label="Workspace role"
+                value={currentRoleId}
+                disabled={
+                  readOnly || changingRole || assignableRoles.length === 0
+                }
+                onChange={(event) => onRoleChange(event.target.value)}
+              >
+                {currentRoleId &&
+                !assignableRoles.some((role) => role.id === currentRoleId) ? (
+                  <option value={currentRoleId}>
+                    {detail?.role_name ?? "Current role"}
+                  </option>
+                ) : null}
+                {assignableRoles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+              <small>Owner access is managed separately.</small>
+            </label>
+            {!readOnly && detail?.role_name !== "Owner" ? (
+              <Button
+                className="secondary-button employee-remove-access"
+                type="button"
+                disabled={removingAccess}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Remove this employee's workspace access? Their employee record, shifts, time history, and kiosk access will be preserved.",
+                    )
+                  )
+                    onRemoveAccess();
+                }}
+              >
+                <KeyRound size={15} aria-hidden />
+                {removingAccess ? "Removing" : "Remove access"}
+              </Button>
+            ) : null}
+          </div>
+        ) : state !== "no_email" ? (
+          <dl className="employee-access-details">
+            <div>
+              <dt>E-mail</dt>
+              <dd>{invitation?.email ?? email}</dd>
+            </div>
+            <div>
+              <dt>Invite role</dt>
+              <dd>{inviteRoleName ?? "Choose a role"}</dd>
+            </div>
+            {invitation ? (
+              <div>
+                <dt>Invitation status</dt>
+                <dd>{stateContent.title}</dd>
+              </div>
+            ) : null}
+            {invitation?.delivery_attempted_at ? (
+              <div>
+                <dt>Last delivery attempt</dt>
+                <dd>{formatDateTime(invitation.delivery_attempted_at)}</dd>
+              </div>
+            ) : null}
+          </dl>
+        ) : null}
+
+        {invitation?.status === "pending" && !invitationExpired && !readOnly ? (
+          <Button
+            className="secondary-button employee-revoke-invite"
+            type="button"
+            disabled={revokingInvitation}
+            onClick={onRevokeInvitation}
+          >
+            Revoke invitation
+          </Button>
+        ) : null}
+      </section>
+
+      <section className="employee-access-group">
+        <header>
+          <div>
+            <h3>Profile photo</h3>
+            <p>Workspace-specific employee photo visibility.</p>
+          </div>
+          <ImageOff size={18} aria-hidden />
+        </header>
+        <EmployeeAvatarControl
+          workspaceId={detail?.workspace_id ?? ""}
+          employeeId={detail?.id ?? ""}
+          readOnly={readOnly}
+        />
+      </section>
+
+      <section className="employee-access-group">
+        <header>
+          <div>
+            <h3>Kiosk</h3>
+            <p>PIN access for shared time clock devices.</p>
+          </div>
+          <KeyRound size={18} aria-hidden />
+        </header>
+        <div className="employee-access-empty">
+          <strong>Kiosk access is not configured</strong>
+          <Button className="secondary-button" type="button" disabled>
+            <RotateCcw size={15} aria-hidden />
+            Reset PIN
+          </Button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function EmployeeAvatarControl({
+  workspaceId,
+  employeeId,
+  readOnly,
+}: {
+  readonly workspaceId: string;
+  readonly employeeId: string;
+  readonly readOnly: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const avatar = useQuery({
+    queryKey: ["employee-avatar", workspaceId, employeeId],
+    queryFn: () => getEmployeeAvatar(workspaceId, employeeId),
+    enabled: Boolean(workspaceId && employeeId),
+  });
+  const remove = useMutation({
+    mutationFn: () => removeEmployeeAvatar(workspaceId, employeeId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["employee-avatar", workspaceId, employeeId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["employee-detail", workspaceId, employeeId],
+        }),
+      ]);
+    },
+  });
+
+  if (avatar.isLoading)
+    return <p className="employee-panel-state">Loading profile photo...</p>;
+  if (avatar.isError)
+    return (
+      <div className="employee-access-empty">
+        <strong>Profile photo unavailable</strong>
         <Button
-          className="secondary-button employee-revoke-invite"
+          className="secondary-button"
           type="button"
-          disabled={revokingInvitation}
-          onClick={onRevokeInvitation}
+          onClick={() => void avatar.refetch()}
         >
-          Revoke invitation
+          Retry
+        </Button>
+      </div>
+    );
+  if (!avatar.data?.present)
+    return (
+      <div className="employee-access-empty">
+        <strong>No workspace profile photo</strong>
+        <span>There is no photo to remove for this workspace.</span>
+      </div>
+    );
+
+  return (
+    <div className="employee-avatar-control">
+      {avatar.data.url ? (
+        <img src={avatar.data.url} alt="Employee workspace profile" />
+      ) : (
+        <span className="employee-avatar-placeholder" aria-hidden>
+          <UserRound size={20} />
+        </span>
+      )}
+      <div>
+        <strong>Workspace profile photo</strong>
+        <span>Removing it does not change the global account profile.</span>
+        {remove.error ? (
+          <small role="alert">{errorMessage(remove.error)}</small>
+        ) : null}
+      </div>
+      {!readOnly ? (
+        <Button
+          className="secondary-button"
+          type="button"
+          disabled={remove.isPending}
+          onClick={() => {
+            if (
+              window.confirm(
+                "Remove this employee's profile photo from this workspace?",
+              )
+            )
+              remove.mutate();
+          }}
+        >
+          <ImageOff size={15} aria-hidden />
+          {remove.isPending ? "Removing" : "Remove photo"}
         </Button>
       ) : null}
     </div>
   );
 }
 
+function canAssignRole(
+  actorRole: WorkspaceRole,
+  targetAccessClass: WorkspaceRole,
+) {
+  if (targetAccessClass === "owner") return false;
+  if (actorRole === "owner") return true;
+  if (actorRole === "admin") return targetAccessClass !== "admin";
+  return false;
+}
+
 function InviteRoleField({
   roles,
   inviteRoleId,
-  setInviteRoleId,
+  onInviteRoleChange,
   disabled,
 }: {
   roles: readonly InviteRoleOption[];
   inviteRoleId: string;
-  setInviteRoleId: React.Dispatch<React.SetStateAction<string>>;
+  onInviteRoleChange: (roleId: string) => void;
   disabled: boolean;
 }) {
   return (
@@ -1180,10 +2468,15 @@ function InviteRoleField({
       <span>Invite role</span>
       <select
         aria-label="Invite role"
-        value={inviteRoleId}
+        value={
+          roles.some((role) => role.id === inviteRoleId) ? inviteRoleId : ""
+        }
         disabled={disabled || roles.length === 0}
-        onChange={(event) => setInviteRoleId(event.target.value)}
+        onChange={(event) => onInviteRoleChange(event.target.value)}
       >
+        {roles.length > 0 && !roles.some((role) => role.id === inviteRoleId) ? (
+          <option value="">Choose a role</option>
+        ) : null}
         {roles.length === 0 ? (
           <option value="">No assignable roles</option>
         ) : null}
@@ -1240,31 +2533,119 @@ function SummaryPanel({
   );
 }
 
+function ProfileGroup({
+  title,
+  copy,
+  children,
+}: {
+  title: string;
+  copy: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="employee-profile-group">
+      <header>
+        <h3>{title}</h3>
+        <p>{copy}</p>
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function ReadOnlyField({
+  label,
+  value,
+  wide = false,
+}: {
+  label: string;
+  value: string | null;
+  wide?: boolean;
+}) {
+  return (
+    <label
+      className={`employee-field employee-readonly-field${wide ? " wide" : ""}`}
+    >
+      <span>{label}</span>
+      <input
+        aria-label={label}
+        readOnly
+        value={value ?? ""}
+        placeholder="Not provided"
+      />
+    </label>
+  );
+}
+
 function Field({
   label,
   value,
   onChange,
   disabled,
+  readOnly = false,
+  inputRef,
   type = "text",
   hint,
+  required = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   disabled: boolean;
+  readOnly?: boolean;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
   type?: string;
   hint?: string;
+  required?: boolean;
 }) {
+  const [touched, setTouched] = useState(false);
+  const id = useId();
+  const invalid =
+    touched &&
+    ((required && !value.trim()) ||
+      (type === "email" &&
+        Boolean(value.trim()) &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())));
+  const validationMessage =
+    type === "email" ? "Enter a valid email address." : `${label} is required.`;
   return (
-    <label className="employee-field">
-      <span>{label}</span>
+    <label
+      className={`employee-field${type === "email" ? " employee-email-field" : ""}`}
+    >
+      <span>
+        {label}
+        {required ? (
+          <small className="employee-field-requirement" aria-hidden>
+            Required
+          </small>
+        ) : null}
+      </span>
       <input
+        ref={inputRef}
+        aria-label={label}
+        aria-required={required || undefined}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid || hint ? id : undefined}
+        onBlur={(event) => {
+          if (
+            event.relatedTarget instanceof Element &&
+            event.relatedTarget.closest(".employee-drawer")
+          )
+            setTouched(true);
+        }}
         type={type}
         value={value}
         disabled={disabled}
+        readOnly={readOnly}
         onChange={(event) => onChange(event.target.value)}
       />
-      {hint ? <small>{hint}</small> : null}
+      {invalid ? (
+        <small id={id} className="employee-field-error">
+          {validationMessage}
+        </small>
+      ) : hint ? (
+        <small id={id}>{hint}</small>
+      ) : null}
     </label>
   );
 }
@@ -1276,6 +2657,7 @@ function AssignmentPicker({
   primary,
   disabled,
   onChange,
+  required = false,
 }: {
   label: string;
   options: readonly EmployeeOption[];
@@ -1283,50 +2665,79 @@ function AssignmentPicker({
   primary: string | null;
   disabled: boolean;
   onChange: (ids: string[], primary: string | null) => void;
+  required?: boolean;
 }) {
+  const [search, setSearch] = useState("");
+  const available = options.filter(
+    (option) => !option.archived || selected.includes(option.id),
+  );
+  const matching = available.filter((option) =>
+    option.name.toLowerCase().includes(search.toLowerCase()),
+  );
   return (
     <fieldset className="employee-assignment-picker" disabled={disabled}>
-      <legend>{label}</legend>
-      {options
-        .filter((option) => !option.archived || selected.includes(option.id))
-        .map((option) => {
-          const checked = selected.includes(option.id);
-          return (
-            <div key={option.id}>
-              <label>
+      <legend>
+        {label}
+        {required ? (
+          <span className="employee-field-requirement">Required</span>
+        ) : null}
+      </legend>
+      {available.length > 8 ? (
+        <input
+          aria-label={`Search ${label.toLowerCase()}`}
+          placeholder={`Search ${label.toLowerCase()}`}
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.preventDefault();
+          }}
+        />
+      ) : null}
+      {matching.map((option) => {
+        const checked = selected.includes(option.id);
+        return (
+          <div key={option.id}>
+            <label>
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => {
+                  const ids = checked
+                    ? selected.filter((id) => id !== option.id)
+                    : [...selected, option.id];
+                  onChange(
+                    ids,
+                    checked && primary === option.id
+                      ? (ids[0] ?? null)
+                      : (primary ?? option.id),
+                  );
+                }}
+              />
+              <span>{option.name}</span>
+              {option.archived ? <small>Archived</small> : null}
+            </label>
+            {checked ? (
+              <label className="primary-choice">
                 <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => {
-                    const ids = checked
-                      ? selected.filter((id) => id !== option.id)
-                      : [...selected, option.id];
-                    onChange(
-                      ids,
-                      checked && primary === option.id
-                        ? (ids[0] ?? null)
-                        : (primary ?? option.id),
-                    );
-                  }}
+                  type="radio"
+                  name={`primary-${label}`}
+                  checked={primary === option.id}
+                  onChange={() => onChange([...selected], option.id)}
                 />
-                <span>{option.name}</span>
-                {option.archived ? <small>Archived</small> : null}
+                Primary
               </label>
-              {checked ? (
-                <label className="primary-choice">
-                  <input
-                    type="radio"
-                    name={`primary-${label}`}
-                    checked={primary === option.id}
-                    onChange={() => onChange([...selected], option.id)}
-                  />
-                  Primary
-                </label>
-              ) : null}
-            </div>
-          );
-        })}
-      {options.length === 0 ? <p>No active {label.toLowerCase()}.</p> : null}
+            ) : null}
+          </div>
+        );
+      })}
+      {available.length === 0 ? (
+        <p>No active {label.toLowerCase()}.</p>
+      ) : matching.length === 0 ? (
+        <p>No matching {label.toLowerCase()}.</p>
+      ) : null}
+      {required && selected.length === 0 && available.length > 0 ? (
+        <p>Select at least one {label === "Locations" ? "location" : "job"}.</p>
+      ) : null}
     </fieldset>
   );
 }
@@ -1343,6 +2754,8 @@ function toDraft(detail: EmployeeDetail): EmployeeInput {
     primary_location_id: detail.primary_location_id,
     job_ids: detail.jobs.map((item) => item.id),
     primary_job_id: detail.primary_job_id,
+    is_remote: detail.is_remote ?? false,
+    is_excluded_from_schedule: detail.is_excluded_from_schedule ?? false,
     expected_revision: detail.revision,
   };
 }
@@ -1351,7 +2764,7 @@ function sectionDescription(section: EmployeeSection): string {
   return {
     profile: "Identity and manager-owned contact details.",
     employment: "Location, job, start date, and internal context.",
-    availability: "Employee-submitted recurring scheduling availability.",
+    availability: "Employee preferences and shared manager reminders.",
     documents: "Onboarding document requirement progress.",
     access: "Invitation and workspace access state.",
     history: "Audited employee lifecycle changes.",
@@ -1362,6 +2775,13 @@ function statusLabel(status: string): string {
   return status
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "on an unknown date"
+    : date.toLocaleString();
 }
 
 function errorMessage(error: unknown): string {

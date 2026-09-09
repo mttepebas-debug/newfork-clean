@@ -56,7 +56,24 @@ export async function runScheduledExportsCron(input: {
 
     result.due += 1;
     try {
-      const weekStart = weekStartForTimezone(now, schedule.timezone);
+      const stillAllowed =
+        !input.service.revalidateScheduledExportCandidate ||
+        (await input.service.revalidateScheduledExportCandidate({
+          workspaceId: schedule.workspace_id,
+          requesterUserId: schedule.created_by,
+          locationIds: schedule.location_ids,
+          now,
+        }));
+      if (!stillAllowed) {
+        result.skipped += 1;
+        continue;
+      }
+
+      const weekStart = weekStartForTimezone(
+        now,
+        schedule.timezone,
+        schedule.week_start_day,
+      );
       const preview = prepareScheduleExport(
         await input.service.previewExport({
           actorUserId: schedule.created_by,
@@ -177,11 +194,16 @@ export function isScheduledExportDue(
   return parts.weekday === schedule.day_of_week && parts.hour === schedule.send_hour;
 }
 
-export function weekStartForTimezone(now: Date, timezone: string): string {
+export function weekStartForTimezone(
+  now: Date,
+  timezone: string,
+  weekStartDay: ScheduledExportCronCandidate["week_start_day"] = "monday",
+): string {
   const parts = localDateTimeParts(now, timezone);
   const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
-  const mondayOffset = (parts.weekday + 6) % 7;
-  date.setUTCDate(date.getUTCDate() - mondayOffset);
+  const offset =
+    weekStartDay === "sunday" ? parts.weekday : (parts.weekday + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - offset);
   return date.toISOString().slice(0, 10);
 }
 

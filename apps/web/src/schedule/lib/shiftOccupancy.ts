@@ -3,6 +3,7 @@ import type {
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
 import { intervalsOverlap, toInterval } from "@newfork/scheduling-shared";
+import { getShiftTimeBasis } from "@newfork/shared";
 
 export interface ShiftOccupancyTarget {
   readonly employeeId: string | null;
@@ -34,7 +35,7 @@ function crossesMidnight(start: string, end: string): boolean {
 }
 
 export function shiftUsesRealClockTime(shift: ScheduleShift): boolean {
-  return !shift.hide_time_on_badge;
+  return getShiftTimeBasis(shift) === "explicit";
 }
 
 export function shiftHasSameNamedTypeOnDate(
@@ -110,7 +111,7 @@ export function findScheduleShiftOccupancyConflict(
     shiftTypeId: value.shift_type_id,
     startTime: value.start_time,
     endTime: value.end_time,
-    usesClockTime: !value.hide_time_on_badge,
+    usesClockTime: getShiftTimeBasis(value) === "explicit",
     excludeShiftId,
   };
   return shifts

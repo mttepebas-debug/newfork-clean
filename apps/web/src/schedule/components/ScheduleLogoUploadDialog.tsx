@@ -36,7 +36,7 @@ export interface ScheduleLogoSaveDraft {
 const logoEditorFrameStyle = {
   aspectRatio: scheduleLogoFrameAspectRatio,
   borderTopWidth: 1,
-  borderRightWidth: 3,
+  borderRightWidth: 1,
   borderBottomWidth: 1,
   borderLeftWidth: 1,
   borderTopStyle: "solid",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculateScheduleGridFillerHeight,
   calculateScheduleDayColumnMinWidth,
   countScheduleGridBodyRows,
   countScheduleGridColumns,
@@ -9,6 +10,7 @@ import {
   createScheduleBadgeMeasurementVersion,
   createScheduleGridDays,
   createScheduleGridLocationGroups,
+  createScheduleGridTemplateColumns,
   resolveScheduleInteractionLocationId,
   scheduleGridMinDayColumnWidth,
 } from "./scheduleGridLayout";
@@ -133,7 +135,7 @@ describe("scheduleGridLayout", () => {
         measuredBadgeWidth: 300,
         view: "week",
       }),
-    ).toBe(313);
+    ).toBe(309);
     expect(
       calculateScheduleDayColumnMinWidth({
         editing: false,
@@ -141,7 +143,7 @@ describe("scheduleGridLayout", () => {
         measuredBadgeWidth: 300,
         view: "week",
       }),
-    ).toBe(301);
+    ).toBe(303);
     expect(
       calculateScheduleDayColumnMinWidth({
         editing: false,
@@ -150,6 +152,32 @@ describe("scheduleGridLayout", () => {
         view: "week",
       }),
     ).toBe(scheduleGridMinDayColumnWidth);
+    expect(
+      calculateScheduleDayColumnMinWidth({
+        editing: true,
+        layout: "unified",
+        locationGroups: [
+          {
+            ...groups[0]!,
+            id: "unified",
+            name: "Main Dining + Patio + Rooftop + Banquet",
+            sourceIds: ["loc-1", "loc-2"],
+          },
+        ],
+        measuredBadgeWidth: 90,
+        view: "week",
+      }),
+    ).toBe(scheduleGridMinDayColumnWidth);
+  });
+
+  it("can create a weekly unified template that fits visible grid width", () => {
+    expect(
+      createScheduleGridTemplateColumns({
+        columns: 7,
+        fitVisibleColumns: true,
+        showTotalHours: true,
+      }),
+    ).toBe("minmax(144px, 200px) repeat(7, minmax(0, 1fr)) minmax(72px, 120px)");
   });
 
   it("counts visible body and filler rows", () => {
@@ -162,8 +190,37 @@ describe("scheduleGridLayout", () => {
         showTotalHours: true,
       }),
     ).toBe(7);
+    expect(
+      countScheduleGridBodyRows({
+        rowCount: 0,
+        showUnassignedRow: false,
+        showEmployeeGroupHeaders: false,
+        employeeRowGroupCount: 0,
+        showTotalHours: true,
+      }),
+    ).toBe(1);
     expect(countScheduleGridFillerRows(7)).toBe(1);
-    expect(countScheduleGridFillerRows(10)).toBe(0);
+    expect(countScheduleGridFillerRows(10)).toBe(1);
+    expect(countScheduleGridFillerRows(0)).toBe(1);
+  });
+
+  it("calculates one elastic filler row height from the visible grid space", () => {
+    expect(
+      calculateScheduleGridFillerHeight({
+        viewportHeight: 620,
+        fillerStartOffset: 360,
+        totalRowHeight: 40,
+        horizontalNavHeight: 17,
+      }),
+    ).toBe(203);
+    expect(
+      calculateScheduleGridFillerHeight({
+        viewportHeight: 360,
+        fillerStartOffset: 380,
+        totalRowHeight: 40,
+        horizontalNavHeight: 17,
+      }),
+    ).toBe(0);
   });
 
   it("captures fields that affect badge measurement", () => {

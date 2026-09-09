@@ -134,7 +134,9 @@ const preview: ScheduleExportPreview = {
   },
 };
 
-function renderDialog() {
+function renderDialog(
+  overrides: Partial<Parameters<typeof ScheduleExportDialog>[0]> = {},
+) {
   const props: Parameters<typeof ScheduleExportDialog>[0] = {
     weekStart: "2026-08-17",
     locations,
@@ -156,6 +158,7 @@ function renderDialog() {
     onCreateScheduledExport: vi.fn().mockResolvedValue(undefined),
     onToggleScheduledExport: vi.fn().mockResolvedValue(undefined),
     onDeleteScheduledExport: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
   };
 
   render(<ScheduleExportDialog {...props} />);
@@ -203,6 +206,26 @@ describe("ScheduleExportDialog", () => {
     expect(
       within(workspace).getByRole("button", { name: "Download PDF" }),
     ).toBeTruthy();
+  });
+
+  it("uses the schedule time format as the default export setting", async () => {
+    const props = renderDialog({ defaultTimeFormat: "24h" });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open export workspace" }),
+    );
+    const workspace = screen.getByRole("dialog", { name: "Export workspace" });
+    fireEvent.click(
+      within(workspace).getByRole("button", { name: "Preview export" }),
+    );
+
+    await waitFor(() =>
+      expect(props.onPreviewHtml).toHaveBeenCalledWith(
+        expect.objectContaining({
+          settings: expect.objectContaining({ time_format: "24h" }),
+        }),
+      ),
+    );
   });
 
   it("previews XLSX exports as data files and exposes the XLSX download action", async () => {

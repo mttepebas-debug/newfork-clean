@@ -3,7 +3,8 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "pnpm --filter @newfork/web dev",
+    "dev:turbo": "turbo dev",
     "build": "turbo build",
     "typecheck": "turbo typecheck",
     "test": "turbo test",

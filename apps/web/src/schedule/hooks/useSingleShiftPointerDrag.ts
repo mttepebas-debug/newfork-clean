@@ -12,6 +12,8 @@ import {
   shiftDropTargetKey,
 } from "../lib/scheduleDragTargets";
 
+const DRAG_THRESHOLD_PX = 6;
+
 export interface ShiftDropTarget {
   readonly shiftId: string;
   readonly employeeId: string | null;
@@ -24,7 +26,7 @@ export interface ShiftDropEvaluation {
   readonly allowed: boolean;
   readonly reason?: string;
   readonly messages?: readonly string[];
-  readonly targetStatus?: "allowed" | "blocked" | null;
+  readonly targetStatus?: "allowed" | "warning" | "blocked" | null;
 }
 
 export interface ShiftDragState {
@@ -35,7 +37,9 @@ export interface ShiftDragState {
   readonly previewWidth: number;
   readonly previewHeight: number;
   readonly targetKey: string | null;
-  readonly targetStatus: "allowed" | "blocked" | null;
+  readonly targetLocationId: string | null;
+  readonly targetDate: string | null;
+  readonly targetStatus: "allowed" | "warning" | "blocked" | null;
   readonly reason: string | null;
   readonly copy: boolean;
 }
@@ -89,6 +93,9 @@ export function useSingleShiftPointerDrag({
     ((event: globalThis.MouseEvent) => void) | null
   >(null);
   const clearSessionRef = useRef<(suppressClick: boolean) => void>(() => {});
+  const dragStateFrameRef = useRef<number | null>(null);
+  const pendingDragStateRef = useRef<ShiftDragState | null>(null);
+  const ignoreCompatibilityMouseUntilRef = useRef(0);
 
   const clearClickSuppressor = useCallback(() => {
     const suppressor = clickSuppressorRef.current;
@@ -97,8 +104,23 @@ export function useSingleShiftPointerDrag({
     clickSuppressorRef.current = null;
   }, []);
 
+  const cancelPendingDragState = useCallback(() => {
+    if (dragStateFrameRef.current !== null) {
+      window.cancelAnimationFrame(dragStateFrameRef.current);
+      dragStateFrameRef.current = null;
+    }
+    pendingDragStateRef.current = null;
+  }, []);
+
   const scheduleDragState = useCallback((nextState: ShiftDragState) => {
-    setDragState(nextState);
+    pendingDragStateRef.current = nextState;
+    if (dragStateFrameRef.current !== null) return;
+    dragStateFrameRef.current = window.requestAnimationFrame(() => {
+      dragStateFrameRef.current = null;
+      const pending = pendingDragStateRef.current;
+      pendingDragStateRef.current = null;
+      if (pending) setDragState(pending);
+    });
   }, []);
 
   const clearSession = useCallback(
@@ -107,6 +129,7 @@ export function useSingleShiftPointerDrag({
       pendingRef.current = null;
       currentTargetRef.current = null;
       draggingRef.current = false;
+      cancelPendingDragState();
       setDragState(null);
       if (hadDrag) onDragEnd();
       clearClickSuppressor();
@@ -120,7 +143,7 @@ export function useSingleShiftPointerDrag({
       clickSuppressorRef.current = swallowClick;
       window.addEventListener("click", swallowClick, true);
     },
-    [clearClickSuppressor, onDragEnd],
+    [cancelPendingDragState, clearClickSuppressor, onDragEnd],
   );
 
   useEffect(() => clearClickSuppressor, [clearClickSuppressor]);
@@ -184,7 +207,7 @@ export function useSingleShiftPointerDrag({
         clientX - pending.startX,
         clientY - pending.startY,
       );
-      if (!draggingRef.current && delta < 6) return;
+      if (!draggingRef.current && delta < DRAG_THRESHOLD_PX) return;
       if (!draggingRef.current) {
         draggingRef.current = true;
         onDragStart(pending.shiftId);
@@ -203,6 +226,8 @@ export function useSingleShiftPointerDrag({
         previewWidth: pending.previewWidth,
         previewHeight: pending.previewHeight,
         targetKey: target?.targetKey ?? null,
+        targetLocationId: target?.locationId ?? null,
+        targetDate: target?.date ?? null,
         targetStatus:
           target?.targetStatus ??
           (target ? (target.allowed ? "allowed" : "blocked") : null),
@@ -234,7 +259,7 @@ export function useSingleShiftPointerDrag({
       event.preventDefault();
     };
     const handleMouseMove = (event: globalThis.MouseEvent) => {
-      if (!pendingRef.current) return;
+      if (!pendingRef.current || pendingRef.current.pointerId !== null) return;
       updateDragAtPoint({
         clientX: event.clientX,
         clientY: event.clientY,
@@ -262,7 +287,7 @@ export function useSingleShiftPointerDrag({
           clientX - pending.startX,
           clientY - pending.startY,
         );
-        if (delta >= 6) {
+        if (delta >= DRAG_THRESHOLD_PX) {
           draggingRef.current = true;
           onDragStart(pending.shiftId);
         }
@@ -287,7 +312,7 @@ export function useSingleShiftPointerDrag({
     };
     const handleMouseUp = (event: globalThis.MouseEvent) => {
       const pending = pendingRef.current;
-      if (!pending) return;
+      if (!pending || pending.pointerId !== null) return;
       const clientX = Number.isFinite(event.clientX)
         ? event.clientX
         : pending.startX;
@@ -300,7 +325,7 @@ export function useSingleShiftPointerDrag({
           clientX - pending.startX,
           clientY - pending.startY,
         );
-        if (delta >= 6) {
+        if (delta >= DRAG_THRESHOLD_PX) {
           draggingRef.current = true;
           onDragStart(pending.shiftId);
         }
@@ -319,22 +344,12 @@ export function useSingleShiftPointerDrag({
     window.addEventListener("pointercancel", handlePointerCancel, true);
     window.addEventListener("mousemove", handleMouseMove, true);
     window.addEventListener("mouseup", handleMouseUp, true);
-    document.addEventListener("pointermove", handlePointerMove, true);
-    document.addEventListener("pointerup", handlePointerUp, true);
-    document.addEventListener("pointercancel", handlePointerCancel, true);
-    document.addEventListener("mousemove", handleMouseMove, true);
-    document.addEventListener("mouseup", handleMouseUp, true);
     return () => {
       window.removeEventListener("pointermove", handlePointerMove, true);
       window.removeEventListener("pointerup", handlePointerUp, true);
       window.removeEventListener("pointercancel", handlePointerCancel, true);
       window.removeEventListener("mousemove", handleMouseMove, true);
       window.removeEventListener("mouseup", handleMouseUp, true);
-      document.removeEventListener("pointermove", handlePointerMove, true);
-      document.removeEventListener("pointerup", handlePointerUp, true);
-      document.removeEventListener("pointercancel", handlePointerCancel, true);
-      document.removeEventListener("mousemove", handleMouseMove, true);
-      document.removeEventListener("mouseup", handleMouseUp, true);
     };
   }, [
     clearSession,
@@ -371,6 +386,10 @@ export function useSingleShiftPointerDrag({
 
   const onShiftPointerDown = useCallback(
     (shiftId: string, event: ReactPointerEvent<HTMLElement>) => {
+      if (event.pointerType === "touch") {
+        ignoreCompatibilityMouseUntilRef.current = Date.now() + 800;
+        return;
+      }
       if (
         !enabled ||
         !isPrimaryDragActivation(event.button, event.buttons) ||
@@ -402,6 +421,8 @@ export function useSingleShiftPointerDrag({
   );
   const onShiftMouseDown = useCallback(
     (shiftId: string, event: MouseEvent<HTMLElement>) => {
+      if (Date.now() < ignoreCompatibilityMouseUntilRef.current) return;
+      if (pendingRef.current && pendingRef.current.pointerId !== null) return;
       if (
         !enabled ||
         !isPrimaryDragActivation(event.button, event.buttons) ||

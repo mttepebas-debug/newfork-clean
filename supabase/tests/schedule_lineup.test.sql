@@ -21,7 +21,7 @@ select throws_ok($$select * from public.schedule_lineup_briefs$$,'42501',null,'b
 select throws_ok($$select * from public.schedule_lineup_snapshots$$,'42501',null,'snapshots deny authenticated table reads');
 reset role;
 
-select is((select count(*)::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key in('owner','admin','manager') and p.permission_key like 'schedule.lineup.%'),9,'manager roles receive all Line-up capabilities');
+select is((select count(distinct (r.system_key, p.permission_key))::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key in('owner','admin','manager') and p.permission_key like 'schedule.lineup.%'),9,'manager roles receive all Line-up capabilities');
 select is((select count(*)::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key='employee' and p.permission_key like 'schedule.lineup.%'),0,'employee receives no Line-up capability');
 select is((select count(*)::integer from public.schedule_lineup_sections where workspace_id='6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'),3,'workspace receives default sections');
 

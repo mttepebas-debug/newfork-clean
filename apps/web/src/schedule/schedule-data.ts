@@ -1,4 +1,7 @@
 import {
+  scheduleDefaultHoursPreviewSchema,
+  type ScheduleDefaultHoursInput,
+  type ScheduleDefaultHoursApply,
   scheduleDraftListSchema,
   scheduleDraftDeleteResultSchema,
   scheduleBulkDeleteResultSchema,
@@ -66,7 +69,11 @@ import {
   type UpdateSchedulePendingOpInput,
   type UpdateScheduleExportScheduleInput,
 } from "@newfork/shared/schedule";
-import { developmentBearerToken, supabaseClient } from "../lib/supabase";
+import {
+  developmentBearerToken,
+  getTabWorkspaceId,
+  supabaseClient,
+} from "../lib/supabase";
 
 export class ScheduleRequestError extends Error {
   readonly status: number;
@@ -370,6 +377,19 @@ export async function createScheduleShift(
   );
 }
 
+export async function createScheduleShifts(
+  workspaceId: string,
+  session: ScheduleEditSession,
+  shifts: ScheduleShiftMutationInput[],
+  idempotencyKey: string,
+): Promise<ScheduleEditSession> {
+  return scheduleEditSessionSchema.parse(await activeScheduleRequest("/shifts/batch", {
+    method: "POST",
+    headers: { "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify({ session_id: session.id, expected_session_revision: session.revision, shifts }),
+  }));
+}
+
 export async function updateScheduleShift(
   workspaceId: string,
   session: ScheduleEditSession,
@@ -540,6 +560,7 @@ export async function publishScheduleDraft(
       method: "POST",
       body: JSON.stringify({
         draft_id: preview.draft_id,
+        week_start: preview.week_start,
         location_ids: preview.locations.map((location) => location.location_id),
         expected_draft_revision: preview.draft_revision,
         fingerprint: preview.fingerprint,
@@ -675,6 +696,13 @@ export async function previewScheduleAutoFill(
       { method: "POST" },
     ),
   );
+}
+
+export async function previewScheduleDefaultHours(workspaceId: string, sessionId: string, command: ScheduleDefaultHoursInput) {
+  return scheduleDefaultHoursPreviewSchema.parse(await activeScheduleRequest(`/v1/workspaces/${workspaceId}/schedule/edit-sessions/${sessionId}/default-hours-preview`, { method: "POST", body: JSON.stringify(command) }));
+}
+export async function applyScheduleDefaultHours(workspaceId: string, sessionId: string, command: ScheduleDefaultHoursApply) {
+  return scheduleEditSessionSchema.parse(await activeScheduleRequest(`/v1/workspaces/${workspaceId}/schedule/edit-sessions/${sessionId}/default-hours-apply`, { method: "POST", body: JSON.stringify(command) }));
 }
 
 export async function applyScheduleAutoFill(
@@ -838,14 +866,17 @@ async function activeScheduleDownload(
   const session = await supabaseClient.auth.getSession();
   const token = session.data.session?.access_token ?? developmentBearerToken();
   if (!token) throw new Error("A current session is required for Schedule");
+  const headers = new Headers({
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  });
+  const tabWorkspaceId = getTabWorkspaceId();
+  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}${path}`,
+    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}${path}`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(body),
     },
   );
@@ -866,15 +897,18 @@ async function activeScheduleRequest(
   const session = await supabaseClient.auth.getSession();
   const token = session.data.session?.access_token ?? developmentBearerToken();
   if (!token) throw new Error("A current session is required for Schedule");
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const tabWorkspaceId = getTabWorkspaceId();
+  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}${path}`,
+    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}${path}`,
     {
       ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...init.headers,
-      },
+      headers,
     },
   );
   if (response.status === 204) return undefined;

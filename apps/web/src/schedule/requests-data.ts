@@ -4,7 +4,8 @@ import {
   type ShiftChangeDecisionInput,
   type TimeOffDecisionInput,
 } from "@newfork/shared/schedule";
-import { supabaseClient } from "../lib/supabase";
+import { getTabWorkspaceId, supabaseClient } from "../lib/supabase";
+import { timeOffAssignmentPreviewSchema, type TimeOffAssignmentPreviewInput } from "@newfork/shared";
 
 async function request(
   _workspaceId: string,
@@ -16,15 +17,18 @@ async function request(
   const token = (await supabaseClient.auth.getSession()).data.session
     ?.access_token;
   if (!token) throw new Error("A current session is required");
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const tabWorkspaceId = getTabWorkspaceId();
+  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? "http://localhost:9999"}/schedule/requests${path}`,
+    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/schedule/requests${path}`,
     {
       ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...init.headers,
-      },
+      headers,
     },
   );
   const body = (await response.json().catch(() => null)) as unknown;
@@ -84,6 +88,12 @@ export async function decideTimeOff(
       body: JSON.stringify(decision),
     }),
   );
+}
+
+export async function previewTimeOffAssignment(workspaceId: string, requestId: string, decision: TimeOffAssignmentPreviewInput) {
+  return timeOffAssignmentPreviewSchema.parse(await request(workspaceId, `/time-off/${requestId}/assignment-preview`, {
+    method: "POST", body: JSON.stringify(decision),
+  }));
 }
 
 export async function decideShiftChange(

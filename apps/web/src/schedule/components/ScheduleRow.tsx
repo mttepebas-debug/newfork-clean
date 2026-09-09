@@ -51,6 +51,12 @@ export interface ActiveScheduleEditorTarget {
   readonly shiftId?: string | null;
 }
 
+interface DisplayShiftStack {
+  readonly shift: ScheduleShift;
+  readonly groupedShiftIds: readonly string[];
+  readonly stackCount: number;
+}
+
 export function ScheduleRow({
   employee,
   shifts,
@@ -159,11 +165,24 @@ export function ScheduleRow({
   readonly onDragOverCell: (cellKey: string | null) => void;
   readonly onOpenEmployeeCard: (employeeId: string) => void;
 }) {
+  const rowKey = employee?.id ?? "unassigned";
+  const isUnassignedRow = !employee;
   const employeeShifts = shifts.filter(
     (shift) =>
       shift.employee_id === employee?.id ||
       (!employee && shift.employee_id === null),
   );
+  const activeDraggedShiftId =
+    isUnassignedRowDrag(dragState) && !dragState.copy
+      ? dragState.activeShiftId
+      : null;
+  const activeDraggedOpenShift =
+    !employee &&
+    activeDraggedShiftId !== null &&
+    employeeShifts.some((shift) => shift.id === activeDraggedShiftId);
+  const displayedOpenShiftCount = activeDraggedOpenShift
+    ? Math.max(0, employeeShifts.length - 1)
+    : employeeShifts.length;
   const totalEmployeeShifts = totalShifts.filter(
     (shift) => employee && shift.employee_id === employee.id,
   );
@@ -171,18 +190,16 @@ export function ScheduleRow({
     employee ? employeeShifts : [],
     totalEmployeeShifts,
   );
-  const rowKey = employee?.id ?? "unassigned";
-  const isUnassignedRow = !employee;
   const unassignedLabelMode =
-    isUnassignedRow && employeeShifts.length > 1 ? "header" : "centered";
-  const rowVersion = `${employeeShifts.map((shift) => `${shift.id}:${shift.location_id}:${shift.shift_type_id ?? ""}:${shift.job_id}:${shift.start_time}:${shift.end_time}:${shift.crosses_midnight}:${shift.hide_time_on_badge}:${shift.warning_codes.join(",")}:${(shift.label_names ?? []).join(",")}`).join("|")}|${jobs.map((job) => `${job.id}:${job.name}`).join("|")}|${shiftTypes.map((shiftType) => `${shiftType.id}:${shiftType.name}`).join("|")}|${locations.map((location) => `${location.id}:${location.sourceNames.map((source) => source.name).join(",")}`).join("|")}|${editing}|${showShiftType}|${showShiftLabels}|${showClockTimes}|${timeFormat}|${showJobColorDot}|${showLocationInBadge}`;
-  const rowMinHeight = editing ? 94 : PREVIEW_SHIFT_BADGE_MIN_HEIGHT;
+    isUnassignedRow && displayedOpenShiftCount > 1 ? "header" : "centered";
+  const rowVersion = `${employeeShifts.map((shift) => `${shift.id}:${shift.location_id}:${shift.shift_type_id ?? ""}:${shift.job_id}:${shift.start_time}:${shift.end_time}:${shift.crosses_midnight}:${shift.hide_time_on_badge}:${shift.warning_codes.join(",")}:${(shift.label_names ?? []).join(",")}`).join("|")}|${jobs.map((job) => `${job.id}:${job.name}`).join("|")}|${shiftTypes.map((shiftType) => `${shiftType.id}:${shiftType.name}`).join("|")}|${locations.map((location) => `${location.id}:${location.sourceNames.map((source) => source.name).join(",")}`).join("|")}|${editing}|${showShiftType}|${showShiftLabels}|${showClockTimes}|${timeFormat}|${showJobColorDot}|${showLocationInBadge}|${activeDraggedShiftId ?? ""}:${isUnassignedRowDrag(dragState) ? dragState.copy : ""}`;
+  const rowMinHeight = PREVIEW_SHIFT_BADGE_MIN_HEIGHT;
   const { anchorRef, badgeHeight, rowBadgeStackHeight } =
     useSynchronizedRowBadgeHeight({
       rowKey,
       version: rowVersion,
       enabled: true,
-      minHeight: editing ? undefined : PREVIEW_SHIFT_BADGE_MIN_HEIGHT,
+      minHeight: PREVIEW_SHIFT_BADGE_MIN_HEIGHT,
     });
   const rowStyle = {
     "--schedule-row-min-height": `${Math.max(rowMinHeight, rowBadgeStackHeight)}px`,
@@ -194,7 +211,7 @@ export function ScheduleRow({
       <ScheduleEmployeeCard
         editing={editing}
         employee={employee}
-        openShiftCount={employeeShifts.length}
+        openShiftCount={displayedOpenShiftCount}
         unassignedFrozen={unassignedFrozen}
         unassignedLabelMode={unassignedLabelMode}
         rowStyle={rowStyle}
@@ -219,6 +236,13 @@ export function ScheduleRow({
             derivedGhostShifts,
             shiftTypes,
           );
+          const displayStacks = isUnassignedRow
+            ? stackUnassignedCellShifts(displayShifts, activeDraggedShiftId)
+            : displayShifts.map((shift) => ({
+                shift,
+                groupedShiftIds: [shift.id],
+                stackCount: 1,
+              }));
           const cellHasOverlap = Boolean(derivedCellState?.hasOverlap);
           const cellHasUnavailability = Boolean(
             derivedCellState?.hasUnavailability,
@@ -226,9 +250,10 @@ export function ScheduleRow({
           const cellKey = `${rowKey}-${location.id}-${day}`;
           const editorOwnsCell = Boolean(
             activeEditorTarget &&
-              activeEditorTarget.date === day &&
-              activeEditorTarget.employeeId === (employee?.id ?? null) &&
-              location.sourceIds.includes(activeEditorTarget.locationId),
+            activeEditorTarget.shiftId === null &&
+            activeEditorTarget.date === day &&
+            activeEditorTarget.employeeId === (employee?.id ?? null) &&
+            location.sourceIds.includes(activeEditorTarget.locationId),
           );
           const interactionLocationId = resolveScheduleInteractionLocationId({
             sourceLocationIds: location.sourceIds,
@@ -256,7 +281,7 @@ export function ScheduleRow({
             (cellHasUnavailability ? "Employee unavailable" : undefined);
           const addShiftLabel = `Add shift for ${
             employee?.display_name ?? "unassigned"
-          } on ${day}`;
+          } at ${location.name} on ${day}`;
           const shiftLocationName = (shift: ScheduleShift): string | null =>
             showLocationInBadge
               ? (location.sourceNames.find(
@@ -298,7 +323,7 @@ export function ScheduleRow({
               className={`schedule-cell${
                 isUnassignedRow ? " schedule-unassigned-row-cell" : ""
               }`}
-              role={editing ? "button" : "gridcell"}
+              role="gridcell"
               key={`${employee?.id ?? "open"}-${location.id}-${day}`}
               data-testid="schedule-cell-body"
               data-unassigned-cell={isUnassignedRow}
@@ -328,28 +353,9 @@ export function ScheduleRow({
               data-shift-editor-active-cell={
                 editorOwnsCell ? "true" : undefined
               }
-              tabIndex={editing ? 0 : undefined}
-              aria-label={
-                editing
-                  ? `Add shift for ${
-                      employee?.display_name ?? "unassigned"
-                    } at ${location.name} on ${day}`
-                  : undefined
-              }
               style={rowStyle}
               onPointerDown={(event) => {
                 if (event.target === event.currentTarget) onClearSelection();
-              }}
-              onKeyDown={(event) => {
-                if (!editing || event.target !== event.currentTarget) return;
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                event.stopPropagation();
-                const bounds = event.currentTarget.getBoundingClientRect();
-                onCreate(interactionLocationId, employee?.id ?? null, day, {
-                  x: bounds.left + bounds.width / 2,
-                  y: bounds.top + bounds.height / 2,
-                });
               }}
               onClick={(event) => {
                 if (
@@ -386,17 +392,7 @@ export function ScheduleRow({
                 })
               }
             >
-              {editing && !cellShifts.length ? (
-                <button
-                  type="button"
-                  className="schedule-cell-add"
-                  aria-label={addShiftLabel}
-                  onClick={triggerCellAction}
-                >
-                  <Plus size={14} aria-hidden />
-                </button>
-              ) : null}
-              {displayShifts.map((shift) =>
+              {displayStacks.map(({ shift, groupedShiftIds, stackCount }) =>
                 isGhostScheduleShift(shift) ? (
                   <GhostShiftCard
                     key={shift.id}
@@ -435,11 +431,15 @@ export function ScheduleRow({
                     showClockTimes={showClockTimes}
                     timeFormat={timeFormat}
                     showJobColorDot={showJobColorDot}
-                    selected={selectedIds.includes(shift.id)}
-                    focused={
-                      focusedShiftId === shift.id ||
-                      activeEditorTarget?.shiftId === shift.id
-                    }
+                    selected={groupedShiftIds.some((id) =>
+                      selectedIds.includes(id),
+                    )}
+                    stackCount={stackCount}
+                    focused={groupedShiftIds.some(
+                      (id) =>
+                        focusedShiftId === id ||
+                        activeEditorTarget?.shiftId === id,
+                    )}
                     rowKey={rowKey}
                     badgeHeight={badgeHeight}
                     dragging={draggedShiftId === shift.id}
@@ -454,13 +454,18 @@ export function ScheduleRow({
                   />
                 ),
               )}
-              {editing && cellShifts.length ? (
+              {editing ? (
                 <button
                   type="button"
-                  className="schedule-cell-add-another"
+                  className={`schedule-cell-add-action ${
+                    displayStacks.length
+                      ? "schedule-cell-add-another"
+                      : "schedule-cell-add"
+                  }`}
                   data-schedule-add-shift-control="true"
                   data-schedule-row-key={rowKey}
-                  aria-label="Add another shift"
+                  data-occupied={displayStacks.length > 0}
+                  aria-label={addShiftLabel}
                   onClick={triggerCellAction}
                 >
                   <Plus size={12} aria-hidden />
@@ -477,6 +482,7 @@ export function ScheduleRow({
             className="schedule-total-cell schedule-unassigned-row-cell"
             role="gridcell"
             data-unassigned-frozen={unassignedFrozen}
+            data-schedule-total-column-cell="true"
             data-schedule-total-hours-empty="true"
             data-schedule-total-unassigned-bottom-separator="true"
             data-schedule-unassigned-bottom-separator="true"
@@ -487,6 +493,7 @@ export function ScheduleRow({
           <div
             className="schedule-total-cell"
             role="gridcell"
+            data-schedule-total-column-cell="true"
             data-schedule-total-hours-employee-cell="true"
             data-schedule-total-hours-week-cell="true"
             style={rowStyle}
@@ -500,4 +507,63 @@ export function ScheduleRow({
       ) : null}
     </>
   );
+}
+
+function isUnassignedRowDrag(
+  dragState: ShiftDragState | PresetDragState | null,
+): dragState is ShiftDragState {
+  return Boolean(dragState && "activeShiftId" in dragState);
+}
+
+function stackUnassignedCellShifts(
+  shifts: readonly ScheduleShift[],
+  excludedShiftId: string | null,
+): readonly DisplayShiftStack[] {
+  const stacks: DisplayShiftStack[] = [];
+  const stackByKey = new Map<
+    string,
+    {
+      readonly shift: ScheduleShift;
+      readonly groupedShiftIds: string[];
+      stackCount: number;
+    }
+  >();
+
+  for (const shift of shifts) {
+    if (!isGhostScheduleShift(shift) && shift.id === excludedShiftId) continue;
+    if (isGhostScheduleShift(shift)) {
+      stacks.push({ shift, groupedShiftIds: [shift.id], stackCount: 1 });
+      continue;
+    }
+
+    const key = unassignedShiftStackKey(shift);
+    const existing = stackByKey.get(key);
+    if (existing) {
+      existing.groupedShiftIds.push(shift.id);
+      existing.stackCount += 1;
+      continue;
+    }
+
+    const stack = {
+      shift,
+      groupedShiftIds: [shift.id],
+      stackCount: 1,
+    };
+    stackByKey.set(key, stack);
+    stacks.push(stack);
+  }
+
+  return stacks;
+}
+
+function unassignedShiftStackKey(shift: ScheduleShift): string {
+  return [
+    shift.location_id,
+    shift.scheduled_date,
+    shift.shift_type_id ?? "",
+    shift.start_time,
+    shift.end_time,
+    shift.hide_time_on_badge ? "clock-hidden" : "clock-visible",
+    shift.crosses_midnight ? "overnight" : "same-day",
+  ].join("|");
 }

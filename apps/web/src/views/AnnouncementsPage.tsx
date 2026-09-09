@@ -1,28 +1,56 @@
-import type {
-  AnnouncementAudienceRole,
-  AnnouncementInput,
-  AnnouncementRecord,
+import {
+  announcementInputSchema,
+  type AnnouncementInput,
+  type AnnouncementList,
+  type AnnouncementRecord,
 } from "@newfork/shared";
+import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Megaphone, Pencil, Plus, Send, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  Megaphone,
+  Plus,
+  Search,
+  Send,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { safeAppActionUrl } from "../communications/action-url";
 import {
   getAnnouncements,
   saveAnnouncement,
   transitionAnnouncement,
 } from "../communications/communications-data";
+import { CatalogDrawer } from "../settings/CatalogDrawer";
+import { CatalogRowMenu } from "../settings/CatalogRowMenu";
+import { SettingsHeader } from "../settings/GeneralSettingsPage";
+import "../settings/jobs-settings.css";
+import "./announcements-catalog.css";
 
-type StatusFilter = "active" | "draft" | "scheduled" | "cancelled" | "all";
+type StatusFilter = "all" | "draft" | "scheduled" | "published";
+type SortKey = "title" | "audience" | "status" | "date";
+type Option = { id: string; name: string };
+const roles = ["owner", "admin", "manager", "employee"] as const;
+const roleOptions = roles.map((id) => ({ id, name: capitalize(id) }));
 
 export function AnnouncementsPage() {
   const { context } = useAuth();
   const { announcementId } = useParams();
   const navigate = useNavigate();
-  const client = useQueryClient();
-  const [filter, setFilter] = useState<StatusFilter>("active");
-  const [editor, setEditor] = useState<AnnouncementRecord | "new" | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({
+    key: "date",
+    descending: true,
+  });
   const [message, setMessage] = useState("");
   const workspaceId = context?.workspace.id ?? "";
   const query = useQuery({
@@ -30,521 +58,853 @@ export function AnnouncementsPage() {
     queryFn: () => getAnnouncements(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  const transition = useMutation({
-    mutationFn: ({
-      item,
-      action,
-    }: {
-      item: AnnouncementRecord;
-      action: "publish" | "cancel";
-    }) => transitionAnnouncement(workspaceId, item.id, action, item.revision),
-    onSuccess: async (result) => {
-      setMessage(
-        result.status === "cancelled"
-          ? "Announcement cancelled."
-          : `Announcement ${result.status} for ${result.recipient_count} recipients.`,
-      );
-      await client.invalidateQueries({ queryKey: ["announcements"] });
-      await client.invalidateQueries({ queryKey: ["notifications"] });
-      await client.invalidateQueries({ queryKey: ["workspace-dashboard"] });
-    },
-  });
-  const selected =
-    query.data?.announcements.find((item) => item.id === announcementId) ??
-    null;
+  const selected = query.data?.announcements.find(
+    (item) => item.id === announcementId,
+  );
   const visible = useMemo(() => {
-    const items = query.data?.announcements ?? [];
-    if (filter === "all") return items;
-    if (filter === "active") {
-      return items.filter(
+    const value = (item: AnnouncementRecord) =>
+      sort.key === "date"
+        ? (item.publish_at ?? item.created_at)
+        : sort.key === "audience"
+          ? audienceLabel(item)
+          : item[sort.key];
+    return (query.data?.announcements ?? [])
+      .filter(
         (item) =>
-          item.status === "published" ||
-          (item.status === "scheduled" &&
-            item.publish_at !== null &&
-            Date.parse(item.publish_at) <= Date.now()),
+          (showArchived || !isArchived(item)) &&
+          (filter === "all" || item.status === filter) &&
+          `${item.title} ${item.body} ${audienceLabel(item)}`
+            .toLowerCase()
+            .includes(search.trim().toLowerCase()),
+      )
+      .sort(
+        (a, b) =>
+          (value(a).localeCompare(value(b), undefined, { numeric: true }) ||
+            a.id.localeCompare(b.id)) * (sort.descending ? -1 : 1),
       );
-    }
-    if (filter === "scheduled") {
-      return items.filter(
-        (item) =>
-          item.status === "scheduled" &&
-          item.publish_at !== null &&
-          Date.parse(item.publish_at) > Date.now(),
-      );
-    }
-    return items.filter((item) => item.status === filter);
-  }, [filter, query.data?.announcements]);
-
-  if (query.isLoading)
-    return <AnnouncementState text="Loading announcements..." />;
-  if (query.error || !query.data)
-    return (
-      <AnnouncementState
-        text={
-          query.error instanceof Error
-            ? query.error.message
-            : "Announcements unavailable"
-        }
-        error
-      />
-    );
-  const model = query.data;
+  }, [query.data, filter, search, showArchived, sort]);
+  const close = () => {
+    setAdding(false);
+    if (announcementId)
+      navigate("/app/announcements", {
+        replace: true,
+        preventScrollReset: true,
+      });
+  };
+  const open = (item: AnnouncementRecord) =>
+    navigate(`/app/announcements/${item.id}`, { preventScrollReset: true });
 
   return (
     <section
-      className="announcements-page"
-      aria-labelledby="announcements-title"
+      className="settings-page jobs-settings-page announcements-catalog-page"
+      aria-label="Announcements"
     >
-      <header className="communications-header">
-        <div>
-          <p>Communication</p>
-          <h1 id="announcements-title">Announcements</h1>
-          <span>Publish clear updates to the right roles and locations.</span>
-        </div>
-        {model.can_manage ? (
-          <button
-            className="nf-button"
-            type="button"
-            onClick={() => setEditor("new")}
-          >
-            <Plus size={16} aria-hidden /> New announcement
-          </button>
-        ) : null}
-      </header>
-      <div
-        className="communication-filters"
-        role="tablist"
-        aria-label="Announcement status"
-      >
-        {(["active", "draft", "scheduled", "cancelled", "all"] as const).map(
-          (value) => (
-            <button
-              key={value}
-              role="tab"
-              aria-selected={filter === value}
-              onClick={() => setFilter(value)}
+      <SettingsHeader
+        icon={<Megaphone size={21} aria-hidden />}
+        title="Announcements"
+        description="Share updates with everyone or choose who receives them."
+        action={
+          <div className="announcement-header-actions">
+            <div
+              className="requests-tabs"
+              role="tablist"
+              aria-label="Announcement status"
             >
-              {value[0]!.toUpperCase() + value.slice(1)}
-            </button>
-          ),
+              {(["all", "draft", "scheduled", "published"] as const)
+                .filter(
+                  (value) =>
+                    query.data?.can_manage ||
+                    value === "all" ||
+                    value === "published",
+                )
+                .map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    role="tab"
+                    aria-selected={filter === value}
+                    className={filter === value ? "active" : ""}
+                    onClick={() => setFilter(value)}
+                  >
+                    {capitalize(value)}
+                  </button>
+                ))}
+            </div>
+            {query.data?.can_manage && (
+              <Button
+                className="job-primary-button"
+                onClick={() => setAdding(true)}
+              >
+                <Plus size={16} aria-hidden />
+                Add announcement
+              </Button>
+            )}
+          </div>
+        }
+      />
+      <div className="job-catalog-toolbar">
+        <label className="job-search">
+          <Search size={16} aria-hidden />
+          <input
+            aria-label="Search announcements"
+            placeholder="Search announcements"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
+        {query.data?.can_manage && (
+          <label className="job-archive-filter">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(event) => setShowArchived(event.target.checked)}
+            />
+            Show archived
+          </label>
         )}
       </div>
-      {message ? (
-        <p className="communication-message" role="status">
+      {message && (
+        <p className="announcement-catalog-message" role="status">
           {message}
         </p>
-      ) : null}
-      {transition.error ? (
-        <p className="communication-error" role="alert">
-          {transition.error.message}
+      )}
+      {query.isLoading && (
+        <p className="settings-state">Loading announcements...</p>
+      )}
+      {query.error && (
+        <p className="settings-state error" role="alert">
+          {query.error.message}
         </p>
-      ) : null}
-      <div className="announcement-layout">
-        <div className="announcement-list" aria-label="Announcements">
-          {visible.length ? (
-            visible.map((item) => (
-              <button
-                className={selected?.id === item.id ? "active" : ""}
-                key={item.id}
-                type="button"
-                onClick={() => navigate(`/app/announcements/${item.id}`)}
-              >
-                <span className={`announcement-category ${item.category}`}>
-                  <Megaphone size={16} aria-hidden />
-                </span>
-                <span>
-                  <strong>{item.title}</strong>
-                  <small>
-                    {audienceLabel(item)} ·{" "}
-                    {formatDate(item.publish_at ?? item.created_at)}
-                  </small>
-                </span>
-                <i data-status={item.status}>{item.status}</i>
-              </button>
-            ))
-          ) : (
-            <p className="communication-empty">
-              No announcements in this view.
-            </p>
-          )}
-        </div>
-        <article className="announcement-detail">
-          {selected ? (
-            <>
-              <header>
-                <div>
-                  <span
-                    className={`announcement-category ${selected.category}`}
-                  >
-                    <Megaphone size={18} aria-hidden />
-                  </span>
-                  <div>
-                    <p>{selected.category}</p>
-                    <h2>{selected.title}</h2>
-                  </div>
-                </div>
-                {selected.can_edit ? (
-                  <button
-                    className="icon-button"
-                    aria-label="Edit announcement"
-                    onClick={() => setEditor(selected)}
-                  >
-                    <Pencil size={17} aria-hidden />
-                  </button>
-                ) : null}
-              </header>
-              <p className="announcement-body">{selected.body}</p>
-              <dl className="announcement-meta">
-                <div>
-                  <dt>Status</dt>
-                  <dd>{selected.status}</dd>
-                </div>
-                <div>
-                  <dt>Audience</dt>
-                  <dd>{audienceLabel(selected)}</dd>
-                </div>
-                <div>
-                  <dt>Author</dt>
-                  <dd>{selected.author_name}</dd>
-                </div>
-                <div>
-                  <dt>Published</dt>
-                  <dd>
-                    {selected.publish_at
-                      ? formatDate(selected.publish_at)
-                      : "Not published"}
-                  </dd>
-                </div>
-              </dl>
-              {selected.action_url ? (
-                <button
-                  className="text-action"
-                  onClick={() => navigate(selected.action_url!)}
+      )}
+      {!query.isLoading &&
+        !query.error &&
+        (visible.length ? (
+          <div className="job-catalog" role="table" aria-label="Announcements">
+            <div
+              className="job-column-headings announcement-catalog-row"
+              role="row"
+            >
+              {(
+                [
+                  ["title", "Announcement"],
+                  ["audience", "Audience"],
+                  ["status", "Status"],
+                  ["date", "Publish date"],
+                ] as const
+              ).map(([key, label]) => (
+                <div
+                  key={key}
+                  role="columnheader"
+                  aria-sort={
+                    sort.key === key
+                      ? sort.descending
+                        ? "descending"
+                        : "ascending"
+                      : "none"
+                  }
                 >
-                  Open related page
-                </button>
-              ) : null}
-              {selected.can_publish || selected.can_cancel ? (
-                <footer>
-                  {selected.can_cancel ? (
-                    <button
-                      className="nf-button secondary"
-                      disabled={transition.isPending}
-                      onClick={() =>
-                        transition.mutate({ item: selected, action: "cancel" })
-                      }
-                    >
-                      Cancel announcement
-                    </button>
-                  ) : null}
-                  {selected.can_publish ? (
-                    <button
-                      className="nf-button"
-                      disabled={transition.isPending}
-                      onClick={() =>
-                        transition.mutate({ item: selected, action: "publish" })
-                      }
-                    >
-                      {selected.publish_at &&
-                      Date.parse(selected.publish_at) > Date.now() ? (
-                        <CalendarClock size={16} />
+                  <button
+                    className="announcement-column-sort"
+                    type="button"
+                    onClick={() =>
+                      setSort({
+                        key,
+                        descending: sort.key === key ? !sort.descending : false,
+                      })
+                    }
+                  >
+                    {label}
+                    {sort.key === key ? (
+                      sort.descending ? (
+                        <ArrowDown size={12} />
                       ) : (
-                        <Send size={16} />
-                      )}
-                      {selected.publish_at &&
-                      Date.parse(selected.publish_at) > Date.now()
-                        ? "Schedule"
-                        : "Publish now"}
-                    </button>
-                  ) : null}
-                </footer>
-              ) : null}
-            </>
-          ) : (
-            <div className="announcement-placeholder">
-              <Megaphone size={28} aria-hidden />
-              <h2>Select an announcement</h2>
-              <p>Open an item to review its audience, status, and content.</p>
+                        <ArrowUp size={12} />
+                      )
+                    ) : (
+                      <ArrowUpDown size={12} />
+                    )}
+                  </button>
+                </div>
+              ))}
+              <span role="columnheader" aria-label="Actions" />
             </div>
-          )}
-        </article>
-      </div>
-      {editor ? (
+            {visible.map((item) => (
+              <div
+                className="job-catalog-row announcement-catalog-row"
+                role="row"
+                key={item.id}
+                data-archived={isArchived(item)}
+                onClick={(event) => {
+                  if (
+                    !(event.target as HTMLElement).closest("button,details,a")
+                  ) {
+                    event.currentTarget
+                      .querySelector<HTMLButtonElement>(".job-row-identity")
+                      ?.focus({ preventScroll: true });
+                    open(item);
+                  }
+                }}
+              >
+                <div role="cell">
+                  <button
+                    className="job-row-identity"
+                    type="button"
+                    onClick={() => open(item)}
+                  >
+                    <Megaphone
+                      size={17}
+                      className="announcement-catalog-marker"
+                      aria-hidden
+                    />
+                    <span className="job-name-stack">
+                      <span className="job-row-name" title={item.title}>
+                        {item.title}
+                      </span>
+                      <span
+                        className="announcement-row-preview"
+                        title={item.body}
+                      >
+                        {item.body}
+                      </span>
+                      <span className="job-mobile-meta">
+                        {statusLabel(item)} ·{" "}
+                        {formatDate(item.publish_at ?? item.created_at)}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+                <span
+                  role="cell"
+                  className="announcement-audience-cell"
+                  title={audienceLabel(item)}
+                >
+                  {audienceLabel(item)}
+                </span>
+                <span role="cell" className="announcement-status-cell">
+                  <span
+                    className="announcement-status"
+                    data-status={isArchived(item) ? "archived" : item.status}
+                  >
+                    {statusLabel(item)}
+                  </span>
+                </span>
+                <span role="cell" className="announcement-date-cell">
+                  {item.publish_at
+                    ? formatDate(item.publish_at)
+                    : "Not published"}
+                </span>
+                <div role="cell">
+                  <CatalogRowMenu name={item.title}>
+                    <button type="button" onClick={() => open(item)}>
+                      {item.can_edit
+                        ? "Edit announcement"
+                        : "View announcement"}
+                    </button>
+                    {item.can_cancel && !isArchived(item) && (
+                      <button
+                        type="button"
+                        className="job-danger-text"
+                        onClick={() =>
+                          navigate(`/app/announcements/${item.id}?delete=1`, {
+                            preventScrollReset: true,
+                          })
+                        }
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </CatalogRowMenu>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="settings-empty">
+            <Megaphone size={22} aria-hidden />
+            <strong>
+              {search || filter !== "all"
+                ? "No matching announcements"
+                : "No announcements yet"}
+            </strong>
+            <p>
+              {search || filter !== "all"
+                ? "Try another search or status."
+                : "Create an announcement to share an update with your team."}
+            </p>
+          </div>
+        ))}
+      {announcementId && !selected && !query.isLoading && !query.error && (
+        <p className="settings-state">
+          This announcement is no longer available.
+        </p>
+      )}
+      {query.data && (adding || selected) && (
         <AnnouncementEditor
-          item={editor === "new" ? null : editor}
-          locations={model.locations}
-          onClose={() => setEditor(null)}
-          onSaved={async (id) => {
-            setEditor(null);
-            setMessage("Draft saved.");
-            await client.invalidateQueries({ queryKey: ["announcements"] });
-            navigate(`/app/announcements/${id}`);
-          }}
+          key={adding ? "new" : selected!.id}
+          item={adding ? null : selected!}
+          model={query.data}
           workspaceId={workspaceId}
+          onClose={close}
+          onDone={setMessage}
         />
-      ) : null}
+      )}
     </section>
   );
 }
 
+function draftFrom(item: AnnouncementRecord | null): AnnouncementInput {
+  return {
+    title: item?.title ?? "",
+    body: item?.body ?? "",
+    category: item?.category ?? "general",
+    audience_roles:
+      item?.audience_roles.length === 4
+        ? []
+        : [...(item?.audience_roles ?? [])],
+    location_ids: [...(item?.location_ids ?? [])],
+    department_ids: [...(item?.department_ids ?? [])],
+    job_ids: [...(item?.job_ids ?? [])],
+    publish_at: item?.publish_at ?? null,
+    expires_at: item?.expires_at ?? null,
+    action_url: item?.action_url ?? null,
+  };
+}
+function comparable(draft: AnnouncementInput) {
+  return JSON.stringify({
+    ...draft,
+    title: draft.title.trim(),
+    body: draft.body.trim(),
+    action_url: draft.action_url?.trim() || null,
+    audience_roles:
+      draft.audience_roles.length === 4 ? [] : [...draft.audience_roles].sort(),
+    location_ids: [...draft.location_ids].sort(),
+    department_ids: [...(draft.department_ids ?? [])].sort(),
+    job_ids: [...(draft.job_ids ?? [])].sort(),
+  });
+}
 function AnnouncementEditor({
   item,
-  locations,
+  model,
   workspaceId,
   onClose,
-  onSaved,
+  onDone,
 }: {
   item: AnnouncementRecord | null;
-  locations: readonly { id: string; name: string }[];
+  model: AnnouncementList;
   workspaceId: string;
   onClose: () => void;
-  onSaved: (id: string) => Promise<void>;
+  onDone: (message: string) => void;
 }) {
-  const [draft, setDraft] = useState<AnnouncementInput>(() =>
-    item
-      ? {
-          title: item.title,
-          body: item.body,
-          category: item.category,
-          audience_roles: item.audience_roles,
-          location_ids: item.location_ids,
-          publish_at: item.publish_at,
-          expires_at: item.expires_at,
-          action_url: item.action_url,
-        }
-      : {
-          title: "",
-          body: "",
-          category: "general",
-          audience_roles: ["employee"],
-          location_ids: [],
-          publish_at: null,
-          expires_at: null,
-          action_url: null,
-        },
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const [initialItem] = useState(item);
+  const [baseline] = useState(() => draftFrom(item));
+  const [draft, setDraft] = useState(baseline);
+  const [confirmDelete, setConfirmDelete] = useState(() =>
+    new URLSearchParams(window.location.search).has("delete"),
   );
-  const mutation = useMutation({
+  const editable = item ? item.can_edit : model.can_manage;
+  const changed = comparable(draft) !== comparable(baseline);
+  const parsed = announcementInputSchema.safeParse(draft);
+  const refresh = async () => {
+    await Promise.all(
+      ["announcements", "notifications", "workspace-dashboard"].map((key) =>
+        client.invalidateQueries({ queryKey: [key] }),
+      ),
+    );
+  };
+  const save = useMutation({
     mutationFn: () =>
       saveAnnouncement(workspaceId, {
         announcement_id: item?.id ?? null,
-        expected_revision: item?.revision ?? null,
-        announcement: draft,
+        expected_revision: initialItem?.revision ?? null,
+        announcement: announcementInputSchema.parse(draft),
       }),
-    onSuccess: (result) => void onSaved(result.announcement_id),
+    onSuccess: async () => {
+      await refresh();
+      onDone(
+        item?.status === "scheduled"
+          ? "Scheduled announcement updated."
+          : "Announcement saved as a draft.",
+      );
+      onClose();
+    },
   });
-  const toggleRole = (role: AnnouncementAudienceRole) =>
-    setDraft((current) => ({
-      ...current,
-      audience_roles: current.audience_roles.includes(role)
-        ? current.audience_roles.filter((value) => value !== role)
-        : [...current.audience_roles, role],
-    }));
-  const toggleLocation = (id: string) =>
-    setDraft((current) => ({
-      ...current,
-      location_ids: current.location_ids.includes(id)
-        ? current.location_ids.filter((value) => value !== id)
-        : [...current.location_ids, id],
-    }));
+  const transition = useMutation({
+    mutationFn: (action: "publish" | "cancel") =>
+      transitionAnnouncement(
+        workspaceId,
+        item!.id,
+        action,
+        initialItem!.revision,
+      ),
+    onSuccess: async (result, action) => {
+      await refresh();
+      onDone(
+        action === "cancel"
+          ? "Announcement deleted and archived."
+          : `${capitalize(result.status)} for ${result.recipient_count} recipients.`,
+      );
+      onClose();
+    },
+  });
+  const busy = save.isPending || transition.isPending;
+  const canSave = editable && parsed.success && (!item || changed) && !busy;
+  const canDelete = item && item.can_cancel && !isArchived(item);
+  const actionUrl = safeAppActionUrl(item?.action_url ?? null);
+  const update = <K extends keyof AnnouncementInput>(
+    key: K,
+    value: AnnouncementInput[K],
+  ) => setDraft((current) => ({ ...current, [key]: value }));
   return (
-    <div className="communication-dialog-layer">
-      <button
-        className="communication-backdrop"
-        aria-label="Close announcement editor"
-        onClick={onClose}
-      />
+    <CatalogDrawer
+      label={
+        item
+          ? editable
+            ? "Edit announcement"
+            : "Announcement"
+          : "Add announcement"
+      }
+      className="announcements-catalog-page"
+      onClose={onClose}
+      busy={busy}
+    >
       <form
-        className="announcement-editor"
-        role="dialog"
-        aria-labelledby="announcement-editor-title"
+        className="job-catalog-editor"
         onSubmit={(event) => {
           event.preventDefault();
-          mutation.mutate();
+          if (canSave && !confirmDelete) save.mutate();
         }}
       >
-        <header>
+        <div className="job-editor-title">
           <div>
-            <p>Announcement</p>
-            <h2 id="announcement-editor-title">
-              {item ? "Edit draft" : "New draft"}
+            <h2>
+              {item
+                ? editable
+                  ? "Edit announcement"
+                  : "Announcement"
+                : "New announcement"}
             </h2>
+            <p>
+              {item
+                ? `${statusLabel(item)} · ${item.author_name}`
+                : "Write your update and choose who receives it."}
+            </p>
           </div>
           <button
-            className="icon-button"
+            className="job-icon-button"
             type="button"
-            aria-label="Close"
+            aria-label="Close announcement"
+            disabled={busy}
             onClick={onClose}
           >
-            <X size={18} />
+            <X size={17} aria-hidden />
           </button>
-        </header>
-        <label>
-          Title
-          <input
-            value={draft.title}
-            maxLength={120}
-            required
-            onChange={(event) =>
-              setDraft({ ...draft, title: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          Message
-          <textarea
-            value={draft.body}
-            maxLength={5000}
-            required
-            rows={8}
-            onChange={(event) =>
-              setDraft({ ...draft, body: event.target.value })
-            }
-          />
-        </label>
-        <div className="announcement-form-grid">
-          <label>
-            Category
-            <select
-              value={draft.category}
-              onChange={(event) =>
-                setDraft({
-                  ...draft,
-                  category: event.target.value as AnnouncementInput["category"],
-                })
-              }
-            >
-              <option value="general">General</option>
-              <option value="operations">Operations</option>
-              <option value="schedule">Schedule</option>
-            </select>
-          </label>
-          <label>
-            Related page
-            <input
-              value={draft.action_url ?? ""}
-              placeholder="/app/schedule"
-              onChange={(event) =>
-                setDraft({ ...draft, action_url: event.target.value || null })
-              }
-            />
-          </label>
-          <label>
-            Publish at
-            <input
-              type="datetime-local"
-              value={toLocalInput(draft.publish_at)}
-              onChange={(event) =>
-                setDraft({ ...draft, publish_at: toIso(event.target.value) })
-              }
-            />
-          </label>
-          <label>
-            Expires at
-            <input
-              type="datetime-local"
-              value={toLocalInput(draft.expires_at)}
-              onChange={(event) =>
-                setDraft({ ...draft, expires_at: toIso(event.target.value) })
-              }
-            />
-          </label>
         </div>
-        <fieldset>
-          <legend>Roles</legend>
-          <div className="announcement-options">
-            {(["owner", "admin", "manager", "employee"] as const).map(
-              (role) => (
-                <label key={role}>
-                  <input
-                    type="checkbox"
-                    checked={draft.audience_roles.includes(role)}
-                    onChange={() => toggleRole(role)}
-                  />{" "}
-                  {role}
-                </label>
-              ),
+        <div className="catalog-drawer-body">
+          <fieldset
+            className="announcement-catalog-fields"
+            disabled={busy || !editable}
+          >
+            <label className="job-field announcement-field-wide">
+              <span>Title</span>
+              <input
+                required
+                maxLength={120}
+                value={draft.title}
+                placeholder="What is the update about?"
+                onChange={(event) => update("title", event.target.value)}
+              />
+            </label>
+            <label className="job-field announcement-field-wide">
+              <span>Message</span>
+              <textarea
+                required
+                rows={3}
+                maxLength={5000}
+                value={draft.body}
+                placeholder="Share the details your team needs."
+                onChange={(event) => {
+                  update("body", event.target.value);
+                  event.target.style.height = "auto";
+                  event.target.style.height = `${event.target.scrollHeight}px`;
+                }}
+                ref={(element) => {
+                  if (element) {
+                    element.style.height = "auto";
+                    element.style.height = `${element.scrollHeight}px`;
+                  }
+                }}
+              />
+            </label>
+            <label className="job-field">
+              <span>Category</span>
+              <select
+                value={draft.category}
+                onChange={(event) =>
+                  update(
+                    "category",
+                    event.target.value as AnnouncementInput["category"],
+                  )
+                }
+              >
+                <option value="general">General</option>
+                <option value="operations">Operations</option>
+                <option value="schedule">Schedule</option>
+              </select>
+            </label>
+            <label className="job-field">
+              <span>
+                Publish at <small>Optional</small>
+              </span>
+              <input
+                type="datetime-local"
+                value={toLocalInput(draft.publish_at)}
+                onChange={(event) =>
+                  update("publish_at", toIso(event.target.value))
+                }
+              />
+            </label>
+            <label className="job-field">
+              <span>
+                Expires at <small>Optional</small>
+              </span>
+              <input
+                type="datetime-local"
+                value={toLocalInput(draft.expires_at)}
+                onChange={(event) =>
+                  update("expires_at", toIso(event.target.value))
+                }
+              />
+            </label>
+          </fieldset>
+          <section
+            className="announcement-audience-section"
+            aria-label="Audience"
+          >
+            <div className="announcement-audience-heading">
+              <h3>Audience</h3>
+              <span className="announcement-all-badge">
+                {!draft.audience_roles.length &&
+                !draft.location_ids.length &&
+                !draft.department_ids?.length &&
+                !draft.job_ids?.length
+                  ? "Everyone"
+                  : "Filtered audience"}
+              </span>
+            </div>
+            <p>
+              Leave a filter on All to include everyone in that group. Selected
+              filters apply together.
+            </p>
+            <div className="announcement-audience-grid">
+              <AudiencePicker
+                label="Roles"
+                options={roleOptions}
+                selected={draft.audience_roles}
+                disabled={busy || !editable}
+                onChange={(ids) =>
+                  update(
+                    "audience_roles",
+                    ids as AnnouncementInput["audience_roles"],
+                  )
+                }
+              />
+              <AudiencePicker
+                label="Locations"
+                options={withExisting(
+                  model.locations,
+                  item?.location_ids,
+                  item?.location_names,
+                )}
+                selected={draft.location_ids}
+                disabled={busy || !editable}
+                onChange={(ids) => update("location_ids", ids)}
+              />
+              <AudiencePicker
+                label="Departments"
+                options={withExisting(
+                  model.departments ?? [],
+                  item?.department_ids,
+                  item?.department_names,
+                )}
+                selected={draft.department_ids ?? []}
+                disabled={busy || !editable}
+                onChange={(ids) => update("department_ids", ids)}
+              />
+              <AudiencePicker
+                label="Jobs"
+                options={withExisting(
+                  model.jobs ?? [],
+                  item?.job_ids,
+                  item?.job_names,
+                )}
+                selected={draft.job_ids ?? []}
+                disabled={busy || !editable}
+                onChange={(ids) => update("job_ids", ids)}
+              />
+            </div>
+          </section>
+          {!editable && actionUrl && (
+            <button
+              className="job-text-button"
+              type="button"
+              onClick={() => navigate(actionUrl)}
+            >
+              Open related page
+            </button>
+          )}
+          {changed && item?.can_publish && (
+            <p className="announcement-catalog-hint">
+              Save your changes before publishing.
+            </p>
+          )}
+          {(save.error || transition.error) && (
+            <p className="form-error" role="alert">
+              {save.error?.message ?? transition.error?.message}
+            </p>
+          )}
+        </div>
+        <div className="job-editor-footer">
+          {canDelete &&
+            (confirmDelete ? (
+              <div
+                className="catalog-delete-confirm"
+                role="group"
+                aria-label="Confirm deletion"
+              >
+                <div className="catalog-delete-copy" aria-live="polite">
+                  <strong>Delete this announcement?</strong>
+                  <span>
+                    It will be archived and removed from your team's
+                    announcements.
+                  </span>
+                </div>
+                <div className="catalog-delete-buttons">
+                  <button
+                    className="job-secondary-button"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setConfirmDelete(false)}
+                  >
+                    Keep announcement
+                  </button>
+                  <button
+                    className="catalog-delete-confirm-button"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => transition.mutate("cancel")}
+                  >
+                    {transition.isPending ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="catalog-delete-action">
+                <button
+                  className="catalog-delete-trigger"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  <Trash2 size={14} aria-hidden />
+                  Delete
+                </button>
+              </div>
+            ))}
+          <div className="job-editor-actions">
+            <Button
+              className="job-secondary-button"
+              type="button"
+              disabled={busy}
+              onClick={onClose}
+            >
+              {editable ? "Cancel" : "Close"}
+            </Button>
+            {item?.can_publish && !confirmDelete && (
+              <Button
+                className="job-secondary-button"
+                type="button"
+                disabled={busy || changed}
+                onClick={() => transition.mutate("publish")}
+              >
+                <Send size={14} aria-hidden />
+                {item.publish_at && Date.parse(item.publish_at) > Date.now()
+                  ? "Schedule"
+                  : "Publish"}
+              </Button>
+            )}
+            {editable && (
+              <Button
+                className="job-primary-button"
+                type="submit"
+                disabled={!canSave || confirmDelete}
+              >
+                {save.isPending
+                  ? "Saving..."
+                  : item
+                    ? "Save changes"
+                    : "Save draft"}
+              </Button>
             )}
           </div>
-        </fieldset>
-        <fieldset>
-          <legend>
-            Locations <span>None selected means all locations</span>
-          </legend>
-          <div className="announcement-options">
-            {locations.map((location) => (
-              <label key={location.id}>
-                <input
-                  type="checkbox"
-                  checked={draft.location_ids.includes(location.id)}
-                  onChange={() => toggleLocation(location.id)}
-                />{" "}
-                {location.name}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        {mutation.error ? (
-          <p className="communication-error" role="alert">
-            {mutation.error.message}
-          </p>
-        ) : null}
-        <footer>
-          <button
-            className="nf-button secondary"
-            type="button"
-            onClick={onClose}
-          >
-            Cancel
-          </button>
-          <button
-            className="nf-button"
-            type="submit"
-            disabled={mutation.isPending || !draft.audience_roles.length}
-          >
-            {mutation.isPending ? "Saving..." : "Save draft"}
-          </button>
-        </footer>
+        </div>
       </form>
-    </div>
+    </CatalogDrawer>
   );
 }
 
-function audienceLabel(item: AnnouncementRecord) {
-  const roles = item.audience_roles
-    .map((role) => role[0]!.toUpperCase() + role.slice(1))
+function AudiencePicker({
+  label,
+  options,
+  selected,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  options: readonly Option[];
+  selected: readonly string[];
+  disabled: boolean;
+  onChange: (ids: string[]) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const visible = options.filter((option) =>
+    option.name.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+  const selectedNames = options
+    .filter((option) => selected.includes(option.id))
+    .map((option) => option.name)
     .join(", ");
-  return item.location_names.length
-    ? `${roles} · ${item.location_names.join(", ")}`
-    : `${roles} · All locations`;
+  return (
+    <details
+      className="announcement-audience-picker"
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && event.currentTarget.open) {
+          event.preventDefault();
+          event.stopPropagation();
+          event.currentTarget.open = false;
+          event.currentTarget.querySelector("summary")?.focus();
+        }
+      }}
+    >
+      <summary>
+        <span>
+          <strong>{label}</strong>
+          <span className="announcement-picker-value" title={selectedNames}>
+            {selected.length
+              ? selectedNames || `${selected.length} selected`
+              : `All ${label.toLowerCase()}`}
+          </span>
+        </span>
+        <span className="announcement-all-badge">
+          {selected.length || "All"}
+        </span>
+        <ChevronDown size={14} aria-hidden />
+      </summary>
+      <div className="announcement-picker-content">
+        {options.length > 6 && (
+          <label className="announcement-picker-search">
+            <Search size={14} aria-hidden />
+            <input
+              aria-label={`Search ${label.toLowerCase()}`}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.preventDefault();
+              }}
+            />
+          </label>
+        )}
+        <div className="announcement-picker-options">
+          <label className="announcement-all-option">
+            <input
+              type="checkbox"
+              checked={!selected.length}
+              disabled={disabled}
+              onChange={() => onChange([])}
+            />
+            <span>All {label.toLowerCase()}</span>
+          </label>
+          {visible.map((option) => (
+            <label key={option.id}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option.id)}
+                disabled={disabled}
+                onChange={() =>
+                  onChange(
+                    selected.includes(option.id)
+                      ? selected.filter((id) => id !== option.id)
+                      : [...selected, option.id],
+                  )
+                }
+              />
+              <span title={option.name}>{option.name}</span>
+            </label>
+          ))}
+          {!visible.length && (
+            <p>{options.length ? "No matches" : "No options available"}</p>
+          )}
+        </div>
+      </div>
+    </details>
+  );
+}
+function withExisting(
+  options: readonly Option[],
+  ids: readonly string[] = [],
+  names: readonly string[] = [],
+): Option[] {
+  return [
+    ...options,
+    ...ids
+      .filter((id) => !options.some((option) => option.id === id))
+      .map((id) => ({
+        id,
+        name: names[ids.indexOf(id)] ?? "Archived selection",
+      })),
+  ];
+}
+function audienceLabel(item: AnnouncementRecord) {
+  const labels = [
+    item.audience_roles.length && item.audience_roles.length < 4
+      ? item.audience_roles.map(capitalize).join(", ")
+      : "All roles",
+    item.location_names.length
+      ? item.location_names.join(", ")
+      : "All locations",
+    item.department_names?.length
+      ? item.department_names.join(", ")
+      : "All departments",
+    item.job_names?.length ? item.job_names.join(", ") : "All jobs",
+  ];
+  return labels.join(" · ");
+}
+function isArchived(item: AnnouncementRecord) {
+  return Boolean(item.archived_at) || item.status === "cancelled";
+}
+function statusLabel(item: AnnouncementRecord) {
+  return isArchived(item) ? "Archived" : capitalize(item.status);
+}
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 function formatDate(iso: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+    year: "numeric",
   }).format(new Date(iso));
 }
 function toLocalInput(iso: string | null) {
   if (!iso) return "";
   const date = new Date(iso);
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
 }
 function toIso(value: string) {
   return value ? new Date(value).toISOString() : null;
-}
-function AnnouncementState({
-  text,
-  error = false,
-}: {
-  text: string;
-  error?: boolean;
-}) {
-  return (
-    <section className="communication-state" role={error ? "alert" : "status"}>
-      {text}
-    </section>
-  );
 }
 export default AnnouncementsPage;

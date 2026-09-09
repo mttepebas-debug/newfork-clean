@@ -1,9 +1,14 @@
 # Phase 14 Notification Platform — Draft Specification
 
 **Created:** 2026-09-02
-**Status:** Draft for product approval; no-mandatory-paid-dependency direction approved
+**Status:** Approved for implementation; six product defaults accepted 2026-09-02
+
+**Implementation snapshot:** Plans 14-00 through 14-05 are implemented locally.
+All eight approved event types use the provider-free outbox/in-app path, and the
+organization notification settings UI/API/RPC surface is implemented. User
+preferences/inbox hardening and external channels are not yet implemented.
 **Requirements:** 14
-**Ambiguity score:** 0.13 using research-selected defaults; decisions marked “Product approval” remain provisional
+**Ambiguity score:** 0.05 after product approval of the six research-selected defaults
 
 ## Goal
 
@@ -248,37 +253,37 @@ Personal inbox/preferences require active workspace membership and own-user scop
 
 ## Acceptance criteria
 
-- [ ] Final migration-state tests close the schedule publish authorization regression.
-- [ ] Covered domain mutations atomically create one replayable outbox event.
-- [ ] Catalog/producer/template/action-route parity gates pass for every active type.
-- [ ] Organization policy and user preference conflicts resolve deterministically with an auditable reason chain.
+- [x] Final migration-state tests close the schedule publish authorization regression.
+- [x] Covered domain mutations atomically create one replayable outbox event.
+- [x] Catalog/producer/template/action-route parity gates pass for every active type.
+- [x] Organization policy and user preference conflicts resolve deterministically with an auditable reason chain.
 - [ ] Personal inbox/preferences are own-user, tenant-isolated, and available to active members.
 - [ ] Compound cursor traversal has no duplicates or gaps under timestamp collisions.
-- [ ] Duplicate/reordered/replayed events do not create duplicate logical deliveries.
-- [ ] Transient failures retry; permanent failures suppress; exhausted failures reach a replayable DLQ.
+- [x] Duplicate/reordered/replayed events do not create duplicate logical in-app deliveries.
+- [x] Relay failures retry and exhausted failures reach the bounded in-app outbox DLQ; external-provider suppression remains Plan 14-07.
 - [ ] Sensitive previews, locale fallback, retention, and non-production redirect tests pass.
 - [ ] Delivery dashboards distinguish accepted, delivered/confirmed, and engaged states.
 
 ## Ambiguity report
 
-| Dimension           |    Score | Minimum | Status               | Notes                                                            |
-| ------------------- | -------: | ------: | -------------------- | ---------------------------------------------------------------- |
-| Goal clarity        |     0.93 |    0.75 | Met                  | Target capability and reliability boundary are explicit          |
-| Boundary clarity    |     0.91 |    0.70 | Met                  | Action Center, marketing, AI copy, and legacy port are excluded  |
-| Constraint clarity  |     0.76 |    0.65 | Met                  | Initial scale/SLO budgets are proposed and must be benchmarked   |
-| Acceptance criteria |     0.86 |    0.70 | Met                  | Requirements have current/target/pass-fail evidence              |
-| **Ambiguity**       | **0.13** |  ≤ 0.20 | **Met for drafting** | Product approval is still required for provisional choices below |
+| Dimension           |    Score | Minimum | Status                    | Notes                                                            |
+| ------------------- | -------: | ------: | ------------------------- | ---------------------------------------------------------------- |
+| Goal clarity        |     0.95 |    0.75 | Met                       | Target capability and reliability boundary are explicit          |
+| Boundary clarity    |     0.94 |    0.70 | Met                       | Action Center, marketing, AI copy, and legacy port are excluded  |
+| Constraint clarity  |     0.91 |    0.65 | Met                       | Initial scale, channel, dependency, and SLO budgets are approved |
+| Acceptance criteria |     0.90 |    0.70 | Met                       | Requirements have current/target/pass-fail evidence              |
+| **Ambiguity**       | **0.05** |  ≤ 0.20 | **Approved to implement** | The six provisional product choices are now locked               |
 
 ## Product approval checklist
 
-- [ ] Confirm personal inbox access should be active-membership/own-user rather than role-permission-gated.
-- [ ] Confirm mandatory behavior is limited to in-app for cataloged security/system events.
-- [ ] Confirm initial external channel is email; push follows after the core pipeline.
-- [ ] Confirm user preferences are workspace-specific with a multi-workspace selector.
-- [ ] Confirm proposed performance targets or replace them with approved budgets.
-- [ ] Confirm 5,000-recipient initial fan-out target.
+- [x] Confirm personal inbox access should be active-membership/own-user rather than role-permission-gated.
+- [x] Confirm mandatory behavior is limited to in-app for cataloged security/system events.
+- [x] Confirm initial external channel is email; push follows after the core pipeline.
+- [x] Confirm user preferences are workspace-specific with a multi-workspace selector.
+- [x] Confirm proposed performance targets or replace them with approved budgets.
+- [x] Confirm 5,000-recipient initial fan-out target.
 - [x] Confirm no paid notification-orchestration SaaS is mandatory for the baseline.
 
 ## Drafting log
 
-This draft used an auto-selected research baseline rather than a live product interview. Choices follow the current code audit, the approved reference boundary, Workday-style tenant routing, Slack-style user quiet hours, and Knock/Novu-style explicit precedence. Items in the Product approval checklist are not locked until approved.
+The initial draft used an auto-selected research baseline rather than a live product interview. Choices follow the current code audit, the approved reference boundary, Workday-style tenant routing, Slack-style user quiet hours, and Knock/Novu-style explicit precedence. The user accepted all six defaults on 2026-09-02 and authorized implementation to continue.

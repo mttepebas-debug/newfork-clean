@@ -3,6 +3,8 @@ import type {
   ScheduleShift,
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
+import { assessEmployeeAvailability, availabilityForDate, getShiftTimeBasis } from "@newfork/shared";
+import { weeklyTargetAvailability } from "./lib/scheduleWeeklyAvailability";
 
 export type ScheduleConflictReason =
   string | { readonly message?: unknown; readonly [key: string]: unknown };
@@ -152,7 +154,7 @@ export function formatScheduleConflictMessage(
   }
 
   if (
-    reason.type === "time_overlap" &&
+    (reason.type === "time_overlap" || reason.type === "reference_time_overlap") &&
     Array.isArray(reason.conflicting_shifts)
   ) {
     const details = reason.conflicting_shifts
@@ -170,7 +172,7 @@ export function formatScheduleConflictMessage(
         );
       })
       .join(" ");
-    return `${details}${targetEvidence(reason)}`.trim();
+    return `${reason.type === "reference_time_overlap" ? "Reference hours overlap. " : ""}${details}${targetEvidence(reason)}`.trim();
   }
 
   if (
@@ -276,7 +278,9 @@ export function evaluateScheduleShiftConflicts(
   input: ScheduleShiftMutationInput,
   excludeShiftId: string | null = null,
 ): ScheduleConflictReason[] {
-  if (input.start_time === input.end_time) {
+  const timeBasis = getShiftTimeBasis(input);
+  const hasAssessmentHours = timeBasis === "explicit" || timeBasis === "type_default";
+  if (timeBasis !== "unresolved" && input.start_time === input.end_time) {
     return ["Start and end time cannot be the same."];
   }
   const context = {
@@ -360,7 +364,15 @@ export function evaluateScheduleShiftConflicts(
     });
   }
 
-  const availability = employee.availability?.find(
+  const weeklyStatus = weeklyTargetAvailability(employee, input);
+  if (weeklyStatus === "time_off") {
+    reasons.push({ ...context, type: "time_off", message: "Approved time off overlaps this assignment." });
+  } else if (weeklyStatus === "unavailable" || weeklyStatus === "unknown") {
+    reasons.push({ ...context, type: "availability", rule_kind: "weekly",
+      message: weeklyStatus === "unknown" ? "Availability needs checking before assignment." : "The assignment overlaps unavailable hours." });
+  }
+  const effectiveDays = weeklyStatus === null ? availabilityForDate(employee, input.scheduled_date) : null;
+  const availability = effectiveDays?.find(
     (day) => day.day === dayOfWeek(input.scheduled_date),
   );
   if (availability?.mode === "unavailable") {
@@ -370,15 +382,7 @@ export function evaluateScheduleShiftConflicts(
       rule_kind: "all_day",
     });
   } else if (
-    availability?.mode === "windows" &&
-    !availability.windows.some((window) =>
-      intervalContains(
-        window.start,
-        window.end,
-        input.start_time,
-        input.end_time,
-      ),
-    )
+    weeklyStatus === null && hasAssessmentHours && ["partial", "none"].includes(assessEmployeeAvailability(employee, input.scheduled_date, input.start_time, input.end_time).coverage)
   ) {
     reasons.push({
       ...context,
@@ -409,14 +413,15 @@ export function evaluateScheduleShiftConflicts(
     (shift) =>
       shift.id !== excludeShiftId &&
       shift.employee_id === input.employee_id &&
-      !input.hide_time_on_badge &&
-      !shift.hide_time_on_badge &&
+      hasAssessmentHours &&
+      ["explicit", "type_default"].includes(getShiftTimeBasis(shift)) &&
       absoluteIntervalsOverlap(shift, input),
   );
   if (overlapping.length > 0) {
     reasons.push({
       ...context,
-      type: "time_overlap",
+      type: timeBasis === "explicit" && overlapping.some((shift) => getShiftTimeBasis(shift) === "explicit")
+        ? "time_overlap" : "reference_time_overlap",
       conflicting_shifts: overlapping.map((shift) => ({
         id: shift.id,
         start_time: shift.start_time,
@@ -444,17 +449,6 @@ function scheduleClosureCoversDate(
 
 function dayOfWeek(date: string): number {
   return new Date(`${date}T12:00:00Z`).getUTCDay();
-}
-
-function intervalContains(
-  windowStart: string,
-  windowEnd: string,
-  shiftStart: string,
-  shiftEnd: string,
-): boolean {
-  const window = clockInterval(windowStart, windowEnd, 0);
-  const shift = clockInterval(shiftStart, shiftEnd, 0);
-  return window.start <= shift.start && window.end >= shift.end;
 }
 
 function absoluteIntervalsOverlap(

@@ -2,7 +2,7 @@
 
 **Created:** 2026-09-02
 **Input:** Phase 14 audit/research and draft specification
-**Plan status:** Ready for review; execution is not authorized by this document
+**Plan status:** In progress; Plans 14-00 through 14-06 implemented locally
 **Cost architecture:** approved — no mandatory paid notification-orchestration dependency
 **Strategy:** repair current correctness first, build a provider-independent in-app vertical slice, then connect the existing Resend capability through an adapter
 
@@ -43,6 +43,22 @@ Deliver an enterprise-grade notification foundation without extending the curren
 | 4    | 14-07, 14-08 | Wave 2     | Optional Resend adapter and operations/observability                 |
 | 5    | 14-09        | Waves 3–4  | Push/endpoints, quiet hours, digest, escalation, enterprise adapters |
 | 6    | 14-10        | All        | Security, load, hosted migration, browser, and release proof         |
+
+## Implementation evidence — 2026-09-02
+
+| Plan  | Local status | Evidence boundary                                                                                                   |
+| ----- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| 14-00 | Implemented  | Actor-bound final migration; API/UI false-failure contract; focused SQL and application tests green                 |
+| 14-01 | Implemented  | Eight-type catalog, accepted precedence ADR, producer inventory, SQL seed parity, dependency guard                  |
+| 14-02 | Implemented  | Core schema applied forward locally; 35/35 core pgTAP and 100/100 focused DB tests green; public-schema lint clean  |
+| 14-03 | Implemented  | Atomic Schedule outbox slice; lease/heartbeat/crash recovery; idempotent event, policy, recipient, and inbox stages |
+| 14-04 | Implemented  | Full fail-closed resolver; durable allow/deny snapshots; all eight current types and producers on `outbox_v1`       |
+| 14-05 | Implemented  | Organization settings UI/API/RPC; read/write split; scoped/versioned audit; safe preview; 103 notification pgTAP   |
+| 14-06 | Implemented  | User preferences UI/API/RPC; own-member access; compound inbox cursor bridge; safe links; sidebar realtime/storage convergence |
+
+The full local database reset, linked migration push, authenticated hosted smoke,
+load benchmark, and hosted browser/visual verification remain release gates. No
+linked project was changed by the 14-00 through 14-06 implementation.
 
 ## Plan 14-00 — P0 schedule notification correctness
 
@@ -125,6 +141,14 @@ Deliver an enterprise-grade notification foundation without extending the curren
 
 ## Plan 14-03 — Transactional outbox and worker runtime
 
+**Local implementation evidence — 2026-09-02:** complete for the Schedule
+walking slice. Migrations `20260908112000` through `20260908115000` add atomic
+enqueue, bounded `SKIP LOCKED` leasing, heartbeat/lease recovery, a versioned
+in-app policy decision, idempotent v2 plus legacy-coexistence inbox projections,
+and dead-letter handling. The API worker is exposed only through
+`/internal/cron/notification-outbox` with the existing cron-secret boundary. No
+provider call runs on the publish request path.
+
 **Files to read first**
 
 - `apps/api/src/schedule/schedule-service.ts`
@@ -149,6 +173,17 @@ Deliver an enterprise-grade notification foundation without extending the curren
 - API publish latency does not include provider calls.
 
 ## Plan 14-04 — Preference resolver and producer migration
+
+**Local implementation evidence — 2026-09-02:** complete for every producer in
+the current repository inventory. Migrations `20260908120000` through
+`20260908126000` add the generic channel resolver, durable inclusion/exclusion
+decisions, generic recipient/inbox projection, request/announcement/time-
+correction outbox producers, producer registry, reconciliation, Schedule
+compatibility, and announcement cancellation/supersession. All eight catalog types are active with published in-app
+templates. Payroll and people remain catalog categories, but the current codebase
+has no payroll-readiness or people/onboarding notification producer to migrate;
+new events in those domains must enter through the registry/parity gate rather
+than a direct inbox insert.
 
 **Files to read first**
 
@@ -197,6 +232,26 @@ Deliver an enterprise-grade notification foundation without extending the curren
 - Every policy change has actor, before/after version, time, and reason.
 - Keyboard, screen-reader, loading, empty, error, conflict, and rollback tests pass.
 
+**Local implementation status — 2026-09-02:** Implemented. The organization
+settings route and left rail expose active catalog policy across organization,
+role, and location scopes. API and service-role RPCs enforce independent read,
+write, and test-send capabilities; scoped writes are actor-bound and
+version-guarded; type/category/all resets and every policy mutation record an
+audit reason plus before/after version. Safe test-send is deliberately
+`preview_only`, redirects to the authenticated actor, and is durably limited to
+five previews per minute. External delivery remains Plan 14-07.
+
+**Customer-facing refinement — 2026-09-02:** Implemented without a schema
+migration or paid vendor. The organization settings UI now presents active
+notification types as business rules such as "Published schedules" and
+"Time-off requests to review" instead of raw `type_key` strings. Category,
+severity, channel, lock-reason, and audience copy are sourced from the shared
+display layer while save/reset/test payloads continue to use stable catalog
+keys for API/audit correctness. Browser smoke with the local owner development
+identity verified `/app/settings/notifications` renders `Notification Rules`,
+keeps the settings nav on a single active `Notifications` item, and does not
+surface raw catalog keys in default body copy.
+
 ## Plan 14-06 — User preferences, inbox, and sidebar
 
 **Files to read first**
@@ -224,6 +279,48 @@ Deliver an enterprise-grade notification foundation without extending the curren
 - Timestamp-collision and cross-tab badge tests pass.
 - Inbox/read states remain separate from delivery preferences.
 - No role permission is required beyond active membership for own inbox/preferences if the product checklist approves that rule.
+
+**Local implementation status — 2026-09-02:** Implemented. User notification
+preferences now have an account route, dedicated API/data contracts, active
+membership authorization, explicit batch patch semantics, duplicate-scope
+validation, version conflict handling, organization lock reasons, and audit
+records. The inbox bridge now uses opaque compound cursors, supports seen/read
+state filters, protects action links to `/app`, and keeps the sidebar badge fresh
+through Supabase realtime when available plus storage/custom-event convergence
+and the existing poll reconciliation.
+
+**Validation update — 2026-09-02:** Local API/Vite smoke returned 200 on
+`/health`, `/account/preferences/notifications`, and `/app/notifications`.
+Rendered browser QA on `http://127.0.0.1:5555` verified the account notification
+preferences page, active workspace selector, eight catalog rows, organization
+lock reasons, `/app/notifications` category filters, and Schedule filter
+selection without console errors or framework overlay. A follow-up visual pass
+tightened the user preference row layout into three columns with short visible
+Save buttons while preserving accessible action names. Local DB pgTAP passed for
+the Phase 14 notification package, `supabase db lint --local` found no schema
+errors, and `@newfork/web` plus `@newfork/api` production builds passed. Linked
+Supabase dry-run is non-mutating and reports pending Phase 14 migrations; remote
+has not been changed.
+
+**Customer-facing refinement — 2026-09-02:** Implemented without changing the
+notification storage, cursor, or mutation contracts. A shared presentation layer
+now maps active catalog categories/types/channels/severities/lock reasons to
+customer-facing labels and descriptions. `/account/preferences/notifications`
+groups controls by understandable work areas, shows disabled organization-locked
+delivery channels with plain-language reasons, and hides raw `type_key` values
+from default copy. `/app/notifications` now shows friendly category and severity
+metadata such as "Announcements · Update" while retaining stable raw keys only
+inside internal payloads and tests.
+
+**Release-gate update — 2026-09-02:** Local package-level gates passed after
+the customer-facing refinement. `@newfork/shared` notification/catalog tests and
+typecheck passed; `@newfork/api` full test suite, typecheck, lint, standard
+build, and Vercel bundle build passed; `@newfork/web` full Vitest suite passed
+with 135 files and 632 tests, plus typecheck, lint, and production build. The
+full web suite initially exposed load-sensitive timeouts in public trust and
+the authenticated-shell App smoke; isolated reruns passed, and the tests now use
+targeted longer waits for existing lazy route/auth-shell behavior without
+changing production code.
 
 ## Plan 14-07 — Email transport and templates
 

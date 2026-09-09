@@ -1,17 +1,39 @@
-import type { EmployeeHubReadModel, EmployeeHubShift } from "@newfork/shared";
+import { employeeTimeOffInputSchema, type EmployeeHubReadModel, type EmployeeHubShift } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Check, Clock3, RefreshCw } from "lucide-react";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { Link, NavLink, useLocation } from "react-router";
+import { ArrowLeft, ArrowLeftRight, CalendarDays, CalendarOff, RefreshCw } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router";
+import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
+import { AvailabilityDraftScope, requestAvailabilityNavigation, timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
+import { loadWeeklyPreferences } from "../availability/availability-data";
+import { TimeOffHourFields, defaultTimeOffHours, type TimeOffHours } from "../employee-hub/TimeOffHourFields";
+import { TimeOffDateFields, type TimeOffDateDraft, type TimeOffDateDrafts } from "../employee-hub/TimeOffDateFields";
+import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
+import { TimeOffCancellation } from "../employee-hub/TimeOffCancellation";
+import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
+import "../employee-hub/time-off.css";
 import { useAuth } from "../auth/AuthContext";
 import {
   actOnEmployeeRequest,
   getEmployeeHub,
-  saveEmployeeAvailability,
-  submitEmployeeShiftRequest,
   submitEmployeeTimeOff,
 } from "../employee-hub/employee-hub-data";
+import { formatTimeRange } from "../schedule/lib/scheduleDateTime";
 import { EmployeeTimeTrackingView } from "./EmployeeTimeTrackingView";
+import { EmployeeLineup } from "../schedule/lineup/EmployeeLineup";
+import { lineupDateWindow, parseLineupDate } from "../schedule/lineup/lineup-time";
+
+import { EmployeeTeamView } from "../employee-hub/EmployeeTeamView";
+import { EmployeeDashboard } from "../employee-hub/EmployeeDashboard";
+import { useHubClock } from "../employee-hub/useHubClock";
+import { EmployeeMorePage } from "../employee-hub/EmployeeMobileNav";
+import { EarlierShiftRequests } from "../employee-hub/shift-exchanges/EarlierShiftRequests";
+import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 
 const tabs = [
   ["schedule", "Schedule"],
@@ -21,36 +43,87 @@ const tabs = [
   ["my-availability", "My Availability"],
   ["lineup", "Line-up"],
 ] as const;
-const weekdays = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-
 export function EmployeeHubPage() {
   const { context } = useAuth();
   const location = useLocation();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
-  const today = new Date().toLocaleDateString("en-CA");
-  const end = addDays(today, 42);
+  const path = location.pathname.split("/employee-hub/")[1] ?? "";
+  const independentPage = path === "more" || path === "time-tracking" || path === "my-team";
+  const now = useHubClock();
+  const today = now.toISOString().slice(0, 10);
+  const selectedScheduleDate = path === "schedule"
+    ? scheduleDateFromSearch(location.search)
+    : null;
+  const selectedLineupDate = path === "lineup"
+    ? parseLineupDate(new URLSearchParams(location.search).get("date"))
+    : null;
+  const from = selectedScheduleDate ?? addDays(today, -2);
+  const end = selectedScheduleDate ?? addDays(today, 42);
   const query = useQuery({
-    queryKey: ["employee-hub", workspaceId, today, end],
-    queryFn: () => getEmployeeHub(workspaceId, today, end),
-    enabled: Boolean(workspaceId),
+    queryKey: ["employee-hub", workspaceId, context?.userId, from, end],
+    queryFn: () => getEmployeeHub(workspaceId, from, end),
+    enabled: Boolean(workspaceId) && !independentPage,
+    refetchInterval: 60_000,
   });
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ["employee-hub", workspaceId] });
-  const path = location.pathname.split("/employee-hub/")[1] ?? "";
-  if (query.isLoading)
-    return <main className="hub-loading" aria-label="Loading Employee Hub" />;
-  if (query.isError || !query.data)
+  const hasHubData = Boolean(query.data);
+  useEffect(() => {
+    const id = location.hash.slice(1);
+    if (!id || !hasHubData) return;
+    const frame = requestAnimationFrame(() => {
+      const element = document.getElementById(id);
+      element?.scrollIntoView?.({ block: "start" });
+      element?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [location.key, location.hash, hasHubData]);
+  if (independentPage)
     return (
-      <section className="workspace-page">
+      <section
+        className={`employee-hub-page${path === "my-team" ? " employee-team-page" : ""}`}
+        aria-labelledby="employee-hub-title"
+      >
+        <header className="hub-header eh-subpage-header">
+          <div>
+            <p className="eyebrow">{context?.workspace.name}</p>
+            <h1 id="employee-hub-title">
+              {path === "more" ? "More" : path === "my-team" ? "My Team" : "Time Tracking"}
+            </h1>
+          </div>
+          <Link className="eh-home-link" to="/app/employee-hub">
+            <ArrowLeft size={15} />
+            Home
+          </Link>
+        </header>
+        {path === "more" ? (
+          <EmployeeMorePage />
+        ) : path === "my-team" ? (
+          <EmployeeTeamView key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} userId={context?.userId ?? ""} today={today} />
+        ) : (
+          <EmployeeTimeTrackingView
+            key={`${workspaceId}:${context?.userId}`}
+            workspaceId={workspaceId}
+          />
+        )}
+      </section>
+    );
+  if (query.isLoading)
+    return (
+      <div
+        className="eh-loading"
+        role="status"
+        aria-label="Loading Employee Hub"
+      >
+        <p>Getting your day ready…</p>
+        <div className="eh-loading-bar" />
+        <div className="eh-loading-block" />
+      </div>
+    );
+  if (!query.data)
+    return (
+      <section className="employee-hub-page">
         <div className="empty-state">
           <h2>Employee Hub is unavailable</h2>
           <p>
@@ -64,498 +137,278 @@ export function EmployeeHubPage() {
       </section>
     );
   const model = query.data;
+  const lineupDates = lineupDateWindow(now, model.locations.map((item) => item.timezone));
+  if (!path)
+    return (
+      <section
+        className="employee-hub-page"
+        aria-labelledby="employee-hub-title"
+      >
+        <EmployeeDashboard
+          key={`${workspaceId}:${context?.userId}`}
+          model={model}
+          now={now}
+          stale={query.isError}
+          onRefresh={() => void query.refetch()}
+        />
+      </section>
+    );
   return (
     <section className="employee-hub-page" aria-labelledby="employee-hub-title">
-      <header className="hub-header">
+      <header className="hub-header eh-subpage-header">
         <div>
           <p className="eyebrow">{context?.workspace.name}</p>
-          <h1 id="employee-hub-title">Employee Hub</h1>
+          <h1 id="employee-hub-title">
+            {path === "more"
+              ? "More"
+              : (tabs.find(([to]) => to === path)?.[1] ?? "Employee Hub")}
+          </h1>
         </div>
+        <Link className="eh-home-link" to="/app/employee-hub">
+          <ArrowLeft size={15} /> Home
+        </Link>
         <div className="hub-today">
           <CalendarDays size={17} />
-          {formatDate(today)}
+          {formatDate(path === "lineup" ? (selectedLineupDate ?? lineupDates.from) : (selectedScheduleDate ?? today))}
         </div>
       </header>
       <nav className="hub-tabs" aria-label="Employee Hub">
         <NavLink end to="/app/employee-hub">
-          Overview
+          Home
         </NavLink>
         {tabs.map(([to, label]) => (
-          <NavLink key={to} to={`/app/employee-hub/${to}`}>
+          <NavLink key={to} to={
+            to === "lineup" && selectedScheduleDate
+              ? `/app/employee-hub/lineup?date=${selectedScheduleDate}`
+              : to === "schedule" && selectedLineupDate
+                ? `/app/employee-hub/schedule?date=${selectedLineupDate}&view=day`
+                : `/app/employee-hub/${to}`
+          }>
             {label}
           </NavLink>
         ))}
       </nav>
       {path === "schedule" ? (
-        <ScheduleView model={model} refresh={refresh} />
+        <ScheduleView model={model} selectedDate={selectedScheduleDate} />
       ) : path === "time-tracking" ? (
         <EmployeeTimeTrackingView workspaceId={workspaceId} />
-      ) : path === "shift-hub" ? (
-        <ShiftHubView model={model} refresh={refresh} />
-      ) : path === "my-team" ? (
-        <TeamView model={model} />
+      ) : path.startsWith("shift-hub") ? (
+        <><ShiftExchangeHub key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} timeFormat={model.settings.time_format} /><EarlierShiftRequests model={model} refresh={refresh} /></>
+
       ) : path === "my-availability" ? (
-        <AvailabilityView model={model} refresh={refresh} />
+        <AvailabilityView key={`${model.workspace_id}:${model.employee.id}`} model={model} refresh={refresh} />
       ) : path === "lineup" ? (
-        <LineupView model={model} />
+        <EmployeeLineup
+          workspaceId={workspaceId}
+          from={lineupDates.from}
+          to={lineupDates.to}
+          timeFormat={model.settings.time_format}
+        />
       ) : (
-        <Overview model={model} />
+        <EmployeeMorePage />
       )}
     </section>
   );
 }
 
-function Overview({ model }: { model: EmployeeHubReadModel }) {
-  const next = model.shifts[0];
-  const today = new Date().toLocaleDateString("en-CA");
-  const weekEnd = addDays(today, 6);
-  const thisWeekShifts = model.shifts.filter(
-    (shift) =>
-      shift.scheduled_date >= today && shift.scheduled_date <= weekEnd,
-  );
-  const actions = model.requests.filter(
-    (request) =>
-      request.can_cancel ||
-      request.can_respond ||
-      request.status.includes("pending") ||
-      request.status.includes("awaiting"),
-  );
-  return (
-    <div className="hub-overview">
-      <section className="hub-panel hub-next">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Next shift</p>
-            <h2>
-              {next ? formatDate(next.scheduled_date) : "No upcoming shift"}
-            </h2>
-          </div>
-          <Clock3 size={22} />
-        </div>
-        {next ? (
-          <ShiftDetails shift={next} />
-        ) : (
-          <p className="muted">
-            Your published schedule is clear for the next six weeks.
-          </p>
-        )}
-      </section>
-      <section className="hub-panel">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Open actions</p>
-            <h2>{actions.length} items</h2>
-          </div>
-          <Check size={22} />
-        </div>
-        {actions.length ? (
-          <div className="hub-action-list">
-            {actions.slice(0, 5).map((request) => (
-              <div key={request.id}>
-                <strong>{request.title}</strong>
-                <span>{request.detail}</span>
-                <small>{statusLabel(request.status)}</small>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">Nothing needs your attention.</p>
-        )}
-      </section>
-      <section className="hub-panel hub-quick-actions">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Quick actions</p>
-            <h2>Get it done</h2>
-          </div>
-        </div>
-        <div className="hub-action-buttons" aria-label="Employee shortcuts">
-          <Link className="secondary-button" to="/app/employee-hub/schedule">
-            My Schedule
-          </Link>
-          <Link
-            className="secondary-button"
-            to="/app/employee-hub/my-availability"
-          >
-            Request time off
-          </Link>
-          <Link
-            className="secondary-button"
-            to="/app/employee-hub/my-availability"
-          >
-            Update availability
-          </Link>
-          <Link className="secondary-button" to="/app/employee-hub/shift-hub">
-            Shift Hub
-          </Link>
-        </div>
-      </section>
-      <section className="hub-panel hub-week-strip">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">This week</p>
-            <h2>{thisWeekShifts.length} shifts</h2>
-          </div>
-        </div>
-        {thisWeekShifts.length ? (
-          <div className="hub-week-list">
-            {thisWeekShifts.map((shift) => (
-              <div key={shift.id}>
-                <time>{formatDate(shift.scheduled_date)}</time>
-                <strong>
-                  {shift.start_time.slice(0, 5)}-{shift.end_time.slice(0, 5)}
-                </strong>
-                <span>
-                  {shift.job_name} · {shift.location_name}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">No shifts are published for this week.</p>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function ScheduleView({ model, refresh }: HubMutationProps) {
-  const pendingShiftIds = new Set(
-    model.requests
-      .filter((request) => request.can_cancel && request.shift_id)
-      .map((request) => request.shift_id),
-  );
-  const mutation = useMutation({
-    mutationFn: (shift: EmployeeHubShift) =>
-      submitEmployeeShiftRequest(model.workspace_id, {
-        action: "release",
-        shift_id: shift.id,
-        note: "",
-      }),
-    onSuccess: refresh,
-  });
+function ScheduleView({ model, selectedDate }: {
+  model: EmployeeHubReadModel;
+  selectedDate: string | null;
+}) {
+  const visibleShifts = selectedDate
+    ? model.shifts.filter((shift) => shift.scheduled_date === selectedDate)
+    : model.shifts;
   return (
     <HubSection
       title="My Schedule"
-      subtitle="Published shifts for the next six weeks."
+      subtitle={selectedDate ? `Your published shifts for ${formatDate(selectedDate)}.` : "Your recently published and upcoming shifts."}
     >
       <div className="hub-shift-list">
-        {model.shifts.map((shift) => (
-          <article className="hub-shift-row" key={shift.id}>
-            <ShiftDetails shift={shift} />
-            <button
-              className="secondary-button"
-              disabled={mutation.isPending || pendingShiftIds.has(shift.id)}
-              onClick={() => mutation.mutate(shift)}
-            >
-              {pendingShiftIds.has(shift.id) ? "Requested" : "Request release"}
-            </button>
+        {visibleShifts.map((shift) => (
+          <article
+            className="hub-shift-row"
+            key={shift.id}
+            id={`shift-${shift.id}`}
+            tabIndex={-1}
+          >
+            <ShiftDetails
+              shift={shift}
+              timeFormat={model.settings.time_format}
+            />
+            <Link className="hub-exchange-link" to={`/app/employee-hub/shift-hub?offer=${shift.id}&from=${shift.scheduled_date}&to=${shift.scheduled_date}`}>
+              <ArrowLeftRight size={16} aria-hidden="true" />
+              Find cover or swap
+            </Link>
           </article>
         ))}
       </div>
-      {!model.shifts.length ? (
+      {selectedDate && (
+        <Link className="eh-home-link" to="/app/employee-hub/schedule">
+          Show all upcoming shifts
+        </Link>
+      )}
+      {!visibleShifts.length ? (
         <Empty text="No published shifts in this range." />
-      ) : null}
-      {mutation.error ? <InlineError error={mutation.error} /> : null}
-    </HubSection>
-  );
-}
-
-function ShiftHubView({ model, refresh }: HubMutationProps) {
-  const [own, setOwn] = useState(model.shifts[0]?.id ?? "");
-  const [target, setTarget] = useState("");
-  const pendingShiftIds = new Set(
-    model.requests
-      .filter((request) => request.can_cancel && request.shift_id)
-      .map((request) => request.shift_id),
-  );
-  const shiftMutation = useMutation({
-    mutationFn: (request: Parameters<typeof submitEmployeeShiftRequest>[1]) =>
-      submitEmployeeShiftRequest(model.workspace_id, request),
-    onSuccess: refresh,
-  });
-  const actionMutation = useMutation({
-    mutationFn: (action: Parameters<typeof actOnEmployeeRequest>[1]) =>
-      actOnEmployeeRequest(model.workspace_id, action),
-    onSuccess: refresh,
-  });
-  return (
-    <div className="hub-two-column">
-      <HubSection
-        title="Open shifts"
-        subtitle="Pickup requests require manager approval."
-      >
-        {model.open_shifts.map((shift) => (
-          <article className="hub-shift-row" key={shift.id}>
-            <ShiftDetails shift={shift} />
-            <button
-              className="primary-button"
-              disabled={pendingShiftIds.has(shift.id)}
-              onClick={() =>
-                shiftMutation.mutate({
-                  action: "pickup",
-                  shift_id: shift.id,
-                  note: "",
-                })
-              }
-            >
-              {pendingShiftIds.has(shift.id) ? "Requested" : "Request shift"}
-            </button>
-          </article>
-        ))}
-        {!model.open_shifts.length ? (
-          <Empty text="No open shifts right now." />
-        ) : null}
-        <div className="hub-swap-form">
-          <h3>Propose a swap</h3>
-          <select
-            aria-label="Your shift"
-            value={own}
-            onChange={(event) => setOwn(event.target.value)}
-          >
-            {model.shifts.map((shift) => (
-              <option key={shift.id} value={shift.id}>
-                {formatShiftOption(shift)}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Teammate shift"
-            value={target}
-            onChange={(event) => setTarget(event.target.value)}
-          >
-            <option value="">Choose teammate shift</option>
-            {model.team_shifts.map((shift) => (
-              <option key={shift.id} value={shift.id}>
-                {shift.employee_name} · {formatShiftOption(shift)}
-              </option>
-            ))}
-          </select>
-          <button
-            className="secondary-button"
-            disabled={!own || !target || shiftMutation.isPending}
-            onClick={() =>
-              shiftMutation.mutate({
-                action: "swap",
-                shift_id: own,
-                requested_shift_id: target,
-                note: "",
-              })
-            }
-          >
-            Send swap request
-          </button>
-        </div>
-      </HubSection>
-      <HubSection
-        title="My requests"
-        subtitle="Track approvals and teammate responses."
-      >
-        <div className="hub-action-list">
-          {model.requests.map((request) => (
-            <div key={request.id}>
-              <strong>{request.title}</strong>
-              <span>{request.detail}</span>
-              <small>{statusLabel(request.status)}</small>
-              <div className="row-actions">
-                {request.can_respond ? (
-                  <>
-                    <button
-                      className="primary-button"
-                      onClick={() =>
-                        actionMutation.mutate({
-                          request_id: request.id,
-                          kind: "shift_change",
-                          action: "accept",
-                          expected_revision: request.revision,
-                        })
-                      }
-                    >
-                      Accept
-                    </button>
-                    <button
-                      className="secondary-button"
-                      onClick={() =>
-                        actionMutation.mutate({
-                          request_id: request.id,
-                          kind: "shift_change",
-                          action: "decline",
-                          expected_revision: request.revision,
-                        })
-                      }
-                    >
-                      Decline
-                    </button>
-                  </>
-                ) : null}
-                {request.can_cancel ? (
-                  <button
-                    className="text-button"
-                    onClick={() =>
-                      actionMutation.mutate({
-                        request_id: request.id,
-                        kind:
-                          request.kind === "time_off"
-                            ? "time_off"
-                            : "shift_change",
-                        action: "cancel",
-                        expected_revision: request.revision,
-                      })
-                    }
-                  >
-                    Cancel
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          ))}
-        </div>
-        {!model.requests.length ? <Empty text="No requests yet." /> : null}
-        {shiftMutation.error ? (
-          <InlineError error={shiftMutation.error} />
-        ) : actionMutation.error ? (
-          <InlineError error={actionMutation.error} />
-        ) : null}
-      </HubSection>
-    </div>
-  );
-}
-
-function TeamView({ model }: { model: EmployeeHubReadModel }) {
-  return (
-    <HubSection
-      title="My Team"
-      subtitle="People who share one of your assigned locations."
-    >
-      <div className="team-grid">
-        {model.team.map((member) => (
-          <article className="team-row" key={member.id}>
-            <div className="avatar" aria-hidden>
-              {member.display_name.slice(0, 1)}
-            </div>
-            <div>
-              <strong>{member.display_name}</strong>
-              <span>{member.job_names.join(", ") || "Team member"}</span>
-              <small>{member.location_names.join(" · ")}</small>
-            </div>
-          </article>
-        ))}
-      </div>
-      {!model.team.length ? (
-        <Empty text="No teammates are visible in your locations." />
       ) : null}
     </HubSection>
   );
 }
 
 function AvailabilityView({ model, refresh }: HubMutationProps) {
-  const initial = useMemo(
-    () =>
-      model.availability?.days ??
-      weekdays.map((_, day) => ({
-        day,
-        mode: "unrestricted" as const,
-        windows: [],
-      })),
-    [model.availability],
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = new URLSearchParams(location.search);
+  const timeOff = params.get("section") === "time-off" || params.get("tab") === "time-off-request"
+    || location.hash === "#time-off" || location.hash.startsWith("#request-");
+  const choices = [
+    { id: "availability", label: "Availability", icon: CalendarDays },
+    { id: "time-off", label: "Time Off Requests", icon: CalendarOff },
+  ] as const;
+  const active = timeOff ? "time-off" : "availability";
+  function select(id: typeof active) {
+    if (id === active) return;
+    requestAvailabilityNavigation(() => {
+      const search = new URLSearchParams(location.search);
+      search.delete("tab");
+      search.set("section", id);
+      navigate({ pathname: location.pathname, search: `?${search}`, hash: "" });
+      document.getElementById(`my-${id}-tab`)?.focus();
+    });
+  }
+  return (
+    <div className="employee-weekly-workspace">
+      <div className="weekly-preferences-tabs" role="tablist" aria-label="My availability">
+        {choices.map(({ id, label, icon: Icon }, index) => (
+          <button key={id} type="button" role="tab" id={`my-${id}-tab`}
+            aria-controls={`my-${id}-panel`} aria-selected={active === id}
+            tabIndex={active === id ? 0 : -1} onClick={() => select(id)}
+            onKeyDown={event => {
+              const next = event.key === "Home" ? 0 : event.key === "End" ? 1
+                : ["ArrowLeft", "ArrowRight"].includes(event.key) ? 1 - index : null;
+              if (next === null) return;
+              event.preventDefault();
+              select(choices[next]!.id);
+            }}>
+            <Icon size={16} aria-hidden />{label}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id={`my-${active}-panel`} aria-labelledby={`my-${active}-tab`}>
+        {timeOff ? (
+          <AvailabilityDraftScope labels={timeOffNavigationLabels}>
+            <TimeOffView model={model} refresh={refresh} />
+          </AvailabilityDraftScope>
+        ) : <WeeklyPreferencesPanel workspaceId={model.workspace_id} audience="employee" onSaved={refresh} />}
+      </div>
+    </div>
   );
-  const [days, setDays] = useState(initial);
+}
+function TimeOffView({ model, refresh }: HubMutationProps) {
+  const client = useQueryClient();
   const [location, setLocation] = useState(model.locations[0]?.id ?? "");
+  const initialLocation = useRef(location);
+  const [zone, setZone] = useState(model.locations[0]?.timezone);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
-  const availability = useMutation({
-    mutationFn: () =>
-      saveEmployeeAvailability(model.workspace_id, {
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        days,
-      }),
-    onSuccess: refresh,
+  const [periodMode, setPeriodMode] = useState<"full_day" | "hours" | "per_date">("full_day");
+  const [hours, setHours] = useState<TimeOffHours[]>([{ ...defaultTimeOffHours }]);
+  const [dateDrafts,setDateDrafts] = useState<TimeOffDateDrafts>({});
+  const [dateDefaults,setDateDefaults] = useState<TimeOffDateDraft>({mode:"full_day",hours:[{...defaultTimeOffHours}]});
+  const dateDefaultsChosen = useRef(false);
+  const [cancellationDrafts, setCancellationDrafts] = useState(new Map<string, EmployeeHubReadModel["requests"][number]>());
+  const retry = useRef({ signature: "", key: crypto.randomUUID() });
+  const availability = useQuery({
+    queryKey: ["weekly-preferences", model.workspace_id, "workspace", "self"],
+    queryFn: () => loadWeeklyPreferences(model.workspace_id),
+    retry: false,
   });
+  const presets = (availability.data?.shift_types ?? []).flatMap(type =>
+    !type.archived && type.selectable && type.start_time && type.end_time
+      ? [{ id: type.id, name: type.name, start_time: type.start_time, end_time: type.end_time }] : []);
+  const latestZone = model.locations.find((item) => item.id === location)?.timezone;
+  const staleZone = Boolean(zone && latestZone && zone !== latestZone);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: zone ?? "UTC", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const selectedDates = dateRange(start,end || start);
+  const rangeTooLong = selectedDates.length > 31;
+  const periods = selectedDates.flatMap(segment_date => {
+    const choice = periodMode === "per_date" ? dateDrafts[segment_date] ?? dateDefaults : {mode:periodMode,hours};
+    if (choice.mode === "skip") return [];
+    return choice.mode === "full_day" ? [{segment_date,start_time:null,end_time:null,ends_next_day:false}]
+      : choice.hours.map(range=>({...range,segment_date}));
+  });
+  const candidate = { location_id: location, reason, periods, expected_timezone: zone };
+  const validation = employeeTimeOffInputSchema.safeParse({ ...candidate, request_id: retry.current.key });
   const timeOff = useMutation({
-    mutationFn: (event: FormEvent) => {
-      event.preventDefault();
-      return submitEmployeeTimeOff(model.workspace_id, {
-        location_id: location,
-        reason,
-        dates: dateRange(start, end || start),
-      });
+    mutationFn: () => {
+      if (rangeTooLong) throw new Error("Choose a date range of at most 31 calendar days.");
+      if (staleZone || !latestZone) throw new Error("Review the location time zone before submitting.");
+      const signature = JSON.stringify(candidate);
+      if (retry.current.signature !== signature) retry.current = { signature, key: crypto.randomUUID() };
+      const command = employeeTimeOffInputSchema.safeParse({ ...candidate, request_id: retry.current.key });
+      if (!command.success) throw new Error(command.error.issues[0]?.message ?? "Check the requested dates and hours.");
+      return submitEmployeeTimeOff(model.workspace_id, command.data);
     },
     onSuccess: () => {
       setStart("");
       setEnd("");
       setReason("");
+      setPeriodMode("full_day");
+      setHours([{ ...defaultTimeOffHours }]);
+      setDateDrafts({}); dateDefaultsChosen.current = false;
+      initialLocation.current = location;
+      retry.current = { signature: "", key: crypto.randomUUID() };
+      void client.invalidateQueries({ queryKey: ["schedule-requests", model.workspace_id] });
       refresh();
     },
   });
+  useEffect(() => {
+    if (!start && !end && !reason && periodMode === "full_day" && !Object.keys(dateDrafts).length && !timeOff.isPending) setZone(latestZone);
+  }, [latestZone, start, end, reason, periodMode, dateDrafts, timeOff.isPending]);
   const actionMutation = useMutation({
     mutationFn: (action: Parameters<typeof actOnEmployeeRequest>[1]) =>
       actOnEmployeeRequest(model.workspace_id, action),
     onSuccess: refresh,
   });
-  const timeOffRequests = model.requests.filter(
+  const currentTimeOffRequests = model.requests.filter(
     (request) => request.kind === "time_off",
   );
+  const timeOffRequests = [...currentTimeOffRequests, ...[...cancellationDrafts.values()]
+    .filter(request => !currentTimeOffRequests.some(current => current.id === request.id))
+    .map(request => ({...request, cancellation:request.cancellation ? {...request.cancellation,can_request:false} : undefined}))];
+  const navigationDialog = useAvailabilityNavigationGuard({
+    dirty: Boolean(start || end || reason || periodMode !== "full_day" || Object.keys(dateDrafts).length || location !== initialLocation.current),
+    busy: timeOff.isPending || actionMutation.isPending,
+    labels: timeOffNavigationLabels,
+    onDiscard: () => {
+      setStart(""); setEnd(""); setReason(""); setPeriodMode("full_day"); setHours([{...defaultTimeOffHours}]);
+      setDateDrafts({}); dateDefaultsChosen.current = false;
+      initialLocation.current = location; timeOff.reset();
+    },
+  });
   return (
-    <div className="hub-two-column">
-      <HubSection
-        title="Weekly availability"
-        subtitle="Changes create a new version without rewriting onboarding history."
-      >
-        <div className="availability-list">
-          {days.map((day, index) => (
-            <label key={day.day}>
-              <span>{weekdays[day.day]}</span>
-              <select
-                value={day.mode}
-                onChange={(event) =>
-                  setDays((current) =>
-                    current.map((item, itemIndex) =>
-                      itemIndex === index
-                        ? {
-                            ...item,
-                            mode: event.target.value as
-                              "unavailable" | "unrestricted" | "windows",
-                            windows:
-                              event.target.value === "windows"
-                                ? [{ start: "09:00", end: "17:00" }]
-                                : [],
-                          }
-                        : item,
-                    ),
-                  )
-                }
-              >
-                <option value="unrestricted">Any time</option>
-                <option value="unavailable">Unavailable</option>
-                <option value="windows">09:00–17:00</option>
-              </select>
-            </label>
-          ))}
-        </div>
-        <button
-          className="primary-button"
-          disabled={availability.isPending}
-          onClick={() => availability.mutate()}
-        >
-          Save availability
-        </button>
-        {availability.error ? <InlineError error={availability.error} /> : null}
-      </HubSection>
+    <div className="hub-two-column availability-workspace">
+      {navigationDialog}
       <HubSection
         title="Request time off"
-        subtitle="Managers review each date and may approve part of a request."
+        subtitle="Request full days or specific hours. Published shifts stay your responsibility until an approved change updates the assignment."
+        id="time-off"
       >
         <form
           className="time-off-form"
-          onSubmit={(event) => timeOff.mutate(event)}
+          onSubmit={(event) => { event.preventDefault(); timeOff.mutate(); }}
         >
+          <fieldset disabled={timeOff.isPending}>
+          <legend>Time off details</legend>
           <label>
             Location
             <select
               required
               value={location}
-              onChange={(event) => setLocation(event.target.value)}
+              onChange={(event) => {
+                setLocation(event.target.value);
+                setZone(model.locations.find((item) => item.id === event.target.value)?.timezone);
+              }}
             >
               {model.locations.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -564,12 +417,16 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
               ))}
             </select>
           </label>
+          <p>{zone ? `Hours use ${zone}. Once submitted, these hours keep that time zone.` : "Refresh locations to choose the time zone for this request."}</p>
+          {staleZone ? <p role="alert">The location time zone changed from {zone} to {latestZone}. Review your entered hours before continuing.
+            {" "}<button type="button" onClick={() => setZone(latestZone)}>Use current location time zone</button>
+          </p> : null}
           <div className="date-pair">
             <label>
               Start
               <input
                 required
-                min={new Date().toLocaleDateString("en-CA")}
+                min={today}
                 type="date"
                 value={start}
                 onChange={(event) => setStart(event.target.value)}
@@ -585,6 +442,24 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
               />
             </label>
           </div>
+          <label>Requested time
+            <select value={periodMode} onChange={(event) => {
+              const next = event.target.value as typeof periodMode;
+              if (next === "per_date" && !dateDefaultsChosen.current) {
+                setDateDefaults({mode:periodMode === "hours" ? "hours" : "full_day",hours:hours.map(range=>({...range}))}); dateDefaultsChosen.current = true;
+              }
+              setPeriodMode(next);
+            }}>
+              <option value="full_day">Full day</option><option value="hours">Specific hours</option><option value="per_date">Different hours by date</option>
+            </select>
+          </label>
+          {periodMode === "hours" ? <TimeOffHourFields ranges={hours} onChange={setHours} timeFormat={model.settings.time_format} presets={presets} /> : null}
+          {rangeTooLong ? <p role="alert">Choose a date range of at most 31 calendar days. No dates will be silently omitted.</p> : null}
+          {periodMode === "per_date" && !rangeTooLong ? <TimeOffDateFields dates={selectedDates} drafts={dateDrafts} defaults={dateDefaults} onChange={setDateDrafts} timeFormat={model.settings.time_format} presets={presets} /> : null}
+          {Object.keys(dateDrafts).some(date=>!selectedDates.includes(date)) ? <p>Some customized dates are outside this range and will not be submitted. Their edits are kept if you restore those dates before submitting.</p> : null}
+          {periodMode !== "per_date" && Object.keys(dateDrafts).length ? <p>Your per-date edits are kept if you switch back before submitting. The current time choice applies to every selected date.</p> : null}
+          {periodMode === "per_date" && selectedDates.length && !rangeTooLong ? <p>{periods.length} requested period(s) across {new Set(periods.map(period=>period.segment_date)).size} date(s).</p> : null}
+          {start && !validation.success ? <p role="alert">{validation.error.issues[0]?.message}</p> : null}
           <label>
             Note
             <textarea
@@ -594,9 +469,10 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
               placeholder="Optional context"
             />
           </label>
-          <button className="primary-button" disabled={timeOff.isPending}>
+          <button className="primary-button" disabled={timeOff.isPending || !validation.success || staleZone || !latestZone || rangeTooLong}>
             Submit request
           </button>
+          </fieldset>
         </form>
         {timeOff.error ? <InlineError error={timeOff.error} /> : null}
       </HubSection>
@@ -606,13 +482,26 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
       >
         <div className="hub-action-list time-off-request-list">
           {timeOffRequests.map((request) => (
-            <div key={request.id}>
+            <div key={request.id} id={`request-${request.id}`} tabIndex={-1}>
               <strong>{request.title}</strong>
               <span>{request.detail}</span>
               <small>
                 {statusLabel(request.status)} · Submitted{" "}
                 {formatDate(request.created_at)}
               </small>
+              {request.periods ? <TimeOffPeriods periods={request.periods} timeFormat={model.settings.time_format} requestStatus={request.status} cancellation={request.request_type === "time_off_cancellation"} /> : null}
+              <TimeOffCancellation request={request} workspaceId={model.workspace_id} timeFormat={model.settings.time_format} onChanged={refresh}
+                onDraftChange={active => setCancellationDrafts(current => {
+                  if (active === current.has(request.id)) return current;
+                  const next = new Map(current); if (active) next.set(request.id,request); else next.delete(request.id); return next;
+                })} />
+              {request.decision_events?.length ? <ol aria-label="Manager decisions">
+                {request.decision_events.map(event => <li key={event.id}>
+                  <strong>{statusLabel(event.action)}</strong> · {formatDate(event.created_at)}
+                  {event.note ? <p>Manager note: {event.note}</p> : null}
+                  <TimeOffReleasedAssignments assignments={event.released_assignments} timeFormat={model.settings.time_format} />
+                </li>)}
+              </ol> : null}
               {request.can_cancel ? (
                 <button
                   className="text-button"
@@ -626,7 +515,7 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
                     })
                   }
                 >
-                  Cancel request
+                  {request.request_type === "time_off_cancellation" ? "Withdraw cancellation request" : "Cancel request"}
                 </button>
               ) : null}
             </div>
@@ -643,66 +532,23 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
   );
 }
 
-function LineupView({ model }: { model: EmployeeHubReadModel }) {
-  const grouped = model.lineup.reduce<
-    Record<string, EmployeeHubReadModel["lineup"]>
-  >((groups, row) => {
-    const key = `${row.lineup_date}|${row.location_name}`;
-    (groups[key] ??= []).push(row);
-    return groups;
-  }, {});
-  return (
-    <HubSection
-      title="Line-up"
-      subtitle="Latest shared line-ups for your assigned locations."
-    >
-      <div className="lineup-days">
-        {Object.entries(grouped).map(([key, rows]) => {
-          const [lineupDate, locationName] = key.split("|") as [string, string];
-          return (
-            <section key={key}>
-              <h3>
-                {formatDate(lineupDate)}
-                <span>{locationName}</span>
-              </h3>
-              {rows?.map((row) => (
-                <div className="lineup-employee-row" key={row.id}>
-                  <strong>{row.employee_name}</strong>
-                  <span>{row.job_name ?? "Open row"}</span>
-                  <span>{row.station || row.section_name || "-"}</span>
-                  <time>
-                    {row.start_time && row.end_time
-                      ? `${row.start_time}–${row.end_time}`
-                      : "-"}
-                  </time>
-                </div>
-              ))}
-            </section>
-          );
-        })}
-      </div>
-      {!model.lineup.length ? (
-        <Empty text="No shared line-up is available in this range." />
-      ) : null}
-    </HubSection>
-  );
-}
-
 interface HubMutationProps {
   model: EmployeeHubReadModel;
   refresh: () => void;
 }
 function HubSection({
+  id,
   title,
   subtitle,
   children,
 }: {
+  id?: string;
   title: string;
   subtitle: string;
   children: ReactNode;
 }) {
   return (
-    <section className="hub-panel">
+    <section className="hub-panel" id={id} tabIndex={id ? -1 : undefined}>
       <div className="panel-heading">
         <div>
           <h2>{title}</h2>
@@ -713,11 +559,17 @@ function HubSection({
     </section>
   );
 }
-function ShiftDetails({ shift }: { shift: EmployeeHubShift }) {
+function ShiftDetails({
+  shift,
+  timeFormat = "12h",
+}: {
+  shift: EmployeeHubShift;
+  timeFormat?: EmployeeHubReadModel["settings"]["time_format"];
+}) {
   return (
     <div className="shift-details">
       <strong>
-        {shift.start_time.slice(0, 5)}–{shift.end_time.slice(0, 5)}
+        {formatTimeRange(shift.start_time, shift.end_time, timeFormat)}
       </strong>
       <span>
         {shift.job_name} · {shift.location_name}
@@ -736,15 +588,25 @@ function InlineError({ error }: { error: unknown }) {
     </p>
   );
 }
+function scheduleDateFromSearch(search: string): string | null {
+  const params = new URLSearchParams(search);
+  const value = params.get("view") === "day" ? params.get("date") : null;
+  if (!value || !/^[1-9]\d{3}-\d{2}-\d{2}$/.test(value)) return null;
+  const timestamp = Date.parse(`${value}T12:00:00Z`);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value
+    ? value
+    : null;
+}
 function formatDate(iso: string) {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-US", {
+  const calendarDay = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+  const date = new Date(calendarDay ? `${iso}T12:00:00` : iso);
+  if (!Number.isFinite(date.getTime())) return "Date unavailable";
+  return date.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
+    ...(!calendarDay ? { year: "numeric" as const } : {}),
   });
-}
-function formatShiftOption(shift: EmployeeHubShift) {
-  return `${formatDate(shift.scheduled_date)} · ${shift.start_time.slice(0, 5)} · ${shift.location_name}`;
 }
 function statusLabel(status: string) {
   return status.replaceAll("_", " ");
@@ -758,7 +620,9 @@ function dateRange(start: string, end: string) {
   if (!start) return [];
   const result: string[] = [];
   let value = start;
-  while (value <= end && result.length < 31) {
+  // Keep one excess day so validation rejects a long range instead of silently
+  // truncating what the employee requested to the first 31 days.
+  while (value <= end && result.length < 32) {
     result.push(value);
     value = addDays(value, 1);
   }

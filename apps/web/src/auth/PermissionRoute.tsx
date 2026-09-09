@@ -9,6 +9,8 @@ export const settingsEntryPermissions = [
   "roles.read",
   "documents.read",
   "signature_templates.read",
+  "notifications.settings.read",
+  "notifications.settings.write",
   "kiosk.device.enroll.location",
   "kiosk.device.read.location",
   "kiosk.device.revoke.location",

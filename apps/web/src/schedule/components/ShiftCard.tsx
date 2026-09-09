@@ -9,7 +9,7 @@ import type {
   MouseEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import {
   formatScheduleBadgeAriaLabel,
@@ -24,6 +24,26 @@ const warningLabels = {
   overlap: "Overlapping employee shifts",
 } as const;
 
+const SINGLE_CLICK_FOCUS_DELAY_MS = 250;
+const MAX_VISIBLE_SHIFT_LABELS = 2;
+
+function formatShiftLabelDisplay(labelNames: readonly string[]): {
+  readonly fullText: string;
+  readonly displayText: string;
+} {
+  const labels = labelNames.map((label) => label.trim()).filter(Boolean);
+  const fullText = labels.join(" · ");
+  if (labels.length <= MAX_VISIBLE_SHIFT_LABELS) {
+    return { fullText, displayText: fullText };
+  }
+  return {
+    fullText,
+    displayText: `${labels.slice(0, MAX_VISIBLE_SHIFT_LABELS).join(" · ")} +${
+      labels.length - MAX_VISIBLE_SHIFT_LABELS
+    }`,
+  };
+}
+
 export function ShiftCard({
   shift,
   job,
@@ -37,6 +57,7 @@ export function ShiftCard({
   showJobColorDot: _showJobColorDot,
   selected = false,
   focused = false,
+  stackCount = 1,
   rowKey,
   badgeHeight,
   dragging,
@@ -61,6 +82,7 @@ export function ShiftCard({
   readonly showJobColorDot: boolean;
   readonly selected?: boolean;
   readonly focused?: boolean;
+  readonly stackCount?: number;
   readonly rowKey: string;
   readonly badgeHeight: number;
   readonly dragging?: boolean;
@@ -92,9 +114,23 @@ export function ShiftCard({
     shift.end_time,
     timeFormat,
   );
-  const labelText = (shift.label_names ?? []).join(" · ");
+  const labelText = formatShiftLabelDisplay(shift.label_names ?? []);
   const warningText = formatScheduleShiftWarningAria(shift.warning_codes);
   const modifierSelectionHandledRef = useRef(false);
+  const pendingSingleClickRef = useRef<number | null>(null);
+  const cancelPendingSingleClick = () => {
+    if (pendingSingleClickRef.current === null) return;
+    window.clearTimeout(pendingSingleClickRef.current);
+    pendingSingleClickRef.current = null;
+  };
+  useEffect(
+    () => () => {
+      if (pendingSingleClickRef.current !== null) {
+        window.clearTimeout(pendingSingleClickRef.current);
+      }
+    },
+    [],
+  );
   const handleModifierSelectionStart = (
     event: ReactPointerEvent<HTMLElement> | MouseEvent<HTMLElement>,
     phase: "pointer" | "mouse",
@@ -122,8 +158,8 @@ export function ShiftCard({
         } as CSSProperties
       }
       aria-label={formatScheduleBadgeAriaLabel({
-        title,
-        labelText: showShiftLabels ? labelText : "",
+        title: stackCount > 1 ? `${title}, ${stackCount} open shifts` : title,
+        labelText: showShiftLabels ? labelText.fullText : "",
         timeText: showClockRow ? timeText : "",
         locationText: locationName ?? "",
         warningText,
@@ -134,14 +170,13 @@ export function ShiftCard({
       data-selected={selected}
       data-dragging={dragging}
       data-job-color-dot={false}
-      data-has-markers={Boolean(
-        publicationState || shift.warning_codes.length,
-      )}
+      data-has-markers={Boolean(publicationState || shift.warning_codes.length)}
       data-shift-labels-visible={showShiftLabels}
       data-publication-state={publicationState ?? undefined}
       data-focused={focused}
+      data-current={focused}
+      data-stack-count={stackCount > 1 ? stackCount : undefined}
       aria-pressed={selected}
-      draggable={editing}
       onPointerDown={(event) => {
         if (handleModifierSelectionStart(event, "pointer")) return;
         modifierSelectionHandledRef.current = false;
@@ -155,42 +190,52 @@ export function ShiftCard({
       onClick={(event) => {
         if (modifierSelectionHandledRef.current) {
           modifierSelectionHandledRef.current = false;
+          cancelPendingSingleClick();
           event.preventDefault();
           event.stopPropagation();
           return;
         }
         if (editing && event.detail > 1) {
+          cancelPendingSingleClick();
           event.preventDefault();
           event.stopPropagation();
-          onEdit?.(shift as ScheduleEditableShift, {
-            x: event.clientX,
-            y: event.clientY,
-          });
           return;
         }
         if (event.shiftKey || event.ctrlKey || event.metaKey) {
           if (!editing) return;
+          cancelPendingSingleClick();
           event.preventDefault();
           event.stopPropagation();
           onSelect?.(shift.id, true);
           return;
         }
-        onFocus?.(shift);
+        if (!editing) {
+          onFocus?.(shift);
+          return;
+        }
+        cancelPendingSingleClick();
+        pendingSingleClickRef.current = window.setTimeout(() => {
+          pendingSingleClickRef.current = null;
+          onFocus?.(shift);
+        }, SINGLE_CLICK_FOCUS_DELAY_MS);
       }}
       onDoubleClick={(event) => {
+        cancelPendingSingleClick();
         event.preventDefault();
         event.stopPropagation();
-        return (
-          editing &&
+        if (editing) {
           onEdit?.(shift as ScheduleEditableShift, {
             x: event.clientX,
             y: event.clientY,
-          })
-        );
+          });
+        }
       }}
       onKeyDown={(event) => {
         if (!editing) return;
-        if (event.key === "Enter") onEdit?.(shift as ScheduleEditableShift);
+        if (event.key === "Enter") {
+          cancelPendingSingleClick();
+          onEdit?.(shift as ScheduleEditableShift);
+        }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c")
           onCopy?.(shift as ScheduleEditableShift);
       }}
@@ -204,6 +249,7 @@ export function ShiftCard({
           className="schedule-shift-selection-ring"
           data-shift-selection-ring="true"
           data-multi-selected={selected}
+          data-current={focused}
           aria-hidden="true"
         />
       ) : null}
@@ -237,6 +283,11 @@ export function ShiftCard({
           ) : null}
         </span>
       ) : null}
+      {stackCount > 1 ? (
+        <span className="schedule-shift-stack-count" aria-hidden="true">
+          x{stackCount}
+        </span>
+      ) : null}
       <span
         className="schedule-shift-badge-content"
         data-shift-badge-content="true"
@@ -250,8 +301,10 @@ export function ShiftCard({
             {locationName}
           </span>
         ) : null}
-        {showShiftLabels && labelText ? (
-          <span className="schedule-shift-labels">{labelText}</span>
+        {showShiftLabels && labelText.displayText ? (
+          <span className="schedule-shift-labels" title={labelText.fullText}>
+            {labelText.displayText}
+          </span>
         ) : null}
         {showClockRow ? (
           <span className="schedule-shift-time">
@@ -298,7 +351,7 @@ export function GhostShiftCard({
     shift.end_time,
     timeFormat,
   );
-  const labelText = (shift.label_names ?? []).join(" · ");
+  const labelText = formatShiftLabelDisplay(shift.label_names ?? []);
   const warningText = formatScheduleShiftWarningAria(shift.warning_codes);
   const otherLocationText = sourceLocation
     ? `also scheduled at ${sourceLocation}`
@@ -316,7 +369,7 @@ export function GhostShiftCard({
       }
       aria-label={formatScheduleBadgeAriaLabel({
         title,
-        labelText: showShiftLabels ? labelText : "",
+        labelText: showShiftLabels ? labelText.fullText : "",
         timeText: showClockRow ? timeText : "",
         locationText: otherLocationText,
         warningText,
@@ -360,8 +413,10 @@ export function GhostShiftCard({
             {displayedLocation}
           </span>
         ) : null}
-        {showShiftLabels && labelText ? (
-          <span className="schedule-shift-labels">{labelText}</span>
+        {showShiftLabels && labelText.displayText ? (
+          <span className="schedule-shift-labels" title={labelText.fullText}>
+            {labelText.displayText}
+          </span>
         ) : null}
         {showClockRow ? (
           <span className="schedule-shift-time">
@@ -393,10 +448,9 @@ export function formatScheduleBadgeTime(
   if (timeFormat === "24h") {
     return `${String(normalizedHour).padStart(2, "0")}:${String(normalizedMinute).padStart(2, "0")}`;
   }
-  const suffix = normalizedHour >= 12 ? "p" : "a";
+  const suffix = normalizedHour >= 12 ? "PM" : "AM";
   const display = normalizedHour % 12 || 12;
-  if (normalizedMinute === 0) return `${display}${suffix}`;
-  return `${display}:${String(normalizedMinute).padStart(2, "0")}${suffix}`;
+  return `${display}:${String(normalizedMinute).padStart(2, "0")} ${suffix}`;
 }
 
 export function formatScheduleBadgeTimeRange(
@@ -404,7 +458,7 @@ export function formatScheduleBadgeTimeRange(
   endTime: string,
   timeFormat: TimeFormat = "12h",
 ): string {
-  return `${formatScheduleBadgeTime(startTime, timeFormat)} to ${formatScheduleBadgeTime(endTime, timeFormat)}`;
+  return `${formatScheduleBadgeTime(startTime, timeFormat)} - ${formatScheduleBadgeTime(endTime, timeFormat)}`;
 }
 
 type GhostShiftMetadata = {

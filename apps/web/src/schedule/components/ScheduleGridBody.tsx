@@ -261,7 +261,9 @@ export function ScheduleGridBody({
                   job={group.job}
                   shiftTypes={visibleShiftTypes}
                   locations={locations}
-                  activeInteractionShiftLocationId={activeInteractionShiftLocationId}
+                  activeInteractionShiftLocationId={
+                    activeInteractionShiftLocationId
+                  }
                   days={days}
                   editing={editing}
                   showTotalHours={showTotalHours}
@@ -271,7 +273,7 @@ export function ScheduleGridBody({
                 />
               ) : showEmployeeGroupHeaders ? (
                 <ScheduleGroupLabelRow
-                  label={group.job?.name ?? "No job/position"}
+                  label={group.job?.name ?? "Unassigned job"}
                   groupId={group.job?.id ?? "none"}
                   color={group.job?.color ?? null}
                   locations={locations}
@@ -283,14 +285,6 @@ export function ScheduleGridBody({
             </Fragment>
           ))
         : rows.map(renderEmployeeRow)}
-      {Array.from({ length: fillerRowCount }, (_, rowIndex) => (
-        <ScheduleFillerRow
-          key={`schedule-filler-${rowIndex}`}
-          locations={locations}
-          days={days}
-          showTotalHours={showTotalHours}
-        />
-      ))}
       {!rows.length ? (
         <>
           <div className="schedule-empty-row schedule-grid-sticky">
@@ -301,7 +295,15 @@ export function ScheduleGridBody({
           ))}
         </>
       ) : null}
-      {showTotalHours && rows.length ? (
+      {Array.from({ length: fillerRowCount }, (_, rowIndex) => (
+        <ScheduleFillerRow
+          key={`schedule-filler-${rowIndex}`}
+          locations={locations}
+          days={days}
+          showTotalHours={showTotalHours}
+        />
+      ))}
+      {showTotalHours ? (
         <ScheduleTotalsRow
           visibleShifts={visibleShifts}
           totalShifts={model.shifts}

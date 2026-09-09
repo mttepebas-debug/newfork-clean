@@ -1,14 +1,25 @@
-import type { ActiveWorkspaceContext, Permission } from "@newfork/shared";
+import type {
+  ActiveWorkspaceContext,
+  Permission,
+  WorkspaceRole,
+} from "@newfork/shared";
+
+export const organizationSwitcherPath = "/organization-switcher";
+
+export function workspaceLandingPathForRole(role: WorkspaceRole): string {
+  return role === "employee" ? "/app/employee-hub" : "/app/workspace";
+}
 
 export function appLandingPath(
   context: ActiveWorkspaceContext | null,
 ): string {
-  if (!context) return "/account/workspaces";
-  if (context.membership.role === "employee") return "/app/employee-hub";
+  if (!context) return organizationSwitcherPath;
+  if (context.membership.role === "employee")
+    return workspaceLandingPathForRole(context.membership.role);
   if (hasPermission(context.permissions, "workspace.read"))
-    return "/app/workspace";
+    return workspaceLandingPathForRole(context.membership.role);
   if (hasPermission(context.permissions, "schedule.read")) return "/app/schedule";
-  return "/account/workspaces";
+  return organizationSwitcherPath;
 }
 
 function hasPermission(

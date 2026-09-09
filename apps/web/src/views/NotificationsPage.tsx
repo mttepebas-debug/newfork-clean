@@ -1,25 +1,52 @@
-import type { NotificationRecord } from "@newfork/shared";
+import {
+  displayForNotificationCategory,
+  displayForNotificationType,
+  notificationSeverityDisplay,
+  type NotificationCategory,
+  type NotificationRecord,
+} from "@newfork/shared";
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Bell, CheckCheck, Circle, ExternalLink, Trash2 } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  ChevronDown,
+  ChevronUp,
+  Circle,
+  ExternalLink,
+  Trash2,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { safeAppActionUrl } from "../communications/action-url";
 import {
   actOnNotification,
   getNotifications,
 } from "../communications/communications-data";
 
-type Category = "all" | "announcement" | "request" | "schedule";
+import {
+  NotificationShiftDetails,
+  notificationExchangeTarget,
+} from "../communications/NotificationShiftDetails";
+
+type Category = "all" | NotificationCategory;
+type NotificationMutationInput = {
+  notification_id: string | null;
+  action: "read" | "unread" | "dismiss" | "read_all";
+};
 
 export function NotificationsPage() {
   const { context } = useAuth();
   const client = useQueryClient();
   const [category, setCategory] = useState<Category>("all");
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [expandedNotification, setExpandedNotification] = useState<
+    string | null
+  >(null);
   const workspaceId = context?.workspace.id ?? "";
   const query = useInfiniteQuery({
     queryKey: ["notifications", workspaceId, category, unreadOnly],
@@ -35,10 +62,8 @@ export function NotificationsPage() {
     enabled: Boolean(workspaceId),
   });
   const mutation = useMutation({
-    mutationFn: (input: {
-      notification_id: string | null;
-      action: "read" | "unread" | "dismiss" | "read_all";
-    }) => actOnNotification(workspaceId, input),
+    mutationFn: (input: NotificationMutationInput) =>
+      actOnNotification(workspaceId, input),
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: ["notifications"] }),
@@ -66,7 +91,6 @@ export function NotificationsPage() {
     >
       <header className="communications-header">
         <div>
-          <p>Inbox</p>
           <h1 id="notifications-title">Notifications</h1>
           <span>
             {unreadCount ? `${unreadCount} unread` : "You're all caught up"}
@@ -89,18 +113,16 @@ export function NotificationsPage() {
           role="tablist"
           aria-label="Notification category"
         >
-          {(["all", "announcement", "request", "schedule"] as const).map(
-            (value) => (
-              <button
-                key={value}
-                role="tab"
-                aria-selected={category === value}
-                onClick={() => setCategory(value)}
-              >
-                {value[0]!.toUpperCase() + value.slice(1)}
-              </button>
-            ),
-          )}
+          {notificationCategories.map((value) => (
+            <button
+              key={value}
+              role="tab"
+              aria-selected={category === value}
+              onClick={() => setCategory(value)}
+            >
+              {labelCategory(value)}
+            </button>
+          ))}
         </div>
         <label className="notification-unread-toggle">
           <input
@@ -122,76 +144,135 @@ export function NotificationsPage() {
             <section key={day} aria-labelledby={`notification-day-${day}`}>
               <h2 id={`notification-day-${day}`}>{day}</h2>
               <div className="notification-list">
-                {items.map((item) => (
-                  <article
-                    className={item.read_at ? "" : "unread"}
-                    key={item.id}
-                  >
-                    <span className={`notification-icon ${item.category}`}>
-                      <Bell size={17} aria-hidden />
-                    </span>
-                    <div>
-                      <header>
-                        <strong>{item.title}</strong>
-                        <time dateTime={item.created_at}>
-                          {formatTime(item.created_at)}
-                        </time>
-                      </header>
-                      <p>{item.body}</p>
-                      <small>{item.category}</small>
-                    </div>
-                    <div className="notification-actions">
-                      {item.action_url ? (
-                        <Link
+                {items.map((item) => {
+                  const actionUrl = safeAppActionUrl(item.action_url);
+                  const exchangeTarget = notificationExchangeTarget(item);
+                  const expanded = expandedNotification === item.id;
+                  const panelId = `notification-shift-${item.id}`;
+                  const typeDisplay = displayForNotificationType(item.type_key);
+                  const categoryDisplay = displayForNotificationCategory(
+                    item.category,
+                  );
+                  const metadataLabel =
+                    typeDisplay?.shortLabel ?? categoryDisplay.label;
+                  const itemPending =
+                    mutation.isPending &&
+                    mutation.variables?.notification_id === item.id;
+                  return (
+                    <article
+                      className={item.read_at ? "" : "unread"}
+                      key={item.id}
+                    >
+                      <span className={`notification-icon ${item.category}`}>
+                        <Bell size={17} aria-hidden />
+                      </span>
+                      <div>
+                        <header>
+                          <strong>{item.title}</strong>
+                          <time dateTime={item.created_at}>
+                            {formatTime(item.created_at)}
+                          </time>
+                        </header>
+                        <p>{item.safe_preview || item.body}</p>
+                        <small>
+                          {metadataLabel}
+                          {item.severity
+                            ? ` · ${notificationSeverityDisplay[item.severity]}`
+                            : ""}
+                        </small>
+                        {exchangeTarget && (
+                          <button
+                            type="button"
+                            className="notification-shift-toggle"
+                            aria-expanded={expanded}
+                            aria-controls={expanded ? panelId : undefined}
+                            onClick={() =>
+                              setExpandedNotification(expanded ? null : item.id)
+                            }
+                          >
+                            {expanded ? (
+                              <ChevronUp size={16} aria-hidden />
+                            ) : (
+                              <ChevronDown size={16} aria-hidden />
+                            )}
+                            {expanded
+                              ? "Hide shift details"
+                              : "View shift details"}
+                          </button>
+                        )}
+                      </div>
+                      <div className="notification-actions">
+                        {actionUrl ? (
+                          <Link
+                            className="icon-button"
+                            aria-label={`${typeDisplay?.actionLabel ?? "Open notification"}: ${item.title}`}
+                            to={actionUrl}
+                            onClick={() => {
+                              if (!item.read_at)
+                                mutation.mutate({
+                                  notification_id: item.id,
+                                  action: "read",
+                                });
+                            }}
+                          >
+                            <ExternalLink size={16} aria-hidden />
+                          </Link>
+                        ) : null}
+                        <button
                           className="icon-button"
-                          aria-label={`Open ${item.title}`}
-                          to={item.action_url}
-                          onClick={() => {
+                          type="button"
+                          disabled={itemPending}
+                          aria-label={
+                            item.read_at
+                              ? `Mark ${item.title} unread`
+                              : `Mark ${item.title} read`
+                          }
+                          onClick={() =>
+                            mutation.mutate({
+                              notification_id: item.id,
+                              action: item.read_at ? "unread" : "read",
+                            })
+                          }
+                        >
+                          <Circle
+                            size={16}
+                            fill={item.read_at ? "none" : "currentColor"}
+                            aria-hidden
+                          />
+                        </button>
+                        <button
+                          className="icon-button"
+                          type="button"
+                          disabled={itemPending}
+                          aria-label={`Dismiss ${item.title}`}
+                          onClick={() =>
+                            mutation.mutate({
+                              notification_id: item.id,
+                              action: "dismiss",
+                            })
+                          }
+                        >
+                          <Trash2 size={16} aria-hidden />
+                        </button>
+                      </div>
+                      {expanded && exchangeTarget && (
+                        <NotificationShiftDetails
+                          key={`${workspaceId}:${item.id}`}
+                          workspaceId={workspaceId}
+                          item={item}
+                          panelId={panelId}
+                          onNavigate={() => {
                             if (!item.read_at)
                               mutation.mutate({
                                 notification_id: item.id,
                                 action: "read",
                               });
                           }}
-                        >
-                          <ExternalLink size={16} aria-hidden />
-                        </Link>
-                      ) : null}
-                      <button
-                        className="icon-button"
-                        aria-label={
-                          item.read_at
-                            ? `Mark ${item.title} unread`
-                            : `Mark ${item.title} read`
-                        }
-                        onClick={() =>
-                          mutation.mutate({
-                            notification_id: item.id,
-                            action: item.read_at ? "unread" : "read",
-                          })
-                        }
-                      >
-                        <Circle
-                          size={16}
-                          fill={item.read_at ? "none" : "currentColor"}
-                          aria-hidden
                         />
-                      </button>
-                      <button
-                        className="icon-button"
-                        aria-label={`Dismiss ${item.title}`}
-                        onClick={() =>
-                          mutation.mutate({
-                            notification_id: item.id,
-                            action: "dismiss",
-                          })
-                        }
-                      >
-                        <Trash2 size={16} aria-hidden />
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                      )}
+                    </article>
+                  );
+                })}
               </div>
             </section>
           ))
@@ -261,3 +342,20 @@ function NotificationState({
   );
 }
 export default NotificationsPage;
+
+const notificationCategories: readonly Category[] = [
+  "all",
+  "schedule",
+  "requests",
+  "time_tracking",
+  "communications",
+  "payroll",
+  "people",
+  "security",
+  "system",
+];
+
+function labelCategory(value: Category): string {
+  if (value === "all") return "All";
+  return displayForNotificationCategory(value).label;
+}

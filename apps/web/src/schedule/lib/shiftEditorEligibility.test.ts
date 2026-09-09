@@ -1,4 +1,8 @@
-import type { ScheduleEmployee, ScheduleReadModel } from "@newfork/shared/schedule";
+import type {
+  ScheduleEmployee,
+  ScheduleReadModel,
+  ScheduleShift,
+} from "@newfork/shared/schedule";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -62,6 +66,83 @@ const employees = [
   }),
 ];
 
+const locationId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const model: ScheduleReadModel = {
+  workspace_id: "11111111-1111-4111-8111-111111111111",
+  week_start: "2026-08-17",
+  week_start_day: "monday",
+  settings: {
+    time_format: "12h",
+  },
+  locations: [
+    {
+      id: locationId,
+      name: "Main Dining",
+      timezone: "America/Los_Angeles",
+      sort_order: 0,
+      publication_status: "published",
+      published_at: null,
+    },
+  ],
+  departments: [],
+  jobs,
+  shift_types: [],
+  shift_labels: [],
+  employees: [
+    employee({
+      id: "66666666-6666-4666-8666-666666666666",
+      display_name: "Morning Server",
+      location_ids: [locationId],
+      job_ids: [jobs[1]!.id],
+      primary_job_id: jobs[1]!.id,
+    }),
+    employee({
+      id: "77777777-7777-4777-8777-777777777777",
+      display_name: "Busy Server",
+      location_ids: [locationId],
+      job_ids: [jobs[1]!.id],
+      primary_job_id: jobs[1]!.id,
+    }),
+    employee({
+      id: "88888888-8888-4888-8888-888888888888",
+      display_name: "Night Server",
+      location_ids: [locationId],
+      job_ids: [jobs[1]!.id],
+      primary_job_id: jobs[1]!.id,
+      availability: [
+        { day: 0, mode: "unrestricted", windows: [] },
+        { day: 1, mode: "windows", windows: [{ start: "16:00", end: "23:00" }] },
+        { day: 2, mode: "unrestricted", windows: [] },
+        { day: 3, mode: "unrestricted", windows: [] },
+        { day: 4, mode: "unrestricted", windows: [] },
+        { day: 5, mode: "unrestricted", windows: [] },
+        { day: 6, mode: "unrestricted", windows: [] },
+      ],
+    }),
+  ],
+  shifts: [],
+  closures: [],
+  important_dates: [],
+};
+
+const busyShift: ScheduleShift = {
+  id: "99999999-9999-4999-8999-999999999999",
+  location_id: locationId,
+  employee_id: "77777777-7777-4777-8777-777777777777",
+  job_id: jobs[1]!.id,
+  shift_type_id: null,
+  scheduled_date: "2026-08-17",
+  start_time: "09:00",
+  end_time: "13:00",
+  crosses_midnight: false,
+  unpaid_break_minutes: 0,
+  hide_time_on_badge: false,
+  label_ids: [],
+  label_names: [],
+  note: "",
+  warning_codes: [],
+};
+
 describe("shiftEditorEligibility", () => {
   it("selects the active employee by id and returns null for unassigned", () => {
     expect(getShiftEditorSelectedEmployee(employees, null)).toBeNull();
@@ -81,6 +162,79 @@ describe("shiftEditorEligibility", () => {
         jobId: jobs[1]!.id,
       }).map((item) => item.display_name),
     ).toEqual(["Sam Server"]);
+  });
+
+  it("filters overlapping assignments while keeping employees available for authoritative capacity review", () => {
+    expect(
+      getShiftEditorEligibleEmployees({
+        employees: model.employees,
+        locationId,
+        jobId: jobs[1]!.id,
+        model: { ...model, shifts: [busyShift] },
+        value: {
+          location_id: locationId,
+          employee_id: null,
+          job_id: jobs[1]!.id,
+          shift_type_id: null,
+          scheduled_date: "2026-08-17",
+          start_time: "09:30",
+          end_time: "12:00",
+          unpaid_break_minutes: 0,
+          hide_time_on_badge: false,
+          label_ids: [],
+          label_names: [],
+          note: "",
+        },
+      }).map((item) => item.display_name),
+    ).toEqual(["Morning Server", "Night Server"]);
+
+    expect(
+      getShiftEditorEligibleEmployees({
+        employees: model.employees,
+        locationId,
+        jobId: jobs[1]!.id,
+        model: { ...model, shifts: [busyShift] },
+        value: {
+          location_id: locationId,
+          employee_id: null,
+          job_id: jobs[1]!.id,
+          shift_type_id: null,
+          scheduled_date: "2026-08-17",
+          start_time: "17:00",
+          end_time: "20:00",
+          unpaid_break_minutes: 0,
+          hide_time_on_badge: false,
+          label_ids: [],
+          label_names: [],
+          note: "",
+        },
+      }).map((item) => item.display_name),
+    ).toEqual(["Morning Server", "Busy Server", "Night Server"]);
+  });
+
+  it("does not remove employees for editor-level time validation states", () => {
+    expect(
+      getShiftEditorEligibleEmployees({
+        employees: model.employees,
+        locationId,
+        jobId: jobs[1]!.id,
+        model: { ...model, shifts: [] },
+        value: {
+          location_id: locationId,
+          employee_id: null,
+          job_id: jobs[1]!.id,
+          shift_type_id: null,
+          scheduled_date: "2026-08-17",
+          start_time: "09:00",
+          end_time: "09:00",
+          unpaid_break_minutes: 0,
+          hide_time_on_badge: false,
+          label_ids: [],
+          label_names: [],
+          note: "",
+        },
+      }).map((item) => item.display_name),
+    ).toEqual(["Morning Server", "Busy Server", "Night Server"]);
   });
 
   it("keeps all jobs for unassigned shifts and filters jobs for selected employees", () => {

@@ -119,20 +119,120 @@ function renderRow(overrides: Partial<Parameters<typeof ScheduleRow>[0]> = {}) {
 }
 
 describe("ScheduleRow blank-cell interactions", () => {
-  it("places the add-another action after existing shift badges", () => {
+  it("stacks matching unassigned shift badges and updates the remaining count while dragging one", () => {
+    const openShift = {
+      ...shift,
+      id: "open-1",
+      employee_id: null,
+    };
+    const matchingOpenShift = {
+      ...openShift,
+      id: "open-2",
+    };
+    const differentOpenShift = {
+      ...openShift,
+      id: "open-3",
+      end_time: "23:00",
+    };
+    const onShiftPointerDown = vi.fn();
+    const { container, rerender } = renderRow({
+      employee: null,
+      shifts: [openShift, matchingOpenShift, differentOpenShift],
+      totalShifts: [openShift, matchingOpenShift, differentOpenShift],
+      selectedIds: [],
+      onShiftPointerDown,
+    });
+
+    expect(screen.getByText("3 open shifts")).toBeTruthy();
+    const stackedBadges = container.querySelectorAll(
+      ".schedule-shift-badge[data-shift-badge='true']:not([data-ghost='true'])",
+    );
+    expect(stackedBadges).toHaveLength(2);
+    expect(stackedBadges[0]?.getAttribute("data-stack-count")).toBe("2");
+    expect(stackedBadges[0]?.textContent).toContain("x2");
+
+    fireEvent.pointerDown(stackedBadges[0]!, {
+      pointerId: 1,
+      button: 0,
+      buttons: 1,
+      clientX: 12,
+      clientY: 18,
+    });
+    expect(onShiftPointerDown).toHaveBeenCalledWith(
+      "open-1",
+      expect.any(Object),
+    );
+
+    rerender(
+      <div role="grid">
+        <ScheduleRow
+          employee={null}
+          shifts={[openShift, matchingOpenShift, differentOpenShift]}
+          totalShifts={[openShift, matchingOpenShift, differentOpenShift]}
+          locations={[location]}
+          activeInteractionShiftLocationId={null}
+          days={["2026-08-17"]}
+          jobs={[job]}
+          shiftTypes={[shiftType]}
+          closures={[]}
+          cellStateByKey={new Map()}
+          editing
+          showShiftType
+          showShiftLabels
+          showClockTimes
+          timeFormat="12h"
+          showTotalHours
+          showJobColorDot
+          showLocationInBadge={false}
+          unassignedFrozen={false}
+          selectedIds={[]}
+          focusedShiftId={null}
+          clipboard={null}
+          pasteArmed={false}
+          draggedShiftId="open-1"
+          dragOverCell={null}
+          dragState={{
+            activeShiftId: "open-1",
+            label: "Server, 4:00 PM - 10:00 PM",
+            pointerX: 24,
+            pointerY: 32,
+            previewWidth: 126,
+            previewHeight: 58,
+            targetKey: null,
+            targetLocationId: null,
+            targetDate: null,
+            targetStatus: null,
+            reason: null,
+            copy: false,
+          }}
+          {...handlers}
+        />
+      </div>,
+    );
+
+    expect(screen.getByText("2 open shifts")).toBeTruthy();
+    const remainingBadges = container.querySelectorAll(
+      ".schedule-shift-badge[data-shift-badge='true']:not([data-ghost='true'])",
+    );
+    expect(remainingBadges).toHaveLength(2);
+    expect(remainingBadges[0]?.getAttribute("data-stack-count")).toBeNull();
+    expect(remainingBadges[0]?.textContent).not.toContain("x2");
+  });
+
+  it("places the unified add-shift action after existing shift badges", () => {
     renderRow({ shifts: [shift], totalShifts: [shift], selectedIds: [] });
 
     const cell = screen.getByTestId("schedule-cell-body");
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });
     const addAnother = screen.getByRole("button", {
-      name: "Add another shift",
+      name: "Add shift for Alex Rivera at Main Dining on 2026-08-17",
     });
     const children = Array.from(cell.children);
 
     expect(children.indexOf(badge)).toBeLessThan(children.indexOf(addAnother));
   });
 
-  it("reserves add-shift row height only while editing", () => {
+  it("renders add-shift only while editing without a fixed edit row floor", () => {
     const { rerender } = renderRow({
       editing: false,
       shifts: [shift],
@@ -141,7 +241,9 @@ describe("ScheduleRow blank-cell interactions", () => {
     });
 
     expect(
-      screen.queryByRole("button", { name: "Add another shift" }),
+      screen.queryByRole("button", {
+        name: "Add shift for Alex Rivera at Main Dining on 2026-08-17",
+      }),
     ).toBeNull();
     expect(
       screen
@@ -184,13 +286,15 @@ describe("ScheduleRow blank-cell interactions", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Add another shift" }),
+      screen.getByRole("button", {
+        name: "Add shift for Alex Rivera at Main Dining on 2026-08-17",
+      }),
     ).toBeTruthy();
     expect(
       screen
         .getByTestId("schedule-sticky-employee-seam")
         .style.getPropertyValue("--schedule-row-min-height"),
-    ).toBe("94px");
+    ).toBe("44px");
   });
 
   it("marks only the first day of later location groups as a location boundary", () => {
@@ -216,7 +320,28 @@ describe("ScheduleRow blank-cell interactions", () => {
     ).toEqual([null, null, "start", null]);
   });
 
-  it("keeps the active editor cell and shift visually marked", () => {
+  it("marks the active create editor cell without inventing current-badge focus", () => {
+    renderRow({
+      activeEditorTarget: {
+        locationId: "loc-1",
+        employeeId: "emp-1",
+        date: "2026-08-17",
+        shiftId: null,
+      },
+      shifts: [shift],
+      totalShifts: [shift],
+      selectedIds: [],
+    });
+
+    const cell = screen.getByTestId("schedule-cell-body");
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+
+    expect(cell.getAttribute("data-shift-editor-active-cell")).toBe("true");
+    expect(badge.getAttribute("data-focused")).toBe("false");
+    expect(badge.getAttribute("data-current")).toBe("false");
+  });
+
+  it("marks the active edit editor badge without highlighting the whole cell", () => {
     renderRow({
       activeEditorTarget: {
         locationId: "loc-1",
@@ -232,8 +357,9 @@ describe("ScheduleRow blank-cell interactions", () => {
     const cell = screen.getByTestId("schedule-cell-body");
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });
 
-    expect(cell.getAttribute("data-shift-editor-active-cell")).toBe("true");
+    expect(cell.getAttribute("data-shift-editor-active-cell")).toBeNull();
     expect(badge.getAttribute("data-focused")).toBe("true");
+    expect(badge.getAttribute("data-current")).toBe("true");
   });
 
   it("clears selection from a blank editable cell body without opening create", () => {
@@ -241,10 +367,9 @@ describe("ScheduleRow blank-cell interactions", () => {
     const onCreate = vi.fn();
     renderRow({ onClearSelection, onCreate });
 
-    const cell = screen.getByRole("button", {
-      name: "Add shift for Alex Rivera at Main Dining on 2026-08-17",
-    });
-    expect(cell.getAttribute("data-testid")).toBe("schedule-cell-body");
+    const cell = screen.getByTestId("schedule-cell-body");
+    expect(cell.getAttribute("role")).toBe("gridcell");
+    expect(cell.getAttribute("tabindex")).toBeNull();
 
     fireEvent.pointerDown(cell);
     fireEvent.click(cell);
@@ -253,16 +378,14 @@ describe("ScheduleRow blank-cell interactions", () => {
     expect(onCreate).not.toHaveBeenCalled();
   });
 
-  it("opens create only from the add affordance or keyboard activation", () => {
+  it("opens create only from the add affordance, not cell keyboard activation", () => {
     const onCreate = vi.fn();
     renderRow({ onCreate, selectedIds: [] });
 
-    const cell = screen.getByRole("button", {
-      name: "Add shift for Alex Rivera at Main Dining on 2026-08-17",
-    });
+    const cell = screen.getByTestId("schedule-cell-body");
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Add shift for Alex Rivera on 2026-08-17",
+        name: "Add shift for Alex Rivera at Main Dining on 2026-08-17",
       }),
       { clientX: 120, clientY: 160 },
     );
@@ -275,15 +398,7 @@ describe("ScheduleRow blank-cell interactions", () => {
     onCreate.mockClear();
     fireEvent.keyDown(cell, { key: "Enter" });
 
-    expect(onCreate).toHaveBeenCalledWith(
-      "loc-1",
-      "emp-1",
-      "2026-08-17",
-      expect.objectContaining({
-        x: expect.any(Number),
-        y: expect.any(Number),
-      }),
-    );
+    expect(onCreate).not.toHaveBeenCalled();
   });
 
   it("clears selection from the full-cell add affordance and still opens create", () => {
@@ -293,7 +408,7 @@ describe("ScheduleRow blank-cell interactions", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Add shift for Alex Rivera on 2026-08-17",
+        name: "Add shift for Alex Rivera at Main Dining on 2026-08-17",
       }),
       { clientX: 120, clientY: 160 },
     );
@@ -325,12 +440,10 @@ describe("ScheduleRow blank-cell interactions", () => {
       selectedIds: [],
     });
 
-    const cell = screen.getByRole("button", {
-      name: "Add shift for Alex Rivera at Main Dining on 2026-08-17",
-    });
+    const cell = screen.getByTestId("schedule-cell-body");
     expect(
       screen.getByRole("button", {
-        name: "Add shift for Alex Rivera on 2026-08-17",
+        name: "Add shift for Alex Rivera at Main Dining on 2026-08-17",
       }).className,
     ).not.toContain("schedule-add-target-pulse");
     expect(screen.queryByTitle("Paste copied shift")).toBeNull();
@@ -358,9 +471,7 @@ describe("ScheduleRow blank-cell interactions", () => {
       selectedIds: [],
     });
 
-    const cell = screen.getByRole("button", {
-      name: "Add shift for Alex Rivera at Main Dining on 2026-08-17",
-    });
+    const cell = screen.getByTestId("schedule-cell-body");
     fireEvent.doubleClick(cell, { clientX: 210, clientY: 90 });
 
     expect(onCreate).not.toHaveBeenCalled();

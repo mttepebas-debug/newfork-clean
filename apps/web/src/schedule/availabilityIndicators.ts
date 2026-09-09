@@ -13,6 +13,7 @@ const scheduleWeekdayNames = [
 export function scheduleEmployeeAvailabilityRules(
   employee: ScheduleEmployee,
 ): NonNullable<ScheduleEmployee["availability"]> {
+  if (employee.weekly_availability !== undefined) return [];
   return (employee.availability ?? []).filter(
     (availability) => availability.mode !== "unrestricted",
   );

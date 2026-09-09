@@ -15,3 +15,20 @@ supabase/.temp
 .codex/
 .planning/
 artifacts/
+
+# Local scratch work, Python caches and private environment variants
+.temp/
+__pycache__/
+*.pyc
+*.pyo
+.env.*
+!.env.example
+!.env.*.example
+
+# Generated browser/API proof payloads stay local; keep README and source scripts
+/docs/rebuild/*proof*/**/*.png
+/docs/rebuild/*proof*/**/*.jpg
+/docs/rebuild/*proof*/**/*.jpeg
+/docs/rebuild/*proof*/**/*.json
+/docs/rebuild/*proof*/**/*.log
+/docs/rebuild/*proof*/**/*.txt

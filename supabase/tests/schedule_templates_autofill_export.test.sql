@@ -20,7 +20,7 @@ select throws_ok($$select * from public.schedule_export_presets$$,'42501',null,'
 select throws_ok($$select * from public.schedule_template_events$$,'42501',null,'template events deny authenticated table reads');
 reset role;
 
-select is((select count(*)::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key in('owner','admin','manager') and p.permission_key in('schedule.templates.manage','schedule.export')),6,'manager roles receive Phase 5D capabilities');
+select is((select count(distinct (r.system_key, p.permission_key))::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key in('owner','admin','manager') and p.permission_key in('schedule.templates.manage','schedule.export')),6,'manager roles receive Phase 5D capabilities');
 select is((select count(*)::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key='employee' and p.permission_key in('schedule.templates.manage','schedule.export')),0,'employee receives no Phase 5D capability');
 
 insert into public.schedule_drafts(id,workspace_id,week_start,name,revision,created_by,updated_by) values

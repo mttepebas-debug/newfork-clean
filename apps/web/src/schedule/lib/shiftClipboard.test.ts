@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyShiftClipboardSnapshot,
+  applyShiftClipboardSnapshotSelection,
   createShiftClipboardSnapshot,
+  createShiftClipboardSnapshotSelection,
+  getShiftClipboardSnapshots,
 } from "./shiftClipboard";
 
 function editableShift(
@@ -69,9 +72,63 @@ describe("shiftClipboard", () => {
       end_time: "22:30",
       unpaid_break_minutes: 30,
       hide_time_on_badge: false,
+      time_basis: "explicit",
+      time_snapshot: null,
+      time_timezone: null,
       label_ids: ["label-1"],
       label_names: ["Training"],
       note: "Patio section",
     });
+  });
+
+  it("keeps all selected shift snapshots available for paste mode", () => {
+    const snapshot = createShiftClipboardSnapshotSelection([
+      editableShift({ id: "shift-1", start_time: "09:00", end_time: "12:00" }),
+      editableShift({ id: "shift-2", start_time: "13:00", end_time: "17:00" }),
+    ]);
+
+    expect(snapshot).not.toBeNull();
+    expect(
+      getShiftClipboardSnapshots(snapshot!).map((item) => item.id),
+    ).toEqual(["shift-1", "shift-2"]);
+    expect(
+      getShiftClipboardSnapshots(snapshot!).map((item) =>
+        applyShiftClipboardSnapshot(item, {
+          locationId: "loc-2",
+          employeeId: "emp-2",
+          date: "2026-08-18",
+        }),
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        location_id: "loc-2",
+        employee_id: "emp-2",
+        scheduled_date: "2026-08-18",
+        start_time: "09:00",
+        end_time: "12:00",
+      }),
+      expect.objectContaining({
+        location_id: "loc-2",
+        employee_id: "emp-2",
+        scheduled_date: "2026-08-18",
+        start_time: "13:00",
+        end_time: "17:00",
+      }),
+    ]);
+  });
+
+  it("applies a selected shift group relative to the clicked target date", () => {
+    const snapshot = createShiftClipboardSnapshotSelection([
+      editableShift({ id: "shift-1", scheduled_date: "2026-08-17" }),
+      editableShift({ id: "shift-2", scheduled_date: "2026-08-18" }),
+    ]);
+
+    expect(
+      applyShiftClipboardSnapshotSelection(snapshot!, {
+        locationId: "loc-2",
+        employeeId: "emp-2",
+        date: "2026-08-24",
+      }).map((item) => item.scheduled_date),
+    ).toEqual(["2026-08-24", "2026-08-25"]);
   });
 });

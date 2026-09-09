@@ -44,6 +44,7 @@ export function ScheduleFillerRow({
           className="schedule-total-cell schedule-filler-cell"
           role="gridcell"
           data-schedule-filler-total-cell="true"
+          data-schedule-total-column-cell="true"
           data-schedule-total-hours-empty="true"
           aria-hidden="true"
         />

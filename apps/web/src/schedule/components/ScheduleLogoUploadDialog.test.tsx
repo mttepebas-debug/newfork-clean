@@ -55,7 +55,7 @@ describe("ScheduleLogoUploadDialog", () => {
     expect(image.style.getPropertyValue("--schedule-logo-offset-y")).toBe("-5%");
     expect(referenceFrame.style.aspectRatio).toBe("200 / 79");
     expect(referenceFrame.style.borderTopWidth).toBe("1px");
-    expect(referenceFrame.style.borderRightWidth).toBe("3px");
+    expect(referenceFrame.style.borderRightWidth).toBe("1px");
     expect(referenceFrame.style.borderBottomWidth).toBe("1px");
     expect(referenceFrame.style.borderLeftWidth).toBe("1px");
     expect(referenceFrame.style.borderTopStyle).toBe("solid");

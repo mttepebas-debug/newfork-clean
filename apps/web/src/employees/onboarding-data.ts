@@ -1,16 +1,12 @@
 import {
-  employeeAvailabilityInputSchema,
   employeeOnboardingManagerSchema,
   employeeOnboardingProfileSchema,
   employeeOnboardingSchema,
-  type EmployeeAvailabilityInput,
   type EmployeeOnboarding,
   type EmployeeOnboardingManager,
   type EmployeeOnboardingProfile,
 } from "@newfork/shared";
-import { supabaseClient } from "../lib/supabase";
-
-const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:9999";
+import { apiRequest, supabaseClient } from "../lib/supabase";
 
 export async function getMyOnboarding(): Promise<EmployeeOnboarding> {
   return employeeOnboardingSchema.parse(await api("/v1/me/onboarding"));
@@ -24,31 +20,6 @@ export async function saveMyOnboardingProfile(
     method: "PATCH",
     body: JSON.stringify({
       profile: employeeOnboardingProfileSchema.parse(profile),
-      revision,
-    }),
-  });
-  return revisionFrom(body);
-}
-
-export async function saveMySsn(
-  ssn: string,
-  revision: number,
-): Promise<number> {
-  const body = await api("/v1/me/onboarding/ssn", {
-    method: "PUT",
-    body: JSON.stringify({ ssn, revision }),
-  });
-  return revisionFrom(body);
-}
-
-export async function saveMyAvailability(
-  availability: EmployeeAvailabilityInput,
-  revision: number,
-): Promise<number> {
-  const body = await api("/v1/me/onboarding/availability", {
-    method: "PUT",
-    body: JSON.stringify({
-      availability: employeeAvailabilityInputSchema.parse(availability),
       revision,
     }),
   });
@@ -123,11 +94,27 @@ export async function submitMyOnboarding(revision: number): Promise<number> {
   );
 }
 
+export async function resetMyOnboarding(revision: number): Promise<number> {
+  return revisionFrom(
+    await api("/v1/me/onboarding/reset", {
+      method: "POST",
+      body: JSON.stringify({ revision }),
+    }),
+  );
+}
+
+export async function leaveMyOnboarding(revision: number): Promise<void> {
+  await api("/v1/me/onboarding/leave", {
+    method: "POST",
+    body: JSON.stringify({ revision }),
+  });
+}
+
 export async function getEmployeeOnboardingReview(
   workspaceId: string,
   employeeId: string,
-): Promise<EmployeeOnboardingManager> {
-  return employeeOnboardingManagerSchema.parse(
+): Promise<EmployeeOnboardingManager | null> {
+  return employeeOnboardingManagerSchema.nullable().parse(
     await api(
       `/v1/workspaces/${workspaceId}/employees/${employeeId}/onboarding`,
     ),
@@ -168,20 +155,12 @@ export async function getEmployeeDocumentDownload(
 async function api(path: string, init: RequestInit = {}): Promise<unknown> {
   if (!supabaseClient)
     throw new Error("Authenticated onboarding is not configured");
-  const session = await supabaseClient.auth.getSession();
-  const token = session.data.session?.access_token;
-  if (!token) throw new Error("A current session is required");
-  const response = await fetch(`${apiUrl}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
-      ...init.headers,
-    },
-  });
-  const body = (await response.json()) as { error?: string };
-  if (!response.ok) throw new Error(body.error ?? "Onboarding request failed");
-  return body;
+  try {
+    return await apiRequest(supabaseClient, path, init);
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error("Onboarding request failed");
+  }
 }
 
 function revisionFrom(body: unknown): number {

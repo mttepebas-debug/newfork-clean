@@ -1,180 +1,231 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ActiveWorkspaceContext, ScheduleReadModel } from "@newfork/shared";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { emptyWeeklyPreference, type WeeklyTeamRead } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { MemoryRouter, useLocation } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AvailabilityPage } from "./AvailabilityPage";
-import { getScheduleReadModel } from "../schedule/schedule-data";
+import { loadWeeklyTeam } from "../availability/availability-data";
 
-const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
-const mainLocationId = "11000000-0000-4000-8000-000000000001";
-const patioLocationId = "11000000-0000-4000-8000-000000000002";
-const alexId = "15000000-0000-4000-8000-000000000001";
-const jordanId = "15000000-0000-4000-8000-000000000002";
+const workspace = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+const main = "11000000-0000-4000-8000-000000000001";
+const patio = "11000000-0000-4000-8000-000000000002";
+const alex = "15000000-0000-4000-8000-000000000001";
+const jordan = "15000000-0000-4000-8000-000000000002";
+const sam = "15000000-0000-4000-8000-000000000003";
+const dinner = "15000000-0000-4000-8000-000000000004";
 
-const context = {
-  userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
-  workspace: {
-    id: workspaceId,
-    name: "Meyhouse",
-    logo_url: null,
-    logo_file_name: null,
-    logo_updated_at: null,
-    schedule_logo_placement: { scale: 1, offset_x: 0, offset_y: 0 },
-  },
-  membership: {
-    id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
-    userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
-    workspaceId,
-    role: "manager",
-    status: "active",
-    allLocations: true,
-  },
-  permissions: ["workspace.read", "schedule.read"],
-  onboarding: { status: "complete", currentStep: 2 },
-  locationScope: { allLocations: true, locationIds: [] },
-} satisfies ActiveWorkspaceContext;
-
-const fixture = {
-  workspace_id: workspaceId,
-  week_start: "2026-08-17",
-  week_start_day: "monday",
-  settings: {
-    time_format: "12h",
-  },
-  locations: [
-    {
-      id: mainLocationId,
-      name: "Main Dining",
-      timezone: "America/Los_Angeles",
-      sort_order: 0,
-      publication_status: "published",
-      published_at: "2026-08-17T12:00:00.000Z",
-    },
-    {
-      id: patioLocationId,
-      name: "Patio",
-      timezone: "America/Los_Angeles",
-      sort_order: 1,
-      publication_status: "published",
-      published_at: "2026-08-17T12:00:00.000Z",
-    },
-  ],
-  departments: [],
-  jobs: [],
-  shift_types: [],
-  shift_labels: [],
-  employees: [
-    {
-      id: alexId,
-      employee_code: "E-001",
-      display_name: "Alex Kim",
-      location_ids: [mainLocationId],
-      job_ids: [],
-      availability: [
-        { day: 0, mode: "unrestricted", windows: [] },
-        { day: 1, mode: "windows", windows: [{ start: "09:00", end: "17:00" }] },
-        { day: 2, mode: "unavailable", windows: [] },
-        { day: 3, mode: "unrestricted", windows: [] },
-        { day: 4, mode: "unrestricted", windows: [] },
-        { day: 5, mode: "unrestricted", windows: [] },
-        { day: 6, mode: "unrestricted", windows: [] },
-      ],
-    },
-    {
-      id: jordanId,
-      employee_code: "E-002",
-      display_name: "Jordan Lee",
-      location_ids: [patioLocationId],
-      job_ids: [],
-      availability: null,
-    },
-  ],
-  shifts: [
-    {
-      id: "22000000-0000-4000-8000-000000000001",
-      location_id: mainLocationId,
-      employee_id: alexId,
-      job_id: "33000000-0000-4000-8000-000000000001",
-      shift_type_id: null,
-      scheduled_date: "2026-08-18",
-      start_time: "10:00",
-      end_time: "18:00",
-      crosses_midnight: false,
-      unpaid_break_minutes: 0,
-      hide_time_on_badge: false,
-      label_ids: [],
-      note: "",
-      warning_codes: ["availability"],
-    },
-    {
-      id: "22000000-0000-4000-8000-000000000002",
-      location_id: patioLocationId,
-      employee_id: jordanId,
-      job_id: "33000000-0000-4000-8000-000000000002",
-      shift_type_id: null,
-      scheduled_date: "2026-08-19",
-      start_time: "12:00",
-      end_time: "16:00",
-      crosses_midnight: false,
-      unpaid_break_minutes: 0,
-      hide_time_on_badge: false,
-      label_ids: [],
-      note: "",
-      warning_codes: [],
-    },
-  ],
-  closures: [],
-  important_dates: [],
-} satisfies ScheduleReadModel;
-
-vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
-vi.mock("../schedule/schedule-data", () => ({
-  getScheduleReadModel: vi.fn(),
+vi.mock("../auth/AuthContext", () => ({
+  useAuth: () => ({ context: { workspace: { id: workspace } } }),
 }));
-
-function renderPage(path = "/app/availability?date=2026-08-17") {
-  vi.mocked(getScheduleReadModel).mockResolvedValue(fixture);
+vi.mock("../availability/availability-data", () => ({
+  loadWeeklyTeam: vi.fn(),
+}));
+vi.mock("../employees/EmployeeDrawer", () => ({
+  EmployeeDrawer: ({
+    employeeId,
+    section,
+    onClose,
+  }: {
+    employeeId: string;
+    section: string;
+    onClose: () => void;
+  }) => (
+    <div role="dialog" aria-label="Employee">
+      <span>{employeeId + ":" + section}</span>
+      <button onClick={onClose}>Close employee</button>
+    </div>
+  ),
+}));
+function fixture(): WeeklyTeamRead {
+  const preference = emptyWeeklyPreference("time_range");
+  preference.days[1]!.range = { start: "09:00", end: "17:00" };
+  preference.days[2]!.all_day = true;
+  return {
+    locations: [
+      { id: main, name: "Main Dining" },
+      { id: patio, name: "Patio" },
+    ],
+    time_format: "24h",
+    shift_types: [],
+    employees: [
+      {
+        id: alex,
+        display_name: "Alex Kim",
+        employee_code: "E-001",
+        location_ids: [main],
+        submitted: true,
+        preference,
+        can_open: true,
+      },
+      {
+        id: jordan,
+        display_name: "Jordan Lee",
+        employee_code: "E-002",
+        location_ids: [patio],
+        submitted: false,
+        preference: emptyWeeklyPreference("time_range"),
+        can_open: true,
+      },
+      {
+        id: sam,
+        display_name: "Sam Chen",
+        employee_code: "E-003",
+        location_ids: [main],
+        submitted: true,
+        preference: emptyWeeklyPreference("time_range"),
+        can_open: false,
+      },
+    ],
+  };
+}
+function LocationMarker() {
+  return <output data-testid="url">{useLocation().search}</output>;
+}
+function renderPage(path = "/app/availability") {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <AvailabilityPage />
+        <LocationMarker />
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
+beforeEach(() => {
+  vi.resetAllMocks();
+  vi.mocked(loadWeeklyTeam).mockResolvedValue(fixture());
+});
+afterEach(cleanup);
 
-describe("AvailabilityPage", () => {
-  it("shows manager availability coverage and schedule conflicts", async () => {
+describe("weekly team availability", () => {
+  it("shows a fixed Monday-first week with unavailable ranges and available defaults", async () => {
     renderPage();
+    await screen.findByText("Alex Kim");
+    expect(loadWeeklyTeam).toHaveBeenCalledWith(workspace);
     expect(
-      await screen.findByRole("heading", { name: "Availability" }),
+      screen.getAllByRole("columnheader").map((el) => el.textContent),
+    ).toEqual(["Employee", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+    expect(
+      screen.getByRole("button", { name: "Alex Kim Monday: 09:00 - 17:00" }),
     ).toBeTruthy();
-    await waitFor(() =>
-      expect(getScheduleReadModel).toHaveBeenCalledWith(
-        workspaceId,
-        "2026-08-17",
-        "week",
-      ),
-    );
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
-    expect(screen.getByText("Jordan Lee")).toBeTruthy();
-    expect(screen.getByText("Missing availability")).toBeTruthy();
-    expect(screen.getByText("Schedule conflicts")).toBeTruthy();
-    expect(screen.getByText("1 scheduled conflict")).toBeTruthy();
-    expect(screen.getByText("Availability not submitted")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Alex Kim Tuesday: All day" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Jordan Lee Monday: Available" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Sam Chen Monday: Available" }),
+    ).toHaveProperty("disabled", true);
+    expect(
+      screen.queryByText(/Schedule conflicts|Missing availability/),
+    ).toBeNull();
+    expect(document.querySelector('input[type="date"]')).toBeNull();
   });
-
-  it("filters the board by location", async () => {
+  it("combines location, search and declaration filters without treating an empty declaration as missing", async () => {
     renderPage();
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Location"), {
-      target: { value: patioLocationId },
+    await screen.findByText("Alex Kim");
+    fireEvent.click(screen.getByRole("button", { name: "Not submitted" }));
+    expect(screen.queryByText("Sam Chen")).toBeNull();
+    expect(screen.getByText("Jordan Lee")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Submitted" }));
+    expect(screen.getByText("Sam Chen")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Search employees"), {
+      target: { value: "e-003" },
     });
     expect(screen.queryByText("Alex Kim")).toBeNull();
-    expect(screen.getByText("Jordan Lee")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Location"), {
+      target: { value: patio },
+    });
+    expect(screen.getByText("No employees match this view")).toBeTruthy();
+  });
+  it("opens the selected employee availability and preserves filters on close", async () => {
+    renderPage(
+      "/app/availability?location=" +
+        main +
+        "&q=Alex&submission=submitted&date=2026-08-17",
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Alex Kim Tuesday: All day" }),
+    );
+    await screen.findByRole("dialog");
+    expect(screen.getByText(alex + ":availability")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Close employee" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByTestId("url").textContent).toBe(
+      "?location=" + main + "&q=Alex&submission=submitted",
+    );
+  });
+  it("refreshes via the existing weekly save invalidation and hides cached data on access loss", async () => {
+    const client = renderPage();
+    await screen.findByText("Alex Kim");
+    const next = fixture();
+    next.employees[0]!.preference.days[1]!.all_day = true;
+    next.employees[0]!.preference.days[1]!.range = null;
+    vi.mocked(loadWeeklyTeam).mockResolvedValue(next);
+    await client.invalidateQueries({
+      queryKey: ["weekly-preferences", workspace],
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Alex Kim Monday: All day" }),
+    );
+    await screen.findByRole("dialog");
+    vi.mocked(loadWeeklyTeam).mockRejectedValue(
+      Object.assign(new Error("Access denied"), { status: 403 }),
+    );
+    await client.invalidateQueries({
+      queryKey: ["weekly-preferences", workspace],
+    });
+    await screen.findByRole("alert");
+    expect(screen.queryByText("Alex Kim")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  it("shows current type hours and keeps missing or archived types visibly unavailable", async () => {
+    const model = fixture();
+    model.employees[0]!.preference = emptyWeeklyPreference("shift_type");
+    model.employees[0]!.preference.days[1]!.shift_type_ids = [dinner, sam];
+    model.shift_types = [
+      {
+        id: dinner,
+        name: "Dinner",
+        start_time: "18:00",
+        end_time: "23:00",
+        archived: true,
+        selectable: false,
+      },
+    ];
+    vi.mocked(loadWeeklyTeam).mockResolvedValue(model);
+    renderPage();
+    expect((await screen.findByText("Dinner")).getAttribute("title")).toBe(
+      "18:00 - 23:00 (archived)",
+    );
+    expect(
+      screen
+        .getByRole("button", {
+          name: "Alex Kim Monday: Dinner, Unavailable shift type",
+        })
+        .closest("td")
+        ?.getAttribute("data-unavailable"),
+    ).toBe("true");
+  });
+  it("retries a failed initial read", async () => {
+    vi.mocked(loadWeeklyTeam).mockRejectedValueOnce(
+      new Error("Could not load"),
+    );
+    renderPage();
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.getByText("Alex Kim")).toBeTruthy());
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

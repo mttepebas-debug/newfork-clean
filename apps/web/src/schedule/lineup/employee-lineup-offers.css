@@ -1,0 +1,123 @@
+.lu-staffing-offers {
+  --offer-surface: #fff;
+  --offer-ink: #243a32;
+  --offer-muted: #53675b;
+  --offer-border: #dce4da;
+  --offer-accent: #25624d;
+  --offer-tint: #eaf1e8;
+  color: var(--offer-ink);
+  background: var(--offer-surface);
+  border: 1px solid var(--offer-border);
+  border-radius: 14px;
+  padding: clamp(16px, 3vw, 24px);
+  margin-bottom: 18px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.lu-staffing-offers * {
+  box-sizing: border-box;
+}
+.lu-staffing-offers header > span {
+  color: var(--offer-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.lu-staffing-offers h2 {
+  margin: 4px 0 8px;
+  font-size: 1.125rem;
+}
+.lu-staffing-offers h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.lu-staffing-offers p {
+  margin: 8px 0;
+}
+.lu-staffing-offers header p {
+  color: var(--offer-muted);
+}
+.lu-staffing-offers article {
+  border-top: 1px solid var(--offer-border);
+  padding: 18px 0;
+  scroll-margin-top: 24px;
+}
+.lu-staffing-offers article:last-of-type {
+  padding-bottom: 0;
+}
+.lu-offer-heading,
+.lu-staffing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.lu-offer-heading {
+  justify-content: space-between;
+}
+.lu-offer-status {
+  font-size: 0.8125rem;
+  background: var(--offer-tint);
+  padding: 4px 9px;
+  border-radius: 6px;
+}
+.lu-staffing-actions {
+  margin-top: 14px;
+}
+.lu-staffing-offers button,
+.lu-staffing-offers a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--offer-border);
+  border-radius: 9px;
+  color: var(--offer-ink);
+  background: var(--offer-surface);
+  cursor: pointer;
+  white-space: normal;
+  text-align: center;
+}
+.lu-staffing-offers a {
+  border: 0;
+  padding-inline: 0;
+  text-underline-offset: 3px;
+}
+.lu-staffing-offers button.lu-offer-primary {
+  color: #fff;
+  background: #25624d;
+  border-color: #25624d;
+}
+.lu-staffing-offers button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.lu-staffing-offers :is(button, a, [tabindex]):focus-visible {
+  outline: 3px solid var(--offer-accent);
+  outline-offset: 3px;
+}
+.lu-offer-notice {
+  padding: 12px;
+  background: var(--offer-tint);
+  border-radius: 8px;
+}
+.lu-offer-error {
+  border-left: 3px solid #b17b27;
+  padding-left: 12px;
+  margin-top: 14px;
+}
+.lu-offer-availability-warning {
+  border-left: 3px solid #b17b27;
+  padding-left: 12px;
+}
+[data-theme="dark"] .lu-staffing-offers {
+  --offer-surface: #1d2b25;
+  --offer-ink: #edf3ed;
+  --offer-muted: #b6c8ba;
+  --offer-border: #405348;
+  --offer-accent: #8dc4a5;
+  --offer-tint: #2c4437;
+}

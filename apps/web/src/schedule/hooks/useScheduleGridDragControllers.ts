@@ -1,6 +1,7 @@
 import type {
   ScheduleEditableShift,
   ScheduleReadModel,
+  ScheduleShift,
 } from "@newfork/shared/schedule";
 import { useToast } from "@newfork/ui";
 import { useCallback, useState } from "react";
@@ -13,6 +14,7 @@ import type {
 import {
   evaluateScheduleShiftConflicts,
   formatScheduleConflictMessages,
+  type ScheduleConflictReason,
 } from "../schedule-conflicts";
 import { formatTime } from "../lib/scheduleDateTime";
 import { toScheduleShiftMutation } from "../lib/scheduleShiftMutation";
@@ -24,6 +26,14 @@ import {
 } from "./useSingleShiftPointerDrag";
 import { useShiftTypePresetPointerDrag } from "./useShiftTypePresetPointerDrag";
 
+function dropConflictEvaluation(reasons: readonly ScheduleConflictReason[]): ShiftDropEvaluation {
+  const blockers = reasons.filter(reason => typeof reason === "string" || reason.type !== "availability");
+  const messages = formatScheduleConflictMessages(blockers.length ? blockers : reasons);
+  if (blockers.length) return { allowed: false, reason: messages[0], messages, targetStatus: "blocked" };
+  if (messages.length) return { allowed: true, reason: messages[0], messages, targetStatus: "warning" };
+  return { allowed: true, targetStatus: "allowed" };
+}
+
 export function formatScheduleDragShiftLabel(
   model: ScheduleReadModel,
   shift: ScheduleEditableShift | undefined,
@@ -31,9 +41,11 @@ export function formatScheduleDragShiftLabel(
   if (!shift) return "Shift";
   const job =
     model.jobs.find((item) => item.id === shift.job_id)?.name ?? "Shift";
-  return `${job}, ${formatTime(shift.start_time)} to ${formatTime(
-    shift.end_time,
-  )}`;
+  return `${job}, ${formatTime(
+    shift.start_time,
+    model.settings.time_format,
+    "long",
+  )} - ${formatTime(shift.end_time, model.settings.time_format, "long")}`;
 }
 
 export function evaluateScheduleShiftDropTarget({
@@ -58,7 +70,7 @@ export function evaluateScheduleShiftDropTarget({
       targetStatus: "blocked",
     };
 
-  const messages = formatScheduleConflictMessages(
+  return dropConflictEvaluation(
     evaluateScheduleShiftConflicts(
       model,
       model.shifts,
@@ -70,14 +82,132 @@ export function evaluateScheduleShiftDropTarget({
       target.copy ? null : shift.id,
     ),
   );
-  if (messages.length > 0)
+}
+
+export interface ScheduleShiftGroupDropMemberEvaluation extends ShiftDropEvaluation {
+  readonly shiftId: string;
+  readonly target: ShiftDropTarget;
+}
+
+export interface ScheduleShiftGroupDropEvaluation extends ShiftDropEvaluation {
+  readonly members: readonly ScheduleShiftGroupDropMemberEvaluation[];
+}
+
+export function evaluateScheduleShiftGroupDropTarget({
+  model,
+  shifts,
+  targets,
+}: {
+  readonly model: ScheduleReadModel;
+  readonly shifts: readonly ScheduleEditableShift[];
+  readonly targets: readonly ShiftDropTarget[];
+}): ScheduleShiftGroupDropEvaluation {
+  if (targets.length === 0) {
     return {
       allowed: false,
-      reason: messages[0],
-      messages,
+      reason: "No shifts selected.",
       targetStatus: "blocked",
+      members: [],
     };
-  return { allowed: true, targetStatus: "allowed" };
+  }
+
+  const shiftsById = new Map(shifts.map((shift) => [shift.id, shift]));
+  const movingShiftIds = new Set(
+    targets
+      .filter((target) => !target.copy && shiftsById.has(target.shiftId))
+      .map((target) => target.shiftId),
+  );
+  const retainedShifts = model.shifts.filter(
+    (candidate) => !movingShiftIds.has(candidate.id),
+  );
+  const projectedShifts = targets.flatMap((target, targetIndex) => {
+    const shift = shiftsById.get(target.shiftId);
+    if (!shift) return [];
+    return [
+      {
+        targetIndex,
+        shift: {
+          ...shift,
+          location_id: target.locationId,
+          employee_id: target.employeeId,
+          scheduled_date: target.date,
+        } satisfies ScheduleShift,
+      },
+    ];
+  });
+
+  const members = targets.map((target, targetIndex) => {
+    const shift = shiftsById.get(target.shiftId);
+    if (!shift) {
+      return {
+        shiftId: target.shiftId,
+        target,
+        allowed: false,
+        reason: "Shift no longer exists.",
+        targetStatus: "blocked" as const,
+      };
+    }
+
+    const sameTarget =
+      !target.copy &&
+      shift.location_id === target.locationId &&
+      shift.employee_id === target.employeeId &&
+      shift.scheduled_date === target.date;
+    if (sameTarget) {
+      return {
+        shiftId: target.shiftId,
+        target,
+        allowed: false,
+        reason: "Drop on a different cell to move the shift.",
+        targetStatus: "blocked" as const,
+      };
+    }
+
+    const evaluation = dropConflictEvaluation(
+      evaluateScheduleShiftConflicts(
+        model,
+        [
+          ...retainedShifts,
+          ...projectedShifts
+            .filter((candidate) => candidate.targetIndex !== targetIndex)
+            .map((candidate) => candidate.shift),
+        ],
+        toScheduleShiftMutation(shift, {
+          location_id: target.locationId,
+          employee_id: target.employeeId,
+          scheduled_date: target.date,
+        }),
+      ),
+    );
+    return {
+      shiftId: target.shiftId,
+      target,
+      ...evaluation,
+    };
+  });
+  const blockedMembers = members.filter((member) => !member.allowed);
+  if (blockedMembers.length === 0) {
+    return { allowed: true, targetStatus: members.some(member => member.targetStatus === "warning") ? "warning" : "allowed", members };
+  }
+
+  const messages = [
+    ...new Set(
+      blockedMembers.flatMap((member) =>
+        member.messages?.length
+          ? member.messages
+          : member.reason
+            ? [member.reason]
+            : [],
+      ),
+    ),
+  ];
+  return {
+    allowed: false,
+    reason: blockedMembers[0]?.reason ?? "The group cannot be moved here.",
+    ...(messages.length > 0 ? { messages } : {}),
+    targetStatus: "blocked",
+    members,
+  };
 }
 
 export function evaluateSchedulePresetDropTarget({
@@ -105,7 +235,7 @@ export function evaluateSchedulePresetDropTarget({
     useDefaultTimesForScheduling,
   );
   return validation.allowed
-    ? { allowed: true, targetStatus: "allowed" }
+    ? { allowed: true, targetStatus: validation.warning ? "warning" : "allowed", ...(validation.warning ? { reason: validation.warning } : {}) }
     : {
         allowed: false,
         reason: validation.reason,
@@ -148,8 +278,7 @@ export function useScheduleGridDragControllers({
   const resolveDraggedShift = useCallback(
     (shiftId: string) =>
       filtered.shifts.find((shift) => shift.id === shiftId) as
-        | ScheduleEditableShift
-        | undefined,
+        ScheduleEditableShift | undefined,
     [filtered.shifts],
   );
 
@@ -218,7 +347,9 @@ export function useScheduleGridDragControllers({
 
   return {
     activeDragOverCell:
-      shiftDrag.dragState?.targetKey ?? presetDrag.dragState?.targetKey ?? dragOverCell,
+      shiftDrag.dragState?.targetKey ??
+      presetDrag.dragState?.targetKey ??
+      dragOverCell,
     draggedShiftId,
     dragOverCell,
     dragPreviewShift: shiftDrag.dragState

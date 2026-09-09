@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import process from "node:process";
 
 const isWindows = process.platform === "win32";
@@ -16,7 +16,7 @@ const processes = [
       APP_URL: webUrl,
     },
   }),
-  spawn("vite", ["--host", "127.0.0.1"], {
+  spawn("vite", ["--host", "127.0.0.1", "--strictPort"], {
     stdio: "inherit",
     shell: isWindows,
     env: {
@@ -29,18 +29,33 @@ const processes = [
 
 let shuttingDown = false;
 
+function stopChild(child) {
+  if (child.killed || !child.pid) return;
+  if (isWindows) {
+    spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], {
+      stdio: "ignore",
+    });
+    return;
+  }
+  child.kill();
+}
+
 function shutdown(code = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
   for (const child of processes) {
-    if (!child.killed) child.kill();
+    stopChild(child);
   }
   process.exit(code);
 }
 
 for (const child of processes) {
-  child.on("exit", (code) => {
-    if (!shuttingDown && code && code !== 0) shutdown(code);
+  child.on("error", (error) => {
+    console.error(error);
+    shutdown(1);
+  });
+  child.on("exit", (code, signal) => {
+    if (!shuttingDown && (code !== 0 || signal)) shutdown(code ?? 1);
   });
 }
 

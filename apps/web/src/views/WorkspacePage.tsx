@@ -1,7 +1,9 @@
 import type {
   NotificationRecord,
+  OwnerSetupChecklistItemId,
   WorkspaceDashboard,
   WorkspaceLayoutInput,
+  WorkspaceTodo,
   WorkspaceWidgetId,
 } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,25 +13,35 @@ import {
   ArrowUp,
   Bell,
   CalendarDays,
+  Check,
+  CheckCircle2,
   Eye,
   EyeOff,
   Megaphone,
   Settings2,
   Users,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { safeAppActionUrl } from "../communications/action-url";
 import {
+  createWorkspaceTodo,
+  getOwnerSetupChecklistProgress,
   getWorkspaceDashboard,
+  markOwnerSetupChecklistItem,
+  resolveWorkspaceTodo,
   saveWorkspaceLayout,
 } from "../communications/communications-data";
+
+import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 
 const widgetLabels: Record<WorkspaceWidgetId, string> = {
   operations: "Today",
   pending_requests: "Pending requests",
   open_shifts: "Open shifts",
   announcements: "Announcements",
+  todos: "Todos",
   notifications: "Notifications",
   quick_actions: "Quick actions",
 };
@@ -45,6 +57,12 @@ export function WorkspacePage() {
     queryKey: ["workspace-dashboard", workspaceId],
     queryFn: () => getWorkspaceDashboard(workspaceId),
     enabled: Boolean(workspaceId),
+  });
+  const exchanges = useQuery({
+    queryKey: ["shift-exchanges", workspaceId, context?.userId, true],
+    queryFn: () => getExchanges(workspaceId, true),
+    enabled: Boolean(workspaceId && context?.permissions.includes("schedule.shift_change_requests.read")),
+    refetchInterval: 60_000,
   });
   const saveMutation = useMutation({
     mutationFn: (layout: WorkspaceLayoutInput) =>
@@ -74,7 +92,8 @@ export function WorkspacePage() {
       />
     );
   }
-  const model = query.data;
+  const pendingExchanges = exchanges.isError ? 0 : exchanges.data?.cases.filter((item) => item.status === "open" && ["ready_for_manager", "awaiting_other_manager"].includes(item.stage)).length ?? 0;
+  const model = { ...query.data, metrics: { ...query.data.metrics, pending_shift_change_count: query.data.metrics.pending_shift_change_count + pendingExchanges } };
   const layout = draft ?? model.layout;
   const hidden = new Set(layout.hidden_widget_ids);
   const updateLayout = (next: WorkspaceLayoutInput) => setDraft(next);
@@ -99,11 +118,10 @@ export function WorkspacePage() {
     <section className="workspace-page" aria-labelledby="workspace-title">
       <header className="workspace-header">
         <div>
-          <p>
-            {greeting(now)}, {model.display_name}
-          </p>
           <h1 id="workspace-title">Workspace</h1>
-          <span>{formatNow(now)}</span>
+          <span>
+            {greeting(now)}, {model.display_name} · {formatNow(now)}
+          </span>
         </div>
         <div className="workspace-header-actions">
           {customizing ? (
@@ -142,6 +160,10 @@ export function WorkspacePage() {
         <p className="workspace-error" role="alert">
           {saveMutation.error.message}
         </p>
+      ) : null}
+      {context?.membership.role === "owner" ||
+      context?.membership.role === "admin" ? (
+        <OwnerSetupChecklist workspaceId={context.workspace.id} />
       ) : null}
       <div className="workspace-grid">
         {layout.widget_order.map((id, index) => {
@@ -185,8 +207,146 @@ export function WorkspacePage() {
                   </div>
                 ) : null}
               </header>
-              <Widget id={id} model={model} />
+              <Widget id={id} model={model} workspaceId={workspaceId} />
             </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+type ChecklistItem = {
+  readonly id: OwnerSetupChecklistItemId;
+  readonly label: string;
+  readonly to: string | null;
+  readonly required: boolean;
+};
+
+const ownerSetupChecklistItems: readonly ChecklistItem[] = [
+  {
+    id: "app_tour",
+    label: "App tour",
+    to: null,
+    required: true,
+  },
+  {
+    id: "scheduling_preferences",
+    label: "Set scheduling preferences",
+    to: "/app/settings/scheduling?checklist=setup",
+    required: true,
+  },
+  {
+    id: "employees",
+    label: "Employees",
+    to: "/app/employees",
+    required: false,
+  },
+  {
+    id: "kiosk",
+    label: "Kiosk",
+    to: "/app/settings/kiosk",
+    required: false,
+  },
+  {
+    id: "documents",
+    label: "Documents",
+    to: "/app/settings/documents",
+    required: false,
+  },
+  {
+    id: "schedule",
+    label: "First schedule view",
+    to: "/app/schedule",
+    required: false,
+  },
+  {
+    id: "billing",
+    label: "Billing",
+    to: "/account/workspaces?checklist=billing",
+    required: false,
+  },
+];
+
+function OwnerSetupChecklist({
+  workspaceId,
+}: {
+  readonly workspaceId: string;
+}) {
+  const queryClient = useQueryClient();
+  const queryKey = ["owner-setup-checklist", workspaceId];
+  const progressQuery = useQuery({
+    queryKey,
+    queryFn: () => getOwnerSetupChecklistProgress(workspaceId),
+    enabled: Boolean(workspaceId),
+  });
+  const markMutation = useMutation({
+    mutationFn: (id: OwnerSetupChecklistItemId) =>
+      markOwnerSetupChecklistItem(workspaceId, id),
+    onSuccess: async (progress) => {
+      queryClient.setQueryData(queryKey, progress);
+      await queryClient.invalidateQueries({ queryKey });
+    },
+  });
+  if (progressQuery.isPending || progressQuery.data?.closed_at) return null;
+
+  const visited = new Set(progressQuery.data?.completed_item_ids ?? []);
+  const markVisited = (id: OwnerSetupChecklistItemId) => {
+    if (!visited.has(id)) markMutation.mutate(id);
+  };
+  const requiredCount = ownerSetupChecklistItems.filter(
+    (item) => item.required,
+  ).length;
+  const requiredVisitedCount = ownerSetupChecklistItems.filter(
+    (item) => item.required && visited.has(item.id),
+  ).length;
+
+  return (
+    <section className="owner-setup-checklist" aria-labelledby="setup-title">
+      <header>
+        <div>
+          <h2 id="setup-title">Setup checklist</h2>
+          <p>{requiredVisitedCount} of {requiredCount} required visits complete</p>
+        </div>
+      </header>
+      {progressQuery.error || markMutation.error ? (
+        <p className="workspace-error" role="alert">
+          Setup checklist progress could not be saved.
+        </p>
+      ) : null}
+      <div className="owner-setup-checklist-list">
+        {ownerSetupChecklistItems.map((item) => {
+          const done = visited.has(item.id);
+          const content = (
+            <>
+              <span className="owner-setup-checklist-status" data-done={done}>
+                {done ? <CheckCircle2 size={15} aria-hidden /> : null}
+              </span>
+              <span>
+                <strong>{item.label}</strong>
+                <small>{item.required ? "Required visit" : "Optional visit"}</small>
+              </span>
+              <ArrowRight size={15} aria-hidden />
+            </>
+          );
+          return item.to ? (
+            <Link
+              className="owner-setup-checklist-item"
+              key={item.id}
+              to={item.to}
+              onClick={() => markVisited(item.id)}
+            >
+              {content}
+            </Link>
+          ) : (
+            <button
+              className="owner-setup-checklist-item"
+              key={item.id}
+              type="button"
+              onClick={() => markVisited(item.id)}
+            >
+              {content}
+            </button>
           );
         })}
       </div>
@@ -197,9 +357,11 @@ export function WorkspacePage() {
 function Widget({
   id,
   model,
+  workspaceId,
 }: {
   id: WorkspaceWidgetId;
   model: WorkspaceDashboard;
+  workspaceId: string;
 }) {
   if (id === "operations") {
     return (
@@ -266,6 +428,9 @@ function Widget({
       <EmptyWidget text="You're all caught up" />
     );
   }
+  if (id === "todos") {
+    return <TodoWidget todos={model.todos} workspaceId={workspaceId} />;
+  }
   return (
     <div className="workspace-quick-actions">
       <WidgetLink to="/app/schedule">
@@ -281,6 +446,123 @@ function Widget({
   );
 }
 
+function TodoWidget({
+  todos,
+  workspaceId,
+}: {
+  todos: WorkspaceDashboard["todos"];
+  workspaceId: string;
+}) {
+  const queryClient = useQueryClient();
+  const [title, setTitle] = useState("");
+  const createMutation = useMutation({
+    mutationFn: (nextTitle: string) =>
+      createWorkspaceTodo(workspaceId, {
+        title: nextTitle,
+        body: "",
+        employee_id: null,
+        due_at: null,
+      }),
+    onSuccess: async () => {
+      setTitle("");
+      await queryClient.invalidateQueries({ queryKey: ["workspace-dashboard"] });
+    },
+  });
+  const resolveMutation = useMutation({
+    mutationFn: (todoId: string) => resolveWorkspaceTodo(workspaceId, todoId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["workspace-dashboard"] });
+    },
+  });
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!title.trim() || createMutation.isPending) return;
+    createMutation.mutate(title);
+  };
+
+  return (
+    <div className="workspace-todos">
+      <form className="workspace-todo-form" onSubmit={submit}>
+        <input
+          aria-label="New todo"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="Add a todo"
+          maxLength={160}
+        />
+        <button
+          className="nf-button secondary"
+          type="submit"
+          disabled={!title.trim() || createMutation.isPending}
+        >
+          Add
+        </button>
+      </form>
+      {createMutation.error || resolveMutation.error ? (
+        <p className="workspace-error" role="alert">
+          Todo update could not be saved.
+        </p>
+      ) : null}
+      {todos.length ? (
+        <div className="workspace-feed">
+          {todos.map((item) => (
+            <TodoPreview
+              item={item}
+              key={item.id}
+              onResolve={(todoId) => resolveMutation.mutate(todoId)}
+              resolving={resolveMutation.isPending}
+            />
+          ))}
+        </div>
+      ) : (
+        <EmptyWidget text="No open todos" />
+      )}
+    </div>
+  );
+}
+
+function TodoPreview({
+  item,
+  onResolve,
+  resolving,
+}: {
+  item: WorkspaceTodo;
+  onResolve: (todoId: string) => void;
+  resolving: boolean;
+}) {
+  const content = (
+    <>
+      <CheckCircle2 size={16} aria-hidden />
+      <span>
+        <strong>{item.title}</strong>
+        <small>
+          {item.due_at ? `Due ${relativeTime(item.due_at)}` : item.body}
+        </small>
+      </span>
+      <ArrowRight size={15} aria-hidden />
+    </>
+  );
+  const actionUrl = safeAppActionUrl(item.action_url);
+  if (actionUrl) return <Link to={actionUrl}>{content}</Link>;
+  if (!item.system_generated) {
+    return (
+      <div className="workspace-todo-row">
+        <div>{content}</div>
+        <button
+          className="icon-button"
+          type="button"
+          aria-label={`Resolve ${item.title}`}
+          disabled={resolving}
+          onClick={() => onResolve(item.id)}
+        >
+          <Check size={15} aria-hidden />
+        </button>
+      </div>
+    );
+  }
+  return <div>{content}</div>;
+}
+
 function NotificationPreview({ item }: { item: NotificationRecord }) {
   const content = (
     <>
@@ -292,8 +574,9 @@ function NotificationPreview({ item }: { item: NotificationRecord }) {
       <ArrowRight size={15} aria-hidden />
     </>
   );
-  return item.action_url ? (
-    <Link to={item.action_url}>{content}</Link>
+  const actionUrl = safeAppActionUrl(item.action_url);
+  return actionUrl ? (
+    <Link to={actionUrl}>{content}</Link>
   ) : (
     <div>{content}</div>
   );

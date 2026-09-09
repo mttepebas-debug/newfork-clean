@@ -3,13 +3,9 @@ import type {
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
 import { useToast } from "@newfork/ui";
-import {
-  ChevronDown,
-  Minus,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import type { ShiftAvailabilityAssessment } from "@newfork/shared";
+import { loadShiftAvailability } from "../../availability/availability-data";
+import { ChevronDown, Minus, Plus, Trash2, X } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -47,8 +43,9 @@ import { ScheduleConflictNotice } from "./ScheduleConflictNotice";
 import { ScheduleConflictSheet } from "./ScheduleConflictSheet";
 import { TimeInput } from "./TimeInput";
 
-const clockOffFallbackStartTime = "00:00";
-const clockOffFallbackEndTime = "00:01";
+const clockOffFallbackStartTime = "";
+const clockOffFallbackEndTime = "";
+const softConflictOverrideNote = "Manager acknowledged schedule warning.";
 
 interface QuickEditorSelectOption {
   readonly value: string;
@@ -146,8 +143,111 @@ function QuickEditorSelect({
   );
 }
 
+function QuickEditorLabelMultiSelect({
+  labels,
+  selectedIds,
+  onChange,
+}: {
+  readonly labels: NonNullable<ScheduleReadModel["shift_labels"]>;
+  readonly selectedIds: readonly string[];
+  readonly onChange: (labelIds: string[], labelNames: string[]) => void;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const selectedSet = new Set(selectedIds);
+  const selectedLabels = labels.filter((label) => selectedSet.has(label.id));
+  const displayLabel = selectedLabels.length
+    ? selectedLabels.map((label) => label.name).join(", ")
+    : "No labels";
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = rootRef.current;
+      if (root && event.target instanceof Node && root.contains(event.target)) {
+        return;
+      }
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [open]);
+
+  const updateSelection = (labelId: string): void => {
+    const next = selectedSet.has(labelId)
+      ? selectedIds.filter((id) => id !== labelId)
+      : [...selectedIds, labelId];
+    const ordered = labels.filter((label) => next.includes(label.id));
+    onChange(
+      ordered.map((label) => label.id),
+      ordered.map((label) => label.name),
+    );
+  };
+
+  return (
+    <div
+      ref={rootRef}
+      className="schedule-quick-select schedule-quick-label-select"
+      data-quick-editor-select="true"
+      onPointerDown={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        role="combobox"
+        aria-label="Labels"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        title={displayLabel}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape") return;
+          event.stopPropagation();
+          setOpen(false);
+        }}
+      >
+        <span>{displayLabel}</span>
+        <ChevronDown
+          size={14}
+          aria-hidden
+          data-open={open ? "true" : undefined}
+        />
+      </button>
+      {open ? (
+        <div role="listbox" aria-label="Labels" aria-multiselectable="true">
+          {labels.map((label) => {
+            const selected = selectedSet.has(label.id);
+            return (
+              <button
+                key={label.id}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => updateSelection(label.id)}
+              >
+                <span className="schedule-quick-label-option">
+                  <span
+                    className="schedule-quick-label-swatch"
+                    style={{ backgroundColor: label.color }}
+                    aria-hidden
+                  />
+                  <span>{label.name}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function ShiftQuickEditor({
   model,
+  sessionId,
   state,
   timeFormat,
   formatTime: _formatTime,
@@ -164,6 +264,7 @@ export function ShiftQuickEditor({
   onSubmit,
 }: {
   readonly model: ScheduleReadModel;
+  readonly sessionId?: string;
   readonly state: ScheduleShiftEditorState;
   readonly timeFormat: "12h" | "24h";
   readonly formatTime: (value: string) => string;
@@ -221,15 +322,51 @@ export function ShiftQuickEditor({
     initialValueRef.current = initial;
     return initial;
   });
+  const explicitTimesEdited = useRef(
+    state.mode === "edit" || (state.mode === "create" && Boolean(state.copy)),
+  );
+  const selectedTimeType = model.shift_types.find(
+    (type) => type.id === value.shift_type_id,
+  );
   const [count, setCount] = useState(1);
   const [stale, setStale] = useState(false);
   const [conflictSheetOpen, setConflictSheetOpen] = useState(false);
+  const [conflictValidationArmed, setConflictValidationArmed] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const checkingRef = useRef(false);
+  const valueKey = JSON.stringify(value);
+  const [customWork, setCustomWork] = useState<{ key: string; reason: string } | null>(null);
+  const activeCustomWork = customWork?.key === valueKey ? customWork : null;
+  const submissionValue = activeCustomWork
+    ? { ...value, service_classification_note: activeCustomWork.reason.trim() }
+    : value;
+  const submissionKey = JSON.stringify(submissionValue);
+  const valueRef = useRef(submissionValue);
+  valueRef.current = submissionValue;
+  const [assessmentState, setAssessmentState] = useState<{
+    key: string;
+    value: ShiftAvailabilityAssessment;
+  } | null>(null);
   const [overrideReason, setOverrideReason] = useState("");
-  const lastConflictToastKeyRef = useRef("");
+  const assessment =
+    assessmentState?.key === submissionKey ? assessmentState.value : null;
+  useEffect(() => {
+    setConflictSheetOpen(false);
+    setOverrideReason("");
+  }, [submissionKey]);
+  useEffect(() => { setCustomWork(null); }, [valueKey]);
   const selectedEmployee = getShiftEditorSelectedEmployee(
     model.employees,
     value.employee_id,
   );
+  const initialValue = initialValueRef.current;
+  const recordedCustomWork = assessment?.service_classification ??
+    (state.mode === "edit" && valueKey === JSON.stringify(initialValue)
+      ? state.shift.availability_assessment?.service_classification
+      : undefined);
+  const editorHasUserChanges = initialValue
+    ? JSON.stringify(value) !== JSON.stringify(initialValue) || count !== 1 || activeCustomWork !== null
+    : false;
   const headerPrimary = selectedEmployee?.display_name ?? "Unassigned";
   const headerSecondary =
     state.mode === "edit" ? state.shift.scheduled_date : state.date;
@@ -237,34 +374,67 @@ export function ShiftQuickEditor({
     employees: model.employees,
     locationId: value.location_id,
     jobId: value.job_id,
+    model,
+    shifts: model.shifts,
+    value,
+    excludeShiftId: state.mode === "edit" ? state.shift.id : null,
   });
   const eligibleJobs = getShiftEditorEligibleJobs({
     jobs: model.jobs,
     selectedEmployee,
     employeeId: value.employee_id,
   });
-  const conflictReasons = evaluateScheduleShiftConflicts(
+  const localConflictReasons = evaluateScheduleShiftConflicts(
     model,
     model.shifts,
     value,
     state.mode === "edit" ? state.shift.id : null,
+  ).filter(
+    (reason) =>
+      typeof reason === "string" ||
+      !["availability", "time_off"].includes(String(reason.type)),
   );
+  const assessmentReasons = (result: ShiftAvailabilityAssessment | null) => {
+    if (result?.warning_policy) {
+      if (result.operation === "allowed") return [];
+      if (result.operation === "warning_requires_override") {
+        if (result.override_recorded || result.responsibility_retained || localConflictReasons.some(isHardScheduleConflictReason)) return [];
+        return [{ type: "availability_assessment", severity: "soft", message: "This shift overlaps unavailable hours." }];
+      }
+      const blockers = result.reasons.filter((reason) => reason.code !== "availability");
+      return (blockers.length ? blockers : [{ message: "This assignment could not be verified. Reload and try again." }])
+        .map((reason) => ({ type: "availability_assessment", severity: "hard", message: reason.message }));
+    }
+    return result?.reasons.map((reason) => ({
+      type: "availability_assessment",
+      severity:
+        result.operation === "blocked" ||
+        (result.operation === "warning_requires_override" &&
+          !result.can_override)
+          ? "hard"
+          : "soft",
+      message:
+        result.operation === "warning_requires_override" && !result.can_override
+          ? "A manager with availability override permission must review this assignment."
+          : reason.message,
+    })) ?? [];
+  };
+  const rawConflictReasons = [
+    ...localConflictReasons,
+    ...assessmentReasons(assessment),
+  ];
+  const conflictReasons =
+    editorHasUserChanges || conflictSheetOpen || conflictValidationArmed
+      ? rawConflictReasons
+      : [];
   const conflictMessages = formatScheduleConflictMessages(conflictReasons);
-  const conflictMessageKey = conflictMessages.join("|");
   const hasConflictMessages = conflictMessages.length > 0;
-  const availabilityOnlyConflict =
-    conflictReasons.length > 0 &&
-    conflictReasons.every(isAvailabilityConflictReason);
   const hardConflict = conflictReasons.some(isHardScheduleConflictReason);
   const conflictCanContinue = hasConflictMessages && !hardConflict;
-  const overrideReasonRequired =
-    conflictCanContinue && !availabilityOnlyConflict;
-  const overrideReasonValid =
-    !overrideReasonRequired || overrideReason.trim().length >= 10;
   const timeValidationMessage = getShiftTimeValidationMessage(
     value.start_time,
     value.end_time,
-    !value.hide_time_on_badge,
+    value.time_basis !== "unresolved",
   );
   const saveButtonLabel =
     state.mode === "edit"
@@ -272,47 +442,118 @@ export function ShiftQuickEditor({
       : count > 1
         ? `Add ${count} shifts`
         : "Add shift";
-  const submitPayload = (reason?: string) => {
+  const submitPayload = (
+    reason?: string,
+    checked?: ShiftAvailabilityAssessment | null,
+  ) => {
     const trimmedReason = reason?.trim();
-    const basePayload = value.hide_time_on_badge
-      ? {
-          ...value,
-          start_time: clockOffFallbackStartTime,
-          end_time: clockOffFallbackEndTime,
-        }
-      : value;
+    // Badge visibility cannot change the interval checked above.
+    const basePayload = {
+      ...submissionValue,
+      ...(checked?.warning_policy && checked.operation === "warning_requires_override"
+        ? { availability_assessment_fingerprint: checked.fingerprint }
+        : {}),
+      ...(activeCustomWork && checked?.service_classification_fingerprint
+        ? { service_classification_fingerprint: checked.service_classification_fingerprint }
+        : {}),
+    };
     const payload =
       trimmedReason && trimmedReason.length >= 10
-        ? { ...basePayload, conflict_override_note: trimmedReason }
+        ? {
+            ...basePayload,
+            conflict_override_note: trimmedReason,
+            ...(checked?.operation === "warning_requires_override"
+              ? { availability_assessment_fingerprint: checked.fingerprint }
+              : {}),
+          }
         : basePayload;
     void onSubmit(payload, count).then((result) => {
       if (result === "stale") setStale(true);
     });
   };
-  const attemptSubmit = () => {
+  const attemptSubmit = async (confirmed = false) => {
+    if (checkingRef.current) return;
+    if (activeCustomWork && (activeCustomWork.reason.trim().length < 10 || activeCustomWork.reason.trim().length > 500)) {
+      toast.error("Explain the custom work", { description: "Use 10 to 500 characters to explain why this work is independent of a service." });
+      return;
+    }
     if (timeValidationMessage) {
       toast.error("Enter a valid shift time", {
         description: timeValidationMessage,
       });
       return;
     }
-    if (hasConflictMessages) {
+    const submittedKey = submissionKey;
+    let checked: ShiftAvailabilityAssessment | null = null;
+    if (value.employee_id) {
+      checkingRef.current = true;
+      setCheckingAvailability(true);
+      try {
+        checked = await loadShiftAvailability(
+          model.workspace_id,
+          submissionValue,
+          state.mode === "edit" ? state.shift.id : undefined,
+          sessionId,
+        );
+        if (JSON.stringify(valueRef.current) !== submittedKey) return;
+        setAssessmentState({ key: submittedKey, value: checked });
+        if (activeCustomWork && !checked.service_classification_fingerprint) {
+          toast.error("Custom work could not be verified", { description: "Reload the current shift and try again." });
+          return;
+        }
+      } catch (error) {
+        toast.error("Availability could not be checked", {
+          description: error instanceof Error ? error.message : "Please retry.",
+        });
+        return;
+      } finally {
+        checkingRef.current = false;
+        setCheckingAvailability(false);
+      }
+    }
+    const reasons = [...localConflictReasons, ...assessmentReasons(checked)];
+    const messages = formatScheduleConflictMessages(reasons);
+    const weeklyWarning = !!checked?.warning_policy && checked.operation === "warning_requires_override" &&
+      !checked.override_recorded && !checked.responsibility_retained;
+    const requiresReason = !checked?.warning_policy && checked?.operation === "warning_requires_override";
+    const canConfirm =
+      confirmed &&
+      !reasons.some(isHardScheduleConflictReason) &&
+      (!weeklyWarning || checked?.warning_policy === "warn" || checked?.fingerprint === assessment?.fingerprint) &&
+      (!requiresReason ||
+        (checked?.fingerprint === assessment?.fingerprint &&
+          overrideReason.trim().length >= 10 &&
+          overrideReason.trim().length <= 500));
+    const warnOnly = weeklyWarning && checked?.warning_policy === "warn" && localConflictReasons.length === 0;
+    if (messages.length > 0 && !canConfirm && !warnOnly) {
+      setConflictValidationArmed(true);
       setConflictSheetOpen(true);
-      onBlockedSubmit?.(conflictMessages);
-      const summary = summarizeEditorConflictToast(
-        conflictMessages,
-        conflictCanContinue,
-      );
-      toast[summary.tone](summary.title, {
-        description: summary.description,
-      });
+      onBlockedSubmit?.(messages);
+      if (!checked?.warning_policy) {
+        const summary = summarizeEditorConflictToast(
+          messages,
+          !reasons.some(isHardScheduleConflictReason),
+        );
+        toast[summary.tone](summary.title, {
+          description: summary.description,
+        });
+      }
       return;
     }
-    submitPayload();
+    setConflictSheetOpen(false);
+    if (warnOnly) toast.warning("This shift overlaps unavailable hours.");
+    submitPayload(
+      requiresReason
+        ? overrideReason
+        : confirmed && localConflictReasons.length
+          ? softConflictOverrideNote
+          : undefined,
+      checked,
+    );
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    attemptSubmit();
+    void attemptSubmit();
   };
   const showCountStepper = shouldShowShiftEditorCountStepper({
     mode: state.mode,
@@ -333,13 +574,10 @@ export function ShiftQuickEditor({
     setPosition(initialPosition);
   }, [initialPosition.x, initialPosition.y]);
   useEffect(() => {
-    const initial = initialValueRef.current;
-    if (!initial) return;
-    onDirtyChange?.(
-      JSON.stringify(value) !== JSON.stringify(initial) || count !== 1,
-    );
-  }, [count, onDirtyChange, value]);
+    onDirtyChange?.(editorHasUserChanges);
+  }, [editorHasUserChanges, onDirtyChange]);
   useEffect(() => {
+    if (!showEmployeePicker) return;
     if (
       value.employee_id === null ||
       eligibleEmployees.some((employee) => employee.id === value.employee_id)
@@ -347,23 +585,11 @@ export function ShiftQuickEditor({
       return;
     }
     setValue((current) => ({ ...current, employee_id: null }));
-  }, [eligibleEmployees, value.employee_id]);
+  }, [eligibleEmployees, showEmployeePicker, value.employee_id]);
   useEffect(() => {
     setConflictSheetOpen(false);
-    setOverrideReason("");
-    const conflictKey = conflictMessageKey;
-    if (!conflictKey) {
-      lastConflictToastKeyRef.current = "";
-      return;
-    }
-    if (lastConflictToastKeyRef.current === conflictKey) return;
-    lastConflictToastKeyRef.current = conflictKey;
-    const summary = summarizeEditorConflictToast(
-      conflictKey.split("|"),
-      conflictCanContinue,
-    );
-    toast[summary.tone](summary.title, { description: summary.description });
-  }, [conflictCanContinue, conflictMessageKey, toast]);
+    setConflictValidationArmed(false);
+  }, [count, value]);
   useEffect(() => {
     if (!value.job_id || eligibleJobs.some((job) => job.id === value.job_id)) {
       return;
@@ -568,6 +794,7 @@ export function ShiftQuickEditor({
                               shiftTypeId: shiftType.id,
                               clockOffFallbackStartTime,
                               clockOffFallbackEndTime,
+                              preserveTimes: explicitTimesEdited.current,
                             }),
                           );
                         }}
@@ -581,6 +808,26 @@ export function ShiftQuickEditor({
                 )}
               </div>
             </div>
+            {!value.shift_type_id && value.employee_id ? (
+              <div className="schedule-shift-field schedule-service-classification">
+                <span>Service classification</span>
+                <small>Choose a shift type above for service work. For work such as training or inventory, record why it is independent of a service. Hours and approved time off still apply.</small>
+                <label className="schedule-custom-work-choice">
+                  <input type="checkbox" checked={activeCustomWork !== null}
+                    onChange={(event) => setCustomWork(event.target.checked ? { key: valueKey, reason: "" } : null)} />
+                  This shift is independent custom work
+                </label>
+                {activeCustomWork ? (
+                  <label>Custom work explanation
+                    <textarea aria-label="Custom work explanation" value={activeCustomWork.reason} maxLength={500}
+                      onChange={(event) => setCustomWork({ key: valueKey, reason: event.target.value })} />
+                    <small>Changing the employee, date, hours or other shift details requires a new classification.</small>
+                  </label>
+                ) : recordedCustomWork?.status === "recorded" ? (
+                  <small>Recorded custom work: {recordedCustomWork.reason}</small>
+                ) : null}
+              </div>
+            ) : null}
             <div className="schedule-shift-field">
               <span>Job</span>
               <QuickEditorSelect
@@ -598,28 +845,15 @@ export function ShiftQuickEditor({
             </div>
             {(model.shift_labels ?? []).length > 0 ? (
               <div className="schedule-shift-field">
-                <span>Label</span>
-                <QuickEditorSelect
-                  label="Label"
-                  value={value.label_ids?.[0] ?? ""}
-                  options={[
-                    { value: "", label: "No label" },
-                    ...(model.shift_labels ?? []).map((item) => ({
-                      value: item.id,
-                      label: item.name,
-                    })),
-                  ]}
-                  onChange={(labelId) =>
+                <span>Labels</span>
+                <QuickEditorLabelMultiSelect
+                  labels={model.shift_labels ?? []}
+                  selectedIds={value.label_ids ?? []}
+                  onChange={(labelIds, labelNames) =>
                     setValue({
                       ...value,
-                      label_ids: labelId ? [labelId] : [],
-                      label_names: labelId
-                        ? [
-                            (model.shift_labels ?? []).find(
-                              (label) => label.id === labelId,
-                            )?.name ?? "",
-                          ].filter(Boolean)
-                        : [],
+                      label_ids: labelIds,
+                      label_names: labelNames,
                     })
                   }
                 />
@@ -664,6 +898,27 @@ export function ShiftQuickEditor({
           >
             <div className="schedule-shift-form-section-title">
               <strong>Time and break</strong>
+              {selectedTimeType?.default_start_time &&
+              selectedTimeType.default_end_time ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    explicitTimesEdited.current = false;
+                    setValue({
+                      ...applyScheduleShiftTypeDefaults({
+                        value,
+                        shiftType: selectedTimeType,
+                        shiftTypeId: selectedTimeType.id,
+                        clockOffFallbackStartTime,
+                        clockOffFallbackEndTime,
+                      }),
+                      hide_time_on_badge: value.hide_time_on_badge,
+                    });
+                  }}
+                >
+                  Use {selectedTimeType.name} default hours
+                </button>
+              ) : null}
             </div>
             <div className="schedule-time-fields">
               <label>
@@ -676,17 +931,21 @@ export function ShiftQuickEditor({
                   density="compact"
                   onAutoAdvance={() => {
                     if (endTimeInputRef.current) {
-                      endTimeInputRef.current.dataset.autoSelectSegment = "hour";
+                      endTimeInputRef.current.dataset.autoSelectSegment =
+                        "hour";
                       endTimeInputRef.current.focus();
                     }
                   }}
-                  onChange={(start_time) =>
+                  onChange={(start_time) => {
+                    explicitTimesEdited.current = true;
                     setValue({
                       ...value,
                       start_time,
+                      time_basis: "explicit",
+                      time_snapshot: null,
                       hide_time_on_badge: false,
-                    })
-                  }
+                    });
+                  }}
                 />
               </label>
               <label>
@@ -706,16 +965,21 @@ export function ShiftQuickEditor({
                   }}
                   onBoundaryEnter={
                     timeFormat === "12h" && !value.hide_time_on_badge
-                      ? attemptSubmit
+                      ? () => {
+                          void attemptSubmit();
+                        }
                       : undefined
                   }
-                  onChange={(end_time) =>
+                  onChange={(end_time) => {
+                    explicitTimesEdited.current = true;
                     setValue({
                       ...value,
                       end_time,
+                      time_basis: "explicit",
+                      time_snapshot: null,
                       hide_time_on_badge: false,
-                    })
-                  }
+                    });
+                  }}
                 />
               </label>
             </div>
@@ -723,6 +987,33 @@ export function ShiftQuickEditor({
               <p className="schedule-field-error" role="alert">
                 {timeValidationMessage}
               </p>
+            ) : null}
+            {value.time_basis === "unresolved" ||
+            value.time_basis === "legacy_unverified" ? (
+              <p role="status">
+                Hours need confirmation. You can save this draft; confirm hours
+                before publishing a new assignment.
+              </p>
+            ) : value.time_basis === "type_default" ? (
+              <p role="status">
+                Availability uses the saved shift type hours. Later changes to
+                the default will not change this shift.
+              </p>
+            ) : null}
+            {value.time_basis === "legacy_unverified" &&
+            !timeValidationMessage ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setValue({
+                    ...value,
+                    time_basis: "explicit",
+                    time_snapshot: null,
+                  })
+                }
+              >
+                Confirm displayed hours
+              </button>
             ) : null}
             <fieldset className="schedule-break-options">
               <legend>Unpaid break</legend>
@@ -752,7 +1043,7 @@ export function ShiftQuickEditor({
                   })
                 }
               />
-              Use these times for scheduling
+              Show times on badge
             </label>
           </section>
           <div className="schedule-dialog-actions">
@@ -777,12 +1068,11 @@ export function ShiftQuickEditor({
             <button
               type="submit"
               className="primary"
-              disabled={
-                !!timeValidationMessage ||
-                (hasConflictMessages && !conflictCanContinue)
-              }
+              disabled={!!timeValidationMessage || checkingAvailability}
             >
-              {conflictCanContinue ? "Review conflict" : saveButtonLabel}
+              {checkingAvailability
+                ? "Checking availability…"
+                : saveButtonLabel}
             </button>
           </div>
         </form>
@@ -791,23 +1081,37 @@ export function ShiftQuickEditor({
         open={conflictSheetOpen}
         messages={conflictMessages}
         tone={conflictCanContinue ? "warning" : "blocker"}
-        requiresOverrideReason={overrideReasonRequired}
+        description={
+          assessment?.warning_policy
+            ? conflictCanContinue ? "Do you want to assign this shift anyway?" : "Resolve this conflict before saving."
+            : assessment?.operation === "verification_required"
+            ? "You can keep this draft. Resolve the availability or hours before publishing."
+            : undefined
+        }
+        requiresOverrideReason={
+          !assessment?.warning_policy &&
+          assessment?.operation === "warning_requires_override" &&
+          assessment.can_override
+        }
         overrideReason={overrideReason}
         onOverrideReasonChange={setOverrideReason}
         submitLabel={
           conflictCanContinue
-            ? `${state.mode === "edit" ? "Save" : "Add"} anyway`
+            ? assessment?.operation === "verification_required"
+              ? "Keep draft"
+              : `${state.mode === "edit" ? "Save" : "Add"} anyway`
             : undefined
         }
-        submitDisabled={!overrideReasonValid}
+        submitDisabled={
+          checkingAvailability ||
+          (!assessment?.warning_policy && assessment?.operation === "warning_requires_override" &&
+            (overrideReason.trim().length < 10 ||
+              overrideReason.trim().length > 500))
+        }
         onSubmit={
           conflictCanContinue
             ? () => {
-                if (!overrideReasonValid) return;
-                setConflictSheetOpen(false);
-                submitPayload(
-                  overrideReasonRequired ? overrideReason : undefined,
-                );
+                void attemptSubmit(true);
               }
             : undefined
         }
@@ -821,13 +1125,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
-function isAvailabilityConflictReason(reason: unknown): boolean {
-  return isRecord(reason) && reason.type === "availability";
-}
-
 function isHardScheduleConflictReason(reason: unknown): boolean {
   if (typeof reason === "string") return true;
   if (!isRecord(reason)) return true;
+  if (reason.severity === "hard") return true;
   return [
     "employee_excluded",
     "location_assignment",

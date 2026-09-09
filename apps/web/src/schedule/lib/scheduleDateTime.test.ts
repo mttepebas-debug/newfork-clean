@@ -40,5 +40,15 @@ describe("scheduleDateTime", () => {
     expect(formatTime("09:00")).toBe("9a");
     expect(formatTime("13:30")).toBe("1:30p");
     expect(formatTime("00:15")).toBe("12:15a");
+    expect(formatTime("17:00", "12h", "long")).toBe("5:00 PM");
+    expect(formatTime("00:15", "24h")).toBe("00:15");
+    expect(formatTime("23:45", "24h")).toBe("23:45");
+  });
+
+  it("keeps week-start math stable across timezone-sensitive dates", () => {
+    expect(addDays("2026-03-08", 1)).toBe("2026-03-09");
+    expect(addDays("2026-11-01", 1)).toBe("2026-11-02");
+    expect(currentWeekStart("2026-03-08", "sunday")).toBe("2026-03-08");
+    expect(currentWeekStart("2026-03-08", "monday")).toBe("2026-03-02");
   });
 });

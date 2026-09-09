@@ -4,7 +4,7 @@ import {
   type DocumentType,
   type DocumentTypeInput,
 } from "@newfork/shared";
-import { supabaseClient } from "../lib/supabase";
+import { developmentBearerToken, supabaseClient } from "../lib/supabase";
 
 function client() {
   if (!supabaseClient) throw new Error("Document storage is not configured");
@@ -15,13 +15,44 @@ function check(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
 }
 
+async function request(
+  workspaceId: string,
+  path: string,
+  init: RequestInit = {},
+) {
+  const storage = client();
+  const token =
+    (await storage.auth.getSession()).data.session?.access_token ??
+    developmentBearerToken();
+  if (!token) throw new Error("A current session is required");
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/v1/workspaces/${workspaceId}/document-types${path}`,
+    {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...init.headers,
+      },
+    },
+  );
+  const body = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok)
+    throw new Error(
+      typeof body === "object" && body && "error" in body
+        ? String(body.error)
+        : "Document type operation failed",
+    );
+  return body;
+}
+
 export async function listDocumentTypes(
   workspaceId: string,
 ): Promise<DocumentType[]> {
   const { data, error } = await client()
     .from("document_types")
     .select(
-      "id,workspace_id,title,description,required_at_onboarding,requires_review,accepted_formats,tracks_expiry,expiry_warning_days,sort_order,archived_at",
+      "id,workspace_id,title,description,required_at_onboarding,requires_review,accepted_formats,tracks_expiry,expiry_warning_days,expiry_schedule_impact,sort_order,archived_at",
     )
     .eq("workspace_id", workspaceId)
     .order("sort_order")
@@ -36,19 +67,16 @@ export async function saveDocumentType(
   documentTypeId?: string,
 ): Promise<string> {
   const documentType = documentTypeInputSchema.parse(input);
-  const { data, error } = await client().rpc("save_document_type", {
-    target_workspace_id: workspaceId,
-    target_document_type_id: documentTypeId ?? null,
-    document_title: documentType.title,
-    document_description: documentType.description,
-    is_required_at_onboarding: documentType.required_at_onboarding,
-    is_review_required: documentType.requires_review,
-    document_formats: documentType.accepted_formats,
-    should_track_expiry: documentType.tracks_expiry,
-    warning_days: documentType.expiry_warning_days,
-  });
-  check(error);
-  return String(data);
+  const body = (await request(
+    workspaceId,
+    documentTypeId ? `/${documentTypeId}` : "",
+    {
+      method: documentTypeId ? "PUT" : "POST",
+      body: JSON.stringify(documentType),
+    },
+  )) as { id?: unknown };
+  if (!body.id) throw new Error("Document type save result is unavailable");
+  return String(body.id);
 }
 
 export async function setDocumentTypeArchived(
@@ -56,21 +84,18 @@ export async function setDocumentTypeArchived(
   documentTypeId: string,
   archived: boolean,
 ): Promise<void> {
-  const { error } = await client().rpc("set_document_type_archived", {
-    target_workspace_id: workspaceId,
-    target_document_type_id: documentTypeId,
-    should_archive: archived,
+  await request(workspaceId, `/${documentTypeId}/archive`, {
+    method: "PATCH",
+    body: JSON.stringify({ archived }),
   });
-  check(error);
 }
 
 export async function reorderDocumentTypes(
   workspaceId: string,
   orderedIds: readonly string[],
 ): Promise<void> {
-  const { error } = await client().rpc("reorder_document_types", {
-    target_workspace_id: workspaceId,
-    ordered_ids: [...orderedIds],
+  await request(workspaceId, "/reorder", {
+    method: "POST",
+    body: JSON.stringify({ orderedIds: [...orderedIds] }),
   });
-  check(error);
 }

@@ -1,6 +1,7 @@
 import type { ScheduleEmployee } from "@newfork/shared/schedule";
 import { CalendarOff } from "lucide-react";
 import type { CSSProperties, RefObject } from "react";
+import { weeklyEmployeeSummary } from "../lib/scheduleWeeklyAvailability";
 
 import {
   formatEmployeeAvailabilitySummary,
@@ -30,7 +31,8 @@ export function ScheduleEmployeeCard({
   const availabilityRules = employee
     ? scheduleEmployeeAvailabilityRules(employee)
     : [];
-  const availabilitySummary = formatEmployeeAvailabilitySummary(availabilityRules);
+  const weeklySummary = employee ? weeklyEmployeeSummary(employee) : null;
+  const availabilitySummary = weeklySummary ?? formatEmployeeAvailabilitySummary(availabilityRules);
 
   return (
     <div
@@ -68,6 +70,7 @@ export function ScheduleEmployeeCard({
           <button
             type="button"
             className="schedule-employee-name-button"
+            data-schedule-employee-card-trigger="true"
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -76,10 +79,10 @@ export function ScheduleEmployeeCard({
           >
             <strong>{employee.display_name}</strong>
           </button>
-          {availabilityRules.length ? (
+          {availabilitySummary ? (
             <span
               className="schedule-employee-availability"
-              aria-label={`Has ${availabilityRules.length} availability rule(s)`}
+              aria-label={weeklySummary !== null ? "Weekly availability preferences" : `Has ${availabilityRules.length} availability rule(s)`}
               title={availabilitySummary}
             >
               <CalendarOff size={13} aria-hidden />

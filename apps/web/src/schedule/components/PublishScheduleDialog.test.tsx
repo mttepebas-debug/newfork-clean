@@ -5,11 +5,14 @@ import type {
   ScheduleReadModel,
   SchedulePublicationPreview,
 } from "@newfork/shared/schedule";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ScheduleRequestError } from "../schedule-data";
-import { PublishScheduleDialog } from "./PublishScheduleDialog";
+import { PublishScheduleDialog, type SchedulePublicationChoices } from "./PublishScheduleDialog";
+const toast = vi.hoisted(() => ({ warning: vi.fn() }));
+vi.mock("@newfork/ui", () => ({ useToast: () => toast }));
+beforeEach(() => toast.warning.mockClear());
 
 const draft: ScheduleDraftSummary = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -132,6 +135,150 @@ async function clickReadyNext(): Promise<void> {
 }
 
 describe("PublishScheduleDialog", () => {
+  const warnPreview = { ...preview, fingerprint: "b".repeat(64), findings: [publishFinding({ id: "warn-finding-0001", availability_state: "new", warning_policy: "warn", tier: "note" })] };
+  const staleError = (next: SchedulePublicationPreview) => new ScheduleRequestError("stale publication preview", 409, { status: "preflight", preflight: next, preflight_block_reason: "stale_fingerprint" });
+  async function startPublication(onPublish: ReturnType<typeof vi.fn>, initial = preview) {
+    const h = render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(initial)} onPublish={onPublish} />);
+    await clickReadyNext(); await clickReadyNext();
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Publish 1 location" })); });
+    return h;
+  }
+  it("continues a changed warn-only publication once with current evidence and unchanged recipients", async () => {
+    const onPublish = vi.fn().mockRejectedValueOnce(staleError(warnPreview)).mockResolvedValue({});
+    await startPublication(onPublish);
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(2));
+    expect(onPublish.mock.calls[1]![0]).toEqual(warnPreview);
+    expect(onPublish.mock.calls[1]![2]).toEqual([]);
+    expect(onPublish.mock.calls[1]![3]).toMatchObject({ fingerprint: warnPreview.fingerprint, decisions: [{ finding_id: "warn-finding-0001" }] });
+    expect(toast.warning).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Confirm availability and continue" })).toBeNull();
+  });
+  it("continues when previous warn conflicts disappear", async () => {
+    const cleared = { ...preview, fingerprint: "c".repeat(64) };
+    const onPublish = vi.fn().mockRejectedValueOnce(staleError(cleared)).mockResolvedValue({});
+    await startPublication(onPublish, warnPreview);
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(2));
+    expect(onPublish.mock.calls[1]![1]).toEqual([]);
+    expect(toast.warning).toHaveBeenCalledWith("Availability warnings cleared. Continuing publication.");
+  });
+  it.each([
+    { ...warnPreview, draft_revision: 4 },
+    { ...warnPreview, locations: [{ ...preview.locations[0]!, active_version: 2 }] },
+    { ...warnPreview, status: "hard_blocked" as const, findings: [...warnPreview.findings, publishFinding({ id: "time-off-00001", code: "time_off", severity: "hard", overrideable: false })] },
+    { ...warnPreview, status: "override_required" as const, findings: [publishFinding({ id: "confirm-000001", availability_state: "new", warning_policy: "confirm", tier: "risk" })] },
+  ])("does not auto-publish changed scope, baseline, blockers or confirm conflicts", async next => {
+    const onPublish = vi.fn().mockRejectedValueOnce(staleError(next));
+    await startPublication(onPublish);
+    await screen.findByRole("dialog", { name: "Pre-flight check" });
+    expect(onPublish).toHaveBeenCalledOnce(); expect(toast.warning).not.toHaveBeenCalled();
+  });
+  it("stops after one automatic retry if availability keeps changing", async () => {
+    const changed = { ...warnPreview, fingerprint: "c".repeat(64), findings: [{ ...warnPreview.findings[0]!, id: "warn-finding-0002" }] };
+    const onPublish = vi.fn().mockRejectedValueOnce(staleError(warnPreview)).mockRejectedValueOnce(staleError(changed));
+    await startPublication(onPublish);
+    await screen.findByRole("dialog", { name: "Pre-flight check" });
+    expect(onPublish).toHaveBeenCalledTimes(2); expect(toast.warning).toHaveBeenCalledOnce();
+  });
+  it("does not retry an uncertain network failure", async () => {
+    const onPublish = vi.fn().mockRejectedValueOnce(new Error("Connection lost"));
+    await startPublication(onPublish);
+    await screen.findByRole("dialog", { name: "Select locations to publish" });
+    expect(onPublish).toHaveBeenCalledOnce(); expect(toast.warning).not.toHaveBeenCalled();
+  });
+  it("never retries after unmount or duplicates a pending publish click", async () => {
+    let reject!: (error: unknown) => void;
+    const onPublish = vi.fn().mockReturnValue(new Promise((_resolve, fail) => { reject = fail; }));
+    const h = await startPublication(onPublish);
+    fireEvent.click(screen.getByRole("button", { name: /Publishing/ }));
+    h.unmount();
+    await act(async () => reject(staleError(warnPreview)));
+    expect(onPublish).toHaveBeenCalledOnce(); expect(toast.warning).not.toHaveBeenCalled();
+  });
+  it("cancels a pending automatic continuation even before the parent unmounts", async () => {
+    let reject!: (error: unknown) => void;
+    const onPublish = vi.fn().mockReturnValue(new Promise((_resolve, fail) => { reject = fail; }));
+    await startPublication(onPublish);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await act(async () => reject(staleError(warnPreview)));
+    expect(onPublish).toHaveBeenCalledOnce(); expect(toast.warning).not.toHaveBeenCalled();
+  });
+  it("returns to a shift with publication choices and restores them against a fresh preview", async () => {
+    const finding = publishFinding({ availability_state: "new", warning_policy: "confirm", tier: "risk" });
+    const next = { ...preview, status: "override_required" as const, findings: [finding] };
+    const choices: SchedulePublicationChoices = {
+      draftId: draft.id, locationIds: [location.id], departmentKeys: [department.id], notifyEmployeeIds: [], reasons: {},
+    };
+    const onReview = vi.fn().mockResolvedValue(undefined);
+    const onPreview = vi.fn().mockResolvedValue(next);
+    const onPublish = vi.fn().mockResolvedValue(undefined);
+    const props = { drafts: [draft], activeDraftId: draft.id, locations: [location, patioLocation], departments: [department, backDepartment], employees: [employee], onClose: vi.fn(), onPreview, onPublish, onReviewShift: onReview };
+    const first = render(<PublishScheduleDialog {...props} initialChoices={choices} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Show Alex Rivera's shift on 2026-08-17" }));
+    await waitFor(() => expect(onReview).toHaveBeenCalledExactlyOnceWith(finding, choices));
+    first.unmount();
+    onPreview.mockResolvedValue({ ...next, fingerprint: "c".repeat(64) });
+    render(<PublishScheduleDialog {...props} initialChoices={onReview.mock.calls[0]![1]} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm availability and continue" }));
+    expect(onPreview).toHaveBeenLastCalledWith(draft.id, [location.id], { departmentIds: [department.id], includeNoDepartment: false });
+    expect(await screen.findByText("0 of 1 selected")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Publish 1 location" }));
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
+    expect(onPublish.mock.calls[0]![2]).toEqual([]);
+    expect(onPublish.mock.calls[0]![3]).toMatchObject({ fingerprint: "c".repeat(64) });
+  });
+
+  it("keeps preflight open and retryable when the target draft cannot be opened", async () => {
+    const next = { ...preview, findings: [publishFinding({ availability_state: "new", warning_policy: "warn", tier: "note" })] };
+    const onReview = vi.fn().mockRejectedValue(new Error("The draft is locked by another manager."));
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={vi.fn()} onReviewShift={onReview} />);
+    await clickReadyNext();
+    fireEvent.click(await screen.findByRole("button", { name: "Show Alex Rivera's shift on 2026-08-17" }));
+    expect(await screen.findByText("The draft is locked by another manager.")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Pre-flight check" })).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Show Alex Rivera's shift on 2026-08-17" })).toHaveProperty("disabled", false));
+  });
+
+  it.each(["warn", "confirm"] as const)("publishes new weekly %s findings without a written reason", async (policy) => {
+    const finding = publishFinding({ availability_state: "new", warning_policy: policy, tier: policy === "warn" ? "note" : "risk" });
+    const next = { ...preview, status: policy === "warn" ? "publish_ready" as const : "override_required" as const, findings: [finding] };
+    const onPublish = vi.fn().mockResolvedValue({});
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={onPublish} />);
+    await clickReadyNext();
+    expect(await screen.findByText("New availability conflicts")).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Reason" })).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: policy === "warn" ? "Next" : "Confirm availability and continue" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
+    expect(onPublish.mock.calls[0]![1]).toEqual([{ finding_id: finding.id, reason: policy === "confirm" ? "Availability conflict confirmed by manager." : "Availability warning acknowledged (warn policy)." }]);
+  });
+
+  it("does not reconfirm or resubmit previously accepted weekly findings", async () => {
+    const next = { ...preview, findings: [publishFinding({ availability_state: "accepted", warning_policy: "confirm", tier: "note" })] };
+    const onPublish = vi.fn().mockResolvedValue({});
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={onPublish} />);
+    await clickReadyNext();
+    await clickReadyNext();
+    fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
+    expect(onPublish.mock.calls[0]![1]).toEqual([]);
+  });
+
+  it("returns to one fresh confirmation when publication discovers changed weekly conflicts", async () => {
+    const next = { ...preview, status: "override_required" as const, findings: [publishFinding({ availability_state: "new", warning_policy: "confirm", tier: "risk" })] };
+    const changed = { ...next, fingerprint: "b".repeat(64), findings: [{ ...next.findings[0]!, id: "changed-000001" }] };
+    const onPublish = vi.fn().mockRejectedValueOnce(new ScheduleRequestError("Review changed conflicts", 409, { status: "preflight", preflight: changed, preflight_block_reason: "stale_fingerprint" })).mockResolvedValue({});
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={onPublish} />);
+    await clickReadyNext();
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm availability and continue" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm availability and continue" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(2));
+    expect(onPublish.mock.calls[1]![3]).toMatchObject({ fingerprint: changed.fingerprint, decisions: [{ finding_id: "changed-000001" }] });
+  });
+
   it("publishes the explicitly active draft instead of the first saved draft", async () => {
     const activePreview = {
       ...preview,
@@ -554,6 +701,91 @@ describe("PublishScheduleDialog", () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText("1 conflicts must be fixed")).toBeTruthy();
+  });
+
+  it("opens document conflicts for review without clearing publish state", async () => {
+    const onPreview = vi.fn().mockResolvedValue(preview);
+    const onReviewDocumentConflict = vi.fn();
+    const documentConflict = {
+      employee_id: employee.id,
+      employee_name: employee.display_name,
+      shift_id: "77777777-7777-4777-8777-777777777777",
+      location_id: location.id,
+      location_name: location.name,
+      date: "2026-08-17",
+      start_time: "16:00",
+      end_time: "19:00",
+      document_type_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      requirement_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      document_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      document_title: "Food handler card",
+      expiry_date: "2026-08-01",
+      expiry_policy_version: 2,
+      pending_document_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      review_action: "review_document",
+      severity: "hard",
+      overrideable: false,
+      warning_text: "Food handler card is expired and blocks scheduling.",
+    } as const;
+    const onPublish = vi.fn().mockRejectedValue(
+      new ScheduleRequestError("schedule conflicts", 409, {
+        status: "schedule_conflicts",
+        schedule_conflicts: [documentConflict],
+      }),
+    );
+
+    const view = render(
+      <PublishScheduleDialog
+        drafts={[draft]}
+        locations={[location]}
+        employees={[employee]}
+        documentReviewVersion={0}
+        onClose={vi.fn()}
+        onPreview={onPreview}
+        onPublish={onPublish}
+        onReviewDocumentConflict={onReviewDocumentConflict}
+      />,
+    );
+
+    await clickReadyNext();
+    await waitFor(() =>
+      expect(screen.getAllByText("Ready to publish").length).toBeGreaterThan(0),
+    );
+    await clickReadyNext();
+    fireEvent.click(screen.getByRole("button", { name: "Publish 1 location" }));
+
+    expect(
+      await screen.findByText(
+        "Alex Rivera: 2026-08-17, Food handler card is expired and blocks scheduling.",
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Review document" }));
+
+    expect(onReviewDocumentConflict).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "document_expiry",
+        employee_id: employee.id,
+        requirement_id: documentConflict.requirement_id,
+      }),
+    );
+    expect(screen.getByText("1 conflicts must be fixed")).toBeTruthy();
+
+    view.rerender(
+      <PublishScheduleDialog
+        drafts={[draft]}
+        locations={[location]}
+        employees={[employee]}
+        documentReviewVersion={1}
+        onClose={vi.fn()}
+        onPreview={onPreview}
+        onPublish={onPublish}
+        onReviewDocumentConflict={onReviewDocumentConflict}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("1 conflicts must be fixed")).toBeNull(),
+    );
+    expect(onPreview).toHaveBeenLastCalledWith(draft.id, [location.id], {});
   });
 
   it("starts from the caller's scoped location selection", async () => {

@@ -1,8 +1,43 @@
 import type { ScheduleReadModel } from "@newfork/shared/schedule";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { loadShiftAvailability } from "../../availability/availability-data";
+import type { ShiftAvailabilityAssessment } from "@newfork/shared";
 
 import { ShiftQuickEditor } from "./ShiftQuickEditor";
+const toast = vi.hoisted(() => ({ warning: vi.fn(), error: vi.fn() }));
+vi.mock("@newfork/ui", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@newfork/ui")>(),
+  useToast: () => toast,
+}));
+vi.mock("../../availability/availability-data", () => ({
+  loadShiftAvailability: vi.fn(),
+}));
+const confirmedAvailability: ShiftAvailabilityAssessment = {
+  coverage: "full",
+  operation: "allowed",
+  time_basis: "explicit",
+  timezone: "America/Los_Angeles",
+  assessment_scope: "shift_interval",
+  intervals: [],
+  available_intervals: [],
+  unavailable_intervals: [],
+  unknown_intervals: [],
+  reasons: [],
+  fingerprint: "a".repeat(64),
+  policy_revision: 1,
+  fold_resolution: null,
+  assessment_minutes: 240,
+  can_override: true,
+};
+beforeEach(() => {
+  toast.warning.mockClear();
+  toast.error.mockClear();
+  vi
+    .mocked(loadShiftAvailability)
+    .mockReset()
+    .mockResolvedValue(confirmedAvailability);
+});
 
 const model: ScheduleReadModel = {
   workspace_id: "11111111-1111-4111-8111-111111111111",
@@ -80,7 +115,246 @@ function dispatchPointerEvent(
 }
 
 describe("ShiftQuickEditor", () => {
-  it("opens down-right from the pointer and moves by dragging the header", () => {
+  function renderAssigned(onSubmit = vi.fn().mockResolvedValue("saved")) {
+    render(
+      <ShiftQuickEditor
+        model={model}
+        state={{
+          mode: "create",
+          locationId: model.locations[0]!.id,
+          employeeId: model.employees[0]!.id,
+          date: model.week_start,
+        }}
+        timeFormat="12h"
+        formatTime={(v) => v}
+        addDays={(v) => v}
+        scheduleClosureCoversDate={() => false}
+        onClose={vi.fn()}
+        onReload={vi.fn()}
+        onDelete={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+    return onSubmit;
+  }
+  const weeklyWarning: ShiftAvailabilityAssessment = {
+    ...confirmedAvailability,
+    operation: "warning_requires_override",
+    warning_policy: "warn",
+    has_availability_conflict: true,
+    can_override: false,
+    reasons: [{ code: "availability", message: "Employee and manager hours conflict.", definite: true }],
+  };
+
+  it("saves a weekly warn conflict with one toast and no written reason", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue(weeklyWarning);
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
+    expect(toast.warning).toHaveBeenCalledExactlyOnceWith("This shift overlaps unavailable hours.");
+    expect(onSubmit.mock.calls[0]![0]).toMatchObject({ availability_assessment_fingerprint: weeklyWarning.fingerprint });
+    expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty("conflict_override_note");
+  });
+
+  it("confirms weekly availability without a reason or duplicate toast and rechecks before saving", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...weeklyWarning, warning_policy: "confirm" });
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    await screen.findByRole("dialog", { name: "Shift conflict" });
+    expect(screen.queryByLabelText("Override reason")).toBeNull();
+    expect(toast.warning).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Add anyway" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(loadShiftAvailability).toHaveBeenCalledTimes(2);
+    expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty("conflict_override_note");
+  });
+
+  it("asks again when the confirmed weekly conflict changed before save", async () => {
+    vi.mocked(loadShiftAvailability)
+      .mockResolvedValueOnce({ ...weeklyWarning, warning_policy: "confirm" })
+      .mockResolvedValue({ ...weeklyWarning, warning_policy: "confirm", fingerprint: "b".repeat(64) });
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add anyway" }));
+    await waitFor(() => expect(loadShiftAvailability).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add anyway" })).toHaveProperty("disabled", false));
+    expect(onSubmit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Add anyway" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]![0]).toMatchObject({ availability_assessment_fingerprint: "b".repeat(64) });
+  });
+
+  it.each(["override_recorded", "responsibility_retained"] as const)("does not repeat an accepted weekly warning (%s)", async (evidence) => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...weeklyWarning, warning_policy: "confirm", [evidence]: true });
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
+    expect(toast.warning).not.toHaveBeenCalled();
+  });
+
+  it.each(["blocked", "verification_required"] as const)("keeps weekly %s results blocking and hides the preference warning", async (operation) => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({
+      ...weeklyWarning, operation,
+      reasons: [...weeklyWarning.reasons, { code: "approved_time_off", message: "Approved time off must be resolved.", definite: true }],
+    });
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    const dialog = await screen.findByRole("dialog", { name: "Shift conflict" });
+    expect(dialog.textContent).toContain("Approved time off must be resolved.");
+    expect(dialog.textContent).not.toContain("Employee and manager hours conflict.");
+    expect(screen.queryByRole("button", { name: /anyway|Keep draft/ })).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(toast.warning).not.toHaveBeenCalled();
+  });
+
+  it("blocks server hard availability even when the cached employee looks unrestricted", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({
+      ...confirmedAvailability,
+      operation: "blocked",
+      coverage: "none",
+      reasons: [
+        {
+          code: "availability",
+          message: "The assignment overlaps unavailable hours.",
+          definite: true,
+        },
+      ],
+    });
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    expect(
+      (await screen.findByRole("dialog", { name: "Shift conflict" }))
+        .textContent,
+    ).toContain("overlaps unavailable hours");
+    expect(screen.queryByRole("button", { name: "Add anyway" })).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+  it("requires an explicit custom-work explanation and submits its current server review", async () => {
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByLabelText("This shift is independent custom work"));
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    expect(loadShiftAvailability).not.toHaveBeenCalled();
+    const reason = "Inventory training independent of dinner service.";
+    fireEvent.change(screen.getByLabelText("Custom work explanation"), { target: { value: reason } });
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability,
+      service_classification: { kind: "custom", status: "preview", reason },
+      service_classification_fingerprint: "b".repeat(64) });
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(loadShiftAvailability).toHaveBeenCalledWith(model.workspace_id, expect.objectContaining({ service_classification_note: reason }), undefined, undefined);
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ service_classification_note: reason, service_classification_fingerprint: "b".repeat(64) }), 1);
+    expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty("conflict_override_note");
+  });
+  it("does not retain a custom classification after shift edits or silently revive it when editing back", () => {
+    renderAssigned();
+    fireEvent.click(screen.getByLabelText("This shift is independent custom work"));
+    fireEvent.change(screen.getByLabelText("Custom work explanation"), { target: { value: "Inventory training independent of dinner service." } });
+    fireEvent.click(screen.getByLabelText("Show times on badge"));
+    expect(screen.getByLabelText("This shift is independent custom work")).toHaveProperty("checked", false);
+    fireEvent.click(screen.getByLabelText("Show times on badge"));
+    expect(screen.getByLabelText("This shift is independent custom work")).toHaveProperty("checked", false);
+    expect(screen.queryByLabelText("Custom work explanation")).toBeNull();
+  });
+  it("keeps physical hard conflicts blocked after a custom service preview", async () => {
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByLabelText("This shift is independent custom work"));
+    fireEvent.change(screen.getByLabelText("Custom work explanation"), { target: { value: "Inventory training independent of dinner service." } });
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability,
+      service_classification_fingerprint: "b".repeat(64), operation: "blocked",
+      reasons: [{ code: "approved_time_off", definite: true, message: "Approved leave overlaps this work." }] });
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    expect((await screen.findByRole("dialog", { name: "Shift conflict" })).textContent).toContain("Approved leave overlaps");
+    expect(screen.queryByRole("button", { name: "Add anyway" })).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+  it("does not submit custom work without a server classification fingerprint", async () => {
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByLabelText("This shift is independent custom work"));
+    fireEvent.change(screen.getByLabelText("Custom work explanation"), { target: { value: "Inventory training independent of dinner service." } });
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    await waitFor(() => expect(loadShiftAvailability).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText("Checking availability…")).toBeNull());
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+  it("keeps unknown capacity as an explicitly unresolved draft", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({
+      ...confirmedAvailability,
+      operation: "verification_required",
+      coverage: "unknown",
+      reasons: [
+        {
+          code: "availability_unknown",
+          message:
+            "Availability has not been confirmed for the entire assignment.",
+          definite: false,
+        },
+      ],
+    });
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Keep draft" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty(
+      "conflict_override_note",
+    );
+  });
+  it("requires another review when an override fingerprint changes during confirmation", async () => {
+    const soft = {
+      ...confirmedAvailability,
+      operation: "warning_requires_override" as const,
+      coverage: "none" as const,
+      reasons: [
+        {
+          code: "availability",
+          message: "The saved reference hours overlap unavailable hours.",
+          definite: true,
+        },
+      ],
+    };
+    vi.mocked(loadShiftAvailability)
+      .mockResolvedValueOnce(soft)
+      .mockResolvedValue({ ...soft, fingerprint: "b".repeat(64) });
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    fireEvent.change(await screen.findByLabelText("Override reason"), {
+      target: { value: "Employee confirmed this specific assignment." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add anyway" }));
+    await waitFor(() => expect(loadShiftAvailability).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Add anyway" })).toHaveProperty(
+        "disabled",
+        false,
+      ),
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Add anyway" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0]).toHaveProperty(
+      "availability_assessment_fingerprint",
+      "b".repeat(64),
+    );
+  });
+  it("does not submit an earlier value when the employee edits during the assessment", async () => {
+    let resolve!: (value: ShiftAvailabilityAssessment) => void;
+    vi.mocked(loadShiftAvailability).mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    fireEvent.click(screen.getByLabelText("Show times on badge"));
+    resolve(confirmedAvailability);
+    await waitFor(() =>
+      expect(screen.queryByText("Checking availability…")).toBeNull(),
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+  it("opens immediately to the right of the pointer and moves by dragging the header", () => {
     render(
       <ShiftQuickEditor
         model={model}
@@ -105,7 +379,7 @@ describe("ShiftQuickEditor", () => {
 
     const dialog = screen.getByRole("dialog", { name: "Add shift" });
     expect(dialog.style.left).toBe("34px");
-    expect(dialog.style.top).toBe("42px");
+    expect(dialog.style.top).toBe("32px");
 
     const header = dialog.querySelector("header");
     expect(header).not.toBeNull();
@@ -114,21 +388,21 @@ describe("ShiftQuickEditor", () => {
       pointerId: 1,
       button: 0,
       clientX: 34,
-      clientY: 42,
+      clientY: 32,
     });
     dispatchPointerEvent(header!, "pointermove", {
       pointerId: 1,
       clientX: 54,
-      clientY: 72,
+      clientY: 62,
     });
     dispatchPointerEvent(header!, "pointerup", {
       pointerId: 1,
       clientX: 54,
-      clientY: 72,
+      clientY: 62,
     });
 
     expect(dialog.style.left).toBe("54px");
-    expect(dialog.style.top).toBe("72px");
+    expect(dialog.style.top).toBe("62px");
   });
 
   it("uses a separate dismiss handler for blank clicks and Escape", () => {
@@ -294,7 +568,7 @@ describe("ShiftQuickEditor", () => {
     );
   });
 
-  it("submits fallback clock values when badge clock time is hidden", async () => {
+  it("preserves assessed clock values when badge clock time is hidden", async () => {
     const onSubmit = vi.fn().mockResolvedValue("saved" as const);
 
     render(
@@ -331,8 +605,8 @@ describe("ShiftQuickEditor", () => {
         employee_id: model.employees[0]!.id,
         job_id: model.jobs[0]!.id,
         shift_type_id: model.shift_types[0]!.id,
-        start_time: "00:00",
-        end_time: "00:01",
+        start_time: "16:00",
+        end_time: "22:00",
         hide_time_on_badge: true,
       }),
       1,
@@ -429,12 +703,18 @@ describe("ShiftQuickEditor", () => {
       color: "#f97316",
       sort_order: 0,
     };
+    const secondLabel = {
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      name: "Training",
+      color: "#2563eb",
+      sort_order: 1,
+    };
     const editorModel: ScheduleReadModel = {
       ...model,
       locations: [...model.locations, secondLocation],
       jobs: [...model.jobs, secondJob],
       shift_types: [...model.shift_types, secondShiftType],
-      shift_labels: [label],
+      shift_labels: [label, secondLabel],
       employees: [
         {
           ...model.employees[0]!,
@@ -485,8 +765,9 @@ describe("ShiftQuickEditor", () => {
     fireEvent.click(lunchShiftType);
     expect(lunchShiftType.getAttribute("aria-pressed")).toBe("true");
 
-    fireEvent.click(screen.getByRole("combobox", { name: "Label" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Labels" }));
     fireEvent.click(screen.getByRole("option", { name: "Opener" }));
+    fireEvent.click(screen.getByRole("option", { name: "Training" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
 
@@ -497,8 +778,8 @@ describe("ShiftQuickEditor", () => {
         employee_id: null,
         job_id: secondJob.id,
         shift_type_id: secondShiftType.id,
-        label_ids: [label.id],
-        label_names: [label.name],
+        label_ids: [label.id, secondLabel.id],
+        label_names: [label.name, secondLabel.name],
         start_time: "11:00",
         end_time: "15:00",
       }),
@@ -651,7 +932,7 @@ describe("ShiftQuickEditor", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("saves clock-off named shifts with fallback times when scheduling times are off", async () => {
+  it("saves an unresolved named draft without inventing a range", async () => {
     const onSubmit = vi.fn().mockResolvedValue("saved" as const);
     const clockOffShiftType = {
       ...model.shift_types[0]!,
@@ -692,29 +973,41 @@ describe("ShiftQuickEditor", () => {
     );
 
     expect(
-      (
-        screen.getByLabelText(
-          "Use these times for scheduling",
-        ) as HTMLInputElement
-      ).checked,
+      (screen.getByLabelText("Show times on badge") as HTMLInputElement)
+        .checked,
     ).toBe(false);
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain(
+      "Hours need confirmation",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        shift_type_id: clockOffShiftType.id,
-        start_time: "00:00",
-        end_time: "00:01",
-        hide_time_on_badge: true,
-      }),
-      1,
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          time_basis: "unresolved",
+          start_time: "",
+          end_time: "",
+          time_snapshot: null,
+        }),
+        1,
+      ),
     );
   });
 
-  it("opens a conflict sheet and lets availability-only warnings continue", async () => {
+  it("requires a real reason and rechecks the server fingerprint before a soft availability override", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({
+      ...confirmedAvailability,
+      operation: "warning_requires_override",
+      coverage: "none",
+      reasons: [
+        {
+          code: "availability",
+          message: "The saved reference hours overlap unavailable hours.",
+          definite: true,
+        },
+      ],
+    });
     const onSubmit = vi.fn().mockResolvedValue("saved" as const);
     const unavailableModel: ScheduleReadModel = {
       ...model,
@@ -753,20 +1046,38 @@ describe("ShiftQuickEditor", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Review conflict" }));
+    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
 
-    const conflictDialog = screen.getByRole("dialog", {
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+
+    const conflictDialog = await screen.findByRole("dialog", {
       name: "Shift conflict",
     });
     expect(conflictDialog.textContent).toContain(
-      "Alex Rivera is unavailable all day",
+      "The saved reference hours overlap unavailable hours.",
     );
+    expect(screen.getByRole("button", { name: "Add anyway" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    fireEvent.change(screen.getByLabelText("Override reason"), {
+      target: { value: "Employee confirmed availability for this exception." },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Add anyway" }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(loadShiftAvailability).toHaveBeenCalledTimes(2);
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        availability_assessment_fingerprint: "a".repeat(64),
+        conflict_override_note:
+          "Employee confirmed availability for this exception.",
+      }),
+      1,
+    );
   });
 
-  it("requires and submits an override reason for closed-day warnings", async () => {
+  it("continues closed-day warnings without a written override reason", async () => {
     const onSubmit = vi.fn().mockResolvedValue("saved" as const);
     const closedModel: ScheduleReadModel = {
       ...model,
@@ -808,26 +1119,23 @@ describe("ShiftQuickEditor", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Review conflict" }));
+    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
 
-    const conflictDialog = screen.getByRole("dialog", {
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+
+    const conflictDialog = await screen.findByRole("dialog", {
       name: "Shift conflict",
     });
     const addAnyway = screen.getByRole("button", { name: "Add anyway" });
     expect(conflictDialog.textContent).toContain("Location is closed");
-    expect(screen.getByLabelText("Override reason")).toBeTruthy();
-    expect(addAnyway).toHaveProperty("disabled", true);
-
-    fireEvent.change(screen.getByLabelText("Override reason"), {
-      target: { value: "  Manager approved private event coverage.  " },
-    });
+    expect(screen.queryByLabelText("Override reason")).toBeNull();
     expect(addAnyway).toHaveProperty("disabled", false);
     fireEvent.click(addAnyway);
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        conflict_override_note: "Manager approved private event coverage.",
+        conflict_override_note: "Manager acknowledged schedule warning.",
       }),
       1,
     );

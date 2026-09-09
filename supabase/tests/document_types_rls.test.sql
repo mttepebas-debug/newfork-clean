@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(27);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -32,89 +32,130 @@ select ok(public.workspace_has_permission('24000000-0000-4000-8000-000000000001'
 select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000003', true);
 select isnt(public.workspace_has_permission('24000000-0000-4000-8000-000000000001', 'documents.read'), true, 'manager has no document access by default');
 
-select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000001', true);
+set local role service_role;
 select lives_ok(
-  $$select public.save_document_type(
+  $$select public.save_document_type_service(
+    '14000000-0000-4000-8000-000000000001',
     '24000000-0000-4000-8000-000000000001', null, 'Food handler card', 'Current certification',
-    true, true, array['pdf', 'jpeg', 'png']::text[], true, 30
+    true, true, array['pdf', 'jpeg', 'png']::text[], true, 30, 'warn'
   )$$,
   'owner can create a required expiring document type'
 );
 select lives_ok(
-  $$select public.save_document_type(
+  $$select public.save_document_type_service(
+    '14000000-0000-4000-8000-000000000001',
     '24000000-0000-4000-8000-000000000001', null, 'Team handbook', 'Signed acknowledgement handled later',
     false, false, array['pdf']::text[], false, 30
   )$$,
   'owner can create an optional document type'
 );
-select is((select count(*)::integer from public.document_types), 2, 'document types are stored');
+set local role postgres;
+create temporary table document_type_ids (label text primary key, id uuid not null);
+insert into document_type_ids
+select title, id from public.document_types
+where title in ('Food handler card', 'Team handbook');
+grant select on document_type_ids to service_role;
+select is((select count(*)::integer from public.document_types where workspace_id = '24000000-0000-4000-8000-000000000001'), 2, 'document types are stored');
 select ok(
   (select required_at_onboarding and requires_review and tracks_expiry from public.document_types where title = 'Food handler card'),
   'workflow metadata is persisted'
 );
-select is((select count(*)::integer from public.audit_events where action = 'document_type.created'), 2, 'document creation is audited');
+select is(
+  (select expiry_schedule_impact::text from public.document_types where title = 'Food handler card'),
+  'warn',
+  'expiry schedule impact is persisted'
+);
+select is((select count(*)::integer from public.audit_events where action = 'document_type.created' and workspace_id = '24000000-0000-4000-8000-000000000001'), 2, 'document creation is audited');
+set local role service_role;
 select lives_ok(
-  $$select public.reorder_document_types(
+  $$select public.reorder_document_types_service(
+    '14000000-0000-4000-8000-000000000001',
     '24000000-0000-4000-8000-000000000001',
     array[
-      (select id from public.document_types where title = 'Team handbook'),
-      (select id from public.document_types where title = 'Food handler card')
+      (select id from document_type_ids where label = 'Team handbook'),
+      (select id from document_type_ids where label = 'Food handler card')
     ]::uuid[]
   )$$,
   'owner can reorder every active document type'
 );
-select is((select title from public.document_types order by sort_order limit 1), 'Team handbook', 'document order is persisted');
+set local role postgres;
+select is((select title from public.document_types where workspace_id = '24000000-0000-4000-8000-000000000001' order by sort_order limit 1), 'Team handbook', 'document order is persisted');
+set local role service_role;
 select throws_ok(
-  $$select public.save_document_type(
+  $$select public.save_document_type_service(
+    '14000000-0000-4000-8000-000000000001',
     '24000000-0000-4000-8000-000000000001', null, 'food HANDLER card', '',
     false, true, array['pdf']::text[], false, 30
   )$$,
   '23505', null, 'active document names are unique ignoring case'
 );
 select throws_ok(
-  $$select public.save_document_type(
+  $$select public.save_document_type_service(
+    '14000000-0000-4000-8000-000000000001',
     '24000000-0000-4000-8000-000000000001', null, 'Executable', '',
     false, false, array['exe']::text[], false, 30
   )$$,
   '22023', 'document formats contain unsupported values', 'unsupported formats are rejected'
 );
+select throws_ok(
+  $$select public.save_document_type_service(
+    '14000000-0000-4000-8000-000000000001',
+    '24000000-0000-4000-8000-000000000001', null, 'Optional blocker', '',
+    false, true, array['pdf']::text[], true, 30, 'block'
+  )$$,
+  '22023', 'only required documents can create hard schedule conflicts', 'optional documents cannot create hard schedule conflicts'
+);
 
-select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000002', true);
+set local role service_role;
 select lives_ok(
-  $$select public.save_document_type(
+  $$select public.save_document_type_service(
+    '14000000-0000-4000-8000-000000000002',
     '24000000-0000-4000-8000-000000000001',
-    (select id from public.document_types where title = 'Team handbook'),
+    (select id from document_type_ids where label = 'Team handbook'),
     'Team handbook', 'Current handbook upload', false, true, array['pdf']::text[], false, 30
   )$$,
   'admin can update a document type'
 );
+set local role postgres;
 select is((select description from public.document_types where title = 'Team handbook'), 'Current handbook upload', 'document update is persisted');
+set local role service_role;
 select lives_ok(
-  $$select public.set_document_type_archived(
+  $$select public.set_document_type_archived_service(
+    '14000000-0000-4000-8000-000000000002',
     '24000000-0000-4000-8000-000000000001',
-    (select id from public.document_types where title = 'Team handbook'), true
+    (select id from document_type_ids where label = 'Team handbook'), true
   )$$,
   'admin can archive a document type'
 );
+set local role postgres;
 select is((select count(*)::integer from public.audit_events where action = 'document_type.archived'), 1, 'document archive is audited');
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000003', true);
 select is((select count(*)::integer from public.document_types), 0, 'manager without permission cannot list document types');
+set local role service_role;
 select throws_ok(
-  $$select public.save_document_type(
+  $$select public.save_document_type_service(
+    '14000000-0000-4000-8000-000000000003',
     '24000000-0000-4000-8000-000000000001', null, 'Unauthorized', '',
     false, false, array['pdf']::text[], false, 30
   )$$,
   '42501', 'document management access required', 'manager cannot create a document type'
 );
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000002', true);
+set local role postgres;
 create temporary table document_role_state (role_id uuid primary key);
+grant all on table document_role_state to service_role, authenticated;
+set local role service_role;
 insert into document_role_state
-select public.save_workspace_role(
+select public.save_workspace_role_service(
+  '14000000-0000-4000-8000-000000000002',
   '24000000-0000-4000-8000-000000000001', null, 'Document coordinator', '', 'manager',
   array['workspace.read', 'documents.read', 'documents.manage']::text[]
 );
+set local role postgres;
 select is(
   (select count(*)::integer from public.workspace_role_permissions where role_id = (select role_id from document_role_state) and permission_key like 'documents.%'),
   2,
@@ -127,20 +168,26 @@ select lives_ok(
   'admin can assign the custom document role'
 );
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000003', true);
 select is((select count(*)::integer from public.document_types), 2, 'custom document role can read the catalog');
+set local role service_role;
 select lives_ok(
-  $$select public.save_document_type(
+  $$select public.save_document_type_service(
+    '14000000-0000-4000-8000-000000000003',
     '24000000-0000-4000-8000-000000000001', null, 'Profile photo', '',
     false, true, array['jpeg', 'png', 'webp']::text[], false, 30
   )$$,
   'custom document manager can create a type'
 );
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000004', true);
 select is((select count(*)::integer from public.document_types where workspace_id = '24000000-0000-4000-8000-000000000001'), 0, 'other tenant cannot read document types');
+set local role service_role;
 select throws_ok(
-  $$select public.save_document_type(
+  $$select public.save_document_type_service(
+    '14000000-0000-4000-8000-000000000004',
     '24000000-0000-4000-8000-000000000001', null, 'Cross tenant', '',
     false, false, array['pdf']::text[], false, 30
   )$$,

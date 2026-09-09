@@ -21,6 +21,19 @@ function employee(overrides: Partial<ScheduleEmployee> = {}): ScheduleEmployee {
 }
 
 describe("ScheduleEmployeeCard", () => {
+  it("shows the weekly summary and removes the indicator after restrictions clear", () => {
+    const projected = employee({ availability: [{ day: 1, mode: "unavailable", windows: [] }], weekly_availability: [{
+      location_id: "22222222-2222-4222-8222-222222222222", location_name: "West", timezone: "America/Los_Angeles", week_start: "2035-01-15",
+      status: "ready", unavailable_intervals: [], leave_intervals: [], clock_segments: [], days: [{ date: "2035-01-15", has_unavailable: true, all_day: true }],
+    }] });
+    const props = { editing: true, openShiftCount: 0, unassignedFrozen: false, unassignedLabelMode: "header" as const,
+      rowStyle: {}, anchorRef: createRef<HTMLDivElement>(), onOpenEmployeeCard: vi.fn() };
+    const h = render(<ScheduleEmployeeCard {...props} employee={projected} />);
+    expect(screen.getByLabelText("Weekly availability preferences").getAttribute("title")).toBe("West: 2035-01-15 all day");
+    h.rerender(<ScheduleEmployeeCard {...props} employee={{ ...projected, weekly_availability: [] }} />);
+    expect(screen.queryByLabelText("Weekly availability preferences")).toBeNull();
+    expect(screen.queryByLabelText(/Has .*availability rule/)).toBeNull();
+  });
   it("renders employee identity and opens the employee card from the name button", () => {
     const onOpenEmployeeCard = vi.fn();
     render(
@@ -47,6 +60,7 @@ describe("ScheduleEmployeeCard", () => {
     expect(row.style.getPropertyValue("--schedule-row-min-height")).toBe(
       "100px",
     );
+    expect(button.dataset.scheduleEmployeeCardTrigger).toBe("true");
 
     fireEvent.click(button);
 

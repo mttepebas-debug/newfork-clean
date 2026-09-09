@@ -65,6 +65,7 @@ export function ScheduleTotalsRow({
       <div
         className="schedule-total-week-cell"
         role="gridcell"
+        data-schedule-total-column-cell="true"
         data-schedule-total-hours-week-cell="true"
         data-schedule-grid-content-end="true"
         aria-label={`Week total hours ${formatHourTotalValue(weekTotal)}`}
@@ -80,6 +81,9 @@ export function ScheduleTotalValue({
 }: {
   readonly total: ScheduleHourTotalValue;
 }) {
+  if (total.containsEstimates || total.unknownShiftCount) {
+    return <span className="schedule-total-value" title="Includes reference estimates; shifts needing hours are excluded from the total.">{formatHourTotalValue(total)}</span>;
+  }
   if (total.totalMinutes !== total.visibleMinutes) {
     return (
       <span className="schedule-total-value" data-has-comparison="true">

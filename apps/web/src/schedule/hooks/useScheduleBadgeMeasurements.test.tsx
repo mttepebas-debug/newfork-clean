@@ -88,13 +88,15 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
     );
     expect(items).toHaveLength(2);
     expect(items[0]!.getAttribute("data-measure-label")).toBe(
-      "Dinner-Server Patio 4p-10p",
+      "Dinner-Server Patio 4:00 PM - 10:00 PM",
     );
     expect(items[0]!.getAttribute("data-job-color-dot")).toBe("true");
+    expect(items[0]!.getAttribute("data-has-markers")).toBe("false");
+    expect(items[0]!.getAttribute("data-has-stack")).toBe("false");
     expect(items[1]!.getAttribute("data-measure-label")).toBe("Dinner-Server");
     expect(
       Array.from(items[0]!.children).map((line) => line.textContent),
-    ).toEqual(["Dinner-Server", "Patio", "4p-10p"]);
+    ).toEqual(["Dinner-Server", "Patio", "4:00 PM - 10:00 PM"]);
   });
 
   it("includes displayed location names when unified badges show location context", () => {
@@ -120,7 +122,57 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       document
         .querySelector<HTMLElement>(".schedule-badge-width-measure")
         ?.getAttribute("data-measure-label"),
-    ).toBe("Dinner-Server Main Dining Patio 4p-10p");
+    ).toBe("Dinner-Server Main Dining Patio 4:00 PM - 10:00 PM");
+  });
+
+  it("reserves measured width for visible publication markers and unassigned stacks", () => {
+    const openShift = {
+      ...shift,
+      id: "open-1",
+      employee_id: null,
+      scheduled_date: "2026-08-17",
+      warning_codes: [],
+    } as ScheduleShift;
+    const liveShift = {
+      ...shift,
+      id: "live-1",
+      employee_id: "employee-1",
+      scheduled_date: "2026-08-17",
+      warning_codes: [],
+      source_published_shift_id: "published-1",
+    } as ScheduleShift;
+
+    render(
+      <>
+        {renderScheduleBadgeWidthMeasurer({
+          shifts: [openShift, { ...openShift, id: "open-2" }, liveShift],
+          jobs: [job],
+          shiftTypes: [shiftType],
+          locationGroups,
+          showShiftType: true,
+          showShiftLabels: true,
+          showClockTimes: true,
+          timeFormat: "12h",
+          showJobColorDot: true,
+          showLocationInBadge: false,
+          showShiftTypePresets: false,
+        })}
+      </>,
+    );
+
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(".schedule-badge-width-measure"),
+    );
+    expect(items.map((item) => item.dataset.hasStack)).toEqual([
+      "true",
+      "true",
+      "false",
+    ]);
+    expect(items.map((item) => item.dataset.hasMarkers)).toEqual([
+      "false",
+      "false",
+      "true",
+    ]);
   });
 
   it("does not render when there is nothing to measure", () => {
@@ -223,7 +275,7 @@ describe("row badge height measurement", () => {
     expect(measureRowBadgeStackHeight(root, "unassigned", 36)).toBe(126);
   });
 
-  it("includes synchronized badge heights, cell padding, and the add shift control", () => {
+  it("counts only the occupied action minimum while allowing its lane to stretch", () => {
     const root = document.createElement("div");
     const cell = document.createElement("div");
     cell.style.paddingTop = "6px";
@@ -244,17 +296,18 @@ describe("row badge height measurement", () => {
 
     const addShift = document.createElement("button");
     addShift.dataset.scheduleAddShiftControl = "true";
-    addShift.style.marginTop = "1px";
+    addShift.dataset.occupied = "true";
+    addShift.style.minHeight = "28px";
     Object.defineProperty(addShift, "scrollHeight", {
       configurable: true,
-      value: 22,
+      value: 220,
     });
-    addShift.getBoundingClientRect = () => ({ height: 22 }) as DOMRect;
+    addShift.getBoundingClientRect = () => ({ height: 220 }) as DOMRect;
 
     cell.append(makeBadge(42), makeBadge(58), addShift);
     root.append(cell);
 
-    expect(measureRowBadgeStackHeight(root, "unassigned", 36)).toBe(161);
+    expect(measureRowBadgeStackHeight(root, "unassigned", 36)).toBe(166);
   });
 
   it("keeps real and ghost badges in one zero-gap preview stack", () => {

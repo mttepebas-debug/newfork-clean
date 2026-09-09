@@ -68,6 +68,13 @@ export function buildScheduleShiftEditorInitialValue({
   const createPresetIsClockOff = Boolean(
     createPreset?.shiftTypeId && !createPresetHasDefaultTimes,
   );
+  const presetType = model.shift_types.find((type) => type.id === createPreset?.shiftTypeId);
+  const locationId = state.mode === "edit" ? state.shift.location_id : state.locationId;
+  const timezone = model.locations.find((location) => location.id === locationId)?.timezone ?? "UTC";
+  const presetStart = createPreset?.startTime ?? presetType?.default_start_time;
+  const presetEnd = createPreset?.endTime ?? presetType?.default_end_time;
+  const timeBasis = base ? base.time_basis ?? (base.hide_time_on_badge ? "legacy_unverified" : "explicit")
+    : createPreset ? (presetStart && presetEnd ? "type_default" : "unresolved") : "explicit";
 
   return {
     location_id:
@@ -84,15 +91,19 @@ export function buildScheduleShiftEditorInitialValue({
     start_time:
       base?.start_time ??
       createPreset?.startTime ??
-      model.shift_types[0]?.default_start_time ??
-      "09:00",
+      (createPreset ? presetType?.default_start_time ?? "" : model.shift_types[0]?.default_start_time ?? "09:00"),
     end_time:
       base?.end_time ??
       createPreset?.endTime ??
-      model.shift_types[0]?.default_end_time ??
-      "17:00",
+      (createPreset ? presetType?.default_end_time ?? "" : model.shift_types[0]?.default_end_time ?? "17:00"),
     unpaid_break_minutes: base?.unpaid_break_minutes ?? 30,
     hide_time_on_badge: base?.hide_time_on_badge ?? createPresetIsClockOff,
+    time_basis: timeBasis,
+    time_timezone: base?.time_timezone ?? timezone,
+    time_snapshot: base?.time_snapshot ?? (timeBasis === "type_default" && presetType && presetStart && presetEnd ? {
+      shift_type_id: presetType.id, default_revision: presetType.default_revision ?? 1,
+      start_time: presetStart, end_time: presetEnd, timezone,
+    } : null),
     label_ids: base?.label_ids ?? [],
     label_names: base?.label_names ?? [],
     note: base?.note ?? "",
@@ -105,13 +116,19 @@ export function applyScheduleShiftTypeDefaults({
   shiftTypeId,
   clockOffFallbackStartTime,
   clockOffFallbackEndTime,
+  preserveTimes = false,
 }: {
   readonly value: ScheduleShiftMutationInput;
   readonly shiftType: ScheduleReadModel["shift_types"][number] | undefined;
   readonly shiftTypeId: string | null;
   readonly clockOffFallbackStartTime: string;
   readonly clockOffFallbackEndTime: string;
+  readonly preserveTimes?: boolean;
 }): ScheduleShiftMutationInput {
+  if (!shiftTypeId && value.time_basis === "unresolved") {
+    return { ...value, shift_type_id: null, time_basis: "explicit", time_snapshot: null, hide_time_on_badge: false };
+  }
+  if (preserveTimes) return { ...value, shift_type_id: shiftTypeId };
   const hasDefaultTimes = Boolean(
     shiftType?.default_start_time && shiftType.default_end_time,
   );
@@ -122,6 +139,9 @@ export function applyScheduleShiftTypeDefaults({
       start_time: shiftType!.default_start_time!,
       end_time: shiftType!.default_end_time!,
       hide_time_on_badge: false,
+      time_basis: "type_default",
+      time_snapshot: { shift_type_id: shiftType!.id, default_revision: shiftType!.default_revision ?? 1,
+        start_time: shiftType!.default_start_time!, end_time: shiftType!.default_end_time!, timezone: value.time_timezone ?? "UTC" },
     };
   }
   if (shiftTypeId) {
@@ -131,6 +151,8 @@ export function applyScheduleShiftTypeDefaults({
       start_time: clockOffFallbackStartTime,
       end_time: clockOffFallbackEndTime,
       hide_time_on_badge: true,
+      time_basis: "unresolved",
+      time_snapshot: null,
     };
   }
   return { ...value, shift_type_id: null };

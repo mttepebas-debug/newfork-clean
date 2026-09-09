@@ -1,3 +1,4 @@
+export * from "./schedule-default-hours";
 export {
   scheduleAutoFillApplyResultSchema,
   scheduleAutoFillAssignmentSchema,
@@ -56,6 +57,8 @@ export {
   scheduleRequestMutationResultSchema,
   scheduleRequestsReadModelSchema,
   scheduleShiftMutationInputSchema,
+  shiftLabelInputSchema,
+  shiftLabelSchema,
   scheduleShiftLabelSchema,
   scheduleShiftSchema,
   scheduleTemplateApplyResultSchema,
@@ -130,6 +133,8 @@ export type {
   ScheduleRequestsReadModel,
   ScheduleShift,
   ScheduleShiftMutationInput,
+  ShiftLabel,
+  ShiftLabelInput,
   ScheduleShiftLabel,
   ScheduleTemplateApplyResult,
   ScheduleTemplateDetail,

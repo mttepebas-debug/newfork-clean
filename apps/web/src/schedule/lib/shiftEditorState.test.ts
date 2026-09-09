@@ -81,6 +81,23 @@ const editShift: ScheduleEditableShift = {
 };
 
 describe("shiftEditorState", () => {
+  it("retains historical reference evidence when only the type label changes", () => {
+    const value = buildScheduleShiftEditorInitialValue({ state: { mode: "edit", shift: editShift }, model });
+    const snapshot = { shift_type_id: model.shift_types[0]!.id, default_revision: 3,
+      start_time: "17:00", end_time: "23:00", timezone: "America/Los_Angeles" };
+    const result = applyScheduleShiftTypeDefaults({ value: { ...value, time_basis: "type_default", time_snapshot: snapshot },
+      shiftType: model.shift_types[1], shiftTypeId: model.shift_types[1]!.id, preserveTimes: true,
+      clockOffFallbackStartTime: "", clockOffFallbackEndTime: "" });
+    expect(result.time_snapshot).toEqual(snapshot);
+    expect(result.time_basis).toBe("type_default");
+    expect(result.start_time).toBe("17:00");
+  });
+  it("does not certify legacy hours merely by changing the type label", () => {
+    const value = buildScheduleShiftEditorInitialValue({ state: { mode: "edit", shift: { ...editShift, hide_time_on_badge: true } }, model });
+    const result = applyScheduleShiftTypeDefaults({ value, shiftType: model.shift_types[1], shiftTypeId: model.shift_types[1]!.id,
+      preserveTimes: true, clockOffFallbackStartTime: "", clockOffFallbackEndTime: "" });
+    expect(result.time_basis).toBe("legacy_unverified");
+  });
   it("builds edit initial values from the existing shift", () => {
     expect(
       buildScheduleShiftEditorInitialValue({
@@ -212,8 +229,8 @@ describe("shiftEditorState", () => {
         value,
         shiftType: model.shift_types[0],
         shiftTypeId: model.shift_types[0]!.id,
-        clockOffFallbackStartTime: "00:00",
-        clockOffFallbackEndTime: "00:01",
+        clockOffFallbackStartTime: "",
+        clockOffFallbackEndTime: "",
       }),
     ).toEqual(
       expect.objectContaining({
@@ -228,13 +245,13 @@ describe("shiftEditorState", () => {
         value,
         shiftType: model.shift_types[1],
         shiftTypeId: model.shift_types[1]!.id,
-        clockOffFallbackStartTime: "00:00",
-        clockOffFallbackEndTime: "00:01",
+        clockOffFallbackStartTime: "",
+        clockOffFallbackEndTime: "",
       }),
     ).toEqual(
       expect.objectContaining({
-        start_time: "00:00",
-        end_time: "00:01",
+        start_time: "",
+        end_time: "",
         hide_time_on_badge: true,
       }),
     );

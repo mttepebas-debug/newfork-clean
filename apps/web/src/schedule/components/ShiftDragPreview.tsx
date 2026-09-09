@@ -12,7 +12,7 @@ interface ShiftDragPreviewState {
   readonly pointerY: number;
   readonly previewWidth: number;
   readonly previewHeight: number;
-  readonly targetStatus: "allowed" | "blocked" | null;
+  readonly targetStatus: "allowed" | "warning" | "blocked" | null;
   readonly reason: string | null;
   readonly copy: boolean;
 }

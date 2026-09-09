@@ -21,10 +21,14 @@ import { Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
   loadEmployeeReferenceData,
-  prepareEmployeeInvitation,
   saveEmployee,
 } from "../employees/employee-data";
-import { saveOwnerOnboarding, supabaseClient } from "../lib/supabase";
+import {
+  queueOwnerOnboardingInvitationIntent,
+  resetOwnerOnboarding,
+  saveOwnerOnboarding,
+  supabaseClient,
+} from "../lib/supabase";
 import {
   listDepartments,
   listJobs,
@@ -32,10 +36,9 @@ import {
   saveDepartment,
   saveJob,
   saveLocation,
-  updateOrganizationName,
 } from "../settings/organization-data";
 
-type OwnerStep = 1 | 2 | 3;
+type OwnerStep = 1 | 2 | 3 | 4;
 
 const defaultLocation = {
   name: "",
@@ -60,18 +63,18 @@ const departmentColor = "#3C7A68";
 const jobColor = "#4478A8";
 
 export default function OwnerOnboardingPage() {
-  const { context, refresh } = useAuth();
+  const { account, context, refresh, updateAccount } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<OwnerStep>(
-    context?.onboarding.currentStep === 3
-      ? 3
-      : context?.onboarding.currentStep === 2
-        ? 2
-        : 1,
+    ownerStepFromContext(context?.onboarding.currentStep),
   );
   const [workspaceName, setWorkspaceName] = useState(
     context?.workspace.name ?? "",
   );
+  const [ownerFullName, setOwnerFullName] = useState(
+    account?.displayName ?? "",
+  );
+  const [ownerNameDirty, setOwnerNameDirty] = useState(false);
   const [locationDraft, setLocationDraft] = useState(defaultLocation);
   const [departmentName, setDepartmentName] = useState("");
   const [jobName, setJobName] = useState("");
@@ -82,11 +85,18 @@ export default function OwnerOnboardingPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const workspaceId = context?.workspace.id;
+  const ownerOnboardingRevision = context?.onboarding.revision ?? null;
+
+  useEffect(() => {
+    if (!account || ownerNameDirty) return;
+    setOwnerFullName(account.displayName);
+  }, [account, ownerNameDirty]);
 
   useEffect(() => {
     if (!workspaceId || !supabaseClient) return;
@@ -148,7 +158,40 @@ export default function OwnerOnboardingPage() {
     );
   };
 
-  const saveIdentityAndLocation = async (
+  const saveWorkspaceIdentity = async (
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
+    event.preventDefault();
+    if (!supabaseClient || !workspaceId || !account) return;
+    const trimmedOwnerFullName = ownerFullName.trim();
+    if (!trimmedOwnerFullName) return;
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await updateAccount(trimmedOwnerFullName, account.theme, account.phone);
+      setOwnerNameDirty(false);
+      await saveOwnerOnboarding(supabaseClient, {
+        workspaceId,
+        workspaceName,
+        nextStep: 2,
+        complete: false,
+        expectedRevision: ownerOnboardingRevision,
+      });
+      setStep(2);
+      await refresh();
+    } catch (saveError: unknown) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Workspace setup could not be saved",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const saveLocationStep = async (
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
@@ -157,24 +200,49 @@ export default function OwnerOnboardingPage() {
     setError(null);
     setSuccess(null);
     try {
-      await updateOrganizationName(workspaceId, workspaceName);
-      if (activeLocations.length === 0) {
-        await saveLocation(workspaceId, locationDraft);
-      }
+      await saveLocation(workspaceId, locationDraft);
       await saveOwnerOnboarding(supabaseClient, {
         workspaceId,
         workspaceName,
         nextStep: 2,
         complete: false,
+        expectedRevision: ownerOnboardingRevision,
       });
       await refreshOwnerReferences(workspaceId);
-      setStep(2);
+      setLocationDraft(defaultLocation);
+      setSuccess("Location added");
       await refresh();
     } catch (saveError: unknown) {
       setError(
         saveError instanceof Error
           ? saveError.message
           : "Location setup could not be saved",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const continueFromLocations = async (): Promise<void> => {
+    if (!supabaseClient || !workspaceId || activeLocations.length === 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await saveOwnerOnboarding(supabaseClient, {
+        workspaceId,
+        workspaceName,
+        nextStep: 3,
+        complete: false,
+        expectedRevision: ownerOnboardingRevision,
+      });
+      setStep(3);
+      setSuccess(null);
+      await refresh();
+    } catch (saveError: unknown) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Location setup could not be continued",
       );
     } finally {
       setSubmitting(false);
@@ -217,11 +285,12 @@ export default function OwnerOnboardingPage() {
         workspaceName,
         nextStep: 3,
         complete: false,
+        expectedRevision: ownerOnboardingRevision,
       });
       await refreshOwnerReferences(workspaceId);
       setDepartmentName("");
       setJobName("");
-      setStep(3);
+      setSuccess("Department and job added");
       await refresh();
     } catch (saveError: unknown) {
       setError(
@@ -234,11 +303,43 @@ export default function OwnerOnboardingPage() {
     }
   };
 
+  const continueFromStructure = async (): Promise<void> => {
+    if (
+      !supabaseClient ||
+      !workspaceId ||
+      activeDepartments.length === 0 ||
+      activeJobs.length === 0
+    )
+      return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await saveOwnerOnboarding(supabaseClient, {
+        workspaceId,
+        workspaceName,
+        nextStep: 4,
+        complete: false,
+        expectedRevision: ownerOnboardingRevision,
+      });
+      setStep(4);
+      setSuccess(null);
+      await refresh();
+    } catch (saveError: unknown) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Team structure setup could not be continued",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const saveTeamMember = async (
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
-    if (!workspaceId) return;
+    if (!supabaseClient || !workspaceId) return;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -258,14 +359,18 @@ export default function OwnerOnboardingPage() {
         expected_revision: null,
       });
       if (inviteAfterSave && employeeDraft.invitation_email.trim()) {
-        await prepareEmployeeInvitation(
+        await queueOwnerOnboardingInvitationIntent(supabaseClient, {
           workspaceId,
           employeeId,
-          employeeDraft.invitation_email.trim(),
-        );
+          email: employeeDraft.invitation_email.trim(),
+        });
       }
       setEmployeeDraft(defaultEmployee);
-      setSuccess("Team member added");
+      setSuccess(
+        inviteAfterSave && employeeDraft.invitation_email.trim()
+          ? "Team member added. Invite will be sent after setup finishes."
+          : "Team member added",
+      );
     } catch (saveError: unknown) {
       setError(
         saveError instanceof Error
@@ -279,14 +384,32 @@ export default function OwnerOnboardingPage() {
 
   const completeSetup = async (): Promise<void> => {
     if (!supabaseClient || !workspaceId) return;
+    if (employeeDraftHasInput(employeeDraft)) {
+      setStep(4);
+      setError("Add the employee draft or clear it before finishing setup");
+      return;
+    }
+    if (activeLocations.length === 0) {
+      setStep(2);
+      setError("Add at least one active location before finishing setup");
+      return;
+    }
+    if (activeDepartments.length === 0 || activeJobs.length === 0) {
+      setStep(3);
+      setError(
+        "Add at least one active department and job before finishing setup",
+      );
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
       await saveOwnerOnboarding(supabaseClient, {
         workspaceId,
         workspaceName,
-        nextStep: 3,
+        nextStep: 4,
         complete: true,
+        expectedRevision: ownerOnboardingRevision,
       });
       await refresh();
       navigate("/app/workspace", { replace: true });
@@ -301,21 +424,71 @@ export default function OwnerOnboardingPage() {
     }
   };
 
+  const startOver = async (): Promise<void> => {
+    if (!supabaseClient || !workspaceId) return;
+    if (
+      !window.confirm(
+        "Start over clears locations, departments, jobs and unsent team drafts from this setup. Continue?",
+      )
+    ) {
+      return;
+    }
+    setResetting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await resetOwnerOnboarding(supabaseClient, workspaceId);
+      setStep(1);
+      setLocationDraft(defaultLocation);
+      setDepartmentName("");
+      setJobName("");
+      setJobDepartmentId("");
+      setEmployeeDraft(defaultEmployee);
+      await refreshOwnerReferences(workspaceId);
+      await refresh();
+      setSuccess("Setup reset");
+    } catch (resetError: unknown) {
+      setError(
+        resetError instanceof Error
+          ? resetError.message
+          : "Setup could not be reset",
+      );
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
     <main className="onboarding-page">
       <header className="onboarding-header">
         <span className="onboarding-brand">
           <Building2 size={20} aria-hidden /> Newfork
         </span>
-        <span className="step-count">Step {step} of 3</span>
+        <div className="onboarding-header-actions">
+          <Button
+            className="secondary-button compact-button"
+            type="button"
+            disabled={submitting || resetting}
+            onClick={startOver}
+          >
+            {resetting ? "Resetting" : "Start over"}
+          </Button>
+          <span className="step-count">Step {step} of 4</span>
+        </div>
       </header>
       <div
         className="onboarding-progress"
-        aria-label={"Step " + step + " of 3"}
+        role="progressbar"
+        aria-label="Owner onboarding progress"
+        aria-valuemin={1}
+        aria-valuemax={4}
+        aria-valuenow={step}
+        aria-valuetext={"Step " + step + " of 4"}
       >
         <span className="complete" />
         <span className={step >= 2 ? "complete" : ""} />
         <span className={step >= 3 ? "complete" : ""} />
+        <span className={step >= 4 ? "complete" : ""} />
       </div>
 
       {loading ? (
@@ -330,13 +503,28 @@ export default function OwnerOnboardingPage() {
           aria-labelledby="workspace-identity-title"
         >
           <p className="eyebrow">Workspace and location</p>
-          <h1 id="workspace-identity-title">Set the operating foundation</h1>
+          <h1 id="workspace-identity-title">Name the organization</h1>
           <p className="muted">
-            This captures the organization name and first location used by
-            schedules, employee assignments, kiosk pairing, and time entries.
+            This creates the tenant identity used across the management shell,
+            billing, settings, employee records, and schedule surfaces.
           </p>
-          <form className="onboarding-form" onSubmit={saveIdentityAndLocation}>
+          <form className="onboarding-form" onSubmit={saveWorkspaceIdentity}>
             <div className="owner-onboarding-grid">
+              <label className="wide" htmlFor="owner-full-name">
+                Your full name
+                <input
+                  id="owner-full-name"
+                  value={ownerFullName}
+                  maxLength={100}
+                  onChange={(event) => {
+                    setOwnerFullName(event.target.value);
+                    setOwnerNameDirty(true);
+                  }}
+                  autoComplete="name"
+                  autoFocus
+                  required
+                />
+              </label>
               <label className="wide" htmlFor="workspace-name">
                 Workspace name
                 <input
@@ -344,22 +532,9 @@ export default function OwnerOnboardingPage() {
                   value={workspaceName}
                   maxLength={120}
                   onChange={(event) => setWorkspaceName(event.target.value)}
-                  autoFocus
                   required
                 />
               </label>
-              {activeLocations.length === 0 ? (
-                <LocationFields
-                  draft={locationDraft}
-                  onChange={setLocationDraft}
-                />
-              ) : (
-                <SummaryList
-                  icon={<MapPin size={18} aria-hidden />}
-                  title="Location ready"
-                  items={activeLocations.map((location) => location.name)}
-                />
-              )}
             </div>
             <Feedback error={error} success={success} />
             <div className="form-actions align-end">
@@ -368,8 +543,7 @@ export default function OwnerOnboardingPage() {
                 disabled={
                   submitting ||
                   workspaceName.trim().length === 0 ||
-                  (activeLocations.length === 0 &&
-                    !locationDraftIsComplete(locationDraft))
+                  ownerFullName.trim().length === 0
                 }
               >
                 Continue <ChevronRight size={16} aria-hidden />
@@ -380,6 +554,63 @@ export default function OwnerOnboardingPage() {
       ) : null}
 
       {!loading && step === 2 ? (
+        <section
+          className="onboarding-content"
+          aria-labelledby="locations-title"
+        >
+          <p className="eyebrow">Locations</p>
+          <h1 id="locations-title">Add at least one location</h1>
+          <p className="muted">
+            Locations define where schedules, employee assignments, kiosk
+            pairing, and manager scope are anchored.
+          </p>
+          <form className="onboarding-form" onSubmit={saveLocationStep}>
+            <div className="owner-onboarding-grid">
+              {activeLocations.length > 0 ? (
+                <SummaryList
+                  icon={<MapPin size={18} aria-hidden />}
+                  title="Locations"
+                  items={activeLocations.map((location) => location.name)}
+                />
+              ) : null}
+              <LocationFields
+                draft={locationDraft}
+                onChange={setLocationDraft}
+              />
+            </div>
+            <Feedback error={error} success={success} />
+            <div className="form-actions">
+              <Button
+                className="secondary-button"
+                type="button"
+                onClick={() => setStep(1)}
+              >
+                <ChevronLeft size={16} aria-hidden /> Back
+              </Button>
+              <div className="onboarding-action-group">
+                <Button
+                  className="secondary-button"
+                  type="submit"
+                  disabled={
+                    submitting || !locationDraftIsComplete(locationDraft)
+                  }
+                >
+                  <MapPin size={16} aria-hidden /> Add location
+                </Button>
+                <Button
+                  type="button"
+                  disabled={submitting || activeLocations.length === 0}
+                  onClick={continueFromLocations}
+                >
+                  Continue <ChevronRight size={16} aria-hidden />
+                </Button>
+              </div>
+            </div>
+          </form>
+        </section>
+      ) : null}
+
+      {!loading && step === 3 ? (
         <section
           className="onboarding-content"
           aria-labelledby="departments-jobs-title"
@@ -455,33 +686,47 @@ export default function OwnerOnboardingPage() {
               <Button
                 className="secondary-button"
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
               >
                 <ChevronLeft size={16} aria-hidden /> Back
               </Button>
-              <Button
-                type="submit"
-                disabled={
-                  submitting ||
-                  jobName.trim().length === 0 ||
-                  (activeDepartments.length === 0 &&
-                    departmentName.trim().length === 0)
-                }
-              >
-                Continue <ChevronRight size={16} aria-hidden />
-              </Button>
+              <div className="onboarding-action-group">
+                <Button
+                  className="secondary-button"
+                  type="submit"
+                  disabled={
+                    submitting ||
+                    jobName.trim().length === 0 ||
+                    (activeDepartments.length === 0 &&
+                      departmentName.trim().length === 0)
+                  }
+                >
+                  <BriefcaseBusiness size={16} aria-hidden /> Add job
+                </Button>
+                <Button
+                  type="button"
+                  disabled={
+                    submitting ||
+                    activeDepartments.length === 0 ||
+                    activeJobs.length === 0
+                  }
+                  onClick={continueFromStructure}
+                >
+                  Continue <ChevronRight size={16} aria-hidden />
+                </Button>
+              </div>
             </div>
           </form>
         </section>
       ) : null}
 
-      {!loading && step === 3 ? (
+      {!loading && step === 4 ? (
         <section className="onboarding-content" aria-labelledby="team-title">
           <p className="eyebrow">Team and invitations</p>
-          <h1 id="team-title">Add the first employee</h1>
+          <h1 id="team-title">Add your team</h1>
           <p className="muted">
-            Employee records carry location and job assignments into the
-            directory, self-onboarding, schedule visibility, and time tracking.
+            This step is optional. Create initial employee records now, or skip
+            it and continue from the Employees checklist after setup.
           </p>
           <form className="onboarding-form" onSubmit={saveTeamMember}>
             <div className="owner-onboarding-grid">
@@ -497,7 +742,7 @@ export default function OwnerOnboardingPage() {
               <Button
                 className="secondary-button"
                 type="button"
-                onClick={() => setStep(2)}
+                onClick={() => setStep(3)}
               >
                 <ChevronLeft size={16} aria-hidden /> Back
               </Button>
@@ -514,11 +759,23 @@ export default function OwnerOnboardingPage() {
                   <Users size={16} aria-hidden /> Add employee
                 </Button>
                 <Button
+                  className="secondary-button"
+                  type="button"
+                  disabled={submitting || !employeeDraftHasInput(employeeDraft)}
+                  onClick={() => {
+                    setEmployeeDraft(defaultEmployee);
+                    setSuccess("Employee draft cleared");
+                    setError(null);
+                  }}
+                >
+                  Clear draft
+                </Button>
+                <Button
                   type="button"
                   disabled={submitting}
                   onClick={completeSetup}
                 >
-                  {submitting ? "Finishing" : "Finish setup"}{" "}
+                  {submitting ? "Finishing" : "Skip and finish"}{" "}
                   <ChevronRight size={16} aria-hidden />
                 </Button>
               </div>
@@ -528,6 +785,26 @@ export default function OwnerOnboardingPage() {
       ) : null}
     </main>
   );
+}
+
+function ownerStepFromContext(currentStep: number | undefined): OwnerStep {
+  return currentStep === 4
+    ? 4
+    : currentStep === 3
+      ? 3
+      : currentStep === 2
+        ? 2
+        : 1;
+}
+
+function employeeDraftHasInput(draft: typeof defaultEmployee): boolean {
+  return [
+    draft.first_name,
+    draft.last_name,
+    draft.invitation_email,
+    draft.start_date,
+    draft.internal_note,
+  ].some((value) => value.trim().length > 0);
 }
 
 function LocationFields({
@@ -571,7 +848,6 @@ function LocationFields({
           onChange={(event) =>
             onChange({ ...draft, street_address: event.target.value })
           }
-          required
         />
       </label>
       <label htmlFor="location-city">
@@ -581,7 +857,6 @@ function LocationFields({
           value={draft.city}
           maxLength={100}
           onChange={(event) => onChange({ ...draft, city: event.target.value })}
-          required
         />
       </label>
       <label htmlFor="location-region">
@@ -593,7 +868,6 @@ function LocationFields({
           onChange={(event) =>
             onChange({ ...draft, region: event.target.value })
           }
-          required
         />
       </label>
       <label htmlFor="location-postal">
@@ -605,7 +879,6 @@ function LocationFields({
           onChange={(event) =>
             onChange({ ...draft, postal_code: event.target.value })
           }
-          required
         />
       </label>
       <label htmlFor="location-country">
@@ -664,17 +937,6 @@ function EmployeeFields({
           required
         />
       </label>
-      <label htmlFor="employee-preferred-name">
-        Preferred name
-        <input
-          id="employee-preferred-name"
-          value={draft.preferred_name}
-          maxLength={80}
-          onChange={(event) =>
-            onChange({ ...draft, preferred_name: event.target.value })
-          }
-        />
-      </label>
       <label htmlFor="employee-start-date">
         Start date
         <input
@@ -704,9 +966,14 @@ function EmployeeFields({
           onChange={(event) => onInviteChange(event.target.checked)}
         />
         <span>
-          <Send size={16} aria-hidden /> Send invite after employee save
+          <Send size={16} aria-hidden /> Send invite after setup finishes
         </span>
       </label>
+      {inviteAfterSave && draft.invitation_email.trim() ? (
+        <p className="muted wide">
+          Invite delivery waits until owner onboarding is completed.
+        </p>
+      ) : null}
     </>
   );
 }
@@ -749,15 +1016,9 @@ function Feedback({
 }
 
 function locationDraftIsComplete(draft: typeof defaultLocation): boolean {
-  return [
-    draft.name,
-    draft.street_address,
-    draft.city,
-    draft.region,
-    draft.postal_code,
-    draft.country_code,
-    draft.timezone,
-  ].every((value) => value.trim().length > 0);
+  return [draft.name, draft.country_code, draft.timezone].every(
+    (value) => value.trim().length > 0,
+  );
 }
 
 async function loadOwnerReferences(workspaceId: string): Promise<{

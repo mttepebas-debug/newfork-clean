@@ -1,7 +1,12 @@
 import { Button } from "@newfork/ui";
-import { Building2, ImagePlus, Save } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Building2, ImagePlus, ListChecks, Save } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
+import {
+  getOwnerSetupChecklistProgress,
+  setOwnerSetupChecklistClosed,
+} from "../communications/communications-data";
 import {
   ScheduleLogoUploadDialog,
   type ScheduleLogoSaveDraft,
@@ -11,6 +16,7 @@ import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
 
 export default function GeneralSettingsPage() {
   const { context, refresh } = useAuth();
+  const queryClient = useQueryClient();
   const [name, setName] = useState(context?.workspace.name ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,11 +24,28 @@ export default function GeneralSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [logoOpen, setLogoOpen] = useState(false);
   const [savingLogo, setSavingLogo] = useState(false);
+  const workspaceId = context?.workspace.id ?? "";
 
   useEffect(
     () => setName(context?.workspace.name ?? ""),
     [context?.workspace.name],
   );
+  const checklistQueryKey = ["owner-setup-checklist", workspaceId];
+  const checklistQuery = useQuery({
+    queryKey: checklistQueryKey,
+    queryFn: () => getOwnerSetupChecklistProgress(workspaceId),
+    enabled: Boolean(workspaceId),
+  });
+  const checklistMutation = useMutation({
+    mutationFn: (closed: boolean) =>
+      setOwnerSetupChecklistClosed(workspaceId, closed),
+    onSuccess: async (progress) => {
+      queryClient.setQueryData(checklistQueryKey, progress);
+      await queryClient.invalidateQueries({ queryKey: checklistQueryKey });
+    },
+  });
+  const checklistClosed = Boolean(checklistQuery.data?.closed_at);
+
   if (!context) return null;
 
   const submit = async (event: FormEvent): Promise<void> => {
@@ -130,6 +153,40 @@ export default function GeneralSettingsPage() {
           </Button>
         </div>
       </form>
+      <section
+        className="organization-form setup-checklist-settings"
+        aria-labelledby="setup-checklist-settings-title"
+      >
+        <div className="organization-form-row">
+          <div>
+            <label id="setup-checklist-settings-title">Setup checklist</label>
+            <p>
+              Controls whether the guided setup checklist appears on the
+              Workspace dashboard for this organization.
+            </p>
+          </div>
+          <div className="setup-checklist-settings-control">
+            <span>
+              {checklistClosed
+                ? "Hidden from Workspace"
+                : "Visible on Workspace"}
+            </span>
+            <Button
+              type="button"
+              disabled={checklistQuery.isLoading || checklistMutation.isPending}
+              onClick={() => checklistMutation.mutate(!checklistClosed)}
+            >
+              <ListChecks size={16} aria-hidden />
+              {checklistClosed ? "Show checklist" : "Hide checklist"}
+            </Button>
+          </div>
+        </div>
+        {checklistQuery.error || checklistMutation.error ? (
+          <p className="form-error" role="alert">
+            Setup checklist visibility could not be saved.
+          </p>
+        ) : null}
+      </section>
       <ScheduleLogoUploadDialog
         open={logoOpen}
         organizationName={context.workspace.name}
@@ -151,17 +208,19 @@ export function SettingsHeader({
   title,
   description,
   action,
+  titleId,
 }: {
-  readonly icon: React.ReactNode;
+  readonly icon?: React.ReactNode;
   readonly title: string;
   readonly description: string;
   readonly action?: React.ReactNode;
+  readonly titleId?: string;
 }) {
   return (
-    <header className="settings-page-header">
-      <div className="settings-heading-icon">{icon}</div>
+    <header className={`settings-page-header${icon ? "" : " no-icon"}`}>
+      {icon ? <div className="settings-heading-icon">{icon}</div> : null}
       <div>
-        <h1 id={`${title.toLowerCase().replaceAll(" ", "-")}-settings-title`}>
+        <h1 id={titleId ?? `${title.toLowerCase().replaceAll(" ", "-")}-settings-title`}>
           {title}
         </h1>
         <p>{description}</p>

@@ -6,7 +6,9 @@ import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Save } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { WeeklyPreferenceSettingsPanel } from "../availability/WeeklyPreferenceSettings";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
   loadSchedulingSettings,
@@ -19,6 +21,20 @@ const defaults: SchedulingSettingsInput = {
   conflict_policy: "warn",
   availability_enforcement: "soft",
   time_format: "12h",
+  availability_ownership: "hybrid",
+  availability_approval: "narrowing",
+  availability_initial_review: false,
+  availability_notice_days: 0,
+  minimum_travel_minutes: 0,
+};
+
+type SchedulingSettingsDraft = Omit<
+  SchedulingSettingsInput,
+  "week_start_day" | "time_format" | "minimum_travel_minutes"
+> & {
+  week_start_day: SchedulingSettingsInput["week_start_day"] | "";
+  time_format: SchedulingSettingsInput["time_format"] | "";
+  minimum_travel_minutes?: number | "";
 };
 
 const weekdays = [
@@ -33,34 +49,64 @@ const weekdays = [
 
 export default function SchedulingSettingsPage() {
   const { context } = useAuth();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
+  const checklistMode =
+    new URLSearchParams(location.search).get("checklist") === "setup";
   const queryKey = ["scheduling-settings", workspaceId];
   const query = useQuery({
     queryKey,
     queryFn: () => loadSchedulingSettings(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  const [draft, setDraft] = useState<SchedulingSettingsInput>(defaults);
+  const [draft, setDraft] = useState<SchedulingSettingsDraft>(
+    checklistMode ? checklistDraft(defaults) : defaults,
+  );
+  const [draftDirty, setDraftDirty] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (query.data) setDraft(schedulingSettingsInputSchema.parse(query.data));
-  }, [query.data]);
+    if (!query.data || draftDirty) return;
+    const parsed = schedulingSettingsInputSchema.parse(query.data);
+    setDraft(checklistMode ? checklistDraft(parsed) : parsed);
+    setValidationError(null);
+  }, [checklistMode, draftDirty, query.data]);
 
   const mutation = useMutation({
     mutationFn: (values: SchedulingSettingsInput) =>
       saveSchedulingSettings(workspaceId, values),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey });
+      setDraftDirty(false);
       setSaved(true);
     },
   });
 
+  const updateDraft = (patch: Partial<SchedulingSettingsDraft>): void => {
+    setDraft((current) => ({
+      ...current,
+      ...patch,
+    }));
+    setDraftDirty(true);
+    setSaved(false);
+  };
+
   const submit = (event: FormEvent): void => {
     event.preventDefault();
     setSaved(false);
-    mutation.mutate(schedulingSettingsInputSchema.parse(draft));
+    setValidationError(null);
+    if (checklistMode && (!draft.week_start_day || !draft.time_format)) {
+      setValidationError("Choose week start and time format before saving.");
+      return;
+    }
+    const parsed = schedulingSettingsInputSchema.safeParse(draft);
+    if (!parsed.success) {
+      setValidationError("Enter a whole number from 0 to 240 for minimum travel time.");
+      return;
+    }
+    mutation.mutate(parsed.data);
   };
 
   return (
@@ -95,10 +141,9 @@ export default function SchedulingSettingsPage() {
                 ["monday", "Monday"],
               ]}
               onChange={(value) =>
-                setDraft((current) => ({
-                  ...current,
+                updateDraft({
                   week_start_day: value as "sunday" | "monday",
-                }))
+                })
               }
             />
           </SettingsChoiceRow>
@@ -110,11 +155,10 @@ export default function SchedulingSettingsPage() {
               aria-label="Schedule publish deadline"
               value={draft.schedule_deadline_day}
               onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
+                updateDraft({
                   schedule_deadline_day: event.target
                     .value as SchedulingSettingsInput["schedule_deadline_day"],
-                }))
+                })
               }
             >
               {weekdays.map((day) => (
@@ -136,10 +180,9 @@ export default function SchedulingSettingsPage() {
                 ["24h", "24-hour"],
               ]}
               onChange={(value) =>
-                setDraft((current) => ({
-                  ...current,
+                updateDraft({
                   time_format: value as SchedulingSettingsInput["time_format"],
-                }))
+                })
               }
             />
           </SettingsChoiceRow>
@@ -155,35 +198,47 @@ export default function SchedulingSettingsPage() {
                 ["block", "Block"],
               ]}
               onChange={(value) =>
-                setDraft((current) => ({
-                  ...current,
+                updateDraft({
                   conflict_policy: value as "warn" | "block",
-                }))
+                })
               }
             />
           </SettingsChoiceRow>
           <SettingsChoiceRow
-            label="Availability conflicts"
-            description="Soft keeps manager discretion; hard prevents unavailable assignments."
+            label="Travel between locations"
+            description="Minimum time between work at different locations. Applies to Shift Hub cover and swap requests and Line Up staffing decisions."
           >
-            <SegmentedChoice
-              name="availability-policy"
-              value={draft.availability_enforcement}
-              options={[
-                ["soft", "Soft"],
-                ["hard", "Hard"],
-              ]}
-              onChange={(value) =>
-                setDraft((current) => ({
-                  ...current,
-                  availability_enforcement: value as "soft" | "hard",
-                }))
-              }
-            />
+            <div className="scheduling-travel-control">
+              <label htmlFor="minimum-travel">Minimum travel time (minutes)</label>
+              <input
+                id="minimum-travel"
+                type="number"
+                min={0}
+                max={240}
+                step={1}
+                required
+                aria-describedby="minimum-travel-help"
+                value={draft.minimum_travel_minutes ?? 0}
+                onChange={(event) => updateDraft({
+                  minimum_travel_minutes: event.target.value === "" ? "" : Number(event.target.value),
+                })}
+              />
+              <p id="minimum-travel-help">
+                {(draft.minimum_travel_minutes === "" || !Number.isInteger(draft.minimum_travel_minutes ?? 0) || (draft.minimum_travel_minutes ?? 0) < 0 || (draft.minimum_travel_minutes ?? 0) > 240) ? "Enter 0–240 minutes." : (draft.minimum_travel_minutes ?? 0) === 0
+                  ? "No minimum configured. Overlapping shifts are still blocked."
+                  : `For work ending at 3:00 PM, the next location can start at ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(Date.UTC(2026, 0, 1, 15, draft.minimum_travel_minutes)))} or later.`}
+              </p>
+              <p>Pending requests are checked again before approval. Completed changes stay in place.</p>
+            </div>
           </SettingsChoiceRow>
           {mutation.error ? (
             <p className="form-error" role="alert">
               {errorText(mutation.error)}
+            </p>
+          ) : null}
+          {validationError ? (
+            <p className="form-error" role="alert">
+              {validationError}
             </p>
           ) : null}
           {saved ? (
@@ -192,15 +247,28 @@ export default function SchedulingSettingsPage() {
             </p>
           ) : null}
           <div className="organization-form-actions">
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button
+              type="submit"
+              disabled={
+                mutation.isPending ||
+                (checklistMode && (!draft.week_start_day || !draft.time_format))
+              }
+            >
               <Save size={16} aria-hidden />
               {mutation.isPending ? "Saving" : "Save rules"}
             </Button>
           </div>
         </form>
       ) : null}
+      {workspaceId ? <WeeklyPreferenceSettingsPanel workspaceId={workspaceId} /> : null}
     </section>
   );
+}
+
+function checklistDraft(
+  values: SchedulingSettingsInput,
+): SchedulingSettingsDraft {
+  return { ...values, week_start_day: "", time_format: "" };
 }
 
 function SettingsChoiceRow({

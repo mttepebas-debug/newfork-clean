@@ -1,56 +1,74 @@
 import {
   employeeOnboardingProfileSchema,
-  type EmployeeAvailabilityInput,
   type EmployeeOnboarding,
   type EmployeeOnboardingProfile,
   type EmployeeOnboardingRequirement,
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
+  Building2,
   Check,
   CircleAlert,
   FileCheck2,
   FileUp,
   IdCard,
-  LockKeyhole,
+  LogOut,
   UserRound,
 } from "lucide-react";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
+import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
+import { useAuth } from "../auth/AuthContext";
+import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import {
   acknowledgeMyRequirement,
   getMyOnboarding,
-  saveMyAvailability,
   saveMyOnboardingProfile,
-  saveMySsn,
   submitMyOnboarding,
   uploadMyDocument,
 } from "./onboarding-data";
 
-const weekdays = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-] as const;
-
 export default function EmployeeOnboardingPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const navigateRequirement = (path: string) => navigate(path);
+  const queryClient = useQueryClient();
+  const { refresh, signOut } = useAuth();
   const onboarding = useQuery({
     queryKey: ["my-employee-onboarding"],
     queryFn: getMyOnboarding,
   });
 
+  const finalizeActivation = useCallback(async () => {
+    await clearTenantQueriesForOrganizationSwitch(queryClient);
+    await queryClient.cancelQueries({ queryKey: ["my-employee-onboarding"] });
+    queryClient.removeQueries({ queryKey: ["my-employee-onboarding"] });
+    await refresh();
+    navigate("/app/employee-hub", { replace: true });
+  }, [navigate, queryClient, refresh]);
+
   const continueAfterSave = async () => {
     const refreshed = await onboarding.refetch();
-    if (refreshed.data) navigate(refreshed.data.first_actionable_path);
+    if (refreshed.isError || !refreshed.data) return;
+    if (refreshed.data.case_status === "approved") {
+      await finalizeActivation();
+      return;
+    }
+    navigate(refreshed.data.first_actionable_path);
   };
+  useEffect(() => {
+    if (onboarding.data?.case_status !== "approved") return;
+    void finalizeActivation();
+  }, [finalizeActivation, onboarding.data?.case_status]);
 
   if (onboarding.isLoading)
     return (
@@ -73,7 +91,12 @@ export default function EmployeeOnboardingPage() {
 
   const model = onboarding.data;
   if (model.case_status === "approved")
-    return <Navigate to="/app/employee-hub" replace />;
+    return (
+      <main
+        className="employee-onboarding-loading"
+        aria-label="Activating workspace"
+      />
+    );
   const requirementId = location.pathname.split("/").at(-1) ?? "";
   const requirement = model.requirements.find(
     (item) => item.id === requirementId,
@@ -96,7 +119,7 @@ export default function EmployeeOnboardingPage() {
         </p>
         <nav aria-label="Onboarding requirements">
           {model.requirements
-            .filter((item) => item.required)
+            .filter((item) => item.required || item.kind === "availability")
             .map((item) => (
               <button
                 key={item.id}
@@ -104,21 +127,37 @@ export default function EmployeeOnboardingPage() {
                 className={
                   requirementPath(item) === location.pathname ? "active" : ""
                 }
-                onClick={() => navigate(requirementPath(item))}
+                onClick={() => navigateRequirement(requirementPath(item))}
               >
                 <RequirementIcon requirement={item} />
-                <span>{item.title}</span>
+                <span>
+                  {item.title}
+                  {!item.required ? " (optional)" : ""}
+                </span>
               </button>
             ))}
           <button
             type="button"
             className={location.pathname === "/welcome/review" ? "active" : ""}
-            onClick={() => navigate("/welcome/review")}
+            onClick={() => navigateRequirement("/welcome/review")}
           >
             <FileCheck2 size={17} aria-hidden />
             <span>Review</span>
           </button>
         </nav>
+        <div className="employee-onboarding-reset">
+          <button
+            type="button"
+            onClick={() => navigate("/organization-switcher")}
+          >
+            <Building2 size={16} aria-hidden />
+            <span>Switch organization</span>
+          </button>
+          <button type="button" onClick={() => void signOut()}>
+            <LogOut size={16} aria-hidden />
+            <span>Sign out</span>
+          </button>
+        </div>
       </aside>
       <section className="employee-onboarding-stage">
         {location.pathname === "/welcome" ? (
@@ -128,10 +167,12 @@ export default function EmployeeOnboardingPage() {
           />
         ) : location.pathname === "/welcome/profile" ? (
           <ProfileStep model={model} onSaved={continueAfterSave} />
-        ) : location.pathname === "/welcome/identity" ? (
-          <IdentityStep model={model} onSaved={continueAfterSave} />
         ) : location.pathname === "/welcome/availability" ? (
-          <AvailabilityStep model={model} onSaved={continueAfterSave} />
+          <AvailabilityStep
+            key={`${model.workspace_id}:${model.employee_id}`}
+            model={model}
+            onSaved={continueAfterSave}
+          />
         ) : location.pathname === "/welcome/review" ? (
           <ReviewStep model={model} onSaved={continueAfterSave} />
         ) : location.pathname.includes("/documents/") &&
@@ -192,12 +233,17 @@ function WelcomeStep({
 }
 
 function ProfileStep({ model, onSaved }: StepProps) {
+  const { account } = useAuth();
+  const accountPhone = account?.phone ?? "";
+  const accountEmail = account?.email ?? "";
+  const profileRequirement = model.requirements.find(
+    (item) => item.kind === "profile",
+  );
   const initial = useMemo<EmployeeOnboardingProfile>(
     () => ({
       legal_first_name: model.profile?.legal_first_name ?? "",
       legal_last_name: model.profile?.legal_last_name ?? "",
-      preferred_name: model.profile?.preferred_name ?? "",
-      phone: model.profile?.phone ?? "",
+      phone: accountPhone || model.profile?.phone || "",
       street_address: model.profile?.street_address ?? "",
       city: model.profile?.city ?? "",
       region: model.profile?.region ?? "",
@@ -205,23 +251,50 @@ function ProfileStep({ model, onSaved }: StepProps) {
       country_code: model.profile?.country_code ?? "US",
       date_of_birth: model.profile?.date_of_birth ?? "",
       emergency_contact_name: model.profile?.emergency_contact_name ?? "",
+      emergency_contact_relationship:
+        model.profile?.emergency_contact_relationship ?? "",
+      emergency_contact_email: model.profile?.emergency_contact_email ?? "",
       emergency_contact_phone: model.profile?.emergency_contact_phone ?? "",
       share_phone_with_teammates:
         model.profile?.share_phone_with_teammates ?? false,
       share_email_with_teammates:
         model.profile?.share_email_with_teammates ?? false,
     }),
-    [model.profile],
+    [accountPhone, model.profile],
   );
   const [profile, setProfile] = useState(initial);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const relationshipOptions = [
+    "Spouse/partner",
+    "Parent",
+    "Sibling",
+    "Child",
+    "Friend",
+  ] as const;
+  const [relationshipMode, setRelationshipMode] = useState(() =>
+    relationshipOptions.some(
+      (option) => option === initial.emergency_contact_relationship,
+    )
+      ? initial.emergency_contact_relationship
+      : initial.emergency_contact_relationship
+        ? "Other"
+        : "",
+  );
   const mutation = useMutation({
     mutationFn: () => saveMyOnboardingProfile(profile, model.revision),
     onSuccess: onSaved,
   });
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (employeeOnboardingProfileSchema.safeParse(profile).success)
-      mutation.mutate();
+    const parsed = employeeOnboardingProfileSchema.safeParse(profile);
+    if (!parsed.success) {
+      setValidationError(
+        parsed.error.issues[0]?.message ?? "Complete all required fields.",
+      );
+      return;
+    }
+    setValidationError(null);
+    mutation.mutate();
   };
   return (
     <form className="onboarding-step" onSubmit={submit}>
@@ -230,88 +303,161 @@ function ProfileStep({ model, onSaved }: StepProps) {
         title="Your private employee details"
         copy="These details are restricted to authorized employee records."
       />
-      <div className="onboarding-form-grid">
-        <TextField
-          label="Legal first name"
-          value={profile.legal_first_name}
-          onChange={(value) =>
-            setProfile({ ...profile, legal_first_name: value })
+      {profileRequirement?.status === "rejected" ? (
+        <Attention
+          text={
+            profileRequirement.rejection_reason ??
+            "Review requested changes before saving again."
           }
         />
-        <TextField
-          label="Legal last name"
-          value={profile.legal_last_name}
-          onChange={(value) =>
-            setProfile({ ...profile, legal_last_name: value })
-          }
-        />
-        <TextField
-          label="Preferred name"
-          value={profile.preferred_name}
-          onChange={(value) =>
-            setProfile({ ...profile, preferred_name: value })
-          }
-          required={false}
-        />
-        <TextField
-          label="Phone"
-          type="tel"
-          value={profile.phone}
-          onChange={(value) => setProfile({ ...profile, phone: value })}
-        />
-        <TextField
-          label="Date of birth"
-          type="date"
-          value={profile.date_of_birth}
-          onChange={(value) => setProfile({ ...profile, date_of_birth: value })}
-        />
-        <TextField
-          label="Street address"
-          value={profile.street_address}
-          onChange={(value) =>
-            setProfile({ ...profile, street_address: value })
-          }
-          wide
-        />
-        <TextField
-          label="City"
-          value={profile.city}
-          onChange={(value) => setProfile({ ...profile, city: value })}
-        />
-        <TextField
-          label="State or region"
-          value={profile.region}
-          onChange={(value) => setProfile({ ...profile, region: value })}
-        />
-        <TextField
-          label="Postal code"
-          value={profile.postal_code}
-          onChange={(value) => setProfile({ ...profile, postal_code: value })}
-        />
-        <TextField
-          label="Country code"
-          value={profile.country_code}
-          maxLength={2}
-          onChange={(value) =>
-            setProfile({ ...profile, country_code: value.toUpperCase() })
-          }
-        />
-        <TextField
-          label="Emergency contact"
-          value={profile.emergency_contact_name}
-          onChange={(value) =>
-            setProfile({ ...profile, emergency_contact_name: value })
-          }
-        />
-        <TextField
-          label="Emergency phone"
-          type="tel"
-          value={profile.emergency_contact_phone}
-          onChange={(value) =>
-            setProfile({ ...profile, emergency_contact_phone: value })
-          }
-        />
-      </div>
+      ) : null}
+      <section className="onboarding-profile-group">
+        <header>
+          <h2>Personal information</h2>
+          <p>Your verified account and private employee details.</p>
+        </header>
+        <div className="onboarding-form-grid">
+          <TextField
+            label="First name"
+            value={profile.legal_first_name}
+            onChange={(value) =>
+              setProfile({ ...profile, legal_first_name: value })
+            }
+          />
+          <TextField
+            label="Last name"
+            value={profile.legal_last_name}
+            onChange={(value) =>
+              setProfile({ ...profile, legal_last_name: value })
+            }
+          />
+          <TextField
+            label="E-mail"
+            type="email"
+            value={accountEmail}
+            onChange={() => undefined}
+            readOnly
+            wide
+            help="This is the verified e-mail for your Newfork account."
+          />
+          <TextField
+            label="Phone"
+            type="tel"
+            value={profile.phone}
+            onChange={(value) => setProfile({ ...profile, phone: value })}
+            readOnly={Boolean(accountPhone)}
+            help={
+              accountPhone
+                ? "Using the phone number saved on your account."
+                : undefined
+            }
+          />
+          <TextField
+            label="Date of birth"
+            type="date"
+            value={profile.date_of_birth}
+            onChange={(value) =>
+              setProfile({ ...profile, date_of_birth: value })
+            }
+            max={new Date().toISOString().slice(0, 10)}
+          />
+          <TextField
+            label="Street address"
+            value={profile.street_address}
+            onChange={(value) =>
+              setProfile({ ...profile, street_address: value })
+            }
+            wide
+          />
+          <TextField
+            label="City"
+            value={profile.city}
+            onChange={(value) => setProfile({ ...profile, city: value })}
+          />
+          <TextField
+            label="State"
+            value={profile.region}
+            onChange={(value) => setProfile({ ...profile, region: value })}
+            maxLength={100}
+          />
+          <TextField
+            label="ZIP code"
+            value={profile.postal_code}
+            onChange={(value) => setProfile({ ...profile, postal_code: value })}
+            maxLength={20}
+          />
+        </div>
+      </section>
+      <section className="onboarding-profile-group">
+        <header>
+          <h2>Emergency contact</h2>
+          <p>One person we can contact in an emergency.</p>
+        </header>
+        <div className="onboarding-form-grid">
+          <TextField
+            label="Emergency contact"
+            value={profile.emergency_contact_name}
+            onChange={(value) =>
+              setProfile({ ...profile, emergency_contact_name: value })
+            }
+          />
+          <label className="onboarding-field">
+            <span>Emergency relationship</span>
+            <select
+              value={relationshipMode}
+              required
+              onChange={(event) => {
+                const value = event.target.value;
+                setRelationshipMode(value);
+                setProfile({
+                  ...profile,
+                  emergency_contact_relationship:
+                    value === "Other" ? "" : value,
+                });
+              }}
+            >
+              <option value="" disabled>
+                Select relationship
+              </option>
+              {relationshipOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          {relationshipMode === "Other" ? (
+            <TextField
+              label="Other relationship"
+              value={profile.emergency_contact_relationship}
+              onChange={(value) =>
+                setProfile({
+                  ...profile,
+                  emergency_contact_relationship: value,
+                })
+              }
+            />
+          ) : null}
+          <TextField
+            label="Emergency phone"
+            type="tel"
+            value={profile.emergency_contact_phone}
+            onChange={(value) =>
+              setProfile({ ...profile, emergency_contact_phone: value })
+            }
+          />
+          <TextField
+            label="Emergency email"
+            type="email"
+            value={profile.emergency_contact_email}
+            onChange={(value) =>
+              setProfile({ ...profile, emergency_contact_email: value })
+            }
+            required={false}
+          />
+        </div>
+      </section>
       <fieldset className="onboarding-privacy-options">
         <legend>Team visibility</legend>
         <Toggle
@@ -329,53 +475,12 @@ function ProfileStep({ model, onSaved }: StepProps) {
           }
         />
       </fieldset>
+      {validationError ? (
+        <p className="form-error" role="alert">
+          {validationError}
+        </p>
+      ) : null}
       <MutationFooter mutation={mutation} />
-    </form>
-  );
-}
-
-function IdentityStep({ model, onSaved }: StepProps) {
-  const [ssn, setSsn] = useState("");
-  const mutation = useMutation({
-    mutationFn: () => saveMySsn(ssn.replace(/\D/g, ""), model.revision),
-    onSuccess: onSaved,
-  });
-  return (
-    <form
-      className="onboarding-step onboarding-identity"
-      onSubmit={(event) => {
-        event.preventDefault();
-        mutation.mutate();
-      }}
-    >
-      <StepHeading
-        eyebrow="Secure identity"
-        title={
-          model.ssn_status.present
-            ? `Identity saved ending in ${model.ssn_status.last_four}`
-            : "Enter your Social Security number"
-        }
-        copy="This value is encrypted when saved and cannot be displayed again."
-        icon={<LockKeyhole size={22} aria-hidden />}
-      />
-      <label className="onboarding-field onboarding-ssn-field">
-        <span>Social Security number</span>
-        <input
-          type="password"
-          inputMode="numeric"
-          autoComplete="off"
-          maxLength={11}
-          value={ssn}
-          onChange={(event) => setSsn(formatSsn(event.target.value))}
-          placeholder="000-00-0000"
-          required
-        />
-      </label>
-      <MutationFooter
-        mutation={mutation}
-        disabled={ssn.replace(/\D/g, "").length !== 9}
-        label={model.ssn_status.present ? "Replace securely" : "Save securely"}
-      />
     </form>
   );
 }
@@ -513,124 +618,33 @@ function AcknowledgementStep({
 }
 
 function AvailabilityStep({ model, onSaved }: StepProps) {
-  const initial = model.availability ?? defaultAvailability();
-  const [availability, setAvailability] =
-    useState<EmployeeAvailabilityInput>(initial);
-  const mutation = useMutation({
-    mutationFn: () => saveMyAvailability(availability, model.revision),
-    onSuccess: onSaved,
-  });
-  const updateDay = (
-    index: number,
-    mode: "unavailable" | "unrestricted" | "windows",
-  ) => {
-    const days = availability.days.map((day, dayIndex) =>
-      dayIndex === index
-        ? {
-            ...day,
-            mode,
-            windows:
-              mode === "windows"
-                ? day.windows.length
-                  ? day.windows
-                  : [{ start: "09:00", end: "17:00" }]
-                : [],
-          }
-        : day,
-    );
-    setAvailability({ ...availability, days });
-  };
+  const requirement = model.requirements.find(
+    (item) => item.kind === "availability",
+  );
+  const completed = requirement?.status === "completed";
   return (
-    <form
-      className="onboarding-step"
-      onSubmit={(event) => {
-        event.preventDefault();
-        mutation.mutate();
-      }}
-    >
+    <section className="onboarding-step onboarding-weekly-step">
       <StepHeading
         eyebrow="Availability"
-        title="Confirm your recurring week"
-        copy="Choose an explicit state for every day."
+        title="Your weekly availability"
+        copy=""
       />
-      <div className="availability-editor">
-        {availability.days.map((day, index) => (
-          <div className="availability-row" key={day.day}>
-            <strong>{weekdays[day.day]}</strong>
-            <select
-              aria-label={`${weekdays[day.day]} availability`}
-              value={day.mode}
-              onChange={(event) =>
-                updateDay(index, event.target.value as typeof day.mode)
-              }
-            >
-              <option value="unrestricted">Available anytime</option>
-              <option value="unavailable">Unavailable</option>
-              <option value="windows">Specific hours</option>
-            </select>
-            {day.mode === "windows" ? (
-              <div className="availability-times">
-                <input
-                  aria-label={`${weekdays[day.day]} start`}
-                  type="time"
-                  value={day.windows[0]?.start ?? "09:00"}
-                  onChange={(event) =>
-                    setAvailability({
-                      ...availability,
-                      days: availability.days.map(
-                        (candidate, candidateIndex) =>
-                          candidateIndex === index
-                            ? {
-                                ...candidate,
-                                windows: [
-                                  {
-                                    start: event.target.value,
-                                    end: candidate.windows[0]?.end ?? "17:00",
-                                  },
-                                ],
-                              }
-                            : candidate,
-                      ),
-                    })
-                  }
-                />
-                <span>to</span>
-                <input
-                  aria-label={`${weekdays[day.day]} end`}
-                  type="time"
-                  value={day.windows[0]?.end ?? "17:00"}
-                  onChange={(event) =>
-                    setAvailability({
-                      ...availability,
-                      days: availability.days.map(
-                        (candidate, candidateIndex) =>
-                          candidateIndex === index
-                            ? {
-                                ...candidate,
-                                windows: [
-                                  {
-                                    start:
-                                      candidate.windows[0]?.start ?? "09:00",
-                                    end: event.target.value,
-                                  },
-                                ],
-                              }
-                            : candidate,
-                      ),
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <span className="availability-explicit">
-                <Check size={15} aria-hidden /> Confirmed
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
-      <MutationFooter mutation={mutation} label="Confirm availability" />
-    </form>
+      <WeeklyPreferencesPanel
+        workspaceId={model.workspace_id}
+        employeeId={model.employee_id}
+        audience="employee"
+        onboarding
+        onSaved={() => void onSaved()}
+      />
+      {completed || requirement?.required === false ? (
+        <div className="onboarding-weekly-continue">
+          <Button type="button" onClick={() => void onSaved()}>
+            {completed ? "Continue" : "Skip for now"}{" "}
+            <ArrowRight size={17} aria-hidden />
+          </Button>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -639,6 +653,10 @@ function ReviewStep({ model, onSaved }: StepProps) {
     mutationFn: () => submitMyOnboarding(model.revision),
     onSuccess: onSaved,
   });
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    mutation.mutate();
+  };
   const ready = model.requirements
     .filter((item) => item.required)
     .every(
@@ -646,18 +664,22 @@ function ReviewStep({ model, onSaved }: StepProps) {
         item.status === "completed" || item.status === "awaiting_review",
     );
   return (
-    <div className="onboarding-step">
+    <form className="onboarding-step" onSubmit={submit}>
       <StepHeading
         eyebrow="Review"
         title={
           model.case_status === "submitted"
             ? "Submitted for manager review"
-            : "Review your onboarding"
+            : model.case_status === "changes_requested"
+              ? "Changes requested"
+              : "Review your onboarding"
         }
         copy={
           model.case_status === "submitted"
             ? "Your account remains pending until the review is complete."
-            : "Check each requirement before submitting."
+            : model.case_status === "changes_requested"
+              ? "Open the highlighted requirement, make the correction, and submit again."
+              : "Check each requirement before submitting."
         }
       />
       <div className="onboarding-review-list">
@@ -685,7 +707,7 @@ function ReviewStep({ model, onSaved }: StepProps) {
           label="Submit for review"
         />
       ) : null}
-    </div>
+    </form>
   );
 }
 
@@ -749,6 +771,9 @@ function TextField({
   required = true,
   wide = false,
   maxLength,
+  readOnly = false,
+  help,
+  max,
 }: {
   readonly label: string;
   readonly value: string;
@@ -757,6 +782,9 @@ function TextField({
   readonly required?: boolean;
   readonly wide?: boolean;
   readonly maxLength?: number;
+  readonly readOnly?: boolean;
+  readonly help?: string;
+  readonly max?: string;
 }) {
   return (
     <label className={`onboarding-field${wide ? " wide" : ""}`}>
@@ -766,8 +794,11 @@ function TextField({
         value={value}
         required={required}
         maxLength={maxLength}
+        max={max}
+        readOnly={readOnly}
         onChange={(event) => onChange(event.target.value)}
       />
+      {help ? <small>{help}</small> : null}
     </label>
   );
 }
@@ -823,30 +854,11 @@ function RequirementIcon({
 
 function requirementPath(requirement: EmployeeOnboardingRequirement): string {
   if (requirement.kind === "profile") return "/welcome/profile";
-  if (requirement.kind === "ssn") return "/welcome/identity";
+  if (requirement.kind === "ssn") return "/welcome/review";
   if (requirement.kind === "availability") return "/welcome/availability";
   if (requirement.kind === "document")
     return `/welcome/documents/${requirement.id}`;
   return `/welcome/acknowledgements/${requirement.id}`;
-}
-
-function defaultAvailability(): EmployeeAvailabilityInput {
-  return {
-    timezone:
-      Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Los_Angeles",
-    days: weekdays.map((_, day) => ({
-      day,
-      mode: "unrestricted" as const,
-      windows: [],
-    })),
-  };
-}
-
-function formatSsn(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 9);
-  return [digits.slice(0, 3), digits.slice(3, 5), digits.slice(5)]
-    .filter(Boolean)
-    .join("-");
 }
 
 function acceptValue(formats: readonly string[]): string {

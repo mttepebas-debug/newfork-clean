@@ -1,3 +1,4 @@
+import { lineupSectionPlanInputSchema } from "@newfork/shared";
 import {
   scheduleLineupEntryInputSchema,
   scheduleLineupEntryMoveInputSchema,
@@ -5,6 +6,11 @@ import {
 } from "@newfork/shared/schedule";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
+import {
+  lineupTargetSchema,
+  lineupOperationSchema,
+  lineupNoteInputSchema,
+} from "@newfork/shared";
 import type { WorkspaceContextResolver } from "../auth/workspace-context";
 import type { ScheduleLineupService } from "./schedule-lineup-service";
 
@@ -15,6 +21,7 @@ const sectionParams = params.extend({ sectionId: z.string().uuid() });
 const activeEntryParams = z.object({ entryId: z.string().uuid() });
 const activeBriefParams = z.object({ shiftTypeId: z.string().uuid() });
 const activeSectionParams = z.object({ sectionId: z.string().uuid() });
+const explicitWorkspaceHeaderSchema = z.string().uuid();
 const query = z.object({
   date: z.string().date(),
   location_ids: z.string().optional(),
@@ -43,6 +50,7 @@ const briefBody = z.object({
 const shareBody = z.object({
   date: z.string().date(),
   location_ids: z.array(z.string().uuid()).min(1),
+  shift_type_ids: z.array(z.string().uuid()).min(1).optional(),
 });
 const publishBody = shareBody.extend({ fingerprint: z.string().length(64) });
 
@@ -53,6 +61,256 @@ export function registerScheduleLineupRoutes(
     contextResolver: WorkspaceContextResolver | null;
   },
 ) {
+  const operationsQuery = z.object({
+    date: z.string().date(),
+    location_id: z.string().uuid(),
+  });
+  const candidateBody = z.object({
+    target: lineupTargetSchema,
+    source_entry_id: z.string().uuid().nullable(),
+  });
+  const operationBody = z.object({ operation: lineupOperationSchema });
+  const commitBody = operationBody.extend({
+    confirm_availability: z.boolean().optional(),
+    fingerprint: z.string().length(64),
+    idempotency_key: z.string().uuid(),
+  });
+  const noteBody = z.object({
+    note: lineupNoteInputSchema,
+    note_id: z.string().uuid().nullable(),
+    expected_revision: z.number().int().positive().nullable(),
+  });
+  const receiptBody = z.object({
+    snapshot_id: z.string().uuid(),
+    action: z.enum(["view", "acknowledge"]),
+  });
+  const publishedQuery = z.object({
+    from: z.string().date(),
+    to: z.string().date(),
+  });
+  const proposalBody = commitBody.extend({
+    kind: z.enum(["offer", "transfer"]),
+  });
+  const proposalAction = z.object({
+    id: z.string().uuid(),
+    response: z.enum(["confirm", "cancel", "preview"]),
+    confirm_availability: z.boolean().optional(),
+    target_entry_id: z.string().uuid().optional(),
+    fingerprint: z.string().length(64).optional(),
+  });
+  const offerResponse = z.object({
+    id: z.string().uuid(),
+    response: z.enum(["accept", "decline"]),
+    availability_fingerprint: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/)
+      .optional(),
+  });
+  const placementsBody = z.object({
+    date: z.string().date(),
+    location_id: z.string().uuid(),
+    entries: z
+      .array(
+        z.object({
+          id: z.string().uuid(),
+          expected_revision: z.number().int().positive().nullable(),
+          entry: scheduleLineupEntryInputSchema,
+        }),
+      )
+      .min(1)
+      .max(100),
+  });
+  for (const endpoint of [
+    {
+      method: "POST" as const,
+      path: "/placements/preview",
+      action: "placements_preview",
+      schema: placementsBody,
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "POST" as const,
+      path: "/placements",
+      action: "placements_apply",
+      schema: placementsBody.extend({
+        fingerprint: z.string().length(64),
+        idempotency_key: z.string().uuid(),
+      }),
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "GET" as const,
+      path: "/shared-export",
+      action: "shared_export",
+      schema: operationsQuery,
+      permission: "schedule.lineup.share",
+    },
+    {
+      method: "POST" as const,
+      path: "/section-plan",
+      action: "section_plan",
+      schema: lineupSectionPlanInputSchema,
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "POST" as const,
+      path: "/notifications/retry",
+      action: "retry_notifications",
+      schema: operationsQuery,
+      permission: "schedule.lineup.share",
+    },
+    {
+      method: "POST" as const,
+      path: "/notifications/remind",
+      action: "remind_unacknowledged",
+      schema: operationsQuery.extend({ snapshot_id: z.string().uuid() }),
+      permission: "schedule.lineup.share",
+    },
+    {
+      method: "GET" as const,
+      path: "/destinations",
+      action: "destinations",
+      schema: z.object({}),
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "GET" as const,
+      path: "/proposals",
+      action: "proposals",
+      schema: operationsQuery,
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "POST" as const,
+      path: "/proposals",
+      action: "propose",
+      schema: proposalBody,
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "POST" as const,
+      path: "/proposals/action",
+      action: "proposal_action",
+      schema: proposalAction,
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "GET" as const,
+      path: "/offers",
+      action: "offers",
+      schema: z.object({}),
+      permission: null,
+    },
+    {
+      method: "POST" as const,
+      path: "/offers/respond",
+      action: "respond",
+      schema: offerResponse,
+      permission: null,
+    },
+    {
+      method: "GET" as const,
+      path: "/operations",
+      action: "state",
+      schema: operationsQuery,
+      permission: "schedule.lineup.read",
+    },
+    {
+      method: "POST" as const,
+      path: "/candidates",
+      action: "candidates",
+      schema: candidateBody,
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "POST" as const,
+      path: "/operations/preview",
+      action: "preview",
+      schema: operationBody,
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "POST" as const,
+      path: "/operations",
+      action: "apply",
+      schema: commitBody,
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "POST" as const,
+      path: "/notes",
+      action: "note",
+      schema: noteBody,
+      permission: "schedule.lineup.manage",
+    },
+    {
+      method: "GET" as const,
+      path: "/published",
+      action: "published",
+      schema: publishedQuery,
+      permission: null,
+    },
+    {
+      method: "POST" as const,
+      path: "/receipt",
+      action: "receipt",
+      schema: receiptBody,
+      permission: null,
+    },
+  ] as const) {
+    app.route({
+      method: endpoint.method,
+      url: `/schedule/lineups${endpoint.path}`,
+      handler: async (request, reply) => {
+        const parsed = endpoint.schema.safeParse(
+          endpoint.method === "GET" ? request.query : request.body,
+        );
+        if (!parsed.success)
+          return reply
+            .status(400)
+            .send({ error: "Valid Line Up operation required" });
+        const token = request.headers.authorization
+          ?.match(/^Bearer\s+(.+)$/i)?.[1]
+          ?.trim();
+        const header = explicitWorkspaceHeaderSchema.safeParse(
+          request.headers["x-newfork-workspace-id"],
+        );
+        if (!token || !header.success || !options.contextResolver)
+          return reply
+            .status(403)
+            .send({ error: "Current workspace session required" });
+        const context = await options.contextResolver.resolve(
+          token,
+          header.data,
+        );
+        if (
+          !context ||
+          context.workspace.id !== header.data ||
+          context.membership.status !== "active" ||
+          (endpoint.permission &&
+            (context.membership.role === "employee" ||
+              !context.permissions.includes(endpoint.permission)))
+        )
+          return reply.status(403).send({ error: "Line Up access denied" });
+        if (!options.service?.operations)
+          return reply
+            .status(503)
+            .send({ error: "Line Up operations are not configured" });
+        try {
+          return reply.send(
+            await options.service.operations({
+              actorUserId: context.userId,
+              workspaceId: context.workspace.id,
+              action: endpoint.action,
+              payload: parsed.data,
+            }),
+          );
+        } catch (error) {
+          return lineupError(reply, error);
+        }
+      },
+    });
+  }
   app.get(
     "/v1/workspaces/:workspaceId/schedule/lineup",
     async (request, reply) => {
@@ -68,6 +326,8 @@ export function registerScheduleLineupRoutes(
         "schedule.lineup.read",
         options,
       );
+      if (context === "workspace_mismatch")
+        return reply.status(404).send({ error: "Workspace not found" });
       if (!context)
         return reply
           .status(403)
@@ -121,6 +381,8 @@ export function registerScheduleLineupRoutes(
         "schedule.lineup.manage",
         options,
       );
+      if (context === "workspace_mismatch")
+        return reply.status(404).send({ error: "Workspace not found" });
       if (!context)
         return reply
           .status(403)
@@ -172,6 +434,8 @@ export function registerScheduleLineupRoutes(
         "schedule.lineup.manage",
         options,
       );
+      if (context === "workspace_mismatch")
+        return reply.status(404).send({ error: "Workspace not found" });
       if (!context)
         return reply
           .status(403)
@@ -200,15 +464,15 @@ export function registerScheduleLineupRoutes(
       const p = params.safeParse(request.params),
         body = entryMoveBody.safeParse(request.body);
       if (!p.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid Line-up move required" });
+        return reply.status(400).send({ error: "Valid Line-up move required" });
       const context = await authorize(
         request.headers.authorization,
         p.data.workspaceId,
         "schedule.lineup.manage",
         options,
       );
+      if (context === "workspace_mismatch")
+        return reply.status(404).send({ error: "Workspace not found" });
       if (!context)
         return reply
           .status(403)
@@ -245,6 +509,8 @@ export function registerScheduleLineupRoutes(
         "schedule.lineup.manage",
         options,
       );
+      if (context === "workspace_mismatch")
+        return reply.status(404).send({ error: "Workspace not found" });
       if (!context)
         return reply
           .status(403)
@@ -283,11 +549,9 @@ export function registerScheduleLineupRoutes(
   app.get("/schedule/lineups", async (request, reply) => {
     const q = query.safeParse(request.query);
     if (!q.success)
-      return reply
-        .status(400)
-        .send({ error: "Valid Line-up query required" });
+      return reply.status(400).send({ error: "Valid Line-up query required" });
     const context = await authorizeActive(
-      request.headers.authorization,
+      request,
       "schedule.lineup.read",
       options,
     );
@@ -314,17 +578,14 @@ export function registerScheduleLineupRoutes(
   app.post("/schedule/lineups/sections", async (request, reply) =>
     saveActiveSection(request, reply, options, null),
   );
-  app.patch(
-    "/schedule/lineups/sections/:sectionId",
-    async (request, reply) => {
-      const p = activeSectionParams.safeParse(request.params);
-      if (!p.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid Line-up section required" });
-      return saveActiveSection(request, reply, options, p.data.sectionId);
-    },
-  );
+  app.patch("/schedule/lineups/sections/:sectionId", async (request, reply) => {
+    const p = activeSectionParams.safeParse(request.params);
+    if (!p.success)
+      return reply
+        .status(400)
+        .send({ error: "Valid Line-up section required" });
+    return saveActiveSection(request, reply, options, p.data.sectionId);
+  });
   app.delete(
     "/schedule/lineups/sections/:sectionId",
     async (request, reply) => {
@@ -335,7 +596,7 @@ export function registerScheduleLineupRoutes(
           .status(400)
           .send({ error: "Valid Line-up section revision required" });
       const context = await authorizeActive(
-        request.headers.authorization,
+        request,
         "schedule.lineup.manage",
         options,
       );
@@ -369,53 +630,52 @@ export function registerScheduleLineupRoutes(
       return reply.status(400).send({ error: "Valid Line-up entry required" });
     return saveActiveEntry(request, reply, options, p.data.entryId);
   });
-  app.delete(
-    "/schedule/lineups/entries/:entryId",
-    async (request, reply) => {
-      const p = activeEntryParams.safeParse(request.params),
-        body = deleteBody.safeParse(request.body);
-      if (!p.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid Line-up entry revision required" });
-      const context = await authorizeActive(
-        request.headers.authorization,
-        "schedule.lineup.manage",
-        options,
+  app.delete("/schedule/lineups/entries/:entryId", async (request, reply) => {
+    const p = activeEntryParams.safeParse(request.params),
+      body = deleteBody.safeParse(request.body);
+    if (!p.success || !body.success)
+      return reply
+        .status(400)
+        .send({ error: "Valid Line-up entry revision required" });
+    const context = await authorizeActive(
+      request,
+      "schedule.lineup.manage",
+      options,
+    );
+    if (!context)
+      return reply
+        .status(403)
+        .send({ error: "Line-up manage access required" });
+    if (!options.service)
+      return reply
+        .status(503)
+        .send({ error: "Line-up service is not configured" });
+    try {
+      return reply.send(
+        await options.service.deleteEntry({
+          actorUserId: context.userId,
+          workspaceId: context.workspace.id,
+          entryId: p.data.entryId,
+          expectedRevision: body.data.expected_revision,
+        }),
       );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Line-up manage access required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Line-up service is not configured" });
-      try {
-        return reply.send(
-          await options.service.deleteEntry({
-            actorUserId: context.userId,
-            workspaceId: context.workspace.id,
-            entryId: p.data.entryId,
-            expectedRevision: body.data.expected_revision,
-          }),
-        );
-      } catch (error) {
-        return lineupError(reply, error);
-      }
-    },
-  );
+    } catch (error) {
+      return lineupError(reply, error);
+    }
+  });
   app.post("/schedule/lineups/entries/move", async (request, reply) => {
     const body = entryMoveBody.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid Line-up move required" });
     const context = await authorizeActive(
-      request.headers.authorization,
+      request,
       "schedule.lineup.manage",
       options,
     );
     if (!context)
-      return reply.status(403).send({ error: "Line-up manage access required" });
+      return reply
+        .status(403)
+        .send({ error: "Line-up manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -438,12 +698,14 @@ export function registerScheduleLineupRoutes(
     if (!p.success || !body.success)
       return reply.status(400).send({ error: "Valid service brief required" });
     const context = await authorizeActive(
-      request.headers.authorization,
+      request,
       "schedule.lineup.manage",
       options,
     );
     if (!context)
-      return reply.status(403).send({ error: "Line-up manage access required" });
+      return reply
+        .status(403)
+        .send({ error: "Line-up manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -493,6 +755,8 @@ async function saveSection(
     "schedule.lineup.manage",
     options,
   );
+  if (context === "workspace_mismatch")
+    return reply.status(404).send({ error: "Workspace not found" });
   if (!context)
     return reply.status(403).send({ error: "Line-up manage access required" });
   if (!options.service)
@@ -533,6 +797,8 @@ async function saveEntry(
     "schedule.lineup.manage",
     options,
   );
+  if (context === "workspace_mismatch")
+    return reply.status(404).send({ error: "Workspace not found" });
   if (!context)
     return reply.status(403).send({ error: "Line-up manage access required" });
   if (!options.service)
@@ -569,7 +835,7 @@ async function saveActiveSection(
   if (!body.success)
     return reply.status(400).send({ error: "Valid Line-up section required" });
   const context = await authorizeActive(
-    request.headers.authorization,
+    request,
     "schedule.lineup.manage",
     options,
   );
@@ -607,7 +873,7 @@ async function saveActiveEntry(
   if (!body.success)
     return reply.status(400).send({ error: "Valid Line-up entry required" });
   const context = await authorizeActive(
-    request.headers.authorization,
+    request,
     "schedule.lineup.manage",
     options,
   );
@@ -649,7 +915,7 @@ async function shareActive(
       .status(400)
       .send({ error: "Valid Line-up share request required" });
   const context = await authorizeActive(
-    request.headers.authorization,
+    request,
     "schedule.lineup.share",
     options,
   );
@@ -665,6 +931,7 @@ async function shareActive(
       workspaceId: context.workspace.id,
       date: body.data.date,
       locationIds: body.data.location_ids,
+      shiftTypeIds: body.data.shift_type_ids,
     };
     return reply.send(
       publish
@@ -700,6 +967,8 @@ async function share(
     "schedule.lineup.share",
     options,
   );
+  if (context === "workspace_mismatch")
+    return reply.status(404).send({ error: "Workspace not found" });
   if (!context)
     return reply.status(403).send({ error: "Line-up share access required" });
   if (!options.service)
@@ -712,6 +981,7 @@ async function share(
       workspaceId: p.data.workspaceId,
       date: body.data.date,
       locationIds: body.data.location_ids,
+      shiftTypeIds: body.data.shift_type_ids,
     };
     return reply.send(
       publish
@@ -726,17 +996,25 @@ async function share(
   }
 }
 async function authorizeActive(
-  token: string | undefined,
+  source: FastifyRequest,
   permission:
     "schedule.lineup.read" | "schedule.lineup.manage" | "schedule.lineup.share",
   options: { contextResolver: WorkspaceContextResolver | null },
 ) {
-  const bearer = token?.startsWith("Bearer ") ? token.slice(7).trim() : "";
-  const context =
-    bearer && options.contextResolver
-      ? await options.contextResolver.resolve(bearer)
-      : null;
+  const workspaceId = explicitWorkspaceHeaderSchema.safeParse(
+    source.headers["x-newfork-workspace-id"],
+  );
+  const bearer = source.headers.authorization
+    ?.match(/^Bearer\s+(.+)$/i)?.[1]
+    ?.trim();
+  if (!workspaceId.success || !bearer || !options.contextResolver) return null;
+  const context = await options.contextResolver.resolve(
+    bearer,
+    workspaceId.data,
+  );
   return context &&
+    context.workspace.id === workspaceId.data &&
+    context.membership.status === "active" &&
     context.membership.role !== "employee" &&
     context.permissions.includes(permission)
     ? context
@@ -749,14 +1027,14 @@ async function authorize(
     "schedule.lineup.read" | "schedule.lineup.manage" | "schedule.lineup.share",
   options: { contextResolver: WorkspaceContextResolver | null },
 ) {
-  const bearer = token?.startsWith("Bearer ") ? token.slice(7).trim() : "";
+  const bearer = token?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
   const context =
     bearer && options.contextResolver
-      ? await options.contextResolver.resolve(bearer)
+      ? await options.contextResolver.resolve(bearer, workspaceId)
       : null;
-  return context &&
-    context.workspace.id === workspaceId &&
-    context.membership.role !== "employee" &&
+  if (!context || context.membership.status !== "active") return null;
+  if (context.workspace.id !== workspaceId) return "workspace_mismatch";
+  return context.membership.role !== "employee" &&
     context.permissions.includes(permission)
     ? context
     : null;

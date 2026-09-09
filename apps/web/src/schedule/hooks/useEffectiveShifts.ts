@@ -28,6 +28,9 @@ const SHIFT_PAYLOAD_KEYS = [
   "crosses_midnight",
   "unpaid_break_minutes",
   "hide_time_on_badge",
+  "time_basis",
+  "time_snapshot",
+  "time_timezone",
   "note",
 ] as const;
 
@@ -59,7 +62,8 @@ function syntheticCreatedShift(
     undefined,
   );
 
-  if (!jobId || !startTime || !endTime) return null;
+  const basis = payloadValue<ScheduleShift["time_basis"]>(payload, "time_basis", undefined);
+  if (!jobId || (basis !== "unresolved" && (!startTime || !endTime))) return null;
 
   return {
     id: `pending:${op.id}`,
@@ -68,9 +72,12 @@ function syntheticCreatedShift(
     job_id: jobId,
     shift_type_id: payloadValue<string | null>(payload, "shift_type_id", null),
     scheduled_date: scheduledDate,
-    start_time: startTime,
-    end_time: endTime,
-    crosses_midnight: payloadValue(payload, "crosses_midnight", false),
+    start_time: startTime ?? "",
+    end_time: endTime ?? "",
+    time_basis: basis,
+    time_snapshot: payloadValue<ScheduleShift["time_snapshot"]>(payload, "time_snapshot", null),
+    time_timezone: payloadValue<ScheduleShift["time_timezone"]>(payload, "time_timezone", null),
+    crosses_midnight: payloadValue(payload, "crosses_midnight", false) ?? false,
     unpaid_break_minutes: payloadValue(payload, "unpaid_break_minutes", 0),
     hide_time_on_badge: payloadValue(payload, "hide_time_on_badge", false),
     label_ids: payloadValue<string[]>(payload, "label_ids", []),
@@ -94,6 +101,9 @@ function applyUpdate(
     }
   }
   next.pending_op_id = op.id;
+  next.start_time ??= "";
+  next.end_time ??= "";
+  next.crosses_midnight ??= false;
   next.pending_op_type = op.op_type;
   return next as unknown as EffectiveScheduleShift;
 }
