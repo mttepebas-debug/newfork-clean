@@ -36,6 +36,8 @@ Uc handoff ilerleme/kanit kaynagidir; iclerindeki sonraki adim onerileri baglayi
 
 Her teslimat tek kabul kapisidir. Ana session once kabul kosulunu ve dosya/ortam sahipligini netlestirir, sonra implementasyonu mevcut `main` uzerinde yapar. Branch/worktree yalniz gercek ihtiyac varsa acilir ve ayni isin kapanisinda kapatilir. Kullanici acikca istemedikce yeni session, alt task veya paralel worktree acilmaz.
 
+ROADMAP sirasi ana omurgadir: 1, 2, 3 diye ilerlenir. BACKLOG maddeleri her an alinabilir, ancak varsayilan olarak sirayi bozmaz; yalniz ilgili kapinin icinde dogal olarak gerekiyorsa veya kullanici acikca "araya al" derse aktif ise cekilir.
+
 Zamanlama takvim tarihi degil, kapilara baglidir:
 
 | Faz | Pratik hedef |

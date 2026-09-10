@@ -67,6 +67,7 @@ OBS-003 kaynak session'i kod/plan durumunu hizli degerlendirdi; tum gap listesi 
 
 | Tarih | Is | Karar veya sonuc |
 |---|---|---|
+| 2026-09-10 | ROADMAP | Kullanici ROADMAP sirasi 1,2,3 diye ana omurga olarak izlenecek dedi. BACKLOG isleri her an alinabilir ama varsayilan olarak sirayi bozmaz; yalniz ilgili kapinin icinde gerekiyorsa veya kullanici acikca araya al derse aktif edilir. BL-048 icin erken acilan task okunabilir aktif task olarak bulunamadi; ana siradan cikarildi. |
 | 2026-09-10 | PLAN-001 | Kullanici uygulamayi gezerken ham halde cok sayida MVP oncesi is bildirdi; bunlar onem sirasina gore yeniden ayrildi. Buyuk kapilar ROADMAP'e, ayrintili takip maddeleri BACKLOG BL-034..BL-060'a yazildi. Kiosk/time tracking/break/compliance/payroll MVP sonrasina ertelendi; Billing/Stripe ve cok tenantli E2E MVP oncesi buyuk kapilar olarak kaydedildi. |
 | 2026-09-10 | OPS-002 | Kullanici bu uygulama icin ana session disinda session acilmamasini istedi. Planlama, raporlama ve log ana session'da kalacak. Branch/worktree acilirsa is bitince merge/sil/kapat yapilacak; acik kalirsa WORK'e engel olarak yazilacak. |
 | 2026-09-10 | BL-033 | Kullanici kalan eski kodun saklanmasini istemedi; 114 fark incelemesi iptal. Iki ZIP ve uretilmis karsilastirma dizininin silinmesi arac politikasi nedeniyle uygulanamadi. Silinmis gibi raporlanmadi; guncel uygulama ve Git gecmisi degismedi. |
