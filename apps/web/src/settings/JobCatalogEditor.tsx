@@ -128,13 +128,6 @@ export function JobCatalogEditor({
       initialEntity,
     );
   const rowsDirty = rowDrafts.length > 0;
-  const canSave =
-    !save.isPending &&
-    !deleteLocked &&
-    entityReady &&
-    rowsReady &&
-    (!existingDepartment || rowDrafts.length > 0) &&
-    (!editor.item || entityDirty || rowsDirty);
   function validateUnique(
     value: string,
     existing: (Job | Department)[],
@@ -212,6 +205,13 @@ export function JobCatalogEditor({
     },
     onError: (cause) => setError(errorText(cause)),
   });
+  const canSave =
+    !save.isPending &&
+    !deleteLocked &&
+    entityReady &&
+    rowsReady &&
+    (!existingDepartment || rowDrafts.length > 0) &&
+    (!editor.item || entityDirty || rowsDirty);
   function advance(index: number) {
     const row = rows[index];
     if (!row?.name.trim()) return;
