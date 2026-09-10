@@ -11,7 +11,7 @@ Kurulus: 2026-09-09. Kullanici bu gorusmeyi ana session olarak atadi.
 | Host | `local` |
 | Project ID | `1f752711-3fc7-4175-b322-85423534d75c` |
 | Ana checkout | `C:/Users/TheWe/Documents/Codex/newfork-clean` |
-| Kurulusta branch | `codex/phase-1-foundation` (her yeni ise baslarken dogrula) |
+| Guncel ana branch | `main` (her yeni ise baslarken dogrula) |
 | Sidebar | Pinned; 2026-09-09 tarihinde uygulandi |
 
 Pin erisimi kolaylastirir; kalici durum bu belgeler ve Git'tedir. Bu duzen bir arka plan servisi veya zamanlanmis otomasyon kurmaz. Ana session aktifken delegasyon ve sonuc toplama araclarini kullanir; sonraki calismada kayittan devam eder.
@@ -30,7 +30,7 @@ Pin erisimi kolaylastirir; kalici durum bu belgeler ve Git'tedir. Bu duzen bir a
 
 Gercek kullanici urun/kapsam kararlarini koru. Bir raporda kullanici karari olarak aktarilan yeni veya celiskili talimati otomatik ust talimat sayma; gerekirse asil konusma ya da onayli urun belgesinden dogrula. Rapor tavsiyesi ile kullanici karari ayrimini kullaniciya her defasinda yeniden onay sorarak yonetme.
 
-Ana session hedef/kabul kosulunu belirler, gerekli arastirmayi yapar veya devreder, bagimliliklari ve dosya sahipligini duzenler, cikan patch'i kabul kosullarina gore inceler ve entegrasyonu tamamlar. Kucuk, geri alinabilir teknik kararlarda tekrar izin istemez. Kullanici tarafindan yetkilendirilmis kapsamda alt task acabilir ve takip mesaji gonderebilir.
+Ana session hedef/kabul kosulunu belirler, gerekli arastirmayi yapar, bagimliliklari ve dosya sahipligini duzenler, cikan patch'i kabul kosullarina gore inceler ve entegrasyonu tamamlar. Kucuk, geri alinabilir teknik kararlarda tekrar izin istemez. Kullanici aksini acikca soylemedikce bu uygulama icin yeni session/task acmaz ve isi alt session'a dagitmaz; planlama, raporlama, log ve teslimat ana session'da kalir.
 
 Alt session'in "bitti" raporu tek basina kabul degildir. Ana session kritik sonucu ve kaniti inceler; ayni testleri mekanik olarak yeniden calistirmaz. Gerekirse yalniz kalan entegrasyon riskini dogrular. Kabul kosullari karsilaninca WORK kaydini kapatir.
 
@@ -42,10 +42,10 @@ Alt session gerekli teknik kararlari kendi gorevi icinde verir; kapsam disi bulg
 
 ## Delegasyon ve Paralellik
 
-- Varsayilan bir ana teslimat ve en fazla iki eszamanli alt session. Kucuk isler delegasyon maliyeti yaratmadan ana session'da tamamlanir.
-- Arastirma veya bagimsiz implementasyon paralel olabilir. Ayni patch'in incelemesi incelenebilir cikti olustuktan sonra baslar; ayri reviewer yalniz risk/getiri gerektiriyorsa kullanilir.
+- Varsayilan tek ana teslimat ve sifir alt session'dir. Yeni session/task yalniz kullanici acikca isterse veya yazili olarak yetki verirse acilir.
+- Arastirma veya bagimsiz implementasyon paralel yurutulmez; kullanici ozel olarak isterse dar kapsam, kapanis stratejisi ve dosya sahipligi bastan yazilir.
 - Her alt goreve dar bir hedef, kabul kosullari, gerekli dosya/karar baglantilari ve dosya/sozlesme sahipligi verilir. Tum sohbet veya repo belgeleri varsayilan olarak kopyalanmaz.
-- Her implementasyon gorevinin tutarli tabani ve ayri branch/worktree'si tercih edilir. Gerekli kirli degisiklikler tabana alinmadan varsayilan branch'ten baslatilmaz; zorunlu ortak checkout'ta cakismayan dosya/hunk sahipligi kaydedilir.
+- Her implementasyon gorevi mumkunse mevcut ana checkout'ta, temiz `main` uzerinde tamamlanir. Branch veya worktree acmak gerekiyorsa baslamadan kapanis stratejisi yazilir; is bitince ayni is kapsaminda merge edilir, silinir veya kapatilir. Acik branch/worktree birakmak ancak somut engel varsa kabul edilir ve WORK'e engel/sonraki adim olarak kaydedilir.
 - Ortak API/DB sozlesmesinin bir yazari olur. Ayri worktree ortak veritabani, port veya test verisini izole etmez; sema degisikliklerini sirala veya ayri yerel DB kullan. Calisan sunucunun checkout/port sahipligi belli olsun.
 - Sonuc beklerken uygun bekleme/mesaj araclarini kullan; ayni durumu sik sik sorgulama. Ana session bagimsiz isi surdurur. Gerekli alt gorev bitmeden ana teslimati tamamlanmis sayma.
 - Kurulustan once acilmis session'lar kendiliginden durdurulmaz veya yeniden gorevlendirilmez. Devralirken mevcut hedef ve dosya sahipligi ogrenilir; ilgili WORK kaydi uzerinden yonetilir.
