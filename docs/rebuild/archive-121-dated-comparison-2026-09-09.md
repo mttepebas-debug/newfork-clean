@@ -2,6 +2,22 @@
 
 Is kaydi: [WORK BL-031](../project/WORK.md). Karsilastirilan guncel commit: `56b5d8c`. Eski kaynak: korunmus 4dfb ZIP arsivi. Analiz tarihi: 2026-09-09, America/Los_Angeles. Kod/arsiv degistirilmedi.
 
+## Arsiv Guncellemesi: 10 Eylul
+
+Asagidaki analiz 9 Eylul aninin 121-farklik tarihsel kaydidir. Kullanici 10 Eylul'de ekrandaki yedi ornegin eski kaynak kopyalarinin silinmesini istedi. Yalniz asagidaki yedi ana dosyanin ZIP girdisi ile incelemede uretilen 7 diff, 7 `.other` ve 6 `.merge` eski-icerik kopyasi kaldirildi. Bu silme iliskili testleri veya ayni ozelligin tum servis/controller dosyalarini kapsamiyor. Guncel kaynaklar ve Git gecmisi degismedi; `.base`/`.main` karsilastirma tabanlari tarihsel referans olarak durur.
+
+- `apps/web/src/schedule/lib/shiftClipboard.ts`
+- `apps/web/src/schedule/lib/shiftEditorEligibility.ts`
+- `apps/web/src/settings/ImportantDatesSettingsPage.tsx`
+- `apps/web/src/lib/supabase.ts`
+- `apps/web/src/views/LineupPage.tsx`
+- `apps/api/src/schedule/schedule-export-cron.ts`
+- `apps/api/src/notifications/notification-outbox-worker.ts`
+
+**Guncel arsiv: 226 girdi = 114 farkli eski dosya + 112 ayni eski dosya.** Kalan 226 girdinin icerigi onceki ZIP ile SHA-256 bazinda birebir dogrulandi. Secilen yedi guncel kaynagin hash'i degismedi. Kaldirma manifesti ignored `artifacts/repo-checkpoint/archive-removals-20260910.json` icindedir. Eski 233/121 sayilari ve asagidaki yedi satirin tarihleri artik tarihsel kayittir, arsivde bulunma iddiasi degildir.
+
+Kalan farklar: Schedule 24; hesap/auth/workspace 16; settings 19; Line Up 5; bildirimler 16; calisan/onboarding 15; communications 8; ortak altyapi 11. Toplam 114, bunlarin 69'u kaynak/yapilandirma, 45'i testtir.
+
 ## Sonuc
 
 - 121 yolun **tamami guncel repoda var**. 121'i de arsivdeki icerikten farkli.
@@ -237,4 +253,3 @@ Yuksek: ortak schema, route ve ortam baglantilari. Ayrinti D kodlari yukaridaki 
 ## Kanit ve Sinir
 
 Arsiv ZIP'i degistirilmedi veya yeniden acilan bir worktree'ye tasinmadi. Makine envanteri ignored `artifacts/repo-checkpoint/4dfb-detail/dated-comparison.json` icindedir; tarih ve import analizi mevcut repo/arsivden uretildi. Onceki D01-D19 semantik tasnifinin degismemis dosyalar icin tekrar kullanildigi acikca belirtilmistir. Secilen kritik farklar tekrar kaynakta izlendi; test, DB, browser UAT veya provider smoke calistirilmadi. Typecheck'teki bilinen bes dosya BL-026'da ayri kalir. Bu rapor yeni bir release hazirligi veya tum davranislarin esdegerligi iddiasi degildir.
-
