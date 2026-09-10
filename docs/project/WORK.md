@@ -17,6 +17,7 @@ Bu dosya guncel durumun tek kaynagidir; teknik ayrintilar ilgili plan/patch'e ba
 | ID | Durum | Hedef ve kabul kosulu | Sorumlu / ortam | Son kanit | Sonraki adim |
 |---|---|---|---|---|---|
 | OPS-002 | done | Kullanici ana session'in bu uygulama icin tek yonetici kalmasini ve yeni session/task acilmamasini istedi. Kabul: koordinasyon ve branch/worktree kapanis kurali proje kayitlarina yazilir. | Ana session; `main`; 2026-09-10 | AGENTS ve COORDINATION guncellendi: planlama/raporlama/log ana session'da; branch/worktree acilirsa ayni is kapsaminda merge/sil/kapat zorunlu, engel varsa WORK'e kayit. | Kural bundan sonraki islerde uygulanir; kullanici acikca istemedikce yeni session/task acma. |
+| PLAN-001 | done | 2026-09-10 canli uygulama gezisinden gelen ham MVP isteklerini onem/kapilarina gore ayir; buyuk isleri ROADMAP'e, kucuk/polish/ertelenen isleri BACKLOG'a yaz. | Ana session; `main`; 2026-09-10 | ROADMAP 12 kapili MVP sirasina guncellendi. BACKLOG BL-034..BL-060 arasi landing, lifecycle, Schedule, Line Up, requests, notifications, settings, employee portal, E2E, billing ve post-MVP kiosk/time tracking kararlarini tasiyor. | Siradaki aktif aday halen BL-026 ortak teknik temel; implementasyona gecmeden once ilgili kapinin kabul kosulu WORK'e aktif is olarak alinacak. |
 | BL-033 | waiting | Son kullanici karari: eski worktree kodunu arsivde tutma, kalan eski kopyalari sil; mevcut uygulama ve Git gecmisi korunur. 114 fark icin daha fazla inceleme yapma. | Ana session; `codex/phase-1-foundation`; 2026-09-10 | Iki eski-worktree ZIP'i ve 560 dosyali `4dfb-detail` hedefi dogrulandi: workspace icinde, reparse point 0. Remove-Item komutu calistirilmadan arac politikasi tarafindan engellendi. Arsivler silinmedi; kaynak degismedi. | Ortam kisiti cozulmeli veya kullanici hedefleri elle kaldirmali. Engeli baska silme yontemiyle asma; eski kodu incelemeye devam etme. Ayrinti tarihli raporun en ustunde. |
 | BL-032 | done | Kullanici yalniz ekrandaki yedi ornegin eski dosyalarini arsivden silmemi istedi; guncel kaynak, iliskili diger kaynak/test veya 121'in tamami silinmez. | Ana session; `codex/phase-1-foundation`; 2026-09-10 | [Kesin liste ve kalanlar](../rebuild/archive-121-dated-comparison-2026-09-09.md): 7 ZIP girdisi ve bunlarin 20 eski diff/other/merge kopyasi kaldirildi. 226 kalan ZIP girdisi byte-dogrulandi; 7 guncel kaynak hash'i ayni. Arsiv artik 114 farkli + 112 ayni girdi. | Kalan 114 farkli dosyayi kullaniciyla mevcut tarih/davranis raporundan konus; yeniden genis tarama baslatma. Kaynak/test degisikligi yok. |
 | BL-031 | done | Kullanici arsivdeki 121 icerik farkini yeniden, ozellikle tarih ve guncel baglanti/urun davranisi acisindan karsilastirmami istedi. Kabul: 121 yolun varligi/tarihleri/baglantisi ve onemli eski-yeni davranis farklari acik; arsiv veya urun kodu degismez. | Ana session; `codex/phase-1-foundation`; karsilastirilan HEAD `56b5d8c` | [Tarihli 121 dosya karsilastirmasi](../rebuild/archive-121-dated-comparison-2026-09-09.md): 121 mevcut/farkli, onceki tasniften beri 0 degisim; 72 aktif/public kaynak bagimliligi, 45 test, 4 build/deploy/stil. Eski metadata 2-4 Eylul; guncel metadata 5-9 Eylul; ilk/son Git tarihleri dosya bazinda. Kritik diff'ler tekrar izlendi, D01-D19 tasnifi yeniden kullanildi. | Kanitlanmis eski davranis kurtarma adayi bulunmadi; bu runtime esdegerligi iddiasi degil. Kullanici somut davranis grubunu yeniden isterse yalniz o dilim ele alinir. Arsiv korunur; BL-026 ayri sonraki teknik is. |
@@ -66,6 +67,7 @@ OBS-003 kaynak session'i kod/plan durumunu hizli degerlendirdi; tum gap listesi 
 
 | Tarih | Is | Karar veya sonuc |
 |---|---|---|
+| 2026-09-10 | PLAN-001 | Kullanici uygulamayi gezerken ham halde cok sayida MVP oncesi is bildirdi; bunlar onem sirasina gore yeniden ayrildi. Buyuk kapilar ROADMAP'e, ayrintili takip maddeleri BACKLOG BL-034..BL-060'a yazildi. Kiosk/time tracking/break/compliance/payroll MVP sonrasina ertelendi; Billing/Stripe ve cok tenantli E2E MVP oncesi buyuk kapilar olarak kaydedildi. |
 | 2026-09-10 | OPS-002 | Kullanici bu uygulama icin ana session disinda session acilmamasini istedi. Planlama, raporlama ve log ana session'da kalacak. Branch/worktree acilirsa is bitince merge/sil/kapat yapilacak; acik kalirsa WORK'e engel olarak yazilacak. |
 | 2026-09-10 | BL-033 | Kullanici kalan eski kodun saklanmasini istemedi; 114 fark incelemesi iptal. Iki ZIP ve uretilmis karsilastirma dizininin silinmesi arac politikasi nedeniyle uygulanamadi. Silinmis gibi raporlanmadi; guncel uygulama ve Git gecmisi degismedi. |
 | 2026-09-10 | BL-032 | Kullanici 121'in tamamini degil, ekrandaki yedi ornegin eski kaynak dosyalarini secti. Yedi ana ZIP girdisi ve uretilmis eski-icerik kopyalari silindi; guncel uygulama korunuyor. Tarihsel 233/121 sayilari yerine guncel arsiv 226/114; 112 ayni girdi bu dar iste silinmedi. |
@@ -98,15 +100,16 @@ Ignored gecici kod ve kanit dosyalari silinmeden once `artifacts/repo-checkpoint
 
 Repo `main` uzerinde tek branch/tek worktree olarak temiz tabandadir. Yeni session/task acilmaz; ana session planlama, raporlama, log ve teslimati tek elde yonetir. Branch/worktree yalniz gercek ihtiyac varsa acilir ve ayni isin kapanisinda merge/sil/kapat yapilir.
 
-Siradaki aktif aday BL-026 web typecheck tabanidir. Kabul: bildirilen dar web typecheck hatalari cozulur veya kalan hatalarin siradaki employee/availability kabulunu engellemedigi kanitli bicimde kaydedilir. Tum pgTAP, hosted UAT veya genis repo audit bu isin parcasi degildir.
+Siradaki aktif aday BL-026 web typecheck tabanidir. Kabul: bildirilen dar web typecheck hatalari cozulur veya kalan hatalarin siradaki kimlik/access/roller ve Schedule kabul kapilarini engellemedigi kanitli bicimde kaydedilir. Tum pgTAP, hosted UAT veya genis repo audit bu isin parcasi degildir.
 
 BL-026 sonrasi sira:
 
-1. OBS-001 employee create/invite/access/onboarding profil kabul kapisi.
-2. OBS-002 availability -> manager -> Schedule/preflight ve otomatik bildirim kabul kapisi.
-3. OBS-003'ten dar onboarding v1 dilimi.
-4. BL-001 Account > Documents ve policy merkezi.
-5. M2-M5 icindeki kalan Schedule/Requests/Line Up/release kapilari.
+1. Kimlik/access/roller kapisi: OBS-001, BL-035, BL-051 ve ilgili Account/employee drawer invite yolu.
+2. Schedule temel kalite ve ayarlar: BL-036..BL-039, BL-049, BL-050.
+3. Requests, Shift Hub ve Line Up: BL-041, BL-040, BL-056, BL-057.
+4. Notifications/Announcements: BL-044..BL-046 ve OBS-002 bildirim bolumu.
+5. Availability -> Schedule kabul kapisi, sonra Onboarding/Documents/Acknowledgements.
+6. Landing, Billing/Stripe, cok tenantli E2E ve release hazirligi.
 
 BL-029 agent onerisi: `gpt-6-astra`, high; kopuk kod, eski WIP ve mevcut urun davranisinin ayrimi yuksek belirsizlik ve veri kaybi riski tasiyor. Otomatik model degisikligi yapilmadi.
 

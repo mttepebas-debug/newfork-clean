@@ -19,13 +19,18 @@ Uc handoff ilerleme/kanit kaynagidir; iclerindeki sonraki adim onerileri baglayi
 | Sira | Teslimat | Neden / bitis kosulu |
 |---|---|---|
 | 0 | Temiz taban ve yonetim disiplini | Tamamlandi: `main` tek ana branch, tek worktree, stash bos, local/remote esit. Yeni session acilmadan ana session yurutur; branch/worktree acilirsa ayni is kapanisinda merge/sil/kapat yapilir. |
-| 1 | Calisilabilir ortak temel | BL-026 web typecheck hatalarini dar kapsamda temizle. Kabul: hedeflenen typecheck PASS veya kalan hatalarin bu teslimati engellemedigi kanitli; genis pgTAP/repo audit acilmaz. |
-| 2 | Employee temel akisi kabul kapisi | OBS-001'i urun kabulune getir: employee create/invite/access/onboarding profil diliminin patch sahipligi ve gerekli manager browser akisi kapanir. Kabul: create, invite/retry, access state ve tenant-private profil davranisi mevcut UI/API'de dogrulanir. |
-| 3 | Availability -> Schedule kabul kapisi | OBS-002'yi kapat: employee preference save -> manager copy/toggle/save -> Schedule/preflight edit-grid donusu ve otomatik bildirim yolu. Kabul: elle inbox projeksiyonu olmadan gerekli bildirim/worker davranisi veya net ortam karari. |
-| 4 | Onboarding v1 urun dilimi | OBS-003'ten yalniz dar ilk dilim secilir: yedi-adim kabuk + profil/acil durum alanlari + gerekiyorsa draft/revision. Avatar upload/crop, Documents/Policies ve deadline motoru ayni teslimata katilmaz. |
-| 5 | Account > Documents ve policy merkezi | BL-001 zorunlu takip: employee belge merkezi, policy/agreement erisimi, inceleme gecmisi ve yenileme durumlari. Gecici onboarding Documents fallback'i nihai UX sayilmaz. |
-| 6 | Schedule/Requests/Line Up MVP kapanislari | M2-M4 icindeki gercek kalan acik kapilar secilerek kapatilir: Schedule publish/preflight, time off/request sonucu, shift exchange/Line Up sorumluluklari, bildirim ve hosted kanitlar. |
-| 7 | Release hazirligi | Temiz migration replay, hedef ortam smoke, provider smoke ve kullanici onayli deploy/release kaniti. Yerel PASS tek basina release hazirligi sayilmaz. |
+| 1 | Calisilabilir ortak temel | BL-026 web typecheck hatalarini dar kapsamda temizle. Kabul: hedeflenen typecheck PASS veya kalan hatalarin sonraki kabul kapilarini engellemedigi kanitli; genis pgTAP/repo audit acilmaz. |
+| 2 | Kimlik, access ve roller | OBS-001, BL-035, BL-051 ve BL-055'in kritik bolumleri birlikte ele alinir. Kabul: create/invite/access, rehire, custom role, account/workspace ve employee drawer invite yolu tutarli; organizasyondan cikarma global account'u banlamaz. |
+| 3 | Schedule temel kalite ve ayarlar | BL-036, BL-037, BL-038, BL-039, BL-049 ve BL-050. Kabul: Schedule performansi, export, templates, publish state, schedule rules ve shift type defaults MVP seviyesinde calisir ve anlasilir. |
+| 4 | Requests, Shift Hub ve Line Up | BL-041, BL-040, BL-056 ve BL-057. Kabul: employee shift/request yuzeyleri sade, tutarli ve manager onayi/Schedule etkisiyle dogrulanmis; Time Tracking/clock-in MVP disi gorunurluk temiz. |
+| 5 | Notifications ve Announcements | BL-044, BL-045, BL-046 ve OBS-002 bildirim bolumu. Kabul: announcement uretimi, notification center, settings notification modeli ve notification producer coverage dogrulanmis. |
+| 6 | Availability -> Schedule kabul kapisi | OBS-002'nin employee preference save -> manager copy/toggle/save -> Schedule/preflight edit-grid donusu kapanir. Kabul: availability davranisi Schedule kararlarini dogru etkiler; bildirim parcasi 5. kapidaki modelle uyumludur. |
+| 7 | Onboarding, Documents ve Acknowledgements | OBS-003, BL-001, BL-052 ve BL-053. Kabul: onboarding v1, kalici employee belge merkezi, conditional/review-required document kararlari ve acknowledgement'in tutulup tutulmayacagi netlesir. |
+| 8 | Admin settings ve operasyon polish | BL-043, BL-047, BL-048 ve BL-054. Kabul: Important Dates, Settings General/Location, Jobs/Departments crash, Support ve ilgili drawer polishleri MVP deneyimini bozmayacak seviyede kapanir. |
+| 9 | Landing/public giris | BL-034 landing page kapsam karari ve uygulanmasi. Kabul: public root, login/signup/onboarding yonlendirmesi ve ilk izlenim MVP icin yeterli. |
+| 10 | Billing/Stripe ticari kapisi | BL-059. Kabul: Stripe baglantisi, billing sayfasi, plan/limit/exclusive feature modeli, promo code, 14 gun trial ve paid gecis senaryolari MVP icin dogrulanir. |
+| 11 | Cok tenantli E2E kabul turu | BL-058. Kabul: 5 tenantli prova verisiyle onboarding, schedule, Line Up, notifications, employee actions, manager approvals, role change, access revoke ve invite akislari uc uca denenir. |
+| 12 | Release hazirligi | Temiz migration replay, hedef ortam smoke, provider smoke ve kullanici onayli deploy/release kaniti. Yerel PASS tek basina release hazirligi sayilmaz. |
 
 ## Yurutme Yapisi
 
@@ -36,9 +41,10 @@ Zamanlama takvim tarihi degil, kapilara baglidir:
 | Faz | Pratik hedef |
 |---|---|
 | Simdi | BL-026 ortak temel. Kucuk ve mekanik kalirsa ayni oturumda kapanir. |
-| Hemen sonra | OBS-001 employee kabul kapisi. Kod hazirsa odakli browser/API kanitiyle kapanir; gercek hata cikarsa sadece o hata duzeltilir. |
-| Sonraki | OBS-002 availability kabul kapisi. Bildirim/worker ortami asil belirleyici risk. |
-| Ardindan | OBS-003'ten ilk onboarding v1 dilimi ve BL-001 Account > Documents. |
+| Hemen sonra | Kimlik/access/roller kapisi: OBS-001, rehire bug, custom role ve Account/employee drawer invite yolu. |
+| Sonraki | Schedule temel kalite ve ayarlar: performans, export, templates, publish state, schedule rules ve shift catalog defaults. |
+| Ardindan | Requests/Line Up/employee Shift Hub ve Notifications/Announcements kapilari. |
+| MVP oncesi buyuk kapanis | Billing/Stripe ve cok tenantli E2E kabul turu. |
 
 Saglayici anahtar yenileme BL-027 ayri operasyonel takip olarak acik; provider smoke yapmadan once ele alinmali. Bu sira yeni somut bulgu veya kullanici urun onceligiyle degisebilir; kaynak session'in kendi planini tamamlama istegi tek basina sira degistirmez.
 
@@ -65,6 +71,8 @@ Saglayici anahtar yenileme BL-027 ayri operasyonel takip olarak acik; provider s
 Bir seferde tek ana teslimat kapatilir. Her asama, gerektiginde kucuk kabul edilebilir islere ayrilir; tum asamayi yeniden yazma veya tum testleri tekrar calistirma zorunlulugu yoktur. Her isin kaniti degisiklik riskine gore secilir.
 
 Account > Documents zorunlu ayri takip teslimidir (BL-001). Gecici onboarding Documents donusu nihai employee UX kabul edilmez. Time tracking/kiosk/payroll/billing icin mevcut ayri planlar ve eski backlog korunur; bu koordinasyon kurulumu bunlari yeni bir implementasyon yetkisi veya tamamlanma iddiasi haline getirmez.
+
+2026-09-10 kullanici kapsam karari: Kiosk, Time Tracking, clock-in/out, break, compliance ve payroll MVP sonrasina ertelenir. MVP oncesi yalniz bu yuzeylerin yanlis yerde gorunmesi veya kullaniciyi yanlis aksiyona goturmesi temizlenir. Billing/Stripe ise MVP oncesi ticari kapidir; bu erteleme billing'i kapsamaz.
 
 2026-09-09 kullanici kapsam karari: Time Entries MVP'ye kadar kapsam disidir. Mevcut sayfa/API kodu korunur; menu girisini yeniden eklemek bu MVP kapanisina dahil edilmez. Kapsam tekrar acildiginda BL-030 okunur. SSN toplama da kullanicinin bilincli karariyla kapsam disidir; eski KMS/SSN akisinin worktree'de bulunmasi onu geri getirme gerekcesi degildir.
 
