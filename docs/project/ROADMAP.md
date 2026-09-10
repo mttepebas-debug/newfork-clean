@@ -18,7 +18,7 @@ Uc handoff ilerleme/kanit kaynagidir; iclerindeki sonraki adim onerileri baglayi
 
 | Sira | Teslimat | Neden / bitis kosulu |
 |---|---|---|
-| 1 | BL-028: 4dfb davranis farki incelemesi | Kayip tamamlanmis ozellik ihtimalini gider. 121 farki feature bazinda siniflandir; somut kayip/karar adaylarini raporla. Kod silme veya otomatik merge yapma. |
+| 1 | BL-028/029: tasnif ve kaynak/worktree temizligi tamamlandi | Kullanici mevcut uygulama davranisini esas aldi. 34 aday karari ve 13 eski worktree temizligi kapandi; eski WIP yerel arsivde, aktif davranis degismedi. Kanit ve sinirlar WORK'te. |
 | 2 | Calisilabilir ortak temel | BL-026'nin bildirilen web derleme hatalarini dar kapsamda ele al; employee/browser kontrolleri icin gerekli rol ve ortam kullanilabilir olsun. Tum pgTAP/repo auditini burada acma. |
 | 3 | Mevcut implementasyonlari kabul et | Once OBS-001 employee create/invite/access sonuclarini gerekli manager browser kontroluyle kapat; ardindan OBS-002 employee availability -> manager -> Schedule sonucunu ve gerekli otomatik bildirim isleyisini tamamla. Hazir kaniti tekrar uretme; yalniz gercek kalan riskleri coz. |
 | 4 | Bir sonraki yeni urun dilimi | Onboarding yedi-adim kabugu ve ayrilmis profil/acil durum akisinin dar sozlesmesini belirle. Avatar/draft revision veya belge motorunu otomatik ayni teslimata katma. |
