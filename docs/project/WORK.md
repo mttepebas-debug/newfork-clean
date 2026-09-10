@@ -16,6 +16,7 @@ Bu dosya guncel durumun tek kaynagidir; teknik ayrintilar ilgili plan/patch'e ba
 
 | ID | Durum | Hedef ve kabul kosulu | Sorumlu / ortam | Son kanit | Sonraki adim |
 |---|---|---|---|---|---|
+| BL-029 | active | Kullanici tam temizlik istedi: 34 baglantisiz aday icin koru/sil/bagla karari, 4dfb tasnifinin kapanisi, korunmasi gereken WIP kaybi olmadan kullanilmayan worktree'lerin kaldirilmasi ve temiz checkpoint. | Ana session; `codex/phase-1-foundation`; baslangic `c830e03` | [Davranis ve tarih kaniti](../rebuild/source-cleanup-disposition-2026-09-09.md): 6 grafik yanlis pozitifi korunur; C02'nin 2 kaynak + 1 testi silindi. Kalan 26 kaynak adayi. Silme sonrasi runtime erisimi 326 dosyada ayni, kirik yerel import 0; runtime kodu degismedigi icin urun testleri tekrarlanmadi. Worktree'lere dokunulmadi. | C01 toplu taslak yayinlama ve C04 stale editor taslagi gorunurlugu niyetini netlestir; diger adaylarin mevcut karsiliklarini incele. Silmeden once worktree/arsiv/aktif sahipligi yeniden dogrula. |
 | GIT-001 | done | Kullanicinin birinci onceligi: ana checkout'taki ilerlemeyi tek checkpoint commit'iyle koru, diff'i temizle. Yeni kaynak kod silinmez; diger worktree/branch/stash'ler tasinmaz. | Ana session; `codex/phase-1-foundation`; bu kaydi iceren `chore: checkpoint current progress` commit'i | 892 dosyalik checkpoint; hedefli gizli-deger kontrolu, dosya/branch envanteri ve statik import incelemesi yapildi. Runtime env korunuyor; 638 yerel dosya ve 4dfb degisiklikleri arsivlendi; 22 yeniden uretilebilir cache temizlendi. Urun testleri tekrarlanmadi. | Urun kabul durumlari OBS-001/002/003'te acik; 4dfb farklari BL-028'de ayri incelenir. |
 | BL-028 | done | 4dfb'deki 121 farkli dosyayi feature/sozlesme bazinda karsilastir; kayip davranis ve urun karari gereken adaylari kanitla. Inceleme kod silmez veya birlestirmez. | Ana session; kaynak HEAD `fbdcaea`, ortak taban `415b15f`; 4dfb salt okunur | [Teknik tasnif](../rebuild/worktree-4dfb-disposition-2026-09-09.md): 32 farkin uc yonlu sonucu ana dosyayla ayni; 88 metinsel cakisma; 1 otomatik merge cift fonksiyon ekliyor. D01/D05/D15 kullanici yanitlariyla kapandi; geri tasinmasi kanitlanmis ozellik yok. | Tasnif teslimi kapandi; worktree korunur. Tam runtime esdegerligi veya silme onayi degil. Siradaki dar teslim BL-026; bu karar kaydi implementasyonunu baslatmaz. |
 | OPS-001 | done | Ana session'i ata/pinle; AGENTS ve dort ortak kaydi olustur; delegasyon, kapsam/test ve agent onerisi kurallarini yaz. Kabul: kimlik dogru, pin uygulanmis, belgeler mevcut ve baglantilar cozuluyor. | Ana session; `codex/phase-1-foundation`, ana checkout | Thread ID ortam ve app listesiyle dogrulandi; yeniden adlandirma ve pin araci basarili. 6 proje belgesinde 23 goreli baglanti kontrol edildi, kirik baglanti yok. Belge degisikligi icin uygulama testi gerekmiyor. | Kurulum kapandi; sonraki urun yonlendirmesinde ilgili dar isi kaydet. |
@@ -61,6 +62,7 @@ OBS-003 kaynak session'i kod/plan durumunu hizli degerlendirdi; tum gap listesi 
 
 | Tarih | Is | Karar veya sonuc |
 |---|---|---|
+| 2026-09-09 | BL-029 | Kullanici yan menu takviminin kaldirilmasinin kendi karari oldugunu dogruladi. C02 kapandi: baglantisiz shell takvimi geri getirilmez; aktif Schedule ust cubuk takvimi korunur. Kullanici diger adaylarda tarih ve somut eski/yeni davranis karsilastirmasi istedi. |
 | 2026-09-09 | OPS-001 | Kullanici bu gorusmeyi ana session atadi; kimlik COORDINATION'a kaydedildi, "Newfork Ana Session" adi ve pin uygulandi. |
 | 2026-09-09 | OPS-001 | Tek WORK/ROADMAP/BACKLOG ve delegasyon modeli kuruldu. Tarihli urun belgeleri referans; eski PASS kayitlari bugunun kabul kaniti sayilmiyor. |
 | 2026-09-09 | OPS-001 | Proje belgelerinin baglantilari kontrol edildi; global AGENTS'e kisa verimlilik/test ve agent onerisi kurallari eklendi. Kurulum kabul kosullari karsilandi. |
@@ -85,7 +87,9 @@ Ignored gecici kod ve kanit dosyalari silinmeden once `artifacts/repo-checkpoint
 
 ## Siradaki Teslimat
 
-BL-028'in 121 dosyalik feature/sozlesme tasnifi ve somut karar sorulari tamamlandi; teknik rapor yukarida bagli. Worktree yerinde korunuyor; tum runtime davranislarinin esdegerligi veya otomatik merge/delete onayi verilmedi. Siradaki teslim BL-026'nin bilinen web derleme sorunlarini dar kapsamda incelemektir.
+Kullanici son sesli gorusmede incelemeyi tamamlama, gereksizligi kanitlanan kodu silme, gerekli kodu geri getirme/baglama ve kullanilmayan branch/worktree'leri temizleme yetkisi verdi. BL-029 bu dar teslimi devralir; belirsiz kod tahminle silinmez. BL-026 sonraya kalir. Temizlik sonrasi branch/worktree yonetim kurallari kullaniciyla gorusulecek.
+
+BL-029 agent onerisi: `gpt-6-astra`, high; kopuk kod, eski WIP ve mevcut urun davranisinin ayrimi yuksek belirsizlik ve veri kaybi riski tasiyor. Otomatik model degisikligi yapilmadi.
 
 BL-028 icin kullanilan agent onerisi: `gpt-6-astra`, high; cok yuzeyli davranis ayrimi. BL-026 baslangic onerisi: `gpt-5.6-terra`, medium; bildirilen dar TypeScript hatalari mevcut desenlerle ele alinacak, kapsam buyurse yeniden degerlendirilecek. Bu oneriler otomatik model degisikligi degildir.
 
