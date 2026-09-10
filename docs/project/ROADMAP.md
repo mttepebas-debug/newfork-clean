@@ -1,6 +1,6 @@
 # MVP Roadmap
 
-Guncelleme: 2026-09-09. Sahibi: ana session. Bu belge tek MVP sira/hedef kaynagidir; is durumu [WORK](WORK.md), ertelenen fikirler [BACKLOG](BACKLOG.md) icindedir.
+Guncelleme: 2026-09-10. Sahibi: ana session. Bu belge tek MVP sira/hedef kaynagidir; is durumu [WORK](WORK.md), ertelenen fikirler [BACKLOG](BACKLOG.md) icindedir.
 
 ## MVP Sonucu
 
@@ -10,19 +10,35 @@ Asagidaki sira mevcut [11 akisli MVP audit planindan](../rebuild/mvp-e2e-readine
 
 ## Teslimat Sirasi ve Kabul
 
-2026-09-09: GIT-001 `711da48` checkpoint'i ile tamamlandi; ana checkout temiz olarak dogrulandi. Bu, urun kabul/test/release onayi degildir. Diger branch/worktree/stash ve unutulmus kod tahminle silinmez veya bu checkout'a karistirilmaz.
+2026-09-10: repo `main` uzerinde tek branch/tek worktree olarak temiz tabana alindi ve `origin/main` ile esit. Bu, urun kabul/test/release onayi degildir. Diger branch/worktree/stash ve unutulmus kod tahminle silinmez veya bu checkout'a karistirilmaz. Kullanici aksini istemedikce yeni session/task acilmaz; ana session planlama, raporlama, log ve teslimati tek elde yonetir.
 
 ## Ana Session'in Guncel Yurutme Sirasi
 
-Uc handoff ilerleme/kanit kaynagidir; iclerindeki sonraki adim onerileri baglayici sira degildir. Asagidaki sira ana session'in mevcut checkpoint, kod baglantilari, korunmus worktree farklari ve raporlanan kabul eksiklerini birlikte degerlendirmesidir. M1-M5 urun haritasi korunur; yakin donem is sirasi budur.
+Uc handoff ilerleme/kanit kaynagidir; iclerindeki sonraki adim onerileri baglayici sira degildir. Asagidaki sira ana session'in temiz `main` tabani, raporlanan kabul eksikleri ve MVP sonucunu birlikte degerlendirmesidir. M1-M5 urun haritasi korunur; yakin donem is sirasi budur.
 
 | Sira | Teslimat | Neden / bitis kosulu |
 |---|---|---|
-| 1 | BL-028/029: tasnif ve kaynak/worktree temizligi tamamlandi | Kullanici mevcut uygulama davranisini esas aldi. 34 aday karari ve 13 eski worktree temizligi kapandi; eski WIP yerel arsivde, aktif davranis degismedi. Kanit ve sinirlar WORK'te. |
-| 2 | Calisilabilir ortak temel | BL-026'nin bildirilen web derleme hatalarini dar kapsamda ele al; employee/browser kontrolleri icin gerekli rol ve ortam kullanilabilir olsun. Tum pgTAP/repo auditini burada acma. |
-| 3 | Mevcut implementasyonlari kabul et | Once OBS-001 employee create/invite/access sonuclarini gerekli manager browser kontroluyle kapat; ardindan OBS-002 employee availability -> manager -> Schedule sonucunu ve gerekli otomatik bildirim isleyisini tamamla. Hazir kaniti tekrar uretme; yalniz gercek kalan riskleri coz. |
-| 4 | Bir sonraki yeni urun dilimi | Onboarding yedi-adim kabugu ve ayrilmis profil/acil durum akisinin dar sozlesmesini belirle. Avatar/draft revision veya belge motorunu otomatik ayni teslimata katma. |
-| 5 | Belge/policy ve kalici employee belge merkezi | Dinamik yukumluluk, deadline/suspension ve bildirimleri bagimlilik sirasina gore kucuk dilimlere ayir; zorunlu Account > Documents teslimini tamamla. Sonra M2-M5'in gercek kalan eksiklerine devam et. |
+| 0 | Temiz taban ve yonetim disiplini | Tamamlandi: `main` tek ana branch, tek worktree, stash bos, local/remote esit. Yeni session acilmadan ana session yurutur; branch/worktree acilirsa ayni is kapanisinda merge/sil/kapat yapilir. |
+| 1 | Calisilabilir ortak temel | BL-026 web typecheck hatalarini dar kapsamda temizle. Kabul: hedeflenen typecheck PASS veya kalan hatalarin bu teslimati engellemedigi kanitli; genis pgTAP/repo audit acilmaz. |
+| 2 | Employee temel akisi kabul kapisi | OBS-001'i urun kabulune getir: employee create/invite/access/onboarding profil diliminin patch sahipligi ve gerekli manager browser akisi kapanir. Kabul: create, invite/retry, access state ve tenant-private profil davranisi mevcut UI/API'de dogrulanir. |
+| 3 | Availability -> Schedule kabul kapisi | OBS-002'yi kapat: employee preference save -> manager copy/toggle/save -> Schedule/preflight edit-grid donusu ve otomatik bildirim yolu. Kabul: elle inbox projeksiyonu olmadan gerekli bildirim/worker davranisi veya net ortam karari. |
+| 4 | Onboarding v1 urun dilimi | OBS-003'ten yalniz dar ilk dilim secilir: yedi-adim kabuk + profil/acil durum alanlari + gerekiyorsa draft/revision. Avatar upload/crop, Documents/Policies ve deadline motoru ayni teslimata katilmaz. |
+| 5 | Account > Documents ve policy merkezi | BL-001 zorunlu takip: employee belge merkezi, policy/agreement erisimi, inceleme gecmisi ve yenileme durumlari. Gecici onboarding Documents fallback'i nihai UX sayilmaz. |
+| 6 | Schedule/Requests/Line Up MVP kapanislari | M2-M4 icindeki gercek kalan acik kapilar secilerek kapatilir: Schedule publish/preflight, time off/request sonucu, shift exchange/Line Up sorumluluklari, bildirim ve hosted kanitlar. |
+| 7 | Release hazirligi | Temiz migration replay, hedef ortam smoke, provider smoke ve kullanici onayli deploy/release kaniti. Yerel PASS tek basina release hazirligi sayilmaz. |
+
+## Yurutme Yapisi
+
+Her teslimat tek kabul kapisidir. Ana session once kabul kosulunu ve dosya/ortam sahipligini netlestirir, sonra implementasyonu mevcut `main` uzerinde yapar. Branch/worktree yalniz gercek ihtiyac varsa acilir ve ayni isin kapanisinda kapatilir. Kullanici acikca istemedikce yeni session, alt task veya paralel worktree acilmaz.
+
+Zamanlama takvim tarihi degil, kapilara baglidir:
+
+| Faz | Pratik hedef |
+|---|---|
+| Simdi | BL-026 ortak temel. Kucuk ve mekanik kalirsa ayni oturumda kapanir. |
+| Hemen sonra | OBS-001 employee kabul kapisi. Kod hazirsa odakli browser/API kanitiyle kapanir; gercek hata cikarsa sadece o hata duzeltilir. |
+| Sonraki | OBS-002 availability kabul kapisi. Bildirim/worker ortami asil belirleyici risk. |
+| Ardindan | OBS-003'ten ilk onboarding v1 dilimi ve BL-001 Account > Documents. |
 
 Saglayici anahtar yenileme BL-027 ayri operasyonel takip olarak acik; provider smoke yapmadan once ele alinmali. Bu sira yeni somut bulgu veya kullanici urun onceligiyle degisebilir; kaynak session'in kendi planini tamamlama istegi tek basina sira degistirmez.
 

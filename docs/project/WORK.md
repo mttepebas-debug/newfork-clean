@@ -96,10 +96,20 @@ Ignored gecici kod ve kanit dosyalari silinmeden once `artifacts/repo-checkpoint
 
 ## Siradaki Teslimat
 
-BL-029 kod/Git temizligi tamamlandi; yukaridaki son kullanici karari mevcut uygulamayi esas aldi, eski baglantisiz ozellikleri yeniden baglama isi acilmadi. Branch/worktree yonetim kurallari kullaniciyla gorusulecek. Sonraki dar urun teslimi BL-026 typecheck hatalaridir; bu kayit kendiliginden implementasyon baslatmaz.
+Repo `main` uzerinde tek branch/tek worktree olarak temiz tabandadir. Yeni session/task acilmaz; ana session planlama, raporlama, log ve teslimati tek elde yonetir. Branch/worktree yalniz gercek ihtiyac varsa acilir ve ayni isin kapanisinda merge/sil/kapat yapilir.
+
+Siradaki aktif aday BL-026 web typecheck tabanidir. Kabul: bildirilen dar web typecheck hatalari cozulur veya kalan hatalarin siradaki employee/availability kabulunu engellemedigi kanitli bicimde kaydedilir. Tum pgTAP, hosted UAT veya genis repo audit bu isin parcasi degildir.
+
+BL-026 sonrasi sira:
+
+1. OBS-001 employee create/invite/access/onboarding profil kabul kapisi.
+2. OBS-002 availability -> manager -> Schedule/preflight ve otomatik bildirim kabul kapisi.
+3. OBS-003'ten dar onboarding v1 dilimi.
+4. BL-001 Account > Documents ve policy merkezi.
+5. M2-M5 icindeki kalan Schedule/Requests/Line Up/release kapilari.
 
 BL-029 agent onerisi: `gpt-6-astra`, high; kopuk kod, eski WIP ve mevcut urun davranisinin ayrimi yuksek belirsizlik ve veri kaybi riski tasiyor. Otomatik model degisikligi yapilmadi.
 
-BL-028 icin kullanilan agent onerisi: `gpt-6-astra`, high; cok yuzeyli davranis ayrimi. BL-026 baslangic onerisi: `gpt-5.6-terra`, medium; bildirilen dar TypeScript hatalari mevcut desenlerle ele alinacak, kapsam buyurse yeniden degerlendirilecek. Bu oneriler otomatik model degisikligi degildir.
+BL-028 icin kullanilan agent onerisi: `gpt-6-astra`, high; cok yuzeyli davranis ayrimi. BL-026 baslangic onerisi: ana session, medium; bildirilen dar TypeScript hatalari mevcut desenlerle ele alinacak ve yeni session acilmayacak. Kapsam beklenmedik bicimde buyurse strateji yeniden degerlendirilir; kullanici acikca istemedikce alt task acilmaz.
 
 BL-028 sonrasi bilinen web derleme sorunlari BL-026 ve mevcut employee/availability akislarinin kalan somut kabul eksikleri ele alinir. Kodda notification cron handler'i secret yoksa 503 donduruyor; bu kaynak tespiti yeni bir live runtime kontrolu degildir. Yerel worker tetikleme sorunu birden fazla akis icin ortak ortam ihtiyaci olarak ele alinacak, yalniz Availability session'i onerdi diye onceliklendirilmeyecek. OBS-003'un buyuk yeni ozellikleri bu kapanislara eklenmez.
