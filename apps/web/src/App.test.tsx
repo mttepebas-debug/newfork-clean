@@ -899,6 +899,74 @@ describe("App", () => {
     expect(acquireScheduleEditSession).not.toHaveBeenCalled();
   });
 
+  it("disables publish from a blank preview when the week has no published schedule", async () => {
+    const weekStart = "2026-10-26";
+    const unpublishedFixture = scheduleFixtureForWeek(weekStart);
+    vi.mocked(getScheduleReadModel).mockResolvedValue({
+      ...unpublishedFixture,
+      locations: unpublishedFixture.locations.map((location) => ({
+        ...location,
+        publication_status: "unpublished" as const,
+        published_at: null,
+      })),
+      shifts: [],
+    });
+    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [] });
+    vi.mocked(fetchSchedulePublicationStatus).mockResolvedValue({
+      week_start: weekStart,
+      week_end: "2026-11-01",
+      week_start_day: "monday",
+      schedule_deadline_day: "sunday",
+      is_anchor_only: false,
+      locations: unpublishedFixture.locations.map((location) => ({
+        id: location.id,
+        name: location.name,
+        color: "#2563EB",
+        timezone: location.timezone,
+        status: "unpublished" as const,
+        reason: "missing_publication" as const,
+        publication_includes_location: false,
+        published_shift_count: 0,
+        worked_shift_count: 0,
+        draft_shift_count: 0,
+        published_at: null,
+        published_by_name: null,
+      })),
+    });
+
+    window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
+    render(<App />);
+    fireEvent.change(
+      await screen.findByRole("combobox", { name: "Workspace role" }),
+      { target: { value: "owner" } },
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Use development identity" }),
+      );
+    });
+
+    await screen.findByRole("button", {
+      name: "Draft selector: New Schedule",
+    });
+    const draftLookupCount = vi.mocked(listScheduleDrafts).mock.calls.length;
+    const publishButton = await screen.findByRole("button", {
+      name: "Publish",
+    });
+    await waitFor(() =>
+      expect(publishButton).toHaveProperty("disabled", true),
+    );
+
+    fireEvent.click(publishButton);
+
+    expect(vi.mocked(listScheduleDrafts).mock.calls.length).toBe(
+      draftLookupCount,
+    );
+    expect(
+      screen.queryByText("Save a named draft before publishing this week."),
+    ).toBeNull();
+  });
+
   it("honors per-shift hidden clock time badges from the reference model", async () => {
     vi.mocked(getScheduleReadModel).mockResolvedValueOnce({
       ...scheduleFixture,
@@ -4548,8 +4616,16 @@ describe("App", () => {
       "",
       `/app/schedule?date=2026-10-26&draft=${draft.id}`,
     );
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
     render(<App />);
+    fireEvent.change(
+      await screen.findByRole("combobox", { name: "Workspace role" }),
+      { target: { value: "owner" } },
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Use development identity" }),
+      );
+    });
     expect(
       await screen.findByRole(
         "button",

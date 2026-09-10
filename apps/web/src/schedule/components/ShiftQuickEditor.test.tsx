@@ -767,6 +767,12 @@ describe("ShiftQuickEditor", () => {
 
     fireEvent.click(screen.getByRole("combobox", { name: "Labels" }));
     fireEvent.click(screen.getByRole("option", { name: "Opener" }));
+    expect(
+      screen.getByRole("combobox", { name: "Labels" }).getAttribute(
+        "aria-expanded",
+      ),
+    ).toBe("false");
+    fireEvent.click(screen.getByRole("combobox", { name: "Labels" }));
     fireEvent.click(screen.getByRole("option", { name: "Training" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));

@@ -10,15 +10,20 @@ function defineScrollBox(
     clientWidth = 320,
     clientHeight = 520,
     scrollLeft = 0,
+    scrollTop = 0,
     scrollWidth = 960,
+    scrollHeight = 1200,
   }: {
     readonly clientWidth?: number;
     readonly clientHeight?: number;
     readonly scrollLeft?: number;
+    readonly scrollTop?: number;
     readonly scrollWidth?: number;
+    readonly scrollHeight?: number;
   } = {},
 ): () => number {
   let currentScrollLeft = scrollLeft;
+  let currentScrollTop = scrollTop;
   Object.defineProperty(scroll, "clientWidth", {
     configurable: true,
     value: clientWidth,
@@ -31,11 +36,22 @@ function defineScrollBox(
     configurable: true,
     value: scrollWidth,
   });
+  Object.defineProperty(scroll, "scrollHeight", {
+    configurable: true,
+    value: scrollHeight,
+  });
   Object.defineProperty(scroll, "scrollLeft", {
     configurable: true,
     get: () => currentScrollLeft,
     set: (value) => {
       currentScrollLeft = value;
+    },
+  });
+  Object.defineProperty(scroll, "scrollTop", {
+    configurable: true,
+    get: () => currentScrollTop,
+    set: (value) => {
+      currentScrollTop = value;
     },
   });
   return () => currentScrollLeft;
@@ -129,6 +145,57 @@ describe("ScheduleGridShell", () => {
     expect(grid.style.gridTemplateColumns).toBe(
       "minmax(144px, 200px) repeat(7, minmax(0, 1fr)) minmax(72px, 120px)",
     );
+  });
+
+  it("autoscrolls both grid axes while a shift drag reaches the bottom-right edge", () => {
+    const gridRef = createRef<HTMLDivElement>();
+    const { rerender } = render(
+      <ScheduleGridShell
+        columns={8}
+        dayColumnMinWidth={180}
+        dragPointer={null}
+        editing
+        gridRef={gridRef}
+        showTotalHours
+        view="week"
+        onClearSelection={vi.fn()}
+      >
+        <div data-testid="grid-body" />
+      </ScheduleGridShell>,
+    );
+
+    const scroll = screen.getByTestId("schedule-grid-scroll");
+    const readScrollLeft = defineScrollBox(scroll);
+    scroll.getBoundingClientRect = () =>
+      ({
+        bottom: 520,
+        height: 520,
+        left: 0,
+        right: 320,
+        top: 0,
+        width: 320,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    rerender(
+      <ScheduleGridShell
+        columns={8}
+        dayColumnMinWidth={181}
+        dragPointer={{ x: 319, y: 519 }}
+        editing
+        gridRef={gridRef}
+        showTotalHours
+        view="week"
+        onClearSelection={vi.fn()}
+      >
+        <div data-testid="grid-body" />
+      </ScheduleGridShell>,
+    );
+
+    expect(readScrollLeft()).toBe(24);
+    expect(scroll.scrollTop).toBe(24);
   });
 
   it("measures the elastic filler height above the sticky totals row", async () => {

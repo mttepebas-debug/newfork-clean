@@ -36,6 +36,70 @@ beforeEach(() => {
   mocks.removeChannel.mockClear();
 });
 
+describe("createScheduleReadService read model", () => {
+  it("uses the base schedule read model RPC for the initial read", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: {
+        workspace_id: workspaceId,
+        week_start: "2026-08-17",
+        week_start_day: "monday",
+        locations: [],
+        departments: [],
+        jobs: [],
+        shift_types: [],
+        shift_labels: [],
+        employees: [],
+        shifts: [],
+      },
+      error: null,
+    });
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "workspace_scheduling_settings") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: { time_format: "12h" },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "important_dates") {
+        const chain = {
+          eq: () => chain,
+          is: () => chain,
+          order: () => chain,
+          select: () => chain,
+          then: (
+            resolve: (value: { data: never[]; error: null }) => unknown,
+          ) => resolve({ data: [], error: null }),
+        };
+        return chain;
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+
+    await expect(
+      service.getReadModel(actorUserId, workspaceId, "2026-08-19"),
+    ).resolves.toMatchObject({
+      workspace_id: workspaceId,
+      week_start: "2026-08-17",
+    });
+    expect(mocks.rpc).toHaveBeenCalledWith("get_schedule_read_model_service", {
+      actor_user_id: actorUserId,
+      target_workspace_id: workspaceId,
+      target_date: "2026-08-19",
+    });
+  });
+});
+
 describe("createScheduleReadService realtime invalidation", () => {
   const refreshedPreview = { status: "publish_ready", workspace_id: workspaceId, week_start: "2026-08-17", draft_id: draftId, draft_revision: 2, fingerprint: "b".repeat(64), locations: [], findings: [] };
   const publishInput = { actorUserId, workspaceId, draftId, locationIds: [locationId], departmentIds: [departmentId], includeNoDepartment: false, expectedDraftRevision: 2, fingerprint: "a".repeat(64), overrides: [] };

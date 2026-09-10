@@ -21,6 +21,8 @@ export function useScheduleQuery(
     queryKey: scheduleReadKey(workspaceId, selectedDate, view),
     queryFn: () => getScheduleReadModel(workspaceId!, selectedDate, view),
     enabled: enabled && Boolean(workspaceId),
-    staleTime: 5_000,
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === workspaceId ? previousData : undefined,
+    staleTime: 30_000,
   });
 }

@@ -20,11 +20,14 @@ import {
 
 const horizontalNavMinThumbWidthPx = 34;
 const horizontalNavFallbackTrackWidthPx = 240;
+const dragAutoscrollEdgePx = 56;
+const dragAutoscrollMaxStepPx = 24;
 
 export function ScheduleGridShell({
   children,
   columns,
   dayColumnMinWidth,
+  dragPointer,
   editing,
   fitVisibleColumns = false,
   gridRef,
@@ -36,6 +39,7 @@ export function ScheduleGridShell({
   readonly children: ReactNode;
   readonly columns: number;
   readonly dayColumnMinWidth: number;
+  readonly dragPointer?: { readonly x: number; readonly y: number } | null;
   readonly editing: boolean;
   readonly fitVisibleColumns?: boolean;
   readonly gridRef: RefObject<HTMLDivElement | null>;
@@ -133,6 +137,48 @@ export function ScheduleGridShell({
     showTotalHours,
   ]);
 
+  useEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll || !dragPointer) return undefined;
+
+    let frame: number | null = null;
+    const scrollWhileDragging = () => {
+      const bounds = scroll.getBoundingClientRect();
+      const horizontalStep = dragAutoscrollStep(
+        dragPointer.x,
+        bounds.left,
+        bounds.right,
+      );
+      const verticalStep = dragAutoscrollStep(
+        dragPointer.y,
+        bounds.top,
+        bounds.bottom,
+      );
+      const nextLeft = clampToRange(
+        scroll.scrollLeft + horizontalStep,
+        0,
+        Math.max(0, scroll.scrollWidth - scroll.clientWidth),
+      );
+      const nextTop = clampToRange(
+        scroll.scrollTop + verticalStep,
+        0,
+        Math.max(0, scroll.scrollHeight - scroll.clientHeight),
+      );
+
+      if (nextLeft !== scroll.scrollLeft || nextTop !== scroll.scrollTop) {
+        scroll.scrollLeft = nextLeft;
+        scroll.scrollTop = nextTop;
+        scroll.dispatchEvent(new Event("scroll"));
+        frame = window.requestAnimationFrame(scrollWhileDragging);
+      }
+    };
+
+    scrollWhileDragging();
+    return () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [dragPointer]);
+
   return (
     <div
       ref={scrollRef}
@@ -186,6 +232,28 @@ export function ScheduleGridShell({
       {overlays}
     </div>
   );
+}
+
+function dragAutoscrollStep(
+  pointer: number,
+  start: number,
+  end: number,
+): number {
+  const distanceFromStart = pointer - start;
+  if (distanceFromStart < dragAutoscrollEdgePx) {
+    return -Math.ceil(
+      ((dragAutoscrollEdgePx - distanceFromStart) / dragAutoscrollEdgePx) *
+        dragAutoscrollMaxStepPx,
+    );
+  }
+  const distanceFromEnd = end - pointer;
+  if (distanceFromEnd < dragAutoscrollEdgePx) {
+    return Math.ceil(
+      ((dragAutoscrollEdgePx - distanceFromEnd) / dragAutoscrollEdgePx) *
+        dragAutoscrollMaxStepPx,
+    );
+  }
+  return 0;
 }
 
 function ScheduleHorizontalNavigation({

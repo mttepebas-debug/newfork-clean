@@ -6551,6 +6551,9 @@ select:focus-visible {
 .schedule-quick-editor--floating .schedule-dialog-actions button {
   min-height: 31px;
 }
+.schedule-quick-editor--floating .schedule-quick-editor-actions {
+  flex-wrap: nowrap;
+}
 .schedule-quick-editor--drawer {
   position: static;
   z-index: auto;
@@ -7770,7 +7773,7 @@ select:focus-visible {
   border-radius: 999px;
 }
 .schedule-shift-form textarea {
-  min-height: 76px;
+  min-height: 56px;
   resize: vertical;
 }
 .schedule-shift-form .schedule-custom-work-choice {
@@ -7793,14 +7796,6 @@ select:focus-visible {
 }
 .schedule-service-classification label {
   font-size: 12px;
-}
-.schedule-quick-editor--floating:has(.schedule-service-classification) {
-  max-height: min(520px, calc(100dvh - 16px));
-  overflow: auto;
-  scrollbar-width: thin;
-}
-.schedule-quick-editor--floating:has(.schedule-service-classification)::-webkit-scrollbar {
-  width: 6px;
 }
 :root[data-theme="dark"] .schedule-service-classification :is(label, span, small) {
   color: #d8e3dd;
@@ -7941,6 +7936,7 @@ select:focus-visible {
 }
 .schedule-dialog-actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;

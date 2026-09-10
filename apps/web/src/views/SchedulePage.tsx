@@ -1933,8 +1933,16 @@ export function SchedulePage({
   const canUnpublishPublishedSchedule = hasUnpublishablePublishedSchedule(
     publicationChipStatuses,
   );
+  const hasPublishedSchedule = publicationChipStatuses.some(
+    (item) => item.status === "published",
+  );
   const canPublishSchedule =
     context?.permissions.includes("schedule.publish") && !pastWeek;
+  const publishDisabledInBlankPreview =
+    canPublishSchedule &&
+    !gridEditSession &&
+    !activeDraftId &&
+    !hasPublishedSchedule;
   const publishActionTone = getSchedulePublicationActionTone(
     publicationChipStatuses,
   );
@@ -2359,6 +2367,7 @@ export function SchedulePage({
             data-schedule-top-action-trigger="publish"
             data-publication-tone={publishActionTone}
             type="button"
+            disabled={publishDisabledInBlankPreview}
             onClick={() => void openPublish()}
           >
             <Send size={15} aria-hidden /> Publish
@@ -2601,7 +2610,6 @@ export function SchedulePage({
               <WandSparkles size={15} /> Auto-fill
             </button>
           ) : null}
-          <button type="button" onClick={() => setDefaultHoursOpen(true)}>Review current default hours</button>
           <button
             type="button"
             disabled={isDiscardingEditSession}

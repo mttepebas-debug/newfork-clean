@@ -42,7 +42,7 @@ Alt session gerekli teknik kararlari kendi gorevi icinde verir; kapsam disi bulg
 
 ## Delegasyon ve Paralellik
 
-- Varsayilan tek ana teslimat ve sifir alt session'dir. Yeni session/task yalniz kullanici acikca isterse veya yazili olarak yetki verirse acilir.
+- Varsayilan tek ana teslimat ve sifir alt session'dir. Yeni session/task yalniz kullanici acikca isterse veya yazili olarak yetki verirse acilir. Yeni task acilirken model ve reasoning seviyesini ana session is zorlugu, belirsizlik ve etki alanina gore secer.
 - Arastirma veya bagimsiz implementasyon paralel yurutulmez; kullanici ozel olarak isterse dar kapsam, kapanis stratejisi ve dosya sahipligi bastan yazilir.
 - Her alt goreve dar bir hedef, kabul kosullari, gerekli dosya/karar baglantilari ve dosya/sozlesme sahipligi verilir. Tum sohbet veya repo belgeleri varsayilan olarak kopyalanmaz.
 - Her implementasyon gorevi mumkunse mevcut ana checkout'ta, temiz `main` uzerinde tamamlanir. Branch veya worktree acmak gerekiyorsa baslamadan kapanis stratejisi yazilir; is bitince ayni is kapsaminda merge edilir, silinir veya kapatilir. Acik branch/worktree birakmak ancak somut engel varsa kabul edilir ve WORK'e engel/sonraki adim olarak kaydedilir.
@@ -50,21 +50,21 @@ Alt session gerekli teknik kararlari kendi gorevi icinde verir; kapsam disi bulg
 - Sonuc beklerken uygun bekleme/mesaj araclarini kullan; ayni durumu sik sik sorgulama. Ana session bagimsiz isi surdurur. Gerekli alt gorev bitmeden ana teslimati tamamlanmis sayma.
 - Kurulustan once acilmis session'lar kendiliginden durdurulmaz veya yeniden gorevlendirilmez. Devralirken mevcut hedef ve dosya sahipligi ogrenilir; ilgili WORK kaydi uzerinden yonetilir.
 
-## Agent ve Model Onerisi
+## Agent ve Model Secimi
 
-Her implementasyon planinda gorevin zorlugu, belirsizligi, etkilenen yuzey sayisi ve hata maliyetine gore en uygun agent/model ve reasoning seviyesi onerilir. En pahali veya en yuksek reasoning varsayilan degildir. Bir cumle gerekce yeterlidir; model karsilastirmasi icin ayri arastirma isi acilmaz.
+Her implementasyon planinda gorevin zorlugu, belirsizligi, etkilenen yuzey sayisi ve hata maliyetine gore en uygun agent/model ve reasoning seviyesi belirlenir. Yeni task/session acarken ana session bu model ve reasoning secimini uygular. En pahali veya en yuksek reasoning varsayilan degildir. Bir cumle gerekce yeterlidir; model karsilastirmasi icin ayri arastirma isi acilmaz.
 
 Asagidaki eslestirme olculmus benchmark veya fiyat iddiasi degil, baslangic sezgisidir. Atama sirasinda mevcut host'un sundugu model ve reasoning seceneklerini kontrol et; eski bir model adini zorla kullanma.
 
-| Plan | Ornek | Baslangic onerisi |
+| Plan | Ornek | Baslangic secimi |
 |---|---|---|
-| Basit, dusuk belirsizlik | Dokuman, dar UI duzeltmesi, tek modullu acik degisiklik | Ana session'da tamamla; delegasyon gerekirse mevcut katalogdaki hizli/ekonomik coding agent, ornegin `gpt-5.6-luna`, low/medium |
+| Basit, dusuk belirsizlik | Dokuman, dar UI duzeltmesi, tek modullu acik degisiklik | Delegasyon gerekirse mevcut katalogdaki hizli/ekonomik coding agent, ornegin `gpt-5.6-luna`, low/medium |
 | Orta, bilinen desen | Bir ozelligin UI/API baglantisi, sinirli birkac modullu implementasyon | Dengeli coding agent, ornegin `gpt-5.6-terra` veya `gpt-5.6-sol`, medium |
 | Zor, yuksek belirsizlik/etki | Yetkilendirme, veri butunlugu, concurrency, birden fazla domainin sozlesmesi | Guclu muhakeme agent'i, ornegin `gpt-6-astra`, high; somut gerekce varsa daha yuksek |
 
-Format: `Zorluk: orta. Oneri: <model>, medium. Gerekce: mevcut desene uyan UI/API degisikligi. Calisan model: <biliniyorsa mevcut ayar>.`
+Format: `Zorluk: orta. Secim: <model>, medium. Gerekce: mevcut desene uyan UI/API degisikligi.`
 
-Oneri otomatik model degisikligi degildir. Kullanici belirli modeli secmediyse yeni task'in model ayarini override etme; mevcut/yapilandirilmis varsayilanla ilerle ve oneriyi kaydet. Kullanici secimi sonraki ilgili gorevlerde gecerliligini korur. Mevcut model bilinmiyorsa tahmin etme. Tekrar eden somut basarisizlik veya yeni karmasiklik varsa stratejiyi ve model onerisini yeniden degerlendir; kor tekrar yapma.
+Kullanici belirli modeli acikca secmediyse ana session kendi secimini uygular. Kullanici secimi sonraki ilgili gorevlerde gecerliligini korur. Mevcut host'un model/reasoning secenekleri disina cikma. Tekrar eden somut basarisizlik veya yeni karmasiklik varsa stratejiyi ve model secimini yeniden degerlendir; kor tekrar yapma.
 
 ## Gorev ve Sonuc Sozlesmesi
 
@@ -75,7 +75,7 @@ Ana session ID:
 Checkout / branch / baslangic commit veya gerekli WIP:
 Ilgili belgeler ve dosya/sozlesme sahipligi:
 Kapsam siniri / bagimliliklar:
-Zorluk / agent-model onerisi / kisa gerekce:
+Zorluk / agent-model secimi / kisa gerekce:
 
 Sonuc:
 Is ID / ne degisti veya ne bulundu:

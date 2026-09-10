@@ -350,6 +350,11 @@ export function ScheduleGrid({
     <ScheduleGridShell
       columns={columns}
       dayColumnMinWidth={dayColumnMinWidth}
+      dragPointer={
+        shiftDrag.dragState
+          ? { x: shiftDrag.dragState.pointerX, y: shiftDrag.dragState.pointerY }
+          : null
+      }
       editing={Boolean(session)}
       fitVisibleColumns={fitVisibleColumns}
       gridRef={gridRef}

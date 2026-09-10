@@ -226,7 +226,10 @@ function QuickEditorLabelMultiSelect({
                 role="option"
                 aria-selected={selected}
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => updateSelection(label.id)}
+                onClick={() => {
+                  updateSelection(label.id);
+                  setOpen(false);
+                }}
               >
                 <span className="schedule-quick-label-option">
                   <span
@@ -324,9 +327,6 @@ export function ShiftQuickEditor({
   });
   const explicitTimesEdited = useRef(
     state.mode === "edit" || (state.mode === "create" && Boolean(state.copy)),
-  );
-  const selectedTimeType = model.shift_types.find(
-    (type) => type.id === value.shift_type_id,
   );
   const [count, setCount] = useState(1);
   const [stale, setStale] = useState(false);
@@ -438,7 +438,7 @@ export function ShiftQuickEditor({
   );
   const saveButtonLabel =
     state.mode === "edit"
-      ? "Update shift"
+      ? "Save"
       : count > 1
         ? `Add ${count} shifts`
         : "Add shift";
@@ -811,7 +811,6 @@ export function ShiftQuickEditor({
             {!value.shift_type_id && value.employee_id ? (
               <div className="schedule-shift-field schedule-service-classification">
                 <span>Service classification</span>
-                <small>Choose a shift type above for service work. For work such as training or inventory, record why it is independent of a service. Hours and approved time off still apply.</small>
                 <label className="schedule-custom-work-choice">
                   <input type="checkbox" checked={activeCustomWork !== null}
                     onChange={(event) => setCustomWork(event.target.checked ? { key: valueKey, reason: "" } : null)} />
@@ -898,27 +897,6 @@ export function ShiftQuickEditor({
           >
             <div className="schedule-shift-form-section-title">
               <strong>Time and break</strong>
-              {selectedTimeType?.default_start_time &&
-              selectedTimeType.default_end_time ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    explicitTimesEdited.current = false;
-                    setValue({
-                      ...applyScheduleShiftTypeDefaults({
-                        value,
-                        shiftType: selectedTimeType,
-                        shiftTypeId: selectedTimeType.id,
-                        clockOffFallbackStartTime,
-                        clockOffFallbackEndTime,
-                      }),
-                      hide_time_on_badge: value.hide_time_on_badge,
-                    });
-                  }}
-                >
-                  Use {selectedTimeType.name} default hours
-                </button>
-              ) : null}
             </div>
             <div className="schedule-time-fields">
               <label>
@@ -994,11 +972,6 @@ export function ShiftQuickEditor({
                 Hours need confirmation. You can save this draft; confirm hours
                 before publishing a new assignment.
               </p>
-            ) : value.time_basis === "type_default" ? (
-              <p role="status">
-                Availability uses the saved shift type hours. Later changes to
-                the default will not change this shift.
-              </p>
             ) : null}
             {value.time_basis === "legacy_unverified" &&
             !timeValidationMessage ? (
@@ -1046,7 +1019,7 @@ export function ShiftQuickEditor({
               Show times on badge
             </label>
           </section>
-          <div className="schedule-dialog-actions">
+          <div className="schedule-dialog-actions schedule-quick-editor-actions">
             {state.mode === "edit" ? (
               <button
                 type="button"
@@ -1068,7 +1041,11 @@ export function ShiftQuickEditor({
             <button
               type="submit"
               className="primary"
-              disabled={!!timeValidationMessage || checkingAvailability}
+              disabled={
+                !!timeValidationMessage ||
+                checkingAvailability ||
+                (state.mode === "edit" && !editorHasUserChanges)
+              }
             >
               {checkingAvailability
                 ? "Checking availability…"

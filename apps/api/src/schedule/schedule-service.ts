@@ -433,7 +433,7 @@ export function createScheduleReadService(options: {
   return {
     async getReadModel(actorUserId, workspaceId, targetDate) {
       const { data, error } = await client.rpc(
-        "get_schedule_read_model_availability_v2_service",
+        "get_schedule_read_model_service",
         {
           actor_user_id: actorUserId,
           target_workspace_id: workspaceId,

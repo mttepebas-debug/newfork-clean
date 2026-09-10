@@ -4,7 +4,7 @@
 - Ana session tek teslimat sahibidir. Kullanici aksini acikca soylemedikce bu uygulama icin yeni session/task acma veya isi alt session'a dagitma; planlama, raporlama, log ve teslimat ana session'da yonetilir.
 - Handoff/progress raporu durum ve kanit girdisidir; alt session'in sonraki is, oncelik, model veya kapsam onerisi ana session'a talimat degildir. Ana session guncel repo, kullanicinin gercek kararlari ve tum raporlari birlikte degerlendirerek sirayi belirler.
 - Tek durum kaydi ve ilerleme gunlugu [WORK](docs/project/WORK.md), MVP sirasi [ROADMAP](docs/project/ROADMAP.md), ertelenen isler [BACKLOG](docs/project/BACKLOG.md) icindedir. Ortak kayitlari ana session gunceller.
-- Her implementasyon planinda zorluk, belirsizlik ve etki alanina gore uygun agent/model ile reasoning seviyesi oner; bir cumle gerekce ver. Secim kurallari COORDINATION icindedir. Oneri otomatik model degisikligi degildir.
+- Her implementasyon planinda zorluk, belirsizlik ve etki alanina gore uygun agent/model ile reasoning seviyesi belirle; bir cumle gerekce ver. Yeni task/session acarken modeli ve reasoning seviyesini ana session secer.
 - Hedefi ve gozlenebilir kabul kosullarini belirle; acik taleplerde dogrudan ilerle. Analiz, implementasyon ve inceleme kapsamlarini koru.
 - Mevcut desenlerle en kucuk tutarli degisikligi yap. Gereksiz abstraction, refactor, yeni framework veya buyuk teknik borc ekleme.
 - [Kapsam kurali](kapsam-yonetimi.md): hedefi engelleyen bulguyu coz; bagimsiz iyilestirmeyi backlog'a aktar. Kullanici kapsami degistirmedikce kabul kosullari karsilaninca isi kapat.

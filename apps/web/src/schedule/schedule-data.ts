@@ -178,9 +178,9 @@ export function draftsKey(workspaceId: string | null, weekStart: string) {
 export function scheduleReadKey(
   workspaceId: string | null,
   date: string,
-  view: ScheduleView,
+  _view: ScheduleView,
 ) {
-  return ["schedule-read", workspaceId, date, view] as const;
+  return ["schedule-read", workspaceId, date] as const;
 }
 
 export interface PastEditFinding {

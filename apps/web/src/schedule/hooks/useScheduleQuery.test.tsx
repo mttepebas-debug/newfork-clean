@@ -84,7 +84,22 @@ describe("useScheduleQuery", () => {
       "schedule-read",
       "workspace",
       "2026-05-04",
-      "week",
     ]);
+  });
+
+  it("reuses the cached read model when only the view changes", async () => {
+    const { result, rerender } = renderHook(
+      ({ view }) => useScheduleQuery("workspace", "2026-05-04", view),
+      {
+        initialProps: { view: "week" as const },
+        wrapper: wrapper(),
+      },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    rerender({ view: "day" });
+
+    expect(result.current.data).toEqual(readModel);
+    expect(getScheduleReadModelMock).toHaveBeenCalledTimes(1);
   });
 });
