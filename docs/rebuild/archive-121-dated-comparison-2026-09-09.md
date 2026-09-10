@@ -1,5 +1,11 @@
 # Arsivdeki 121 Fark: Tarih ve Davranis Karsilastirmasi
 
+## Son Karar: Eski Arsivler Silinecek
+
+2026-09-10 kullanici kalan eski kodun da tamamen silinmesini, mevcut uygulamanin esas alinmasini ve eski kodu arsivde tutmamami istedi. Kalan 114 farkin incelemesi iptal edildi. Silme hedefleri eski worktree kod ZIP'i, eski worktree config ZIP'i ve `artifacts/repo-checkpoint/4dfb-detail` altindaki 560 uretilmis karsilastirma dosyasidir. Guncel kaynak, Git gecmisi ve ana checkout'un ayri `preserved-local` yedegi bu silme kapsamina dahil degildir.
+
+Hedef dizinin workspace altinda oldugu ve reparse point icermedigi dogrulandi; ancak silme komutu ortam politikasi tarafindan calistirilmadan engellendi. **Bu son toplu silme yapilamadi; iki ZIP ve karsilastirma dizini halen duruyor.** Onceki yedi-girdi silme islemi gecerlidir. Guncel durum [WORK BL-033](../project/WORK.md); asagidaki inceleme ve arsiv tutma onerileri tarihsel olup son kullanici kararinin ustune gecmez.
+
 Is kaydi: [WORK BL-031](../project/WORK.md). Karsilastirilan guncel commit: `56b5d8c`. Eski kaynak: korunmus 4dfb ZIP arsivi. Analiz tarihi: 2026-09-09, America/Los_Angeles. Kod/arsiv degistirilmedi.
 
 ## Arsiv Guncellemesi: 10 Eylul
