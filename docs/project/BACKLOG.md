@@ -27,6 +27,7 @@ Kurulus: 2026-09-09. Sahibi: ana session. Aktif is durumu [WORK](WORK.md), MVP s
 | BL-027 | Ornek env'de bulunan Resend anahtarini saglayicida yenile ve gerekli runtime ortamlarini yeni degerle guncelle. Deger belgelerde tutulmaz. | GIT-001 kontrolunde `.env.example` temizlendi; mevcut runtime ayarlari degistirilmedi ve anahtar yenileme yapilmadi. |
 | BL-028 | Ana session tarafindan siradaki is secildi; hedef, kabul kosulu ve durum [WORK BL-028](WORK.md) icindedir. | 4dfb'de 233 degisiklik, 112 ayni/121 farkli dosya; worktree ve arsiv korunuyor. Burada ikinci ilerleme kaydi tutulmaz. |
 | BL-029 | Statik runtime import zincirinden ulasilamayan Schedule/editor/preview ve UI dosyalarini yalniz ilgili is gerektirirse urun kararina gore incele. Kopuk baglanti tamamlanmis bir ozelligin yanlislikla disarida kalmasi olabilir; otomatik dead-code temizligi yapma. | GIT-001: 354 kaynak/34 ulasilamayan aday/0 cozumlenemeyen yerel import; rapor `artifacts/repo-checkpoint/code-links.json`. Kaynaklar checkpoint'te korunur. |
+| BL-030 | Time Entries MVP'ye kadar kapsam disi. Mevcut sayfa/API/route korunur; kapsam yeniden acilinca manager menu girisini ve erisilebilirligi birlikte degerlendir. Su an geri ekleme veya kaynak silme isi degil. | BL-028 D15: kullanici eski menu kaldirma kararini hatirlamiyor; 2026-09-09 bu session'da guncel kapsam sinirini belirtti. |
 
 ## Onceki Birlesik Backlog'dan Aktarilan Gruplar
 

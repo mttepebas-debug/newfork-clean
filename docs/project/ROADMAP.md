@@ -50,4 +50,6 @@ Bir seferde tek ana teslimat kapatilir. Her asama, gerektiginde kucuk kabul edil
 
 Account > Documents zorunlu ayri takip teslimidir (BL-001). Gecici onboarding Documents donusu nihai employee UX kabul edilmez. Time tracking/kiosk/payroll/billing icin mevcut ayri planlar ve eski backlog korunur; bu koordinasyon kurulumu bunlari yeni bir implementasyon yetkisi veya tamamlanma iddiasi haline getirmez.
 
+2026-09-09 kullanici kapsam karari: Time Entries MVP'ye kadar kapsam disidir. Mevcut sayfa/API kodu korunur; menu girisini yeniden eklemek bu MVP kapanisina dahil edilmez. Kapsam tekrar acildiginda BL-030 okunur. SSN toplama da kullanicinin bilincli karariyla kapsam disidir; eski KMS/SSN akisinin worktree'de bulunmasi onu geri getirme gerekcesi degildir.
+
 ROADMAP yalniz hedef, oncelik veya asama kabul karari degisince guncellenir. Teknik adim gunlugu WORK'tedir.
