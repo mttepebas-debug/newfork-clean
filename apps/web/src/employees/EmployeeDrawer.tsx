@@ -2046,6 +2046,7 @@ function EmploymentSection({
         selected={draft.job_ids}
         primary={draft.primary_job_id}
         disabled={readOnly}
+        searchable={false}
         onChange={(ids, primary) =>
           setDraft((current) => ({
             ...current,
@@ -2689,6 +2690,7 @@ function AssignmentPicker({
   disabled,
   onChange,
   required = false,
+  searchable = true,
 }: {
   label: string;
   options: readonly EmployeeOption[];
@@ -2697,13 +2699,15 @@ function AssignmentPicker({
   disabled: boolean;
   onChange: (ids: string[], primary: string | null) => void;
   required?: boolean;
+  searchable?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const available = options.filter(
     (option) => !option.archived || selected.includes(option.id),
   );
+  const searchText = searchable ? search : "";
   const matching = available.filter((option) =>
-    option.name.toLowerCase().includes(search.toLowerCase()),
+    option.name.toLowerCase().includes(searchText.toLowerCase()),
   );
   return (
     <fieldset className="employee-assignment-picker" disabled={disabled}>
@@ -2713,7 +2717,7 @@ function AssignmentPicker({
           <span className="employee-field-requirement">Required</span>
         ) : null}
       </legend>
-      {available.length > 8 ? (
+      {searchable && available.length > 8 ? (
         <input
           aria-label={`Search ${label.toLowerCase()}`}
           placeholder={`Search ${label.toLowerCase()}`}
