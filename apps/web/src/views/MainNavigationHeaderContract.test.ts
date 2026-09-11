@@ -5,8 +5,8 @@ const topLevelPages = [
   {
     label: "Workspace",
     path: "src/views/WorkspacePage.tsx",
-    headerClassName: "workspace-header",
-    forbidden: ['className="eyebrow"', "<p>", "Operational time record"],
+    headerClassName: "catalog-page-header",
+    catalogTitle: "Workspace",
   },
   {
     label: "Availability",
@@ -41,8 +41,8 @@ const topLevelPages = [
   {
     label: "Notifications",
     path: "src/views/NotificationsPage.tsx",
-    headerClassName: "communications-header",
-    forbidden: ["<p>Inbox</p>", 'className="eyebrow"'],
+    headerClassName: "catalog-page-header",
+    catalogTitle: "Notifications",
   },
   {
     label: "Schedule Requests",

@@ -35,6 +35,7 @@ import {
 } from "../communications/communications-data";
 
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
+import { CatalogPageHeader } from "./CatalogPageHeader";
 
 const widgetLabels: Record<WorkspaceWidgetId, string> = {
   operations: "Today",
@@ -116,46 +117,46 @@ export function WorkspacePage() {
 
   return (
     <section className="workspace-page" aria-labelledby="workspace-title">
-      <header className="workspace-header">
-        <div>
-          <h1 id="workspace-title">Workspace</h1>
-          <span>
-            {greeting(now)}, {model.display_name} · {formatNow(now)}
-          </span>
-        </div>
-        <div className="workspace-header-actions">
-          {customizing ? (
-            <>
+      <CatalogPageHeader
+        eyebrow="TODAY'S WORK. ONE PLACE."
+        title="Workspace"
+        titleId="workspace-title"
+        description={`Track today’s operations, open requests, announcements, todos, and quick actions. ${greeting(now)}, ${model.display_name} · ${formatNow(now)}.`}
+        action={
+          <div className="workspace-header-actions">
+            {customizing ? (
+              <>
+                <button
+                  className="nf-button secondary"
+                  type="button"
+                  onClick={() => {
+                    setDraft(null);
+                    setCustomizing(false);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="nf-button"
+                  type="button"
+                  disabled={saveMutation.isPending}
+                  onClick={() => saveMutation.mutate(layout)}
+                >
+                  {saveMutation.isPending ? "Saving..." : "Save layout"}
+                </button>
+              </>
+            ) : (
               <button
                 className="nf-button secondary"
                 type="button"
-                onClick={() => {
-                  setDraft(null);
-                  setCustomizing(false);
-                }}
+                onClick={() => setCustomizing(true)}
               >
-                Cancel
+                <Settings2 size={16} aria-hidden /> Customize
               </button>
-              <button
-                className="nf-button"
-                type="button"
-                disabled={saveMutation.isPending}
-                onClick={() => saveMutation.mutate(layout)}
-              >
-                {saveMutation.isPending ? "Saving..." : "Save layout"}
-              </button>
-            </>
-          ) : (
-            <button
-              className="nf-button secondary"
-              type="button"
-              onClick={() => setCustomizing(true)}
-            >
-              <Settings2 size={16} aria-hidden /> Customize
-            </button>
-          )}
-        </div>
-      </header>
+            )}
+          </div>
+        }
+      />
       {saveMutation.error ? (
         <p className="workspace-error" role="alert">
           {saveMutation.error.message}

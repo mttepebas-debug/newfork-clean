@@ -32,6 +32,7 @@ import {
   NotificationShiftDetails,
   notificationExchangeTarget,
 } from "../communications/NotificationShiftDetails";
+import { CatalogPageHeader } from "./CatalogPageHeader";
 
 type Category = "all" | NotificationCategory;
 type NotificationMutationInput = {
@@ -89,24 +90,24 @@ export function NotificationsPage() {
       className="notifications-page"
       aria-labelledby="notifications-title"
     >
-      <header className="communications-header">
-        <div>
-          <h1 id="notifications-title">Notifications</h1>
-          <span>
-            {unreadCount ? `${unreadCount} unread` : "You're all caught up"}
-          </span>
-        </div>
-        <button
-          className="nf-button secondary"
-          type="button"
-          disabled={!unreadCount || mutation.isPending}
-          onClick={() =>
-            mutation.mutate({ notification_id: null, action: "read_all" })
-          }
-        >
-          <CheckCheck size={16} aria-hidden /> Mark all read
-        </button>
-      </header>
+      <CatalogPageHeader
+        eyebrow="UPDATES. ALERTS. ACTIONS."
+        title="Notifications"
+        titleId="notifications-title"
+        description={`Review schedule alerts, request activity, and workspace updates. ${unreadCount ? `${unreadCount} unread.` : "You're all caught up."}`}
+        action={
+          <button
+            className="nf-button secondary"
+            type="button"
+            disabled={!unreadCount || mutation.isPending}
+            onClick={() =>
+              mutation.mutate({ notification_id: null, action: "read_all" })
+            }
+          >
+            <CheckCheck size={16} aria-hidden /> Mark all read
+          </button>
+        }
+      />
       <div className="notification-toolbar">
         <div
           className="communication-filters"
