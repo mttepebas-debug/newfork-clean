@@ -123,6 +123,12 @@
 .weekly-team-table thead tr > :first-child {
   background: #f3f5f3;
 }
+.weekly-team-day-heading {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  line-height: 1;
+}
 .weekly-team-person,
 .weekly-team-day {
   display: flex;

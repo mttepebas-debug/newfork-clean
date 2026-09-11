@@ -28,7 +28,7 @@ const weekdays = [
   [6, "Saturday"],
   [0, "Sunday"],
 ] as const;
-type AvailabilitySortKey = "employee" | (typeof weekdays)[number][0];
+type AvailabilitySortKey = "employee";
 
 export function AvailabilityPage() {
   const { context } = useAuth();
@@ -212,28 +212,10 @@ export function AvailabilityPage() {
                   />
                 </th>
                 {weekdays.map(([day, name]) => (
-                  <th
-                    key={day}
-                    scope="col"
-                    aria-sort={
-                      sort.key === day
-                        ? sort.descending
-                          ? "descending"
-                          : "ascending"
-                        : "none"
-                    }
-                  >
-                    <CatalogSortButton
-                      label={name.slice(0, 3)}
-                      active={sort.key === day}
-                      onClick={() =>
-                        setSort({
-                          key: day,
-                          descending:
-                            sort.key === day ? !sort.descending : false,
-                        })
-                      }
-                    />
+                  <th key={day} scope="col">
+                    <span className="weekly-team-day-heading">
+                      {name.slice(0, 3)}
+                    </span>
                   </th>
                 ))}
               </tr>
@@ -328,15 +310,9 @@ export function AvailabilityPage() {
 
 function availabilitySortValue(
   employee: WeeklyTeamRead["employees"][number],
-  key: AvailabilitySortKey,
+  _key: AvailabilitySortKey,
 ): string {
-  if (key === "employee") return employee.display_name;
-  const day = employee.preference.days.find((item) => item.day === key);
-  if (!day) return "";
-  if (day.all_day) return "0 all day";
-  if (day.range) return `1 ${day.range.start}-${day.range.end}`;
-  if (day.shift_type_ids.length) return `2 ${day.shift_type_ids.join(",")}`;
-  return "3 available";
+  return employee.display_name;
 }
 
 function compareAvailabilityValues(left: string, right: string): number {
