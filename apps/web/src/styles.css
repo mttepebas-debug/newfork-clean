@@ -2293,16 +2293,17 @@
   margin-left: auto;
 }
 .employee-create-role .employee-field {
-  gap: 3px;
-}
-.employee-create-role .employee-field > span {
-  font-size: 11px;
+  gap: 0;
 }
 .employee-create-role .employee-field > small {
   display: none;
 }
 .employee-create-role .employee-field select {
   height: 38px;
+}
+.employee-create-role .employee-field select[aria-invalid="true"] {
+  border-color: var(--danger, #a13f30);
+  box-shadow: 0 0 0 1px var(--danger, #a13f30);
 }
 
 .employee-drawer-create .employee-identity { min-height: 128px; padding: 20px 16px; }

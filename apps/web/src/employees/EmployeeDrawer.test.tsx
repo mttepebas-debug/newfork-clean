@@ -321,6 +321,14 @@ describe("EmployeeDrawer", () => {
       revision: 2,
     });
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    expect(screen.getByLabelText("Invite role").getAttribute("aria-invalid")).toBe(
+      "true",
+    );
+    expect(prepareEmployeeInvitation).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Invite role"), {
+      target: { value: employeeRoleId },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
     await waitFor(() =>
       expect(prepareEmployeeInvitation).toHaveBeenCalledWith(
         workspaceId,

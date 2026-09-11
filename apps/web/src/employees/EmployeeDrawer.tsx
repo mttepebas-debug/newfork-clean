@@ -136,6 +136,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     null,
   );
   const [inviteRoleDirty, setInviteRoleDirty] = useState(false);
+  const [inviteRoleAttempted, setInviteRoleAttempted] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [createResult, setCreateResult] = useState<EmployeeCreateResult | null>(
     null,
@@ -210,9 +211,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
 
   useEffect(() => {
     const pendingRoleId = detail.data?.invitation?.role_id;
-    const defaultEmployeeRoleId = references.data?.inviteRoles.find(
-      (role) => role.systemKey === "employee",
-    )?.id;
     const subjectChanged =
       lastInviteRoleSubjectKeyRef.current !== draftSubjectKey;
     if (
@@ -224,14 +222,14 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       return;
     }
     if (!subjectChanged && inviteRoleDirty) return;
-    setInviteRoleId(pendingRoleId ?? defaultEmployeeRoleId ?? "");
+    setInviteRoleId(pendingRoleId ?? "");
     setInviteRoleDirty(false);
+    setInviteRoleAttempted(false);
     lastInviteRoleSubjectKeyRef.current = draftSubjectKey;
   }, [
     detail.data?.invitation?.role_id,
     draftSubjectKey,
     inviteRoleDirty,
-    references.data?.inviteRoles,
   ]);
 
   useEffect(() => {
@@ -653,6 +651,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     };
   }, [props.creating, dirty, busy, activeSection]);
   const startCreate = (invite: boolean) => {
+    if (invite && !inviteRoles.some((role) => role.id === inviteRoleId)) {
+      setInviteRoleAttempted(true);
+      return;
+    }
     if (
       busy ||
       submittingCreateRef.current ||
@@ -696,6 +698,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const handleInviteRoleChange = (roleId: string): void => {
     setInviteRoleId(roleId);
     setInviteRoleDirty(true);
+    setInviteRoleAttempted(false);
   };
   const handleAddEmail = (): void => {
     focusEmailOnProfileRef.current = true;
@@ -1109,6 +1112,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     inviteRoleId={inviteRoleId}
                     onInviteRoleChange={handleInviteRoleChange}
                     disabled={busy || uncertainCreate || readOnly}
+                    invalid={inviteRoleAttempted && !inviteRoleId}
                   />
                 </div>
               ) : null}
@@ -1117,7 +1121,14 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   <Button
                     className="secondary-button"
                     type="button"
-                    disabled={!inviteReady || busy || uncertainCreate}
+                    disabled={
+                      busy ||
+                      uncertainCreate ||
+                      !readiness.employeeReady ||
+                      !readiness.emailReady ||
+                      !canManageAccess ||
+                      readOnly
+                    }
                     onClick={() => startCreate(true)}
                   >
                     <MailPlus size={16} aria-hidden />
@@ -1201,6 +1212,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     inviteRoleId={inviteRoleId}
                     onInviteRoleChange={handleInviteRoleChange}
                     disabled={busy || readOnly}
+                    invalid={inviteRoleAttempted && !inviteRoleId}
                   />
                 </div>
               ) : null}
@@ -1227,7 +1239,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     type="button"
                     disabled={
                       busy ||
-                      !inviteRoleId ||
                       !readiness.emailReady ||
                       (dirty && !readiness.employeeReady)
                     }
@@ -1239,6 +1250,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                           : undefined
                     }
                     onClick={async () => {
+                      if (!inviteRoleId) {
+                        setInviteRoleAttempted(true);
+                        return;
+                      }
                       if (dirty) {
                         try {
                           await saveMutation.mutateAsync();
@@ -2457,26 +2472,27 @@ function InviteRoleField({
   inviteRoleId,
   onInviteRoleChange,
   disabled,
+  invalid,
 }: {
   roles: readonly InviteRoleOption[];
   inviteRoleId: string;
   onInviteRoleChange: (roleId: string) => void;
   disabled: boolean;
+  invalid: boolean;
 }) {
+  const selectedRoleId = roles.some((role) => role.id === inviteRoleId)
+    ? inviteRoleId
+    : "";
   return (
-    <label className="employee-field">
-      <span>Invite role</span>
+    <label className="employee-field employee-invite-role-field">
       <select
         aria-label="Invite role"
-        value={
-          roles.some((role) => role.id === inviteRoleId) ? inviteRoleId : ""
-        }
+        aria-invalid={invalid || undefined}
+        value={selectedRoleId}
         disabled={disabled || roles.length === 0}
         onChange={(event) => onInviteRoleChange(event.target.value)}
       >
-        {roles.length > 0 && !roles.some((role) => role.id === inviteRoleId) ? (
-          <option value="">Choose a role</option>
-        ) : null}
+        {roles.length > 0 ? <option value="">Select a role</option> : null}
         {roles.length === 0 ? (
           <option value="">No assignable roles</option>
         ) : null}
