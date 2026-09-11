@@ -674,6 +674,64 @@ describe("EmployeeDrawer", () => {
     expect(screen.getByRole("button", { name: "Resend" })).toBeTruthy();
   });
 
+  it("locks profile identity and email while an invitation is pending", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      display_status: "invited",
+      invitation: {
+        id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+        email: "alex@example.test",
+        role_id: employeeRoleId,
+        status: "pending",
+        expires_at: "2099-08-24T12:00:00.000Z",
+        sent_at: "2026-08-17T12:00:00.000Z",
+        delivery_status: "sent",
+        delivery_attempted_at: "2026-08-17T12:01:00.000Z",
+        delivery_failed_at: null,
+        delivery_error: null,
+      },
+    });
+
+    expect(await screen.findByLabelText("First name")).toHaveProperty(
+      "readOnly",
+      true,
+    );
+    expect(screen.getByLabelText("Last name")).toHaveProperty(
+      "readOnly",
+      true,
+    );
+    expect(screen.getByLabelText("E-mail")).toHaveProperty("readOnly", true);
+  });
+
+  it("unlocks profile identity and email after a pending invitation is revoked", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      display_status: "not_invited",
+      invitation: {
+        id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+        email: "alex@example.test",
+        role_id: employeeRoleId,
+        status: "revoked",
+        expires_at: "2099-08-24T12:00:00.000Z",
+        sent_at: "2026-08-17T12:00:00.000Z",
+        delivery_status: "sent",
+        delivery_attempted_at: "2026-08-17T12:01:00.000Z",
+        delivery_failed_at: null,
+        delivery_error: null,
+      },
+    });
+
+    expect(await screen.findByLabelText("First name")).toHaveProperty(
+      "readOnly",
+      false,
+    );
+    expect(screen.getByLabelText("Last name")).toHaveProperty(
+      "readOnly",
+      false,
+    );
+    expect(screen.getByLabelText("E-mail")).toHaveProperty("readOnly", false);
+  });
+
   it("shows removed access after an accepted invitation even after its expiry date", async () => {
     renderDrawer("access", {
       ...detail,

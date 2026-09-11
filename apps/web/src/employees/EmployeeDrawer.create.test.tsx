@@ -91,6 +91,17 @@ function disabled(name: string) {
 }
 
 describe("employee create flow", () => {
+  it("shows phone as not provided in the add employee profile contact fields", () => {
+    setup();
+
+    expect(screen.getByLabelText("Phone")).toHaveProperty("value", "");
+    expect(screen.getByLabelText("Phone")).toHaveProperty(
+      "placeholder",
+      "Not provided",
+    );
+    expect(screen.getByLabelText("Phone")).toHaveProperty("readOnly", true);
+  });
+
   it.each(["Enter", "Escape", "outside"])(
     "creates with Enter then closes unchanged with %s",
     async (closeMethod) => {
@@ -197,7 +208,7 @@ describe("employee create flow", () => {
     });
     expect(screen.getByLabelText("Invite role")).toHaveProperty(
       "value",
-      ids.role,
+      "",
     );
     expect(disabled("Save")).toBe(false);
     expect(disabled("Invite")).toBe(false);
@@ -394,7 +405,15 @@ describe("employee create flow", () => {
     await client.invalidateQueries({
       queryKey: ["employee-reference-data", ids.workspace],
     });
-    await waitFor(() => expect(disabled("Invite")).toBe(true));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Invite role")).toHaveProperty("value", ""),
+    );
+    expect(disabled("Invite")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    expect(screen.getByLabelText("Invite role").getAttribute("aria-invalid")).toBe(
+      "true",
+    );
+    expect(createEmployee).not.toHaveBeenCalled();
     expect(disabled("Save")).toBe(false);
   });
   it("retries an uncertain request with the same command and locks edits", async () => {

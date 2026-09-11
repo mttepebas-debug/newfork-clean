@@ -507,10 +507,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         rank(a.systemKey) - rank(b.systemKey) || a.name.localeCompare(b.name)
       );
     });
+  const inviteRoleReady = inviteRoles.some((role) => role.id === inviteRoleId);
   const inviteReady =
     readiness.employeeReady &&
     readiness.emailReady &&
-    inviteRoles.some((role) => role.id === inviteRoleId) &&
+    inviteRoleReady &&
     canManageAccess &&
     !readOnly;
   const changeSection = (section: EmployeeSection) => {
@@ -1112,7 +1113,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     inviteRoleId={inviteRoleId}
                     onInviteRoleChange={handleInviteRoleChange}
                     disabled={busy || uncertainCreate || readOnly}
-                    invalidAttempt={inviteRoleId ? 0 : inviteRoleAttempt}
+                    invalidAttempt={inviteRoleReady ? 0 : inviteRoleAttempt}
                   />
                 </div>
               ) : null}
@@ -1212,7 +1213,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     inviteRoleId={inviteRoleId}
                     onInviteRoleChange={handleInviteRoleChange}
                     disabled={busy || readOnly}
-                    invalidAttempt={inviteRoleId ? 0 : inviteRoleAttempt}
+                    invalidAttempt={inviteRoleReady ? 0 : inviteRoleAttempt}
                   />
                 </div>
               ) : null}
@@ -1237,14 +1238,14 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       (dirty && !readiness.employeeReady)
                     }
                     title={
-                      !inviteRoleId
+                      !inviteRoleReady
                         ? "Choose a role before sending the invitation"
                         : detail.data?.invitation?.status === "pending"
                           ? "Create a new link and invalidate the current invitation"
                           : undefined
                     }
                     onClick={async () => {
-                      if (!inviteRoleId) {
+                      if (!inviteRoleReady) {
                         setInviteRoleAttempt((current) => current + 1);
                         return;
                       }
@@ -1567,6 +1568,7 @@ function renderSection(
         readOnly={readOnly}
         linked={Boolean(detail?.user_id)}
         identityLocked={detail?.display_status === "active"}
+        invitePending={detail?.invitation?.status === "pending"}
         accountEmail={detail?.account_email ?? null}
         privateContact={detail?.private_contact ?? null}
         emailInputRef={emailInputRef}
@@ -1775,6 +1777,7 @@ function ProfileSection({
   readOnly,
   linked,
   identityLocked,
+  invitePending,
   accountEmail,
   privateContact,
   emailInputRef,
@@ -1792,6 +1795,7 @@ function ProfileSection({
   readOnly: boolean;
   linked: boolean;
   identityLocked: boolean;
+  invitePending: boolean;
   accountEmail: string | null;
   privateContact: EmployeeDetail["private_contact"];
   emailInputRef: React.RefObject<HTMLInputElement | null>;
@@ -1814,6 +1818,9 @@ function ProfileSection({
       requirement.status !== "completed",
   );
   const identityReadOnly = readOnly || identityLocked;
+  const pendingInviteHint = invitePending
+    ? "Locked while invitation is pending"
+    : undefined;
   const emailValue = linked
     ? (accountEmail ?? draft.invitation_email)
     : draft.invitation_email;
@@ -1829,7 +1836,12 @@ function ProfileSection({
             required={creating}
             value={draft.first_name}
             disabled={identityReadOnly}
-            hint={identityLocked ? "Locked after activation" : undefined}
+            readOnly={invitePending}
+            hint={
+              identityLocked
+                ? "Locked after activation"
+                : pendingInviteHint
+            }
             onChange={(value) =>
               setDraft((current) => ({ ...current, first_name: value }))
             }
@@ -1839,7 +1851,12 @@ function ProfileSection({
             required={creating}
             value={draft.last_name}
             disabled={identityReadOnly}
-            hint={identityLocked ? "Locked after activation" : undefined}
+            readOnly={invitePending}
+            hint={
+              identityLocked
+                ? "Locked after activation"
+                : pendingInviteHint
+            }
             onChange={(value) =>
               setDraft((current) => ({ ...current, last_name: value }))
             }
@@ -1871,19 +1888,14 @@ function ProfileSection({
             value={emailValue}
             type="email"
             disabled={readOnly}
-            readOnly={linked}
+            readOnly={linked || invitePending}
             inputRef={emailInputRef}
-            hint={linked ? "Verified account e-mail" : undefined}
+            hint={linked ? "Verified account e-mail" : pendingInviteHint}
             onChange={(value) =>
               setDraft((current) => ({ ...current, invitation_email: value }))
             }
           />
-          {!creating ? (
-            <ReadOnlyField
-              label="Phone"
-              value={privateContact?.phone ?? null}
-            />
-          ) : null}
+          <ReadOnlyField label="Phone" value={privateContact?.phone ?? null} />
           {!creating ? (
             <ReadOnlyField
               label="Emergency contact"
@@ -2623,6 +2635,8 @@ function Field({
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())));
   const validationMessage =
     type === "email" ? "Enter a valid email address." : `${label} is required.`;
+  const helperVisible = invalid || Boolean(hint) || required;
+  const helperText = invalid ? validationMessage : (hint ?? "");
   return (
     <label
       className={`employee-field${type === "email" ? " employee-email-field" : ""}`}
@@ -2640,7 +2654,7 @@ function Field({
         aria-label={label}
         aria-required={required || undefined}
         aria-invalid={invalid || undefined}
-        aria-describedby={invalid || hint ? id : undefined}
+        aria-describedby={helperVisible && helperText ? id : undefined}
         onBlur={(event) => {
           if (
             event.relatedTarget instanceof Element &&
@@ -2654,12 +2668,14 @@ function Field({
         readOnly={readOnly}
         onChange={(event) => onChange(event.target.value)}
       />
-      {invalid ? (
-        <small id={id} className="employee-field-error">
-          {validationMessage}
+      {helperVisible ? (
+        <small
+          id={helperText ? id : undefined}
+          className={`employee-field-helper${invalid ? " employee-field-error" : ""}`}
+          aria-hidden={!helperText || undefined}
+        >
+          {helperText}
         </small>
-      ) : hint ? (
-        <small id={id}>{hint}</small>
       ) : null}
     </label>
   );
