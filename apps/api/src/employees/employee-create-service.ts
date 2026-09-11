@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
   deliverInvitation,
+  restoreAuthAccountForInvitation,
   storeDeliverySecret,
   type ServiceOptions,
 } from "./invitation-service";
@@ -54,6 +55,10 @@ export function createEmployeeCreateService(
         : undefined;
       if (deliveryStatus !== "sent" && url) {
         try {
+          await restoreAuthAccountForInvitation(
+            client,
+            command.employee.invitation_email,
+          );
           await storeDeliverySecret(client, {
             actorUserId,
             workspaceId,

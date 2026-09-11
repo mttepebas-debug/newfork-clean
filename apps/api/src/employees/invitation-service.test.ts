@@ -4,8 +4,13 @@ import { createEmployeeInvitationService } from "./invitation-service";
 
 const mocks = vi.hoisted(() => {
   const rpc = vi.fn();
-  const createClient = vi.fn(() => ({ rpc }));
-  return { createClient, rpc };
+  const listUsers = vi.fn();
+  const updateUserById = vi.fn();
+  const createClient = vi.fn(() => ({
+    rpc,
+    auth: { admin: { listUsers, updateUserById } },
+  }));
+  return { createClient, listUsers, rpc, updateUserById };
 });
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -19,9 +24,13 @@ const invitationId = "40000000-0000-4000-8000-000000000001";
 const roleId = "50000000-0000-4000-8000-000000000001";
 
 beforeEach(() => {
-  mocks.rpc.mockReset();
-  mocks.createClient.mockClear();
   vi.restoreAllMocks();
+  mocks.rpc.mockReset();
+  mocks.listUsers.mockReset();
+  mocks.listUsers.mockResolvedValue({ data: { users: [] }, error: null });
+  mocks.updateUserById.mockReset();
+  mocks.updateUserById.mockResolvedValue({ error: null });
+  mocks.createClient.mockClear();
 });
 
 describe("createEmployeeInvitationService", () => {
@@ -168,6 +177,42 @@ describe("createEmployeeInvitationService", () => {
       "revoke_employee_invitation_service",
       expect.anything(),
     );
+  });
+
+  it("lifts a matching auth account ban before sending a rehire invitation", async () => {
+    const authUserId = "60000000-0000-4000-8000-000000000001";
+    mocks.rpc
+      .mockResolvedValueOnce({ data: invitationId, error: null })
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    mocks.listUsers.mockResolvedValueOnce({
+      data: {
+        users: [{ id: authUserId, email: "employee@example.test" }],
+      },
+      error: null,
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200 })));
+
+    const service = createEmployeeInvitationService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+      appUrl: "https://app.example.test",
+      resendApiKey: "resend-key",
+      production: true,
+    });
+
+    await service.prepare({
+      actorUserId,
+      workspaceId,
+      employeeId,
+      email: "Employee@Example.Test",
+      roleId,
+    });
+
+    expect(mocks.listUsers).toHaveBeenCalledWith({ page: 1, perPage: 1000 });
+    expect(mocks.updateUserById).toHaveBeenCalledWith(authUserId, {
+      ban_duration: "none",
+    });
   });
 
   it("marks a development invitation as sent after preparing its local link", async () => {
