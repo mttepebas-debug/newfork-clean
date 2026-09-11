@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { ActiveWorkspaceContext, EmployeeSummary } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
@@ -104,7 +110,9 @@ describe("EmployeesPage", () => {
     expect(await screen.findByText("Alex Kim")).toBeTruthy();
     const table = screen.getByRole("table");
     expect(screen.getByRole("columnheader", { name: "Access" })).toBeTruthy();
-    expect(screen.queryByRole("columnheader", { name: "Invite email" })).toBeNull();
+    expect(
+      screen.queryByRole("columnheader", { name: "Invite email" }),
+    ).toBeNull();
     expect(within(table).getByText("Main Dining")).toBeTruthy();
     expect(within(table).getByText("Server")).toBeTruthy();
     expect(within(table).getByText("No app access")).toBeTruthy();
@@ -120,11 +128,15 @@ describe("EmployeesPage", () => {
     expect(screen.getByText("Alex Kim")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Show all" }));
-    expect(screen.getByRole("columnheader", { name: "Invite email" })).toBeTruthy();
+    expect(
+      screen.getByRole("columnheader", { name: "Invite email" }),
+    ).toBeTruthy();
     expect(screen.getByText("alex@example.test")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
-    expect(screen.queryByRole("columnheader", { name: "Invite email" })).toBeNull();
+    expect(
+      screen.queryByRole("columnheader", { name: "Invite email" }),
+    ).toBeNull();
     expect(screen.getByRole("columnheader", { name: "Access" })).toBeTruthy();
   });
 
@@ -134,12 +146,12 @@ describe("EmployeesPage", () => {
     expect(await screen.findByText("Alex Kim")).toBeTruthy();
     const toolbar = container.querySelector(".employees-toolbar");
     expect(toolbar).toBeTruthy();
-    expect(toolbar?.children[0]?.classList.contains("employee-toolbar-controls")).toBe(
-      true,
-    );
-    expect(toolbar?.children[1]?.classList.contains("employee-search")).toBe(
-      true,
-    );
+    expect(
+      toolbar?.children[0]?.classList.contains("employee-toolbar-controls"),
+    ).toBe(true);
+    expect(
+      toolbar?.children[1]?.classList.contains("catalog-toolbar-filter-row"),
+    ).toBe(true);
     expect(
       screen.getByPlaceholderText("Search name, location, or job"),
     ).toBeTruthy();
@@ -152,6 +164,16 @@ describe("EmployeesPage", () => {
       name: "Table column settings",
     });
     expect(settingsButton.textContent).toBe("");
+
+    const filterRow = toolbar!.children[1] as HTMLElement;
+    expect(
+      within(filterRow).getByRole("combobox", {
+        name: "Filter employees by location",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(filterRow).getByRole("textbox", { name: "Search employees" }),
+    ).toBeTruthy();
   });
 
   it("exits archive mode from the page tabs without a sidebar reload", async () => {

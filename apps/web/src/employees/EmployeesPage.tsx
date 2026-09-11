@@ -193,7 +193,10 @@ export default function EmployeesPage() {
     const options = new Map<string, string>();
     for (const employee of employees.data ?? []) {
       if (employee.primary_location_id && employee.primary_location_name) {
-        options.set(employee.primary_location_id, employee.primary_location_name);
+        options.set(
+          employee.primary_location_id,
+          employee.primary_location_name,
+        );
       }
     }
     return [...options.entries()]
@@ -242,8 +245,8 @@ export default function EmployeesPage() {
         ) : null}
       </header>
 
-      <div className="employees-toolbar">
-        <div className="employee-toolbar-controls">
+      <div className="employees-toolbar catalog-toolbar">
+        <div className="employee-toolbar-controls catalog-toolbar-status-row">
           <div
             className="employee-status-tabs"
             role="group"
@@ -287,6 +290,17 @@ export default function EmployeesPage() {
               Archived
             </button>
           </div>
+          <EmployeeColumnPicker
+            columns={employeeColumns}
+            visibleKeySet={visibleKeySet}
+            visibleOrder={visibleColumns.map((column) => column.key)}
+            onToggleColumn={toggleColumn}
+            onMoveColumn={moveColumn}
+            onResetColumns={resetColumns}
+            onShowAllColumns={showAllColumns}
+          />
+        </div>
+        <div className="catalog-toolbar-filter-row">
           <select
             className="toolbar-filter-select"
             value={locationFilter}
@@ -308,27 +322,18 @@ export default function EmployeesPage() {
               </option>
             ))}
           </select>
-          <EmployeeColumnPicker
-            columns={employeeColumns}
-            visibleKeySet={visibleKeySet}
-            visibleOrder={visibleColumns.map((column) => column.key)}
-            onToggleColumn={toggleColumn}
-            onMoveColumn={moveColumn}
-            onResetColumns={resetColumns}
-            onShowAllColumns={showAllColumns}
-          />
+          <label className="employee-search toolbar-search">
+            <Search size={17} aria-hidden />
+            <span className="sr-only">Search employees</span>
+            <input
+              value={search}
+              onChange={(event) =>
+                updateParams({ q: event.target.value || null })
+              }
+              placeholder="Search name, location, or job"
+            />
+          </label>
         </div>
-        <label className="employee-search">
-          <Search size={17} aria-hidden />
-          <span className="sr-only">Search employees</span>
-          <input
-            value={search}
-            onChange={(event) =>
-              updateParams({ q: event.target.value || null })
-            }
-            placeholder="Search name, location, or job"
-          />
-        </label>
       </div>
 
       <div className="employee-table-wrap">
@@ -450,12 +455,16 @@ function EmployeeColumnPicker({
   useEffect(() => {
     if (!open) return;
     const dismissOutside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !pickerRef.current?.contains(event.target)) {
+      if (
+        event.target instanceof Node &&
+        !pickerRef.current?.contains(event.target)
+      ) {
         setOpen(false);
       }
     };
     document.addEventListener("pointerdown", dismissOutside, true);
-    return () => document.removeEventListener("pointerdown", dismissOutside, true);
+    return () =>
+      document.removeEventListener("pointerdown", dismissOutside, true);
   }, [open]);
 
   return (

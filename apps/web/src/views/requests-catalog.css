@@ -10,7 +10,7 @@
   flex-wrap: wrap;
 }
 .requests-catalog-page .requests-tabs button {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--job-muted);
 }
@@ -20,14 +20,13 @@
 }
 .requests-catalog-page .requests-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(150px, 220px) minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
   gap: 10px;
   margin: 0 0 16px;
 }
 .requests-catalog-page .requests-search {
-  grid-column: 1 / -1;
-  width: 100%;
+  width: auto;
   max-width: none;
 }
 .requests-catalog-page :is(.requests-search, .requests-toolbar > select) {

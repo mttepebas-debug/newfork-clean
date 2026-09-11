@@ -1111,7 +1111,7 @@
   gap: 8px;
 }
 @media (max-width: 1100px) {
-  .job-catalog-toolbar .job-search {
+  .job-catalog-toolbar:not(.catalog-toolbar) .job-search {
     order: 3;
     max-width: none;
     flex-basis: 100%;
@@ -2037,14 +2037,14 @@
   margin: 0;
 }
 .important-dates-catalog-page .important-date-filter {
-  order: 1;
+  order: initial;
 }
 .important-dates-catalog-page .job-archive-tabs {
-  order: 2;
+  order: initial;
 }
 .important-dates-catalog-page .job-search {
-  order: 3;
-  flex: 1 0 100%;
+  order: initial;
+  flex: 1 1 auto;
   max-width: none;
 }
 .important-date-filter > span {

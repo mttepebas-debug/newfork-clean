@@ -80,66 +80,70 @@ export function AvailabilityPage() {
       <header className="page-header">
         <h1 id="availability-title">Availability</h1>
       </header>
-      <div className="weekly-team-toolbar">
-        <label className="search-field">
-          <Search size={16} aria-hidden />
-          <input
-            aria-label="Search employees"
-            placeholder="Search employees"
-            value={queryText}
-            onChange={(event) =>
-              updateParams({ q: event.target.value || null })
-            }
-          />
-        </label>
-        <select
-          className="toolbar-filter-select"
-          aria-label="Location"
-          value={locationId}
-          onChange={(event) =>
-            updateParams({
-              location:
-                event.target.value === "all" ? null : event.target.value,
-            })
-          }
-        >
-          <option value="all">All locations</option>
-          {model?.locations.map((location) => (
-            <option key={location.id} value={location.id}>
-              {location.name}
-            </option>
-          ))}
-        </select>
-        <div
-          className="employee-status-tabs weekly-team-filters"
-          role="group"
-          aria-label="Submission status"
-        >
-          {(
-            [
-              ["all", "All"],
-              ["submitted", "Submitted"],
-              ["missing", "Not submitted"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              className={submission === value ? "active" : ""}
-              aria-pressed={submission === value}
-              onClick={() =>
-                updateParams({ submission: value === "all" ? null : value })
-              }
-            >
-              {label}
-            </button>
-          ))}
+      <div className="weekly-team-toolbar catalog-toolbar">
+        <div className="catalog-toolbar-status-row">
+          <div
+            className="employee-status-tabs weekly-team-filters"
+            role="group"
+            aria-label="Submission status"
+          >
+            {(
+              [
+                ["all", "All"],
+                ["submitted", "Submitted"],
+                ["missing", "Not submitted"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={submission === value ? "active" : ""}
+                aria-pressed={submission === value}
+                onClick={() =>
+                  updateParams({ submission: value === "all" ? null : value })
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {model && (
+            <span className="weekly-team-count" role="status">
+              {employees.length} employees
+            </span>
+          )}
         </div>
-        {model && (
-          <span className="weekly-team-count" role="status">
-            {employees.length} employees
-          </span>
-        )}
+        <div className="catalog-toolbar-filter-row">
+          <select
+            className="toolbar-filter-select"
+            aria-label="Location"
+            value={locationId}
+            onChange={(event) =>
+              updateParams({
+                location:
+                  event.target.value === "all" ? null : event.target.value,
+              })
+            }
+          >
+            <option value="all">All locations</option>
+            {model?.locations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </select>
+          <label className="search-field toolbar-search">
+            <Search size={16} aria-hidden />
+            <input
+              aria-label="Search employees"
+              placeholder="Search employees"
+              value={queryText}
+              onChange={(event) =>
+                updateParams({ q: event.target.value || null })
+              }
+            />
+          </label>
+        </div>
       </div>
       {query.isPending && <p role="status">Loading availability...</p>}
       {query.error && (

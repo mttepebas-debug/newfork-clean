@@ -64,16 +64,21 @@ export function ScheduleRequestsPage() {
     return <Navigate to="/app/availability" replace />;
   }
   return (
-    <PermissionRoute anyOf={[
-      "schedule.time_off_requests.read",
-      "schedule.shift_change_requests.read",
-    ]}>
-      <AvailabilityDraftScope labels={{
-        saving: "Saving request decision",
-        discard: "Discard request decision?",
-        saved: "Decision saved",
-        unsaved: "Your unsaved decision and note will be lost. Saved decisions and published assignments stay in place.",
-      }}>
+    <PermissionRoute
+      anyOf={[
+        "schedule.time_off_requests.read",
+        "schedule.shift_change_requests.read",
+      ]}
+    >
+      <AvailabilityDraftScope
+        labels={{
+          saving: "Saving request decision",
+          discard: "Discard request decision?",
+          saved: "Decision saved",
+          unsaved:
+            "Your unsaved decision and note will be lost. Saved decisions and published assignments stay in place.",
+        }}
+      >
         <ScheduleRequestsPageContent />
       </AvailabilityDraftScope>
     </PermissionRoute>
@@ -354,81 +359,85 @@ function ScheduleRequestsPageContent() {
         }
       />
 
-      <div className="requests-toolbar">
-        <div className="employee-status-tabs" role="group" aria-label="Queue">
-          {tab === "time-off" ? (
-            <>
-              <button
-                className={timeOffQueue === "needs_review" ? "active" : ""}
-                onClick={() => {
-                  setTimeOffQueue("needs_review");
-                  resetPaging();
-                }}
-              >
-                Needs review
-              </button>
-              <button
-                className={timeOffQueue === "closed" ? "active" : ""}
-                onClick={() => {
-                  setTimeOffQueue("closed");
-                  resetPaging();
-                }}
-              >
-                <History size={15} /> Closed
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                className={shiftQueue === "needs_review" ? "active" : ""}
-                onClick={() => {
-                  setShiftQueue("needs_review");
-                  resetPaging();
-                }}
-              >
-                Needs review
-              </button>
-              <button
-                className={shiftQueue === "history" ? "active" : ""}
-                onClick={() => {
-                  setShiftQueue("history");
-                  resetPaging();
-                }}
-              >
-                <History size={15} /> History
-              </button>
-            </>
-          )}
+      <div className="requests-toolbar catalog-toolbar">
+        <div className="catalog-toolbar-status-row">
+          <div className="employee-status-tabs" role="group" aria-label="Queue">
+            {tab === "time-off" ? (
+              <>
+                <button
+                  className={timeOffQueue === "needs_review" ? "active" : ""}
+                  onClick={() => {
+                    setTimeOffQueue("needs_review");
+                    resetPaging();
+                  }}
+                >
+                  Needs review
+                </button>
+                <button
+                  className={timeOffQueue === "closed" ? "active" : ""}
+                  onClick={() => {
+                    setTimeOffQueue("closed");
+                    resetPaging();
+                  }}
+                >
+                  <History size={15} /> Closed
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className={shiftQueue === "needs_review" ? "active" : ""}
+                  onClick={() => {
+                    setShiftQueue("needs_review");
+                    resetPaging();
+                  }}
+                >
+                  Needs review
+                </button>
+                <button
+                  className={shiftQueue === "history" ? "active" : ""}
+                  onClick={() => {
+                    setShiftQueue("history");
+                    resetPaging();
+                  }}
+                >
+                  <History size={15} /> History
+                </button>
+              </>
+            )}
+          </div>
         </div>
-        <label className="requests-search">
-          <Search size={16} aria-hidden />
-          <input
-            type="search"
-            value={search}
-            placeholder="Search employee or note"
-            aria-label="Search requests"
+        <div className="catalog-toolbar-filter-row">
+          <select
+            className="toolbar-filter-select"
+            value={locationId}
+            aria-label="Filter by location"
             onChange={(event) => {
-              setSearch(event.target.value);
+              setLocationId(event.target.value);
               resetPaging();
             }}
-          />
-        </label>
-        <select
-          className="toolbar-filter-select"
-          value={locationId}
-          aria-label="Filter by location"
-          onChange={(event) => {
-            setLocationId(event.target.value);
-            resetPaging();
-          }}
-        >
-          <option value="">All locations</option>
-          {query.data.locations.map((location) => (
-            <option key={location.id} value={location.id}>
-              {location.name}
-            </option>
-          ))}
-        </select>
+          >
+            <option value="">All locations</option>
+            {query.data.locations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </select>
+          <label className="requests-search toolbar-search">
+            <Search size={16} aria-hidden />
+            <input
+              type="search"
+              value={search}
+              placeholder="Search employee or note"
+              aria-label="Search requests"
+              onChange={(event) => {
+                setSearch(event.target.value);
+                resetPaging();
+              }}
+            />
+          </label>
+        </div>
       </div>
       {notice ? (
         <div className="request-notice" role="status">

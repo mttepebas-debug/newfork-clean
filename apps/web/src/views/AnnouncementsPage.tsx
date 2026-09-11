@@ -115,8 +115,8 @@ export function AnnouncementsPage() {
           ) : null
         }
       />
-      <div className="job-catalog-toolbar">
-        <div className="announcement-toolbar-controls">
+      <div className="job-catalog-toolbar catalog-toolbar">
+        <div className="announcement-toolbar-controls catalog-toolbar-status-row">
           <div
             className="employee-status-tabs"
             role="tablist"
@@ -141,32 +141,29 @@ export function AnnouncementsPage() {
                   {capitalize(value)}
                 </button>
               ))}
-          </div>
-          {query.data?.can_manage && (
-            <div
-              className="employee-status-tabs job-archive-tabs"
-              role="group"
-              aria-label="Archive visibility"
-            >
+            {query.data?.can_manage && (
               <button
                 type="button"
                 className={showArchived ? "active" : ""}
+                aria-label="Show archived announcements"
                 onClick={() => setShowArchived((current) => !current)}
               >
                 Show archived
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-        <label className="job-search">
-          <Search size={16} aria-hidden />
-          <input
-            aria-label="Search announcements"
-            placeholder="Search announcements"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
+        <div className="catalog-toolbar-filter-row catalog-toolbar-filter-row-search-only">
+          <label className="job-search toolbar-search">
+            <Search size={16} aria-hidden />
+            <input
+              aria-label="Search announcements"
+              placeholder="Search announcements"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+        </div>
       </div>
       {message && (
         <p className="announcement-catalog-message" role="status">

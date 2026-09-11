@@ -203,43 +203,47 @@ export default function ImportantDatesSettingsPage() {
         }
       />
 
-      <div className="job-catalog-toolbar">
-        <label className="job-search">
-          <Search size={16} aria-hidden />
-          <input
-            aria-label="Search important dates"
-            placeholder="Search title, note, or location"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-        <select
-          className="toolbar-filter-select important-date-filter"
-          aria-label="Type"
-          value={filter}
-          onChange={(event) =>
-            setFilter(event.target.value as ImportantDateType | "all")
-          }
-        >
-          <option value="all">All dates</option>
-          {typeOptions.map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <div
-          className="employee-status-tabs job-archive-tabs"
-          role="group"
-          aria-label="Archive visibility"
-        >
-          <button
-            type="button"
-            className={showArchived ? "active" : ""}
-            onClick={() => setShowArchived((current) => !current)}
+      <div className="job-catalog-toolbar catalog-toolbar">
+        <div className="catalog-toolbar-status-row">
+          <div
+            className="employee-status-tabs job-archive-tabs"
+            role="group"
+            aria-label="Archive visibility"
           >
-            Show archived
-          </button>
+            <button
+              type="button"
+              className={showArchived ? "active" : ""}
+              onClick={() => setShowArchived((current) => !current)}
+            >
+              Show archived
+            </button>
+          </div>
+        </div>
+        <div className="catalog-toolbar-filter-row">
+          <select
+            className="toolbar-filter-select important-date-filter"
+            aria-label="Type"
+            value={filter}
+            onChange={(event) =>
+              setFilter(event.target.value as ImportantDateType | "all")
+            }
+          >
+            <option value="all">All dates</option>
+            {typeOptions.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <label className="job-search toolbar-search">
+            <Search size={16} aria-hidden />
+            <input
+              aria-label="Search important dates"
+              placeholder="Search title, note, or location"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
         </div>
       </div>
 

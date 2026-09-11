@@ -1343,6 +1343,63 @@
   gap: 10px;
   margin: 0 auto 14px;
 }
+.catalog-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+.catalog-toolbar-status-row,
+.catalog-toolbar-filter-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.catalog-toolbar-status-row .employee-column-picker,
+.catalog-toolbar-status-row .weekly-team-count {
+  margin-left: auto;
+}
+.catalog-toolbar-filter-row .toolbar-filter-select {
+  width: 200px;
+  max-width: 220px;
+  flex: 0 0 200px;
+}
+.catalog-toolbar .toolbar-search {
+  display: flex;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  min-height: 36px;
+  height: 36px;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--job-border, var(--wt-line, #cdd3d0));
+  border-radius: 6px;
+  background: var(--job-bg, var(--wt-surface, #fff));
+  color: var(--job-muted, var(--wt-muted, #6b7571));
+}
+.catalog-toolbar .toolbar-search input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--job-text, var(--wt-text, #1d2525));
+  font: inherit;
+  font-size: 12px;
+}
+.catalog-toolbar .toolbar-search:focus-within {
+  border-color: var(--job-accent, var(--wt-accent, #177a64));
+  box-shadow: 0 0 0 2px rgb(23 122 100 / 12%);
+}
 .employee-toolbar-controls {
   display: flex;
   min-width: 0;
@@ -1406,6 +1463,7 @@
   box-shadow: 0 1px 2px rgb(22 35 30 / 12%);
 }
 .toolbar-filter-select {
+  height: 36px;
   min-height: 36px;
   max-width: 220px;
   border: 1px solid #d5dad7;
@@ -1415,6 +1473,18 @@
   color: #1d2525;
   font: inherit;
   font-size: 12px;
+}
+@media (max-width: 720px) {
+  .catalog-toolbar-filter-row {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .catalog-toolbar-filter-row .toolbar-filter-select,
+  .catalog-toolbar-filter-row .toolbar-search {
+    width: 100%;
+    max-width: none;
+    flex-basis: 100%;
+  }
 }
 .employee-table-wrap {
   align-self: stretch;

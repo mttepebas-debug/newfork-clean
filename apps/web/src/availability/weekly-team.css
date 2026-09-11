@@ -19,18 +19,16 @@
   --wt-red-bg: #432e30;
 }
 .weekly-team-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
+  display: grid;
+  align-items: start;
+  gap: 10px;
   margin: 20px 0 16px;
 }
 .weekly-team-toolbar .search-field {
   display: flex;
   align-items: center;
   gap: 8px;
-  order: 2;
-  flex: 1 0 100%;
+  flex: 1 1 auto;
   max-width: none;
   min-width: 0;
   min-height: 36px;
@@ -59,45 +57,20 @@
   box-shadow: none;
 }
 .weekly-team-toolbar select {
-  order: 1;
   min-height: 36px;
   max-width: 220px;
   border: 1px solid var(--wt-line);
   background: var(--wt-surface);
   color: var(--wt-text);
-  border-radius: 5px;
+  border-radius: 6px;
   font: inherit;
   font-size: 12px;
   padding: 7px 10px;
 }
 .weekly-team-filters {
-  order: 1;
-  display: flex;
-  border: 1px solid #d5dad7;
-  border-radius: 6px;
-  padding: 3px;
-  background: #ecefed;
-  gap: 2px;
-}
-.weekly-team-filters button {
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--wt-muted);
-  padding: 0 11px;
-  min-height: 32px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 750;
-  cursor: pointer;
-}
-.weekly-team-filters button.active {
-  background: var(--wt-surface);
-  color: var(--wt-text);
-  box-shadow: 0 1px 2px rgb(22 35 30 / 12%);
+  flex: 0 1 auto;
 }
 .weekly-team-count {
-  order: 1;
   margin-left: auto;
   color: var(--wt-muted);
   font-size: 12px;
@@ -224,12 +197,11 @@
     font-size: 13px;
   }
   .weekly-team-toolbar select {
-    flex: 1;
+    flex: 1 0 100%;
     max-width: none;
     min-height: 44px;
   }
   .weekly-team-filters {
-    order: 3;
     width: 100%;
   }
   .weekly-team-filters button {
