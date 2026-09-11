@@ -2333,6 +2333,19 @@
 .employee-drawer-create .employee-identity { min-height: 128px; padding: 20px 16px; }
 .employee-drawer-create .employee-section-header h2 { font-size: 20px; }
 .employee-drawer-create .employee-form-grid { gap: 16px; }
+.employee-drawer-create .employee-section-scroll[data-section="profile"] {
+  padding-bottom: 20px;
+}
+.employee-drawer-create .employee-section-scroll[data-section="profile"] .employee-profile-sections {
+  gap: 18px;
+}
+.employee-drawer-create .employee-section-scroll[data-section="profile"] .employee-profile-group {
+  gap: 12px;
+  padding-bottom: 18px;
+}
+.employee-drawer-create .employee-section-scroll[data-section="profile"] .employee-form-grid {
+  gap: 12px 16px;
+}
 .employee-drawer-create .employee-email-field { grid-column: 1 / -1; }
 .employee-drawer-create .employee-field:has(select[aria-label="Invite role"]) { grid-column: 1 / -1; }
 .employee-drawer-create .employee-field input,
@@ -2346,10 +2359,13 @@
 .employee-create-invite-summary span { font-size: 12px; }
 .employee-drawer-create .employee-assignment-picker label > span { overflow-wrap: anywhere; min-width: 0; }
 .employee-create-footer .nf-button { min-height: 44px; min-width: 88px; justify-content: center; }
+.employee-create-footer { gap: 0; }
+.employee-create-footer > .secondary-button { margin-right: 8px; }
 .employee-drawer-create .nf-button.secondary-button { background: transparent; border: 1px solid #bac6bf; color: inherit; }
 .employee-drawer-create .nf-button.secondary-button:hover { background: rgb(110 130 120 / 10%); }
 .employee-drawer-create .nf-button.secondary-button:disabled { opacity: .5; }
-.employee-create-footer .employee-drawer-actions { margin-left: auto; }
+.employee-create-footer .employee-create-role { width: 184px; }
+.employee-create-footer .employee-drawer-actions { margin-left: 0; }
 .employee-drawer-create .employee-section-links button:disabled { opacity: .45; cursor: default; }
 .employee-create-steps { display: flex; flex: 1; gap: 8px; }
 .employee-create-steps button { min-height: 44px; padding: 8px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: inherit; font: inherit; }

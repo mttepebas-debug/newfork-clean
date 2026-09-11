@@ -1106,21 +1106,25 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   "Cancel"
                 )}
               </Button>
-              {readiness.emailPresent && canManageAccess ? (
+              {canManageAccess ? (
                 <div className="employee-create-role">
                   <InviteRoleField
                     roles={inviteRoles}
                     inviteRoleId={inviteRoleId}
                     onInviteRoleChange={handleInviteRoleChange}
-                    disabled={busy || uncertainCreate || readOnly}
+                    disabled={
+                      busy ||
+                      uncertainCreate ||
+                      readOnly ||
+                      !readiness.emailReady
+                    }
                     invalidAttempt={inviteRoleReady ? 0 : inviteRoleAttempt}
                   />
                 </div>
               ) : null}
               <div className="employee-drawer-actions">
-                {readiness.emailPresent && canManageAccess ? (
+                {canManageAccess ? (
                   <Button
-                    className="secondary-button"
                     type="button"
                     disabled={
                       busy ||
@@ -1212,7 +1216,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     roles={inviteRoles}
                     inviteRoleId={inviteRoleId}
                     onInviteRoleChange={handleInviteRoleChange}
-                    disabled={busy || readOnly}
+                    disabled={
+                      busy ||
+                      readOnly ||
+                      detail.data?.invitation?.status === "pending"
+                    }
                     invalidAttempt={inviteRoleReady ? 0 : inviteRoleAttempt}
                   />
                 </div>
@@ -1828,7 +1836,6 @@ function ProfileSection({
     <div className="employee-profile-sections">
       <ProfileGroup
         title="Identity"
-        copy="The employee name used across schedules, records, and time history."
       >
         <div className="employee-form-grid">
           <Field
@@ -1880,7 +1887,6 @@ function ProfileSection({
 
       <ProfileGroup
         title="Contact"
-        copy="Invitation and private contact information for this employee."
       >
         <div className="employee-form-grid">
           <Field
@@ -1938,7 +1944,6 @@ function ProfileSection({
 
       <ProfileGroup
         title="Address"
-        copy="Private address supplied by the employee during onboarding."
       >
         <div className="employee-form-grid employee-address-grid">
           <ReadOnlyField
@@ -2562,18 +2567,15 @@ function SummaryPanel({
 
 function ProfileGroup({
   title,
-  copy,
   children,
 }: {
   title: string;
-  copy: string;
   children: React.ReactNode;
 }) {
   return (
     <section className="employee-profile-group">
       <header>
         <h3>{title}</h3>
-        <p>{copy}</p>
       </header>
       {children}
     </section>

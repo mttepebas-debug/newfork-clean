@@ -197,7 +197,11 @@ describe("employee create flow", () => {
 
   it("offers Save and Invite together after completing assignments and adding email", async () => {
     setup();
-    expect(screen.queryByLabelText("Invite role")).toBeNull();
+    expect(screen.getByLabelText("Invite role")).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(disabled("Invite")).toBe(true);
     fillNames();
     next();
     fireEvent.click(await screen.findByLabelText("Downtown"));
@@ -209,6 +213,10 @@ describe("employee create flow", () => {
     expect(screen.getByLabelText("Invite role")).toHaveProperty(
       "value",
       "",
+    );
+    expect(screen.getByLabelText("Invite role")).toHaveProperty(
+      "disabled",
+      false,
     );
     expect(disabled("Save")).toBe(false);
     expect(disabled("Invite")).toBe(false);

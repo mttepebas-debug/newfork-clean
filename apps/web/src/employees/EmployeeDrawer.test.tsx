@@ -701,6 +701,10 @@ describe("EmployeeDrawer", () => {
       true,
     );
     expect(screen.getByLabelText("E-mail")).toHaveProperty("readOnly", true);
+    expect(screen.getByLabelText("Invite role")).toHaveProperty(
+      "disabled",
+      true,
+    );
   });
 
   it("unlocks profile identity and email after a pending invitation is revoked", async () => {
@@ -730,6 +734,10 @@ describe("EmployeeDrawer", () => {
       false,
     );
     expect(screen.getByLabelText("E-mail")).toHaveProperty("readOnly", false);
+    expect(screen.getByLabelText("Invite role")).toHaveProperty(
+      "disabled",
+      false,
+    );
   });
 
   it("shows removed access after an accepted invitation even after its expiry date", async () => {
