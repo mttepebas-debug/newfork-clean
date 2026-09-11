@@ -170,29 +170,38 @@ Bunlar implementasyon karari degil; kullaniciyle secilecek aday fikirlerdir.
    - Deger: Lunch/Dinner/Brunch gibi benzer servisleri hizli kurar.
    - Risk: dusuk; CRUD kolayligi.
 
+6. **Shift type time presets / quick schedule menu**
+   - Her shift type altinda birden fazla scheduled in/out varyasyonu tanimlanir; bir tanesi default olur.
+   - Ornek: `Dinner` icin `4:00 PM-10:00 PM` default, `5:00 PM-11:00 PM`, `6:00 PM-close` gibi presetler.
+   - Schedule grid'de bos hucreye sag tiklandiginda menu shift type isimlerini gosterir; shift type uzerine gelince o type'a ait preset saatler submenu olarak listelenir.
+   - Preset secilince shift type + start/end tek hamlede yazilir; gerekirse employee/job/label secimi sonra editlenebilir.
+   - Deger: manager'in en sik yaptigi "hucreye hizli shift yazma" isini ciddi hizlandirir; Add Shift dialog'a girme ihtiyacini azaltir.
+   - Kapsam siniri: Bu fikir employee punch clock, Kiosk, payroll veya gercek clock-in/out kaydi degildir. Sadece Schedule uzerindeki planned/scheduled start-end presetidir.
+   - Risk: orta; sag tik menu, keyboard/a11y, mobile alternatifi ve availability/conflict uyarilari iyi tasarlanmali.
+
 ### Daha buyuk / post-MVP adaylar
 
-6. **Default hour change migration assistant**
+7. **Default hour change migration assistant**
    - Saved draft/live reference-hour shifts icin "review/apply current defaults" akisini Settings'ten baslatmak.
    - Deger: default degisiklikleri daha aksiyona donusur.
    - Dikkat: BL-062 nedeniyle post-MVP; su an toolbar'da gizli tutulan ozellige bagli.
 
-7. **Location-specific default hours**
+8. **Location-specific default hours**
    - Aynı shift type farkli lokasyonda farkli saatle baslayabilir.
    - Deger: cok lokasyonlu isletmeler icin gercekci.
    - Dikkat: Schedule, availability, templates ve export sozlesmesini ciddi genisletir; MVP icin uygun degil.
 
-8. **Daypart grouping**
+9. **Daypart grouping**
    - Breakfast/Lunch/Dinner gibi gruplar ya shift type olarak kalir ya da ek kategori olur.
    - Deger: Line Up ve Schedule filtreleme kolaylasir.
    - Dikkat: mevcut karar daypart'i paralel domain yapmamak yonunde; once shift type katalogu kullanilmali.
 
-9. **Default break policy per shift type**
+10. **Default break policy per shift type**
    - Shift type'a default unpaid break eklemek.
    - Deger: Add Shift hizlanir.
    - Dikkat: time/payroll/compliance alanina kayabilir; post-MVP.
 
-10. **Staffing count defaults**
+11. **Staffing count defaults**
    - Bir shift type icin "Dinner usually needs 4 servers, 2 hosts" gibi ihtiyac tanimi.
    - Deger: future auto-schedule/coverage heatmap icin temel.
    - Dikkat: Line Up ve forecasting ile buyuk baglanti; post-MVP.
@@ -205,6 +214,7 @@ MVP icin en iyi deger/karmasiklik orani:
 2. Impact preview copy iyilestirmesi.
 3. Overnight badge standardization.
 4. Missing default hours health card, sadece var olan data kolayca kullanilabiliyorsa.
+5. Shift type time presets fikrini ayri brainstorming/UX tasarim isine tasimak; ilk MVP patch'e sikistirmamak.
 
 Post-MVP'ye birak:
 
@@ -212,6 +222,35 @@ Post-MVP'ye birak:
 - location-specific defaults,
 - break policy,
 - staffing count defaults.
+
+## Kaydedilen yeni fikir: Shift type time presets
+
+Bu fikir daha sonra brainstorming yapilarak gelistirilecek.
+
+Ham fikir:
+
+- Shift Catalog'da her shift type altinda kullanilabilecek birden fazla scheduled in/out varyasyonu tutulur.
+- Her shift type icin bir preset default secilir.
+- Schedule grid'de hucreye sag tiklandiginda shift type listesi acilir.
+- Shift type uzerine gelince o shift type'in preset saatleri gorunur.
+- Preset secilince shift type + saatler tek hamlede schedule'a eklenir.
+
+UI/UX tasarim sorulari:
+
+1. Sag tik menu mouse icin iyi; keyboard ve touch/mobile alternatifi ne olacak?
+2. Menu ilk seviyede shift type mi gostermeli, yoksa en cok kullanilan presetleri dogrudan mi gostermeli?
+3. Preset label'lari nasil yazilmali: `Default`, `Early`, `Late`, `Close`, yoksa kullanici isimlendirmesi mi?
+4. Default preset, bugunku `default_start_time/default_end_time` alanlarinin yerini mi alacak, yoksa onlarin uzerine ek varyasyonlar mi olacak?
+5. Availability conflict, closed day, overtime veya time-off uyarilari preset seciminden once mi sonra mi gosterilecek?
+6. Presetler location-specific olmali mi, yoksa shift type geneline mi ait kalmali?
+7. Preset secimi Add Shift dialog'u tamamen bypass edebilir mi, yoksa shift create sonrasi inline quick editor mi acilmali?
+
+Ilk urun yonu:
+
+- Bu ozellik "clock-in/out" degil, sadece scheduled start/end hizli yazma presetleri olarak adlandirilmali.
+- Mevcut default hours tek default preset gibi dusunulebilir.
+- MVP Shift Catalog copy/polish isine dahil edilmemeli; ayri UX brainstorming ve veri modeli karari gerekir.
+- En yuksek deger Schedule grid hizinda olur: sik kullanilan shiftleri dialog acmadan yazmak.
 
 ## Onerilen dar implementasyon
 
