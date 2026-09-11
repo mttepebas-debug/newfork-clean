@@ -132,7 +132,7 @@ describe("Phase 8 communication pages", () => {
     });
     renderRoute("/app/announcements", <AnnouncementsPage />);
     fireEvent.click(
-      await screen.findByRole("button", { name: "New announcement" }),
+      await screen.findByRole("button", { name: "Add announcement" }),
     );
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Service briefing" },
@@ -181,7 +181,9 @@ describe("Phase 8 communication pages", () => {
     });
     renderRoute("/app/notifications", <NotificationsPage />);
     expect(await screen.findByText("Announcements · Update")).toBeTruthy();
-    expect(screen.queryByText("communications.announcement.available")).toBeNull();
+    expect(
+      screen.queryByText("communications.announcement.available"),
+    ).toBeNull();
     fireEvent.click(
       screen.getByRole("button", { name: "Mark Service briefing read" }),
     );

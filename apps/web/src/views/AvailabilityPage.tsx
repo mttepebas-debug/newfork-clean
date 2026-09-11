@@ -10,6 +10,7 @@ import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { loadWeeklyTeam } from "../availability/availability-data";
 import { formatTime } from "../schedule/lib/scheduleDateTime";
+import { CatalogPageHeader } from "./CatalogPageHeader";
 import "../availability/weekly-team.css";
 
 const EmployeeDrawer = lazy(() =>
@@ -77,13 +78,16 @@ export function AvailabilityPage() {
       className="availability-page weekly-team-page"
       aria-labelledby="availability-title"
     >
-      <header className="page-header">
-        <h1 id="availability-title">Availability</h1>
-      </header>
+      <CatalogPageHeader
+        eyebrow="AVAILABILITY CLEAR. COVERAGE READY."
+        title="Availability"
+        titleId="availability-title"
+        description="Track weekly availability submissions and identify coverage gaps."
+      />
       <div className="weekly-team-toolbar catalog-toolbar">
         <div className="catalog-toolbar-status-row">
           <div
-            className="employee-status-tabs weekly-team-filters"
+            className="catalog-status-tabs weekly-team-filters"
             role="group"
             aria-label="Submission status"
           >

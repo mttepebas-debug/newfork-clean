@@ -180,7 +180,7 @@ describe("EmployeesPage", () => {
     renderPage("/app/employees/archive?q=alex");
 
     expect(
-      await screen.findByRole("heading", { name: "Archived employees" }),
+      await screen.findByRole("heading", { name: "Employees" }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Active" }));
 

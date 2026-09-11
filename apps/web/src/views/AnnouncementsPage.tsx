@@ -29,7 +29,7 @@ import {
 } from "../communications/communications-data";
 import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { CatalogRowMenu } from "../settings/CatalogRowMenu";
-import { SettingsHeader } from "../settings/GeneralSettingsPage";
+import { CatalogPageHeader } from "./CatalogPageHeader";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
 
@@ -96,13 +96,14 @@ export function AnnouncementsPage() {
 
   return (
     <section
-      className="settings-page jobs-settings-page announcements-catalog-page"
-      aria-label="Announcements"
+      className="settings-page jobs-settings-page announcements-page announcements-catalog-page"
+      aria-labelledby="announcements-title"
     >
-      <SettingsHeader
-        icon={<Megaphone size={21} aria-hidden />}
+      <CatalogPageHeader
+        eyebrow="THE RIGHT UPDATE. THE RIGHT PEOPLE."
         title="Announcements"
-        description="Share updates with everyone or choose who receives them."
+        titleId="announcements-title"
+        description="Create, schedule, and publish updates for the right teams."
         action={
           query.data?.can_manage ? (
             <Button
@@ -118,7 +119,7 @@ export function AnnouncementsPage() {
       <div className="job-catalog-toolbar catalog-toolbar">
         <div className="announcement-toolbar-controls catalog-toolbar-status-row">
           <div
-            className="employee-status-tabs"
+            className="catalog-status-tabs"
             role="tablist"
             aria-label="Announcement status"
           >

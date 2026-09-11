@@ -10,8 +10,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ChevronDown, Plus, Search, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { CatalogPageHeader } from "../views/CatalogPageHeader";
 import { CatalogRowMenu } from "./CatalogRowMenu";
-import { errorText, SettingsHeader } from "./GeneralSettingsPage";
+import { errorText } from "./GeneralSettingsPage";
 import {
   listImportantDates,
   listLocations,
@@ -181,13 +182,14 @@ export default function ImportantDatesSettingsPage() {
 
   return (
     <section
-      className="settings-page jobs-settings-page important-dates-catalog-page"
+      className="settings-page jobs-settings-page important-dates-page important-dates-catalog-page"
       aria-labelledby="important-dates-settings-title"
     >
-      <SettingsHeader
-        icon={<CalendarDays size={21} aria-hidden />}
-        title="Important dates"
-        description="Holidays, closures, blackout periods, and events used while scheduling."
+      <CatalogPageHeader
+        eyebrow="EVERY DATE. ACCOUNTED FOR."
+        title="Important Dates"
+        titleId="important-dates-settings-title"
+        description="Manage holidays, closures, events, and dates that affect scheduling."
         action={
           canManage ? (
             <Button
@@ -206,7 +208,7 @@ export default function ImportantDatesSettingsPage() {
       <div className="job-catalog-toolbar catalog-toolbar">
         <div className="catalog-toolbar-status-row">
           <div
-            className="employee-status-tabs job-archive-tabs"
+            className="catalog-status-tabs job-archive-tabs"
             role="group"
             aria-label="Archive visibility"
           >

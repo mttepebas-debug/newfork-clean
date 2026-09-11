@@ -258,7 +258,7 @@ describe("ScheduleRequestsPage", () => {
   it.each(["schedule.time_off_requests.read", "schedule.shift_change_requests.read"] as const)("keeps a request-only reader with %s inside their permitted queue", async permission => {
     activeContext = { ...context, permissions: ["workspace.read", permission] };
     renderPage();
-    await screen.findByRole("heading", { name: "Schedule Requests" });
+    await screen.findByRole("heading", { name: "Requests" });
     expect(screen.getAllByRole("tab")).toHaveLength(1);
     expect(screen.queryByRole("tab", { name: "Availability" })).toBeNull();
   });
@@ -311,7 +311,7 @@ describe("ScheduleRequestsPage", () => {
   it("submits explicit partial decisions and blocks hard-conflict approval", async () => {
     renderPage();
     expect(
-      await screen.findByRole("heading", { name: "Schedule Requests" }),
+      await screen.findByRole("heading", { name: "Requests" }),
     ).toBeTruthy();
     await openTimeOffRequest();
     fireEvent.click(screen.getByRole("button", { name: "Partial" }));

@@ -2,9 +2,6 @@
 .requests-catalog-page {
   color: var(--job-text);
 }
-.requests-catalog-page > .settings-page-header {
-  align-items: center;
-}
 .requests-catalog-page .requests-tabs {
   align-items: center;
   flex-wrap: wrap;
@@ -18,30 +15,15 @@
   color: var(--job-accent);
   border-color: var(--job-accent);
 }
-.requests-catalog-page .requests-toolbar {
+.requests-catalog-page .requests-toolbar.catalog-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 10px;
   margin: 0 0 16px;
 }
-.requests-catalog-page .requests-search {
-  width: auto;
-  max-width: none;
-}
-.requests-catalog-page :is(.requests-search, .requests-toolbar > select) {
-  min-height: 36px;
-  background: var(--job-bg);
-  border: 1px solid var(--job-border);
-  color: var(--job-text);
-  font-size: 13px;
-}
-.requests-catalog-page .employee-status-tabs {
+.requests-catalog-page .catalog-status-tabs {
   justify-self: start;
-}
-.requests-catalog-page .requests-toolbar > select {
-  justify-self: start;
-  width: 100%;
 }
 .requests-catalog-page .requests-workbench {
   display: block;

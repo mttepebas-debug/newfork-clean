@@ -305,7 +305,7 @@
   align-items: center;
   gap: 9px;
 }
-.job-catalog-toolbar {
+.job-catalog-toolbar:not(.catalog-toolbar) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1139,7 +1139,7 @@
   .job-create-actions {
     flex-wrap: wrap;
   }
-  .job-catalog-toolbar {
+  .job-catalog-toolbar:not(.catalog-toolbar) {
     gap: 10px;
   }
   .job-view-control button {

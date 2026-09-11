@@ -1,5 +1,5 @@
 import { CatalogDrawer } from "../settings/CatalogDrawer";
-import { SettingsHeader } from "../settings/GeneralSettingsPage";
+import { CatalogPageHeader } from "./CatalogPageHeader";
 import "./requests-catalog.css";
 import type {
   ShiftChangeRequest,
@@ -260,11 +260,11 @@ function ScheduleRequestsPageContent() {
         className="settings-page jobs-settings-page requests-catalog-page requests-page requests-shift-hub"
         aria-labelledby="requests-title"
       >
-        <SettingsHeader
-          title="Schedule Requests"
+        <CatalogPageHeader
+          eyebrow="TEAM CHANGES. REVIEWED WITH CONTROL."
+          title="Requests"
           titleId="requests-title"
-          icon={<CalendarOff size={21} aria-hidden />}
-          description="Review time off and shift change requests."
+          description="Review time off and shift change requests in one place."
           action={
             <div
               className="requests-tabs"
@@ -323,11 +323,11 @@ function ScheduleRequestsPageContent() {
       className="settings-page jobs-settings-page requests-catalog-page requests-page"
       aria-labelledby="requests-title"
     >
-      <SettingsHeader
-        title="Schedule Requests"
+      <CatalogPageHeader
+        eyebrow="TEAM CHANGES. REVIEWED WITH CONTROL."
+        title="Requests"
         titleId="requests-title"
-        icon={<CalendarOff size={21} aria-hidden />}
-        description="Review time off and shift change requests."
+        description="Review time off and shift change requests in one place."
         action={
           <div
             className="requests-tabs"
@@ -361,7 +361,7 @@ function ScheduleRequestsPageContent() {
 
       <div className="requests-toolbar catalog-toolbar">
         <div className="catalog-toolbar-status-row">
-          <div className="employee-status-tabs" role="group" aria-label="Queue">
+          <div className="catalog-status-tabs" role="group" aria-label="Queue">
             {tab === "time-off" ? (
               <>
                 <button

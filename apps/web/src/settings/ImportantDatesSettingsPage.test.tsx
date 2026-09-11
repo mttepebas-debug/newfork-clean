@@ -5,7 +5,11 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import type { ActiveWorkspaceContext, ImportantDate, Location } from "@newfork/shared";
+import type {
+  ActiveWorkspaceContext,
+  ImportantDate,
+  Location,
+} from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import ImportantDatesSettingsPage from "./ImportantDatesSettingsPage";
@@ -111,17 +115,16 @@ function renderPage() {
 }
 
 describe("ImportantDatesSettingsPage", () => {
-  it("lists holidays and closed days with scheduling impact counts", async () => {
+  it("lists holidays and closed days with scheduling impact flags", async () => {
     renderPage();
     expect(
-      await screen.findByRole("heading", { name: "Important dates" }),
+      await screen.findByRole("heading", { name: "Important Dates" }),
     ).toBeTruthy();
     expect(await screen.findByText("New Year's Day")).toBeTruthy();
     expect(screen.getByText("Private buyout")).toBeTruthy();
-    expect(screen.getByText("Closed days")).toBeTruthy();
-    expect(screen.getAllByText("1")).toHaveLength(1);
-    expect(screen.getByText("Schedule impacts")).toBeTruthy();
-    expect(screen.getAllByText("2")).toHaveLength(2);
+    expect(screen.getAllByText("Closed day").length).toBeGreaterThan(0);
+    expect(screen.getByText("Repeats yearly")).toBeTruthy();
+    expect(screen.getAllByText("Schedule flag")).toHaveLength(2);
   });
 
   it("creates a location closed day that always affects scheduling", async () => {
@@ -134,9 +137,8 @@ describe("ImportantDatesSettingsPage", () => {
     fireEvent.change(within(form).getByLabelText("Type"), {
       target: { value: "closed_day" },
     });
-    fireEvent.change(within(form).getByLabelText("Location"), {
-      target: { value: locationId },
-    });
+    fireEvent.click(within(form).getByLabelText("Select locations"));
+    fireEvent.click(within(form).getByLabelText("Main Dining"));
     fireEvent.change(within(form).getByLabelText("Starts"), {
       target: { value: "2027-03-10" },
     });
@@ -155,6 +157,7 @@ describe("ImportantDatesSettingsPage", () => {
           title: "Kitchen maintenance",
           type: "closed_day",
           location_id: locationId,
+          location_ids: [locationId],
           affects_scheduling: true,
         }),
         undefined,

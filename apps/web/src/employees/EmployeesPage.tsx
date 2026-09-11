@@ -23,6 +23,7 @@ import {
 } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { CatalogPageHeader } from "../views/CatalogPageHeader";
 import { EmployeeDrawer } from "./EmployeeDrawer";
 import { listEmployees } from "./employee-data";
 import {
@@ -216,39 +217,35 @@ export default function EmployeesPage() {
   const drawerOpen = creating || Boolean(employeeId);
   return (
     <section className="employees-page" aria-labelledby="employees-title">
-      <header className="employees-header">
-        <div>
-          <h1 id="employees-title">
-            {archived ? "Archived employees" : "Employees"}
-          </h1>
-          <p>
-            {archived
-              ? "Inactive records retained for history and controlled restoration."
-              : "Employee records, assignments, invitations, and onboarding status."}
-          </p>
-        </div>
-        {!archived && canManage ? (
-          <Button
-            onClick={() =>
-              setParams(
-                nextParams({
-                  mode: "create",
-                  employeeId: null,
-                  section: "profile",
-                }),
-              )
-            }
-          >
-            <Plus size={17} aria-hidden />
-            Add employee
-          </Button>
-        ) : null}
-      </header>
+      <CatalogPageHeader
+        eyebrow="YOUR TEAM. CONNECTED AND READY."
+        title="Employees"
+        titleId="employees-title"
+        description="Manage employee profiles, assignments, invitations, and workspace access."
+        action={
+          !archived && canManage ? (
+            <Button
+              onClick={() =>
+                setParams(
+                  nextParams({
+                    mode: "create",
+                    employeeId: null,
+                    section: "profile",
+                  }),
+                )
+              }
+            >
+              <Plus size={17} aria-hidden />
+              Add employee
+            </Button>
+          ) : null
+        }
+      />
 
       <div className="employees-toolbar catalog-toolbar">
         <div className="employee-toolbar-controls catalog-toolbar-status-row">
           <div
-            className="employee-status-tabs"
+            className="catalog-status-tabs"
             role="group"
             aria-label="Employee status"
           >
