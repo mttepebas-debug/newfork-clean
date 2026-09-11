@@ -183,6 +183,26 @@
   outline: 0;
   padding-left: 0;
 }
+.requests-catalog-page .catalog-toolbar .requests-search.toolbar-search {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: var(--job-muted);
+}
+.requests-catalog-page
+  .catalog-toolbar
+  .requests-search.toolbar-search:focus-within {
+  border-color: var(--job-accent);
+  box-shadow: 0 0 0 2px rgb(23 122 100 / 12%);
+}
+.requests-catalog-page .catalog-toolbar .requests-search.toolbar-search input {
+  min-height: 0;
+  height: 34px;
+  padding: 0;
+  color: var(--job-text);
+  font-size: 12px;
+}
 .requests-catalog-page textarea {
   width: 100%;
   min-height: 72px;

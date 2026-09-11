@@ -24,6 +24,7 @@ import {
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { CatalogPageHeader } from "../views/CatalogPageHeader";
+import { CatalogSortButton } from "../views/CatalogSortButton";
 import { EmployeeDrawer } from "./EmployeeDrawer";
 import { listEmployees } from "./employee-data";
 import {
@@ -83,6 +84,10 @@ export default function EmployeesPage() {
   const section = parsedSection.success ? parsedSection.data : "profile";
   const canManage = context?.permissions.includes("employees.manage") ?? false;
   const [columnState, setColumnState] = useState(() => loadColumnState());
+  const [sort, setSort] = useState<{
+    key: EmployeeColumnKey;
+    descending: boolean;
+  }>({ key: "employee", descending: false });
 
   const employees = useQuery({
     queryKey: ["employees", workspaceId, archived, deferredSearch, status],
@@ -206,12 +211,20 @@ export default function EmployeesPage() {
   }, [employees.data]);
   const visibleEmployees = useMemo(
     () =>
-      (employees.data ?? []).filter(
-        (employee) =>
-          locationFilter === "all" ||
-          employee.primary_location_id === locationFilter,
-      ),
-    [employees.data, locationFilter],
+      [...(employees.data ?? [])]
+        .filter(
+          (employee) =>
+            locationFilter === "all" ||
+            employee.primary_location_id === locationFilter,
+        )
+        .sort(
+          (left, right) =>
+            compareEmployeeSortValues(
+              employeeSortValue(left, sort.key),
+              employeeSortValue(right, sort.key),
+            ) * (sort.descending ? -1 : 1),
+        ),
+    [employees.data, locationFilter, sort],
   );
 
   const drawerOpen = creating || Boolean(employeeId);
@@ -346,7 +359,28 @@ export default function EmployeesPage() {
           <thead>
             <tr>
               {visibleColumns.map((column) => (
-                <th key={column.key}>{column.label}</th>
+                <th
+                  key={column.key}
+                  aria-sort={
+                    sort.key === column.key
+                      ? sort.descending
+                        ? "descending"
+                        : "ascending"
+                      : "none"
+                  }
+                >
+                  <CatalogSortButton
+                    label={column.label}
+                    active={sort.key === column.key}
+                    onClick={() =>
+                      setSort({
+                        key: column.key,
+                        descending:
+                          sort.key === column.key ? !sort.descending : false,
+                      })
+                    }
+                  />
+                </th>
               ))}
             </tr>
           </thead>
@@ -652,6 +686,26 @@ function columnWidth(key: EmployeeColumnKey): string {
     case "start":
       return "14%";
   }
+}
+
+function employeeSortValue(
+  employee: EmployeeSummary,
+  key: EmployeeColumnKey,
+): string {
+  if (key === "status") return filterLabel(employee.display_status);
+  if (key === "location") return employee.primary_location_name ?? "Unassigned";
+  if (key === "job") return employee.primary_job_name ?? "Unassigned";
+  if (key === "access") return employee.role_name ?? "No app access";
+  if (key === "start") return employee.start_date ?? "";
+  if (key === "email") return employee.invitation_email ?? "";
+  return employee.display_name;
+}
+
+function compareEmployeeSortValues(left: string, right: string): number {
+  return left.localeCompare(right, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
 }
 
 function loadColumnState(): {

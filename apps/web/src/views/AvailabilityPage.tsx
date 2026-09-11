@@ -5,11 +5,12 @@ import {
 } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarCheck, RotateCcw, Search } from "lucide-react";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { loadWeeklyTeam } from "../availability/availability-data";
 import { formatTime } from "../schedule/lib/scheduleDateTime";
+import { CatalogSortButton } from "./CatalogSortButton";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import "../availability/weekly-team.css";
 
@@ -27,6 +28,7 @@ const weekdays = [
   [6, "Saturday"],
   [0, "Sunday"],
 ] as const;
+type AvailabilitySortKey = "employee" | (typeof weekdays)[number][0];
 
 export function AvailabilityPage() {
   const { context } = useAuth();
@@ -35,6 +37,10 @@ export function AvailabilityPage() {
   const locationId = search.get("location") ?? "all";
   const queryText = search.get("q") ?? "";
   const submission = search.get("submission") ?? "all";
+  const [sort, setSort] = useState<{
+    key: AvailabilitySortKey;
+    descending: boolean;
+  }>({ key: "employee", descending: false });
   const query = useQuery({
     queryKey: ["weekly-preferences", workspaceId, "team"],
     queryFn: () => loadWeeklyTeam(workspaceId),
@@ -45,16 +51,28 @@ export function AvailabilityPage() {
     query.error && "status" in query.error ? Number(query.error.status) : 0;
   const model = [401, 403, 404].includes(status) ? undefined : query.data;
   const term = queryText.trim().toLocaleLowerCase();
-  const employees =
-    model?.employees.filter(
-      (employee) =>
-        (locationId === "all" || employee.location_ids.includes(locationId)) &&
-        (!term ||
-          employee.display_name.toLocaleLowerCase().includes(term) ||
-          employee.employee_code.toLocaleLowerCase().includes(term)) &&
-        (submission !== "submitted" || employee.submitted) &&
-        (submission !== "missing" || !employee.submitted),
-    ) ?? [];
+  const employees = useMemo(
+    () =>
+      [
+        ...(model?.employees.filter(
+          (employee) =>
+            (locationId === "all" ||
+              employee.location_ids.includes(locationId)) &&
+            (!term ||
+              employee.display_name.toLocaleLowerCase().includes(term) ||
+              employee.employee_code.toLocaleLowerCase().includes(term)) &&
+            (submission !== "submitted" || employee.submitted) &&
+            (submission !== "missing" || !employee.submitted),
+        ) ?? []),
+      ].sort(
+        (left, right) =>
+          compareAvailabilityValues(
+            availabilitySortValue(left, sort.key),
+            availabilitySortValue(right, sort.key),
+          ) * (sort.descending ? -1 : 1),
+      ),
+    [locationId, model?.employees, sort, submission, term],
+  );
   const selectedEmployee = model?.employees.find(
     (employee) => employee.id === search.get("employeeId") && employee.can_open,
   );
@@ -161,13 +179,7 @@ export function AvailabilityPage() {
           </button>
         </div>
       )}
-      {model && employees.length === 0 && (
-        <div className="settings-empty">
-          <CalendarCheck size={22} aria-hidden />
-          <strong>No employees match this view</strong>
-        </div>
-      )}
-      {model && employees.length > 0 && (
+      {model && (
         <div
           className="weekly-team-scroll"
           role="region"
@@ -177,10 +189,51 @@ export function AvailabilityPage() {
           <table className="weekly-team-table">
             <thead>
               <tr>
-                <th scope="col">Employee</th>
+                <th
+                  scope="col"
+                  aria-sort={
+                    sort.key === "employee"
+                      ? sort.descending
+                        ? "descending"
+                        : "ascending"
+                      : "none"
+                  }
+                >
+                  <CatalogSortButton
+                    label="Employee"
+                    active={sort.key === "employee"}
+                    onClick={() =>
+                      setSort({
+                        key: "employee",
+                        descending:
+                          sort.key === "employee" ? !sort.descending : false,
+                      })
+                    }
+                  />
+                </th>
                 {weekdays.map(([day, name]) => (
-                  <th key={day} scope="col">
-                    {name.slice(0, 3)}
+                  <th
+                    key={day}
+                    scope="col"
+                    aria-sort={
+                      sort.key === day
+                        ? sort.descending
+                          ? "descending"
+                          : "ascending"
+                        : "none"
+                    }
+                  >
+                    <CatalogSortButton
+                      label={name.slice(0, 3)}
+                      active={sort.key === day}
+                      onClick={() =>
+                        setSort({
+                          key: day,
+                          descending:
+                            sort.key === day ? !sort.descending : false,
+                        })
+                      }
+                    />
                   </th>
                 ))}
               </tr>
@@ -248,6 +301,12 @@ export function AvailabilityPage() {
           </table>
         </div>
       )}
+      {model && employees.length === 0 && (
+        <div className="settings-empty">
+          <CalendarCheck size={22} aria-hidden />
+          <strong>No employees match this view</strong>
+        </div>
+      )}
       {selectedEmployee && (
         <Suspense fallback={<p role="status">Loading employee...</p>}>
           <EmployeeDrawer
@@ -265,6 +324,26 @@ export function AvailabilityPage() {
       )}
     </section>
   );
+}
+
+function availabilitySortValue(
+  employee: WeeklyTeamRead["employees"][number],
+  key: AvailabilitySortKey,
+): string {
+  if (key === "employee") return employee.display_name;
+  const day = employee.preference.days.find((item) => item.day === key);
+  if (!day) return "";
+  if (day.all_day) return "0 all day";
+  if (day.range) return `1 ${day.range.start}-${day.range.end}`;
+  if (day.shift_type_ids.length) return `2 ${day.shift_type_ids.join(",")}`;
+  return "3 available";
+}
+
+function compareAvailabilityValues(left: string, right: string): number {
+  return left.localeCompare(right, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
 }
 
 function dayLabels(day: WeeklyPreferenceDay, model: WeeklyTeamRead) {

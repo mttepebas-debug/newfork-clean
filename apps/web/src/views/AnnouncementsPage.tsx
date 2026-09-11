@@ -8,9 +8,6 @@ import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   ChevronDown,
   Megaphone,
   Plus,
@@ -30,6 +27,7 @@ import {
 } from "../communications/communications-data";
 import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { CatalogRowMenu } from "../settings/CatalogRowMenu";
+import { CatalogSortButton } from "./CatalogSortButton";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
@@ -82,8 +80,10 @@ export function AnnouncementsPage() {
       )
       .sort(
         (a, b) =>
-          (value(a).localeCompare(value(b), undefined, { numeric: true }) ||
-            a.id.localeCompare(b.id)) * (sort.descending ? -1 : 1),
+          (String(value(a)).localeCompare(String(value(b)), undefined, {
+            numeric: true,
+            sensitivity: "base",
+          }) || a.id.localeCompare(b.id)) * (sort.descending ? -1 : 1),
       );
   }, [query.data, filter, locationId, search, showArchived, sort]);
   const close = () => {
@@ -200,12 +200,11 @@ export function AnnouncementsPage() {
           {query.error.message}
         </p>
       )}
-      {!query.isLoading &&
-        !query.error &&
-        (visible.length ? (
+      {!query.isLoading && !query.error && (
+        <>
           <div className="job-catalog" role="table" aria-label="Announcements">
             <div
-              className="job-column-headings announcement-catalog-row"
+              className="job-column-headings catalog-column-headings announcement-catalog-row"
               role="row"
             >
               {(
@@ -227,136 +226,128 @@ export function AnnouncementsPage() {
                       : "none"
                   }
                 >
-                  <button
-                    className="announcement-column-sort"
-                    type="button"
+                  <CatalogSortButton
+                    label={label}
+                    active={sort.key === key}
                     onClick={() =>
                       setSort({
                         key,
                         descending: sort.key === key ? !sort.descending : false,
                       })
                     }
-                  >
-                    {label}
-                    {sort.key === key ? (
-                      sort.descending ? (
-                        <ArrowDown size={12} />
-                      ) : (
-                        <ArrowUp size={12} />
-                      )
-                    ) : (
-                      <ArrowUpDown size={12} />
-                    )}
-                  </button>
+                  />
                 </div>
               ))}
               <span role="columnheader" aria-label="Actions" />
             </div>
-            {visible.map((item) => (
-              <div
-                className="job-catalog-row announcement-catalog-row"
-                role="row"
-                key={item.id}
-                data-archived={isArchived(item)}
-                onClick={(event) => {
-                  if (
-                    !(event.target as HTMLElement).closest("button,details,a")
-                  ) {
-                    event.currentTarget
-                      .querySelector<HTMLButtonElement>(".job-row-identity")
-                      ?.focus({ preventScroll: true });
-                    open(item);
-                  }
-                }}
-              >
-                <div role="cell">
-                  <button
-                    className="job-row-identity"
-                    type="button"
-                    onClick={() => open(item)}
-                  >
-                    <Megaphone
-                      size={17}
-                      className="announcement-catalog-marker"
-                      aria-hidden
-                    />
-                    <span className="job-name-stack">
-                      <span className="job-row-name" title={item.title}>
-                        {item.title}
-                      </span>
-                      <span
-                        className="announcement-row-preview"
-                        title={item.body}
-                      >
-                        {item.body}
-                      </span>
-                      <span className="job-mobile-meta">
-                        {statusLabel(item)} ·{" "}
-                        {formatDate(item.publish_at ?? item.created_at)}
-                      </span>
-                    </span>
-                  </button>
-                </div>
-                <span
-                  role="cell"
-                  className="announcement-audience-cell"
-                  title={audienceLabel(item)}
+            {visible.length ? (
+              visible.map((item) => (
+                <div
+                  className="job-catalog-row announcement-catalog-row"
+                  role="row"
+                  key={item.id}
+                  data-archived={isArchived(item)}
+                  onClick={(event) => {
+                    if (
+                      !(event.target as HTMLElement).closest("button,details,a")
+                    ) {
+                      event.currentTarget
+                        .querySelector<HTMLButtonElement>(".job-row-identity")
+                        ?.focus({ preventScroll: true });
+                      open(item);
+                    }
+                  }}
                 >
-                  {audienceLabel(item)}
-                </span>
-                <span role="cell" className="announcement-status-cell">
-                  <span
-                    className="announcement-status"
-                    data-status={isArchived(item) ? "archived" : item.status}
-                  >
-                    {statusLabel(item)}
-                  </span>
-                </span>
-                <span role="cell" className="announcement-date-cell">
-                  {item.publish_at
-                    ? formatDate(item.publish_at)
-                    : "Not published"}
-                </span>
-                <div role="cell">
-                  <CatalogRowMenu name={item.title}>
-                    <button type="button" onClick={() => open(item)}>
-                      {item.can_edit
-                        ? "Edit announcement"
-                        : "View announcement"}
+                  <div role="cell">
+                    <button
+                      className="job-row-identity"
+                      type="button"
+                      onClick={() => open(item)}
+                    >
+                      <Megaphone
+                        size={17}
+                        className="announcement-catalog-marker"
+                        aria-hidden
+                      />
+                      <span className="job-name-stack">
+                        <span className="job-row-name" title={item.title}>
+                          {item.title}
+                        </span>
+                        <span
+                          className="announcement-row-preview"
+                          title={item.body}
+                        >
+                          {item.body}
+                        </span>
+                        <span className="job-mobile-meta">
+                          {statusLabel(item)} ·{" "}
+                          {formatDate(item.publish_at ?? item.created_at)}
+                        </span>
+                      </span>
                     </button>
-                    {item.can_cancel && !isArchived(item) && (
-                      <button
-                        type="button"
-                        className="job-danger-text"
-                        onClick={() =>
-                          navigate(`/app/announcements/${item.id}?delete=1`, {
-                            preventScrollReset: true,
-                          })
-                        }
-                      >
-                        Delete
+                  </div>
+                  <span
+                    role="cell"
+                    className="announcement-audience-cell"
+                    title={audienceLabel(item)}
+                  >
+                    {audienceLabel(item)}
+                  </span>
+                  <span role="cell" className="announcement-status-cell">
+                    <span
+                      className="announcement-status"
+                      data-status={isArchived(item) ? "archived" : item.status}
+                    >
+                      {statusLabel(item)}
+                    </span>
+                  </span>
+                  <span role="cell" className="announcement-date-cell">
+                    {item.publish_at
+                      ? formatDate(item.publish_at)
+                      : "Not published"}
+                  </span>
+                  <div role="cell">
+                    <CatalogRowMenu name={item.title}>
+                      <button type="button" onClick={() => open(item)}>
+                        {item.can_edit
+                          ? "Edit announcement"
+                          : "View announcement"}
                       </button>
-                    )}
-                  </CatalogRowMenu>
+                      {item.can_cancel && !isArchived(item) && (
+                        <button
+                          type="button"
+                          className="job-danger-text"
+                          onClick={() =>
+                            navigate(`/app/announcements/${item.id}?delete=1`, {
+                              preventScrollReset: true,
+                            })
+                          }
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </CatalogRowMenu>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="settings-empty">
+                <Megaphone size={22} aria-hidden />
+                <strong>
+                  {search || filter !== "all" || locationId || showArchived
+                    ? "No matching announcements"
+                    : "No announcements yet"}
+                </strong>
+                <p>
+                  {search || filter !== "all" || locationId || showArchived
+                    ? "Try another search or status."
+                    : "Create an announcement to share an update with your team."}
+                </p>
               </div>
-            ))}
+            )}
           </div>
-        ) : (
-          <div className="settings-empty">
-            <Megaphone size={22} aria-hidden />
-            <strong>
-              {search || filter !== "all"
-                ? "No matching announcements"
-                : "No announcements yet"}
-            </strong>
-            <p>
-              {search || filter !== "all"
-                ? "Try another search or status."
-                : "Create an announcement to share an update with your team."}
-            </p>
-          </div>
-        ))}
+        </>
+      )}
       {announcementId && !selected && !query.isLoading && !query.error && (
         <p className="settings-state">
           This announcement is no longer available.

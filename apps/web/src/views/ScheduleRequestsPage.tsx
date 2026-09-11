@@ -1,4 +1,5 @@
 import { CatalogDrawer } from "../settings/CatalogDrawer";
+import { CatalogSortButton } from "./CatalogSortButton";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import "./requests-catalog.css";
 import type {
@@ -45,6 +46,7 @@ import {
 } from "../schedule/requests-data";
 
 type Tab = "time-off" | "shift-changes";
+type RequestSortKey = "employee" | "date" | "location" | "status" | "review";
 type Decision =
   | {
       kind: "time-off";
@@ -108,6 +110,10 @@ function ScheduleRequestsPageContent() {
   );
   const [locationId, setLocationId] = useState("");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{
+    key: RequestSortKey;
+    descending: boolean;
+  }>({ key: "date", descending: false });
   const [timeOffCursor, setTimeOffCursor] = useState("");
   const [shiftCursor, setShiftCursor] = useState("");
   const [selectedId, setSelectedId] = useState(params.get("request") ?? "");
@@ -139,6 +145,17 @@ function ScheduleRequestsPageContent() {
     tab === "time-off"
       ? query.data?.time_off_requests
       : query.data?.shift_change_requests;
+  const sortedRows = useMemo(
+    () =>
+      [...(rows ?? [])].sort(
+        (left, right) =>
+          compareValues(
+            requestSortValue(left, sort.key),
+            requestSortValue(right, sort.key),
+          ) * (sort.descending ? -1 : 1),
+      ),
+    [rows, sort],
+  );
   const selected = useMemo(
     () => rows?.find((row) => row.id === selectedId) ?? null,
     [rows, selectedId],
@@ -457,16 +474,44 @@ function ScheduleRequestsPageContent() {
           className="requests-list job-catalog"
           aria-label={`${tab} requests`}
         >
-          <div className="job-column-headings request-catalog-row">
-            <span>Employee</span>
-            <span>Dates / shift</span>
-            <span className="request-location-column">Location</span>
-            <span>Status</span>
-            <span className="request-impact-column">Review</span>
+          <div className="job-column-headings catalog-column-headings request-catalog-row">
+            {(
+              [
+                ["employee", "Employee", undefined],
+                ["date", "Dates / shift", undefined],
+                ["location", "Location", "request-location-column"],
+                ["status", "Status", undefined],
+                ["review", "Review", "request-impact-column"],
+              ] as const
+            ).map(([key, label, className]) => (
+              <span
+                key={key}
+                className={className}
+                role="columnheader"
+                aria-sort={
+                  sort.key === key
+                    ? sort.descending
+                      ? "descending"
+                      : "ascending"
+                    : "none"
+                }
+              >
+                <CatalogSortButton
+                  label={label}
+                  active={sort.key === key}
+                  onClick={() =>
+                    setSort({
+                      key,
+                      descending: sort.key === key ? !sort.descending : false,
+                    })
+                  }
+                />
+              </span>
+            ))}
           </div>
-          {rows?.length ? (
+          {sortedRows.length ? (
             <>
-              {rows.map((row) => (
+              {sortedRows.map((row) => (
                 <RequestRow
                   key={row.id}
                   row={row}
@@ -649,6 +694,42 @@ function RequestRow({
       </span>
     </button>
   );
+}
+
+function requestSortValue(
+  row: TimeOffRequest | ShiftChangeRequest,
+  key: RequestSortKey,
+): string | number {
+  const timeOff = "segments" in row;
+  if (key === "employee") {
+    return timeOff
+      ? row.employee_name
+      : (row.participants.find(
+          (participant) => participant.role === "requester",
+        )?.employee_name ?? "Shift request");
+  }
+  if (key === "date") {
+    return timeOff
+      ? row.start_date
+      : `${row.offered_shift.scheduled_date} ${row.offered_shift.start_time}`;
+  }
+  if (key === "location") {
+    return timeOff ? row.location_name : row.offered_shift.location_name;
+  }
+  if (key === "review") {
+    return timeOff ? row.conflict_count : row.conflicts.length;
+  }
+  return row.status;
+}
+
+function compareValues(left: string | number, right: string | number): number {
+  if (typeof left === "number" && typeof right === "number") {
+    return left - right;
+  }
+  return String(left).localeCompare(String(right), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
 }
 
 function TimeOffDetail({

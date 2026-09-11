@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ChevronDown, Plus, Search, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { CatalogSortButton } from "../views/CatalogSortButton";
 import { CatalogPageHeader } from "../views/CatalogPageHeader";
 import { CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText } from "./GeneralSettingsPage";
@@ -32,6 +33,7 @@ const typeOptions = Object.entries(typeLabels) as readonly [
   ImportantDateType,
   string,
 ][];
+type ImportantDateSortKey = "title" | "date" | "type" | "locations" | "impact";
 
 function todayIso(): string {
   return new Date().toLocaleDateString("en-CA");
@@ -92,6 +94,10 @@ export default function ImportantDatesSettingsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [filter, setFilter] = useState<ImportantDateType | "all">("all");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<{
+    key: ImportantDateSortKey;
+    descending: boolean;
+  }>({ key: "date", descending: false });
   const [editing, setEditing] = useState<ImportantDate | "new" | null>(null);
   const [draft, setDraft] = useState<ImportantDateInput>(newDraft);
   const [formError, setFormError] = useState<string | null>(null);
@@ -125,16 +131,24 @@ export default function ImportantDatesSettingsPage() {
   const normalizedSearch = search.trim().toLowerCase();
   const visible = useMemo(
     () =>
-      items.filter(
-        (item) =>
-          (showArchived || !item.archived_at) &&
-          (filter === "all" || item.type === filter) &&
-          (!normalizedSearch ||
-            `${item.title} ${item.note} ${locationLabel(item)}`
-              .toLowerCase()
-              .includes(normalizedSearch)),
-      ),
-    [filter, items, normalizedSearch, showArchived],
+      items
+        .filter(
+          (item) =>
+            (showArchived || !item.archived_at) &&
+            (filter === "all" || item.type === filter) &&
+            (!normalizedSearch ||
+              `${item.title} ${item.note} ${locationLabel(item)}`
+                .toLowerCase()
+                .includes(normalizedSearch)),
+        )
+        .sort(
+          (left, right) =>
+            compareCatalogValues(
+              importantDateSortValue(left, sort.key),
+              importantDateSortValue(right, sort.key),
+            ) * (sort.descending ? -1 : 1),
+        ),
+    [filter, items, normalizedSearch, showArchived, sort],
   );
 
   const openEditor = (item?: ImportantDate): void => {
@@ -553,96 +567,130 @@ export default function ImportantDatesSettingsPage() {
           {errorText(query.error)}
         </p>
       ) : null}
-      {!query.isLoading && !query.error && visible.length === 0 ? (
-        <div className="settings-empty">
-          <CalendarDays size={22} aria-hidden />
-          <strong>
-            {showArchived
-              ? "No archived important dates"
-              : "No important dates yet"}
-          </strong>
-          <p>Add holidays, closures, and service events used by managers.</p>
-        </div>
-      ) : null}
-      {visible.length > 0 ? (
+      {!query.isLoading && !query.error ? (
         <div className="job-catalog" aria-label="Important dates">
-          <div className="job-column-headings important-date-catalog-row">
-            <span>Important date</span>
-            <span>Date</span>
-            <span className="job-department-cell">Type</span>
-            <span className="job-department-cell">Locations</span>
-            <span className="important-date-impact-stack">Impact</span>
+          <div className="job-column-headings catalog-column-headings important-date-catalog-row">
+            {(
+              [
+                ["title", "Important date", undefined],
+                ["date", "Date", undefined],
+                ["type", "Type", "job-department-cell"],
+                ["locations", "Locations", "job-department-cell"],
+                ["impact", "Impact", "important-date-impact-stack"],
+              ] as const
+            ).map(([key, label, className]) => (
+              <span
+                key={key}
+                className={className}
+                role="columnheader"
+                aria-sort={
+                  sort.key === key
+                    ? sort.descending
+                      ? "descending"
+                      : "ascending"
+                    : "none"
+                }
+              >
+                <CatalogSortButton
+                  label={label}
+                  active={sort.key === key}
+                  onClick={() =>
+                    setSort({
+                      key,
+                      descending: sort.key === key ? !sort.descending : false,
+                    })
+                  }
+                />
+              </span>
+            ))}
             <span />
           </div>
-          {visible.map((item) => (
-            <div
-              className="job-catalog-row important-date-catalog-row"
-              key={item.id}
-              data-archived={Boolean(item.archived_at)}
-            >
-              <button
-                type="button"
-                className="job-row-identity"
-                disabled={!canManage}
-                onClick={() => openEditor(item)}
+          {visible.length ? (
+            visible.map((item) => (
+              <div
+                className="job-catalog-row important-date-catalog-row"
+                key={item.id}
+                data-archived={Boolean(item.archived_at)}
               >
-                <span className="important-date-marker" aria-hidden>
-                  <CalendarDays size={16} />
-                </span>
-                <span className="job-name-stack">
-                  <span className="job-row-name" title={item.title}>
-                    {item.title}
+                <button
+                  type="button"
+                  className="job-row-identity"
+                  disabled={!canManage}
+                  onClick={() => openEditor(item)}
+                >
+                  <span className="important-date-marker" aria-hidden>
+                    <CalendarDays size={16} />
                   </span>
-                  <span className="job-mobile-meta">
-                    {typeLabels[item.type]} · {locationLabel(item)}
+                  <span className="job-name-stack">
+                    <span className="job-row-name" title={item.title}>
+                      {item.title}
+                    </span>
+                    <span className="job-mobile-meta">
+                      {typeLabels[item.type]} · {locationLabel(item)}
+                    </span>
                   </span>
+                  {item.archived_at ? (
+                    <span className="job-archived-label">Archived</span>
+                  ) : null}
+                </button>
+                <span className="important-date-date-cell">
+                  {formatRange(item.starts_on, item.ends_on)}
                 </span>
-                {item.archived_at ? (
-                  <span className="job-archived-label">Archived</span>
+                <span className="job-department-cell">
+                  {typeLabels[item.type]}
+                </span>
+                <span
+                  className="job-department-cell"
+                  title={locationLabel(item)}
+                >
+                  {locationLabel(item)}
+                </span>
+                <span className="important-date-impact-stack">
+                  {item.recurrence === "annual" ? (
+                    <span>Repeats yearly</span>
+                  ) : null}
+                  {item.affects_scheduling ? <span>Schedule flag</span> : null}
+                  {!item.affects_scheduling && item.recurrence !== "annual" ? (
+                    <span>None</span>
+                  ) : null}
+                </span>
+                {canManage ? (
+                  <CatalogRowMenu name={item.title}>
+                    <button type="button" onClick={() => openEditor(item)}>
+                      Edit date
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        !item.archived_at ? "job-danger-text" : undefined
+                      }
+                      disabled={archiveMutation.isPending}
+                      onClick={() =>
+                        archiveMutation.mutate({
+                          id: item.id,
+                          archived: !item.archived_at,
+                        })
+                      }
+                    >
+                      {item.archived_at ? "Restore" : "Archive"}
+                    </button>
+                  </CatalogRowMenu>
                 ) : null}
-              </button>
-              <span className="important-date-date-cell">
-                {formatRange(item.starts_on, item.ends_on)}
-              </span>
-              <span className="job-department-cell">
-                {typeLabels[item.type]}
-              </span>
-              <span className="job-department-cell" title={locationLabel(item)}>
-                {locationLabel(item)}
-              </span>
-              <span className="important-date-impact-stack">
-                {item.recurrence === "annual" ? (
-                  <span>Repeats yearly</span>
-                ) : null}
-                {item.affects_scheduling ? <span>Schedule flag</span> : null}
-                {!item.affects_scheduling && item.recurrence !== "annual" ? (
-                  <span>None</span>
-                ) : null}
-              </span>
-              {canManage ? (
-                <CatalogRowMenu name={item.title}>
-                  <button type="button" onClick={() => openEditor(item)}>
-                    Edit date
-                  </button>
-                  <button
-                    type="button"
-                    className={
-                      !item.archived_at ? "job-danger-text" : undefined
-                    }
-                    disabled={archiveMutation.isPending}
-                    onClick={() =>
-                      archiveMutation.mutate({
-                        id: item.id,
-                        archived: !item.archived_at,
-                      })
-                    }
-                  >
-                    {item.archived_at ? "Restore" : "Archive"}
-                  </button>
-                </CatalogRowMenu>
-              ) : null}
+              </div>
+            ))
+          ) : (
+            <div className="settings-empty">
+              <CalendarDays size={22} aria-hidden />
+              <strong>
+                {showArchived
+                  ? "No archived important dates"
+                  : "No important dates yet"}
+              </strong>
+              <p>
+                Add holidays, closures, and service events used by managers.
+              </p>
             </div>
-          ))}
+          )}
         </div>
       ) : null}
     </section>
@@ -713,6 +761,29 @@ function ImportantDateDeleteAction({
 function formatRange(startsOn: string, endsOn: string): string {
   if (startsOn === endsOn) return formatDate(startsOn);
   return `${formatDate(startsOn)} - ${formatDate(endsOn)}`;
+}
+
+function importantDateSortValue(
+  item: ImportantDate,
+  key: ImportantDateSortKey,
+): string {
+  if (key === "date") return `${item.starts_on} ${item.ends_on}`;
+  if (key === "type") return typeLabels[item.type];
+  if (key === "locations") return locationLabel(item);
+  if (key === "impact") {
+    return [
+      item.recurrence === "annual" ? "Repeats yearly" : "",
+      item.affects_scheduling ? "Schedule flag" : "None",
+    ].join(" ");
+  }
+  return item.title;
+}
+
+function compareCatalogValues(left: string, right: string): number {
+  return left.localeCompare(right, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
 }
 
 function formatDate(value: string): string {
