@@ -1926,19 +1926,6 @@ function ProfileSection({
               value={privateContact?.emergency_contact_email || null}
             />
           ) : null}
-          {!creating ? (
-            <ReadOnlyField
-              label="Coworker sharing"
-              value={
-                privateContact
-                  ? privateContact.share_phone_with_teammates ||
-                    privateContact.share_email_with_teammates
-                    ? "Allowed"
-                    : "Hidden"
-                  : null
-              }
-            />
-          ) : null}
         </div>
       </ProfileGroup>
 
