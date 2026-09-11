@@ -1534,8 +1534,7 @@
   transition: opacity 120ms ease;
 }
 .catalog-sort-button:hover .catalog-sort-icon,
-.catalog-sort-button:focus-visible .catalog-sort-icon,
-.catalog-sort-button[aria-pressed="true"] .catalog-sort-icon {
+.catalog-sort-button:focus-visible .catalog-sort-icon {
   opacity: 1;
 }
 .employee-table th:hover .catalog-sort-icon,
