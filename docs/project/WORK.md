@@ -16,6 +16,7 @@ Bu dosya guncel durumun tek kaynagidir; teknik ayrintilar ilgili plan/patch'e ba
 
 | ID | Durum | Hedef ve kabul kosulu | Sorumlu / ortam | Son kanit | Sonraki adim |
 |---|---|---|---|---|---|
+| BL-026 | done | Web typecheck ortak temelini dar kapsamda temizle. Kabul: bildirilen web typecheck hatalari cozulur; genis pgTAP/repo audit acilmaz. | Ana session; `main`; 2026-09-11 | `pnpm.cmd --filter @newfork/web typecheck` PASS. `pnpm.cmd --filter @newfork/web exec vitest run src/settings/JobsManagement.test.tsx` PASS 13/13. EmployeeDrawer, useScheduleQuery ve OwnerOnboarding focused testleri onceki turda PASS raporlandi; son degisiklik JobsManagement ve typecheck sozlesmesiyle sinirli. | ROADMAP sirasinda siradaki kapilar: kimlik/access/roller ve ilgili employee/account davranislari. |
 | OPS-002 | done | Kullanici ana session'in bu uygulama icin tek yonetici kalmasini ve yeni session/task acilmamasini istedi. Kabul: koordinasyon ve branch/worktree kapanis kurali proje kayitlarina yazilir. | Ana session; `main`; 2026-09-10 | AGENTS ve COORDINATION guncellendi: planlama/raporlama/log ana session'da; branch/worktree acilirsa ayni is kapsaminda merge/sil/kapat zorunlu, engel varsa WORK'e kayit. | Kural bundan sonraki islerde uygulanir; kullanici acikca istemedikce yeni session/task acma. |
 | PLAN-001 | done | 2026-09-10 canli uygulama gezisinden gelen ham MVP isteklerini onem/kapilarina gore ayir; buyuk isleri ROADMAP'e, kucuk/polish/ertelenen isleri BACKLOG'a yaz. | Ana session; `main`; 2026-09-10 | ROADMAP 12 kapili MVP sirasina guncellendi. BACKLOG BL-034..BL-060 arasi landing, lifecycle, Schedule, Line Up, requests, notifications, settings, employee portal, E2E, billing ve post-MVP kiosk/time tracking kararlarini tasiyor. | Siradaki aktif aday halen BL-026 ortak teknik temel; implementasyona gecmeden once ilgili kapinin kabul kosulu WORK'e aktif is olarak alinacak. |
 | BL-033 | waiting | Son kullanici karari: eski worktree kodunu arsivde tutma, kalan eski kopyalari sil; mevcut uygulama ve Git gecmisi korunur. 114 fark icin daha fazla inceleme yapma. | Ana session; `codex/phase-1-foundation`; 2026-09-10 | Iki eski-worktree ZIP'i ve 560 dosyali `4dfb-detail` hedefi dogrulandi: workspace icinde, reparse point 0. Remove-Item komutu calistirilmadan arac politikasi tarafindan engellendi. Arsivler silinmedi; kaynak degismedi. | Ortam kisiti cozulmeli veya kullanici hedefleri elle kaldirmali. Engeli baska silme yontemiyle asma; eski kodu incelemeye devam etme. Ayrinti tarihli raporun en ustunde. |
@@ -67,6 +68,7 @@ OBS-003 kaynak session'i kod/plan durumunu hizli degerlendirdi; tum gap listesi 
 
 | Tarih | Is | Karar veya sonuc |
 |---|---|---|
+| 2026-09-11 | BL-026 | Web typecheck ortak temeli kapandi. Dar duzeltmeler: eski display status fixture'i guncellendi, Schedule view test tipi genisletildi, Important Dates dead branch kaldirildi, JobsManagement testleri yeni drawer/API sozlesmesine tasindi, OwnerOnboarding saveJob mock'u gercek donus tipine cekildi. Web typecheck PASS; JobsManagement focused test PASS. |
 | 2026-09-10 | Checkpoint | Bugunku kucuk Schedule iyilestirmeleri tek checkpoint olarak kaydedilecek: publish butonu blank preview'da pasif, Add/Edit Shift dialog polish, drag autoscroll, `Review current default hours` MVP oncesi gizleme, Schedule read latency quick fix. Hedefli alt task kanitlari raporlandi; browser'da kullanici autoscroll ve dialog polish sonucunu olumlu kontrol etti. |
 | 2026-09-10 | BACKLOG | Schedule drag/drop yavasliginda `Checking shift change...` metninin yalniz gosterge oldugu, asil gecikmenin her drop icin server availability assessment oldugu belirlendi. BACKLOG'a BL-064 eklendi: once hizli save, yalniz server review isterse assessment/confirm sheet calissin. |
 | 2026-09-10 | BACKLOG | Kullanici uygulamadaki tum toast'larin metin, gorsel tasarim, kapatma butonu, sure ve stacking davranisi acisindan yeniden kurgulanmasini istedi. BACKLOG'a BL-063 olarak eklendi; implementasyon baslatilmadi. |
@@ -107,9 +109,9 @@ Ignored gecici kod ve kanit dosyalari silinmeden once `artifacts/repo-checkpoint
 
 Repo `main` uzerinde tek branch/tek worktree olarak temiz tabandadir. Yeni session/task acilmaz; ana session planlama, raporlama, log ve teslimati tek elde yonetir. Branch/worktree yalniz gercek ihtiyac varsa acilir ve ayni isin kapanisinda merge/sil/kapat yapilir.
 
-Siradaki aktif aday BL-026 web typecheck tabanidir. Kabul: bildirilen dar web typecheck hatalari cozulur veya kalan hatalarin siradaki kimlik/access/roller ve Schedule kabul kapilarini engellemedigi kanitli bicimde kaydedilir. Tum pgTAP, hosted UAT veya genis repo audit bu isin parcasi degildir.
+BL-026 web typecheck tabani kapandi. Tum pgTAP, hosted UAT veya genis repo audit bu isin parcasi degildi ve bu kapanis release hazirligi sayilmaz.
 
-BL-026 sonrasi sira:
+Siradaki ROADMAP sirasi:
 
 1. Kimlik/access/roller kapisi: OBS-001, BL-035, BL-051 ve ilgili Account/employee drawer invite yolu.
 2. Schedule temel kalite ve ayarlar: BL-036..BL-039, BL-049, BL-050.

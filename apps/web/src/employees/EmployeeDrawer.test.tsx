@@ -662,7 +662,7 @@ describe("EmployeeDrawer", () => {
   it("shows removed access after an accepted invitation even after its expiry date", async () => {
     renderDrawer("access", {
       ...detail,
-      display_status: "unlinked",
+      display_status: "not_invited",
       user_id: null,
       invitation: {
         id: "8ce12c4a-216e-4e52-bca4-66c32c996541",

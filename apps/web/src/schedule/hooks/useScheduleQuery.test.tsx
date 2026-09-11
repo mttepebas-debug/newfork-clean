@@ -1,4 +1,5 @@
 import type { ScheduleReadModel } from "@newfork/shared/schedule";
+import type { ScheduleView } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -89,9 +90,10 @@ describe("useScheduleQuery", () => {
 
   it("reuses the cached read model when only the view changes", async () => {
     const { result, rerender } = renderHook(
-      ({ view }) => useScheduleQuery("workspace", "2026-05-04", view),
+      ({ view }: { view: ScheduleView }) =>
+        useScheduleQuery("workspace", "2026-05-04", view),
       {
-        initialProps: { view: "week" as const },
+        initialProps: { view: "week" as ScheduleView },
         wrapper: wrapper(),
       },
     );

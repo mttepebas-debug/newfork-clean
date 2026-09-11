@@ -24,6 +24,7 @@ vi.mock("./jobs-management-data", () => ({
   loadJobCounts: vi.fn(),
   loadJobEmployees: vi.fn(),
   loadJobTargets: vi.fn(),
+  saveJobDetails: vi.fn(),
   saveJobAssignments: vi.fn(),
 }));
 vi.mock("./organization-data", () => ({
@@ -59,8 +60,11 @@ vi.mock("./GeneralSettingsPage", () => ({
   ),
 }));
 
+const departmentId = "12000000-0000-4000-8000-000000000001";
+const jobId = "13000000-0000-4000-8000-000000000001";
+
 const department = {
-  id: "department",
+  id: departmentId,
   workspace_id: "workspace",
   name: "Service",
   color: "#3C7A68",
@@ -69,7 +73,7 @@ const department = {
 } as Department;
 const job = {
   ...department,
-  id: "job",
+  id: jobId,
   name: "Server",
   department_id: department.id,
   color: "#4478A8",
@@ -119,7 +123,7 @@ function drawer(archived = false) {
     <JobAssignmentsDrawer
       workspaceId="workspace"
       job={{ ...job, archived_at: archived ? "2026-09-08" : null }}
-      departmentName="Service"
+      departments={[department]}
       onClose={onClose}
     />,
   );
@@ -163,11 +167,16 @@ beforeEach(() => {
     changed_count: 1,
     unchanged_count: 0,
   });
+  vi.mocked(api.saveJobDetails).mockResolvedValue({
+    job,
+    changed_count: 1,
+    unchanged_count: 0,
+  });
 });
 afterEach(cleanup);
 
 describe("department job entry", () => {
-  it("edits a department and adds jobs together, with Escape discarding the editor", async () => {
+  it("edits a department and adds jobs together, with close discarding the editor", async () => {
     const close = editor({ item: department });
     fireEvent.change(screen.getByLabelText("Department name"), {
       target: { value: "Dining" },
@@ -179,7 +188,7 @@ describe("department job entry", () => {
     await waitFor(() =>
       expect(api.updateDepartmentWithJobs).toHaveBeenCalledWith(
         "workspace",
-        "department",
+        departmentId,
         {
           department: { name: "Dining", color: "#3C7A68" },
           jobs: [{ name: "Host", color: "#4478A8" }],
@@ -189,7 +198,7 @@ describe("department job entry", () => {
     await waitFor(() => expect(close).toHaveBeenCalled());
     cleanup();
     const escaped = editor({ item: department });
-    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Close editor" }));
     expect(escaped).toHaveBeenCalled();
   });
   it("Enter advances focus, keeps rows editable, and includes the last uncommitted job", async () => {
@@ -240,7 +249,7 @@ describe("department job entry", () => {
     await waitFor(() =>
       expect(api.createDepartmentJobs).toHaveBeenCalledWith(
         "workspace",
-        "department",
+        departmentId,
         [
           { name: "Chef", color: "#4478A8" },
           { name: "Cook", color: "#4478A8" },
@@ -300,7 +309,10 @@ describe("job assignment drawer", () => {
       }),
     );
     await waitFor(() =>
-      expect(api.deleteJob).toHaveBeenCalledExactlyOnceWith("workspace", "job"),
+      expect(api.deleteJob).toHaveBeenCalledExactlyOnceWith(
+        "workspace",
+        jobId,
+      ),
     );
     await waitFor(() => expect(close).toHaveBeenCalled());
     expect(api.saveJobAssignments).not.toHaveBeenCalled();
@@ -323,16 +335,18 @@ describe("job assignment drawer", () => {
     ).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() =>
-      expect(api.saveJobAssignments).toHaveBeenCalledWith("workspace", "job", [
-        { employee_id: "employee-0", assigned: false, expected_revision: 1 },
-        { employee_id: "employee-1", assigned: true, expected_revision: 1 },
-        { employee_id: "employee-50", assigned: true, expected_revision: 1 },
-      ]),
+      expect(api.saveJobDetails).toHaveBeenCalledWith("workspace", jobId, {
+        changes: [
+          { employee_id: "employee-0", assigned: false, expected_revision: 1 },
+          { employee_id: "employee-1", assigned: true, expected_revision: 1 },
+          { employee_id: "employee-50", assigned: true, expected_revision: 1 },
+        ],
+      }),
     );
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
   it("filter changes keep pending removals visible until save, and conflict keeps the draft", async () => {
-    vi.mocked(api.saveJobAssignments).mockRejectedValue(
+    vi.mocked(api.saveJobDetails).mockRejectedValue(
       new Error("Employee changed. Reload and review."),
     );
     drawer();
@@ -405,15 +419,15 @@ describe("catalog navigation", () => {
     fireEvent.click(add);
     fireEvent.click(screen.getByRole("button", { name: "Department" }));
     expect(screen.getByRole("form", { name: "Add department" })).toBeTruthy();
-    expect(document.activeElement).not.toBe(
+    expect(document.activeElement).toBe(
       screen.getByLabelText("Department name"),
     );
     fireEvent.click(screen.getByRole("tab", { name: "Jobs" }));
     expect(screen.queryByRole("form", { name: "Add department" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Add job" }));
-    expect(screen.getByRole("form", { name: "Add job" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Add job" })).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Departments" }));
-    expect(screen.queryByRole("form", { name: "Add job" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Add job" })).toBeNull();
   });
   it("defaults to All, searches children with parent context and persists view in URL", async () => {
     wrap(

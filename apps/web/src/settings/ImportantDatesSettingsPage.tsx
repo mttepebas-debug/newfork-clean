@@ -172,12 +172,6 @@ export default function ImportantDatesSettingsPage() {
   const submit = (event: FormEvent): void => {
     event.preventDefault();
     if (!canSave) return;
-    if (!parsedDraft.success) {
-      setFormError(
-        parsedDraft.error.issues[0]?.message ?? "Check the date fields",
-      );
-      return;
-    }
     setFormError(null);
     saveMutation.mutate({
       values: parsedDraft.data,

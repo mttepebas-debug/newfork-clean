@@ -164,7 +164,7 @@ describe("OwnerOnboardingPage", () => {
     vi.mocked(listJobs).mockResolvedValue([]);
     vi.mocked(saveLocation).mockResolvedValue(undefined);
     vi.mocked(saveDepartment).mockResolvedValue(undefined);
-    vi.mocked(saveJob).mockResolvedValue(undefined);
+    vi.mocked(saveJob).mockResolvedValue(job);
     vi.mocked(resetOwnerOnboarding).mockResolvedValue(undefined);
     vi.mocked(saveOwnerOnboarding).mockResolvedValue(undefined);
     vi.mocked(queueOwnerOnboardingInvitationIntent).mockResolvedValue(undefined);

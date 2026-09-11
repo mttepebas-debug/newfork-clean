@@ -1,6 +1,6 @@
 # MVP Roadmap
 
-Guncelleme: 2026-09-10. Sahibi: ana session. Bu belge tek MVP sira/hedef kaynagidir; is durumu [WORK](WORK.md), ertelenen fikirler [BACKLOG](BACKLOG.md) icindedir.
+Guncelleme: 2026-09-11. Sahibi: ana session. Bu belge tek MVP sira/hedef kaynagidir; is durumu [WORK](WORK.md), ertelenen fikirler [BACKLOG](BACKLOG.md) icindedir.
 
 ## MVP Sonucu
 
@@ -19,7 +19,7 @@ Uc handoff ilerleme/kanit kaynagidir; iclerindeki sonraki adim onerileri baglayi
 | Sira | Teslimat | Neden / bitis kosulu |
 |---|---|---|
 | 0 | Temiz taban ve yonetim disiplini | Tamamlandi: `main` tek ana branch, tek worktree, stash bos, local/remote esit. Yeni session acilmadan ana session yurutur; branch/worktree acilirsa ayni is kapanisinda merge/sil/kapat yapilir. |
-| 1 | Calisilabilir ortak temel | BL-026 web typecheck hatalarini dar kapsamda temizle. Kabul: hedeflenen typecheck PASS veya kalan hatalarin sonraki kabul kapilarini engellemedigi kanitli; genis pgTAP/repo audit acilmaz. |
+| 1 | Calisilabilir ortak temel | Tamamlandi: BL-026 web typecheck ortak temeli dar kapsamda kapandi. Kabul kaniti WORK BL-026 icinde; genis pgTAP/repo audit acilmadi. |
 | 2 | Kimlik, access ve roller | OBS-001, BL-035, BL-051 ve BL-055'in kritik bolumleri birlikte ele alinir. Kabul: create/invite/access, rehire, custom role, account/workspace ve employee drawer invite yolu tutarli; organizasyondan cikarma global account'u banlamaz. |
 | 3 | Schedule temel kalite ve ayarlar | BL-036, BL-037, BL-038, BL-039, BL-049 ve BL-050. Kabul: Schedule performansi, export, templates, publish state, schedule rules ve shift type defaults MVP seviyesinde calisir ve anlasilir. |
 | 4 | Requests, Shift Hub ve Line Up | BL-041, BL-040, BL-056 ve BL-057. Kabul: employee shift/request yuzeyleri sade, tutarli ve manager onayi/Schedule etkisiyle dogrulanmis; Time Tracking/clock-in MVP disi gorunurluk temiz. |
@@ -42,10 +42,9 @@ Zamanlama takvim tarihi degil, kapilara baglidir:
 
 | Faz | Pratik hedef |
 |---|---|
-| Simdi | BL-026 ortak temel. Kucuk ve mekanik kalirsa ayni oturumda kapanir. |
-| Hemen sonra | Kimlik/access/roller kapisi: OBS-001, rehire bug, custom role ve Account/employee drawer invite yolu. |
-| Sonraki | Schedule temel kalite ve ayarlar: performans, export, templates, publish state, schedule rules ve shift catalog defaults. |
-| Ardindan | Requests/Line Up/employee Shift Hub ve Notifications/Announcements kapilari. |
+| Simdi | Kimlik/access/roller kapisi: OBS-001, rehire bug, custom role ve Account/employee drawer invite yolu. |
+| Hemen sonra | Schedule temel kalite ve ayarlar: performans, export, templates, publish state, schedule rules ve shift catalog defaults. |
+| Sonraki | Requests/Line Up/employee Shift Hub ve Notifications/Announcements kapilari. |
 | MVP oncesi buyuk kapanis | Billing/Stripe ve cok tenantli E2E kabul turu. |
 
 Saglayici anahtar yenileme BL-027 ayri operasyonel takip olarak acik; provider smoke yapmadan once ele alinmali. Bu sira yeni somut bulgu veya kullanici urun onceligiyle degisebilir; kaynak session'in kendi planini tamamlama istegi tek basina sira degistirmez.
