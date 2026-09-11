@@ -179,7 +179,12 @@ function ApprovalDialog({
               if (preview) {
                 if (preview.availability_warning?.policy === "warn") {
                   toast.warning(
-                    "Assignment saved with an availability conflict.",
+                    "Availability conflict saved",
+                    {
+                      dedupeKey: "lineup-queue-availability-warning",
+                      description:
+                        "Assignment saved with an availability conflict.",
+                    },
                   );
                 }
                 await refresh();

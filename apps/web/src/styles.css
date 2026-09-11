@@ -6618,11 +6618,11 @@ select:focus-visible {
 
 [data-sonner-toaster] [data-sonner-toast].newfork-toast {
   align-items: flex-start;
-  gap: 11px;
+  gap: 12px;
+  min-height: 68px;
   border: 1px solid #d4dbd7;
-  border-left-width: 3px;
   border-radius: 8px;
-  padding: 13px 14px;
+  padding: 15px 44px 15px 16px;
   background: #fff;
   color: #202a27;
   box-shadow:
@@ -6630,54 +6630,61 @@ select:focus-visible {
     0 3px 8px -5px rgb(16 24 40 / 14%);
 }
 [data-sonner-toaster] [data-sonner-toast][data-type="error"] {
-  border-left-color: #b42318;
+  border-color: #f2b8b5;
+  background: #fff1f0;
 }
 [data-sonner-toaster] [data-sonner-toast][data-type="success"] {
-  border-left-color: #087f5b;
+  border-color: #b7dfcc;
+  background: #edf8f3;
 }
 [data-sonner-toaster] [data-sonner-toast][data-type="warning"] {
-  border-left-color: #b7791f;
+  border-color: #f2d28f;
+  background: #fff8e8;
 }
 [data-sonner-toaster] [data-sonner-toast][data-type="info"] {
-  border-left-color: #2563eb;
+  border-color: #b7d2f7;
+  background: #eef6ff;
 }
 .toast-type-icon {
   display: inline-flex;
-  width: 22px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  font-size: 10px;
+  color: #fff;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1;
 }
 .toast-type-icon.success {
-  background: rgb(4 120 87 / 10%);
-  color: #047857;
+  background: #148556;
 }
 .toast-type-icon.error {
-  background: rgb(185 28 28 / 10%);
-  color: #b91c1c;
+  background: #d03b35;
 }
 .toast-type-icon.warning {
-  background: rgb(217 119 6 / 10%);
-  color: #b45309;
+  background: #d99216;
 }
 .toast-type-icon.info {
-  background: rgb(37 99 235 / 10%);
-  color: #2563eb;
+  background: #1f6ed4;
 }
 .toast-title {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 760;
   line-height: 1.35;
 }
 .toast-description {
-  margin-top: 2px;
-  color: #66736e;
+  margin-top: 3px;
+  color: #56645f;
   font-size: 13px;
   line-height: 1.45;
+}
+.toast-close {
+  inset-inline-end: 12px !important;
+  inset-inline-start: auto !important;
+  top: 14px !important;
+  transform: none !important;
 }
 .schedule-quick-editor {
   position: fixed;

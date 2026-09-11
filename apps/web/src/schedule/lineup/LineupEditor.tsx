@@ -580,7 +580,10 @@ export function LineupEditor({
               );
             }
             if (preview.availability_warning?.policy === "warn") {
-              toast.warning("This assignment overlaps unavailable hours.");
+              toast.warning("Availability conflict saved", {
+                dedupeKey: "lineup-editor-availability-warning",
+                description: "This assignment overlaps unavailable hours.",
+              });
             }
             await onSaved();
           });

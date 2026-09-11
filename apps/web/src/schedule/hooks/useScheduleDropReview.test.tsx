@@ -32,7 +32,13 @@ describe("Schedule drop assessment", () => {
     await waitFor(() => expect(h.save).toHaveBeenCalledOnce());
     expect(loadShiftAvailability).toHaveBeenCalledTimes(2);
     expect(h.save.mock.calls[0]![0]).toEqual(inputs.map(value => ({ ...value, availability_assessment_fingerprint: "a".repeat(64) })));
-    expect(toast.warning).toHaveBeenCalledExactlyOnceWith("2 shifts overlap unavailable hours.");
+    expect(toast.warning).toHaveBeenCalledExactlyOnceWith(
+      "Availability conflicts saved",
+      expect.objectContaining({
+        dedupeKey: "schedule-drop-availability-warning",
+        description: "2 shifts overlap unavailable hours.",
+      }),
+    );
   });
   it("does not save an earlier allowed item when a later item is blocked", async () => {
     vi.mocked(loadShiftAvailability).mockResolvedValueOnce(assessment({ operation: "allowed" }))

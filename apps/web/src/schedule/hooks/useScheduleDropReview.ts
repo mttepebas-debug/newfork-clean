@@ -80,13 +80,25 @@ export function useScheduleDropReview(workspaceId: string | undefined, sessionId
       })));
       const warnCount = assessments.filter((value, index) => states[index]!.warning && !states[index]!.accepted && value?.warning_policy === "warn").length;
       if (saved && warnCount > 0) {
-        toast.warning(warnCount === 1 ? "This shift overlaps unavailable hours." : `${warnCount} shifts overlap unavailable hours.`);
+        toast.warning(
+          warnCount === 1 ? "Availability conflict saved" : "Availability conflicts saved",
+          {
+            dedupeKey: "schedule-drop-availability-warning",
+            description:
+              warnCount === 1
+                ? "This shift overlaps unavailable hours."
+                : `${warnCount} shifts overlap unavailable hours.`,
+          },
+        );
       }
       if (isCurrent()) { setReview(null); setReason(""); }
     } catch (error) {
       if (isCurrent()) {
         setReview(null);
-        toast.error("Shift change could not be completed", { description: error instanceof Error ? error.message : "Reload and try again." });
+        toast.error("Shift change could not be completed", {
+          dedupeKey: "schedule-drop-save-failed",
+          description: error instanceof Error ? error.message : "Reload and try again.",
+        });
       }
     } finally {
       if (isCurrent()) { active.current = false; setPending(false); }

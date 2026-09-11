@@ -160,7 +160,14 @@ describe("PublishScheduleDialog", () => {
     await startPublication(onPublish, warnPreview);
     await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(2));
     expect(onPublish.mock.calls[1]![1]).toEqual([]);
-    expect(toast.warning).toHaveBeenCalledWith("Availability warnings cleared. Continuing publication.");
+    expect(toast.warning).toHaveBeenCalledWith(
+      "Availability warnings cleared",
+      expect.objectContaining({
+        dedupeKey: "schedule-publish-availability-refreshed",
+        description:
+          "Publication is continuing with the latest availability check.",
+      }),
+    );
   });
   it.each([
     { ...warnPreview, draft_revision: 4 },

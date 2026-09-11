@@ -301,6 +301,7 @@ export function useScheduleGridDragControllers({
       if (target?.targetStatus) setDragOverCell(target.targetKey ?? null);
       if (target && !target.allowed && target.messages?.length) {
         toast.error("This assignment cannot be saved", {
+          dedupeKey: "schedule-drag-assignment-blocked",
           description: target.messages.join(" "),
         });
       }
@@ -326,6 +327,7 @@ export function useScheduleGridDragControllers({
       setDragOverCell(target?.targetKey ?? null);
       if (!target || target.allowed) return;
       toast.error("Preset shift is unavailable", {
+        dedupeKey: "schedule-drag-preset-blocked",
         description: target.reason,
       });
     },

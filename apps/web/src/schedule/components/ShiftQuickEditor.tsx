@@ -474,11 +474,15 @@ export function ShiftQuickEditor({
   const attemptSubmit = async (confirmed = false) => {
     if (checkingRef.current) return;
     if (activeCustomWork && (activeCustomWork.reason.trim().length < 10 || activeCustomWork.reason.trim().length > 500)) {
-      toast.error("Explain the custom work", { description: "Use 10 to 500 characters to explain why this work is independent of a service." });
+      toast.error("Explain the custom work", {
+        dedupeKey: "schedule-quick-editor-custom-work-reason",
+        description: "Use 10 to 500 characters to explain why this work is independent of a service.",
+      });
       return;
     }
     if (timeValidationMessage) {
       toast.error("Enter a valid shift time", {
+        dedupeKey: "schedule-quick-editor-invalid-time",
         description: timeValidationMessage,
       });
       return;
@@ -498,11 +502,15 @@ export function ShiftQuickEditor({
         if (JSON.stringify(valueRef.current) !== submittedKey) return;
         setAssessmentState({ key: submittedKey, value: checked });
         if (activeCustomWork && !checked.service_classification_fingerprint) {
-          toast.error("Custom work could not be verified", { description: "Reload the current shift and try again." });
+          toast.error("Custom work could not be verified", {
+            dedupeKey: "schedule-quick-editor-custom-work-unverified",
+            description: "Reload the current shift and try again.",
+          });
           return;
         }
       } catch (error) {
         toast.error("Availability could not be checked", {
+          dedupeKey: "schedule-quick-editor-availability-check-failed",
           description: error instanceof Error ? error.message : "Please retry.",
         });
         return;
@@ -541,7 +549,12 @@ export function ShiftQuickEditor({
       return;
     }
     setConflictSheetOpen(false);
-    if (warnOnly) toast.warning("This shift overlaps unavailable hours.");
+    if (warnOnly) {
+      toast.warning("Availability conflict saved", {
+        dedupeKey: "schedule-quick-editor-availability-warning",
+        description: "This shift overlaps unavailable hours.",
+      });
+    }
     submitPayload(
       requiresReason
         ? overrideReason

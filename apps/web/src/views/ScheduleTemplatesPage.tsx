@@ -79,7 +79,10 @@ export default function ScheduleTemplatesPage() {
         nextName,
         renameTarget.revision,
       );
-      toast.success(`Template renamed to "${nextName}"`);
+      toast.success("Template renamed", {
+        dedupeKey: `schedule-template-renamed:${renameTarget.id}`,
+        description: nextName,
+      });
       setRenameTarget(null);
       await refreshTemplates();
     } catch (error) {
@@ -94,10 +97,16 @@ export default function ScheduleTemplatesPage() {
     setDeletingId(template.id);
     try {
       await deleteScheduleTemplate(workspaceId, template.id, template.revision);
-      toast.success(`Template "${template.name}" deleted`);
+      toast.success("Template deleted", {
+        dedupeKey: `schedule-template-deleted:${template.id}`,
+        description: template.name,
+      });
       await refreshTemplates();
     } catch (error) {
-      toast.error(templateMutationError(error, "delete"));
+      toast.error("Template could not be deleted", {
+        dedupeKey: `schedule-template-delete-failed:${template.id}`,
+        description: templateMutationError(error, "delete"),
+      });
     } finally {
       setDeletingId(null);
       setConfirmingDeleteId(null);

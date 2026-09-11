@@ -127,7 +127,13 @@ describe("useCascadeNotice", () => {
     handler({ payload: notice });
 
     expect(toastMock.info).toHaveBeenCalledWith(
-      '1 pending edit adjusted after Mina Yilmaz changed job "Server".',
+      "Schedule updated",
+      expect.objectContaining({
+        dedupeKey:
+          "schedule-cascade:00000000-0000-0000-0000-0000000000a1:stripped:job:00000000-0000-0000-0000-0000000000b1",
+        description:
+          '1 pending edit adjusted after Mina Yilmaz changed job "Server".',
+      }),
     );
   });
 
@@ -137,7 +143,10 @@ describe("useCascadeNotice", () => {
     handler({ payload: notice });
 
     expect(toastMock.info).toHaveBeenCalledWith(
-      '1 pending edit adjusted after Admin changed job "Server".',
+      "Schedule updated",
+      expect.objectContaining({
+        description: '1 pending edit adjusted after Admin changed job "Server".',
+      }),
     );
   });
 

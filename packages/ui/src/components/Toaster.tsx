@@ -2,7 +2,7 @@ import { type JSX } from "react";
 import "sonner/dist/styles.css";
 import { Toaster as SonnerToaster } from "sonner";
 
-const TOAST_DURATION_MS = 10_000;
+const TOAST_DURATION_MS = 6_000;
 
 function TypeIcon({
   glyph,
@@ -47,7 +47,7 @@ export function Toaster(): JSX.Element {
           toast: "newfork-toast",
         },
       }}
-      visibleToasts={4}
+      visibleToasts={3}
     />
   );
 }

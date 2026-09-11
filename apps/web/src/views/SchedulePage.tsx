@@ -970,7 +970,10 @@ export function SchedulePage({
         return next;
       });
       invalidateScheduleCaches(draft.id);
-      toast.success("Draft deleted", { description: draft.name });
+      toast.success("Draft deleted", {
+        dedupeKey: `schedule-draft-deleted:${draft.id}`,
+        description: draft.name,
+      });
     } catch (error) {
       setOperationError((error as Error).message);
     }
@@ -1432,6 +1435,7 @@ export function SchedulePage({
       onError?.(caught);
       setOperationError(caught.message);
       toast.error("Schedule change could not be saved", {
+        dedupeKey: "schedule-change-save-failed",
         description: formatScheduleConflictMessage(caught.message),
       });
       return null;
@@ -1518,7 +1522,10 @@ export function SchedulePage({
       options.armPaste ? "Paste mode on" : "Shift copied",
       800,
     );
-    toast.success("Shift copied");
+    toast.success("Shift copied", {
+      dedupeKey: "schedule-shift-copied",
+      description: options.armPaste ? "Paste mode is ready." : "Use paste mode to place it again.",
+    });
   };
 
   const copySelectedShifts = (
@@ -1540,13 +1547,22 @@ export function SchedulePage({
         : `${count} ${count === 1 ? "shift" : "shifts"} copied`,
       800,
     );
-    toast.success(count === 1 ? "Shift copied" : `${count} shifts copied`);
+    toast.success(count === 1 ? "Shift copied" : "Shifts copied", {
+      dedupeKey: "schedule-shifts-copied",
+      description:
+        count === 1
+          ? "Use paste mode to place it again."
+          : `${count} shifts are ready for paste mode.`,
+    });
     return true;
   };
 
   const togglePasteMode = () => {
     if (!clipboard) {
-      toast.error("Copy a shift first");
+      toast.warning("Copy a shift first", {
+        dedupeKey: "schedule-paste-empty-clipboard",
+        description: "Paste mode needs a copied shift before it can start.",
+      });
       return;
     }
     const next = !pasteArmed;
@@ -1556,7 +1572,12 @@ export function SchedulePage({
       next ? "Paste mode on" : "Paste mode off",
       next ? 0 : 500,
     );
-    toast.info(next ? "Paste mode on" : "Paste mode off");
+    toast.info(next ? "Paste mode on" : "Paste mode off", {
+      dedupeKey: "schedule-paste-mode",
+      description: next
+        ? "Click a schedule cell to paste the copied shift."
+        : "Paste shortcuts are paused.",
+    });
   };
 
   const undoLastEdit = () => {
@@ -1564,7 +1585,10 @@ export function SchedulePage({
     if (!snapshot) return;
     setSession(snapshot);
     setPendingOps([]);
-    toast.success("Last edit undone");
+    toast.success("Last edit undone", {
+      dedupeKey: "schedule-undo-last-edit",
+      description: "The draft returned to the previous edit state.",
+    });
   };
 
   const deleteShiftById = async (id: string) => {
@@ -1587,6 +1611,7 @@ export function SchedulePage({
     const shift = findEditableShift(id);
     if (!shift) {
       toast.error("Shift could not be restored", {
+        dedupeKey: `schedule-shift-restore-missing:${id}`,
         description: "The staged shift was not found.",
       });
       return;
@@ -1599,7 +1624,12 @@ export function SchedulePage({
         shift.revision,
       ),
     );
-    if (next) toast.success("Shift restored");
+    if (next) {
+      toast.success("Shift restored", {
+        dedupeKey: `schedule-shift-restored:${id}`,
+        description: "The shift is back in the draft.",
+      });
+    }
   };
 
   const openShiftContextMenu = (
@@ -1816,8 +1846,9 @@ export function SchedulePage({
       setShiftConflictMessages([message]);
       setPasteConflictContext("Paste shift");
       toast.error("Paste blocked", {
+        dedupeKey: "schedule-paste-blocked-no-employee",
         description:
-          "This paste was not applied. Review the reason before scheduling the shift.",
+          "Choose an employee row before pasting this shift.",
       });
       return;
     }
@@ -1872,8 +1903,9 @@ export function SchedulePage({
         `${shiftTypeLabel} / ${jobLabel} / ${employeeLabel} / ${locationLabel} / ${date}`,
       );
       toast.error("Paste blocked", {
+        dedupeKey: "schedule-paste-blocked-conflict",
         description:
-          "This paste was not applied. Review the reason before scheduling the shift.",
+          "This shift was not pasted. Review the conflict before scheduling it.",
       });
       return;
     }
@@ -1886,7 +1918,15 @@ export function SchedulePage({
       inputs: pasteInputs,
       save: async inputs => {
         const next = await mutate(() => createScheduleShifts(context.workspace.id, session, inputs, idempotencyKey));
-        if (next) toast.success(inputs.length === 1 ? "Shift pasted" : `${inputs.length} shifts pasted`);
+        if (next) {
+          toast.success(inputs.length === 1 ? "Shift pasted" : "Shifts pasted", {
+            dedupeKey: "schedule-shifts-pasted",
+            description:
+              inputs.length === 1
+                ? "The copied shift was added to the draft."
+                : `${inputs.length} copied shifts were added to the draft.`,
+          });
+        }
         return Boolean(next);
       },
     });
@@ -2148,9 +2188,13 @@ export function SchedulePage({
     );
     if (!validation.allowed) {
       toast.error("Preset shift is unavailable", {
+        dedupeKey: "schedule-preset-shift-unavailable",
         description: validation.reason,
       });
-      toast.info(formatPresetCreateContext(model, target));
+      toast.info("Preset shift context", {
+        dedupeKey: "schedule-preset-shift-context",
+        description: formatPresetCreateContext(model, target),
+      });
       return;
     }
     if (
@@ -2826,7 +2870,10 @@ export function SchedulePage({
             (item) => item.id === shiftTypeId,
           );
           if (!target.jobId || !shiftType) {
-            toast.error("Preset shift type not found");
+            toast.error("Preset shift type not found", {
+              dedupeKey: "schedule-preset-shift-type-missing",
+              description: "Refresh the schedule, then try this preset again.",
+            });
             return;
           }
           openPresetCreateTarget({
@@ -3035,6 +3082,7 @@ export function SchedulePage({
               setSaveRecovery(null);
               setOperationError(null);
               toast.success("Approved assignments restored", {
+                dedupeKey: "schedule-approved-assignments-restored",
                 description: "Your notes and other edits are preserved. Review the draft, then save when ready.",
               });
               clearUndoStack();
@@ -3145,14 +3193,21 @@ export function SchedulePage({
                 );
               }
               toast.success(
-                `Published ${result.location_ids.length} locations · ${result.published_shift_count} changes`,
+                "Schedule published",
                 result.notification_warning
-                  ? { description: result.notification_warning.message }
+                  ? {
+                      dedupeKey: "schedule-publish-notification-warning",
+                      description: result.notification_warning.message,
+                    }
                   : result.notification_count
                     ? {
-                        description: `${result.notification_count} employees notified`,
+                        dedupeKey: "schedule-published",
+                        description: `${result.location_ids.length} locations, ${result.published_shift_count} changes, ${result.notification_count} employees notified.`,
                       }
-                    : undefined,
+                    : {
+                        dedupeKey: "schedule-published",
+                        description: `${result.location_ids.length} locations and ${result.published_shift_count} changes published.`,
+                      },
               );
               setPublishOpen(false);
               setPublishChoices(null);
@@ -3210,7 +3265,11 @@ export function SchedulePage({
                 preview,
               );
               toast.success(
-                `Unpublished ${result.location_ids.length} locations · ${result.kept_worked_count ?? 0} worked shifts kept`,
+                "Schedule unpublished",
+                {
+                  dedupeKey: "schedule-unpublished",
+                  description: `${result.location_ids.length} locations unpublished. ${result.kept_worked_count ?? 0} worked shifts kept.`,
+                },
               );
               setUnpublishOpen(false);
               invalidateScheduleCaches(null);
@@ -3261,7 +3320,10 @@ export function SchedulePage({
               name,
               stripAssignments,
             ).then((result) => {
-              toast.success(`Template "${name}" saved`);
+              toast.success("Template saved", {
+                dedupeKey: "schedule-template-saved",
+                description: name,
+              });
               setTemplates((items) => [...items, result.template]);
             })
           }
@@ -3272,7 +3334,10 @@ export function SchedulePage({
               name,
               template.revision,
             ).then((result) => {
-              toast.success(`Template renamed to "${name}"`);
+              toast.success("Template renamed", {
+                dedupeKey: `schedule-template-renamed:${template.id}`,
+                description: name,
+              });
               setTemplates((items) =>
                 items.map((item) =>
                   item.id === template.id ? result.template : item,
@@ -3287,13 +3352,19 @@ export function SchedulePage({
               template.revision,
             )
               .then(() => {
-                toast.success(`Template "${template.name}" deleted`);
+                toast.success("Template deleted", {
+                  dedupeKey: `schedule-template-deleted:${template.id}`,
+                  description: template.name,
+                });
                 setTemplates((items) =>
                   items.filter((item) => item.id !== template.id),
                 );
               })
               .catch((error: unknown) => {
-                toast.error("The template could not be deleted.");
+                toast.error("Template could not be deleted", {
+                  dedupeKey: `schedule-template-delete-failed:${template.id}`,
+                  description: "Refresh templates, then try again.",
+                });
                 throw error;
               })
           }
@@ -3311,7 +3382,11 @@ export function SchedulePage({
                       templates.find((item) => item.id === templateId)?.name ??
                       "Template";
                     toast.success(
-                      `Applied "${templateName}": ${result.applied_shift_count} ${result.applied_shift_count === 1 ? "shift" : "shifts"} added`,
+                      "Template applied",
+                      {
+                        dedupeKey: `schedule-template-applied:${templateId}`,
+                        description: `${templateName}: ${result.applied_shift_count} ${result.applied_shift_count === 1 ? "shift" : "shifts"} added.`,
+                      },
                     );
                     rememberUndoSnapshot(gridEditSession);
                     setSession(result.session);
@@ -3319,7 +3394,11 @@ export function SchedulePage({
                   })
                   .catch((error: unknown) => {
                     toast.error(
-                      "The template could not be applied. Try again.",
+                      "Template could not be applied",
+                      {
+                        dedupeKey: `schedule-template-apply-failed:${templateId}`,
+                        description: "Refresh the draft, then try again.",
+                      },
                     );
                     throw error;
                   })

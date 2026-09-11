@@ -24,10 +24,20 @@ export function useCascadeNotice({
       .on("broadcast", { event: "cascade_notice" }, (event) => {
         if (!isCascadeNoticePayload(event.payload)) return;
         toast.info(
-          formatCascadeNoticeToast(
-            event.payload,
-            actorNameByUserId?.(event.payload.actor_user_id) ?? null,
-          ),
+          "Schedule updated",
+          {
+            dedupeKey: [
+              "schedule-cascade",
+              event.payload.actor_user_id,
+              event.payload.affected_action,
+              event.payload.deleted_resource.type,
+              event.payload.deleted_resource.ids.join(","),
+            ].join(":"),
+            description: formatCascadeNoticeToast(
+              event.payload,
+              actorNameByUserId?.(event.payload.actor_user_id) ?? null,
+            ),
+          },
         );
       })
       .subscribe();

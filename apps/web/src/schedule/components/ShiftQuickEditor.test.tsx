@@ -152,7 +152,13 @@ describe("ShiftQuickEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
-    expect(toast.warning).toHaveBeenCalledExactlyOnceWith("This shift overlaps unavailable hours.");
+    expect(toast.warning).toHaveBeenCalledExactlyOnceWith(
+      "Availability conflict saved",
+      expect.objectContaining({
+        dedupeKey: "schedule-quick-editor-availability-warning",
+        description: "This shift overlaps unavailable hours.",
+      }),
+    );
     expect(onSubmit.mock.calls[0]![0]).toMatchObject({ availability_assessment_fingerprint: weeklyWarning.fingerprint });
     expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty("conflict_override_note");
   });

@@ -479,7 +479,15 @@ export function PublishScheduleDialog({
             currentPreview = refreshed.preview;
             setPreview(currentPreview);
             const count = publishNewAvailabilityFindings(currentPreview).filter(finding => finding.warning_policy === "warn").length;
-            toast.warning(count ? `Availability updated: ${count} ${count === 1 ? "conflict" : "conflicts"}. Continuing publication.` : "Availability warnings cleared. Continuing publication.");
+            toast.warning(
+              count ? "Availability conflicts updated" : "Availability warnings cleared",
+              {
+                dedupeKey: "schedule-publish-availability-refreshed",
+                description: count
+                  ? `${count} ${count === 1 ? "conflict" : "conflicts"} refreshed. Publication is continuing.`
+                  : "Publication is continuing with the latest availability check.",
+              },
+            );
             continue;
           }
           throw caught;
