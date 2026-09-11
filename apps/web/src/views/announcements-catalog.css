@@ -15,6 +15,10 @@
 .announcements-catalog-page .job-catalog-toolbar {
   flex-wrap: wrap;
 }
+.announcements-catalog-page .job-search {
+  flex: 1 0 100%;
+  max-width: none;
+}
 .announcements-catalog-page > .settings-page-header {
   align-items: center;
 }

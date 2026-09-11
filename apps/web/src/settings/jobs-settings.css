@@ -2031,6 +2031,17 @@
   min-width: 150px;
   margin: 0;
 }
+.important-dates-catalog-page .important-date-filter {
+  order: 1;
+}
+.important-dates-catalog-page .job-archive-filter {
+  order: 2;
+}
+.important-dates-catalog-page .job-search {
+  order: 3;
+  flex: 1 0 100%;
+  max-width: none;
+}
 .important-date-filter > span {
   position: absolute;
   width: 1px;

@@ -14594,6 +14594,19 @@ select:focus-visible {
   gap: 10px;
   margin-bottom: 14px;
 }
+.requests-toolbar-time-off {
+  grid-template-columns: max-content minmax(170px, 220px) minmax(0, 1fr);
+}
+.requests-toolbar-time-off .request-queue-toggle {
+  grid-column: 1;
+}
+.requests-toolbar-time-off .requests-search {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.requests-toolbar-time-off > select {
+  grid-column: 2;
+}
 .request-queue-toggle {
   display: flex;
   padding: 3px;

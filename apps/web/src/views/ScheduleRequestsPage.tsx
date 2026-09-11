@@ -354,7 +354,9 @@ function ScheduleRequestsPageContent() {
         }
       />
 
-      <div className="requests-toolbar">
+      <div
+        className={`requests-toolbar${tab === "time-off" ? " requests-toolbar-time-off" : ""}`}
+      >
         <div className="request-queue-toggle" aria-label="Queue">
           {tab === "time-off" ? (
             <>
