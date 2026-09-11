@@ -1888,7 +1888,7 @@ function ProfileSection({
       <ProfileGroup
         title="Contact"
       >
-        <div className="employee-form-grid">
+        <div className="employee-form-grid employee-contact-grid">
           <Field
             label="E-mail"
             value={emailValue}

@@ -1885,6 +1885,10 @@
 .employee-readonly-field input[readonly]::placeholder {
   color: #8a938f;
 }
+.employee-contact-grid .employee-readonly-field::after {
+  content: "";
+  min-height: 15px;
+}
 .employee-address-grid .wide {
   grid-column: 1 / -1;
 }
