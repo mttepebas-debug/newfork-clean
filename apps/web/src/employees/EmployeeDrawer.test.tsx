@@ -706,6 +706,45 @@ describe("EmployeeDrawer", () => {
     );
   });
 
+  it("keeps profile photo removal disabled until a workspace photo exists", async () => {
+    renderDrawer("access");
+
+    expect(await screen.findByText("Profile photo removal")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Remove photo" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(
+      screen.getByText(
+        "Reset the employee PIN used to clock in or out from shared kiosk devices.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("removes the workspace profile photo when one exists", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { client } = renderDrawer("access");
+
+    const removePhoto = await screen.findByRole("button", {
+      name: "Remove photo",
+    });
+    expect(removePhoto).toHaveProperty("disabled", true);
+    vi.mocked(getEmployeeAvatar).mockResolvedValue({
+      present: true,
+      url: "https://example.test/avatar.png",
+    });
+    await client.invalidateQueries({
+      queryKey: ["employee-avatar", workspaceId, employeeId],
+    });
+    await waitFor(() => expect(removePhoto).toHaveProperty("disabled", false));
+    fireEvent.click(removePhoto);
+
+    await waitFor(() =>
+      expect(removeEmployeeAvatar).toHaveBeenCalledWith(workspaceId, employeeId),
+    );
+    confirm.mockRestore();
+  });
+
   it("locks profile identity and email while an invitation is pending", async () => {
     renderDrawer("profile", {
       ...detail,

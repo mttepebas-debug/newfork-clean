@@ -2358,7 +2358,10 @@ function AccessSection({
         <header>
           <div>
             <h3>Profile photo</h3>
-            <p>Workspace-specific employee photo visibility.</p>
+            <p>
+              Remove the workspace profile photo shown for this employee in this
+              workspace.
+            </p>
           </div>
           <ImageOff size={18} aria-hidden />
         </header>
@@ -2373,7 +2376,10 @@ function AccessSection({
         <header>
           <div>
             <h3>Kiosk</h3>
-            <p>PIN access for shared time clock devices.</p>
+            <p>
+              Reset the employee PIN used to clock in or out from shared kiosk
+              devices.
+            </p>
           </div>
           <KeyRound size={18} aria-hidden />
         </header>
@@ -2433,17 +2439,11 @@ function EmployeeAvatarControl({
         </Button>
       </div>
     );
-  if (!avatar.data?.present)
-    return (
-      <div className="employee-access-empty">
-        <strong>No workspace profile photo</strong>
-        <span>There is no photo to remove for this workspace.</span>
-      </div>
-    );
+  const hasAvatar = Boolean(avatar.data?.present);
 
   return (
     <div className="employee-avatar-control">
-      {avatar.data.url ? (
+      {hasAvatar && avatar.data?.url ? (
         <img src={avatar.data.url} alt="Employee workspace profile" />
       ) : (
         <span className="employee-avatar-placeholder" aria-hidden>
@@ -2451,8 +2451,8 @@ function EmployeeAvatarControl({
         </span>
       )}
       <div>
-        <strong>Workspace profile photo</strong>
-        <span>Removing it does not change the global account profile.</span>
+        <strong>Profile photo removal</strong>
+        <span>Remove only the photo shown for this workspace.</span>
         {remove.error ? (
           <small role="alert">{errorMessage(remove.error)}</small>
         ) : null}
@@ -2461,7 +2461,7 @@ function EmployeeAvatarControl({
         <Button
           className="secondary-button"
           type="button"
-          disabled={remove.isPending}
+          disabled={!hasAvatar || remove.isPending}
           onClick={() => {
             if (
               window.confirm(
