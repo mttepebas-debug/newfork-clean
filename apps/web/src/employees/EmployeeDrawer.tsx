@@ -136,7 +136,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     null,
   );
   const [inviteRoleDirty, setInviteRoleDirty] = useState(false);
-  const [inviteRoleAttempted, setInviteRoleAttempted] = useState(false);
+  const [inviteRoleAttempt, setInviteRoleAttempt] = useState(0);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [createResult, setCreateResult] = useState<EmployeeCreateResult | null>(
     null,
@@ -224,7 +224,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     if (!subjectChanged && inviteRoleDirty) return;
     setInviteRoleId(pendingRoleId ?? "");
     setInviteRoleDirty(false);
-    setInviteRoleAttempted(false);
+    setInviteRoleAttempt(0);
     lastInviteRoleSubjectKeyRef.current = draftSubjectKey;
   }, [
     detail.data?.invitation?.role_id,
@@ -652,7 +652,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   }, [props.creating, dirty, busy, activeSection]);
   const startCreate = (invite: boolean) => {
     if (invite && !inviteRoles.some((role) => role.id === inviteRoleId)) {
-      setInviteRoleAttempted(true);
+      setInviteRoleAttempt((current) => current + 1);
       return;
     }
     if (
@@ -698,7 +698,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const handleInviteRoleChange = (roleId: string): void => {
     setInviteRoleId(roleId);
     setInviteRoleDirty(true);
-    setInviteRoleAttempted(false);
+    setInviteRoleAttempt(0);
   };
   const handleAddEmail = (): void => {
     focusEmailOnProfileRef.current = true;
@@ -1112,7 +1112,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     inviteRoleId={inviteRoleId}
                     onInviteRoleChange={handleInviteRoleChange}
                     disabled={busy || uncertainCreate || readOnly}
-                    invalid={inviteRoleAttempted && !inviteRoleId}
+                    invalidAttempt={inviteRoleId ? 0 : inviteRoleAttempt}
                   />
                 </div>
               ) : null}
@@ -1212,17 +1212,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     inviteRoleId={inviteRoleId}
                     onInviteRoleChange={handleInviteRoleChange}
                     disabled={busy || readOnly}
-                    invalid={inviteRoleAttempted && !inviteRoleId}
+                    invalidAttempt={inviteRoleId ? 0 : inviteRoleAttempt}
                   />
                 </div>
               ) : null}
               <div className="employee-drawer-actions">
-                {dirty && !readOnly ? (
-                  <span className="employee-dirty">
-                    <i />
-                    Unsaved changes
-                  </span>
-                ) : null}
                 <Button
                   className="secondary-button"
                   type="button"
@@ -1251,7 +1245,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     }
                     onClick={async () => {
                       if (!inviteRoleId) {
-                        setInviteRoleAttempted(true);
+                        setInviteRoleAttempt((current) => current + 1);
                         return;
                       }
                       if (dirty) {
@@ -2472,19 +2466,24 @@ function InviteRoleField({
   inviteRoleId,
   onInviteRoleChange,
   disabled,
-  invalid,
+  invalidAttempt,
 }: {
   roles: readonly InviteRoleOption[];
   inviteRoleId: string;
   onInviteRoleChange: (roleId: string) => void;
   disabled: boolean;
-  invalid: boolean;
+  invalidAttempt: number;
 }) {
   const selectedRoleId = roles.some((role) => role.id === inviteRoleId)
     ? inviteRoleId
     : "";
+  const invalid = invalidAttempt > 0;
+  const pulseClass =
+    invalidAttempt > 0
+      ? ` employee-invite-role-invalid employee-invite-role-invalid-${invalidAttempt % 2}`
+      : "";
   return (
-    <label className="employee-field employee-invite-role-field">
+    <label className={`employee-field employee-invite-role-field${pulseClass}`}>
       <select
         aria-label="Invite role"
         aria-invalid={invalid || undefined}

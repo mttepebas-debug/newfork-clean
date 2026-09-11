@@ -2305,6 +2305,26 @@
   border-color: var(--danger, #a13f30);
   box-shadow: 0 0 0 1px var(--danger, #a13f30);
 }
+.employee-invite-role-invalid-0 select {
+  animation: employee-invite-role-pulse-a 520ms ease;
+}
+.employee-invite-role-invalid-1 select {
+  animation: employee-invite-role-pulse-b 520ms ease;
+}
+@keyframes employee-invite-role-pulse-a {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
+@keyframes employee-invite-role-pulse-b {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
 
 .employee-drawer-create .employee-identity { min-height: 128px; padding: 20px 16px; }
 .employee-drawer-create .employee-section-header h2 { font-size: 20px; }

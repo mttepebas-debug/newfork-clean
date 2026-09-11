@@ -321,11 +321,18 @@ describe("EmployeeDrawer", () => {
       revision: 2,
     });
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
-    expect(screen.getByLabelText("Invite role").getAttribute("aria-invalid")).toBe(
-      "true",
+    const inviteRole = screen.getByLabelText("Invite role");
+    expect(inviteRole.getAttribute("aria-invalid")).toBe("true");
+    expect(inviteRole.closest("label")?.className).toContain(
+      "employee-invite-role-invalid-1",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    expect(inviteRole.closest("label")?.className).toContain(
+      "employee-invite-role-invalid-0",
     );
     expect(prepareEmployeeInvitation).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Invite role"), {
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+    fireEvent.change(inviteRole, {
       target: { value: employeeRoleId },
     });
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
