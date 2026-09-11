@@ -1347,6 +1347,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .employee-search {
@@ -1403,6 +1404,17 @@
   background: #fff;
   color: #1e2925;
   box-shadow: 0 1px 2px rgb(22 35 30 / 12%);
+}
+.toolbar-filter-select {
+  min-height: 36px;
+  max-width: 220px;
+  border: 1px solid #d5dad7;
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: #fff;
+  color: #1d2525;
+  font: inherit;
+  font-size: 12px;
 }
 .employee-table-wrap {
   align-self: stretch;

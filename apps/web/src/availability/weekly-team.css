@@ -73,26 +73,28 @@
 .weekly-team-filters {
   order: 1;
   display: flex;
-  border: 1px solid var(--wt-line);
-  border-radius: 5px;
+  border: 1px solid #d5dad7;
+  border-radius: 6px;
   padding: 3px;
-  background: var(--wt-soft);
+  background: #ecefed;
+  gap: 2px;
 }
 .weekly-team-filters button {
   border: 0;
-  border-radius: 3px;
+  border-radius: 4px;
   background: transparent;
   color: var(--wt-muted);
-  padding: 7px 10px;
-  min-height: 30px;
+  padding: 0 11px;
+  min-height: 32px;
   font: inherit;
   font-size: 12px;
+  font-weight: 750;
   cursor: pointer;
 }
-.weekly-team-filters button[aria-pressed="true"] {
+.weekly-team-filters button.active {
   background: var(--wt-surface);
-  color: var(--wt-accent);
-  box-shadow: 0 1px 3px #00000014;
+  color: var(--wt-text);
+  box-shadow: 0 1px 2px rgb(22 35 30 / 12%);
 }
 .weekly-team-count {
   order: 1;

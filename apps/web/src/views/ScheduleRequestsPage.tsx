@@ -354,10 +354,8 @@ function ScheduleRequestsPageContent() {
         }
       />
 
-      <div
-        className={`requests-toolbar${tab === "time-off" ? " requests-toolbar-time-off" : ""}`}
-      >
-        <div className="request-queue-toggle" aria-label="Queue">
+      <div className="requests-toolbar">
+        <div className="employee-status-tabs" role="group" aria-label="Queue">
           {tab === "time-off" ? (
             <>
               <button
@@ -416,6 +414,7 @@ function ScheduleRequestsPageContent() {
           />
         </label>
         <select
+          className="toolbar-filter-select"
           value={locationId}
           aria-label="Filter by location"
           onChange={(event) => {

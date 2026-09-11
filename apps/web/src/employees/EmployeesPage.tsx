@@ -75,6 +75,7 @@ export default function EmployeesPage() {
   const search = params.get("q") ?? "";
   const deferredSearch = useDeferredValue(search);
   const status = archived ? "all" : (params.get("status") ?? "all");
+  const locationFilter = params.get("location") ?? "all";
   const employeeId = params.get("employeeId");
   const creating = params.get("mode") === "create";
   const parsedSection = employeeSectionSchema.safeParse(params.get("section"));
@@ -188,6 +189,27 @@ export default function EmployeesPage() {
       visible: [...defaultVisibleColumns],
     });
 
+  const locationOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    for (const employee of employees.data ?? []) {
+      if (employee.primary_location_id && employee.primary_location_name) {
+        options.set(employee.primary_location_id, employee.primary_location_name);
+      }
+    }
+    return [...options.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }, [employees.data]);
+  const visibleEmployees = useMemo(
+    () =>
+      (employees.data ?? []).filter(
+        (employee) =>
+          locationFilter === "all" ||
+          employee.primary_location_id === locationFilter,
+      ),
+    [employees.data, locationFilter],
+  );
+
   const drawerOpen = creating || Boolean(employeeId);
   return (
     <section className="employees-page" aria-labelledby="employees-title">
@@ -265,6 +287,27 @@ export default function EmployeesPage() {
               Archived
             </button>
           </div>
+          <select
+            className="toolbar-filter-select"
+            value={locationFilter}
+            aria-label="Filter employees by location"
+            onChange={(event) =>
+              updateParams({
+                location:
+                  event.target.value === "all" ? null : event.target.value,
+                employeeId: null,
+                mode: null,
+                section: null,
+              })
+            }
+          >
+            <option value="all">All locations</option>
+            {locationOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </select>
           <EmployeeColumnPicker
             columns={employeeColumns}
             visibleKeySet={visibleKeySet}
@@ -306,7 +349,7 @@ export default function EmployeesPage() {
             </tr>
           </thead>
           <tbody>
-            {(employees.data ?? []).map((employee) => (
+            {visibleEmployees.map((employee) => (
               <tr
                 key={employee.id}
                 onClick={() =>
@@ -345,18 +388,18 @@ export default function EmployeesPage() {
         ) : null}
         {!employees.isLoading &&
         !employees.error &&
-        employees.data?.length === 0 ? (
+        visibleEmployees.length === 0 ? (
           <div className="employees-empty">
             <Users size={24} aria-hidden />
             <strong>
-              {search
+              {search || locationFilter !== "all"
                 ? "No matching employees"
                 : archived
                   ? "No archived employees"
                   : "No employees yet"}
             </strong>
             <p>
-              {search
+              {search || locationFilter !== "all"
                 ? "Try a different name, location, or job."
                 : archived
                   ? "Archived records will remain available here."

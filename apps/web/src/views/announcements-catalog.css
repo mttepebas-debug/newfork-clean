@@ -15,7 +15,17 @@
 .announcements-catalog-page .job-catalog-toolbar {
   flex-wrap: wrap;
 }
+.announcement-toolbar-controls {
+  display: flex;
+  order: 1;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .announcements-catalog-page .job-search {
+  order: 2;
   flex: 1 0 100%;
   max-width: none;
 }
@@ -300,6 +310,15 @@
   }
   .announcements-catalog-page .requests-tabs {
     margin-left: 0;
+  }
+  .announcement-toolbar-controls {
+    align-items: stretch;
+  }
+  .announcement-toolbar-controls > .employee-status-tabs {
+    width: 100%;
+  }
+  .announcement-toolbar-controls .employee-status-tabs button {
+    flex: 1 0 auto;
   }
   .announcements-catalog-page .job-catalog-toolbar {
     gap: 10px;

@@ -102,11 +102,12 @@ describe("EmployeesPage", () => {
     renderPage();
 
     expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    const table = screen.getByRole("table");
     expect(screen.getByRole("columnheader", { name: "Access" })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: "Invite email" })).toBeNull();
-    expect(screen.getByText("Main Dining")).toBeTruthy();
-    expect(screen.getByText("Server")).toBeTruthy();
-    expect(screen.getByText("No app access")).toBeTruthy();
+    expect(within(table).getByText("Main Dining")).toBeTruthy();
+    expect(within(table).getByText("Server")).toBeTruthy();
+    expect(within(table).getByText("No app access")).toBeTruthy();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Table column settings" }),

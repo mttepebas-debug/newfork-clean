@@ -93,6 +93,7 @@ export function AvailabilityPage() {
           />
         </label>
         <select
+          className="toolbar-filter-select"
           aria-label="Location"
           value={locationId}
           onChange={(event) =>
@@ -110,7 +111,7 @@ export function AvailabilityPage() {
           ))}
         </select>
         <div
-          className="weekly-team-filters"
+          className="employee-status-tabs weekly-team-filters"
           role="group"
           aria-label="Submission status"
         >
@@ -124,6 +125,7 @@ export function AvailabilityPage() {
             <button
               key={value}
               type="button"
+              className={submission === value ? "active" : ""}
               aria-pressed={submission === value}
               onClick={() =>
                 updateParams({ submission: value === "all" ? null : value })

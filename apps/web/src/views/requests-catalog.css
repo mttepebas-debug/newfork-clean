@@ -19,15 +19,16 @@
   border-color: var(--job-accent);
 }
 .requests-catalog-page .requests-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(150px, 220px) minmax(0, 1fr);
   align-items: center;
-  flex-wrap: wrap;
   gap: 10px;
   margin: 0 0 16px;
 }
 .requests-catalog-page .requests-search {
-  flex: 1 1 200px;
-  max-width: 340px;
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: none;
 }
 .requests-catalog-page :is(.requests-search, .requests-toolbar > select) {
   min-height: 36px;
@@ -36,22 +37,12 @@
   color: var(--job-text);
   font-size: 13px;
 }
-.requests-catalog-page .request-queue-toggle {
-  padding: 2px;
-  border-color: var(--job-border);
-  background: var(--job-subtle);
-  flex-wrap: wrap;
+.requests-catalog-page .employee-status-tabs {
+  justify-self: start;
 }
-.requests-catalog-page .request-queue-toggle button {
-  min-height: 30px;
-  padding: 0 10px;
-  font-weight: 600;
-  color: var(--job-muted);
-}
-.requests-catalog-page .request-queue-toggle button.active {
-  background: var(--job-bg);
-  color: var(--job-accent);
-  box-shadow: 0 1px 2px #0000000a;
+.requests-catalog-page .requests-toolbar > select {
+  justify-self: start;
+  width: 100%;
 }
 .requests-catalog-page .requests-workbench {
   display: block;
@@ -558,9 +549,14 @@
   .requests-catalog-page .requests-tabs {
     gap: 14px;
   }
+  .requests-catalog-page .requests-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .requests-catalog-page .requests-toolbar > select {
+    max-width: none;
+  }
   .requests-catalog-page .requests-toolbar > .requests-search {
     max-width: none;
-    flex-basis: 100%;
   }
 }
 .requests-catalog-page.requests-page {

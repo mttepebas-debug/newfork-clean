@@ -213,30 +213,34 @@ export default function ImportantDatesSettingsPage() {
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
-        <label className="job-field important-date-filter">
-          <span>Type</span>
-          <select
-            value={filter}
-            onChange={(event) =>
-              setFilter(event.target.value as ImportantDateType | "all")
-            }
+        <select
+          className="toolbar-filter-select important-date-filter"
+          aria-label="Type"
+          value={filter}
+          onChange={(event) =>
+            setFilter(event.target.value as ImportantDateType | "all")
+          }
+        >
+          <option value="all">All dates</option>
+          {typeOptions.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <div
+          className="employee-status-tabs job-archive-tabs"
+          role="group"
+          aria-label="Archive visibility"
+        >
+          <button
+            type="button"
+            className={showArchived ? "active" : ""}
+            onClick={() => setShowArchived((current) => !current)}
           >
-            <option value="all">All dates</option>
-            {typeOptions.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="job-archive-filter">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(event) => setShowArchived(event.target.checked)}
-          />
-          Show archived
-        </label>
+            Show archived
+          </button>
+        </div>
       </div>
 
       {editing ? (

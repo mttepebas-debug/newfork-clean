@@ -312,6 +312,11 @@
   gap: 12px;
   margin: 20px 0 16px;
 }
+.jobs-settings-page .toolbar-filter-select {
+  border-color: var(--job-border);
+  background: var(--job-bg);
+  color: var(--job-text);
+}
 .job-view-control {
   display: inline-flex;
   align-items: center;
@@ -2034,7 +2039,7 @@
 .important-dates-catalog-page .important-date-filter {
   order: 1;
 }
-.important-dates-catalog-page .job-archive-filter {
+.important-dates-catalog-page .job-archive-tabs {
   order: 2;
 }
 .important-dates-catalog-page .job-search {

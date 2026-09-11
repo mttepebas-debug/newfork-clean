@@ -104,45 +104,60 @@ export function AnnouncementsPage() {
         title="Announcements"
         description="Share updates with everyone or choose who receives them."
         action={
-          <div className="announcement-header-actions">
-            <div
-              className="requests-tabs"
-              role="tablist"
-              aria-label="Announcement status"
+          query.data?.can_manage ? (
+            <Button
+              className="job-primary-button"
+              onClick={() => setAdding(true)}
             >
-              {(["all", "draft", "scheduled", "published"] as const)
-                .filter(
-                  (value) =>
-                    query.data?.can_manage ||
-                    value === "all" ||
-                    value === "published",
-                )
-                .map((value) => (
-                  <button
-                    type="button"
-                    key={value}
-                    role="tab"
-                    aria-selected={filter === value}
-                    className={filter === value ? "active" : ""}
-                    onClick={() => setFilter(value)}
-                  >
-                    {capitalize(value)}
-                  </button>
-                ))}
-            </div>
-            {query.data?.can_manage && (
-              <Button
-                className="job-primary-button"
-                onClick={() => setAdding(true)}
-              >
-                <Plus size={16} aria-hidden />
-                Add announcement
-              </Button>
-            )}
-          </div>
+              <Plus size={16} aria-hidden />
+              Add announcement
+            </Button>
+          ) : null
         }
       />
       <div className="job-catalog-toolbar">
+        <div className="announcement-toolbar-controls">
+          <div
+            className="employee-status-tabs"
+            role="tablist"
+            aria-label="Announcement status"
+          >
+            {(["all", "draft", "scheduled", "published"] as const)
+              .filter(
+                (value) =>
+                  query.data?.can_manage ||
+                  value === "all" ||
+                  value === "published",
+              )
+              .map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  role="tab"
+                  aria-selected={filter === value}
+                  className={filter === value ? "active" : ""}
+                  onClick={() => setFilter(value)}
+                >
+                  {capitalize(value)}
+                </button>
+              ))}
+          </div>
+          {query.data?.can_manage && (
+            <div
+              className="employee-status-tabs job-archive-tabs"
+              role="group"
+              aria-label="Archive visibility"
+            >
+              <button
+                type="button"
+                className={showArchived ? "active" : ""}
+                onClick={() => setShowArchived((current) => !current)}
+              >
+                Show archived
+              </button>
+            </div>
+          )}
+        </div>
         <label className="job-search">
           <Search size={16} aria-hidden />
           <input
@@ -152,16 +167,6 @@ export function AnnouncementsPage() {
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
-        {query.data?.can_manage && (
-          <label className="job-archive-filter">
-            <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={(event) => setShowArchived(event.target.checked)}
-            />
-            Show archived
-          </label>
-        )}
       </div>
       {message && (
         <p className="announcement-catalog-message" role="status">
