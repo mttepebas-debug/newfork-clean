@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(113);
+select plan(115);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -223,6 +223,8 @@ select lives_ok(
   'owner creates an employee outside manager scope'
 );
 select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)), 2, 'owner lists both active employees');
+select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', false, 'Uptown', 'all', 100, 0)), 1, 'owner can search employees by primary location');
+select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', false, 'Server', 'all', 100, 0)), 2, 'owner can search employees by primary job');
 
 set local role postgres;
 insert into public.employee_profiles (

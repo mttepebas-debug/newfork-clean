@@ -283,7 +283,7 @@ export default function EmployeesPage() {
             onChange={(event) =>
               updateParams({ q: event.target.value || null })
             }
-            placeholder="Search name or employee code"
+            placeholder="Search name, code, location, or job"
           />
         </label>
       </div>
@@ -357,7 +357,7 @@ export default function EmployeesPage() {
             </strong>
             <p>
               {search
-                ? "Try a different name or employee code."
+                ? "Try a different name, location, or job."
                 : archived
                   ? "Archived records will remain available here."
                   : "Add the first employee to establish the team directory."}

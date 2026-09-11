@@ -139,6 +139,9 @@ describe("EmployeesPage", () => {
     expect(toolbar?.children[1]?.classList.contains("employee-search")).toBe(
       true,
     );
+    expect(
+      screen.getByPlaceholderText("Search name, code, location, or job"),
+    ).toBeTruthy();
 
     const controls = toolbar!.children[0] as HTMLElement;
     expect(
