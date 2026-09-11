@@ -140,7 +140,7 @@ describe("EmployeesPage", () => {
       true,
     );
     expect(
-      screen.getByPlaceholderText("Search name, code, location, or job"),
+      screen.getByPlaceholderText("Search name, location, or job"),
     ).toBeTruthy();
 
     const controls = toolbar!.children[0] as HTMLElement;

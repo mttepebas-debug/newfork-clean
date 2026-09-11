@@ -283,7 +283,7 @@ export default function EmployeesPage() {
             onChange={(event) =>
               updateParams({ q: event.target.value || null })
             }
-            placeholder="Search name, code, location, or job"
+            placeholder="Search name, location, or job"
           />
         </label>
       </div>
