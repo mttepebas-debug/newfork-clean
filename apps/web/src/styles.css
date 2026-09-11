@@ -1460,10 +1460,18 @@
   cursor: pointer;
   font-size: 12px;
   font-weight: 750;
+  line-height: 1;
   transition:
     background-color 120ms ease,
     color 120ms ease,
     box-shadow 120ms ease;
+}
+.catalog-toolbar .catalog-status-tabs button {
+  font-family: inherit;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1;
 }
 .catalog-status-tabs button.active,
 .employee-status-tabs button.active {
@@ -1482,6 +1490,11 @@
   color: #1d2525;
   font: inherit;
   font-size: 12px;
+}
+.catalog-toolbar .toolbar-filter-select:focus-visible {
+  border-color: var(--job-accent, var(--wt-accent, #177a64));
+  box-shadow: inset 0 0 0 1px var(--job-accent, var(--wt-accent, #177a64));
+  outline: 0;
 }
 @media (max-width: 720px) {
   .catalog-page-header {

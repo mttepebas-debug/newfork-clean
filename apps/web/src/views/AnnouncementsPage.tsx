@@ -7,6 +7,7 @@ import {
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Archive,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -45,6 +46,7 @@ export function AnnouncementsPage() {
   const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [locationId, setLocationId] = useState("");
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({
@@ -71,8 +73,9 @@ export function AnnouncementsPage() {
     return (query.data?.announcements ?? [])
       .filter(
         (item) =>
-          (showArchived || !isArchived(item)) &&
-          (filter === "all" || item.status === filter) &&
+          (showArchived ? isArchived(item) : !isArchived(item)) &&
+          (showArchived || filter === "all" || item.status === filter) &&
+          (!locationId || item.location_ids.includes(locationId)) &&
           `${item.title} ${item.body} ${audienceLabel(item)}`
             .toLowerCase()
             .includes(search.trim().toLowerCase()),
@@ -82,7 +85,7 @@ export function AnnouncementsPage() {
           (value(a).localeCompare(value(b), undefined, { numeric: true }) ||
             a.id.localeCompare(b.id)) * (sort.descending ? -1 : 1),
       );
-  }, [query.data, filter, search, showArchived, sort]);
+  }, [query.data, filter, locationId, search, showArchived, sort]);
   const close = () => {
     setAdding(false);
     if (announcementId)
@@ -135,9 +138,12 @@ export function AnnouncementsPage() {
                   type="button"
                   key={value}
                   role="tab"
-                  aria-selected={filter === value}
-                  className={filter === value ? "active" : ""}
-                  onClick={() => setFilter(value)}
+                  aria-selected={!showArchived && filter === value}
+                  className={!showArchived && filter === value ? "active" : ""}
+                  onClick={() => {
+                    setShowArchived(false);
+                    setFilter(value);
+                  }}
                 >
                   {capitalize(value)}
                 </button>
@@ -145,16 +151,31 @@ export function AnnouncementsPage() {
             {query.data?.can_manage && (
               <button
                 type="button"
+                role="tab"
                 className={showArchived ? "active" : ""}
-                aria-label="Show archived announcements"
-                onClick={() => setShowArchived((current) => !current)}
+                aria-selected={showArchived}
+                onClick={() => setShowArchived(true)}
               >
-                Show archived
+                <Archive size={14} aria-hidden />
+                Archived
               </button>
             )}
           </div>
         </div>
-        <div className="catalog-toolbar-filter-row catalog-toolbar-filter-row-search-only">
+        <div className="catalog-toolbar-filter-row">
+          <select
+            className="toolbar-filter-select"
+            aria-label="Filter announcements by location"
+            value={locationId}
+            onChange={(event) => setLocationId(event.target.value)}
+          >
+            <option value="">All locations</option>
+            {query.data?.locations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </select>
           <label className="job-search toolbar-search">
             <Search size={16} aria-hidden />
             <input

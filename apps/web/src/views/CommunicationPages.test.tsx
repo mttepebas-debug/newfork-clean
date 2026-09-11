@@ -1,5 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ActiveWorkspaceContext } from "@newfork/shared";
+import type {
+  ActiveWorkspaceContext,
+  AnnouncementRecord,
+} from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -16,6 +19,7 @@ import {
 } from "../communications/communications-data";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+const now = "2026-09-11T12:00:00.000Z";
 const context = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
   workspace: {
@@ -73,6 +77,88 @@ function renderRoute(path: string, element: React.ReactNode) {
 }
 
 describe("Phase 8 communication pages", () => {
+  it("uses Archived as an exclusive announcement status filter", async () => {
+    const activeDraft = announcement({
+      id: "a8200000-0000-4000-8000-000000000002",
+      title: "Active draft",
+      status: "draft",
+    });
+    const activePublished = announcement({
+      id: "a8200000-0000-4000-8000-000000000003",
+      title: "Active published",
+      status: "published",
+    });
+    const archivedDraft = announcement({
+      id: "a8200000-0000-4000-8000-000000000004",
+      title: "Archived draft",
+      status: "draft",
+      archived_at: now,
+    });
+    vi.mocked(getAnnouncements).mockResolvedValue({
+      workspace_id: workspaceId,
+      can_manage: true,
+      locations: [],
+      announcements: [activeDraft, activePublished, archivedDraft],
+    });
+    renderRoute("/app/announcements", <AnnouncementsPage />);
+
+    expect(await screen.findByText("Active draft")).toBeTruthy();
+    expect(screen.getByText("Active published")).toBeTruthy();
+    expect(screen.queryByText("Archived draft")).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    expect(await screen.findByText("Archived draft")).toBeTruthy();
+    expect(screen.queryByText("Active draft")).toBeNull();
+    expect(screen.queryByText("Active published")).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Draft" }));
+    expect(await screen.findByText("Active draft")).toBeTruthy();
+    expect(screen.queryByText("Archived draft")).toBeNull();
+    expect(screen.queryByText("Active published")).toBeNull();
+  });
+
+  it("filters announcements by location", async () => {
+    const main = "11000000-0000-4000-8000-000000000001";
+    const patio = "11000000-0000-4000-8000-000000000002";
+    vi.mocked(getAnnouncements).mockResolvedValue({
+      workspace_id: workspaceId,
+      can_manage: true,
+      locations: [
+        { id: main, name: "Main Dining" },
+        { id: patio, name: "Patio" },
+      ],
+      announcements: [
+        announcement({
+          id: "a8200000-0000-4000-8000-000000000005",
+          title: "Main update",
+          status: "published",
+          location_ids: [main],
+          location_names: ["Main Dining"],
+        }),
+        announcement({
+          id: "a8200000-0000-4000-8000-000000000006",
+          title: "Patio update",
+          status: "published",
+          location_ids: [patio],
+          location_names: ["Patio"],
+        }),
+      ],
+    });
+    renderRoute("/app/announcements", <AnnouncementsPage />);
+
+    expect(await screen.findByText("Main update")).toBeTruthy();
+    expect(screen.getByText("Patio update")).toBeTruthy();
+
+    fireEvent.change(
+      screen.getByLabelText("Filter announcements by location"),
+      {
+        target: { value: patio },
+      },
+    );
+    expect(await screen.findByText("Patio update")).toBeTruthy();
+    expect(screen.queryByText("Main update")).toBeNull();
+  });
+
   it("saves a personalized Workspace layout", async () => {
     vi.mocked(getWorkspaceDashboard).mockResolvedValue({
       workspace_id: workspaceId,
@@ -195,3 +281,39 @@ describe("Phase 8 communication pages", () => {
     );
   });
 });
+
+function announcement(
+  override: Partial<AnnouncementRecord> &
+    Pick<AnnouncementRecord, "id" | "title" | "status">,
+): AnnouncementRecord {
+  const { id, title, status, ...rest } = override;
+  return {
+    id,
+    workspace_id: workspaceId,
+    title,
+    body: `${title} details`,
+    category: "general",
+    status,
+    audience_roles: [],
+    location_ids: [],
+    location_names: [],
+    department_ids: [],
+    department_names: [],
+    job_ids: [],
+    job_names: [],
+    archived_at: override.archived_at ?? null,
+    publish_at: null,
+    published_at: null,
+    expires_at: null,
+    action_url: null,
+    author_name: "Taylor",
+    revision: 1,
+    created_at: now,
+    updated_at: now,
+    read_at: null,
+    can_edit: true,
+    can_publish: true,
+    can_cancel: true,
+    ...rest,
+  };
+}

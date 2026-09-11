@@ -179,6 +179,8 @@
 }
 .requests-catalog-page .requests-search input {
   border: 0;
+  box-shadow: none;
+  outline: 0;
   padding-left: 0;
 }
 .requests-catalog-page textarea {

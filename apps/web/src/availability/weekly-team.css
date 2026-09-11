@@ -18,13 +18,13 @@
   --wt-red: #ffaaa4;
   --wt-red-bg: #432e30;
 }
-.weekly-team-toolbar {
+.weekly-team-toolbar:not(.catalog-toolbar) {
   display: grid;
   align-items: start;
   gap: 10px;
   margin: 20px 0 16px;
 }
-.weekly-team-toolbar .search-field {
+.weekly-team-toolbar .search-field:not(.toolbar-search) {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -38,13 +38,13 @@
   background: var(--wt-surface);
   color: var(--wt-muted);
 }
-.weekly-team-toolbar .search-field:focus-within {
+.weekly-team-toolbar .search-field:not(.toolbar-search):focus-within {
   border-color: var(--wt-accent);
 }
 .weekly-team-toolbar .search-field svg {
   flex-shrink: 0;
 }
-.weekly-team-toolbar .search-field input {
+.weekly-team-toolbar .search-field:not(.toolbar-search) input {
   width: 100%;
   min-width: 0;
   height: 34px;
@@ -173,6 +173,11 @@
   :is(button, input, select, .weekly-team-scroll):focus-visible {
   outline: 2px solid var(--wt-accent);
   outline-offset: -2px;
+}
+.weekly-team-page
+  .catalog-toolbar
+  :is(.toolbar-search input, .toolbar-filter-select):focus-visible {
+  outline: 0;
 }
 .weekly-team-error {
   display: flex;
