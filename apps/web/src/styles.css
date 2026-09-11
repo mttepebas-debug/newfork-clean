@@ -1783,11 +1783,16 @@
   color: #145f4c;
 }
 .employee-section-links button[data-group-start="true"] {
+  position: relative;
   margin-top: 13px;
+}
+.employee-section-links button[data-group-start="true"]::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 0;
+  right: 0;
   border-top: 1px solid #dce1de;
-  border-radius: 0 0 5px 5px;
-  padding-top: 7px;
-  height: 45px;
 }
 .employee-drawer-content {
   display: flex;
@@ -2267,6 +2272,11 @@
 }
 .employee-drawer-notice a {
   color: #12654f;
+}
+.employee-pending-invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .employee-revoke-invite {
   width: fit-content;

@@ -2332,14 +2332,25 @@ function AccessSection({
         ) : null}
 
         {invitation?.status === "pending" && !invitationExpired && !readOnly ? (
-          <Button
-            className="secondary-button employee-revoke-invite"
-            type="button"
-            disabled={revokingInvitation}
-            onClick={onRevokeInvitation}
-          >
-            Revoke invitation
-          </Button>
+          <div className="employee-pending-invite-actions">
+            <Button
+              className="secondary-button"
+              type="button"
+              disabled={retryingInvitation}
+              onClick={onRetryInvitation}
+            >
+              <RotateCcw size={15} aria-hidden />
+              {retryingInvitation ? "Sending" : "Send reminder"}
+            </Button>
+            <Button
+              className="secondary-button employee-revoke-invite"
+              type="button"
+              disabled={revokingInvitation}
+              onClick={onRevokeInvitation}
+            >
+              Revoke invitation
+            </Button>
+          </div>
         ) : null}
       </section>
 

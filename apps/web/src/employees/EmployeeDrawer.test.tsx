@@ -674,6 +674,38 @@ describe("EmployeeDrawer", () => {
     expect(screen.getByRole("button", { name: "Resend" })).toBeTruthy();
   });
 
+  it("sends a reminder for the current pending invitation", async () => {
+    renderDrawer("access", {
+      ...detail,
+      display_status: "invited",
+      invitation: {
+        id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+        email: "alex@example.test",
+        role_id: employeeRoleId,
+        status: "pending",
+        expires_at: "2099-08-24T12:00:00.000Z",
+        sent_at: "2026-08-17T12:00:00.000Z",
+        delivery_status: "sent",
+        delivery_attempted_at: "2026-08-17T12:01:00.000Z",
+        delivery_failed_at: null,
+        delivery_error: null,
+      },
+    });
+
+    expect(await screen.findAllByText("Invitation sent")).toHaveLength(2);
+    expect(
+      screen.getByRole("button", { name: "Revoke invitation" }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Send reminder" }));
+
+    await waitFor(() =>
+      expect(retryEmployeeInvitation).toHaveBeenCalledWith(
+        workspaceId,
+        employeeId,
+      ),
+    );
+  });
+
   it("locks profile identity and email while an invitation is pending", async () => {
     renderDrawer("profile", {
       ...detail,
