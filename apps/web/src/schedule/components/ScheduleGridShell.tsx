@@ -13,6 +13,7 @@ import {
 import {
   calculateScheduleGridFillerHeight,
   createScheduleGridTemplateColumns,
+  scheduleGridEmployeeColumnWidth,
   scheduleGridHorizontalNavHeight,
   scheduleGridTotalRowHeight,
   type ScheduleGridLocationGroup,
@@ -209,6 +210,7 @@ export function ScheduleGridShell({
         style={
           {
             "--schedule-day-column-min": `${dayColumnMinWidth}px`,
+            "--schedule-employee-column-width": `${scheduleGridEmployeeColumnWidth}px`,
             gridTemplateColumns: createScheduleGridTemplateColumns({
               columns,
               fitVisibleColumns,

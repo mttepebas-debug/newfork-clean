@@ -5557,8 +5557,8 @@ select:focus-visible {
   padding: 7px 10px;
 }
 .schedule-location-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  justify-content: flex-start;
+  padding-right: 0;
 }
 .schedule-total-header {
   justify-content: center;
@@ -5592,13 +5592,12 @@ select:focus-visible {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 5px;
-  overflow: hidden;
+  overflow: visible;
   font-size: 18px;
   font-weight: 850;
-  text-align: center;
-  text-overflow: ellipsis;
+  text-align: left;
   white-space: nowrap;
 }
 .schedule-location-header {
@@ -5618,8 +5617,15 @@ select:focus-visible {
   outline: none;
 }
 .schedule-location-header > span:first-child {
-  grid-column: 2;
-  flex: 1 1 auto;
+  position: sticky;
+  left: calc(var(--schedule-employee-column-width) + 10px);
+  flex: 0 0 auto;
+  width: max-content;
+}
+.schedule-grid-exact[data-schedule-fit-visible-columns="true"]
+  > .schedule-location-header
+  > span:first-child {
+  left: 0;
 }
 .schedule-location-header-list button {
   border: 0;
