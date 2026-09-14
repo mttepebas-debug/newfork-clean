@@ -158,7 +158,7 @@ export function ShiftCatalogList<T extends Entry>({
                     <span className="job-mobile-meta">
                       {time(item.default_start_time)} –{" "}
                       {time(item.default_end_time)}
-                      {item.crosses_midnight ? " · Next day" : ""}
+                      {item.crosses_midnight ? " · Ends next day" : ""}
                     </span>
                   )}
                 </span>
@@ -173,7 +173,7 @@ export function ShiftCatalogList<T extends Entry>({
                   </span>
                   <span className="job-department-cell shift-catalog-time">
                     {time(item.default_end_time)}
-                    {item.crosses_midnight ? " · Next day" : ""}
+                    {item.crosses_midnight ? " · Ends next day" : ""}
                   </span>
                 </>
               )}

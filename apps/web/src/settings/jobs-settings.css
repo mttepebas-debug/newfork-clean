@@ -814,6 +814,59 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
+.shift-default-time-label {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+}
+.shift-default-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.shift-default-info-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--job-border);
+  border-radius: 999px;
+  background: var(--job-bg);
+  color: var(--job-muted);
+}
+.shift-default-info-trigger:hover,
+.shift-default-info-trigger:focus-visible {
+  border-color: color-mix(in srgb, var(--job-accent) 44%, var(--job-border));
+  color: var(--job-accent);
+}
+.shift-default-info-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 180;
+  width: min(320px, 80vw);
+  padding: 10px 11px;
+  border: 1px solid var(--job-border);
+  border-radius: 6px;
+  background: var(--job-bg);
+  color: var(--job-text);
+  box-shadow: 0 12px 28px #14251b24;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-transform: none;
+  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.shift-default-info:hover .shift-default-info-popover,
+.shift-default-info:focus-within .shift-default-info-popover {
+  opacity: 1;
+  visibility: visible;
+}
 .shift-catalog-settings-page
   .job-catalog-editor
   > :is(.settings-state, .form-error, [role="alert"]) {

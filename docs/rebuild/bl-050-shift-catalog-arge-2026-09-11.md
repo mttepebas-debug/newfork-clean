@@ -139,6 +139,17 @@ Benim onerim:
 - Default saat degisimi warning'i sade kalsin ama metni daha somut olsun.
 - `Review current default hours` post-MVP oldugu icin drawer'da simdilik tanitilmasin.
 
+## 2026-09-13 kullanici kararlari
+
+- Shift Catalog'da shift type eklerken veya editlerken default start/end zorunlu olacak.
+- Schedule grid'de shift type secilince bu saatler sadece baslangic degeri olarak dolacak; user ilgili shift'in saatini manuel degistirebilecek. Ornek: `Dinner` default `4:15 PM-10:30 PM` olabilir, fakat schedule'da tekil shift `5:00 PM-10:00 PM` olarak kaydedilebilir.
+- Default time inputlari required alan olacak; default saat ayarlanmadan `Save` butonu aktif olmayacak.
+- Edit modunda hicbir degisiklik yoksa `Save` butonu aktif olmayacak.
+- `Save shift type` buton metni `Save` olacak.
+- Default time alanlari icin `i` bilgi ikonu olacak; hover/focus sirasinda detayli, clean ve profesyonel tonda aciklama gorunecek, mouse uzaklasinca kapanacak.
+- Overnight etiketi `Ends next day` olacak.
+- Shift type time presets / sag-tik hizli schedule fikri MVP adayi olarak tutulacak, ancak mevcut BL-050 dar polish kapsaminda uygulanmayacak; once ayri ARGE/UX-data model calismasi yapilacak.
+
 ## Deger katabilecek yeni ozellik fikirleri
 
 Bunlar implementasyon karari degil; kullaniciyle secilecek aday fikirlerdir.
@@ -256,10 +267,11 @@ Ilk urun yonu:
 
 Kullanici onayi sonrasi en dar patch:
 
-1. Drawer copy'sini sade ve somut hale getir.
-2. Overnight etiketi ve default hour helper metnini standardize et.
-3. Existing before/after warning'i "future vs existing" ayrimini daha net anlatsin.
-4. Gerekirse listede small health/impact badge ekle; yeni backend yazma.
+1. Default time label'larina bilgi ikonu ve hover/focus aciklamasi ekle.
+2. Save buton metnini `Save` yap.
+3. `Ends next day` etiketini drawer/list icinde standardize et.
+4. Mevcut required/default-hours ve unchanged-edit disabled save davranisini koru.
+5. Yeni backend veya preset veri modeli yazma.
 
 ## Kabul kosullari
 

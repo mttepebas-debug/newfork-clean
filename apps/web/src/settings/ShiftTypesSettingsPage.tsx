@@ -6,7 +6,7 @@ import {
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock3, Plus, X } from "lucide-react";
+import { Clock3, Info, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -255,9 +255,15 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                   </div>
                 </div>{" "}
                 <div className="job-shift-times">
-                  <label className="job-field">
-                    <span>Default start</span>
+                  <div className="job-field">
+                    <span className="shift-default-time-label">
+                      <label htmlFor="shift-catalog-default-start">
+                        Default start
+                      </label>
+                      <DefaultHoursInfo />
+                    </span>
                     <input
+                      id="shift-catalog-default-start"
                       type="time"
                       required
                       disabled={saveMutation.isPending}
@@ -269,10 +275,16 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                         }))
                       }
                     />
-                  </label>
-                  <label className="job-field">
-                    <span>Default end</span>
+                  </div>
+                  <div className="job-field">
+                    <span className="shift-default-time-label">
+                      <label htmlFor="shift-catalog-default-end">
+                        Default end
+                      </label>
+                      <DefaultHoursInfo />
+                    </span>
                     <input
+                      id="shift-catalog-default-end"
                       type="time"
                       required
                       disabled={saveMutation.isPending}
@@ -284,13 +296,9 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                         }))
                       }
                     />
-                  </label>
+                  </div>
                 </div>
               </fieldset>
-              <p className="settings-state">
-                Existing shifts keep their saved hours. Weekly availability
-                preferences use these current default hours.
-              </p>
               {savedType && defaultsChanged ? (
                 <section
                   className="settings-state"
@@ -379,7 +387,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                   type="submit"
                   disabled={!canSave}
                 >
-                  {saveMutation.isPending ? "Saving" : "Save shift type"}
+                  {saveMutation.isPending ? "Saving" : "Save"}
                 </Button>
               </div>
             </div>
@@ -419,6 +427,27 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
   );
 }
 
+function DefaultHoursInfo() {
+  return (
+    <span className="shift-default-info">
+      <span
+        tabIndex={0}
+        className="shift-default-info-trigger"
+        aria-label="Default hours details"
+      >
+        <Info size={13} aria-hidden />
+      </span>
+      <span className="shift-default-info-popover" role="tooltip">
+        These hours prefill new Schedule shifts that use this shift type.
+        Managers can still change the actual start and end time before saving.
+        Employee shift-type availability and time-off shortcuts also use these
+        hours as the service reference. Existing saved shifts keep their own
+        hours.
+      </span>
+    </span>
+  );
+}
+
 function formatTime(value: string | null): string {
   if (!value) return "No default";
   const [hour, minute] = value.split(":").map(Number);
@@ -432,5 +461,5 @@ function formatRange(
 ): string {
   if (!value.default_start_time && !value.default_end_time)
     return "No default hours";
-  return `${formatTime(value.default_start_time)} – ${formatTime(value.default_end_time)}${value.default_start_time && value.default_end_time && value.default_end_time < value.default_start_time ? " (next day)" : ""}`;
+  return `${formatTime(value.default_start_time)} – ${formatTime(value.default_end_time)}${value.default_start_time && value.default_end_time && value.default_end_time < value.default_start_time ? " (Ends next day)" : ""}`;
 }
