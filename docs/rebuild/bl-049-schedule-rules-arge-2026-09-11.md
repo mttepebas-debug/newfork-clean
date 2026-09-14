@@ -1,7 +1,7 @@
 # BL-049 Settings > Schedule Rules ARGE
 
 Tarih: 2026-09-11  
-Durum: ARGE / kabul sozlesmesi; implementasyon baslamadi.  
+Durum: ARGE / kabul sozlesmesi; 2026-09-14 kullanici kararlari alindi, dar UI/copy implementasyonuna hazir.  
 Model onerisi: `gpt-5.5`, `medium`. Bu tur mevcut ayarlari, gercek baglantilarini ve MVP kararlarini ayirma isi; genis UI redesign veya migration yazimi yok.
 
 ## Kullanici baglami
@@ -144,6 +144,25 @@ Benim onerim:
 - Hidden advanced availability lifecycle ayarlari su an UI'a geri alinmasin; Availability kabul kapisinda ayrica konusulsun.
 - Iki ayri save kalabilir ama baslik/copy ile ayrim netlestirilmeli.
 
+## Kullanici kararlari - 2026-09-14
+
+Kullanici BL-049 icin asagidaki karar setini onayladi:
+
+1. Sayfa ayni sayfa olarak kalacak ama iki net bolume ayrilacak:
+   - `Schedule basics`
+   - `Availability and staffing`
+2. `Publish by` MVP'de hard block olmayacak; warning/reminder/deadline bilgisi olarak kalacak.
+3. Hard conflict'ler her zaman block kalacak; `Schedule conflicts` ayari sadece soft conflict'ler icin Warn/Block davranisini belirleyecek.
+4. `Minimum travel minutes` bu sayfada kalacak ama `Availability and staffing` bolumunde konumlanacak.
+5. Weekly availability preferences bu sayfada kalacak; kendi ayri save davranisi daha net anlatilacak.
+6. Advanced availability lifecycle policy alanlari MVP sonrasina birakilacak; UI'a geri alinmayacak.
+7. Deger katacak fikirlerden su uc aday MVP yakin fikir olarak kayitli kalacak:
+   - Publish readiness checklist.
+   - Open shifts publish warning.
+   - Schedule change notice warning.
+
+Bu kararlar genis redesign veya migration izni degildir. Siradaki implementasyon dar tutulacak: bolumleme, baslik/copy netligi, yardim metinleri ve mevcut ayarlarin dogru yerde gorunmesi.
+
 ## Deger katabilecek yeni ozellik fikirleri
 
 Bunlar implementasyon karari degil; kullaniciyle birlikte secilecek aday fikirlerdir.
@@ -213,15 +232,15 @@ MVP icin bu sayfaya en iyi deger/karmasiklik orani:
 
 Simdilik bunlari ayar olarak hemen eklemek yerine, Schedule publish/preflight deneyiminde gorunur uyari olarak baslatmak daha guvenli olur. Ayara donusturmek icin once gercek kullanimda hangi uyarilarin rahatsiz ettigini gormek gerekir.
 
-## Onerilen dar implementasyon
-
-Kullanici onayi olmadan baslanmayacak gorsel/copy isleri:
+## Onaylanan dar implementasyon
 
 1. Baslik/copy sadeleştirme.
 2. Sayfayi iki bolume ayirma.
 3. `Publish by` ve `Schedule conflicts` icin daha net yardim metinleri.
 4. Minimum travel minutes'i staffing/availability bolumune tasima.
 5. WeeklyPreference panelinin save davranisini "ayri ayar grubu" olarak daha net gostermek.
+
+Deger fikirleri bu patch'te ayar olarak eklenmeyecek. Publish readiness checklist, open shifts warning ve change notice warning daha sonra Schedule publish/preflight deneyimi icinde ayri kabul kosullariyla ele alinacak.
 
 Kod/model rewrite gerekmez; mevcut API ve DB sozlesmesi korunabilir.
 
