@@ -12,7 +12,7 @@ Kurulus: 2026-09-09. Son guncelleme: 2026-09-14. Sahibi: ana session. Aktif is d
 
 ## Guncel Takipler
 
-BL-069: Ayni holder icin expired edit session acquire'in lease uzatmadan resumed donmesi. Kaynak: BL-064 browser raporu, `acquire_schedule_edit_session_service_past_week_base`, migration20260909003001. Dar lifecycle/error-code incelemesi; beklenen resume/reacquire karari ve hedefli regresyon kanitiyle ele alinacak. Mevcut BL-064 fix'i sayilmaz; urun degisikligi yapilmadi.
+BL-069: Expired same-holder edit-session lease fix'inin yerel kabul sonucu [WORK BL-069](WORK.md) icindedir; aktif session'in ayni sahip tarafindan yeniden alinmasi sureyi yeniler ve calisma kopyasini korur.
 
 BL-068: [WORK](WORK.md) yerel kabul ve `7a35dbc` checkpoint/push sonucunu tasir. Backend BL-064 sozlesmesi reuse edildi; hosted/release ayri.
 
