@@ -43,7 +43,7 @@ Zamanlama takvim tarihi degil, kapilara baglidir:
 
 | Faz | Pratik hedef |
 |---|---|
-| Simdi | Schedule temel kalite ve ayarlar: once BL-036 acilis/tarih gecisi ve BL-064 drag/drop gecikmesi olculup daraltilir; sonra publish state, rules/defaults, templates ve export kapanir. |
+| Simdi | BL-064/068 yerel kabul ve checkpoint'i tamam. Kullanici 2026-09-15 sirasi: belge uzlastirma -> BL-069 lease -> BL-036 acilis/tarih gecisi -> BL-039 publish state -> BL-049/050 rules/defaults -> BL-038 templates -> BL-037 export v2. |
 | Hemen sonra | Requests/Line Up/employee Shift Hub; Time Tracking/clock-in gorunurlugu MVP sonrasi sinirina gore temizlenir. |
 | Sonraki | Requests/Line Up/employee Shift Hub ve Notifications/Announcements kapilari. |
 | MVP oncesi buyuk kapanis | Billing/Stripe, BL-067 Schedule hours guardrails ve cok tenantli E2E kabul turu. |
