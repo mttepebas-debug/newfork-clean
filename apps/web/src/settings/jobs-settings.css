@@ -13,17 +13,13 @@
 }
 .shift-catalog-header-actions {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   gap: 24px;
 }
 .shift-catalog-header-actions .job-primary-button {
   flex: 0 0 auto;
   width: auto;
-}
-.shift-catalog-settings-page > .settings-page-header,
-.acknowledgement-page > .settings-page-header {
-  align-items: center;
 }
 .shift-catalog-shell .requests-tabs button,
 .acknowledgement-page .requests-tabs button {
@@ -1426,9 +1422,6 @@
     gap: 12px;
     width: 100%;
     justify-content: space-between;
-  }
-  .shift-catalog-settings-page .settings-header-action {
-    justify-self: stretch;
   }
   .shift-catalog-settings-page .shift-catalog-columns.has-times {
     grid-template-columns: minmax(0, 1fr) 44px;

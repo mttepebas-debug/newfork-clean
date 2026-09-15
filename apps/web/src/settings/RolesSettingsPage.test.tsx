@@ -84,6 +84,13 @@ beforeEach(() => {
   });
 });
 describe("RolesSettingsPage", () => {
+  it("uses the shared primary Settings header action", async () => {
+    mount();
+    const action = await screen.findByRole("button", { name: "New role" });
+    expect(action.classList.contains("secondary-button")).toBe(false);
+    expect(action.closest(".settings-header-action")).not.toBeNull();
+  });
+
   it("starts clean, handles mixed categories, and Cancel restores dependencies", async () => {
     mount();
     const save = await screen.findByRole("button", { name: "Save changes" });

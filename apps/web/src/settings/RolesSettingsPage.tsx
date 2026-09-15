@@ -97,11 +97,7 @@ export default function RolesSettingsPage() {
         description="Choose what each role can view and change."
         action={
           canManage ? (
-            <Button
-              type="button"
-              className="secondary-button"
-              onClick={() => go("new")}
-            >
+            <Button type="button" onClick={() => go("new")}>
               <Plus size={16} aria-hidden />
               New role
             </Button>
