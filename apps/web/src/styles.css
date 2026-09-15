@@ -2627,17 +2627,6 @@
   overflow-wrap: anywhere;
   min-width: 0;
 }
-.employee-create-footer .nf-button {
-  min-height: 44px;
-  min-width: 88px;
-  justify-content: center;
-}
-.employee-create-footer {
-  gap: 0;
-}
-.employee-create-footer > .secondary-button {
-  margin-right: 8px;
-}
 .employee-drawer-create .nf-button.secondary-button {
   background: transparent;
   border: 1px solid #bac6bf;
@@ -2648,12 +2637,6 @@
 }
 .employee-drawer-create .nf-button.secondary-button:disabled {
   opacity: 0.5;
-}
-.employee-create-footer .employee-create-role {
-  width: 184px;
-}
-.employee-create-footer .employee-drawer-actions {
-  margin-left: 0;
 }
 .employee-drawer-create .employee-section-links button:disabled {
   opacity: 0.45;
@@ -2738,24 +2721,6 @@
   }
   .employee-drawer-create .employee-section-scroll {
     padding: 16px;
-  }
-  .employee-drawer-create .employee-create-footer {
-    display: flex;
-    flex-wrap: wrap;
-    flex: 0 0 auto;
-    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
-    gap: 8px;
-  }
-  .employee-drawer-create .employee-create-footer .employee-drawer-actions {
-    display: flex;
-    flex: 1;
-    justify-content: flex-end;
-    width: auto;
-  }
-  .employee-drawer-create .employee-create-footer .nf-button {
-    min-width: 76px;
-    flex: 0 0 auto;
-    padding: 8px;
   }
   .employee-drawer-create .employee-toggle-grid {
     grid-template-columns: minmax(0, 1fr);

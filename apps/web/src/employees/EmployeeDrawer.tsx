@@ -1099,25 +1099,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           ) : null}
           {props.creating ? (
             <footer className="employee-drawer-footer employee-create-footer">
-              <Button
-                className="secondary-button"
-                type="button"
-                disabled={busy || uncertainCreate}
-                onClick={() =>
-                  activeSection === "employment"
-                    ? changeSection("profile")
-                    : requestClose()
-                }
-              >
-                {activeSection === "employment" ? (
-                  <>
-                    <ArrowLeft size={16} aria-hidden />
-                    Back
-                  </>
-                ) : (
-                  "Cancel"
-                )}
-              </Button>
+              <div />
               {canManageAccess ? (
                 <div className="employee-create-role">
                   <InviteRoleField
@@ -1135,6 +1117,25 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 </div>
               ) : null}
               <div className="employee-drawer-actions">
+                <Button
+                  className="secondary-button"
+                  type="button"
+                  disabled={busy || uncertainCreate}
+                  onClick={() =>
+                    activeSection === "employment"
+                      ? changeSection("profile")
+                      : requestClose()
+                  }
+                >
+                  {activeSection === "employment" ? (
+                    <>
+                      <ArrowLeft size={16} aria-hidden />
+                      Back
+                    </>
+                  ) : (
+                    "Cancel"
+                  )}
+                </Button>
                 {canManageAccess ? (
                   <Button
                     type="button"
