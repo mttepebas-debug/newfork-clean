@@ -37,7 +37,11 @@ beforeEach(() => {
 });
 
 describe("createScheduleReadService read model", () => {
-  it("uses the base schedule read model RPC for the initial read", async () => {
+  it("loads independent metadata concurrently after the authorized read model", async () => {
+    let resolveSettings!: (value: { data: { time_format: string }; error: null }) => void;
+    const settingsResult = new Promise<{ data: { time_format: string }; error: null }>((resolve) => {
+      resolveSettings = resolve;
+    });
     mocks.rpc.mockResolvedValueOnce({
       data: {
         workspace_id: workspaceId,
@@ -58,10 +62,7 @@ describe("createScheduleReadService read model", () => {
         return {
           select: () => ({
             eq: () => ({
-              maybeSingle: async () => ({
-                data: { time_format: "12h" },
-                error: null,
-              }),
+              maybeSingle: () => settingsResult,
             }),
           }),
         };
@@ -86,9 +87,10 @@ describe("createScheduleReadService read model", () => {
       serviceRoleKey: "service-role",
     });
 
-    await expect(
-      service.getReadModel(actorUserId, workspaceId, "2026-08-19"),
-    ).resolves.toMatchObject({
+    const result = service.getReadModel(actorUserId, workspaceId, "2026-08-19");
+    await vi.waitFor(() => expect(mocks.from).toHaveBeenCalledWith("important_dates"));
+    resolveSettings({ data: { time_format: "12h" }, error: null });
+    await expect(result).resolves.toMatchObject({
       workspace_id: workspaceId,
       week_start: "2026-08-17",
     });

@@ -441,11 +441,6 @@ export function createScheduleReadService(options: {
         },
       );
       if (error) throw new Error(error.message);
-      const { data: settings } = await client
-        .from("workspace_scheduling_settings")
-        .select("time_format")
-        .eq("workspace_id", workspaceId)
-        .maybeSingle();
       const readModelPayload =
         typeof data === "object" && data !== null
           ? (data as Record<string, unknown>)
@@ -468,8 +463,16 @@ export function createScheduleReadService(options: {
           ? readModelPayload.week_start
           : targetDate;
       const weekEnd = addDaysIso(weekStart, 6);
-      const { data: closures, error: closuresError } = allowedLocationIds.length
-        ? await client
+      // The RPC has established the actor's scope. These independent reads
+      // share that scope and need not add three sequential network waits.
+      const [settingsResult, closuresResult, importantDatesResult] = await Promise.all([
+        client
+          .from("workspace_scheduling_settings")
+          .select("time_format")
+          .eq("workspace_id", workspaceId)
+          .maybeSingle(),
+        allowedLocationIds.length
+          ? client
             .from("schedule_closures")
             .select(
               "id,location_id,closed_date,end_date,title,is_all_day,shift_type_ids",
@@ -479,18 +482,22 @@ export function createScheduleReadService(options: {
             .or(`end_date.gte.${weekStart},end_date.is.null`)
             .order("closed_date")
             .order("title")
-        : { data: [], error: null };
+          : Promise.resolve({ data: [], error: null }),
+        client
+          .from("important_dates")
+          .select(
+            "id,location_id,location_ids,title,type,starts_on,ends_on,recurrence",
+          )
+          .eq("workspace_id", workspaceId)
+          .is("archived_at", null)
+          .eq("affects_scheduling", true)
+          .order("starts_on")
+          .order("title"),
+      ]);
+      const { data: settings } = settingsResult;
+      const { data: closures, error: closuresError } = closuresResult;
+      const { data: importantDates, error: importantDatesError } = importantDatesResult;
       if (closuresError) throw new Error(closuresError.message);
-      const { data: importantDates, error: importantDatesError } = await client
-        .from("important_dates")
-        .select(
-          "id,location_id,location_ids,title,type,starts_on,ends_on,recurrence",
-        )
-        .eq("workspace_id", workspaceId)
-        .is("archived_at", null)
-        .eq("affects_scheduling", true)
-        .order("starts_on")
-        .order("title");
       if (importantDatesError) throw new Error(importantDatesError.message);
       return scheduleReadModelSchema.parse({
         ...readModelPayload,
