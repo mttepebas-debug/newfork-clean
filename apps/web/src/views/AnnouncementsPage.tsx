@@ -8,6 +8,7 @@ import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
+  CheckCircle2,
   ChevronDown,
   Megaphone,
   Plus,
@@ -715,52 +716,41 @@ function AnnouncementEditor({
           )}
         </div>
         <div className="job-editor-footer">
-          {canDelete &&
-            (confirmDelete ? (
-              <div
-                className="catalog-delete-confirm"
-                role="group"
-                aria-label="Confirm deletion"
+          {canDelete ? (
+            <div className="catalog-delete-action">
+              <button
+                className="catalog-delete-trigger"
+                type="button"
+                aria-label={
+                  confirmDelete ? "Confirm delete announcement" : "Delete"
+                }
+                title={confirmDelete ? "Click again to delete" : undefined}
+                data-confirming={confirmDelete}
+                disabled={busy}
+                onClick={() => {
+                  if (confirmDelete) {
+                    transition.mutate("cancel");
+                    return;
+                  }
+                  setConfirmDelete(true);
+                }}
               >
-                <div className="catalog-delete-copy" aria-live="polite">
-                  <strong>Delete this announcement?</strong>
-                  <span>
-                    It will be archived and removed from your team's
-                    announcements.
-                  </span>
-                </div>
-                <div className="catalog-delete-buttons">
-                  <button
-                    className="job-secondary-button"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setConfirmDelete(false)}
-                  >
-                    Keep announcement
-                  </button>
-                  <button
-                    className="catalog-delete-confirm-button"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => transition.mutate("cancel")}
-                  >
-                    {transition.isPending ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="catalog-delete-action">
-                <button
-                  className="catalog-delete-trigger"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <Trash2 size={14} aria-hidden />
-                  Delete
-                </button>
-              </div>
-            ))}
+                {transition.isPending ? (
+                  "Deleting..."
+                ) : confirmDelete ? (
+                  <>
+                    <CheckCircle2 size={14} aria-hidden />
+                    Click again to delete
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} aria-hidden />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          ) : null}
           <div className="job-editor-actions">
             <Button
               className="job-secondary-button"

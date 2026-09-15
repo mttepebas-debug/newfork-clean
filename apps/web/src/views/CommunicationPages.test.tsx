@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type {
   ActiveWorkspaceContext,
   AnnouncementRecord,
@@ -16,6 +22,7 @@ import {
   getWorkspaceDashboard,
   saveAnnouncement,
   saveWorkspaceLayout,
+  transitionAnnouncement,
 } from "../communications/communications-data";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -61,7 +68,11 @@ vi.mock("../communications/communications-data", () => ({
     .mockResolvedValue({ status: "saved", affected: 1 }),
 }));
 
-function renderRoute(path: string, element: React.ReactNode) {
+function renderRoute(
+  path: string,
+  element: React.ReactNode,
+  routePath = "*",
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -69,7 +80,7 @@ function renderRoute(path: string, element: React.ReactNode) {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="*" element={element} />
+          <Route path={routePath} element={element} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -78,13 +89,37 @@ function renderRoute(path: string, element: React.ReactNode) {
 
 describe("Phase 8 communication pages", () => {
   it("keeps the account notification inbox independent of a stale workspace context", async () => {
-    vi.mocked(getNotifications).mockResolvedValue({ workspace_id: null, unread_count: 1, next_cursor: null, notifications: [{
-      id: "a8200000-0000-4000-8000-000000000099", workspace_id: null, scope: "account", category: "security", type_key: "security.account.password_changed", title: "Password changed", body: "Security update", safe_preview: "Security update", action_url: "/app/account/security", source_type: "account_security", source_id: null, created_at: now, read_at: null, visibility_state: "visible",
-    }] });
+    vi.mocked(getNotifications).mockResolvedValue({
+      workspace_id: null,
+      unread_count: 1,
+      next_cursor: null,
+      notifications: [
+        {
+          id: "a8200000-0000-4000-8000-000000000099",
+          workspace_id: null,
+          scope: "account",
+          category: "security",
+          type_key: "security.account.password_changed",
+          title: "Password changed",
+          body: "Security update",
+          safe_preview: "Security update",
+          action_url: "/app/account/security",
+          source_type: "account_security",
+          source_id: null,
+          created_at: now,
+          read_at: null,
+          visibility_state: "visible",
+        },
+      ],
+    });
     renderRoute("/account/inbox", <NotificationsPage />);
     await screen.findByText("Password changed");
     expect(getNotifications).toHaveBeenCalledWith("", expect.anything());
-    expect(screen.getByRole("link", { name: "Open notification: Password changed" }).getAttribute("href")).toBe("/account/security");
+    expect(
+      screen
+        .getByRole("link", { name: "Open notification: Password changed" })
+        .getAttribute("href"),
+    ).toBe("/account/security");
   });
 
   it("uses Archived as an exclusive announcement status filter", async () => {
@@ -271,6 +306,54 @@ describe("Phase 8 communication pages", () => {
             location_ids: ["11000000-0000-4000-8000-000000000001"],
           }),
         }),
+      ),
+    );
+  });
+
+  it("requires a second animated delete click without opening a confirmation panel", async () => {
+    const draft = announcement({
+      id: "a8200000-0000-4000-8000-000000000007",
+      title: "Draft to delete",
+      status: "draft",
+    });
+    vi.mocked(transitionAnnouncement).mockClear();
+    vi.mocked(transitionAnnouncement).mockImplementation(
+      () => new Promise(() => {}),
+    );
+    vi.mocked(getAnnouncements).mockResolvedValue({
+      workspace_id: workspaceId,
+      can_manage: true,
+      locations: [],
+      announcements: [draft],
+    });
+    renderRoute(
+      `/app/announcements/${draft.id}`,
+      <AnnouncementsPage />,
+      "/app/announcements/:announcementId",
+    );
+
+    const editor = await screen.findByRole("dialog", {
+      name: "Edit announcement",
+    });
+    fireEvent.click(within(editor).getByRole("button", { name: "Delete" }));
+
+    expect(transitionAnnouncement).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("group", { name: "Confirm deletion" }),
+    ).toBeNull();
+    const confirm = within(editor).getByRole("button", {
+      name: "Confirm delete announcement",
+    });
+    expect(confirm.getAttribute("data-confirming")).toBe("true");
+    expect(confirm.textContent).toContain("Click again to delete");
+
+    fireEvent.click(confirm);
+    await waitFor(() =>
+      expect(transitionAnnouncement).toHaveBeenCalledWith(
+        workspaceId,
+        draft.id,
+        "cancel",
+        draft.revision,
       ),
     );
   });

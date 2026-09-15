@@ -303,6 +303,25 @@
   color: var(--job-error);
   font-size: 12px;
 }
+.announcements-catalog-page .catalog-delete-trigger[data-confirming="true"] {
+  border-color: color-mix(in srgb, var(--job-error) 40%, var(--job-border));
+  background: color-mix(in srgb, var(--job-error) 12%, var(--job-bg));
+  animation: announcement-delete-confirm 420ms ease;
+}
+@keyframes announcement-delete-confirm {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.04);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .announcements-catalog-page .catalog-delete-trigger[data-confirming="true"] {
+    animation: none;
+  }
+}
 @media (max-width: 1050px) {
   .announcements-catalog-page .announcement-catalog-row {
     grid-template-columns: minmax(160px, 1.6fr) minmax(100px, 1fr) 90px 36px;
