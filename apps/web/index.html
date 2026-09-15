@@ -3,6 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Resolve appearance before the app bundle or account request can paint.
+      (() => {
+        let theme = "system";
+        try { theme = localStorage.getItem("newfork.theme") || theme; } catch {}
+        const resolved = theme === "light" || theme === "dark" ? theme
+          : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.style.colorScheme = resolved;
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Newfork Clean</title>
   </head>

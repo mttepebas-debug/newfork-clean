@@ -12,6 +12,7 @@ import { appLandingPath } from "./auth/routeDestinations";
 import { AppShell } from "./shell/AppShell";
 import { SignInPage } from "./views/SignInPage";
 import "./styles.css";
+import "./dark-theme.css";
 
 const AccountLayout = lazy(() => import("./account/AccountLayout"));
 const AccountRecoveryPage = lazy(() => import("./account/AccountRecoveryPage"));

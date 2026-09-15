@@ -18776,3 +18776,199 @@ select:focus-visible {
   overflow-wrap: anywhere;
 }
 .current-user-avatar { width: 24px; height: 24px; flex: 0 0 24px; object-fit: cover; border-radius: 50%; display: inline-grid; place-items: center; background: var(--surface-muted, #edf1ee); color: var(--text-primary, #183c30); font-size: 10px; font-weight: 700; }
+
+/* Semantic dark colors shared by pages and document-level portals.
+   Existing page palettes remain authoritative where they already work. */
+:root[data-theme="dark"] {
+  --theme-page: #1d2320;
+  --theme-surface: #252c29;
+  --theme-soft: #202623;
+  --theme-text: #edf1ef;
+  --theme-muted: #aab5b0;
+  --theme-accent: #9bd8c5;
+  --theme-selected: #29443b;
+  --theme-hover: #303936;
+  --theme-divider: #39423e;
+  --theme-control-border: #7d9187;
+  --theme-success: #8ed2b8;
+  --theme-success-surface: #20312b;
+  --theme-warning: #e7cb72;
+  --theme-warning-surface: #302b1d;
+  --theme-danger: #f0a2ac;
+  --theme-danger-surface: #342326;
+  --theme-info: #9bcdef;
+  --theme-info-surface: #22313b;
+}
+
+:root[data-theme="dark"] .catalog-page-header {
+  border-color: var(--theme-divider);
+}
+:root[data-theme="dark"] .catalog-page-header h1,
+:root[data-theme="dark"] .employees-page .employees-empty strong {
+  color: var(--theme-text);
+}
+:root[data-theme="dark"] .catalog-page-eyebrow {
+  color: var(--theme-accent);
+}
+:root[data-theme="dark"] .catalog-page-header p,
+:root[data-theme="dark"] .catalog-status-tabs button:not(.active),
+:root[data-theme="dark"] .employees-page .employee-table td small,
+:root[data-theme="dark"] .employees-page .employee-column-popover header span,
+:root[data-theme="dark"] .employees-page :is(.employees-state, .employees-empty, .employee-panel-state),
+:root[data-theme="dark"] .employees-page .employee-field small,
+:root[data-theme="dark"] .employees-page .employee-field-requirement,
+:root[data-theme="dark"] .employees-page .employee-assignment-picker :is(.primary-choice, small, p),
+:root[data-theme="dark"] .employees-page .employee-identity > span:not(.employee-avatar, .employee-state) {
+  color: var(--theme-muted);
+}
+:root[data-theme="dark"] .employees-page .employee-assignment-picker legend {
+  color: var(--theme-text);
+}
+:root[data-theme="dark"] .employees-page :is(.employee-search, .toolbar-filter-select, .employee-field input, .employee-field textarea, .employee-field select, .employee-drawer-mobile-header select) {
+  border-color: var(--theme-control-border);
+}
+:root[data-theme="dark"] .employees-page .employee-field select {
+  background: #252c29;
+  color: var(--theme-text);
+}
+:root[data-theme="dark"] .employees-page .employee-field select:disabled {
+  background: #1b211e;
+  color: #89948f;
+}
+:root[data-theme="dark"] .employees-page :is(input, textarea)::placeholder {
+  color: var(--theme-muted);
+  opacity: 1;
+}
+:root[data-theme="dark"] .employees-page :is(.employee-column-trigger, .employee-drawer .nf-button.secondary-button) {
+  border-color: var(--theme-control-border);
+  background: #252c29;
+  color: var(--theme-text);
+}
+:root[data-theme="dark"] .employees-page .employee-drawer .icon-button {
+  color: var(--theme-muted);
+}
+:root[data-theme="dark"] .employees-page :is(.employee-column-trigger, .employee-drawer .nf-button.secondary-button, .employee-drawer .icon-button):hover:not(:disabled),
+:root[data-theme="dark"] .catalog-status-tabs button:not(.active):hover {
+  background: var(--theme-hover);
+  color: var(--theme-text);
+}
+:root[data-theme="dark"] .employees-page .employee-section-links button[data-group-start="true"]::before {
+  border-color: var(--theme-divider);
+}
+:root[data-theme="dark"] .employees-page :is(.employee-table-avatar, .employee-avatar) {
+  border-color: #46504c;
+  background: var(--theme-selected);
+  color: var(--theme-accent);
+}
+:root[data-theme="dark"] .employees-page .employee-state {
+  background: var(--theme-hover);
+  color: var(--theme-text);
+}
+:root[data-theme="dark"] .employees-page .state-active {
+  background: var(--theme-success-surface);
+  color: var(--theme-success);
+}
+:root[data-theme="dark"] .employees-page :is(.state-invited, .state-onboarding) {
+  background: var(--theme-warning-surface);
+  color: var(--theme-warning);
+}
+:root[data-theme="dark"] .employees-page .state-needs_attention,
+:root[data-theme="dark"] .employees-page .employee-work-mode.off-schedule[data-selected="true"] {
+  background: var(--theme-danger-surface);
+  color: var(--theme-danger);
+}
+:root[data-theme="dark"] .employees-page .employee-work-mode.remote[data-selected="true"] {
+  border-color: var(--theme-warning);
+  background: var(--theme-warning-surface);
+  color: var(--theme-warning);
+}
+:root[data-theme="dark"] .employees-page .employee-work-mode.off-schedule[data-selected="true"] {
+  border-color: var(--theme-danger);
+}
+:root[data-theme="dark"] .employees-page .employee-work-mode.remote[data-selected="true"] input {
+  accent-color: var(--theme-warning);
+}
+:root[data-theme="dark"] .employees-page .employee-work-mode.off-schedule[data-selected="true"] input {
+  accent-color: var(--theme-danger);
+}
+:root[data-theme="dark"] .employees-page :is(.employees-state.error, .employee-panel-state.error, .employee-field .employee-field-error, .employee-lifecycle-button) {
+  color: var(--theme-danger);
+}
+:root[data-theme="dark"] .employees-page .employee-lifecycle-button:hover {
+  background: var(--theme-danger-surface);
+}
+:root[data-theme="dark"] .employees-page .employee-lifecycle-button.restore {
+  color: var(--theme-success);
+}
+:root[data-theme="dark"] .employees-page .employee-lifecycle-button.restore:hover {
+  background: var(--theme-success-surface);
+}
+:root[data-theme="dark"] .employees-page .employee-drawer-error {
+  border-color: var(--theme-danger);
+  background: var(--theme-danger-surface);
+  color: var(--theme-danger);
+}
+:root[data-theme="dark"] .employees-page .employee-drawer-notice {
+  border-color: var(--theme-info);
+  background: var(--theme-info-surface);
+  color: var(--theme-info);
+}
+:root[data-theme="dark"] .employees-page .employee-drawer-notice a {
+  color: inherit;
+}
+:root[data-theme="dark"] .employees-page .employee-field :is(input, select, textarea)[aria-invalid="true"] {
+  border-color: var(--theme-danger);
+  box-shadow: 0 0 0 1px var(--theme-danger);
+}
+:root[data-theme="dark"] .employees-page :is(button, input, select, textarea, a):focus-visible,
+:root[data-theme="dark"] .employees-page .employee-table tbody tr:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: -2px;
+}
+:root[data-theme="dark"] .employees-page .employee-search:focus-within {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 1px var(--theme-accent);
+}
+
+:root[data-theme="dark"] .account-eyebrow {
+  color: var(--theme-accent);
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] .account-theme-choice small {
+  color: var(--theme-muted);
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] :is(.account-theme-choice, .account-field select) {
+  border-color: var(--theme-control-border);
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] .account-theme-choice:hover {
+  background: var(--theme-hover);
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] .account-theme-choice.selected {
+  border-color: var(--theme-accent);
+  background: var(--theme-selected);
+  box-shadow: 0 0 0 2px var(--theme-selected);
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] .account-theme-choice:has(input:focus-visible) {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 3px;
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] .account-form-actions {
+  border-color: var(--theme-divider);
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] .nf-button.secondary-button {
+  border-color: var(--theme-control-border);
+  background: #222b28;
+  color: var(--theme-text);
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] .nf-button.secondary-button:hover:not(:disabled) {
+  background: var(--theme-hover);
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] :is(button, select):focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] .form-error {
+  color: var(--theme-danger);
+}
+:root[data-theme="dark"] .account-page[aria-labelledby="preferences-title"] .form-success {
+  color: var(--theme-success);
+}

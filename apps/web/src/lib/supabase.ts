@@ -594,12 +594,4 @@ export async function resetOwnerOnboarding(
   });
 }
 
-export function applyThemePreference(theme: ThemePreference): void {
-  const systemPrefersDark =
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const resolved =
-    theme === "system" ? (systemPrefersDark ? "dark" : "light") : theme;
-  document.documentElement.dataset.theme = resolved;
-  document.documentElement.style.colorScheme = resolved;
-}
+export { applyThemePreference } from "./theme";
