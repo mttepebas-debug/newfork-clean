@@ -10,6 +10,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import SettingsHomeRedirect from "./SettingsHomeRedirect";
 import SettingsLayout from "./SettingsLayout";
+import { PermissionRoute } from "../auth/PermissionRoute";
 
 let permissions: ActiveWorkspaceContext["permissions"] = [
   "notifications.settings.read",
@@ -103,6 +104,54 @@ describe("notification settings navigation", () => {
     expect(
       screen.getByRole("link", { name: "Shift catalog" }).className,
     ).toContain("active");
+  });
+
+  it("lets the conflict permission alone enter Settings and load its direct route", async () => {
+    permissions = ["schedule.conflict_rules.manage"];
+    render(
+      <MemoryRouter
+        initialEntries={["/app/settings/scheduling/conflicts"]}
+      >
+        <Routes>
+          <Route path="/app/settings" element={<SettingsLayout />}>
+            <Route
+              path="scheduling/conflicts"
+              element={
+                <PermissionRoute anyOf={["schedule.conflict_rules.manage"]}>
+                  <p>Conflict handling route</p>
+                </PermissionRoute>
+              }
+            />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Conflict handling route")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Conflict handling" }).className,
+    ).toContain("active");
+    expect(screen.queryByRole("link", { name: "Schedule rules" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Shift catalog" })).toBeNull();
+  });
+
+  it("uses Conflict handling as the Settings landing page for its permission alone", async () => {
+    permissions = ["schedule.conflict_rules.manage"];
+    render(
+      <MemoryRouter initialEntries={["/app/settings"]}>
+        <Routes>
+          <Route path="/app/settings" element={<SettingsLayout />}>
+            <Route index element={<SettingsHomeRedirect />} />
+            <Route
+              path="scheduling/conflicts"
+              element={<p>Conflict handling landing</p>}
+            />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Conflict handling landing")).toBeTruthy();
   });
 
   it("keeps Shift labels active without activating Schedule rules", () => {

@@ -3013,6 +3013,32 @@ describe("api app", () => {
     expect(revisions).toEqual([3]);
   });
 
+  it.each([
+    ["Review the current availability assessment before saving", "40001", 409, "availability_review_required"],
+    ["Review the current availability assessment before saving", "PT409", 409, "availability_review_required"],
+    ["Edit session revision is stale", "40001", 409, undefined],
+    ["Employee already has an overlapping shift", "23514", 422, undefined],
+    ["Schedule location access denied", "42501", 403, undefined],
+  ])("classifies fast-save rejection: %s", async (message, code, statusCode, status) => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleService: scheduleServiceMock({ mutateShift: async () => { throw Object.assign(new Error(message), { code }); } }),
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/shifts",
+      headers: { authorization: "Bearer owner-token", "idempotency-key": "89000000-0000-4000-8000-000000000001" },
+      payload: { expected_session_revision: 3, shift: {
+        location_id: "11000000-0000-4000-8000-000000000001", employee_id: null,
+        job_id: "33000000-0000-4000-8000-000000000001", shift_type_id: null,
+        scheduled_date: "2026-08-17", start_time: "09:00", end_time: "17:00", note: "",
+      } },
+    });
+    expect(response.statusCode).toBe(statusCode);
+    expect(response.json().status).toBe(status);
+    await app.close();
+  });
+
   it("forwards Schedule shift label selections", async () => {
     const calls: unknown[] = [];
     const app = buildApp({

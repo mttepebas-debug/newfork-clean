@@ -41,7 +41,7 @@ const model: ScheduleReadModel = {
   workspace_id: "66666666-6666-4666-8666-666666666666",
   week_start: "2026-08-17",
   week_start_day: "monday",
-  settings: { time_format: "12h" },
+  settings: { time_format: "12h", conflict_rules: { availability: "confirm", approved_time_off: "block", closed_location: "block", minimum_travel: "confirm", minimum_rest: "confirm" } },
   locations: [
     {
       id: locationId,
@@ -150,7 +150,7 @@ describe("useScheduleGridDragControllers helpers", () => {
           copy: false,
         },
       }),
-    ).toEqual({ allowed: true, targetStatus: "allowed" });
+    ).toMatchObject({ allowed: true, targetStatus: "warning" });
   });
 
   it("allows a group target when the projected group is valid", () => {
@@ -183,10 +183,10 @@ describe("useScheduleGridDragControllers helpers", () => {
     });
 
     expect(evaluation.allowed).toBe(true);
-    expect(evaluation.targetStatus).toBe("allowed");
+    expect(evaluation.targetStatus).toBe("warning");
     expect(evaluation.members.map((member) => member.targetStatus)).toEqual([
-      "allowed",
-      "allowed",
+      "warning",
+      "warning",
     ]);
   });
 
@@ -239,7 +239,7 @@ describe("useScheduleGridDragControllers helpers", () => {
       "Location is closed: Closed. Requested: Dinner / Server at Main Dining.",
     );
     expect(evaluation.members.map((member) => member.targetStatus)).toEqual([
-      "allowed",
+      "warning",
       "blocked",
     ]);
   });
@@ -277,7 +277,6 @@ describe("useScheduleGridDragControllers helpers", () => {
     expect(evaluation.targetStatus).toBe("blocked");
     expect(evaluation.members.every((member) => !member.allowed)).toBe(true);
     expect(evaluation.messages).toEqual([
-      "Employee already has Dinner. Requested: Dinner / Server at Main Dining.",
       "Alex Morgan already has Dinner 09:00-17:30 at Main Dining on 2026-08-19. Requested: Dinner / Server at Main Dining.",
     ]);
   });
@@ -314,7 +313,7 @@ describe("useScheduleGridDragControllers helpers", () => {
       }),
     ).toEqual({
       allowed: false,
-      reason: "Location is closed all day.",
+      reason: "Location is closed: Closed. Requested: Dinner / Server at Main Dining.",
       targetStatus: "blocked",
     });
   });

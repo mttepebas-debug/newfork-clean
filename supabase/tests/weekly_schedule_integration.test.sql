@@ -34,7 +34,7 @@ insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,is_primary,created_by)
  select w,emp,job,true,owner_id from ws;
 delete from public.workspace_role_permissions where workspace_id=(select w from ws) and permission_key='schedule.availability.override';
-update public.workspace_scheduling_settings set availability_enforcement='hard' where workspace_id=(select w from ws);
+update public.workspace_scheduling_settings set availability_enforcement='hard', availability_warning_policy='warn' where workspace_id=(select w from ws);
 update ws set session=(public.acquire_schedule_edit_session_service(manager,w,'2035-01-15','blank',null)->'session'->>'id')::uuid;
 update ws set payload=jsonb_build_object('location_id',loc,'employee_id',emp,'job_id',job,'scheduled_date','2035-01-15',
  'time_basis','explicit','start_time','18:00','end_time','20:00','time_timezone','America/Los_Angeles','note','');
@@ -54,15 +54,15 @@ select is(pg_temp.assess()->>'warning_policy','warn','canonical response carries
 select is(pg_temp.assess()->>'can_override','true','no separate legacy override capability is required');
 select throws_ok($$select public.assess_schedule_shift_service(employee_user,w,payload) from ws$$,'42501',null,'employee cannot inspect manager assessment');
 select throws_ok($$select public.assess_schedule_shift_service(manager,w,payload||jsonb_build_object('location_id',other_loc)) from ws$$,'42501',null,'location scope remains enforced');
-select throws_ok($$select pg_temp.mutate(payload) from ws$$,'40001',null,'canonical mutation requires fresh assessment');
+select throws_ok($$select pg_temp.mutate(payload) from ws$$,'PT409',null,'canonical mutation requires fresh assessment');
 select throws_ok($$insert into public.schedule_edit_session_shifts(id,workspace_id,session_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
  select shift,w,session,loc,emp,job,'2035-01-15','18:00','20:00','explicit','America/Los_Angeles' from ws$$,'23514',null,'raw assignment cannot bypass weekly acceptance');
 select lives_ok($$select pg_temp.mutate(payload||jsonb_build_object('availability_assessment_fingerprint',pg_temp.assess()->>'fingerprint')) from ws$$,'actual mutation stores a warning acceptance without a written reason');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),1::bigint,'canonical mutation records exactly one acceptance');
 select lives_ok($$select pg_temp.mutate(payload||'{"note":"Changed display note"}','update') from ws$$,'same-conflict note edit needs no new decision');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),1::bigint,'note edit does not duplicate acceptance history');
-select throws_ok($$select pg_temp.mutate(payload||'{"start_time":"19:00"}','update') from ws$$,'40001',null,'changed hours cannot reuse the acceptance');
-select throws_ok($$select pg_temp.mutate(payload||'{"time_basis":"unresolved","start_time":null,"end_time":null}','update') from ws$$,'22023',null,'canonical mutation rejects unresolved hours');
+select throws_ok($$select pg_temp.mutate(payload||'{"start_time":"19:00"}','update') from ws$$,'PT409',null,'changed hours cannot reuse the acceptance');
+select throws_ok($$select pg_temp.mutate(payload||'{"time_basis":"unresolved","start_time":null,"end_time":null}','update') from ws$$,'22023',null,'assignment without hours or a named type is invalid');
 select is(public.schedule_availability_read_projection(manager,w,payload||jsonb_build_object('id',shift))->'availability_assessment'->>'override_recorded','true','draft read uses accepted weekly evidence') from ws;
 select is(public.schedule_availability_read_projection(employee_user,w,payload||jsonb_build_object('id',shift))->'availability_assessment','null'::jsonb,'employee projection does not leak manager preferences') from ws;
 insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
@@ -107,7 +107,7 @@ select is((select count(*) from public.schedule_location_publications where work
 select lives_ok($$select pg_temp.publish(jsonb_build_array(jsonb_build_object('finding_id',preview->'findings'->0->>'id'))) from ws$$,'final publish accepts finding ID without written reason or legacy permission');
 update ws s set snapshot=(select availability_snapshot from public.schedule_published_shifts where workspace_id=s.w and source_shift_id=s.shift limit 1);
 select is(snapshot->'assessment'->>'warning_policy','confirm','published assignment captures the current weekly assessment') from ws;
-select is(snapshot->'override'->>'reason','Availability conflict confirmed by manager.','published audit uses system action text') from ws;
+select is(snapshot->'override'->>'reason','Schedule conflict confirmed by manager.','published audit uses system action text') from ws;
 select is(public.schedule_availability_read_projection(manager,w,(select to_jsonb(p) from public.schedule_published_shifts p where p.workspace_id=w limit 1))->'availability_assessment'->>'has_availability_conflict','true','published manager warning is initially visible') from ws;
 update public.manager_weekly_reminders set enabled=false where workspace_id=(select w from ws);
 select is(pg_temp.preflight()->'findings','[]'::jsonb,'disabled manager warning disappears from retained preflight');
@@ -128,7 +128,7 @@ select lives_ok($$select pg_temp.publish()$$,'new warn conflicts publish without
 select is((select availability_snapshot->'override'->>'reason' from public.schedule_published_shifts p
  join public.schedule_location_publications l on l.id=p.publication_id where p.workspace_id=(select w from ws)
  and p.source_shift_id='ad423000-0000-4000-8000-000000000012' and l.status='current'),
- 'Availability warning acknowledged (warn policy).','warn publication still records its current system action');
+ 'Schedule warning acknowledged (warn policy).','warn publication still records its current system action');
 -- Default-hour batches share the same policy without borrowing publication consent.
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time)
  select 'ad423000-0000-4000-8000-000000000015',w,'Default review','12:00','16:00' from ws;

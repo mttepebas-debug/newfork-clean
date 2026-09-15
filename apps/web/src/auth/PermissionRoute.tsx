@@ -10,6 +10,7 @@ export const settingsEntryPermissions = [
   "settings.jobs.read",
   "settings.shift_catalog.read",
   "settings.schedule_rules.read",
+  "schedule.conflict_rules.manage",
   "roles.read",
   "documents.read",
   "signature_templates.read",

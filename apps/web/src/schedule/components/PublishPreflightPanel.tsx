@@ -26,7 +26,7 @@ const blockReasonText: Readonly<Record<PublishPreflightBlockReason, string>> = {
 type SchedulePublishFinding = SchedulePublicationPreview["findings"][number];
 
 export function isWeeklyAvailabilityFinding(finding: SchedulePublishFinding): boolean {
-  return finding.code === "availability" && finding.severity === "soft" && finding.overrideable &&
+  return finding.severity === "soft" && finding.overrideable &&
     !!finding.availability_state && !!finding.warning_policy;
 }
 
@@ -61,10 +61,11 @@ function findingGatesPublish(finding: SchedulePublishFinding): boolean {
 export function publishHardBlockers(preview: SchedulePublicationPreview) {
   return preview.findings.filter(
     (finding) =>
+      finding.severity === "hard" || finding.conflict_severity === "block" || (
       findingGatesPublish(finding) &&
       !isWeeklyAvailabilityFinding(finding) &&
       preflightTier(finding) === "blocker" &&
-      (!finding.overrideable || finding.severity === "hard"),
+      !finding.overrideable),
   );
 }
 
@@ -95,18 +96,14 @@ export function publishInformationalFindings(preview: SchedulePublicationPreview
 export function PublishPreflightPanel({
   preview,
   locations,
-  overrideReasons,
-  onOverrideReasonChange,
-  risksAcknowledged = false,
-  onRisksAcknowledgedChange,
   blockReason = null,
   onReviewShift,
   reviewDisabled = false,
 }: {
   readonly preview: SchedulePublicationPreview;
   readonly locations: readonly ScheduleLocation[];
-  readonly overrideReasons: Readonly<Record<string, string>>;
-  readonly onOverrideReasonChange: (findingId: string, value: string) => void;
+  readonly overrideReasons?: Readonly<Record<string, string>>;
+  readonly onOverrideReasonChange?: (findingId: string, value: string) => void;
   readonly risksAcknowledged?: boolean;
   readonly onRisksAcknowledgedChange?: (value: boolean) => void;
   readonly blockReason?: PublishPreflightBlockReason | null;
@@ -146,7 +143,7 @@ export function PublishPreflightPanel({
                   risks.length
                     ? `${risks.length} ${risks.length === 1 ? "risk" : "risks"}`
                     : null,
-                  newAvailability.length ? `${newAvailability.length} availability ${newAvailability.length === 1 ? "conflict" : "conflicts"}` : null,
+                  newAvailability.length ? `${newAvailability.length} schedule ${newAvailability.length === 1 ? "conflict" : "conflicts"}` : null,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -159,9 +156,9 @@ export function PublishPreflightPanel({
               : hard.length
                 ? "Fix hard blockers in the schedule before publishing."
                 : needsAvailabilityConfirmation
-                  ? "Confirm the new availability conflicts to continue."
+                  ? "Review the conflicts below, then continue to publish."
                 : risks.length
-                  ? "Blockers stop the publish. Risks go live once acknowledged."
+                  ? "Review these warnings before publishing."
                   : "Every override is recorded with the published audit trail."}
           </span>
         </div>
@@ -195,21 +192,19 @@ export function PublishPreflightPanel({
       {overrideable.length ? (
         <FindingGroup
           tone="soft"
-          title="Blockers — override with a reason"
+          title="Warnings to review"
           findings={overrideable}
           locations={locations}
-          overrideReasons={overrideReasons}
-          onOverrideReasonChange={onOverrideReasonChange}
         />
       ) : null}
 
       {newAvailability.length ? (
-        <WeeklyAvailabilityGroup findings={newAvailability} locations={locations} title="New availability conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
+        <WeeklyAvailabilityGroup findings={newAvailability} locations={locations} title="Current schedule conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
       ) : null}
       {acceptedAvailability.length ? (
         <details className="schedule-publish-accepted-availability">
           <summary>Previously accepted ({acceptedAvailability.length})</summary>
-          <WeeklyAvailabilityGroup findings={acceptedAvailability} locations={locations} title="Accepted availability conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
+          <WeeklyAvailabilityGroup findings={acceptedAvailability} locations={locations} title="Accepted schedule conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
         </details>
       ) : null}
 
@@ -220,19 +215,6 @@ export function PublishPreflightPanel({
           findings={risks}
           locations={locations}
         >
-          <label className="schedule-publish-risk-ack">
-            <input
-              type="checkbox"
-              checked={risksAcknowledged}
-              onChange={(event) =>
-                onRisksAcknowledgedChange?.(event.target.checked)
-              }
-            />
-            <span>
-              Publish with{" "}
-              {risks.length === 1 ? "this risk" : `these ${risks.length} risks`}.
-            </span>
-          </label>
         </FindingGroup>
       ) : null}
 
@@ -263,7 +245,7 @@ function WeeklyAvailabilityGroup({ findings, locations, title, onReviewShift, re
   return <section className="schedule-publish-finding-group risk schedule-publish-weekly-availability">
     <div className="schedule-publish-finding-heading"><AlertTriangle size={16} aria-hidden /><strong>{title}</strong></div>
     {findings.map((finding) => <div key={finding.id} className="schedule-publish-finding-row schedule-publish-availability-row">
-      <div><strong>{finding.employee_name ?? "Employee"}</strong>
+      <div><strong>{finding.employee_name ?? (finding.employee_id ? "Employee" : "Unassigned")}</strong>
         <small>{finding.scheduled_date} · {finding.location_name ?? locations.find((location) => location.id === finding.location_id)?.name ?? finding.location_id}</small>
         <span>{finding.message}</span>
       </div>

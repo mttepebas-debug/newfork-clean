@@ -395,6 +395,10 @@ export function ShiftQuickEditor({
       !["availability", "time_off"].includes(String(reason.type)),
   );
   const assessmentReasons = (result: ShiftAvailabilityAssessment | null) => {
+    if (result?.conflict_severity) {
+      if (result.operation === "allowed" || result.override_recorded || result.responsibility_retained) return [];
+      return result.reasons.map(reason => ({ type: "availability_assessment", severity: reason.severity === "block" ? "hard" : "soft", message: reason.message }));
+    }
     if (result?.warning_policy) {
       if (result.operation === "allowed") return [];
       if (result.operation === "warning_requires_override") {
@@ -420,7 +424,7 @@ export function ShiftQuickEditor({
     })) ?? [];
   };
   const rawConflictReasons = [
-    ...localConflictReasons,
+    ...(assessment?.conflict_severity ? [] : localConflictReasons),
     ...assessmentReasons(assessment),
   ];
   const conflictReasons =
@@ -489,7 +493,7 @@ export function ShiftQuickEditor({
     }
     const submittedKey = submissionKey;
     let checked: ShiftAvailabilityAssessment | null = null;
-    if (value.employee_id) {
+    if (model.settings.conflict_rules || value.employee_id) {
       checkingRef.current = true;
       setCheckingAvailability(true);
       try {
@@ -519,7 +523,8 @@ export function ShiftQuickEditor({
         setCheckingAvailability(false);
       }
     }
-    const reasons = [...localConflictReasons, ...assessmentReasons(checked)];
+    const effectiveLocalReasons = checked?.conflict_severity ? [] : localConflictReasons.filter(reason => typeof reason === "string" || reason.type !== "assessment_unknown");
+    const reasons = [...effectiveLocalReasons, ...assessmentReasons(checked)];
     const messages = formatScheduleConflictMessages(reasons);
     const weeklyWarning = !!checked?.warning_policy && checked.operation === "warning_requires_override" &&
       !checked.override_recorded && !checked.responsibility_retained;
@@ -532,7 +537,7 @@ export function ShiftQuickEditor({
         (checked?.fingerprint === assessment?.fingerprint &&
           overrideReason.trim().length >= 10 &&
           overrideReason.trim().length <= 500));
-    const warnOnly = weeklyWarning && checked?.warning_policy === "warn" && localConflictReasons.length === 0;
+    const warnOnly = weeklyWarning && checked?.warning_policy === "warn" && effectiveLocalReasons.length === 0;
     if (messages.length > 0 && !canConfirm && !warnOnly) {
       setConflictValidationArmed(true);
       setConflictSheetOpen(true);
@@ -550,9 +555,9 @@ export function ShiftQuickEditor({
     }
     setConflictSheetOpen(false);
     if (warnOnly) {
-      toast.warning("Availability conflict saved", {
+      toast.warning("Shift saved with a warning", {
         dedupeKey: "schedule-quick-editor-availability-warning",
-        description: "This shift overlaps unavailable hours.",
+        description: messages.join(" "),
       });
     }
     submitPayload(
@@ -1087,7 +1092,7 @@ export function ShiftQuickEditor({
         onOverrideReasonChange={setOverrideReason}
         submitLabel={
           conflictCanContinue
-            ? assessment?.operation === "verification_required"
+            ? assessment?.conflict_severity ? "Place shift" : assessment?.operation === "verification_required"
               ? "Keep draft"
               : `${state.mode === "edit" ? "Save" : "Add"} anyway`
             : undefined
@@ -1119,6 +1124,8 @@ function isHardScheduleConflictReason(reason: unknown): boolean {
   if (typeof reason === "string") return true;
   if (!isRecord(reason)) return true;
   if (reason.severity === "hard") return true;
+  if (reason.severity === "block") return true;
+  if (["allow", "warn", "confirm"].includes(String(reason.severity))) return false;
   return [
     "employee_excluded",
     "location_assignment",
@@ -1127,6 +1134,7 @@ function isHardScheduleConflictReason(reason: unknown): boolean {
     "named_duplicate",
     "named_shift_duplicate",
     "time_overlap",
+    "reference_time_overlap",
     "time_off",
   ].includes(String(reason.type));
 }

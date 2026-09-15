@@ -43,7 +43,7 @@ describe("PublishPreflightPanel", () => {
     expect(publishInformationalFindings(next)).toEqual([]);
     const review = vi.fn();
     render(<PublishPreflightPanel preview={next} locations={[]} overrideReasons={{}} onOverrideReasonChange={vi.fn()} onReviewShift={review} />);
-    expect(screen.getByText("New availability conflicts")).toBeTruthy();
+    expect(screen.getByText("Current schedule conflicts")).toBeTruthy();
     const disclosure = screen.getByText("Previously accepted (1)").closest("details");
     expect(disclosure).toHaveProperty("open", false);
     expect(screen.queryByRole("textbox")).toBeNull();
@@ -57,7 +57,7 @@ describe("PublishPreflightPanel", () => {
     expect(publishHardBlockers({ ...preview, findings: [hard] })).toEqual([hard]);
   });
 
-  it("groups overrideable blockers with audit reason input", () => {
+  it("summarizes warnings without a reason input", () => {
     const onReason = vi.fn();
 
     render(
@@ -79,18 +79,12 @@ describe("PublishPreflightPanel", () => {
     );
 
     expect(screen.getByText("1 blocker")).toBeTruthy();
-    expect(screen.getByText("Blockers — override with a reason")).toBeTruthy();
+    expect(screen.getByText("Warnings to review")).toBeTruthy();
     expect(screen.getByText("Alex is outside availability.")).toBeTruthy();
     expect(screen.getByText("2026-08-17 · Main Dining")).toBeTruthy();
 
-    fireEvent.change(screen.getByRole("textbox", { name: "Reason" }), {
-      target: { value: "Manager approved coverage." },
-    });
-
-    expect(onReason).toHaveBeenCalledWith(
-      "soft-finding-1",
-      "Manager approved coverage.",
-    );
+    expect(screen.queryByRole("textbox", { name: "Reason" })).toBeNull();
+    expect(onReason).not.toHaveBeenCalled();
   });
 
   it("shows clear ready state when no findings exist", () => {

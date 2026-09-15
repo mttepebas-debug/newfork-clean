@@ -62,7 +62,7 @@ describe("ShiftDragPreview", () => {
     const preview = document.querySelector(".schedule-shift-drag-preview");
     expect(preview?.getAttribute("data-copy")).toBe("true");
     expect(preview?.getAttribute("data-status")).toBe("blocked");
-    expect(screen.getByText("+ Copy")).toBeTruthy();
+    expect(screen.getByText("+ Paste")).toBeTruthy();
     expect(screen.getByText("Drop on a different cell.")).toBeTruthy();
     expect(screen.getByText("Dinner-Server")).toBeTruthy();
   });

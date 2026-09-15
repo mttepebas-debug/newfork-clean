@@ -13,7 +13,7 @@ import {
   timeOffSegmentDecisionSchema,
 } from "./time-off";
 export * from "./time-off";
-import { shiftAvailabilityAssessmentSchema } from "./availability-assessment";
+import { shiftAvailabilityAssessmentSchema, scheduleConflictRulesSchema } from "./availability-assessment";
 import {
   availabilityDayInputSchema,
   availabilityDateOverrideSchema,
@@ -108,6 +108,7 @@ export const permissionSchema = z.enum([
   "workspace.manage",
   "schedule.read",
   "schedule.manage",
+  "schedule.conflict_rules.manage",
   "schedule.availability.override",
   "schedule.publish",
   "schedule.templates.manage",
@@ -841,6 +842,9 @@ export const schedulingSettingsSchema = z.object({
   availability_notice_days: z.number().int().min(0).max(90).optional(),
   availability_policy_revision: z.number().int().positive().optional(),
   minimum_travel_minutes: z.number().int().min(0).max(240).optional(),
+  minimum_rest_minutes: z.number().int().min(0).max(1440).optional(),
+  conflict_rules: scheduleConflictRulesSchema.optional(),
+  conflict_rules_revision: z.number().int().positive().optional(),
   time_format: scheduleTimeFormatSchema,
 });
 export type SchedulingSettings = z.infer<typeof schedulingSettingsSchema>;
@@ -1160,6 +1164,9 @@ export const scheduleReadModelSchema = z.object({
   settings: z
     .object({
       time_format: scheduleTimeFormatSchema,
+      conflict_rules: scheduleConflictRulesSchema.optional(),
+      minimum_travel_minutes: z.number().int().nonnegative().optional(),
+      minimum_rest_minutes: z.number().int().nonnegative().optional(),
     })
     .default({ time_format: "12h" }),
   locations: z.array(scheduleLocationSchema),
@@ -1444,6 +1451,7 @@ export type ScheduleAvailabilityConflictResult = z.infer<
 >;
 
 export const schedulePublishFindingCodeSchema = z.enum([
+  "schedule_conflict",
   "availability_unknown",
   "availability_review_pending",
   "time_source_unresolved",
@@ -1463,6 +1471,7 @@ export const schedulePublishFindingSchema = z.object({
   severity: z.enum(["hard", "soft"]),
   overrideable: z.boolean(),
   availability_state: z.enum(["new", "accepted"]).optional(),
+  conflict_severity: z.enum(["allow", "warn", "confirm", "block"]).optional(),
   warning_policy: z.enum(["warn", "confirm"]).optional(),
   tier: z.enum(["blocker", "risk", "note"]).optional(),
   projected: z.boolean().optional(),

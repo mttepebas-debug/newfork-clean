@@ -55,6 +55,29 @@ function Harness({
 }
 
 describe("useSingleShiftPointerDrag", () => {
+  it.each(["Control", "Shift"])("updates stationary drag on %s down/up and uses release modifiers", async key => {
+    const onDrop = vi.fn();
+    render(<Harness onDrop={onDrop} />);
+    Object.defineProperty(document, "elementFromPoint", { configurable: true, value: () => screen.getByTestId("drop-cell") });
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Shift" }), { button: 0, buttons: 1, clientX: 0, clientY: 0, shiftKey: key === "Shift" });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 20, clientY: 20 });
+    fireEvent.keyDown(window, { key, ctrlKey: key === "Control", shiftKey: key === "Shift" });
+    await waitFor(() => expect(screen.getByTestId("drag-state").textContent).toMatch(/true$/));
+    fireEvent.keyUp(window, { key, ctrlKey: false, shiftKey: false });
+    await waitFor(() => expect(screen.getByTestId("drag-state").textContent).toMatch(/false$/));
+    fireEvent.mouseUp(window, { clientX: 20, clientY: 20, ctrlKey: false, shiftKey: false });
+    expect(onDrop).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ shiftId: "shift-1", copy: false }));
+  });
+  it("does not reuse a copy target after dropping outside the grid", () => {
+    const onDrop = vi.fn(); render(<Harness onDrop={onDrop} />);
+    const hit = vi.fn((): HTMLElement | null => screen.getByTestId("drop-cell"));
+    Object.defineProperty(document, "elementFromPoint", { configurable: true, value: hit });
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Shift" }), { button: 0, buttons: 1, clientX: 0, clientY: 0 });
+    fireEvent.mouseMove(window, { clientX: 20, clientY: 20, ctrlKey: true });
+    hit.mockReturnValue(null);
+    fireEvent.mouseUp(window, { clientX: 50, clientY: 50, ctrlKey: false });
+    expect(onDrop).not.toHaveBeenCalled();
+  });
   afterEach(() => {
     Reflect.deleteProperty(document, "elementFromPoint");
     vi.restoreAllMocks();

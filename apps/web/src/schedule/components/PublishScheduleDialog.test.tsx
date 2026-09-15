@@ -161,11 +161,11 @@ describe("PublishScheduleDialog", () => {
     await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(2));
     expect(onPublish.mock.calls[1]![1]).toEqual([]);
     expect(toast.warning).toHaveBeenCalledWith(
-      "Availability warnings cleared",
+      "Schedule warnings cleared",
       expect.objectContaining({
         dedupeKey: "schedule-publish-availability-refreshed",
         description:
-          "Publication is continuing with the latest availability check.",
+          "Publication is continuing with the latest conflict check.",
       }),
     );
   });
@@ -226,7 +226,7 @@ describe("PublishScheduleDialog", () => {
     first.unmount();
     onPreview.mockResolvedValue({ ...next, fingerprint: "c".repeat(64) });
     render(<PublishScheduleDialog {...props} initialChoices={onReview.mock.calls[0]![1]} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm availability and continue" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Next" }));
     expect(onPreview).toHaveBeenLastCalledWith(draft.id, [location.id], { departmentIds: [department.id], includeNoDepartment: false });
     expect(await screen.findByText("0 of 1 selected")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Publish 1 location" }));
@@ -252,13 +252,13 @@ describe("PublishScheduleDialog", () => {
     const onPublish = vi.fn().mockResolvedValue({});
     render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={onPublish} />);
     await clickReadyNext();
-    expect(await screen.findByText("New availability conflicts")).toBeTruthy();
+    expect(await screen.findByText("Current schedule conflicts")).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "Reason" })).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: policy === "warn" ? "Next" : "Confirm availability and continue" }));
+    fireEvent.click(screen.getByRole("button", { name: policy === "warn" ? "Next" : "Next" }));
     fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
     await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
-    expect(onPublish.mock.calls[0]![1]).toEqual([{ finding_id: finding.id, reason: policy === "confirm" ? "Availability conflict confirmed by manager." : "Availability warning acknowledged (warn policy)." }]);
+    expect(onPublish.mock.calls[0]![1]).toEqual([{ finding_id: finding.id, reason: policy === "confirm" ? "Schedule conflict confirmed by manager." : "Schedule warning acknowledged (warn policy)." }]);
   });
 
   it("does not reconfirm or resubmit previously accepted weekly findings", async () => {
@@ -278,9 +278,9 @@ describe("PublishScheduleDialog", () => {
     const onPublish = vi.fn().mockRejectedValueOnce(new ScheduleRequestError("Review changed conflicts", 409, { status: "preflight", preflight: changed, preflight_block_reason: "stale_fingerprint" })).mockResolvedValue({});
     render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={onPublish} />);
     await clickReadyNext();
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm availability and continue" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Next" }));
     fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm availability and continue" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Next" }));
     fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
     await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(2));
     expect(onPublish.mock.calls[1]![3]).toMatchObject({ fingerprint: changed.fingerprint, decisions: [{ finding_id: "changed-000001" }] });
@@ -582,7 +582,7 @@ describe("PublishScheduleDialog", () => {
     );
   });
 
-  it("keeps the pre-flight step locked until overrideable blockers have written reasons", async () => {
+  it("continues from the recap without a reason form or extra checkbox", async () => {
     const blockerPreview: SchedulePublicationPreview = {
       ...preview,
       status: "override_required",
@@ -604,19 +604,11 @@ describe("PublishScheduleDialog", () => {
     await clickReadyNext();
 
     const proceed = await screen.findByRole("button", {
-      name: "Override and continue",
+      name: "Next",
     });
-    expect(proceed).toHaveProperty("disabled", true);
-    fireEvent.change(screen.getByRole("textbox", { name: "Reason" }), {
-      target: { value: "too short" },
-    });
-    expect(screen.getByText("At least 10 characters.")).toBeTruthy();
-    expect(proceed).toHaveProperty("disabled", true);
-
-    fireEvent.change(screen.getByRole("textbox", { name: "Reason" }), {
-      target: { value: "Employee agreed to work this shift." },
-    });
-    await waitFor(() => expect(proceed).toHaveProperty("disabled", false));
+    expect(screen.queryByRole("textbox", { name: "Reason" })).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(proceed).toHaveProperty("disabled", false);
   });
 
   it("never lets a non-overrideable blocker advance from pre-flight review", async () => {
@@ -652,7 +644,7 @@ describe("PublishScheduleDialog", () => {
     expect(screen.getByText("Alex is double-booked.")).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "Reason" })).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Override and continue" }),
+      screen.getByRole("button", { name: "Next" }),
     ).toHaveProperty("disabled", true);
   });
 

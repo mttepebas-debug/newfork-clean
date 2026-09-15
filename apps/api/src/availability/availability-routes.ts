@@ -66,7 +66,7 @@ export function registerAvailabilityRoutes(
           session_id: z.string().uuid().optional(),
         })
         .safeParse(request.body);
-      if (!params.success || !input.success || !input.data.shift.employee_id)
+      if (!params.success || !input.success)
         return reply
           .status(400)
           .send({

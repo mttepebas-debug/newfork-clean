@@ -25,16 +25,14 @@ const defaults: SchedulingSettingsInput = {
   availability_approval: "narrowing",
   availability_initial_review: false,
   availability_notice_days: 0,
-  minimum_travel_minutes: 0,
 };
 
 type SchedulingSettingsDraft = Omit<
   SchedulingSettingsInput,
-  "week_start_day" | "time_format" | "minimum_travel_minutes"
+  "week_start_day" | "time_format"
 > & {
   week_start_day: SchedulingSettingsInput["week_start_day"] | "";
   time_format: SchedulingSettingsInput["time_format"] | "";
-  minimum_travel_minutes?: number | "";
 };
 
 const weekdays = [
@@ -107,11 +105,18 @@ export default function SchedulingSettingsPage() {
     const parsed = schedulingSettingsInputSchema.safeParse(draft);
     if (!parsed.success) {
       setValidationError(
-        "Enter a whole number from 0 to 240 for minimum travel time.",
+        "Choose valid scheduling settings before saving.",
       );
       return;
     }
-    mutation.mutate(parsed.data);
+    const {
+      conflict_rules,
+      conflict_rules_revision,
+      minimum_travel_minutes,
+      minimum_rest_minutes,
+      ...general
+    } = parsed.data;
+    mutation.mutate(general);
   };
 
   return (
@@ -196,66 +201,6 @@ export default function SchedulingSettingsPage() {
                 }
               />
             </SettingsChoiceRow>
-            <SettingsChoiceRow
-              label="Schedule conflicts"
-              description="Choose whether conflicting assignments warn managers or prevent saving."
-            >
-              <SegmentedChoice
-                name="conflict-policy"
-                value={draft.conflict_policy}
-                options={[
-                  ["warn", "Warn"],
-                  ["block", "Block"],
-                ]}
-                onChange={(value) =>
-                  updateDraft({
-                    conflict_policy: value as "warn" | "block",
-                  })
-                }
-              />
-            </SettingsChoiceRow>
-            <SettingsChoiceRow
-              label="Travel between locations"
-              description="Minimum time between work at different locations. Applies to Shift Hub cover and swap requests and Line Up staffing decisions."
-            >
-              <div className="scheduling-travel-control">
-                <label htmlFor="minimum-travel">
-                  Minimum travel time (minutes)
-                </label>
-                <input
-                  id="minimum-travel"
-                  type="number"
-                  min={0}
-                  max={240}
-                  step={1}
-                  required
-                  aria-describedby="minimum-travel-help"
-                  value={draft.minimum_travel_minutes ?? 0}
-                  onChange={(event) =>
-                    updateDraft({
-                      minimum_travel_minutes:
-                        event.target.value === ""
-                          ? ""
-                          : Number(event.target.value),
-                    })
-                  }
-                />
-                <p id="minimum-travel-help">
-                  {draft.minimum_travel_minutes === "" ||
-                  !Number.isInteger(draft.minimum_travel_minutes ?? 0) ||
-                  (draft.minimum_travel_minutes ?? 0) < 0 ||
-                  (draft.minimum_travel_minutes ?? 0) > 240
-                    ? "Enter 0–240 minutes."
-                    : (draft.minimum_travel_minutes ?? 0) === 0
-                      ? "No minimum configured. Overlapping shifts are still blocked."
-                      : `For work ending at 3:00 PM, the next location can start at ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(Date.UTC(2026, 0, 1, 15, draft.minimum_travel_minutes)))} or later.`}
-                </p>
-                <p>
-                  Pending requests are checked again before approval. Completed
-                  changes stay in place.
-                </p>
-              </div>
-            </SettingsChoiceRow>
             {mutation.error ? (
               <p className="form-error" role="alert">
                 {errorText(mutation.error)}
@@ -287,7 +232,7 @@ export default function SchedulingSettingsPage() {
           </fieldset>
         </form>
       ) : null}
-      {workspaceId ? (
+      {workspaceId && canEdit ? (
         <WeeklyPreferenceSettingsPanel workspaceId={workspaceId} />
       ) : null}
     </section>

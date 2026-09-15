@@ -115,6 +115,14 @@ function dispatchPointerEvent(
 }
 
 describe("ShiftQuickEditor", () => {
+  it("uses fresh canonical confirmation instead of a stale cached blocker", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, conflict_severity: "confirm", operation: "warning_requires_override", warning_policy: "confirm", reasons: [{ code: "closed_location", severity: "confirm", definite: true, message: "This location is closed." }] });
+    const onSubmit = vi.fn().mockResolvedValue("saved");
+    render(<ShiftQuickEditor model={{ ...model, employees: model.employees.map(employee => ({ ...employee, is_excluded_from_schedule: true })) }} state={{ mode: "create", locationId: model.locations[0]!.id, employeeId: model.employees[0]!.id, date: model.week_start }} timeFormat="12h" formatTime={value => value} addDays={value => value} scheduleClosureCoversDate={() => false} onClose={vi.fn()} onReload={vi.fn()} onDelete={vi.fn()} onSubmit={onSubmit} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Place shift" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+  });
   function renderAssigned(onSubmit = vi.fn().mockResolvedValue("saved")) {
     render(
       <ShiftQuickEditor
@@ -153,7 +161,7 @@ describe("ShiftQuickEditor", () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
     expect(toast.warning).toHaveBeenCalledExactlyOnceWith(
-      "Availability conflict saved",
+      "Shift saved with a warning",
       expect.objectContaining({
         dedupeKey: "schedule-quick-editor-availability-warning",
         description: "This shift overlaps unavailable hours.",
@@ -944,7 +952,11 @@ describe("ShiftQuickEditor", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("saves an unresolved named draft without inventing a range", async () => {
+  it("confirms unresolved hours without inventing a range", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability,
+      conflict_severity: "confirm", operation: "warning_requires_override", warning_policy: "confirm",
+      time_basis: "unresolved", reasons: [{ code: "time_source_unresolved", severity: "confirm", message: "Shift hours are unresolved. Confirm this assignment.", definite: false }],
+    });
     const onSubmit = vi.fn().mockResolvedValue("saved" as const);
     const clockOffShiftType = {
       ...model.shift_types[0]!,
@@ -993,6 +1005,9 @@ describe("ShiftQuickEditor", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    const confirm = await screen.findByRole("button", { name: "Place shift" });
+    expect(onSubmit).not.toHaveBeenCalled();
+    fireEvent.click(confirm);
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(

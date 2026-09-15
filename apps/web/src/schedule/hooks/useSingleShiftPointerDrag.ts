@@ -88,7 +88,7 @@ export function useSingleShiftPointerDrag({
     readonly previewHeight: number;
   } | null>(null);
   const draggingRef = useRef(false);
-  const currentTargetRef = useRef<ResolvedShiftDropTarget | null>(null);
+  const lastPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const clickSuppressorRef = useRef<
     ((event: globalThis.MouseEvent) => void) | null
   >(null);
@@ -127,8 +127,8 @@ export function useSingleShiftPointerDrag({
     (suppressClick: boolean) => {
       const hadDrag = draggingRef.current;
       pendingRef.current = null;
-      currentTargetRef.current = null;
       draggingRef.current = false;
+      lastPointRef.current = null;
       cancelPendingDragState();
       setDragState(null);
       if (hadDrag) onDragEnd();
@@ -194,6 +194,7 @@ export function useSingleShiftPointerDrag({
       readonly clientY: number;
       readonly ctrlKey: boolean;
       readonly metaKey: boolean;
+      readonly shiftKey: boolean;
     }): void => {
       const pending = pendingRef.current;
       if (!pending) return;
@@ -212,12 +213,12 @@ export function useSingleShiftPointerDrag({
         draggingRef.current = true;
         onDragStart(pending.shiftId);
       }
-      const copy = point.ctrlKey || point.metaKey;
+      const copy = point.ctrlKey || point.metaKey || point.shiftKey;
+      lastPointRef.current = { clientX, clientY };
       const target = resolveTargetAtPoint(
         { clientX, clientY, copy },
         pending.shiftId,
       );
-      currentTargetRef.current = target;
       scheduleDragState({
         activeShiftId: pending.shiftId,
         label: resolveLabel(pending.shiftId),
@@ -255,6 +256,7 @@ export function useSingleShiftPointerDrag({
         clientY: event.clientY,
         ctrlKey: event.ctrlKey,
         metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
       });
       event.preventDefault();
     };
@@ -265,6 +267,7 @@ export function useSingleShiftPointerDrag({
         clientY: event.clientY,
         ctrlKey: event.ctrlKey,
         metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
       });
       event.preventDefault();
     };
@@ -281,7 +284,7 @@ export function useSingleShiftPointerDrag({
       const clientY = Number.isFinite(event.clientY)
         ? event.clientY
         : pending.startY;
-      const copy = event.ctrlKey || event.metaKey;
+      const copy = event.ctrlKey || event.metaKey || event.shiftKey;
       if (!draggingRef.current) {
         const delta = Math.hypot(
           clientX - pending.startX,
@@ -293,12 +296,11 @@ export function useSingleShiftPointerDrag({
         }
       }
       const target = draggingRef.current
-        ? (resolveTargetAtPoint({ clientX, clientY, copy }, pending.shiftId) ??
-          currentTargetRef.current)
+        ? resolveTargetAtPoint({ clientX, clientY, copy }, pending.shiftId)
         : null;
       if (draggingRef.current) onDropAttempt(target);
       if (draggingRef.current && target?.allowed)
-        onDrop({ ...target, copy: copy || target.copy });
+        onDrop({ ...target, copy });
       clearSession(draggingRef.current);
     };
     const handlePointerCancel = (event: PointerEvent) => {
@@ -319,7 +321,7 @@ export function useSingleShiftPointerDrag({
       const clientY = Number.isFinite(event.clientY)
         ? event.clientY
         : pending.startY;
-      const copy = event.ctrlKey || event.metaKey;
+      const copy = event.ctrlKey || event.metaKey || event.shiftKey;
       if (!draggingRef.current) {
         const delta = Math.hypot(
           clientX - pending.startX,
@@ -331,20 +333,27 @@ export function useSingleShiftPointerDrag({
         }
       }
       const target = draggingRef.current
-        ? (resolveTargetAtPoint({ clientX, clientY, copy }, pending.shiftId) ??
-          currentTargetRef.current)
+        ? resolveTargetAtPoint({ clientX, clientY, copy }, pending.shiftId)
         : null;
       if (draggingRef.current) onDropAttempt(target);
       if (draggingRef.current && target?.allowed)
-        onDrop({ ...target, copy: copy || target.copy });
+        onDrop({ ...target, copy });
       clearSession(draggingRef.current);
     };
+    const handleModifier = (event: KeyboardEvent) => {
+      if (!draggingRef.current || !lastPointRef.current || !["Control", "Shift", "Meta"].includes(event.key)) return;
+      updateDragAtPoint({ ...lastPointRef.current, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey });
+    };
+    window.addEventListener("keydown", handleModifier, true);
+    window.addEventListener("keyup", handleModifier, true);
     window.addEventListener("pointermove", handlePointerMove, true);
     window.addEventListener("pointerup", handlePointerUp, true);
     window.addEventListener("pointercancel", handlePointerCancel, true);
     window.addEventListener("mousemove", handleMouseMove, true);
     window.addEventListener("mouseup", handleMouseUp, true);
     return () => {
+      window.removeEventListener("keydown", handleModifier, true);
+      window.removeEventListener("keyup", handleModifier, true);
       window.removeEventListener("pointermove", handlePointerMove, true);
       window.removeEventListener("pointerup", handlePointerUp, true);
       window.removeEventListener("pointercancel", handlePointerCancel, true);
@@ -393,7 +402,6 @@ export function useSingleShiftPointerDrag({
       if (
         !enabled ||
         !isPrimaryDragActivation(event.button, event.buttons) ||
-        event.shiftKey ||
         event.altKey
       )
         return;
@@ -426,7 +434,6 @@ export function useSingleShiftPointerDrag({
       if (
         !enabled ||
         !isPrimaryDragActivation(event.button, event.buttons) ||
-        event.shiftKey ||
         event.altKey
       )
         return;

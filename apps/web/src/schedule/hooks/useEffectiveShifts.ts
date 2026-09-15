@@ -8,6 +8,8 @@ export type EffectiveScheduleShift = ScheduleShift & {
   readonly pending_op_id?: string;
   readonly pending_op_type?: SchedulePendingOp["op_type"];
   readonly pending_deleted?: boolean;
+  readonly optimistic?: boolean;
+  readonly saving_state?: "saving" | "delayed" | null;
 };
 
 type ShiftPublicationMetadata = {

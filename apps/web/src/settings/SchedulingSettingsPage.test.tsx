@@ -19,7 +19,7 @@ import {
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
-const context = {
+const context: ActiveWorkspaceContext = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
   workspace: {
     id: workspaceId,
@@ -45,7 +45,7 @@ const context = {
   ],
   onboarding: { status: "complete", currentStep: 4 },
   locationScope: { allLocations: true, locationIds: [] },
-} satisfies ActiveWorkspaceContext;
+};
 
 const settings = {
   workspace_id: workspaceId,
@@ -78,10 +78,14 @@ const weeklySettings: WeeklyPreferenceSettingsRead = {
   can_edit: true,
   missing_shift_types: [],
 };
-
 describe("SchedulingSettingsPage checklist mode", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    context.permissions = [
+      "workspace.read",
+      "settings.schedule_rules.read",
+      "settings.schedule_rules.manage",
+    ];
     vi.mocked(loadSchedulingSettings).mockResolvedValue(settings);
     vi.mocked(saveSchedulingSettings).mockResolvedValue(undefined);
     vi.mocked(loadWeeklyPreferenceSettings).mockResolvedValue(weeklySettings);
@@ -90,7 +94,7 @@ describe("SchedulingSettingsPage checklist mode", () => {
         ...weeklySettings,
         settings: {
           input_mode: command.input_mode,
-          warning_policy: command.warning_policy,
+          warning_policy: weeklySettings.settings.warning_policy,
           onboarding_required: command.onboarding_required,
           revision: 4,
         },
@@ -164,7 +168,6 @@ describe("SchedulingSettingsPage checklist mode", () => {
     renderPage("/app/settings/scheduling");
     fireEvent.click(await screen.findByRole("radio", { name: "Sunday" }));
     fireEvent.click(await screen.findByRole("radio", { name: "Shift type" }));
-    fireEvent.click(screen.getByRole("radio", { name: "Warn and confirm" }));
     fireEvent.click(
       screen.getByRole("switch", {
         name: "Availability required during onboarding",
@@ -178,7 +181,6 @@ describe("SchedulingSettingsPage checklist mode", () => {
         workspaceId,
         {
           input_mode: "shift_type",
-          warning_policy: "confirm",
           onboarding_required: true,
           expected_revision: 3,
         },
@@ -211,41 +213,6 @@ describe("SchedulingSettingsPage checklist mode", () => {
     expect(mode.closest("fieldset")).toHaveProperty("disabled", true);
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(screen.getByRole("button", { name: "Save rules" })).toBeTruthy();
-  });
-
-  it("explains and saves a configured minimum without losing a dirty value on refetch", async () => {
-    vi.mocked(loadSchedulingSettings).mockResolvedValue({
-      ...settings,
-      minimum_travel_minutes: 30,
-    });
-    const { client } = renderPage("/app/settings/scheduling");
-    const input = await screen.findByLabelText("Minimum travel time (minutes)");
-    await waitFor(() => expect(input).toHaveProperty("value", "30"));
-    expect(screen.getByText(/next location can start at 3:30 PM/)).toBeTruthy();
-    fireEvent.change(input, { target: { value: "60" } });
-    await client.invalidateQueries({
-      queryKey: ["scheduling-settings", workspaceId],
-    });
-    expect(input).toHaveProperty("value", "60");
-    fireEvent.click(screen.getByRole("button", { name: /save rules/i }));
-    await waitFor(() =>
-      expect(saveSchedulingSettings).toHaveBeenCalledWith(
-        workspaceId,
-        expect.objectContaining({ minimum_travel_minutes: 60 }),
-      ),
-    );
-  });
-
-  it("does not silently turn a cleared minimum into zero", async () => {
-    renderPage("/app/settings/scheduling");
-    const input = await screen.findByLabelText("Minimum travel time (minutes)");
-    fireEvent.change(input, { target: { value: "" } });
-    expect(input).toHaveProperty("value", "");
-    fireEvent.submit(input.closest("form")!);
-    expect(screen.getByRole("alert").textContent).toContain(
-      "whole number from 0 to 240",
-    );
-    expect(saveSchedulingSettings).not.toHaveBeenCalled();
   });
 
   it("does not overwrite unsaved settings when the query refetches", async () => {

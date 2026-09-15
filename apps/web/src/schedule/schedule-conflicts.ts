@@ -3,11 +3,27 @@ import type {
   ScheduleShift,
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
-import { assessEmployeeAvailability, availabilityForDate, getShiftTimeBasis } from "@newfork/shared";
-import { weeklyTargetAvailability } from "./lib/scheduleWeeklyAvailability";
+import { assessEmployeeAvailability, availabilityForDate, getShiftTimeBasis, type ScheduleConflictSeverity, type ScheduleConflictRules } from "@newfork/shared";
+import { weeklyTargetAvailability, weeklyTargetInterval } from "./lib/scheduleWeeklyAvailability";
 
 export type ScheduleConflictReason =
   string | { readonly message?: unknown; readonly [key: string]: unknown };
+
+export function scheduleConflictSeverity(reason: ScheduleConflictReason): ScheduleConflictSeverity {
+  if (typeof reason === "string") return "block";
+  if (["allow", "warn", "confirm", "block"].includes(String(reason.severity))) return reason.severity as ScheduleConflictSeverity;
+  return ["availability", "closed_day", "time_source_unresolved", "assessment_unknown"].includes(String(reason.type)) ? "confirm" : "block";
+}
+
+function applyConflictPolicy(reasons: ScheduleConflictReason[], model: ScheduleReadModel): ScheduleConflictReason[] {
+  const rules = model.settings.conflict_rules;
+  const ruleKeys: Record<string, keyof ScheduleConflictRules> = { availability: "availability", time_off: "approved_time_off", closed_day: "closed_location", minimum_travel: "minimum_travel", minimum_rest: "minimum_rest" };
+  return reasons.map(reason => {
+    if (typeof reason === "string") return reason;
+    const key = ruleKeys[String(reason.type)];
+    return { ...reason, severity: reason.severity ?? (key ? rules?.[key] ?? "confirm" : scheduleConflictSeverity(reason)) };
+  }).filter(reason => scheduleConflictSeverity(reason) !== "allow");
+}
 
 function withPeriod(message: string): string {
   const trimmed = message.trim();
@@ -299,6 +315,9 @@ export function evaluateScheduleShiftConflicts(
       )?.name ?? null,
   };
   const reasons: ScheduleConflictReason[] = [];
+  if (!model.locations.some(location => location.id === input.location_id) || !model.jobs.some(job => job.id === input.job_id) ||
+    (input.shift_type_id && !model.shift_types.some(type => type.id === input.shift_type_id))) return ["The location, job or shift type is no longer available."];
+  if (!hasAssessmentHours) reasons.push({ type: "time_source_unresolved", severity: "confirm", message: "Shift hours are unresolved. Confirm this assignment." });
 
   const matchingClosures = model.closures.filter(
     (candidate) =>
@@ -328,7 +347,7 @@ export function evaluateScheduleShiftConflicts(
     });
   }
 
-  if (input.employee_id === null) return reasons;
+  if (input.employee_id === null) return applyConflictPolicy(reasons, model);
   const employee = model.employees.find(
     (candidate) => candidate.id === input.employee_id,
   );
@@ -368,7 +387,7 @@ export function evaluateScheduleShiftConflicts(
   if (weeklyStatus === "time_off") {
     reasons.push({ ...context, type: "time_off", message: "Approved time off overlaps this assignment." });
   } else if (weeklyStatus === "unavailable" || weeklyStatus === "unknown") {
-    reasons.push({ ...context, type: "availability", rule_kind: "weekly",
+    reasons.push({ ...context, type: "availability", rule_kind: "weekly", ...(weeklyStatus === "unknown" ? { severity: "confirm" } : {}),
       message: weeklyStatus === "unknown" ? "Availability needs checking before assignment." : "The assignment overlaps unavailable hours." });
   }
   const effectiveDays = weeklyStatus === null ? availabilityForDate(employee, input.scheduled_date) : null;
@@ -393,21 +412,16 @@ export function evaluateScheduleShiftConflicts(
     });
   }
 
-  const duplicateNamedShift = shifts.find(
-    (shift) =>
-      shift.id !== excludeShiftId &&
-      shift.employee_id === input.employee_id &&
-      shift.scheduled_date === input.scheduled_date &&
-      input.shift_type_id !== null &&
-      shift.shift_type_id === input.shift_type_id,
-  );
-  if (duplicateNamedShift) {
-    reasons.push({
-      ...context,
-      type: "named_duplicate",
-      conflicting_shift_id: duplicateNamedShift.id,
-    });
-  }
+  const targetInterval = weeklyTargetInterval(employee, input);
+  const intervalsOverlap = (shift: ScheduleShift) => {
+    const other = weeklyTargetInterval(employee, shift);
+    if (other && targetInterval) return other.start < targetInterval.end && targetInterval.start < other.end;
+    // Legacy same-zone rows can still prove an overlap; missing cross-zone
+    // projection cannot prove that a target is clear.
+    const firstZone = shift.time_timezone || model.locations.find(l => l.id === shift.location_id)?.timezone;
+    const secondZone = input.time_timezone || model.locations.find(l => l.id === input.location_id)?.timezone;
+    return firstZone === secondZone && absoluteIntervalsOverlap(shift, input);
+  };
 
   const overlapping = shifts.filter(
     (shift) =>
@@ -415,7 +429,7 @@ export function evaluateScheduleShiftConflicts(
       shift.employee_id === input.employee_id &&
       hasAssessmentHours &&
       ["explicit", "type_default"].includes(getShiftTimeBasis(shift)) &&
-      absoluteIntervalsOverlap(shift, input),
+      intervalsOverlap(shift),
   );
   if (overlapping.length > 0) {
     reasons.push({
@@ -436,7 +450,22 @@ export function evaluateScheduleShiftConflicts(
     });
   }
 
-  return reasons;
+  for (const neighbor of shifts.filter(shift => shift.id !== excludeShiftId && shift.employee_id === input.employee_id)) {
+    const other = weeklyTargetInterval(employee, neighbor);
+    if (!targetInterval || !other) {
+      reasons.push({ type: "assessment_unknown", severity: "confirm", message: "Other assignment hours need checking." });
+      continue;
+    }
+    const gap = Math.max(targetInterval.start - other.end, other.start - targetInterval.end) / 60000;
+    if (gap < 0) continue;
+    if (neighbor.location_id !== input.location_id && gap < (model.settings.minimum_travel_minutes ?? 0)) {
+      reasons.push({ type: "minimum_travel", message: "There is not enough travel time between locations." });
+    }
+    if (gap < (model.settings.minimum_rest_minutes ?? 0)) {
+      reasons.push({ type: "minimum_rest", message: "There is not enough rest time between shifts." });
+    }
+  }
+  return applyConflictPolicy(reasons, model);
 }
 
 function scheduleClosureCoversDate(

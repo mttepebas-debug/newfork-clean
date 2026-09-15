@@ -118,6 +118,7 @@ import { RetroactiveEditDialog } from "../schedule/components/RetroactiveEditDia
 import { useCascadeNotice } from "../schedule/hooks/useCascadeNotice";
 import { useEditIdleTimer } from "../schedule/hooks/useEditIdleTimer";
 import { useEffectiveShifts } from "../schedule/hooks/useEffectiveShifts";
+import { createOptimisticPendingOp } from "../schedule/hooks/optimisticScheduleCache";
 import { useRetroactiveEditPrompt } from "../schedule/hooks/useRetroactiveEditPrompt";
 import { usePendingOpsQuery } from "../schedule/hooks/usePendingOpsQuery";
 import { useScheduleDrafts } from "../schedule/hooks/useScheduleDrafts";
@@ -129,6 +130,7 @@ import { saveScheduleLogo } from "../settings/organization-data";
 import {
   evaluateScheduleShiftConflicts,
   formatScheduleConflictMessage,
+  scheduleConflictSeverity,
   type ScheduleConflictReason,
 } from "../schedule/schedule-conflicts";
 import {
@@ -141,10 +143,8 @@ import {
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButton";
 import { resolveScheduleShiftSelectionIds } from "../schedule/lib/scheduleShiftSelection";
 import {
-  applyShiftClipboardSnapshotSelection,
+  applyShiftClipboardSnapshot,
   createShiftClipboardSnapshot,
-  createShiftClipboardSnapshotSelection,
-  getShiftClipboardSnapshots,
   type ShiftClipboardSnapshot,
 } from "../schedule/lib/shiftClipboard";
 import type { ScheduleShiftEditorState } from "../schedule/lib/shiftEditorState";
@@ -280,6 +280,10 @@ export function SchedulePage({
     actorNameByUserId: resolveCascadeActorName,
   });
   const [session, setSession] = useState<ScheduleEditSession | null>(null);
+  const mutationContext = `${context?.workspace.id}:${session?.id}:${session?.revision}`;
+  const currentMutationContext = useRef(mutationContext);
+  currentMutationContext.current = mutationContext;
+  useEffect(() => () => { currentMutationContext.current = "unmounted"; }, []);
   const [defaultHoursOpen, setDefaultHoursOpen] = useState(false);
   useEffect(() => setDefaultHoursOpen(false), [context?.workspace.id, session?.id]);
   const [drafts, setDrafts] = useState<readonly ScheduleDraftSummary[]>([]);
@@ -613,13 +617,22 @@ export function SchedulePage({
     setScheduleMode("preview", null);
     setOperationError(null);
   }, [setScheduleMode]);
-  const effectiveShifts = useEffectiveShifts(
+  const dropReview = useScheduleDropReview(context?.workspace.id, gridEditSession?.id, gridEditSession?.revision);
+  const displayedPendingOps = useMemo(
+    () => gridEditSession ? [...pendingOps, ...dropReview.optimisticOps] : [],
+    [gridEditSession, pendingOps, dropReview.optimisticOps],
+  );
+  const projectedShifts = useEffectiveShifts(
     gridEditSession?.shifts ??
       (activeDraftId && previewDraftShifts
         ? previewDraftShifts
         : (query.data?.shifts ?? [])),
-    gridEditSession ? pendingOps : [],
+    displayedPendingOps,
   );
+  const effectiveShifts = useMemo(() => projectedShifts.map(shift =>
+    dropReview.optimisticOps.some(op => op.id === shift.pending_op_id)
+      ? { ...shift, saving_state: dropReview.savingState, optimistic: true }
+      : shift), [projectedShifts, dropReview.optimisticOps, dropReview.savingState]);
   useEffect(() => {
     if (gridEditSession || !activeDraftId || !context || !query.data) {
       if (!activeDraftId) setPreviewDraftShifts(null);
@@ -672,7 +685,6 @@ export function SchedulePage({
       .map((shift) => shift.id);
   }, [effectiveShifts, query.data, search, selectedDate, view]);
   usePreflightShiftFocus(preflightShiftId, Boolean(gridEditSession && preflightShiftId && visibleSelectableShiftIds.includes(preflightShiftId)), setPreflightShiftId);
-  const dropReview = useScheduleDropReview(context?.workspace.id, gridEditSession?.id, gridEditSession?.revision);
   const updateDraftCache = useCallback(
     (nextDrafts: readonly ScheduleDraftSummary[]) => {
       if (!context || !query.data) return;
@@ -1422,15 +1434,19 @@ export function SchedulePage({
   const mutate = async (
     action: () => Promise<ScheduleEditSession>,
     onError?: (error: Error) => void,
+    throwOnError = false,
   ) => {
     setOperationError(null);
     const previousSession = session;
     try {
       const next = await action();
+      if (throwOnError && mutationContext !== currentMutationContext.current) return null;
       if (previousSession) rememberUndoSnapshot(previousSession);
       setSession(next);
       return next;
     } catch (error) {
+      if (throwOnError && mutationContext !== currentMutationContext.current) return null;
+      if (throwOnError) throw error;
       const caught = error as Error;
       onError?.(caught);
       setOperationError(caught.message);
@@ -1532,28 +1548,13 @@ export function SchedulePage({
     currentSelectedIds: readonly string[],
     options: { readonly armPaste?: boolean } = {},
   ) => {
-    const selectedShifts = currentSelectedIds
-      .map((id) => findEditableShift(id))
-      .filter((shift): shift is ScheduleEditableShift => Boolean(shift));
-    const snapshot = createShiftClipboardSnapshotSelection(selectedShifts);
-    if (!snapshot) return false;
-    const count = getShiftClipboardSnapshots(snapshot).length;
-    setClipboard(snapshot);
-    setPasteArmed(Boolean(options.armPaste));
-    setPasteBlockedReason(null);
-    showPasteModeNotice(
-      options.armPaste
-        ? `Paste mode on for ${count} ${count === 1 ? "shift" : "shifts"}`
-        : `${count} ${count === 1 ? "shift" : "shifts"} copied`,
-      800,
-    );
-    toast.success(count === 1 ? "Shift copied" : "Shifts copied", {
-      dedupeKey: "schedule-shifts-copied",
-      description:
-        count === 1
-          ? "Use paste mode to place it again."
-          : `${count} shifts are ready for paste mode.`,
-    });
+    if (currentSelectedIds.length > 1) {
+      toast.info("Select one shift to copy", { dedupeKey: "schedule-single-shift-copy" });
+      return true;
+    }
+    const shift = currentSelectedIds[0] ? findEditableShift(currentSelectedIds[0]) : undefined;
+    if (!shift) return false;
+    copyShift(shift, options);
     return true;
   };
 
@@ -1840,24 +1841,12 @@ export function SchedulePage({
     _point?: { readonly x: number; readonly y: number },
   ) => {
     if (!clipboard || dropReview.pending || dropReview.review) return;
-    if (!employeeId) {
-      const message = "Employee not found";
-      setPasteBlockedReason(formatScheduleConflictMessage(message));
-      setShiftConflictMessages([message]);
-      setPasteConflictContext("Paste shift");
-      toast.error("Paste blocked", {
-        dedupeKey: "schedule-paste-blocked-no-employee",
-        description:
-          "Choose an employee row before pasting this shift.",
-      });
-      return;
-    }
-    const clipboardSnapshots = getShiftClipboardSnapshots(clipboard);
-    const pasteInputs = applyShiftClipboardSnapshotSelection(clipboard, {
+    const clipboardSnapshots = [clipboard];
+    const pasteInputs = [applyShiftClipboardSnapshot(clipboard, {
       locationId,
       employeeId,
       date,
-    });
+    })];
     const validationShifts: ScheduleShift[] = [...model.shifts];
     const conflictEntry = pasteInputs
       .map((pasteInput, index) => {
@@ -1866,7 +1855,7 @@ export function SchedulePage({
           validationShifts,
           pasteInput,
           null,
-        ).filter(reason => typeof reason === "string" || reason.type !== "availability");
+        ).filter(reason => scheduleConflictSeverity(reason) === "block");
         validationShifts.push(
           scheduleShiftFromPasteInput(
             pasteInput,
@@ -2748,8 +2737,7 @@ export function SchedulePage({
         onCopy={(shift) => {
           if (dismissOpenSurfaceBeforeGridActivation()) return;
           if (
-            selectedIdsRef.current.length > 1 &&
-            selectedIdsRef.current.includes(shift.id)
+            selectedIdsRef.current.length > 1
           ) {
             copySelectedShifts(selectedIdsRef.current, { armPaste: true });
             return;
@@ -2786,17 +2774,23 @@ export function SchedulePage({
         }}
         onMove={(shift, locationId, employeeId, date) => {
           if (!context || !gridEditSession) return;
+          const input = toScheduleShiftMutation(shift, { location_id: locationId, employee_id: employeeId, scheduled_date: date });
           dropReview.start({
             shiftId: shift.id,
-            input: toScheduleShiftMutation(shift, { location_id: locationId, employee_id: employeeId, scheduled_date: date }),
-            save: async input => Boolean(await mutate(() => updateScheduleShift(context.workspace.id, gridEditSession, shift.id, shift.revision, input))),
+            input,
+            optimisticOp: createOptimisticPendingOp({ locationId, weekStart: gridEditSession.week_start, opType: "update", targetShiftId: shift.id,
+              draftId: gridEditSession.source_draft_id, payload: input, actorUserId: gridEditSession.holder_user_id }),
+            save: async input => Boolean(await mutate(() => updateScheduleShift(context.workspace.id, gridEditSession, shift.id, shift.revision, input), undefined, true)),
           });
         }}
         onCopyMove={(shift, locationId, employeeId, date) => {
           if (!context || !gridEditSession) return;
+          const input = toScheduleShiftMutation(shift, { location_id: locationId, employee_id: employeeId, scheduled_date: date });
           dropReview.start({
-            input: toScheduleShiftMutation(shift, { location_id: locationId, employee_id: employeeId, scheduled_date: date }),
-            save: async input => Boolean(await mutate(() => createScheduleShift(context.workspace.id, gridEditSession, input))),
+            input,
+            optimisticOp: createOptimisticPendingOp({ locationId, weekStart: gridEditSession.week_start, opType: "create", targetShiftId: null,
+              draftId: gridEditSession.source_draft_id, payload: input, actorUserId: gridEditSession.holder_user_id }),
+            save: async input => Boolean(await mutate(() => createScheduleShift(context.workspace.id, gridEditSession, input), undefined, true)),
           });
         }}
         onDayHeaderClick={(date, locationIds) => {
@@ -3045,18 +3039,15 @@ export function SchedulePage({
           setPasteConflictContext(null);
         }}
       />
-      {dropReview.pending ? <span role="status" className="schedule-drop-review-status">Checking shift change...</span> : null}
       {dropReview.review ? <ScheduleConflictSheet
         open
-        messages={dropReview.review.blocked
-          ? [...new Set(dropReview.review.assessments.flatMap(assessment => assessment?.reasons.map(reason => reason.message) ?? []))]
-          : [dropReview.review.warningCount > 1 ? `${dropReview.review.warningCount} shifts overlap unavailable hours.` : "This shift overlaps unavailable hours."]}
-        description={dropReview.review.blocked ? "Resolve this conflict before changing the shift." : "Confirm this assignment during unavailable hours."}
+        messages={[...new Set(dropReview.review.assessments.flatMap(assessment => assessment?.reasons.map(reason => reason.message) ?? []))]}
+        description={dropReview.review.blocked ? "Resolve this conflict before changing the shift." : "Review these scheduling conflicts before placing the shift."}
         tone={dropReview.review.blocked ? "blocker" : "warning"}
         requiresOverrideReason={!dropReview.review.blocked && dropReview.review.requiresReason}
         overrideReason={dropReview.reason}
         onOverrideReasonChange={dropReview.setReason}
-        submitLabel={dropReview.review.blocked ? undefined : "Confirm assignment"}
+        submitLabel={dropReview.review.blocked ? undefined : "Place shift"}
         onSubmit={dropReview.review.blocked ? undefined : dropReview.confirm}
         submitDisabled={dropReview.pending || (dropReview.review.requiresReason && dropReview.reason.trim().length < 10)}
         onDismiss={dropReview.dismiss}

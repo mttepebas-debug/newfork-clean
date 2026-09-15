@@ -8,6 +8,7 @@ import {
   MonitorSmartphone,
   ScrollText,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
@@ -58,6 +59,12 @@ const groups = [
         icon: CalendarClock,
         end: true,
         permissions: ["settings.schedule_rules.read"],
+      },
+      {
+        to: "/app/settings/scheduling/conflicts",
+        label: "Conflict handling",
+        icon: ShieldAlert,
+        permissions: ["schedule.conflict_rules.manage"],
       },
       {
         to: "/app/settings/scheduling/shift-types",

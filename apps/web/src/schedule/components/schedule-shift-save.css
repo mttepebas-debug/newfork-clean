@@ -1,0 +1,17 @@
+.schedule-shift-badge .schedule-shift-save-status {
+  position: absolute;
+  z-index: 2;
+  inset: auto 2px 2px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: var(--surface, #fff);
+  color: var(--text, #263b32);
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.schedule-shift-badge[data-save-state="delayed"] .schedule-shift-save-status {
+  background: #fff1ce;
+  color: #704800;
+}

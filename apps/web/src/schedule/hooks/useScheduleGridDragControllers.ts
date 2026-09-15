@@ -15,6 +15,7 @@ import {
   evaluateScheduleShiftConflicts,
   formatScheduleConflictMessages,
   type ScheduleConflictReason,
+  scheduleConflictSeverity,
 } from "../schedule-conflicts";
 import { formatTime } from "../lib/scheduleDateTime";
 import { toScheduleShiftMutation } from "../lib/scheduleShiftMutation";
@@ -27,11 +28,20 @@ import {
 import { useShiftTypePresetPointerDrag } from "./useShiftTypePresetPointerDrag";
 
 function dropConflictEvaluation(reasons: readonly ScheduleConflictReason[]): ShiftDropEvaluation {
-  const blockers = reasons.filter(reason => typeof reason === "string" || reason.type !== "availability");
+  const blockers = reasons.filter(reason => scheduleConflictSeverity(reason) === "block");
   const messages = formatScheduleConflictMessages(blockers.length ? blockers : reasons);
   if (blockers.length) return { allowed: false, reason: messages[0], messages, targetStatus: "blocked" };
   if (messages.length) return { allowed: true, reason: messages[0], messages, targetStatus: "warning" };
   return { allowed: true, targetStatus: "allowed" };
+}
+
+function missingTargetEvidence(model: ScheduleReadModel, target: { locationId: string; employeeId: string | null; date: string }): ScheduleConflictReason[] {
+  const projection = model.employees.find(employee => employee.id === target.employeeId)?.weekly_availability?.find(item => item.location_id === target.locationId);
+  const weekEnd = projection ? new Date(Date.parse(`${projection.week_start}T00:00:00Z`) + 7 * 86_400_000).toISOString().slice(0, 10) : "";
+  if (!model.settings.conflict_rules || (target.employeeId && (!projection || projection.status !== "ready" || !projection.clock_segments.length || target.date < projection.week_start || target.date >= weekEnd))) {
+    return [{ type: "assessment_unknown", severity: "confirm", message: "Scheduling rules or availability need checking." }];
+  }
+  return [];
 }
 
 export function formatScheduleDragShiftLabel(
@@ -71,7 +81,7 @@ export function evaluateScheduleShiftDropTarget({
     };
 
   return dropConflictEvaluation(
-    evaluateScheduleShiftConflicts(
+    [...evaluateScheduleShiftConflicts(
       model,
       model.shifts,
       toScheduleShiftMutation(shift, {
@@ -80,7 +90,7 @@ export function evaluateScheduleShiftDropTarget({
         scheduled_date: target.date,
       }),
       target.copy ? null : shift.id,
-    ),
+    ), ...missingTargetEvidence(model, target)],
   );
 }
 
@@ -164,7 +174,7 @@ export function evaluateScheduleShiftGroupDropTarget({
     }
 
     const evaluation = dropConflictEvaluation(
-      evaluateScheduleShiftConflicts(
+      [...evaluateScheduleShiftConflicts(
         model,
         [
           ...retainedShifts,
@@ -177,7 +187,7 @@ export function evaluateScheduleShiftGroupDropTarget({
           employee_id: target.employeeId,
           scheduled_date: target.date,
         }),
-      ),
+      ), ...missingTargetEvidence(model, target)],
     );
     return {
       shiftId: target.shiftId,
@@ -235,7 +245,7 @@ export function evaluateSchedulePresetDropTarget({
     useDefaultTimesForScheduling,
   );
   return validation.allowed
-    ? { allowed: true, targetStatus: validation.warning ? "warning" : "allowed", ...(validation.warning ? { reason: validation.warning } : {}) }
+    ? { allowed: true, targetStatus: validation.warning || missingTargetEvidence(model, target).length ? "warning" : "allowed", ...(validation.warning ? { reason: validation.warning } : {}) }
     : {
         allowed: false,
         reason: validation.reason,
@@ -331,6 +341,7 @@ export function useScheduleGridDragControllers({
         description: target.reason,
       });
     },
+    onDragEnd: () => setDragOverCell(null),
     onDrop: (target, point) => {
       onPresetCreate({
         locationId: target.locationId,

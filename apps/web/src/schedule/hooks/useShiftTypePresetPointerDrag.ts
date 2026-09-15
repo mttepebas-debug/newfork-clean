@@ -28,11 +28,13 @@ export function useShiftTypePresetPointerDrag({
   enabled,
   evaluateTarget,
   onDropAttempt,
+  onDragEnd,
   onDrop,
 }: {
   readonly enabled: boolean;
   readonly evaluateTarget: (target: PresetDropTarget) => PresetDropEvaluation;
   readonly onDropAttempt: (target: ResolvedPresetDropTarget | null) => void;
+  readonly onDragEnd: () => void;
   readonly onDrop: (
     target: PresetDropTarget,
     point: { readonly clientX: number; readonly clientY: number },
@@ -75,10 +77,12 @@ export function useShiftTypePresetPointerDrag({
 
   const clearSession = useCallback(
     (suppressClick: boolean) => {
+      const hadDrag = draggingRef.current;
       pendingRef.current = null;
       currentTargetRef.current = null;
       draggingRef.current = false;
       setDragState(null);
+      if (hadDrag) onDragEnd();
       clearClickSuppressor();
       if (!suppressClick) return;
       const swallowClick = (event: globalThis.MouseEvent) => {
@@ -90,7 +94,7 @@ export function useShiftTypePresetPointerDrag({
       clickSuppressorRef.current = swallowClick;
       window.addEventListener("click", swallowClick, true);
     },
-    [clearClickSuppressor],
+    [clearClickSuppressor, onDragEnd],
   );
 
   useEffect(() => clearClickSuppressor, [clearClickSuppressor]);

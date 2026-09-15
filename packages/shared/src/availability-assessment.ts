@@ -1,10 +1,38 @@
 import { z } from "zod";
 
+export const scheduleConflictSeveritySchema = z.enum(["allow", "warn", "confirm", "block"]);
+export type ScheduleConflictSeverity = z.infer<typeof scheduleConflictSeveritySchema>;
+export const scheduleConflictRulesSchema = z.object({
+  availability: scheduleConflictSeveritySchema,
+  approved_time_off: z.enum(["confirm", "block"]),
+  closed_location: z.enum(["warn", "confirm", "block"]),
+  minimum_travel: z.enum(["warn", "confirm", "block"]),
+  minimum_rest: z.enum(["warn", "confirm", "block"]),
+});
+export type ScheduleConflictRules = z.infer<typeof scheduleConflictRulesSchema>;
+export const scheduleConflictSettingsSchema = z.object({
+  conflict_rules: scheduleConflictRulesSchema,
+  conflict_rules_revision: z.number().int().positive(),
+  minimum_travel_minutes: z.number().int().min(0).max(240),
+  minimum_rest_minutes: z.number().int().min(0).max(1440),
+});
+export type ScheduleConflictSettings = z.infer<typeof scheduleConflictSettingsSchema>;
+export const DEFAULT_SCHEDULE_CONFLICT_RULES: ScheduleConflictRules = {
+  availability: "confirm", approved_time_off: "block", closed_location: "confirm",
+  minimum_travel: "confirm", minimum_rest: "confirm",
+};
+
+export function highestScheduleConflictSeverity(values: readonly ScheduleConflictSeverity[]): ScheduleConflictSeverity {
+  const order: readonly ScheduleConflictSeverity[] = ["allow", "warn", "confirm", "block"];
+  return order[Math.max(0, ...values.map(value => order.indexOf(value)))]!;
+}
+
 const interval = z.object({
   start_at: z.string().datetime({ offset: true }),
   end_at: z.string().datetime({ offset: true }),
 });
 export const shiftAvailabilityAssessmentSchema = z.object({
+  conflict_severity: scheduleConflictSeveritySchema.optional(),
   service_classification: z.object({
     kind: z.literal("custom"),
     status: z.enum(["preview", "recorded"]),
@@ -39,6 +67,7 @@ export const shiftAvailabilityAssessmentSchema = z.object({
       code: z.string(),
       message: z.string(),
       definite: z.boolean(),
+      severity: scheduleConflictSeveritySchema.optional(),
       intervals: z.array(interval).optional(),
     }),
   ),

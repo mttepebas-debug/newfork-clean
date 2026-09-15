@@ -28,7 +28,7 @@ function model(): WeeklyPreferenceSettingsRead {
   };
 }
 describe("weekly preference settings", () => {
-  it("saves the three controls together with the loaded revision", async () => {
+  it("saves entry mode and onboarding with the loaded revision", async () => {
     const value = model();
     const onSave = vi
       .fn()
@@ -37,7 +37,6 @@ describe("weekly preference settings", () => {
         settings: {
           ...value.settings,
           input_mode: "shift_type",
-          warning_policy: "confirm",
           onboarding_required: true,
           revision: 4,
         },
@@ -52,13 +51,11 @@ describe("weekly preference settings", () => {
       </MemoryRouter>,
     );
     fireEvent.click(screen.getByRole("radio", { name: "Shift type" }));
-    fireEvent.click(screen.getByRole("radio", { name: "Warn and confirm" }));
     fireEvent.click(screen.getByRole("switch"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText("Saved");
     expect(onSave).toHaveBeenCalledWith({
       input_mode: "shift_type",
-      warning_policy: "confirm",
       onboarding_required: true,
       expected_revision: 3,
     });
@@ -93,7 +90,7 @@ describe("weekly preference settings", () => {
         .disabled,
     ).toBe(true);
     fireEvent.click(screen.getByRole("radio", { name: "Time range" }));
-    fireEvent.click(screen.getByRole("radio", { name: "Warn and confirm" }));
+    fireEvent.click(screen.getByRole("switch"));
     expect(
       (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
         .disabled,

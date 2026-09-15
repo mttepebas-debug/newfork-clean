@@ -210,14 +210,9 @@ export function PublishScheduleDialog({
   const needsAvailabilityConfirmation = newAvailability.some((finding) => finding.warning_policy === "confirm");
   const availabilityConfirmed = !needsAvailabilityConfirmation || availabilityConfirmedFingerprint === preview?.fingerprint;
   const hasHardBlocker = hardFindings.length > 0;
-  const reasonsValid = softFindings.every(
-    (finding) => (reasons[finding.id] ?? "").trim().length >= 10,
-  );
-  const risksValid = riskFindings.length === 0 || risksAcknowledged;
   const publishBlocked =
     hasHardBlocker ||
-    !reasonsValid ||
-    !risksValid ||
+    preview?.status === "hard_blocked" ||
     preview?.status === "past_week_closed";
   const preflightReady =
     preview?.status === "publish_ready" &&
@@ -241,7 +236,7 @@ export function PublishScheduleDialog({
           riskFindings.length
             ? `${riskFindings.length} ${riskFindings.length === 1 ? "risk" : "risks"}`
             : null,
-          newAvailability.length ? `${newAvailability.length} availability ${newAvailability.length === 1 ? "conflict" : "conflicts"}` : null,
+          newAvailability.length ? `${newAvailability.length} schedule ${newAvailability.length === 1 ? "conflict" : "conflicts"}` : null,
         ]
           .filter(Boolean)
           .join(" · ")
@@ -461,13 +456,13 @@ export function PublishScheduleDialog({
     try {
       let currentPreview = preview;
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        const overrideDecisions = [...publishOverrideableBlockers(currentPreview).map((finding) => ({
+        const overrideDecisions = [...publishOverrideableBlockers(currentPreview), ...publishGatingRisks(currentPreview)].map((finding) => ({
           finding_id: finding.id,
-          reason: reasons[finding.id]!.trim(),
-        })), ...publishNewAvailabilityFindings(currentPreview).map((finding) => ({
+          reason: "Schedule conflict confirmed by manager.",
+        })).concat(publishNewAvailabilityFindings(currentPreview).map((finding) => ({
           finding_id: finding.id,
-          reason: finding.warning_policy === "confirm" ? "Availability conflict confirmed by manager." : "Availability warning acknowledged (warn policy).",
-        }))];
+          reason: finding.warning_policy === "confirm" ? "Schedule conflict confirmed by manager." : "Schedule warning acknowledged (warn policy).",
+        })));
         try {
           await onPublish(currentPreview, overrideDecisions, notifyEmployeeIds,
             { fingerprint: currentPreview.fingerprint, decisions: overrideDecisions }, departmentScope);
@@ -480,12 +475,12 @@ export function PublishScheduleDialog({
             setPreview(currentPreview);
             const count = publishNewAvailabilityFindings(currentPreview).filter(finding => finding.warning_policy === "warn").length;
             toast.warning(
-              count ? "Availability conflicts updated" : "Availability warnings cleared",
+              count ? "Schedule conflicts updated" : "Schedule warnings cleared",
               {
                 dedupeKey: "schedule-publish-availability-refreshed",
                 description: count
                   ? `${count} ${count === 1 ? "conflict" : "conflicts"} refreshed. Publication is continuing.`
-                  : "Publication is continuing with the latest availability check.",
+                  : "Publication is continuing with the latest conflict check.",
               },
             );
             continue;
@@ -921,7 +916,7 @@ export function PublishScheduleDialog({
                       ? `${hardFindings.length + softFindings.length} blockers`
                       : null,
                     riskFindings.length ? `${riskFindings.length} risks` : null,
-                    newAvailability.length ? `${newAvailability.length} availability ${newAvailability.length === 1 ? "conflict" : "conflicts"}` : null,
+                    newAvailability.length ? `${newAvailability.length} schedule ${newAvailability.length === 1 ? "conflict" : "conflicts"}` : null,
                   ]
                     .filter(Boolean)
                     .join(" · ") || "No blockers or risks"
@@ -960,7 +955,7 @@ export function PublishScheduleDialog({
                 setStep(3);
               }}
             >
-              {needsAvailabilityConfirmation ? "Confirm availability and continue" : preflightReady ? "Next" : "Override and continue"}
+              Next
             </button>
           ) : wizardStep === 3 ? (
             <button

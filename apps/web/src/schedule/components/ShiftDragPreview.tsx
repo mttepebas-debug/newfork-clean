@@ -66,7 +66,7 @@ export function ShiftDragPreview({
         publicationState={null}
       />
       {dragState.copy ? (
-        <span className="schedule-drag-copy-badge">+ Copy</span>
+        <span className="schedule-drag-copy-badge">+ Paste</span>
       ) : null}
       {dragState.reason ? (
         <span className="schedule-drag-blocked-reason">{dragState.reason}</span>

@@ -14,7 +14,7 @@ export interface OrganizationSettingsService {
   updateSchedulingSettings(input: {
     readonly actorUserId: string;
     readonly workspaceId: string;
-    readonly settings: SchedulingSettingsInput;
+    readonly settings: Partial<SchedulingSettingsInput>;
   }): Promise<SchedulingSettings>;
   reorderEntities(input: {
     readonly actorUserId: string;
@@ -75,7 +75,7 @@ export function createOrganizationSettingsServiceWithClient(
       const { data, error } = await client
         .from("workspace_scheduling_settings")
         .select(
-          "workspace_id,week_start_day,schedule_deadline_day,conflict_policy,availability_enforcement,time_format,availability_ownership,availability_approval,availability_initial_review,availability_notice_days,availability_policy_revision,minimum_travel_minutes",
+          "workspace_id,week_start_day,schedule_deadline_day,conflict_policy,availability_enforcement,time_format,availability_ownership,availability_approval,availability_initial_review,availability_notice_days,availability_policy_revision,minimum_travel_minutes,minimum_rest_minutes,conflict_rules,conflict_rules_revision",
         )
         .eq("workspace_id", input.workspaceId)
         .single();

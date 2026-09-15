@@ -1,5 +1,6 @@
 import {
   schedulingSettingsInputSchema,
+  scheduleConflictSettingsSchema,
   type Permission,
 } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
@@ -35,6 +36,25 @@ export function registerOrganizationSettingsRoutes(
     service: options.service?.jobs ?? null,
     contextResolver: options.contextResolver,
   });
+  app.get("/v1/workspaces/:workspaceId/scheduling-settings/conflicts", async (request, reply) => {
+    const params = workspaceParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid workspace required" });
+    const context = await authorize(request.headers.authorization, params.data.workspaceId, "schedule.conflict_rules.manage", options.contextResolver, reply);
+    if (!context) return;
+    if (!options.service) return reply.status(503).send({ error: "Organization settings unavailable" });
+    try { return reply.send(scheduleConflictSettingsSchema.parse(await options.service.readSchedulingSettings({ workspaceId: params.data.workspaceId }))); }
+    catch (error) { return requestError(reply, error); }
+  });
+  app.put("/v1/workspaces/:workspaceId/scheduling-settings/conflicts", async (request, reply) => {
+    const params = workspaceParams.safeParse(request.params);
+    const body = scheduleConflictSettingsSchema.strict().safeParse(request.body);
+    if (!params.success || !body.success) return reply.status(400).send({ error: "Valid conflict settings required" });
+    const context = await authorize(request.headers.authorization, params.data.workspaceId, "schedule.conflict_rules.manage", options.contextResolver, reply);
+    if (!context) return;
+    if (!options.service) return reply.status(503).send({ error: "Organization settings unavailable" });
+    try { return reply.send(scheduleConflictSettingsSchema.parse(await options.service.updateSchedulingSettings({ actorUserId: context.userId, workspaceId: params.data.workspaceId, settings: body.data }))); }
+    catch (error) { return requestError(reply, error); }
+  });
   app.get(
     "/v1/workspaces/:workspaceId/scheduling-settings",
     async (request, reply) => {
@@ -53,11 +73,11 @@ export function registerOrganizationSettingsRoutes(
           .status(503)
           .send({ error: "Organization settings service is not configured" });
       try {
-        return reply.send(
-          await options.service.readSchedulingSettings({
+        const settings = await options.service.readSchedulingSettings({
             workspaceId: params.data.workspaceId,
-          }),
-        );
+          });
+        const { conflict_rules, conflict_rules_revision, minimum_rest_minutes, minimum_travel_minutes, ...general } = settings;
+        return reply.send(general);
       } catch (error) {
         return requestError(reply, error);
       }
@@ -71,6 +91,8 @@ export function registerOrganizationSettingsRoutes(
       const body = schedulingSettingsInputSchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply.status(400).send({ error: "Valid settings required" });
+      if (["conflict_rules", "conflict_rules_revision", "minimum_travel_minutes", "minimum_rest_minutes"].some(key => key in body.data))
+        return reply.status(400).send({ error: "Use Conflict handling to change conflict rules." });
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
@@ -84,13 +106,13 @@ export function registerOrganizationSettingsRoutes(
           .status(503)
           .send({ error: "Organization settings service is not configured" });
       try {
-        return reply.send(
-          await options.service.updateSchedulingSettings({
+        const settings = await options.service.updateSchedulingSettings({
             actorUserId: context.userId,
             workspaceId: params.data.workspaceId,
             settings: body.data,
-          }),
-        );
+          });
+        const { conflict_rules, conflict_rules_revision, minimum_rest_minutes, minimum_travel_minutes, ...general } = settings;
+        return reply.send(general);
       } catch (error) {
         return requestError(reply, error);
       }

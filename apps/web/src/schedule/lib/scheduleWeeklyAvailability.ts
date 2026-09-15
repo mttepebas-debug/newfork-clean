@@ -19,23 +19,29 @@ function overlaps(intervals: readonly Interval[], start: number, end: number): b
 }
 export function weeklyTargetAvailability(employee: ScheduleEmployee, input: ScheduleShiftMutationInput): WeeklyTargetStatus | null {
   if (employee.weekly_availability === undefined) return null;
-  const projection = employee.weekly_availability.find(item => item.location_id === input.location_id);
-  if (!projection || projection.status !== "ready") return "unknown";
+  const interval = weeklyTargetInterval(employee, input);
+  if (!interval) return "unknown";
+  const projection = employee.weekly_availability.find(item => item.location_id === input.location_id)!;
+  if (overlaps(projection.leave_intervals, interval.start, interval.end)) return "time_off";
+  return overlaps(projection.unavailable_intervals, interval.start, interval.end) ? "unavailable" : "available";
+}
+
+export function weeklyTargetInterval(employee: ScheduleEmployee, input: ScheduleShiftMutationInput): { start: number; end: number } | null {
+  const projection = employee.weekly_availability?.find(item => item.location_id === input.location_id);
+  if (!projection || projection.status !== "ready") return null;
   const weekEnd = new Date(Date.parse(`${projection.week_start}T00:00:00Z`) + 7 * 86_400_000).toISOString().slice(0, 10);
-  if (input.scheduled_date < projection.week_start || input.scheduled_date >= weekEnd) return "unknown";
+  if (input.scheduled_date < projection.week_start || input.scheduled_date >= weekEnd) return null;
   const zone = input.time_timezone || input.time_snapshot?.timezone || projection.timezone;
-  if (zone !== projection.timezone || !["explicit", "type_default"].includes(getShiftTimeBasis(input))) return "unknown";
+  if (zone !== projection.timezone || !["explicit", "type_default"].includes(getShiftTimeBasis(input))) return null;
   if (input.time_snapshot && getShiftTimeBasis(input) === "type_default" &&
-    (input.time_snapshot.start_time.slice(0, 5) !== input.start_time.slice(0, 5) || input.time_snapshot.end_time.slice(0, 5) !== input.end_time.slice(0, 5))) return "unknown";
+    (input.time_snapshot.start_time.slice(0, 5) !== input.start_time.slice(0, 5) || input.time_snapshot.end_time.slice(0, 5) !== input.end_time.slice(0, 5))) return null;
   const validClock = (clock: string) => /^(?:[01]\d|2[0-3]):[0-5]\d(?::00)?$/.test(clock);
-  if (!validClock(input.start_time) || !(validClock(input.end_time) || input.end_time === "24:00") || input.start_time === input.end_time) return "unknown";
+  if (!validClock(input.start_time) || !(validClock(input.end_time) || input.end_time === "24:00") || input.start_time === input.end_time) return null;
   const startWall = Date.parse(`${input.scheduled_date}T${input.start_time}Z`);
   let endWall = Date.parse(`${input.scheduled_date}T${input.end_time}Z`);
   if (endWall < startWall) endWall += 86_400_000;
   const start = instant(startWall, projection), end = instant(endWall, projection);
-  if (start === null || end === null || end <= start) return "unknown";
-  if (overlaps(projection.leave_intervals, start, end)) return "time_off";
-  return overlaps(projection.unavailable_intervals, start, end) ? "unavailable" : "available";
+  return start === null || end === null || end <= start ? null : { start, end };
 }
 
 export function weeklyEmployeeSummary(employee: ScheduleEmployee): string | null {

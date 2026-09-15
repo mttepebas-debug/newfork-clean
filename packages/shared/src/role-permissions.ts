@@ -32,6 +32,13 @@ export const rolePermissionGroups: readonly {
         edit: ["schedule.publish"],
       },
       {
+        id: "conflict-rules",
+        label: "Manage conflict rules",
+        description: "View and change workspace conflict handling.",
+        read: [],
+        edit: ["schedule.conflict_rules.manage"],
+      },
+      {
         id: "lineup",
         label: "Line Up",
         description: "Daily assignments and shared lineups.",
@@ -222,6 +229,7 @@ export const rolePermissionDependencies: Readonly<
   "schedule.manage": ["schedule.read"],
   "schedule.publish": ["schedule.manage"],
   "schedule.availability.override": ["schedule.manage"],
+  "schedule.conflict_rules.manage": ["settings.schedule_rules.read"],
   "schedule.lineup.read": ["schedule.read"],
   "schedule.lineup.manage": ["schedule.lineup.read"],
   "schedule.lineup.share": ["schedule.lineup.read"],

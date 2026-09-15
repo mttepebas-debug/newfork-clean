@@ -17,6 +17,8 @@ import {
 } from "../badgeAccessibility";
 import type { TimeFormat } from "../timeInput";
 import type { ShiftPublicationState } from "./ScheduleContextMenu";
+import type { EffectiveScheduleShift } from "../hooks/useEffectiveShifts";
+import "./schedule-shift-save.css";
 
 const warningLabels = {
   availability: "Outside employee availability",
@@ -70,7 +72,7 @@ export function ShiftCard({
   onPointerDown,
   onMouseDown,
 }: {
-  readonly shift: ScheduleShift;
+  readonly shift: ScheduleShift & Pick<EffectiveScheduleShift, "optimistic" | "saving_state">;
   readonly job: string;
   readonly type: ScheduleReadModel["shift_types"][number] | undefined;
   readonly locationName?: string | null;
@@ -166,6 +168,9 @@ export function ShiftCard({
       })}
       data-shift-badge="true"
       data-shift-id={shift.id}
+      disabled={shift.optimistic}
+      aria-busy={shift.optimistic || undefined}
+      data-save-state={shift.saving_state ?? undefined}
       data-schedule-row-key={rowKey}
       data-selected={selected}
       data-dragging={dragging}
@@ -178,13 +183,11 @@ export function ShiftCard({
       data-stack-count={stackCount > 1 ? stackCount : undefined}
       aria-pressed={selected}
       onPointerDown={(event) => {
-        if (handleModifierSelectionStart(event, "pointer")) return;
-        modifierSelectionHandledRef.current = false;
+        if (!handleModifierSelectionStart(event, "pointer")) modifierSelectionHandledRef.current = false;
         onPointerDown?.(shift.id, event);
       }}
       onMouseDown={(event) => {
-        if (handleModifierSelectionStart(event, "mouse")) return;
-        modifierSelectionHandledRef.current = false;
+        if (!handleModifierSelectionStart(event, "mouse")) modifierSelectionHandledRef.current = false;
         onMouseDown?.(shift.id, event);
       }}
       onClick={(event) => {
@@ -236,14 +239,23 @@ export function ShiftCard({
           cancelPendingSingleClick();
           onEdit?.(shift as ScheduleEditableShift);
         }
-        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c")
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c") {
+          event.preventDefault();
+          event.stopPropagation();
           onCopy?.(shift as ScheduleEditableShift);
+        }
       }}
       onContextMenu={(event) => {
         if (!editing) return;
         onContextMenu?.(shift as ScheduleEditableShift, event);
       }}
     >
+      {shift.saving_state ? (
+        <span className="schedule-shift-save-status" role="status"
+          title={shift.saving_state === "delayed" ? "Still saving. Wait for the result before trying again." : undefined}>
+          {shift.saving_state === "delayed" ? "Still saving — please wait" : "Saving"}
+        </span>
+      ) : null}
       {selected || focused ? (
         <span
           className="schedule-shift-selection-ring"

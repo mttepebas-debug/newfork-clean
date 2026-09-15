@@ -66,6 +66,13 @@ function renderShiftCard(
 }
 
 describe("ShiftCard", () => {
+  it("shows saving feedback only on its optimistic badge", () => {
+    renderShiftCard({ shift: { ...shift, optimistic: true, saving_state: "delayed" } });
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("Still saving — please wait");
+    expect(status.closest("button")?.disabled).toBe(true);
+    expect(status.closest("button")?.getAttribute("aria-busy")).toBe("true");
+  });
   it("renders the schedule badge with title, labels, location, time, and sizing data", () => {
     renderShiftCard({ selected: true, focused: true });
 

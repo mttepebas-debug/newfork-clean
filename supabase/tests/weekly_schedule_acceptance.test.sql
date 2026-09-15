@@ -19,6 +19,7 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  union all select w,actor,'employee'::public.workspace_role,false from wp_fixture
  union all select w,manager,'manager'::public.workspace_role,false from wp_fixture;
 insert into public.workspace_scheduling_settings(workspace_id) select w from wp_fixture on conflict do nothing;
+update public.workspace_scheduling_settings set availability_warning_policy='warn' where workspace_id=(select w from wp_fixture);
 insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone)
  select loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles' from wp_fixture
  union all select other_loc,w,'East','2 Test Street','Test City','NY','10001','America/New_York' from wp_fixture;
@@ -47,11 +48,11 @@ select is(pg_temp.preview()->>'can_override','true','scheduling manager does not
 select throws_ok($$select public.assess_weekly_schedule_assignment_service(actor,w,pg_temp.assignment()) from wp_fixture$$,'42501',null,'employee cannot inspect manager assessment');
 select throws_ok($$select pg_temp.preview(jsonb_build_object('location_id',other_loc)) from wp_fixture$$,'42501',null,'manager assessment enforces target location scope');
 select throws_ok($$select public.assess_weekly_schedule_assignment_service(manager,w,pg_temp.assignment(),shift_id,gen_random_uuid()) from wp_fixture$$,'42501',null,'expired or foreign edit session is rejected');
-select throws_ok($$select pg_temp.accept()$$,'40001',null,'warn policy still requires a fresh checked fingerprint');
+select throws_ok($$select pg_temp.accept()$$,'PT409',null,'warn policy still requires a fresh checked fingerprint');
 create temp table checked as select pg_temp.assignment(jsonb_build_object('availability_assessment_fingerprint',pg_temp.preview()->>'fingerprint')) s;
 select lives_ok($$select pg_temp.accept((select s from checked))$$,'warn acceptance needs no reason');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),1::bigint,'one current acceptance is stored');
-select is((select reason from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),'Availability warning acknowledged (warn policy).','system action is recorded without inventing an employee explanation');
+select is((select reason from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),'Schedule warning acknowledged (warn policy).','system action is recorded without inventing an employee explanation');
 select is((select actor_user_id from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),(select manager from wp_fixture),'acceptance records the actual manager');
 insert into public.jobs(id,workspace_id,name) select 'ad421000-0000-4000-8000-000000000011',w,'Server' from wp_fixture;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,is_primary,created_by)
@@ -68,23 +69,23 @@ select ok(pg_temp.editor_assess('{"start_time":"19:00"}')->>'override_recorded' 
 select throws_ok($$select public.assess_weekly_schedule_assignment_service(manager,w,pg_temp.assignment(),gen_random_uuid(),(select id from editor_session)) from wp_fixture$$,'P0002',null,'deleted edit-session target cannot silently become a new assignment');
 select lives_ok($$select pg_temp.accept('{"notes":"Changed shift note"}',pg_temp.assignment())$$,'same effective conflict reuses acceptance without a new fingerprint');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture)),1::bigint,'unchanged conflict does not append duplicate history');
-select throws_ok($$select pg_temp.accept('{"id":"ad421000-0000-4000-8000-000000000009"}',pg_temp.assignment())$$,'40001',null,'acceptance cannot transfer to another shift');
+select throws_ok($$select pg_temp.accept('{"id":"ad421000-0000-4000-8000-000000000009"}',pg_temp.assignment())$$,'PT409',null,'acceptance cannot transfer to another shift');
 select throws_ok($$select public.prepare_weekly_schedule_assignment(actor,w,pg_temp.assignment(),pg_temp.assignment()) from wp_fixture$$,'42501',null,'employee cannot reuse a manager acceptance');
 update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,2,all_day}','true'),revision=revision+1 where workspace_id=(select w from wp_fixture);
 select lives_ok($$select pg_temp.accept('{}',pg_temp.assignment())$$,'unrelated weekday change retains acceptance');
 update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,1,range}','{"start":"19:00","end":"20:00"}'),revision=revision+1 where workspace_id=(select w from wp_fixture);
-select throws_ok($$select pg_temp.accept((select s from checked),pg_temp.assignment())$$,'40001',null,'changed physical conflict requires a fresh decision');
+select throws_ok($$select pg_temp.accept((select s from checked),pg_temp.assignment())$$,'PT409',null,'changed physical conflict requires a fresh decision');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),1::bigint,'failed decision does not revoke prior history');
 select lives_ok($$select pg_temp.accept(jsonb_build_object('availability_assessment_fingerprint',pg_temp.preview()->>'fingerprint'),pg_temp.assignment())$$,'fresh conflict assessment can be accepted');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is not null),1::bigint,'superseded acceptance remains as revoked history');
 update public.workspace_scheduling_settings set availability_warning_policy='confirm' where workspace_id=(select w from wp_fixture);
-select throws_ok($$select pg_temp.accept('{}',pg_temp.assignment())$$,'40001',null,'warn to confirm invalidates previous acceptance');
+select throws_ok($$select pg_temp.accept('{}',pg_temp.assignment())$$,'PT409',null,'warn to confirm invalidates previous acceptance');
 select lives_ok($$select pg_temp.accept(jsonb_build_object('availability_assessment_fingerprint',pg_temp.preview()->>'fingerprint'),pg_temp.assignment())$$,'confirmation does not need a written reason');
-select is((select reason from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),'Availability conflict confirmed by manager.','confirmation is distinguished from warn acknowledgement');
+select is((select reason from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),'Schedule conflict confirmed by manager.','confirmation is distinguished from warn acknowledgement');
 select lives_ok($$select pg_temp.accept('{"start_time":"12:00","end_time":"14:00"}',pg_temp.assignment())$$,'moving to available hours needs no decision');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),0::bigint,'moving away revokes prior acceptance');
-select throws_ok($$select pg_temp.accept('{}',pg_temp.assignment('{"start_time":"12:00","end_time":"14:00"}'))$$,'40001',null,'moving back cannot revive revoked acceptance');
-select throws_ok($$select pg_temp.accept('{"time_basis":"unresolved","start_time":null,"end_time":null}')$$,'23514',null,'unverified hours cannot be saved through weekly acceptance');
+select throws_ok($$select pg_temp.accept('{}',pg_temp.assignment('{"start_time":"12:00","end_time":"14:00"}'))$$,'PT409',null,'moving back cannot revive revoked acceptance');
+select throws_ok($$select pg_temp.accept('{"time_basis":"unresolved","start_time":null,"end_time":null}')$$,'PT409',null,'unresolved hours require the current confirmation');
 insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
  select 'ad421000-0000-4000-8000-000000000010',w,emp,loc,'approved',actor from wp_fixture;
 insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
@@ -120,7 +121,7 @@ create temp table preflight_fingerprint as select pg_temp.publication()->>'finge
 update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,1,range}','{"start":"18:00","end":"20:00"}') where workspace_id=(select w from wp_fixture);
 select isnt(pg_temp.publication()->>'fingerprint',(select fp from preflight_fingerprint),'physical conflict changes invalidate publication preview');
 update public.schedule_time_off_requests set status='approved' where workspace_id=(select w from wp_fixture);
-select is(pg_temp.publication()->'findings'->0->>'code','time_off','approved leave takes priority over the preference conflict');
+select is(pg_temp.publication()->'findings'->0->>'conflict_severity','block','approved leave takes priority over the preference conflict');
 select is(pg_temp.publication()->>'status','hard_blocked','approved leave still blocks publication');
 select ok(pg_temp.publication()->'findings'->0->>'availability_state' is null,'real blocker cannot masquerade as an accepted weekly warning');
 

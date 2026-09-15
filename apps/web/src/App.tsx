@@ -110,6 +110,9 @@ const NotificationSettingsPage = lazy(
 const SchedulingSettingsPage = lazy(
   () => import("./settings/SchedulingSettingsPage"),
 );
+const ConflictHandlingSettingsPage = lazy(
+  () => import("./settings/ConflictHandlingSettingsPage"),
+);
 const ShiftCatalogSettingsPage = lazy(
   () => import("./settings/ShiftCatalogSettingsPage"),
 );
@@ -497,6 +500,16 @@ export function App() {
                     element={
                       <PermissionRoute anyOf={["settings.schedule_rules.read"]}>
                         <SchedulingSettingsPage />
+                      </PermissionRoute>
+                    }
+                  />
+                  <Route
+                    path="scheduling/conflicts"
+                    element={
+                      <PermissionRoute
+                        anyOf={["schedule.conflict_rules.manage"]}
+                      >
+                        <ConflictHandlingSettingsPage />
                       </PermissionRoute>
                     }
                   />

@@ -3423,6 +3423,11 @@ function scheduleError(reply: FastifyReply, error: unknown) {
   const message =
     error instanceof Error ? error.message : "Schedule operation failed";
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+  // Only this explicit rejection may enter the client's assessment/retry path.
+  // Other serialization failures still require a fresh edit session.
+  if (["40001", "PT409"].includes(code) && message === "Review the current availability assessment before saving") {
+    return reply.status(409).send({ error: message, code, status: "availability_review_required" });
+  }
   if (["42501", "40001", "PT409", "23514", "22023"].includes(code)) {
     const status = code === "42501" ? 403 : ["40001", "PT409"].includes(code) ? 409 : 422;
     return reply.status(status).send({ error: message, code });

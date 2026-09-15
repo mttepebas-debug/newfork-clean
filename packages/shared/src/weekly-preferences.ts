@@ -69,7 +69,7 @@ export const weeklyPreferenceSettingsReadSchema = z.object({
 });
 export const weeklyPreferenceSettingsSaveSchema = weeklyPreferenceSettingsSchema
   .omit({ revision: true })
-  .extend({ expected_revision: z.number().int().nonnegative() });
+  .extend({ expected_revision: z.number().int().nonnegative(), warning_policy: z.enum(["warn", "confirm"]).optional() });
 export type WeeklyPreferenceSettingsRead = z.infer<
   typeof weeklyPreferenceSettingsReadSchema
 >;

@@ -11,6 +11,8 @@ export default function SettingsHomeRedirect() {
         ? "/app/settings/jobs"
         : permissions.has("settings.shift_catalog.read")
           ? "/app/settings/scheduling/shift-types"
+          : permissions.has("schedule.conflict_rules.manage")
+            ? "/app/settings/scheduling/conflicts"
           : permissions.has("settings.schedule_rules.read")
             ? "/app/settings/scheduling"
             : permissions.has("notifications.settings.read") ||

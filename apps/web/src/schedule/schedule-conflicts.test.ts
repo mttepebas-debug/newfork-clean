@@ -142,16 +142,16 @@ function input(
 }
 
 describe("schedule conflict port", () => {
-  it("checks explicit hidden hours and treats reference overlap as a review warning", () => {
+  it("blocks explicit and reference-hour overlaps regardless of badge display", () => {
     expect(evaluateScheduleShiftConflicts(model, model.shifts, input({ time_basis: "explicit", hide_time_on_badge: true })))
       .toEqual(expect.arrayContaining([expect.objectContaining({ type: "time_overlap" })]));
     expect(evaluateScheduleShiftConflicts(model, model.shifts, input({ time_basis: "type_default", hide_time_on_badge: true })))
-      .toEqual(expect.arrayContaining([expect.objectContaining({ type: "reference_time_overlap" })]));
+      .toEqual(expect.arrayContaining([expect.objectContaining({ type: "reference_time_overlap", severity: "block" })]));
   });
   it("does not invent an interval conflict for unresolved draft hours", () => {
     const reasons = evaluateScheduleShiftConflicts(model, [], input({ time_basis: "unresolved", shift_type_id: shiftTypeId,
       scheduled_date: "2026-08-16", start_time: "", end_time: "" }));
-    expect(reasons).toEqual([]);
+    expect(reasons).toEqual([expect.objectContaining({ type: "time_source_unresolved", severity: "confirm" })]);
   });
   it("formats named duplicate summaries returned by the local evaluator", () => {
     expect(
@@ -319,34 +319,14 @@ describe("schedule conflict port", () => {
     ).toEqual([]);
   });
 
-  it("blocks duplicate named shift types for the same employee and date", () => {
-    const existingNamedShift = {
-      ...model.shifts[0]!,
-      id: "55000000-0000-4000-8000-000000000099",
-      shift_type_id: shiftTypeId,
-      hide_time_on_badge: true,
-    };
-
-    expect(
-      formatScheduleConflictMessages(
-        evaluateScheduleShiftConflicts(
-          { ...model, shifts: [existingNamedShift] },
-          [existingNamedShift],
-          input({ shift_type_id: shiftTypeId, hide_time_on_badge: true }),
-        ),
-      ),
-    ).toContain(
-      "Employee already has Dinner. Requested: Dinner / Server at Dining Room.",
-    );
-    expect(
-      evaluateScheduleShiftConflicts(
-        { ...model, shifts: [existingNamedShift] },
-        [existingNamedShift],
-        input({ shift_type_id: otherShiftTypeId, hide_time_on_badge: true }),
-      ),
-    ).toEqual([]);
+  it("uses actual overlap instead of treating the same shift type as a conflict", () => {
+    const existing = { ...model.shifts[0]!, shift_type_id: shiftTypeId, time_basis: "explicit" as const };
+    const conflict = evaluateScheduleShiftConflicts(model, [existing], input({ shift_type_id: shiftTypeId, time_basis: "explicit" }));
+    expect(conflict).toEqual(expect.arrayContaining([expect.objectContaining({ type: "time_overlap", severity: "block" })]));
+    expect(conflict).not.toEqual(expect.arrayContaining([expect.objectContaining({ type: "named_duplicate" })]));
+    const separate = evaluateScheduleShiftConflicts(model, [existing], input({ shift_type_id: shiftTypeId, time_basis: "explicit", start_time: "18:00", end_time: "20:00" }));
+    expect(separate).not.toEqual(expect.arrayContaining([expect.objectContaining({ severity: "block" })]));
   });
-
   it("blocks zero-length clock ranges before assignment checks", () => {
     expect(
       formatScheduleConflictMessages(

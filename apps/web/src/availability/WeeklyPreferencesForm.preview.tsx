@@ -172,7 +172,7 @@ function Preview() {
                 ...settingsModel,
                 settings: {
                   input_mode: command.input_mode,
-                  warning_policy: command.warning_policy,
+                  warning_policy: settingsModel.settings.warning_policy,
                   onboarding_required: command.onboarding_required,
                   revision: settingsModel.settings.revision + 1,
                 },

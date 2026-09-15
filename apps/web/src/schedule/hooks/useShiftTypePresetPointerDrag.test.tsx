@@ -15,9 +15,11 @@ const preset = {
 
 function Harness({
   enabled = true,
+  onDragEnd = vi.fn(),
   onDrop = vi.fn(),
 }: {
   readonly enabled?: boolean;
+  readonly onDragEnd?: () => void;
   readonly onDrop?: (
     target: PresetDropTarget,
     point: { readonly clientX: number; readonly clientY: number },
@@ -27,6 +29,7 @@ function Harness({
     enabled,
     evaluateTarget: () => ({ allowed: true, targetStatus: "allowed" }),
     onDropAttempt: vi.fn(),
+    onDragEnd,
     onDrop,
   });
 
@@ -136,5 +139,41 @@ describe("useShiftTypePresetPointerDrag", () => {
 
     expect(screen.getByTestId("drag-state").textContent).toBe("idle");
     expect(onDrop).not.toHaveBeenCalled();
+  });
+
+  it("notifies the controller when a preset drag session ends", async () => {
+    const onDragEnd = vi.fn();
+    render(<Harness onDragEnd={onDragEnd} />);
+    const dropCell = screen.getByTestId("drop-cell");
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: vi.fn(() => dropCell),
+    });
+
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Preset" }), {
+      button: 0,
+      buttons: 1,
+      clientX: 0,
+      clientY: 0,
+    });
+    fireEvent.mouseMove(window, {
+      buttons: 1,
+      clientX: 12,
+      clientY: 12,
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("drag-state").textContent).not.toBe("idle"),
+    );
+
+    fireEvent.mouseUp(window, {
+      button: 0,
+      buttons: 0,
+      clientX: 12,
+      clientY: 12,
+    });
+
+    expect(onDragEnd).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("drag-state").textContent).toBe("idle");
   });
 });

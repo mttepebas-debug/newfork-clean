@@ -108,7 +108,7 @@ export function WeeklyPreferenceSettings({
   const [error, setError] = useState<string | null>(null);
   const dirty =
     draft.input_mode !== base.input_mode ||
-    draft.warning_policy !== base.warning_policy ||
+
     draft.onboarding_required !== base.onboarding_required;
   const stale = model.settings.revision > base.revision;
   const missing =
@@ -134,7 +134,7 @@ export function WeeklyPreferenceSettings({
     try {
       const result = await onSave({
         input_mode: draft.input_mode,
-        warning_policy: draft.warning_policy,
+
         onboarding_required: draft.onboarding_required,
         expected_revision: base.revision,
       });
@@ -204,28 +204,6 @@ export function WeeklyPreferenceSettings({
           their availability.
         </p>
       )}
-      <div className="weekly-settings-row">
-        <strong>Conflict warning</strong>
-        <fieldset className="weekly-settings-options" disabled={disabled}>
-          <legend className="sr-only">Availability conflict warning</legend>
-          {(
-            [
-              ["warn", "Warn only"],
-              ["confirm", "Warn and confirm"],
-            ] as const
-          ).map(([value, label]) => (
-            <label key={value} data-selected={draft.warning_policy === value}>
-              <input
-                type="radio"
-                name="availability-warning"
-                checked={draft.warning_policy === value}
-                onChange={() => change({ warning_policy: value })}
-              />
-              <span>{label}</span>
-            </label>
-          ))}
-        </fieldset>
-      </div>
       <div className="weekly-settings-row">
         <strong>Required during onboarding</strong>
         <label className="weekly-reminders-switch">
