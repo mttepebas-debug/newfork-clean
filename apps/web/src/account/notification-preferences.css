@@ -134,8 +134,7 @@
 }
 
 .notification-preference-card-heading p,
-.notification-preference-card-heading span,
-.notification-managed-reason {
+.notification-preference-card-heading span {
   margin: 0;
   color: #68756f;
   font-size: 13px;
@@ -183,15 +182,6 @@
   .notification-preference-group-row {
     padding-right: 10px;
     padding-left: 10px;
-  }
-
-  .notification-matrix-header > span:first-child {
-    font-size: 0;
-  }
-
-  .notification-matrix-header > span:first-child::after {
-    content: "Group";
-    font-size: 11px;
   }
 
   .notification-preference-details {

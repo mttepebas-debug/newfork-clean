@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import type {
   NotificationChannel, NotificationChannelPreference, NotificationUserPreference,
   NotificationUserPreferencesResponse,
@@ -135,12 +134,11 @@ export default function NotificationPreferencesPage() {
       </select>
       {dirtyKeys.length > 0 ? <small>Save or discard changes before choosing another workspace.</small> : null}
     </label> : !context ? <p>Workspace notification controls become available when you have workspace access.</p> : null}
-    {data?.email_channel_reason ? <p className="notification-managed-reason">{data.email_channel_reason === "email_unverified" ? "Verify your email before enabling email notifications." : "Email delivery is not available for workspace notifications yet."} <Link to="/account/security">Account Security</Link></p> : null}
     {query.isLoading ? <p>Loading preferences</p> : null}
     {query.error || mutation.error ? <p className="form-error" role="alert">{(query.error ?? mutation.error)?.message}</p> : null}
     <div className="notification-preference-list" aria-label="Workspace notification channels">
       <div className="notification-matrix-header notification-matrix-grid">
-        <span>Notification group</span>
+        <span aria-hidden="true" />
         <span>In app</span>
         <span>Email</span>
         <span />

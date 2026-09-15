@@ -136,7 +136,8 @@ describe("notification preferences page", () => {
     expect(screen.queryByLabelText("Workspace")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Account security messages" })).toBeNull();
     expect(screen.queryByText("Password changed")).toBeNull();
-    expect(screen.getByRole("link", { name: "Account Security" }).getAttribute("href")).toBe("/account/security");
+    expect(screen.queryByRole("link", { name: "Account Security" })).toBeNull();
+    expect(screen.queryByText("Notification group")).toBeNull();
     expect(screen.getByRole("checkbox", { name: "Schedule Email" })).toHaveProperty("disabled", true);
   });
   it("renders server email defaults and preserves stored push, cadence and quiet hours", async () => {
