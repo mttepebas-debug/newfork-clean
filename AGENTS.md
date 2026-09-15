@@ -7,6 +7,7 @@
 - Her implementasyon planinda zorluk, belirsizlik ve etki alanina gore uygun agent/model ile reasoning seviyesi belirle; bir cumle gerekce ver. Yeni task/session acarken modeli ve reasoning seviyesini ana session secer.
 - Hedefi ve gozlenebilir kabul kosullarini belirle; acik taleplerde dogrudan ilerle. Analiz, implementasyon ve inceleme kapsamlarini koru.
 - Mevcut desenlerle en kucuk tutarli degisikligi yap. Gereksiz abstraction, refactor, yeni framework veya buyuk teknik borc ekleme.
+- DRY / yeniden kullanim: planlama ve implementasyonda [REUSE](docs/project/REUSE.md) haritasinin yalniz ilgili girdisinden basla; kaynak kodu dogrula, uygun ortak bilesen/deseni kullan. Kapanista tekrar degeri olan yeni bilgiyi veya degisen referansi ayni haritada guncelle; kod/olcu/rapor kopyalama, her task icin zorunlu belge veya spekulatif abstraction uretme. Alt session tekrar kullanilabilir bulguyu raporlar; ortak haritayi ana session gunceller.
 - [Kapsam kurali](kapsam-yonetimi.md): hedefi engelleyen bulguyu coz; bagimsiz iyilestirmeyi backlog'a aktar. Kullanici kapsami degistirmedikce kabul kosullari karsilaninca isi kapat.
 - Testleri risk ve bilgi getirisine gore sec. Her kucuk parca sonrasi test yazma/calistirma; ilgili degisiklik, hata veya yeni suphe yoksa basarili kaniti tekrarlama. Gerekli kontrolleri tamamla.
 - Yerel kaniti hosted/release kaniti sayma. Sonucta degisiklik, gerekli dogrulama ve onemli acik riski kisa bildir.

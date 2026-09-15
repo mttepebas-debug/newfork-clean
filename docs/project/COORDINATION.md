@@ -21,6 +21,7 @@ Pin erisimi kolaylastirir; kalici durum bu belgeler ve Git'tedir. Bu duzen bir a
 - [WORK](WORK.md): tek is kaydi, sorumlu session/branch, kabul kosulu, son kanit, siradaki adim ve kisa ilerleme gunlugu.
 - [ROADMAP](ROADMAP.md): MVP hedefi, teslimat sirasi ve asama kabul kosullari.
 - [BACKLOG](BACKLOG.md): aktif olmayan fikirler, hatirlatmalar ve bagimsiz bulgular.
+- [REUSE](REUSE.md): ortak kod, tasarim ve sozlesmelere arama terimleriyle ulasilan kisa referans haritasi; durum gunlugu veya kodun ikinci kopyasi degildir. Ana session ilgili kaydi teslimatta gunceller; alt session yalniz bulgu ve kaynak baglantisini raporlar.
 - `docs/rebuild` ve `.planning/codebase`: gerektiginde okunan urun sozlesmesi, teknik harita ve tarihli kanit kaynaklari. Guncel global durum icin rakip log olusturulmaz.
 - Kullanicinin son acik karari ilgili eski karardan ustundur. Bu dosyalar onceki urun kararlarini topluca iptal etmez. Tarihli dokumandaki test PASS veya "devam ediyor" ifadesi bugunun durumu sayilmaz.
 
@@ -74,6 +75,7 @@ Is ID / hedef / kabul kosullari:
 Ana session ID:
 Checkout / branch / baslangic commit veya gerekli WIP:
 Ilgili belgeler ve dosya/sozlesme sahipligi:
+Varsa ilgili REUSE girdisi / kanonik kaynak:
 Kapsam siniri / bagimliliklar:
 Zorluk / agent-model secimi / kisa gerekce:
 
@@ -83,6 +85,7 @@ Branch ve commit veya incelenebilir patch/dosya listesi:
 Gerekli dogrulama, sonucu ve hangi kod durumuna ait oldugu:
 Acik engel, kalan risk veya gerekli karar:
 Kapsam disi bulgular:
+Varsa yeniden kullanilabilir bulgu / degisen referans / kullanim siniri:
 ```
 
 Alt session kisa final raporunu ana session'a mesaj olarak iletir; arac yoksa ana session task sonucunu okur. Ayni uzun rapor farkli dosyalara kopyalanmaz. Kimlik, sir veya ham arac logu rapora doldurulmaz.

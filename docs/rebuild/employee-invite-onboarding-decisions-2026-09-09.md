@@ -95,11 +95,13 @@ Aktivasyonda kisa basari ekrani, sartli eksiklerin kesin son tarihleri ve Open N
 
 ## 5. Account > Profile ve Veri Sahipligi
 
+> 2026-09-14 guncellemesi: Bu bolumdeki global telefonun tum organizasyonlara yayilmasi karari tarihsel kalmistir ve [BL-055 Account plani](bl-055-account-completion-plan-2026-09-14.md) ile gecersiz kilinmistir. Global hesap telefonu yalniz ilk oneridir; her workspace employee telefonu bagimsizdir ve sonradan global hesap degisikligiyle otomatik ezilmez.
+
 Bu teslimin parcasi: global e-posta/sifre/telefon duzenleme ve aktif organizasyonun dogum tarihi, adres, acil durum, avatar/paylasim tercihi. Aktif organizasyon adi acik gorunur; ayri organizasyon secici yerine mevcut switcher kullanilir.
 
 Ad/soyad aktivasyondan sonra kilitlidir. Diger zorunlu alanlar bos/gecersiz kaydedilemez. Dogum tarihi/acil durum degisikligi onaysiz hemen drawer'a yansir. Drawer'a erisim yetkisi olan yoneticiler ilgili calisanin ozel bilgilerini de gorebilir; tenant/calisan kapsam kontrolu devam eder.
 
-Global telefon onboarding veya Profile'dan degistiginde tum bagli organizasyonlarda yansir. Yeni telefon acil durum numarasiyla cakisirsa global degisiklik kabul edilir; ilgili profilde duzeltme istenir, erisim kapanmaz.
+Tarihsel karar (gecersiz, 2026-09-14): Global telefon onboarding veya Profile'dan degistiginde tum bagli organizasyonlarda yansir. Guncel davranis yukaridaki workspace-bagimsiz telefon sozlesmesidir.
 
 E-posta/sifre degisikligi gercek Auth akisiyla yapilir. Dogrulanana kadar eski e-posta gorunum/bildirim adresidir. Dogrulaninca guncel hesap e-postasi yansir; kabul edilmis onboarding hesap kimligiyle devam eder. Eski e-postaya henuz kabul edilmemis davetler tasinmaz; yeni davet gerekir. Sifre drawer'da gosterilmez.
 
@@ -170,7 +172,7 @@ Bildirimler sonunda bu ekrana deep-link edecek. O zamana kadar gecici onboarding
 | --- | --- |
 | Davet | Yeni/mevcut hesap; dogrulama donusu; yanlis hesap; expired/revoked/eski resend token; ayni hesaba replay; cakisan kabul; provider hata/retry; ayni org farkli employee cakismasi |
 | Yeniden davet | Hemen unlink; gonderim hatasinda erisimsiz kalma; ayni/farkli hesap kabul; istihdam/mesai/kiosk korunmasi; yeni hesabin eski ozel kayda erisememesi; bos yeniden onboarding; eski Availability'nin yeni yururluge kadar korunmasi |
-| Profil | Read-only isim/email onboarding; sonradan kilitli isim; global telefon/email yayilimi; email dogrulama bekleme; eski bekleyen davet; org alan izolasyonu; acil numara cakismasi; zorunlu alan silme; iki sekme revision cakismasi |
+| Profil | Read-only isim/email onboarding; sonradan kilitli isim; global telefon ilk onerisi ve workspace telefon bagimsizligi; email dogrulama bekleme; eski bekleyen davet; org alan izolasyonu; acil numara cakismasi; zorunlu alan silme; iki sekme revision cakismasi |
 | Adimlar | Sirali ilk gecis; acilmis adim korunmasi; Documents/Policies eksigiyle Review; bos/optional adim; autosave hatasi/oturum bitisi; pending taslak sirasinda aktivasyon; kaldigi yere donus; mobile footer/klavye |
 | Aktivasyon | Optional/Required/Sartli x Auto/Needs approval x final approval; ilk sartli yuklemede ret; yalniz gonderilmis case aktivasyonu; oncesinde belge onaylari; yeni Required atamasinda tekrar Submit |
 | Dosya | Coklu yukleme/kismi hata; metadata zorunlulugu; HEIC/bozuk/yanlis tur; expired/zararli dosya; preview; Keep/Discard; tum dosyalar discard; gecmis referans korunmasi; yetkisiz URL erisimi |
