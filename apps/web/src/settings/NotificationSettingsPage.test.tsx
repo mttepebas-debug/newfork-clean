@@ -165,6 +165,23 @@ describe("NotificationSettingsPage", () => {
     vi.clearAllMocks();
   });
 
+  it.each([[1, 2], [2, 1]])("renders one rule and saves the latest schema for catalog order %j", async (first, second) => {
+    const entry = { ...fixture.catalog[0]!, type_key: "availability.review_required" };
+    renderPage({ ...fixture, catalog: [
+      { ...entry, schema_version: first },
+      { ...entry, schema_version: second },
+    ] });
+    const title = "Availability requests to review";
+    expect(await screen.findAllByRole("heading", { name: title })).toHaveLength(1);
+    fireEvent.change(screen.getByLabelText(`Reason for ${title}`), {
+      target: { value: "Update availability alerts" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: `Save ${title}` }));
+    await waitFor(() => expect(saveNotificationPolicy).toHaveBeenCalledWith(
+      workspaceId, expect.objectContaining({ type_key: entry.type_key, schema_version: 2 }),
+    ));
+  });
+
   it("filters active notification types by category and search", async () => {
     const { container } = renderPage();
     expect(await screen.findByText("Published schedules")).toBeTruthy();

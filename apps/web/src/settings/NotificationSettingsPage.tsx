@@ -132,9 +132,20 @@ export default function NotificationSettingsPage() {
     },
   });
 
+  const catalog = useMemo(() => {
+    // Policy drafts are keyed by type, so show only its latest catalog version.
+    const unique = new Map<string, CatalogEntry>();
+    for (const entry of data?.catalog ?? []) {
+      const previous = unique.get(entry.type_key);
+      if (!previous || entry.schema_version > previous.schema_version) {
+        unique.set(entry.type_key, entry);
+      }
+    }
+    return [...unique.values()];
+  }, [data?.catalog]);
   const categories = useMemo(
     () =>
-      [...new Set(data?.catalog.map((entry) => entry.category) ?? [])].sort(
+      [...new Set(catalog.map((entry) => entry.category))].sort(
         (left, right) => {
           const leftDisplay = displayForNotificationCategory(left);
           const rightDisplay = displayForNotificationCategory(right);
@@ -143,11 +154,11 @@ export default function NotificationSettingsPage() {
           return leftDisplay.label.localeCompare(rightDisplay.label);
         },
       ),
-    [data?.catalog],
+    [catalog],
   );
   const visibleEntries = useMemo(
     () =>
-      (data?.catalog ?? []).filter((entry) => {
+      catalog.filter((entry) => {
         const display = displayForNotificationType(entry.type_key);
         const categoryDisplay = displayForNotificationCategory(entry.category);
         const searchable = [
@@ -167,7 +178,7 @@ export default function NotificationSettingsPage() {
           (!deferredSearch || searchable.includes(deferredSearch))
         );
       }),
-    [category, data?.catalog, deferredSearch],
+    [category, catalog, deferredSearch],
   );
 
   if (!context) return null;
