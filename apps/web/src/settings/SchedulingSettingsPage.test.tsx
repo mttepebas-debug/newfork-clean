@@ -155,6 +155,18 @@ describe("SchedulingSettingsPage checklist mode", () => {
     });
     expect(saveButton).toHaveProperty("disabled", false);
     expect(
+      screen.getByRole("region", { name: "Schedule basics" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("region", { name: "Availability and staffing" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/Missing this target does not block publishing/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/Saved separately from Schedule basics/),
+    ).toBeTruthy();
+    expect(
       (screen.getByRole("radio", { name: "Monday" }) as HTMLInputElement)
         .checked,
     ).toBe(true);

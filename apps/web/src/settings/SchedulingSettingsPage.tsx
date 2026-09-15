@@ -14,6 +14,7 @@ import {
   loadSchedulingSettings,
   saveSchedulingSettings,
 } from "./organization-data";
+import "./scheduling-settings.css";
 
 const defaults: SchedulingSettingsInput = {
   week_start_day: "monday",
@@ -104,9 +105,7 @@ export default function SchedulingSettingsPage() {
     }
     const parsed = schedulingSettingsInputSchema.safeParse(draft);
     if (!parsed.success) {
-      setValidationError(
-        "Choose valid scheduling settings before saving.",
-      );
+      setValidationError("Choose valid scheduling settings before saving.");
       return;
     }
     const {
@@ -127,7 +126,7 @@ export default function SchedulingSettingsPage() {
       <SettingsHeader
         icon={<CalendarClock size={21} aria-hidden />}
         title="Scheduling"
-        description="Week boundaries, publishing expectations, and schedule conflict policy."
+        description="Week boundaries, publishing targets, and availability preferences."
       />
       {query.isLoading ? (
         <p className="settings-state">Loading scheduling rules...</p>
@@ -138,102 +137,125 @@ export default function SchedulingSettingsPage() {
         </p>
       ) : null}
       {query.data ? (
-        <form className="organization-form scheduling-form" onSubmit={submit}>
-          <fieldset
-            disabled={!canEdit}
-            style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
-          >
-            <SettingsChoiceRow
-              label="Week starts on"
-              description="Defines the first day in weekly schedules and navigation."
+        <section
+          className="scheduling-settings-section"
+          aria-labelledby="schedule-basics-title"
+        >
+          <h2 className="scheduling-section-title" id="schedule-basics-title">
+            Schedule basics
+          </h2>
+          <form className="organization-form scheduling-form" onSubmit={submit}>
+            <fieldset
+              disabled={!canEdit}
+              style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
             >
-              <SegmentedChoice
-                name="week-start"
-                value={draft.week_start_day}
-                options={[
-                  ["sunday", "Sunday"],
-                  ["monday", "Monday"],
-                ]}
-                onChange={(value) =>
-                  updateDraft({
-                    week_start_day: value as "sunday" | "monday",
-                  })
-                }
-              />
-            </SettingsChoiceRow>
-            <SettingsChoiceRow
-              label="Publish by"
-              description="The weekday used as the publication deadline for each schedule week."
-            >
-              <select
-                aria-label="Schedule publish deadline"
-                value={draft.schedule_deadline_day}
-                onChange={(event) =>
-                  updateDraft({
-                    schedule_deadline_day: event.target
-                      .value as SchedulingSettingsInput["schedule_deadline_day"],
-                  })
-                }
+              <SettingsChoiceRow
+                label="Week starts on"
+                description="Defines the first day in weekly schedules and navigation."
               >
-                {weekdays.map((day) => (
-                  <option key={day} value={day}>
-                    {day[0]!.toUpperCase() + day.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </SettingsChoiceRow>
-            <SettingsChoiceRow
-              label="Time format"
-              description="Controls how schedule shift times are displayed while editing."
-            >
-              <SegmentedChoice
-                name="time-format"
-                value={draft.time_format}
-                options={[
-                  ["12h", "12-hour"],
-                  ["24h", "24-hour"],
-                ]}
-                onChange={(value) =>
-                  updateDraft({
-                    time_format:
-                      value as SchedulingSettingsInput["time_format"],
-                  })
-                }
-              />
-            </SettingsChoiceRow>
-            {mutation.error ? (
-              <p className="form-error" role="alert">
-                {errorText(mutation.error)}
-              </p>
-            ) : null}
-            {validationError ? (
-              <p className="form-error" role="alert">
-                {validationError}
-              </p>
-            ) : null}
-            {saved ? (
-              <p className="form-success" role="status">
-                Scheduling rules saved.
-              </p>
-            ) : null}
-            <div className="organization-form-actions">
-              <Button
-                type="submit"
-                disabled={
-                  mutation.isPending ||
-                  (checklistMode &&
-                    (!draft.week_start_day || !draft.time_format))
-                }
+                <SegmentedChoice
+                  name="week-start"
+                  value={draft.week_start_day}
+                  options={[
+                    ["sunday", "Sunday"],
+                    ["monday", "Monday"],
+                  ]}
+                  onChange={(value) =>
+                    updateDraft({
+                      week_start_day: value as "sunday" | "monday",
+                    })
+                  }
+                />
+              </SettingsChoiceRow>
+              <SettingsChoiceRow
+                label="Publish by"
+                description="Target weekday for publishing each schedule week. Missing this target does not block publishing."
               >
-                <Save size={16} aria-hidden />
-                {mutation.isPending ? "Saving" : "Save rules"}
-              </Button>
-            </div>
-          </fieldset>
-        </form>
+                <select
+                  aria-label="Schedule publish deadline"
+                  value={draft.schedule_deadline_day}
+                  onChange={(event) =>
+                    updateDraft({
+                      schedule_deadline_day: event.target
+                        .value as SchedulingSettingsInput["schedule_deadline_day"],
+                    })
+                  }
+                >
+                  {weekdays.map((day) => (
+                    <option key={day} value={day}>
+                      {day[0]!.toUpperCase() + day.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </SettingsChoiceRow>
+              <SettingsChoiceRow
+                label="Time format"
+                description="Controls how schedule shift times are displayed while editing."
+              >
+                <SegmentedChoice
+                  name="time-format"
+                  value={draft.time_format}
+                  options={[
+                    ["12h", "12-hour"],
+                    ["24h", "24-hour"],
+                  ]}
+                  onChange={(value) =>
+                    updateDraft({
+                      time_format:
+                        value as SchedulingSettingsInput["time_format"],
+                    })
+                  }
+                />
+              </SettingsChoiceRow>
+              {mutation.error ? (
+                <p className="form-error" role="alert">
+                  {errorText(mutation.error)}
+                </p>
+              ) : null}
+              {validationError ? (
+                <p className="form-error" role="alert">
+                  {validationError}
+                </p>
+              ) : null}
+              {saved ? (
+                <p className="form-success" role="status">
+                  Scheduling rules saved.
+                </p>
+              ) : null}
+              <div className="organization-form-actions">
+                <Button
+                  type="submit"
+                  disabled={
+                    mutation.isPending ||
+                    (checklistMode &&
+                      (!draft.week_start_day || !draft.time_format))
+                  }
+                >
+                  <Save size={16} aria-hidden />
+                  {mutation.isPending ? "Saving" : "Save rules"}
+                </Button>
+              </div>
+            </fieldset>
+          </form>
+        </section>
       ) : null}
       {workspaceId && canEdit ? (
-        <WeeklyPreferenceSettingsPanel workspaceId={workspaceId} />
+        <section
+          className="scheduling-settings-section"
+          aria-labelledby="availability-staffing-title"
+        >
+          <h2
+            className="scheduling-section-title"
+            id="availability-staffing-title"
+          >
+            Availability and staffing
+          </h2>
+          <p className="scheduling-section-description">
+            Saved separately from Schedule basics. Conflict rules and travel
+            buffers are managed in Conflict handling.
+          </p>
+          <WeeklyPreferenceSettingsPanel workspaceId={workspaceId} />
+        </section>
       ) : null}
     </section>
   );

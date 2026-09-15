@@ -43,7 +43,7 @@ Zamanlama takvim tarihi degil, kapilara baglidir:
 
 | Faz | Pratik hedef |
 |---|---|
-| Simdi | BL-064/068 yerel kabul ve checkpoint'i tamam. Kullanici 2026-09-15 sirasi: belge uzlastirma -> BL-069 lease -> BL-036 acilis/tarih gecisi -> BL-039 publish state -> BL-049/050 rules/defaults -> BL-038 templates -> BL-037 export v2. |
+| Simdi | BL-064/068 ve 2026-09-15 turunda belge uzlastirma, BL-069 lease, BL-036 dar performans, BL-039 state ve BL-049/050 rules/defaults yerel kabulü tamam. Siradaki BL-038 templates -> BL-037 export v2; acik urun secimleri bekleniyor. Guncel kanit ve checkpoint siniri WORK'te. |
 | Hemen sonra | Requests/Line Up/employee Shift Hub; Time Tracking/clock-in gorunurlugu MVP sonrasi sinirina gore temizlenir. |
 | Sonraki | Requests/Line Up/employee Shift Hub ve Notifications/Announcements kapilari. |
 | MVP oncesi buyuk kapanis | Billing/Stripe, BL-067 Schedule hours guardrails ve cok tenantli E2E kabul turu. |

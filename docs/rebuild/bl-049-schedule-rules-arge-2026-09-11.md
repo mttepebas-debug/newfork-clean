@@ -232,6 +232,10 @@ MVP icin bu sayfaya en iyi deger/karmasiklik orani:
 
 Simdilik bunlari ayar olarak hemen eklemek yerine, Schedule publish/preflight deneyiminde gorunur uyari olarak baslatmak daha guvenli olur. Ayara donusturmek icin once gercek kullanimda hangi uyarilarin rahatsiz ettigini gormek gerekir.
 
+## 2026-09-15 uygulama siniri
+
+Bu tarihli planin dar bolumleme/copy kismi son kullanici talimatiyla uygulandi; guncel kabul [WORK BL-049](../project/WORK.md) kaydindadir. Daha yeni BL-068 karari conflict rules ve travel buffer'i ayri Conflict handling sayfasina tasidigi icin asagidaki eski tasima maddesi uygulanmaz. Otomatik publish reminder eklenmedi; iki bagimsiz save sozlesmesi korundu.
+
 ## Onaylanan dar implementasyon
 
 1. Baslik/copy sadeleştirme.
