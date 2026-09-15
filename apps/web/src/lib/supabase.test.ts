@@ -1,14 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { accountProfileSchema } from "@newfork/shared";
 import {
+  accountProfileAvatarBucket,
   apiRequest,
   clearTabWorkspaceId,
+  developmentIdentityAllowed,
   developmentIdentityRoleStorageKey,
   getTabWorkspaceId,
+  loadAccountProfile,
+  loadAccountDeletionBlockers,
+  removeAccountAvatar,
+  requestAccountEmailChange,
   resolveWorkspaceContext,
+  restoreAccountDeletionWithToken,
+  saveAccountProfile,
   selectActiveWorkspace,
   setTabWorkspaceId,
   tabWorkspaceIdStorageKey,
+  uploadAccountAvatar,
 } from "./supabase";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -61,7 +71,7 @@ describe("tab workspace context", () => {
     expect(getTabWorkspaceId()).toBe(workspaceId);
   });
 
-  it("uses development identity and tab workspace context for API requests", async () => {
+  it("uses the available bearer identity and tab workspace context for API requests", async () => {
     window.localStorage.setItem(developmentIdentityRoleStorageKey, "owner");
     setTabWorkspaceId(workspaceId);
     vi.stubGlobal(
@@ -75,7 +85,11 @@ describe("tab workspace context", () => {
 
     const [, init] = vi.mocked(fetch).mock.calls[0]!;
     const headers = new Headers((init as RequestInit).headers);
-    expect(headers.get("Authorization")).toBe("Bearer development-owner-token");
+    expect(headers.get("Authorization")).toBe(
+      developmentIdentityAllowed
+        ? "Bearer development-owner-token"
+        : "Bearer session-token",
+    );
     expect(headers.get("X-Newfork-Workspace-Id")).toBe(workspaceId);
   });
 
@@ -106,5 +120,220 @@ describe("tab workspace context", () => {
         "X-Newfork-Workspace-Id",
       ),
     ).toBe(false);
+  });
+});
+
+describe("account profile persistence", () => {
+  it("loads normalized legacy phone, personal formats and a signed private avatar", async () => {
+    const avatarPath = `${workspaceId}/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.jpg`;
+    const results = {
+      user_profiles: {
+        data: {
+          display_name: "Alex Kim",
+          phone: "3105550100",
+          phone_e164: null,
+          avatar_object_path: avatarPath,
+        },
+        error: null,
+      },
+      user_preferences: {
+        data: {
+          theme: "dark",
+          time_format: "24h",
+          date_format: "YYYY-MM-DD",
+        },
+        error: null,
+      },
+    } as const;
+    const from = vi.fn((table: keyof typeof results) => {
+      const chain = {
+        select: vi.fn(() => chain),
+        eq: vi.fn(() => chain),
+        maybeSingle: vi.fn(async () => results[table]),
+      };
+      return chain;
+    });
+    const createSignedUrl = vi.fn(async () => ({
+      data: { signedUrl: "https://storage.example.test/signed-avatar" },
+      error: null,
+    }));
+    const profile = await loadAccountProfile(
+      {
+        from,
+        storage: {
+          from: vi.fn(() => ({ createSignedUrl })),
+        },
+      } as unknown as SupabaseClient,
+      {
+        id: workspaceId,
+        email: "alex@example.test",
+        user_metadata: {},
+      } as never,
+    );
+
+    expect(profile).toMatchObject({
+      phone: "+13105550100",
+      avatarObjectPath: avatarPath,
+      avatarUrl: "https://storage.example.test/signed-avatar",
+      timeFormat: "24h",
+      dateFormat: "YYYY-MM-DD",
+    });
+    expect(createSignedUrl).toHaveBeenCalledWith(avatarPath, 3600);
+  });
+
+  it("writes the canonical phone, private avatar path and display preferences", async () => {
+    const upsert = vi.fn(async () => ({ error: null }));
+    const from = vi.fn(() => ({ upsert }));
+    const profile = accountProfileSchema.parse({
+      userId: workspaceId,
+      email: "alex@example.test",
+      displayName: "Alex Kim",
+      phone: "+13105550100",
+      avatarObjectPath: `${workspaceId}/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.jpg`,
+      avatarUrl: "https://storage.example.test/signed-avatar",
+      theme: "dark",
+      timeFormat: "24h",
+      dateFormat: "YYYY-MM-DD",
+    });
+
+    await saveAccountProfile({ from } as unknown as SupabaseClient, profile);
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phone: "+13105550100",
+        phone_e164: "+13105550100",
+        avatar_object_path: profile.avatarObjectPath,
+      }),
+    );
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        theme: "dark",
+        time_format: "24h",
+        date_format: "YYYY-MM-DD",
+      }),
+    );
+  });
+
+  it("uploads only supported private avatars and rejects cross-account removal", async () => {
+    vi.spyOn(crypto, "randomUUID").mockReturnValue(
+      "fe201916-aa0e-480b-9144-1e1c8da20a31",
+    );
+    const upload = vi.fn(async () => ({ data: {}, error: null }));
+    const createSignedUrl = vi.fn(async () => ({
+      data: { signedUrl: "https://storage.example.test/signed-avatar" },
+      error: null,
+    }));
+    const remove = vi.fn(async () => ({ data: {}, error: null }));
+    const storageFrom = vi.fn(() => ({ upload, createSignedUrl, remove }));
+    const storageClient = {
+      storage: { from: storageFrom },
+    } as unknown as SupabaseClient;
+
+    await expect(
+      uploadAccountAvatar(
+        storageClient,
+        workspaceId,
+        new File(["avatar"], "avatar.png", { type: "image/png" }),
+      ),
+    ).resolves.toEqual({
+      avatarObjectPath: `${workspaceId}/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.png`,
+      avatarUrl: "https://storage.example.test/signed-avatar",
+    });
+    expect(storageFrom).toHaveBeenCalledWith(accountProfileAvatarBucket);
+
+    await expect(
+      removeAccountAvatar(
+        storageClient,
+        workspaceId,
+        "fe201916-aa0e-480b-9144-1e1c8da20a31/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.png",
+      ),
+    ).rejects.toThrow("must belong to the account");
+    expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+describe("account security API contracts", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sends authenticated email-change requests and reads deletion blockers", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              email: "owner@example.test",
+              pendingEmail: "next@example.test",
+              emailChangeSentAt: "2026-09-14T12:00:00.000Z",
+            }),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              blockers: [
+                {
+                  kind: "active_membership",
+                  workspace_id: workspaceId,
+                  workspace_name: "Newfork Cafe",
+                  role_name: "Owner",
+                  is_owner: true,
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+        ),
+    );
+
+    await expect(
+      requestAccountEmailChange(client(), "next@example.test"),
+    ).resolves.toMatchObject({ pendingEmail: "next@example.test" });
+    await expect(loadAccountDeletionBlockers(client())).resolves.toHaveLength(1);
+
+    const [emailUrl, emailInit] = vi.mocked(fetch).mock.calls[0]!;
+    expect(String(emailUrl)).toContain("/v1/account/security/email-change");
+    expect(emailInit).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ newEmail: "next@example.test" }),
+    });
+    expect(new Headers((emailInit as RequestInit).headers).get("Authorization")).toBe(
+      "Bearer session-token",
+    );
+    expect(String(vi.mocked(fetch).mock.calls[1]![0])).toContain(
+      "/v1/account/security/deletion/blockers",
+    );
+  });
+
+  it("restores with a public token without attaching an account session", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({ status: "restored", loginUrl: "/sign-in" }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    await expect(
+      restoreAccountDeletionWithToken("one-time-recovery-token"),
+    ).resolves.toEqual({ status: "restored", loginUrl: "/sign-in" });
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0]!;
+    expect(String(url)).toContain("/v1/account/security/deletion/recovery");
+    expect(init).toMatchObject({
+      method: "POST",
+      body: JSON.stringify({ token: "one-time-recovery-token" }),
+    });
+    expect(new Headers((init as RequestInit).headers).has("Authorization")).toBe(false);
   });
 });

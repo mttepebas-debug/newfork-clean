@@ -50,7 +50,10 @@ describe("notification settings navigation", () => {
         <Routes>
           <Route path="/app/settings" element={<SettingsLayout />}>
             <Route index element={<SettingsHomeRedirect />} />
-            <Route path="notifications" element={<p>Notification settings route</p>} />
+            <Route
+              path="notifications"
+              element={<p>Notification settings route</p>}
+            />
           </Route>
         </Routes>
       </MemoryRouter>,
@@ -59,28 +62,54 @@ describe("notification settings navigation", () => {
     expect(await screen.findByText("Notification settings route")).toBeTruthy();
   });
 
+  it("shows independently granted settings without other organization links", () => {
+    permissions = ["settings.locations.read"];
+    render(
+      <MemoryRouter initialEntries={["/app/settings"]}>
+        <Routes>
+          <Route path="/app/settings" element={<SettingsLayout />}>
+            <Route index element={<SettingsHomeRedirect />} />
+            <Route path="locations" element={<p>Locations only</p>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("link", { name: "Locations" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "General" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Jobs" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Notifications" })).toBeNull();
+  });
   it("keeps Scheduling child links from activating Schedule rules", () => {
-    permissions = ["workspace.manage"];
+    permissions = [
+      "settings.schedule_rules.read",
+      "settings.shift_catalog.read",
+    ];
     render(
       <MemoryRouter initialEntries={["/app/settings/scheduling/shift-types"]}>
         <Routes>
           <Route path="/app/settings" element={<SettingsLayout />}>
-            <Route path="scheduling/shift-types" element={<p>Shift types route</p>} />
+            <Route
+              path="scheduling/shift-types"
+              element={<p>Shift types route</p>}
+            />
           </Route>
         </Routes>
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("link", { name: "Schedule rules" }).className).not.toContain(
-      "active",
-    );
-    expect(screen.getByRole("link", { name: "Shift catalog" }).className).toContain(
-      "active",
-    );
+    expect(
+      screen.getByRole("link", { name: "Schedule rules" }).className,
+    ).not.toContain("active");
+    expect(
+      screen.getByRole("link", { name: "Shift catalog" }).className,
+    ).toContain("active");
   });
 
   it("keeps Shift labels active without activating Schedule rules", () => {
-    permissions = ["workspace.manage"];
+    permissions = [
+      "settings.schedule_rules.read",
+      "settings.shift_catalog.read",
+    ];
     render(
       <MemoryRouter initialEntries={["/app/settings/scheduling/shift-labels"]}>
         <Routes>
@@ -94,16 +123,16 @@ describe("notification settings navigation", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("link", { name: "Schedule rules" }).className).not.toContain(
-      "active",
-    );
-    expect(screen.getByRole("link", { name: "Shift catalog" }).className).toContain(
-      "active",
-    );
+    expect(
+      screen.getByRole("link", { name: "Schedule rules" }).className,
+    ).not.toContain("active");
+    expect(
+      screen.getByRole("link", { name: "Shift catalog" }).className,
+    ).toContain("active");
   });
 
   it("removes Important Dates from the Settings rail", () => {
-    permissions = ["workspace.manage", "schedule.read"];
+    permissions = ["settings.general.read", "important_dates.read"];
     render(
       <MemoryRouter initialEntries={["/app/settings/general"]}>
         <Routes>
@@ -118,7 +147,7 @@ describe("notification settings navigation", () => {
   });
 
   it("redirects legacy Settings Important Dates routes to the top-level app surface", async () => {
-    permissions = ["workspace.manage", "schedule.read"];
+    permissions = ["settings.general.read", "important_dates.read"];
     render(
       <MemoryRouter initialEntries={["/app/settings/important-dates"]}>
         <Routes>

@@ -1,8 +1,8 @@
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Check, Crown, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { CalendarClock, Check, Crown, Ellipsis, Plus, Star, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
@@ -10,11 +10,16 @@ import { AccountPageHeader } from "./components";
 import {
   createOwnerWorkspace,
   cancelWorkspaceClosure,
+  cancelWorkspaceOwnershipTransfer,
+  clearTabWorkspaceId,
+  searchWorkspaceOwnershipCandidates,
+  type OwnershipCandidate,
   initiateWorkspaceOwnershipTransfer,
   listAccountWorkspaces,
   requestWorkspaceClosure,
   respondWorkspaceOwnershipTransfer,
   selectActiveWorkspace,
+  setDefaultWorkspace,
   setTabWorkspaceId,
   supabaseClient,
 } from "../lib/supabase";
@@ -27,7 +32,15 @@ export default function WorkspacesPage() {
   const [workspaceName, setWorkspaceName] = useState("");
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const createDialog = useRef<HTMLDialogElement>(null);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const actionTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
+  const [openActionsWorkspaceId, setOpenActionsWorkspaceId] = useState<string | null>(null);
   const [activatingWorkspaceId, setActivatingWorkspaceId] = useState<
+    string | null
+  >(null);
+  const [defaultingWorkspaceId, setDefaultingWorkspaceId] = useState<
     string | null
   >(null);
   const [closureTarget, setClosureTarget] = useState<{
@@ -43,6 +56,10 @@ export default function WorkspacesPage() {
     null,
   );
   const [transferTargetUserId, setTransferTargetUserId] = useState("");
+  const [candidateQuery, setCandidateQuery] = useState("");
+  const [candidates, setCandidates] = useState<OwnershipCandidate[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [transferAcknowledged, setTransferAcknowledged] = useState(false);
   const [transferResponseTarget, setTransferResponseTarget] = useState<{
     workspace: WorkspaceSummary;
@@ -53,6 +70,68 @@ export default function WorkspacesPage() {
     string | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const accessibleWorkspaces = workspaces.filter(workspace => workspace.status === "active" &&
+    ((workspace.lifecycleStatus ?? "active") === "active" ||
+      (workspace.lifecycleStatus === "closure_scheduled" && !!workspace.closureEffectiveAt && Date.parse(workspace.closureEffectiveAt) > Date.now())));
+  const canCreate = !loading && accessibleWorkspaces.some(workspace => workspace.role === "owner");
+  const currentWorkspaceId = context?.workspace.id ?? null;
+  const orderedWorkspaces = [...accessibleWorkspaces].sort((a, b) =>
+    Number(b.id === currentWorkspaceId) - Number(a.id === currentWorkspaceId) ||
+    Number(b.isActive) - Number(a.isActive));
+
+  useEffect(() => {
+    if (!createOpen || !canCreate) return;
+    createDialog.current?.showModal();
+    return () => document.getElementById("create-workspace-trigger")?.focus();
+  }, [createOpen, canCreate]);
+
+  useEffect(() => {
+    if (!openActionsWorkspaceId) return;
+    const workspaceId = openActionsWorkspaceId;
+    const closeMenu = (returnFocus: boolean): void => {
+      setOpenActionsWorkspaceId(null);
+      if (returnFocus) {
+        window.requestAnimationFrame(() => actionTriggerRefs.current.get(workspaceId)?.focus());
+      }
+    };
+    const handlePointerDown = (event: PointerEvent): void => {
+      if (!actionsMenuRef.current?.contains(event.target as Node)) closeMenu(true);
+    };
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeMenu(true);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [openActionsWorkspaceId]);
+
+  const closeActionsMenu = (workspaceId: string, returnFocus = true): void => {
+    setOpenActionsWorkspaceId(null);
+    if (returnFocus) {
+      window.requestAnimationFrame(() => actionTriggerRefs.current.get(workspaceId)?.focus());
+    }
+  };
+
+  useEffect(() => {
+    setCandidates([]);
+    setSearchError(null);
+    if (!supabaseClient || !transferTarget || candidateQuery.trim().length < 2) { setSearching(false); return; }
+    let active = true;
+    const client = supabaseClient;
+    setSearching(true);
+    const timer = window.setTimeout(() => {
+      void searchWorkspaceOwnershipCandidates(client, transferTarget.id, candidateQuery.trim())
+        .then(items => { if (active) setCandidates(items); })
+        .catch(error => { if (active) setSearchError(error instanceof Error ? error.message : "Admins could not be loaded"); })
+        .finally(() => { if (active) setSearching(false); });
+    }, 300);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [transferTarget, candidateQuery]);
 
   useEffect(() => {
     if (!supabaseClient) {
@@ -61,6 +140,7 @@ export default function WorkspacesPage() {
     }
     let active = true;
     setLoading(true);
+    setWorkspaces([]);
     setError(null);
     void (async () => {
       try {
@@ -81,7 +161,7 @@ export default function WorkspacesPage() {
     return () => {
       active = false;
     };
-  }, [context]);
+  }, [context, account?.userId]);
 
   const reloadWorkspaces = async (): Promise<void> => {
     if (!supabaseClient) {
@@ -95,7 +175,7 @@ export default function WorkspacesPage() {
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
-    if (!supabaseClient) return;
+    if (!supabaseClient || !canCreate) return;
     setCreating(true);
     setError(null);
     try {
@@ -150,6 +230,27 @@ export default function WorkspacesPage() {
     }
   };
 
+  const makeDefault = async (workspace: WorkspaceSummary): Promise<void> => {
+    if (!supabaseClient || workspace.isActive) return;
+    setDefaultingWorkspaceId(workspace.id);
+    setError(null);
+    try {
+      await setDefaultWorkspace(supabaseClient, workspace.id);
+      setWorkspaces(current => current.map(item => ({
+        ...item,
+        isActive: item.id === workspace.id,
+      })));
+    } catch (defaultError: unknown) {
+      setError(
+        defaultError instanceof Error
+          ? defaultError.message
+          : "Default workspace could not be changed",
+      );
+    } finally {
+      setDefaultingWorkspaceId(null);
+    }
+  };
+
   const beginClosure = (
     workspace: WorkspaceSummary,
     mode: "scheduled_end_period" | "immediate",
@@ -192,13 +293,21 @@ export default function WorkspacesPage() {
           closureTarget.mode === "immediate" ? closureNameConfirmation : null,
       });
       await clearTenantQueriesForOrganizationSwitch(queryClient);
-      await refresh();
-      await reloadWorkspaces();
       if (
         closureTarget.mode === "immediate" &&
-        closureTarget.workspace.isActive
+        closureTarget.workspace.id === currentWorkspaceId
       ) {
-        navigate("/organization-switcher", { replace: true });
+        clearTabWorkspaceId();
+        const remaining = (await listAccountWorkspaces(supabaseClient)).filter(workspace => workspace.id !== closureTarget.workspace.id && workspace.status === "active" &&
+          ((workspace.lifecycleStatus ?? "active") === "active" || (workspace.lifecycleStatus === "closure_scheduled" && !!workspace.closureEffectiveAt && Date.parse(workspace.closureEffectiveAt) > Date.now())));
+        setWorkspaces(remaining);
+        const next = remaining.find(workspace => workspace.isActive) ?? remaining[0];
+        if (next) await selectActiveWorkspace(supabaseClient, next.id);
+        const resolved = await refresh();
+        navigate(next && resolved ? workspaceDestinationFromRole(resolved.membership.role) : "/organization-switcher", { replace: true });
+      } else {
+        await refresh();
+        await reloadWorkspaces();
       }
       setClosureTarget(null);
       setSensitivePassword("");
@@ -236,13 +345,15 @@ export default function WorkspacesPage() {
     setTransferResponseTarget(null);
     setTransferTarget(workspace);
     setTransferTargetUserId("");
+    setCandidateQuery("");
+    setCandidates([]);
     setTransferAcknowledged(false);
     setSensitivePassword("");
     setError(null);
   };
 
   const submitTransfer = async (): Promise<void> => {
-    if (!supabaseClient || !transferTarget) return;
+    if (!supabaseClient || !transferTarget || !candidates.some(candidate => candidate.userId === transferTargetUserId)) return;
     setTransferringWorkspaceId(transferTarget.id);
     setError(null);
     try {
@@ -273,7 +384,7 @@ export default function WorkspacesPage() {
     setTransferringWorkspaceId(workspace.id);
     setError(null);
     try {
-      await reauthenticateForSensitiveAction();
+      if (action === "accept") await reauthenticateForSensitiveAction();
       await respondWorkspaceOwnershipTransfer(supabaseClient, {
         workspaceId: workspace.id,
         transferId: workspace.pendingOwnershipTransfer.id,
@@ -295,41 +406,90 @@ export default function WorkspacesPage() {
     }
   };
 
+  const cancelTransfer = async (workspace: WorkspaceSummary): Promise<void> => {
+    if (!supabaseClient || !workspace.pendingOwnershipTransfer) return;
+    setTransferringWorkspaceId(workspace.id);
+    setError(null);
+    try {
+      await cancelWorkspaceOwnershipTransfer(supabaseClient, workspace.id, workspace.pendingOwnershipTransfer.id);
+      await reloadWorkspaces();
+    } catch (error) { setError(error instanceof Error ? error.message : "Transfer could not be cancelled"); }
+    finally { setTransferringWorkspaceId(null); }
+  };
+
   return (
     <section className="account-page" aria-labelledby="workspaces-title">
       <AccountPageHeader
         title="Workspaces"
         titleId="workspaces-title"
-        description="Switch between organizations linked to this account, or create a new workspace."
+        description="See every workspace linked to this account and manage ownership deliberately."
+        action={canCreate ? (
+          <Button
+            id="create-workspace-trigger"
+            type="button"
+            className="primary-button"
+            onClick={() => {
+              setWorkspaceName("");
+              setError(null);
+              setCreateOpen(true);
+            }}
+          >
+            <Plus size={16} aria-hidden /> Create workspace
+          </Button>
+        ) : undefined}
       />
+      {orderedWorkspaces.filter(workspace => workspace.pendingOwnershipTransfer?.role === "target").map(workspace => (
+        <div key={workspace.id} className="account-notice workspace-transfer-banner" role="region" aria-label={`Ownership request for ${workspace.name}`}>
+          <strong>Ownership transfer · {workspace.name}</strong>
+          <p>You have been asked to become the owner. Review the request before it expires.</p>
+          <div className="workspace-row-actions">
+            {(["reject", "accept"] as const).map(action => (
+              <Button key={action} type="button" className={action === "accept" ? "primary-button compact-button" : "secondary-button compact-button"}
+                disabled={transferringWorkspaceId === workspace.id}
+                aria-label={`${action === "accept" ? "Accept" : "Reject"} owner transfer for ${workspace.name}`}
+                onClick={() => { setClosureTarget(null); setTransferTarget(null); setTransferResponseTarget({ workspace, action }); setSensitivePassword(""); setError(null); }}>
+                {action === "accept" ? "Accept owner transfer" : "Reject owner transfer"}
+              </Button>
+            ))}
+          </div>
+        </div>
+      ))}
       {loading ? (
         <p className="settings-state" role="status">
           Loading workspaces...
         </p>
       ) : null}
       <div className="workspace-list">
-        {workspaces.length === 0 && !loading ? (
+        {orderedWorkspaces.length === 0 && !loading ? (
           <div className="workspace-row empty-workspace-row">
             <div>
               <strong>No workspaces yet</strong>
-              <span>Create a workspace to start setup.</span>
+              <span>Open the workspace switcher to continue.</span>
+              <Button type="button" onClick={() => navigate("/organization-switcher")}>Workspace switcher</Button>
             </div>
           </div>
         ) : null}
-        {workspaces.map((workspace) => {
+        {orderedWorkspaces.map((workspace) => {
           const activating = activatingWorkspaceId === workspace.id;
           const lifecycleStatus = workspace.lifecycleStatus ?? "active";
           const pendingTransfer = workspace.pendingOwnershipTransfer ?? null;
+          const isCurrent = workspace.id === currentWorkspaceId;
+          const hasOwnerActions = workspace.role === "owner" && (
+            (!pendingTransfer && (lifecycleStatus === "active" || lifecycleStatus === "closure_scheduled")) ||
+            pendingTransfer?.role === "initiator"
+          );
+          const actionsOpen = openActionsWorkspaceId === workspace.id;
           return (
             <div
               className="workspace-row"
               key={workspace.id}
-              data-active={workspace.isActive}
+              data-current={isCurrent}
             >
               <div>
                 <strong>{workspace.name}</strong>
                 <span>
                   {workspace.role}
+                  {workspace.isActive ? " · default" : ""}
                   {lifecycleStatus === "closure_scheduled"
                     ? ` · closes ${formatClosureDate(workspace.closureEffectiveAt ?? null)}`
                     : ""}
@@ -339,19 +499,11 @@ export default function WorkspacesPage() {
                 </span>
               </div>
               <div className="workspace-row-actions">
-                {workspace.isActive ? (
-                  <Button
-                    className="secondary-button compact-button active-workspace"
-                    type="button"
-                    aria-label={`Open app for ${workspace.name}`}
-                    disabled={activating}
-                    onClick={() => activate(workspace)}
-                  >
+                {isCurrent ? (
+                  <span className="account-pill active-workspace" aria-label={`${workspace.name} is the current workspace`}>
                     <Check size={15} aria-hidden />
-                    <span>Active workspace</span>
-                    <span aria-hidden>·</span>
-                    <span>{activating ? "Opening" : "Open app"}</span>
-                  </Button>
+                    Current
+                  </span>
                 ) : (
                   <Button
                     className="secondary-button compact-button"
@@ -363,95 +515,74 @@ export default function WorkspacesPage() {
                     {activating ? "Opening" : "Open"}
                   </Button>
                 )}
-                {workspace.role === "owner" ? (
-                  lifecycleStatus === "closure_scheduled" ? (
-                    <Button
-                      className="secondary-button compact-button"
-                      type="button"
-                      aria-label={`Cancel close for ${workspace.name}`}
-                      disabled={closingWorkspaceId === workspace.id}
-                      onClick={() => cancelClosure(workspace)}
-                    >
-                      <X size={15} aria-hidden /> Cancel close
-                    </Button>
-                  ) : (
-                    <>
-                      <Button
-                        className="secondary-button compact-button"
-                        type="button"
-                        aria-label={`Close later for ${workspace.name}`}
-                        disabled={closingWorkspaceId === workspace.id}
-                        onClick={() =>
-                          beginClosure(workspace, "scheduled_end_period")
-                        }
-                      >
-                        <CalendarClock size={15} aria-hidden /> Close later
-                      </Button>
-                      <Button
-                        className="secondary-button compact-button danger-button"
-                        type="button"
-                        aria-label={`Close now for ${workspace.name}`}
-                        disabled={closingWorkspaceId === workspace.id}
-                        onClick={() => beginClosure(workspace, "immediate")}
-                      >
-                        <Trash2 size={15} aria-hidden /> Close now
-                      </Button>
-                    </>
-                  )
-                ) : null}
-                {pendingTransfer?.role === "target" ? (
-                  <>
-                    <Button
-                      className="secondary-button compact-button"
-                      type="button"
-                      aria-label={`Reject owner transfer for ${workspace.name}`}
-                      disabled={transferringWorkspaceId === workspace.id}
-                      onClick={() => {
-                        setClosureTarget(null);
-                        setTransferTarget(null);
-                        setTransferResponseTarget({
-                          workspace,
-                          action: "reject",
-                        });
-                        setSensitivePassword("");
-                        setError(null);
+                <div className="workspace-actions-menu" ref={actionsOpen ? actionsMenuRef : undefined}>
+                    <button
+                      ref={(element) => {
+                        if (element) actionTriggerRefs.current.set(workspace.id, element);
+                        else actionTriggerRefs.current.delete(workspace.id);
                       }}
-                    >
-                      Reject owner transfer
-                    </Button>
-                    <Button
-                      className="primary-button compact-button"
                       type="button"
-                      aria-label={`Accept owner transfer for ${workspace.name}`}
-                      disabled={transferringWorkspaceId === workspace.id}
-                      onClick={() => {
-                        setClosureTarget(null);
-                        setTransferTarget(null);
-                        setTransferResponseTarget({
-                          workspace,
-                          action: "accept",
-                        });
-                        setSensitivePassword("");
-                        setError(null);
-                      }}
+                      className="workspace-actions-trigger"
+                      aria-label={`Workspace actions for ${workspace.name}`}
+                      aria-haspopup="menu"
+                      aria-expanded={actionsOpen}
+                      onClick={() => setOpenActionsWorkspaceId(current => current === workspace.id ? null : workspace.id)}
                     >
-                      Accept owner transfer
-                    </Button>
-                  </>
-                ) : null}
-                {workspace.role === "owner" &&
-                lifecycleStatus === "active" &&
-                !pendingTransfer ? (
-                  <Button
-                    className="secondary-button compact-button"
-                    type="button"
-                    aria-label={`Transfer owner for ${workspace.name}`}
-                    disabled={transferringWorkspaceId === workspace.id}
-                    onClick={() => beginTransfer(workspace)}
-                  >
-                    <Crown size={15} aria-hidden /> Transfer owner
-                  </Button>
-                ) : null}
+                      <Ellipsis size={18} aria-hidden />
+                    </button>
+                    {actionsOpen ? (
+                      <div className="workspace-actions-popover" role="menu" aria-label={`Workspace actions for ${workspace.name}`}>
+                        <button
+                          role="menuitem"
+                          type="button"
+                          disabled={workspace.isActive || defaultingWorkspaceId === workspace.id}
+                          onClick={() => {
+                            closeActionsMenu(workspace.id);
+                            void makeDefault(workspace);
+                          }}
+                        >
+                          {workspace.isActive ? <Check size={15} aria-hidden /> : <Star size={15} aria-hidden />}
+                          {workspace.isActive
+                            ? "Default workspace"
+                            : defaultingWorkspaceId === workspace.id
+                              ? "Setting default"
+                              : "Set as default"}
+                        </button>
+                        {hasOwnerActions ? <div className="workspace-actions-separator" role="separator" /> : null}
+                        {lifecycleStatus === "active" && !pendingTransfer ? (
+                          hasOwnerActions ? (
+                          <>
+                            <button role="menuitem" type="button" disabled={transferringWorkspaceId === workspace.id}
+                              onClick={() => { closeActionsMenu(workspace.id); beginTransfer(workspace); }}>
+                              <Crown size={15} aria-hidden /> Transfer ownership
+                            </button>
+                            <button role="menuitem" type="button" disabled={closingWorkspaceId === workspace.id}
+                              onClick={() => { closeActionsMenu(workspace.id); beginClosure(workspace, "scheduled_end_period"); }}>
+                              <CalendarClock size={15} aria-hidden /> Close later
+                            </button>
+                            <div className="workspace-actions-separator" role="separator" />
+                            <button role="menuitem" type="button" className="workspace-actions-danger" disabled={closingWorkspaceId === workspace.id}
+                              onClick={() => { closeActionsMenu(workspace.id); beginClosure(workspace, "immediate"); }}>
+                              <Trash2 size={15} aria-hidden /> Close now
+                            </button>
+                          </>
+                          ) : null
+                        ) : null}
+                        {hasOwnerActions && lifecycleStatus === "closure_scheduled" && !pendingTransfer ? (
+                          <button role="menuitem" type="button" disabled={closingWorkspaceId === workspace.id}
+                            onClick={() => { closeActionsMenu(workspace.id); void cancelClosure(workspace); }}>
+                            <X size={15} aria-hidden /> Cancel close
+                          </button>
+                        ) : null}
+                        {hasOwnerActions && pendingTransfer?.role === "initiator" ? (
+                          <button role="menuitem" type="button" disabled={transferringWorkspaceId === workspace.id}
+                            onClick={() => { closeActionsMenu(workspace.id); void cancelTransfer(workspace); }}>
+                            <X size={15} aria-hidden /> Cancel transfer
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
               </div>
             </div>
           );
@@ -474,14 +605,25 @@ export default function WorkspacesPage() {
               added again before the next payment.
             </p>
           </div>
-          <label>
-            Target admin user ID
+          <label className="account-field">
+            Find an admin by name or email
             <input
-              value={transferTargetUserId}
-              onChange={(event) => setTransferTargetUserId(event.target.value)}
-              placeholder="00000000-0000-4000-8000-000000000000"
+              value={candidateQuery}
+              maxLength={80}
+              onChange={(event) => { setCandidateQuery(event.target.value); setTransferTargetUserId(""); setCandidates([]); }}
+              placeholder="Enter at least 2 characters"
             />
           </label>
+          <div className="workspace-candidates" aria-live="polite">
+            {searching ? <p role="status">Searching eligible admins...</p> : null}
+            {searchError ? <p role="alert" className="form-error">{searchError}</p> : null}
+            {!searching && !searchError && candidateQuery.trim().length >= 2 && candidates.length === 0 ? <p>No eligible admins found.</p> : null}
+            {candidates.map(candidate => <label className="workspace-candidate" key={candidate.userId}>
+              <input type="radio" name="ownership-candidate" checked={transferTargetUserId === candidate.userId}
+                onChange={() => setTransferTargetUserId(candidate.userId)} />
+              <span>{candidate.name}<small>{candidate.email}</small></span>
+            </label>)}
+          </div>
           <label className="settings-checkbox">
             <input
               type="checkbox"
@@ -490,9 +632,9 @@ export default function WorkspacesPage() {
                 setTransferAcknowledged(event.target.checked)
               }
             />
-            <span>I understand ownership transfer cannot be reversed.</span>
+            <span>I understand an accepted ownership transfer cannot be reversed. I can cancel while it is pending.</span>
           </label>
-          <label>
+          <label className="account-field">
             Account password
             <input
               type="password"
@@ -508,7 +650,7 @@ export default function WorkspacesPage() {
               disabled={
                 transferringWorkspaceId === transferTarget.id ||
                 !transferAcknowledged ||
-                !uuidLike(transferTargetUserId.trim()) ||
+                !candidates.some(candidate => candidate.userId === transferTargetUserId) ||
                 sensitivePassword.trim().length === 0
               }
               onClick={submitTransfer}
@@ -553,7 +695,7 @@ export default function WorkspacesPage() {
           </div>
           {closureTarget.mode === "immediate" ? (
             <>
-              <label>
+              <label className="account-field">
                 Type organization name
                 <input
                   value={closureNameConfirmation}
@@ -563,7 +705,7 @@ export default function WorkspacesPage() {
                   placeholder={closureTarget.workspace.name}
                 />
               </label>
-              <label>
+              <label className="account-field">
                 Account password
                 <input
                   type="password"
@@ -634,11 +776,10 @@ export default function WorkspacesPage() {
                 : "Reject ownership transfer"}
             </strong>
             <p id="workspace-transfer-response-description">
-              Enter your account password to refresh your session before saving
-              this ownership-transfer response.
+              {transferResponseTarget.action === "accept" ? "Enter your account password to accept ownership of this workspace." : "Reject this request without changing workspace ownership. No password is needed."}
             </p>
           </div>
-          <label>
+          {transferResponseTarget.action === "accept" ? <label className="account-field">
             Account password
             <input
               type="password"
@@ -646,7 +787,7 @@ export default function WorkspacesPage() {
               value={sensitivePassword}
               onChange={(event) => setSensitivePassword(event.target.value)}
             />
-          </label>
+          </label> : null}
           <div className="workspace-row-actions">
             <Button
               className={
@@ -657,7 +798,7 @@ export default function WorkspacesPage() {
               type="button"
               disabled={
                 transferringWorkspaceId === transferResponseTarget.workspace.id ||
-                sensitivePassword.trim().length === 0
+                (transferResponseTarget.action === "accept" && sensitivePassword.trim().length === 0)
               }
               onClick={() =>
                 respondToTransfer(
@@ -688,11 +829,23 @@ export default function WorkspacesPage() {
           </div>
         </section>
       ) : null}
-      <form className="create-workspace-form" onSubmit={createWorkspace}>
-        <label htmlFor="new-workspace-name">Create workspace</label>
-        <div>
+      {createOpen && canCreate ? <dialog ref={createDialog} className="account-confirmation-dialog account-create-workspace-dialog" aria-labelledby="create-workspace-title"
+        onKeyDown={event => {
+          if (event.key !== "Tab") return;
+          const controls = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)")];
+          const first = controls[0], last = controls.at(-1);
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+        }}
+        onCancel={event => { event.preventDefault(); if (!creating) setCreateOpen(false); }}>
+      <h2 id="create-workspace-title">Create workspace</h2>
+      <p>Start a separate workspace and complete its setup.</p>
+      <form className="account-create-workspace-form" onSubmit={createWorkspace}>
+        <label htmlFor="new-workspace-name">Workspace name</label>
+        <div className="account-field">
           <input
             id="new-workspace-name"
+            autoFocus
             value={workspaceName}
             maxLength={120}
             onChange={(event) => setWorkspaceName(event.target.value)}
@@ -705,9 +858,12 @@ export default function WorkspacesPage() {
           >
             <Plus size={16} aria-hidden /> {creating ? "Creating" : "Create"}
           </Button>
+          <Button type="button" className="secondary-button" disabled={creating} onClick={() => setCreateOpen(false)}>Cancel</Button>
         </div>
       </form>
-      {error ? (
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      </dialog> : null}
+      {error && !createOpen ? (
         <p className="form-error" role="alert">
           {error}
         </p>
@@ -742,10 +898,4 @@ function formatClosureDate(value: string | null): string {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
-}
-
-function uuidLike(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value,
-  );
 }

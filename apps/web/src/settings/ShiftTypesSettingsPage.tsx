@@ -41,6 +41,9 @@ export default function ShiftTypesSettingsPage() {
 }
 
 function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
+  const canEdit =
+    useAuth().context?.permissions.includes("settings.shift_catalog.manage") ??
+    false;
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedType = searchParams.get("edit");
   const queryClient = useQueryClient();
@@ -60,7 +63,15 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
   const closeEditor = () => {
     editorSequence.current += 1;
     setEditing(null);
-    if (requestedType) setSearchParams(current => { const next = new URLSearchParams(current); next.delete("edit"); return next; }, { replace: true });
+    if (requestedType)
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.delete("edit");
+          return next;
+        },
+        { replace: true },
+      );
   };
   const refresh = () => queryClient.invalidateQueries({ queryKey });
 
@@ -120,9 +131,15 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
 
   const items = query.data ?? [];
   useEffect(() => {
-    if (!requestedType) { handledTypeLink.current = null; return; }
-    if (handledTypeLink.current === requestedType || editing || !query.data) return;
-    const requested = query.data.find(type => type.id === requestedType && !type.archived_at);
+    if (!requestedType) {
+      handledTypeLink.current = null;
+      return;
+    }
+    if (handledTypeLink.current === requestedType || editing || !query.data)
+      return;
+    const requested = query.data.find(
+      (type) => type.id === requestedType && !type.archived_at,
+    );
     if (!requested) return;
     handledTypeLink.current = requestedType;
     editorSequence.current += 1;
@@ -147,6 +164,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
   );
   const parsedDraft = shiftTypeInputSchema.safeParse(draft);
   const canSave =
+    canEdit &&
     !saveMutation.isPending &&
     !defaultsStale &&
     !deleteLocked &&
@@ -184,7 +202,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
             <Button
               className="job-primary-button"
               type="button"
-              disabled={saveMutation.isPending || deleteLocked}
+              disabled={!canEdit || saveMutation.isPending || deleteLocked}
               onClick={() => openEditor()}
             >
               <Plus size={16} aria-hidden />
@@ -226,13 +244,15 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
               </button>
             </div>
             <div className="catalog-drawer-body">
-              <fieldset disabled={saveMutation.isPending || deleteLocked}>
+              <fieldset
+                disabled={!canEdit || saveMutation.isPending || deleteLocked}
+              >
                 <div className="job-field">
                   <label htmlFor="shift-catalog-name">Name</label>
                   <div className="job-name-color">
                     <input
                       id="shift-catalog-name"
-                      disabled={saveMutation.isPending}
+                      disabled={!canEdit || saveMutation.isPending}
                       value={draft.name}
                       maxLength={60}
                       required
@@ -246,7 +266,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                     />
                     <JobColorInput
                       label="Color"
-                      disabled={saveMutation.isPending}
+                      disabled={!canEdit || saveMutation.isPending}
                       value={draft.color}
                       onChange={(color) =>
                         setDraft((current) => ({ ...current, color }))
@@ -266,7 +286,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                       id="shift-catalog-default-start"
                       type="time"
                       required
-                      disabled={saveMutation.isPending}
+                      disabled={!canEdit || saveMutation.isPending}
                       value={draft.default_start_time ?? ""}
                       onChange={(event) =>
                         setDraft((current) => ({
@@ -287,7 +307,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                       id="shift-catalog-default-end"
                       type="time"
                       required
-                      disabled={saveMutation.isPending}
+                      disabled={!canEdit || saveMutation.isPending}
                       value={draft.default_end_time ?? ""}
                       onChange={(event) =>
                         setDraft((current) => ({
@@ -316,9 +336,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                     revalidate or update them.
                   </p>
                   {!draft.default_start_time && !draft.default_end_time ? (
-                    <p>
-                      Default start and end times are required.
-                    </p>
+                    <p>Default start and end times are required.</p>
                   ) : null}
                 </section>
               ) : null}
@@ -368,7 +386,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                   id={savedType.id}
                   name={savedType.name}
                   workspaceId={workspaceId}
-                  disabled={saveMutation.isPending}
+                  disabled={!canEdit || saveMutation.isPending}
                   onLockChange={setDeleteLocked}
                   onDeleted={closeEditor}
                 />
@@ -418,7 +436,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
           onArchive={(item) =>
             archiveMutation.mutate({ id: item.id, archived: !item.archived_at })
           }
-          disabled={saveMutation.isPending || deleteLocked}
+          disabled={!canEdit || saveMutation.isPending || deleteLocked}
           reorderPending={reorderMutation.isPending}
           archivePending={archiveMutation.isPending}
         />

@@ -6,6 +6,14 @@ const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
 describe("workspace account service", () => {
+  it("forwards candidate search and cancellation with the resolved actor", async () => {
+    const rpc = vi.fn(async () => ({ data: [], error: null }));
+    const service = createWorkspaceAccountServiceWithClients({ rpcClient: { rpc }, resolveActorUserId: async () => userId });
+    await service.searchOwnershipCandidates(accessToken, workspaceId, "Admin");
+    expect(rpc).toHaveBeenLastCalledWith("search_workspace_ownership_candidates_service", { actor_user_id: userId, target_workspace_id: workspaceId, search_text: "Admin" });
+    await service.cancelOwnershipTransfer(accessToken, workspaceId, workspaceId);
+    expect(rpc).toHaveBeenLastCalledWith("cancel_workspace_ownership_transfer_service", { actor_user_id: userId, target_workspace_id: workspaceId, transfer_id: workspaceId });
+  });
   it("maps account workspace rows through the service RPC", async () => {
     const rpc = vi.fn(async () => ({
       data: [

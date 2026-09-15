@@ -270,6 +270,7 @@ export const notificationUserCatalogEntrySchema =
       mandatory_in_app: true,
     })
     .extend({
+      default_channels: notificationChannelPreferenceSchema.optional(),
       channel_controls: z.array(
         z.object({
           channel: notificationChannelSchema,
@@ -287,8 +288,23 @@ export const notificationUserPreferenceSavedResultSchema = z.object({
   preferences: z.array(notificationUserPreferenceSchema),
 });
 
+export const accountNotificationTypeKeys = [
+  "security.account.email_change_requested", "security.account.email_change_cancelled",
+  "security.account.password_changed", "security.account.sessions_revoked",
+  "security.account.deletion_requested", "security.account.deletion_restored",
+] as const;
+
 export const notificationUserPreferencesResponseSchema = z.object({
-  workspace_id: z.string().uuid(),
+  workspace_id: z.string().uuid().nullable(),
+  email_channel_reason: z.enum(["email_unverified", "delivery_unavailable"]).optional(),
+  account_catalog: z.array(z.object({
+    type_key: z.enum(accountNotificationTypeKeys),
+    scope: z.literal("account"),
+    title: z.string(),
+    description: z.string(),
+    mandatory_in_app: z.literal(true),
+    delivery: z.literal("transactional_in_app"),
+  })).optional(),
   can_write: z.boolean(),
   workspaces: z.array(notificationPreferenceWorkspaceSchema),
   catalog: z.array(notificationUserCatalogEntrySchema),

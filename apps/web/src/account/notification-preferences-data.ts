@@ -18,7 +18,7 @@ async function request(
     developmentBearerToken();
   if (!token) throw new Error("A current session is required");
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/v1/workspaces/${workspaceId}${path}`,
+    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}${workspaceId ? `/v1/workspaces/${workspaceId}${path}` : "/v1/account/notification-preferences"}`,
     {
       ...init,
       headers: {

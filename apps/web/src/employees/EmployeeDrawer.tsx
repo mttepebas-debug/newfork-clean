@@ -115,8 +115,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     queryFn: () => loadEmployeeReferenceData(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  const canReviewOnboarding =
-    context?.permissions.includes("employee_onboarding.review") ?? false;
   const canReviewDocuments =
     context?.permissions.includes("employee_documents.review") ?? false;
   const onboardingReview = useQuery({
@@ -124,7 +122,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     queryFn: () =>
       getEmployeeOnboardingReview(workspaceId, props.employeeId ?? ""),
     enabled: Boolean(
-      workspaceId && props.employeeId && !props.creating && canReviewOnboarding,
+      workspaceId &&
+      props.employeeId &&
+      !props.creating &&
+      context?.permissions.includes("employees.read"),
     ),
   });
   const [draft, setDraft] = useState<EmployeeInput>(emptyDraft);
@@ -155,11 +156,25 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const allowNavigationRef = useRef(false);
   const previousSectionRef = useRef(props.section);
   const readiness = employeeCreateReadiness(draft);
+  const allowedSections = sections.filter(
+    ([key]) =>
+      (key !== "availability" ||
+        context?.permissions.includes("availability.read")) &&
+      (key !== "documents" ||
+        context?.permissions.includes("employee_documents.read")) &&
+      (key !== "access" ||
+        context?.permissions.includes("employee_access.read") ||
+        context?.permissions.includes("employee_access.manage")),
+  );
   const activeSection =
     props.creating && (props.section !== "employment" || !readiness.namesReady)
       ? "profile"
-      : props.section;
-  const visibleSections = props.creating ? sections.slice(0, 2) : sections;
+      : allowedSections.some(([key]) => key === props.section)
+        ? props.section
+        : "profile";
+  const visibleSections = props.creating
+    ? sections.slice(0, 2)
+    : allowedSections;
   const DrawerForm =
     !props.creating && activeSection === "availability" ? "div" : "form";
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -226,11 +241,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     setInviteRoleDirty(false);
     setInviteRoleAttempt(0);
     lastInviteRoleSubjectKeyRef.current = draftSubjectKey;
-  }, [
-    detail.data?.invitation?.role_id,
-    draftSubjectKey,
-    inviteRoleDirty,
-  ]);
+  }, [detail.data?.invitation?.role_id, draftSubjectKey, inviteRoleDirty]);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
@@ -249,7 +260,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const canManageAccess =
     context?.permissions.includes("employee_access.manage") ?? false;
   const archived = Boolean(detail.data?.archived_at);
-  const readOnly = archived || !canManage;
+  const targetIsOwner = detail.data?.role_name === "Owner";
+  const readOnly = archived || !canManage || targetIsOwner;
   const createMutation = useMutation({
     mutationFn: (command: EmployeeCreateCommand) =>
       createEmployee(workspaceId, command),
@@ -879,7 +891,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       )
                     }
                   >
-                    {sections.map(([key, label]) => (
+                    {visibleSections.map(([key, label]) => (
                       <option key={key} value={key}>
                         {label}
                       </option>
@@ -1170,7 +1182,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           ) : activeSection === "availability" ? null : (
             <footer className="employee-drawer-footer">
               <div>
-                {!props.creating && canArchive ? (
+                {!props.creating && canArchive && !targetIsOwner ? (
                   <button
                     type="button"
                     className={`employee-lifecycle-button${archived ? " restore" : ""}`}
@@ -1626,7 +1638,11 @@ function renderSection(
         roles={references?.inviteRoles ?? []}
         inviteRoleId={inviteRoleId}
         onAddEmail={onAddEmail}
-        readOnly={readOnly || !canManageAccess}
+        readOnly={
+          Boolean(detail?.archived_at) ||
+          !canManageAccess ||
+          detail?.role_name === "Owner"
+        }
         onRetryInvitation={onRetryInvitation}
         retryingInvitation={retryingInvitation}
         onRevokeInvitation={onRevokeInvitation}
@@ -1664,6 +1680,16 @@ function OnboardingReviewPanel({
   readonly onOpenDocument: (requirementId: string) => void;
   readonly openingDocument: boolean;
 }) {
+  const permissions = useAuth().context?.permissions ?? [];
+  const canReadDocuments = permissions.includes("employee_documents.read");
+  const canReview = (kind: EmployeeOnboardingRequirement["kind"]) =>
+    kind === "document"
+      ? canReviewDocuments
+      : permissions.includes(
+          kind === "profile"
+            ? "employees.private.manage"
+            : "employee_onboarding.review",
+        );
   if (loading)
     return <p className="employee-panel-state">Loading onboarding...</p>;
   if (!onboarding)
@@ -1709,28 +1735,29 @@ function OnboardingReviewPanel({
             {requirement.rejection_reason ? (
               <p>{requirement.rejection_reason}</p>
             ) : null}
+            {requirement.kind === "document" &&
+            canReadDocuments &&
+            ["awaiting_review", "completed", "rejected"].includes(
+              requirement.status,
+            ) ? (
+              <Button
+                type="button"
+                className="secondary-button"
+                aria-label={`Open ${requirement.title}`}
+                disabled={openingDocument}
+                onClick={() => onOpenDocument(requirement.id)}
+              >
+                Open document
+              </Button>
+            ) : null}
             {requirement.requires_review &&
             requirement.status === "awaiting_review" ? (
               <div>
-                {requirement.kind === "document" && canReviewDocuments ? (
-                  <Button
-                    type="button"
-                    className="secondary-button"
-                    aria-label={`Open ${requirement.title}`}
-                    disabled={openingDocument}
-                    onClick={() => onOpenDocument(requirement.id)}
-                  >
-                    Open document
-                  </Button>
-                ) : null}
                 <Button
                   type="button"
                   className="secondary-button"
                   aria-label={`Request changes for ${requirement.title}`}
-                  disabled={
-                    reviewing ||
-                    (requirement.kind === "document" && !canReviewDocuments)
-                  }
+                  disabled={reviewing || !canReview(requirement.kind)}
                   onClick={() => {
                     const reason = window.prompt(
                       "What should the employee correct?",
@@ -1748,10 +1775,7 @@ function OnboardingReviewPanel({
                 <Button
                   type="button"
                   aria-label={`Accept ${requirement.title}`}
-                  disabled={
-                    reviewing ||
-                    (requirement.kind === "document" && !canReviewDocuments)
-                  }
+                  disabled={reviewing || !canReview(requirement.kind)}
                   onClick={() =>
                     onReview("accept_requirement", requirement.id, "")
                   }
@@ -1765,7 +1789,7 @@ function OnboardingReviewPanel({
       ) : (
         <p className="employee-panel-state">No requirements in this section.</p>
       )}
-      {activationReady ? (
+      {activationReady && permissions.includes("employee_onboarding.review") ? (
         <Button
           type="button"
           disabled={reviewing}
@@ -1819,12 +1843,16 @@ function ProfileSection({
   onOpenDocument: (requirementId: string) => void;
   openingDocument: boolean;
 }) {
-  const profileReviewVisible = onboarding?.requirements.some(
-    (requirement) =>
-      requirement.kind === "profile" &&
-      requirement.requires_review &&
-      requirement.status !== "completed",
-  );
+  const canReadPrivate =
+    useAuth().context?.permissions.includes("employees.private.read") ?? false;
+  const profileReviewVisible =
+    canReadPrivate &&
+    onboarding?.requirements.some(
+      (requirement) =>
+        requirement.kind === "profile" &&
+        requirement.requires_review &&
+        requirement.status !== "completed",
+    );
   const identityReadOnly = readOnly || identityLocked;
   const pendingInviteHint = invitePending
     ? "Locked while invitation is pending"
@@ -1834,9 +1862,7 @@ function ProfileSection({
     : draft.invitation_email;
   return (
     <div className="employee-profile-sections">
-      <ProfileGroup
-        title="Identity"
-      >
+      <ProfileGroup title="Identity">
         <div className="employee-form-grid">
           <Field
             label="First name"
@@ -1845,9 +1871,7 @@ function ProfileSection({
             disabled={identityReadOnly}
             readOnly={invitePending}
             hint={
-              identityLocked
-                ? "Locked after activation"
-                : pendingInviteHint
+              identityLocked ? "Locked after activation" : pendingInviteHint
             }
             onChange={(value) =>
               setDraft((current) => ({ ...current, first_name: value }))
@@ -1860,9 +1884,7 @@ function ProfileSection({
             disabled={identityReadOnly}
             readOnly={invitePending}
             hint={
-              identityLocked
-                ? "Locked after activation"
-                : pendingInviteHint
+              identityLocked ? "Locked after activation" : pendingInviteHint
             }
             onChange={(value) =>
               setDraft((current) => ({ ...current, last_name: value }))
@@ -1876,7 +1898,7 @@ function ProfileSection({
               setDraft((current) => ({ ...current, preferred_name: value }))
             }
           />
-          {!creating ? (
+          {!creating && canReadPrivate ? (
             <ReadOnlyField
               label="Date of birth"
               value={privateContact?.date_of_birth ?? null}
@@ -1885,9 +1907,7 @@ function ProfileSection({
         </div>
       </ProfileGroup>
 
-      <ProfileGroup
-        title="Contact"
-      >
+      <ProfileGroup title="Contact">
         <div className="employee-form-grid employee-contact-grid">
           <Field
             label="E-mail"
@@ -1901,26 +1921,31 @@ function ProfileSection({
               setDraft((current) => ({ ...current, invitation_email: value }))
             }
           />
-          <ReadOnlyField label="Phone" value={privateContact?.phone ?? null} />
-          {!creating ? (
+          {canReadPrivate && (
+            <ReadOnlyField
+              label="Phone"
+              value={privateContact?.phone ?? null}
+            />
+          )}
+          {!creating && canReadPrivate ? (
             <ReadOnlyField
               label="Emergency contact"
               value={privateContact?.emergency_contact_name ?? null}
             />
           ) : null}
-          {!creating ? (
+          {!creating && canReadPrivate ? (
             <ReadOnlyField
               label="Relationship"
               value={privateContact?.emergency_contact_relationship ?? null}
             />
           ) : null}
-          {!creating ? (
+          {!creating && canReadPrivate ? (
             <ReadOnlyField
               label="Emergency phone"
               value={privateContact?.emergency_contact_phone ?? null}
             />
           ) : null}
-          {!creating ? (
+          {!creating && canReadPrivate ? (
             <ReadOnlyField
               label="Emergency e-mail"
               value={privateContact?.emergency_contact_email || null}
@@ -1929,27 +1954,30 @@ function ProfileSection({
         </div>
       </ProfileGroup>
 
-      <ProfileGroup
-        title="Address"
-      >
-        <div className="employee-form-grid employee-address-grid">
-          <ReadOnlyField
-            label="Street address"
-            value={privateContact?.street_address ?? null}
-            wide
-          />
-          <ReadOnlyField label="City" value={privateContact?.city ?? null} />
-          <ReadOnlyField label="State" value={privateContact?.region ?? null} />
-          <ReadOnlyField
-            label="ZIP code"
-            value={privateContact?.postal_code ?? null}
-          />
-          <ReadOnlyField
-            label="Country"
-            value={privateContact?.country_code ?? null}
-          />
-        </div>
-      </ProfileGroup>
+      {canReadPrivate && (
+        <ProfileGroup title="Address">
+          <div className="employee-form-grid employee-address-grid">
+            <ReadOnlyField
+              label="Street address"
+              value={privateContact?.street_address ?? null}
+              wide
+            />
+            <ReadOnlyField label="City" value={privateContact?.city ?? null} />
+            <ReadOnlyField
+              label="State"
+              value={privateContact?.region ?? null}
+            />
+            <ReadOnlyField
+              label="ZIP code"
+              value={privateContact?.postal_code ?? null}
+            />
+            <ReadOnlyField
+              label="Country"
+              value={privateContact?.country_code ?? null}
+            />
+          </div>
+        </ProfileGroup>
+      )}
 
       {profileReviewVisible ? (
         <section className="employee-readonly-panel">

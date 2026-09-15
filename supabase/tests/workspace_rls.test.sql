@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(118);
+select plan(119);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -317,6 +317,20 @@ insert into public.employee_profiles (
   'owner-invite@example.test',
   '10000000-0000-4000-8000-000000000001'
 );
+insert into public.employee_profiles (
+  id, workspace_id, user_id, employee_code, first_name, last_name,
+  invitation_email, is_excluded_from_schedule, created_by
+) values (
+  '43000000-0000-4000-8000-000000000011',
+  '20000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'E-0003',
+  'Stale',
+  'Legal Name',
+  'owner@example.test',
+  true,
+  '10000000-0000-4000-8000-000000000001'
+);
 insert into public.employee_location_assignments (
   workspace_id, employee_id, location_id, is_primary, created_by
 ) values (
@@ -441,8 +455,24 @@ select is(
       and user_id = '10000000-0000-4000-8000-000000000001'
   ),
   'Test Owner',
-  'owner employee record uses the account display name'
+  'owner onboarding completion repairs the linked owner employee name from the account display name'
 );
+update public.user_profiles
+set display_name = 'Independent Account Name'
+where user_id = '10000000-0000-4000-8000-000000000001';
+select is(
+  (
+    select concat_ws(' ', first_name, last_name)
+    from public.employee_profiles
+    where workspace_id = '20000000-0000-4000-8000-000000000001'
+      and user_id = '10000000-0000-4000-8000-000000000001'
+  ),
+  'Test Owner',
+  'post-onboarding Account display name edits do not change the owner employee legal name'
+);
+update public.user_profiles
+set display_name = 'Test Owner'
+where user_id = '10000000-0000-4000-8000-000000000001';
 reset role;
 update auth.users
 set raw_user_meta_data = jsonb_build_object('display_name', 'Metadata Owner')
@@ -553,7 +583,7 @@ select throws_ok(
     true,
     false
   )$$,
-  '42501',
+  'P0002',
   null,
   'owner employee record cannot be archived through ordinary lifecycle'
 );

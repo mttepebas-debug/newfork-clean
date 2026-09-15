@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { AccountProfile } from "@newfork/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PreferencesPage from "./PreferencesPage";
+import { requestAvailabilityNavigation } from "../availability/availability-navigation";
 
 let account: AccountProfile | null;
 const updateAccount = vi.fn(async () => undefined);
@@ -14,6 +15,24 @@ vi.mock("../auth/AuthContext", () => ({
 }));
 
 describe("PreferencesPage", () => {
+  it("previews live, retains on Stay, and rolls back on Discard navigation", () => {
+    account = { ...account!, theme: "light" };
+    const view = render(<PreferencesPage />);
+    fireEvent.click(screen.getByRole("radio", { name: /dark/i }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(updateAccount).not.toHaveBeenCalled();
+    const navigate = vi.fn();
+    act(() => requestAvailabilityNavigation(navigate));
+    fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
+    expect(navigate).not.toHaveBeenCalled();
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    act(() => requestAvailabilityNavigation(navigate));
+    fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(navigate).toHaveBeenCalledOnce();
+    view.unmount();
+    expect(document.documentElement.dataset.theme).toBe("light");
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     account = {
@@ -21,7 +40,11 @@ describe("PreferencesPage", () => {
       email: "owner@example.test",
       displayName: "Owner User",
       phone: null,
+      avatarObjectPath: null,
+      avatarUrl: null,
       theme: "system",
+      timeFormat: "system",
+      dateFormat: "system",
     };
   });
 

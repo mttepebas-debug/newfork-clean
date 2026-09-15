@@ -8,7 +8,6 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ScheduleRequestsPage } from "./ScheduleRequestsPage";
 import { PermissionRoute } from "../auth/PermissionRoute";
-import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { decideTimeOff, getScheduleRequests, previewTimeOffAssignment } from "../schedule/requests-data";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -134,10 +133,6 @@ const fixture = {
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context: activeContext }),
 }));
-vi.mock("../employee-hub/shift-exchanges/exchange-data", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../employee-hub/shift-exchanges/exchange-data")>()),
-  getExchanges: vi.fn(),
-}));
 vi.mock("../schedule/requests-data", () => ({
   previewTimeOffAssignment: vi.fn(),
   getScheduleRequests: vi.fn().mockImplementation(async () => fixture),
@@ -196,9 +191,8 @@ describe("ScheduleRequestsPage", () => {
     expect(screen.getByRole("button",{name:"Continue"})).toHaveProperty("disabled",true);
     await act(async()=>finish({status:"partially_approved",request_id:fixture.time_off_requests[0]!.id,revision:2}));
     await screen.findByText("Decision saved");
-    expect(screen.queryByRole("button",{name:"View earlier requests"})).toBeNull();
     fireEvent.click(screen.getByRole("button",{name:"Continue"}));
-    await screen.findByRole("button",{name:"View earlier requests"});
+    await screen.findByText("Jordy Lee");
     expect(decideTimeOff).toHaveBeenCalledOnce();
   });
   it("keeps a manager partial decision and note until closing is explicitly confirmed", async () => {
@@ -218,7 +212,6 @@ describe("ScheduleRequestsPage", () => {
     activeContext = context;
     vi.clearAllMocks();
     vi.mocked(getScheduleRequests).mockResolvedValue(fixture);
-    vi.mocked(getExchanges).mockResolvedValue({ enabled: true, employee_id: null, cases: [], opportunities: [], own_shifts: [] });
     vi.mocked(previewTimeOffAssignment).mockResolvedValue({ request_id: fixture.time_off_requests[0]!.id, revision: 1, fingerprint: "a".repeat(64), restricted_count: 0, affected_shifts: [], approved_intervals: [] });
   });
   it.each(["owner", "admin", "manager"] as const)("redirects an old availability link for %s without loading an approval queue", async role => {
@@ -227,7 +220,6 @@ describe("ScheduleRequestsPage", () => {
     await screen.findByRole("heading", { name: "Team Availability" });
     expect(screen.getByLabelText("Current URL").textContent).toBe("/app/availability");
     expect(getScheduleRequests).not.toHaveBeenCalled();
-    expect(getExchanges).not.toHaveBeenCalled();
   });
   it("preserves team access control for an employee following an old availability link", async () => {
     activeContext = { ...context, membership: { ...context.membership, role: "employee" }, permissions: ["workspace.read"] };
@@ -241,18 +233,15 @@ describe("ScheduleRequestsPage", () => {
     await screen.findByRole("heading", { name: "Workspace" });
     expect(getScheduleRequests).not.toHaveBeenCalled();
   });
-  it("keeps only Time off and Shift changes tabs, including the earlier shift request view", async () => {
+  it("keeps only Time off and Shift changes tabs and opens the manager shift request queue directly", async () => {
     activeContext = { ...context, permissions: [...context.permissions, "employees.read"] };
     renderPage();
     await screen.findByText("Alex Kim");
     expect(screen.getAllByRole("tab")).toHaveLength(2);
     expect(screen.queryByRole("tab", { name: "Availability" })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: /Shift changes/ }));
-    await screen.findByRole("button", { name: "View earlier requests" });
-    await waitFor(() => expect(getExchanges).toHaveBeenCalled());
-    expect(screen.queryByRole("tab", { name: "Availability" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "View earlier requests" }));
     await screen.findByText("Jordy Lee");
+    expect(screen.queryByRole("button", { name: "View earlier requests" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Availability" })).toBeNull();
   });
   it.each(["schedule.time_off_requests.read", "schedule.shift_change_requests.read"] as const)("keeps a request-only reader with %s inside their permitted queue", async permission => {
@@ -347,7 +336,6 @@ describe("ScheduleRequestsPage", () => {
     );
     await screen.findByText("Decision saved. The queue is current.");
     fireEvent.click(screen.getByRole("tab", { name: /Shift changes/ }));
-    fireEvent.click(await screen.findByRole("button", { name: "View earlier requests" }));
     fireEvent.click(await screen.findByRole("button", { name: /Jordy Lee/ }));
     expect(
       await screen.findByText("The receiving employee has approved time off."),

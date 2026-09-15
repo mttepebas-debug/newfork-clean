@@ -255,7 +255,7 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      if (!hasRecentReauthentication(accessToken)) {
+      if (body.data.action === "accept" && !hasRecentReauthentication(accessToken)) {
         return reply
           .status(403)
           .send({ error: "Recent reauthentication required" });
@@ -273,6 +273,31 @@ export function registerWorkspaceAccountRoutes(
       }
     },
   );
+
+  app.get("/v1/account/workspaces/:workspaceId/ownership-transfer/candidates", async (request, reply) => {
+    const accessToken = bearerToken(request.headers.authorization);
+    const params = workspaceParams.safeParse(request.params);
+    const query = z.object({ q: z.string().trim().min(2).max(80) }).safeParse(request.query);
+    if (!accessToken) return reply.status(401).send({ error: "Bearer token required" });
+    if (!params.success || !query.success) return reply.status(400).send({ error: "Enter 2 to 80 characters to search" });
+    if (!options.service) return reply.status(503).send({ error: "Workspace account service is not configured" });
+    reply.header("Cache-Control", "no-store");
+    try {
+      return reply.send(await options.service.searchOwnershipCandidates(accessToken, params.data.workspaceId, query.data.q));
+    } catch (error) { return requestError(reply, error); }
+  });
+
+  app.post("/v1/account/workspaces/:workspaceId/ownership-transfer/cancel", async (request, reply) => {
+    const accessToken = bearerToken(request.headers.authorization);
+    const params = workspaceParams.safeParse(request.params);
+    const body = z.object({ transferId: z.string().uuid() }).safeParse(request.body);
+    if (!accessToken) return reply.status(401).send({ error: "Bearer token required" });
+    if (!params.success || !body.success) return reply.status(400).send({ error: "Valid ownership transfer required" });
+    if (!options.service) return reply.status(503).send({ error: "Workspace account service is not configured" });
+    try {
+      return reply.send(await options.service.cancelOwnershipTransfer(accessToken, params.data.workspaceId, body.data.transferId));
+    } catch (error) { return requestError(reply, error); }
+  });
 
   app.post("/v1/account/deletion", async (request, reply) => {
     const accessToken = bearerToken(request.headers.authorization);

@@ -36,6 +36,7 @@ function setup() {
       resolve: async () =>
         ({
           userId: actor,
+          permissions: ["availability.read", "settings.schedule_rules.manage"],
           workspace: { id: workspace },
           membership: { status: "active" },
           onboarding: { status: "complete" },

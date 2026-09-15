@@ -368,7 +368,7 @@ describe("EmployeeOnboardingPage", () => {
     ).toBeTruthy();
   });
 
-  it("uses the global account phone as the confirmed onboarding phone", async () => {
+  it("suggests the account phone for an empty field but saves the employee's edit", async () => {
     vi.mocked(saveMyOnboardingProfile).mockResolvedValue(2);
     render(
       <QueryClientProvider
@@ -385,6 +385,9 @@ describe("EmployeeOnboardingPage", () => {
     fireEvent.change(await screen.findByLabelText("First name"), {
       target: { value: "Taylor" },
     });
+    expect(screen.getByLabelText(/^Phone/)).toHaveProperty("value", "3105559999");
+    expect(screen.getByLabelText(/^Phone/)).toHaveProperty("readOnly", false);
+    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: "4155550135" } });
     fireEvent.change(screen.getByLabelText("Last name"), {
       target: { value: "Reed" },
     });
@@ -416,7 +419,7 @@ describe("EmployeeOnboardingPage", () => {
 
     await waitFor(() =>
       expect(saveMyOnboardingProfile).toHaveBeenCalledWith(
-        expect.objectContaining({ phone: "3105559999" }),
+        expect.objectContaining({ phone: "4155550135" }),
         1,
       ),
     );
@@ -428,6 +431,7 @@ describe("EmployeeOnboardingPage", () => {
       profile: {
         legal_first_name: "Taylor",
         legal_last_name: "Reed",
+        phone: "4155550123",
       },
     });
     render(
@@ -448,6 +452,7 @@ describe("EmployeeOnboardingPage", () => {
     expect((screen.getByLabelText("Last name") as HTMLInputElement).value).toBe(
       "Reed",
     );
+    expect(screen.getByLabelText(/^Phone/)).toHaveProperty("value", "4155550123");
   });
 
   it("lets the employee switch organizations without abandoning onboarding", async () => {

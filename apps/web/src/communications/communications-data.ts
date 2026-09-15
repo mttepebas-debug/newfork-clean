@@ -42,7 +42,7 @@ async function request(
   const tabWorkspaceId = getTabWorkspaceId();
   if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
   const response = await fetch(
-    `${newforkApiUrl}/v1/workspaces/${workspaceId}${path}`,
+    `${newforkApiUrl}${workspaceId ? `/v1/workspaces/${workspaceId}${path}` : `/v1/account${path.replace("/communications", "")}`}`,
     {
       ...init,
       headers,
@@ -199,7 +199,7 @@ export async function actOnNotification(
       body: JSON.stringify(action),
     }),
   );
-  announceNotificationChange(workspaceId);
+  announceNotificationChange("");
   return result;
 }
 

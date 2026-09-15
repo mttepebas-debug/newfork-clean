@@ -1,3 +1,4 @@
+import { useAuth } from "../auth/AuthContext";
 import { CatalogDrawer } from "./CatalogDrawer";
 import { useMutation } from "@tanstack/react-query";
 import { useRef, useState } from "react";
@@ -72,6 +73,8 @@ export function JobCatalogEditor({
   onSaved: () => Promise<void>;
   onCreatedJob?: (job: Job) => void;
 }) {
+  const canEdit =
+    useAuth().context?.permissions.includes("settings.jobs.manage") ?? false;
   const isJob = editor.type === "jobs";
   const existingDepartment =
     isJob && !editor.item && Boolean(editor.departmentId);
@@ -206,6 +209,7 @@ export function JobCatalogEditor({
     onError: (cause) => setError(errorText(cause)),
   });
   const canSave =
+    canEdit &&
     !save.isPending &&
     !deleteLocked &&
     entityReady &&
@@ -285,7 +289,7 @@ export function JobCatalogEditor({
           </button>
         </div>
         <div className="catalog-drawer-body">
-          <fieldset disabled={save.isPending || deleteLocked}>
+          <fieldset disabled={!canEdit || save.isPending || deleteLocked}>
             {!existingDepartment && (
               <div className="job-field">
                 <label htmlFor="catalog-entity-name">
@@ -441,7 +445,7 @@ export function JobCatalogEditor({
               id={editor.item.id}
               name={editor.item.name}
               workspaceId={workspaceId}
-              disabled={save.isPending}
+              disabled={!canEdit || save.isPending}
               onLockChange={setDeleteLocked}
               onDeleted={onClose}
             />

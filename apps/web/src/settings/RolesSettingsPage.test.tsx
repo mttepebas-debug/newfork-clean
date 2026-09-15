@@ -1,0 +1,227 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { permissionsForRole, workspaceRoleRecordSchema } from "@newfork/shared";
+import RolesSettingsPage from "./RolesSettingsPage";
+import {
+  deleteWorkspaceRole,
+  loadRoleWorkspace,
+  saveWorkspaceRole,
+} from "./roles-data";
+const { refresh } = vi.hoisted(() => ({
+  refresh: vi.fn(async () => undefined),
+}));
+vi.mock("../auth/AuthContext", () => ({
+  useAuth: () => ({
+    context: {
+      workspace: { id: "b1051002-0000-4000-8000-000000000001" },
+      membership: { role: "owner" },
+      permissions: ["roles.read", "roles.manage"],
+    },
+    refresh,
+  }),
+}));
+vi.mock("./roles-data", () => ({
+  loadRoleWorkspace: vi.fn(),
+  saveWorkspaceRole: vi.fn(),
+  deleteWorkspaceRole: vi.fn(),
+}));
+const manager = workspaceRoleRecordSchema.parse({
+  id: "b1051009-0000-4000-8000-000000000003",
+  workspace_id: "b1051002-0000-4000-8000-000000000001",
+  name: "Manager",
+  description: "Assigned locations",
+  system_key: "manager",
+  access_class: "manager",
+  sort_order: 20,
+  created_at: "2026-09-14T09:00:00Z",
+  updated_at: "2026-09-14T09:00:00Z",
+  permission_keys: permissionsForRole("manager"),
+  member_count: 3,
+  pending_invite_count: 2,
+  editable: true,
+});
+const owner = {
+  ...manager,
+  id: "b1051009-0000-4000-8000-000000000001",
+  name: "Owner",
+  system_key: "owner" as const,
+  access_class: "owner" as const,
+  permission_keys: [...permissionsForRole("owner")],
+  editable: false,
+};
+const employee = {
+  ...manager,
+  id: "b1051009-0000-4000-8000-000000000004",
+  name: "Employee",
+  system_key: "employee" as const,
+  access_class: "employee" as const,
+  permission_keys: [...permissionsForRole("employee")],
+};
+function mount(path = "/app/settings/roles") {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path="/app/settings/roles/:roleId?"
+            element={<RolesSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(loadRoleWorkspace).mockResolvedValue({
+    permissions: [],
+    roles: [owner, manager, employee],
+  });
+});
+describe("RolesSettingsPage", () => {
+  it("starts clean, handles mixed categories, and Cancel restores dependencies", async () => {
+    mount();
+    const save = await screen.findByRole("button", { name: "Save changes" });
+    expect(save).toHaveProperty("disabled", true);
+    expect(
+      screen.getByRole("checkbox", { name: "Employees category Edit" }),
+    ).toHaveProperty("indeterminate", true);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Schedule Edit" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Publishing Edit" }),
+    ).toHaveProperty("checked", false);
+    expect(save).toHaveProperty("disabled", false);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Publishing Edit" }),
+    ).toHaveProperty("checked", true);
+    expect(save).toHaveProperty("disabled", true);
+  });
+  it("keeps a failed save draft and forwards the original version", async () => {
+    vi.mocked(saveWorkspaceRole).mockRejectedValue(
+      new Error("Role changed since you opened it. Reload before saving."),
+    );
+    mount();
+    fireEvent.click(
+      await screen.findByRole("checkbox", {
+        name: "Schedule Edit",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      expect.stringContaining("Role changed"),
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Schedule Edit" }),
+    ).toHaveProperty("checked", false);
+    expect(saveWorkspaceRole).toHaveBeenCalledWith(
+      manager.workspace_id,
+      expect.objectContaining({ expected_updated_at: manager.updated_at }),
+      manager.id,
+    );
+    expect(refresh).not.toHaveBeenCalled();
+  });
+  it("guards role switching and keeps Owner protected", async () => {
+    mount();
+    fireEvent.click(
+      await screen.findByRole("checkbox", {
+        name: "Schedule Edit",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Owner Built-in/ }));
+    expect(
+      await screen.findByRole("heading", { name: "Discard role changes?" }),
+    ).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
+    expect(
+      await screen.findByText("Owner is protected and always has full access."),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+  });
+  it("copies independently and limits Employee experience to personal controls", async () => {
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Copy role" }));
+    expect(await screen.findByRole("textbox", { name: "Name" })).toHaveProperty(
+      "value",
+      "Manager copy",
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Experience" }), {
+      target: { value: "employee" },
+    });
+    expect(
+      screen.queryByRole("checkbox", { name: "Schedule Edit" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("checkbox", { name: "My schedule Read" }),
+    ).not.toBeNull();
+    expect(manager.permission_keys).toContain("schedule.manage");
+  });
+  it("reveals blocking references without calling delete", async () => {
+    const custom = {
+      ...manager,
+      system_key: null,
+      name: "Floor lead",
+      blocking_member_count: 3,
+      blocking_invite_count: 2,
+      deletable: false,
+    };
+    vi.mocked(loadRoleWorkspace).mockResolvedValue({
+      permissions: [],
+      roles: [custom],
+    });
+    mount(`/app/settings/roles/${custom.id}`);
+    fireEvent.click(await screen.findByRole("button", { name: "Delete role" }));
+    expect(
+      screen.getByText(/3 member references and 2 invitation references/),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm delete" })).toBeNull();
+    expect(deleteWorkspaceRole).not.toHaveBeenCalled();
+  });
+  it("refreshes permissions and adopts the saved server version", async () => {
+    vi.mocked(saveWorkspaceRole).mockImplementation(async () => {
+      vi.mocked(loadRoleWorkspace).mockResolvedValue({
+        permissions: [],
+        roles: [
+          owner,
+          {
+            ...manager,
+            updated_at: "2026-09-14T10:00:00Z",
+            permission_keys: manager.permission_keys.filter(
+              (key) =>
+                ![
+                  "schedule.manage",
+                  "schedule.publish",
+                  "schedule.templates.manage",
+                  "schedule.availability.override",
+                ].includes(key),
+            ),
+          },
+          employee,
+        ],
+      });
+      return manager.id;
+    });
+    mount();
+    fireEvent.click(
+      await screen.findByRole("checkbox", {
+        name: "Schedule Edit",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toHaveProperty("disabled", true),
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Schedule Edit" }),
+    ).toHaveProperty("checked", false);
+  });
+});

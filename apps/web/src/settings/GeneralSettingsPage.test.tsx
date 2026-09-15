@@ -30,7 +30,12 @@ const context = {
     status: "active",
     allLocations: true,
   },
-  permissions: ["workspace.read", "workspace.manage"],
+  permissions: [
+    "workspace.read",
+    "workspace.manage",
+    "settings.general.read",
+    "settings.general.manage",
+  ],
   onboarding: { status: "complete", currentStep: 4 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;
@@ -72,7 +77,10 @@ describe("GeneralSettingsPage setup checklist controls", () => {
 
   function renderPage() {
     const client = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
     });
     return render(
       <QueryClientProvider client={client}>

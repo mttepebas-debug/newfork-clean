@@ -34,6 +34,7 @@ const resolvedContext: ActiveWorkspaceContext = {
     "schedule.read",
     "schedule.manage",
     "schedule.publish",
+    "schedule.templates.read",
     "schedule.templates.manage",
     "schedule.export",
     "schedule.lineup.read",
@@ -3599,13 +3600,13 @@ describe("api app", () => {
     });
   });
 
-  it("requires the independent Schedule template capability", async () => {
+  it("requires the independent Schedule template Read capability", async () => {
     const app = buildApp({
       contextResolver: {
         resolve: async () => ({
           ...resolvedContext,
           permissions: resolvedContext.permissions.filter(
-            (permission) => permission !== "schedule.templates.manage",
+            (permission) => permission !== "schedule.templates.read",
           ),
         }),
       },

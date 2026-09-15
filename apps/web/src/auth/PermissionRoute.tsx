@@ -5,7 +5,11 @@ import { useAuth } from "./AuthContext";
 import { appLandingPath } from "./routeDestinations";
 
 export const settingsEntryPermissions = [
-  "workspace.manage",
+  "settings.general.read",
+  "settings.locations.read",
+  "settings.jobs.read",
+  "settings.shift_catalog.read",
+  "settings.schedule_rules.read",
   "roles.read",
   "documents.read",
   "signature_templates.read",

@@ -45,7 +45,7 @@ export function JobAssignmentsDrawer({
   const createMode = !job;
   const canRead = Boolean(context?.permissions.includes("employees.read"));
   const canManageJob = Boolean(
-    context?.permissions.includes("workspace.manage"),
+    context?.permissions.includes("settings.jobs.manage"),
   );
   const canEdit = Boolean(
     canRead &&
@@ -603,7 +603,7 @@ export function JobAssignmentsDrawer({
             .join(" · ") || "No pending changes"}
         </p>
         <footer className="job-editor-footer">
-          {context?.permissions.includes("workspace.manage") &&
+          {context?.permissions.includes("settings.jobs.manage") &&
             !createMode &&
             context?.permissions.includes("employees.manage") && (
               <CatalogDeleteAction

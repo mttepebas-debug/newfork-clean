@@ -50,6 +50,10 @@ export function registerWeeklyPreferenceRoutes(
       });
       if (!auth.context)
         return reply.status(403).send({ error: "Workspace access required." });
+      if (!auth.context.permissions.includes("availability.read"))
+        return reply
+          .status(403)
+          .send({ error: "Team availability access required." });
       if (!options.service)
         return reply
           .status(503)
@@ -63,16 +67,14 @@ export function registerWeeklyPreferenceRoutes(
         const status = weeklyErrorStatus(error);
         if (status === 500)
           request.log.error({ err: error }, "Team availability read failed");
-        return reply
-          .status(status)
-          .send({
-            error:
-              status === 500
-                ? "Team availability could not be loaded."
-                : error instanceof Error
-                  ? error.message
-                  : "Team availability is unavailable.",
-          });
+        return reply.status(status).send({
+          error:
+            status === 500
+              ? "Team availability could not be loaded."
+              : error instanceof Error
+                ? error.message
+                : "Team availability is unavailable.",
+        });
       }
     },
   );
@@ -113,6 +115,13 @@ export function registerWeeklyPreferenceRoutes(
           return reply
             .status(403)
             .send({ error: "Workspace access required." });
+        if (
+          method === "POST" &&
+          !auth.context.permissions.includes("settings.schedule_rules.manage")
+        )
+          return reply
+            .status(403)
+            .send({ error: "Schedule rules edit access required." });
         if (!options.service)
           return reply
             .status(503)

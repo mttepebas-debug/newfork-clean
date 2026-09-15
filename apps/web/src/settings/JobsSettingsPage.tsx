@@ -34,6 +34,8 @@ type View = "hierarchy" | "departments" | "jobs";
 type SortKey = "name" | "department" | "jobs" | "employees";
 export default function JobsSettingsPage() {
   const { context } = useAuth();
+  const canEdit =
+    context?.permissions.includes("settings.jobs.manage") ?? false;
   const workspaceId = context?.workspace.id ?? "";
   const readEmployees = Boolean(
     context?.permissions.includes("employees.read"),
@@ -136,6 +138,7 @@ export default function JobsSettingsPage() {
           }
         | { kind: "move"; type: "departments" | "jobs"; ids: string[] },
     ) => {
+      if (!canEdit) throw new Error("Jobs edit access required");
       if (action.kind === "move")
         await reorderOrganizationEntities(workspaceId, action.type, action.ids);
       else if (action.type === "departments")
@@ -200,7 +203,11 @@ export default function JobsSettingsPage() {
     }
     return (
       <RowMenu name={item.name}>
-        <button type="button" onClick={() => openEditor({ type, item })}>
+        <button
+          type="button"
+          disabled={!canEdit}
+          onClick={() => openEditor({ type, item })}
+        >
           Edit {type === "jobs" ? "job" : "department"}
         </button>
         {type === "jobs" && readEmployees && (
@@ -213,7 +220,10 @@ export default function JobsSettingsPage() {
             <button
               type="button"
               disabled={
-                Boolean(match || sortKey) || index <= 0 || mutation.isPending
+                !canEdit ||
+                Boolean(match || sortKey) ||
+                index <= 0 ||
+                mutation.isPending
               }
               onClick={() => move(-1)}
             >
@@ -222,6 +232,7 @@ export default function JobsSettingsPage() {
             <button
               type="button"
               disabled={
+                !canEdit ||
                 Boolean(match || sortKey) ||
                 index === ordered.length - 1 ||
                 mutation.isPending
@@ -456,6 +467,7 @@ export default function JobsSettingsPage() {
               <RowMenu name="Create" create>
                 <button
                   type="button"
+                  disabled={!canEdit}
                   onClick={() => openEditor({ type: "departments" })}
                 >
                   <Folder size={15} />
@@ -463,6 +475,7 @@ export default function JobsSettingsPage() {
                 </button>
                 <button
                   type="button"
+                  disabled={!canEdit}
                   onClick={() => openEditor({ type: "jobs" })}
                 >
                   <BriefcaseBusiness size={15} />
@@ -473,6 +486,7 @@ export default function JobsSettingsPage() {
               <button
                 className="job-primary-button"
                 type="button"
+                disabled={!canEdit}
                 onClick={() =>
                   openEditor({ type: view === "jobs" ? "jobs" : "departments" })
                 }

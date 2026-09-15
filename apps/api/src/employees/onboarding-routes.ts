@@ -1,6 +1,4 @@
-import {
-  employeeOnboardingProfileSchema,
-} from "@newfork/shared";
+import { employeeOnboardingProfileSchema } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { WorkspaceContextResolver } from "../auth/workspace-context";
@@ -218,7 +216,7 @@ export function registerEmployeeOnboardingRoutes(
           .send({ error: "Valid bearer session required" });
       if (context.workspace.id !== params.data.workspaceId)
         return reply.status(404).send({ error: "Workspace not found" });
-      if (!context.permissions.includes("employee_onboarding.review"))
+      if (!context.permissions.includes("employees.read"))
         return reply
           .status(403)
           .send({ error: "Employee onboarding review required" });
@@ -251,7 +249,17 @@ export function registerEmployeeOnboardingRoutes(
           .send({ error: "Valid bearer session required" });
       if (context.workspace.id !== params.data.workspaceId)
         return reply.status(404).send({ error: "Workspace not found" });
-      if (!context.permissions.includes("employee_onboarding.review"))
+      if (
+        ![
+          "employee_onboarding.review",
+          "employee_documents.review",
+          "employees.private.manage",
+        ].some((permission) =>
+          context.permissions.includes(
+            permission as import("@newfork/shared").Permission,
+          ),
+        )
+      )
         return reply
           .status(403)
           .send({ error: "Employee onboarding review required" });
@@ -284,7 +292,7 @@ export function registerEmployeeOnboardingRoutes(
           .send({ error: "Valid bearer session required" });
       if (context.workspace.id !== params.data.workspaceId)
         return reply.status(404).send({ error: "Workspace not found" });
-      if (!context.permissions.includes("employee_documents.review"))
+      if (!context.permissions.includes("employee_documents.read"))
         return reply
           .status(403)
           .send({ error: "Employee document review required" });

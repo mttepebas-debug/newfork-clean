@@ -34,6 +34,7 @@ export interface EmployeeAvatarStatus {
 }
 
 export interface EmployeeDirectoryService {
+  getOwnAvatar?(input: { readonly actorUserId: string; readonly workspaceId: string }): Promise<EmployeeAvatarStatus>;
   list(input: {
     readonly actorUserId: string;
     readonly workspaceId: string;
@@ -221,6 +222,14 @@ export function createEmployeeDirectoryServiceWithClient(
           target_idempotency_key: input.termination.idempotencyKey,
         }),
       );
+    },
+    async getOwnAvatar(input) {
+      const path = await rpc("get_own_employee_avatar_path_service", {
+        actor_user_id: input.actorUserId, target_workspace_id: input.workspaceId,
+      });
+      if (typeof path !== "string" || !path) return { present: false, url: null };
+      const signed = await client.storage?.from("employee-profile-photos").createSignedUrl(path, 5 * 60);
+      return { present: true, url: signed?.error ? null : (signed?.data?.signedUrl ?? null) };
     },
     async getAvatar(input) {
       const path = await rpc("get_employee_avatar_path_service", {

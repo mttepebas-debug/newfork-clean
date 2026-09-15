@@ -78,7 +78,20 @@ export default function ImportantDatesSettingsPage() {
   const { context } = useAuth();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
-  const canManage = context?.permissions.includes("workspace.manage") ?? false;
+  const canManage =
+    context?.permissions.includes("important_dates.manage") ?? false;
+  const allLocations =
+    context?.membership.role === "owner" ||
+    context?.membership.role === "admin";
+  const mayManageLocations = (ids: readonly string[]) =>
+    canManage &&
+    (allLocations ||
+      (ids.length > 0 &&
+        ids.every((id) => context?.locationScope.locationIds.includes(id))));
+  const mayManageDate = (item: ImportantDate) =>
+    mayManageLocations(
+      item.location_ids ?? (item.location_id ? [item.location_id] : []),
+    );
   const datesQueryKey = ["important-dates", workspaceId];
   const locationsQueryKey = ["organization-locations", workspaceId];
   const query = useQuery({
@@ -152,9 +165,25 @@ export default function ImportantDatesSettingsPage() {
   );
 
   const openEditor = (item?: ImportantDate): void => {
-    if (saveMutation.isPending || archiveMutation.isPending) return;
+    if (
+      saveMutation.isPending ||
+      archiveMutation.isPending ||
+      !canManage ||
+      (item && !mayManageDate(item))
+    )
+      return;
     setEditing(item ?? "new");
-    setDraft(item ? draftFrom(item) : newDraft());
+    setDraft(
+      item
+        ? draftFrom(item)
+        : {
+            ...newDraft(),
+            location_ids:
+              context?.membership.role === "manager"
+                ? [...context.locationScope.locationIds]
+                : [],
+          },
+    );
     setConfirmDelete(false);
     setFormError(null);
   };
@@ -177,6 +206,7 @@ export default function ImportantDatesSettingsPage() {
   const parsedDraft = importantDateInputSchema.safeParse(normalizedDraft);
   const baseline = editing && editing !== "new" ? draftFrom(editing) : null;
   const canSave =
+    mayManageLocations(selectedLocationIds) &&
     !saveMutation.isPending &&
     !archiveMutation.isPending &&
     Boolean(editing) &&
@@ -366,7 +396,9 @@ export default function ImportantDatesSettingsPage() {
                           .join(", ")}
                       >
                         {selectedLocationIds.length === 0
-                          ? "All locations"
+                          ? allLocations
+                            ? "All locations"
+                            : "Select a location"
                           : selectedLocationIds.length === 1
                             ? (locations.data?.find(
                                 (location) =>
@@ -377,24 +409,32 @@ export default function ImportantDatesSettingsPage() {
                       <ChevronDown size={14} aria-hidden />
                     </summary>
                     <div className="important-date-location-options">
-                      <label className="important-date-location-all">
-                        <input
-                          type="checkbox"
-                          checked={!selectedLocationIds.length}
-                          onChange={() =>
-                            setDraft((current) => ({
-                              ...current,
-                              location_ids: [],
-                            }))
-                          }
-                        />
-                        <span>All locations</span>
-                      </label>
+                      {allLocations && (
+                        <label className="important-date-location-all">
+                          <input
+                            type="checkbox"
+                            checked={!selectedLocationIds.length}
+                            onChange={() =>
+                              setDraft((current) => ({
+                                ...current,
+                                location_ids: [],
+                              }))
+                            }
+                          />
+                          <span>All locations</span>
+                        </label>
+                      )}
                       {(locations.data ?? [])
                         .filter(
                           (location) =>
-                            !location.archived_at ||
-                            selectedLocationIds.includes(location.id),
+                            (!location.archived_at ||
+                              selectedLocationIds.includes(location.id)) &&
+                            (allLocations ||
+                              Boolean(
+                                context?.locationScope.locationIds.includes(
+                                  location.id,
+                                ),
+                              )),
                         )
                         .map((location) => (
                           <label key={location.id}>
@@ -615,7 +655,7 @@ export default function ImportantDatesSettingsPage() {
                 <button
                   type="button"
                   className="job-row-identity"
-                  disabled={!canManage}
+                  disabled={!mayManageDate(item)}
                   onClick={() => openEditor(item)}
                 >
                   <span className="important-date-marker" aria-hidden>
@@ -654,7 +694,7 @@ export default function ImportantDatesSettingsPage() {
                     <span>None</span>
                   ) : null}
                 </span>
-                {canManage ? (
+                {mayManageDate(item) ? (
                   <CatalogRowMenu name={item.title}>
                     <button type="button" onClick={() => openEditor(item)}>
                       Edit date

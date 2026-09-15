@@ -7,12 +7,13 @@
   --lu-green: #386b53;
   color: var(--lu-ink);
   background: var(--lu-bg);
-  padding: 0 32px 40px;
+  box-sizing: border-box;
+  width: min(100% - 64px, 1320px);
+  padding: 30px 0 44px;
   min-height: 100%;
   font-size: 13px;
   line-height: 1.5;
-  max-width: 1800px;
-  margin: auto;
+  margin: 0 auto;
 }
 .lu-workspace *,
 .lu-dialog * {
@@ -38,20 +39,29 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 32px 0 26px;
+  min-height: 118px;
+  gap: 24px;
+  margin: 0 0 18px;
+  padding: 32px 0 20px;
+  border-bottom: 1px solid #d9dfdb;
 }
 .lu-eyebrow {
+  display: block;
+  margin: 0 0 9px;
   font-size: 9px;
   letter-spacing: 1.7px;
+  line-height: 1;
   font-weight: 700;
   color: var(--lu-muted, #768078);
+  text-transform: uppercase;
 }
 .lu-header h1 {
+  display: flex;
+  align-items: center;
   font-size: 38px;
   line-height: 1.15;
-  letter-spacing: -1.8px;
-  margin: 6px 0 8px;
+  letter-spacing: 0;
+  margin: 0;
   font-weight: 650;
 }
 .lu-title-dot {
@@ -59,14 +69,15 @@
 }
 .lu-header p {
   color: var(--lu-muted);
-  margin: 0;
+  margin: 9px 0 0;
   font-size: 12px;
+  line-height: 1.5;
 }
 .lu-header-actions,
 .lu-add-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 .lu-workspace .nf-button,
 .lu-dialog .nf-button {
@@ -1190,7 +1201,8 @@
 }
 @media (max-width: 1180px) {
   .lu-workspace {
-    padding: 0 22px 32px;
+    width: min(100% - 44px, 1320px);
+    padding-bottom: 32px;
   }
   .lu-layout {
     grid-template-columns: minmax(0, 1fr) 250px;
@@ -1249,7 +1261,8 @@
 }
 @media (max-width: 600px) {
   .lu-workspace {
-    padding: 0 15px 28px;
+    width: min(100% - 30px, 1320px);
+    padding-bottom: 28px;
   }
   .lu-header {
     padding: 24px 0 21px;

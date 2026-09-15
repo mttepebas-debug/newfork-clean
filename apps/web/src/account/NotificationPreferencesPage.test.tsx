@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ActiveWorkspaceContext } from "@newfork/shared";
+import type { ActiveWorkspaceContext, NotificationUserPreferencesResponse } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -57,7 +57,36 @@ function renderPage() {
   );
 }
 
-function preferencesFixture() {
+function expandGroup(label = "Schedule") {
+  const disclosure = screen.getByRole("button", { name: `Expand individual notifications for ${label}` });
+  fireEvent.click(disclosure);
+  return screen.getByRole("button", { name: `Collapse individual notifications for ${label}` });
+}
+
+function preferencesFixture(): NotificationUserPreferencesResponse {
+  const schedulePublished = {
+    type_key: "schedule.published",
+    schema_version: 1,
+    category: "schedule" as const,
+    severity: "info" as const,
+    sensitivity: "confidential" as const,
+    supported_channels: ["in_app" as const],
+    default_cadence: "immediate" as const,
+    mandatory_in_app: false,
+    channel_controls: [
+      { channel: "in_app" as const, locked: false, reason_code: "available" },
+      {
+        channel: "email" as const,
+        locked: true,
+        reason_code: "catalog_channel_unsupported",
+      },
+      {
+        channel: "push" as const,
+        locked: true,
+        reason_code: "catalog_channel_unsupported",
+      },
+    ],
+  };
   return {
     workspace_id: workspaceId,
     can_write: true,
@@ -77,31 +106,7 @@ function preferencesFixture() {
         onboarding: { status: "complete" as const, currentStep: 2 },
       },
     ],
-    catalog: [
-      {
-        type_key: "schedule.published",
-        schema_version: 1,
-        category: "schedule" as const,
-        severity: "info" as const,
-        sensitivity: "confidential" as const,
-        supported_channels: ["in_app" as const],
-        default_cadence: "immediate" as const,
-        mandatory_in_app: false,
-        channel_controls: [
-          { channel: "in_app" as const, locked: false, reason_code: "available" },
-          {
-            channel: "email" as const,
-            locked: true,
-            reason_code: "catalog_channel_unsupported",
-          },
-          {
-            channel: "push" as const,
-            locked: true,
-            reason_code: "catalog_channel_unsupported",
-          },
-        ],
-      },
-    ],
+    catalog: [schedulePublished, { ...schedulePublished }],
     preferences: [
       {
         id: "a1000000-0000-4000-8000-000000000001",
@@ -120,6 +125,118 @@ function preferencesFixture() {
 }
 
 describe("notification preferences page", () => {
+  it.each(["email_unverified", "delivery_unavailable"] as const)("hides one-workspace selector and explains %s with Security action", async reason => {
+    const fixture = preferencesFixture();
+    fixture.workspaces = fixture.workspaces.slice(0, 1);
+    fixture.email_channel_reason = reason;
+    fixture.account_catalog = [{ type_key: "security.account.password_changed", scope: "account", title: "Password changed", description: "Security update", mandatory_in_app: true, delivery: "transactional_in_app" }];
+    vi.mocked(getNotificationPreferences).mockResolvedValue(fixture);
+    renderPage();
+    await screen.findByRole("checkbox", { name: "Schedule In-app" });
+    expect(screen.queryByLabelText("Workspace")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Account security messages" })).toBeNull();
+    expect(screen.queryByText("Password changed")).toBeNull();
+    expect(screen.getByRole("link", { name: "Account Security" }).getAttribute("href")).toBe("/account/security");
+    expect(screen.getByRole("checkbox", { name: "Schedule Email" })).toHaveProperty("disabled", true);
+  });
+  it("renders server email defaults and preserves stored push, cadence and quiet hours", async () => {
+    const fixture = preferencesFixture();
+    fixture.catalog = [{ ...fixture.catalog[0]!, supported_channels: ["in_app", "email"], default_channels: { in_app: "enabled", email: "disabled" } }];
+    fixture.preferences[0]!.channel_preferences = { in_app: "enabled", push: "disabled" };
+    vi.mocked(getNotificationPreferences).mockResolvedValue(fixture);
+    vi.mocked(saveNotificationPreferences).mockResolvedValue({ status: "saved", preferences: [] });
+    renderPage();
+    const toggle = await screen.findByRole("checkbox", { name: "Schedule In-app" });
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Schedule Email" })).toHaveProperty("checked", false));
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(saveNotificationPreferences).toHaveBeenLastCalledWith(workspaceId, { updates: [expect.objectContaining({
+      channel_preferences: { in_app: "disabled", push: "disabled" }, cadence: "immediate", quiet_hours: { enabled: true, start: "22:00", end: "07:00" },
+    })] }));
+  });
+
+  it("inherits category choices but writes only the editable channel at type scope", async () => {
+    const fixture = preferencesFixture();
+    fixture.preferences = [{ ...fixture.preferences[0]!, preference_scope: "category", scope_key: "schedule",
+      channel_preferences: { in_app: "disabled", email: "disabled" }, version: 7 }];
+    vi.mocked(getNotificationPreferences).mockResolvedValue(fixture);
+    vi.mocked(saveNotificationPreferences).mockResolvedValue({ status: "saved", preferences: fixture.preferences });
+    renderPage();
+    const master = await screen.findByRole("checkbox", { name: "Schedule In-app" });
+    await waitFor(() => expect(master).toHaveProperty("checked", false));
+    fireEvent.click(master);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(saveNotificationPreferences).toHaveBeenLastCalledWith(workspaceId, {
+      updates: [expect.objectContaining({ preference_scope: "type", scope_key: "schedule.published",
+        channel_preferences: { in_app: "enabled" }, expected_version: null })],
+    }));
+  });
+  it("shows mixed master state and preserves mandatory and unsupported channels", async () => {
+    const fixture = preferencesFixture();
+    fixture.catalog.push({ ...fixture.catalog[0]!, type_key: "schedule.staffing.assignment_changed" });
+    fixture.catalog.push({ ...fixture.catalog[0]!, type_key: "schedule.staffing.offer_closed", mandatory_in_app: true });
+    fixture.preferences.push({ ...fixture.preferences[0]!, scope_key: "schedule.staffing.assignment_changed", channel_preferences: { in_app: "disabled" } });
+    vi.mocked(getNotificationPreferences).mockResolvedValue(fixture);
+    vi.mocked(saveNotificationPreferences).mockResolvedValue({ status: "saved", preferences: fixture.preferences });
+    renderPage();
+    const master = await screen.findByRole("checkbox", { name: "Schedule In-app" });
+    await waitFor(() => expect(master).toHaveProperty("indeterminate", true));
+    expect(screen.getByRole("checkbox", { name: "Schedule Email" })).toHaveProperty("disabled", true);
+    expandGroup();
+    expect(screen.getByRole("checkbox", { name: "In-app for Closed staffing offers" })).toHaveProperty("disabled", true);
+    fireEvent.click(master);
+    expect(master).toHaveProperty("indeterminate", false);
+    expect(screen.getByRole("checkbox", { name: "In-app for Assignment changes" })).toHaveProperty("checked", true);
+    expect(screen.getAllByRole("button", { name: /Save/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(saveNotificationPreferences).toHaveBeenLastCalledWith(workspaceId, {
+      updates: [expect.objectContaining({ scope_key: "schedule.staffing.assignment_changed", channel_preferences: { in_app: "enabled" } })],
+    }));
+    expect(screen.queryByRole("heading", { name: "Account security messages" })).toBeNull();
+  });
+  it("toggles from the full row and keeps disclosure separate from channel controls", async () => {
+    vi.mocked(getNotificationPreferences).mockResolvedValue(preferencesFixture());
+    renderPage();
+
+    await screen.findByRole("checkbox", { name: "Schedule In-app" });
+    expect(screen.getAllByText("In app")).toHaveLength(1);
+    expect(screen.getAllByText("Email")).toHaveLength(1);
+    expect(screen.queryByRole("heading", { name: "Individual notifications" })).toBeNull();
+
+    const disclosure = screen.getByRole("button", { name: "Expand individual notifications for Schedule" });
+    expect(disclosure.tagName).toBe("BUTTON");
+    expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+    const groupRow = screen.getByRole("heading", { name: "Schedule" }).closest(".notification-preference-group-row");
+    expect(groupRow).toBeTruthy();
+    fireEvent.click(groupRow!);
+    const expandedDisclosure = screen.getByRole("button", { name: "Collapse individual notifications for Schedule" });
+    expect(expandedDisclosure.getAttribute("aria-expanded")).toBe("true");
+    expect(expandedDisclosure.getAttribute("aria-controls")).toBe("notification-group-schedule");
+    expect(screen.getByRole("heading", { name: "Individual notifications" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "In-app for Published schedules" }));
+    expect(expandedDisclosure.getAttribute("aria-expanded")).toBe("true");
+  });
+  it("shows plain-language names for availability and unknown notification types", async () => {
+    const fixture = preferencesFixture();
+    fixture.catalog = [
+      { ...fixture.catalog[0]!, type_key: "availability.review_required" },
+      { ...fixture.catalog[0]!, type_key: "availability.status_changed" },
+      { ...fixture.catalog[0]!, type_key: "availability.weekly_updated" },
+      { ...fixture.catalog[0]!, type_key: "future.shift_note.added" },
+    ];
+    vi.mocked(getNotificationPreferences).mockResolvedValue(fixture);
+    renderPage();
+
+    await screen.findByRole("checkbox", { name: "Schedule In-app" });
+    expandGroup();
+    expect(screen.getByRole("heading", { name: "Availability requests to review" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Your availability updates" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Employee availability changes" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Shift note added" })).toBeTruthy();
+    expect(screen.queryByText("availability.review_required")).toBeNull();
+    expect(screen.queryByText("future.shift_note.added")).toBeNull();
+  });
   it("renders managed channel reasons and saves the final rapid-toggle intent", async () => {
     vi.mocked(getNotificationPreferences).mockResolvedValue(preferencesFixture());
     vi.mocked(saveNotificationPreferences).mockResolvedValue({
@@ -139,7 +256,9 @@ describe("notification preferences page", () => {
       await screen.findByRole("heading", { name: "Notification Preferences" }),
     ).toBeTruthy();
     expect(await screen.findByRole("heading", { name: "Schedule" })).toBeTruthy();
+    expandGroup();
     expect(await screen.findByText("Published schedules")).toBeTruthy();
+    expect(screen.getAllByText("Published schedules")).toHaveLength(1);
     expect(screen.queryByText("schedule.published")).toBeNull();
     expect((screen.getByLabelText("Workspace") as HTMLSelectElement).value).toBe(
       workspaceId,
@@ -148,7 +267,7 @@ describe("notification preferences page", () => {
       await screen.findAllByText(
         "This delivery channel is not available for this notification yet.",
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
 
     const inApp = screen.getByRole("checkbox", {
       name: "In-app for Published schedules",
@@ -160,7 +279,7 @@ describe("notification preferences page", () => {
     fireEvent.click(inApp);
     fireEvent.click(inApp);
     fireEvent.click(
-      screen.getByRole("button", { name: "Save Published schedules" }),
+      screen.getByRole("button", { name: "Save changes" }),
     );
 
     await waitFor(() =>

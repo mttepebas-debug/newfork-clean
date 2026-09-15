@@ -31,7 +31,12 @@ const context = {
     status: "active",
     allLocations: true,
   },
-  permissions: ["workspace.read", "workspace.manage"],
+  permissions: [
+    "workspace.read",
+    "workspace.manage",
+    "settings.shift_catalog.read",
+    "settings.shift_catalog.manage",
+  ],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;
@@ -73,7 +78,9 @@ function renderPage() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter><ShiftLabelsSettingsPage /></MemoryRouter>
+      <MemoryRouter>
+        <ShiftLabelsSettingsPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -115,7 +122,9 @@ describe("ShiftLabelsSettingsPage", () => {
       ]),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Actions for Training" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Actions for Training" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Archive Training" }));
     await waitFor(() =>
       expect(setShiftLabelArchived).toHaveBeenCalledWith(

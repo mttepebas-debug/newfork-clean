@@ -64,7 +64,7 @@ export function registerJobsManagementRoutes(
     const actor = await authorize(
       request.headers.authorization,
       params.data.workspaceId,
-      "workspace.manage",
+      "settings.jobs.manage",
       reply,
     );
     if (!actor) return;
@@ -100,7 +100,7 @@ export function registerJobsManagementRoutes(
     const actor = await authorize(
       request.headers.authorization,
       params.data.workspaceId,
-      "workspace.manage",
+      "settings.jobs.manage",
       reply,
     );
     if (!actor) return;
@@ -144,7 +144,7 @@ export function registerJobsManagementRoutes(
     const actor = await authorize(
       request.headers.authorization,
       params.data.workspaceId,
-      "workspace.manage",
+      "settings.jobs.manage",
       reply,
     );
     if (!actor) return;
@@ -178,7 +178,11 @@ export function registerJobsManagementRoutes(
       const actor = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
-        "workspace.manage",
+        kind === "locations"
+          ? "settings.locations.manage"
+          : kind === "departments"
+            ? "settings.jobs.manage"
+            : "settings.shift_catalog.manage",
         reply,
       );
       if (!actor) return;
@@ -209,7 +213,7 @@ export function registerJobsManagementRoutes(
     const actor = await authorize(
       request.headers.authorization,
       params.data.workspaceId,
-      "workspace.manage",
+      "settings.jobs.manage",
       reply,
     );
     if (!actor) return;
@@ -238,7 +242,7 @@ export function registerJobsManagementRoutes(
     const actor = await authorize(
       request.headers.authorization,
       params.data.workspaceId,
-      "workspace.manage",
+      "settings.jobs.manage",
       reply,
     );
     if (!actor) return;
@@ -301,7 +305,7 @@ export function registerJobsManagementRoutes(
     const actor = await authorize(
       request.headers.authorization,
       params.data.workspaceId,
-      body.data.job ? "workspace.manage" : "employees.manage",
+      body.data.job ? "settings.jobs.manage" : "employees.manage",
       reply,
     );
     if (!actor) return;

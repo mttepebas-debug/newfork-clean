@@ -1,10 +1,17 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ActiveWorkspaceContext, SchedulingSettings, WeeklyPreferenceSettingsRead } from "@newfork/shared";
+import type {
+  ActiveWorkspaceContext,
+  SchedulingSettings,
+  WeeklyPreferenceSettingsRead,
+} from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SchedulingSettingsPage from "./SchedulingSettingsPage";
-import { loadWeeklyPreferenceSettings, saveWeeklyPreferenceSettings } from "../availability/availability-data";
+import {
+  loadWeeklyPreferenceSettings,
+  saveWeeklyPreferenceSettings,
+} from "../availability/availability-data";
 import {
   loadSchedulingSettings,
   saveSchedulingSettings,
@@ -30,7 +37,12 @@ const context = {
     status: "active",
     allLocations: true,
   },
-  permissions: ["workspace.read", "workspace.manage"],
+  permissions: [
+    "workspace.read",
+    "workspace.manage",
+    "settings.schedule_rules.read",
+    "settings.schedule_rules.manage",
+  ],
   onboarding: { status: "complete", currentStep: 4 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;
@@ -57,8 +69,14 @@ vi.mock("../availability/availability-data", () => ({
   saveWeeklyPreferenceSettings: vi.fn(),
 }));
 const weeklySettings: WeeklyPreferenceSettingsRead = {
-  settings: { input_mode: "time_range", warning_policy: "warn", onboarding_required: false, revision: 3 },
-  can_edit: true, missing_shift_types: [],
+  settings: {
+    input_mode: "time_range",
+    warning_policy: "warn",
+    onboarding_required: false,
+    revision: 3,
+  },
+  can_edit: true,
+  missing_shift_types: [],
 };
 
 describe("SchedulingSettingsPage checklist mode", () => {
@@ -67,16 +85,27 @@ describe("SchedulingSettingsPage checklist mode", () => {
     vi.mocked(loadSchedulingSettings).mockResolvedValue(settings);
     vi.mocked(saveSchedulingSettings).mockResolvedValue(undefined);
     vi.mocked(loadWeeklyPreferenceSettings).mockResolvedValue(weeklySettings);
-    vi.mocked(saveWeeklyPreferenceSettings).mockImplementation(async (_workspace, command) => ({
-      ...weeklySettings,
-      settings: { input_mode: command.input_mode, warning_policy: command.warning_policy,
-        onboarding_required: command.onboarding_required, revision: 4 },
-    }));
+    vi.mocked(saveWeeklyPreferenceSettings).mockImplementation(
+      async (_workspace, command) => ({
+        ...weeklySettings,
+        settings: {
+          input_mode: command.input_mode,
+          warning_policy: command.warning_policy,
+          onboarding_required: command.onboarding_required,
+          revision: 4,
+        },
+      }),
+    );
   });
 
-  function renderPage(initialEntry = "/app/settings/scheduling?checklist=setup") {
+  function renderPage(
+    initialEntry = "/app/settings/scheduling?checklist=setup",
+  ) {
     const client = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
     });
     const view = render(
       <QueryClientProvider client={client}>
@@ -136,18 +165,36 @@ describe("SchedulingSettingsPage checklist mode", () => {
     fireEvent.click(await screen.findByRole("radio", { name: "Sunday" }));
     fireEvent.click(await screen.findByRole("radio", { name: "Shift type" }));
     fireEvent.click(screen.getByRole("radio", { name: "Warn and confirm" }));
-    fireEvent.click(screen.getByRole("switch", { name: "Availability required during onboarding" }));
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "Availability required during onboarding",
+      }),
+    );
     const save = screen.getByRole("button", { name: "Save" });
     expect(save.closest("form")).toBeNull();
     fireEvent.click(save);
-    await waitFor(() => expect(saveWeeklyPreferenceSettings).toHaveBeenCalledWith(workspaceId, {
-      input_mode: "shift_type", warning_policy: "confirm", onboarding_required: true, expected_revision: 3,
-    }, expect.any(String)));
+    await waitFor(() =>
+      expect(saveWeeklyPreferenceSettings).toHaveBeenCalledWith(
+        workspaceId,
+        {
+          input_mode: "shift_type",
+          warning_policy: "confirm",
+          onboarding_required: true,
+          expected_revision: 3,
+        },
+        expect.any(String),
+      ),
+    );
     expect(saveSchedulingSettings).not.toHaveBeenCalled();
-    expect(screen.getByRole("radio", { name: "Sunday" })).toHaveProperty("checked", true);
+    expect(screen.getByRole("radio", { name: "Sunday" })).toHaveProperty(
+      "checked",
+      true,
+    );
     expect(screen.queryByLabelText("Availability ownership")).toBeNull();
     expect(screen.queryByLabelText("Availability approval")).toBeNull();
-    expect(screen.queryByLabelText("Availability advance notice days")).toBeNull();
+    expect(
+      screen.queryByLabelText("Availability advance notice days"),
+    ).toBeNull();
     expect(screen.queryByRole("radio", { name: "Hard" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save rules" }));
     await waitFor(() => expect(saveSchedulingSettings).toHaveBeenCalledOnce());
@@ -155,7 +202,10 @@ describe("SchedulingSettingsPage checklist mode", () => {
   });
 
   it("keeps weekly settings read-only when the server denies editing", async () => {
-    vi.mocked(loadWeeklyPreferenceSettings).mockResolvedValue({ ...weeklySettings, can_edit: false });
+    vi.mocked(loadWeeklyPreferenceSettings).mockResolvedValue({
+      ...weeklySettings,
+      can_edit: false,
+    });
     renderPage("/app/settings/scheduling");
     const mode = await screen.findByRole("radio", { name: "Shift type" });
     expect(mode.closest("fieldset")).toHaveProperty("disabled", true);
@@ -164,16 +214,26 @@ describe("SchedulingSettingsPage checklist mode", () => {
   });
 
   it("explains and saves a configured minimum without losing a dirty value on refetch", async () => {
-    vi.mocked(loadSchedulingSettings).mockResolvedValue({ ...settings, minimum_travel_minutes: 30 });
+    vi.mocked(loadSchedulingSettings).mockResolvedValue({
+      ...settings,
+      minimum_travel_minutes: 30,
+    });
     const { client } = renderPage("/app/settings/scheduling");
     const input = await screen.findByLabelText("Minimum travel time (minutes)");
     await waitFor(() => expect(input).toHaveProperty("value", "30"));
     expect(screen.getByText(/next location can start at 3:30 PM/)).toBeTruthy();
     fireEvent.change(input, { target: { value: "60" } });
-    await client.invalidateQueries({ queryKey: ["scheduling-settings", workspaceId] });
+    await client.invalidateQueries({
+      queryKey: ["scheduling-settings", workspaceId],
+    });
     expect(input).toHaveProperty("value", "60");
     fireEvent.click(screen.getByRole("button", { name: /save rules/i }));
-    await waitFor(() => expect(saveSchedulingSettings).toHaveBeenCalledWith(workspaceId, expect.objectContaining({ minimum_travel_minutes: 60 })));
+    await waitFor(() =>
+      expect(saveSchedulingSettings).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({ minimum_travel_minutes: 60 }),
+      ),
+    );
   });
 
   it("does not silently turn a cleared minimum into zero", async () => {
@@ -182,7 +242,9 @@ describe("SchedulingSettingsPage checklist mode", () => {
     fireEvent.change(input, { target: { value: "" } });
     expect(input).toHaveProperty("value", "");
     fireEvent.submit(input.closest("form")!);
-    expect(screen.getByRole("alert").textContent).toContain("whole number from 0 to 240");
+    expect(screen.getByRole("alert").textContent).toContain(
+      "whole number from 0 to 240",
+    );
     expect(saveSchedulingSettings).not.toHaveBeenCalled();
   });
 

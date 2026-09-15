@@ -266,62 +266,6 @@ function ScheduleRequestsPageContent() {
       return message;
     }
   }
-  if (
-    tab === "shift-changes" &&
-    canReadShift &&
-    context &&
-    params.get("legacy") !== "1"
-  )
-    return (
-      <section
-        className="settings-page jobs-settings-page requests-catalog-page requests-page requests-shift-hub"
-        aria-labelledby="requests-title"
-      >
-        <CatalogPageHeader
-          eyebrow="TEAM CHANGES. REVIEWED WITH CONTROL."
-          title="Requests"
-          titleId="requests-title"
-          description="Review time off and shift change requests in one place."
-          action={
-            <div
-              className="requests-tabs"
-              role="tablist"
-              aria-label="Request type"
-            >
-              {canReadTimeOff && (
-                <button
-                  role="tab"
-                  aria-selected={false}
-                  onClick={() => changeTab("time-off")}
-                >
-                  Time off
-                </button>
-              )}
-              <button role="tab" aria-selected className="active">
-                Shift changes
-              </button>
-            </div>
-          }
-        />
-        <ShiftExchangeHub
-          key={`${context.workspace.id}:${context.userId}`}
-          workspaceId={context.workspace.id}
-          manager
-        />
-        <button
-          className="nf-button secondary"
-          onClick={() =>
-            setParams((previous) => {
-              const next = new URLSearchParams(previous);
-              next.set("legacy", "1");
-              return next;
-            })
-          }
-        >
-          View earlier requests
-        </button>
-      </section>
-    );
   if (query.isLoading) return <RequestState text="Loading requests..." />;
   if (query.isError || !query.data)
     return (
@@ -1427,4 +1371,3 @@ function actionLabel(value: Decision["action"]) {
 }
 
 export default ScheduleRequestsPage;
-import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";

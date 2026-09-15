@@ -86,6 +86,19 @@ export function AnnouncementsPage() {
           }) || a.id.localeCompare(b.id)) * (sort.descending ? -1 : 1),
       );
   }, [query.data, filter, locationId, search, showArchived, sort]);
+  const activeStatusCounts = useMemo(
+    () =>
+      (query.data?.announcements ?? []).reduce(
+        (counts, item) => {
+          if (!isArchived(item) && item.status in counts) {
+            counts[item.status as keyof typeof counts] += 1;
+          }
+          return counts;
+        },
+        { draft: 0, scheduled: 0 },
+      ),
+    [query.data?.announcements],
+  );
   const close = () => {
     setAdding(false);
     if (announcementId)
@@ -133,21 +146,42 @@ export function AnnouncementsPage() {
                   value === "all" ||
                   value === "published",
               )
-              .map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  role="tab"
-                  aria-selected={!showArchived && filter === value}
-                  className={!showArchived && filter === value ? "active" : ""}
-                  onClick={() => {
-                    setShowArchived(false);
-                    setFilter(value);
-                  }}
-                >
-                  {capitalize(value)}
-                </button>
-              ))}
+              .map((value) => {
+                const count =
+                  value === "draft" || value === "scheduled"
+                    ? activeStatusCounts[value]
+                    : 0;
+                return (
+                  <button
+                    type="button"
+                    key={value}
+                    role="tab"
+                    aria-selected={!showArchived && filter === value}
+                    aria-label={
+                      count
+                        ? `${capitalize(value)} (${count})`
+                        : capitalize(value)
+                    }
+                    className={
+                      !showArchived && filter === value ? "active" : ""
+                    }
+                    onClick={() => {
+                      setShowArchived(false);
+                      setFilter(value);
+                    }}
+                  >
+                    <span>{capitalize(value)}</span>
+                    {count ? (
+                      <span
+                        className="announcement-status-tab-count"
+                        aria-hidden="true"
+                      >
+                        {count}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
             {query.data?.can_manage && (
               <button
                 type="button"

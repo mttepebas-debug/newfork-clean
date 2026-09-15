@@ -40,6 +40,7 @@ const context: ActiveWorkspaceContext = {
   locationScope: { allLocations: true, locationIds: [] },
 };
 
+const version = "2026-09-14T09:00:00.000Z";
 const roleInput = {
   name: "Floor lead",
   description: "Runs service",
@@ -93,7 +94,11 @@ describe("roles routes", () => {
       method: "PUT",
       url: `/v1/workspaces/${workspaceId}/roles/${roleId}`,
       headers: { authorization: "Bearer valid-token" },
-      payload: { ...roleInput, ...spoofedIdentity },
+      payload: {
+        ...roleInput,
+        expected_updated_at: version,
+        ...spoofedIdentity,
+      },
     });
 
     expect(response.statusCode, response.body).toBe(200);
@@ -102,10 +107,9 @@ describe("roles routes", () => {
       actorUserId: userId,
       workspaceId,
       roleId,
-      role: roleInput,
+      role: { ...roleInput, expected_updated_at: version },
     });
   });
-
 
   it("forwards role deletes without accepting body identity", async () => {
     const deleteRole = vi.fn(async () => undefined);
@@ -172,13 +176,13 @@ describe("roles routes", () => {
       {
         method: "POST",
         url: `/v1/workspaces/${workspaceId}/roles`,
-        payload: roleInput,
+        payload: { ...roleInput, expected_updated_at: version },
         serviceMethod: "save",
       },
       {
         method: "PUT",
         url: `/v1/workspaces/${workspaceId}/roles/${roleId}`,
-        payload: roleInput,
+        payload: { ...roleInput, expected_updated_at: version },
         serviceMethod: "save",
       },
       {
@@ -200,5 +204,42 @@ describe("roles routes", () => {
       expect(response.json()).toEqual({ error: "Workspace not found" });
       expect(service[route.serviceMethod]).not.toHaveBeenCalled();
     }
+  });
+  it("rejects an unversioned update before calling the service", async () => {
+    const service = rolesServiceMock();
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      rolesService: service,
+    });
+    const response = await app.inject({
+      method: "PUT",
+      url: `/v1/workspaces/${workspaceId}/roles/${roleId}`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: roleInput,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(service.save).not.toHaveBeenCalled();
+  });
+  it.each([
+    "Role changed since you opened it. Reload before saving.",
+    "Role has member or invitation references. Resolve these dependencies before deleting.",
+  ])("reports a reviewable conflict: %s", async (message) => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      rolesService: {
+        save: vi.fn(async () => {
+          throw new Error(message);
+        }),
+        delete: vi.fn(),
+      },
+    });
+    const response = await app.inject({
+      method: "PUT",
+      url: `/v1/workspaces/${workspaceId}/roles/${roleId}`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { ...roleInput, expected_updated_at: version },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({ error: message });
   });
 });

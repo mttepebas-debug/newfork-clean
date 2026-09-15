@@ -28,7 +28,7 @@ Uc handoff ilerleme/kanit kaynagidir; iclerindeki sonraki adim onerileri baglayi
 | 7 | Onboarding, Documents ve Acknowledgements | OBS-003, BL-001, BL-052 ve BL-053. Kabul: onboarding v1, kalici employee belge merkezi, conditional/review-required document kararlari ve acknowledgement'in tutulup tutulmayacagi netlesir. |
 | 8 | Admin settings ve operasyon polish | BL-043, BL-047, BL-048 ve BL-054. Kabul: Important Dates, Settings General/Location, Jobs/Departments crash, Support ve ilgili drawer polishleri MVP deneyimini bozmayacak seviyede kapanir. |
 | 9 | Landing/public giris | BL-034 landing page kapsam karari ve uygulanmasi. Kabul: public root, login/signup/onboarding yonlendirmesi ve ilk izlenim MVP icin yeterli. |
-| 10 | Billing/Stripe ticari kapisi | BL-059. Kabul: Stripe baglantisi, billing sayfasi, plan/limit/exclusive feature modeli, promo code, 14 gun trial ve paid gecis senaryolari MVP icin dogrulanir. |
+| 10 | Billing/Stripe ticari kapisi | BL-059. Kabul: Stripe baglantisi, billing sayfasi, plan/limit/exclusive feature modeli, promo code, 14 gun trial ve paid gecis senaryolari MVP icin dogrulanir. Workspace ayri company/abonelik siniridir; location'lar ayni company aboneliginde kalir. Hesap daha once trial kullandiysa yeni workspace yeni trial alamaz; free plan veya yeni abonelik gerekir. |
 | 11 | Cok tenantli E2E kabul turu | BL-058. Kabul: 5 tenantli prova verisiyle onboarding, schedule, Line Up, notifications, employee actions, manager approvals, role change, access revoke ve invite akislari uc uca denenir. |
 | 12 | Release hazirligi | Temiz migration replay, hedef ortam smoke, provider smoke ve kullanici onayli deploy/release kaniti. Yerel PASS tek basina release hazirligi sayilmaz. |
 

@@ -40,7 +40,13 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     context: {
       workspace: { id: "workspace" },
-      permissions: ["workspace.manage", "employees.read", "employees.manage"],
+      permissions: [
+        "workspace.manage",
+        "settings.jobs.read",
+        "settings.jobs.manage",
+        "employees.read",
+        "employees.manage",
+      ],
     },
   }),
 }));
@@ -304,15 +310,15 @@ describe("job assignment drawer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete job" }));
     expect(api.deleteJob).not.toHaveBeenCalled();
     fireEvent.click(
-      within(screen.getByRole("group", { name: /Delete/ })).getByRole("button", {
-        name: "Delete job",
-      }),
+      within(screen.getByRole("group", { name: /Delete/ })).getByRole(
+        "button",
+        {
+          name: "Delete job",
+        },
+      ),
     );
     await waitFor(() =>
-      expect(api.deleteJob).toHaveBeenCalledExactlyOnceWith(
-        "workspace",
-        jobId,
-      ),
+      expect(api.deleteJob).toHaveBeenCalledExactlyOnceWith("workspace", jobId),
     );
     await waitFor(() => expect(close).toHaveBeenCalled());
     expect(api.saveJobAssignments).not.toHaveBeenCalled();

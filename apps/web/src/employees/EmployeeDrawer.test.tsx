@@ -51,6 +51,7 @@ const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const employeeId = "fe201916-aa0e-480b-9144-1e1c8da20a31";
 const employeeRoleId = "2efe6c80-634b-4b1d-8f09-7cba30697dd6";
 const managerRoleId = "cb8b3ca2-bdaa-460b-9ae8-ef6b8c049226";
+const ownerRoleId = "4b70f8b8-8f68-4f1e-b3b6-b0717caf49ab";
 
 function weeklyModel(): WeeklyPreferenceRead {
   return {
@@ -102,11 +103,17 @@ const context = {
     allLocations: true,
   },
   permissions: [
+    "employees.read",
     "employees.manage",
     "employees.archive",
     "employee_access.manage",
     "employee_onboarding.review",
     "employee_documents.review",
+    "availability.read",
+    "employee_documents.read",
+    "employees.private.read",
+    "employees.private.manage",
+    "employee_access.read",
   ],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
@@ -642,6 +649,28 @@ describe("EmployeeDrawer", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it("keeps the linked owner role and lifecycle read-only", async () => {
+    renderDrawer("access", {
+      ...detail,
+      role_id: ownerRoleId,
+      role_name: "Owner",
+      user_id: context.userId,
+      display_status: "active",
+    });
+
+    expect(await screen.findByLabelText("Workspace role")).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(screen.queryByRole("button", { name: "Remove access" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Terminate employee" }),
+    ).toBeNull();
+    expect(updateEmployeeRole).not.toHaveBeenCalled();
+    expect(removeEmployeeAccess).not.toHaveBeenCalled();
+    expect(setEmployeeArchived).not.toHaveBeenCalled();
+  });
+
   it("shows invitation delivery failure without clearing the pending invite", async () => {
     renderDrawer("access", {
       ...detail,
@@ -740,7 +769,10 @@ describe("EmployeeDrawer", () => {
     fireEvent.click(removePhoto);
 
     await waitFor(() =>
-      expect(removeEmployeeAvatar).toHaveBeenCalledWith(workspaceId, employeeId),
+      expect(removeEmployeeAvatar).toHaveBeenCalledWith(
+        workspaceId,
+        employeeId,
+      ),
     );
     confirm.mockRestore();
   });
@@ -767,10 +799,7 @@ describe("EmployeeDrawer", () => {
       "readOnly",
       true,
     );
-    expect(screen.getByLabelText("Last name")).toHaveProperty(
-      "readOnly",
-      true,
-    );
+    expect(screen.getByLabelText("Last name")).toHaveProperty("readOnly", true);
     expect(screen.getByLabelText("E-mail")).toHaveProperty("readOnly", true);
     expect(screen.getByLabelText("Invite role")).toHaveProperty(
       "disabled",

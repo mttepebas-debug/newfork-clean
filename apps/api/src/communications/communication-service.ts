@@ -52,7 +52,8 @@ export interface CommunicationService {
     input: ActorInput & { announcementId: string; expectedRevision: number },
   ): Promise<z.infer<typeof announcementMutationSchema>>;
   getNotifications(
-    input: ActorInput & {
+    input: Omit<ActorInput, "workspaceId"> & {
+      workspaceId: string | null;
       category: string | null;
       severity: string | null;
       readState: "all" | "seen" | "unseen" | "read" | "unread" | null;
@@ -61,7 +62,7 @@ export interface CommunicationService {
     },
   ): Promise<NotificationInbox>;
   actOnNotification(
-    input: ActorInput & { action: NotificationAction },
+    input: Omit<ActorInput, "workspaceId"> & { workspaceId: string | null; action: NotificationAction },
   ): Promise<z.infer<typeof savedResultSchema>>;
   getWorkspace(input: ActorInput): Promise<WorkspaceDashboard>;
   saveWorkspaceLayout(
@@ -114,7 +115,7 @@ export function createCommunicationServiceWithClient(
     if (error) throw new Error(error.message);
     return data;
   }
-  const actorArgs = (input: ActorInput) => ({
+  const actorArgs = (input: { actorUserId: string; workspaceId: string | null }) => ({
     actor_user_id: input.actorUserId,
     target_workspace_id: input.workspaceId,
   });

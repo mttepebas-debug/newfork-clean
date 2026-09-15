@@ -54,6 +54,7 @@ export function createRolesServiceWithClient(client: RpcClient): RolesService {
           role_description: role.description,
           role_access_class: role.access_class,
           permission_keys: role.permission_keys,
+          expected_updated_at: role.expected_updated_at ?? null,
         }),
       );
     },

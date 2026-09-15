@@ -1,6 +1,7 @@
 import {
   accountProfileSchema,
   activeWorkspaceContextSchema,
+  normalizeAccountPhone,
   workspaceSummarySchema,
   type AccountProfile,
   type ActiveWorkspaceContext,
@@ -19,6 +20,7 @@ const apiUrl =
   import.meta.env.VITE_API_URL ??
   (import.meta.env.DEV ? "http://localhost:9999" : "");
 export const newforkApiUrl = apiUrl;
+export const accountProfileAvatarBucket = "account-profile-photos";
 
 export const supabaseClient: SupabaseClient | null =
   supabaseUrl && supabaseAnonKey
@@ -144,12 +146,12 @@ export async function loadAccountProfile(
   const [profileResult, preferenceResult] = await Promise.all([
     client
       .from("user_profiles")
-      .select("display_name,phone")
+      .select("display_name,phone,phone_e164,avatar_object_path")
       .eq("user_id", user.id)
       .maybeSingle(),
     client
       .from("user_preferences")
-      .select("theme")
+      .select("theme,time_format,date_format")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -160,12 +162,26 @@ export async function loadAccountProfile(
     typeof user.user_metadata.display_name === "string"
       ? user.user_metadata.display_name
       : "Account owner";
+  const avatarObjectPath = profileResult.data?.avatar_object_path ?? null;
+  let avatarUrl: string | null = null;
+  if (avatarObjectPath) {
+    const signedAvatar = await client.storage
+      .from(accountProfileAvatarBucket)
+      .createSignedUrl(avatarObjectPath, 3600);
+    avatarUrl = signedAvatar.error ? null : signedAvatar.data.signedUrl;
+  }
+  const storedPhone =
+    profileResult.data?.phone_e164 ?? profileResult.data?.phone ?? null;
   return accountProfileSchema.parse({
     userId: user.id,
     email: user.email,
     displayName: profileResult.data?.display_name ?? metadataName,
-    phone: profileResult.data?.phone ?? null,
+    phone: normalizeAccountPhone(storedPhone),
+    avatarObjectPath,
+    avatarUrl,
     theme: preferenceResult.data?.theme ?? "system",
+    timeFormat: preferenceResult.data?.time_format ?? "system",
+    dateFormat: preferenceResult.data?.date_format ?? "system",
   });
 }
 
@@ -178,16 +194,74 @@ export async function saveAccountProfile(
       user_id: profile.userId,
       display_name: profile.displayName,
       phone: profile.phone,
+      phone_e164: profile.phone,
+      avatar_object_path: profile.avatarObjectPath,
       updated_at: new Date().toISOString(),
     }),
     client.from("user_preferences").upsert({
       user_id: profile.userId,
       theme: profile.theme,
+      time_format: profile.timeFormat,
+      date_format: profile.dateFormat,
       updated_at: new Date().toISOString(),
     }),
   ]);
   if (profileResult.error) throw new Error(profileResult.error.message);
   if (preferenceResult.error) throw new Error(preferenceResult.error.message);
+}
+
+export async function uploadAccountAvatar(
+  client: SupabaseClient,
+  userId: string,
+  file: File,
+): Promise<Pick<AccountProfile, "avatarObjectPath" | "avatarUrl">> {
+  const extension =
+    file.type === "image/jpeg"
+      ? "jpg"
+      : file.type === "image/png"
+        ? "png"
+        : file.type === "image/webp"
+          ? "webp"
+          : null;
+  if (!extension) throw new Error("JPG, PNG or WebP image required");
+  if (file.size < 1 || file.size > 5 * 1024 * 1024) {
+    throw new Error("Account photo must be 5 MB or smaller");
+  }
+
+  const avatarObjectPath = `${userId}/profile/${crypto.randomUUID()}.${extension}`;
+  const bucket = client.storage.from(accountProfileAvatarBucket);
+  const upload = await bucket.upload(avatarObjectPath, file, {
+    cacheControl: "3600",
+    contentType: file.type,
+    upsert: false,
+  });
+  if (upload.error) throw new Error(upload.error.message);
+
+  const signedAvatar = await bucket.createSignedUrl(avatarObjectPath, 3600);
+  if (signedAvatar.error) {
+    await bucket.remove([avatarObjectPath]);
+    throw new Error(signedAvatar.error.message);
+  }
+  return { avatarObjectPath, avatarUrl: signedAvatar.data.signedUrl };
+}
+
+export async function removeAccountAvatar(
+  client: SupabaseClient,
+  userId: string,
+  avatarObjectPath: string,
+): Promise<void> {
+  if (!avatarObjectPath.startsWith(`${userId}/profile/`)) {
+    throw new Error("Account avatar path must belong to the account");
+  }
+  const result = await client.storage
+    .from(accountProfileAvatarBucket)
+    .remove([avatarObjectPath]);
+  if (result.error) throw new Error(result.error.message);
+}
+
+export async function getCurrentUserWorkspaceAvatar(workspaceId: string): Promise<{ url: string | null }> {
+  if (!supabaseClient) return { url: null };
+  return await apiRequest(supabaseClient, `/v1/workspaces/${workspaceId}/me/avatar`) as { url: string | null };
 }
 
 export async function listAccountWorkspaces(
@@ -228,6 +302,15 @@ export async function selectActiveWorkspace(
     clearTabWorkspaceId();
     throw error;
   }
+}
+
+export async function setDefaultWorkspace(
+  client: SupabaseClient,
+  workspaceId: string,
+): Promise<void> {
+  await apiRequest(client, `/v1/account/workspaces/${workspaceId}/active`, {
+    method: "POST",
+  });
 }
 
 export async function requestWorkspaceClosure(
@@ -282,6 +365,18 @@ export async function initiateWorkspaceOwnershipTransfer(
   );
 }
 
+export interface OwnershipCandidate { userId: string; name: string; email: string }
+
+export async function searchWorkspaceOwnershipCandidates(client: SupabaseClient, workspaceId: string, query: string): Promise<OwnershipCandidate[]> {
+  return await apiRequest(client, `/v1/account/workspaces/${workspaceId}/ownership-transfer/candidates?q=${encodeURIComponent(query)}`) as OwnershipCandidate[];
+}
+
+export async function cancelWorkspaceOwnershipTransfer(client: SupabaseClient, workspaceId: string, transferId: string): Promise<void> {
+  await apiRequest(client, `/v1/account/workspaces/${workspaceId}/ownership-transfer/cancel`, {
+    method: "POST", body: JSON.stringify({ transferId }),
+  });
+}
+
 export async function respondWorkspaceOwnershipTransfer(
   client: SupabaseClient,
   input: {
@@ -317,6 +412,123 @@ export async function requestAccountDeletion(
       acknowledged: input.acknowledged,
     }),
   });
+}
+
+export interface AccountSecurityState {
+  readonly emailVerified: boolean;
+  readonly email: string;
+  readonly pendingEmail: string | null;
+  readonly emailChangeSentAt: string | null;
+}
+
+export interface AccountDeletionBlocker {
+  readonly kind: "active_membership" | "pending_ownership_transfer";
+  readonly workspace_id: string;
+  readonly workspace_name: string;
+  readonly role_name?: string;
+  readonly is_owner?: boolean;
+  readonly transfer_id?: string;
+  readonly transfer_direction?: "incoming" | "outgoing";
+}
+
+export async function loadAccountSecurityState(
+  client: SupabaseClient,
+): Promise<AccountSecurityState> {
+  return (await apiRequest(
+    client,
+    "/v1/account/security",
+  )) as AccountSecurityState;
+}
+
+export async function requestAccountEmailChange(
+  client: SupabaseClient,
+  newEmail: string,
+): Promise<AccountSecurityState> {
+  return (await apiRequest(client, "/v1/account/security/email-change", {
+    method: "POST",
+    body: JSON.stringify({ newEmail }),
+  })) as AccountSecurityState;
+}
+
+export async function resendAccountEmailChange(
+  client: SupabaseClient,
+): Promise<void> {
+  await apiRequest(client, "/v1/account/security/email-change/resend", {
+    method: "POST",
+  });
+}
+
+export async function cancelAccountEmailChange(
+  client: SupabaseClient,
+): Promise<void> {
+  await apiRequest(client, "/v1/account/security/email-change", {
+    method: "DELETE",
+  });
+}
+
+export async function changeAccountPassword(
+  client: SupabaseClient,
+  input: {
+    readonly currentPassword: string;
+    readonly newPassword: string;
+    readonly confirmPassword: string;
+  },
+): Promise<void> {
+  await apiRequest(client, "/v1/account/security/password", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function signOutOtherAccountSessions(
+  client: SupabaseClient,
+  currentPassword: string,
+): Promise<void> {
+  await apiRequest(client, "/v1/account/security/sessions/sign-out-others", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword }),
+  });
+}
+
+export async function loadAccountDeletionBlockers(
+  client: SupabaseClient,
+): Promise<AccountDeletionBlocker[]> {
+  const response = (await apiRequest(
+    client,
+    "/v1/account/security/deletion/blockers",
+  )) as { blockers: AccountDeletionBlocker[] };
+  return response.blockers;
+}
+
+export async function requestSecureAccountDeletion(
+  client: SupabaseClient,
+  currentPassword: string,
+): Promise<void> {
+  await apiRequest(client, "/v1/account/security/deletion", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword }),
+  });
+}
+
+export async function restoreAccountDeletionWithToken(
+  token: string,
+): Promise<{ status: "restored"; loginUrl: string }> {
+  const response = await fetch(
+    `${apiUrl}/v1/account/security/deletion/recovery`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    },
+  );
+  const body = (await response.json().catch(() => null)) as
+    | { status: "restored"; loginUrl: string }
+    | { error: string }
+    | null;
+  if (!response.ok || !body || !("status" in body)) {
+    throw new Error(body && "error" in body ? body.error : "Account could not be restored");
+  }
+  return body;
 }
 
 export async function restoreAccountDeletion(

@@ -17,6 +17,8 @@ import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
 export default function GeneralSettingsPage() {
   const { context, refresh } = useAuth();
   const queryClient = useQueryClient();
+  const canEdit =
+    context?.permissions.includes("settings.general.manage") ?? false;
   const [name, setName] = useState(context?.workspace.name ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export default function GeneralSettingsPage() {
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
+    if (!canEdit) return;
     setSaving(true);
     setError(null);
     setSaved(false);
@@ -64,6 +67,7 @@ export default function GeneralSettingsPage() {
     }
   };
   const submitLogo = async (draft: ScheduleLogoSaveDraft): Promise<void> => {
+    if (!canEdit) return;
     setSavingLogo(true);
     setLogoError(null);
     setSaved(false);
@@ -102,7 +106,11 @@ export default function GeneralSettingsPage() {
               placement={context.workspace.schedule_logo_placement}
               className="settings-logo-frame"
             />
-            <Button type="button" onClick={() => setLogoOpen(true)}>
+            <Button
+              type="button"
+              disabled={!canEdit}
+              onClick={() => setLogoOpen(true)}
+            >
               <ImagePlus size={16} aria-hidden />
               Manage logo
             </Button>
@@ -118,6 +126,7 @@ export default function GeneralSettingsPage() {
           </div>
           <input
             id="organization-name"
+            disabled={!canEdit}
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={120}
@@ -143,6 +152,7 @@ export default function GeneralSettingsPage() {
           <Button
             type="submit"
             disabled={
+              !canEdit ||
               saving ||
               name.trim().length === 0 ||
               name.trim() === context.workspace.name
@@ -173,7 +183,11 @@ export default function GeneralSettingsPage() {
             </span>
             <Button
               type="button"
-              disabled={checklistQuery.isLoading || checklistMutation.isPending}
+              disabled={
+                !canEdit ||
+                checklistQuery.isLoading ||
+                checklistMutation.isPending
+              }
               onClick={() => checklistMutation.mutate(!checklistClosed)}
             >
               <ListChecks size={16} aria-hidden />
@@ -220,7 +234,12 @@ export function SettingsHeader({
     <header className={`settings-page-header${icon ? "" : " no-icon"}`}>
       {icon ? <div className="settings-heading-icon">{icon}</div> : null}
       <div>
-        <h1 id={titleId ?? `${title.toLowerCase().replaceAll(" ", "-")}-settings-title`}>
+        <h1
+          id={
+            titleId ??
+            `${title.toLowerCase().replaceAll(" ", "-")}-settings-title`
+          }
+        >
           {title}
         </h1>
         <p>{description}</p>

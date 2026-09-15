@@ -865,7 +865,7 @@ export function registerScheduleRoutes(
             request.headers.authorization,
             params.data.workspaceId,
             options,
-            "schedule.templates.manage",
+            "schedule.templates.read",
           )
         : null;
       if (!params.success)
@@ -899,7 +899,7 @@ export function registerScheduleRoutes(
             request.headers.authorization,
             params.data.workspaceId,
             options,
-            "schedule.templates.manage",
+            "schedule.templates.read",
           )
         : null;
       if (!params.success)
@@ -2492,7 +2492,7 @@ export function registerScheduleRoutes(
     const context = await activeManagerContext(
       request,
       options,
-      "schedule.templates.manage",
+      "schedule.templates.read",
     );
     if (!context)
       return reply
@@ -2518,7 +2518,7 @@ export function registerScheduleRoutes(
     const context = await activeManagerContext(
       request,
       options,
-      "schedule.templates.manage",
+      "schedule.templates.read",
     );
     if (!context)
       return reply
@@ -3197,6 +3197,7 @@ async function managerContext(
     | "schedule.read"
     | "schedule.manage"
     | "schedule.publish"
+    | "schedule.templates.read"
     | "schedule.templates.manage"
     | "schedule.export" = "schedule.manage",
 ) {
@@ -3223,6 +3224,7 @@ async function activeManagerContext(
     | "schedule.read"
     | "schedule.manage"
     | "schedule.publish"
+    | "schedule.templates.read"
     | "schedule.templates.manage"
     | "schedule.export" = "schedule.manage",
 ) {

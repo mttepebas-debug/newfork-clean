@@ -33,6 +33,8 @@ function sameJson(left: unknown, right: unknown): boolean {
 
 export default function ShiftLabelsSettingsPage() {
   const { context } = useAuth();
+  const canEdit =
+    context?.permissions.includes("settings.shift_catalog.manage") ?? false;
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
   const queryKey = ["shift-labels", workspaceId];
@@ -99,6 +101,7 @@ export default function ShiftLabelsSettingsPage() {
   const labelBaseline =
     editing && editing !== "new" ? shiftLabelInputSchema.parse(editing) : null;
   const canSave =
+    canEdit &&
     !saveMutation.isPending &&
     !deleteLocked &&
     Boolean(editing) &&
@@ -131,7 +134,7 @@ export default function ShiftLabelsSettingsPage() {
             <Button
               className="job-primary-button"
               type="button"
-              disabled={saveMutation.isPending || deleteLocked}
+              disabled={!canEdit || saveMutation.isPending || deleteLocked}
               onClick={() => openEditor()}
             >
               <Plus size={16} aria-hidden />
@@ -165,7 +168,7 @@ export default function ShiftLabelsSettingsPage() {
                 type="button"
                 className="job-icon-button"
                 aria-label="Close shift label editor"
-                disabled={saveMutation.isPending || deleteLocked}
+                disabled={!canEdit || saveMutation.isPending || deleteLocked}
                 title="Close"
                 onClick={() => setEditing(null)}
               >
@@ -173,13 +176,15 @@ export default function ShiftLabelsSettingsPage() {
               </button>
             </div>
             <div className="catalog-drawer-body">
-              <fieldset disabled={saveMutation.isPending || deleteLocked}>
+              <fieldset
+                disabled={!canEdit || saveMutation.isPending || deleteLocked}
+              >
                 <div className="job-field">
                   <label htmlFor="shift-catalog-name">Name</label>
                   <div className="job-name-color">
                     <input
                       id="shift-catalog-name"
-                      disabled={saveMutation.isPending}
+                      disabled={!canEdit || saveMutation.isPending}
                       value={draft.name}
                       maxLength={60}
                       required
@@ -193,7 +198,7 @@ export default function ShiftLabelsSettingsPage() {
                     />
                     <JobColorInput
                       label="Color"
-                      disabled={saveMutation.isPending}
+                      disabled={!canEdit || saveMutation.isPending}
                       value={draft.color}
                       onChange={(color) =>
                         setDraft((current) => ({ ...current, color }))
@@ -216,7 +221,7 @@ export default function ShiftLabelsSettingsPage() {
                   id={editing.id}
                   name={editing.name}
                   workspaceId={workspaceId}
-                  disabled={saveMutation.isPending}
+                  disabled={!canEdit || saveMutation.isPending}
                   onLockChange={setDeleteLocked}
                   onDeleted={() => setEditing(null)}
                 />
@@ -225,7 +230,7 @@ export default function ShiftLabelsSettingsPage() {
                 <Button
                   className="job-secondary-button"
                   type="button"
-                  disabled={saveMutation.isPending || deleteLocked}
+                  disabled={!canEdit || saveMutation.isPending || deleteLocked}
                   onClick={() => setEditing(null)}
                 >
                   Cancel
@@ -265,7 +270,7 @@ export default function ShiftLabelsSettingsPage() {
           onArchive={(item) =>
             archiveMutation.mutate({ id: item.id, archived: !item.archived_at })
           }
-          disabled={saveMutation.isPending || deleteLocked}
+          disabled={!canEdit || saveMutation.isPending || deleteLocked}
           reorderPending={reorderMutation.isPending}
           archivePending={archiveMutation.isPending}
         />

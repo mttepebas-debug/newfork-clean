@@ -6,12 +6,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspacesPage from "./WorkspacesPage";
 import {
   cancelWorkspaceClosure,
+  cancelWorkspaceOwnershipTransfer,
+  searchWorkspaceOwnershipCandidates,
+  clearTabWorkspaceId,
   createOwnerWorkspace,
   initiateWorkspaceOwnershipTransfer,
   listAccountWorkspaces,
   requestWorkspaceClosure,
   respondWorkspaceOwnershipTransfer,
   selectActiveWorkspace,
+  setDefaultWorkspace,
   setTabWorkspaceId,
 } from "../lib/supabase";
 
@@ -106,11 +110,15 @@ vi.mock("../lib/supabase", () => ({
   supabaseClient: supabaseClientMock,
   createOwnerWorkspace: vi.fn(),
   cancelWorkspaceClosure: vi.fn(),
+  cancelWorkspaceOwnershipTransfer: vi.fn(),
+  searchWorkspaceOwnershipCandidates: vi.fn(),
+  clearTabWorkspaceId: vi.fn(),
   initiateWorkspaceOwnershipTransfer: vi.fn(),
   listAccountWorkspaces: vi.fn(),
   requestWorkspaceClosure: vi.fn(),
   respondWorkspaceOwnershipTransfer: vi.fn(),
   selectActiveWorkspace: vi.fn(),
+  setDefaultWorkspace: vi.fn(),
   setTabWorkspaceId: vi.fn(),
 }));
 
@@ -146,13 +154,79 @@ function renderPage() {
   );
 }
 
+async function openWorkspaceActions(name = "Meyhouse") {
+  const trigger = await screen.findByRole("button", {
+    name: `Workspace actions for ${name}`,
+  });
+  fireEvent.click(trigger);
+  return {
+    trigger,
+    menu: screen.getByRole("menu", { name: `Workspace actions for ${name}` }),
+  };
+}
+
 describe("WorkspacesPage", () => {
+  it.each(["admin", "manager", "employee"] as const)("hides create for %s without another owned workspace", async role => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([{ ...ownerWorkspace, role }]);
+    renderPage();
+    await screen.findByLabelText("Meyhouse is the current workspace");
+    expect(screen.queryByRole("button", { name: "Create workspace" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Workspace actions for Meyhouse" })).toBeTruthy();
+  });
+
+  it("sorts the current tab first and enables create for an owner in another workspace", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([{ ...ownerWorkspace, isActive: false }, { ...workspaces[1]!, isActive: true }]);
+    renderPage();
+    const createButton = await screen.findByRole("button", { name: "Create workspace" });
+    expect(createButton.closest(".account-header-action")).toBeTruthy();
+    expect(document.querySelector(".workspace-row strong")?.textContent).toBe("Meyhouse");
+    expect(screen.getByRole("button", { name: "Open West Room" }).className).toContain("secondary-button");
+  });
+
+  it("fails closed after a workspace list error", async () => {
+    vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(new Error("Unavailable"));
+    renderPage();
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("button", { name: "Create workspace" })).toBeNull();
+  });
+
+  it("lets a sender cancel pending transfer without a password", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValueOnce([{ ...ownerWorkspace, pendingOwnershipTransfer: { id: transferId, role: "initiator", expiresAt: "2099-01-01T00:00:00Z" } }]).mockResolvedValue([ownerWorkspace]);
+    renderPage();
+    const { menu } = await openWorkspaceActions();
+    expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(2);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Cancel transfer" }));
+    await waitFor(() => expect(cancelWorkspaceOwnershipTransfer).toHaveBeenCalledWith(supabaseClientMock, workspaceId, transferId));
+    expect(supabaseClientMock.auth.signInWithPassword).not.toHaveBeenCalled();
+    await openWorkspaceActions();
+    await screen.findByRole("menuitem", { name: "Transfer ownership" });
+  });
+
+  it.each([false, true])("leaves a closed active workspace safely; another workspace=%s", async another => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValueOnce([ownerWorkspace]).mockResolvedValue(another ? [workspaces[1]!] : []);
+    refreshedContext = another ? { ...context, workspace: { ...context.workspace, id: secondWorkspaceId }, membership: { ...context.membership, role: "employee", workspaceId: secondWorkspaceId } } : null;
+    renderPage();
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
+    fireEvent.change(screen.getByLabelText("Type organization name"), { target: { value: "Meyhouse" } });
+    fireEvent.change(screen.getByLabelText("Account password"), { target: { value: "fresh-password" } });
+    fireEvent.click(screen.getByLabelText(/I understand the organization closure impact/));
+    fireEvent.click(screen.getByRole("button", { name: "Close now" }));
+    await waitFor(() => expect(screen.getByLabelText("Current path").textContent).toBe(another ? "/app/employee-hub" : "/organization-switcher"));
+    expect(clearTabWorkspaceId).toHaveBeenCalled();
+    if (another) expect(selectActiveWorkspace).toHaveBeenCalledWith(supabaseClientMock, secondWorkspaceId);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
+    HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+    vi.mocked(searchWorkspaceOwnershipCandidates).mockResolvedValue([{ userId: targetUserId, name: "Eligible Admin", email: "admin@example.test" }]);
+    vi.mocked(cancelWorkspaceOwnershipTransfer).mockResolvedValue(undefined);
     refreshedContext = context;
     vi.mocked(createOwnerWorkspace).mockResolvedValue(secondWorkspaceId);
     vi.mocked(listAccountWorkspaces).mockResolvedValue(workspaces);
     vi.mocked(selectActiveWorkspace).mockResolvedValue(undefined);
+    vi.mocked(setDefaultWorkspace).mockResolvedValue(undefined);
     vi.mocked(requestWorkspaceClosure).mockResolvedValue(undefined);
     vi.mocked(cancelWorkspaceClosure).mockResolvedValue(undefined);
     vi.mocked(initiateWorkspaceOwnershipTransfer).mockResolvedValue(undefined);
@@ -172,30 +246,90 @@ describe("WorkspacesPage", () => {
     await waitFor(() => expect(listAccountWorkspaces).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Meyhouse")).toBeTruthy();
     expect(screen.getByText("West Room")).toBeTruthy();
-    expect(screen.getByText("Active workspace")).toBeTruthy();
+    expect(screen.getByText("Current")).toBeTruthy();
     expect(screen.getByLabelText("Current path").textContent).toBe(
       "/account/workspaces",
     );
   });
 
-  it("opens the active workspace through the tab-local selector", async () => {
+  it("marks the current tab without offering an Open action and labels the saved default separately", async () => {
+    renderPage();
+    expect(await screen.findByLabelText("Meyhouse is the current workspace")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Open app for Meyhouse" })).toBeNull();
+    await openWorkspaceActions();
+    expect(screen.getByRole("menuitem", { name: "Default workspace" })).toHaveProperty("disabled", true);
+    expect(selectActiveWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("keeps owner actions in one accessible menu and returns focus on Escape", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     renderPage();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Open app for Meyhouse" }),
-    );
+    const { trigger, menu } = await openWorkspaceActions();
+    expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual([
+      "Default workspace",
+      "Transfer ownership",
+      "Close later",
+      "Close now",
+    ]);
+    expect(menu.querySelector('[role="separator"]')).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Close now" }).className).toContain("workspace-actions-danger");
 
-    await waitFor(() =>
-      expect(selectActiveWorkspace).toHaveBeenCalledWith(
-        supabaseClientMock,
-        workspaceId,
-      ),
-    );
-    await waitFor(() =>
-      expect(screen.getByLabelText("Current path").textContent).toBe(
-        "/app/workspace",
-      ),
-    );
+    trigger.focus();
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it("lets a non-owner set an accessible workspace as the account default", async () => {
+    renderPage();
+    const { trigger } = await openWorkspaceActions("West Room");
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Set as default" }));
+
+    await waitFor(() => expect(setDefaultWorkspace).toHaveBeenCalledWith(
+      supabaseClientMock,
+      secondWorkspaceId,
+    ));
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    expect(screen.getByLabelText("Meyhouse is the current workspace")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open West Room" })).toBeTruthy();
+    await openWorkspaceActions("West Room");
+    expect(screen.getByRole("menuitem", { name: "Default workspace" })).toHaveProperty("disabled", true);
+    expect(selectActiveWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("closes an owner menu on outside pointer input and only opens one at a time", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      ownerWorkspace,
+      { ...ownerWorkspace, id: secondWorkspaceId, name: "West Room", isActive: false },
+    ]);
+    renderPage();
+
+    await openWorkspaceActions();
+    const { trigger } = await openWorkspaceActions("West Room");
+    expect(screen.getAllByRole("menu")).toHaveLength(1);
+    expect(screen.getByRole("menu", { name: "Workspace actions for West Room" })).toBeTruthy();
+
+    fireEvent.pointerDown(document.body);
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it("shows only cancellation for an owner workspace with scheduled closure", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([{
+      ...ownerWorkspace,
+      lifecycleStatus: "closure_scheduled",
+      closureEffectiveAt: "2099-01-01T00:00:00.000Z",
+    }]);
+    renderPage();
+
+    await openWorkspaceActions();
+    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+    expect(screen.getByRole("menuitem", { name: "Default workspace" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Cancel close" })).toBeTruthy();
   });
 
   it("selects an inactive workspace before opening its role landing", async () => {
@@ -233,10 +367,13 @@ describe("WorkspacesPage", () => {
   });
 
   it("stores a newly created workspace as the tab-local context before onboarding", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Create workspace" }));
+    expect(screen.getByRole("dialog", { name: "Create workspace" })).toBeTruthy();
 
     fireEvent.change(
-      await screen.findByRole("textbox", { name: "Create workspace" }),
+      await screen.findByRole("textbox", { name: "Workspace name" }),
       {
         target: { value: "New Business" },
       },
@@ -271,9 +408,8 @@ describe("WorkspacesPage", () => {
       ]);
     renderPage();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Close later for Meyhouse" }),
-    );
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close later" }));
     expect(
       screen.getByRole("region", { name: "Schedule organization closure" }),
     ).toBeTruthy();
@@ -299,9 +435,8 @@ describe("WorkspacesPage", () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     renderPage();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Close now for Meyhouse" }),
-    );
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
     const closureRegion = screen.getByRole("region", {
       name: "Close organization now",
     });
@@ -354,9 +489,8 @@ describe("WorkspacesPage", () => {
     });
     renderPage();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Close now for Meyhouse" }),
-    );
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
     fireEvent.click(
       screen.getByLabelText(/I understand the organization closure impact/),
     );
@@ -378,11 +512,8 @@ describe("WorkspacesPage", () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     renderPage();
 
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Transfer owner for Meyhouse",
-      }),
-    );
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Transfer ownership" }));
     const transferRegion = screen.getByRole("region", {
       name: "Transfer ownership",
     });
@@ -397,11 +528,12 @@ describe("WorkspacesPage", () => {
     const submitButton = screen.getByRole("button", { name: "Start transfer" });
     expect(submitButton).toHaveProperty("disabled", true);
 
-    fireEvent.change(screen.getByLabelText("Target admin user ID"), {
-      target: { value: targetUserId },
+    fireEvent.change(screen.getByLabelText("Find an admin by name or email"), {
+      target: { value: "Admin" },
     });
+    fireEvent.click(await screen.findByRole("radio", { name: /Eligible Admin/ }));
     fireEvent.click(
-      screen.getByLabelText(/I understand ownership transfer cannot be reversed/),
+      screen.getByLabelText(/I understand an accepted ownership transfer/),
     );
     fireEvent.change(screen.getByLabelText("Account password"), {
       target: { value: "fresh-password" },
@@ -495,17 +627,10 @@ describe("WorkspacesPage", () => {
     expect(
       screen.getByRole("region", { name: "Reject ownership transfer" }),
     ).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Account password"), {
-      target: { value: "fresh-password" },
-    });
+    expect(screen.queryByLabelText("Account password")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Reject transfer" }));
 
-    await waitFor(() =>
-      expect(supabaseClientMock.auth.signInWithPassword).toHaveBeenCalledWith({
-        email: "owner@example.test",
-        password: "fresh-password",
-      }),
-    );
+    expect(supabaseClientMock.auth.signInWithPassword).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(respondWorkspaceOwnershipTransfer).toHaveBeenCalledWith(
         supabaseClientMock,

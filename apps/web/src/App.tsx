@@ -14,7 +14,10 @@ import { SignInPage } from "./views/SignInPage";
 import "./styles.css";
 
 const AccountLayout = lazy(() => import("./account/AccountLayout"));
-const EmployeeOnboardingPreview = lazy(() => import("./dev/EmployeeOnboardingPreview"));
+const AccountRecoveryPage = lazy(() => import("./account/AccountRecoveryPage"));
+const EmployeeOnboardingPreview = lazy(
+  () => import("./dev/EmployeeOnboardingPreview"),
+);
 const PublicTrustLayout = lazy(() => import("./public/PublicTrustLayout"));
 const PrivacyPage = lazy(() =>
   import("./public/PublicTrustPages").then((module) => ({
@@ -46,6 +49,7 @@ const NotificationPreferencesPage = lazy(
   () => import("./account/NotificationPreferencesPage"),
 );
 const ProfilePage = lazy(() => import("./account/ProfilePage"));
+const SecurityPage = lazy(() => import("./account/SecurityPage"));
 const WorkspacesPage = lazy(() => import("./account/WorkspacesPage"));
 const OrganizationSwitcherPage = lazy(
   () => import("./shell/OrganizationSwitcherPage"),
@@ -155,13 +159,17 @@ export function App() {
                 />
               </Route>
               <Route path="/sign-in" element={<SignInPage />} />
+              <Route path="/account-recovery" element={<AccountRecoveryPage />} />
               {import.meta.env.DEV ? (
                 <>
                   <Route
                     path="/dev/schedule-shift-design"
                     element={<ScheduleShiftDesignPage />}
                   />
-                  <Route path="/dev/employee-onboarding" element={<EmployeeOnboardingPreview />} />
+                  <Route
+                    path="/dev/employee-onboarding"
+                    element={<EmployeeOnboardingPreview />}
+                  />
                   <Route
                     path="/dev/schedule-shift-badge-lab"
                     element={<Navigate to="/app/schedule-badge-lab" replace />}
@@ -253,6 +261,8 @@ export function App() {
               >
                 <Route index element={<Navigate to="profile" replace />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="security" element={<SecurityPage />} />
+                <Route path="inbox" element={<NotificationsPage />} />
                 <Route path="preferences" element={<PreferencesPage />} />
                 <Route
                   path="preferences/notifications"
@@ -306,7 +316,7 @@ export function App() {
                   path="schedule/templates"
                   element={
                     <PermissionRoute
-                      anyOf={["schedule.templates.manage", "schedule.read"]}
+                      anyOf={["schedule.templates.read"]}
                       roles={["owner", "admin", "manager"]}
                     >
                       <ScheduleTemplatesPage />
@@ -341,7 +351,7 @@ export function App() {
                       path="schedule-badge-lab/templates"
                       element={
                         <PermissionRoute
-                          anyOf={["schedule.templates.manage", "schedule.read"]}
+                          anyOf={["schedule.templates.read"]}
                           roles={["owner", "admin", "manager"]}
                         >
                           <ScheduleShiftBadgeLabPage />
@@ -377,7 +387,7 @@ export function App() {
                   path="availability"
                   element={
                     <PermissionRoute
-                      anyOf={["schedule.read"]}
+                      anyOf={["availability.read"]}
                       roles={["owner", "admin", "manager"]}
                     >
                       <AvailabilityPage />
@@ -387,9 +397,7 @@ export function App() {
                 <Route
                   path="important-dates"
                   element={
-                    <PermissionRoute
-                      anyOf={["workspace.manage", "schedule.read"]}
-                    >
+                    <PermissionRoute anyOf={["important_dates.read"]}>
                       <ImportantDatesSettingsPage />
                     </PermissionRoute>
                   }
@@ -440,17 +448,16 @@ export function App() {
                 <Route
                   path="notifications"
                   element={
-                    <PermissionRoute anyOf={["notifications.read"]}>
-                      <NotificationsPage />
-                    </PermissionRoute>
+                    <NotificationsPage />
                   }
                 />
+                <Route path="account/security" element={<Navigate to="/account/security" replace />} />
                 <Route path="settings" element={<SettingsLayout />}>
                   <Route index element={<SettingsHomeRedirect />} />
                   <Route
                     path="general"
                     element={
-                      <PermissionRoute anyOf={["workspace.manage"]}>
+                      <PermissionRoute anyOf={["settings.general.read"]}>
                         <GeneralSettingsPage />
                       </PermissionRoute>
                     }
@@ -458,7 +465,7 @@ export function App() {
                   <Route
                     path="locations"
                     element={
-                      <PermissionRoute anyOf={["workspace.manage"]}>
+                      <PermissionRoute anyOf={["settings.locations.read"]}>
                         <LocationsSettingsPage />
                       </PermissionRoute>
                     }
@@ -466,7 +473,7 @@ export function App() {
                   <Route
                     path="jobs"
                     element={
-                      <PermissionRoute anyOf={["workspace.manage"]}>
+                      <PermissionRoute anyOf={["settings.jobs.read"]}>
                         <JobsSettingsPage />
                       </PermissionRoute>
                     }
@@ -487,7 +494,7 @@ export function App() {
                   <Route
                     path="scheduling"
                     element={
-                      <PermissionRoute anyOf={["workspace.manage"]}>
+                      <PermissionRoute anyOf={["settings.schedule_rules.read"]}>
                         <SchedulingSettingsPage />
                       </PermissionRoute>
                     }
@@ -495,7 +502,7 @@ export function App() {
                   <Route
                     path="scheduling/shift-types"
                     element={
-                      <PermissionRoute anyOf={["workspace.manage"]}>
+                      <PermissionRoute anyOf={["settings.shift_catalog.read"]}>
                         <ShiftCatalogSettingsPage />
                       </PermissionRoute>
                     }
@@ -503,12 +510,20 @@ export function App() {
                   <Route
                     path="scheduling/shift-labels"
                     element={
-                      <PermissionRoute anyOf={["workspace.manage"]}>
+                      <PermissionRoute anyOf={["settings.shift_catalog.read"]}>
                         <ShiftCatalogSettingsPage />
                       </PermissionRoute>
                     }
                   />
-                  <Route path="scheduling/shift-label" element={<Navigate to="/app/settings/scheduling/shift-labels" replace />} />
+                  <Route
+                    path="scheduling/shift-label"
+                    element={
+                      <Navigate
+                        to="/app/settings/scheduling/shift-labels"
+                        replace
+                      />
+                    }
+                  />
                   <Route
                     path="important-dates"
                     element={<Navigate to="/app/important-dates" replace />}

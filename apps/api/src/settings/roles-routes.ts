@@ -52,8 +52,10 @@ export function registerRolesRoutes(
     async (request, reply) => {
       const params = roleParams.safeParse(request.params);
       const body = workspaceRoleInputSchema.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply.status(400).send({ error: "Valid role details required" });
+      if (!params.success || !body.success || !body.data.expected_updated_at)
+        return reply
+          .status(400)
+          .send({ error: "Valid role details and current version required" });
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
@@ -140,6 +142,9 @@ function requestError(reply: FastifyReply, error: unknown) {
   const message =
     error instanceof Error ? error.message : "Role operation failed";
   if (
+    message.includes("not eligible") ||
+    message.includes("limited to personal") ||
+    message.includes("beyond your own") ||
     message.includes("access required") ||
     message.includes("access denied") ||
     message.includes("denied")
@@ -147,7 +152,12 @@ function requestError(reply: FastifyReply, error: unknown) {
     return reply.status(403).send({ error: message });
   if (message.includes("not found"))
     return reply.status(404).send({ error: message });
-  if (message.includes("exists") || message.includes("assigned"))
+  if (
+    message.includes("exists") ||
+    message.includes("assigned") ||
+    message.includes("changed") ||
+    message.includes("references")
+  )
     return reply.status(409).send({ error: message });
   return reply.status(400).send({ error: message });
 }

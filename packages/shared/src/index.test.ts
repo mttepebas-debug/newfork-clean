@@ -19,6 +19,7 @@ import {
   jobInputSchema,
   locationInputSchema,
   notificationInboxSchema,
+  normalizeAccountPhone,
   permissionsForRole,
   scheduleReadModelSchema,
   schedulePublicationPreflightAckSchema,
@@ -48,24 +49,43 @@ const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
 describe("account schemas", () => {
-  it("accepts optional account phone", () => {
+  it("normalizes optional account phone and defaults personal formats", () => {
+    expect(normalizeAccountPhone("(310) 555-0100", "1")).toBe(
+      "+13105550100",
+    );
+    expect(normalizeAccountPhone("+44 20 7946 0958", "44")).toBe(
+      "+442079460958",
+    );
+    expect(normalizeAccountPhone("", "1")).toBeNull();
     expect(
+      accountProfileSchema.parse({
+        userId,
+        email: "alex@example.test",
+        displayName: "Alex Kim",
+        phone: "+13105550100",
+        theme: "system",
+      }),
+    ).toMatchObject({
+      phone: "+13105550100",
+      avatarObjectPath: null,
+      avatarUrl: null,
+      timeFormat: "system",
+      dateFormat: "system",
+    });
+  });
+
+  it("rejects legacy phone input and an avatar path owned by another account", () => {
+    expect(() =>
       accountProfileSchema.parse({
         userId,
         email: "alex@example.test",
         displayName: "Alex Kim",
         phone: "3105550100",
+        avatarObjectPath:
+          "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.jpg",
         theme: "system",
-      }).phone,
-    ).toBe("3105550100");
-    expect(
-      accountProfileSchema.parse({
-        userId,
-        email: "alex@example.test",
-        displayName: "Alex Kim",
-        theme: "system",
-      }).phone,
-    ).toBeNull();
+      }),
+    ).toThrow();
   });
 });
 
@@ -937,7 +957,12 @@ describe("shared contracts", () => {
 
     expect(context.membership.role).toBe("employee");
     expect(context.membership.roleName).toBe("Host");
-    expect(context.permissions).toEqual(["workspace.read", "roles.read"]);
+    expect(context.permissions).toEqual([
+      "workspace.read",
+      "notifications.read",
+      "notifications.read_own",
+      "notifications.preferences.write_own",
+    ]); // Employee experience excludes management grants.
     expect(context.onboarding).toEqual({
       status: "complete",
       currentStep: 2,
@@ -1573,7 +1598,7 @@ describe("roles and permissions schemas", () => {
         access_class: "employee",
         permission_keys: ["workspace.read", "schedule.manage"],
       }),
-    ).toThrow("Schedule management requires schedule access");
+    ).toThrow("schedule.manage requires its read access");
   });
 
   it("requires document read access before document management", () => {
@@ -1584,7 +1609,7 @@ describe("roles and permissions schemas", () => {
         access_class: "manager",
         permission_keys: ["workspace.read", "documents.manage"],
       }),
-    ).toThrow("Document management requires document access");
+    ).toThrow("documents.manage requires its read access");
   });
 
   it("requires Schedule Requests read and manage dependencies", () => {
@@ -1595,7 +1620,7 @@ describe("roles and permissions schemas", () => {
         access_class: "manager",
         permission_keys: ["workspace.read", "schedule.time_off_requests.read"],
       }),
-    ).toThrow("Time off request access requires schedule access");
+    ).toThrow("schedule.time_off_requests.read requires its read access");
     expect(() =>
       workspaceRoleInputSchema.parse({
         name: "Shift reviewer",
@@ -1607,7 +1632,7 @@ describe("roles and permissions schemas", () => {
           "schedule.shift_change_requests.manage",
         ],
       }),
-    ).toThrow("Shift change request management requires request access");
+    ).toThrow("schedule.shift_change_requests.manage requires its read access");
   });
 
   it("requires template read access before template management", () => {
@@ -1618,7 +1643,7 @@ describe("roles and permissions schemas", () => {
         access_class: "manager",
         permission_keys: ["workspace.read", "signature_templates.manage"],
       }),
-    ).toThrow("Acknowledgement template management requires template access");
+    ).toThrow("signature_templates.manage requires its read access");
   });
 
   it("requires employee read and role access for employee management", () => {
@@ -1629,7 +1654,7 @@ describe("roles and permissions schemas", () => {
         access_class: "manager",
         permission_keys: ["workspace.read", "employees.manage"],
       }),
-    ).toThrow("Employee management requires employee directory access");
+    ).toThrow("employees.manage requires its read access");
 
     expect(() =>
       workspaceRoleInputSchema.parse({
@@ -1642,7 +1667,7 @@ describe("roles and permissions schemas", () => {
           "employee_access.manage",
         ],
       }),
-    ).toThrow("Employee access management requires employee and role access");
+    ).toThrow("employee_access.manage requires its read access");
   });
 
   it("requires time read permissions before capture or location management", () => {
@@ -1653,7 +1678,7 @@ describe("roles and permissions schemas", () => {
         access_class: "employee",
         permission_keys: ["workspace.read", "time.capture.own"],
       }),
-    ).toThrow("Own time capture and corrections require own time access");
+    ).toThrow("time.capture.own requires its read access");
     expect(() =>
       workspaceRoleInputSchema.parse({
         name: "Time editor",
@@ -1661,7 +1686,7 @@ describe("roles and permissions schemas", () => {
         access_class: "manager",
         permission_keys: ["workspace.read", "time.amend.location"],
       }),
-    ).toThrow("Location time management requires location time access");
+    ).toThrow("time.amend.location requires its read access");
   });
 });
 

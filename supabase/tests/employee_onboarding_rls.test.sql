@@ -260,7 +260,7 @@ select is(public.save_employee_onboarding_profile_service(
   ), 1), 2, 'private profile save advances revision');
 select is((select status::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'profile'), 'completed', 'profile requirement completes');
 set local role postgres;
-select is((select phone from public.employee_private_profiles where employee_id = '47000000-0000-4000-8000-000000000001'), '3105559999', 'global account phone wins during onboarding profile save');
+select is((select phone from public.employee_private_profiles where employee_id = '47000000-0000-4000-8000-000000000001'), '3105550100', 'submitted workspace phone wins over the account suggestion');
 select is((select phone from public.user_profiles where user_id = '17000000-0000-4000-8000-000000000003'), '3105559999', 'onboarding does not overwrite an existing global account phone');
 set local role service_role;
 select throws_ok(

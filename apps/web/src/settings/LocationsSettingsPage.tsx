@@ -44,6 +44,8 @@ function sameJson(left: unknown, right: unknown): boolean {
 
 export default function LocationsSettingsPage() {
   const { context } = useAuth();
+  const canEdit =
+    context?.permissions.includes("settings.locations.manage") ?? false;
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
   const queryKey = ["organization-locations", workspaceId];
@@ -114,6 +116,7 @@ export default function LocationsSettingsPage() {
   const locationBaseline =
     editing && editing !== "new" ? locationInputSchema.parse(editing) : null;
   const canSave =
+    canEdit &&
     !deleteLocked &&
     !saveMutation.isPending &&
     Boolean(editing) &&
@@ -136,7 +139,7 @@ export default function LocationsSettingsPage() {
           <Button
             className="job-primary-button"
             type="button"
-            disabled={saveMutation.isPending || deleteLocked}
+            disabled={!canEdit || saveMutation.isPending || deleteLocked}
             onClick={() => openEditor()}
           >
             <Plus size={16} aria-hidden />
@@ -196,7 +199,7 @@ export default function LocationsSettingsPage() {
             <div className="catalog-drawer-body">
               <fieldset
                 className="location-catalog-fields"
-                disabled={saveMutation.isPending || deleteLocked}
+                disabled={!canEdit || saveMutation.isPending || deleteLocked}
               >
                 <FormField
                   label="Location name"
@@ -275,7 +278,7 @@ export default function LocationsSettingsPage() {
                   id={editing.id}
                   name={editing.name}
                   workspaceId={workspaceId}
-                  disabled={saveMutation.isPending}
+                  disabled={!canEdit || saveMutation.isPending}
                   onLockChange={setDeleteLocked}
                   onDeleted={closeEditor}
                 />
@@ -363,26 +366,28 @@ export default function LocationsSettingsPage() {
                   )}
                 </button>
                 <span className="location-catalog-zone">{zone}</span>
-                <CatalogRowMenu name={location.name}>
-                  <button type="button" onClick={() => openEditor(location)}>
-                    Edit location
-                  </button>
-                  <button
-                    type="button"
-                    className={
-                      !location.archived_at ? "job-danger-text" : undefined
-                    }
-                    disabled={archiveMutation.isPending}
-                    onClick={() =>
-                      archiveMutation.mutate({
-                        id: location.id,
-                        archived: !location.archived_at,
-                      })
-                    }
-                  >
-                    {location.archived_at ? "Restore" : "Archive"}
-                  </button>
-                </CatalogRowMenu>
+                {canEdit && (
+                  <CatalogRowMenu name={location.name}>
+                    <button type="button" onClick={() => openEditor(location)}>
+                      Edit location
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        !location.archived_at ? "job-danger-text" : undefined
+                      }
+                      disabled={!canEdit || archiveMutation.isPending}
+                      onClick={() =>
+                        archiveMutation.mutate({
+                          id: location.id,
+                          archived: !location.archived_at,
+                        })
+                      }
+                    >
+                      {location.archived_at ? "Restore" : "Archive"}
+                    </button>
+                  </CatalogRowMenu>
+                )}
               </div>
             );
           })}

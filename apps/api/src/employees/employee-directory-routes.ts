@@ -8,6 +8,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
   resolveWorkspaceAuthorization,
+  resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
 import type {
@@ -52,6 +53,18 @@ export function registerEmployeeDirectoryRoutes(
     contextResolver: WorkspaceContextResolver | null;
   },
 ) {
+  app.get("/v1/workspaces/:workspaceId/me/avatar", async (request, reply) => {
+    const params = workspaceParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid workspace required" });
+    const { context } = await resolveWorkspaceMembership({
+      authorization: request.headers.authorization, workspaceId: params.data.workspaceId,
+      resolver: options.contextResolver,
+    });
+    if (!context) return reply.status(404).send({ error: "Workspace unavailable" });
+    if (!options.service?.getOwnAvatar) return reply.status(503).send({ error: "Account photo service is not configured" });
+    try { return reply.send(await options.service.getOwnAvatar({ actorUserId: context.userId, workspaceId: context.workspace.id })); }
+    catch (error) { return requestError(reply, error); }
+  });
   app.post(
     "/v1/workspaces/:workspaceId/employees/create",
     async (request, reply) => {

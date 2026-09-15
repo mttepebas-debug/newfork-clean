@@ -19,6 +19,8 @@ export interface WorkspaceAccountService {
     },
   ): Promise<unknown>;
   cancelClosure(accessToken: string, workspaceId: string): Promise<unknown>;
+  searchOwnershipCandidates(accessToken: string, workspaceId: string, query: string): Promise<unknown>;
+  cancelOwnershipTransfer(accessToken: string, workspaceId: string, transferId: string): Promise<unknown>;
   initiateOwnershipTransfer(
     accessToken: string,
     input: {
@@ -227,6 +229,16 @@ export function createWorkspaceAccountServiceWithClients(options: {
         ...(await actorArgs(accessToken)),
         target_workspace_id: input.workspaceId,
         target_user_id: input.targetUserId,
+      });
+    },
+    async searchOwnershipCandidates(accessToken, workspaceId, query) {
+      return rpc("search_workspace_ownership_candidates_service", {
+        ...(await actorArgs(accessToken)), target_workspace_id: workspaceId, search_text: query,
+      });
+    },
+    async cancelOwnershipTransfer(accessToken, workspaceId, transferId) {
+      return rpc("cancel_workspace_ownership_transfer_service", {
+        ...(await actorArgs(accessToken)), target_workspace_id: workspaceId, transfer_id: transferId,
       });
     },
     async respondOwnershipTransfer(accessToken, input) {

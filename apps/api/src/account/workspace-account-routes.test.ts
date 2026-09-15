@@ -49,6 +49,46 @@ const context = {
 } satisfies ActiveWorkspaceContext;
 
 describe("workspace account routes", () => {
+  it("searches bounded candidates using only the authenticated actor and path tenant", async () => {
+    const searchOwnershipCandidates = vi.fn(async () => []);
+    const app = buildApp({ workspaceAccountService: { searchOwnershipCandidates } as unknown as WorkspaceAccountService });
+    const response = await app.inject({ method: "GET", url: `/v1/account/workspaces/${workspaceId}/ownership-transfer/candidates?q=Admin&actorUserId=spoofed`, headers: { authorization: `Bearer ${accessToken}` } });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(searchOwnershipCandidates).toHaveBeenCalledWith(accessToken, workspaceId, "Admin");
+    const short = await app.inject({ method: "GET", url: `/v1/account/workspaces/${workspaceId}/ownership-transfer/candidates?q=a`, headers: { authorization: `Bearer ${accessToken}` } });
+    expect(short.statusCode).toBe(400);
+    expect(searchOwnershipCandidates).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["create", "search", "cancel"])("propagates DB owner denial for %s", async operation => {
+    const denied = vi.fn(async () => { throw new Error("workspace owner access required"); });
+    const app = buildApp({ workspaceAccountService: { createWorkspace: denied, searchOwnershipCandidates: denied, cancelOwnershipTransfer: denied } as unknown as WorkspaceAccountService });
+    const response = await app.inject({
+      method: operation === "search" ? "GET" : "POST",
+      url: `/v1/account/workspaces${operation === "create" ? "" : `/${workspaceId}/ownership-transfer/${operation === "search" ? "candidates?q=Admin" : "cancel"}`}`,
+      headers: { authorization: `Bearer ${accessToken}` },
+      ...(operation === "create" ? { payload: { name: "Denied" } } : operation === "cancel" ? { payload: { transferId: workspaceId } } : {}),
+    });
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("rejects with an older authenticated session without requiring a password", async () => {
+    const respondOwnershipTransfer = vi.fn(async () => ({ status: "rejected" }));
+    const app = buildApp({ workspaceAccountService: { respondOwnershipTransfer } as unknown as WorkspaceAccountService });
+    const response = await app.inject({ method: "POST", url: `/v1/account/workspaces/${workspaceId}/ownership-transfer/respond`, headers: { authorization: `Bearer ${staleAccessToken}` }, payload: { transferId: workspaceId, action: "reject" } });
+    expect(response.statusCode).toBe(200);
+    expect(respondOwnershipTransfer).toHaveBeenCalledWith(staleAccessToken, { workspaceId, transferId: workspaceId, action: "reject" });
+  });
+
+  it("cancels a transfer using path workspace and server actor", async () => {
+    const cancelOwnershipTransfer = vi.fn(async () => ({ status: "cancelled" }));
+    const app = buildApp({ workspaceAccountService: { cancelOwnershipTransfer } as unknown as WorkspaceAccountService });
+    const response = await app.inject({ method: "POST", url: `/v1/account/workspaces/${workspaceId}/ownership-transfer/cancel`, headers: { authorization: `Bearer ${accessToken}` }, payload: { transferId: workspaceId, actorUserId: "spoofed" } });
+    expect(response.statusCode).toBe(200);
+    expect(cancelOwnershipTransfer).toHaveBeenCalledWith(accessToken, workspaceId, workspaceId);
+  });
+
   it("lists account workspaces through the API boundary", async () => {
     const listWorkspaces = vi.fn(async () => [
       {

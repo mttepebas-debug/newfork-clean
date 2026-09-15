@@ -1,4 +1,8 @@
 import {
+  employeeEligiblePermissions,
+  permissionGroupsForRole,
+  personalRolePermissions,
+  toggleRolePermissions,
   workspaceRoleInputSchema,
   type Permission,
   type WorkspaceRoleInput,
@@ -7,36 +11,57 @@ import {
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Info,
   LockKeyhole,
   Plus,
-  Save,
   ShieldCheck,
   Trash2,
-  Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import {
+  leaveAvailability,
+  useAvailabilityNavigationGuard,
+  type AvailabilityNavigationRef,
+} from "../availability/availability-navigation";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
   deleteWorkspaceRole,
   loadRoleWorkspace,
   saveWorkspaceRole,
 } from "./roles-data";
+import "./roles-settings.css";
 
-const emptyRole: WorkspaceRoleInput = {
+const blankRole = (): WorkspaceRoleInput => ({
   name: "",
   description: "",
   access_class: "manager",
-  permission_keys: ["workspace.read", "schedule.read"],
-};
+  permission_keys: [...personalRolePermissions],
+});
+const roleDraft = (role: WorkspaceRoleRecord): WorkspaceRoleInput => ({
+  name: role.name,
+  description: role.description,
+  access_class: role.access_class === "owner" ? "admin" : role.access_class,
+  permission_keys: [...role.permission_keys],
+  expected_updated_at: role.updated_at,
+});
+const signature = (draft: WorkspaceRoleInput) =>
+  JSON.stringify({
+    ...draft,
+    permission_keys: [...draft.permission_keys].sort(),
+  });
 
 export default function RolesSettingsPage() {
-  const { context } = useAuth();
+  const { context, refresh } = useAuth();
   const { roleId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const navigationRef: AvailabilityNavigationRef = useRef(null);
+  const [copy, setCopy] = useState<WorkspaceRoleInput | null>(null);
   const workspaceId = context?.workspace.id ?? "";
   const queryKey = ["roles", workspaceId];
   const query = useQuery({
@@ -45,27 +70,37 @@ export default function RolesSettingsPage() {
     enabled: Boolean(workspaceId),
   });
   const roles = query.data?.roles ?? [];
-  const selected =
-    roleId && roleId !== "new"
-      ? (roles.find((role) => role.id === roleId) ?? null)
-      : null;
   const creating = roleId === "new";
-  const canManage = context?.permissions.includes("roles.manage") ?? false;
-
+  const selected = creating
+    ? null
+    : roleId
+      ? roles.find((role) => role.id === roleId)
+      : (roles.find((role) => role.system_key === "manager") ?? roles[0]);
+  const canManage = Boolean(
+    context?.permissions.includes("roles.manage") &&
+    ["owner", "admin"].includes(context.membership.role),
+  );
+  const go = (id: string, initial: WorkspaceRoleInput | null = null) =>
+    leaveAvailability(navigationRef, () => {
+      setCopy(initial);
+      navigate(`/app/settings/roles/${id}`);
+    });
   return (
     <section
-      className="settings-page roles-page"
+      className="settings-page roles-page bl051-roles"
       aria-labelledby="roles-settings-title"
     >
       <SettingsHeader
+        titleId="roles-settings-title"
         icon={<ShieldCheck size={21} aria-hidden />}
         title="Roles & permissions"
-        description="Control workspace access with protected built-in roles and bounded custom roles."
+        description="Choose what each role can view and change."
         action={
           canManage ? (
             <Button
               type="button"
-              onClick={() => navigate("/app/settings/roles/new")}
+              className="secondary-button"
+              onClick={() => go("new")}
             >
               <Plus size={16} aria-hidden />
               New role
@@ -73,343 +108,508 @@ export default function RolesSettingsPage() {
           ) : undefined
         }
       />
-      {query.isLoading ? (
-        <p className="settings-state">Loading roles...</p>
-      ) : null}
-      {query.error ? (
-        <p className="settings-state error" role="alert">
-          {errorText(query.error)}
-        </p>
-      ) : null}
-      {query.data ? (
-        <div className="roles-workspace">
-          <RoleDirectory
-            roles={roles}
-            selectedId={creating ? "new" : selected?.id}
-            onSelect={(id) => navigate(`/app/settings/roles/${id}`)}
-          />
-          {creating || selected ? (
-            <RoleEditor
-              key={selected?.id ?? "new"}
-              role={selected}
-              creating={creating}
-              canManage={canManage}
-              permissions={query.data.permissions}
-              workspaceId={workspaceId}
-              onClose={() => navigate("/app/settings/roles")}
-              onChanged={async (nextId) => {
-                await queryClient.invalidateQueries({ queryKey });
-                navigate(
-                  nextId
-                    ? `/app/settings/roles/${nextId}`
-                    : "/app/settings/roles",
-                );
-              }}
-            />
-          ) : (
-            <div className="role-placeholder">
-              <ShieldCheck size={25} aria-hidden />
-              <strong>Select a role</strong>
-              <p>
-                Review access or create a custom role for an operational
-                responsibility.
-              </p>
-            </div>
-          )}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function RoleDirectory({
-  roles,
-  selectedId,
-  onSelect,
-}: {
-  readonly roles: WorkspaceRoleRecord[];
-  readonly selectedId?: string;
-  readonly onSelect: (id: string) => void;
-}) {
-  return (
-    <nav className="role-directory" aria-label="Workspace roles">
-      {roles.map((role) => (
-        <button
-          type="button"
-          key={role.id}
-          className={selectedId === role.id ? "active" : undefined}
-          onClick={() => onSelect(role.id)}
-        >
-          <span className="role-directory-icon" aria-hidden>
-            {role.system_key ? (
-              <LockKeyhole size={16} />
+      <div className="rp-panel">
+        {query.isLoading && <p className="settings-state">Loading roles...</p>}
+        {query.error && (
+          <p className="form-error" role="alert">
+            {errorText(query.error)}
+          </p>
+        )}
+        {query.data && (
+          <div className="rp-split">
+            <label className="rp-mobile-selector rp-field">
+              Role
+              <select
+                aria-label="Role"
+                value={creating ? "new" : (selected?.id ?? "")}
+                onChange={(event) => go(event.target.value)}
+              >
+                {creating && <option value="new">New role</option>}
+                {roles.map((role) => (
+                  <option value={role.id} key={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <nav className="rp-directory" aria-label="Workspace roles">
+              {roles.map((role) => (
+                <button
+                  type="button"
+                  key={role.id}
+                  className={selected?.id === role.id ? "selected" : ""}
+                  aria-current={selected?.id === role.id ? "true" : undefined}
+                  onClick={() => go(role.id)}
+                >
+                  {role.system_key === "owner" ? (
+                    <LockKeyhole size={16} aria-hidden />
+                  ) : (
+                    <ShieldCheck size={16} aria-hidden />
+                  )}
+                  <span>
+                    {role.name}
+                    <small>{role.system_key ? "Built-in" : "Custom"}</small>
+                  </span>
+                </button>
+              ))}
+            </nav>
+            {creating || selected ? (
+              <RoleEditor
+                key={`${selected?.id ?? "new"}:${copy ? signature(copy) : ""}`}
+                role={selected ?? null}
+                initial={copy}
+                creating={creating}
+                canManage={canManage}
+                roles={roles}
+                workspaceId={workspaceId}
+                navigationRef={navigationRef}
+                onCopy={(draft) => go("new", draft)}
+                onChanged={async (id) => {
+                  await queryClient.invalidateQueries({ queryKey });
+                  await refresh();
+                  navigate(
+                    id ? `/app/settings/roles/${id}` : "/app/settings/roles",
+                  );
+                }}
+              />
             ) : (
-              <ShieldCheck size={16} />
+              <p className="settings-state">
+                Role not found. Select a role from the list.
+              </p>
             )}
-          </span>
-          <span>
-            <strong>{role.name}</strong>
-            <small>{role.system_key ? "Built-in" : "Custom"}</small>
-          </span>
-          <span
-            className="role-member-count"
-            title={`${role.member_count} active members`}
-          >
-            <Users size={14} aria-hidden />
-            {role.member_count}
-          </span>
-        </button>
-      ))}
-    </nav>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
 function RoleEditor({
   role,
+  initial,
   creating,
   canManage,
-  permissions,
+  roles,
   workspaceId,
-  onClose,
+  navigationRef,
+  onCopy,
   onChanged,
 }: {
   readonly role: WorkspaceRoleRecord | null;
+  readonly initial: WorkspaceRoleInput | null;
   readonly creating: boolean;
   readonly canManage: boolean;
-  readonly permissions: Awaited<
-    ReturnType<typeof loadRoleWorkspace>
-  >["permissions"];
+  readonly roles: WorkspaceRoleRecord[];
   readonly workspaceId: string;
-  readonly onClose: () => void;
-  readonly onChanged: (nextId?: string) => Promise<void>;
+  readonly navigationRef: AvailabilityNavigationRef;
+  readonly onCopy: (draft: WorkspaceRoleInput) => void;
+  readonly onChanged: (id?: string) => Promise<void>;
 }) {
-  const editable = canManage && (creating || role?.system_key === null);
-  const [draft, setDraft] = useState<WorkspaceRoleInput>(() =>
-    role
-      ? {
-          name: role.name,
-          description: role.description,
-          access_class:
-            role.access_class === "employee" ? "employee" : "manager",
-          permission_keys: role.permission_keys,
-        }
-      : emptyRole,
+  const [baseline, setBaseline] = useState(() =>
+    role ? roleDraft(role) : blankRole(),
   );
-  const [formError, setFormError] = useState<string | null>(null);
+  const [draft, setDraft] = useState(() =>
+    role ? roleDraft(role) : (initial ?? blankRole()),
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
-
-  useEffect(() => setDeleteArmed(false), [role?.id]);
-
-  const saveMutation = useMutation({
+  const [open, setOpen] = useState<Set<string>>(
+    () => new Set(["Schedule", "Personal access"]),
+  );
+  const editable = canManage && (creating || role?.editable === true);
+  const dirty = signature(draft) !== signature(baseline);
+  const save = useMutation({
     mutationFn: () => saveWorkspaceRole(workspaceId, draft, role?.id),
-    onSuccess: (id) => onChanged(id),
-    onError: (error) => setFormError(errorText(error)),
+    onSuccess: async (id) => {
+      setBaseline(draft);
+      setSaved(true);
+      await onChanged(id);
+    },
+    onError: (err) => setError(errorText(err)),
   });
-  const deleteMutation = useMutation({
+  const remove = useMutation({
     mutationFn: () => deleteWorkspaceRole(workspaceId, role!.id),
     onSuccess: () => onChanged(),
-    onError: (error) => {
+    onError: (err) => {
+      setError(errorText(err));
       setDeleteArmed(false);
-      setFormError(errorText(error));
     },
   });
-  const groups = useMemo(() => {
-    const result = new Map<string, typeof permissions>();
-    for (const permission of permissions) {
-      const group = result.get(permission.category) ?? [];
-      result.set(permission.category, [...group, permission]);
+  const busy = save.isPending || remove.isPending;
+  useEffect(() => {
+    if (role && !dirty && !busy) {
+      const next = roleDraft(role);
+      setBaseline(next);
+      setDraft(next);
     }
-    return [...result.entries()];
-  }, [permissions]);
-
-  const togglePermission = (permission: Permission, checked: boolean): void => {
-    setDraft((current) => {
-      const next = new Set(current.permission_keys);
-      if (checked) next.add(permission);
-      else next.delete(permission);
-      if (permission === "schedule.manage" && checked)
-        next.add("schedule.read");
-      if (permission === "schedule.read" && !checked)
-        next.delete("schedule.manage");
-      return { ...current, permission_keys: [...next] };
-    });
+  }, [role, dirty, busy]);
+  const dialog = useAvailabilityNavigationGuard({
+    dirty: editable && dirty,
+    busy,
+    navigationRef,
+    onDiscard: () => {
+      setDraft(baseline);
+      setError(null);
+    },
+    labels: {
+      saving: "Saving role",
+      discard: "Discard role changes?",
+      saved: "Role saved",
+      unsaved:
+        "Your unsaved permission changes will be lost. The saved role stays in place.",
+    },
+  });
+  const toggle = (keys: readonly Permission[], checked: boolean) => {
+    setSaved(false);
+    setDraft((current) => ({
+      ...current,
+      permission_keys: toggleRolePermissions(
+        current.permission_keys,
+        keys,
+        checked,
+      ),
+    }));
   };
-
-  const submit = (event: FormEvent): void => {
+  const groups = permissionGroupsForRole(
+    role?.access_class ?? draft.access_class,
+  );
+  const submit = (event: FormEvent) => {
     event.preventDefault();
-    setFormError(null);
+    if (!editable || !dirty || busy) return;
+    setError(null);
     const parsed = workspaceRoleInputSchema.safeParse(draft);
     if (!parsed.success) {
-      setFormError(parsed.error.issues[0]?.message ?? "Check the role fields");
+      setError(parsed.error.issues[0]?.message ?? "Check the role fields");
       return;
     }
-    saveMutation.mutate();
+    save.mutate();
   };
-
+  const copyRole = (source: WorkspaceRoleRecord): WorkspaceRoleInput => ({
+    ...roleDraft(source),
+    name: `${source.name} copy`.slice(0, 64),
+    expected_updated_at: undefined,
+  });
   return (
-    <form className="role-editor" onSubmit={submit}>
-      <div className="role-editor-toolbar">
-        <button
-          type="button"
-          className="icon-button"
-          onClick={onClose}
-          aria-label="Back to role directory"
-          title="Back"
-        >
-          <ArrowLeft size={17} aria-hidden />
-        </button>
-        <div>
-          <strong>{creating ? "New custom role" : role?.name}</strong>
-          <span>
-            {role?.system_key
-              ? "Built-in role · Read only"
-              : "Workspace custom role"}
-          </span>
-        </div>
-      </div>
-
-      <div className="role-fields">
-        <label className="form-field">
-          <span>Name</span>
-          <input
-            value={draft.name}
-            maxLength={64}
-            required
-            disabled={!editable}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, name: event.target.value }))
-            }
-          />
+    <form className="rp-editor" onSubmit={submit}>
+      {creating && (
+        <label className="rp-field">
+          Starting point
+          <select
+            disabled={busy}
+            defaultValue=""
+            onChange={(event) => {
+              const source = roles.find(
+                (candidate) => candidate.id === event.target.value,
+              );
+              setDraft(source ? copyRole(source) : blankRole());
+            }}
+          >
+            <option value="">Blank — basic personal access</option>
+            {roles
+              .filter((candidate) =>
+                ["manager", "employee"].includes(candidate.access_class),
+              )
+              .map((candidate) => (
+                <option value={candidate.id} key={candidate.id}>
+                  Copy {candidate.name}
+                </option>
+              ))}
+          </select>
+          <small>
+            Copies are independent. Later changes to the source role do not
+            affect this role.
+          </small>
         </label>
-        <label className="form-field">
-          <span>Access class</span>
-          {role?.system_key ? (
+      )}
+      {(creating || role?.system_key === null) && (
+        <div className="rp-fields">
+          <label className="rp-field">
+            Name
             <input
-              value={`${role.access_class[0]?.toUpperCase()}${role.access_class.slice(1)} workspace`}
-              disabled
-              readOnly
-            />
-          ) : (
-            <select
-              value={draft.access_class}
-              disabled={!editable}
+              value={draft.name}
+              required
+              maxLength={64}
+              disabled={!editable || busy}
               onChange={(event) =>
                 setDraft((current) => ({
                   ...current,
-                  access_class:
-                    event.target.value === "employee" ? "employee" : "manager",
+                  name: event.target.value,
                 }))
               }
+            />
+          </label>
+          <label className="rp-field">
+            Experience
+            <select
+              value={draft.access_class}
+              disabled={!creating || busy}
+              onChange={(event) => {
+                const access =
+                  event.target.value === "employee" ? "employee" : "manager";
+                setDraft((current) => ({
+                  ...current,
+                  access_class: access,
+                  permission_keys:
+                    access === "employee"
+                      ? current.permission_keys.filter((key) =>
+                          employeeEligiblePermissions.includes(key),
+                        )
+                      : current.permission_keys,
+                }));
+              }}
             >
               <option value="manager">Manager workspace</option>
-              <option value="employee">Employee Hub</option>
+              <option value="employee">Employee experience</option>
             </select>
-          )}
-        </label>
-        <label className="form-field role-description-field">
-          <span>Description</span>
-          <textarea
-            value={draft.description}
-            maxLength={240}
-            rows={3}
-            disabled={!editable}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                description: event.target.value,
-              }))
-            }
-          />
-        </label>
-      </div>
-
-      <div className="permission-section">
-        <div className="permission-heading">
-          <strong>Permissions</strong>
-          <span>{draft.permission_keys.length} enabled</span>
+          </label>
+          <label className="rp-field rp-description">
+            Description
+            <input
+              value={draft.description}
+              maxLength={240}
+              disabled={!editable || busy}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }))
+              }
+            />
+          </label>
         </div>
-        {groups.map(([category, categoryPermissions]) => (
-          <fieldset className="permission-group" key={category}>
-            <legend>{category}</legend>
-            {categoryPermissions.map((permission) => {
-              const checked = draft.permission_keys.includes(permission.key);
-              const protectedPermission = !permission.custom_grantable;
-              const requiredPermission = permission.key === "workspace.read";
-              return (
-                <label key={permission.key} className="permission-row">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    disabled={
-                      !editable || protectedPermission || requiredPermission
-                    }
-                    onChange={(event) =>
-                      togglePermission(permission.key, event.target.checked)
-                    }
-                  />
-                  <span>
-                    <strong>{permission.label}</strong>
-                    <small>{permission.description}</small>
-                  </span>
-                  {protectedPermission ? <em>Protected</em> : null}
-                </label>
-              );
-            })}
-          </fieldset>
-        ))}
+      )}
+      <div className="rp-permission-head">
+        <span>Permissions</span>
+        <span>Read</span>
+        <span>Edit</span>
       </div>
-
-      {formError ? (
-        <p className="form-error" role="alert">
-          {formError}
-        </p>
-      ) : null}
-      {editable ? (
-        <div className="role-editor-actions">
-          {!creating && role ? (
-            deleteArmed ? (
-              <div
-                className="delete-confirmation"
-                role="group"
-                aria-label="Confirm role deletion"
+      {groups.map((group) => {
+        const read = [...new Set(group.areas.flatMap((area) => area.read))];
+        const edit = [...new Set(group.areas.flatMap((area) => area.edit))];
+        const all = [...read, ...edit];
+        const enabled = all.filter((key) =>
+          draft.permission_keys.includes(key),
+        ).length;
+        const summary =
+          enabled === 0
+            ? "Off"
+            : enabled === all.length
+              ? edit.length
+                ? "Full edit"
+                : "Read only"
+              : !edit.some((key) => draft.permission_keys.includes(key)) &&
+                  read.every((key) => draft.permission_keys.includes(key))
+                ? "Read only"
+                : "Custom";
+        return (
+          <div className="rp-category" key={group.label}>
+            <div className="rp-category-head">
+              <button
+                type="button"
+                className="rp-category-toggle"
+                aria-expanded={open.has(group.label)}
+                onClick={() =>
+                  setOpen((current) => {
+                    const next = new Set(current);
+                    next.has(group.label)
+                      ? next.delete(group.label)
+                      : next.add(group.label);
+                    return next;
+                  })
+                }
               >
-                <span>Delete this unused role?</span>
-                <Button
-                  type="button"
-                  className="danger-button"
-                  disabled={deleteMutation.isPending}
-                  onClick={() => deleteMutation.mutate()}
-                >
-                  <Trash2 size={16} aria-hidden />
-                  Confirm delete
-                </Button>
+                {open.has(group.label) ? (
+                  <ChevronDown size={14} aria-hidden />
+                ) : (
+                  <ChevronRight size={14} aria-hidden />
+                )}
+                <span>{group.label}</span>
+                <small>{summary}</small>
+              </button>
+              <PermissionCheck
+                label={`${group.label} category Read`}
+                keys={read}
+                grants={draft.permission_keys}
+                disabled={!editable || busy}
+                onChange={(checked) => toggle(read, checked)}
+              />
+              <PermissionCheck
+                label={`${group.label} category Edit`}
+                keys={edit}
+                grants={draft.permission_keys}
+                disabled={!editable || busy}
+                onChange={(checked) => toggle(edit, checked)}
+              />
+            </div>
+            {open.has(group.label) &&
+              group.areas.map((area) => (
+                <div className="rp-permission-row" key={area.id}>
+                  <span className="rp-permission-label">
+                    {area.label}
+                    <span
+                      className="rp-info"
+                      tabIndex={0}
+                      role="img"
+                      aria-label={area.description}
+                      title={area.description}
+                    >
+                      <Info size={13} aria-hidden />
+                    </span>
+                  </span>
+                  <PermissionCheck
+                    label={`${area.label} Read`}
+                    keys={area.read}
+                    grants={draft.permission_keys}
+                    disabled={!editable || busy}
+                    onChange={(checked) => toggle(area.read, checked)}
+                  />
+                  <PermissionCheck
+                    label={`${area.label} Edit`}
+                    keys={area.edit}
+                    grants={draft.permission_keys}
+                    disabled={!editable || busy}
+                    onChange={(checked) => toggle(area.edit, checked)}
+                  />
+                </div>
+              ))}
+          </div>
+        );
+      })}
+      {!editable && (
+        <p className="rp-locked">
+          <LockKeyhole size={15} aria-hidden />
+          {role?.system_key === "owner"
+            ? "Owner is protected and always has full access."
+            : "You can view this role. Only an authorized higher role can change it."}
+        </p>
+      )}
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      {saved && !dirty && (
+        <p className="form-success" role="status">
+          Role saved.
+        </p>
+      )}
+      {editable && (
+        <>
+          <div className="rp-footer">
+            {!creating &&
+              role &&
+              ["manager", "employee"].includes(role.access_class) && (
                 <Button
                   type="button"
                   className="secondary-button"
-                  onClick={() => setDeleteArmed(false)}
+                  onClick={() => onCopy(copyRole(role))}
                 >
-                  Cancel
+                  <Copy size={15} aria-hidden />
+                  Copy role
                 </Button>
-              </div>
-            ) : (
+              )}
+            {role?.system_key === null && (
               <Button
                 type="button"
                 className="danger-text-button"
-                onClick={() => setDeleteArmed(true)}
+                disabled={busy}
+                onClick={() => setDeleteArmed(!deleteArmed)}
               >
-                <Trash2 size={16} aria-hidden />
+                <Trash2 size={15} aria-hidden />
                 Delete role
               </Button>
-            )
-          ) : (
-            <span />
+            )}
+            <div className="rp-footer-actions">
+              <Button
+                type="button"
+                className="secondary-button"
+                disabled={!dirty || busy}
+                onClick={() => {
+                  setDraft(baseline);
+                  setError(null);
+                  setSaved(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!dirty || busy}>
+                {save.isPending ? "Saving…" : "Save changes"}
+              </Button>
+            </div>
+          </div>
+          {deleteArmed && (
+            <div className="rp-delete" role="group" aria-label="Delete role">
+              {role?.deletable ? (
+                <>
+                  <p>Delete this unused role?</p>
+                  <Button
+                    type="button"
+                    className="danger-button"
+                    disabled={busy}
+                    onClick={() => remove.mutate()}
+                  >
+                    Confirm delete
+                  </Button>
+                </>
+              ) : (
+                <p>
+                  This role has {role?.blocking_member_count ?? 0} member
+                  references and {role?.blocking_invite_count ?? 0} invitation
+                  references. Resolve these dependencies before deleting. No
+                  members will be reassigned automatically.
+                </p>
+              )}
+              <Button
+                type="button"
+                className="secondary-button"
+                onClick={() => setDeleteArmed(false)}
+              >
+                Keep role
+              </Button>
+            </div>
           )}
-          <Button type="submit" disabled={saveMutation.isPending}>
-            <Save size={16} aria-hidden />
-            {saveMutation.isPending ? "Saving" : "Save role"}
-          </Button>
-        </div>
-      ) : null}
+        </>
+      )}
+      {dialog}
     </form>
+  );
+}
+
+function PermissionCheck({
+  label,
+  keys,
+  grants,
+  disabled,
+  onChange,
+}: {
+  readonly label: string;
+  readonly keys: readonly Permission[];
+  readonly grants: readonly Permission[];
+  readonly disabled: boolean;
+  readonly onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const selected = keys.filter((key) => grants.includes(key)).length;
+  const mixed = selected > 0 && selected < keys.length;
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = mixed;
+  }, [mixed]);
+  return (
+    <span className="rp-check-cell">
+      {keys.length ? (
+        <input
+          ref={ref}
+          type="checkbox"
+          aria-label={label}
+          aria-checked={mixed ? "mixed" : selected === keys.length}
+          checked={selected === keys.length}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.checked)}
+        />
+      ) : (
+        <span aria-hidden>—</span>
+      )}
+    </span>
   );
 }

@@ -1,3 +1,4 @@
+import { useAccountNotificationRealtime } from "../communications/use-account-notification-realtime";
 import type { Permission } from "@newfork/shared";
 import {
   Bell,
@@ -11,7 +12,6 @@ import {
   Menu,
   MessageSquareWarning,
   Settings,
-  UserCircle,
   Users,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,7 @@ import { useEffect, useState, type ComponentType } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { EmployeeMobileNav } from "../employee-hub/EmployeeMobileNav";
 import { useAuth } from "../auth/AuthContext";
+import { CurrentUserAvatar } from "../account/AccountAvatar";
 
 import {
   getNotifications,
@@ -91,7 +92,7 @@ const navItems: readonly NavItem[] = [
     to: "/app/availability",
     label: "Availability",
     icon: CalendarCheck,
-    anyOf: ["schedule.read"],
+    anyOf: ["availability.read"],
     section: "management",
     roles: ["owner", "admin", "manager"],
   },
@@ -99,7 +100,7 @@ const navItems: readonly NavItem[] = [
     to: "/app/important-dates",
     label: "Important Dates",
     icon: CalendarDays,
-    anyOf: ["workspace.manage", "schedule.read"],
+    anyOf: ["important_dates.read"],
     section: "management",
     roles: ["owner", "admin", "manager"],
   },
@@ -158,7 +159,8 @@ const settingsNavItem: NavItem = {
 };
 
 export function AppShell() {
-  const { context, signOut } = useAuth();
+  const { context, account, signOut } = useAuth();
+  useAccountNotificationRealtime(account?.userId ?? context?.userId);
   useExchangeRealtime(context?.workspace.id);
   const [collapsed, setCollapsed] = useState(false);
   const [expandedNavGroups, setExpandedNavGroups] = useState<Set<string>>(
@@ -169,9 +171,9 @@ export function AppShell() {
   const queryClient = useQueryClient();
   const permissions = new Set(context?.permissions ?? []);
   const notificationQuery = useQuery({
-    queryKey: ["notifications", workspaceId, "sidebar"],
+    queryKey: ["notifications", account?.userId ?? context?.userId, workspaceId, "sidebar"],
     queryFn: () => getNotifications(workspaceId, { limit: 1 }),
-    enabled: Boolean(workspaceId) && permissions.has("notifications.read"),
+    enabled: Boolean(workspaceId),
     refetchInterval: 60_000,
   });
   useEffect(() => {
@@ -233,12 +235,12 @@ export function AppShell() {
   const visibleNavItems = navItems.filter(
     (item) =>
       (!item.roles || item.roles.includes(context.membership.role)) &&
-      item.anyOf.some((permission) => permissions.has(permission)),
+      (item.to === "/app/notifications" || item.anyOf.some((permission) => permissions.has(permission))),
   );
   const visibleSidebarItems = visibleNavItems.filter(
     (item) =>
       !item.parentTo ||
-      !visibleNavItems.some(parent => parent.to === item.parentTo) ||
+      !visibleNavItems.some((parent) => parent.to === item.parentTo) ||
       isRailItemActive(location.pathname, item.parentTo) ||
       expandedNavGroups.has(item.parentTo),
   );
@@ -420,7 +422,7 @@ export function AppShell() {
             }
           >
             <span className="nav-icon-frame">
-              <UserCircle size={18} aria-hidden />
+              <CurrentUserAvatar />
             </span>
             <span className={collapsed ? "rail-flyout" : undefined}>
               Account
@@ -431,7 +433,11 @@ export function AppShell() {
             type="button"
             aria-label={collapsed ? "Sign out" : undefined}
             data-rail-peek={collapsed ? "" : undefined}
-            onClick={() => requestAvailabilityNavigation(() => { void signOut(); })}
+            onClick={() =>
+              requestAvailabilityNavigation(() => {
+                void signOut();
+              })
+            }
           >
             <span className="nav-icon-frame">
               <LogOut size={18} aria-hidden />

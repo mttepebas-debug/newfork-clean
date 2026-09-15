@@ -13,7 +13,17 @@ const context = {
   workspace: { id: workspaceId },
   membership: { status: "active" },
   onboarding: { status: "complete" },
-  permissions: ["employees.read", "employees.manage", "workspace.manage"],
+  permissions: [
+    "employees.read",
+    "employees.manage",
+    "workspace.manage",
+    "settings.jobs.read",
+    "settings.jobs.manage",
+    "settings.locations.read",
+    "settings.locations.manage",
+    "settings.shift_catalog.read",
+    "settings.shift_catalog.manage",
+  ],
 } as ActiveWorkspaceContext;
 const changes = [
   { employee_id: employeeId, assigned: false, expected_revision: 5 },
@@ -39,21 +49,37 @@ afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
 });
 describe("jobs management HTTP boundary", () => {
-  it.each(["departments", "locations", "shift-types", "shift-labels"])("deletes %s through an authenticated scoped RPC", async kind => {
-    const { app, rpc } = setup(); rpc.mockResolvedValue({ data: { removed_count: 1 }, error: null });
-    const result = await app.inject({ method: "DELETE", url: `/v1/workspaces/${workspaceId}/organization/${kind}/${jobId}`,
-      headers: { authorization: "Bearer verified" }, ...(kind === "departments" ? { payload: { jobs: "delete" } } : {}) });
-    expect(result.statusCode).toBe(200);
-    expect(rpc).toHaveBeenCalledWith("delete_catalog_entity_service", {
-      actor_user_id: userId, target_workspace_id: workspaceId, target_entity_id: jobId,
-      entity_kind: kind, department_jobs: kind === "departments" ? "delete" : "keep",
-    });
-  });
+  it.each(["departments", "locations", "shift-types", "shift-labels"])(
+    "deletes %s through an authenticated scoped RPC",
+    async (kind) => {
+      const { app, rpc } = setup();
+      rpc.mockResolvedValue({ data: { removed_count: 1 }, error: null });
+      const result = await app.inject({
+        method: "DELETE",
+        url: `/v1/workspaces/${workspaceId}/organization/${kind}/${jobId}`,
+        headers: { authorization: "Bearer verified" },
+        ...(kind === "departments" ? { payload: { jobs: "delete" } } : {}),
+      });
+      expect(result.statusCode).toBe(200);
+      expect(rpc).toHaveBeenCalledWith("delete_catalog_entity_service", {
+        actor_user_id: userId,
+        target_workspace_id: workspaceId,
+        target_entity_id: jobId,
+        entity_kind: kind,
+        department_jobs: kind === "departments" ? "delete" : "keep",
+      });
+    },
+  );
   it("rejects invalid department deletion choices before mutating", async () => {
     const { app, rpc } = setup();
-    const result = await app.inject({ method: "DELETE", url: `/v1/workspaces/${workspaceId}/organization/departments/${jobId}`,
-      headers: { authorization: "Bearer verified" }, payload: { jobs: "unknown" } });
-    expect(result.statusCode).toBe(400); expect(rpc).not.toHaveBeenCalled();
+    const result = await app.inject({
+      method: "DELETE",
+      url: `/v1/workspaces/${workspaceId}/organization/departments/${jobId}`,
+      headers: { authorization: "Bearer verified" },
+      payload: { jobs: "unknown" },
+    });
+    expect(result.statusCode).toBe(400);
+    expect(rpc).not.toHaveBeenCalled();
   });
   it("deletes a job through the trusted actor command", async () => {
     const { app, rpc } = setup();

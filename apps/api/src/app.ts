@@ -8,6 +8,16 @@ import {
 } from "@newfork/shared";
 import Fastify from "fastify";
 import { z } from "zod";
+import { registerAccountDeletionRoutes } from "./account/account-deletion-routes";
+import {
+  createAccountDeletionWorker,
+  type AccountDeletionWorker,
+} from "./account/account-deletion-worker";
+import { registerAccountSecurityRoutes } from "./account/account-security-routes";
+import {
+  createAccountSecurityService,
+  type AccountSecurityService,
+} from "./account/account-security-service";
 import { registerWorkspaceAccountRoutes } from "./account/workspace-account-routes";
 import {
   createWorkspaceAccountService,
@@ -171,6 +181,11 @@ function isAllowedOrigin(
 interface BuildAppOptions {
   readonly allowDevelopmentIdentity?: boolean;
   readonly contextResolver?: WorkspaceContextResolver | null;
+  readonly accountSecurityService?: AccountSecurityService | null;
+  readonly accountDeletionWorker?: AccountDeletionWorker | null;
+  readonly accountDeletionCron?: {
+    readonly cronSecret?: string;
+  };
   readonly workspaceAccountService?: WorkspaceAccountService | null;
   readonly workspaceRetentionWorker?: WorkspaceRetentionWorker | null;
   readonly workspaceRetentionCron?: {
@@ -229,6 +244,14 @@ export function buildApp(options: BuildAppOptions = {}) {
     allowDevelopmentIdentity && process.env.NODE_ENV !== "production"
       ? createDevelopmentWorkspaceContextResolver(environmentContextResolver)
       : environmentContextResolver;
+  const accountSecurityService =
+    options.accountSecurityService === undefined
+      ? createAccountSecurityServiceFromEnvironment()
+      : options.accountSecurityService;
+  const accountDeletionWorker =
+    options.accountDeletionWorker === undefined
+      ? createAccountDeletionWorkerFromEnvironment()
+      : options.accountDeletionWorker;
   const workspaceAccountService =
     options.workspaceAccountService ??
     createWorkspaceAccountServiceFromEnvironment();
@@ -421,6 +444,12 @@ export function buildApp(options: BuildAppOptions = {}) {
     }
   });
 
+  registerAccountSecurityRoutes(app, { service: accountSecurityService });
+  registerAccountDeletionRoutes(app, {
+    worker: accountDeletionWorker,
+    cronSecret:
+      options.accountDeletionCron?.cronSecret ?? process.env.CRON_SECRET,
+  });
   registerWorkspaceAccountRoutes(app, {
     service: workspaceAccountService,
     contextResolver,
@@ -927,6 +956,37 @@ function createWorkspaceAccountServiceFromEnvironment(): WorkspaceAccountService
   return url && anonKey && serviceRoleKey
     ? createWorkspaceAccountService({ url, anonKey, serviceRoleKey })
     : null;
+}
+
+function createAccountSecurityServiceFromEnvironment(): AccountSecurityService | null {
+  const url = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !anonKey || !serviceRoleKey) return null;
+  return createAccountSecurityService({
+    url,
+    anonKey,
+    serviceRoleKey,
+    appUrl: process.env.APP_URL ?? "http://127.0.0.1:5555",
+    resendApiKey: process.env.RESEND_API_KEY,
+    emailFrom: process.env.ACCOUNT_SECURITY_FROM ?? process.env.EMPLOYEE_INVITE_FROM,
+    production: process.env.NODE_ENV === "production",
+  });
+}
+
+function createAccountDeletionWorkerFromEnvironment(): AccountDeletionWorker | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  return createAccountDeletionWorker({
+    url,
+    serviceRoleKey,
+    appUrl: process.env.APP_URL ?? "http://127.0.0.1:5555",
+    resendApiKey: process.env.RESEND_API_KEY,
+    emailFrom: process.env.ACCOUNT_SECURITY_FROM ?? process.env.EMPLOYEE_INVITE_FROM,
+    production: process.env.NODE_ENV === "production",
+    batchSize: integerEnvironmentValue(process.env.ACCOUNT_DELETION_BATCH_SIZE),
+  });
 }
 
 function createWorkspaceRetentionWorkerFromEnvironment(): WorkspaceRetentionWorker | null {

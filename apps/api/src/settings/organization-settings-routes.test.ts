@@ -36,7 +36,16 @@ const context: ActiveWorkspaceContext = {
     status: "active",
     allLocations: true,
   },
-  permissions: ["workspace.read", "workspace.manage"],
+  permissions: [
+    "workspace.read",
+    "workspace.manage",
+    "settings.schedule_rules.read",
+    "settings.schedule_rules.manage",
+    "settings.jobs.read",
+    "settings.jobs.manage",
+    "settings.shift_catalog.read",
+    "settings.shift_catalog.manage",
+  ],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 };
@@ -54,12 +63,27 @@ function organizationSettingsServiceMock(): OrganizationSettingsService {
 describe("organization settings routes", () => {
   it("returns a retryable 409 when a settings transaction conflicts with staffing", async () => {
     const service = organizationSettingsServiceMock();
-    vi.mocked(service.updateSchedulingSettings).mockRejectedValue(Object.assign(new Error("The schedule is being updated"), { code: "PT409" }));
-    const app = buildApp({ contextResolver: { resolve: async () => context }, organizationSettingsService: service });
+    vi.mocked(service.updateSchedulingSettings).mockRejectedValue(
+      Object.assign(new Error("The schedule is being updated"), {
+        code: "PT409",
+      }),
+    );
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      organizationSettingsService: service,
+    });
     const response = await app.inject({
-      method: "PUT", url: `/v1/workspaces/${workspaceId}/scheduling-settings`,
+      method: "PUT",
+      url: `/v1/workspaces/${workspaceId}/scheduling-settings`,
       headers: { authorization: "Bearer valid-token" },
-      payload: { week_start_day: "monday", schedule_deadline_day: "sunday", conflict_policy: "warn", availability_enforcement: "soft", time_format: "12h", minimum_travel_minutes: 30 },
+      payload: {
+        week_start_day: "monday",
+        schedule_deadline_day: "sunday",
+        conflict_policy: "warn",
+        availability_enforcement: "soft",
+        time_format: "12h",
+        minimum_travel_minutes: 30,
+      },
     });
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({ error: "The schedule is being updated" });

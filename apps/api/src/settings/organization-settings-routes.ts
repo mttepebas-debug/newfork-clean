@@ -1,4 +1,7 @@
-import { schedulingSettingsInputSchema, type Permission } from "@newfork/shared";
+import {
+  schedulingSettingsInputSchema,
+  type Permission,
+} from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
@@ -28,7 +31,10 @@ export function registerOrganizationSettingsRoutes(
     contextResolver: WorkspaceContextResolver | null;
   },
 ) {
-  registerJobsManagementRoutes(app, { service: options.service?.jobs ?? null, contextResolver: options.contextResolver });
+  registerJobsManagementRoutes(app, {
+    service: options.service?.jobs ?? null,
+    contextResolver: options.contextResolver,
+  });
   app.get(
     "/v1/workspaces/:workspaceId/scheduling-settings",
     async (request, reply) => {
@@ -68,7 +74,7 @@ export function registerOrganizationSettingsRoutes(
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
-        "workspace.manage",
+        "settings.schedule_rules.manage",
         options.contextResolver,
         reply,
       );
@@ -101,7 +107,7 @@ export function registerOrganizationSettingsRoutes(
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
-        "workspace.manage",
+        "settings.jobs.manage",
         options.contextResolver,
         reply,
       );
@@ -134,7 +140,7 @@ export function registerOrganizationSettingsRoutes(
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
-        "workspace.manage",
+        "settings.shift_catalog.manage",
         options.contextResolver,
         reply,
       );
@@ -166,7 +172,7 @@ export function registerOrganizationSettingsRoutes(
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
-        "workspace.manage",
+        "settings.shift_catalog.manage",
         options.contextResolver,
         reply,
       );

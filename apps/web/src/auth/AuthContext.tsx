@@ -1,6 +1,7 @@
 import {
   accountProfileSchema,
   activeWorkspaceContextSchema,
+  normalizeAccountPhone,
   permissionsForRole,
   type AccountProfile,
   type ActiveWorkspaceContext,
@@ -79,6 +80,10 @@ function loadDevelopmentAccount(): AccountProfile {
       displayName: stored.displayName,
       phone: stored.phone,
       theme: stored.theme,
+      timeFormat: stored.timeFormat,
+      dateFormat: stored.dateFormat,
+      avatarObjectPath: stored.avatarObjectPath,
+      avatarUrl: stored.avatarUrl,
     });
   } catch {
     window.localStorage.removeItem(developmentAccountStorageKey);
@@ -94,6 +99,10 @@ function persistDevelopmentAccount(account: AccountProfile): void {
       displayName: account.displayName,
       phone: account.phone,
       theme: account.theme,
+      timeFormat: account.timeFormat,
+      dateFormat: account.dateFormat,
+      avatarObjectPath: account.avatarObjectPath,
+      avatarUrl: account.avatarUrl,
     }),
   );
 }
@@ -119,6 +128,12 @@ interface AuthContextValue {
     displayName: string,
     theme: ThemePreference,
     phone?: string | null,
+    changes?: Partial<
+      Pick<
+        AccountProfile,
+        "avatarObjectPath" | "avatarUrl" | "timeFormat" | "dateFormat"
+      >
+    >,
   ) => Promise<void>;
 }
 
@@ -449,13 +464,20 @@ export function AuthProvider({
       displayName: string,
       theme: ThemePreference,
       phone: string | null = account?.phone ?? null,
+      changes: Partial<
+        Pick<
+          AccountProfile,
+          "avatarObjectPath" | "avatarUrl" | "timeFormat" | "dateFormat"
+        >
+      > = {},
     ): Promise<void> => {
       if (!account) throw new Error("Account is not available");
       const updated = accountProfileSchema.parse({
         ...account,
         displayName,
-        phone: phone && phone.trim() ? phone : null,
+        phone: normalizeAccountPhone(phone),
         theme,
+        ...changes,
       });
       if (supabaseClient && !developmentBearerToken()) {
         await saveAccountProfile(supabaseClient, updated);

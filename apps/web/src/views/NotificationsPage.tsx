@@ -1,3 +1,4 @@
+import { useAccountNotificationRealtime } from "../communications/use-account-notification-realtime";
 import {
   displayForNotificationCategory,
   displayForNotificationType,
@@ -20,7 +21,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { safeAppActionUrl } from "../communications/action-url";
 import {
@@ -41,16 +42,18 @@ type NotificationMutationInput = {
 };
 
 export function NotificationsPage() {
-  const { context } = useAuth();
+  const { context, account } = useAuth();
+  const accountOnly = useLocation().pathname === "/account/inbox";
+  useAccountNotificationRealtime(accountOnly || !context ? account?.userId ?? context?.userId : undefined);
   const client = useQueryClient();
   const [category, setCategory] = useState<Category>("all");
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [expandedNotification, setExpandedNotification] = useState<
     string | null
   >(null);
-  const workspaceId = context?.workspace.id ?? "";
+  const workspaceId = accountOnly ? "" : context?.workspace.id ?? "";
   const query = useInfiniteQuery({
-    queryKey: ["notifications", workspaceId, category, unreadOnly],
+    queryKey: ["notifications", account?.userId ?? context?.userId, workspaceId, category, unreadOnly],
     queryFn: ({ pageParam }) =>
       getNotifications(workspaceId, {
         category: category === "all" ? undefined : category,
@@ -60,7 +63,7 @@ export function NotificationsPage() {
       }),
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.next_cursor,
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(account?.userId ?? context?.userId),
   });
   const mutation = useMutation({
     mutationFn: (input: NotificationMutationInput) =>
@@ -94,7 +97,7 @@ export function NotificationsPage() {
         eyebrow="UPDATES. ALERTS. ACTIONS."
         title="Notifications"
         titleId="notifications-title"
-        description={`Review schedule alerts, request activity, and workspace updates. ${unreadCount ? `${unreadCount} unread.` : "You're all caught up."}`}
+        description={`Review account security alerts${workspaceId ? " and updates for this workspace" : ""}. ${unreadCount ? `${unreadCount} unread.` : "You're all caught up."}`}
         action={
           <button
             className="nf-button secondary"
@@ -146,7 +149,7 @@ export function NotificationsPage() {
               <h2 id={`notification-day-${day}`}>{day}</h2>
               <div className="notification-list">
                 {items.map((item) => {
-                  const actionUrl = safeAppActionUrl(item.action_url);
+                  const actionUrl = item.scope === "account" ? "/account/security" : safeAppActionUrl(item.action_url);
                   const exchangeTarget = notificationExchangeTarget(item);
                   const expanded = expandedNotification === item.id;
                   const panelId = `notification-shift-${item.id}`;

@@ -77,6 +77,16 @@ function renderRoute(path: string, element: React.ReactNode) {
 }
 
 describe("Phase 8 communication pages", () => {
+  it("keeps the account notification inbox independent of a stale workspace context", async () => {
+    vi.mocked(getNotifications).mockResolvedValue({ workspace_id: null, unread_count: 1, next_cursor: null, notifications: [{
+      id: "a8200000-0000-4000-8000-000000000099", workspace_id: null, scope: "account", category: "security", type_key: "security.account.password_changed", title: "Password changed", body: "Security update", safe_preview: "Security update", action_url: "/app/account/security", source_type: "account_security", source_id: null, created_at: now, read_at: null, visibility_state: "visible",
+    }] });
+    renderRoute("/account/inbox", <NotificationsPage />);
+    await screen.findByText("Password changed");
+    expect(getNotifications).toHaveBeenCalledWith("", expect.anything());
+    expect(screen.getByRole("link", { name: "Open notification: Password changed" }).getAttribute("href")).toBe("/account/security");
+  });
+
   it("uses Archived as an exclusive announcement status filter", async () => {
     const activeDraft = announcement({
       id: "a8200000-0000-4000-8000-000000000002",
@@ -88,33 +98,57 @@ describe("Phase 8 communication pages", () => {
       title: "Active published",
       status: "published",
     });
+    const activeScheduled = announcement({
+      id: "a8200000-0000-4000-8000-000000000005",
+      title: "Active scheduled",
+      status: "scheduled",
+    });
     const archivedDraft = announcement({
       id: "a8200000-0000-4000-8000-000000000004",
       title: "Archived draft",
       status: "draft",
       archived_at: now,
     });
+    const archivedScheduled = announcement({
+      id: "a8200000-0000-4000-8000-000000000006",
+      title: "Archived scheduled",
+      status: "scheduled",
+      archived_at: now,
+    });
     vi.mocked(getAnnouncements).mockResolvedValue({
       workspace_id: workspaceId,
       can_manage: true,
       locations: [],
-      announcements: [activeDraft, activePublished, archivedDraft],
+      announcements: [
+        activeDraft,
+        activePublished,
+        activeScheduled,
+        archivedDraft,
+        archivedScheduled,
+      ],
     });
     renderRoute("/app/announcements", <AnnouncementsPage />);
 
     expect(await screen.findByText("Active draft")).toBeTruthy();
     expect(screen.getByText("Active published")).toBeTruthy();
+    expect(screen.getByText("Active scheduled")).toBeTruthy();
     expect(screen.queryByText("Archived draft")).toBeNull();
+    expect(screen.queryByText("Archived scheduled")).toBeNull();
+    expect(screen.getByRole("tab", { name: "Draft (1)" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Scheduled (1)" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
     expect(await screen.findByText("Archived draft")).toBeTruthy();
+    expect(screen.getByText("Archived scheduled")).toBeTruthy();
     expect(screen.queryByText("Active draft")).toBeNull();
     expect(screen.queryByText("Active published")).toBeNull();
+    expect(screen.queryByText("Active scheduled")).toBeNull();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Draft" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Draft (1)" }));
     expect(await screen.findByText("Active draft")).toBeTruthy();
     expect(screen.queryByText("Archived draft")).toBeNull();
     expect(screen.queryByText("Active published")).toBeNull();
+    expect(screen.queryByText("Active scheduled")).toBeNull();
   });
 
   it("filters announcements by location", async () => {

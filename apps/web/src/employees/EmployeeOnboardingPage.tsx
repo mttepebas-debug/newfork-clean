@@ -243,7 +243,7 @@ function ProfileStep({ model, onSaved }: StepProps) {
     () => ({
       legal_first_name: model.profile?.legal_first_name ?? "",
       legal_last_name: model.profile?.legal_last_name ?? "",
-      phone: accountPhone || model.profile?.phone || "",
+      phone: model.profile?.phone || accountPhone || "",
       street_address: model.profile?.street_address ?? "",
       city: model.profile?.city ?? "",
       region: model.profile?.region ?? "",
@@ -345,12 +345,7 @@ function ProfileStep({ model, onSaved }: StepProps) {
             type="tel"
             value={profile.phone}
             onChange={(value) => setProfile({ ...profile, phone: value })}
-            readOnly={Boolean(accountPhone)}
-            help={
-              accountPhone
-                ? "Using the phone number saved on your account."
-                : undefined
-            }
+            help="Suggested from your account only when empty. This workspace phone can be different and stays independent."
           />
           <TextField
             label="Date of birth"

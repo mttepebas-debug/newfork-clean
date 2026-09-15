@@ -42,6 +42,7 @@ export const notificationCatalogEntrySchema = z.object({
     "published_shift_assignees",
     "employee_document_expiry_reviewers",
     "lineup_staffing_participants",
+    "workspace_employee_access_managers",
   ]),
   action_route_contract: z.object({
     route: z.string().regex(/^\/app(?:\/|$)/),
@@ -83,6 +84,27 @@ function activeEntry(
 const inAppOnly = ["in_app"] as const;
 
 export const notificationCatalog = {
+  "security.account_invitation_cancelled": activeEntry({
+    type_key: "security.account_invitation_cancelled",
+    category: "security",
+    severity: "warning",
+    sensitivity: "confidential",
+    supported_channels: [...inAppOnly],
+    default_cadence: "immediate",
+    audience_contract: "workspace_employee_access_managers",
+    action_route_contract: {
+      route: "/app/employees",
+      allowed_query_keys: [],
+    },
+    dedupe_policy: {
+      strategy: "keep_first",
+      scope: "event_recipient",
+      key_fields: ["event_id", "recipient_user_id"],
+    },
+    retention_class: "sensitive_30d",
+    template_key: "security.account_invitation_cancelled.v1",
+    mandatory_in_app: true,
+  }),
   "communications.announcement.available": activeEntry({
     type_key: "communications.announcement.available",
     category: "communications",
@@ -350,11 +372,13 @@ export const notificationCatalogSeed = [
   ["schedule.staffing.assignment_changed", 1, "active"],
   ["schedule.staffing.offer_closed", 1, "active"],
   ["schedule.staffing.offer_updated", 1, "active"],
+  ["security.account_invitation_cancelled", 1, "active"],
   ["time_tracking.correction.decided", 1, "active"],
   ["time_tracking.correction.submitted", 1, "active"],
 ] as const;
 
 export const notificationTemplateManifest = [
+  "security.account_invitation_cancelled.v1",
   "communications.announcement.available.v1",
   "people.employee_document.expiring.v1",
   "requests.shift_change.status_changed.v1",
@@ -380,6 +404,14 @@ export type NotificationProducerInventoryEntry = {
 
 export const notificationProducerInventory: readonly NotificationProducerInventoryEntry[] =
   [
+    {
+      producer_id: "account-deletion-invitation-cancellation",
+      type_key: "security.account_invitation_cancelled",
+      source_migration: "20260914115233_account_security_deletion_lifecycle.sql",
+      source_function: "request_account_deletion_v2_service",
+      source_statement: "account-deletion-invitation-cancelled-outbox",
+      integration_status: "outbox_v1",
+    },
     {
       producer_id: "lineup-staffing-offers",
       type_key: "schedule.staffing.offer_updated",

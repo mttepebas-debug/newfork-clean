@@ -1,0 +1,212 @@
+import { Button } from "@newfork/ui";
+import { KeyRound, LogOut, Mail, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useAuth } from "../auth/AuthContext";
+import {
+  cancelAccountEmailChange,
+  changeAccountPassword,
+  developmentBearerToken,
+  loadAccountDeletionBlockers,
+  loadAccountSecurityState,
+  requestAccountEmailChange,
+  requestSecureAccountDeletion,
+  resendAccountEmailChange,
+  signOutOtherAccountSessions,
+  supabaseClient,
+  type AccountDeletionBlocker,
+  type AccountSecurityState,
+} from "../lib/supabase";
+import { AccountPageHeader } from "./components";
+
+export default function SecurityPage() {
+  const { account, context, signOut } = useAuth();
+  const [security, setSecurity] = useState<AccountSecurityState | null>(null);
+  const [blockers, setBlockers] = useState<AccountDeletionBlocker[]>([]);
+  const [newEmail, setNewEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [sessionPassword, setSessionPassword] = useState("");
+  const [deletionPassword, setDeletionPassword] = useState("");
+  const [confirmDeletion, setConfirmDeletion] = useState(false);
+  const deletionDialog = useRef<HTMLDialogElement>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const development = Boolean(developmentBearerToken());
+  useEffect(() => {
+    if (confirmDeletion) deletionDialog.current?.showModal();
+    else deletionDialog.current?.close();
+  }, [confirmDeletion]);
+
+  useEffect(() => {
+    if (!account) return;
+    if (!supabaseClient || development) {
+      setSecurity({ email: account.email, pendingEmail: null, emailChangeSentAt: null, emailVerified: false });
+      setBlockers(
+        context
+          ? [{
+              kind: "active_membership",
+              workspace_id: context.workspace.id,
+              workspace_name: context.workspace.name,
+              role_name: context.membership.role,
+              is_owner: context.membership.role === "owner",
+            }]
+          : [],
+      );
+      return;
+    }
+    let active = true;
+    void Promise.all([
+      loadAccountSecurityState(supabaseClient),
+      loadAccountDeletionBlockers(supabaseClient),
+    ])
+      .then(([state, deletionBlockers]) => {
+        if (!active) return;
+        setSecurity(state);
+        setBlockers(deletionBlockers);
+      })
+      .catch((loadError: unknown) => {
+        if (active) setError(errorMessage(loadError, "Security details could not be loaded"));
+      });
+    return () => { active = false; };
+  }, [account, context, development]);
+
+  if (!account) return null;
+
+  const run = async (key: string, action: () => Promise<void>, success: string) => {
+    setBusy(key);
+    setError(null);
+    setStatus(null);
+    try {
+      await action();
+      setStatus(success);
+    } catch (actionError: unknown) {
+      setError(errorMessage(actionError, "Security change could not be saved"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const submitEmail = async (event: FormEvent) => {
+    event.preventDefault();
+    await run("email", async () => {
+      const next = development
+        ? { email: account.email, pendingEmail: newEmail.trim().toLowerCase(), emailChangeSentAt: new Date().toISOString(), emailVerified: security?.emailVerified ?? false }
+        : await requestAccountEmailChange(supabaseClient!, newEmail);
+      setSecurity(next);
+      setNewEmail("");
+    }, "Verification links sent to both email addresses");
+  };
+
+  const submitPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    await run("password", async () => {
+      if (!development) {
+        await changeAccountPassword(supabaseClient!, { currentPassword, newPassword, confirmPassword });
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    }, "Password changed; other sessions were signed out");
+  };
+
+  return (
+    <section className="account-page" aria-labelledby="security-title">
+      <AccountPageHeader title="Security" titleId="security-title" description="Keep sign-in methods and recovery details current." />
+
+      <section className="account-section-block">
+        <div className="account-section-copy"><h2>Email address</h2><p>The address you use to sign in and receive recovery messages.</p></div>
+        <div className="account-section-body">
+          <div className="account-info-row">
+            <div><strong>{security?.email ?? account.email}</strong><span>Primary email · {security ? security.emailVerified ? "verified" : "not verified" : "checking verification"}</span></div>
+            <Mail size={18} aria-hidden />
+          </div>
+          {security?.pendingEmail ? (
+            <div className="account-notice">
+              <strong>Verify {security.pendingEmail}</strong>
+              <p>Both your current and new email must confirm. Your current email stays active until then.</p>
+              <div className="account-button-row">
+                <Button className="secondary-button" type="button" disabled={busy !== null} onClick={() => void run("resend-email", async () => {
+                  if (!development) await resendAccountEmailChange(supabaseClient!);
+                }, "Verification links sent again")}>Resend</Button>
+                <Button className="secondary-button danger-button" type="button" disabled={busy !== null} onClick={() => void run("cancel-email", async () => {
+                  if (!development) await cancelAccountEmailChange(supabaseClient!);
+                  setSecurity((current) => current ? { ...current, pendingEmail: null, emailChangeSentAt: null } : current);
+                }, "Email change cancelled")}>Cancel change</Button>
+              </div>
+            </div>
+          ) : (
+            <form className="account-inline-form" onSubmit={submitEmail}>
+              <label className="account-field"><span>New email</span><input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} required /></label>
+              <Button type="submit" disabled={busy !== null || !newEmail.trim()}>Change email</Button>
+            </form>
+          )}
+        </div>
+      </section>
+
+      <section className="account-section-block">
+        <div className="account-section-copy"><h2>Password</h2><p>Use at least 8 characters and avoid reused passwords.</p></div>
+        <form className="account-section-body account-field-grid" onSubmit={submitPassword}>
+          <label className="account-field account-field-wide"><span>Current password</span><input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
+          <label className="account-field"><span>New password</span><input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
+          <label className="account-field"><span>Confirm password</span><input type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
+          <Button className="account-field-wide" type="submit" disabled={busy !== null || !currentPassword || newPassword.length < 8 || newPassword !== confirmPassword}><KeyRound size={15} aria-hidden /> Change password</Button>
+        </form>
+      </section>
+
+      <section className="account-section-block">
+        <div className="account-section-copy"><h2>Active sessions</h2><p>Keep this browser signed in and revoke every other session.</p></div>
+        <div className="account-section-body">
+          <div className="account-info-row"><div><strong>This device</strong><span>Current browser session</span></div><span className="account-pill">Current</span></div>
+          <form className="account-inline-form" onSubmit={(event) => { event.preventDefault(); void run("sessions", async () => {
+            if (!development) await signOutOtherAccountSessions(supabaseClient!, sessionPassword);
+            setSessionPassword("");
+          }, "Other sessions signed out"); }}>
+            <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={sessionPassword} onChange={(event) => setSessionPassword(event.target.value)} required /></label>
+            <Button className="secondary-button" type="submit" disabled={busy !== null || !sessionPassword}><LogOut size={15} aria-hidden /> Sign out other sessions</Button>
+          </form>
+        </div>
+      </section>
+
+      <section className="account-section-block account-danger-section" aria-labelledby="delete-account-title">
+        <div className="account-section-copy"><h2 id="delete-account-title">Delete account</h2><p>A 14-day recovery window starts after your current password is verified.</p></div>
+        <div className="account-section-body">
+          {blockers.length > 0 ? (
+            <div className="account-danger-notice"><strong>Resolve these items first</strong><ul>{blockers.map((blocker) => <li key={`${blocker.kind}-${blocker.workspace_id}-${blocker.transfer_id ?? ""}`}>{blocker.workspace_name}: {blocker.is_owner ? "transfer ownership in Account > Workspaces, then ask the new owner or an administrator to remove your access" : blocker.kind === "active_membership" ? "ask the workspace owner or an administrator to remove your active access" : `resolve ${blocker.transfer_direction ?? "pending"} ownership transfer`}</li>)}</ul></div>
+          ) : (
+            <p className="field-help">Pending invitations will be cancelled and their workspace managers notified.</p>
+          )}
+          <Button className="danger-button" type="button" disabled={busy !== null || !security || blockers.length > 0} onClick={() => setConfirmDeletion(true)}><Trash2 size={15} aria-hidden /> Delete account</Button>
+          <dialog ref={deletionDialog} className="account-confirmation-dialog" aria-labelledby="deletion-confirmation-title" onCancel={(event) => {
+            if (busy === "delete") event.preventDefault();
+            else { setConfirmDeletion(false); setDeletionPassword(""); }
+          }}>
+            <h2 id="deletion-confirmation-title">Delete your account?</h2>
+            <p>You will be signed out of every session. Pending invitations will be cancelled and their workspace managers notified.</p>
+            <p>Your profile and personal preferences are kept for 14 days. Use the recovery email link during that time to restore your account. After 14 days, your personal account data is permanently removed.</p>
+          <form className="account-section-body" onSubmit={(event) => { event.preventDefault(); void run("delete", async () => {
+            if (development) throw new Error("Deletion is disabled for the development identity");
+            await requestSecureAccountDeletion(supabaseClient!, deletionPassword);
+            await signOut();
+          }, "Account deletion requested"); }}>
+            <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={deletionPassword} onChange={(event) => setDeletionPassword(event.target.value)} required /></label>
+            {error ? <p role="alert" className="form-error">{error}</p> : null}
+            <div className="account-button-row">
+              <Button type="button" className="secondary-button" disabled={busy === "delete"} onClick={() => { setConfirmDeletion(false); setDeletionPassword(""); setError(null); }}>Cancel</Button>
+              <Button className="danger-button" type="submit" disabled={busy !== null || blockers.length > 0 || !deletionPassword}>Confirm account deletion</Button>
+            </div>
+          </form>
+          </dialog>
+        </div>
+      </section>
+
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      {status ? <p className="form-success" role="status">{status}</p> : null}
+    </section>
+  );
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}

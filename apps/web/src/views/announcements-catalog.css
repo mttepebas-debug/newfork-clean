@@ -42,6 +42,25 @@
   font-size: 13px;
   font-weight: 700;
 }
+.announcement-status-tab-count {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--job-accent) 12%, var(--job-bg));
+  color: var(--job-accent);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+}
+.catalog-status-tabs button.active .announcement-status-tab-count {
+  background: var(--job-soft);
+  color: var(--job-accent);
+}
 .announcement-catalog-marker {
   flex-shrink: 0;
   color: var(--job-accent);

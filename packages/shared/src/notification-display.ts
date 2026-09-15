@@ -22,6 +22,12 @@ export type NotificationTypeDisplay = {
   preferenceDescription: string;
 };
 
+type DisplayedNotificationTypeKey =
+  | NotificationTypeKey
+  | "availability.review_required"
+  | "availability.status_changed"
+  | "availability.weekly_updated";
+
 export const notificationCategoryDisplay = {
   security: {
     label: "Account & security",
@@ -30,13 +36,12 @@ export const notificationCategoryDisplay = {
   },
   schedule: {
     label: "Schedule",
-    description: "Published schedules and schedule-related changes.",
+    description: "Published schedules, shift offers, and assignment changes.",
     sortOrder: 10,
   },
   requests: {
     label: "Requests",
-    description:
-      "Time-off and shift-change requests that need review or changed status.",
+    description: "Time off, availability, and shift change updates.",
     sortOrder: 20,
   },
   time_tracking: {
@@ -70,6 +75,20 @@ export const notificationCategoryDisplay = {
 >;
 
 export const notificationTypeDisplay = {
+  "security.account_invitation_cancelled": {
+    label: "Cancelled employee invitations",
+    shortLabel: "Cancelled invitations",
+    description:
+      "Alerts employee-access managers when account deletion cancels a pending invitation.",
+    categoryLabel: notificationCategoryDisplay.security.label,
+    categoryDescription: notificationCategoryDisplay.security.description,
+    audienceLabel: "Managers who can manage employee access",
+    actionLabel: "View employees",
+    adminDescription:
+      "Controls alerts sent when an account deletion request revokes a pending employee invitation.",
+    preferenceDescription:
+      "Get notified when a pending employee invitation is cancelled.",
+  },
   "communications.announcement.available": {
     label: "New announcements",
     shortLabel: "Announcements",
@@ -81,7 +100,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls whether targeted workspace announcements appear in members' notification inboxes.",
     preferenceDescription:
-      "Choose whether announcements for your role or location appear in your inbox.",
+      "Get notified when an announcement is shared with you.",
   },
   "people.employee_document.expiring": {
     label: "Expiring employee documents",
@@ -95,7 +114,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls in-app alerts for employee documents that are expired or close to expiring.",
     preferenceDescription:
-      "Choose whether expiring employee document alerts appear in your inbox.",
+      "Get notified when an employee document has expired or will expire soon.",
   },
   "requests.time_off.submitted": {
     label: "Time-off requests to review",
@@ -109,7 +128,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls review alerts for newly submitted time-off requests.",
     preferenceDescription:
-      "Choose whether time-off requests that need your review appear in your inbox.",
+      "Get notified when a time-off request needs your review.",
   },
   "requests.time_off.status_changed": {
     label: "Time-off request updates",
@@ -123,7 +142,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls status updates sent back to employees after a time-off decision changes.",
     preferenceDescription:
-      "Choose whether updates about your own time-off requests appear in your inbox.",
+      "Get notified when your time-off request is approved, denied, or updated.",
   },
   "requests.shift_change.submitted": {
     label: "Shift change requests to review",
@@ -137,7 +156,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls review alerts for newly submitted shift swaps, releases, and coverage requests.",
     preferenceDescription:
-      "Choose whether shift change requests that need your review appear in your inbox.",
+      "Get notified when a shift change request needs your review.",
   },
   "requests.shift_change.status_changed": {
     label: "Shift change request updates",
@@ -151,7 +170,46 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls status updates sent to employees involved in shift swaps, releases, or coverage requests.",
     preferenceDescription:
-      "Choose whether updates about shift changes involving you appear in your inbox.",
+      "Get notified when a shift change involving you is approved, denied, cancelled, or updated.",
+  },
+  "availability.review_required": {
+    label: "Availability requests to review",
+    shortLabel: "Availability review",
+    description: "An employee availability request needs a decision.",
+    categoryLabel: notificationCategoryDisplay.requests.label,
+    categoryDescription: notificationCategoryDisplay.requests.description,
+    audienceLabel: "Managers who review employee availability",
+    actionLabel: "Review availability",
+    adminDescription:
+      "Controls alerts sent when an employee availability request needs review.",
+    preferenceDescription:
+      "Get notified when an employee availability request needs your review.",
+  },
+  "availability.status_changed": {
+    label: "Your availability updates",
+    shortLabel: "Availability updates",
+    description: "Changes and decisions about your availability.",
+    categoryLabel: notificationCategoryDisplay.requests.label,
+    categoryDescription: notificationCategoryDisplay.requests.description,
+    audienceLabel: "Employees whose availability changed",
+    actionLabel: "View availability",
+    adminDescription:
+      "Controls updates sent to employees when their availability changes or needs confirmation.",
+    preferenceDescription:
+      "Get notified when your availability is approved, changed, or needs your confirmation.",
+  },
+  "availability.weekly_updated": {
+    label: "Employee availability changes",
+    shortLabel: "Availability changes",
+    description: "An employee updated their usual weekly availability.",
+    categoryLabel: notificationCategoryDisplay.requests.label,
+    categoryDescription: notificationCategoryDisplay.requests.description,
+    audienceLabel: "Managers who can view the employee",
+    actionLabel: "View employee",
+    adminDescription:
+      "Controls alerts sent to managers when an employee updates weekly availability.",
+    preferenceDescription:
+      "Get notified when an employee updates their weekly availability.",
   },
   "time_tracking.correction.submitted": {
     label: "Time correction requests to review",
@@ -165,7 +223,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls review alerts for newly submitted time entry corrections.",
     preferenceDescription:
-      "Choose whether time correction requests that need your review appear in your inbox.",
+      "Get notified when a time entry correction needs your review.",
   },
   "time_tracking.correction.decided": {
     label: "Time correction decisions",
@@ -179,7 +237,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls decision updates sent back to employees after a time correction is reviewed.",
     preferenceDescription:
-      "Choose whether decisions about your own time corrections appear in your inbox.",
+      "Get notified when your time entry correction is approved or denied.",
   },
   "schedule.published": {
     label: "Published schedules",
@@ -192,7 +250,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls in-app alerts sent to employees when a schedule is published.",
     preferenceDescription:
-      "Choose whether newly published schedules for your shifts appear in your inbox.",
+      "Get notified when a new schedule containing your shifts is published.",
   },
   "schedule.staffing.offer_updated": {
     label: "Staffing offers",
@@ -206,7 +264,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls in-app updates when a staffing offer is sent or accepted.",
     preferenceDescription:
-      "Choose whether staffing offers and their responses appear in your inbox.",
+      "Get notified when a shift is offered to you or someone responds to an offer you manage.",
   },
   "schedule.staffing.offer_closed": {
     label: "Closed staffing offers",
@@ -220,7 +278,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls in-app updates when a staffing offer is declined, cancelled or filled.",
     preferenceDescription:
-      "Choose whether closed staffing offers appear in your inbox.",
+      "Get notified when a shift offer is declined, cancelled, or filled.",
   },
   "schedule.staffing.assignment_changed": {
     label: "Assignment changes",
@@ -234,9 +292,9 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls in-app updates after a manager changes a staffing assignment.",
     preferenceDescription:
-      "Choose whether confirmed assignment changes appear in your inbox.",
+      "Get notified when a published shift assignment changes.",
   },
-} as const satisfies Record<NotificationTypeKey, NotificationTypeDisplay>;
+} as const satisfies Record<DisplayedNotificationTypeKey, NotificationTypeDisplay>;
 
 export const notificationChannelDisplay = {
   in_app: {

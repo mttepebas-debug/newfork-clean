@@ -35,7 +35,7 @@ const setupChecklistPatchBody = z.object({
   itemId: ownerSetupChecklistItemIdSchema.optional(),
   closed: z.boolean().optional(),
 });
-const inboxQuery = z.object({
+export const inboxQuery = z.object({
   category: z
     .enum([
       "announcement",
@@ -303,7 +303,9 @@ export function registerCommunicationRoutes(
       const params = workspaceParams.safeParse(request.params);
       const body = workspaceManualTodoInputSchema.safeParse(request.body);
       if (!params.success || !body.success)
-        return reply.status(400).send({ error: "Valid workspace todo required" });
+        return reply
+          .status(400)
+          .send({ error: "Valid workspace todo required" });
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
@@ -336,7 +338,9 @@ export function registerCommunicationRoutes(
     async (request, reply) => {
       const params = todoParams.safeParse(request.params);
       if (!params.success)
-        return reply.status(400).send({ error: "Valid workspace todo required" });
+        return reply
+          .status(400)
+          .send({ error: "Valid workspace todo required" });
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
@@ -373,7 +377,7 @@ export function registerCommunicationRoutes(
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
-        "workspace.manage",
+        "settings.general.read",
         options.contextResolver,
         reply,
         "Workspace management required",
@@ -406,7 +410,7 @@ export function registerCommunicationRoutes(
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
-        "workspace.manage",
+        "settings.general.manage",
         options.contextResolver,
         reply,
         "Workspace management required",

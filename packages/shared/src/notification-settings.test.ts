@@ -1,6 +1,8 @@
+import { notificationRecordSchema } from "./communications";
 import { describe, expect, it } from "vitest";
 import {
   notificationUserPreferencePatchSchema,
+  accountNotificationTypeKeys,
   notificationUserPreferencesResponseSchema,
   notificationOrgPolicyInputSchema,
   notificationSettingsResponseSchema,
@@ -9,6 +11,24 @@ import {
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
 describe("notification settings contracts", () => {
+  it("rejects account rows mislabeled as workspace notifications", () => {
+    const item = { id: workspaceId, workspace_id: null, scope: "account", category: "security", title: "Security update", body: "Safe update", action_url: "/app/account/security", source_type: "account_security", source_id: null, created_at: "2026-09-14T12:00:00Z", read_at: null };
+    expect(notificationRecordSchema.safeParse(item).success).toBe(true);
+    expect(notificationRecordSchema.safeParse({ ...item, workspace_id: workspaceId }).success).toBe(false);
+    expect(notificationRecordSchema.safeParse({ ...item, scope: "workspace" }).success).toBe(false);
+  });
+
+  it("accepts mandatory account delivery separately from editable workspace catalog", () => {
+    const data = { workspace_id: null, can_write: false, workspaces: [], catalog: [], preferences: [],
+      email_channel_reason: "delivery_unavailable", account_catalog: accountNotificationTypeKeys.map(type_key => ({
+        type_key, scope: "account", title: "Security event", description: "A safe account update", mandatory_in_app: true, delivery: "transactional_in_app",
+      })),
+    };
+    expect(notificationUserPreferencesResponseSchema.parse(data).account_catalog).toHaveLength(6);
+    expect(notificationUserPreferencesResponseSchema.safeParse({ ...data, account_catalog: [{ ...data.account_catalog[0], mandatory_in_app: false }] }).success).toBe(false);
+    expect(notificationUserPreferencesResponseSchema.safeParse({ ...data, account_catalog: [{ ...data.account_catalog[0], type_key: "account.unobserved_login" }] }).success).toBe(false);
+  });
+
   it("accepts an active catalog entry with its effective organization policy", () => {
     const parsed = notificationSettingsResponseSchema.parse({
       workspace_id: workspaceId,

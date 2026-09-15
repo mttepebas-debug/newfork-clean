@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { CurrentUserAvatar } from "../account/AccountAvatar";
 import "./employee-dashboard.css";
 
 export function EmployeeMobileNav() {
@@ -93,7 +94,7 @@ export function EmployeeMorePage() {
       detail: "Your latest updates",
       to: "/app/notifications",
       icon: Bell,
-      enabled: context?.permissions.includes("notifications.read"),
+      enabled: Boolean(context),
     },
     {
       label: "My account",
@@ -125,7 +126,7 @@ export function EmployeeMorePage() {
           .filter((item) => item.enabled)
           .map(({ label, detail, to, icon: Icon }) => (
             <Link key={to} to={to}>
-              <Icon size={21} />
+              {to === "/account/profile" ? <CurrentUserAvatar /> : <Icon size={21} />}
               <span>
                 <strong>{label}</strong>
                 <small>{detail}</small>

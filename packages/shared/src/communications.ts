@@ -127,7 +127,8 @@ export const notificationCategorySchema = z.enum([
 export type NotificationCategory = z.infer<typeof notificationCategorySchema>;
 export const notificationRecordSchema = z.object({
   id: z.string().uuid(),
-  workspace_id: z.string().uuid(),
+  workspace_id: z.string().uuid().nullable(),
+  scope: z.enum(["account", "workspace"]).optional(),
   category: notificationCategorySchema,
   type_key: z.string().min(1).optional(),
   severity: z
@@ -146,11 +147,15 @@ export const notificationRecordSchema = z.object({
   visibility_state: z
     .enum(["visible", "superseded", "cancelled"])
     .default("visible"),
+}).superRefine((item, context) => {
+  if ((item.workspace_id === null) !== (item.scope === "account")) {
+    context.addIssue({ code: "custom", path: ["scope"], message: "Account notifications must have account scope and no workspace" });
+  }
 });
 export type NotificationRecord = z.infer<typeof notificationRecordSchema>;
 
 export const notificationInboxSchema = z.object({
-  workspace_id: z.string().uuid(),
+  workspace_id: z.string().uuid().nullable(),
   unread_count: z.coerce.number().int().nonnegative(),
   next_cursor: z.string().min(1).nullable(),
   notifications: z.array(notificationRecordSchema),

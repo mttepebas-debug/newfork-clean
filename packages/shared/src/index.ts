@@ -1,5 +1,11 @@
 import { z } from "zod";
 import {
+  employeeEligiblePermissions,
+  personalRolePermissions,
+  rolePermissionDependencies,
+} from "./role-permissions";
+export * from "./role-permissions";
+import {
   timeOffCancellationContextSchema,
   timeOffAssignmentDispositionSchema,
   timeOffPeriodReadSchema,
@@ -78,6 +84,26 @@ export type WorkspaceLifecycleStatus = z.infer<
 >;
 
 export const permissionSchema = z.enum([
+  "availability.read",
+  "availability.manage",
+  "schedule.templates.read",
+  "employee_access.read",
+  "employees.private.read",
+  "employees.private.manage",
+  "employee_documents.read",
+  "important_dates.read",
+  "important_dates.manage",
+  "settings.general.read",
+  "settings.general.manage",
+  "settings.locations.read",
+  "settings.locations.manage",
+  "settings.jobs.read",
+  "settings.jobs.manage",
+  "settings.shift_catalog.read",
+  "settings.shift_catalog.manage",
+  "settings.schedule_rules.read",
+  "settings.schedule_rules.manage",
+
   "workspace.read",
   "workspace.manage",
   "schedule.read",
@@ -138,8 +164,18 @@ export type Permission = z.infer<typeof permissionSchema>;
 
 const rolePermissions = {
   owner: permissionSchema.options,
-  admin: permissionSchema.options,
+  admin: permissionSchema.options.filter(
+    (permission) => permission !== "roles.manage",
+  ),
   manager: [
+    "employees.archive",
+    "availability.read",
+    "availability.manage",
+    "schedule.templates.read",
+    "important_dates.read",
+    "important_dates.manage",
+    "notifications.read_own",
+    "notifications.preferences.write_own",
     "workspace.read",
     "schedule.read",
     "schedule.manage",
@@ -246,13 +282,70 @@ export type WorkspaceOnboarding = z.infer<typeof workspaceOnboardingSchema>;
 export const themePreferenceSchema = z.enum(["system", "light", "dark"]);
 export type ThemePreference = z.infer<typeof themePreferenceSchema>;
 
-export const accountProfileSchema = z.object({
-  userId: z.string().uuid(),
-  email: z.string().email(),
-  displayName: z.string().trim().min(1).max(100),
-  phone: z.string().trim().min(7).max(30).nullable().default(null),
-  theme: themePreferenceSchema,
-});
+export const personalTimeFormatSchema = z.enum(["system", "12h", "24h"]);
+export type PersonalTimeFormat = z.infer<typeof personalTimeFormatSchema>;
+
+export const personalDateFormatSchema = z.enum([
+  "system",
+  "MM-DD-YYYY",
+  "DD-MM-YYYY",
+  "YYYY-MM-DD",
+]);
+export type PersonalDateFormat = z.infer<typeof personalDateFormatSchema>;
+
+export const accountPhoneSchema = z
+  .string()
+  .trim()
+  .regex(/^\+[1-9]\d{7,14}$/, "International phone number required");
+
+export function normalizeAccountPhone(
+  value: string | null | undefined,
+  countryCallingCode = "1",
+): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+
+  const digits = trimmed.replace(/\D/g, "");
+  const callingCode = countryCallingCode.replace(/\D/g, "");
+  if (!callingCode || !/^[1-9]\d{0,2}$/.test(callingCode)) {
+    throw new Error("Valid country calling code required");
+  }
+
+  const normalized = trimmed.startsWith("+")
+    ? `+${digits}`
+    : digits.startsWith(callingCode) && digits.length > 10
+      ? `+${digits}`
+      : `+${callingCode}${digits.replace(/^0+/, "")}`;
+  return accountPhoneSchema.parse(normalized);
+}
+
+export const accountProfileSchema = z
+  .object({
+    userId: z.string().uuid(),
+    email: z.string().email(),
+    displayName: z.string().trim().min(1).max(100),
+    phone: accountPhoneSchema.nullable().default(null),
+    avatarObjectPath: z.string().trim().nullable().default(null),
+    avatarUrl: z.string().url().nullable().default(null),
+    theme: themePreferenceSchema,
+    timeFormat: personalTimeFormatSchema.default("system"),
+    dateFormat: personalDateFormatSchema.default("system"),
+  })
+  .superRefine((profile, context) => {
+    if (
+      profile.avatarObjectPath &&
+      !new RegExp(
+        `^${profile.userId}/profile/[0-9a-f-]{36}\\.(jpg|png|webp)$`,
+        "i",
+      ).test(profile.avatarObjectPath)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["avatarObjectPath"],
+        message: "Account avatar path must belong to the account",
+      });
+    }
+  });
 export type AccountProfile = z.infer<typeof accountProfileSchema>;
 
 export const workspaceSummarySchema = z.object({
@@ -462,7 +555,18 @@ export function activeWorkspaceContextFromRow(
       status: "active",
       allLocations: row.all_locations,
     },
-    permissions: row.permission_keys ?? permissionsForRole(row.workspace_role),
+    permissions: [
+      ...new Set([
+        ...(
+          row.permission_keys ?? permissionsForRole(row.workspace_role)
+        ).filter(
+          (permission) =>
+            row.workspace_role !== "employee" ||
+            employeeEligiblePermissions.includes(permission),
+        ),
+        ...personalRolePermissions,
+      ]),
+    ],
     onboarding: {
       status: row.onboarding_status,
       currentStep: row.onboarding_current_step,
@@ -2338,6 +2442,11 @@ export const workspaceRoleRecordSchema = z.object({
   updated_at: z.string().datetime({ offset: true }),
   permission_keys: z.array(permissionSchema),
   member_count: z.number().int().nonnegative(),
+  pending_invite_count: z.number().int().nonnegative().default(0),
+  blocking_member_count: z.number().int().nonnegative().default(0),
+  blocking_invite_count: z.number().int().nonnegative().default(0),
+  editable: z.boolean().default(false),
+  deletable: z.boolean().default(false),
 });
 export type WorkspaceRoleRecord = z.infer<typeof workspaceRoleRecordSchema>;
 
@@ -2345,224 +2454,35 @@ export const workspaceRoleInputSchema = z
   .object({
     name: z.string().trim().min(1).max(64),
     description: z.string().trim().max(240),
-    access_class: customRoleAccessClassSchema,
+    access_class: z.enum(["admin", "manager", "employee"]),
     permission_keys: z.array(permissionSchema),
+    expected_updated_at: z.string().datetime({ offset: true }).optional(),
   })
   .superRefine((role, issue) => {
     const permissions = new Set(role.permission_keys);
-    if (!permissions.has("workspace.read")) {
-      issue.addIssue({
-        code: "custom",
-        message: "Custom roles require workspace access",
-        path: ["permission_keys"],
-      });
-    }
+    const error = (message: string) =>
+      issue.addIssue({ code: "custom", message, path: ["permission_keys"] });
+    if (!permissions.has("workspace.read"))
+      error("Roles require workspace access");
     if (
-      permissions.has("workspace.manage") ||
-      permissions.has("roles.manage")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Protected management permissions cannot be granted",
-        path: ["permission_keys"],
-      });
-    }
+      role.access_class !== "admin" &&
+      (permissions.has("workspace.manage") || permissions.has("roles.manage"))
+    )
+      error("Protected management permissions cannot be granted");
     if (
-      permissions.has("schedule.manage") &&
-      !permissions.has("schedule.read")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Schedule management requires schedule access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("schedule.publish") &&
-      (!permissions.has("schedule.read") || !permissions.has("schedule.manage"))
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Schedule publication requires schedule management access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("schedule.templates.manage") &&
-      (!permissions.has("schedule.read") || !permissions.has("schedule.manage"))
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Schedule templates require schedule management access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("schedule.export") &&
-      !permissions.has("schedule.read")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Schedule export requires schedule access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("schedule.lineup.read") &&
-      !permissions.has("schedule.read")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Line-up access requires schedule access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("schedule.lineup.manage") &&
-      !permissions.has("schedule.lineup.read")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Line-up management requires Line-up access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("schedule.lineup.share") &&
-      !permissions.has("schedule.lineup.read")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Line-up sharing requires Line-up access",
-        path: ["permission_keys"],
-      });
-    }
-    for (const [read, manage, label] of [
-      [
-        "schedule.time_off_requests.read",
-        "schedule.time_off_requests.manage",
-        "Time off request",
-      ],
-      [
-        "schedule.shift_change_requests.read",
-        "schedule.shift_change_requests.manage",
-        "Shift change request",
-      ],
-    ] as const) {
-      if (permissions.has(read) && !permissions.has("schedule.read")) {
-        issue.addIssue({
-          code: "custom",
-          message: `${label} access requires schedule access`,
-          path: ["permission_keys"],
-        });
-      }
-      if (permissions.has(manage) && !permissions.has(read)) {
-        issue.addIssue({
-          code: "custom",
-          message: `${label} management requires request access`,
-          path: ["permission_keys"],
-        });
-      }
-    }
-    if (
-      permissions.has("documents.manage") &&
-      !permissions.has("documents.read")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Document management requires document access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("signature_templates.manage") &&
-      !permissions.has("signature_templates.read")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Acknowledgement template management requires template access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      (permissions.has("employees.manage") ||
-        permissions.has("employees.archive")) &&
-      !permissions.has("employees.read")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Employee management requires employee directory access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("employee_access.manage") &&
-      (!permissions.has("employees.read") || !permissions.has("roles.read"))
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Employee access management requires employee and role access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("employee_onboarding.review") &&
-      !permissions.has("employees.read")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Onboarding review requires employee directory access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("employee_documents.review") &&
-      (!permissions.has("employee_onboarding.review") ||
-        !permissions.has("documents.read"))
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message:
-          "Employee document review requires onboarding and document access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      (permissions.has("time.capture.own") ||
-        permissions.has("time.correction.request.own")) &&
-      !permissions.has("time.read.own")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Own time capture and corrections require own time access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      (permissions.has("time.amend.location") ||
-        permissions.has("time.correction.review.location") ||
-        permissions.has("time.review.approve.location") ||
-        permissions.has("time.export.preview.location") ||
-        permissions.has("time.export.create.location") ||
-        permissions.has("time.export.read.location")) &&
-      !permissions.has("time.read.location")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Location time management requires location time access",
-        path: ["permission_keys"],
-      });
-    }
-    if (
-      permissions.has("time.export.audit.read") &&
-      !permissions.has("time.audit.read")
-    ) {
-      issue.addIssue({
-        code: "custom",
-        message: "Time export audit access requires time audit access",
-        path: ["permission_keys"],
-      });
-    }
+      role.access_class === "employee" &&
+      role.permission_keys.some(
+        (key) => !employeeEligiblePermissions.includes(key),
+      )
+    )
+      error("Employee roles are limited to personal access");
+    for (const key of permissions)
+      if (
+        (rolePermissionDependencies[key] ?? []).some(
+          (dependency) => !permissions.has(dependency),
+        )
+      )
+        error(`${key} requires its read access`);
   });
 export type WorkspaceRoleInput = z.infer<typeof workspaceRoleInputSchema>;
 

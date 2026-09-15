@@ -91,15 +91,9 @@ function disabled(name: string) {
 }
 
 describe("employee create flow", () => {
-  it("shows phone as not provided in the add employee profile contact fields", () => {
+  it("hides private contact fields without private Read permission", () => {
     setup();
-
-    expect(screen.getByLabelText("Phone")).toHaveProperty("value", "");
-    expect(screen.getByLabelText("Phone")).toHaveProperty(
-      "placeholder",
-      "Not provided",
-    );
-    expect(screen.getByLabelText("Phone")).toHaveProperty("readOnly", true);
+    expect(screen.queryByLabelText("Phone")).toBeNull();
   });
 
   it.each(["Enter", "Escape", "outside"])(
@@ -210,10 +204,7 @@ describe("employee create flow", () => {
     fireEvent.change(screen.getByLabelText("E-mail"), {
       target: { value: "ada@example.test" },
     });
-    expect(screen.getByLabelText("Invite role")).toHaveProperty(
-      "value",
-      "",
-    );
+    expect(screen.getByLabelText("Invite role")).toHaveProperty("value", "");
     expect(screen.getByLabelText("Invite role")).toHaveProperty(
       "disabled",
       false,
@@ -418,9 +409,9 @@ describe("employee create flow", () => {
     );
     expect(disabled("Invite")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
-    expect(screen.getByLabelText("Invite role").getAttribute("aria-invalid")).toBe(
-      "true",
-    );
+    expect(
+      screen.getByLabelText("Invite role").getAttribute("aria-invalid"),
+    ).toBe("true");
     expect(createEmployee).not.toHaveBeenCalled();
     expect(disabled("Save")).toBe(false);
   });

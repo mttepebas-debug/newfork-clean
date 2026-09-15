@@ -25,11 +25,7 @@ const mismatchedContext = {
     status: "active",
     allLocations: true,
   },
-  permissions: [
-    "workspace.read",
-    "announcements.read",
-    "announcements.manage",
-  ],
+  permissions: ["workspace.read", "announcements.read", "announcements.manage"],
   onboarding: { status: "complete", currentStep: 2, revision: 1 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;
@@ -45,7 +41,12 @@ const activeContext = {
     ...mismatchedContext.membership,
     workspaceId,
   },
-  permissions: [...mismatchedContext.permissions, "workspace.manage"],
+  permissions: [
+    ...mismatchedContext.permissions,
+    "workspace.manage",
+    "settings.general.read",
+    "settings.general.manage",
+  ],
 } satisfies ActiveWorkspaceContext;
 
 function communicationServiceMock(): CommunicationService {
