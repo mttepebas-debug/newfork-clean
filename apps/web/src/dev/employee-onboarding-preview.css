@@ -20,18 +20,6 @@
   --eo-accent: #375fd1;
   --eo-tint: #e8edfc;
 }
-.eo-preview[data-color="dark"] {
-  --eo-bg: #191b1c;
-  --eo-side: #202324;
-  --eo-text: #ecf0ed;
-  --eo-muted: #a4ada7;
-  --eo-line: #373d3a;
-  --eo-accent: #a3bcff;
-  --eo-tint: #30394b;
-  --eo-input: #222627;
-  --eo-read: #202323;
-  color-scheme: dark;
-}
 .eo-preview * {
   box-sizing: border-box;
 }
@@ -110,26 +98,6 @@
   color: var(--eo-muted);
   width: 100px;
   text-align: right;
-}
-.eo-theme {
-  display: flex;
-  width: 100px;
-  justify-content: flex-end;
-  gap: 4px;
-}
-.eo-theme button {
-  display: grid;
-  place-items: center;
-  width: 29px;
-  height: 29px;
-  background: none;
-  border: 0;
-  color: var(--eo-muted);
-  border-radius: 4px;
-}
-.eo-theme button[aria-pressed="true"] {
-  background: var(--eo-tint);
-  color: var(--eo-accent);
 }
 .eo-shell {
   min-height: calc(100vh - 54px);
@@ -410,9 +378,6 @@
 }
 .eo-primary:active {
   transform: translateY(1px);
-}
-[data-color="dark"] .eo-primary {
-  color: #171c29;
 }
 .eo-welcome-action > span {
   font-size: 11px;

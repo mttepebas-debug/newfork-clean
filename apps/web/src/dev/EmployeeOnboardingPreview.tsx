@@ -6,9 +6,6 @@ import {
   ChevronRight,
   LockKeyhole,
   MapPin,
-  Monitor,
-  Moon,
-  Sun,
   Upload,
   X,
 } from "lucide-react";
@@ -29,12 +26,9 @@ const states =
     " ",
   );
 type Mode = "light" | "system";
-type Theme = "light" | "dark" | "system";
 
 export default function EmployeeOnboardingPreview() {
   const [mode, setMode] = useState<Mode>("light");
-  const [theme, setTheme] = useState<Theme>("system");
-  const [systemDark, setSystemDark] = useState(false);
   const [step, setStep] = useState(0);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -55,17 +49,7 @@ export default function EmployeeOnboardingPreview() {
     birthday: "",
     share: false,
   });
-  const dark =
-    mode === "system" &&
-    (theme === "dark" || (theme === "system" && systemDark));
 
-  useEffect(() => {
-    const query = window.matchMedia("(prefers-color-scheme: dark)");
-    setSystemDark(query.matches);
-    const update = () => setSystemDark(query.matches);
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
   useEffect(() => {
     if (photo) return () => URL.revokeObjectURL(photo);
   }, [photo]);
@@ -93,7 +77,6 @@ export default function EmployeeOnboardingPreview() {
   return (
     <div
       className="eo-preview"
-      data-color={dark ? "dark" : "light"}
       data-direction={mode}
     >
       <div className="eo-lab" aria-label="Design comparison">
@@ -114,27 +97,7 @@ export default function EmployeeOnboardingPreview() {
             03 <span>Adaptive theme</span>
           </button>
         </div>
-        {mode === "system" ? (
-          <div className="eo-theme" aria-label="Theme preview">
-            {(["light", "dark", "system"] as const).map((value) => {
-              const Icon =
-                value === "light" ? Sun : value === "dark" ? Moon : Monitor;
-              return (
-                <button
-                  key={value}
-                  title={`${value} theme`}
-                  aria-label={`${value} theme`}
-                  aria-pressed={theme === value}
-                  onClick={() => setTheme(value)}
-                >
-                  <Icon size={16} />
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <span className="eo-lab-tag">Sample workspace</span>
-        )}
+        <span className="eo-lab-tag">Sample workspace</span>
       </div>
 
       <div className="eo-shell">
