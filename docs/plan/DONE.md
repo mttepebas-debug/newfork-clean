@@ -20,3 +20,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-16 | RESCUE-001 | rescue WIP main'de; typecheck/build PASS, topbar fix | d19542d
 2026-09-16 | TEST-001 | unit testler yeşil, vitest env izolasyonu, availability katalog paritesi | 95063a7
 2026-09-16 | EXP-000/EXP-001 | Export paneli D (Settings dili, inline önizleme), Excel başlıkları, unified print, side-by-side bant | 4bbe806
+2026-09-16 | OPS-012 | post-MVP yüzeyleri bayrakla gizlendi, README/env temizliği | 8642575

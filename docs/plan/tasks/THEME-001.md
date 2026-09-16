@@ -1,5 +1,5 @@
 # THEME-001 Dark temayı emekliye ayır
-Status: draft (TEST-001 ve EXP-001 merge edildikten sonra; OPS-012 ile aynı anda çalışmaz)
+Status: active
 Session: -   Branch: task/theme-001   Worktree: newfork-wt/theme-001   DB: yok
 Öneri: Opus 5, medium. Çok dosyalı ama mekanik silme; seçicileri doğru ayırmak dikkat istiyor.
 

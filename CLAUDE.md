@@ -39,7 +39,7 @@ Ardından yalnızca [ROADMAP](docs/plan/ROADMAP.md) "Sıradaki" bölümünü ve 
 - Yerel kanıt, hosted/release kanıtı sayılmaz. Kanıtı tek satır yaz (`web 10/10, typecheck PASS`).
 
 ## Worktree ve ortak kaynaklar
-- Worktree yolu: `C:/Users/TheWe/Documents/Codex/newfork-wt/<id>`. Yeni worktree'de `pnpm.cmd install` çalıştır; `.env*` dosyaları git'te olmadığından ana checkout'tan kopyala (içeriklerini belgeye yazma).
+- Worktree yolu: `C:/Users/TheWe/Documents/Codex/newfork-wt/<id>`. Yeni worktree'de `pnpm.cmd install` ve ardından `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build` çalıştır (vitest bu paketlerin build'ine ihtiyaç duyar); `.env*` dosyaları git'te olmadığından ana checkout'tan kopyala (içeriklerini belgeye yazma).
 - Local Supabase DB tüm worktree'lerde ortaktır. Migration uygulayacak ya da DB'yi değiştirecek task, dosyasına `DB: lock` yazar ve aynı anda yalnızca bir task bunu yapar. `supabase db reset` yalnızca kullanıcı onayıyla.
 - Dev server portları 5555 (web) ve 5556 (api); ana checkout'ta çalışır. Mockup ya da deneme için bir worktree yalnızca ayrı web portu açabilir (5557+) ve 5556 API'sini paylaşır. Başlatmadan önce portu kontrol et; 5555/5556'yı durdurmak için kullanıcıya sor.
 - `origin/wip/rescue-2026-09-16`: RESCUE-001 ile main'e alındı (d19542d); yalnızca uzak yedek olarak duruyor, F0 sonunda silinecek. Üzerine iş yazılmaz.
