@@ -37,5 +37,6 @@ Risk: süre, yetki, hedefleme ve veri geçmişi aynı anda etkileniyor.
 - Yeniden hedef dışında kalan yükümlülükler geçmişi korunarak kapanır.
 
 ## Notes / Result
+- OPS-010 kararı: `20260916052509_document_publication_initial.sql` hosted'a uygulanmadı. Bu task'ta dosya en son migration'dan sonraki bir timestamp'e yeniden adlandırılır (local'de de henüz uygulanmadığı için güvenli); hosted'a daha sonra normal push ile gider.
 - 2026-09-16 durumu: kaynak kod teslim edildi (rescue'da). web10/SQL59 ve typecheck PASS olarak raporlandı. Migration local DB'ye uygulanmadı.
 - Temizlik bekleyen eski container'lar var: `newfork-docpub-01a0a8a7`, `newfork-docfilter-01a0a8a7`.
