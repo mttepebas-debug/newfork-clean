@@ -3485,6 +3485,13 @@ describe("App", () => {
   it("blocks paste before opening the drawer when the target employee is unavailable", async () => {
     const unavailableFixture = {
       ...scheduleFixture,
+      settings: {
+        ...scheduleFixture.settings,
+        conflict_rules: {
+          ...scheduleFixture.settings.conflict_rules!,
+          availability: "block",
+        },
+      },
       employees: [
         {
           ...scheduleFixture.employees[0]!,
@@ -3589,6 +3596,8 @@ describe("App", () => {
     expect(shiftBadge).toBeTruthy();
     fireEvent.keyDown(shiftBadge!, { key: "Enter" });
     const dialog = await app.findByRole("dialog", { name: "Edit shift" });
+    // Save stays disabled until the shift is edited.
+    fireEvent.click(within(dialog).getByRole("button", { name: "15m" }));
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Save" }),
     );
