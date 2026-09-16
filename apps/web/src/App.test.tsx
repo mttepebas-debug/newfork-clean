@@ -2266,7 +2266,7 @@ describe("App", () => {
     fireEvent.click(app.getAllByRole("button", { name: "Invalid-Host" })[0]!);
     expect(await app.findByText("Preset shift is unavailable")).toBeTruthy();
     expect(
-      app.getByText(/Default start and end time cannot be the same\./),
+      app.getByText(/^Start and end time cannot be the same\./),
     ).toBeTruthy();
     expect(
       app.getByText(/Invalid-Host \/ Open shift \/ Main Dining \/ 2026-08-18/),
@@ -3058,7 +3058,7 @@ describe("App", () => {
         name: "End time",
       }) as HTMLInputElement;
       const clockBadgeToggle = within(dialog).getByRole("checkbox", {
-        name: "Use these times for scheduling",
+        name: "Show times on badge",
       }) as HTMLInputElement;
 
       fireEvent.click(within(dialog).getByRole("button", { name: "Brunch" }));
@@ -3087,7 +3087,7 @@ describe("App", () => {
       expect(
         (
           within(presetDialog).getByRole("checkbox", {
-            name: "Use these times for scheduling",
+            name: "Show times on badge",
           }) as HTMLInputElement
         ).checked,
       ).toBe(false);
@@ -3095,13 +3095,18 @@ describe("App", () => {
       fireEvent.click(
         within(presetDialog).getByRole("button", { name: "Add shift" }),
       );
+      // Unresolved clock-off hours require explicit confirmation.
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Add anyway" }),
+      );
       await waitFor(() => expect(createScheduleShift).toHaveBeenCalledTimes(1));
       expect(vi.mocked(createScheduleShift).mock.calls[0]?.[2]).toEqual(
         expect.objectContaining({
           shift_type_id: standbyType.id,
-          start_time: "00:00",
-          end_time: "00:01",
+          start_time: "",
+          end_time: "",
           hide_time_on_badge: true,
+          time_basis: "unresolved",
         }),
       );
     } finally {
@@ -3109,7 +3114,7 @@ describe("App", () => {
     }
   });
 
-  it("saves edited clock-off named shift types with reference fallback times", async () => {
+  it("keeps edited shift hours when relabeling with a clock-off shift type", async () => {
     const standbyType = {
       ...scheduleFixture.shift_types[0]!,
       id: "44444444-4444-4444-8444-444444444449",
@@ -3170,9 +3175,6 @@ describe("App", () => {
           ...scheduleFixture.shifts[0]!,
           scheduled_date: "2026-09-18",
           shift_type_id: standbyType.id,
-          start_time: "00:00",
-          end_time: "00:01",
-          hide_time_on_badge: true,
           revision: 2,
         },
       ],
@@ -3207,9 +3209,10 @@ describe("App", () => {
       expect(updateMock.mock.calls[0]?.[4]).toEqual(
         expect.objectContaining({
           shift_type_id: standbyType.id,
-          start_time: "00:00",
-          end_time: "00:01",
-          hide_time_on_badge: true,
+          start_time: "16:00",
+          end_time: "22:30",
+          hide_time_on_badge: false,
+          time_basis: "explicit",
         }),
       );
     } finally {
