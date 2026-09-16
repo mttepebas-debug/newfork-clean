@@ -95,6 +95,20 @@ describe("Export v2 delivery lifecycle", () => {
     expect(window.open).toHaveBeenCalledOnce(); view.unmount();
     expect(child.close).toHaveBeenCalledOnce(); expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:test-2");
   });
+  it("never shows a previous format's file after the format changes", async () => {
+    const childDocument = document.implementation.createHTMLDocument();
+    const child = { document: childDocument, opener: window, closed: false, close: vi.fn(), focus: vi.fn() };
+    vi.spyOn(window, "open").mockReturnValue(child as unknown as Window);
+    render(<ExportController {...props} result={source()} />); fireEvent.click(screen.getByText("Preview"));
+    await waitFor(() => expect(childDocument.querySelector("iframe")?.getAttribute("src")).toBe("blob:test-1#view=FitH"));
+    const pending = deferred<readonly typeof file[]>(); vi.mocked(renderExportFiles).mockReturnValueOnce(pending.promise);
+    fireEvent.click(screen.getByText("PNG"));
+    expect(childDocument.querySelector("iframe")).toBeNull();
+    expect(childDocument.querySelector("img")).toBeNull();
+    await act(async () => pending.resolve([{ name: "first.png", blob: new Blob(["png"]) }]));
+    await waitFor(() => expect(childDocument.querySelector("img")?.getAttribute("src")).toBe("blob:test-2"));
+    expect(childDocument.querySelector("iframe")).toBeNull();
+  });
   it("keeps the last preview on screen and renders once more with the latest input while a render is in flight", async () => {
     const childDocument = document.implementation.createHTMLDocument();
     const child = { document: childDocument, opener: window, closed: false, close: vi.fn(), focus: vi.fn() };

@@ -7,11 +7,13 @@ import type { ExportDownload } from "./files";
 import type { ExportPreferences } from "./preferences";
 import type { ScheduleExportSnapshot } from "./snapshot";
 
-export function ExportPreview({ target, snapshot, preferences, files, loading, error, onDownload, thumbnail = false }: {
+export function ExportPreview({ target, snapshot, preferences, files: rendered, loading, error, onDownload, thumbnail = false }: {
   readonly target: HTMLElement; readonly snapshot: ScheduleExportSnapshot | null; readonly preferences: ExportPreferences;
   readonly files: readonly ExportDownload[]; readonly loading: boolean; readonly error: string | null; readonly onDownload: () => void;
   /** Hide the PDF viewer chrome when embedded as a small thumbnail. */ readonly thumbnail?: boolean;
 }) {
+  // The last completed render may belong to the previous format; an XLSX blob in the PDF iframe would download instead of display.
+  const files = rendered.filter(file => file.name.endsWith(`.${preferences.format}`));
   const [sheet, setSheet] = useState("merged");
   const [printMessage, setPrintMessage] = useState<string | null>(null);
   const selectedLocations = snapshot?.locations.filter(location => sheet === "merged" || location.id === sheet) ?? [];
