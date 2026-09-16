@@ -1,4 +1,5 @@
 {
+  "framework": null,
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @newfork/api build:vercel && pnpm --filter \"@newfork/web...\" build",
   "outputDirectory": "apps/web/dist",
