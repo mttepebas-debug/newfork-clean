@@ -144,6 +144,8 @@ beforeEach(() => {
   // jsdom does not implement the native dialog top-layer methods.
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
   HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
+  // jsdom does not implement matchMedia; emulate a desktop viewport.
+  vi.stubGlobal("matchMedia", vi.fn((query: string) => ({ matches: query.includes("min-width"), addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-08-17T12:00:00Z"));
   appQueryClient.clear();
@@ -1157,7 +1159,7 @@ describe("App", () => {
     fireEvent.click(within(dialog).getByRole("combobox", { name: "Labels" }));
     fireEvent.click(within(dialog).getByRole("option", { name: label.name }));
     fireEvent.click(
-      within(dialog).getByRole("button", { name: "Update shift" }),
+      within(dialog).getByRole("button", { name: "Save" }),
     );
 
     await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
@@ -2646,7 +2648,7 @@ describe("App", () => {
     expect(
       await screen.findByText("Start and end times cannot be the same."),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Update shift" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty(
       "disabled",
       true,
     );
@@ -2654,7 +2656,7 @@ describe("App", () => {
     fireEvent.blur(endTimeInput);
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Update shift" }),
+        screen.getByRole("button", { name: "Save" }),
       ).toHaveProperty("disabled", false),
     );
     expect(screen.getByRole("group", { name: "Unpaid break" })).toBeTruthy();
@@ -2676,7 +2678,7 @@ describe("App", () => {
       "60m",
       "Delete shift",
       "Cancel",
-      "Update shift",
+      "Save",
     ]);
     await closeShiftDrawer("Edit shift");
 
@@ -3175,7 +3177,7 @@ describe("App", () => {
 
       fireEvent.click(within(dialog).getByRole("button", { name: "Standby" }));
       fireEvent.click(
-        within(dialog).getByRole("button", { name: "Update shift" }),
+        within(dialog).getByRole("button", { name: "Save" }),
       );
 
       await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
@@ -3548,7 +3550,7 @@ describe("App", () => {
     fireEvent.keyDown(shiftBadge!, { key: "Enter" });
     const dialog = await app.findByRole("dialog", { name: "Edit shift" });
     fireEvent.click(
-      within(dialog).getByRole("button", { name: "Update shift" }),
+      within(dialog).getByRole("button", { name: "Save" }),
     );
 
     expect(await app.findByText("Shift changed")).toBeTruthy();
