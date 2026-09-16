@@ -4053,6 +4053,7 @@ select:focus-visible {
   top: 0;
   z-index: 100;
   min-height: 45px;
+  flex-shrink: 0;
   justify-content: space-between;
   gap: 12px;
   padding: 4px 16px;
