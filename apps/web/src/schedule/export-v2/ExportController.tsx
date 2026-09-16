@@ -137,7 +137,7 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
   return <>
     {variant ? <ExportVariantPanel {...panelProps} variant={variant} onInlineTarget={onInlineTarget}
       inline={{ files: previewProps.files, loading: previewProps.loading }} /> : <ExportSettingsPanel {...panelProps} />}
-    {inlineTarget ? <ExportPreview target={inlineTarget} {...previewProps} /> : null}
+    {inlineTarget ? <ExportPreview target={inlineTarget} {...previewProps} thumbnail /> : null}
     {previewTarget ? <ExportPreview target={previewTarget} {...previewProps} /> : null}
   </>;
 }

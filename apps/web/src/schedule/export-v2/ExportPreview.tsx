@@ -6,9 +6,10 @@ import type { ExportDownload } from "./files";
 import type { ExportPreferences } from "./preferences";
 import type { ScheduleExportSnapshot } from "./snapshot";
 
-export function ExportPreview({ target, snapshot, preferences, files, loading, error, onDownload }: {
+export function ExportPreview({ target, snapshot, preferences, files, loading, error, onDownload, thumbnail = false }: {
   readonly target: HTMLElement; readonly snapshot: ScheduleExportSnapshot | null; readonly preferences: ExportPreferences;
   readonly files: readonly ExportDownload[]; readonly loading: boolean; readonly error: string | null; readonly onDownload: () => void;
+  /** Hide the PDF viewer chrome when embedded as a small thumbnail. */ readonly thumbnail?: boolean;
 }) {
   const [sheet, setSheet] = useState("merged");
   const [printMessage, setPrintMessage] = useState<string | null>(null);
@@ -41,7 +42,7 @@ export function ExportPreview({ target, snapshot, preferences, files, loading, e
     </header>
     {loading ? <p role="status" className="status">Updating the current preview…</p> : error ? <p role="alert" className="status">{error}</p> : !snapshot ?
       <p className="status">Waiting for an available schedule preview.</p> : preferences.format === "pdf" ?
-      files[0] ? <iframe title="Schedule PDF" src={files[0].url} /> : null : preferences.format === "png" ?
+      files[0] ? <iframe title="Schedule PDF" src={thumbnail ? `${files[0].url}#toolbar=0&navpanes=0&view=FitH` : files[0].url} /> : null : preferences.format === "png" ?
       <main className="images">{files.map(file => <img key={file.url} src={file.url} alt={file.name} />)}</main> :
       <main className="sheet"><p>Workbook preview. The downloaded file also contains the filterable Veri sheet.</p>
         <nav aria-label="Workbook sheets"><button onClick={() => setSheet("merged")}>Merged</button>

@@ -11,9 +11,9 @@
   --x-selected: var(--theme-selected, #e7f1ed);
   --x-selected-border: var(--theme-accent, #6c9b8c);
   --x-selected-text: var(--theme-accent, #155f4d);
-  --x-action: var(--theme-text, var(--schedule-action, #111827));
-  --x-action-hover: var(--theme-muted, var(--schedule-action-hover, #1f2937));
-  --x-on-action: var(--theme-page, #fff);
+  --x-action: var(--schedule-action, #111827);
+  --x-action-hover: var(--schedule-action-hover, #1f2937);
+  --x-on-action: #fff;
   --x-info: var(--theme-info, #1f5f8b);
   --x-warning: var(--theme-warning, #8a5a00);
   --x-warning-surface: var(--theme-warning-surface, #fdf4dc);
@@ -51,6 +51,8 @@
 .export-x-primary, .export-x-secondary { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--x-border); border-radius: 5px; background: var(--x-surface); color: var(--x-text) !important; font-size: 12px !important; font-weight: 750; white-space: nowrap; cursor: pointer; }
 .export-x-primary { border-color: var(--x-action); background: var(--x-action); color: var(--x-on-action) !important; }
 .export-x-primary:not(:disabled):hover { border-color: var(--x-action-hover); background: var(--x-action-hover); }
+:root[data-theme="dark"] .export-x-primary { border-color: var(--theme-control-border); }
+:root[data-theme="dark"] .export-x-primary:not(:disabled):hover { border-color: var(--theme-text); }
 .export-x-secondary:not(:disabled):hover { background: var(--x-hover); }
 .export-x-footer { display: flex; flex-direction: column; gap: 8px; }
 .export-x-footer .export-x-primary { width: 100%; }
@@ -88,7 +90,7 @@
 .export-x select { min-height: 30px; max-width: 60%; padding: 0 8px; border: 1px solid var(--x-border); border-radius: 5px; background: var(--x-surface); font-size: 12px; font-weight: 650; }
 .export-x-switch input { appearance: none; position: relative; flex: 0 0 auto; width: 34px; height: 20px; margin: 0; border-radius: 999px; background: var(--x-border); cursor: pointer; transition: background var(--schedule-motion-state, 150ms); }
 .export-x-switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform var(--schedule-motion-state, 150ms); }
-.export-x-switch input:checked { background: var(--x-action); }
+.export-x-switch input:checked { background: var(--x-selected-text); }
 .export-x-switch input:checked::after { transform: translateX(14px); }
 
 /* F: preview + accordion */
@@ -106,6 +108,6 @@
 .export-x-details summary span { margin-left: auto; color: var(--x-text); font-size: 12px; font-weight: 650; letter-spacing: 0; text-transform: none; }
 .export-x-details[open] summary { margin-bottom: 6px; }
 .export-x-check { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 12px; font-weight: 650; cursor: pointer; }
-.export-x-check input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--x-action); }
+.export-x-check input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--x-selected-text); }
 
 @media (prefers-reduced-motion: reduce) { .export-x-switch input, .export-x-switch input::after { transition: none; } }
