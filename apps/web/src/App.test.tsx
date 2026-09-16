@@ -3665,8 +3665,9 @@ describe("App", () => {
         })),
       },
     });
-    for (const revision of [2, 3, 4]) {
-      createMock.mockResolvedValueOnce({
+    const batchCreateMock = vi.mocked(createScheduleShifts);
+    for (const revision of [2]) {
+      batchCreateMock.mockResolvedValueOnce({
         id: "77777777-7777-4777-8777-777777777782",
         workspace_id: scheduleFixture.workspace_id,
         week_start: scheduleFixture.week_start,
@@ -3744,11 +3745,13 @@ describe("App", () => {
       within(dialog).getByRole("button", { name: "Add 3 shifts" }),
     );
 
-    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(3));
-    expect(createMock.mock.calls.map((call) => call[1].revision)).toEqual([
-      1, 2, 3,
-    ]);
-    expect(createMock.mock.calls[0]?.[2]).toMatchObject({
+    // Multiple shifts are created in one idempotent batch request.
+    await waitFor(() => expect(batchCreateMock).toHaveBeenCalledTimes(1));
+    expect(createMock).not.toHaveBeenCalled();
+    expect(batchCreateMock.mock.calls[0]?.[1].revision).toBe(1);
+    const batchInputs = batchCreateMock.mock.calls[0]?.[2];
+    expect(batchInputs).toHaveLength(3);
+    expect(batchInputs?.[0]).toMatchObject({
       employee_id: null,
       scheduled_date: "2026-08-17",
       unpaid_break_minutes: 30,
@@ -3874,18 +3877,11 @@ describe("App", () => {
       container.querySelectorAll("[data-shift-selection-ring='true']"),
     ).toHaveLength(2);
     fireEvent.keyDown(selectedBadges[1]!, { key: "c", ctrlKey: true });
-    expect(await screen.findByText("2 shifts copied")).toBeTruthy();
+    // Copy is limited to a single shift; paste mode stays off.
+    expect(await screen.findByText("Select one shift to copy")).toBeTruthy();
     expect(
-      screen
-        .getByRole("button", { name: "Paste mode on" })
-        .getAttribute("aria-pressed"),
-    ).toBe("true");
-    fireEvent.keyDown(window, { key: "v", ctrlKey: true });
-    expect(
-      screen
-        .getByRole("button", { name: "Paste mode off" })
-        .getAttribute("aria-pressed"),
-    ).toBe("false");
+      screen.queryByRole("button", { name: "Paste mode on" }),
+    ).toBeNull();
     const editableBadges = container.querySelectorAll(
       "button.schedule-shift-badge",
     );
