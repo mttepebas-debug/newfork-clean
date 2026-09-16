@@ -1,24 +1,60 @@
+/* Export sidebar panel. Light theme only; colors mirror the schedule top bar and settings menu in styles.css. */
 .app-sidebar-panel-host { min-width: 0; min-height: 0; height: 100%; overflow-y: auto; }
-.schedule-export-v2 { color: inherit; display: flex; flex-direction: column; gap: 20px; padding: 8px 2px 16px; }
+.schedule-export-v2 { display: flex; flex-direction: column; gap: 18px; padding: 8px 2px 16px; color: #17221e; }
+.schedule-export-v2 :is(button, select) { font: inherit; color: inherit; }
+.schedule-export-v2 button:disabled { opacity: .5; cursor: not-allowed; }
+.schedule-export-v2 :is(button, input, select, a):focus-visible { outline: 2px solid var(--schedule-focus-ring-color, #177a64); outline-offset: 2px; }
 .export-v2-heading { display: flex; align-items: center; gap: 4px; }
 .export-v2-heading h2 { margin: 0 auto 0 0; font-size: 18px; font-weight: 650; }
-.export-v2-intro, .export-v2-details p, .schedule-export-v2 > p { margin: 0; font-size: 12px; line-height: 1.6; opacity: .8; }
-.export-v2-choices { display: flex; flex-wrap: wrap; gap: 10px; padding: 0; border: 0; margin: 0; }
-.export-v2-choices legend { font-size: 12px; font-weight: 650; margin-bottom: 10px; }
-.export-v2-choices label { display: flex; gap: 5px; align-items: center; font-size: 13px; cursor: pointer; }
-.export-v2-details { border-top: 1px solid var(--theme-border, #d8dedb); border-bottom: 1px solid var(--theme-border, #d8dedb); padding: 14px 0; }
-.export-v2-details summary { font-size: 13px; font-weight: 600; cursor: pointer; }
-.export-v2-details label { display: flex; gap: 8px; font-size: 12px; line-height: 1.5; margin: 14px 0; }
-.export-v2-details label:not(.export-v2-checkbox) { flex-direction: column; }
-.export-v2-details select { max-width: 100%; padding: 7px; color: inherit; background: var(--theme-surface, #fff); border: 1px solid var(--theme-border, #d8dedb); border-radius: 6px; }
-.export-v2-checkbox input { flex: 0 0 auto; align-self: flex-start; margin-top: 3px; }
-.export-v2-source { display: flex; flex-direction: column; gap: 6px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
-.export-v2-actions { display: flex; flex-direction: column; gap: 8px; }
-.export-v2-actions button { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 10px; border: 1px solid var(--theme-border, #d8dedb); border-radius: 7px; background: var(--theme-surface, #fff); color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
-.export-v2-actions .export-v2-primary { background: #275f4f; border-color: #275f4f; color: #fff; font-weight: 650; }
-.export-v2-actions button:disabled { opacity: .5; cursor: not-allowed; }
-.schedule-export-v2 :is(button, input, select, summary, a):focus-visible { outline: 2px solid var(--theme-focus, #3d826d); outline-offset: 3px; }
 .app-shell[data-sidebar-collapsed="true"] .export-v2-heading { flex-direction: column; gap: 12px; }
-.export-v2-downloads { display:flex; flex-direction:column; gap:8px; font-size:12px; }
-.export-v2-downloads button { background:transparent; color:inherit; border:1px solid var(--theme-border,#d8dedb); border-radius:6px; padding:8px; overflow-wrap:anywhere; text-align:left; cursor:pointer; }
+
+/* Sections in the settings-menu voice */
+.export-v2-section { display: flex; flex-direction: column; gap: 6px; }
+.export-v2-section > strong { color: #6b7671; font-size: 10px; font-weight: 750; letter-spacing: .02em; text-transform: uppercase; }
+.export-v2-hint { margin: 0; color: #6b7671; font-size: 12px; line-height: 1.5; }
+.export-v2-error { margin: 0; font-size: 12px; }
+
+/* Source */
+.export-v2-state { display: inline-flex; align-items: center; gap: 6px; }
+.export-v2-state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #155f4d; flex: 0 0 auto; }
+.export-v2-state.is-draft::before { background: #1f5f8b; }
+.export-v2-table { display: flex; flex-direction: column; margin: 0; border-top: 1px solid #dce3df; border-bottom: 1px solid #dce3df; }
+.export-v2-table > div { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #dce3df; font-size: 12px; }
+.export-v2-table > div:last-child { border-bottom: 0; }
+.export-v2-table dt { color: #6b7671; }
+.export-v2-table dd { margin: 0; font-weight: 750; overflow-wrap: anywhere; }
+.export-v2-blocked { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #8a5a00; border-radius: 5px; background: #fdf4dc; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.export-v2-blocked strong { color: #8a5a00; }
+.export-v2-blocked a { color: #155f4d; font-weight: 750; }
+
+/* Menu rows with a trailing check */
+.export-v2-menu { display: flex; flex-direction: column; }
+.export-v2-menu button { display: flex; min-height: 36px; align-items: center; gap: 10px; padding: 6px 8px; border: 0; border-radius: 4px; background: transparent; text-align: left; font-size: 12px; font-weight: 650; cursor: pointer; }
+.export-v2-menu button > span { flex: 1; min-width: 0; }
+.export-v2-menu button small { display: block; margin-top: 1px; color: #6b7671; font-size: 11px; font-weight: 500; }
+.export-v2-menu button > svg:first-child { color: #6b7671; flex: 0 0 auto; }
+.export-v2-menu button > svg:last-child:not(:first-child) { color: #155f4d; flex: 0 0 auto; }
+.export-v2-menu button:hover { background: #f0f3f1; }
+.export-v2-menu button[aria-checked="true"] { font-weight: 750; }
+.export-v2-menu button[aria-checked="true"] > svg:first-child { color: #17221e; }
+
+/* Buttons in the top-bar language */
+.export-v2-primary, .export-v2-secondary { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid #aeb9b4; border-radius: 5px; background: #fff; font-size: 12px; font-weight: 750; white-space: nowrap; cursor: pointer; }
+.export-v2-primary { width: 100%; border-color: var(--schedule-action, #111827); background: var(--schedule-action, #111827); color: #fff; }
+.export-v2-primary:not(:disabled):hover { border-color: var(--schedule-action-hover, #1f2937); background: var(--schedule-action-hover, #1f2937); }
+.export-v2-secondary:not(:disabled):hover { background: #f0f3f1; }
+.export-v2-footer { display: flex; flex-direction: column; gap: 8px; }
+.export-v2-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* Inline preview thumbnail */
+.export-v2-preview { display: flex; flex-direction: column; border: 1px solid #aeb9b4; border-radius: 5px; overflow: hidden; background: #f6f8f7; }
+.export-v2-thumb { position: relative; height: 140px; overflow: hidden; }
+.export-v2-thumb iframe { position: absolute; top: 0; left: 0; width: 1100px; height: 620px; border: 0; transform: scale(.25); transform-origin: 0 0; pointer-events: none; background: #fff; }
+.export-v2-thumb-status { position: absolute; inset: auto 8px 8px; padding: 3px 8px; border: 1px solid #dce3df; border-radius: 4px; background: #fff; color: #6b7671; font-size: 11px; text-align: center; }
+.export-v2-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 10px; border-top: 1px solid #aeb9b4; background: #fff; color: #6b7671; font-size: 12px; font-weight: 650; }
+.export-v2-preview-bar .export-v2-secondary { min-height: 28px; padding: 0 8px; }
+
+/* Last generated files (controller footer) */
+.export-v2-downloads { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.export-v2-downloads button { background: transparent; border: 1px solid #dce3df; border-radius: 5px; padding: 8px; overflow-wrap: anywhere; text-align: left; cursor: pointer; }
 @media (max-width: 720px) { .schedule-export-action { display: none; } }

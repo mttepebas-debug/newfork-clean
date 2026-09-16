@@ -22,7 +22,8 @@ function Harness({ result = { status: "blocked", reason: "loading" }, initiallyC
         <button onClick={() => setClicks(count => count + 1)}>Grid filter {clicks}</button>
         {open ? <ExportSettingsPanel result={result} preferences={preferences} onChange={setPreferences}
           onReset={() => setPreferences(defaultExportPreferences)} onClose={() => setOpen(false)}
-          onPreview={vi.fn()} onExport={vi.fn()} busy={false} error={null} canManageLocations /> : null}
+          onPreview={vi.fn()} onExport={vi.fn()} busy={false} error={null} canManageLocations
+          inline={{ files: [], loading: false }} onInlineTarget={() => undefined} /> : null}
       </main>
     </div>
   </AppSidebarPanelContext.Provider></MemoryRouter>;
@@ -48,10 +49,10 @@ describe("nonmodal export sidebar", () => {
   });
   it("blocks generation while the source loads and does not add independent grid filters", () => {
     render(<Harness />); fireEvent.click(screen.getByText("Open export"));
-    expect((screen.getByRole("button", { name: "Download" }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Preview in new tab" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.queryByLabelText("Source")).toBeNull();
-    expect(screen.queryByLabelText("Employees")).toBeNull();
+    expect((screen.getByRole("button", { name: "Download PDF" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Preview" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Waiting for the current preview…")).toBeTruthy();
+    expect(screen.queryByText("Source")).toBeNull();
   });
   it("lists missing short names and offers the canonical settings route", () => {
     render(<Harness result={{ status: "blocked", reason: "short_names", locationNames: ["Garden"] }} />);
@@ -61,12 +62,13 @@ describe("nonmodal export sidebar", () => {
   });
   it("keeps print controls separate and Excel does not offer print or compression controls", () => {
     render(<Harness />); fireEvent.click(screen.getByText("Open export"));
-    fireEvent.click(screen.getByLabelText("Print"));
-    expect(screen.getByLabelText("Paper")).toBeTruthy();
-    expect(screen.queryByLabelText("One long page; keep rows readable")).toBeNull();
-    fireEvent.click(screen.getByLabelText("Excel"));
-    expect(screen.queryByLabelText("Paper")).toBeNull();
-    expect(screen.queryByLabelText("Print")).toBeNull();
-    expect(screen.getByRole("button", { name: "Download" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: /^Print/ }));
+    expect(screen.getByRole("radiogroup", { name: "Paper" })).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: /One long page/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Print PDF" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: /^Excel/ }));
+    expect(screen.queryByRole("radiogroup", { name: "Paper" })).toBeNull();
+    expect(screen.queryByRole("radio", { name: /^Print/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Download Excel" })).toBeTruthy();
   });
 });

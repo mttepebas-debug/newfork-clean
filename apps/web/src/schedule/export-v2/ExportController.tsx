@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authorizeScheduleExportV2 } from "../schedule-data";
 import { ExportSettingsPanel } from "./ExportSettingsPanel";
 import { ExportPreview } from "./ExportPreview";
-import { ExportVariantPanel, readExportVariant } from "./ExportVariantPanel";
 import { downloadExportFile, exportAuthorizationScope, renderExportFiles, type ExportDownload } from "./files";
 import { defaultExportPreferences, exportPreferencesKey, loadExportPreferences, saveExportPreferences, type ExportPreferences } from "./preferences";
 import type { ScheduleExportSnapshot, SnapshotResult } from "./snapshot";
@@ -24,7 +23,6 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
   const urls = useRef(new Set<string>());
   const previewWindow = useRef<Window | null>(null);
   const [previewTarget, setPreviewTarget] = useState<HTMLElement | null>(null);
-  const [variant] = useState(readExportVariant);
   const [inlineTarget, setInlineTarget] = useState<HTMLElement | null>(null);
   const onInlineTarget = useCallback((target: HTMLElement | null) => setInlineTarget(target), []);
   const previewing = Boolean(previewTarget || inlineTarget);
@@ -150,8 +148,7 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
     loading: previewLoading, error: currentPreview?.error ?? sourceError ?? null, onDownload: () => void runDownload(),
   };
   return <>
-    {variant ? <ExportVariantPanel {...panelProps} variant={variant} onInlineTarget={onInlineTarget}
-      inline={{ files: previewProps.files, loading: previewProps.loading }} /> : <ExportSettingsPanel {...panelProps} />}
+    <ExportSettingsPanel {...panelProps} onInlineTarget={onInlineTarget} inline={{ files: previewProps.files, loading: previewProps.loading }} />
     {inlineTarget ? <ExportPreview target={inlineTarget} {...previewProps} thumbnail /> : null}
     {previewTarget ? <ExportPreview target={previewTarget} {...previewProps} /> : null}
   </>;
