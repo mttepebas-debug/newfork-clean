@@ -43,10 +43,12 @@ export const notificationCatalogEntrySchema = z.object({
     "employee_document_expiry_reviewers",
     "lineup_staffing_participants",
     "workspace_employee_access_managers",
+    "availability_scoped_recipients",
   ]),
   action_route_contract: z.object({
     route: z.string().regex(/^\/app(?:\/|$)/),
-    allowed_query_keys: z.array(z.string().regex(/^[a-z][a-z0-9_]*$/)),
+    // Database contracts use camelCase keys such as employeeId.
+    allowed_query_keys: z.array(z.string().regex(/^[a-z][A-Za-z0-9_]*$/)),
   }),
   dedupe_policy: z.object({
     strategy: z.enum(["keep_first", "refresh", "new_revision"]),
@@ -124,6 +126,74 @@ export const notificationCatalog = {
     },
     retention_class: "standard_90d",
     template_key: "communications.announcement.available.v1",
+    mandatory_in_app: false,
+  }),
+  // Availability rows mirror migrations 20260909005001, 20260909023001 and
+  // 20260909042000; review_required's current contract is schema version 2.
+  "availability.review_required": {
+    ...activeEntry({
+      type_key: "availability.review_required",
+      category: "requests",
+      severity: "action_required",
+      sensitivity: "confidential",
+      supported_channels: [...inAppOnly],
+      default_cadence: "immediate",
+      audience_contract: "availability_scoped_recipients",
+      action_route_contract: {
+        route: "/app/schedule/requests",
+        allowed_query_keys: ["tab", "request"],
+      },
+      dedupe_policy: {
+        strategy: "keep_first",
+        scope: "event_recipient",
+        key_fields: ["event_id", "recipient_user_id"],
+      },
+      retention_class: "sensitive_30d",
+      template_key: "availability.review_required.v2",
+      mandatory_in_app: false,
+    }),
+    schema_version: 2,
+  },
+  "availability.status_changed": activeEntry({
+    type_key: "availability.status_changed",
+    category: "requests",
+    severity: "info",
+    sensitivity: "confidential",
+    supported_channels: [...inAppOnly],
+    default_cadence: "immediate",
+    audience_contract: "availability_scoped_recipients",
+    action_route_contract: {
+      route: "/app/employee-hub/my-availability",
+      allowed_query_keys: [],
+    },
+    dedupe_policy: {
+      strategy: "keep_first",
+      scope: "event_recipient",
+      key_fields: ["event_id", "recipient_user_id"],
+    },
+    retention_class: "sensitive_30d",
+    template_key: "availability.status_changed.v1",
+    mandatory_in_app: false,
+  }),
+  "availability.weekly_updated": activeEntry({
+    type_key: "availability.weekly_updated",
+    category: "requests",
+    severity: "info",
+    sensitivity: "confidential",
+    supported_channels: [...inAppOnly],
+    default_cadence: "immediate",
+    audience_contract: "availability_scoped_recipients",
+    action_route_contract: {
+      route: "/app/employees",
+      allowed_query_keys: ["employeeId", "section"],
+    },
+    dedupe_policy: {
+      strategy: "keep_first",
+      scope: "event_recipient",
+      key_fields: ["event_id", "recipient_user_id"],
+    },
+    retention_class: "sensitive_30d",
+    template_key: "availability.weekly_updated.v1",
     mandatory_in_app: false,
   }),
   "requests.time_off.submitted": activeEntry({
@@ -362,6 +432,9 @@ export const notificationCatalog = {
 export type NotificationTypeKey = keyof typeof notificationCatalog;
 
 export const notificationCatalogSeed = [
+  ["availability.review_required", 2, "active"],
+  ["availability.status_changed", 1, "active"],
+  ["availability.weekly_updated", 1, "active"],
   ["communications.announcement.available", 1, "active"],
   ["people.employee_document.expiring", 1, "active"],
   ["requests.shift_change.status_changed", 1, "active"],
@@ -378,6 +451,9 @@ export const notificationCatalogSeed = [
 ] as const;
 
 export const notificationTemplateManifest = [
+  "availability.review_required.v2",
+  "availability.status_changed.v1",
+  "availability.weekly_updated.v1",
   "security.account_invitation_cancelled.v1",
   "communications.announcement.available.v1",
   "people.employee_document.expiring.v1",
@@ -404,6 +480,30 @@ export type NotificationProducerInventoryEntry = {
 
 export const notificationProducerInventory: readonly NotificationProducerInventoryEntry[] =
   [
+    {
+      producer_id: "availability_lifecycle_v2",
+      type_key: "availability.review_required",
+      source_migration: "20260909005001_availability_review_lifecycle.sql",
+      source_function: "availability_notify",
+      source_statement: "availability-review-outbox-enqueue",
+      integration_status: "outbox_v1",
+    },
+    {
+      producer_id: "availability_lifecycle_v1",
+      type_key: "availability.status_changed",
+      source_migration: "20260909005001_availability_review_lifecycle.sql",
+      source_function: "availability_notify",
+      source_statement: "availability-status-outbox-enqueue",
+      integration_status: "outbox_v1",
+    },
+    {
+      producer_id: "weekly_preferences_v1",
+      type_key: "availability.weekly_updated",
+      source_migration: "20260909042000_weekly_preference_settings.sql",
+      source_function: "weekly_preferences_save_service",
+      source_statement: "weekly-preferences-outbox-enqueue",
+      integration_status: "outbox_v1",
+    },
     {
       producer_id: "account-deletion-invitation-cancellation",
       type_key: "security.account_invitation_cancelled",

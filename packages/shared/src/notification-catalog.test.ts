@@ -85,10 +85,30 @@ describe("notification catalog governance", () => {
         /^\s*'([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+)', 1,/gm,
       ),
     ]
-      .map((match) => match[1])
-      .sort();
+      .map((match) => match[1]);
 
-    expect(sqlSeedKeys).toEqual(catalogRows.map(([typeKey]) => typeKey));
+    // Availability types are seeded by INSERT ... SELECT rows; each marker
+    // pins the key and schema version the catalog mirrors.
+    const derivedCatalogSeeds = [
+      ["availability.review_required", "20260909023001_availability_manager_request_queue.sql", "'availability.review_required.v2'"],
+      ["availability.status_changed", "20260909005001_availability_review_lifecycle.sql", "('status_changed','/app/employee-hub/my-availability')"],
+      ["availability.weekly_updated", "20260909042000_weekly_preference_settings.sql", "select 'availability.weekly_updated',1,"],
+    ] as const;
+    for (const [typeKey, migration, marker] of derivedCatalogSeeds) {
+      const sql = readFileSync(
+        resolve(repositoryRoot, "supabase/migrations", migration),
+        "utf8",
+      );
+      const inserts = [
+        ...sql.matchAll(/insert into public\.notification_catalog[\s\S]*?;/gi),
+      ].map((match) => match[0]);
+      expect(inserts.some((insert) => insert.includes(marker))).toBe(true);
+      sqlSeedKeys.push(typeKey);
+    }
+
+    expect(sqlSeedKeys.sort()).toEqual(
+      catalogRows.map(([typeKey]) => typeKey),
+    );
   });
 
   it("inventories every logical current producer", () => {
