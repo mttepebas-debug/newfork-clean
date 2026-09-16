@@ -20,8 +20,8 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  union all select w,first_user,'employee'::public.workspace_role,true from ws
  union all select w,second_user,'employee'::public.workspace_role,true from ws;
 insert into public.workspace_scheduling_settings(workspace_id) select w from ws on conflict do nothing;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone)
- select loc,w,'Exchange site','1 Test Street','Test City','CA','90001','UTC' from ws;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
+ select 'T00052', loc,w,'Exchange site','1 Test Street','Test City','CA','90001','UTC' from ws;
 insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
  select first_emp,w,first_user,'E-9934271','First','Employee',manager from ws

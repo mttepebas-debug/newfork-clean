@@ -12,8 +12,8 @@ create temp table f as select
 insert into auth.users(id,email) select actor,'bl064@example.test' from f;
 insert into public.workspaces(id,name,created_by) select w,'BL064 SQL fixture',actor from f;
 insert into public.workspace_memberships(workspace_id,user_id,role,all_locations) select w,actor,'owner',true from f;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone)
- select loc,w,'Test','1 Test','Test','CA','90001','America/Los_Angeles' from f;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
+ select 'T00007', loc,w,'Test','1 Test','Test','CA','90001','America/Los_Angeles' from f;
 insert into public.jobs(id,workspace_id,name) select job,w,'Test' from f;
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) select typ,w,'Test','09:00','17:00' from f;
 insert into public.employee_profiles(id,workspace_id,employee_code,first_name,last_name,created_by)
@@ -105,8 +105,8 @@ update pub set preview=pg_temp.preflight();
 select is((select preview->>'status' from pub),'hard_blocked','a new hard rule overrides a previous publication acceptance');
 select throws_ok($$select pg_temp.publish()$$,'23514',null,'final publish cannot bypass the newly hard closure');
 update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{closed_location}','"confirm"') where workspace_id=(select w from f);
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone)
- select 'b1640000-0000-4000-8000-000000000021',w,'Other','2 Test','Test','CA','90001','America/Los_Angeles' from f;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
+ select 'T00008', 'b1640000-0000-4000-8000-000000000021',w,'Other','2 Test','Test','CA','90001','America/Los_Angeles' from f;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
  select w,emp,'b1640000-0000-4000-8000-000000000021',actor from f;
 update public.schedule_draft_shifts set location_id='b1640000-0000-4000-8000-000000000021' where id=(select shift from f) and draft_id=(select draft from pub);

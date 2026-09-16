@@ -7,6 +7,9 @@ import {
   workspaceRoleSchema,
 } from "@newfork/shared";
 import Fastify from "fastify";
+import { createDocumentLifecycleService } from "./employees/document-lifecycle-service";
+import { registerDocumentLifecycleRoutes } from "./employees/document-lifecycle-routes";
+import { registerTimezoneSuggestionRoutes } from "./settings/timezone-suggestion";
 import { z } from "zod";
 import { registerAccountDeletionRoutes } from "./account/account-deletion-routes";
 import {
@@ -745,6 +748,11 @@ export function buildApp(options: BuildAppOptions = {}) {
       createEmployeeCreateServiceFromEnvironment(),
     contextResolver,
   });
+
+  registerTimezoneSuggestionRoutes(app, contextResolver);
+  registerDocumentLifecycleRoutes(app, process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createDocumentLifecycleService({ url: process.env.SUPABASE_URL, serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY })
+    : null);
 
   if (onboardingService) {
     registerEmployeeOnboardingRoutes(app, {

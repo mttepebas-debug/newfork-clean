@@ -160,12 +160,12 @@ values
 
 insert into public.locations (
   id, workspace_id, name, street_address, city, region, postal_code,
-  country_code, timezone, sort_order
+  country_code, timezone, sort_order, short_name
 ) values (
   '71000000-0000-4000-8000-000000000001',
   '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
   'Employee Demo Floor', '200 Demo St', 'Los Angeles', 'CA', '90001',
-  'US', 'America/Los_Angeles', 0
+  'US', 'America/Los_Angeles', 0, 'DEMO'
 );
 
 insert into public.departments (id, workspace_id, name, color, sort_order)
@@ -277,10 +277,10 @@ declare
 begin
   insert into public.locations (
     id, workspace_id, name, street_address, city, region, postal_code,
-    country_code, timezone, sort_order
+    country_code, timezone, sort_order, short_name
   ) values
-    ('11000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Main Dining', '100 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles', 0),
-    ('11000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Garden Room', '100 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles', 10);
+    ('11000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Main Dining', '100 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles', 0, 'MAIN'),
+    ('11000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Garden Room', '100 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles', 10, 'GARDEN');
 
   insert into public.departments (id, workspace_id, name, color, sort_order) values
     ('12000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Dining Room', '#3C7A68', 0),

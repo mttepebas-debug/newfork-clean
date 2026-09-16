@@ -20,9 +20,9 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  select w,owner_id,'owner'::public.workspace_role,true from ws
  union all select w,employee_user,'employee'::public.workspace_role,false from ws;
 insert into public.workspace_scheduling_settings(workspace_id) select w from ws on conflict do nothing;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
- select loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles',true from ws
- union all select other_loc,w,'East','2 Test Street','Test City','NY','10001','America/New_York',true from ws;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
+ select 'T00048', loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles',true from ws
+ union all select 'T00049', other_loc,w,'East','2 Test Street','Test City','NY','10001','America/New_York',true from ws;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
  select emp,w,employee_user,'E-993426','Weekly','Candidate',owner_id from ws;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,assigned_at,created_by)

@@ -165,6 +165,21 @@ function renderGrid(
 }
 
 describe("ScheduleGrid", () => {
+  it.each(["separate", "unified"] as const)(
+    "fits one visible location into seven columns in %s mode",
+    (layout) => {
+      renderGrid({ layout });
+      const grid = screen.getByTestId("schedule-grid");
+      expect(grid.getAttribute("data-schedule-fit-visible-columns")).toBe("true");
+      expect(grid.getAttribute("data-schedule-column-count")).toBe("7");
+      expect(
+        screen.queryByRole("navigation", {
+          name: "Schedule horizontal navigation",
+        }),
+      ).toBeNull();
+    },
+  );
+
   it("renders the no-location state through the schedule state component", () => {
     renderGrid({
       model: scheduleModel({ locations: [] }),

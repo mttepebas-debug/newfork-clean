@@ -300,6 +300,7 @@ export function ScheduleGrid({
   };
   const measuredBadgeWidth = useUniformScheduleBadgeWidth({
     containerRef: gridRef,
+    minimumWidth: view === "week" ? 0 : 126,
     version: createScheduleBadgeMeasurementVersion({
       shifts: filtered.shifts,
       jobs: model.jobs,
@@ -316,12 +317,11 @@ export function ScheduleGrid({
   });
   const dayColumnMinWidth = calculateScheduleDayColumnMinWidth({
     editing: Boolean(session),
-    layout,
     locationGroups,
     measuredBadgeWidth,
     view,
   });
-  const fitVisibleColumns = layout === "unified" && view === "week";
+  const fitVisibleColumns = locationGroups.length <= 1 && view === "week";
   const selectedLocationFilterIds = parseIds(search.get("locations"));
   const toggleLocationHeaderFilter = (locationIds: readonly string[]): void => {
     const nextLocationIds = nextScheduleLocationHeaderFilter({
@@ -357,6 +357,7 @@ export function ScheduleGrid({
       }
       editing={Boolean(session)}
       fitVisibleColumns={fitVisibleColumns}
+      fitWeeklyLocations={view === "week" && !fitVisibleColumns}
       gridRef={gridRef}
       showTotalHours={showTotalHours}
       view={view}

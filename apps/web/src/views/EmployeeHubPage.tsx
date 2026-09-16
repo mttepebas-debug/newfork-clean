@@ -1,13 +1,13 @@
-import { employeeTimeOffInputSchema, type EmployeeHubReadModel, type EmployeeHubShift } from "@newfork/shared";
+import { employeeTimeOffInputSchema, type EmployeeHubReadModel } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowLeftRight, CalendarDays, CalendarOff, RefreshCw } from "lucide-react";
+import { CalendarDays, CalendarOff, RefreshCw } from "lucide-react";
 import {
   useEffect,
   useRef,
   useState,
   type ReactNode,
 } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { AvailabilityDraftScope, requestAvailabilityNavigation, timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { loadWeeklyPreferences } from "../availability/availability-data";
@@ -23,40 +23,74 @@ import {
   getEmployeeHub,
   submitEmployeeTimeOff,
 } from "../employee-hub/employee-hub-data";
-import { formatTimeRange } from "../schedule/lib/scheduleDateTime";
 import { EmployeeTimeTrackingView } from "./EmployeeTimeTrackingView";
 import { EmployeeLineup } from "../schedule/lineup/EmployeeLineup";
-import { lineupDateWindow, parseLineupDate } from "../schedule/lineup/lineup-time";
+import { lineupDateWindow } from "../schedule/lineup/lineup-time";
 
-import { EmployeeTeamView } from "../employee-hub/EmployeeTeamView";
 import { EmployeeDashboard } from "../employee-hub/EmployeeDashboard";
+import { EmployeeScheduleBoard } from "../employee-hub/EmployeeScheduleBoard";
 import { useHubClock } from "../employee-hub/useHubClock";
 import { EmployeeMorePage } from "../employee-hub/EmployeeMobileNav";
 import { EarlierShiftRequests } from "../employee-hub/shift-exchanges/EarlierShiftRequests";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
+import { CatalogPageHeader } from "./CatalogPageHeader";
 
-const tabs = [
-  ["schedule", "Schedule"],
-  ["time-tracking", "Time Tracking"],
-  ["shift-hub", "Shift Hub"],
-  ["my-team", "My Team"],
-  ["my-availability", "My Availability"],
-  ["lineup", "Line-up"],
-] as const;
+// Navigation between these pages lives in the app sidebar. This map supplies
+// the shared catalog header copy, written for the employee reading it.
+const pageCopy: Record<
+  string,
+  { title: string; eyebrow: string; description: string }
+> = {
+  schedule: {
+    title: "Schedule",
+    eyebrow: "YOUR WEEK, WITHOUT SURPRISES.",
+    description:
+      "Your published shifts, with the hours, location and position for each one.",
+  },
+  "time-tracking": {
+    title: "Time Tracking",
+    eyebrow: "YOUR HOURS, YOUR RECORD.",
+    description: "Clock in and out, take breaks, and correct a mistake.",
+  },
+  "shift-hub": {
+    title: "Shift Hub",
+    eyebrow: "WORK BETTER TOGETHER",
+    description:
+      "Ask for cover, pick up an open shift, or swap with a teammate.",
+  },
+  "my-availability": {
+    title: "My Availability",
+    eyebrow: "WHEN YOU CAN WORK.",
+    description: "Set your weekly preferences and request time off.",
+  },
+  lineup: {
+    title: "Line-up",
+    eyebrow: "READY FOR YOUR DAY.",
+    description:
+      "Your assignment and the details that matter for service.",
+  },
+  more: {
+    title: "More",
+    eyebrow: "EVERYTHING ELSE.",
+    description: "The rest of your workspace, one tap away.",
+  },
+};
+const fallbackCopy = {
+  title: "Employee Hub",
+  eyebrow: "YOUR WORKSPACE.",
+  description: "Your shifts, your team and your requests.",
+};
 export function EmployeeHubPage() {
   const { context } = useAuth();
   const location = useLocation();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
   const path = location.pathname.split("/employee-hub/")[1] ?? "";
-  const independentPage = path === "more" || path === "time-tracking" || path === "my-team";
+  const independentPage = path === "more" || path === "time-tracking";
   const now = useHubClock();
   const today = now.toISOString().slice(0, 10);
   const selectedScheduleDate = path === "schedule"
     ? scheduleDateFromSearch(location.search)
-    : null;
-  const selectedLineupDate = path === "lineup"
-    ? parseLineupDate(new URLSearchParams(location.search).get("date"))
     : null;
   const from = selectedScheduleDate ?? addDays(today, -2);
   const end = selectedScheduleDate ?? addDays(today, 42);
@@ -82,25 +116,15 @@ export function EmployeeHubPage() {
   if (independentPage)
     return (
       <section
-        className={`employee-hub-page${path === "my-team" ? " employee-team-page" : ""}`}
+        className="employee-hub-page"
         aria-labelledby="employee-hub-title"
       >
-        <header className="hub-header eh-subpage-header">
-          <div>
-            <p className="eyebrow">{context?.workspace.name}</p>
-            <h1 id="employee-hub-title">
-              {path === "more" ? "More" : path === "my-team" ? "My Team" : "Time Tracking"}
-            </h1>
-          </div>
-          <Link className="eh-home-link" to="/app/employee-hub">
-            <ArrowLeft size={15} />
-            Home
-          </Link>
-        </header>
+        <CatalogPageHeader
+          {...(pageCopy[path] ?? fallbackCopy)}
+          titleId="employee-hub-title"
+        />
         {path === "more" ? (
           <EmployeeMorePage />
-        ) : path === "my-team" ? (
-          <EmployeeTeamView key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} userId={context?.userId ?? ""} today={today} />
         ) : (
           <EmployeeTimeTrackingView
             key={`${workspaceId}:${context?.userId}`}
@@ -155,41 +179,18 @@ export function EmployeeHubPage() {
     );
   return (
     <section className="employee-hub-page" aria-labelledby="employee-hub-title">
-      <header className="hub-header eh-subpage-header">
-        <div>
-          <p className="eyebrow">{context?.workspace.name}</p>
-          <h1 id="employee-hub-title">
-            {path === "more"
-              ? "More"
-              : (tabs.find(([to]) => to === path)?.[1] ?? "Employee Hub")}
-          </h1>
-        </div>
-        <Link className="eh-home-link" to="/app/employee-hub">
-          <ArrowLeft size={15} /> Home
-        </Link>
-        <div className="hub-today">
-          <CalendarDays size={17} />
-          {formatDate(path === "lineup" ? (selectedLineupDate ?? lineupDates.from) : (selectedScheduleDate ?? today))}
-        </div>
-      </header>
-      <nav className="hub-tabs" aria-label="Employee Hub">
-        <NavLink end to="/app/employee-hub">
-          Home
-        </NavLink>
-        {tabs.map(([to, label]) => (
-          <NavLink key={to} to={
-            to === "lineup" && selectedScheduleDate
-              ? `/app/employee-hub/lineup?date=${selectedScheduleDate}`
-              : to === "schedule" && selectedLineupDate
-                ? `/app/employee-hub/schedule?date=${selectedLineupDate}&view=day`
-                : `/app/employee-hub/${to}`
-          }>
-            {label}
-          </NavLink>
-        ))}
-      </nav>
+      <CatalogPageHeader
+        {...(pageCopy[path.startsWith("shift-hub") ? "shift-hub" : path] ??
+          fallbackCopy)}
+        titleId="employee-hub-title"
+      />
       {path === "schedule" ? (
-        <ScheduleView model={model} selectedDate={selectedScheduleDate} />
+        <EmployeeScheduleBoard
+          key={`${workspaceId}:${context?.userId}`}
+          workspaceId={workspaceId}
+          employeeId={model.employee.id}
+          organizationName={context?.workspace.name ?? ""}
+        />
       ) : path === "time-tracking" ? (
         <EmployeeTimeTrackingView workspaceId={workspaceId} />
       ) : path.startsWith("shift-hub") ? (
@@ -200,57 +201,13 @@ export function EmployeeHubPage() {
       ) : path === "lineup" ? (
         <EmployeeLineup
           workspaceId={workspaceId}
-          from={lineupDates.from}
-          to={lineupDates.to}
+          today={lineupDates.from}
           timeFormat={model.settings.time_format}
         />
       ) : (
         <EmployeeMorePage />
       )}
     </section>
-  );
-}
-
-function ScheduleView({ model, selectedDate }: {
-  model: EmployeeHubReadModel;
-  selectedDate: string | null;
-}) {
-  const visibleShifts = selectedDate
-    ? model.shifts.filter((shift) => shift.scheduled_date === selectedDate)
-    : model.shifts;
-  return (
-    <HubSection
-      title="My Schedule"
-      subtitle={selectedDate ? `Your published shifts for ${formatDate(selectedDate)}.` : "Your recently published and upcoming shifts."}
-    >
-      <div className="hub-shift-list">
-        {visibleShifts.map((shift) => (
-          <article
-            className="hub-shift-row"
-            key={shift.id}
-            id={`shift-${shift.id}`}
-            tabIndex={-1}
-          >
-            <ShiftDetails
-              shift={shift}
-              timeFormat={model.settings.time_format}
-            />
-            <Link className="hub-exchange-link" to={`/app/employee-hub/shift-hub?offer=${shift.id}&from=${shift.scheduled_date}&to=${shift.scheduled_date}`}>
-              <ArrowLeftRight size={16} aria-hidden="true" />
-              Find cover or swap
-            </Link>
-          </article>
-        ))}
-      </div>
-      {selectedDate && (
-        <Link className="eh-home-link" to="/app/employee-hub/schedule">
-          Show all upcoming shifts
-        </Link>
-      )}
-      {!visibleShifts.length ? (
-        <Empty text="No published shifts in this range." />
-      ) : null}
-    </HubSection>
   );
 }
 
@@ -557,25 +514,6 @@ function HubSection({
       </div>
       {children}
     </section>
-  );
-}
-function ShiftDetails({
-  shift,
-  timeFormat = "12h",
-}: {
-  shift: EmployeeHubShift;
-  timeFormat?: EmployeeHubReadModel["settings"]["time_format"];
-}) {
-  return (
-    <div className="shift-details">
-      <strong>
-        {formatTimeRange(shift.start_time, shift.end_time, timeFormat)}
-      </strong>
-      <span>
-        {shift.job_name} · {shift.location_name}
-      </span>
-      <small>{formatDate(shift.scheduled_date)}</small>
-    </div>
   );
 }
 function Empty({ text }: { text: string }) {

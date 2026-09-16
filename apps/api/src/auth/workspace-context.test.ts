@@ -63,6 +63,7 @@ beforeEach(() => {
   mocks.serviceFrom.mockReset();
   mocks.serviceFrom.mockReturnValue({ select: mocks.serviceSelect });
   mocks.serviceRpc.mockReset();
+  mocks.serviceRpc.mockResolvedValue({ data: { restricted: false }, error: null });
   mocks.serviceSelect.mockReset();
   mocks.serviceSelect.mockReturnValue({ eq: mocks.serviceEq });
   mocks.serviceStorageFrom.mockReset();
@@ -289,6 +290,28 @@ describe("createSupabaseWorkspaceContextResolver", () => {
     );
     expect(mocks.serviceSelect).toHaveBeenCalledWith("location_id");
     expect(mocks.serviceEq).toHaveBeenCalledWith("membership_id", membershipId);
+  });
+
+  it.each([
+    { label: "pre-migration schema", rpcCode: "PGRST202", columnCode: "42703", allowed: true },
+    { label: "stale RPC cache with lifecycle schema", rpcCode: "PGRST202", columnCode: null, allowed: false },
+    { label: "access service failure", rpcCode: "XX000", columnCode: "42703", allowed: false },
+    { label: "missing dependency inside an installed function", rpcCode: "42883", columnCode: "42703", allowed: false },
+    { label: "schema probe failure", rpcCode: "PGRST202", columnCode: "42501", allowed: false },
+  ])("handles $label without bypassing installed document restrictions", async ({ rpcCode, columnCode, allowed }) => {
+    mocks.authGetUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    mocks.serviceRpc.mockResolvedValueOnce({ data: [{ user_id: userId, workspace_id: workspaceId, workspace_name: "Bistro", membership_id: membershipId, workspace_role: "employee", permission_keys: ["workspace.read"], all_locations: true, onboarding_status: "complete", onboarding_current_step: 4, onboarding_revision: 1 }], error: null })
+      .mockResolvedValueOnce({ data: null, error: { code: rpcCode, message: "Could not find the function public.get_employee_document_access_service(actor_user_id, target_workspace_id) in the schema cache" } });
+    const limit = vi.fn().mockResolvedValue({ data: [], error: columnCode ? { code: columnCode, message: "column lifecycle_revision does not exist" } : null });
+    mocks.serviceSelect.mockReturnValueOnce({ limit });
+    const resolver = createSupabaseWorkspaceContextResolver({ url: "https://example.supabase.co", anonKey: "anon", serviceRoleKey: "service-role" });
+    if (allowed) {
+      const result = await resolver.resolve("valid-token", workspaceId);
+      expect(result?.workspace.id).toBe(workspaceId);
+      expect(result?.documentAccess).toBeUndefined();
+      expect(mocks.serviceFrom).toHaveBeenCalledWith("employee_onboarding_requirements");
+      expect(limit).toHaveBeenCalledWith(0);
+    } else await expect(resolver.resolve("valid-token", workspaceId)).rejects.toThrow("Document access could not be checked");
   });
 
   it("fails closed instead of widening access when scoped locations cannot be resolved", async () => {

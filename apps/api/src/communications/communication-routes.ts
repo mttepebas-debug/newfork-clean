@@ -170,6 +170,35 @@ export function registerCommunicationRoutes(
     );
   }
 
+  app.post(
+    "/v1/workspaces/:workspaceId/communications/announcements/:announcementId/acknowledge",
+    async (request, reply) => {
+      const params = announcementParams.safeParse(request.params);
+      if (!params.success)
+        return reply.status(400).send({ error: "Valid announcement required" });
+      const context = await authorize(
+        request.headers.authorization,
+        params.data.workspaceId,
+        "announcements.read",
+        options.contextResolver,
+        reply,
+        "Announcement access required",
+      );
+      if (!context) return;
+      if (!options.service) return unavailable(reply);
+      try {
+        return reply.send(
+          await options.service.acknowledgeAnnouncement({
+            ...actor(context),
+            announcementId: params.data.announcementId,
+          }),
+        );
+      } catch (error) {
+        return communicationError(reply, error);
+      }
+    },
+  );
+
   app.get(
     "/v1/workspaces/:workspaceId/communications/notifications",
     async (request, reply) => {

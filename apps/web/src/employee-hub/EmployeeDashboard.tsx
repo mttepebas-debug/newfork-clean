@@ -13,7 +13,6 @@ import {
   Plus,
   ShieldCheck,
   Sparkles,
-  Sun,
   Users,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
@@ -43,6 +42,7 @@ import {
 } from "./DashboardCommunications";
 import { PersonalTasks } from "./PersonalReminders";
 import { ShiftSheet, ShiftUnavailable } from "./ShiftSheet";
+import { CatalogPageHeader } from "../views/CatalogPageHeader";
 import "./employee-dashboard.css";
 import { getExchanges } from "./shift-exchanges/exchange-data";
 import { useHubOnline } from "./useHubClock";
@@ -135,40 +135,37 @@ export function EmployeeDashboard({
           )}
         </div>
       </div>
-      <header className="eh-welcome">
-        <div>
-          <div className="eh-eyebrow">
-            <Sun size={15} /> A LITTLE CLARITY FOR YOUR DAY
+      <CatalogPageHeader
+        eyebrow="A LITTLE CLARITY FOR YOUR DAY"
+        title={`${greeting(now)}, ${firstName}.`}
+        titleId="employee-hub-title"
+        description={
+          current
+            ? "Your workday, all in one place."
+            : scheduledToday.length
+              ? `You have ${scheduledToday.length === 1 ? "a shift" : `${scheduledToday.length} shifts`} today. Let’s get you ready.`
+              : "A clear view of what’s next. Make the day yours."
+        }
+        action={
+          <div className="eh-date">
+            <span>
+              {now.toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}
+            </span>
+            <time dateTime={now.toISOString()}>
+              {now.toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: model.settings.time_format !== "24h",
+              })}
+            </time>
+            <small>Local time</small>
           </div>
-          <h1 id="employee-hub-title">
-            {greeting(now)}, <span>{firstName}.</span>
-          </h1>
-          <p>
-            {current
-              ? "Your workday, all in one place."
-              : scheduledToday.length
-                ? `You have ${scheduledToday.length === 1 ? "a shift" : `${scheduledToday.length} shifts`} today. Let’s get you ready.`
-                : "A clear view of what’s next. Make the day yours."}
-          </p>
-        </div>
-        <div className="eh-date">
-          <span>
-            {now.toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
-          </span>
-          <time dateTime={now.toISOString()}>
-            {now.toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: model.settings.time_format !== "24h",
-            })}
-          </time>
-          <small>Local time</small>
-        </div>
-      </header>
+        }
+      />
       {(!online || stale) && (
         <div className="eh-notice" role="status">
           {online
@@ -505,11 +502,7 @@ export function EmployeeDashboard({
           <Announcements workspaceId={model.workspace_id} now={now} />
         )}
         <section className="eh-card eh-team">
-          <CardHeading
-            icon={<Users size={18} />}
-            title="Your team"
-            to={`${base}/my-team`}
-          />
+          <CardHeading icon={<Users size={18} />} title="Your team" />
           <p className="eh-section-description">
             People at your assigned locations
           </p>

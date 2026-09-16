@@ -1,0 +1,183 @@
+// @vitest-environment node
+import { describe, expect, it } from "vitest";
+import { createExportDocument } from "./document";
+import { createScheduleWorkbook, exportSheetName, renderScheduleExcel } from "./excel";
+import { renderSchedulePdf } from "./pdf";
+import { assertSafeExportCanvas, ExportImageTooLargeError } from "./png";
+import { defaultExportPreferences } from "./preferences";
+import type { ScheduleExportSnapshot } from "./snapshot";
+
+function fixture(employeeCount = 2): ScheduleExportSnapshot {
+  return {
+    version: 1, workspaceId: "workspace", workspaceName: "Örnek İşletme", weekStart: "2026-09-14", source: { kind: "published" },
+    dates: Array.from({ length: 7 }, (_, day) => `2026-09-${14 + day}`), layout: "unified",
+    filename: "MRK_SHL_2026-09-14_2026-09-20",
+    locations: [{ id: "a", name: "Merkez", shortName: "MRK" }, { id: "b", name: "Sahil", shortName: "SHL" }],
+    rows: Array.from({ length: employeeCount }, (_, employee) => ({ id: `person-${employee}`, name: `Çalışan ${employee}`, group: null, total: null })),
+    shifts: Array.from({ length: employeeCount }, (_, employee) => [0, 1, 2].map(index => ({
+      id: `shift-${employee}-${index}`, employeeId: `person-${employee}`, locationId: index === 2 ? "b" : "a",
+      date: "2026-09-14", title: `AM-Server ${employee}-${index}`, position: "Server", shiftType: "AM",
+      label: "Açılış", location: index === 2 ? "Sahil" : "Merkez", color: "#15803d",
+      time: "09:00 - 13:00", start: "09:00", end: "13:00", overnight: false, focused: false,
+    }))).flat(),
+  };
+}
+
+async function readPdf(blob: Blob) {
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const task = getDocument({ data: new Uint8Array(await blob.arrayBuffer()), useSystemFonts: false });
+  const pdf = await task.promise;
+  const pages: { text: string; width: number; height: number; belowPage: boolean }[] = [];
+  try {
+    for (let index = 1; index <= pdf.numPages; index++) {
+      const page = await pdf.getPage(index);
+      const viewport = page.getViewport({ scale: 1 });
+      const content = await page.getTextContent();
+      const items = content.items.filter(item => "str" in item);
+      pages.push({ text: items.map(item => item.str).join(" "), width: viewport.width, height: viewport.height,
+        belowPage: items.some(item => item.transform[5] < 0) });
+    }
+    return pages;
+  } finally { await task.destroy(); }
+}
+
+describe("Export v2 real output engines", () => {
+  it("carries closures, important days, ghost references and total footer into PDF/Excel without ghost data rows", async () => {
+    const base = fixture(1);
+    const source: ScheduleExportSnapshot = { ...base, layout: "separate", rows: [{ ...base.rows[0]!, total: "12h" }],
+      ghosts: [{ ...base.shifts[2]!, ghost: true, sourceLocationId: "b", locationId: "a" }],
+      dayDecorations: [null, "a"].map(locationId => ({ locationId, date: base.dates[0]!, closed: true, lines: ["Closed: Maintenance", "event: Opening"] })),
+      totals: { week: "12h", cells: [null, "a", "b"].map(locationId => ({ locationId, date: base.dates[0]!, text: "12h" })) } };
+    const pages = await readPdf(await renderSchedulePdf(source, defaultExportPreferences));
+    expect(pages[0]!.text).toContain("Closed: Maintenance"); expect(pages[0]!.text).toContain("event: Opening");
+    expect(pages[0]!.text).toContain("Reference:"); expect(pages[0]!.text).toContain("Total");
+    const workbook = await createScheduleWorkbook(source, defaultExportPreferences);
+    expect(workbook.getWorksheet("Merged")!.getCell("B2").value).toBe("Closed: Maintenance\nevent: Opening");
+    const localText = JSON.stringify(workbook.getWorksheet("Merkez")!.getSheetValues());
+    expect(localText).toContain("Reference:"); expect(localText).toContain("Total");
+    expect(JSON.stringify(workbook.getWorksheet("Merged")!.getSheetValues())).not.toContain("Reference:");
+    expect(workbook.getWorksheet("Veri")!.rowCount).toBe(source.shifts.length + 1);
+  }, 30000);
+  it.skipIf(!process.env.NEWFORK_EXPORT_QA_OUTPUT)("writes synthetic visual QA PDFs when explicitly requested", async () => {
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const directory = process.env.NEWFORK_EXPORT_QA_OUTPUT!;
+    await mkdir(directory, { recursive: true });
+    const source = fixture(8);
+    for (const destination of ["download", "print"] as const) {
+      const pdf = await renderSchedulePdf(source, { ...defaultExportPreferences, destination });
+      await writeFile(join(directory, `export-v2-${destination}-qa.pdf`), new Uint8Array(await pdf.arrayBuffer()));
+    }
+  }, 30000);
+
+  it("renders one expandable PDF with selectable Unicode, every shift and embedded fonts", async () => {
+    const source = fixture(48);
+    const blob = await renderSchedulePdf(source, defaultExportPreferences);
+    const pages = await readPdf(blob);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]!.height).toBeGreaterThan(5000);
+    expect(pages[0]!.belowPage).toBe(false);
+    expect(pages[0]!.text).toContain("Örnek İşletme");
+    for (const shift of source.shifts) expect(pages[0]!.text).toContain(shift.title);
+    expect(await blob.text()).toContain("/FontFile2");
+  }, 30000);
+
+  it.each(["A4", "LETTER"] as const)("prints %s with repeated headers and at most one location on each page", async paper => {
+    const source = fixture(16);
+    const pages = await readPdf(await renderSchedulePdf(source, { ...defaultExportPreferences, destination: "print", paper }));
+    expect(pages.length).toBeGreaterThan(2);
+    const text = pages.map(page => page.text).join(" ");
+    for (const shift of source.shifts) expect(text).toContain(shift.title);
+    for (const page of pages) {
+      expect(page.text).toContain("Employee");
+      expect(page.text.includes("Merkez")).not.toBe(page.text.includes("Sahil"));
+      expect(page.width).toBeCloseTo(paper === "A4" ? 841.89 : 792);
+      expect(page.height).toBeCloseTo(paper === "A4" ? 595.28 : 612);
+      expect(page.belowPage).toBe(false);
+    }
+  }, 30000);
+
+  it("separates location download pages without shrinking their contents", async () => {
+    const source = { ...fixture(3), layout: "separate" as const };
+    const pages = await readPdf(await renderSchedulePdf(source, { ...defaultExportPreferences, combineHorizontally: false }));
+    expect(pages).toHaveLength(2);
+    expect(pages[0]!.text).toContain("Merkez");
+    expect(pages[1]!.text).toContain("Sahil");
+    expect(pages.every(page => !page.belowPage)).toBe(true);
+    const combined = createExportDocument(source, defaultExportPreferences);
+    expect(combined.pageSize).toEqual({ width: 1624, height: "auto" });
+  }, 30000);
+
+  it("keeps every shift readable when one employee exceeds a print page", async () => {
+    const base = fixture(1);
+    const source = { ...base, locations: [base.locations[0]!], shifts: Array.from({ length: 24 }, (_, index) => ({
+      ...base.shifts[0]!, id: `oversized-${index}`, title: `Continuation shift ${index}`,
+    })) };
+    const pages = await readPdf(await renderSchedulePdf(source, { ...defaultExportPreferences, destination: "print" }));
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages.every(page => !page.belowPage)).toBe(true);
+    for (const shift of source.shifts) expect(pages.map(page => page.text).join(" ")).toContain(shift.title);
+  }, 30000);
+
+  it("fails explicitly instead of dropping a single badge taller than paper", async () => {
+    const base = fixture(1);
+    const source = { ...base, locations: [base.locations[0]!], shifts: [{ ...base.shifts[0]!, label: "Very long label ".repeat(200) }] };
+    await expect(renderSchedulePdf(source, { ...defaultExportPreferences, destination: "print" })).rejects.toThrow("taller than a printable page");
+  }, 30000);
+
+  it("round trips an XLSX with all sheets, shift subrows, row-only freeze and numeric dates/clocks", async () => {
+    const { default: ExcelJS } = await import("exceljs");
+    const blob = await renderScheduleExcel(fixture(), defaultExportPreferences);
+    const book = await new ExcelJS.Workbook().xlsx.load(await blob.arrayBuffer());
+    expect(book.worksheets.map(sheet => sheet.name)).toEqual(["Merged", "Merkez", "Sahil", "Veri"]);
+    const sheet = book.getWorksheet("Merged")!;
+    expect(sheet.views[0]).toMatchObject({ state: "frozen", ySplit: 1, xSplit: 0, topLeftCell: "A2" });
+    expect(sheet.getCell("B1").value).toBeInstanceOf(Date);
+    expect(sheet.getCell("A4").master.address).toBe("A2");
+    expect(sheet.getCell("B4").value).toContain("@Sahil");
+    expect(sheet.getCell("B2").value).toContain("AM-Server 0-0\nAçılış\n@Merkez\n09:00 - 13:00");
+    const data = book.getWorksheet("Veri")!;
+    expect(data.rowCount).toBe(7);
+    expect(data.getCell("B2").value).toBeInstanceOf(Date);
+    // ExcelJS decodes date-formatted numeric time cells back to Date objects.
+    expect(data.getCell("G2").numFmt).toBe("hh:mm");
+    expect(data.getTable("ScheduleData")).toBeDefined();
+    expect(book.getWorksheet("Merkez")!.pageSetup).toMatchObject({ fitToWidth: 1, fitToHeight: 0, printTitlesRow: "1:1", paperSize: 9 });
+  });
+
+  it("keeps hidden fields absent and treats untrusted names as plain strings", async () => {
+    const source = fixture(1);
+    const book = await createScheduleWorkbook({ ...source,
+      rows: source.rows.map(row => ({ ...row, name: '=HYPERLINK("https://example.com")' })),
+      shifts: source.shifts.map(shift => ({ ...shift, title: "Server", shiftType: null, label: null, time: null, start: null, end: null, overnight: null })),
+    }, { ...defaultExportPreferences, paper: "LETTER" });
+    expect(book.getWorksheet("Merged")!.getCell("A2").type).toBe(3);
+    expect(book.getWorksheet("Veri")!.getRow(1).values).toEqual([, "Employee", "Date", "Location", "Position"]);
+    expect(book.getWorksheet("Merkez")!.pageSetup.paperSize).toBe(1);
+  });
+
+  it("allocates safe distinct sheet names", () => {
+    const used = new Set(["merged", "veri"]);
+    expect(exportSheetName("Merged", used)).toBe("Merged (2)");
+    expect(exportSheetName("MERGED", used)).toBe("MERGED (3)");
+    expect(exportSheetName("'A/B:*?'", used)).toBe("A-B---");
+    expect(exportSheetName("history", used)).toBe("history (2)");
+    expect(exportSheetName("x".repeat(50), used)).toHaveLength(31);
+    const unicode = exportSheetName("🌴".repeat(30), used);
+    expect(unicode.length).toBeLessThanOrEqual(31);
+    expect(Array.from(unicode).every(character => character === "🌴")).toBe(true);
+  });
+
+  it("does not silently truncate a shift beyond Excel row-height limits", async () => {
+    const base = fixture(1);
+    await expect(createScheduleWorkbook({ ...base, shifts: [{ ...base.shifts[0]!, label: "Label ".repeat(500) }] }, defaultExportPreferences))
+      .rejects.toThrow("maximum readable row height");
+  });
+
+  it("rejects unsafe PNG dimensions explicitly without resizing or splitting", () => {
+    expect(() => assertSafeExportCanvas(2325, 7438)).not.toThrow();
+    for (const [width, height] of [[0, 1], [20000, 50], [8001, 8000], [NaN, 3], [1, Infinity]]) {
+      expect(() => assertSafeExportCanvas(width!, height!)).toThrow(ExportImageTooLargeError);
+    }
+  });
+});

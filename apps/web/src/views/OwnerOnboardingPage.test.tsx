@@ -60,6 +60,7 @@ vi.mock("../employees/employee-data", () => ({
 }));
 
 vi.mock("../lib/supabase", () => ({
+  apiRequest: vi.fn().mockResolvedValue({ timezone: null, status: "unavailable" }),
   queueOwnerOnboardingInvitationIntent: vi.fn(),
   resetOwnerOnboarding: vi.fn(),
   saveOwnerOnboarding: vi.fn(),
@@ -277,6 +278,9 @@ describe("OwnerOnboardingPage", () => {
     fireEvent.change(screen.getByLabelText("Location name"), {
       target: { value: "Main Dining" },
     });
+    fireEvent.change(screen.getByLabelText(/^Short name/), {
+      target: { value: "MAIN" },
+    });
     fireEvent.change(screen.getByLabelText("Street address"), {
       target: { value: "1 Main St" },
     });
@@ -289,6 +293,11 @@ describe("OwnerOnboardingPage", () => {
     fireEvent.change(screen.getByLabelText("Postal code"), {
       target: { value: "90001" },
     });
+    expect(screen.getByRole("combobox", { name: "Time zone" })).toHaveProperty("value", "");
+    expect(screen.getByRole("button", { name: /add location/i })).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), {
+      target: { value: "America/Los_Angeles" },
+    });
     fireEvent.click(screen.getByRole("button", { name: /add location/i }));
 
     await waitFor(() =>
@@ -296,6 +305,7 @@ describe("OwnerOnboardingPage", () => {
         workspaceId,
         expect.objectContaining({
           name: "Main Dining",
+          short_name: "MAIN",
           street_address: "1 Main St",
           timezone: "America/Los_Angeles",
         }),
@@ -322,6 +332,12 @@ describe("OwnerOnboardingPage", () => {
     fireEvent.change(screen.getByLabelText("Location name"), {
       target: { value: "Patio" },
     });
+    fireEvent.change(screen.getByLabelText(/^Short name/), {
+      target: { value: "PATIO" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), {
+      target: { value: "America/New_York" },
+    });
     fireEvent.click(screen.getByRole("button", { name: /add location/i }));
 
     await waitFor(() =>
@@ -334,7 +350,7 @@ describe("OwnerOnboardingPage", () => {
           region: "",
           postal_code: "",
           country_code: "US",
-          timezone: "America/Los_Angeles",
+          timezone: "America/New_York",
         }),
       ),
     );

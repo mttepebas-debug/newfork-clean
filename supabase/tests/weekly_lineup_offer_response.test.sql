@@ -21,8 +21,8 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  union all select w,employee_user,'employee'::public.workspace_role,true from ws
  union all select w,other_user,'employee'::public.workspace_role,true from ws;
 insert into public.workspace_scheduling_settings(workspace_id) select w from ws on conflict do nothing;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
- select loc,w,'Offer site','1 Test Street','Test City','CA','90001','UTC',true from ws;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
+ select 'T00058', loc,w,'Offer site','1 Test Street','Test City','CA','90001','UTC',true from ws;
 insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time)
  select service,w,'Dinner','18:00','22:00' from ws;

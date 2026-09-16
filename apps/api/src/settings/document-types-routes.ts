@@ -1,4 +1,9 @@
-import { documentTypeInputSchema, type Permission } from "@newfork/shared";
+import {
+  documentPublishCommandSchema,
+  documentApplyCommandSchema,
+  documentTypeInputSchema,
+  type Permission,
+} from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
@@ -21,6 +26,111 @@ export function registerDocumentTypesRoutes(
     contextResolver: WorkspaceContextResolver | null;
   },
 ) {
+  for (const action of ["publication-preview", "publish", "unpublish"] as const)
+    app.post(
+      `/v1/workspaces/:workspaceId/document-types/:documentTypeId/${action}`,
+      async (request, reply) => {
+        const params = documentTypeParams.safeParse(request.params);
+        if (!params.success)
+          return reply
+            .status(400)
+            .send({ error: "Valid document type required" });
+        const context = await authorize(
+          request.headers.authorization,
+          params.data.workspaceId,
+          "documents.manage",
+          options.contextResolver,
+          reply,
+        );
+        if (!context) return;
+        if (!options.service)
+          return reply
+            .status(503)
+            .send({ error: "Document type service is not configured" });
+        try {
+          const input = { actorUserId: context.userId, ...params.data };
+          if (action === "publication-preview")
+            return await options.service.publicationPreview(input);
+          const command = documentPublishCommandSchema.safeParse(request.body);
+          if (!command.success)
+            return reply
+              .status(400)
+              .send({
+                error: "A current publication preview and reason are required",
+              });
+          return await options.service.publish({
+            ...input,
+            ...command.data,
+            targetStatus: action === "publish" ? "published" : "draft",
+          });
+        } catch (error) {
+          return requestError(reply, error);
+        }
+      },
+    );
+  for (const action of ["preview", "apply"] as const)
+    app.post(
+      `/v1/workspaces/:workspaceId/document-types/:documentTypeId/${action}`,
+      async (request, reply) => {
+        const params = documentTypeParams.safeParse(request.params);
+        if (!params.success)
+          return reply
+            .status(400)
+            .send({ error: "Valid document type required" });
+        const context = await authorize(
+          request.headers.authorization,
+          params.data.workspaceId,
+          "documents.manage",
+          options.contextResolver,
+          reply,
+        );
+        if (!context) return;
+        if (!options.service)
+          return reply
+            .status(503)
+            .send({ error: "Document type service is not configured" });
+        const input = { actorUserId: context.userId, ...params.data };
+        try {
+          if (action === "preview") return await options.service.preview(input);
+          const command = documentApplyCommandSchema.safeParse(request.body);
+          if (!command.success)
+            return reply
+              .status(400)
+              .send({ error: "A current preview and reason are required" });
+          return await options.service.apply({ ...input, ...command.data });
+        } catch (error) {
+          return requestError(reply, error);
+        }
+      },
+    );
+  app.get(
+    "/v1/workspaces/:workspaceId/document-types/target-options",
+    async (request, reply) => {
+      const params = workspaceParams.safeParse(request.params);
+      if (!params.success)
+        return reply.status(400).send({ error: "Valid workspace required" });
+      const context = await authorize(
+        request.headers.authorization,
+        params.data.workspaceId,
+        "documents.manage",
+        options.contextResolver,
+        reply,
+      );
+      if (!context) return;
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Document type service is not configured" });
+      try {
+        return await options.service.targetOptions({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+        });
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  );
   app.post(
     "/v1/workspaces/:workspaceId/document-types",
     async (request, reply) => {
@@ -194,7 +304,12 @@ function requestError(reply: FastifyReply, error: unknown) {
     return reply.status(403).send({ error: message });
   if (message.includes("not found"))
     return reply.status(404).send({ error: message });
-  if (message.includes("exists") || message.includes("stale"))
+  if (
+    message.toLowerCase().includes("published") ||
+    message.includes("exists") ||
+    message.includes("stale") ||
+    message.includes("changed; refresh")
+  )
     return reply.status(409).send({ error: message });
   return reply.status(400).send({ error: message });
 }

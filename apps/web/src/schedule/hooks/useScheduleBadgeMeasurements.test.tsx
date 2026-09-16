@@ -2,14 +2,15 @@ import type {
   ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
-import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render, renderHook } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   measureBadgeIntrinsicHeight,
   measureRowBadgeStackHeight,
   readMeasuredHeight,
   renderScheduleBadgeWidthMeasurer,
+  useUniformScheduleBadgeWidth,
 } from "./useScheduleBadgeMeasurements";
 
 const job: ScheduleReadModel["jobs"][number] = {
@@ -56,6 +57,37 @@ const locationGroups = [
     ],
   },
 ];
+
+it("bounds long badge content without reducing an explicit minimum width", () => {
+  const container = document.createElement("div");
+  const badge = document.createElement("span");
+  badge.dataset.scheduleBadgeWidthMeasure = "true";
+  Object.defineProperty(badge, "scrollWidth", { value: 1000 });
+  container.append(badge);
+  const frame = vi
+    .spyOn(window, "requestAnimationFrame")
+    .mockImplementation((callback) => {
+      callback(0);
+      return 1;
+    });
+  try {
+    const { result, rerender, unmount } = renderHook(
+      ({ minimumWidth }) =>
+        useUniformScheduleBadgeWidth({
+          containerRef: { current: container },
+          minimumWidth,
+          version: "long",
+        }),
+      { initialProps: { minimumWidth: 126 } },
+    );
+    expect(result.current).toBe(220);
+    rerender({ minimumWidth: 240 });
+    expect(result.current).toBe(240);
+    unmount();
+  } finally {
+    frame.mockRestore();
+  }
+});
 
 describe("renderScheduleBadgeWidthMeasurer", () => {
   it("includes shift and preset labels in the hidden measurement surface", () => {

@@ -9,7 +9,7 @@ export function CatalogPageHeader({
 }: {
   readonly eyebrow: string;
   readonly title: string;
-  readonly description: string;
+  readonly description?: string;
   readonly titleId: string;
   readonly action?: ReactNode;
 }) {
@@ -21,7 +21,7 @@ export function CatalogPageHeader({
           {title}
           <span aria-hidden className="catalog-page-title-dot" />
         </h1>
-        <p>{description}</p>
+        {description ? <p>{description}</p> : null}
       </div>
       {action ? <div className="catalog-page-actions">{action}</div> : null}
     </header>

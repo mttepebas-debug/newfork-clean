@@ -1,4 +1,9 @@
 import {
+  EmployeeAssignmentDocumentPreview,
+  useEmployeeDocumentAssignmentPreview,
+} from "../documents/EmployeeAssignmentDocumentPreview";
+import { EmployeeDocumentPanel } from "../documents/EmployeeDocumentPanel";
+import {
   employeeInputSchema,
   employeeSectionSchema,
   type EmployeeDetail,
@@ -190,6 +195,30 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     : detail.data
       ? toDraft(detail.data)
       : emptyDraft;
+  const assignmentKey = (value: EmployeeInput) =>
+    JSON.stringify([
+      [...new Set(value.location_ids)].sort(),
+      [...new Set(value.job_ids)].sort(),
+    ]);
+  const needsDocumentPreview =
+    draftEditedRef.current &&
+    !props.creating &&
+    Boolean(detail.data?.user_id) &&
+    context?.documentAccess !== undefined &&
+    assignmentKey(draft) !== assignmentKey(baseline);
+  const documentPreview = useEmployeeDocumentAssignmentPreview({
+    enabled: needsDocumentPreview,
+    actorId: context?.userId ?? "",
+    workspaceId,
+    employeeId: props.employeeId ?? "",
+    locationIds: draft.location_ids,
+    jobIds: draft.job_ids,
+  });
+  const documentPreviewBlocked =
+    needsDocumentPreview &&
+    (documentPreview.isPending ||
+      documentPreview.isFetching ||
+      Boolean(documentPreview.error));
   const baselineKey = JSON.stringify(baseline);
   const dirty = draftEditedRef.current && JSON.stringify(draft) !== baselineKey;
 
@@ -705,6 +734,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       setError(parsed.error.issues[0]?.message ?? "Check the employee details");
       return;
     }
+    if (documentPreviewBlocked) return;
     saveMutation.mutate();
   };
 
@@ -982,6 +1012,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       props.creating,
                     )
                   : null}
+                {needsDocumentPreview && (
+                  <EmployeeAssignmentDocumentPreview query={documentPreview} />
+                )}
                 {props.creating && references.isLoading ? (
                   <p role="status">Loading locations, jobs and roles...</p>
                 ) : null}
@@ -1287,7 +1320,12 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   </Button>
                 ) : null}
                 {!readOnly ? (
-                  <Button type="submit" disabled={busy || (!dirty && !done)}>
+                  <Button
+                    type="submit"
+                    disabled={
+                      busy || documentPreviewBlocked || (!dirty && !done)
+                    }
+                  >
                     {saveMutation.isPending
                       ? "Saving"
                       : done
@@ -1619,17 +1657,10 @@ function renderSection(
       <p>Save the employee first to enter availability.</p>
     );
   if (section === "documents")
-    return (
-      <OnboardingReviewPanel
-        onboarding={onboarding}
-        loading={onboardingLoading}
-        kinds={["document", "acknowledgement"]}
-        canReviewDocuments={canReviewDocuments}
-        onReview={onReview}
-        reviewing={reviewing}
-        onOpenDocument={onOpenDocument}
-        openingDocument={openingDocument}
-      />
+    return detail ? (
+      <EmployeeDocumentPanel employeeId={detail.id} />
+    ) : (
+      <p>Save the employee before reviewing documents.</p>
     );
   if (section === "access")
     return (

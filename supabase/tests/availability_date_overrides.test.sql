@@ -9,8 +9,8 @@ select public.availability_lock_workspace(w) from ado;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select actor,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','date-overrides@example.test','','{}','{}',now(),now() from ado;
 insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from ado;
-insert into public.locations(id,workspace_id,name,timezone,street_address,city,region,postal_code)
-select loc,w,'Date overrides 25001','UTC','1 Test St','Test','CA','94000' from ado;
+insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code)
+select 'T00002', loc,w,'Date overrides 25001','UTC','1 Test St','Test','CA','94000' from ado;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 select emp,w,actor,'E-995501','Dated','Availability',manager from ado;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by) select w,emp,loc,manager from ado;

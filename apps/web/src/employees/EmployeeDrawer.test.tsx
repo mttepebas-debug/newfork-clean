@@ -12,10 +12,24 @@ import type {
   EmployeeSection,
   WeeklyPreferenceRead,
 } from "@newfork/shared";
-import { emptyWeeklyPreference } from "@newfork/shared";
+import {
+  defaultDocumentLifecycleSettings,
+  emptyWeeklyPreference,
+} from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  getDocument,
+  listDocuments,
+  previewEmployeeDocumentAssignments,
+} from "../documents/document-data";
+vi.mock("../documents/document-data", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../documents/document-data")>()),
+  getDocument: vi.fn(),
+  previewEmployeeDocumentAssignments: vi.fn(),
+  listDocuments: vi.fn().mockResolvedValue([]),
+}));
 import { EmployeeDrawer } from "./EmployeeDrawer";
 import {
   loadWeeklyPreferences,
@@ -425,6 +439,8 @@ describe("EmployeeDrawer", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    delete (context as ActiveWorkspaceContext).documentAccess;
+    vi.mocked(listDocuments).mockResolvedValue([]);
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
     vi.mocked(previewWeeklyPreferences).mockResolvedValue({ items: [] });
   });
@@ -535,7 +551,9 @@ describe("EmployeeDrawer", () => {
   it("shows the normal empty state when the employee has no onboarding case", async () => {
     renderDrawer("documents", detail, null);
 
-    expect(await screen.findByText("Onboarding not started")).toBeTruthy();
+    expect(
+      await screen.findByText("No documents match these filters."),
+    ).toBeTruthy();
     expect(screen.queryByText("Loading onboarding...")).toBeNull();
     expect(getEmployeeOnboardingReview).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("button", { name: /Accept / })).toBeNull();
@@ -1050,94 +1068,55 @@ describe("EmployeeDrawer", () => {
     );
   });
 
-  it("labels document review actions by requirement and opens the selected document", async () => {
-    const open = vi.spyOn(window, "open").mockImplementation(() => null);
-    const onOnboardingReviewSuccess = vi.fn();
-    vi.mocked(getEmployeeDocumentDownload).mockResolvedValue(
-      "https://documents.example.test/download",
-    );
-
-    renderDrawer(
-      "documents",
-      detail,
-      {
-        case_id: "aa000000-0000-4000-8000-000000000001",
-        employee_id: employeeId,
-        case_status: "submitted",
-        revision: 5,
-        submitted_at: "2026-09-02T19:00:00.000Z",
-        progress_completed: 2,
-        progress_total: 3,
-        ssn_present: false,
-        requirements: [
-          {
-            id: "ab000000-0000-4000-8000-000000000002",
-            kind: "document",
-            title: "Food handler card",
-            description: "Review the uploaded certification.",
-            status: "awaiting_review",
-            required: true,
-            blocks_activation: true,
-            requires_review: true,
-            sort_order: 20,
-            source_id: null,
-            accepted_formats: ["pdf"],
-            content_text: null,
-            content_digest: null,
-            intent_statement: null,
-            rejection_reason: null,
-          },
-        ],
+  it("opens the shared document detail from the employee-scoped list", async () => {
+    const obligation = {
+      id: "ab000000-0000-4000-8000-000000000002",
+      workspace_id: workspaceId,
+      employee_id: employeeId,
+      employee_name: "Alex Kim",
+      title: "Food handler card",
+      source_id: null,
+      kind: "document" as const,
+      mode: "required" as const,
+      status: "missing" as const,
+      revision: 1,
+      requires_review: true,
+      deadline_at: null,
+      remaining_seconds: null,
+      rejection_reason: null,
+      suspended: false,
+      submitted_id: null,
+      approved_id: null,
+      location_ids: [],
+      location_names: [],
+      timezone: "America/Los_Angeles",
+      settings: {
+        ...defaultDocumentLifecycleSettings,
+        mode: "required" as const,
       },
-      onOnboardingReviewSuccess,
-    );
-
-    expect(
-      await screen.findByRole("article", { name: "Review Food handler card" }),
-    ).toBeTruthy();
-    expect(
-      screen
-        .getByRole("button", { name: "Documents" })
-        .getAttribute("aria-current"),
-    ).toBe("page");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Open Food handler card" }),
-    );
-
-    await waitFor(() =>
-      expect(getEmployeeDocumentDownload).toHaveBeenCalledWith(
-        workspaceId,
-        employeeId,
-        "ab000000-0000-4000-8000-000000000002",
-      ),
-    );
-    expect(open).toHaveBeenCalledWith(
-      "https://documents.example.test/download",
-      "_blank",
-      "noopener,noreferrer",
-    );
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Accept Food handler card" }),
-    );
-    await waitFor(() =>
-      expect(reviewEmployeeOnboarding).toHaveBeenCalledWith(
-        workspaceId,
-        employeeId,
-        {
-          action: "accept_requirement",
-          requirementId: "ab000000-0000-4000-8000-000000000002",
-          reason: "",
-          revision: 5,
-        },
-      ),
-    );
-    expect(onOnboardingReviewSuccess).toHaveBeenCalledWith({
-      action: "accept_requirement",
-      requirementId: "ab000000-0000-4000-8000-000000000002",
+      accepted_formats: ["pdf" as const],
+      tracks_expiry: false,
+    };
+    vi.mocked(listDocuments).mockResolvedValue([obligation]);
+    vi.mocked(getDocument).mockResolvedValue({
+      obligation,
+      submissions: [],
+      history: [],
     });
-
-    open.mockRestore();
+    renderDrawer("documents", detail);
+    fireEvent.click(
+      await screen.findByRole("row", {
+        name: "Alex Kim Food handler card Missing",
+      }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Food handler card" }),
+    ).toBeTruthy();
+    expect(getDocument).toHaveBeenCalledWith(
+      { workspaceId, selfOnly: false },
+      obligation.id,
+    );
+    expect(reviewEmployeeOnboarding).not.toHaveBeenCalled();
   });
 
   it("requires termination details and submits a worksite-local effective time", async () => {
@@ -1181,5 +1160,84 @@ describe("EmployeeDrawer", () => {
         "Employee terminated. 2 published shifts released.",
       ),
     ).toBeTruthy();
+  });
+});
+
+describe("employee assignment document impact", () => {
+  it("blocks changed assignments for the current preview and ignores a late older result", async () => {
+    (context as ActiveWorkspaceContext).documentAccess = { restricted: false };
+    let resolveA!: (value: []) => void;
+    let resolveB!: (value: []) => void;
+    vi.mocked(previewEmployeeDocumentAssignments)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveA = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveB = resolve;
+          }),
+      );
+    const fixture = {
+      ...detail,
+      user_id: context.userId,
+      locations: [
+        ...detail.locations,
+        {
+          ...detail.locations[0]!,
+          id: "11000000-0000-4000-8000-000000000002",
+          name: "Secondary Branch",
+          primary: false,
+        },
+      ],
+      jobs: [
+        ...detail.jobs,
+        {
+          ...detail.jobs[0]!,
+          id: "22000000-0000-4000-8000-000000000002",
+          name: "Runner",
+          primary: false,
+        },
+      ],
+    } satisfies EmployeeDetail;
+    renderDrawer("employment", fixture);
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "Secondary Branch" }),
+    );
+    await waitFor(() =>
+      expect(previewEmployeeDocumentAssignments).toHaveBeenCalledTimes(1),
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Runner" }));
+    await waitFor(() =>
+      expect(previewEmployeeDocumentAssignments).toHaveBeenCalledTimes(2),
+    );
+    resolveA([]);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toHaveProperty("disabled", true),
+    );
+    expect(saveEmployee).not.toHaveBeenCalled();
+    resolveB([]);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toHaveProperty("disabled", false),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(saveEmployee).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({
+          location_ids: [detail.locations[0]!.id],
+          job_ids: [detail.jobs[0]!.id],
+        }),
+        employeeId,
+      ),
+    );
+    delete (context as ActiveWorkspaceContext).documentAccess;
   });
 });

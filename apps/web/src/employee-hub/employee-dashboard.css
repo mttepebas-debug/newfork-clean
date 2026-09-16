@@ -10,13 +10,9 @@
   --eh-green: #25624d;
   color: var(--eh-ink);
 }
-.employee-hub-page:has(.eh-dashboard) {
-  padding: 0;
-}
+/* The page container owns width, gutters and top spacing. */
 .eh-dashboard {
-  max-width: 1376px;
-  margin: 0 auto;
-  padding: 0 36px 28px;
+  min-width: 0;
 }
 .eh-dashboard *,
 .eh-sheet *,
@@ -137,13 +133,6 @@
   line-height: 13px;
   text-align: center;
 }
-.eh-welcome {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
-  padding: 34px 0 30px;
-}
 .eh-eyebrow {
   display: flex;
   align-items: center;
@@ -152,26 +141,6 @@
   font-weight: 650;
   letter-spacing: 1.6px;
   line-height: 1.5;
-}
-.eh-welcome .eh-eyebrow {
-  color: var(--eh-muted);
-  margin-bottom: 12px;
-}
-.eh-welcome h1 {
-  font-size: clamp(26px, 2.5vw, 37px);
-  font-weight: 450;
-  letter-spacing: -1.2px;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-.eh-welcome h1 span {
-  font-weight: 650;
-}
-.eh-welcome p {
-  color: var(--eh-muted);
-  font-size: 13px;
-  line-height: 1.6;
-  margin-top: 10px;
 }
 .eh-date {
   display: flex;
@@ -1063,23 +1032,6 @@
   .eh-context-actions {
     gap: 1px;
   }
-  .eh-welcome {
-    display: block;
-    padding: 23px 0;
-  }
-  .eh-welcome .eh-eyebrow {
-    font-size: 8px;
-    letter-spacing: 1.5px;
-    margin-bottom: 9px;
-  }
-  .eh-welcome h1 {
-    font-size: 28px;
-    letter-spacing: -0.9px;
-  }
-  .eh-welcome p {
-    font-size: 12px;
-    margin-top: 8px;
-  }
   .eh-date {
     display: flex;
     align-items: center;
@@ -1220,12 +1172,6 @@
   }
 }
 @media (max-width: 350px) {
-  .eh-dashboard {
-    padding-inline: 12px;
-  }
-  .eh-welcome h1 {
-    font-size: 25px;
-  }
   .eh-hero {
     padding: 19px;
   }

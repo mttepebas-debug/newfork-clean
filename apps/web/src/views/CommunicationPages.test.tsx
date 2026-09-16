@@ -16,6 +16,7 @@ import { AnnouncementsPage } from "./AnnouncementsPage";
 import { NotificationsPage } from "./NotificationsPage";
 import { WorkspacePage } from "./WorkspacePage";
 import {
+  acknowledgeAnnouncement,
   actOnNotification,
   getAnnouncements,
   getNotifications,
@@ -60,6 +61,7 @@ vi.mock("../communications/communications-data", () => ({
   getWorkspaceDashboard: vi.fn(),
   saveWorkspaceLayout: vi.fn().mockResolvedValue({ status: "saved" }),
   getAnnouncements: vi.fn(),
+  acknowledgeAnnouncement: vi.fn().mockResolvedValue({ status: "saved" }),
   saveAnnouncement: vi.fn(),
   transitionAnnouncement: vi.fn(),
   getNotifications: vi.fn(),
@@ -68,11 +70,7 @@ vi.mock("../communications/communications-data", () => ({
     .mockResolvedValue({ status: "saved", affected: 1 }),
 }));
 
-function renderRoute(
-  path: string,
-  element: React.ReactNode,
-  routePath = "*",
-) {
+function renderRoute(path: string, element: React.ReactNode, routePath = "*") {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -184,6 +182,52 @@ describe("Phase 8 communication pages", () => {
     expect(screen.queryByText("Archived draft")).toBeNull();
     expect(screen.queryByText("Active published")).toBeNull();
     expect(screen.queryByText("Active scheduled")).toBeNull();
+  });
+
+  it("shows employees a read-only list they can acknowledge", async () => {
+    const readOnly = { can_edit: false, can_publish: false, can_cancel: false };
+    vi.mocked(getAnnouncements).mockResolvedValue({
+      workspace_id: workspaceId,
+      can_manage: false,
+      locations: [],
+      announcements: [
+        announcement({
+          id: "a8200000-0000-4000-8000-000000000007",
+          title: "Unread update",
+          status: "published",
+          published_at: now,
+          ...readOnly,
+        }),
+        announcement({
+          id: "a8200000-0000-4000-8000-000000000008",
+          title: "Seen update",
+          status: "published",
+          published_at: now,
+          acknowledged_at: now,
+          ...readOnly,
+        }),
+      ],
+    });
+    renderRoute("/app/announcements", <AnnouncementsPage />);
+
+    expect(await screen.findByText("Unread update")).toBeTruthy();
+    expect(screen.getByText("Seen update")).toBeTruthy();
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Add announcement" }),
+    ).toBeNull();
+    expect(
+      screen.getAllByRole("columnheader").map((cell) => cell.textContent),
+    ).toEqual(["Announcement", "Published date", "Published by", "Status", ""]);
+    expect(screen.getByRole("img", { name: "Acknowledged" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Acknowledge" }));
+    await waitFor(() =>
+      expect(acknowledgeAnnouncement).toHaveBeenCalledWith(
+        workspaceId,
+        "a8200000-0000-4000-8000-000000000007",
+      ),
+    );
   });
 
   it("filters announcements by location", async () => {

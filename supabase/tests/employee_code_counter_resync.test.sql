@@ -11,8 +11,8 @@ values ('26100000-0000-4000-8000-000000000001', 'Employee Counter Workspace', '1
 insert into public.workspace_memberships (id, workspace_id, user_id, role, all_locations)
 values ('36100000-0000-4000-8000-000000000001', '26100000-0000-4000-8000-000000000001', '16100000-0000-4000-8000-000000000001', 'owner', true);
 
-insert into public.locations (id, workspace_id, name, street_address, city, region, postal_code, timezone)
-values ('46100000-0000-4000-8000-000000000001', '26100000-0000-4000-8000-000000000001', 'Counter Location', '1 Counter St', 'Los Angeles', 'CA', '90001', 'America/Los_Angeles');
+insert into public.locations (short_name, id, workspace_id, name, street_address, city, region, postal_code, timezone)
+values ('T00011','46100000-0000-4000-8000-000000000001', '26100000-0000-4000-8000-000000000001', 'Counter Location', '1 Counter St', 'Los Angeles', 'CA', '90001', 'America/Los_Angeles');
 
 insert into public.departments (id, workspace_id, name)
 values ('56100000-0000-4000-8000-000000000001', '26100000-0000-4000-8000-000000000001', 'Counter Department');

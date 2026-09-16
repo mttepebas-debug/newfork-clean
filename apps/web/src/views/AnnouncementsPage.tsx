@@ -22,6 +22,7 @@ import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { safeAppActionUrl } from "../communications/action-url";
 import {
+  acknowledgeAnnouncement,
   getAnnouncements,
   saveAnnouncement,
   transitionAnnouncement,
@@ -34,7 +35,7 @@ import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
 
 type StatusFilter = "all" | "draft" | "scheduled" | "published";
-type SortKey = "title" | "audience" | "status" | "date";
+type SortKey = "title" | "audience" | "author" | "status" | "date";
 type Option = { id: string; name: string };
 const roles = ["owner", "admin", "manager", "employee"] as const;
 const roleOptions = roles.map((id) => ({ id, name: capitalize(id) }));
@@ -59,6 +60,8 @@ export function AnnouncementsPage() {
     queryFn: () => getAnnouncements(workspaceId),
     enabled: Boolean(workspaceId),
   });
+  // Employees only follow published updates addressed to them (read-only).
+  const reader = query.data ? !query.data.can_manage : false;
   const selected = query.data?.announcements.find(
     (item) => item.id === announcementId,
   );
@@ -68,7 +71,11 @@ export function AnnouncementsPage() {
         ? (item.publish_at ?? item.created_at)
         : sort.key === "audience"
           ? audienceLabel(item)
-          : item[sort.key];
+          : sort.key === "author"
+            ? item.author_name
+            : sort.key === "status" && reader
+              ? (item.acknowledged_at ?? "")
+              : item[sort.key];
     return (query.data?.announcements ?? [])
       .filter(
         (item) =>
@@ -86,7 +93,19 @@ export function AnnouncementsPage() {
             sensitivity: "base",
           }) || a.id.localeCompare(b.id)) * (sort.descending ? -1 : 1),
       );
-  }, [query.data, filter, locationId, search, showArchived, sort]);
+  }, [query.data, filter, locationId, search, showArchived, sort, reader]);
+  const locationOptions = reader
+    ? [
+        ...new Map(
+          (query.data?.announcements ?? []).flatMap((item) =>
+            item.location_ids.map(
+              (id, index) =>
+                [id, { id, name: item.location_names[index] ?? id }] as const,
+            ),
+          ),
+        ).values(),
+      ]
+    : (query.data?.locations ?? []);
   const activeStatusCounts = useMemo(
     () =>
       (query.data?.announcements ?? []).reduce(
@@ -120,7 +139,11 @@ export function AnnouncementsPage() {
         eyebrow="THE RIGHT UPDATE. THE RIGHT PEOPLE."
         title="Announcements"
         titleId="announcements-title"
-        description="Create, schedule, and publish updates for the right teams."
+        description={
+          query.data?.can_manage
+            ? "Create, schedule, and publish updates for the right teams."
+            : "Updates your managers have shared with your team."
+        }
         action={
           query.data?.can_manage ? (
             <Button
@@ -134,69 +157,71 @@ export function AnnouncementsPage() {
         }
       />
       <div className="job-catalog-toolbar catalog-toolbar">
-        <div className="announcement-toolbar-controls catalog-toolbar-status-row">
-          <div
-            className="catalog-status-tabs"
-            role="tablist"
-            aria-label="Announcement status"
-          >
-            {(["all", "draft", "scheduled", "published"] as const)
-              .filter(
-                (value) =>
-                  query.data?.can_manage ||
-                  value === "all" ||
-                  value === "published",
-              )
-              .map((value) => {
-                const count =
-                  value === "draft" || value === "scheduled"
-                    ? activeStatusCounts[value]
-                    : 0;
-                return (
-                  <button
-                    type="button"
-                    key={value}
-                    role="tab"
-                    aria-selected={!showArchived && filter === value}
-                    aria-label={
-                      count
-                        ? `${capitalize(value)} (${count})`
-                        : capitalize(value)
-                    }
-                    className={
-                      !showArchived && filter === value ? "active" : ""
-                    }
-                    onClick={() => {
-                      setShowArchived(false);
-                      setFilter(value);
-                    }}
-                  >
-                    <span>{capitalize(value)}</span>
-                    {count ? (
-                      <span
-                        className="announcement-status-tab-count"
-                        aria-hidden="true"
-                      >
-                        {count}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            {query.data?.can_manage && (
-              <button
-                type="button"
-                role="tab"
-                className={showArchived ? "active" : ""}
-                aria-selected={showArchived}
-                onClick={() => setShowArchived(true)}
-              >
-                <Archive size={14} aria-hidden />
-                Archived
-              </button>
-            )}
+        {!reader && (
+          <div className="announcement-toolbar-controls catalog-toolbar-status-row">
+            <div
+              className="catalog-status-tabs"
+              role="tablist"
+              aria-label="Announcement status"
+            >
+              {(["all", "draft", "scheduled", "published"] as const)
+                .filter(
+                  (value) =>
+                    query.data?.can_manage ||
+                    value === "all" ||
+                    value === "published",
+                )
+                .map((value) => {
+                  const count =
+                    value === "draft" || value === "scheduled"
+                      ? activeStatusCounts[value]
+                      : 0;
+                  return (
+                    <button
+                      type="button"
+                      key={value}
+                      role="tab"
+                      aria-selected={!showArchived && filter === value}
+                      aria-label={
+                        count
+                          ? `${capitalize(value)} (${count})`
+                          : capitalize(value)
+                      }
+                      className={
+                        !showArchived && filter === value ? "active" : ""
+                      }
+                      onClick={() => {
+                        setShowArchived(false);
+                        setFilter(value);
+                      }}
+                    >
+                      <span>{capitalize(value)}</span>
+                      {count ? (
+                        <span
+                          className="announcement-status-tab-count"
+                          aria-hidden="true"
+                        >
+                          {count}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              {query.data?.can_manage && (
+                <button
+                  type="button"
+                  role="tab"
+                  className={showArchived ? "active" : ""}
+                  aria-selected={showArchived}
+                  onClick={() => setShowArchived(true)}
+                >
+                  <Archive size={14} aria-hidden />
+                  Archived
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
         <div className="catalog-toolbar-filter-row">
           <select
             className="toolbar-filter-select"
@@ -205,7 +230,7 @@ export function AnnouncementsPage() {
             onChange={(event) => setLocationId(event.target.value)}
           >
             <option value="">All locations</option>
-            {query.data?.locations.map((location) => (
+            {locationOptions.map((location) => (
               <option key={location.id} value={location.id}>
                 {location.name}
               </option>
@@ -240,15 +265,22 @@ export function AnnouncementsPage() {
           <div className="job-catalog" role="table" aria-label="Announcements">
             <div
               className="job-column-headings catalog-column-headings announcement-catalog-row"
+              data-reader={reader}
               role="row"
             >
-              {(
-                [
-                  ["title", "Announcement"],
-                  ["audience", "Audience"],
-                  ["status", "Status"],
-                  ["date", "Publish date"],
-                ] as const
+              {(reader
+                ? ([
+                    ["title", "Announcement"],
+                    ["date", "Published date"],
+                    ["author", "Published by"],
+                    ["status", "Status"],
+                  ] as const)
+                : ([
+                    ["title", "Announcement"],
+                    ["audience", "Audience"],
+                    ["status", "Status"],
+                    ["date", "Publish date"],
+                  ] as const)
               ).map(([key, label]) => (
                 <div
                   key={key}
@@ -282,6 +314,7 @@ export function AnnouncementsPage() {
                   role="row"
                   key={item.id}
                   data-archived={isArchived(item)}
+                  data-reader={reader}
                   onClick={(event) => {
                     if (
                       !(event.target as HTMLElement).closest("button,details,a")
@@ -315,32 +348,61 @@ export function AnnouncementsPage() {
                           {item.body}
                         </span>
                         <span className="job-mobile-meta">
-                          {statusLabel(item)} ·{" "}
+                          {reader ? item.author_name : statusLabel(item)} ·{" "}
                           {formatDate(item.publish_at ?? item.created_at)}
                         </span>
                       </span>
                     </button>
                   </div>
-                  <span
-                    role="cell"
-                    className="announcement-audience-cell"
-                    title={audienceLabel(item)}
-                  >
-                    {audienceLabel(item)}
-                  </span>
-                  <span role="cell" className="announcement-status-cell">
-                    <span
-                      className="announcement-status"
-                      data-status={isArchived(item) ? "archived" : item.status}
-                    >
-                      {statusLabel(item)}
-                    </span>
-                  </span>
-                  <span role="cell" className="announcement-date-cell">
-                    {item.publish_at
-                      ? formatDate(item.publish_at)
-                      : "Not published"}
-                  </span>
+                  {reader ? (
+                    <>
+                      <span role="cell" className="announcement-date-cell">
+                        {formatDate(
+                          item.published_at ??
+                            item.publish_at ??
+                            item.created_at,
+                        )}
+                      </span>
+                      <span
+                        role="cell"
+                        className="announcement-audience-cell"
+                        title={item.author_name}
+                      >
+                        {item.author_name}
+                      </span>
+                      <span role="cell" className="announcement-status-cell">
+                        <AcknowledgeControl
+                          item={item}
+                          workspaceId={workspaceId}
+                        />
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span
+                        role="cell"
+                        className="announcement-audience-cell"
+                        title={audienceLabel(item)}
+                      >
+                        {audienceLabel(item)}
+                      </span>
+                      <span role="cell" className="announcement-status-cell">
+                        <span
+                          className="announcement-status"
+                          data-status={
+                            isArchived(item) ? "archived" : item.status
+                          }
+                        >
+                          {statusLabel(item)}
+                        </span>
+                      </span>
+                      <span role="cell" className="announcement-date-cell">
+                        {item.publish_at
+                          ? formatDate(item.publish_at)
+                          : "Not published"}
+                      </span>
+                    </>
+                  )}
                   <div role="cell">
                     <CatalogRowMenu name={item.title}>
                       <button type="button" onClick={() => open(item)}>
@@ -376,7 +438,9 @@ export function AnnouncementsPage() {
                 <p>
                   {search || filter !== "all" || locationId || showArchived
                     ? "Try another search or status."
-                    : "Create an announcement to share an update with your team."}
+                    : reader
+                      ? "Updates your managers share with your locations will appear here."
+                      : "Create an announcement to share an update with your team."}
                 </p>
               </div>
             )}
@@ -760,6 +824,9 @@ function AnnouncementEditor({
             >
               {editable ? "Cancel" : "Close"}
             </Button>
+            {item && !editable && item.status !== "draft" && (
+              <AcknowledgeControl item={item} workspaceId={workspaceId} />
+            )}
             {item?.can_publish && !confirmDelete && (
               <Button
                 className="job-secondary-button"
@@ -790,6 +857,43 @@ function AnnouncementEditor({
         </div>
       </form>
     </CatalogDrawer>
+  );
+}
+
+function AcknowledgeControl({
+  item,
+  workspaceId,
+}: {
+  item: AnnouncementRecord;
+  workspaceId: string;
+}) {
+  const client = useQueryClient();
+  const acknowledge = useMutation({
+    mutationFn: () => acknowledgeAnnouncement(workspaceId, item.id),
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: ["announcements", workspaceId] }),
+  });
+  if (item.acknowledged_at)
+    return (
+      <span
+        className="announcement-acknowledged"
+        role="img"
+        aria-label="Acknowledged"
+        title={`Acknowledged ${formatDate(item.acknowledged_at)}`}
+      >
+        <CheckCircle2 size={18} aria-hidden />
+      </span>
+    );
+  return (
+    <button
+      type="button"
+      className="announcement-acknowledge-button"
+      disabled={acknowledge.isPending}
+      title={acknowledge.error?.message}
+      onClick={() => acknowledge.mutate()}
+    >
+      {acknowledge.isPending ? "Saving..." : "Acknowledge"}
+    </button>
   );
 }
 

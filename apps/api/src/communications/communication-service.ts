@@ -25,6 +25,11 @@ const savedResultSchema = z.object({
   affected: z.coerce.number().int().nonnegative().optional(),
 });
 
+const acknowledgedResultSchema = z.object({
+  status: z.literal("saved"),
+  acknowledged_at: z.string().datetime({ offset: true }),
+});
+
 const notificationCursorSchema = z.object({
   created_at: z.string().datetime({ offset: true }),
   id: z.string().uuid(),
@@ -51,6 +56,9 @@ export interface CommunicationService {
   cancelAnnouncement(
     input: ActorInput & { announcementId: string; expectedRevision: number },
   ): Promise<z.infer<typeof announcementMutationSchema>>;
+  acknowledgeAnnouncement(
+    input: ActorInput & { announcementId: string },
+  ): Promise<z.infer<typeof acknowledgedResultSchema>>;
   getNotifications(
     input: Omit<ActorInput, "workspaceId"> & {
       workspaceId: string | null;
@@ -159,6 +167,14 @@ export function createCommunicationServiceWithClient(
           ...actorArgs(input),
           target_announcement_id: input.announcementId,
           target_expected_revision: input.expectedRevision,
+        }),
+      );
+    },
+    async acknowledgeAnnouncement(input) {
+      return acknowledgedResultSchema.parse(
+        await rpc("acknowledge_announcement_service", {
+          ...actorArgs(input),
+          target_announcement_id: input.announcementId,
         }),
       );
     },

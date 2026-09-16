@@ -1,5 +1,8 @@
+import { LifecycleAssignmentFields } from "../documents/DocumentLifecycleFields";
+import { DocumentDefinitionApply } from "../documents/DocumentDefinitionApply";
 import { CatalogDrawer } from "./CatalogDrawer";
 import {
+  defaultDocumentLifecycleSettings,
   signatureRetentionPolicyInputSchema,
   signatureTemplateDraftInputSchema,
   type SignatureRetentionPolicy,
@@ -55,6 +58,10 @@ function defaultTemplateDraft(
   retentionPolicyId = "",
 ): SignatureTemplateDraftInput {
   return {
+    lifecycle_settings: {
+      ...defaultDocumentLifecycleSettings,
+      mode: "required",
+    },
     title: "",
     summary: "",
     content_text: "",
@@ -94,6 +101,7 @@ export default function SignatureTemplatesSettingsPage() {
   const [editingTemplate, setEditingTemplate] = useState<
     SignatureTemplate | "new" | null
   >(null);
+  const [policyApplying, setPolicyApplying] = useState(false);
   const [templateDraft, setTemplateDraft] =
     useState<SignatureTemplateDraftInput>(defaultTemplateDraft());
   const policyContentRef = useRef<HTMLTextAreaElement>(null);
@@ -328,6 +336,7 @@ export default function SignatureTemplatesSettingsPage() {
     ? signatureTemplateDraftInputSchema.parse(templateBaselineVersion)
     : defaultTemplateDraft(activePolicies[0]?.id);
   const templateStatusMutationPending =
+    policyApplying ||
     templateSaveMutation.isPending ||
     templatePublishMutation.isPending ||
     templateUnpublishMutation.isPending ||
@@ -753,53 +762,39 @@ export default function SignatureTemplatesSettingsPage() {
                       }
                     />
                   </label>
-                  <fieldset className="document-options acknowledgement-options">
-                    <legend>Onboarding behavior</legend>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={templateDraft.required_at_onboarding}
-                        onChange={(event) =>
-                          setTemplateDraft((current) => ({
-                            ...current,
-                            required_at_onboarding: event.target.checked,
-                            blocks_activation: event.target.checked
-                              ? current.blocks_activation
-                              : false,
-                          }))
-                        }
-                      />
-                      <span>
-                        <strong>Required during onboarding</strong>
-                        <small>
-                          Phase 4 will snapshot this template onto onboarding
-                          cases.
-                        </small>
-                      </span>
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={templateDraft.blocks_activation}
-                        disabled={!templateDraft.required_at_onboarding}
-                        onChange={(event) =>
-                          setTemplateDraft((current) => ({
-                            ...current,
-                            blocks_activation: event.target.checked,
-                          }))
-                        }
-                      />
-                      <span>
-                        <strong>Block activation until complete</strong>
-                        <small>
-                          Completion remains separate from account membership
-                          state.
-                        </small>
-                      </span>
-                    </label>
-                  </fieldset>
+                  <LifecycleAssignmentFields
+                    kind="acknowledgement"
+                    workspaceId={workspaceId}
+                    settings={
+                      templateDraft.lifecycle_settings ?? {
+                        ...defaultDocumentLifecycleSettings,
+                        mode: templateDraft.required_at_onboarding
+                          ? "required"
+                          : "optional",
+                      }
+                    }
+                    onChange={(settings) =>
+                      setTemplateDraft((current) => ({
+                        ...current,
+                        lifecycle_settings: settings,
+                        required_at_onboarding: settings.mode === "required",
+                        blocks_activation: settings.mode === "required",
+                      }))
+                    }
+                  />
                 </div>
               </fieldset>
+              {editingTemplate &&
+                editingTemplate !== "new" &&
+                publishedFor(editingTemplate.id) && (
+                  <DocumentDefinitionApply
+                    kind="acknowledgement"
+                    workspaceId={workspaceId}
+                    id={publishedFor(editingTemplate.id)!.id}
+                    disabled={templateStatusMutationPending || canSaveTemplate}
+                    onBusyChange={setPolicyApplying}
+                  />
+                )}
               {formError && (
                 <p className="job-error" role="alert">
                   {formError}

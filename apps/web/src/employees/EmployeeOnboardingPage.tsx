@@ -26,15 +26,14 @@ import {
   type ReactNode,
 } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
+import { DocumentReviewDrawer } from "../documents/DocumentReviewDrawer";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { useAuth } from "../auth/AuthContext";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import {
-  acknowledgeMyRequirement,
   getMyOnboarding,
   saveMyOnboardingProfile,
   submitMyOnboarding,
-  uploadMyDocument,
 } from "./onboarding-data";
 
 export default function EmployeeOnboardingPage() {
@@ -119,7 +118,12 @@ export default function EmployeeOnboardingPage() {
         </p>
         <nav aria-label="Onboarding requirements">
           {model.requirements
-            .filter((item) => item.required || item.kind === "availability")
+            .filter(
+              (item) =>
+                item.required ||
+                item.kind === "availability" ||
+                item.kind === "document",
+            )
             .map((item) => (
               <button
                 key={item.id}
@@ -132,7 +136,11 @@ export default function EmployeeOnboardingPage() {
                 <RequirementIcon requirement={item} />
                 <span>
                   {item.title}
-                  {!item.required ? " (optional)" : ""}
+                  {item.document_mode === "conditional"
+                    ? " (conditional)"
+                    : !item.required
+                      ? " (optional)"
+                      : ""}
                 </span>
               </button>
             ))}
@@ -184,7 +192,7 @@ export default function EmployeeOnboardingPage() {
           />
         ) : location.pathname.includes("/acknowledgements/") &&
           requirement?.kind === "acknowledgement" ? (
-          <AcknowledgementStep
+          <DocumentStep
             model={model}
             requirement={requirement}
             onSaved={continueAfterSave}
@@ -485,130 +493,22 @@ function DocumentStep({
   requirement,
   onSaved,
 }: StepProps & { readonly requirement: EmployeeOnboardingRequirement }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [expiryDate, setExpiryDate] = useState("");
-  const mutation = useMutation({
-    mutationFn: () => {
-      if (!file) throw new Error("Choose a document first");
-      return uploadMyDocument(
-        requirement.id,
-        file,
-        expiryDate || null,
-        model.revision,
-      );
-    },
-    onSuccess: onSaved,
-  });
+  const { account } = useAuth();
+  if (!account) return null;
   return (
-    <form
-      className="onboarding-step"
-      onSubmit={(event) => {
-        event.preventDefault();
-        mutation.mutate();
-      }}
-    >
-      <StepHeading
-        eyebrow="Required document"
-        title={requirement.title}
-        copy={
-          requirement.description || "Upload the requested employee document."
-        }
-        icon={<FileUp size={22} aria-hidden />}
+    <div className="onboarding-step">
+      <DocumentReviewDrawer
+        inline
+        audience={{ workspaceId: model.workspace_id, selfOnly: true }}
+        userId={account.userId}
+        requirementId={requirement.id}
+        canReview={false}
+        onClose={() => {}}
+        onNext={() => {
+          void onSaved();
+        }}
       />
-      {requirement.status === "rejected" ? (
-        <Attention
-          text={requirement.rejection_reason ?? "A replacement is required."}
-        />
-      ) : null}
-      <label className="onboarding-upload">
-        <FileUp size={24} aria-hidden />
-        <strong>{file?.name ?? "Choose document"}</strong>
-        <span>
-          {requirement.accepted_formats
-            .map((format) => format.toUpperCase())
-            .join(", ")}{" "}
-          | 10 MB maximum
-        </span>
-        <input
-          type="file"
-          accept={acceptValue(requirement.accepted_formats)}
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          required
-        />
-      </label>
-      <TextField
-        label="Expiry date"
-        type="date"
-        value={expiryDate}
-        onChange={setExpiryDate}
-        required={false}
-      />
-      <MutationFooter
-        mutation={mutation}
-        disabled={!file}
-        label={
-          requirement.status === "rejected"
-            ? "Upload replacement"
-            : "Upload document"
-        }
-      />
-    </form>
-  );
-}
-
-function AcknowledgementStep({
-  model,
-  requirement,
-  onSaved,
-}: StepProps & { readonly requirement: EmployeeOnboardingRequirement }) {
-  const [read, setRead] = useState(false);
-  const [typedName, setTypedName] = useState("");
-  const mutation = useMutation({
-    mutationFn: () =>
-      acknowledgeMyRequirement(
-        requirement.id,
-        typedName,
-        requirement.content_digest ?? "",
-        model.revision,
-      ),
-    onSuccess: onSaved,
-  });
-  return (
-    <form
-      className="onboarding-step"
-      onSubmit={(event) => {
-        event.preventDefault();
-        mutation.mutate();
-      }}
-    >
-      <StepHeading
-        eyebrow="Acknowledgement"
-        title={requirement.title}
-        copy={requirement.description}
-        icon={<FileCheck2 size={22} aria-hidden />}
-      />
-      <article className="onboarding-document-content" tabIndex={0}>
-        {requirement.content_text}
-      </article>
-      <label className="onboarding-intent">
-        <input
-          type="checkbox"
-          checked={read}
-          onChange={(event) => setRead(event.target.checked)}
-        />
-        <span>{requirement.intent_statement}</span>
-      </label>
-      <TextField
-        label="Type your full name"
-        value={typedName}
-        onChange={setTypedName}
-      />
-      <MutationFooter
-        mutation={mutation}
-        disabled={!read || !typedName.trim()}
-        label="Acknowledge policy"
-      />
-    </form>
+    </div>
   );
 }
 
@@ -854,17 +754,6 @@ function requirementPath(requirement: EmployeeOnboardingRequirement): string {
   if (requirement.kind === "document")
     return `/welcome/documents/${requirement.id}`;
   return `/welcome/acknowledgements/${requirement.id}`;
-}
-
-function acceptValue(formats: readonly string[]): string {
-  const values = formats.flatMap((format) =>
-    format === "pdf"
-      ? ["application/pdf"]
-      : format === "jpeg"
-        ? ["image/jpeg"]
-        : [`image/${format}`],
-  );
-  return values.join(",");
 }
 
 function statusLabel(value: EmployeeOnboardingRequirement["status"]): string {

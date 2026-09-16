@@ -3,8 +3,8 @@ create extension if not exists pgtap with schema extensions;
 select plan(8);
 
 -- Isolated records; the standard local seed supplies the workspace and its owner.
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone)
-values('da000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Archive regression','1 Main St','Los Angeles','CA','90001','America/Los_Angeles');
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
+values('T00034','da000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Archive regression','1 Main St','Los Angeles','CA','90001','America/Los_Angeles');
 insert into public.jobs(id,workspace_id,name)
 values('da000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Archive regression');
 insert into public.schedule_drafts(id,workspace_id,week_start,name,revision,created_by,updated_by)

@@ -15,6 +15,13 @@ import {
 } from "./scheduleInteractionTargets";
 
 describe("scheduleInteractionTargets", () => {
+  it("preserves grid focus and filters when a nonmodal export sidebar is clicked", () => {
+    document.body.innerHTML = '<aside><section data-schedule-export-v2><p id="export-copy">Output options</p></section></aside>';
+    const target = document.getElementById("export-copy")!;
+    expect(isScheduleInteractionSurface(target)).toBe(true);
+    expect(isBlankScheduleDismissTarget(target)).toBe(false);
+    expect(isSchedulePreviewFocusedShiftBlankDismissTarget(target)).toBe(false);
+  });
   it("escapes attribute values used by badge measurement selectors", () => {
     expect(escapeAttributeValue('role"server')).toBe('role\\"server');
     expect(escapeAttributeValue("role\\server")).toBe("role\\\\server");

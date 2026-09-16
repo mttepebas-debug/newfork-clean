@@ -18,8 +18,8 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  select w,manager,'owner'::public.workspace_role,true from ws
  union all select w,employee_user,'employee'::public.workspace_role,true from ws;
 insert into public.workspace_scheduling_settings(workspace_id,availability_warning_policy) select w,'confirm' from ws on conflict do nothing;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
- select l,w,case when l=loc then 'First site' else 'Second site' end,'1 Test Street','Test City','CA','90001','UTC',true
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
+ select 'T00057-' || right(l::text, 4), l,w,case when l=loc then 'First site' else 'Second site' end,'1 Test Street','Test City','CA','90001','UTC',true
  from ws cross join lateral unnest(array[loc,other_loc]) l;
 insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time)

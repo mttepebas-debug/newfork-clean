@@ -22,11 +22,11 @@ values
   ('33000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000002', '31000000-0000-4000-8000-000000000004', 'owner', 'active', true),
   ('33000000-0000-4000-8000-000000000005', '32000000-0000-4000-8000-000000000002', '31000000-0000-4000-8000-000000000002', 'employee', 'active', true);
 
-insert into public.locations (
+insert into public.locations (short_name,
   id, workspace_id, name, street_address, city, region, postal_code, country_code, timezone, sort_order
 ) values
-  ('34000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', 'Visible Room', '1 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles', 0),
-  ('34000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', 'Hidden Room', '2 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles', 10);
+  ('T00035','34000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', 'Visible Room', '1 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles', 0),
+  ('T00036','34000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', 'Hidden Room', '2 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles', 10);
 
 insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
 values ('33000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001');

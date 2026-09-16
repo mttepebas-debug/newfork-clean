@@ -1,10 +1,8 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import "./schedule-topbar-filter.css";
 
 export type ScheduleTopBarFilterId =
-  | "locations"
-  | "shiftTypes"
-  | "jobs"
-  | "employees";
+  "locations" | "departments" | "shiftTypes" | "jobs" | "employees";
 
 export interface ScheduleTopBarFilterItem {
   readonly id: string;
@@ -38,8 +36,10 @@ interface ScheduleTopBarFilterProps {
   readonly selectedIds: readonly string[];
   readonly onChange: (ids: string[]) => void;
   readonly topContent?: ReactNode;
+  readonly summarySuffix?: string;
   readonly open?: boolean;
   readonly onOpenChange?: (open: boolean) => void;
+  readonly searchable?: boolean;
 }
 
 export function ScheduleTopBarFilter({
@@ -53,14 +53,24 @@ export function ScheduleTopBarFilter({
   selectedIds,
   onChange,
   topContent,
+  summarySuffix,
   open,
   onOpenChange,
+  searchable = false,
 }: ScheduleTopBarFilterProps) {
-  const allSelected = selectedIds.length === 0;
+  const [search, setSearch] = useState("");
   const itemIds = items.map((item) => item.id);
+  const allSelected =
+    selectedIds.length === 0 ||
+    (itemIds.length > 0 &&
+      selectedIds.length === itemIds.length &&
+      itemIds.every((id) => selectedIds.includes(id)));
+  const matchesSearch = (item: ScheduleTopBarFilterItem) =>
+    item.label.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
+  const heading = pluralLabel.charAt(0).toUpperCase() + pluralLabel.slice(1);
   const label = allSelected
     ? allLabel
-      : selectedIds.length === 1
+    : selectedIds.length === 1
       ? (items.find((item) => item.id === selectedIds[0])?.label ??
         `1 ${singularLabel}`)
       : `${selectedIds.length} ${pluralLabel}`;
@@ -149,6 +159,7 @@ export function ScheduleTopBarFilter({
           type="button"
           role="checkbox"
           aria-checked={groupMixed ? "mixed" : groupChecked}
+          aria-label={group.label}
           className="schedule-topbar-filter-group-button"
           data-selected={groupChecked}
           data-mixed={groupMixed}
@@ -157,9 +168,17 @@ export function ScheduleTopBarFilter({
           <span className="schedule-topbar-filter-check" aria-hidden>
             {groupMixed ? MIXED_MARK : groupChecked ? CHECK_MARK : null}
           </span>
-          {group.label}
+          <span className="schedule-topbar-filter-label">{group.label}</span>
+          <span
+            className="schedule-topbar-filter-group-count"
+            aria-hidden="true"
+          >
+            {ids.length}
+          </span>
         </button>
-        {group.items.map((item) => renderItem(item, true))}
+        <div className="schedule-topbar-filter-group-items">
+          {group.items.map((item) => renderItem(item, true))}
+        </div>
       </div>
     );
   }
@@ -186,7 +205,7 @@ export function ScheduleTopBarFilter({
         }
       >
         {icon}
-        {label}
+        {summarySuffix ? `${label} - ${summarySuffix}` : label}
       </summary>
       <div
         className="schedule-topbar-filter-menu"
@@ -195,27 +214,63 @@ export function ScheduleTopBarFilter({
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
-        {topContent ? (
-          <>
-            {topContent}
-            <div className="schedule-menu-separator" />
-          </>
-        ) : null}
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={allSelected}
-          className="schedule-topbar-filter-all"
-          data-selected={allSelected}
-          onClick={selectAll}
-        >
-          <span className="schedule-topbar-filter-check" aria-hidden>
-            {allSelected ? CHECK_MARK : null}
+        <div className="schedule-topbar-filter-heading">
+          <strong>{heading}</strong>
+          <span aria-live="polite">
+            {allSelected
+              ? "All selected"
+              : `${selectedIds.length} of ${items.length} selected`}
           </span>
-          <span className="schedule-topbar-filter-label">{allLabel}</span>
-        </button>
-        <div className="schedule-menu-separator" />
-        {groups?.length ? groups.map(renderGroup) : items.map((item) => renderItem(item))}
+        </div>
+        {topContent ? (
+          <div className="schedule-topbar-filter-top-content">{topContent}</div>
+        ) : null}
+        {searchable && (
+          <label className="schedule-topbar-filter-top-content job-field">
+            <span>Search {pluralLabel}</span>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+        )}
+        <div className="schedule-topbar-filter-all-section">
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={allSelected}
+            className="schedule-topbar-filter-all"
+            data-selected={allSelected}
+            onClick={selectAll}
+          >
+            <span className="schedule-topbar-filter-check" aria-hidden>
+              {allSelected ? CHECK_MARK : null}
+            </span>
+            <span className="schedule-topbar-filter-label">{allLabel}</span>
+          </button>
+        </div>
+        <div className="schedule-topbar-filter-list">
+          {groups?.length
+            ? (searchable
+                ? groups
+                    .map((group) => ({
+                      ...group,
+                      items: group.items.filter(matchesSearch),
+                    }))
+                    .filter((group) => group.items.length)
+                : groups
+              ).map(renderGroup)
+            : items.filter(matchesSearch).map((item) => renderItem(item))}
+          {searchable && !items.some(matchesSearch) && (
+            <p>No matching {pluralLabel}.</p>
+          )}
+        </div>
+        <div className="schedule-topbar-filter-footer">
+          <span>
+            {items.length} {items.length === 1 ? singularLabel : pluralLabel}
+          </span>
+          <span>Esc to close</span>
+        </div>
       </div>
     </details>
   );

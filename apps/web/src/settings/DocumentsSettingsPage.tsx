@@ -1,6 +1,6 @@
 import { CatalogDrawer } from "./CatalogDrawer";
 import {
-  documentFormatSchema,
+  defaultDocumentLifecycleSettings,
   documentTypeInputSchema,
   type DocumentFormat,
   type DocumentType,
@@ -28,6 +28,8 @@ import {
   setDocumentTypeArchived,
 } from "./documents-data";
 import "./jobs-settings.css";
+import { DocumentPublicationDialog } from "./DocumentPublicationDialog";
+import { DocumentSettingsEditor } from "./DocumentSettingsEditor";
 
 const defaultDraft: DocumentTypeInput = {
   title: "",
@@ -38,6 +40,10 @@ const defaultDraft: DocumentTypeInput = {
   tracks_expiry: false,
   expiry_warning_days: 30,
   expiry_schedule_impact: "track_only",
+  lifecycle_settings: {
+    ...defaultDocumentLifecycleSettings,
+    assignment_scope: "all_active",
+  },
 };
 
 const formatLabels: Record<DocumentFormat, string> = {
@@ -53,26 +59,35 @@ function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function expiryImpactLabel(
-  impact: DocumentType["expiry_schedule_impact"],
-): string {
-  if (impact === "block") return "Hard conflict";
-  if (impact === "warn") return "Soft conflict";
-  return "Todo only";
+function editableDocument(document: DocumentType): DocumentTypeInput {
+  return documentTypeInputSchema.parse({
+    ...document,
+    lifecycle_settings: document.lifecycle_settings ?? {
+      ...defaultDocumentLifecycleSettings,
+      mode: document.required_at_onboarding ? "required" : "optional",
+      assignment_scope: "all_active",
+    },
+  });
 }
 
 export default function DocumentsSettingsPage() {
   const { context } = useAuth();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
+  const canReadSettings =
+    context?.permissions.includes("documents.read") ?? false;
   const canManage = context?.permissions.includes("documents.manage") ?? false;
   const queryKey = ["document-types", workspaceId];
   const query = useQuery({
     queryKey,
     queryFn: () => listDocumentTypes(workspaceId),
-    enabled: Boolean(workspaceId),
+    enabled: Boolean(workspaceId) && canReadSettings,
   });
-  const [showArchived, setShowArchived] = useState(false);
+  const [status, setStatus] = useState<
+    "all" | "draft" | "published" | "archived"
+  >("all");
+  const [publication, setPublication] = useState<DocumentType | null>(null);
+  const [documentTypeFilter, setDocumentTypeFilter] = useState("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{
     key: SortKey;
@@ -81,6 +96,7 @@ export default function DocumentsSettingsPage() {
   const [editing, setEditing] = useState<DocumentType | "new" | null>(null);
   const [draft, setDraft] = useState<DocumentTypeInput>(defaultDraft);
   const [formError, setFormError] = useState<string | null>(null);
+  const [applyBusy, setApplyBusy] = useState(false);
   const refresh = () => queryClient.invalidateQueries({ queryKey });
 
   const saveMutation = useMutation({
@@ -111,11 +127,16 @@ export default function DocumentsSettingsPage() {
   });
 
   const openEditor = (documentType?: DocumentType): void => {
-    if (!canManage || saveMutation.isPending) return;
+    if (
+      !canManage ||
+      !query.isSuccess ||
+      saveMutation.isPending ||
+      applyBusy ||
+      (documentType && documentType.publication_status !== "draft")
+    )
+      return;
     setEditing(documentType ?? "new");
-    setDraft(
-      documentType ? documentTypeInputSchema.parse(documentType) : defaultDraft,
-    );
+    setDraft(documentType ? editableDocument(documentType) : defaultDraft);
     setFormError(null);
   };
   const submit = (event: FormEvent): void => {
@@ -131,21 +152,27 @@ export default function DocumentsSettingsPage() {
     }
     saveMutation.mutate();
   };
-  const toggleFormat = (format: DocumentFormat, checked: boolean): void => {
-    setDraft((current) => ({
-      ...current,
-      accepted_formats: checked
-        ? [...new Set([...current.accepted_formats, format])]
-        : current.accepted_formats.filter((item) => item !== format),
-    }));
-  };
 
   const items = query.data ?? [];
   const active = items.filter((item) => !item.archived_at);
+  const typeOptions = items
+    .map((item) => ({ id: item.id, title: item.title }))
+    .sort((a, b) =>
+      a.title.localeCompare(b.title, undefined, {
+        sensitivity: "base",
+        numeric: true,
+      }),
+    );
   const visible = items
     .filter(
       (item) =>
-        (showArchived || !item.archived_at) &&
+        (status === "archived"
+          ? Boolean(item.archived_at)
+          : !item.archived_at) &&
+        (status === "all" ||
+          status === "archived" ||
+          item.publication_status === status) &&
+        (!documentTypeFilter || item.id === documentTypeFilter) &&
         `${item.title} ${item.description}`
           .toLowerCase()
           .includes(search.trim().toLowerCase()),
@@ -157,11 +184,11 @@ export default function DocumentsSettingsPage() {
     });
   const parsedDraft = documentTypeInputSchema.safeParse(draft);
   const documentBaseline =
-    editing && editing !== "new"
-      ? documentTypeInputSchema.parse(editing)
-      : null;
+    editing && editing !== "new" ? editableDocument(editing) : null;
   const canSave =
+    query.isSuccess &&
     !saveMutation.isPending &&
+    !applyBusy &&
     Boolean(editing) &&
     parsedDraft.success &&
     (editing === "new" ||
@@ -209,413 +236,315 @@ export default function DocumentsSettingsPage() {
         title="Documents"
         description="Set up the documents employees need to upload, with review and expiry rules."
         action={
-          canManage ? (
+          canManage && canReadSettings ? (
             <Button
               className="job-primary-button"
               type="button"
-              disabled={saveMutation.isPending}
+              disabled={!query.isSuccess || saveMutation.isPending || applyBusy}
               onClick={() => openEditor()}
             >
               <Plus size={16} aria-hidden />
               Add document type
             </Button>
-          ) : undefined
+          ) : null
         }
       />
-      <div className="job-catalog-toolbar">
-        <label className="job-search">
-          <Search size={16} aria-hidden />
-          <input
-            aria-label="Search document types"
-            placeholder="Search by name or description"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-        <label className="job-archive-filter">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(event) => setShowArchived(event.target.checked)}
-          />
-          Show archived
-        </label>
-      </div>
-
-      {editing ? (
-        <CatalogDrawer
-          label={
-            editing === "new" ? "Add document type" : `Edit ${editing.title}`
-          }
-          className="document-catalog-settings-page"
-          onClose={() => setEditing(null)}
-          busy={saveMutation.isPending}
-        >
-          <form
-            className="job-catalog-editor"
-            onSubmit={submit}
-            aria-label={
-              editing === "new" ? "Add document type" : `Edit ${editing.title}`
-            }
-          >
-            <div className="job-editor-title">
-              <div>
-                <h2>
-                  {editing === "new"
-                    ? "New document type"
-                    : "Edit document type"}
-                </h2>
-                <p>
-                  Configure metadata only; employee files are not stored in this
-                  phase.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="job-icon-button"
-                aria-label="Close document editor"
-                title="Close"
-                disabled={saveMutation.isPending}
-                onClick={() => setEditing(null)}
+      {publication && (
+        <DocumentPublicationDialog
+          workspaceId={workspaceId}
+          document={publication}
+          onClose={() => setPublication(null)}
+          onSaved={async () => {
+            await refresh();
+            await queryClient.invalidateQueries({
+              queryKey: ["document-lifecycle"],
+            });
+          }}
+        />
+      )}
+      {canReadSettings ? (
+        <>
+          <div className="job-catalog-toolbar catalog-toolbar document-catalog-toolbar">
+            <div className="catalog-toolbar-status-row">
+              <div
+                className="catalog-status-tabs"
+                role="tablist"
+                aria-label="Document status"
               >
-                <X size={17} aria-hidden />
-              </button>
-            </div>
-            <div className="catalog-drawer-body">
-              <fieldset
-                className="document-catalog-fields"
-                disabled={saveMutation.isPending}
-              >
-                <label className="job-field">
-                  <span>Name</span>
-                  <input
-                    value={draft.title}
-                    maxLength={80}
-                    required
-                    placeholder="Enter document type name"
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        title: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <label className="job-field document-description-field">
-                  <span>Description</span>
-                  <textarea
-                    value={draft.description}
-                    maxLength={240}
-                    rows={3}
-                    placeholder="Short instructions for this requirement"
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        description: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <fieldset className="document-options">
-                  <legend>Workflow</legend>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={draft.required_at_onboarding}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          required_at_onboarding: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      <strong>Required during onboarding</strong>
-                      <small>
-                        Missing documents will block employee activation.
-                      </small>
-                    </span>
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={draft.requires_review}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          requires_review: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      <strong>Manager review required</strong>
-                      <small>
-                        Uploads enter a review state before completion.
-                      </small>
-                    </span>
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={draft.tracks_expiry}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          tracks_expiry: event.target.checked,
-                          expiry_schedule_impact: event.target.checked
-                            ? current.expiry_schedule_impact
-                            : "track_only",
-                        }))
-                      }
-                    />
-                    <span>
-                      <strong>Track expiration</strong>
-                      <small>
-                        Employees provide an expiry date with upload.
-                      </small>
-                    </span>
-                  </label>
-                </fieldset>
-                <fieldset className="document-options document-formats">
-                  <legend>Accepted formats</legend>
-                  {documentFormatSchema.options.map((format) => (
-                    <label key={format}>
-                      <input
-                        type="checkbox"
-                        checked={draft.accepted_formats.includes(format)}
-                        onChange={(event) =>
-                          toggleFormat(format, event.target.checked)
-                        }
-                      />
-                      <span>
-                        <strong>{formatLabels[format]}</strong>
-                      </span>
-                    </label>
-                  ))}
-                </fieldset>
-                {draft.tracks_expiry ? (
-                  <>
-                    <label className="job-field expiry-warning-field">
-                      <span>Warn before expiry</span>
-                      <div className="number-suffix-input">
-                        <input
-                          type="number"
-                          min={1}
-                          max={365}
-                          value={draft.expiry_warning_days}
-                          onChange={(event) =>
-                            setDraft((current) => ({
-                              ...current,
-                              expiry_warning_days: Number(event.target.value),
-                            }))
-                          }
-                        />
-                        <span>days</span>
-                      </div>
-                    </label>
-                    <label className="job-field expiry-impact-field">
-                      <span>Expired document schedule impact</span>
-                      <select
-                        value={draft.expiry_schedule_impact}
-                        onChange={(event) =>
-                          setDraft((current) => ({
-                            ...current,
-                            expiry_schedule_impact: event.target
-                              .value as DocumentTypeInput["expiry_schedule_impact"],
-                          }))
-                        }
-                      >
-                        <option value="track_only">Todo only</option>
-                        <option value="warn">Soft conflict</option>
-                        <option value="block">Hard conflict</option>
-                      </select>
-                    </label>
-                  </>
-                ) : null}
-              </fieldset>
-              {formError ? (
-                <p className="form-error" role="alert">
-                  {formError}
-                </p>
-              ) : null}
-            </div>
-            <div className="job-editor-footer">
-              <span />
-              <div className="job-editor-actions">
-                <Button
-                  className="job-secondary-button"
-                  type="button"
-                  disabled={saveMutation.isPending}
-                  onClick={() => setEditing(null)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="job-primary-button"
-                  type="submit"
-                  disabled={!canSave}
-                >
-                  {saveMutation.isPending ? "Saving" : "Save document type"}
-                </Button>
-              </div>
-            </div>
-          </form>
-        </CatalogDrawer>
-      ) : null}
-
-      {!editing && formError ? (
-        <p className="settings-state error" role="alert">
-          {formError}
-        </p>
-      ) : null}
-      {query.isLoading ? (
-        <p className="settings-state">Loading document types...</p>
-      ) : null}
-      {query.error ? (
-        <p className="settings-state error" role="alert">
-          {errorText(query.error)}
-        </p>
-      ) : null}
-      {!query.isLoading && !query.error && visible.length === 0 ? (
-        <div className="job-empty-state">
-          <h2>{search ? "No matches found" : "No document types"}</h2>
-          <p>
-            {search
-              ? "Try another name or clear your search."
-              : "Add the first document requirement to get started."}
-          </p>
-        </div>
-      ) : null}
-      {visible.length > 0 ? (
-        <div className="job-catalog" aria-label="Document types">
-          <div className="job-column-headings document-catalog-row">
-            {sortColumn("title", "Document type")}
-            {sortColumn("required_at_onboarding", "Workflow")}
-            {sortColumn("requires_review", "Review")}
-            {sort ? (
-              <button
-                type="button"
-                className="job-icon-button"
-                aria-label="Clear column sorting"
-                onClick={() => setSort(null)}
-              >
-                <X size={14} />
-              </button>
-            ) : (
-              <span />
-            )}
-          </div>
-          {visible.map((item) => (
-            <div
-              className="job-catalog-row document-catalog-row"
-              key={item.id}
-              data-archived={Boolean(item.archived_at)}
-            >
-              <button
-                type="button"
-                className="job-row-identity"
-                disabled={!canManage || saveMutation.isPending}
-                onClick={() => openEditor(item)}
-              >
-                <span className="document-catalog-marker" aria-hidden>
-                  <FileText size={16} />
-                </span>
-                <span className="job-name-stack">
-                  <span className="job-row-name" title={item.title}>
-                    {item.title}
-                  </span>
-                  <span
-                    className="document-catalog-description"
-                    title={item.description}
-                  >
-                    {item.description || "No description"}
-                  </span>
-                  <span className="job-mobile-meta">
-                    {documentWorkflowLabel(item)} -{" "}
-                    {item.accepted_formats
-                      .map((format) => formatLabels[format])
-                      .join(", ")}
-                  </span>
-                </span>
-                {item.archived_at && (
-                  <span className="job-archived-label">Archived</span>
+                {(["all", "draft", "published", "archived"] as const).map(
+                  (value) => (
+                    <button
+                      type="button"
+                      role="tab"
+                      key={value}
+                      aria-selected={status === value}
+                      className={status === value ? "active" : ""}
+                      onClick={() => setStatus(value)}
+                    >
+                      {value[0]!.toUpperCase() + value.slice(1)}
+                    </button>
+                  ),
                 )}
-              </button>
-              <span className="job-department-cell">
-                {documentWorkflowLabel(item)}
-              </span>
-              <span className="job-department-cell">
-                {item.tracks_expiry
-                  ? expiryImpactLabel(item.expiry_schedule_impact)
-                  : item.requires_review
-                    ? "Review required"
-                    : "No review"}
-              </span>
-              {canManage ? (
-                <CatalogRowMenu name={item.title}>
+              </div>
+            </div>
+            <div className="catalog-toolbar-filter-row">
+              <select
+                className="toolbar-filter-select"
+                aria-label="Filter by document type"
+                value={documentTypeFilter}
+                onChange={(event) => setDocumentTypeFilter(event.target.value)}
+              >
+                <option value="">All document types</option>
+                {typeOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+              <label className="job-search toolbar-search">
+                <Search size={16} aria-hidden />
+                <input
+                  aria-label="Search document types"
+                  placeholder="Search by name or description"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+            </div>
+          </div>
+
+          {editing ? (
+            <CatalogDrawer
+              label={
+                editing === "new"
+                  ? "Add document type"
+                  : `Edit ${editing.title}`
+              }
+              className="document-catalog-settings-page document-side-index"
+              onClose={() => setEditing(null)}
+              busy={saveMutation.isPending || applyBusy}
+            >
+              <DocumentSettingsEditor
+                value={draft}
+                onChange={setDraft}
+                workspaceId={workspaceId}
+                documentId={editing === "new" ? undefined : editing.id}
+                busy={saveMutation.isPending || applyBusy}
+                saving={saveMutation.isPending}
+                saveDisabled={!query.isSuccess}
+                dirty={editing === "new" || !sameJson(draft, documentBaseline)}
+                issues={parsedDraft.success ? [] : parsedDraft.error.issues}
+                error={formError}
+                onSubmit={submit}
+                onClose={() => setEditing(null)}
+                onBusyChange={setApplyBusy}
+              />
+            </CatalogDrawer>
+          ) : null}
+
+          {!editing && formError ? (
+            <p className="settings-state error" role="alert">
+              {formError}
+            </p>
+          ) : null}
+          {query.isLoading ? (
+            <p className="settings-state">Loading document types...</p>
+          ) : null}
+          {query.error ? (
+            <p className="settings-state error" role="alert">
+              {errorText(query.error)}
+            </p>
+          ) : null}
+          {!query.isLoading && !query.error && visible.length === 0 ? (
+            <div className="job-empty-state">
+              <h2>
+                {search || documentTypeFilter
+                  ? "No matches found"
+                  : "No document types"}
+              </h2>
+              <p>
+                {search || documentTypeFilter
+                  ? "Try another document type or clear your search."
+                  : "Add the first document requirement to get started."}
+              </p>
+            </div>
+          ) : null}
+          {visible.length > 0 ? (
+            <div className="job-catalog" aria-label="Document types">
+              <div className="job-column-headings document-catalog-row">
+                {sortColumn("title", "Document name")}
+                {sortColumn("required_at_onboarding", "Requirement")}
+                {sortColumn("requires_review", "Review")}
+                {sort ? (
                   <button
                     type="button"
-                    disabled={saveMutation.isPending}
+                    className="job-icon-button"
+                    aria-label="Clear column sorting"
+                    onClick={() => setSort(null)}
+                  >
+                    <X size={14} />
+                  </button>
+                ) : (
+                  <span />
+                )}
+              </div>
+              {visible.map((item) => (
+                <div
+                  className="job-catalog-row document-catalog-row"
+                  key={item.id}
+                  data-archived={Boolean(item.archived_at)}
+                  data-editable={
+                    canManage &&
+                    item.publication_status === "draft" &&
+                    !saveMutation.isPending &&
+                    !applyBusy
+                  }
+                  onClick={(event) => {
+                    if (
+                      (event.target as Element).closest(
+                        "button, a, input, select, textarea, label, summary, details, [role='button'], [role='checkbox'], [contenteditable='true']",
+                      )
+                    )
+                      return;
+                    event.currentTarget
+                      .querySelector<HTMLButtonElement>(".job-row-identity")
+                      ?.focus({ preventScroll: true });
+                    openEditor(item);
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="job-row-identity"
+                    disabled={
+                      !canManage ||
+                      item.publication_status !== "draft" ||
+                      saveMutation.isPending ||
+                      applyBusy
+                    }
                     onClick={() => openEditor(item)}
                   >
-                    Edit document type
+                    <span className="document-catalog-marker" aria-hidden>
+                      <FileText size={16} />
+                    </span>
+                    <span className="job-name-stack">
+                      <span className="job-row-name" title={item.title}>
+                        {item.title}
+                      </span>
+                      <span
+                        className="document-catalog-description"
+                        title={item.description}
+                      >
+                        {item.description || "No description"}
+                      </span>
+                      <span className="job-mobile-meta">
+                        {documentRequirementLabel(item)} -{" "}
+                        {item.accepted_formats
+                          .map((format) => formatLabels[format])
+                          .join(", ")}
+                      </span>
+                    </span>
+                    {item.publication_status && !item.archived_at && (
+                      <span className="job-archived-label">
+                        {item.publication_status === "draft"
+                          ? "Draft"
+                          : "Published"}
+                      </span>
+                    )}
+                    {item.archived_at && (
+                      <span className="job-archived-label">Archived</span>
+                    )}
                   </button>
-                  {!item.archived_at && (
-                    <>
+                  <span className="job-department-cell">
+                    {documentRequirementLabel(item)}
+                  </span>
+                  <span className="job-department-cell">
+                    {item.tracks_expiry
+                      ? "Expiration tracked"
+                      : item.requires_review
+                        ? "Review required"
+                        : "No review"}
+                  </span>
+                  {canManage ? (
+                    <CatalogRowMenu name={item.title}>
                       <button
                         type="button"
                         disabled={
-                          reorderMutation.isPending ||
-                          Boolean(search.trim() || sort) ||
-                          active[0]?.id === item.id
+                          item.publication_status !== "draft" ||
+                          saveMutation.isPending ||
+                          applyBusy
                         }
-                        onClick={() => move(item.id, -1)}
+                        onClick={() => openEditor(item)}
                       >
-                        Move up
+                        Edit document type
                       </button>
+                      {!item.archived_at && item.publication_status && (
+                        <button
+                          type="button"
+                          onClick={() => setPublication(item)}
+                        >
+                          {item.publication_status === "published"
+                            ? "Unpublish"
+                            : "Publish"}
+                        </button>
+                      )}
+                      {!item.archived_at && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={
+                              reorderMutation.isPending ||
+                              Boolean(search.trim() || sort) ||
+                              active[0]?.id === item.id
+                            }
+                            onClick={() => move(item.id, -1)}
+                          >
+                            Move up
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              reorderMutation.isPending ||
+                              Boolean(search.trim() || sort) ||
+                              active.at(-1)?.id === item.id
+                            }
+                            onClick={() => move(item.id, 1)}
+                          >
+                            Move down
+                          </button>
+                        </>
+                      )}
                       <button
                         type="button"
-                        disabled={
-                          reorderMutation.isPending ||
-                          Boolean(search.trim() || sort) ||
-                          active.at(-1)?.id === item.id
+                        className={
+                          item.archived_at ? undefined : "job-danger-text"
                         }
-                        onClick={() => move(item.id, 1)}
+                        disabled={archiveMutation.isPending}
+                        onClick={() =>
+                          archiveMutation.mutate({
+                            id: item.id,
+                            archived: !item.archived_at,
+                          })
+                        }
                       >
-                        Move down
+                        {item.archived_at ? "Restore" : "Archive"}
                       </button>
-                    </>
+                    </CatalogRowMenu>
+                  ) : (
+                    <span />
                   )}
-                  <button
-                    type="button"
-                    className={item.archived_at ? undefined : "job-danger-text"}
-                    disabled={archiveMutation.isPending}
-                    onClick={() =>
-                      archiveMutation.mutate({
-                        id: item.id,
-                        archived: !item.archived_at,
-                      })
-                    }
-                  >
-                    {item.archived_at ? "Restore" : "Archive"}
-                  </button>
-                </CatalogRowMenu>
-              ) : (
-                <span />
-              )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          ) : null}
+        </>
       ) : null}
     </section>
   );
 }
 
-function documentWorkflowLabel(item: DocumentType): string {
-  return [
-    item.required_at_onboarding ? "Required" : "Optional",
-    item.requires_review ? "Review required" : "No review",
-  ].join(" - ");
+function documentRequirementLabel(item: DocumentType): string {
+  if (item.lifecycle_settings?.mode === "conditional") return "Conditional";
+  return item.required_at_onboarding ? "Required" : "Optional";
 }
 
 function compareDocument(

@@ -61,6 +61,7 @@ function employeeHubServiceMock(): EmployeeHubService {
     getPersonalTasks: vi.fn(),
     changePersonalTask: vi.fn(),
     get: vi.fn(),
+    getScheduleBoard: vi.fn(),
     submitTimeOff: vi.fn(),
     submitShiftRequest: vi.fn(),
     actOnRequest: vi.fn(),
@@ -81,6 +82,46 @@ describe("employee hub routes", () => {
     expect(service.actOnRequest).toHaveBeenCalledWith({ actorUserId: userId, workspaceId, action: command });
     const invalid = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/employee-hub/request-action`, headers: { authorization: "Bearer token" }, payload: { ...command, operation_id: undefined } });
     expect(invalid.statusCode).toBe(400); expect(service.actOnRequest).toHaveBeenCalledTimes(1); await app.close();
+  });
+  it("binds the schedule board to the authenticated actor and requires a calendar date", async () => {
+    const service = employeeHubServiceMock();
+    vi.mocked(service.getScheduleBoard).mockResolvedValue({
+      workspace_id: workspaceId,
+      week_start: "2035-01-15",
+      week_start_day: "monday",
+      settings: { time_format: "12h" },
+      locations: [],
+      departments: [],
+      jobs: [],
+      shift_types: [],
+      employees: [],
+      shifts: [],
+      closures: [],
+      important_dates: [],
+    });
+    const app = buildApp({
+      contextResolver: { resolve: async () => activeContext },
+      employeeHubService: service,
+    });
+    const url = `/v1/workspaces/${workspaceId}/employee-hub/schedule`;
+    const headers = { authorization: "Bearer test" };
+    try {
+      expect(
+        (await app.inject({ method: "GET", url: `${url}?date=2035-01-15`, headers }))
+          .statusCode,
+      ).toBe(200);
+      expect(service.getScheduleBoard).toHaveBeenCalledWith({
+        actorUserId: userId,
+        workspaceId,
+        targetDate: "2035-01-15",
+      });
+      expect(
+        (await app.inject({ method: "GET", url, headers })).statusCode,
+      ).toBe(400);
+      expect(service.getScheduleBoard).toHaveBeenCalledTimes(1);
+    } finally {
+      await app.close();
+    }
   });
   it("binds personal tasks to the authenticated actor and rejects spoofed ownership", async () => {
     const service = employeeHubServiceMock();

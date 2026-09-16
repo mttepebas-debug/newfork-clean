@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(46);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
  ('a8000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','comms-manager@example.test','','{}','{}',now(),now()),
@@ -20,6 +20,9 @@ insert into public.membership_location_scopes(workspace_id,membership_id,locatio
  ('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8100000-0000-4000-8000-000000000002','11000000-0000-4000-8000-000000000001'),
  ('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8100000-0000-4000-8000-000000000003','11000000-0000-4000-8000-000000000002');
 update public.employee_profiles set user_id='a8000000-0000-4000-8000-000000000002' where id='15000000-0000-4000-8000-000000000001';
+update public.employee_location_assignments set ended_at=now() where employee_id='15000000-0000-4000-8000-000000000001' and ended_at is null;
+insert into public.employee_location_assignments(workspace_id,employee_id,location_id,is_primary,created_by)
+values('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','15000000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000001',true,'d9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
 update public.workspace_onboarding
 set status='complete',
     current_step=4,
@@ -51,7 +54,7 @@ with saved as (
  ) result
 ) insert into communication_state(announcement_id,revision) select (result->>'announcement_id')::uuid,(result->>'revision')::integer from saved;
 select is((select status::text from public.announcements announcement join communication_state state on state.announcement_id=announcement.id),'draft','announcement starts as a draft');
-select is((select public.publish_announcement_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',announcement_id,revision)->>'recipient_count' from communication_state),'2','publication resolves every matching role and location recipient server-side');
+select is((select public.publish_announcement_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',announcement_id,revision)->>'recipient_count' from communication_state),'1','publication resolves only employees assigned to the targeted location');
 update public.notification_outbox set status='leased',lease_owner='communication-test',lease_expires_at=now()+interval '1 minute'
 where type_key='communications.announcement.available' and subject_id=(select announcement_id::text from communication_state);
 do $$ declare outbox_id uuid; begin
@@ -95,6 +98,11 @@ insert into public.notification_inbox_items(
 );
 select is((select jsonb_array_length(public.get_announcements_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements')),1,'target employee sees the published announcement');
 select is((select jsonb_array_length(public.get_announcements_service('a8000000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements')),0,'employee at another location cannot see the announcement');
+update public.workspace_memberships set all_locations=true where id='a8100000-0000-4000-8000-000000000003';
+select is((select jsonb_array_length(public.get_announcements_service('a8000000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements')),0,'all-location employee membership without a matching location assignment cannot see the announcement');
+select throws_ok($$select public.acknowledge_announcement_service('a8000000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from communication_state))$$,'P0002','announcement not found','employee cannot acknowledge an announcement outside their assignments');
+select isnt((public.acknowledge_announcement_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from communication_state))->>'acknowledged_at'),null,'target employee can acknowledge the announcement');
+select isnt((public.get_announcements_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements'->0->>'acknowledged_at'),null,'acknowledged announcement stays listed with its acknowledgement');
 select throws_ok($$select public.publish_announcement_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from communication_state),1)$$,'40001','stale announcement revision','publication is revision guarded');
 
 select is((public.get_notification_inbox_v2_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,null,null,null,30)->>'unread_count')::integer,1,'target employee receives one unread notification');

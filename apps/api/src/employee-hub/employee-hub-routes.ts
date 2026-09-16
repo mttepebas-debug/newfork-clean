@@ -17,6 +17,7 @@ import { legacyAvailabilityGone } from "../availability/availability-retirement"
 
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 const rangeQuery = z.object({ from: z.string().date(), to: z.string().date() });
+const scheduleBoardQuery = z.object({ date: z.string().date() });
 const idempotencyKeySchema = z.string().uuid();
 
 export function registerEmployeeHubRoutes(
@@ -68,6 +69,39 @@ export function registerEmployeeHubRoutes(
       }
     },
   });
+  app.get(
+    "/v1/workspaces/:workspaceId/employee-hub/schedule",
+    async (request, reply) => {
+      const params = workspaceParams.safeParse(request.params);
+      const query = scheduleBoardQuery.safeParse(request.query);
+      if (!params.success || !query.success)
+        return reply
+          .status(400)
+          .send({ error: "Valid schedule date required" });
+      const context = await authorize(
+        request.headers.authorization,
+        params.data.workspaceId,
+        options.contextResolver,
+        reply,
+      );
+      if (!context) return;
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee Hub service is not configured" });
+      try {
+        return reply.send(
+          await options.service.getScheduleBoard({
+            actorUserId: context.userId,
+            workspaceId: params.data.workspaceId,
+            targetDate: query.data.date,
+          }),
+        );
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  );
   app.get(
     "/v1/workspaces/:workspaceId/employee-hub",
     async (request, reply) => {

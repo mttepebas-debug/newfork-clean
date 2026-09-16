@@ -31,7 +31,14 @@ const maintenanceSchema = z.object({
 });
 type MaintenanceResult = z.infer<typeof maintenanceSchema>;
 
+const documentMaintenanceSchema = z.object({
+  checked: z.number().int().nonnegative(),
+  enqueued: z.number().int().nonnegative(),
+});
+type DocumentMaintenanceResult = z.infer<typeof documentMaintenanceSchema>;
+
 export interface NotificationOutboxBatchResult {
+  documentMaintenance?: DocumentMaintenanceResult | { failed: true };
   maintenance?: MaintenanceResult | { failed: true };
   leased: number;
   processed: number;
@@ -59,6 +66,13 @@ export function createNotificationOutboxWorker(options: {
   }) as unknown as NotificationRpcClient;
   return createNotificationOutboxWorkerWithClient(client, {
     ...options,
+    prepareDocuments: async () => {
+      const result = await client.rpc("documents_maintain_service", {
+        target_batch_size: 100,
+      });
+      if (result.error) throw new Error(result.error.message);
+      return documentMaintenanceSchema.parse(result.data);
+    },
     prepareBatch: async () => {
       const result = await client.rpc("shift_exchanges_maintain_service", {
         target_batch_size: 100,
@@ -72,6 +86,7 @@ export function createNotificationOutboxWorker(options: {
 export function createNotificationOutboxWorkerWithClient(
   client: NotificationRpcClient,
   options: {
+    readonly prepareDocuments?: () => Promise<DocumentMaintenanceResult>;
     readonly prepareBatch?: () => Promise<MaintenanceResult>;
     readonly workerId?: string;
     readonly batchSize?: number;
@@ -99,6 +114,14 @@ export function createNotificationOutboxWorkerWithClient(
           maintenance = { failed: true };
         }
       }
+      let documentMaintenance: NotificationOutboxBatchResult["documentMaintenance"];
+      if (options.prepareDocuments) {
+        try {
+          documentMaintenance = await options.prepareDocuments();
+        } catch {
+          documentMaintenance = { failed: true };
+        }
+      }
       const leaseResponse = await client.rpc(
         "lease_notification_outbox_service",
         {
@@ -117,7 +140,10 @@ export function createNotificationOutboxWorkerWithClient(
         skipped: 0,
         retried: 0,
         dead_lettered: 0,
-        failed: maintenance && "failed" in maintenance ? 1 : 0,
+        failed:
+          (maintenance && "failed" in maintenance ? 1 : 0) +
+          (documentMaintenance && "failed" in documentMaintenance ? 1 : 0),
+        ...(documentMaintenance ? { documentMaintenance } : {}),
         ...(maintenance ? { maintenance } : {}),
       };
 

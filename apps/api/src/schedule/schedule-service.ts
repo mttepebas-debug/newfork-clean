@@ -465,7 +465,7 @@ export function createScheduleReadService(options: {
       const weekEnd = addDaysIso(weekStart, 6);
       // The RPC has established the actor's scope. These independent reads
       // share that scope and need not add three sequential network waits.
-      const [settingsResult, closuresResult, importantDatesResult] = await Promise.all([
+      const [settingsResult, closuresResult, importantDatesResult, shortNamesResult] = await Promise.all([
         client
           .from("workspace_scheduling_settings")
           .select("time_format")
@@ -493,14 +493,25 @@ export function createScheduleReadService(options: {
           .eq("affects_scheduling", true)
           .order("starts_on")
           .order("title"),
+        allowedLocationIds.length
+          ? client.from("locations").select("id,short_name")
+              .eq("workspace_id", workspaceId).in("id", allowedLocationIds)
+          : Promise.resolve({ data: [], error: null }),
       ]);
       const { data: settings } = settingsResult;
       const { data: closures, error: closuresError } = closuresResult;
       const { data: importantDates, error: importantDatesError } = importantDatesResult;
       if (closuresError) throw new Error(closuresError.message);
       if (importantDatesError) throw new Error(importantDatesError.message);
+      if (shortNamesResult.error) throw new Error(shortNamesResult.error.message);
+      const shortNames = new Map((shortNamesResult.data ?? []).map((location) => [location.id, location.short_name]));
       return scheduleReadModelSchema.parse({
         ...readModelPayload,
+        locations: Array.isArray(readModelPayload.locations)
+          ? readModelPayload.locations.map((location: Record<string, unknown>) => ({
+              ...location, short_name: shortNames.get(location.id as string) ?? null,
+            }))
+          : [],
         settings: {
           time_format:
             settings?.time_format === "24h" || settings?.time_format === "12h"

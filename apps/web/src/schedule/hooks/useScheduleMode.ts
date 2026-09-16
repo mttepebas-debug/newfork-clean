@@ -43,7 +43,7 @@ export function useScheduleMode(): UseScheduleModeResult {
   const [optimisticMode, setOptimisticMode] =
     useState<OptimisticScheduleMode | null>(null);
   const mode = optimisticMode?.mode ?? routeMode;
-  const activeDraftId = optimisticMode?.activeDraftId ?? routeDraftId;
+  const activeDraftId = optimisticMode ? optimisticMode.activeDraftId : routeDraftId;
 
   useEffect(() => {
     if (!optimisticMode) return;

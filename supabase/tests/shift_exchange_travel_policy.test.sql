@@ -26,8 +26,8 @@ insert into lu_test(target) values('{"date":"2030-01-07","location_id":"ada10000
 
 
 -- Own locations/jobs/employees: shared seed locations may legitimately be archived.
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone,lineup_operations_enabled)
-select ('ada10000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Travel QA '||n,'1 Test St','Test','CA','94000','US','America/Los_Angeles',true from generate_series(1,2)n;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone,lineup_operations_enabled)
+select 'T00041-' || n::text, ('ada10000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Travel QA '||n,'1 Test St','Test','CA','94000','US','America/Los_Angeles',true from generate_series(1,2)n;
 insert into public.jobs(id,workspace_id,name) values('ada30000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Travel QA job');
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) values('ada40000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Travel QA service','09:00','17:00');
 insert into public.employee_profiles(id,workspace_id,employee_code,first_name,last_name,created_by)

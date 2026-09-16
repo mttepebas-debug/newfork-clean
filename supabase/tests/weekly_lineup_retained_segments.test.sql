@@ -25,9 +25,9 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  union all select w,source_manager,'manager'::public.workspace_role,false from ws
  union all select w,destination_manager,'manager'::public.workspace_role,false from ws;
 insert into public.workspace_scheduling_settings(workspace_id,availability_warning_policy) select w,'confirm' from ws on conflict(workspace_id) do update set availability_warning_policy='confirm';
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
- select loc,w,'Source','1 Test Street','Test City','CA','90001','UTC',true from ws
- union all select other_loc,w,'Destination','2 Test Street','Test City','CA','90001','UTC',true from ws;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
+ select 'T00060', loc,w,'Source','1 Test Street','Test City','CA','90001','UTC',true from ws
+ union all select 'T00061', other_loc,w,'Destination','2 Test Street','Test City','CA','90001','UTC',true from ws;
 insert into public.membership_location_scopes(membership_id,workspace_id,location_id)
  select m.id,w,case when m.user_id=source_manager then loc else other_loc end from ws
  join public.workspace_memberships m on m.workspace_id=w and m.user_id in(source_manager,destination_manager);

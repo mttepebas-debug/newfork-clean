@@ -78,9 +78,9 @@ set local role postgres;
 select is((select role_id from public.workspace_memberships where workspace_id='b1051002-0000-4000-8000-000000000001' and user_id='b1051001-0000-4000-8000-000000000005'),(select custom_role from role_test_state),'Accepted membership retains role identity');
 select ok(not exists(select 1 from public.workspace_memberships m join public.workspace_role_permissions g on g.role_id=m.role_id where m.user_id='b1051001-0000-4000-8000-000000000005' and g.permission_key='schedule.manage'),'Accepted membership uses updated grants, not sent-time edit permission');
 select set_config('request.jwt.claim.sub','',true);
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone) values
-('b1051006-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','Shared','1 Test','Test','CA','90001','America/Los_Angeles'),
-('b1051006-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001','Outside','2 Test','Test','CA','90001','America/Los_Angeles');
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone) values
+('T00030','b1051006-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','Shared','1 Test','Test','CA','90001','America/Los_Angeles'),
+('T00031','b1051006-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001','Outside','2 Test','Test','CA','90001','America/Los_Angeles');
 insert into public.jobs(id,workspace_id,name) values('b1051007-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','Server');
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values('b1051001-0000-4000-8000-000000000006','00000000-0000-0000-0000-000000000000','authenticated','authenticated','roles-employee@example.test','','{}','{}',now(),now());
 insert into public.workspace_memberships(workspace_id,user_id,role) values('b1051002-0000-4000-8000-000000000001','b1051001-0000-4000-8000-000000000006','employee');

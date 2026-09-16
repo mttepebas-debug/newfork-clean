@@ -2,6 +2,11 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @newfork/api build:vercel && pnpm --filter @newfork/web build",
   "outputDirectory": "apps/web/dist",
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "apps/api/dist/geo-tz-data/**"
+    }
+  },
   "crons": [
     {
       "path": "/api/internal/cron/notification-outbox",

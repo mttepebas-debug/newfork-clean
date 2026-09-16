@@ -21,9 +21,9 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  union all select w,actor,'employee'::public.workspace_role,false from wp_fixture
  union all select w,manager,'manager'::public.workspace_role,false from wp_fixture;
 insert into public.workspace_scheduling_settings(workspace_id) select w from wp_fixture on conflict do nothing;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone)
- select loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles' from wp_fixture
- union all select other_loc,w,'East','2 Test Street','Test City','NY','10001','America/New_York' from wp_fixture;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
+ select 'T00066', loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles' from wp_fixture
+ union all select 'T00067', other_loc,w,'East','2 Test Street','Test City','NY','10001','America/New_York' from wp_fixture;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
  select emp,w,actor,'E-993417','Weekly','Tester',owner_id from wp_fixture;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)

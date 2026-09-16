@@ -1,0 +1,132 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { authorizeScheduleExportV2 } from "../schedule-data";
+import { ExportSettingsPanel } from "./ExportSettingsPanel";
+import { ExportPreview } from "./ExportPreview";
+import { downloadExportFile, exportAuthorizationScope, renderExportFiles, type ExportDownload } from "./files";
+import { defaultExportPreferences, exportPreferencesKey, loadExportPreferences, saveExportPreferences, type ExportPreferences } from "./preferences";
+import type { ScheduleExportSnapshot, SnapshotResult } from "./snapshot";
+
+/** Mount keyed by user/workspace. All schedule data and blob URLs live only in memory. */
+export function ExportController({ userId, workspaceId, result, onClose, canManageLocations, sourceError }: {
+  readonly userId: string; readonly workspaceId: string; readonly result: SnapshotResult;
+  readonly onClose: () => void; readonly canManageLocations: boolean; readonly sourceError?: string | null;
+}) {
+  const preferenceKey = exportPreferencesKey(userId, workspaceId);
+  const [preferences, setPreferences] = useState<ExportPreferences>(() => {
+    try { return loadExportPreferences(window.localStorage, preferenceKey); } catch { return { ...defaultExportPreferences }; }
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const alive = useRef(true);
+  const requests = useRef(new Set<AbortController>());
+  const urls = useRef(new Set<string>());
+  const previewWindow = useRef<Window | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<HTMLElement | null>(null);
+  const [downloads, setDownloads] = useState<{ snapshot: ScheduleExportSnapshot; files: readonly ExportDownload[] } | null>(null);
+  const [preview, setPreview] = useState<{ key: string; files: readonly ExportDownload[]; error: string | null } | null>(null);
+  const inputKey = useMemo(() => JSON.stringify({ result, preferences }), [result, preferences]);
+  const release = (files: readonly ExportDownload[]) => {
+    for (const file of files) { URL.revokeObjectURL(file.url); urls.current.delete(file.url); }
+  };
+  const withUrls = (files: Awaited<ReturnType<typeof renderExportFiles>>) => files.map(file => {
+    const url = URL.createObjectURL(file.blob); urls.current.add(url); return { ...file, url };
+  });
+  useEffect(() => {
+    alive.current = true;
+    const dispose = () => {
+      alive.current = false;
+      for (const request of requests.current) request.abort(); requests.current.clear();
+      for (const url of urls.current) URL.revokeObjectURL(url); urls.current.clear();
+      previewWindow.current?.close(); previewWindow.current = null;
+    };
+    window.addEventListener("pagehide", dispose);
+    return () => { window.removeEventListener("pagehide", dispose); dispose(); };
+  }, []);
+  useEffect(() => {
+    if (!previewTarget) return;
+    const timer = window.setInterval(() => {
+      if (!previewWindow.current || previewWindow.current.closed) { previewWindow.current = null; setPreviewTarget(null); }
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [previewTarget]);
+  useEffect(() => {
+    if (!previewTarget) return;
+    const request = new AbortController(); requests.current.add(request);
+    let files: readonly ExportDownload[] = [];
+    const timer = window.setTimeout(() => {
+      if (result.status !== "ready") { setPreview({ key: inputKey, files: [], error: sourceError ?? null }); return; }
+      const snapshot = result.snapshot, scope = exportAuthorizationScope(snapshot);
+      void (async () => {
+        await authorizeScheduleExportV2(workspaceId, scope, request.signal);
+        const rendered = await renderExportFiles(snapshot, preferences);
+        await authorizeScheduleExportV2(workspaceId, scope, request.signal);
+        if (!alive.current || request.signal.aborted) return;
+        files = withUrls(rendered); setPreview({ key: inputKey, files, error: null });
+      })().catch((failure: unknown) => {
+        if (!alive.current || request.signal.aborted) return;
+        setPreview({ key: inputKey, files: [], error: failure instanceof Error ? failure.message : "Could not prepare the preview" });
+      }).finally(() => requests.current.delete(request));
+    }, 250);
+    return () => { window.clearTimeout(timer); request.abort(); requests.current.delete(request); release(files); };
+  }, [inputKey, preferences, previewTarget, result, sourceError, workspaceId]);
+
+  const changePreferences = (value: ExportPreferences) => {
+    setPreferences(value); setError(null);
+    try { saveExportPreferences(window.localStorage, preferenceKey, value); }
+    catch { setError("These settings work for this session, but your browser could not remember them."); }
+  };
+  const openPreview = () => {
+    if (result.status !== "ready") return;
+    if (previewWindow.current && !previewWindow.current.closed) { previewWindow.current.focus(); return; }
+    const child = window.open("about:blank", "_blank");
+    if (!child) { setError("Your browser blocked the preview tab. Allow pop-ups for this app, then try again. Direct download remains available."); return; }
+    child.opener = null; child.document.title = "Schedule export preview";
+    const root = child.document.createElement("main"); child.document.body.replaceChildren(root);
+    previewWindow.current = child; setPreview(null); setPreviewTarget(root); setError(null);
+  };
+  const runDownload = async () => {
+    if (busyRef.current || result.status !== "ready") return;
+    const snapshot = result.snapshot, prefs = { ...preferences }, scope = exportAuthorizationScope(snapshot);
+    const request = new AbortController(); requests.current.add(request);
+    busyRef.current = true; setBusy(true); setError(null);
+    try {
+      await authorizeScheduleExportV2(workspaceId, scope, request.signal);
+      const files = await renderExportFiles(snapshot, prefs);
+      await authorizeScheduleExportV2(workspaceId, scope, request.signal);
+      if (!alive.current || request.signal.aborted) return;
+      const ready = withUrls(files);
+      if (downloads) release(downloads.files);
+      setDownloads({ snapshot, files: ready });
+      for (const file of ready) downloadExportFile(file);
+    } catch (failure) {
+      if (alive.current && !request.signal.aborted) setError(failure instanceof Error ? failure.message : "Could not prepare this export");
+    } finally {
+      requests.current.delete(request); busyRef.current = false;
+      if (alive.current) setBusy(false);
+    }
+  };
+  const downloadAgain = async (file: ExportDownload) => {
+    if (!downloads) return;
+    const request = new AbortController(); requests.current.add(request);
+    try {
+      await authorizeScheduleExportV2(workspaceId, exportAuthorizationScope(downloads.snapshot), request.signal);
+      if (alive.current && !request.signal.aborted) downloadExportFile(file);
+    } catch (failure) {
+      if (alive.current && !request.signal.aborted) setError(failure instanceof Error ? failure.message : "Export access could not be verified");
+    } finally { requests.current.delete(request); }
+  };
+  const currentPreview = preview?.key === inputKey ? preview : null;
+  return <>
+    <ExportSettingsPanel result={result} preferences={preferences} onChange={changePreferences}
+      onReset={() => changePreferences({ ...defaultExportPreferences })} onClose={onClose} onPreview={openPreview}
+      onExport={() => preferences.destination === "print" && preferences.format !== "xlsx" ? openPreview() : void runDownload()}
+      busy={busy} error={sourceError ?? error} canManageLocations={canManageLocations}
+      footer={downloads ? <div className="export-v2-downloads"><p>Last generated files{downloads.files.length > 1 ? ". If your browser blocks multiple downloads, save each file below." : ""}</p>
+        {downloads.files.map(file => <button type="button" key={file.url} onClick={() => void downloadAgain(file)}>{file.name}</button>)}
+      </div> : null} />
+    {previewTarget ? <ExportPreview target={previewTarget} snapshot={result.status === "ready" ? result.snapshot : null}
+      preferences={preferences} files={currentPreview?.files ?? []} loading={!currentPreview && result.status === "ready"}
+      error={currentPreview?.error ?? sourceError ?? null} onDownload={() => void runDownload()} /> : null}
+  </>;
+}

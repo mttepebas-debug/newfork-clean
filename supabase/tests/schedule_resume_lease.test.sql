@@ -18,8 +18,8 @@ select w,actor,'owner'::public.workspace_role,true from lease_fixture
 union all select w,other_actor,'admin'::public.workspace_role,true from lease_fixture;
 insert into public.workspace_scheduling_settings(workspace_id)
 select w from lease_fixture on conflict do nothing;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone)
-select loc,w,'Lease location','1 Test Street','Test City','CA','90001','America/Los_Angeles' from lease_fixture;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
+select 'T00037', loc,w,'Lease location','1 Test Street','Test City','CA','90001','America/Los_Angeles' from lease_fixture;
 insert into public.jobs(id,workspace_id,name) select job,w,'Lease job' from lease_fixture;
 grant all on lease_fixture to service_role;
 set local role service_role;

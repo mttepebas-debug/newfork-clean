@@ -1,4 +1,5 @@
-import type { Department, Job, Location } from "@newfork/shared";
+import { isValidIanaTimezone, locationShortNameSchema, type Department, type Job, type Location } from "@newfork/shared";
+import { LocationTimezoneField } from "../settings/LocationTimezoneField";
 import { Button } from "@newfork/ui";
 import {
   BriefcaseBusiness,
@@ -42,12 +43,13 @@ type OwnerStep = 1 | 2 | 3 | 4;
 
 const defaultLocation = {
   name: "",
+  short_name: "",
   street_address: "",
   city: "",
   region: "",
   postal_code: "",
   country_code: "US",
-  timezone: "America/Los_Angeles",
+  timezone: "",
 };
 
 const defaultEmployee = {
@@ -76,6 +78,7 @@ export default function OwnerOnboardingPage() {
   );
   const [ownerNameDirty, setOwnerNameDirty] = useState(false);
   const [locationDraft, setLocationDraft] = useState(defaultLocation);
+  const [locationDraftEpoch, setLocationDraftEpoch] = useState(0);
   const [departmentName, setDepartmentName] = useState("");
   const [jobName, setJobName] = useState("");
   const [jobDepartmentId, setJobDepartmentId] = useState("");
@@ -210,6 +213,7 @@ export default function OwnerOnboardingPage() {
       });
       await refreshOwnerReferences(workspaceId);
       setLocationDraft(defaultLocation);
+      setLocationDraftEpoch((value) => value + 1);
       setSuccess("Location added");
       await refresh();
     } catch (saveError: unknown) {
@@ -440,6 +444,7 @@ export default function OwnerOnboardingPage() {
       await resetOwnerOnboarding(supabaseClient, workspaceId);
       setStep(1);
       setLocationDraft(defaultLocation);
+      setLocationDraftEpoch((value) => value + 1);
       setDepartmentName("");
       setJobName("");
       setJobDepartmentId("");
@@ -574,6 +579,7 @@ export default function OwnerOnboardingPage() {
                 />
               ) : null}
               <LocationFields
+                key={locationDraftEpoch}
                 draft={locationDraft}
                 onChange={setLocationDraft}
               />
@@ -827,17 +833,22 @@ function LocationFields({
           required
         />
       </label>
-      <label htmlFor="location-timezone">
-        Timezone
+      <label htmlFor="location-short-name">
+        Short name
         <input
-          id="location-timezone"
-          value={draft.timezone}
-          maxLength={80}
-          onChange={(event) =>
-            onChange({ ...draft, timezone: event.target.value })
-          }
+          id="location-short-name"
+          value={draft.short_name}
+          maxLength={12}
+          onChange={(event) => onChange({ ...draft, short_name: event.target.value })}
+          placeholder="MAIN"
+          aria-describedby="onboarding-location-short-name-help"
           required
         />
+        <small id="onboarding-location-short-name-help">2–12 letters, numbers or hyphens; unique in this workspace.</small>
+      </label>
+      <label htmlFor="location-timezone">
+        Timezone
+        <LocationTimezoneField id="location-timezone" country={draft.country_code} postal={draft.postal_code} value={draft.timezone} onChange={(timezone) => onChange({ ...draft, timezone })} />
       </label>
       <label className="wide" htmlFor="location-street">
         Street address
@@ -1016,7 +1027,7 @@ function Feedback({
 }
 
 function locationDraftIsComplete(draft: typeof defaultLocation): boolean {
-  return [draft.name, draft.country_code, draft.timezone].every(
+  return isValidIanaTimezone(draft.timezone) && locationShortNameSchema.safeParse(draft.short_name).success && [draft.name, draft.country_code, draft.timezone].every(
     (value) => value.trim().length > 0,
   );
 }

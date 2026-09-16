@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type {
   ActiveWorkspaceContext,
   EmployeeHubReadModel,
+  ScheduleReadModel,
   WeeklyPreferenceRead,
 } from "@newfork/shared";
 import { emptyWeeklyPreference } from "@newfork/shared";
@@ -25,6 +26,7 @@ import {
   captureEmployeeTimeEvent,
   actOnEmployeeRequest,
   getEmployeeHub,
+  getEmployeeScheduleBoard,
   getEmployeeTimeTracking,
   requestEmployeeTimeCorrection,
   getEmployeePersonalTasks,
@@ -135,6 +137,87 @@ const fixture = {
   lineup: [],
 } satisfies EmployeeHubReadModel;
 
+const scheduleBoard = {
+  workspace_id: workspaceId,
+  week_start: "2026-08-24",
+  week_start_day: "monday",
+  settings: { time_format: "12h" },
+  locations: [
+    {
+      id: "11000000-0000-4000-8000-000000000001",
+      name: "Main Dining",
+      timezone: "America/Los_Angeles",
+      sort_order: 1,
+      publication_status: "published",
+      published_at: "2026-08-20T12:00:00Z",
+    },
+  ],
+  departments: [],
+  jobs: [
+    {
+      id: "13000000-0000-4000-8000-000000000001",
+      name: "Server",
+      color: "#2d8c64",
+      sort_order: 1,
+      department_id: null,
+    },
+  ],
+  shift_types: [],
+  shift_labels: [],
+  employees: [
+    {
+      id: "15000000-0000-4000-8000-000000000001",
+      employee_code: "E-0001",
+      display_name: "Alex Kim",
+      location_ids: ["11000000-0000-4000-8000-000000000001"],
+      job_ids: ["13000000-0000-4000-8000-000000000001"],
+      availability: null,
+    },
+    {
+      id: "15000000-0000-4000-8000-000000000002",
+      employee_code: "E-0002",
+      display_name: "Jordy Lee",
+      location_ids: ["11000000-0000-4000-8000-000000000001"],
+      job_ids: ["13000000-0000-4000-8000-000000000001"],
+      availability: null,
+    },
+  ],
+  shifts: [
+    {
+      id: "22000000-0000-4000-8000-000000000001",
+      location_id: "11000000-0000-4000-8000-000000000001",
+      employee_id: "15000000-0000-4000-8000-000000000001",
+      job_id: "13000000-0000-4000-8000-000000000001",
+      shift_type_id: null,
+      scheduled_date: "2026-08-24",
+      start_time: "09:00",
+      end_time: "17:00",
+      crosses_midnight: false,
+      unpaid_break_minutes: 0,
+      hide_time_on_badge: false,
+      note: "",
+      warning_codes: [],
+    },
+    {
+      id: "22000000-0000-4000-8000-000000000002",
+      location_id: "11000000-0000-4000-8000-000000000001",
+      employee_id: "15000000-0000-4000-8000-000000000002",
+      job_id: "13000000-0000-4000-8000-000000000001",
+      shift_type_id: null,
+      scheduled_date: "2026-08-25",
+      start_time: "10:00",
+      end_time: "18:00",
+      crosses_midnight: false,
+      unpaid_break_minutes: 0,
+      hide_time_on_badge: false,
+      note: "",
+      warning_codes: [],
+    },
+  ],
+  closures: [],
+  important_dates: [],
+} satisfies ScheduleReadModel;
+
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
 vi.mock("../communications/communications-data", () => ({
   getAnnouncements: vi.fn(),
@@ -144,6 +227,7 @@ vi.mock("../employee-hub/employee-hub-data", () => ({
   getEmployeePersonalTasks: vi.fn().mockResolvedValue([]),
   changeEmployeePersonalTask: vi.fn().mockResolvedValue([]),
   getEmployeeHub: vi.fn(),
+  getEmployeeScheduleBoard: vi.fn(),
   submitEmployeeTimeOff: vi.fn().mockResolvedValue({
     status: "pending",
     request_id: "98300000-0000-4000-8000-000000000001",
@@ -383,46 +467,101 @@ describe("EmployeeHubPage", () => {
     expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
     expect(getEmployeeTimeTracking).not.toHaveBeenCalled();
   });
-  it("opens a selected day without showing other dates", async () => {
-    renderPageWithFixture(
-      {
-        ...fixture,
-        shifts: [
-          ownShift,
-          {
-            ...ownShift,
-            id: "second",
-            scheduled_date: "2026-08-25",
-            start_time: "11:00",
-          },
-        ],
-      },
-      "/app/employee-hub/schedule?date=2026-08-25&view=day",
+  it("shows the published team board and narrows it to My Schedule", async () => {
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage("/app/employee-hub/schedule?date=2026-08-24");
+
+    const rowNames = () =>
+      Array.from(
+        document.querySelectorAll(".schedule-employee-name-button"),
+      ).map((element) => element.textContent);
+
+    await waitFor(() => expect(rowNames()).toContain("Jordy Lee"));
+    expect(rowNames()).toContain("Alex Kim");
+
+    fireEvent.click(screen.getByRole("button", { name: "My Schedule" }));
+
+    await waitFor(() => expect(rowNames()).not.toContain("Jordy Lee"));
+    expect(rowNames()).toContain("Alex Kim");
+  });
+
+  it("peels board layers in order: filters, then day view", async () => {
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage(
+      "/app/employee-hub/schedule?date=2026-08-25&view=day&employees=15000000-0000-4000-8000-000000000001",
     );
-    expect(await screen.findByText("11a–5p")).toBeTruthy();
-    expect(screen.queryByText("9a–5p")).toBeNull();
-    expect(getEmployeeHub).toHaveBeenCalledWith(workspaceId, "2026-08-25", "2026-08-25");
-  });
-  it("loads a linked day beyond the default window instead of filtering an unrelated response", async () => {
-    renderPageWithFixture(
-      { ...fixture, shifts: [{ ...ownShift, scheduled_date: "2030-11-04" }] },
-      "/app/employee-hub/schedule?date=2030-11-04&view=day",
+    const rowNames = () =>
+      Array.from(
+        document.querySelectorAll(".schedule-employee-name-button"),
+      ).map((element) => element.textContent);
+
+    await waitFor(() => expect(rowNames()).toContain("Alex Kim"));
+    expect(rowNames()).not.toContain("Jordy Lee");
+    expect(screen.getAllByText("Tuesday, August 25, 2026").length).toBeGreaterThan(0);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    // Employee filter clears first; the day view survives this layer.
+    await waitFor(() => expect(rowNames()).toContain("Jordy Lee"));
+    expect(screen.getAllByText("Tuesday, August 25, 2026").length).toBeGreaterThan(0);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    await waitFor(() =>
+      expect(screen.getAllByText(/Aug 30, 2026/).length).toBeGreaterThan(0),
     );
-    expect(await screen.findByText("9a–5p")).toBeTruthy();
-    expect(getEmployeeHub).toHaveBeenCalledWith(workspaceId, "2030-11-04", "2030-11-04");
-    expect(screen.getByText("Your published shifts for Mon, Nov 4.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Show all upcoming shifts" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Find cover or swap" }).getAttribute("href"))
-      .toBe(`/app/employee-hub/shift-hub?offer=${ownShift.id}&from=2030-11-04&to=2030-11-04`);
-    expect(screen.getByRole("link", { name: "Line-up" }).getAttribute("href"))
-      .toBe("/app/employee-hub/lineup?date=2030-11-04");
   });
-  it("falls back to the normal range for a nonexistent calendar day", async () => {
-    renderPage("/app/employee-hub/schedule?date=2030-02-31&view=day");
-    expect(await screen.findByText("9a–5p")).toBeTruthy();
-    expect(getEmployeeHub).not.toHaveBeenCalledWith(workspaceId, "2030-02-31", "2030-02-31");
-    expect(screen.queryByRole("link", { name: "Show all upcoming shifts" })).toBeNull();
+
+  it("opens the picked calendar day even from week view", async () => {
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage("/app/employee-hub/schedule?date=2026-08-24");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Open schedule calendar" }),
+    );
+    fireEvent.click(screen.getByRole("gridcell", { name: /^August 26, 2026/ }));
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByText("Wednesday, August 26, 2026").length,
+      ).toBeGreaterThan(0),
+    );
   });
+
+  it("only toggles the calendar from its icon, even in day view", async () => {
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage("/app/employee-hub/schedule?date=2026-08-25&view=day");
+
+    const trigger = await screen.findByRole("button", {
+      name: "Open schedule calendar",
+    });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+
+    expect(
+      await screen.findByRole("dialog", { name: "Schedule calendar" }),
+    ).toBeTruthy();
+    expect(screen.getAllByText("Tuesday, August 25, 2026").length).toBeGreaterThan(0);
+  });
+
+  it("keeps the employee board free of scheduling tools", async () => {
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage("/app/employee-hub/schedule?date=2026-08-24");
+
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll(".schedule-employee-name-button").length,
+      ).toBeGreaterThan(0),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+
+    expect(
+      screen.queryByText("Use default times for scheduling"),
+    ).toBeNull();
+    expect(screen.queryByText(/Preset badges/)).toBeNull();
+    expect(screen.queryByText(/Unassigned Shifts Row/)).toBeNull();
+  });
+
   it("greets the employee and separates waiting requests from required responses", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
@@ -443,16 +582,6 @@ describe("EmployeeHubPage", () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it("uses the schedule 24-hour setting on employee-facing schedule rows", async () => {
-    renderPageWithFixture(
-      { ...fixture, settings: { time_format: "24h" } },
-      "/app/employee-hub/schedule",
-    );
-
-    expect(await screen.findByText("09:00–17:00")).toBeTruthy();
-    expect(screen.queryByText("9a–5p")).toBeNull();
   });
 
   it("submits open shift pickup from Shift Hub", async () => {

@@ -202,4 +202,51 @@ describe("notification outbox worker", () => {
       failed: 1,
     });
   });
+  it("isolates document maintenance failure from shift maintenance and outbox delivery", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const prepareBatch = vi
+      .fn()
+      .mockResolvedValue({ expired: 0, invalidated: 0, skipped_busy: 0 });
+    const worker = createNotificationOutboxWorkerWithClient(
+      { rpc },
+      {
+        prepareBatch,
+        prepareDocuments: async () => {
+          throw new Error("document maintenance unavailable");
+        },
+      },
+    );
+    await expect(worker.runBatch()).resolves.toMatchObject({
+      maintenance: { expired: 0 },
+      documentMaintenance: { failed: true },
+      leased: 0,
+      failed: 1,
+    });
+    expect(prepareBatch).toHaveBeenCalledOnce();
+    expect(rpc).toHaveBeenCalledWith(
+      "lease_notification_outbox_service",
+      expect.anything(),
+    );
+  });
+  it("runs document maintenance even when shift maintenance fails", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const prepareDocuments = vi
+      .fn()
+      .mockResolvedValue({ checked: 2, enqueued: 1 });
+    const worker = createNotificationOutboxWorkerWithClient(
+      { rpc },
+      {
+        prepareBatch: async () => {
+          throw new Error("shift maintenance unavailable");
+        },
+        prepareDocuments,
+      },
+    );
+    await expect(worker.runBatch()).resolves.toMatchObject({
+      maintenance: { failed: true },
+      documentMaintenance: { checked: 2, enqueued: 1 },
+      failed: 1,
+    });
+    expect(prepareDocuments).toHaveBeenCalledOnce();
+  });
 });

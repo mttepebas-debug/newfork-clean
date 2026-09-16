@@ -44,6 +44,7 @@ export async function resolveAuthorizedWorkspaceContext(input: {
     !context ||
     context.workspace.id !== input.workspaceId ||
     context.membership.status !== "active" ||
+    context.documentAccess?.restricted ||
     (!input.allowIncompleteOnboarding &&
       context.onboarding.status !== "complete") ||
     !context.permissions.includes(input.permission)
@@ -70,6 +71,7 @@ export async function resolveWorkspaceAuthorization(input: {
     !context ||
     context.workspace.id !== input.workspaceId ||
     context.membership.status !== "active" ||
+    context.documentAccess?.restricted ||
     (!input.allowIncompleteOnboarding &&
       context.onboarding.status !== "complete")
   ) {
@@ -116,6 +118,7 @@ export async function resolveWorkspaceMembership(input: {
     !context ||
     context.workspace.id !== input.workspaceId ||
     context.membership.status !== "active" ||
+    context.documentAccess?.restricted ||
     (!input.allowIncompleteOnboarding &&
       context.onboarding.status !== "complete")
   ) {
@@ -227,8 +230,33 @@ export function createSupabaseWorkspaceContextResolver(
       }
 
       const context = activeWorkspaceContextFromRow(row, locationIds);
+      let documentAccess: ActiveWorkspaceContext["documentAccess"];
+      if (serviceClient && ["active", "pending_activation"].includes(context.membership.status)) {
+        const access = await serviceClient.rpc("get_employee_document_access_service", {
+          actor_user_id: userData.user.id, target_workspace_id: context.workspace.id,
+        });
+        if (access.error) {
+          // Shared development and rolling deployments can run this source
+          // before BL-052 migrations. Absence of BOTH the RPC and its schema is
+          // the only compatibility case. A stale RPC cache or any real access
+          // check failure must still fail closed once lifecycle data exists.
+          if (access.error.code !== "PGRST202" ||
+            !/^Could not find the function public\.get_employee_document_access_service\(/.test(access.error.message))
+            throw new Error("Document access could not be checked");
+          const schema = await serviceClient
+            .from("employee_onboarding_requirements")
+            .select("lifecycle_revision")
+            .limit(0);
+          if (schema.error?.code !== "42703" || !schema.error.message.includes("lifecycle_revision"))
+            throw new Error("Document access could not be checked");
+        } else {
+          if (typeof access.data?.restricted !== "boolean") throw new Error("Invalid document access response");
+          documentAccess = { restricted: access.data.restricted };
+        }
+      }
       return {
         ...context,
+        ...(documentAccess ? { documentAccess } : {}),
         workspace: {
           ...context.workspace,
           logo_url: row.workspace_logo_storage_path

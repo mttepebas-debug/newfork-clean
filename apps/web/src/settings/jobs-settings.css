@@ -308,6 +308,9 @@
   gap: 12px;
   margin: 20px 0 16px;
 }
+.document-catalog-toolbar .job-archive-filter {
+  margin-left: auto;
+}
 .jobs-settings-page .toolbar-filter-select {
   border-color: var(--job-border);
   background: var(--job-bg);
@@ -1485,11 +1488,20 @@
 .acknowledgement-page .job-column-headings .job-sort-button {
   justify-content: flex-start;
 }
+.document-catalog-settings-page {
+  --document-marker-size: 32px;
+  --document-marker-gap: 10px;
+}
+.document-catalog-settings-page
+  .job-column-headings.document-catalog-row
+  .job-sort-button:first-child {
+  padding-left: calc(var(--document-marker-size) + var(--document-marker-gap));
+}
 .document-catalog-marker {
   display: grid;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: var(--document-marker-size, 32px);
+  height: var(--document-marker-size, 32px);
+  flex: 0 0 var(--document-marker-size, 32px);
   place-items: center;
   border-radius: 6px;
   background: var(--job-soft);

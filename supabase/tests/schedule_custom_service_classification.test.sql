@@ -7,8 +7,8 @@ create temp table sc as select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid w,
  'af9e0000-0000-4000-8000-000000000002'::uuid shift,'af9e0000-0000-4000-8000-000000000003'::uuid typ,
  '2036-01-14'::date week,null::uuid session,null::uuid draft,null::jsonb payload,null::jsonb preview;
 select public.availability_lock_workspace(w) from sc;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone)
-select loc,w,'Custom classification fixture','1 Verification Way','Test City','CA','94301','US','America/Los_Angeles' from sc;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone)
+select 'T00032', loc,w,'Custom classification fixture','1 Verification Way','Test City','CA','94301','US','America/Los_Angeles' from sc;
 insert into public.employee_profiles(id,workspace_id,employee_code,first_name,last_name,created_by)
 select emp,w,'E-994951','Custom','Work',actor from sc;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,is_primary,created_by) select w,emp,loc,true,actor from sc;

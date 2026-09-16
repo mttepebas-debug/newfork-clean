@@ -4,12 +4,14 @@ import {
   type EmployeePersonalTaskInput,
   employeeHubMutationResultSchema,
   employeeHubReadModelSchema,
+  scheduleReadModelSchema,
   employeeTimeTrackingReadModelSchema,
   captureTimeEventResultSchema,
   timeCorrectionMutationResultSchema,
   type CaptureTimeEventResult,
   type EmployeeHubMutationResult,
   type EmployeeHubReadModel,
+  type ScheduleReadModel,
   type EmployeeRequestActionInput,
   type EmployeeShiftRequestInput,
   type EmployeeTimeOffInput,
@@ -36,6 +38,11 @@ export interface EmployeeHubService {
     from: string;
     to: string;
   }): Promise<EmployeeHubReadModel>;
+  getScheduleBoard(input: {
+    actorUserId: string;
+    workspaceId: string;
+    targetDate: string;
+  }): Promise<ScheduleReadModel>;
   submitTimeOff(input: {
     actorUserId: string;
     workspaceId: string;
@@ -107,6 +114,17 @@ export function createEmployeeHubService(options: {
           task_action: input.task.action,
           target_task_id: input.task.id,
           task_title: input.task.action === "create" ? input.task.title : null,
+        }),
+      );
+    },
+    async getScheduleBoard(input) {
+      // Published, employee-scoped board. The SQL function owns the location
+      // scope and keeps other employees' availability out of the payload.
+      return scheduleReadModelSchema.parse(
+        await rpc("get_employee_schedule_board_service", {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+          target_date: input.targetDate,
         }),
       );
     },

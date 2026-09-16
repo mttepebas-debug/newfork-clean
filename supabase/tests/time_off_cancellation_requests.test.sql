@@ -11,8 +11,8 @@ select actor,'00000000-0000-0000-0000-000000000000','authenticated','authenticat
 insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from tc;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 select emp,w,actor,'E-994900','Cancel','Tester',manager from tc;
-insert into public.locations(id,workspace_id,name,timezone,street_address,city,region,postal_code)
-select loc,w,'Cancellation New York','America/New_York','1 Test St','New York','NY','10001' from tc;
+insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code)
+select 'T00042', loc,w,'Cancellation New York','America/New_York','1 Test St','New York','NY','10001' from tc;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by) select w,emp,loc,manager from tc;
 create function pg_temp.tc_new(d date,s text,e text) returns uuid language plpgsql as $$
 declare t tc%rowtype; result jsonb; begin select * into t from tc;

@@ -18,9 +18,9 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  select w,manager,'owner'::public.workspace_role,true from ws
  union all select w,limited_manager,'manager'::public.workspace_role,false from ws;
 insert into public.workspace_scheduling_settings(workspace_id) select w from ws on conflict do nothing;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
- select loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles',true from ws
- union all select other_loc,w,'Private East name','2 Test Street','Test City','NY','10001','America/New_York',true from ws;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
+ select 'T00055', loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles',true from ws
+ union all select 'T00056', other_loc,w,'Private East name','2 Test Street','Test City','NY','10001','America/New_York',true from ws;
 insert into public.membership_location_scopes(membership_id,workspace_id,location_id)
  select m.id,w,loc from ws join public.workspace_memberships m on m.workspace_id=w and m.user_id=limited_manager;
 insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;

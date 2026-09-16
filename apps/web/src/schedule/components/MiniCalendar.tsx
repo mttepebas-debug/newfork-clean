@@ -17,7 +17,8 @@ interface MiniCalendarProps {
   readonly weekStartDay: "monday" | "sunday";
   readonly markers?: readonly CalendarMarker[];
   readonly onDayPick: (date: string) => void;
-  readonly onWeekJump: (date: string) => void;
+  // Omit for a day-only calendar: no week-jump dots, no week highlight.
+  readonly onWeekJump?: (date: string) => void;
 }
 
 const monthNames = [
@@ -379,11 +380,11 @@ export function MiniCalendar({
       </div>
       {pickerMode === "month-grid" ? (
         <div
-          className="calendar-grid"
+          className={`calendar-grid${onWeekJump ? "" : " days-only"}`}
           role="grid"
           aria-label={`${monthNames[viewMonth.getUTCMonth()]} ${viewMonth.getUTCFullYear()}`}
         >
-          <span aria-hidden="true" />
+          {onWeekJump ? <span aria-hidden="true" /> : null}
           {weekdayLabels.map((label, index) => (
             <span className="weekday" key={`${label}-${index}`}>
               {label}
@@ -391,18 +392,21 @@ export function MiniCalendar({
           ))}
           {rows.map((row) => {
             const rowStart = startOfWeek(row[0]!, weekStartDay);
-            const rowActive = toIso(rowStart) === toIso(activeWeek);
+            const rowActive =
+              Boolean(onWeekJump) && toIso(rowStart) === toIso(activeWeek);
             return (
               <div className="calendar-row" role="row" key={toIso(rowStart)}>
-                <button
-                  type="button"
-                  className={`week-jump${rowActive ? " active" : ""}`}
-                  aria-label={`Jump to week of ${monthNames[rowStart.getUTCMonth()]} ${rowStart.getUTCDate()}`}
-                  aria-pressed={rowActive}
-                  onClick={() => onWeekJump(toIso(rowStart))}
-                >
-                  <span />
-                </button>
+                {onWeekJump ? (
+                  <button
+                    type="button"
+                    className={`week-jump${rowActive ? " active" : ""}`}
+                    aria-label={`Jump to week of ${monthNames[rowStart.getUTCMonth()]} ${rowStart.getUTCDate()}`}
+                    aria-pressed={rowActive}
+                    onClick={() => onWeekJump(toIso(rowStart))}
+                  >
+                    <span />
+                  </button>
+                ) : null}
                 {row.map((date) => {
                   const iso = toIso(date);
                   const marker = markerMap.get(iso);

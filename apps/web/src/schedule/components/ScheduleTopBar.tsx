@@ -10,13 +10,10 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Clock3,
   Eye,
   EyeOff,
-  Layers2,
   MapPin,
-  Rows3,
   SlidersHorizontal,
   Snowflake,
 } from "lucide-react";
@@ -51,12 +48,14 @@ interface ScheduleTopBarProps {
   readonly isCurrentViewPeriod: boolean;
   readonly onDayPick: (date: string) => void;
   readonly onWeekJump: (date: string) => void;
+  /** Day cells in the calendar always open that day, even from week view. */
+  readonly calendarDayOpensDay?: boolean;
   readonly hideUnscheduled: boolean;
   readonly onToggleHideUnscheduled: () => void;
-  readonly showUnassignedShifts: boolean;
-  readonly onToggleUnassignedShifts: () => void;
-  readonly unassignedFrozen: boolean;
-  readonly onToggleUnassignedFrozen: () => void;
+  readonly showUnassignedShifts?: boolean;
+  readonly onToggleUnassignedShifts?: () => void;
+  readonly unassignedFrozen?: boolean;
+  readonly onToggleUnassignedFrozen?: () => void;
   readonly dropdownDismissSignal?: number;
   readonly onDropdownOpenChange?: (open: boolean) => void;
   readonly showShiftType: boolean;
@@ -69,10 +68,10 @@ interface ScheduleTopBarProps {
   readonly onToggleTotalHours: () => void;
   readonly showRoleSeparators: boolean;
   readonly onToggleRoleSeparators: () => void;
-  readonly showPresetShiftBadges: boolean;
-  readonly onTogglePresetShiftBadges: () => void;
-  readonly useDefaultTimesForScheduling: boolean;
-  readonly onToggleUseDefaultTimesForScheduling: () => void;
+  readonly showPresetShiftBadges?: boolean;
+  readonly onTogglePresetShiftBadges?: () => void;
+  readonly useDefaultTimesForScheduling?: boolean;
+  readonly onToggleUseDefaultTimesForScheduling?: () => void;
   readonly employeeSortMode: ScheduleEmployeeSortMode;
   readonly onEmployeeSortModeChange: (mode: ScheduleEmployeeSortMode) => void;
   readonly locations: readonly ScheduleLocation[];
@@ -100,6 +99,7 @@ export function ScheduleTopBar({
   calendarMarkers,
   onDayPick,
   onWeekJump,
+  calendarDayOpensDay = false,
   layout,
   onLayoutChange,
   onPreviousViewPeriod,
@@ -250,7 +250,9 @@ export function ScheduleTopBar({
                   weekStartDay={weekStartDay}
                   markers={calendarMarkers}
                   onDayPick={(date) => {
-                    (view === "week" ? onWeekJump : onDayPick)(date);
+                    (view === "week" && !calendarDayOpensDay
+                      ? onWeekJump
+                      : onDayPick)(date);
                     setDropdownOpen("calendar", false);
                   }}
                   onWeekJump={(date) => {
@@ -325,6 +327,7 @@ export function ScheduleTopBar({
             allLabel="All locations"
             singularLabel="location"
             pluralLabel="locations"
+            summarySuffix={layout === "unified" ? "Merged" : "Separate"}
             icon={<MapPin size={15} aria-hidden />}
             items={locations.map((location) => ({
               id: location.id,
@@ -510,7 +513,6 @@ function ScheduleGridViewModeToggle({
 }) {
   const isUnified = mode === "unified";
   const nextMode = isUnified ? "separate" : "unified";
-  const label = isUnified ? "Separate Locations" : "Merge All";
 
   return (
     <button
@@ -519,8 +521,8 @@ function ScheduleGridViewModeToggle({
       className="schedule-grid-view-mode-toggle"
       onClick={() => onChange(nextMode)}
     >
-      {isUnified ? <Layers2 size={15} /> : <Rows3 size={15} />}
-      <span>{label}</span>
+      <span>Merge locations</span>
+      <span className="schedule-filter-layout-switch" aria-hidden="true" />
     </button>
   );
 }
@@ -551,22 +553,22 @@ function SettingsMenuPanel({
   readonly showShiftType: boolean;
   readonly showShiftLabels: boolean;
   readonly showClockTimes: boolean;
-  readonly showPresetShiftBadges: boolean;
+  readonly showPresetShiftBadges?: boolean;
   readonly showTotalHours: boolean;
   readonly showRoleSeparators: boolean;
-  readonly showUnassignedShifts: boolean;
-  readonly unassignedFrozen: boolean;
-  readonly useDefaultTimesForScheduling: boolean;
+  readonly showUnassignedShifts?: boolean;
+  readonly unassignedFrozen?: boolean;
+  readonly useDefaultTimesForScheduling?: boolean;
   readonly onEmployeeSortModeChange: (mode: ScheduleEmployeeSortMode) => void;
   readonly onToggleShiftType: () => void;
   readonly onToggleShiftLabels: () => void;
   readonly onToggleClockTimes: () => void;
-  readonly onTogglePresetShiftBadges: () => void;
+  readonly onTogglePresetShiftBadges?: () => void;
   readonly onToggleTotalHours: () => void;
   readonly onToggleRoleSeparators: () => void;
-  readonly onToggleUnassignedShifts: () => void;
-  readonly onToggleUnassignedFrozen: () => void;
-  readonly onToggleUseDefaultTimesForScheduling: () => void;
+  readonly onToggleUnassignedShifts?: () => void;
+  readonly onToggleUnassignedFrozen?: () => void;
+  readonly onToggleUseDefaultTimesForScheduling?: () => void;
 }) {
   return (
     <div className="schedule-command-menu-panel schedule-settings-menu-panel">
@@ -599,24 +601,24 @@ function SettingsMenuPanel({
       />
       <SettingsToggleRow
         pressed={showClockTimes}
-        icon={showClockTimes ? <Clock size={15} /> : <EyeOff size={15} />}
+        icon={showClockTimes ? <Eye size={15} /> : <EyeOff size={15} />}
         label={showHideLabel(showClockTimes, "Clock in/out in badges")}
         onClick={onToggleClockTimes}
       />
-      <SettingsToggleRow
-        pressed={showPresetShiftBadges}
-        icon={
-          showPresetShiftBadges ? <Clock3 size={15} /> : <EyeOff size={15} />
-        }
-        label={showHideLabel(showPresetShiftBadges, "Preset Shift Badges")}
-        onClick={onTogglePresetShiftBadges}
-        disabled={employeeSortMode !== "byJob"}
-      />
+      {onTogglePresetShiftBadges ? (
+        <SettingsToggleRow
+          pressed={Boolean(showPresetShiftBadges)}
+          icon={showPresetShiftBadges ? <Eye size={15} /> : <EyeOff size={15} />}
+          label={showHideLabel(Boolean(showPresetShiftBadges), "Preset badges")}
+          onClick={onTogglePresetShiftBadges}
+          disabled={employeeSortMode !== "byJob"}
+        />
+      ) : null}
       <div className="schedule-menu-separator" />
       <strong>Schedule Grid Settings</strong>
       <SettingsToggleRow
         pressed={showTotalHours}
-        icon={showTotalHours ? <Clock3 size={15} /> : <EyeOff size={15} />}
+        icon={showTotalHours ? <Eye size={15} /> : <EyeOff size={15} />}
         label={showHideLabel(showTotalHours, "Total hours")}
         onClick={onToggleTotalHours}
       />
@@ -627,39 +629,45 @@ function SettingsMenuPanel({
         onClick={onToggleRoleSeparators}
         disabled={employeeSortMode !== "byJob"}
       />
-      <SettingsToggleRow
-        pressed={showUnassignedShifts}
-        icon={showUnassignedShifts ? <Eye size={15} /> : <EyeOff size={15} />}
-        label={showHideLabel(showUnassignedShifts, "Unassigned Shifts Row")}
-        onClick={onToggleUnassignedShifts}
-      />
-      <SettingsToggleRow
-        pressed={unassignedFrozen}
-        icon={
-          <span
-            aria-hidden
-            className="schedule-unassigned-freeze-icon"
-            data-frozen={unassignedFrozen}
-          >
-            <Snowflake size={15} strokeWidth={unassignedFrozen ? 2.2 : 1.8} />
-            {!unassignedFrozen ? <span /> : null}
-          </span>
-        }
-        label={`${unassignedFrozen ? "Unfreeze" : "Freeze"} Unassigned Shifts Row`}
-        onClick={onToggleUnassignedFrozen}
-      />
-      <SettingsToggleRow
-        pressed={useDefaultTimesForScheduling}
-        icon={
-          useDefaultTimesForScheduling ? (
-            <Clock3 size={15} />
-          ) : (
-            <EyeOff size={15} />
-          )
-        }
-        label="Use default times for scheduling"
-        onClick={onToggleUseDefaultTimesForScheduling}
-      />
+      {onToggleUnassignedShifts ? (
+        <SettingsToggleRow
+          pressed={Boolean(showUnassignedShifts)}
+          icon={showUnassignedShifts ? <Eye size={15} /> : <EyeOff size={15} />}
+          label={showHideLabel(Boolean(showUnassignedShifts), "Unassigned Shifts Row")}
+          onClick={onToggleUnassignedShifts}
+        />
+      ) : null}
+      {onToggleUnassignedFrozen ? (
+        <SettingsToggleRow
+          pressed={Boolean(unassignedFrozen)}
+          icon={
+            <span
+              aria-hidden
+              className="schedule-unassigned-freeze-icon"
+              data-frozen={unassignedFrozen}
+            >
+              <Snowflake size={15} strokeWidth={unassignedFrozen ? 2.2 : 1.8} />
+              {!unassignedFrozen ? <span /> : null}
+            </span>
+          }
+          label={`${unassignedFrozen ? "Unfreeze" : "Freeze"} Unassigned Shifts Row`}
+          onClick={onToggleUnassignedFrozen}
+        />
+      ) : null}
+      {onToggleUseDefaultTimesForScheduling ? (
+        <SettingsToggleRow
+          pressed={Boolean(useDefaultTimesForScheduling)}
+          icon={
+            useDefaultTimesForScheduling ? (
+              <Clock3 size={15} />
+            ) : (
+              <EyeOff size={15} />
+            )
+          }
+          label="Use default times for scheduling"
+          onClick={onToggleUseDefaultTimesForScheduling}
+        />
+      ) : null}
     </div>
   );
 }

@@ -368,6 +368,14 @@ describe("schedule sticky layout styles", () => {
     expect(titleRule).toContain("font-weight: 750");
     expect(metadataRule).toContain("font-size: 10px");
     expect(metadataRule).toContain("line-height: 1.3");
+    expect(contentRule).toContain("align-items: stretch");
+    expect(contentRule).toContain("text-align: center");
+    for (const rule of [titleRule, metadataRule]) {
+      expect(rule).toContain("white-space: normal");
+      expect(rule).toContain("overflow-wrap: anywhere");
+      expect(rule).not.toContain("ellipsis");
+      expect(rule).not.toContain("overflow: hidden");
+    }
     expect(stackAndMarkerRule).toContain("padding-right: 70px");
     expect(markerRule).toContain("z-index: 2");
   });

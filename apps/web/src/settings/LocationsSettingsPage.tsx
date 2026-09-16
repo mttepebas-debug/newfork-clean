@@ -13,6 +13,7 @@ import { CatalogRowMenu } from "./CatalogRowMenu";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import "./jobs-settings.css";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
+import { LocationTimezoneField } from "./LocationTimezoneField";
 import {
   listLocations,
   saveLocation,
@@ -21,12 +22,13 @@ import {
 
 const emptyLocation: LocationInput = {
   name: "",
+  short_name: "",
   street_address: "",
   city: "",
   region: "CA",
   postal_code: "",
   country_code: "US",
-  timezone: "America/Los_Angeles",
+  timezone: "",
 };
 
 const timezones = [
@@ -40,6 +42,17 @@ const timezones = [
 
 function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
+}
+
+// Legacy locations may not have a short name yet. Do not parse them through
+// the stricter write schema just to open the editor.
+function locationDraft(location: Location): LocationInput {
+  return {
+    name: location.name, short_name: location.short_name ?? "",
+    street_address: location.street_address, city: location.city,
+    region: location.region, postal_code: location.postal_code,
+    country_code: location.country_code, timezone: location.timezone,
+  };
 }
 
 export default function LocationsSettingsPage() {
@@ -70,6 +83,7 @@ export default function LocationsSettingsPage() {
       saveLocation(workspaceId, values, id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey });
+      await queryClient.invalidateQueries({ queryKey: ["schedule-read", workspaceId] });
       setEditing(null);
       setFormError(null);
     },
@@ -85,7 +99,7 @@ export default function LocationsSettingsPage() {
   const openEditor = (location?: Location): void => {
     if (deleteLocked || saveMutation.isPending) return;
     setEditing(location ?? "new");
-    setDraft(location ? locationInputSchema.parse(location) : emptyLocation);
+    setDraft(location ? locationDraft(location) : emptyLocation);
     setFormError(null);
   };
   const submit = (event: FormEvent): void => {
@@ -108,13 +122,13 @@ export default function LocationsSettingsPage() {
     (location) =>
       (showArchived || !location.archived_at) &&
       (!search.trim() ||
-        `${location.name} ${location.street_address} ${location.city}`
+        `${location.name} ${location.short_name ?? ""} ${location.street_address} ${location.city}`
           .toLowerCase()
           .includes(search.trim().toLowerCase())),
   );
   const parsedDraft = locationInputSchema.safeParse(draft);
   const locationBaseline =
-    editing && editing !== "new" ? locationInputSchema.parse(editing) : null;
+    editing && editing !== "new" ? locationDraft(editing) : null;
   const canSave =
     canEdit &&
     !deleteLocked &&
@@ -210,6 +224,21 @@ export default function LocationsSettingsPage() {
                   }
                 />
                 <FormField
+                  label="Short name"
+                  describedBy="location-short-name-help"
+                  value={draft.short_name}
+                  maxLength={12}
+                  onChange={(value) =>
+                    setDraft((current) => ({ ...current, short_name: value }))
+                  }
+                />
+                <p className="field-wide" id="location-short-name-help">
+                  2–12 letters, numbers or hyphens, without spaces. Unique in this workspace; used in export filenames.
+                </p>
+                {draft.short_name && !locationInputSchema.shape.short_name.safeParse(draft.short_name).success ? (
+                  <p className="form-error" role="alert">Use 2–12 letters, numbers or hyphens, without spaces.</p>
+                ) : null}
+                <FormField
                   label="Street address"
                   value={draft.street_address}
                   maxLength={180}
@@ -247,21 +276,7 @@ export default function LocationsSettingsPage() {
                 />
                 <label className="job-field">
                   <span>Time zone</span>
-                  <select
-                    value={draft.timezone}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        timezone: event.target.value,
-                      }))
-                    }
-                  >
-                    {timezones.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                  <LocationTimezoneField country={draft.country_code} postal={draft.postal_code} value={draft.timezone} onChange={(timezone) => setDraft((current) => ({ ...current, timezone }))} />
                 </label>
               </fieldset>
               {formError ? (
@@ -356,6 +371,9 @@ export default function LocationsSettingsPage() {
                     <span className="job-row-name" title={location.name}>
                       {location.name}
                     </span>
+                    <span className="location-catalog-address">
+                      {location.short_name ?? "Short name needed for export"}
+                    </span>
                     <span className="location-catalog-address" title={address}>
                       {address}
                     </span>
@@ -403,12 +421,14 @@ function FormField({
   onChange,
   maxLength,
   className = "",
+  describedBy,
 }: {
   readonly label: string;
   readonly value: string;
   readonly onChange: (value: string) => void;
   readonly maxLength: number;
   readonly className?: string;
+  readonly describedBy?: string;
 }) {
   return (
     <label className={`job-field ${className}`}>
@@ -416,6 +436,7 @@ function FormField({
       <input
         value={value}
         maxLength={maxLength}
+        aria-describedby={describedBy}
         onChange={(event) => onChange(event.target.value)}
         required
       />

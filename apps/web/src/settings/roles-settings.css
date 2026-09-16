@@ -10,69 +10,70 @@
   line-height: 1.45;
 }
 .bl051-roles > .settings-page-header {
-  margin-bottom: 14px;
+  margin-bottom: 0;
+}
+.bl051-roles .rp-directory {
+  min-width: 0;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  overflow: visible;
+  border-bottom: 1px solid var(--border);
+}
+.bl051-roles .rp-directory button {
+  flex: 0 1 auto;
+  max-width: 100%;
+  white-space: nowrap;
+}
+.bl051-roles .rp-directory button:focus-visible {
+  outline: 2px solid light-dark(#21734a, #80d4a1);
+  outline-offset: -2px;
+}
+.bl051-roles .rp-custom-group {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+.bl051-roles .rp-custom-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 7px);
+  left: 0;
+  display: grid;
+  width: max-content;
+  min-width: 190px;
+  max-width: min(320px, calc(100vw - 48px));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: 0 18px 42px rgb(22 34 28 / 14%);
+}
+.bl051-roles .rp-custom-menu button {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bl051-roles .rp-custom-menu button:last-child {
+  border-bottom: 0;
+}
+.bl051-roles .rp-custom-menu button:hover,
+.bl051-roles .rp-custom-menu button.selected {
+  background: light-dark(#eef6f2, #263f30);
+  color: light-dark(#183e30, #80d4a1);
 }
 .bl051-roles .rp-panel {
   box-sizing: border-box;
   border: 1px solid var(--border);
   border-radius: 7px;
-  padding: 16px 18px 24px;
+  padding: 0 0 24px;
   background: var(--surface);
-}
-.bl051-roles .rp-split {
-  display: grid;
-  grid-template-columns: 148px minmax(0, 1fr);
-  gap: 23px;
-}
-.bl051-roles .rp-directory {
-  align-self: start;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 7px;
-  background: var(--surface-soft);
-}
-.bl051-roles .rp-directory button {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  margin-bottom: 3px;
-  padding: 9px 10px;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  background: var(--surface);
-  color: var(--text);
-  text-align: left;
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-.bl051-roles .rp-directory button:hover {
-  border-color: light-dark(#cddbd3, #516058);
-  background: light-dark(#f0f6f2, #29322d);
-}
-.bl051-roles .rp-directory button.selected {
-  box-shadow: inset 3px 0 0 light-dark(#21734a, #80d4a1);
-  background: light-dark(#eaf4ee, #263f30);
-  color: light-dark(#21734a, #80d4a1);
-  font-weight: 600;
-}
-.bl051-roles .rp-directory button > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.bl051-roles .rp-directory svg {
-  flex: none;
-}
-.bl051-roles .rp-directory small {
-  display: block;
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--muted);
-}
-.bl051-roles .rp-directory button:last-child {
-  margin-bottom: 0;
 }
 .bl051-roles .rp-editor {
   min-width: 0;
@@ -93,7 +94,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin: 15px 0;
+  margin: 15px 18px;
 }
 .bl051-roles .rp-description {
   grid-column: 1/-1;
@@ -105,6 +106,9 @@
   font-size: 13px;
   margin-bottom: 10px;
   min-width: 0;
+}
+.bl051-roles .rp-editor > .rp-field {
+  margin: 16px 18px 10px;
 }
 .bl051-roles .rp-field input,
 .bl051-roles .rp-field select {
@@ -179,6 +183,7 @@
 .bl051-roles .rp-permission-row {
   min-height: 44px;
   padding-left: 30px;
+  border-top: 1px solid light-dark(#e8edea, #2c3631);
   background: light-dark(#f7f9f8, #202623);
   font-size: 14px;
 }
@@ -211,48 +216,69 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  padding-top: 16px;
+  padding: 16px 18px 0;
 }
 .bl051-roles .rp-footer-actions {
   display: flex;
   gap: 8px;
   margin-left: auto;
 }
-.bl051-roles .rp-delete {
-  border: 1px solid var(--border);
-  padding: 12px;
-  margin-top: 15px;
+.bl051-roles .rp-delete-action {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bl051-roles .rp-delete-button {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+.bl051-roles .rp-delete-button.is-armed {
+  border-color: light-dark(#b84b3f, #ffaaa4);
+  background: light-dark(#fff2ef, #4a2724);
+  color: light-dark(#912f27, #ffd0cb);
+  box-shadow: inset 0 0 0 1px light-dark(#e2aaa3, #87524c);
+  animation: rp-delete-arm 240ms ease-out;
+}
+.bl051-roles .rp-delete-button.is-armed:not(.is-blocked):hover {
+  background: light-dark(#a84034, #8d332b);
+  color: #fff;
+}
+.bl051-roles .rp-delete-button.is-blocked {
+  cursor: default;
+}
+.bl051-roles .rp-delete-hint {
+  max-width: min(460px, 100%);
+  color: light-dark(#704137, #ffbcb5);
   font-size: 13px;
+  line-height: 1.35;
+  animation: rp-delete-hint-in 180ms ease-out;
 }
-.bl051-roles .rp-delete button {
-  margin: 5px;
+@keyframes rp-delete-arm {
+  from {
+    transform: scale(0.98);
+  }
+  to {
+    transform: scale(1);
+  }
 }
-@media (max-width: 1100px) {
-  .bl051-roles .rp-split {
-    grid-template-columns: 125px minmax(0, 1fr);
-    gap: 15px;
+@keyframes rp-delete-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 @media (max-width: 736px) {
   .bl051-roles .rp-panel {
-    padding-inline: 14px;
-  }
-  .bl051-roles .rp-split {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 18px;
-  }
-  .bl051-roles .rp-directory {
-    display: flex;
-    gap: 5px;
-    overflow-x: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-    padding: 0 0 10px;
-  }
-  .bl051-roles .rp-directory button {
-    width: auto;
-    flex: 0 0 auto;
-    max-width: 180px;
+    padding-bottom: 18px;
   }
 }
 @media (max-width: 390px) {
@@ -268,6 +294,14 @@
   }
   .bl051-roles .rp-fields {
     grid-template-columns: 1fr;
+    margin-inline: 12px;
+  }
+  .bl051-roles .rp-editor > .rp-field,
+  .bl051-roles .rp-footer {
+    margin-inline: 12px;
+  }
+  .bl051-roles .rp-footer {
+    padding-inline: 0;
   }
   .bl051-roles .rp-permission-head,
   .bl051-roles .rp-category-head,
@@ -302,6 +336,6 @@
     display: flex;
   }
   .bl051-roles .rp-directory {
-    display: none;
+    margin-top: 10px;
   }
 }

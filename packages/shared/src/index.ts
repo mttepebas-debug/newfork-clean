@@ -1,4 +1,8 @@
 import { z } from "zod";
+export * from "./document-lifecycle.js";
+import { documentLifecycleSettingsSchema } from "./document-lifecycle.js";
+export * from "./timezones.js";
+import { isValidIanaTimezone } from "./timezones.js";
 import {
   employeeEligiblePermissions,
   personalRolePermissions,
@@ -460,6 +464,7 @@ export const activeWorkspaceContextSchema = z
     userId: z.string().uuid(),
     workspace: workspaceSchema,
     membership: workspaceMembershipSchema,
+    documentAccess: z.object({ restricted: z.boolean() }).optional(),
     permissions: z.array(permissionSchema),
     onboarding: workspaceOnboardingSchema.default({
       status: "complete",
@@ -612,10 +617,19 @@ export const colorSchema = z
   .string()
   .regex(/^#[0-9A-Fa-f]{6}$/, "Use a six-digit hex color");
 
+export { scheduleExportV2PreferencesSchema, scheduleExportV2ScopeSchema, scheduleExportV2AuthorizationSchema,
+  type ScheduleExportV2Preferences, type ScheduleExportV2Scope } from "./schedule-export-v2";
+
+export const locationShortNameSchema = z.string().trim().regex(
+  /^[\p{L}\p{N}-]{2,12}$/u,
+  "Use 2–12 letters, numbers or hyphens, without spaces",
+);
+
 export const locationSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
+  short_name: locationShortNameSchema.nullable().optional(),
   street_address: z.string().trim().max(180),
   city: z.string().trim().max(100),
   region: z.string().trim().max(100),
@@ -656,7 +670,7 @@ export const locationInputSchema = locationSchema.pick({
   postal_code: true,
   country_code: true,
   timezone: true,
-});
+}).extend({ short_name: locationShortNameSchema, timezone: z.string().trim().max(80).refine(isValidIanaTimezone, "Select a valid IANA time zone") });
 export type LocationInput = z.infer<typeof locationInputSchema>;
 
 export const departmentInputSchema = departmentSchema.pick({
@@ -987,6 +1001,7 @@ export type ScheduleView = z.infer<typeof scheduleViewSchema>;
 export const scheduleLocationSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
+  short_name: locationShortNameSchema.nullable().optional(),
   timezone: z.string().trim().min(1).max(80),
   sort_order: z.coerce.number().int().nonnegative(),
   publication_status: z.enum(["published", "unpublished"]),
@@ -2733,6 +2748,8 @@ export const employeeOnboardingRequirementSchema = z.object({
   description: z.string().max(500),
   status: employeeOnboardingRequirementStatusSchema,
   required: z.boolean(),
+  document_mode: z.enum(["optional", "required", "conditional"]).nullable().optional(),
+  conditional_reason: z.string().nullable().optional(),
   blocks_activation: z.boolean(),
   requires_review: z.boolean(),
   sort_order: z.number().int().nonnegative(),
@@ -2903,6 +2920,11 @@ export type DocumentExpiryScheduleImpact = z.infer<
 >;
 
 export const documentTypeSchema = z.object({
+  publication_status: z.enum(["draft", "published"]).optional(),
+  publication_revision: z.number().int().positive().optional(),
+  published_at: z.string().datetime({ offset: true }).nullable().optional(),
+  lifecycle_settings: documentLifecycleSettingsSchema.optional(),
+  lifecycle_revision: z.number().int().positive().optional(),
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
   title: z.string().trim().min(1).max(80),
@@ -2921,6 +2943,8 @@ export type DocumentType = z.infer<typeof documentTypeSchema>;
 
 export const documentTypeInputSchema = documentTypeSchema
   .pick({
+    lifecycle_settings: true,
+    lifecycle_revision: true,
     title: true,
     description: true,
     required_at_onboarding: true,
@@ -3003,6 +3027,8 @@ export const signatureTemplateSchema = z.object({
 export type SignatureTemplate = z.infer<typeof signatureTemplateSchema>;
 
 export const signatureTemplateVersionSchema = z.object({
+  lifecycle_settings: documentLifecycleSettingsSchema.nullable().optional(),
+  lifecycle_revision: z.number().int().positive().optional(),
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
   template_id: z.string().uuid(),
@@ -3027,6 +3053,8 @@ export type SignatureTemplateVersion = z.infer<
 
 export const signatureTemplateDraftInputSchema = signatureTemplateVersionSchema
   .pick({
+    lifecycle_settings: true,
+    lifecycle_revision: true,
     title: true,
     summary: true,
     content_text: true,
@@ -3038,6 +3066,7 @@ export const signatureTemplateDraftInputSchema = signatureTemplateVersionSchema
     retention_policy_id: true,
   })
   .superRefine((template, issue) => {
+    if (template.lifecycle_settings?.mode === "conditional") issue.addIssue({ code: "custom", path: ["lifecycle_settings", "mode"], message: "Policies are optional or required" });
     if (template.blocks_activation && !template.required_at_onboarding) {
       issue.addIssue({
         code: "custom",

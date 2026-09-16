@@ -1,4 +1,6 @@
 import {
+  documentDefinitionPreviewSchema, documentTargetOptionsSchema,
+  type DocumentDefinitionPreview, type DocumentTargetOptions,
   signatureRetentionPolicyInputSchema,
   signatureTemplateDraftInputSchema,
   type SignatureRetentionPolicyInput,
@@ -7,6 +9,9 @@ import {
 import { createClient } from "@supabase/supabase-js";
 
 export interface SignatureSettingsService {
+  targetOptions(actor: string, workspace: string): Promise<DocumentTargetOptions>;
+  preview(actor: string, workspace: string, version: string): Promise<DocumentDefinitionPreview>;
+  apply(actor: string, workspace: string, version: string, input: { revision: number; preview_token: string; reason: string }): Promise<unknown>;
   saveRetentionPolicy(input: {
     readonly actorUserId: string;
     readonly workspaceId: string;
@@ -80,6 +85,9 @@ export function createSignatureSettingsServiceWithClient(
   }
 
   return {
+    async targetOptions(actor, workspace) { return documentTargetOptionsSchema.parse(await rpc("document_definition_target_options_service", { actor_user_id: actor, target_workspace_id: workspace })); },
+    async preview(actor, workspace, version) { return documentDefinitionPreviewSchema.parse(await rpc("preview_policy_definition_apply_service", { actor_user_id: actor, target_workspace_id: workspace, target_version_id: version })); },
+    async apply(actor, workspace, version, input) { return rpc("apply_policy_definition_service", { actor_user_id: actor, target_workspace_id: workspace, target_version_id: version, expected_revision: input.revision, expected_preview_token: input.preview_token, apply_reason: input.reason }); },
     async saveRetentionPolicy(input) {
       const policy = signatureRetentionPolicyInputSchema.parse(input.policy);
       return String(
@@ -119,6 +127,7 @@ export function createSignatureSettingsServiceWithClient(
     },
     async saveTemplateDraft(input) {
       const template = signatureTemplateDraftInputSchema.parse(input.template);
+      if (template.lifecycle_settings) return String(await rpc("save_policy_lifecycle_service", { actor_user_id: input.actorUserId, target_workspace_id: input.workspaceId, target_template_id: input.templateId ?? null, policy_payload: template }));
       return String(
         await rpc("save_signature_template_draft_service", {
           actor_user_id: input.actorUserId,

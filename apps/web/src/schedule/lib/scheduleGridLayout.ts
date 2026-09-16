@@ -140,13 +140,11 @@ export function createScheduleGridTemplateColumns({
 
 export function calculateScheduleDayColumnMinWidth({
   editing,
-  layout = "separate",
   locationGroups,
   measuredBadgeWidth,
   view,
 }: {
   readonly editing: boolean;
-  readonly layout?: "separate" | "unified";
   readonly locationGroups: readonly ScheduleGridLocationGroup[];
   readonly measuredBadgeWidth: number;
   readonly view: ScheduleView;
@@ -162,14 +160,13 @@ export function calculateScheduleDayColumnMinWidth({
   );
 
   return Math.max(
-    view === "day" ? 168 : scheduleGridMinDayColumnWidth,
-    layout === "unified" && view === "week"
-      ? scheduleGridMinDayColumnWidth
-      : measuredLocationHeaderWidth,
-    measuredBadgeWidth +
-      (editing
-        ? scheduleGridEditCellHorizontalChrome
-        : scheduleGridPreviewCellHorizontalChrome),
+    view === "day" ? Math.max(168, measuredLocationHeaderWidth) : 0,
+    measuredBadgeWidth > 0
+      ? measuredBadgeWidth +
+        (editing
+          ? scheduleGridEditCellHorizontalChrome
+          : scheduleGridPreviewCellHorizontalChrome)
+      : 0,
   );
 }
 

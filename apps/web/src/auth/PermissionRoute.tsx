@@ -13,6 +13,7 @@ export const settingsEntryPermissions = [
   "schedule.conflict_rules.manage",
   "roles.read",
   "documents.read",
+  "employee_documents.read",
   "signature_templates.read",
   "notifications.settings.read",
   "notifications.settings.write",

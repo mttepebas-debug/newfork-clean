@@ -20,9 +20,9 @@ insert into public.employee_profiles(id,workspace_id,employee_code,first_name,la
 ('78000000-0000-4000-8000-000000000091','28000000-0000-4000-8000-000000000091','E-0091','Catalog','Employee','18000000-0000-4000-8000-000000000091');
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,is_primary,created_by) values
 ('28000000-0000-4000-8000-000000000091','78000000-0000-4000-8000-000000000091','58000000-0000-4000-8000-000000000092',true,'18000000-0000-4000-8000-000000000091');
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone) values
-('48000000-0000-4000-8000-000000000091','28000000-0000-4000-8000-000000000091','Location A','1 Main','City','CA','90001','America/Los_Angeles'),
-('48000000-0000-4000-8000-000000000092','28000000-0000-4000-8000-000000000091','Location B','2 Main','City','CA','90001','America/Los_Angeles');
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone) values
+('T00009','48000000-0000-4000-8000-000000000091','28000000-0000-4000-8000-000000000091','Location A','1 Main','City','CA','90001','America/Los_Angeles'),
+('T00010','48000000-0000-4000-8000-000000000092','28000000-0000-4000-8000-000000000091','Location B','2 Main','City','CA','90001','America/Los_Angeles');
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,is_primary,created_by) values
 ('28000000-0000-4000-8000-000000000091','78000000-0000-4000-8000-000000000091','48000000-0000-4000-8000-000000000091',true,'18000000-0000-4000-8000-000000000091'),
 ('28000000-0000-4000-8000-000000000091','78000000-0000-4000-8000-000000000091','48000000-0000-4000-8000-000000000092',false,'18000000-0000-4000-8000-000000000091');

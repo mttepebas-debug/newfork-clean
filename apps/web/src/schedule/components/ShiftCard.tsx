@@ -3,7 +3,7 @@ import type {
   ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
-import { AlertTriangle, Check, CloudOff, Edit3 } from "lucide-react";
+import { Check, CloudOff, Edit3 } from "lucide-react";
 import type {
   CSSProperties,
   MouseEvent,
@@ -20,30 +20,15 @@ import type { ShiftPublicationState } from "./ScheduleContextMenu";
 import type { EffectiveScheduleShift } from "../hooks/useEffectiveShifts";
 import "./schedule-shift-save.css";
 
-const warningLabels = {
-  availability: "Outside employee availability",
-  closed_location: "Location is closed",
-  overlap: "Overlapping employee shifts",
-} as const;
-
 const SINGLE_CLICK_FOCUS_DELAY_MS = 250;
-const MAX_VISIBLE_SHIFT_LABELS = 2;
 
-function formatShiftLabelDisplay(labelNames: readonly string[]): {
+export function formatShiftLabelDisplay(labelNames: readonly string[]): {
   readonly fullText: string;
   readonly displayText: string;
 } {
   const labels = labelNames.map((label) => label.trim()).filter(Boolean);
   const fullText = labels.join(" · ");
-  if (labels.length <= MAX_VISIBLE_SHIFT_LABELS) {
-    return { fullText, displayText: fullText };
-  }
-  return {
-    fullText,
-    displayText: `${labels.slice(0, MAX_VISIBLE_SHIFT_LABELS).join(" · ")} +${
-      labels.length - MAX_VISIBLE_SHIFT_LABELS
-    }`,
-  };
+  return { fullText, displayText: fullText };
 }
 
 export function ShiftCard({
@@ -175,7 +160,7 @@ export function ShiftCard({
       data-selected={selected}
       data-dragging={dragging}
       data-job-color-dot={false}
-      data-has-markers={Boolean(publicationState || shift.warning_codes.length)}
+      data-has-markers={Boolean(publicationState)}
       data-shift-labels-visible={showShiftLabels}
       data-publication-state={publicationState ?? undefined}
       data-focused={focused}
@@ -265,7 +250,7 @@ export function ShiftCard({
           aria-hidden="true"
         />
       ) : null}
-      {publicationState || shift.warning_codes.length ? (
+      {publicationState ? (
         <span className="schedule-shift-badge-markers">
           {publicationState === "locked" ? (
             <Check size={12} aria-label="Live - published to employees">
@@ -284,14 +269,6 @@ export function ShiftCard({
             >
               <title>Edited - updates the live shift on next publish</title>
             </Edit3>
-          ) : null}
-          {shift.warning_codes.length ? (
-            <AlertTriangle
-              size={13}
-              aria-label={shift.warning_codes
-                .map((code) => warningLabels[code])
-                .join(", ")}
-            />
           ) : null}
         </span>
       ) : null}
@@ -392,7 +369,7 @@ export function GhostShiftCard({
       data-schedule-row-key={rowKey}
       data-ghost="true"
       data-job-color-dot={false}
-      data-has-markers={Boolean(shift.warning_codes.length)}
+      data-has-markers={false}
       data-shift-labels-visible={showShiftLabels}
       title={
         sourceLocation
@@ -402,16 +379,6 @@ export function GhostShiftCard({
           : warningText || undefined
       }
     >
-      {shift.warning_codes.length ? (
-        <span className="schedule-shift-badge-markers">
-          <AlertTriangle
-            size={13}
-            aria-label={shift.warning_codes
-              .map((code) => warningLabels[code])
-              .join(", ")}
-          />
-        </span>
-      ) : null}
       <span
         className="schedule-shift-badge-content"
         data-shift-badge-content="true"

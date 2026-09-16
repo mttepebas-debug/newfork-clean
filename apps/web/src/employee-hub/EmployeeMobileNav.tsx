@@ -69,13 +69,6 @@ export function EmployeeMorePage() {
       enabled: true,
     },
     {
-      label: "My team",
-      detail: "People at your locations",
-      to: "/app/employee-hub/my-team",
-      icon: Users,
-      enabled: true,
-    },
-    {
       label: "Line-up",
       detail: "The plan for your shift",
       to: "/app/employee-hub/lineup",

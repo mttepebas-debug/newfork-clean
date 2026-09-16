@@ -25,9 +25,9 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  union all select w,manager_a,'manager'::public.workspace_role,false from ws
  union all select w,manager_b,'manager'::public.workspace_role,false from ws;
 insert into public.workspace_scheduling_settings(workspace_id) select w from ws on conflict do nothing;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone)
- select loc,w,'Original site','1 Test Street','Test City','CA','90001','UTC' from ws
- union all select other_loc,w,'New site','2 Test Street','Test City','NY','10001','America/New_York' from ws;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
+ select 'T00053', loc,w,'Original site','1 Test Street','Test City','CA','90001','UTC' from ws
+ union all select 'T00054', other_loc,w,'New site','2 Test Street','Test City','NY','10001','America/New_York' from ws;
 insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
  select w,m.id,case when m.user_id=manager_a then loc else other_loc end from ws
  join public.workspace_memberships m on m.workspace_id=w and m.user_id in(manager_a,manager_b);

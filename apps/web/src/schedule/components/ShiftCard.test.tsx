@@ -66,6 +66,13 @@ function renderShiftCard(
 }
 
 describe("ShiftCard", () => {
+  it("keeps warning context without a warning icon or reserved marker space", () => {
+    renderShiftCard({ shift: { ...shift, warning_codes: ["overlap"] } });
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    expect(badge.getAttribute("data-has-markers")).toBe("false");
+    expect(badge.querySelector(".schedule-shift-badge-markers")).toBeNull();
+    expect(badge.getAttribute("aria-label")).toContain("conflicts with another shift");
+  });
   it("shows saving feedback only on its optimistic badge", () => {
     renderShiftCard({ shift: { ...shift, optimistic: true, saving_state: "delayed" } });
     const status = screen.getByRole("status");
@@ -216,7 +223,7 @@ describe("ShiftCard", () => {
     expect(screen.getByRole("button", { name: /17:00 - 22:30/i })).toBeTruthy();
   });
 
-  it("compacts overflowing labels while keeping the full label list accessible", () => {
+  it("shows every label without compacting the visible list", () => {
     renderShiftCard({
       shift: {
         ...shift,
@@ -224,7 +231,7 @@ describe("ShiftCard", () => {
       },
     });
 
-    const labels = screen.getByText("Training · Lead Server +1");
+    const labels = screen.getByText("Training · Lead Server · Close");
     expect(labels.getAttribute("title")).toBe("Training · Lead Server · Close");
     expect(
       screen.getByRole("button", {
@@ -262,6 +269,8 @@ describe("GhostShiftCard", () => {
 
     const badge = screen.getByTestId("ghost-shift-badge");
     expect(badge.getAttribute("data-ghost")).toBe("true");
+    expect(badge.getAttribute("data-has-markers")).toBe("false");
+    expect(badge.querySelector("svg")).toBeNull();
     expect(document.querySelector(".schedule-shift-color-dot")).toBeNull();
     expect(screen.getByText("Patio")).toBeTruthy();
     expect(screen.getByText("5:00 PM - 10:30 PM")).toBeTruthy();

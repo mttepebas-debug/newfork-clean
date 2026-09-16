@@ -14,6 +14,7 @@ import {
   calculateScheduleGridFillerHeight,
   createScheduleGridTemplateColumns,
   scheduleGridEmployeeColumnWidth,
+  scheduleGridTotalColumnWidth,
   scheduleGridHorizontalNavHeight,
   scheduleGridTotalRowHeight,
   type ScheduleGridLocationGroup,
@@ -31,6 +32,7 @@ export function ScheduleGridShell({
   dragPointer,
   editing,
   fitVisibleColumns = false,
+  fitWeeklyLocations = false,
   gridRef,
   overlays,
   showTotalHours,
@@ -43,6 +45,7 @@ export function ScheduleGridShell({
   readonly dragPointer?: { readonly x: number; readonly y: number } | null;
   readonly editing: boolean;
   readonly fitVisibleColumns?: boolean;
+  readonly fitWeeklyLocations?: boolean;
   readonly gridRef: RefObject<HTMLDivElement | null>;
   readonly overlays?: ReactNode;
   readonly showTotalHours: boolean;
@@ -51,14 +54,25 @@ export function ScheduleGridShell({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [fillerHeightPx, setFillerHeightPx] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(0);
+  const effectiveDayColumnMinWidth = fitWeeklyLocations
+    ? Math.max(
+        dayColumnMinWidth,
+        (viewportWidth -
+          scheduleGridEmployeeColumnWidth -
+          (showTotalHours ? scheduleGridTotalColumnWidth : 0)) /
+          7,
+      )
+    : dayColumnMinWidth;
   const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
   const totalBottomOffsetPx = hasHorizontalOverflow
     ? scheduleGridHorizontalNavHeight
     : 0;
 
-  const measureFillerHeight = useCallback(() => {
+  const measureGridLayout = useCallback(() => {
     const scroll = scrollRef.current;
     if (!scroll) return;
+    setViewportWidth(scroll.clientWidth);
 
     const filler = scroll.querySelector<HTMLElement>(
       "[data-schedule-filler-height-px='true']",
@@ -106,7 +120,7 @@ export function ScheduleGridShell({
       if (frame !== null) window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
         frame = null;
-        measureFillerHeight();
+        measureGridLayout();
       });
     };
     const observer =
@@ -134,7 +148,7 @@ export function ScheduleGridShell({
     columns,
     dayColumnMinWidth,
     gridRef,
-    measureFillerHeight,
+    measureGridLayout,
     showTotalHours,
   ]);
 
@@ -209,7 +223,7 @@ export function ScheduleGridShell({
         } schedule`}
         style={
           {
-            "--schedule-day-column-min": `${dayColumnMinWidth}px`,
+            "--schedule-day-column-min": `${effectiveDayColumnMinWidth}px`,
             "--schedule-employee-column-width": `${scheduleGridEmployeeColumnWidth}px`,
             gridTemplateColumns: createScheduleGridTemplateColumns({
               columns,
@@ -226,7 +240,7 @@ export function ScheduleGridShell({
       </div>
       <ScheduleHorizontalNavigation
         columns={columns}
-        dayColumnMinWidth={dayColumnMinWidth}
+        dayColumnMinWidth={effectiveDayColumnMinWidth}
         onOverflowChange={setHasHorizontalOverflow}
         scrollRef={scrollRef}
         showTotalHours={showTotalHours}

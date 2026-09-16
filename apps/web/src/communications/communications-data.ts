@@ -145,6 +145,16 @@ export async function saveAnnouncement(
     }),
   );
 }
+export async function acknowledgeAnnouncement(
+  workspaceId: string,
+  announcementId: string,
+) {
+  return request(
+    workspaceId,
+    `/communications/announcements/${announcementId}/acknowledge`,
+    { method: "POST" },
+  );
+}
 export async function transitionAnnouncement(
   workspaceId: string,
   announcementId: string,

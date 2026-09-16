@@ -258,9 +258,17 @@ describe("ScheduleTopBar", () => {
     const byJob = screen.getByRole("menuitemradio", {
       name: /Job\/Position/,
     });
+    const presetBadges = screen.getByRole("button", {
+      name: "Hide Preset badges",
+    });
+    const roleSeparators = screen.getByRole("button", {
+      name: "Hide Role Seperators",
+    });
 
     expect(alphabetical.getAttribute("aria-checked")).toBe("true");
     expect(byJob.getAttribute("aria-checked")).toBe("false");
+    expect(presetBadges).toHaveProperty("disabled", true);
+    expect(roleSeparators).toHaveProperty("disabled", true);
 
     fireEvent.click(byJob);
     expect(onEmployeeSortModeChange).toHaveBeenCalledWith("byJob");
@@ -288,6 +296,12 @@ describe("ScheduleTopBar", () => {
 
     expect(alphabeticalAfterSort.getAttribute("aria-checked")).toBe("false");
     expect(byJobAfterSort.getAttribute("aria-checked")).toBe("true");
+    expect(
+      screen.getByRole("button", { name: "Hide Preset badges" }),
+    ).toHaveProperty("disabled", false);
+    expect(
+      screen.getByRole("button", { name: "Hide Role Seperators" }),
+    ).toHaveProperty("disabled", false);
 
     fireEvent.click(alphabeticalAfterSort);
     expect(onEmployeeSortModeChange).toHaveBeenCalledWith("alphabetical");

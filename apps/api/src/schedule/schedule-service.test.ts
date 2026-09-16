@@ -37,6 +37,27 @@ beforeEach(() => {
 });
 
 describe("createScheduleReadService read model", () => {
+  it("loads short names only within the RPC-authorized workspace and location scope", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday",
+      locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
+      departments: [], jobs: [], shift_types: [], employees: [], shifts: [],
+    }, error: null });
+    const locationEq = vi.fn(); const locationIn = vi.fn();
+    mocks.from.mockImplementation((table: string) => {
+      const chain = {
+        select: () => chain, eq: (...args: unknown[]) => { if (table === "locations") locationEq(...args); return chain; },
+        in: (...args: unknown[]) => { if (table === "locations") locationIn(...args); return chain; },
+        is: () => chain, order: () => chain, lte: () => chain, or: () => chain,
+        maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
+        then: (resolve: (value: unknown) => unknown) => resolve({ data: table === "locations" ? [{ id: locationId, short_name: "MAIN" }] : [], error: null }),
+      }; return chain;
+    });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    const result = await service.getReadModel(actorUserId, workspaceId, "2026-09-14");
+    expect(result.locations[0]).toMatchObject({ id: locationId, short_name: "MAIN" });
+    expect(locationEq).toHaveBeenCalledWith("workspace_id", workspaceId);
+    expect(locationIn).toHaveBeenCalledWith("id", [locationId]);
+  });
   it("loads independent metadata concurrently after the authorized read model", async () => {
     let resolveSettings!: (value: { data: { time_format: string }; error: null }) => void;
     const settingsResult = new Promise<{ data: { time_format: string }; error: null }>((resolve) => {

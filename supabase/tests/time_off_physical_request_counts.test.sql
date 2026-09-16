@@ -11,9 +11,9 @@ select public.availability_lock_workspace(w) from cq;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',id::text||'@counts.test','','{}','{}',now(),now() from cq cross join lateral(values(actor),(reviewer)) u(id);
 insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from cq;
-insert into public.locations(id,workspace_id,name,timezone,street_address,city,region,postal_code)
-select a,w,'Counts 24001 UTC','UTC','1 Test St','Test','CA','94000' from cq union all
-select b,w,'Counts 24001 Hidden LA','America/Los_Angeles','2 Test St','Test','CA','94000' from cq;
+insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code)
+select 'T00044', a,w,'Counts 24001 UTC','UTC','1 Test St','Test','CA','94000' from cq union all
+select 'T00045', b,w,'Counts 24001 Hidden LA','America/Los_Angeles','2 Test St','Test','CA','94000' from cq;
 insert into public.jobs(id,workspace_id,name) select job,w,'Counts 24001 job' from cq;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 select emp,w,actor,'E-995401','Counts 24001','Employee',owner from cq;

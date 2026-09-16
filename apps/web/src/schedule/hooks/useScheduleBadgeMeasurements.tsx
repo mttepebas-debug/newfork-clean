@@ -32,12 +32,14 @@ const HEIGHT_EPSILON_PX = 1;
 
 export function useUniformScheduleBadgeWidth({
   containerRef,
+  minimumWidth = 126,
   version,
 }: {
   readonly containerRef: RefObject<HTMLDivElement | null>;
+  readonly minimumWidth?: number;
   readonly version: string;
 }): number {
-  const [width, setWidth] = useState(126);
+  const [width, setWidth] = useState(minimumWidth);
   const frameRef = useRef<number | null>(null);
 
   const measure = useCallback(() => {
@@ -54,23 +56,26 @@ export function useUniformScheduleBadgeWidth({
         ),
       );
       if (!badges.length) {
-        setWidth(126);
+        setWidth(minimumWidth);
         return;
       }
+      // Long content wraps in the visible badge instead of widening every day.
       const nextWidth = Math.ceil(
         badges.reduce(
           (max, badge) =>
             Math.max(
               max,
-              badge.scrollWidth,
-              badge.getBoundingClientRect().width,
+              Math.min(
+                badge.dataset.measurePreset === "true" ? Infinity : 220,
+                Math.max(badge.scrollWidth, badge.getBoundingClientRect().width),
+              ),
             ),
-          126,
+          minimumWidth,
         ),
       );
       setWidth((current) => (current === nextWidth ? current : nextWidth));
     });
-  }, [containerRef]);
+  }, [containerRef, minimumWidth]);
 
   useLayoutEffect(() => {
     measure();
@@ -148,6 +153,7 @@ export function renderScheduleBadgeWidthMeasurer({
       : null;
     return {
       id: shift.id,
+      isPreset: false,
       color: type?.color ?? "#54736a",
       label: formatScheduleShiftBadgeTitle(type, job, showShiftType),
       location: locationName ?? "",
@@ -157,7 +163,7 @@ export function renderScheduleBadgeWidthMeasurer({
           ? `${formatScheduleBadgeTimeRange(shift.start_time, shift.end_time, timeFormat)}${shift.crosses_midnight ? " +1" : ""}`
           : "",
       hasMarkers: Boolean(
-        publicationStateForShift(shift) || (shift.warning_codes ?? []).length,
+        !isGhostScheduleShift(shift) && publicationStateForShift(shift),
       ),
       hasStack:
         shift.employee_id === null &&
@@ -169,6 +175,7 @@ export function renderScheduleBadgeWidthMeasurer({
     ? jobs.flatMap((job) =>
         shiftTypes.map((shiftType) => ({
           id: `${job.id}-${shiftType.id}`,
+          isPreset: true,
           color: shiftType.color,
           label: `${shiftType.name}-${job.name}`,
           location: "",
@@ -194,6 +201,7 @@ export function renderScheduleBadgeWidthMeasurer({
           key={item.id}
           className="schedule-badge-width-measure"
           data-schedule-badge-width-measure="true"
+          data-measure-preset={item.isPreset}
           data-job-color-dot={showJobColorDot}
           data-has-markers={item.hasMarkers}
           data-has-stack={item.hasStack}

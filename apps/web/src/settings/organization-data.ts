@@ -239,7 +239,7 @@ export async function listLocations(workspaceId: string): Promise<Location[]> {
   const { data, error } = await client()
     .from("locations")
     .select(
-      "id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone,sort_order,archived_at",
+      "id,workspace_id,name,short_name,street_address,city,region,postal_code,country_code,timezone,sort_order,archived_at",
     )
     .is("deleted_at", null)
     .eq("workspace_id", workspaceId)
@@ -265,6 +265,9 @@ export async function saveLocation(
         .from("locations")
         .insert({ ...values, workspace_id: workspaceId });
   const { error } = await query;
+  if (error?.code === "23505" && error.message.includes("locations_workspace_short_name")) {
+    throw new Error("This short name is already used in this workspace. Choose another one.");
+  }
   message(error);
 }
 

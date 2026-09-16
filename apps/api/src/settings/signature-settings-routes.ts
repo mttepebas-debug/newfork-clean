@@ -1,4 +1,5 @@
 import {
+  documentApplyCommandSchema,
   signatureRetentionPolicyInputSchema,
   signatureTemplateDraftInputSchema,
   type Permission,
@@ -25,6 +26,22 @@ export function registerSignatureSettingsRoutes(
     contextResolver: WorkspaceContextResolver | null;
   },
 ) {
+  for (const operation of ["target-options", "preview", "apply"] as const) {
+    app.route({ method: operation === "target-options" ? "GET" : "POST", url: operation === "target-options" ? "/v1/workspaces/:workspaceId/signature-templates/target-options" : `/v1/workspaces/:workspaceId/signature-versions/:versionId/${operation}`, handler: async (request, reply) => {
+      const params = workspaceParams.extend({ versionId: z.string().uuid().optional() }).safeParse(request.params);
+      if (!params.success) return reply.status(400).send({ error: "Valid policy required" });
+      const context = await authorize(request.headers.authorization, params.data.workspaceId, "signature_templates.manage", options.contextResolver, reply);
+      if (!context) return;
+      if (!options.service) return reply.status(503).send({ error: "Signature settings service is not configured" });
+      try {
+        if (operation === "target-options") return await options.service.targetOptions(context.userId, params.data.workspaceId);
+        const version = z.string().uuid().parse(params.data.versionId);
+        if (operation === "preview") return await options.service.preview(context.userId, params.data.workspaceId, version);
+        return await options.service.apply(context.userId, params.data.workspaceId, version, documentApplyCommandSchema.parse(request.body));
+      } catch (error) { if (error instanceof z.ZodError) return reply.status(400).send({ error: "Valid policy application required" }); return requestError(reply, error); }
+    }});
+  }
+
   app.post(
     "/v1/workspaces/:workspaceId/signature-retention-policies",
     async (request, reply) => {

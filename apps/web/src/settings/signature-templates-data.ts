@@ -1,4 +1,6 @@
 import {
+  documentDefinitionPreviewSchema,
+  documentTargetOptionsSchema,
   signatureRetentionPolicyInputSchema,
   signatureRetentionPolicySchema,
   signatureTemplateDraftInputSchema,
@@ -78,7 +80,7 @@ export async function listSignatureSettings(
     client()
       .from("signature_template_versions")
       .select(
-        "id,workspace_id,template_id,version_number,title,summary,execution_class,content_text,content_digest,intent_statement,locale,effective_date,required_at_onboarding,blocks_activation,retention_policy_id,status,published_at",
+        "id,workspace_id,template_id,version_number,title,summary,execution_class,content_text,content_digest,intent_statement,locale,effective_date,required_at_onboarding,blocks_activation,retention_policy_id,status,published_at,lifecycle_settings,lifecycle_revision",
       )
       .eq("workspace_id", workspaceId)
       .order("version_number", { ascending: false }),
@@ -205,5 +207,31 @@ export async function setSignatureTemplateArchived(
   await request(workspaceId, `/signature-templates/${templateId}/archive`, {
     method: "PATCH",
     body: JSON.stringify({ archived }),
+  });
+}
+
+export async function getPolicyTargetOptions(workspaceId: string) {
+  return documentTargetOptionsSchema.parse(
+    await request(workspaceId, "/signature-templates/target-options"),
+  );
+}
+export async function previewPolicyDefinition(
+  workspaceId: string,
+  versionId: string,
+) {
+  return documentDefinitionPreviewSchema.parse(
+    await request(workspaceId, `/signature-versions/${versionId}/preview`, {
+      method: "POST",
+    }),
+  );
+}
+export async function applyPolicyDefinition(
+  workspaceId: string,
+  versionId: string,
+  input: { revision: number; preview_token: string; reason: string },
+) {
+  return request(workspaceId, `/signature-versions/${versionId}/apply`, {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }

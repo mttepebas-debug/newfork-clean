@@ -89,8 +89,8 @@ select is((select name from public.departments where id=(select (value->'departm
 update public.jobs set archived_at=null where id=(select b from job_ids);
 select public.update_job_assignments_service('18000000-0000-4000-8000-000000000081','28000000-0000-4000-8000-000000000081',b,
 (select jsonb_build_array(jsonb_build_object('employee_id',id,'assigned',true,'expected_revision',revision)) from public.employee_profiles where id='78000000-0000-4000-8000-000000000001')) from job_ids;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone)
-values('48000000-0000-4000-8000-000000000081','28000000-0000-4000-8000-000000000081','Dining','1 Main','City','CA','90001','US','America/Los_Angeles');
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone)
+values('T00016','48000000-0000-4000-8000-000000000081','28000000-0000-4000-8000-000000000081','Dining','1 Main','City','CA','90001','US','America/Los_Angeles');
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,is_primary,created_by)
 values('28000000-0000-4000-8000-000000000081','78000000-0000-4000-8000-000000000001','48000000-0000-4000-8000-000000000081',true,'18000000-0000-4000-8000-000000000081');
 insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from)

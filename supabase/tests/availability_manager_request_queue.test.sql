@@ -6,8 +6,8 @@ create temp table aq as select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid w,
  'af9f0000-0000-4000-8000-000000000001'::uuid a,'af9f0000-0000-4000-8000-000000000002'::uuid b,
  'af9f0000-0000-4000-8000-000000000003'::uuid manager,'af9f0000-0000-4000-8000-000000000004'::uuid employee;
 select public.availability_lock_workspace(w) from aq;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone)
-select a,w,'Queue 23001 A','1 QA','QA','CA','94301','US','UTC' from aq union all select b,w,'Queue 23001 Hidden B','1 QA','QA','CA','94301','US','UTC' from aq;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone)
+select 'T00005', a,w,'Queue 23001 A','1 QA','QA','CA','94301','US','UTC' from aq union all select 'T00006', b,w,'Queue 23001 Hidden B','1 QA','QA','CA','94301','US','UTC' from aq;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',id::text||'@queue.test','','{}','{}',now(),now() from aq cross join lateral (values(manager),(employee)) x(id);
 insert into public.workspace_roles(id,workspace_id,name,access_class) select 'af9f0000-0000-4000-8000-000000000005',w,'Queue scoped reviewer','manager' from aq;

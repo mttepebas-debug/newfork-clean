@@ -12,7 +12,6 @@ import {
   createScheduleGridLocationGroups,
   createScheduleGridTemplateColumns,
   resolveScheduleInteractionLocationId,
-  scheduleGridMinDayColumnWidth,
 } from "./scheduleGridLayout";
 
 const locations = [
@@ -151,11 +150,10 @@ describe("scheduleGridLayout", () => {
         measuredBadgeWidth: 90,
         view: "week",
       }),
-    ).toBe(scheduleGridMinDayColumnWidth);
+    ).toBe(93);
     expect(
       calculateScheduleDayColumnMinWidth({
         editing: true,
-        layout: "unified",
         locationGroups: [
           {
             ...groups[0]!,
@@ -167,7 +165,30 @@ describe("scheduleGridLayout", () => {
         measuredBadgeWidth: 90,
         view: "week",
       }),
-    ).toBe(scheduleGridMinDayColumnWidth);
+    ).toBe(99);
+  });
+
+  it("lets empty weekly locations fit the viewport regardless of their names", () => {
+    const groups = createScheduleGridLocationGroups({
+      layout: "separate",
+      locations,
+    });
+    expect(
+      calculateScheduleDayColumnMinWidth({
+        editing: false,
+        locationGroups: groups,
+        measuredBadgeWidth: 0,
+        view: "week",
+      }),
+    ).toBe(0);
+    expect(
+      calculateScheduleDayColumnMinWidth({
+        editing: false,
+        locationGroups: groups,
+        measuredBadgeWidth: 0,
+        view: "day",
+      }),
+    ).toBe(168);
   });
 
   it("can create a weekly unified template that fits visible grid width", () => {

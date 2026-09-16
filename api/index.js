@@ -1,3 +1,5 @@
+const path = require("node:path");
+process.env.GEO_TZ_DATA_PATH ??= path.join(__dirname, "../apps/api/dist/geo-tz-data");
 let appPromise;
 
 async function getApp() {

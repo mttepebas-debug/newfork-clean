@@ -147,6 +147,41 @@ describe("ScheduleGridShell", () => {
     );
   });
 
+  it("sizes each separate week to the viewport and expands for wide badges", async () => {
+    const gridRef = createRef<HTMLDivElement>();
+    const renderShell = (minimum: number, showTotalHours = true) => (
+      <ScheduleGridShell
+        columns={14}
+        dayColumnMinWidth={minimum}
+        editing={false}
+        fitWeeklyLocations
+        gridRef={gridRef}
+        showTotalHours={showTotalHours}
+        view="week"
+        onClearSelection={vi.fn()}
+      >
+        <div />
+      </ScheduleGridShell>
+    );
+    const { rerender } = render(renderShell(0));
+    const scroll = screen.getByTestId("schedule-grid-scroll");
+    const grid = screen.getByTestId("schedule-grid");
+    const dayWidth = () =>
+      Number.parseFloat(grid.style.getPropertyValue("--schedule-day-column-min"));
+    defineScrollBox(scroll, { clientWidth: 1300 });
+    fireEvent(window, new Event("resize"));
+    await waitFor(() => expect(dayWidth()).toBe(140));
+
+    defineScrollBox(scroll, { clientWidth: 1510 });
+    fireEvent(window, new Event("resize"));
+    await waitFor(() => expect(dayWidth()).toBe(170));
+
+    rerender(renderShell(303));
+    expect(dayWidth()).toBe(303);
+    rerender(renderShell(0, false));
+    expect(dayWidth()).toBeCloseTo((1510 - 200) / 7);
+  });
+
   it("autoscrolls both grid axes while a shift drag reaches the bottom-right edge", () => {
     const gridRef = createRef<HTMLDivElement>();
     const { rerender } = render(

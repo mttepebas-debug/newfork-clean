@@ -13,8 +13,8 @@ select actor,'00000000-0000-0000-0000-000000000000','authenticated','authenticat
 insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from tpd;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 select emp,w,actor,'E-994900','Partial','Tester',manager from tpd;
-insert into public.locations(id,workspace_id,name,timezone,street_address,city,region,postal_code)
-select loc,w,'Partial UTC','UTC','1 Test St','New York','NY','10001' from tpd;
+insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code)
+select 'T00043', loc,w,'Partial UTC','UTC','1 Test St','New York','NY','10001' from tpd;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by) select w,emp,loc,manager from tpd;
 update tpd set result=public.submit_employee_time_off_periods_service(actor,w,loc,'Original request',
  '[{"segment_date":"2035-01-15","start_time":"10:00","end_time":"17:00"}]',gen_random_uuid(),'UTC');

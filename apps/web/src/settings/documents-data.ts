@@ -1,6 +1,9 @@
 import {
   documentTypeInputSchema,
   documentTypeSchema,
+  documentTargetOptionsSchema,
+  documentDefinitionPreviewSchema,
+  documentPublicationPreviewSchema,
   type DocumentType,
   type DocumentTypeInput,
 } from "@newfork/shared";
@@ -52,11 +55,20 @@ export async function listDocumentTypes(
   const { data, error } = await client()
     .from("document_types")
     .select(
-      "id,workspace_id,title,description,required_at_onboarding,requires_review,accepted_formats,tracks_expiry,expiry_warning_days,expiry_schedule_impact,sort_order,archived_at",
+      "id,workspace_id,title,description,required_at_onboarding,requires_review,accepted_formats,tracks_expiry,expiry_warning_days,expiry_schedule_impact,sort_order,archived_at,lifecycle_settings,lifecycle_revision,publication_status,publication_revision,published_at",
     )
     .eq("workspace_id", workspaceId)
     .order("sort_order")
     .order("title");
+  if (
+    error &&
+    ["42703", "PGRST204"].includes(error.code) &&
+    /publication_status|publication_revision|published_at/.test(error.message)
+  ) {
+    throw new Error(
+      "Document publishing is temporarily unavailable. A workspace update is required.",
+    );
+  }
   check(error);
   return documentTypeSchema.array().parse(data ?? []);
 }
@@ -79,6 +91,30 @@ export async function saveDocumentType(
   return String(body.id);
 }
 
+export async function getDocumentTargetOptions(workspaceId: string) {
+  return documentTargetOptionsSchema.parse(
+    await request(workspaceId, "/target-options"),
+  );
+}
+export async function previewDocumentDefinition(
+  workspaceId: string,
+  id: string,
+) {
+  return documentDefinitionPreviewSchema.parse(
+    await request(workspaceId, `/${id}/preview`, { method: "POST" }),
+  );
+}
+export async function applyDocumentDefinition(
+  workspaceId: string,
+  id: string,
+  command: { revision: number; preview_token: string; reason: string },
+) {
+  return request(workspaceId, `/${id}/apply`, {
+    method: "POST",
+    body: JSON.stringify(command),
+  });
+}
+
 export async function setDocumentTypeArchived(
   workspaceId: string,
   documentTypeId: string,
@@ -97,5 +133,32 @@ export async function reorderDocumentTypes(
   await request(workspaceId, "/reorder", {
     method: "POST",
     body: JSON.stringify({ orderedIds: [...orderedIds] }),
+  });
+}
+
+export async function previewDocumentPublication(
+  workspaceId: string,
+  id: string,
+) {
+  return documentPublicationPreviewSchema.parse(
+    await request(workspaceId, `/${id}/publication-preview`, {
+      method: "POST",
+    }),
+  );
+}
+export async function publishDocumentType(
+  workspaceId: string,
+  id: string,
+  command: {
+    revision: number;
+    publication_revision: number;
+    preview_token: string;
+    reason: string;
+  },
+  action: "publish" | "unpublish",
+) {
+  return request(workspaceId, `/${id}/${action}`, {
+    method: "POST",
+    body: JSON.stringify(command),
   });
 }

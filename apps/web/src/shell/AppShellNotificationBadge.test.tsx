@@ -438,7 +438,9 @@ describe("AppShell notification badge", () => {
     ).map((item) => item.textContent);
 
     expect(labels).toEqual([
-      "Employee Hub",
+      "Home",
+      "Schedule",
+      "Line-up",
       "Shift Hub",
       "My Availability",
       "Announcements",
@@ -446,8 +448,10 @@ describe("AppShell notification badge", () => {
     ]);
     expect(screen.queryByRole("link", { name: "Workspace" })).toBeNull();
     expect(
-      screen.getByRole("link", { name: "Schedule" }).getAttribute("href"),
-    ).toBe("/app/employee-hub/schedule");
+      container
+        .querySelector('.sidebar-nav a[href="/app/employee-hub/schedule"]')
+        ?.textContent,
+    ).toBe("Schedule");
     expect(document.querySelector('a[href="/app/schedule"]')).toBeNull();
     expect(screen.queryByRole("link", { name: "Employees" })).toBeNull();
   });
@@ -461,11 +465,13 @@ describe("AppShell notification badge", () => {
       notifications: [],
     });
 
-    renderShell("/app/employee-hub/shift-hub");
+    const { container } = renderShell("/app/employee-hub/shift-hub");
 
     expect(await screen.findByText("Employee Hub route")).toBeTruthy();
 
-    const hubLink = screen.getByRole("link", { name: "Employee Hub" });
+    const hubLink = container.querySelector(
+      '.sidebar-nav a[href="/app/employee-hub"]',
+    )!;
     const shiftHubLink = screen.getByRole("link", { name: "Shift Hub" });
 
     expect(hubLink.className).not.toContain("active");

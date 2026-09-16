@@ -22,12 +22,12 @@ values
   ('e2120000-0000-4000-8000-000000000002', 'e2110000-0000-4000-8000-000000000001', 'e2100000-0000-4000-8000-000000000002', 'employee', 'active', false),
   ('e2120000-0000-4000-8000-000000000003', 'e2110000-0000-4000-8000-000000000002', 'e2100000-0000-4000-8000-000000000003', 'owner', 'active', true);
 
-insert into public.locations (
+insert into public.locations (short_name,
   id, workspace_id, name, street_address, city, region, postal_code, country_code, timezone
 )
 values
-  ('e2130000-0000-4000-8000-000000000001', 'e2110000-0000-4000-8000-000000000001', 'Main', '1 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles'),
-  ('e2130000-0000-4000-8000-000000000002', 'e2110000-0000-4000-8000-000000000002', 'Other', '2 Main St', 'Los Angeles', 'CA', '90002', 'US', 'America/Los_Angeles');
+  ('T00023','e2130000-0000-4000-8000-000000000001', 'e2110000-0000-4000-8000-000000000001', 'Main', '1 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles'),
+  ('T00024','e2130000-0000-4000-8000-000000000002', 'e2110000-0000-4000-8000-000000000002', 'Other', '2 Main St', 'Los Angeles', 'CA', '90002', 'US', 'America/Los_Angeles');
 
 select has_function('public', 'get_notification_settings_service', array['uuid', 'uuid'], 'settings read RPC exists');
 select has_function('public', 'save_notification_policy_service', array['uuid', 'uuid', 'text', 'integer', 'text', 'uuid', 'integer', 'boolean', 'text[]', 'text', 'text'], 'policy save RPC exists');

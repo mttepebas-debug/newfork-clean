@@ -64,13 +64,13 @@ values
   ('e1420000-0000-4000-8000-000000000003', 'e1410000-0000-4000-8000-000000000001', 'e1400000-0000-4000-8000-000000000003', 'employee', 'active', true),
   ('e1420000-0000-4000-8000-000000000005', 'e1410000-0000-4000-8000-000000000002', 'e1400000-0000-4000-8000-000000000005', 'owner', 'active', true);
 
-insert into public.locations (
+insert into public.locations (short_name,
   id, workspace_id, name, street_address, city, region, postal_code,
   country_code, timezone
 )
 values
-  ('e1430000-0000-4000-8000-000000000001', 'e1410000-0000-4000-8000-000000000001', 'One', '1 First St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles'),
-  ('e1430000-0000-4000-8000-000000000002', 'e1410000-0000-4000-8000-000000000002', 'Two', '2 Second St', 'Los Angeles', 'CA', '90002', 'US', 'America/Los_Angeles');
+  ('T00018','e1430000-0000-4000-8000-000000000001', 'e1410000-0000-4000-8000-000000000001', 'One', '1 First St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles'),
+  ('T00019','e1430000-0000-4000-8000-000000000002', 'e1410000-0000-4000-8000-000000000002', 'Two', '2 Second St', 'Los Angeles', 'CA', '90002', 'US', 'America/Los_Angeles');
 
 select is(
   (

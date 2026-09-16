@@ -53,6 +53,11 @@ const documentTypeInput = {
 
 function documentTypesServiceMock(): DocumentTypesService {
   return {
+    publicationPreview: vi.fn(),
+    publish: vi.fn(),
+    targetOptions: vi.fn(),
+    preview: vi.fn(),
+    apply: vi.fn(),
     save: vi.fn(),
     setArchived: vi.fn(),
     reorder: vi.fn(),
@@ -138,7 +143,6 @@ describe("document type routes", () => {
     });
   });
 
-
   it("requires document management permission before archiving", async () => {
     const setArchived = vi.fn();
     const app = buildApp({
@@ -219,5 +223,99 @@ describe("document type routes", () => {
       expect(response.json()).toEqual({ error: "Workspace not found" });
       expect(service[route.serviceMethod]).not.toHaveBeenCalled();
     }
+  });
+});
+
+describe("document publication routes", () => {
+  it("requires management permission and binds actor/path for a publication transition", async () => {
+    const publish = vi.fn(async () => ({ publication_status: "published" }));
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      documentTypesService: { ...documentTypesServiceMock(), publish },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId}/document-types/${documentTypeId}/publish`,
+      headers: { authorization: "Bearer test" },
+      payload: {
+        revision: 2,
+        publication_revision: 1,
+        preview_token: "preview",
+        reason: "Publish",
+        ...spoofedIdentity,
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(publish).toHaveBeenCalledWith({
+      actorUserId: userId,
+      workspaceId,
+      documentTypeId,
+      revision: 2,
+      publication_revision: 1,
+      preview_token: "preview",
+      reason: "Publish",
+      targetStatus: "published",
+    });
+    await app.close();
+    const denied = buildApp({
+      contextResolver: {
+        resolve: async () => ({ ...context, permissions: ["documents.read"] }),
+      },
+      documentTypesService: { ...documentTypesServiceMock(), publish },
+    });
+    expect(
+      (
+        await denied.inject({
+          method: "POST",
+          url: `/v1/workspaces/${workspaceId}/document-types/${documentTypeId}/unpublish`,
+          headers: { authorization: "Bearer test" },
+          payload: {
+            revision: 2,
+            publication_revision: 1,
+            preview_token: "preview",
+            reason: "Pause",
+          },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(publish).toHaveBeenCalledTimes(1);
+    await denied.close();
+  });
+  it("rejects missing publication revision and surfaces stale impact as conflict", async () => {
+    const publish = vi.fn(async () => {
+      throw new Error("Document publication impact changed; refresh preview");
+    });
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      documentTypesService: { ...documentTypesServiceMock(), publish },
+    });
+    const request = {
+      method: "POST" as const,
+      url: `/v1/workspaces/${workspaceId}/document-types/${documentTypeId}/unpublish`,
+      headers: { authorization: "Bearer test" },
+    };
+    expect(
+      (
+        await app.inject({
+          ...request,
+          payload: { revision: 1, preview_token: "x", reason: "Pause" },
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(publish).not.toHaveBeenCalled();
+    expect(
+      (
+        await app.inject({
+          ...request,
+          payload: {
+            revision: 1,
+            publication_revision: 2,
+            preview_token: "x",
+            reason: "Pause",
+          },
+        })
+      ).statusCode,
+    ).toBe(409);
+    await app.close();
   });
 });

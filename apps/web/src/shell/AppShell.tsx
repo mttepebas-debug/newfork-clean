@@ -5,8 +5,11 @@ import {
   CalendarCheck,
   CalendarDays,
   ChevronDown,
+  FileText,
   ClipboardList,
+  Home,
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
   Megaphone,
   Menu,
@@ -15,7 +18,8 @@ import {
   Users,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { AppSidebarPanelContext } from "./AppSidebarPanel";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { EmployeeMobileNav } from "../employee-hub/EmployeeMobileNav";
 import { useAuth } from "../auth/AuthContext";
@@ -84,8 +88,18 @@ const navItems: readonly NavItem[] = [
     to: "/app/employees",
     label: "Employees",
     icon: Users,
+    exact: true,
     anyOf: ["employees.read"],
     section: "management",
+    roles: ["owner", "admin", "manager"],
+  },
+  {
+    to: "/app/employees/documents",
+    label: "Documents",
+    icon: FileText,
+    anyOf: ["employee_documents.read"],
+    section: "management",
+    parentTo: "/app/employees",
     roles: ["owner", "admin", "manager"],
   },
   {
@@ -106,12 +120,28 @@ const navItems: readonly NavItem[] = [
   },
   {
     to: "/app/employee-hub",
-    label: "Employee Hub",
-    icon: Users,
+    label: "Home",
+    icon: Home,
     anyOf: ["workspace.read"],
     section: "employee",
     roles: ["employee"],
     exact: true,
+  },
+  {
+    to: "/app/employee-hub/schedule",
+    label: "Schedule",
+    icon: CalendarDays,
+    anyOf: ["workspace.read"],
+    section: "employee",
+    roles: ["employee"],
+  },
+  {
+    to: "/app/employee-hub/lineup",
+    label: "Line-up",
+    icon: LayoutGrid,
+    anyOf: ["workspace.read"],
+    section: "employee",
+    roles: ["employee"],
   },
   {
     to: "/app/employee-hub/shift-hub",
@@ -163,8 +193,17 @@ export function AppShell() {
   useAccountNotificationRealtime(account?.userId ?? context?.userId);
   useExchangeRealtime(context?.workspace.id);
   const [collapsed, setCollapsed] = useState(false);
+  const [sidebarPanelOwner, setSidebarPanelOwner] = useState<string | null>(null);
+  const [sidebarPanelCollapsed, setSidebarPanelCollapsed] = useState(false);
+  const [sidebarPanelTarget, setSidebarPanelTarget] = useState<HTMLDivElement | null>(null);
+  const sidebarPanelHost = useMemo(() => ({
+    target: sidebarPanelTarget,
+    collapsed: sidebarPanelCollapsed,
+    setCollapsed: setSidebarPanelCollapsed,
+    setOwner: setSidebarPanelOwner,
+  }), [sidebarPanelTarget, sidebarPanelCollapsed]);
   const [expandedNavGroups, setExpandedNavGroups] = useState<Set<string>>(
-    () => new Set(["/app/schedule"]),
+    () => new Set(["/app/schedule", "/app/employees"]),
   );
   const location = useLocation();
   const workspaceId = context?.workspace.id ?? "";
@@ -249,12 +288,14 @@ export function AppShell() {
     context.membership.role === "admin" ||
     settingsNavItem.anyOf.some((permission) => permissions.has(permission));
   return (
+    <AppSidebarPanelContext.Provider value={sidebarPanelHost}>
     <div
       className="app-shell"
-      data-sidebar-collapsed={collapsed}
+      data-sidebar-collapsed={sidebarPanelOwner ? sidebarPanelCollapsed : collapsed}
       data-employee-shell={context.membership.role === "employee"}
     >
       <aside className="app-sidebar" aria-label="Application sidebar">
+        {sidebarPanelOwner ? <div className="app-sidebar-panel-host" ref={setSidebarPanelTarget} /> : <>
         <div className="sidebar-tools">
           <button
             className={`icon-button${collapsed ? " rail-peek-item" : ""}`}
@@ -447,12 +488,14 @@ export function AppShell() {
             </span>
           </button>
         </div>
+        </>}
       </aside>
       <main className="app-main">
         <Outlet />
       </main>
       {context.membership.role === "employee" && <EmployeeMobileNav />}
     </div>
+    </AppSidebarPanelContext.Provider>
   );
 }
 

@@ -1,5 +1,6 @@
 import {
   scheduleConflictSettingsSchema,
+  DEFAULT_SCHEDULE_CONFLICT_RULES,
   type ScheduleConflictRules,
   type ScheduleConflictSettings,
 } from "@newfork/shared";
@@ -17,6 +18,9 @@ const conflictRuleChoices: readonly {
   description: string;
   actions: readonly string[];
 }[] = [
+  { key: "document_required", label: "Required documents", description: "Missing, expired or pending required employee documents.", actions: ["warn", "confirm", "block"] },
+  { key: "document_conditional_grace", label: "Conditional documents during grace", description: "Unresolved documents while the delivery period is still open.", actions: ["warn", "confirm", "block"] },
+  { key: "document_conditional_overdue", label: "Conditional documents after grace", description: "Unresolved documents after the delivery deadline. Cannot be softer than the grace rule.", actions: ["confirm", "block"] },
   {
     key: "availability",
     label: "Employee availability",
@@ -162,7 +166,7 @@ export default function ConflictHandlingSettingsPage() {
                 <div className="conflict-setting-controls">
                   <select
                     aria-label={`${rule.label} handling`}
-                    value={draft.conflict_rules[rule.key]}
+                    value={draft.conflict_rules[rule.key] ?? DEFAULT_SCHEDULE_CONFLICT_RULES[rule.key]}
                     onChange={(event) =>
                       update({
                         conflict_rules: {

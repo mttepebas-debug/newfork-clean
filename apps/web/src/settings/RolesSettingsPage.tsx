@@ -70,18 +70,27 @@ export default function RolesSettingsPage() {
     enabled: Boolean(workspaceId),
   });
   const roles = query.data?.roles ?? [];
+  const navigableRoles = roles.filter((role) => role.system_key !== "owner");
+  const builtInRoles = navigableRoles.filter((role) => role.system_key !== null);
+  const customRoles = navigableRoles.filter((role) => role.system_key === null);
+  const groupedCustomRoles = customRoles.length > 3;
   const creating = roleId === "new";
   const selected = creating
     ? null
     : roleId
       ? roles.find((role) => role.id === roleId)
       : (roles.find((role) => role.system_key === "manager") ?? roles[0]);
+  const selectedGroupedCustom = Boolean(
+    groupedCustomRoles && selected?.system_key === null,
+  );
   const canManage = Boolean(
     context?.permissions.includes("roles.manage") &&
     ["owner", "admin"].includes(context.membership.role),
   );
+  const [customMenuOpen, setCustomMenuOpen] = useState(false);
   const go = (id: string, initial: WorkspaceRoleInput | null = null) =>
     leaveAvailability(navigationRef, () => {
+      setCustomMenuOpen(false);
       setCopy(initial);
       navigate(`/app/settings/roles/${id}`);
     });
@@ -104,51 +113,113 @@ export default function RolesSettingsPage() {
           ) : undefined
         }
       />
-      <div className="rp-panel">
-        {query.isLoading && <p className="settings-state">Loading roles...</p>}
-        {query.error && (
-          <p className="form-error" role="alert">
-            {errorText(query.error)}
-          </p>
-        )}
-        {query.data && (
-          <div className="rp-split">
-            <label className="rp-mobile-selector rp-field">
-              Role
-              <select
-                aria-label="Role"
-                value={creating ? "new" : (selected?.id ?? "")}
-                onChange={(event) => go(event.target.value)}
+      {query.isLoading && <p className="settings-state">Loading roles...</p>}
+      {query.error && (
+        <p className="form-error" role="alert">
+          {errorText(query.error)}
+        </p>
+      )}
+      {query.data && (
+        <>
+          <label className="rp-mobile-selector rp-field">
+            Role
+            <select
+              aria-label="Role"
+              value={
+                creating
+                  ? "new"
+                  : selected?.system_key === "owner"
+                    ? ""
+                    : (selected?.id ?? "")
+              }
+              onChange={(event) => go(event.target.value)}
+            >
+              {selected?.system_key === "owner" && (
+                <option value="" hidden>
+                  Protected role
+                </option>
+              )}
+              {creating && <option value="new">New role</option>}
+              {navigableRoles.map((role) => (
+                <option value={role.id} key={role.id}>
+                  {role.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div
+            className="rp-directory requests-tabs"
+            role="tablist"
+            aria-label="Workspace roles"
+          >
+            {creating && (
+              <button
+                type="button"
+                role="tab"
+                className="active"
+                aria-selected="true"
+                onClick={() => go("new")}
               >
-                {creating && <option value="new">New role</option>}
-                {roles.map((role) => (
-                  <option value={role.id} key={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <nav className="rp-directory" aria-label="Workspace roles">
-              {roles.map((role) => (
+                New role
+              </button>
+            )}
+            {(groupedCustomRoles ? builtInRoles : navigableRoles).map((role) => {
+              const active = selected?.id === role.id;
+              return (
                 <button
                   type="button"
+                  role="tab"
                   key={role.id}
-                  className={selected?.id === role.id ? "selected" : ""}
-                  aria-current={selected?.id === role.id ? "true" : undefined}
+                  className={active ? "active" : ""}
+                  aria-selected={active}
+                  aria-label={`${role.name} ${
+                    role.system_key ? "Built-in" : "Custom"
+                  }`}
                   onClick={() => go(role.id)}
                 >
-                  {role.system_key === "owner" ? (
-                    <LockKeyhole size={16} aria-hidden />
-                  ) : (
-                    <ShieldCheck size={16} aria-hidden />
-                  )}
-                  <span>
-                    {role.name}
-                    <small>{role.system_key ? "Built-in" : "Custom"}</small>
-                  </span>
+                  {role.name}
                 </button>
-              ))}
-            </nav>
+              );
+            })}
+            {groupedCustomRoles && (
+              <div className="rp-custom-group">
+                <button
+                  type="button"
+                  role="tab"
+                  className={selectedGroupedCustom ? "active" : ""}
+                  aria-selected={selectedGroupedCustom}
+                  aria-haspopup="listbox"
+                  aria-expanded={customMenuOpen}
+                  aria-controls="roles-custom-menu"
+                  onClick={() => setCustomMenuOpen((open) => !open)}
+                >
+                  Custom roles +{customRoles.length}
+                </button>
+                {customMenuOpen && (
+                  <div
+                    className="rp-custom-menu"
+                    id="roles-custom-menu"
+                    role="listbox"
+                    aria-label="Custom roles"
+                  >
+                    {customRoles.map((role) => (
+                      <button
+                        type="button"
+                        key={role.id}
+                        role="option"
+                        aria-selected={selected?.id === role.id}
+                        className={selected?.id === role.id ? "selected" : ""}
+                        onClick={() => go(role.id)}
+                      >
+                        {role.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="rp-panel">
             {creating || selected ? (
               <RoleEditor
                 key={`${selected?.id ?? "new"}:${copy ? signature(copy) : ""}`}
@@ -174,8 +245,8 @@ export default function RolesSettingsPage() {
               </p>
             )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </section>
   );
 }
@@ -210,9 +281,7 @@ function RoleEditor({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
-  const [open, setOpen] = useState<Set<string>>(
-    () => new Set(["Schedule", "Personal access"]),
-  );
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
   const editable = canManage && (creating || role?.editable === true);
   const dirty = signature(draft) !== signature(baseline);
   const save = useMutation({
@@ -233,6 +302,17 @@ function RoleEditor({
     },
   });
   const busy = save.isPending || remove.isPending;
+  const deleteBlocked =
+    Boolean(role) &&
+    role?.system_key === null &&
+    role.deletable === false;
+  const deleteHint = deleteArmed
+    ? deleteBlocked
+      ? `This role has ${role?.blocking_member_count ?? 0} member references and ${
+          role?.blocking_invite_count ?? 0
+        } invitation references. Resolve them before deleting.`
+      : null
+    : null;
   useEffect(() => {
     if (role && !dirty && !busy) {
       const next = roleDraft(role);
@@ -240,6 +320,14 @@ function RoleEditor({
       setDraft(next);
     }
   }, [role, dirty, busy]);
+  useEffect(() => {
+    setDeleteArmed(false);
+  }, [role?.id, creating]);
+  useEffect(() => {
+    if (!deleteArmed || busy) return undefined;
+    const timeout = window.setTimeout(() => setDeleteArmed(false), 3200);
+    return () => window.clearTimeout(timeout);
+  }, [deleteArmed, busy]);
   const dialog = useAvailabilityNavigationGuard({
     dirty: editable && dirty,
     busy,
@@ -258,6 +346,7 @@ function RoleEditor({
   });
   const toggle = (keys: readonly Permission[], checked: boolean) => {
     setSaved(false);
+    setDeleteArmed(false);
     setDraft((current) => ({
       ...current,
       permission_keys: toggleRolePermissions(
@@ -274,6 +363,7 @@ function RoleEditor({
     event.preventDefault();
     if (!editable || !dirty || busy) return;
     setError(null);
+    setDeleteArmed(false);
     const parsed = workspaceRoleInputSchema.safeParse(draft);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the role fields");
@@ -506,15 +596,40 @@ function RoleEditor({
                 </Button>
               )}
             {role?.system_key === null && (
-              <Button
-                type="button"
-                className="danger-text-button"
-                disabled={busy}
-                onClick={() => setDeleteArmed(!deleteArmed)}
-              >
-                <Trash2 size={15} aria-hidden />
-                Delete role
-              </Button>
+              <span className="rp-delete-action">
+                <Button
+                  type="button"
+                  className={`danger-text-button rp-delete-button${
+                    deleteArmed ? " is-armed" : ""
+                  }${deleteBlocked && deleteArmed ? " is-blocked" : ""}`}
+                  aria-describedby={deleteHint ? "rp-delete-hint" : undefined}
+                  disabled={busy}
+                  onClick={() => {
+                    setError(null);
+                    if (!deleteArmed) {
+                      setDeleteArmed(true);
+                      return;
+                    }
+                    if (role?.deletable) {
+                      remove.mutate();
+                    }
+                  }}
+                >
+                  <Trash2 size={15} aria-hidden />
+                  {remove.isPending
+                    ? "Deleting..."
+                    : deleteArmed
+                      ? deleteBlocked
+                        ? "Role has dependencies"
+                        : "Click again to delete"
+                      : "Delete role"}
+                </Button>
+                {deleteHint ? (
+                  <span className="rp-delete-hint" id="rp-delete-hint">
+                    {deleteHint}
+                  </span>
+                ) : null}
+              </span>
             )}
             <div className="rp-footer-actions">
               <Button
@@ -525,6 +640,7 @@ function RoleEditor({
                   setDraft(baseline);
                   setError(null);
                   setSaved(false);
+                  setDeleteArmed(false);
                 }}
               >
                 Cancel
@@ -534,37 +650,6 @@ function RoleEditor({
               </Button>
             </div>
           </div>
-          {deleteArmed && (
-            <div className="rp-delete" role="group" aria-label="Delete role">
-              {role?.deletable ? (
-                <>
-                  <p>Delete this unused role?</p>
-                  <Button
-                    type="button"
-                    className="danger-button"
-                    disabled={busy}
-                    onClick={() => remove.mutate()}
-                  >
-                    Confirm delete
-                  </Button>
-                </>
-              ) : (
-                <p>
-                  This role has {role?.blocking_member_count ?? 0} member
-                  references and {role?.blocking_invite_count ?? 0} invitation
-                  references. Resolve these dependencies before deleting. No
-                  members will be reassigned automatically.
-                </p>
-              )}
-              <Button
-                type="button"
-                className="secondary-button"
-                onClick={() => setDeleteArmed(false)}
-              >
-                Keep role
-              </Button>
-            </div>
-          )}
         </>
       )}
       {dialog}

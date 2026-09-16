@@ -7,7 +7,7 @@ create temp table dhr as select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid w,'
  'afa70000-0000-4000-8000-000000000001'::uuid typ,'afa70000-0000-4000-8000-000000000002'::uuid named,
  'afa70000-0000-4000-8000-000000000003'::uuid explicit_shift,'afa70000-0000-4000-8000-000000000004'::uuid unresolved,
  current_date-extract(isodow from current_date)::integer+1+700 week,null::uuid session,null::jsonb command,null::jsonb preview,null::jsonb result;
-insert into public.locations(id,workspace_id,name,timezone,street_address,city,region,postal_code) select loc,w,'Default review UTC','UTC','1 Test St','Test','CA','94000' from dhr;
+insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code) select 'T00033', loc,w,'Default review UTC','UTC','1 Test St','Test','CA','94000' from dhr;
 insert into public.jobs(id,workspace_id,name) select job,w,'Default review job' from dhr;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select employee_actor,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','default-review-employee@example.test','','{}','{}',now(),now() from dhr;

@@ -21,6 +21,7 @@ export function isScheduleSurfaceTarget(target: EventTarget | null): boolean {
 
 export function isScheduleInteractionSurface(target: Element): boolean {
   return Boolean(
+    target.closest("[data-schedule-export-v2]") ||
     target.closest("[data-shift-badge='true']") ||
     target.closest("[data-schedule-preset-chip='true']") ||
     target.closest("[data-schedule-preset-cell='true']") ||
@@ -48,7 +49,9 @@ export function isScheduleInteractionSurface(target: Element): boolean {
 }
 
 export function isBlankScheduleDismissTarget(target: Element): boolean {
-  if (!target.closest(".schedule-page")) return false;
+  if (target.closest("[data-schedule-export-v2]")) return false;
+  // The employee board reuses the same dismissal cascade on its own root.
+  if (!target.closest(".schedule-page, .employee-schedule-board")) return false;
   if (isScheduleEditBannerBlankTarget(target)) return true;
   return !target.closest(
     [
@@ -140,6 +143,7 @@ export function isSchedulePreviewFocusedShiftBlankDismissTarget(
   target: EventTarget | null,
 ): boolean {
   if (!(target instanceof Element)) return false;
+  if (target.closest("[data-schedule-export-v2]")) return false;
   return !target.closest(
     [
       "button",

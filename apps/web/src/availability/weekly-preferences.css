@@ -622,6 +622,8 @@
 }
 .employee-weekly-workspace > .weekly-preferences-tabs {
   padding: 0;
+  /* The catalog page header above already draws the separator line. */
+  border-bottom: 0;
   margin-bottom: 16px;
 }
 .employee-weekly-workspace > .weekly-preferences-tabs > button {

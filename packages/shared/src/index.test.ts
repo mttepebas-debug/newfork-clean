@@ -1443,6 +1443,7 @@ describe("organization basics schemas", () => {
     expect(
       locationInputSchema.parse({
         name: "  Downtown  ",
+        short_name: " DT ",
         street_address: "1 Main St",
         city: "Los Angeles",
         region: "CA",
@@ -1454,6 +1455,7 @@ describe("organization basics schemas", () => {
     expect(
       locationInputSchema.parse({
         name: "Patio",
+        short_name: "PATIO",
         street_address: "",
         city: "",
         region: "",

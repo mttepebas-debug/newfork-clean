@@ -12,8 +12,8 @@ select pg_temp.w(),pg_temp.actor(n),'employee','active',true from generate_serie
 -- Fresh actors do not depend on shared seed employees remaining active.
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,preferred_name,created_by)
 select pg_temp.emp(n),pg_temp.w(),pg_temp.actor(n),'E-28'||(9900+n)::text,'Employee',n::text,'',pg_temp.manager() from generate_series(1,4)n;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone)
-select ('ae8a0000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,pg_temp.w(),'Publication QA '||n,'1 Test St','Test City','CA','94000','US','America/Los_Angeles' from generate_series(1,2)n;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,country_code,timezone)
+select 'T00038-' || n::text, ('ae8a0000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,pg_temp.w(),'Publication QA '||n,'1 Test St','Test City','CA','94000','US','America/Los_Angeles' from generate_series(1,2)n;
 insert into public.jobs(id,workspace_id,name) values('ae8b0000-0000-4000-8000-000000000001',pg_temp.w(),'Publication QA job');
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) values('ae8c0000-0000-4000-8000-000000000001',pg_temp.w(),'Publication QA service','09:00','17:00');
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)

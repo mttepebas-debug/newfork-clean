@@ -111,9 +111,9 @@ select throws_ok(
   'active workspace preference requires active completed membership',
   'draft owner workspace cannot be selected as a default organization'
 );
-insert into public.locations (
+insert into public.locations (short_name,
   id, workspace_id, name, street_address, city, region, postal_code, country_code, timezone
-) values (
+) values ('T00080',
   '40000000-0000-4000-8000-000000000010',
   (select id from test_owner_draft_results limit 1),
   'Draft Location',
@@ -278,9 +278,9 @@ select is(
 );
 select is((select display_name from public.user_profiles), 'Test Owner', 'owner sees own account profile');
 reset role;
-insert into public.locations (
+insert into public.locations (short_name,
   id, workspace_id, name, street_address, city, region, postal_code, country_code, timezone
-) values (
+) values ('T00081',
   '40000000-0000-4000-8000-000000000001',
   '20000000-0000-4000-8000-000000000001',
   'Main Dining',
@@ -484,11 +484,11 @@ select public.create_owner_workspace_service(
   'Metadata Workspace'
 ) as workspace_id;
 reset role;
-insert into public.locations (
+insert into public.locations (short_name,
   id, workspace_id, name, street_address, city, region, postal_code,
   country_code, timezone
 )
-select
+select 'T00082',
   '40000000-0000-4000-8000-000000000009'::uuid,
   workspace_id,
   'Metadata Location',
@@ -842,9 +842,9 @@ select throws_ok(
   'immediate closure requires exact workspace name confirmation'
 );
 reset role;
-insert into public.locations (
+insert into public.locations (short_name,
   id, workspace_id, name, street_address, city, region, postal_code, country_code, timezone
-) values (
+) values ('T00083',
   '40000000-0000-4000-8000-000000000002',
   '20000000-0000-4000-8000-000000000002',
   'Closure Dining',

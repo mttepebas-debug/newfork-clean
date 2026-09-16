@@ -3,9 +3,6 @@ import type {
   ScheduleAutoFillPreview,
   ScheduleEditableShift,
   ScheduleEditSession,
-  ScheduleExportPreset,
-  ScheduleExportSchedule,
-  ScheduleRecentExportEvent,
   SchedulePublicationStatus,
   SchedulePendingOp,
   ScheduleShift,
@@ -56,30 +53,19 @@ import {
   applyScheduleAutoFill,
   applyScheduleTemplate,
   bulkDeleteShifts,
-  createScheduleExportPreset,
-  createScheduleExportSchedule,
   createScheduleTemplate,
   createScheduleShift,
   createScheduleShifts,
   deleteScheduleShift,
   deleteScheduleDraft,
   discardScheduleEditSession,
-  deleteScheduleExportPreset,
-  deleteScheduleExportSchedule,
   deleteScheduleTemplate,
-  downloadScheduleExport,
   draftsKey,
   heartbeatScheduleEditSession,
   listScheduleDrafts,
-  listScheduleExportPresets,
-  listScheduleExportSchedules,
-  listScheduleRecentExports,
   listScheduleTemplates,
   fetchSchedulePublicationStatus,
-  fetchScheduleDraftShifts,
   previewScheduleAutoFill,
-  previewScheduleExport,
-  previewScheduleExportHtml,
   previewSchedulePublication,
   previewScheduleUnpublish,
   publishScheduleDraft,
@@ -87,7 +73,6 @@ import {
   saveScheduleDraft,
   ScheduleRequestError,
   renameScheduleTemplate,
-  updateScheduleExportSchedule,
   updateScheduleShift,
   unpublishSchedule,
 } from "../schedule/schedule-data";
@@ -98,8 +83,9 @@ import { EnterEditModeDialog } from "../schedule/components/EnterEditModeDialog"
 import { ScheduleConflictSheet } from "../schedule/components/ScheduleConflictSheet";
 import { ScheduleEditLockedDialog as ScheduleEditLockedDialogComponent } from "../schedule/components/ScheduleEditLockedDialog";
 import { ScheduleEditTimeoutDialog as ScheduleEditTimeoutDialogComponent } from "../schedule/components/ScheduleEditTimeoutDialog";
-import { ScheduleExportDialog } from "../schedule/components/ScheduleExportDialog";
-import { ScheduleExportPanel } from "../schedule/components/ScheduleExportPanel";
+import { ExportController } from "../schedule/export-v2/ExportController";
+import { createScheduleExportSnapshot, type SnapshotResult } from "../schedule/export-v2/snapshot";
+import { usePreviewSource } from "../schedule/export-v2/usePreviewSource";
 import { ScheduleSaveRecoverySheet } from "../schedule/components/ScheduleSaveRecoverySheet";
 import { ExchangeScheduleRecovery } from "../employee-hub/shift-exchanges/ExchangeScheduleRecovery";
 import { PublishScheduleDialog, type SchedulePublicationChoices } from "../schedule/components/PublishScheduleDialog";
@@ -148,7 +134,10 @@ import {
   type ShiftClipboardSnapshot,
 } from "../schedule/lib/shiftClipboard";
 import type { ScheduleShiftEditorState } from "../schedule/lib/shiftEditorState";
-import { createSortedScheduleModel } from "../schedule/lib/scheduleEmployeeSort";
+import {
+  createSortedScheduleModel,
+  type ScheduleEmployeeSortMode,
+} from "../schedule/lib/scheduleEmployeeSort";
 import {
   usePersistentScheduleEmployeeSortMode,
   usePersistentScheduleUiBoolean,
@@ -165,7 +154,6 @@ import {
 } from "../schedule/lib/scheduleFilterModel";
 import {
   canExportSchedule,
-  filterScheduleExportLocations,
 } from "../schedule/lib/exportAccess";
 import {
   addDays,
@@ -208,7 +196,7 @@ interface ScheduleLockConflict {
 
 type SaveRecoveryIntent =
   | {
-      readonly kind: "save";
+      readonly kind: "save" | "save-and-export";
       readonly name: string;
       readonly force: boolean;
       readonly targetDraftId: string | null | undefined;
@@ -235,6 +223,7 @@ const SCHEDULE_TOP_ACTION_SURFACE_SELECTOR = [
   ".schedule-dialog",
   ".schedule-edit-banner",
   ".schedule-export-panel",
+  "[data-schedule-export-v2]",
   "[data-employee-drawer-panel='true']",
 ].join(",");
 
@@ -258,7 +247,7 @@ export function SchedulePage({
   const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useSearchParams();
-  const { activeDraftId, setMode: setScheduleMode } = useScheduleMode();
+  const { activeDraftId, isEditMode, setMode: setScheduleMode } = useScheduleMode();
   const today = new Date().toLocaleDateString("en-CA");
   const selectedDate = validDate(search.get("date")) ?? today;
   const view: ScheduleView = search.get("view") === "day" ? "day" : "week";
@@ -280,20 +269,26 @@ export function SchedulePage({
     actorNameByUserId: resolveCascadeActorName,
   });
   const [session, setSession] = useState<ScheduleEditSession | null>(null);
-  const mutationContext = `${context?.workspace.id}:${session?.id}:${session?.revision}`;
-  const currentMutationContext = useRef(mutationContext);
+  // A context transition must invalidate old saves even if the same session is later resumed.
+  const mutationContext = useMemo(() => ({
+    userId: context?.userId, workspaceId: context?.workspace.id,
+    sessionId: session?.id, revision: session?.revision,
+  }), [context?.userId, context?.workspace.id, session?.id, session?.revision]);
+  const currentMutationContext = useRef<typeof mutationContext | null>(mutationContext);
   currentMutationContext.current = mutationContext;
-  useEffect(() => () => { currentMutationContext.current = "unmounted"; }, []);
+  useEffect(() => {
+    currentMutationContext.current = mutationContext;
+    return () => { currentMutationContext.current = null; };
+  }, [mutationContext]);
   const [defaultHoursOpen, setDefaultHoursOpen] = useState(false);
   useEffect(() => setDefaultHoursOpen(false), [context?.workspace.id, session?.id]);
   const [drafts, setDrafts] = useState<readonly ScheduleDraftSummary[]>([]);
-  const [previewDraftShifts, setPreviewDraftShifts] = useState<
-    readonly ScheduleShift[] | null
-  >(null);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [editor, setEditor] = useState<ScheduleShiftEditorState | null>(null);
   const [, setEditorDirty] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [exportAfterSave, setExportAfterSave] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
   const [conflict, setConflict] = useState<ScheduleLockConflict | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [focusedShiftId, setFocusedShiftId] = useState<string | null>(null);
@@ -344,6 +339,13 @@ export function SchedulePage({
     onConfirm: confirmRetroactiveEdit,
     onOpenChange: setRetroactiveEditOpen,
   } = useRetroactiveEditPrompt();
+  useEffect(() => {
+    setSaveBusy(false);
+    setSaveOpen(false);
+    setExportAfterSave(false);
+    setSaveRecovery(null);
+    setRetroactiveEditOpen(false);
+  }, [mutationContext, setRetroactiveEditOpen]);
   const pasteModeNoticeTimerRef = useRef<number | null>(null);
   const previousPasteArmedRef = useRef(false);
   const showPasteModeNotice = useCallback((message: string, durationMs = 0) => {
@@ -413,20 +415,12 @@ export function SchedulePage({
     null,
   );
   const [exportOpen, setExportOpen] = useState(false);
+  const exportDeepLinkConsumed = useRef(false);
   const [newScheduleMenuOpen, setNewScheduleMenuOpen] = useState(false);
   const [publishMenuOpen, setPublishMenuOpen] = useState(false);
   const [newScheduleDismissSignal, setNewScheduleDismissSignal] = useState(0);
   const [publishMenuDismissSignal, setPublishMenuDismissSignal] = useState(0);
   const topActionBlockedClickTargetRef = useRef<Element | null>(null);
-  const [exportPresets, setExportPresets] = useState<
-    readonly ScheduleExportPreset[]
-  >([]);
-  const [scheduledExports, setScheduledExports] = useState<
-    readonly ScheduleExportSchedule[]
-  >([]);
-  const [recentExportEvents, setRecentExportEvents] = useState<
-    readonly ScheduleRecentExportEvent[]
-  >([]);
   const closeTopActionSurfaces = useCallback(
     (
       keep:
@@ -445,7 +439,6 @@ export function SchedulePage({
       ) {
         navigate({ pathname: scheduleBasePath, search: location.search });
       }
-      if (keep !== "export") setExportOpen(false);
       if (keep !== "templates") setTemplatesOpen(false);
       if (keep !== "publish") {
         setPublishOpen(false);
@@ -464,7 +457,6 @@ export function SchedulePage({
     [location.pathname, location.search, navigate, scheduleBasePath],
   );
   const topActionSurfaceOpen =
-    exportOpen ||
     templatesOpen ||
     publishOpen ||
     sourceOpen ||
@@ -559,6 +551,16 @@ export function SchedulePage({
   const [topbarDismissSignal, setTopbarDismissSignal] = useState(0);
   const [employeeSortMode, setEmployeeSortMode] =
     usePersistentScheduleEmployeeSortMode();
+  const handleEmployeeSortModeChange = useCallback(
+    (mode: ScheduleEmployeeSortMode) => {
+      setEmployeeSortMode(mode);
+      if (mode === "byJob") {
+        setShowPresetShiftBadges(true);
+        setShowRoleSeparators(true);
+      }
+    },
+    [setEmployeeSortMode, setShowPresetShiftBadges, setShowRoleSeparators],
+  );
   const lastPresetDefaultSessionIdRef = useRef<string | null>(null);
   const dismissOneScheduleLayerRef = useRef<() => boolean>(() => false);
   const suppressedScheduleClickTargetRef = useRef<Element | null>(null);
@@ -613,10 +615,21 @@ export function SchedulePage({
     { enabled: Boolean(context && query.data) },
   );
   const clearMissingDraftPreview = useCallback(() => {
-    setPreviewDraftShifts(null);
     setScheduleMode("preview", null);
     setOperationError(null);
   }, [setScheduleMode]);
+  const previewSource = usePreviewSource({
+    workspaceId: context?.workspace.id ?? null, model: query.data, modelVersion: query.dataUpdatedAt,
+    activeDraftId, editing: isEditMode || Boolean(gridEditSession),
+    loading: query.isFetching || query.isPlaceholderData || Boolean(activeDraftId && draftsQuery.isFetching),
+    drafts: draftsQuery.data?.drafts, onMissingDraft: clearMissingDraftPreview,
+  });
+  useEffect(() => {
+    if (isEditMode || gridEditSession || !canExportSchedules) setExportOpen(false);
+  }, [isEditMode, gridEditSession, canExportSchedules]);
+  useEffect(() => {
+    setExportOpen(false); setExportAfterSave(false); setSaveOpen(false);
+  }, [context?.workspace.id, context?.userId]);
   const dropReview = useScheduleDropReview(context?.workspace.id, gridEditSession?.id, gridEditSession?.revision);
   const displayedPendingOps = useMemo(
     () => gridEditSession ? [...pendingOps, ...dropReview.optimisticOps] : [],
@@ -624,54 +637,13 @@ export function SchedulePage({
   );
   const projectedShifts = useEffectiveShifts(
     gridEditSession?.shifts ??
-      (activeDraftId && previewDraftShifts
-        ? previewDraftShifts
-        : (query.data?.shifts ?? [])),
+      (activeDraftId ? previewSource.shifts ?? [] : (query.data?.shifts ?? [])),
     displayedPendingOps,
   );
   const effectiveShifts = useMemo(() => projectedShifts.map(shift =>
     dropReview.optimisticOps.some(op => op.id === shift.pending_op_id)
       ? { ...shift, saving_state: dropReview.savingState, optimistic: true }
       : shift), [projectedShifts, dropReview.optimisticOps, dropReview.savingState]);
-  useEffect(() => {
-    if (gridEditSession || !activeDraftId || !context || !query.data) {
-      if (!activeDraftId) setPreviewDraftShifts(null);
-      return;
-    }
-    if (!draftsQuery.data) return;
-    if (!draftsQuery.data.drafts.some((draft) => draft.id === activeDraftId)) {
-      clearMissingDraftPreview();
-      return;
-    }
-    let cancelled = false;
-    void fetchScheduleDraftShifts(
-      context.workspace.id,
-      query.data.week_start,
-      activeDraftId,
-      query.data.locations.map((location) => location.id),
-    )
-      .then((result) => {
-        if (!cancelled) setPreviewDraftShifts(result.shifts);
-      })
-      .catch((error: Error) => {
-        if (cancelled) return;
-        if (isMissingScheduleDraftError(error)) {
-          clearMissingDraftPreview();
-          return;
-        }
-        setOperationError(error.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    activeDraftId,
-    clearMissingDraftPreview,
-    context,
-    draftsQuery.data,
-    gridEditSession,
-    query.data,
-  ]);
   const visibleSelectableShiftIds = useMemo(() => {
     if (!query.data) return [];
     const filtered = filterScheduleModel(
@@ -928,45 +900,18 @@ export function SchedulePage({
   };
 
   const startBlankDraftFromMenu = async () => {
-    setPreviewDraftShifts(null);
     await refreshDrafts();
     await acquire("blank");
   };
 
   const previewDraftFromMenu = async (draftId: string | null) => {
     if (!context || !query.data) return;
-    if (!draftId) {
-      setPreviewDraftShifts(null);
-      setScheduleMode("preview", null);
-      return;
-    }
     setOperationError(null);
-    try {
-      const [draftResult, shiftResult] = await Promise.all([
-        refreshDrafts(),
-        fetchScheduleDraftShifts(
-          context.workspace.id,
-          query.data.week_start,
-          draftId,
-          query.data.locations.map((location) => location.id),
-        ),
-      ]);
-      if (!draftResult.some((draft) => draft.id === draftId)) {
-        throw new Error("Selected draft is no longer available.");
-      }
-      setPreviewDraftShifts(shiftResult.shifts);
-      setScheduleMode("preview", draftId);
-    } catch (error) {
-      if (isMissingScheduleDraftError(error)) {
-        clearMissingDraftPreview();
-        return;
-      }
-      setOperationError((error as Error).message);
-    }
+    // One cancellable source read feeds both grid and export.
+    setScheduleMode("preview", draftId);
   };
 
   const editDraftFromMenu = async (draftId: string | null) => {
-    setPreviewDraftShifts(null);
     await refreshDrafts();
     await acquire(draftId ? "draft" : "published", draftId);
   };
@@ -1065,27 +1010,17 @@ export function SchedulePage({
       setOperationError("You do not have permission to export schedules.");
       return;
     }
+    if (window.matchMedia && !window.matchMedia("(min-width: 721px)").matches) return;
     setOperationError(null);
     setTopbarDropdownOpen(false);
-    setTopbarDismissSignal((current) => current + 1);
+    setTopbarDismissSignal(current => current + 1);
     closeTopActionSurfaces("export");
-    try {
-      const [draftResult, presetResult, scheduledResult, recentResult] =
-        await Promise.all([
-          listScheduleDrafts(context.workspace.id, query.data.week_start),
-          listScheduleExportPresets(context.workspace.id),
-          listScheduleExportSchedules(context.workspace.id),
-          listScheduleRecentExports(context.workspace.id),
-        ]);
-      setDrafts(draftResult.drafts);
-      updateDraftCache(draftResult.drafts);
-      setExportPresets(presetResult.presets);
-      setScheduledExports(scheduledResult.schedules);
-      setRecentExportEvents(recentResult.events);
-      setExportOpen(true);
-    } catch (error) {
-      setOperationError((error as Error).message);
+    if (isEditMode || session) {
+      setExportAfterSave(true);
+      setSaveOpen(true);
+      return;
     }
+    setExportOpen(true);
   };
 
   useEffect(() => {
@@ -1105,21 +1040,26 @@ export function SchedulePage({
   }, [draftsQuery.data]);
 
   useEffect(() => {
+    if (location.pathname !== `${scheduleBasePath}/export`) exportDeepLinkConsumed.current = false;
     if (!context || !query.data) return;
     if (location.pathname === `${scheduleBasePath}/templates` && !templatesOpen) {
       void openTemplates();
     }
     if (
       location.pathname === `${scheduleBasePath}/export` &&
+      !exportDeepLinkConsumed.current &&
       !exportOpen &&
+      !saveOpen &&
       canExportSchedules
     ) {
+      exportDeepLinkConsumed.current = true;
       void openExport();
     }
   }, [
     context,
     canExportSchedules,
     exportOpen,
+    saveOpen,
     location.pathname,
     query.data,
     scheduleBasePath,
@@ -1236,7 +1176,6 @@ export function SchedulePage({
     setDiscardConfirmOpen(false);
     const discardedSession = session;
     setIsDiscardingEditSession(true);
-    setPreviewDraftShifts(null);
     setSession(null);
     const nextSearch = new URLSearchParams(search);
     nextSearch.set("mode", "preview");
@@ -1273,16 +1212,17 @@ export function SchedulePage({
     name: string,
     force: boolean,
     targetDraftId: string | null | undefined,
-    recoveryKind: "save" | "save-and-publish" = "save",
+    recoveryKind: "save" | "save-and-publish" | "save-and-export" = "save",
   ) => {
     if (!context || !session) return null;
+    const savingContext = currentMutationContext.current;
     const target =
       force && targetDraftId
         ? (drafts.find((item) => item.id === targetDraftId) ?? null)
         : null;
     try {
       const saved = await saveDraftWithRetroactivePrompt(name, target);
-      if (!saved) return null;
+      if (!saved || currentMutationContext.current !== savingContext) return null;
       cacheSavedDraftResult({
         queryClient,
         workspaceId: context.workspace.id,
@@ -1295,7 +1235,6 @@ export function SchedulePage({
         updateDraftCache(next);
         return next;
       });
-      setPreviewDraftShifts(effectiveShifts);
       setSession(null);
       setScheduleMode("preview", saved.id);
       setPendingOps([]);
@@ -1305,6 +1244,7 @@ export function SchedulePage({
       void query.refetch();
       return saved;
     } catch (error) {
+      if (currentMutationContext.current !== savingContext) return null;
       const nameConflict =
         error instanceof ScheduleRequestError
           ? parseSaveDraftNameConflict(error.body)
@@ -1346,6 +1286,7 @@ export function SchedulePage({
     acknowledgePastEdits = false,
   ): Promise<ScheduleDraftSummary | null> {
     if (!context || !session) return null;
+    const savingContext = currentMutationContext.current;
     try {
       return await saveScheduleDraft(
         context.workspace.id,
@@ -1355,6 +1296,7 @@ export function SchedulePage({
         acknowledgePastEdits,
       );
     } catch (error) {
+      if (currentMutationContext.current !== savingContext) return null;
       const retroactiveError = parseRetroactiveEditError(error);
       if (!retroactiveError) throw error;
       const confirmed = await promptRetroactiveEdit(
@@ -1362,7 +1304,7 @@ export function SchedulePage({
         retroactiveError.findings,
         retroactiveError.messages,
       );
-      if (!confirmed || retroactiveError.mode === "blocked") return null;
+      if (!confirmed || retroactiveError.mode === "blocked" || currentMutationContext.current !== savingContext) return null;
       return saveDraftWithRetroactivePrompt(name, target, true);
     }
   }
@@ -1370,6 +1312,7 @@ export function SchedulePage({
   const retrySaveRecovery = async () => {
     const intent = saveRecovery?.intent;
     if (!intent) return;
+    const savingContext = currentMutationContext.current;
     setSaveRecovery((current) =>
       current ? { ...current, retrying: true } : current,
     );
@@ -1382,24 +1325,33 @@ export function SchedulePage({
       );
       if (result) {
         setSaveRecovery(null);
+        if (intent.kind === "save-and-export") {
+          setSaveOpen(false); setExportAfterSave(false); setExportOpen(true);
+        }
         if (intent.kind === "save-and-publish") {
           setPublishDraftOverride(result);
           setPublishOpen(true);
         }
       }
     } finally {
-      setSaveRecovery((current) =>
-        current ? { ...current, retrying: false } : current,
-      );
+      if (currentMutationContext.current === savingContext) {
+        setSaveRecovery((current) =>
+          current ? { ...current, retrying: false } : current,
+        );
+      }
     }
   };
 
   const keepEditingAfterSaveFailure = () => {
+    if (saveRecovery?.intent.kind === "save-and-export") {
+      setSaveOpen(false);
+      setExportAfterSave(false);
+    }
     setSaveRecovery(null);
   };
 
   const discardAfterSaveFailure = () => {
-    setSaveRecovery(null);
+    setSaveRecovery(null); setSaveOpen(false); setExportAfterSave(false);
     discardEditSession();
   };
 
@@ -1408,6 +1360,7 @@ export function SchedulePage({
     force: boolean,
     targetDraftId: string | null | undefined,
   ) => {
+    const savingContext = currentMutationContext.current;
     const saved = await saveDraftFromMenu(
       name,
       force,
@@ -1418,7 +1371,7 @@ export function SchedulePage({
       setSaveRecovery(null);
       setPublishDraftOverride(saved);
       setPublishOpen(true);
-    } else {
+    } else if (currentMutationContext.current === savingContext) {
       setSaveRecovery((current) =>
         current
           ? {
@@ -1810,6 +1763,22 @@ export function SchedulePage({
         }
     : null;
 
+  const exportSnapshot = useMemo<SnapshotResult>(() => {
+    if (!exportOpen) return { status: "blocked", reason: "source" };
+    if (!query.data || !context) return { status: "blocked", reason: "loading" };
+    return createScheduleExportSnapshot({
+      mode: isEditMode || gridEditSession ? "edit" : "preview", loading: previewSource.loading,
+      requestedSourceKey: previewSource.requestedKey, resolvedSourceKey: previewSource.resolvedKey,
+      source: previewSource.source, model: { ...query.data, shifts: effectiveShifts },
+      workspaceName: context.workspace.name, selectedDate, view, search, focusedShiftId,
+      display: { layout, employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
+        showUnassignedShifts, showRoleSeparators, showTotalHours },
+    });
+  }, [exportOpen, query.data, context, isEditMode, gridEditSession, previewSource.loading, previewSource.requestedKey,
+    previewSource.resolvedKey, effectiveShifts, selectedDate, view, search, focusedShiftId, layout,
+    employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
+    showUnassignedShifts, showRoleSeparators, showTotalHours]);
+
   if (query.isPending)
     return (
       <ScheduleState
@@ -1939,10 +1908,6 @@ export function SchedulePage({
     search.get("employees"),
     sortedModel.employees.map((item) => item.id),
   );
-  const exportLocations = filterScheduleExportLocations(
-    model.locations,
-    context?.permissions,
-  );
   const filterChips = createScheduleFilterChips({
     locations: model.locations,
     shiftTypes: model.shift_types,
@@ -2033,6 +1998,8 @@ export function SchedulePage({
       return true;
     }
     if (saveOpen) {
+      if (saveBusy) return true;
+      setExportAfterSave(false);
       setSaveOpen(false);
       return true;
     }
@@ -2042,10 +2009,6 @@ export function SchedulePage({
     }
     if (templatesOpen) {
       setTemplatesOpen(false);
-      return true;
-    }
-    if (exportOpen) {
-      setExportOpen(false);
       return true;
     }
     if (logoOpen) {
@@ -2099,7 +2062,7 @@ export function SchedulePage({
     event: ReactPointerEvent<HTMLElement>,
   ) => {
     const target = event.target;
-    if (!(target instanceof Element)) return;
+    if (!(target instanceof Element) || target.closest("[data-schedule-export-v2]")) return;
     if (
       topActionSurfaceOpen &&
       !target.closest(SCHEDULE_TOP_ACTION_SURFACE_SELECTOR)
@@ -2137,7 +2100,7 @@ export function SchedulePage({
   const consumeDismissedScheduleClick = (event: MouseEvent<HTMLElement>) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
-    if (target.closest("[role='dialog'], [role='alertdialog']")) {
+    if (target.closest("[role='dialog'], [role='alertdialog'], [data-schedule-export-v2]")) {
       suppressedScheduleClickTargetRef.current = null;
       return;
     }
@@ -2423,84 +2386,6 @@ export function SchedulePage({
       setSavingLogo(false);
     }
   };
-  const exportSurfaceProps = context
-    ? {
-        weekStart: model.week_start,
-        weekLabel: formatPeriod(selectedDate, model.week_start, "week"),
-        defaultTimeFormat: model.settings.time_format,
-        locations: exportLocations,
-        drafts,
-        presets: exportPresets,
-        scheduledExports,
-        recentExportEvents,
-        showShiftType,
-        showShiftLabels,
-        showClockTimes,
-        showRoleSeparators,
-        showPresetShiftBadges:
-          Boolean(gridEditSession) &&
-          employeeSortMode === "byJob" &&
-          showRoleSeparators &&
-          showPresetShiftBadges,
-        onClose: closeExport,
-        onPreview: (request: Parameters<typeof previewScheduleExport>[1]) =>
-          previewScheduleExport(context.workspace.id, request),
-        onPreviewHtml: (
-          request: Parameters<typeof previewScheduleExportHtml>[1],
-        ) => previewScheduleExportHtml(context.workspace.id, request),
-        onDownload: async (
-          request: Parameters<typeof downloadScheduleExport>[1],
-        ) => {
-          const blob = await downloadScheduleExport(
-            context.workspace.id,
-            request,
-          );
-          const recent = await listScheduleRecentExports(context.workspace.id);
-          setRecentExportEvents(recent.events);
-          return blob;
-        },
-        onSavePreset: (
-          name: string,
-          settings: ScheduleExportPreset["settings"],
-        ) =>
-          createScheduleExportPreset(context.workspace.id, name, settings).then(
-            (preset) => setExportPresets((items) => [...items, preset]),
-          ),
-        onDeletePreset: (presetId: string) =>
-          deleteScheduleExportPreset(context.workspace.id, presetId).then(() =>
-            setExportPresets((items) =>
-              items.filter((item) => item.id !== presetId),
-            ),
-          ),
-        onCreateScheduledExport: (
-          input: Parameters<typeof createScheduleExportSchedule>[1],
-        ) =>
-          createScheduleExportSchedule(context.workspace.id, input).then(
-            (schedule) =>
-              setScheduledExports((items) =>
-                [...items, schedule].sort((left, right) =>
-                  left.name.localeCompare(right.name),
-                ),
-              ),
-          ),
-        onToggleScheduledExport: (scheduleId: string, enabled: boolean) =>
-          updateScheduleExportSchedule(context.workspace.id, scheduleId, {
-            enabled,
-          }).then((schedule) =>
-            setScheduledExports((items) =>
-              items.map((item) => (item.id === schedule.id ? schedule : item)),
-            ),
-          ),
-        onDeleteScheduledExport: (scheduleId: string) =>
-          deleteScheduleExportSchedule(context.workspace.id, scheduleId).then(
-            () =>
-              setScheduledExports((items) =>
-                items.filter((item) => item.id !== scheduleId),
-              ),
-          ),
-      }
-    : null;
-
   return (
     <section
       className="schedule-page"
@@ -2569,7 +2454,7 @@ export function SchedulePage({
           setUseDefaultTimesForScheduling((current) => !current)
         }
         employeeSortMode={employeeSortMode}
-        onEmployeeSortModeChange={setEmployeeSortMode}
+        onEmployeeSortModeChange={handleEmployeeSortModeChange}
         locations={model.locations}
         selectedLocationIds={selectedLocationIds}
         onLocationFilterChange={(ids) => setQueryIds("locations", ids)}
@@ -3112,30 +2997,23 @@ export function SchedulePage({
               (item) => item.id === gridEditSession.source_draft_id,
             ) ?? null
           }
-          onClose={() => setSaveOpen(false)}
-          onSave={(name, draft) =>
-            void saveDraftWithRetroactivePrompt(name, draft)
-              .then((saved) => {
+          busy={saveBusy}
+          description={exportAfterSave ? "Export is available in preview mode. Save this working copy as a draft to continue." : undefined}
+          onClose={() => { if (!saveBusy) { setSaveOpen(false); setExportAfterSave(false); leaveScheduleDeepLink(); } }}
+          onSave={(name, draft) => {
+            if (saveBusy) return;
+            const savingContext = currentMutationContext.current;
+            setSaveBusy(true);
+            void saveDraftFromMenu(name, Boolean(draft), draft?.id, exportAfterSave ? "save-and-export" : "save")
+              .then(saved => {
                 if (!saved) return;
-                setDrafts((items) => {
-                  const next = [
-                    ...items.filter((item) => item.id !== saved.id),
-                    saved,
-                  ];
-                  updateDraftCache(next);
-                  return next;
-                });
                 setSaveOpen(false);
-                setPreviewDraftShifts(effectiveShifts);
-                setSession(null);
-                setScheduleMode("preview", saved.id);
-                setPendingOps([]);
-                clearUndoStack();
-                invalidateScheduleCaches(saved.id);
-                void query.refetch();
-              })
-              .catch((error: Error) => setOperationError(error.message))
-          }
+                if (exportAfterSave) setExportOpen(true);
+                setExportAfterSave(false);
+              }).finally(() => {
+                if (currentMutationContext.current === savingContext) setSaveBusy(false);
+              });
+          }}
         />
       ) : null}
       {publishOpen && context ? (
@@ -3273,7 +3151,6 @@ export function SchedulePage({
               if (previewDraftId) {
                 await previewDraftFromMenu(previewDraftId);
               } else {
-                setPreviewDraftShifts(null);
                 setScheduleMode("preview", null);
               }
               void refreshPublicationStatus();
@@ -3421,12 +3298,10 @@ export function SchedulePage({
           }
         />
       ) : null}
-      {exportOpen && exportSurfaceProps ? (
-        location.pathname === `${scheduleBasePath}/export` ? (
-          <ScheduleExportPanel {...exportSurfaceProps} />
-        ) : (
-          <ScheduleExportDialog {...exportSurfaceProps} />
-        )
+      {exportOpen && canExportSchedules && context && !isEditMode && !gridEditSession ? (
+        <ExportController key={`${context.userId}:${context.workspace.id}`} userId={context.userId}
+          workspaceId={context.workspace.id} result={exportSnapshot} onClose={closeExport}
+          canManageLocations={context.permissions.includes("settings.locations.manage")} sourceError={previewSource.error} />
       ) : null}
     </section>
   );

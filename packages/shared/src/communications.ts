@@ -79,6 +79,7 @@ export const announcementRecordSchema = z.object({
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   read_at: z.string().datetime({ offset: true }).nullable(),
+  acknowledged_at: z.string().datetime({ offset: true }).nullable().optional(),
   can_edit: z.boolean(),
   can_publish: z.boolean(),
   can_cancel: z.boolean(),

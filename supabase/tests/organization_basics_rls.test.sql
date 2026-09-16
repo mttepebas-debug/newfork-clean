@@ -23,11 +23,11 @@ values
   ('31000000-0000-4000-8000-000000000004', '21000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000004', 'employee', false),
   ('31000000-0000-4000-8000-000000000005', '21000000-0000-4000-8000-000000000002', '11000000-0000-4000-8000-000000000001', 'owner', true);
 
-insert into public.locations (id, workspace_id, name, street_address, city, region, postal_code, timezone)
+insert into public.locations (short_name, id, workspace_id, name, street_address, city, region, postal_code, timezone)
 values
-  ('41000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', 'Downtown', '1 Main St', 'Los Angeles', 'CA', '90001', 'America/Los_Angeles'),
-  ('41000000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000001', 'Uptown', '2 Main St', 'Los Angeles', 'CA', '90002', 'America/Los_Angeles'),
-  ('41000000-0000-4000-8000-000000000003', '21000000-0000-4000-8000-000000000002', 'Other Tenant', '3 Main St', 'Seattle', 'WA', '98101', 'America/Los_Angeles');
+  ('T00025','41000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', 'Downtown', '1 Main St', 'Los Angeles', 'CA', '90001', 'America/Los_Angeles'),
+  ('T00026','41000000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000001', 'Uptown', '2 Main St', 'Los Angeles', 'CA', '90002', 'America/Los_Angeles'),
+  ('T00027','41000000-0000-4000-8000-000000000003', '21000000-0000-4000-8000-000000000002', 'Other Tenant', '3 Main St', 'Seattle', 'WA', '98101', 'America/Los_Angeles');
 
 insert into public.departments (id, workspace_id, name)
 values
@@ -68,13 +68,13 @@ select is((select count(*)::integer from public.audit_events where action = 'wor
 
 select set_config('request.jwt.claim.sub', '11000000-0000-4000-8000-000000000002', true);
 select lives_ok(
-  $$insert into public.locations (workspace_id, name, street_address, city, region, postal_code, timezone)
-    values ('21000000-0000-4000-8000-000000000001', 'Westside', '4 Main St', 'Los Angeles', 'CA', '90003', 'America/Los_Angeles')$$,
+  $$insert into public.locations (short_name, workspace_id, name, street_address, city, region, postal_code, timezone)
+    values ('T00028','21000000-0000-4000-8000-000000000001', 'Westside', '4 Main St', 'Los Angeles', 'CA', '90003', 'America/Los_Angeles')$$,
   'admin can create a location'
 );
 select lives_ok(
-  $$insert into public.locations (workspace_id, name, street_address, city, region, postal_code, timezone)
-    values ('21000000-0000-4000-8000-000000000001', 'Patio', '', '', '', '', 'America/Los_Angeles')$$,
+  $$insert into public.locations (short_name, workspace_id, name, street_address, city, region, postal_code, timezone)
+    values ('T00029','21000000-0000-4000-8000-000000000001', 'Patio', '', '', '', '', 'America/Los_Angeles')$$,
   'admin can create a location without address details'
 );
 select is((select count(*)::integer from public.audit_events where action = 'location.created'), 2, 'location creation is audited');

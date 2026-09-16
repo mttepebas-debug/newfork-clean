@@ -3,6 +3,7 @@ import {
   type EmployeePersonalTaskInput,
   employeeHubMutationResultSchema,
   employeeHubReadModelSchema,
+  scheduleReadModelSchema,
   employeeTimeTrackingReadModelSchema,
   captureTimeEventResultSchema,
   timeCorrectionMutationResultSchema,
@@ -58,6 +59,14 @@ export async function getEmployeeHub(
 ) {
   return employeeHubReadModelSchema.parse(
     await request(workspaceId, `?${new URLSearchParams({ from, to })}`),
+  );
+}
+export async function getEmployeeScheduleBoard(
+  workspaceId: string,
+  date: string,
+) {
+  return scheduleReadModelSchema.parse(
+    await request(workspaceId, `/schedule?${new URLSearchParams({ date })}`),
   );
 }
 export async function getEmployeePersonalTasks(workspaceId: string) {

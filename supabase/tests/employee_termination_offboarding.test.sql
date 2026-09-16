@@ -21,11 +21,11 @@ values
   ('3a000000-0000-4000-8000-000000000002', '2a000000-0000-4000-8000-000000000001', '1a000000-0000-4000-8000-000000000002', 'employee', false),
   ('3a000000-0000-4000-8000-000000000003', '2a000000-0000-4000-8000-000000000002', '1a000000-0000-4000-8000-000000000003', 'owner', true);
 
-insert into public.locations (
+insert into public.locations (short_name,
   id, workspace_id, name, street_address, city, region, postal_code, timezone
 ) values
-  ('4a000000-0000-4000-8000-000000000001', '2a000000-0000-4000-8000-000000000001', 'Los Angeles', '1 Main St', 'Los Angeles', 'CA', '90001', 'America/Los_Angeles'),
-  ('4a000000-0000-4000-8000-000000000002', '2a000000-0000-4000-8000-000000000001', 'New York', '2 Main St', 'New York', 'NY', '10001', 'America/New_York');
+  ('T00014','4a000000-0000-4000-8000-000000000001', '2a000000-0000-4000-8000-000000000001', 'Los Angeles', '1 Main St', 'Los Angeles', 'CA', '90001', 'America/Los_Angeles'),
+  ('T00015','4a000000-0000-4000-8000-000000000002', '2a000000-0000-4000-8000-000000000001', 'New York', '2 Main St', 'New York', 'NY', '10001', 'America/New_York');
 
 insert into public.departments (id, workspace_id, name)
 values ('5a000000-0000-4000-8000-000000000001', '2a000000-0000-4000-8000-000000000001', 'Service');

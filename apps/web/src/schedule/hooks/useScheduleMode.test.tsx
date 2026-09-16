@@ -12,6 +12,11 @@ function wrapper(initialEntry: string) {
 }
 
 describe("useScheduleMode", () => {
+  it("clears the active draft immediately when switching to published preview", () => {
+    const { result } = renderHook(() => useScheduleMode(), { wrapper: wrapper("/app/schedule?draft=draft-a") });
+    act(() => result.current.setMode("preview", null));
+    expect(result.current.activeDraftId).toBeNull();
+  });
   it("defaults to preview when the URL has no mode", () => {
     const { result } = renderHook(() => useScheduleMode(), {
       wrapper: wrapper("/app/schedule"),

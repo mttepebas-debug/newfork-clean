@@ -76,8 +76,7 @@ function show(path = "/app/employee-hub/lineup") {
         <RouteProbe />
         <EmployeeLineup
           workspaceId="10000000-0000-4000-8000-000000000005"
-          from="2030-01-07"
-          to="2030-01-14"
+          today="2030-01-07"
           timeFormat="24h"
         />
       </MemoryRouter>
@@ -102,73 +101,63 @@ describe("employee shared Line Up", () => {
       "2030-11-04",
       "2030-11-04",
     );
-    expect(screen.getByText("Shared plans for Mon, Nov 4, 2030")).toBeTruthy();
+    expect(screen.getByText("Mon, Nov 4, 2030")).toBeTruthy();
     expect(recordLineupReceipt).not.toHaveBeenCalled();
   });
-  it("uses the default location-aware range for a nonexistent linked date", async () => {
+  it("shows only today for a nonexistent linked date and the centered empty state", async () => {
+    vi.mocked(getEmployeeLineup).mockResolvedValue([]);
     show("/app/employee-hub/lineup?date=2030-02-31");
-    await screen.findByText("Main Dining");
+    await screen.findByText("Your plan is on its way.");
     expect(getEmployeeLineup).toHaveBeenCalledWith(
       expect.any(String),
       "2030-01-07",
-      "2030-01-14",
+      "2030-01-07",
     );
-    expect(
-      (screen.getByLabelText("Line Up date") as HTMLInputElement).value,
-    ).toBe("2030-01-07");
+    expect(screen.getByText("Today · Mon, Jan 7, 2030")).toBeTruthy();
   });
-  it("keeps an unapplied date and focus during a shared-plan refresh", async () => {
-    const { client } = show();
-    await screen.findByText("Main Dining");
-    const date = screen.getByLabelText("Line Up date") as HTMLInputElement;
-    fireEvent.change(date, { target: { value: "2030-11-04" } });
-    date.focus();
-    await client.invalidateQueries({ queryKey: ["employee-lineup"] });
-    expect(date.value).toBe("2030-11-04");
-    expect(document.activeElement).toBe(date);
-    expect(getEmployeeLineup).not.toHaveBeenCalledWith(
-      expect.any(String),
-      "2030-11-04",
-      "2030-11-04",
-    );
-  });
-  it("applies a day, returns to upcoming, and restores the day with browser back", async () => {
+  it("steps days, jumps back first, then opens the calendar, and blank clicks peel layers", async () => {
     show(
       "/app/employee-hub/lineup?staffing_offer=10000000-0000-4000-8000-000000000099",
     );
     await screen.findByText("Main Dining");
-    fireEvent.change(screen.getByLabelText("Line Up date"), {
-      target: { value: "2030-11-04" },
-    });
-    const submit = screen.getByRole("button", { name: "Show day" });
-    submit.focus();
-    fireEvent.click(submit);
+    const route = () => screen.getByTestId("route").textContent;
+    const label = () => screen.getByRole("button", { name: "Daily view" });
+    fireEvent.click(screen.getByRole("button", { name: "Next day" }));
+    await waitFor(() => expect(route()).toContain("date=2030-01-08"));
+    expect(route()).toContain("staffing_offer=");
+    expect(label().dataset.returnCue).toBe("true");
+    // Calendar icon toggles without jumping back.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open schedule calendar" }),
+    );
+    expect(screen.getByRole("dialog", { name: "Line Up calendar" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Jump to week/ })).toBeNull();
+    expect(route()).toContain("date=2030-01-08");
+    // Blank click: first closes calendar, then returns to today.
+    const blank = document.createElement("div");
+    blank.className = "employee-hub-page";
+    document.body.append(blank);
+    fireEvent.pointerDown(blank);
     await waitFor(() =>
-      expect(getEmployeeLineup).toHaveBeenCalledWith(
-        expect.any(String),
-        "2030-11-04",
-        "2030-11-04",
-      ),
+      expect(screen.queryByRole("dialog", { name: "Line Up calendar" })).toBeNull(),
     );
-    expect(document.activeElement).toBe(submit);
-    expect(screen.getByTestId("route").textContent).toContain(
-      "staffing_offer=",
-    );
-    expect(screen.getByTestId("route").textContent).toContain(
-      "date=2030-11-04",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Upcoming" }));
-    await waitFor(() =>
-      expect(screen.getByTestId("route").textContent).not.toContain("date="),
-    );
-    expect(screen.getByTestId("route").textContent).toContain(
-      "staffing_offer=",
-    );
+    expect(route()).toContain("date=2030-01-08");
+    fireEvent.pointerDown(blank);
+    await waitFor(() => expect(route()).not.toContain("date="));
+    blank.remove();
+    // Label: jump back first, open calendar second.
+    fireEvent.click(screen.getByRole("button", { name: "Previous day" }));
+    await waitFor(() => expect(route()).toContain("date=2030-01-06"));
+    fireEvent.click(label());
+    await waitFor(() => expect(route()).not.toContain("date="));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(label().dataset.returnCue).toBe("false");
+    fireEvent.click(label());
+    fireEvent.click(screen.getByRole("gridcell", { name: "January 20, 2030" }));
+    await waitFor(() => expect(route()).toContain("date=2030-01-20"));
+    expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
-    await screen.findByText("Shared plans for Mon, Nov 4, 2030");
-    expect(
-      (screen.getByLabelText("Line Up date") as HTMLInputElement).value,
-    ).toBe("2030-11-04");
+    await waitFor(() => expect(route()).not.toContain("date="));
   });
   it("puts the new current assignment before a removed assignment for the same day", async () => {
     const removed = {

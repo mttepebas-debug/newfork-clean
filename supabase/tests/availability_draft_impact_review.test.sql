@@ -12,9 +12,9 @@ select public.availability_lock_workspace(w) from di;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',id::text||'@impact.test','','{}','{}',now(),now() from di cross join lateral(values(actor),(hr)) u(id);
 insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from di;
-insert into public.locations(id,workspace_id,name,timezone,street_address,city,region,postal_code)
-select loc,w,'Impact visible UTC','UTC','1 Test St','Test','CA','94000' from di union all
-select hidden_loc,w,'Impact hidden LA','America/Los_Angeles','2 Test St','Test','CA','94000' from di;
+insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code)
+select 'T00003', loc,w,'Impact visible UTC','UTC','1 Test St','Test','CA','94000' from di union all
+select 'T00004', hidden_loc,w,'Impact hidden LA','America/Los_Angeles','2 Test St','Test','CA','94000' from di;
 insert into public.jobs(id,workspace_id,name) select job,w,'Impact job' from di;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 select emp,w,actor,'E-995601','Draft impact','Employee',manager from di;

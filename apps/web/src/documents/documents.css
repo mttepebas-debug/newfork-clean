@@ -1,0 +1,70 @@
+.document-location-label {
+  display: block;
+  color: var(--theme-muted);
+}
+/* Reuse the directory's header / toolbar / table grid on this standalone route. */
+.employee-documents-page > .employee-documents-list {
+  display: contents;
+}
+.document-file-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-block: 8px;
+}
+.document-file-row input {
+  min-width: 0;
+}
+.employee-documents-list .catalog-toolbar-filter-row {
+  flex-wrap: wrap;
+}
+.document-catalog-settings-page
+  .catalog-toolbar
+  .toolbar-search
+  input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.document-catalog-settings-page .document-catalog-row[data-editable="true"] {
+  cursor: pointer;
+}
+.employee-documents-list
+  .catalog-toolbar-filter-row
+  > label:not(.toolbar-search) {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 200px;
+}
+.employee-documents-list .catalog-toolbar-filter-row .toolbar-filter-select {
+  width: 100%;
+}
+.employee-documents-empty {
+  min-height: 220px;
+  display: grid;
+  place-content: center;
+  padding: 24px;
+  color: var(--theme-muted);
+  text-align: center;
+}
+.employee-documents-empty strong {
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+.document-detail-body {
+  padding: 16px;
+}
+.document-detail-body > section {
+  margin-block: 16px;
+}
+.document-detail-body .onboarding-document-content {
+  white-space: pre-wrap;
+}
+@media (max-width: 720px) {
+  .employee-documents-list
+    .catalog-toolbar-filter-row
+    > label:not(.toolbar-search) {
+    flex-basis: 100%;
+  }
+}

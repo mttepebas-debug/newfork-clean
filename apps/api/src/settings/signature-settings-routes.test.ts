@@ -67,6 +67,7 @@ const templateInput = {
 
 function signatureSettingsServiceMock(): SignatureSettingsService {
   return {
+    targetOptions: vi.fn(), preview: vi.fn(), apply: vi.fn(),
     saveRetentionPolicy: vi.fn(),
     approveRetentionPolicy: vi.fn(),
     unapproveRetentionPolicy: vi.fn(),

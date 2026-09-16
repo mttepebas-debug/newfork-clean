@@ -74,6 +74,14 @@ import {
   getTabWorkspaceId,
   supabaseClient,
 } from "../lib/supabase";
+import { scheduleExportV2AuthorizationSchema, scheduleExportV2ScopeSchema, type ScheduleExportV2Scope } from "@newfork/shared";
+
+export async function authorizeScheduleExportV2(workspaceId: string, scope: ScheduleExportV2Scope, signal?: AbortSignal): Promise<void> {
+  const result = await activeScheduleRequest(`/v1/workspaces/${encodeURIComponent(workspaceId)}/schedule/export-v2/authorize`, {
+    method: "POST", cache: "no-store", signal, body: JSON.stringify(scheduleExportV2ScopeSchema.parse(scope)),
+  });
+  scheduleExportV2AuthorizationSchema.parse(result);
+}
 
 export class ScheduleRequestError extends Error {
   readonly status: number;

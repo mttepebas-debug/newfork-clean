@@ -19,6 +19,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { WorkspaceContextResolver } from "../auth/workspace-context";
 import type { ScheduleReadService } from "./schedule-service";
+import { registerScheduleExportV2Routes } from "./schedule-export-v2-routes";
 import {
   prepareScheduleExport,
   renderScheduleCsv,
@@ -255,6 +256,7 @@ export function registerScheduleRoutes(
     readonly contextResolver: WorkspaceContextResolver | null;
   },
 ) {
+  registerScheduleExportV2Routes(app, options);
   for (const action of ["preview", "apply"] as const) {
     app.post(`/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/default-hours-${action}`, async (request, reply) => {
       const params = sessionParamsSchema.safeParse(request.params);

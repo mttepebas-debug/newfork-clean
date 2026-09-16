@@ -14,9 +14,9 @@ select actor,'00000000-0000-0000-0000-000000000000','authenticated','authenticat
 insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from tp_state;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 select emp,w,actor,'E-994800','Period','Tester',manager from tp_state;
-insert into public.locations(id,workspace_id,name,timezone,street_address,city,region,postal_code)
-select loc,w,'Time off New York','America/New_York','1 Test St','New York','NY','10001' from tp_state
-union all select other_loc,w,'Time off UTC','UTC','2 Test St','New York','NY','10001' from tp_state;
+insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code)
+select 'T00046', loc,w,'Time off New York','America/New_York','1 Test St','New York','NY','10001' from tp_state
+union all select 'T00047', other_loc,w,'Time off UTC','UTC','2 Test St','New York','NY','10001' from tp_state;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
 select w,emp,loc,manager from tp_state union all select w,emp,other_loc,manager from tp_state;
 create function pg_temp.tp_period(d date,s text default null,e text default null,n boolean default false) returns jsonb language sql as $$

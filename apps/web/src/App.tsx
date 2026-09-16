@@ -1,3 +1,4 @@
+import { DocumentsSettingsRoute } from "./documents/DocumentsSettingsRoute";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@newfork/ui";
 import { lazy, Suspense } from "react";
@@ -10,6 +11,8 @@ import {
 } from "./auth/PermissionRoute";
 import { appLandingPath } from "./auth/routeDestinations";
 import { AppShell } from "./shell/AppShell";
+import { DocumentNotificationRedirect } from "./documents/DocumentNotificationRedirect";
+import { DocumentAccessRoute } from "./documents/DocumentAccessRoute";
 import { SignInPage } from "./views/SignInPage";
 import "./styles.css";
 import "./dark-theme.css";
@@ -52,6 +55,9 @@ const NotificationPreferencesPage = lazy(
 const ProfilePage = lazy(() => import("./account/ProfilePage"));
 const SecurityPage = lazy(() => import("./account/SecurityPage"));
 const WorkspacesPage = lazy(() => import("./account/WorkspacesPage"));
+const AccountDocumentsPage = lazy(
+  () => import("./account/AccountDocumentsPage"),
+);
 const OrganizationSwitcherPage = lazy(
   () => import("./shell/OrganizationSwitcherPage"),
 );
@@ -67,6 +73,7 @@ const KioskPage = lazy(() => import("./kiosk/KioskPage"));
 const WorkspacePage = lazy(() => import("./views/WorkspacePage"));
 const AnnouncementsPage = lazy(() => import("./views/AnnouncementsPage"));
 const NotificationsPage = lazy(() => import("./views/NotificationsPage"));
+const EmployeeDocumentsPage = lazy(() => import("./documents/EmployeeDocumentsPage"));
 const EmployeesPage = lazy(() => import("./employees/EmployeesPage"));
 const AcceptInvitationPage = lazy(
   () => import("./employees/AcceptInvitationPage"),
@@ -120,9 +127,7 @@ const ImportantDatesSettingsPage = lazy(
   () => import("./settings/ImportantDatesSettingsPage"),
 );
 const RolesSettingsPage = lazy(() => import("./settings/RolesSettingsPage"));
-const DocumentsSettingsPage = lazy(
-  () => import("./settings/DocumentsSettingsPage"),
-);
+
 const SignatureTemplatesSettingsPage = lazy(
   () => import("./settings/SignatureTemplatesSettingsPage"),
 );
@@ -163,7 +168,10 @@ export function App() {
                 />
               </Route>
               <Route path="/sign-in" element={<SignInPage />} />
-              <Route path="/account-recovery" element={<AccountRecoveryPage />} />
+              <Route
+                path="/account-recovery"
+                element={<AccountRecoveryPage />}
+              />
               {import.meta.env.DEV ? (
                 <>
                   <Route
@@ -256,6 +264,14 @@ export function App() {
                 }
               />
               <Route
+                path="/app/account/documents"
+                element={
+                  <ProtectedRoute>
+                    <DocumentNotificationRedirect />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/account"
                 element={
                   <ProtectedRoute>
@@ -273,12 +289,15 @@ export function App() {
                   element={<NotificationPreferencesPage />}
                 />
                 <Route path="workspaces" element={<WorkspacesPage />} />
+                <Route path="documents" element={<AccountDocumentsPage />} />
               </Route>
               <Route
                 path="/app"
                 element={
                   <ProtectedRoute workspace="complete">
-                    <AppShell />
+                    <DocumentAccessRoute>
+                      <AppShell />
+                    </DocumentAccessRoute>
                   </ProtectedRoute>
                 }
               >
@@ -414,6 +433,7 @@ export function App() {
                     </PermissionRoute>
                   }
                 />
+                <Route path="employees/documents" element={<PermissionRoute anyOf={["employee_documents.read"]}><EmployeeDocumentsPage /></PermissionRoute>} />
                 <Route
                   path="employees/archive"
                   element={
@@ -449,13 +469,11 @@ export function App() {
                     </PermissionRoute>
                   }
                 />
+                <Route path="notifications" element={<NotificationsPage />} />
                 <Route
-                  path="notifications"
-                  element={
-                    <NotificationsPage />
-                  }
+                  path="account/security"
+                  element={<Navigate to="/account/security" replace />}
                 />
-                <Route path="account/security" element={<Navigate to="/account/security" replace />} />
                 <Route path="settings" element={<SettingsLayout />}>
                   <Route index element={<SettingsHomeRedirect />} />
                   <Route
@@ -569,8 +587,10 @@ export function App() {
                   <Route
                     path="documents"
                     element={
-                      <PermissionRoute anyOf={["documents.read"]}>
-                        <DocumentsSettingsPage />
+                      <PermissionRoute
+                        anyOf={["documents.read", "employee_documents.read"]}
+                      >
+                        <DocumentsSettingsRoute />
                       </PermissionRoute>
                     }
                   />

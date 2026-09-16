@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { permissionsForRole, workspaceRoleRecordSchema } from "@newfork/shared";
@@ -89,6 +95,7 @@ describe("RolesSettingsPage", () => {
     const action = await screen.findByRole("button", { name: "New role" });
     expect(action.classList.contains("secondary-button")).toBe(false);
     expect(action.closest(".settings-header-action")).not.toBeNull();
+    expect(screen.queryByRole("tab", { name: /Owner Built-in/ })).toBeNull();
   });
 
   it("starts clean, handles mixed categories, and Cancel restores dependencies", async () => {
@@ -98,6 +105,10 @@ describe("RolesSettingsPage", () => {
     expect(
       screen.getByRole("checkbox", { name: "Employees category Edit" }),
     ).toHaveProperty("indeterminate", true);
+    expect(
+      screen.queryByRole("checkbox", { name: "Schedule Edit" }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Schedule Custom" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Schedule Edit" }));
     expect(
       screen.getByRole("checkbox", { name: "Publishing Edit" }),
@@ -115,7 +126,10 @@ describe("RolesSettingsPage", () => {
     );
     mount();
     fireEvent.click(
-      await screen.findByRole("checkbox", {
+      await screen.findByRole("button", { name: "Schedule Custom" }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", {
         name: "Schedule Edit",
       }),
     );
@@ -134,18 +148,25 @@ describe("RolesSettingsPage", () => {
     );
     expect(refresh).not.toHaveBeenCalled();
   });
-  it("guards role switching and keeps Owner protected", async () => {
+  it("guards role switching", async () => {
     mount();
     fireEvent.click(
-      await screen.findByRole("checkbox", {
+      await screen.findByRole("button", { name: "Schedule Custom" }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", {
         name: "Schedule Edit",
       }),
     );
-    fireEvent.click(screen.getByRole("button", { name: /Owner Built-in/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Employee Built-in/ }));
     expect(
       await screen.findByRole("heading", { name: "Discard role changes?" }),
     ).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
+  });
+  it("keeps Owner protected without showing it in role navigation", async () => {
+    mount(`/app/settings/roles/${owner.id}`);
+    expect(screen.queryByRole("tab", { name: /Owner Built-in/ })).toBeNull();
     expect(
       await screen.findByText("Owner is protected and always has full access."),
     ).not.toBeNull();
@@ -164,12 +185,15 @@ describe("RolesSettingsPage", () => {
     expect(
       screen.queryByRole("checkbox", { name: "Schedule Edit" }),
     ).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Personal access Read only" }),
+    );
     expect(
       screen.getByRole("checkbox", { name: "My schedule Read" }),
     ).not.toBeNull();
     expect(manager.permission_keys).toContain("schedule.manage");
   });
-  it("reveals blocking references without calling delete", async () => {
+  it("arms the delete button and explains blocking references without calling delete", async () => {
     const custom = {
       ...manager,
       system_key: null,
@@ -187,8 +211,70 @@ describe("RolesSettingsPage", () => {
     expect(
       screen.getByText(/3 member references and 2 invitation references/),
     ).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Role has dependencies" }),
+    ).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Confirm delete" })).toBeNull();
     expect(deleteWorkspaceRole).not.toHaveBeenCalled();
+  });
+  it("deletes an unused custom role only after pressing the armed button again", async () => {
+    const custom = {
+      ...manager,
+      system_key: null,
+      name: "Floor lead",
+      blocking_member_count: 0,
+      blocking_invite_count: 0,
+      deletable: true,
+    };
+    vi.mocked(loadRoleWorkspace).mockResolvedValue({
+      permissions: [],
+      roles: [custom],
+    });
+    vi.mocked(deleteWorkspaceRole).mockResolvedValue(undefined);
+    mount(`/app/settings/roles/${custom.id}`);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Delete role" }));
+    expect(deleteWorkspaceRole).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Click again to delete" }),
+    );
+
+    await waitFor(() =>
+      expect(deleteWorkspaceRole).toHaveBeenCalledWith(
+        custom.workspace_id,
+        custom.id,
+      ),
+    );
+    expect(screen.queryByRole("button", { name: "Confirm delete" })).toBeNull();
+  });
+  it("groups custom roles after the third custom role and selects from the menu", async () => {
+    const customRoles = Array.from({ length: 4 }, (_, index) => ({
+      ...manager,
+      id: `b1051009-0000-4000-8000-00000000010${index}`,
+      name: `Floor lead ${index + 1}`,
+      system_key: null,
+      access_class: "manager" as const,
+    }));
+    vi.mocked(loadRoleWorkspace).mockResolvedValue({
+      permissions: [],
+      roles: [owner, manager, employee, ...customRoles],
+    });
+    mount(`/app/settings/roles/${customRoles[0]!.id}`);
+    expect(
+      (await screen.findByRole("tab", { name: "Custom roles +4" }))
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(screen.queryByRole("tab", { name: /Floor lead 4/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Custom roles +4" }));
+    fireEvent.click(
+      within(screen.getByRole("listbox", { name: "Custom roles" })).getByRole(
+        "option",
+        { name: "Floor lead 2" },
+      ),
+    );
+    expect(await screen.findByRole("textbox", { name: "Name" }))
+      .toHaveProperty("value", "Floor lead 2");
   });
   it("refreshes permissions and adopts the saved server version", async () => {
     vi.mocked(saveWorkspaceRole).mockImplementation(async () => {
@@ -216,7 +302,10 @@ describe("RolesSettingsPage", () => {
     });
     mount();
     fireEvent.click(
-      await screen.findByRole("checkbox", {
+      await screen.findByRole("button", { name: "Schedule Custom" }),
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", {
         name: "Schedule Edit",
       }),
     );

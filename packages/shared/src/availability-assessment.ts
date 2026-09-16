@@ -8,6 +8,13 @@ export const scheduleConflictRulesSchema = z.object({
   closed_location: z.enum(["warn", "confirm", "block"]),
   minimum_travel: z.enum(["warn", "confirm", "block"]),
   minimum_rest: z.enum(["warn", "confirm", "block"]),
+  document_required: z.enum(["warn", "confirm", "block"]).optional(),
+  document_conditional_grace: z.enum(["warn", "confirm", "block"]).optional(),
+  document_conditional_overdue: z.enum(["confirm", "block"]).optional(),
+}).superRefine((rules, ctx) => {
+  const order = ["warn", "confirm", "block"];
+  if (order.indexOf(rules.document_conditional_overdue ?? "confirm") < order.indexOf(rules.document_conditional_grace ?? "warn"))
+    ctx.addIssue({ code: "custom", path: ["document_conditional_overdue"], message: "Overdue handling cannot be softer than the grace-period rule" });
 });
 export type ScheduleConflictRules = z.infer<typeof scheduleConflictRulesSchema>;
 export const scheduleConflictSettingsSchema = z.object({
@@ -20,6 +27,7 @@ export type ScheduleConflictSettings = z.infer<typeof scheduleConflictSettingsSc
 export const DEFAULT_SCHEDULE_CONFLICT_RULES: ScheduleConflictRules = {
   availability: "confirm", approved_time_off: "block", closed_location: "confirm",
   minimum_travel: "confirm", minimum_rest: "confirm",
+  document_required: "confirm", document_conditional_grace: "warn", document_conditional_overdue: "confirm",
 };
 
 export function highestScheduleConflictSeverity(values: readonly ScheduleConflictSeverity[]): ScheduleConflictSeverity {

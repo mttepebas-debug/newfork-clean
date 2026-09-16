@@ -55,6 +55,7 @@ function communicationServiceMock(): CommunicationService {
     saveAnnouncement: vi.fn(),
     publishAnnouncement: vi.fn(),
     cancelAnnouncement: vi.fn(),
+    acknowledgeAnnouncement: vi.fn(),
     getNotifications: vi.fn(),
     actOnNotification: vi.fn(),
     getWorkspace: vi.fn(),
@@ -82,6 +83,11 @@ describe("communication routes", () => {
         method: "GET",
         url: `/v1/workspaces/${workspaceId}/communications/announcements`,
         serviceMethod: "getAnnouncements",
+      },
+      {
+        method: "POST",
+        url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/acknowledge`,
+        serviceMethod: "acknowledgeAnnouncement",
       },
       {
         method: "POST",

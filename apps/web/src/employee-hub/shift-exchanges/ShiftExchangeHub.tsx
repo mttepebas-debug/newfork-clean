@@ -14,7 +14,6 @@ import {
   Check,
   ChevronRight,
   Clock3,
-  Plus,
   RefreshCw,
   ShieldCheck,
   Users,
@@ -475,33 +474,19 @@ export function ShiftExchangeHub({
     <div
       className={`sx-root ${manager ? "request-catalog-shift-hub" : ""} ${selected ? "sx-reading-detail" : ""}`}
     >
-      <div className="sx-heading">
-        <div>
-          <p className="sx-eyebrow">
-            {manager ? "TEAM SCHEDULE" : "WORK BETTER TOGETHER"}
-          </p>
-          <h2>
-            {manager
-              ? "Shift changes"
-              : "Your shifts. A little more flexibility."}
-          </h2>
-          <p>
-            {manager
-              ? `${readyCount} ${readyCount === 1 ? "case" : "cases"} ready for a decision · Every transfer needs your final approval.`
-              : "Find cover, pick up a shift or arrange a swap with your team."}
-          </p>
+      {/* The employee page title comes from the shared catalog header. */}
+      {manager && (
+        <div className="sx-heading">
+          <div>
+            <p className="sx-eyebrow">TEAM SCHEDULE</p>
+            <h2>Shift changes</h2>
+            <p>
+              {`${readyCount} ${readyCount === 1 ? "case" : "cases"} ready for a decision · Every transfer needs your final approval.`}
+            </p>
+          </div>
         </div>
-        {!manager && (
-          <button
-            className="sx-primary"
-            disabled={!canWrite}
-            onClick={() => navigate({ offer: "new", case: null })}
-          >
-            <Plus size={18} /> Find cover or swap
-          </button>
-        )}
-      </div>
-      {!model.enabled && (
+      )}
+      {manager && !model.enabled && (
         <p className="sx-banner" role="status">
           Shift changes are currently read-only. Your existing schedule and
           responsibilities remain unchanged.
@@ -548,16 +533,7 @@ export function ShiftExchangeHub({
         ))}
       </nav>
       <div className="sx-filters">
-        <label>
-          <span className="sx-sr">Search shifts</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => navigate({ q: e.target.value })}
-            placeholder="Search date, location or position"
-          />
-        </label>
-        <label>
+        <label className="sx-filter-location">
           <span className="sx-sr">Location</span>
           <select
             value={locationFilter}
@@ -571,32 +547,13 @@ export function ShiftExchangeHub({
             ))}
           </select>
         </label>
-        <label>
-          <span className="sx-sr">From date</span>
+        <label className="sx-filter-search">
+          <span className="sx-sr">Search shifts</span>
           <input
-            type="date"
-            aria-label="From date"
-            value={from}
-            onChange={(event) => {
-              if (event.target.value)
-                navigate({
-                  from: event.target.value,
-                  to: addDays(event.target.value, 42),
-                });
-            }}
-          />
-        </label>
-        <label>
-          <span className="sx-sr">Through date</span>
-          <input
-            type="date"
-            aria-label="Through date"
-            value={to}
-            min={from}
-            max={addDays(from, 62)}
-            onChange={(event) => {
-              if (event.target.value) navigate({ to: event.target.value });
-            }}
+            type="search"
+            value={search}
+            onChange={(e) => navigate({ q: e.target.value })}
+            placeholder="Search date, location or position"
           />
         </label>
       </div>
@@ -712,12 +669,6 @@ export function ShiftExchangeHub({
                   text="No shifts match your position, locations and current assignment requirements."
                 />
               )}
-              <Link
-                className="sx-text-link"
-                to="/app/employee-hub/my-availability"
-              >
-                Review your availability
-              </Link>
             </>
           ) : (
             <>
@@ -857,14 +808,6 @@ export function ShiftExchangeHub({
                         : "No cover searches, applications or swap invitations match these filters."
                   }
                 />
-              )}
-              {!manager && (
-                <Link
-                  className="sx-text-link"
-                  to="/app/employee-hub/my-availability"
-                >
-                  Manage time off separately
-                </Link>
               )}
             </>
           )}

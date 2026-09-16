@@ -23,9 +23,9 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  union all select w,actor,'employee'::public.workspace_role,false from wt_fixture
  union all select w,manager,'manager'::public.workspace_role,false from wt_fixture;
 insert into public.workspace_scheduling_settings(workspace_id) select w from wt_fixture on conflict do nothing;
-insert into public.locations(id,workspace_id,name,street_address,city,region,postal_code,timezone)
- select loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles' from wt_fixture
- union all select other_loc,w,'East','2 Test Street','Test City','NY','10001','America/New_York' from wt_fixture;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
+ select 'T00078', loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles' from wt_fixture
+ union all select 'T00079', other_loc,w,'East','2 Test Street','Test City','NY','10001','America/New_York' from wt_fixture;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
  select emp,w,actor,'E-993480','Alex','Team',owner_id from wt_fixture
  union all select hidden_emp,w,null,'E-993481','Hidden','Employee',owner_id from wt_fixture

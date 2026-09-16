@@ -7,27 +7,33 @@ export function SaveDraftDialog({
   initialDraft,
   onClose,
   onSave,
+  busy = false,
+  description,
 }: {
   readonly drafts: readonly ScheduleDraftSummary[];
   readonly initialDraft: ScheduleDraftSummary | null;
   readonly onClose: () => void;
   readonly onSave: (name: string, draft: ScheduleDraftSummary | null) => void;
+  readonly busy?: boolean;
+  readonly description?: string;
 }) {
   const [targetId, setTargetId] = useState(initialDraft?.id ?? "");
   const target = drafts.find((item) => item.id === targetId) ?? null;
   const [name, setName] = useState(initialDraft?.name ?? "");
   return (
-    <Dialog title="Save draft" onClose={onClose}>
+    <Dialog title="Save draft" onClose={() => { if (!busy) onClose(); }}>
+      {description ? <p>{description}</p> : null}
       <form
         className="schedule-save-form"
         onSubmit={(event) => {
           event.preventDefault();
-          onSave(name, target);
+          if (!busy) onSave(name, target);
         }}
       >
         <label>
           Destination
           <select
+            disabled={busy}
             value={targetId}
             onChange={(event) => {
               const draft =
@@ -47,6 +53,7 @@ export function SaveDraftDialog({
         <label>
           Draft name
           <input
+            disabled={busy}
             value={name}
             maxLength={80}
             onChange={(event) => setName(event.target.value)}
@@ -60,11 +67,11 @@ export function SaveDraftDialog({
           </p>
         ) : null}
         <div className="schedule-dialog-actions">
-          <button type="button" onClick={onClose}>
+          <button type="button" disabled={busy} onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="primary">
-            {target ? "Overwrite draft" : "Save draft"}
+          <button type="submit" className="primary" disabled={busy}>
+            {busy ? "Saving…" : target ? "Overwrite draft" : "Save draft"}
           </button>
         </div>
       </form>

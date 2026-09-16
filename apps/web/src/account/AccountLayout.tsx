@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   Bell,
+  FileText,
   LogOut,
   Palette,
   ShieldCheck,
@@ -24,6 +25,7 @@ const accountNav = [
     icon: Bell,
   },
   { to: "/account/workspaces", label: "Workspaces", icon: Warehouse },
+  { to: "/account/documents", label: "Documents", icon: FileText },
 ] as const;
 
 export default function AccountLayout() {

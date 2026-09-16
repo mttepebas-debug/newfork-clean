@@ -1,101 +1,125 @@
 import { EmployeeLineupOffers } from "./LineupQueue";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ClipboardList, Clock3, MapPin } from "lucide-react";
 import { getEmployeeLineup, recordLineupReceipt } from "../lineup-data";
 import type { EmployeeLineupSnapshot } from "@newfork/shared";
+import { MiniCalendar } from "../components/MiniCalendar";
+import { ScheduleViewModeControls } from "../components/ScheduleTopBar";
+import { addDays } from "../lib/scheduleDateTime";
 import { formatLineupInterval, parseLineupDate } from "./lineup-time";
 import "./lineup.css";
 
+// Clicks on these are real interactions, not "blank" clicks that reset the day.
+const interactiveTarget =
+  "button, a, input, select, textarea, label, summary, [role='dialog'], .lu-employee-plan, .lu-sharing-card";
+
 export function EmployeeLineup({
   workspaceId,
-  from,
-  to,
+  today,
   timeFormat,
 }: {
   workspaceId: string;
-  from: string;
-  to: string;
+  today: string;
   timeFormat: "12h" | "24h";
 }) {
   const client = useQueryClient();
   const [search, setSearch] = useSearchParams();
-  const selectedDate = parseLineupDate(search.get("date"));
-  const [draft, setDraft] = useState<{
-    context: string | null;
-    value: string;
-  } | null>(null);
-  // Keep an edit local to the applied day. Navigation can be interrupted by
-  // browser Back before React commits it, so never eagerly copy its target.
-  if (draft && draft.context !== selectedDate) setDraft(null);
-  const dateDraft =
-    draft?.context === selectedDate ? draft.value : (selectedDate ?? from);
-  const rangeFrom = selectedDate ?? from;
-  const rangeTo = selectedDate ?? to;
-  function chooseDate(value: string | null) {
-    setDraft(null);
+  const day = parseLineupDate(search.get("date")) ?? today;
+  const isToday = day === today;
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  function chooseDate(value: string) {
     setSearch((previous) => {
       const next = new URLSearchParams(previous);
-      if (value) next.set("date", value);
-      else next.delete("date");
+      if (value === today) next.delete("date");
+      else next.set("date", value);
       return next;
     });
   }
+  // Outside clicks peel one layer at a time: calendar first, then back to today.
+  const peel = useRef<(blank: boolean) => boolean>(() => false);
+  peel.current = (blank) => {
+    if (calendarOpen) {
+      setCalendarOpen(false);
+      return true;
+    }
+    if (blank && !isToday) {
+      chooseDate(today);
+      return true;
+    }
+    return false;
+  };
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest(".schedule-date-split")) return;
+      peel.current(
+        Boolean(target.closest(".employee-hub-page")) &&
+          !target.closest(interactiveTarget),
+      );
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && peel.current(false)) event.preventDefault();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
   const query = useQuery({
-    queryKey: ["employee-lineup", workspaceId, rangeFrom, rangeTo],
-    queryFn: () => getEmployeeLineup(workspaceId, rangeFrom, rangeTo),
+    queryKey: ["employee-lineup", workspaceId, day, day],
+    queryFn: () => getEmployeeLineup(workspaceId, day, day),
     enabled: Boolean(workspaceId),
   });
+  const dayLabel = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${day}T12:00:00Z`));
   return (
     <section className="lu-employee">
-      <header>
-        <span className="lu-eyebrow">READY FOR YOUR DAY</span>
-        <h2>Your Line Up</h2>
-        <p>Your assignment and the details that matter for service.</p>
-      </header>
-      <form
-        className="lu-employee-dates"
-        aria-label="Choose Line Up date"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const day = parseLineupDate(dateDraft);
-          if (day) chooseDate(day);
-        }}
-      >
-        <label>
-          <span>Line Up date</span>
-          <input
-            type="date"
-            min="1000-01-01"
-            max="9999-12-31"
-            required
-            value={dateDraft}
-            onChange={(event) => {
-              setDraft({ context: selectedDate, value: event.target.value });
-            }}
-          />
-        </label>
-        <button
-          type="submit"
-          className="nf-button lu-primary"
-          disabled={!parseLineupDate(dateDraft)}
-        >
-          Show day
-        </button>
-        <button
-          type="button"
-          className="lu-upcoming"
-          onClick={() => chooseDate(null)}
-        >
-          Upcoming
-        </button>
-        <p aria-live="polite">
-          {selectedDate
-            ? `Shared plans for ${new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${selectedDate}T12:00:00Z`))}`
-            : "Upcoming shared plans · Choose a day to look further ahead."}
-        </p>
-      </form>
+      <div className="lu-employee-dates" role="group" aria-label="Line Up date">
+        <ScheduleViewModeControls
+          viewModeLabel="Daily view"
+          viewModeTitle={isToday ? "Open calendar" : "Jump to today"}
+          periodLabel={isToday ? `Today · ${dayLabel}` : dayLabel}
+          returnCue={!isToday}
+          calendarOpen={calendarOpen}
+          onCalendarToggle={() => setCalendarOpen((open) => !open)}
+          onToggleViewMode={() => {
+            if (isToday) setCalendarOpen((open) => !open);
+            else chooseDate(today);
+          }}
+          onPrevious={() => chooseDate(addDays(day, -1))}
+          onNext={() => chooseDate(addDays(day, 1))}
+          calendar={
+            calendarOpen ? (
+              <div
+                className="schedule-mini-calendar-panel"
+                role="dialog"
+                aria-label="Line Up calendar"
+              >
+                {/* ponytail: Monday week start; plumb workspace setting if employees ask */}
+                <MiniCalendar
+                  selectedDate={day}
+                  weekStartDate={day}
+                  weekStartDay="monday"
+                  onDayPick={(date) => {
+                    chooseDate(date);
+                    setCalendarOpen(false);
+                  }}
+                />
+              </div>
+            ) : null
+          }
+        />
+      </div>
       <EmployeeLineupOffers workspaceId={workspaceId} timeFormat={timeFormat} />
       {query.isPending ? (
         <p role="status">Loading your shared plan…</p>
@@ -126,20 +150,16 @@ export function EmployeeLineup({
             />
           ))
       ) : (
-        <div className="lu-day-empty">
+        <div className="lu-day-empty lu-employee-empty">
           <ClipboardList size={26} />
-          <div>
-            <h3>
-              {selectedDate
-                ? "No shared plan for this day."
-                : "Your plan is on its way."}
-            </h3>
-            <p>
-              {selectedDate
-                ? "Choose another day or check Schedule for your published shifts."
-                : "When your manager shares a Line Up, your assignment and daily brief will appear here."}
-            </p>
-          </div>
+          <h3>
+            {isToday ? "Your plan is on its way." : "No shared plan for this day."}
+          </h3>
+          <p>
+            {isToday
+              ? "When your manager shares a Line Up, your assignment and daily brief will appear here."
+              : "Choose another day or check Schedule for your published shifts."}
+          </p>
         </div>
       )}
     </section>
