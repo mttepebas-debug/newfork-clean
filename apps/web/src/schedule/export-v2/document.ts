@@ -13,6 +13,14 @@ export function dayHeading(date: string): string {
 export function exportSubtitle(snapshot: ScheduleExportSnapshot): string {
   return `${snapshot.dates[0]}${snapshot.dates.length > 1 ? ` – ${snapshot.dates.at(-1)}` : ""} · ${snapshot.source.kind === "draft" ? `Draft: ${snapshot.source.name}` : "Published"}`;
 }
+/** Human-readable heading shared by PDF, Excel sheets and the preview page. */
+export function exportTitleLines(snapshot: ScheduleExportSnapshot, locations: readonly { readonly name: string }[]): { title: string; subtitle: string } {
+  const first = snapshot.dates[0]!, last = snapshot.dates.at(-1)!;
+  const year = new Date(`${last}T12:00:00Z`).getUTCFullYear();
+  const range = `${dayHeading(first)}${first === last ? "" : ` – ${dayHeading(last)}`}, ${year}`;
+  return { title: locations.map(location => location.name).join(" + "),
+    subtitle: `${snapshot.source.kind === "draft" ? `Draft: ${snapshot.source.name}` : "Published"} · ${range}` };
+}
 
 export function exportCellShifts(snapshot: ScheduleExportSnapshot, row: ExportEmployeeRow, locationIds: readonly string[], date: string, includeGhosts = snapshot.layout === "separate"): ExportShift[] {
   return [...snapshot.shifts, ...(includeGhosts ? snapshot.ghosts ?? [] : [])].filter(shift => shift.employeeId === row.id && shift.date === date && locationIds.includes(shift.locationId))
@@ -34,8 +42,9 @@ export interface ExportDocumentLayout {
 
 export function createExportDocument(snapshot: ScheduleExportSnapshot, prefs: ExportPreferences, options: ExportDocumentLayout = {}): TDocumentDefinitions {
   const print = prefs.destination === "print";
-  const merged = !print && snapshot.layout === "unified";
-  const separatePages = print || (!merged && !prefs.combineHorizontally);
+  // The output follows the grid: a unified grid always exports one combined table, even to print.
+  const merged = snapshot.layout === "unified";
+  const separatePages = !merged && (print || !prefs.combineHorizontally);
   const groups = separatePages ? snapshot.locations.map(location => [location]) : [[...snapshot.locations]];
   const dayColumns = snapshot.dates.length * (merged || separatePages ? 1 : snapshot.locations.length);
   const showTotals = snapshot.rows.some(row => row.total !== null);
@@ -46,16 +55,24 @@ export function createExportDocument(snapshot: ScheduleExportSnapshot, prefs: Ex
     const columns = merged
       ? snapshot.dates.map(date => ({ date, locationIds: locations.map(location => location.id) }))
       : locations.flatMap(location => snapshot.dates.map(date => ({ date, locationIds: [location.id] })));
-    const title = locations.map(location => location.name).join(" + ");
+    const { title, subtitle } = exportTitleLines(snapshot, locations);
+    const sideBySide = !merged && locations.length > 1;
     const heading: TableCell[] = [
-      { text: `${snapshot.workspaceName}\n${title}\n${exportSubtitle(snapshot)}`, colSpan: columns.length + 1 + (showTotals ? 1 : 0), bold: true, fontSize: 12, margin: [5, 4, 5, 7], fillColor: "#eef3f0" },
+      { text: `${snapshot.workspaceName}\n${title}\n${subtitle}`, colSpan: columns.length + 1 + (showTotals ? 1 : 0), bold: true, fontSize: 12, margin: [5, 4, 5, 7], fillColor: "#eef3f0" },
       ...Array.from({ length: columns.length + (showTotals ? 1 : 0) }, () => ""),
     ];
+    // Side by side: each location owns a labelled band of day columns, closed by a heavier rule.
+    const locationRow: TableCell[] = [{ text: "" }, ...locations.flatMap(location => [
+      { text: location.name, colSpan: snapshot.dates.length, bold: true, fontSize: 10.5, alignment: "center" as const, fillColor: "#e3ece7", margin: [2, 4, 2, 4] as [number, number, number, number] },
+      ...Array.from({ length: snapshot.dates.length - 1 }, () => ""),
+    ]), ...(showTotals ? [""] : [])];
     const headers: TableCell[] = [{ text: "Employee", bold: true }, ...columns.map(column => ({
-      text: `${!merged && locations.length > 1 ? `${locations.find(location => location.id === column.locationIds[0])!.name}\n` : ""}${dayHeading(column.date)}${exportDayDecoration(snapshot, column.date, merged ? null : column.locationIds[0]!)?.lines.map(line => `\n${line}`).join("") ?? ""}`,
+      text: `${dayHeading(column.date)}${exportDayDecoration(snapshot, column.date, merged ? null : column.locationIds[0]!)?.lines.map(line => `\n${line}`).join("") ?? ""}`,
       bold: true,
     })), ...(showTotals ? [{ text: "Hours", bold: true }] : [])];
-    const body: TableCell[][] = [heading, headers];
+    const body: TableCell[][] = sideBySide ? [heading, locationRow, headers] : [heading, headers];
+    const headerRows = body.length;
+    const bandEdge = (index: number) => sideBySide && index > 1 && index < 1 + columns.length && (index - 1) % snapshot.dates.length === 0;
     let previousGroup: string | null = null;
     for (const [rowIndex, row] of snapshot.rows.entries()) {
       if (row.group && row.group !== previousGroup) {
@@ -88,11 +105,11 @@ export function createExportDocument(snapshot: ScheduleExportSnapshot, prefs: Ex
     ]);
     content.push({
       ...(groupIndex > 0 ? { pageBreak: "before" as const } : {}),
-      table: { headerRows: 2, keepWithHeaderRows: 1, dontBreakRows: true,
+      table: { headerRows, keepWithHeaderRows: 1, dontBreakRows: true,
         widths: [print ? 125 : 148, ...columns.map(() => "*" as const), ...(showTotals ? [62] : [])], body },
       layout: {
-        hLineWidth: index => index <= 2 ? .8 : .55,
-        vLineWidth: () => .55, hLineColor: () => "#bac9c2", vLineColor: () => "#bac9c2",
+        hLineWidth: index => index <= headerRows ? .8 : .55,
+        vLineWidth: index => bandEdge(index) ? 1.8 : .55, hLineColor: () => "#bac9c2", vLineColor: index => bandEdge(index) ? "#5f7a6f" : "#bac9c2",
         paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 5, paddingBottom: () => 5,
       },
     });

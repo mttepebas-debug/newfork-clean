@@ -52,11 +52,11 @@ describe("Export v2 real output engines", () => {
     expect(pages[0]!.text).toContain("Closed: Maintenance"); expect(pages[0]!.text).toContain("event: Opening");
     expect(pages[0]!.text).toContain("Reference:"); expect(pages[0]!.text).toContain("Total");
     const workbook = await createScheduleWorkbook(source, defaultExportPreferences);
-    expect(workbook.getWorksheet("Merged")!.getCell("B2").value).toBe("Closed: Maintenance\nevent: Opening");
+    expect(workbook.getWorksheet("Merged")!.getCell("B4").value).toBe("Closed: Maintenance\nevent: Opening");
     const localText = JSON.stringify(workbook.getWorksheet("Merkez")!.getSheetValues());
     expect(localText).toContain("Reference:"); expect(localText).toContain("Total");
     expect(JSON.stringify(workbook.getWorksheet("Merged")!.getSheetValues())).not.toContain("Reference:");
-    expect(workbook.getWorksheet("Veri")!.rowCount).toBe(source.shifts.length + 1);
+    expect(workbook.getWorksheet("Data")!.rowCount).toBe(source.shifts.length + 1);
   }, 30000);
   it.skipIf(!process.env.NEWFORK_EXPORT_QA_OUTPUT)("writes synthetic visual QA PDFs when explicitly requested", async () => {
     const { mkdir, writeFile } = await import("node:fs/promises");
@@ -82,8 +82,17 @@ describe("Export v2 real output engines", () => {
     expect(await blob.text()).toContain("/FontFile2");
   }, 30000);
 
+  it("prints a unified grid as one combined table on every page", async () => {
+    const pages = await readPdf(await renderSchedulePdf(fixture(16), { ...defaultExportPreferences, destination: "print" }));
+    expect(pages.length).toBeGreaterThan(1);
+    for (const page of pages) {
+      expect(page.text).toContain("Merkez + Sahil");
+      expect(page.belowPage).toBe(false);
+    }
+  }, 30000);
+
   it.each(["A4", "LETTER"] as const)("prints %s with repeated headers and at most one location on each page", async paper => {
-    const source = fixture(16);
+    const source = { ...fixture(16), layout: "separate" as const };
     const pages = await readPdf(await renderSchedulePdf(source, { ...defaultExportPreferences, destination: "print", paper }));
     expect(pages.length).toBeGreaterThan(2);
     const text = pages.map(page => page.text).join(" ");
@@ -106,6 +115,14 @@ describe("Export v2 real output engines", () => {
     expect(pages.every(page => !page.belowPage)).toBe(true);
     const combined = createExportDocument(source, defaultExportPreferences);
     expect(combined.pageSize).toEqual({ width: 1624, height: "auto" });
+    // Side by side: a labelled band per location above the day headers, split by a heavier rule.
+    const table = (combined.content as { table: { headerRows: number; body: { text?: string; colSpan?: number }[][] }; layout: { vLineWidth: (index: number) => number; vLineColor: (index: number) => string } }[])[0]!;
+    expect(table.table.headerRows).toBe(3);
+    expect(table.table.body[1]![1]).toMatchObject({ text: "Merkez", colSpan: 7 });
+    expect(table.table.body[1]![8]).toMatchObject({ text: "Sahil", colSpan: 7 });
+    expect(table.table.body[2]![1]!.text).not.toContain("Merkez");
+    expect(table.layout.vLineWidth(8)).toBeGreaterThan(1); expect(table.layout.vLineWidth(7)).toBeLessThan(1);
+    expect(table.layout.vLineWidth(1)).toBeLessThan(1); expect(table.layout.vLineWidth(15)).toBeLessThan(1);
   }, 30000);
 
   it("keeps every shift readable when one employee exceeds a print page", async () => {
@@ -129,20 +146,25 @@ describe("Export v2 real output engines", () => {
     const { default: ExcelJS } = await import("exceljs");
     const blob = await renderScheduleExcel(fixture(), defaultExportPreferences);
     const book = await new ExcelJS.Workbook().xlsx.load(await blob.arrayBuffer());
-    expect(book.worksheets.map(sheet => sheet.name)).toEqual(["Merged", "Merkez", "Sahil", "Veri"]);
+    expect(book.worksheets.map(sheet => sheet.name)).toEqual(["Merged", "Merkez", "Sahil", "Data"]);
     const sheet = book.getWorksheet("Merged")!;
-    expect(sheet.views[0]).toMatchObject({ state: "frozen", ySplit: 1, xSplit: 0, topLeftCell: "A2" });
-    expect(sheet.getCell("B1").value).toBeInstanceOf(Date);
-    expect(sheet.getCell("A4").master.address).toBe("A2");
-    expect(sheet.getCell("B4").value).toContain("@Sahil");
-    expect(sheet.getCell("B2").value).toContain("AM-Server 0-0\nAçılış\n@Merkez\n09:00 - 13:00");
-    const data = book.getWorksheet("Veri")!;
+    expect(sheet.views[0]).toMatchObject({ state: "frozen", ySplit: 3, xSplit: 0, topLeftCell: "A4" });
+    // Grid-style heading: workspace, location band over the day columns, then source and range.
+    expect(sheet.getCell("A1").value).toBe("Örnek İşletme");
+    expect(sheet.getCell("B1").value).toBe("Merkez + Sahil"); expect(sheet.getCell("H1").master.address).toBe("B1");
+    expect(sheet.getCell("A2").value).toBe("Published · Mon, Sep 14 – Sun, Sep 20, 2026");
+    expect(book.getWorksheet("Merkez")!.getCell("B1").value).toBe("Merkez");
+    expect(sheet.getCell("B3").value).toBeInstanceOf(Date);
+    expect(sheet.getCell("A6").master.address).toBe("A4");
+    expect(sheet.getCell("B6").value).toContain("@Sahil");
+    expect(sheet.getCell("B4").value).toContain("AM-Server 0-0\nAçılış\n@Merkez\n09:00 - 13:00");
+    const data = book.getWorksheet("Data")!;
     expect(data.rowCount).toBe(7);
     expect(data.getCell("B2").value).toBeInstanceOf(Date);
     // ExcelJS decodes date-formatted numeric time cells back to Date objects.
     expect(data.getCell("G2").numFmt).toBe("hh:mm");
     expect(data.getTable("ScheduleData")).toBeDefined();
-    expect(book.getWorksheet("Merkez")!.pageSetup).toMatchObject({ fitToWidth: 1, fitToHeight: 0, printTitlesRow: "1:1", paperSize: 9 });
+    expect(book.getWorksheet("Merkez")!.pageSetup).toMatchObject({ fitToWidth: 1, fitToHeight: 0, printTitlesRow: "1:3", paperSize: 9 });
   });
 
   it("keeps hidden fields absent and treats untrusted names as plain strings", async () => {
@@ -151,8 +173,8 @@ describe("Export v2 real output engines", () => {
       rows: source.rows.map(row => ({ ...row, name: '=HYPERLINK("https://example.com")' })),
       shifts: source.shifts.map(shift => ({ ...shift, title: "Server", shiftType: null, label: null, time: null, start: null, end: null, overnight: null })),
     }, { ...defaultExportPreferences, paper: "LETTER" });
-    expect(book.getWorksheet("Merged")!.getCell("A2").type).toBe(3);
-    expect(book.getWorksheet("Veri")!.getRow(1).values).toEqual([, "Employee", "Date", "Location", "Position"]);
+    expect(book.getWorksheet("Merged")!.getCell("A4").type).toBe(3);
+    expect(book.getWorksheet("Data")!.getRow(1).values).toEqual([, "Employee", "Date", "Location", "Position"]);
     expect(book.getWorksheet("Merkez")!.pageSetup.paperSize).toBe(1);
   });
 

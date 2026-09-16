@@ -120,7 +120,7 @@ describe("Export v2 immutable preview projection", () => {
     expect(ready(value).rows[0]!.id).toBeNull();
     expect(ready({ ...value, display: { ...display, showUnassignedShifts: false } }).shifts).toEqual([]);
   });
-  it("preserves separate-grid ghost references without placing them in the assigned/Veri shift collection", () => {
+  it("preserves separate-grid ghost references without placing them in the assigned/Data shift collection", () => {
     const value = { ...input(), display: { ...display, layout: "separate" as const } };
     value.search.set("locations", "loc-a");
     const result = ready(value);

@@ -1,5 +1,5 @@
 import type { PaperSize, Workbook, Worksheet } from "exceljs";
-import { exportDayDecoration, exportRowCells, exportSubtitle, lightBadgeColor } from "./document";
+import { exportDayDecoration, exportRowCells, exportSubtitle, exportTitleLines, lightBadgeColor } from "./document";
 import { exportShiftLines } from "./badge-text";
 import type { ScheduleExportSnapshot } from "./snapshot";
 import type { ExportPreferences } from "./preferences";
@@ -29,7 +29,7 @@ export async function createScheduleWorkbook(snapshot: ScheduleExportSnapshot, p
   const workbook = new ExcelJS.Workbook();
   workbook.creator = snapshot.workspaceName;
   workbook.subject = exportSubtitle(snapshot);
-  const used = new Set(["merged", "veri"]);
+  const used = new Set(["merged", "data"]);
   const groups = [
     { name: "Merged", locations: snapshot.locations, merged: true },
     ...snapshot.locations.map(location => ({ name: exportSheetName(location.name, used), locations: [location], merged: false })),
@@ -37,8 +37,23 @@ export async function createScheduleWorkbook(snapshot: ScheduleExportSnapshot, p
   const showTotals = snapshot.rows.some(row => row.total !== null);
   for (const group of groups) {
     const sheet = workbook.addWorksheet(group.name);
-    sheet.views = [{ state: "frozen", xSplit: 0, ySplit: 1, topLeftCell: "A2", activeCell: "A2" }];
+    sheet.views = [{ state: "frozen", xSplit: 0, ySplit: 3, topLeftCell: "A4", activeCell: "A4" }];
     sheet.columns = [{ width: 23 }, ...snapshot.dates.map(() => ({ width: 22 })), ...(showTotals ? [{ width: 14 }] : [])];
+    // Same heading as the grid: location(s) above the day columns, then source and date range.
+    const { title, subtitle } = exportTitleLines(snapshot, group.locations);
+    const titleRow = sheet.addRow([snapshot.workspaceName, title]);
+    titleRow.height = 30;
+    sheet.mergeCells(1, 2, 1, snapshot.dates.length + 1);
+    titleRow.eachCell({ includeEmpty: true }, (cell, index) => {
+      cell.font = { name: "Arial", size: 12, bold: true, color: { argb: "FF183329" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE3ECE7" } };
+      cell.alignment = { vertical: "middle", horizontal: index === 1 ? "left" : "center", indent: index === 1 ? 1 : 0 };
+    });
+    const subtitleRow = sheet.addRow([subtitle]);
+    subtitleRow.height = 22;
+    sheet.mergeCells(2, 1, 2, sheet.columnCount);
+    subtitleRow.getCell(1).font = { name: "Arial", size: 11, color: { argb: "FF183329" } };
+    subtitleRow.getCell(1).alignment = { vertical: "middle", indent: 1 };
     const header = sheet.addRow(["Employee", ...snapshot.dates.map(excelDate), ...(showTotals ? ["Hours"] : [])]);
     header.height = 27;
     header.eachCell((cell, index) => {
@@ -96,11 +111,8 @@ export async function createScheduleWorkbook(snapshot: ScheduleExportSnapshot, p
     }
     configurePrint(sheet, `${snapshot.workspaceName} · ${group.locations.map(location => location.name).join(" + ")}`, exportSubtitle(snapshot), preferences);
   }
-  const data = workbook.addWorksheet("Veri");
-  const showTypes = snapshot.shifts.some(shift => shift.shiftType !== null);
-  const showLabels = snapshot.shifts.some(shift => shift.label !== null);
-  const showTimes = snapshot.shifts.some(shift => shift.start !== null);
-  const headers = ["Employee", "Date", "Location", "Position", ...(showTypes ? ["Shift type"] : []), ...(showLabels ? ["Label"] : []), ...(showTimes ? ["Start", "End", "Next day"] : [])];
+  const data = workbook.addWorksheet("Data");
+  const { showTypes, showLabels, showTimes, headers } = exportDataColumns(snapshot);
   const employees = new Map(snapshot.rows.map(employee => [employee.id, employee.name]));
   const rows = snapshot.shifts.map(shift => [employees.get(shift.employeeId) ?? "Unassigned", excelDate(shift.date), shift.location, shift.position,
     ...(showTypes ? [shift.shiftType ?? ""] : []), ...(showLabels ? [shift.label ?? ""] : []),
@@ -126,6 +138,14 @@ export async function renderScheduleExcel(snapshot: ScheduleExportSnapshot, pref
   return new Blob([new Uint8Array(bytes)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
+/** Data sheet columns; optional columns appear only when the snapshot shows that field. */
+export function exportDataColumns(snapshot: ScheduleExportSnapshot) {
+  const showTypes = snapshot.shifts.some(shift => shift.shiftType !== null);
+  const showLabels = snapshot.shifts.some(shift => shift.label !== null);
+  const showTimes = snapshot.shifts.some(shift => shift.start !== null);
+  return { showTypes, showLabels, showTimes,
+    headers: ["Employee", "Date", "Location", "Position", ...(showTypes ? ["Shift type"] : []), ...(showLabels ? ["Label"] : []), ...(showTimes ? ["Start", "End", "Next day"] : [])] };
+}
 function excelDate(date: string): Date { return new Date(`${date}T00:00:00Z`); }
 function excelTime(value: string | null): number | null {
   if (value === null) return null;
@@ -135,7 +155,7 @@ function excelTime(value: string | null): number | null {
 function configurePrint(sheet: Worksheet, heading: string, subtitle: string, prefs: ExportPreferences): void {
   // OOXML paperSize 1 is US Letter; ExcelJS 4.4 omits it from its TypeScript enum.
   sheet.pageSetup = { paperSize: (prefs.paper === "A4" ? 9 : 1) as PaperSize, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0,
-    printTitlesRow: "1:1", printArea: `A1:${sheet.getColumn(sheet.columnCount).letter}${sheet.rowCount}`,
+    printTitlesRow: "1:3", printArea: `A1:${sheet.getColumn(sheet.columnCount).letter}${sheet.rowCount}`,
     margins: { left: .25, right: .25, top: .5, bottom: .4, header: .2, footer: .2 } };
   sheet.headerFooter.oddHeader = `&L${heading.replace(/&/g, "&&")}\n${subtitle.replace(/&/g, "&&")}`;
   sheet.headerFooter.oddFooter = "&RPage &P of &N";
