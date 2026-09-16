@@ -32,7 +32,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | TEST-001 | Kırmızı unit testler ve vitest env izolasyonu | done 95063a7 |
 | OPS-010 | Hosted: proje hvyvyisrqyathtliyyyv (86 migration uygulanmış, veri yok) güncellenir, Vercel preview | hazır |
 | OPS-014 | Notification outbox dakikalık tetikleme: Supabase pg_cron (Vercel Hobby) | OPS-010 sonrası |
-| OPS-011 | Minimal CI: push'ta typecheck ve unit testler (GitHub Actions); turbo/vitest eşzamanlılık sınırı (flaky önlemi) | hazır |
+| OPS-011 | Minimal CI (GitHub Actions) | done 6509e38 |
 | OPS-012 | Production hijyeni: Kiosk ve Time Entries gizlendi, SSN env ve README temizlendi | done 8642575 |
 | THEME-001 | Dark temayı emekliye ayır (yalnızca light) | başladı |
 | THEME-002 | Light token seti, z-index ve kontrast sıkılaştırması | THEME-001 sonrası |

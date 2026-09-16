@@ -55,3 +55,6 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Export PNG önizlemesi her sayfayı 2.5x ölçekte render ediyor; çok sayfalı haftalarda yavaş. Düşük ölçek değerlendir (EXP-002).
 - Prod build'e erişilemeyen lazy chunk'lar giriyor (ScheduleShiftBadgeLab, Kiosk, TimeEntries); lazy import'ları DEV ya da postMvpSurfaces koşuluna al.
 - EmployeeHubPage pageCopy'de time-tracking metni ve independentPage mantığı duruyor (BL-057).
+- ScheduleExportSchedules.test.tsx makine TZ'sine bağlı; testte TZ'yi mock'la (CI şu an TZ pin'liyor).
+- Kullanıcı dizinindeki `C:/Users/TheWe/node_modules` (ör. @types/node 25.5) repo bağımlılıklarını maskeleyebilir; kaldırılması değerlendirilsin.
+- CI test adımı ~7dk (concurrency=1); ileride concurrency=2 denensin.
