@@ -37,7 +37,7 @@ Test plan:
 
 Risk:
 - Kararlar:
-  - My Team sayfası (EmployeeTeamView) silindi ve EmployeeScheduleBoard ile değiştirildi. Koordinatörün önerisi silmenin korunması; kullanıcı onayı bekleniyor.
+  - KULLANICI KARARI (2026-09-16): My Team → EmployeeScheduleBoard değişikliğini kullanıcı kendisi yaptı. Rescue'daki hali olduğu gibi korunacak; board geri alınmaz, My Team geri getirilmez.
   - Announcements employee scope migration'ı DB'ye elle eklendi (memory `announcements-employee-scope-ack`).
 - Dev server: 5555/5556 portları doluysa worker sunucu başlatmaz, önce sorar.
 
