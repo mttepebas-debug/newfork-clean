@@ -32,3 +32,7 @@ __pycache__/
 /docs/rebuild/*proof*/**/*.json
 /docs/rebuild/*proof*/**/*.log
 /docs/rebuild/*proof*/**/*.txt
+
+# Claude Code local state
+.claude/worktrees/
+.claude/settings.local.json
