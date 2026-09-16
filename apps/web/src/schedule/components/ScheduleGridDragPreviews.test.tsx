@@ -88,7 +88,7 @@ describe("ScheduleGridDragPreviews", () => {
     );
 
     expect(document.querySelector(".schedule-shift-drag-preview")).toBeTruthy();
-    expect(screen.getByText("+ Copy")).toBeTruthy();
+    expect(screen.getByText("+ Paste")).toBeTruthy();
     expect(
       document.querySelector("[data-shift-type-preset-drag-preview='true']"),
     ).toBeTruthy();

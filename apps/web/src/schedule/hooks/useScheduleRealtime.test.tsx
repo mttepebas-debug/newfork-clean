@@ -112,7 +112,7 @@ describe("useScheduleRealtime", () => {
     });
 
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ["schedule-read", "workspace", "2026-05-05", "week"],
+      queryKey: ["schedule-read", "workspace", "2026-05-05"],
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["schedule-pending-ops", "workspace", "2026-05-04"],

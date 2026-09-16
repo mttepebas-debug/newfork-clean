@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type {
   ActiveWorkspaceContext,
   ScheduleLineupReadModel,
@@ -405,7 +405,7 @@ describe("LineupPage", () => {
       }),
     );
     expect(
-      screen.getByLabelText("Required travel time (minutes)"),
+      screen.getByLabelText("Requested travel time (minutes)"),
     ).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Reason for change"), {
       target: { value: "Cover from Patio" },
@@ -472,6 +472,11 @@ describe("LineupPage", () => {
     fireEvent.change(screen.getByLabelText("Reason for change"), {
       target: { value: "Cover the next local day" },
     });
+    // Review is refused while the destination-day staffing read is in flight.
+    await waitFor(() =>
+      expect(getLineup).toHaveBeenCalledWith(workspaceId, "2026-08-18"),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     fireEvent.click(screen.getByRole("button", { name: "Review impact" }));
     await waitFor(() =>
       expect(previewLineupOperation).toHaveBeenCalledWith(
