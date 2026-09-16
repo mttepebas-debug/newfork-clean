@@ -15,7 +15,7 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - BL-044 Announcements sayfası ve Add Announcement drawer polish.
 - BL-045 App Notifications fonksiyonel audit.
 - BL-046 Settings > Notifications sadeleştirme, producer audit ve gerçek belge email teslimatı.
-- BL-047 Settings > General ve Location drawer polish.
+- BL-047 Settings > General ve Location drawer polish; Jobs drawer polish da burada (BL-048 sadece crash).
 - BL-048 Add Department crash ve Jobs drawer.
 - BL-051 Roles: gerçek custom-role silme işleminin browser kabulü.
 - BL-053 Acknowledgements sayfasının MVP rolü kararı.
