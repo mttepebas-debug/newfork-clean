@@ -59,3 +59,5 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Kullanıcı dizinindeki `C:/Users/TheWe/node_modules` (ör. @types/node 25.5) repo bağımlılıklarını maskeleyebilir; kaldırılması değerlendirilsin.
 - CI test adımı ~7dk (concurrency=1); ileride concurrency=2 denensin.
 - Hosted advisor: `public.read_role_workspace(uuid)` SECURITY DEFINER ve authenticated RPC ile çağrılabiliyor; kasıtlı mı kontrol et (güvenlik).
+- Tam local `pnpm test`'te yük altında flaky testler: api organization-settings-routes, web EmployeeOnboardingPage (3), ScheduleRequestsPage, LineupEditor (2). İzole PASS; CI concurrency=1 ile koşuyor. Kök nedeni (timeout ya da ortak state) araştır.
+- EXP-002: export çıktı görünümünün kalanı (PNG önizleme ölçeği + kullanıcı geri bildirimi); task dosyası kullanıcıyla konuşulunca açılacak.
