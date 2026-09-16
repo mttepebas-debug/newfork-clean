@@ -1,0 +1,19 @@
+# Done
+
+Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanıtlar yereldir; hosted/release kanıtı sayılmaz.
+
+2026-09-11 | BL-026 | web typecheck temeli | -
+2026-09-11 | BL-035 | rehire invite Auth ban kaldırma | -
+2026-09-11 | BL-063 | toast standardı | -
+2026-09-14 | BL-051 | Roles & Permissions core | fc2c4da
+2026-09-14 | BL-055 | Account core (Profile/Preferences/Notifications/Workspaces) | fc2c4da
+2026-09-14 | UI-TRIAL-001 | Schedule sticky lokasyon başlıkları | 5068532
+2026-09-15 | BUG-001 | notification katalog duplicate key | 2666283
+2026-09-15 | BL-066 | dark tema rollout | d18a1bb
+2026-09-15 | BL-064/068 | Schedule drag/drop conflict + Conflict handling sayfası | 7a35dbc
+2026-09-15 | BL-069 | same-holder edit-session lease yenileme | 2e4f08b
+2026-09-15 | BL-036 | Schedule metadata paralel okuma | 6357397
+2026-09-15 | BL-039/049/050 | preview/publish state, Schedule Rules, Shift Catalog | a72f589
+2026-09-16 | BL-037 | Export v2 yerel kabul (kod rescue branch'te) | 14647f8 (rescue)
+2026-09-16 | BL-052/001 | document lifecycle yerel kabul (kod rescue branch'te) | 14647f8 (rescue)
+2026-09-16 | SETUP | Codex belgeleri arşivlendi; Claude plan sistemi ve rescue branch kuruldu | (bu commit)
