@@ -1,5 +1,5 @@
 # RESCUE-001 Rescue WIP'ini bütün olarak main'e al
-Status: draft
+Status: done
 Session: -   Branch: task/rescue-001   Worktree: newfork-wt/rescue-001   DB: yok (salt okunur)
 
 Goal: `wip/rescue-2026-09-16` (`14647f8`) içeriğini tek task branch'inde main'e entegre edilebilir hale getirmek. Böylece main, local DB'de zaten uygulanmış olan 23 migration ile tutarlı olur.
@@ -42,3 +42,10 @@ Risk:
 - Dev server: 5555/5556 portları doluysa worker sunucu başlatmaz, önce sorar.
 
 ## Notes / Result
+- 2026-09-16 sonuç: main `d19542d` (import 557cc16, topbar fix a226bb1, My Team dosyaları silindi d19542d).
+  - typecheck 7/7 ve build 4/4 PASS.
+  - Unit testlerde rescue kaynaklı yeni kırmızı yok; main'de zaten var olan kırmızılar → TEST-001.
+- Smoke sonuçları:
+  - Kabul: Schedule, Export, Timezone, Roles, Employee Hub/board, Announcements listeleri.
+  - Kanıt eksik: Documents lifecycle ve publication drawer (migration uygulanmadı, UI-DOC-001), Announcements acknowledge (ANN-001).
+- Kapanış: README.md korundu (backlog). Rescue ve rescue-001 worktree'leri kaldırıldı; `wip/rescue-2026-09-16` yalnızca origin'de yedek olarak duruyor (F0 sonunda silinecek).

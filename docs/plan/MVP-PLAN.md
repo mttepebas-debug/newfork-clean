@@ -28,7 +28,8 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 ### F0 — Sağlam temel
 | ID | İş | Not |
 |---|---|---|
-| RESCUE-001 | WIP'i main'e al | çalışıyor |
+| RESCUE-001 | WIP'i main'e al | done d19542d |
+| TEST-001 | Kırmızı unit testler ve vitest env izolasyonu (CI'dan önce) | hazır |
 | OPS-010 | Hosted: yeni Supabase hesabında yeni proje, Vercel preview ortamı, temiz migration replay | kullanıcı yeni Supabase hesabını bağlayınca |
 | OPS-011 | Minimal CI: push'ta typecheck ve unit testler (GitHub Actions) | küçük |
 | OPS-012 | Production hijyeni: `/dev/*` ve lab route'ları, Kiosk ve Time Entries gizlenir; SSN env temizlenir | küçük, kod silmeden önce sorulur |

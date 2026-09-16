@@ -17,3 +17,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-16 | BL-037 | Export v2 yerel kabul (kod rescue branch'te) | 14647f8 (rescue)
 2026-09-16 | BL-052/001 | document lifecycle yerel kabul (kod rescue branch'te) | 14647f8 (rescue)
 2026-09-16 | SETUP | Codex belgeleri arşivlendi; Claude plan sistemi ve rescue branch kuruldu | (bu commit)
+2026-09-16 | RESCUE-001 | rescue WIP main'de; typecheck/build PASS, topbar fix | d19542d
