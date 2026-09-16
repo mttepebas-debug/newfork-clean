@@ -1,6 +1,8 @@
 # UI-DOC-001 Documents publication runtime kapanışı
 Status: blocked (RESCUE-001 Documents dilimine bağlı)
 Session: -   Branch: task/ui-doc-001   Worktree: newfork-wt/ui-doc-001   DB: lock gerekecek
+Öneri: Opus 5, high. Süre, yetki, hedefleme ve veri geçmişi aynı anda etkileniyor.
+Kilit kuralı: bu task aktifken başka hiçbir task migration uygulamaz. Apply öncesi local DB yedeği alınır (pg_dump, repo dışına).
 
 Goal: Documents drawer'ında Draft Save → Publish → Unpublish → Republish akışının local'de çalışması.
 
