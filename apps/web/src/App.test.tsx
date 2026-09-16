@@ -4971,12 +4971,7 @@ describe("App", () => {
         ".schedule-publication-steps span[data-active='true']",
       )?.textContent,
     ).toContain("Pre-flight");
-    fireEvent.change(screen.getByRole("textbox", { name: "Reason" }), {
-      target: { value: "Employee confirmed availability after recheck." },
-    });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Override and continue" }),
-    );
+    await clickReadyButton(screen, "Next");
     fireEvent.click(screen.getByRole("button", { name: "Publish 1 location" }));
 
     await waitFor(() =>
@@ -4986,7 +4981,7 @@ describe("App", () => {
         [
           {
             finding_id: "stale-availability-finding",
-            reason: "Employee confirmed availability after recheck.",
+            reason: "Schedule conflict confirmed by manager.",
           },
         ],
         [scheduleFixture.employees[0]!.id],
@@ -4995,7 +4990,7 @@ describe("App", () => {
           decisions: [
             {
               finding_id: "stale-availability-finding",
-              reason: "Employee confirmed availability after recheck.",
+              reason: "Schedule conflict confirmed by manager.",
             },
           ],
         },
