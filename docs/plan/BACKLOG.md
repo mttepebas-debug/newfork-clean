@@ -49,3 +49,5 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - README.md eski içerik taşıyor (payroll/kiosk fazları); rescue'da silinmişti, geri tutuldu. Güncel komutlarla yeniden yaz (OPS-012 ile birlikte).
 - Schedule topbar dar pane'de (~936px) iki satıra sarıyor; taşma yok, polish (F5).
 - Schedule topbar filtre çipleri Settings dropdown'ının üstünde render ediliyor (z-index); F5 polish.
+- Light tema için `--theme-*` semantik token seti yok (yalnızca dark'ta var); yeni UI sabit fallback kullanıyor. Token setini tamamla (F5).
+- ≤760px'te Schedule Export erişilemiyor (shell sidebar'ı ve butonu gizliyor); mobil export kararı (MVP sonrası olabilir).
