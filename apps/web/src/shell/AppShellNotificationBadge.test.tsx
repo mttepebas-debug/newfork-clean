@@ -36,6 +36,8 @@ const context = {
     "schedule.lineup.read",
     "schedule.time_off_requests.read",
     "employees.read",
+    "availability.read",
+    "important_dates.read",
     "announcements.read",
     "notifications.read",
   ],
