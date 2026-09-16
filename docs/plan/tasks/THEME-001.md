@@ -1,6 +1,6 @@
 # THEME-001 Dark temayı emekliye ayır
 Status: active
-Session: -   Branch: task/theme-001   Worktree: newfork-wt/theme-001   DB: yok
+Session: TEST-001 session (local_24e92640, Opus 5 medium)   Branch: task/theme-001   Worktree: newfork-wt/theme-001   DB: yok
 Öneri: Opus 5, medium. Çok dosyalı ama mekanik silme; seçicileri doğru ayırmak dikkat istiyor.
 
 Goal: Uygulama yalnızca light temada çalışsın. Dark tema seçeneği ve dark'a özel CSS kaldırılsın; light görünüm değişmesin.
