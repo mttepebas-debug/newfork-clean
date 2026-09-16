@@ -7,12 +7,6 @@
       "includeFiles": "apps/api/dist/geo-tz-data/**"
     }
   },
-  "crons": [
-    {
-      "path": "/api/internal/cron/notification-outbox",
-      "schedule": "* * * * *"
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/:path*",
