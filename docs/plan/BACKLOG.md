@@ -52,3 +52,4 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Light tema token seti → tasks/THEME-002.
 - ≤760px'te Schedule Export erişilemiyor → KARAR (2026-09-16): mobilde export yok; mevcut davranış korunur.
 - App.test.tsx schedule-data mock'u scheduleReadKey'i gerçek koddan farklı (view dahil) üretiyor; mock'u gerçek helper'a bağla.
+- Export PNG önizlemesi her sayfayı 2.5x ölçekte render ediyor; çok sayfalı haftalarda yavaş. Düşük ölçek değerlendir (EXP-002).
