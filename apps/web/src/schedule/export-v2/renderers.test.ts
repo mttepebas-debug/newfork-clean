@@ -114,7 +114,7 @@ describe("Export v2 real output engines", () => {
     expect(pages[1]!.text).toContain("Sahil");
     expect(pages.every(page => !page.belowPage)).toBe(true);
     const combined = createExportDocument(source, defaultExportPreferences);
-    expect(combined.pageSize).toEqual({ width: 1624, height: "auto" });
+    expect(combined.pageSize).toEqual({ width: 1586, height: "auto" });
     // Side by side: a labelled band per location above the day headers, split by a heavier rule.
     const table = (combined.content as { table: { headerRows: number; body: { text?: string; colSpan?: number }[][] }; layout: { vLineWidth: (index: number) => number; vLineColor: (index: number) => string } }[])[0]!;
     expect(table.table.headerRows).toBe(3);

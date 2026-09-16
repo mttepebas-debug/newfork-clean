@@ -38,7 +38,7 @@ export async function createScheduleWorkbook(snapshot: ScheduleExportSnapshot, p
   for (const group of groups) {
     const sheet = workbook.addWorksheet(group.name);
     sheet.views = [{ state: "frozen", xSplit: 0, ySplit: 3, topLeftCell: "A4", activeCell: "A4" }];
-    sheet.columns = [{ width: 23 }, ...snapshot.dates.map(() => ({ width: 22 })), ...(showTotals ? [{ width: 14 }] : [])];
+    sheet.columns = [{ width: 18 }, ...snapshot.dates.map(() => ({ width: 22 })), ...(showTotals ? [{ width: 14 }] : [])];
     // Same heading as the grid: location(s) above the day columns, then source and date range.
     const { title, subtitle } = exportTitleLines(snapshot, group.locations);
     const titleRow = sheet.addRow([snapshot.workspaceName, title]);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import {
-  Check, Columns3, Download, ExternalLink, FileImage, FileSpreadsheet, FileText, PanelLeftClose, PanelLeftOpen,
+  Check, Columns3, Download, ExternalLink, FileDown, FileImage, FileSpreadsheet, FileText, PanelLeftClose, PanelLeftOpen,
   Printer, RotateCcw, StretchVertical, X,
 } from "lucide-react";
 import { AppSidebarPanel } from "../../shell/AppSidebarPanel";
@@ -54,7 +54,7 @@ export function ExportSettingsPanel(props: ExportSettingsPanelProps) {
     <section className="schedule-export-v2" data-schedule-export-v2="true" aria-label="Export settings"
       onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); onClose(); } }}>
       <header className="export-v2-heading">
-        {!collapsed ? <h2>Export</h2> : null}
+        {!collapsed ? <h2><FileDown size={18} aria-hidden="true" />Export</h2> : null}
         <button type="button" className="icon-button" aria-label={collapsed ? "Expand export settings" : "Minimize export settings"} onClick={onToggle}>
           {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
         </button>
@@ -65,8 +65,8 @@ export function ExportSettingsPanel(props: ExportSettingsPanelProps) {
         <SourceTable {...props} />
         <Section title="Format"><MenuRows options={formats} value={preferences.format} onChange={setFormat} /></Section>
         {excel ? <p className="export-v2-hint">One workbook: Merged, each location, and Data. Only the heading rows are frozen.</p> : <>
-          <Section title="Output"><MenuRows options={destinations} value={preferences.destination} onChange={destination => onChange({ ...preferences, destination })} /></Section>
           <Section title="Page layout"><LayoutControls {...props} /></Section>
+          <Section title="Output"><MenuRows options={destinations} value={preferences.destination} onChange={destination => onChange({ ...preferences, destination })} /></Section>
         </>}
         {error ? <p role="alert" className="form-error export-v2-error">{error}</p> : null}
         <div className="export-v2-footer">

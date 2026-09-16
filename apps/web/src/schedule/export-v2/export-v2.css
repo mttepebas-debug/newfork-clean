@@ -4,8 +4,8 @@
 .schedule-export-v2 :is(button, select) { font: inherit; color: inherit; }
 .schedule-export-v2 button:disabled { opacity: .5; cursor: not-allowed; }
 .schedule-export-v2 :is(button, input, select, a):focus-visible { outline: 2px solid var(--schedule-focus-ring-color, #177a64); outline-offset: 2px; }
-.export-v2-heading { display: flex; align-items: center; gap: 4px; }
-.export-v2-heading h2 { margin: 0 auto 0 0; font-size: 18px; font-weight: 650; }
+.export-v2-heading { display: flex; align-items: center; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid #e6ebe8; }
+.export-v2-heading h2 { display: flex; align-items: center; gap: 8px; margin: 0 auto 0 0; font-size: 18px; font-weight: 650; }
 .app-shell[data-sidebar-collapsed="true"] .export-v2-heading { flex-direction: column; gap: 12px; }
 
 /* Sections in the settings-menu voice */

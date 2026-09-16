@@ -41,7 +41,7 @@ export function ExportPreview({ target, snapshot, preferences, files, loading, e
       {sheet === "data" ? <DataTable snapshot={snapshot} /> : <>
         <h2>{exportTitleLines(snapshot, locations).title}</h2>
         <p className="subtitle">{heading!.subtitle}</p>
-        <table><thead><tr><th>Employee</th>{snapshot.dates.map(date => <th key={date}>{dayHeading(date)}
+        <table><colgroup><col className="employee" />{snapshot.dates.map(date => <col key={date} />)}{snapshot.totals ? <col style={{ width: 90 }} /> : null}</colgroup><thead><tr><th>Employee</th>{snapshot.dates.map(date => <th key={date}>{dayHeading(date)}
           {exportDayDecoration(snapshot, date, merged ? null : locations[0]!.id)?.lines.map(line => <p key={line}>{line}</p>)}</th>)}{snapshot.totals ? <th>Hours</th> : null}</tr></thead>
           <tbody>{snapshot.rows.map(row => <tr key={row.id ?? "unassigned"}><th>{row.name}</th>
             {exportRowCells(snapshot, row, locations.map(location => location.id), !merged && snapshot.layout === "separate").map((shifts, index) => <td key={index}>
@@ -64,7 +64,7 @@ export function ExportPreview({ target, snapshot, preferences, files, loading, e
       .images figcaption{margin-top:6px;text-align:center;font-size:12px;color:#5c6863}
       .sheet{padding:20px;overflow:auto}.sheet nav{display:flex;gap:6px;margin:0 0 16px;flex-wrap:wrap}.sheet nav button[aria-pressed="true"]{background:#e7f1ed;border-color:#6c9b8c;color:#155f4d}
       .sheet h2{margin:0;font-size:15px}.sheet .subtitle{margin:2px 0 12px;font-size:12px;color:#5c6863}
-      .sheet table{border-collapse:collapse;background:white;width:100%;min-width:1050px;table-layout:fixed}
+      .sheet table{border-collapse:collapse;background:white;width:100%;min-width:${snapshot && snapshot.dates.length > 3 ? "1050px" : "0"};table-layout:fixed}.sheet col.employee{width:170px}
       th,td{border:1px solid #bdcdc4;padding:10px;vertical-align:top}th{background:#ebf2ee;text-align:left}th p{margin:4px 0 0;font-weight:400;font-size:12px}
       td .badge{white-space:pre-wrap;background:#e4efe8;border:1px solid #bdcdc4;margin:0 0 6px;padding:8px;line-height:1.5;overflow-wrap:anywhere}td .badge.ghost{background:#eee}td .badge.focused{outline:2px solid #183329}
       .data td,.data th{padding:6px 10px;white-space:nowrap}.data table{min-width:0;width:auto}

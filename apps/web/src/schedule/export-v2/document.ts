@@ -49,7 +49,8 @@ export function createExportDocument(snapshot: ScheduleExportSnapshot, prefs: Ex
   const dayColumns = snapshot.dates.length * (merged || separatePages ? 1 : snapshot.locations.length);
   const showTotals = snapshot.rows.some(row => row.total !== null);
   const paper = prefs.paper === "A4" ? { width: 841.89, height: 595.28 } : { width: 792, height: 612 };
-  const width = print ? paper.width : Math.max(520, 48 + 148 + dayColumns * 102 + (showTotals ? 70 : 0));
+  // Employee column stays narrow (110pt) so single-day exports do not stretch the name column.
+  const width = print ? paper.width : Math.max(520, 48 + 110 + dayColumns * 102 + (showTotals ? 70 : 0));
   const content: Content[] = [];
   for (const [groupIndex, locations] of groups.entries()) {
     const columns = merged
@@ -106,7 +107,7 @@ export function createExportDocument(snapshot: ScheduleExportSnapshot, prefs: Ex
     content.push({
       ...(groupIndex > 0 ? { pageBreak: "before" as const } : {}),
       table: { headerRows, keepWithHeaderRows: 1, dontBreakRows: true,
-        widths: [print ? 125 : 148, ...columns.map(() => "*" as const), ...(showTotals ? [62] : [])], body },
+        widths: [110, ...columns.map(() => "*" as const), ...(showTotals ? [62] : [])], body },
       layout: {
         hLineWidth: index => index <= headerRows ? .8 : .55,
         vLineWidth: index => bandEdge(index) ? 1.8 : .55, hLineColor: () => "#bac9c2", vLineColor: index => bandEdge(index) ? "#5f7a6f" : "#bac9c2",
