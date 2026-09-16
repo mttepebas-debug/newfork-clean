@@ -5125,7 +5125,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Use development identity" }));
     fireEvent.click(await screen.findByRole("button", { name: "Export" }));
     const panel = await screen.findByRole("region", { name: "Export settings" });
-    await clickReadyButton(within(panel), "Download");
+    await clickReadyButton(within(panel), "Download PDF");
     await waitFor(() => expect(downloadExportFile).toHaveBeenCalledOnce());
     expect(authorizeScheduleExportV2).toHaveBeenCalledTimes(2);
     expect(renderExportFiles).toHaveBeenCalledWith(expect.objectContaining({
@@ -5171,7 +5171,7 @@ describe("App", () => {
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: saved.name } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
     const panel = await screen.findByRole("region", { name: "Export settings" });
-    await waitFor(() => expect(within(panel).getByText("Export draft")).toBeTruthy());
+    await waitFor(() => expect(within(panel).getByText(/Export draft/)).toBeTruthy());
     expect(window.location.search).not.toContain("mode=edit");
     expect(fetchScheduleDraftShifts).toHaveBeenCalledWith(scheduleFixture.workspace_id, scheduleFixture.week_start, saved.id, [scheduleFixture.locations[0]!.id]);
     expect(renderExportFiles).not.toHaveBeenCalled();
@@ -5188,13 +5188,13 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Use development identity" }));
     fireEvent.click(await screen.findByRole("button", { name: "Export" }));
     const panel = await screen.findByRole("region", { name: "Export settings" });
-    fireEvent.click(within(panel).getByLabelText("Excel"));
+    fireEvent.click(within(panel).getByRole("radio", { name: /^Excel/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Draft selector:/ }));
     const row = (await screen.findByText(draft.name)).closest("[data-draft-row]");
     if (!row) throw new Error("Draft row missing"); fireEvent.click(row);
-    await waitFor(() => expect(within(panel).getByText(draft.name)).toBeTruthy());
-    expect((within(panel).getByLabelText("Excel") as HTMLInputElement).checked).toBe(true);
-    await clickReadyButton(within(panel), "Download");
+    await waitFor(() => expect(within(panel).getByText(new RegExp(draft.name))).toBeTruthy());
+    expect(within(panel).getByRole("radio", { name: /^Excel/ }).getAttribute("aria-checked")).toBe("true");
+    await clickReadyButton(within(panel), "Download Excel");
     await waitFor(() => expect(renderExportFiles).toHaveBeenCalledWith(expect.objectContaining({ source: { kind: "draft", id: draft.id, revision: 2, name: draft.name } }), expect.objectContaining({ format: "xlsx" })));
   });
 
