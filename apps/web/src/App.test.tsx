@@ -2414,6 +2414,13 @@ describe("App", () => {
   it("blocks preset shift badges when a partial closure covers that shift type", async () => {
     const partialClosedFixture = {
       ...scheduleFixture,
+      settings: {
+        ...scheduleFixture.settings,
+        conflict_rules: {
+          ...scheduleFixture.settings.conflict_rules!,
+          closed_location: "block",
+        },
+      },
       week_start: "2026-08-17",
       shifts: [],
       closures: [
@@ -2456,7 +2463,7 @@ describe("App", () => {
 
     expect(await app.findByText("Preset shift is unavailable")).toBeTruthy();
     expect(
-      app.getByText(/Location is closed for this shift type\./),
+      app.getByText(/Location is closed for Dinner\./),
     ).toBeTruthy();
     expect(createScheduleShift).not.toHaveBeenCalled();
     expect(app.queryByRole("dialog", { name: "Add shift" })).toBeNull();
@@ -4076,7 +4083,7 @@ describe("App", () => {
       const preview = container.querySelector(".schedule-shift-drag-preview");
       expect(preview).toBeTruthy();
       expect(preview?.getAttribute("data-copy")).toBe("true");
-      expect(screen.getByText("+ Copy")).toBeTruthy();
+      expect(screen.getByText("+ Paste")).toBeTruthy();
     });
     await act(async () => {
       dispatchPointer(document, "mouseup", {
