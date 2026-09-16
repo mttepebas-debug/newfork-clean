@@ -22,5 +22,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # ponytail: concurrency=1 only in CI to avoid load flakiness; local scripts unchanged
-      - run: pnpm typecheck --concurrency=1
-      - run: pnpm test --concurrency=1
+      - run: pnpm run typecheck --concurrency=1
+      - run: pnpm run test --concurrency=1
