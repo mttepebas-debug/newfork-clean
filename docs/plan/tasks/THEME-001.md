@@ -1,5 +1,5 @@
 # THEME-001 Dark temayı emekliye ayır
-Status: active
+Status: review (main'e alındı; görsel kontrol kullanıcıda)
 Session: TEST-001 session (local_24e92640, Opus 5 medium)   Branch: task/theme-001   Worktree: newfork-wt/theme-001   DB: yok
 Öneri: Opus 5, medium. Çok dosyalı ama mekanik silme; seçicileri doğru ayırmak dikkat istiyor.
 
@@ -47,3 +47,15 @@ Risk:
 - Açık branch'lerde (EXP, OPS-012) dark kuralı eklenmiş olabilir; rebase sırasında onlar da temizlenir.
 
 ## Notes / Result
+- 2026-09-16 main c0ecf3d:
+  - Silinenler: theme runtime'ı, dark-theme.css ve pre-paint script'i. index.html light'a sabitlendi.
+  - Preferences'tan Appearance bölümü kaldırıldı. Shared şema ve DB aynı kaldı.
+  - 16 CSS dosyasından 375 kural, 2 @media bloğu ve 744 seçici çıkarıldı.
+  - Yeni `light-theme.test.ts`, dark kuralı eklenmesini engelliyor.
+- Kanıt:
+  - grep 0.
+  - postcss eşdeğerliği: 16 dosyada light kurallar birebir aynı.
+  - web typecheck PASS, build PASS, 19 dosya / 149 test PASS.
+- Görsel önce/sonra karşılaştırması yapılamadı (dev server'lar kapalıydı). Light kurallarının aynı kaldığı kod düzeyinde kanıtlandığı için merge edildi. Kullanıcı 6 sayfaya bir kez göz atacak.
+- Bulgular: account.css'teki `account-theme-*` kuralları artık kullanılmıyor (THEME-002'de silinebilir). localStorage'daki eski "newfork.theme" anahtarı zararsız.
+- REUSE UI-05 güncellendi.

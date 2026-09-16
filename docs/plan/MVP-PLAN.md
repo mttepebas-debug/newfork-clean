@@ -34,7 +34,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | OPS-014 | Notification outbox dakikalık tetikleme: Supabase pg_cron (Vercel Hobby) | OPS-010 sonrası |
 | OPS-011 | Minimal CI (GitHub Actions) | done 6509e38 |
 | OPS-012 | Production hijyeni: Kiosk ve Time Entries gizlendi, SSN env ve README temizlendi | done 8642575 |
-| THEME-001 | Dark temayı emekliye ayır (yalnızca light) | başladı |
+| THEME-001 | Dark temayı emekliye ayır (yalnızca light) | done c0ecf3d |
 | THEME-002 | Light token seti, z-index ve kontrast sıkılaştırması | THEME-001 sonrası |
 | OPS-013 | Hata izleme: Sentry (ücretsiz) + Vercel logları | OPS-010 sonrası |
 

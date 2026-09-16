@@ -1,5 +1,5 @@
 # THEME-002 Light temayı sıkılaştır: token seti ve tutarlılık
-Status: draft (THEME-001 sonrası)
+Status: draft (hazır; dev server gerektirir)
 Session: -   Branch: task/theme-002   Worktree: newfork-wt/theme-002   DB: yok
 Öneri: Opus 5, medium. Görsel tutarlılık ve kontrast değerlendirmesi gerekiyor; redesign yok.
 
@@ -26,6 +26,8 @@ In scope:
    - Topbar filtre ve Settings dropdown z-index'i.
    - Ana sayfalarda metin/arka plan kontrastı WCAG AA (Schedule, Employees, Settings, Account, Employee Hub, Announcements, Requests). Düşük kontrast bulunan yerler düzeltilir.
 4. **REUSE UI-05:** yeni token sözleşmesi için önerilen metin rapora yazılır.
+
+- Kullanılmayan `account-theme-*` kuralları silinir.
 
 Out of scope:
 - Yeni tasarım dili, renk paletinin değiştirilmesi, layout değişiklikleri.
