@@ -3,7 +3,7 @@
 Genel kurallar (task başlangıcı, git/worktree, test zamanı, token) `~/.claude/CLAUDE.md` içindedir. Burada yalnızca bu projeye özel kurallar var.
 
 ## Koordinasyon modeli
-- **Koordinatör (ana session):** `5a70083f-c90b-43f5-b947-cdde13ffd0c1`, checkout `newfork-clean` (main).
+- **Koordinatör (ana session):** session adı "Agent.md geliştirme ve Claude.md entegrasyonu" (id `5a70083f-c90b-43f5-b947-cdde13ffd0c1`), checkout `newfork-clean` (main). Worker'lar raporu ListAgents'ta bu adı bulup SendMessage ile gönderir.
   - Planlama, `docs/plan/` kayıtları, task dağıtımı, review, main'e merge, push ve worktree temizliği bu session'dadır.
   - Aktif kod yazmaz.
 - **Worker session:** koordinatörün verdiği tek task'ı kendi worktree/branch'inde yapar.

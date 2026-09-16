@@ -1,5 +1,5 @@
 # TEST-001 Test ve kod kaymasını kapat, vitest env izolasyonu
-Status: active
+Status: done
 Session: -   Branch: task/test-001   Worktree: newfork-wt/test-001   DB: yok
 Öneri: Sonnet 5, medium. Çoğu test-kod kayması; ürün kararı gerektirenler koordinatöre sorulur.
 
@@ -41,3 +41,18 @@ Test plan: env izolasyonu yapıldıktan sonra test dosyası bazında ilerle; en 
 Risk: App.test.tsx'teki timeout'lar gerçek bir performans ya da render sorununu gizliyor olabilir. Timeout süresini artırarak geçiştirme.
 
 ## Notes / Result
+- 2026-09-16 sonuç: main 95063a7.
+  - `pnpm test` .env.local ile exit 0: web 1434 + 1 skip, api 576, shared 164.
+  - typecheck 7/7 PASS.
+- Kod değişiklikleri:
+  - vite test modunda `envDir:false`.
+  - AuthContext DEV-only dev rolü fallback'i (developmentIdentityAllowed'a bağlı) ve focused test.
+  - notification-catalog'a 3 availability tipi eklendi (DB migration'larından birebir).
+- Kabul edilen yan etkiler:
+  - allowed_query_keys regex'i camelCase'e açıldı.
+  - source_statement etiketleri yazıldı.
+  - review_required için producer kaynağı 005001.
+  - Seed-parity testine marker'lar eklendi.
+- Açık bulgular:
+  - Tam koşuda yük altında flaky testler var (3 koşunun 2'si kırmızı; izolede yeşil). OPS-011'de eşzamanlılık sınırı gerekiyor.
+  - App.test'teki schedule-data mock'u scheduleReadKey'i gerçek koddan farklı üretiyor (backlog).

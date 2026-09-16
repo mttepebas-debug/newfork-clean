@@ -29,10 +29,10 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | ID | İş | Not |
 |---|---|---|
 | RESCUE-001 | WIP'i main'e al | done d19542d |
-| TEST-001 | Kırmızı unit testler ve vitest env izolasyonu (CI'dan önce) | hazır |
+| TEST-001 | Kırmızı unit testler ve vitest env izolasyonu | done 95063a7 |
 | OPS-010 | Hosted: proje hvyvyisrqyathtliyyyv (86 migration uygulanmış, veri yok) güncellenir, Vercel preview | hazır |
 | OPS-014 | Notification outbox dakikalık tetikleme: Supabase pg_cron (Vercel Hobby) | OPS-010 sonrası |
-| OPS-011 | Minimal CI: push'ta typecheck ve unit testler (GitHub Actions) | küçük |
+| OPS-011 | Minimal CI: push'ta typecheck ve unit testler (GitHub Actions); turbo/vitest eşzamanlılık sınırı (flaky önlemi) | hazır |
 | OPS-012 | Production hijyeni: `/dev/*` ve lab route'ları, Kiosk ve Time Entries gizlenir; SSN env temizlenir | küçük, kod silmeden önce sorulur |
 | THEME-001 | Dark temayı emekliye ayır (yalnızca light) | TEST-001 ve EXP-001 sonrası |
 | THEME-002 | Light token seti, z-index ve kontrast sıkılaştırması | THEME-001 sonrası |
