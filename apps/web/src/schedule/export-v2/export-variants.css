@@ -31,13 +31,9 @@
 .export-x-error { margin: 0; font-size: 12px; }
 
 /* Source */
-.export-x-source { display: flex; flex-direction: column; gap: 2px; }
-.export-x-source p { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 12px; min-width: 0; }
-.export-x-source-range { font-size: 14px !important; font-weight: 750; }
-.export-x-state { display: inline-flex; align-items: center; gap: 6px; font-weight: 750; }
+.export-x-state { display: inline-flex; align-items: center; gap: 6px; }
 .export-x-state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--x-selected-text); flex: 0 0 auto; }
 .export-x-state.is-draft::before { background: var(--x-info); }
-.export-x-draft-name { color: var(--x-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .export-x-table { display: flex; flex-direction: column; margin: 0; border-top: 1px solid var(--x-divider); border-bottom: 1px solid var(--x-divider); }
 .export-x-table > div { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--x-divider); font-size: 12px; }
 .export-x-table > div:last-child { border-bottom: 0; }

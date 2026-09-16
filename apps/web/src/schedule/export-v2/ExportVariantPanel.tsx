@@ -70,7 +70,8 @@ export function ExportVariantPanel({ variant, inline, onInlineTarget, ...props }
         <button type="button" className="icon-button" aria-label="Close export" onClick={onClose}><X size={18} /></button>
       </header>
       {collapsed ? null : variant === "D" ? <>
-        <Section title="Source"><SourceLine {...props} /></Section>
+        <InlinePreview result={result} preferences={preferences} files={inline.files} loading={inline.loading} onTarget={onInlineTarget} onOpen={onPreview} />
+        <SourceTable {...props} compact />
         <Section title="Format">
           <MenuRows options={formats} value={preferences.format} onChange={setFormat} />
         </Section>
@@ -148,21 +149,6 @@ function Blocked({ result, canManageLocations }: PanelProps) {
   </div>;
 }
 
-/** D: two-line summary in the settings-menu voice. */
-function SourceLine(props: PanelProps) {
-  const { result } = props;
-  if (result.status !== "ready") return <Blocked {...props} />;
-  const { source, dates, locations } = result.snapshot;
-  const count = counts(result);
-  return <div className="export-x-source" aria-live="polite">
-    <p><span className={`export-x-state${source.kind === "draft" ? " is-draft" : ""}`}>{source.kind === "draft" ? "Draft" : "Published"}</span>
-      {source.kind === "draft" ? <span className="export-x-draft-name">{source.name}</span> : null}</p>
-    <p className="export-x-source-range">{range(dates)}</p>
-    <p className="export-x-muted" title={locations.map(location => location.name).join(", ")}>{locationList(locations)}</p>
-    <p className="export-x-muted">{count.employees} · {count.shifts}</p>
-  </div>;
-}
-
 /** E/F: key-value rows. */
 function SourceTable({ compact, ...props }: PanelProps & { readonly compact?: boolean }) {
   const { result } = props;
@@ -225,7 +211,9 @@ function layoutSummary(preferences: ExportPreferences, result: SnapshotResult): 
 function LayoutControls({ result, preferences, onChange, kind }: PanelProps & { readonly kind: "menu" | "switch" | "check" }) {
   if (preferences.destination === "print") {
     const papers = [["A4", "A4 landscape"], ["LETTER", "US Letter landscape"]] as const;
-    const hint = <p className="export-x-hint">One location per page. Employee rows continue onto additional pages with repeated headers.</p>;
+    const hint = <p className="export-x-hint">{result.status === "ready" && result.snapshot.layout === "unified"
+      ? "All locations in one table. Employee rows continue onto additional pages with repeated headers."
+      : "One location per page. Employee rows continue onto additional pages with repeated headers."}</p>;
     if (kind === "menu") return <>
       <div className="export-x-menu" role="radiogroup" aria-label="Paper">
         {papers.map(([paper, text]) => <button key={paper} type="button" role="radio" aria-checked={preferences.paper === paper} onClick={() => onChange({ ...preferences, paper })}>

@@ -47,14 +47,14 @@ export function ExportSettingsPanel({ result, preferences, onChange, onReset, on
             <input type="radio" name="export-v2-destination" checked={preferences.destination === destination}
               onChange={() => onChange({ ...preferences, destination })} />{destination === "download" ? "Download" : "Print"}
           </label>)}
-        </fieldset> : <p>One workbook: Merged, each location, and Veri. Only the day header row is frozen.</p>}
+        </fieldset> : <p>One workbook: Merged, each location, and Data. Only the day header row is frozen.</p>}
         {preferences.format !== "xlsx" ? <details className="export-v2-details">
           <summary>Page layout</summary>
           {print ? <>
             <label>Paper<select value={preferences.paper} onChange={event => onChange({ ...preferences, paper: event.target.value as "A4" | "LETTER" })}>
               <option value="A4">A4 landscape</option><option value="LETTER">US Letter landscape</option>
             </select></label>
-            <p>One location per page. Employee rows continue onto additional pages with repeated headers. Merged locations print separately.</p>
+            <p>{result.status === "ready" && result.snapshot.layout === "unified" ? "All locations in one table." : "One location per page."} Employee rows continue onto additional pages with repeated headers.</p>
           </> : <>
             {result.status !== "ready" || result.snapshot.layout === "separate" ? <label className="export-v2-checkbox">
               <input type="checkbox" checked={preferences.combineHorizontally} onChange={event => onChange({ ...preferences, combineHorizontally: event.target.checked })} />
