@@ -1,5 +1,5 @@
 # TEST-001 Test ve kod kaymasını kapat, vitest env izolasyonu
-Status: draft (F0; RESCUE-001 merge'ünden sonra)
+Status: active
 Session: -   Branch: task/test-001   Worktree: newfork-wt/test-001   DB: yok
 Öneri: Sonnet 5, medium. Çoğu test-kod kayması; ürün kararı gerektirenler koordinatöre sorulur.
 
