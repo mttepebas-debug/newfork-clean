@@ -29,7 +29,12 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
   const onInlineTarget = useCallback((target: HTMLElement | null) => setInlineTarget(target), []);
   const previewing = Boolean(previewTarget || inlineTarget);
   const [downloads, setDownloads] = useState<{ snapshot: ScheduleExportSnapshot; files: readonly ExportDownload[] } | null>(null);
+  // Last completed preview. It stays on screen while a newer render is in flight.
   const [preview, setPreview] = useState<{ key: string; files: readonly ExportDownload[]; error: string | null } | null>(null);
+  const previewRef = useRef(preview);
+  const rendering = useRef(false);
+  const rerender = useRef(false);
+  const [renderTick, setRenderTick] = useState(0);
   const inputKey = useMemo(() => JSON.stringify({ result, preferences }), [result, preferences]);
   const release = (files: readonly ExportDownload[]) => {
     for (const file of files) { URL.revokeObjectURL(file.url); urls.current.delete(file.url); }
@@ -57,24 +62,33 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
   }, [previewTarget]);
   useEffect(() => {
     if (!previewing) return;
-    const request = new AbortController(); requests.current.add(request);
-    let files: readonly ExportDownload[] = [];
+    const publish = (next: { key: string; files: readonly ExportDownload[]; error: string | null }) => {
+      if (previewRef.current) release(previewRef.current.files);
+      previewRef.current = next; setPreview(next);
+    };
     const timer = window.setTimeout(() => {
-      if (result.status !== "ready") { setPreview({ key: inputKey, files: [], error: sourceError ?? null }); return; }
+      if (result.status !== "ready") { publish({ key: inputKey, files: [], error: sourceError ?? null }); return; }
+      // pdfmake cannot be cancelled: one render at a time, then once more with the latest input if it changed meanwhile.
+      if (rendering.current) { rerender.current = true; return; }
+      rendering.current = true;
+      const request = new AbortController(); requests.current.add(request);
       const snapshot = result.snapshot, scope = exportAuthorizationScope(snapshot);
       void (async () => {
         await authorizeScheduleExportV2(workspaceId, scope, request.signal);
         const rendered = await renderExportFiles(snapshot, preferences);
         await authorizeScheduleExportV2(workspaceId, scope, request.signal);
         if (!alive.current || request.signal.aborted) return;
-        files = withUrls(rendered); setPreview({ key: inputKey, files, error: null });
+        publish({ key: inputKey, files: withUrls(rendered), error: null });
       })().catch((failure: unknown) => {
         if (!alive.current || request.signal.aborted) return;
-        setPreview({ key: inputKey, files: [], error: failure instanceof Error ? failure.message : "Could not prepare the preview" });
-      }).finally(() => requests.current.delete(request));
-    }, 250);
-    return () => { window.clearTimeout(timer); request.abort(); requests.current.delete(request); release(files); };
-  }, [inputKey, preferences, previewing, result, sourceError, workspaceId]);
+        publish({ key: inputKey, files: [], error: failure instanceof Error ? failure.message : "Could not prepare the preview" });
+      }).finally(() => {
+        requests.current.delete(request); rendering.current = false;
+        if (rerender.current && alive.current) { rerender.current = false; setRenderTick(tick => tick + 1); }
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [inputKey, preferences, previewing, renderTick, result, sourceError, workspaceId]);
 
   const changePreferences = (value: ExportPreferences) => {
     setPreferences(value); setError(null);
@@ -88,7 +102,7 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
     if (!child) { setError("Your browser blocked the preview tab. Allow pop-ups for this app, then try again. Direct download remains available."); return; }
     child.opener = null; child.document.title = "Schedule export preview";
     const root = child.document.createElement("main"); child.document.body.replaceChildren(root);
-    previewWindow.current = child; setPreview(null); setPreviewTarget(root); setError(null);
+    previewWindow.current = child; setPreviewTarget(root); setError(null);
   };
   const runDownload = async () => {
     if (busyRef.current || result.status !== "ready") return;
@@ -121,7 +135,8 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
       if (alive.current && !request.signal.aborted) setError(failure instanceof Error ? failure.message : "Export access could not be verified");
     } finally { requests.current.delete(request); }
   };
-  const currentPreview = preview?.key === inputKey ? preview : null;
+  const currentPreview = preview;
+  const previewLoading = result.status === "ready" && preview?.key !== inputKey;
   const panelProps = {
     result, preferences, onChange: changePreferences, onReset: () => changePreferences({ ...defaultExportPreferences }), onClose, onPreview: openPreview,
     onExport: () => preferences.destination === "print" && preferences.format !== "xlsx" ? openPreview() : void runDownload(),
@@ -132,7 +147,7 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
   };
   const previewProps = {
     snapshot: result.status === "ready" ? result.snapshot : null, preferences, files: currentPreview?.files ?? [],
-    loading: !currentPreview && result.status === "ready", error: currentPreview?.error ?? sourceError ?? null, onDownload: () => void runDownload(),
+    loading: previewLoading, error: currentPreview?.error ?? sourceError ?? null, onDownload: () => void runDownload(),
   };
   return <>
     {variant ? <ExportVariantPanel {...panelProps} variant={variant} onInlineTarget={onInlineTarget}
