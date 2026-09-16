@@ -36,7 +36,10 @@ const cid = "98080000-0000-4000-8000-000000000001";
 const sid = "98020000-0000-4000-8000-000000000001";
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
-    context: { workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" } },
+    context: {
+      userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
+      workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" },
+    },
   }),
 }));
 const notification = (): NotificationRecord => ({
