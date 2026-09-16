@@ -18,6 +18,7 @@ import {
   applyScheduleAutoFill,
   createScheduleExportSchedule,
   createScheduleShift,
+  createScheduleShifts,
   deleteScheduleExportSchedule,
   deleteScheduleShift,
   discardScheduleEditSession,
@@ -311,6 +312,12 @@ function resetScheduleApiMocks() {
     makeDefaultEditAcquireResult(),
   );
   vi.mocked(createScheduleShift).mockReset();
+  vi.mocked(createScheduleShifts).mockReset();
+  vi.mocked(createScheduleShifts).mockResolvedValue({
+    ...makeDefaultEditAcquireResult().session,
+    revision: 2,
+    dirty: true,
+  });
   vi.mocked(updateScheduleShift).mockReset();
   vi.mocked(deleteScheduleShift).mockReset();
   vi.mocked(restoreScheduleShift).mockReset();
@@ -538,6 +545,8 @@ vi.mock("./schedule/schedule-data", () => ({
     }),
   ),
   createScheduleShift: vi.fn(),
+  createScheduleShifts: vi.fn(),
+  bulkDeleteShifts: vi.fn(),
   updateScheduleShift: vi.fn(),
   deleteScheduleShift: vi.fn(),
   restoreScheduleShift: vi.fn(),
@@ -2730,15 +2739,16 @@ describe("App", () => {
     expect(
       await screen.findByRole("dialog", { name: "Shift conflict" }),
     ).toBeTruthy();
-    expect(screen.getAllByText(/Employee already has Dinner/)).toHaveLength(2);
+    expect(screen.getAllByText(/Alex Rivera already has Dinner/)).toHaveLength(2);
+    // Informational conflict sheets keep only the reason visible.
     expect(
-      screen.getAllByText(
+      screen.queryByText(
         "This paste was not applied. Review the reason before scheduling the shift.",
-      ).length,
-    ).toBeGreaterThanOrEqual(1);
+      ),
+    ).toBeNull();
     expect(screen.getByRole("status", { name: "Paste status" })).toHaveProperty(
       "textContent",
-      "Employee already has Dinner. Requested: Dinner / Server at Main Dining.",
+      "Alex Rivera already has Dinner 16:00-22:30 at Main Dining on 2026-08-17. Requested: Dinner / Server at Main Dining.",
     );
     expect(screen.queryByRole("dialog", { name: "Paste shift" })).toBeNull();
     expect(createMock).not.toHaveBeenCalledWith(
@@ -2753,19 +2763,16 @@ describe("App", () => {
     );
     expect(unassignedPasteCell).toBeTruthy();
     fireEvent.click(unassignedPasteCell!, { clientX: 88, clientY: 96 });
-    expect(
-      await screen.findByRole("dialog", { name: "Shift conflict" }),
-    ).toBeTruthy();
-    expect(
-      screen.getAllByText("Employee could not be found.").length,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getAllByText(
-        "This paste was not applied. Review the reason before scheduling the shift.",
-      ).length,
-    ).toBeGreaterThanOrEqual(1);
+    // An open shift has no employee assignment to conflict with.
+    await waitFor(() => expect(createScheduleShifts).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(createScheduleShifts).mock.calls[0]?.[2]).toEqual([
+      expect.objectContaining({
+        employee_id: null,
+        scheduled_date: scheduleFixture.week_start,
+      }),
+    ]);
+    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
     expect(createMock).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
     fireEvent.pointerDown(document.body);
     expect(
