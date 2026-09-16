@@ -16,7 +16,7 @@ Durum her task'ın kendi dosyasındadır (`tasks/`). Bu dosya yalnızca sıra ve
 | 3 | BL-038 Schedule Templates | 6 ürün kararı verilir; create/apply/persistence/yetki UAT yapılır |
 | 4 | BL-048 Add Department crash | Hata tekrar üretilir ve düzeltilir, ya da tekrar üretilemediği kaydedilir |
 | 5 | BL-041/040/056/057 Requests, Line Up, Employee Hub | Employee release/cover/swap → manager kararı → yayınlı Schedule ve Line Up etkisi çalışır |
-| 6 | BL-044/045/046 Notifications + belge email'i | Producer, inbox, tercih ve gerçek email teslimatı çalışır (önce BL-027 anahtar yenileme) |
+| 6 | BL-044/045/046 + ANN-001 Announcements, Notifications, belge email'i | Producer, inbox, tercih ve gerçek email teslimatı çalışır (önce BL-027 anahtar yenileme) |
 | 7 | OBS-002 Availability → Schedule | Employee save → manager copy/save → Schedule/preflight akışı ve otomatik bildirim çalışır |
 | 8 | BL-055 date/time tüketimi, OBS-001 invite/access, BL-053 | Global tarih/saat tercihi her yerde uygulanır; invite mutasyonları kabul edilir; Acknowledgements kararı verilir |
 | 9 | BL-042/043/047/054/034 admin/public polish | Drawer, Important Dates, General/Location, Support ve landing tamamlanır |
