@@ -41,6 +41,7 @@ describe("tab workspace context", () => {
 
   afterEach(() => {
     window.sessionStorage.clear();
+    window.localStorage.removeItem(developmentIdentityRoleStorageKey);
     vi.restoreAllMocks();
   });
 

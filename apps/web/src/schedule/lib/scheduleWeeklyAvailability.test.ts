@@ -38,7 +38,7 @@ describe("weekly Schedule advisory projection", () => {
   it("keeps approved leave a hard blocker even when a preference also overlaps", () => {
     const withLeave = { ...employee, weekly_availability: [{ ...projection, leave_intervals: projection.unavailable_intervals }] };
     expect(weeklyTargetAvailability(withLeave, input)).toBe("time_off");
-    const model = { employees: [withLeave], locations: [], jobs: [], shift_types: [], closures: [] } as unknown as ScheduleReadModel;
+    const model = { settings: { time_format: "12h" }, employees: [withLeave], locations: [{ id: loc, name: "West" }], jobs: [{ id: job, name: "Server" }], shift_types: [], closures: [] } as unknown as ScheduleReadModel;
     expect(evaluateScheduleShiftConflicts(model, [], input)).toEqual([expect.objectContaining({ type: "time_off" })]);
     expect(evaluateScheduleShiftConflicts({ ...model, employees: [employee] }, [], input)).toEqual([expect.objectContaining({ type: "availability", rule_kind: "weekly" })]);
   });

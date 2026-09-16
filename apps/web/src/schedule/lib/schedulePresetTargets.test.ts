@@ -9,6 +9,7 @@ import {
 } from "./schedulePresetTargets";
 
 const model = {
+  settings: { time_format: "12h" },
   locations: [{ id: "loc-1", name: "Main Dining" }],
   employees: [
     {
@@ -61,7 +62,7 @@ describe("schedulePresetTargets", () => {
     ).toBe("Dinner-Server / Open shift / Main Dining / 2026-08-17");
   });
 
-  it("blocks preset creation on all-day closures", () => {
+  it("warns before preset creation on all-day closures", () => {
     const closedModel = {
       ...model,
       closures: [
@@ -76,12 +77,12 @@ describe("schedulePresetTargets", () => {
     } as unknown as ScheduleReadModel;
 
     expect(validatePresetCreateTarget(closedModel, target, true)).toEqual({
-      allowed: false,
-      reason: "Location is closed all day.",
+      allowed: true,
+      warning: "Location is closed all day. Requested: Dinner / Server at Main Dining.",
     });
   });
 
-  it("blocks preset creation on partial closure for the shift type", () => {
+  it("warns before preset creation on partial closure for the shift type", () => {
     const closedModel = {
       ...model,
       closures: [
@@ -96,8 +97,8 @@ describe("schedulePresetTargets", () => {
     } as unknown as ScheduleReadModel;
 
     expect(validatePresetCreateTarget(closedModel, target, true)).toEqual({
-      allowed: false,
-      reason: "Location is closed for this shift type.",
+      allowed: true,
+      warning: "Location is closed for Dinner. Requested: Dinner / Server at Main Dining.",
     });
   });
 
@@ -117,7 +118,7 @@ describe("schedulePresetTargets", () => {
       ),
     ).toEqual({
       allowed: false,
-      reason: "Default start and end time cannot be the same.",
+      reason: "Start and end time cannot be the same.",
     });
   });
 
@@ -147,7 +148,7 @@ describe("schedulePresetTargets", () => {
       ),
     ).toEqual({
       allowed: false,
-      reason: "Employee is not assigned to this job",
+      reason: "Alex Rivera is not assigned to Server. Requested: Dinner / Server at Main Dining.",
     });
 
     expect(
@@ -174,7 +175,7 @@ describe("schedulePresetTargets", () => {
       ),
     ).toEqual({
       allowed: false,
-      reason: "Employee is not eligible for this shift type",
+      reason: "Alex Rivera is not eligible for this shift type. Requested: Dinner / Server at Main Dining.",
     });
   });
 
@@ -198,7 +199,7 @@ describe("schedulePresetTargets", () => {
         id: "type-2",
         label: "Lunch-Server",
         color: "#22c55e",
-        disabledReason: "Default start and end time cannot be the same.",
+        disabledReason: "Start and end time cannot be the same.",
       },
     ]);
   });
