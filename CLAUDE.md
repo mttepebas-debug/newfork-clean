@@ -2,6 +2,25 @@
 
 Genel kurallar (task başlangıcı, git/worktree, test zamanı, token) `~/.claude/CLAUDE.md` içindedir. Burada yalnızca bu projeye özel kurallar var.
 
+## Koordinasyon modeli
+- **Koordinatör (ana session):** `5a70083f-c90b-43f5-b947-cdde13ffd0c1`, checkout `newfork-clean` (main).
+  - Planlama, `docs/plan/` kayıtları, task dağıtımı, review, main'e merge, push ve worktree temizliği bu session'dadır.
+  - Aktif kod yazmaz.
+- **Worker session:** koordinatörün verdiği tek task'ı kendi worktree/branch'inde yapar.
+  - `docs/plan/` altına yazmaz, main'e merge etmez.
+  - İş bitince branch'i push eder ve SendMessage ile koordinatöre rapor verir.
+  - Kapsam dışı bir bulgu çıkarsa uygulamaz, rapora ekler.
+  - Karar gerekirse durur; soruyu kullanıcıya ya da koordinatöre iletir.
+- **Worker rapor formatı:**
+  ```
+  ID / branch / son commit
+  Ne değişti (dosya grupları)
+  Doğrulama (komut → sonuç)
+  Done kriterleri: karşılandı / eksik
+  Açık risk, kapsam dışı bulgu, gereken karar
+  ```
+- **Task verme:** koordinatör kullanıcıyla kapsamda uzlaşır, task dosyasını yazıp commit'ler, ardından worker prompt'unu hazırlar. Prompt'ta task dosyası yolu, worktree ve branch adı, önerilen model/effort ve rapor talebi bulunur.
+
 ## Session başı (ucuz tur)
 ```bash
 git worktree list
