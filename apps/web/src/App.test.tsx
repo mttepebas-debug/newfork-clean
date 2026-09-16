@@ -4617,7 +4617,7 @@ describe("App", () => {
     );
 
     expect(
-      await screen.findByText("Published 1 locations · 0 changes"),
+      await screen.findByText("1 locations and 0 changes published."),
     ).toBeTruthy();
     await waitFor(() => expect(window.location.search).not.toContain("draft="));
   }, 15_000);
@@ -4717,7 +4717,7 @@ describe("App", () => {
       ),
     );
     expect(
-      await screen.findByText("Unpublished 1 locations · 0 worked shifts kept"),
+      await screen.findByText("1 locations unpublished. 0 worked shifts kept."),
     ).toBeTruthy();
     await waitFor(() =>
       expect(window.location.search).toContain(`draft=${draft.id}`),
@@ -5322,7 +5322,9 @@ describe("App", () => {
       expect(
         await screen.findByRole("heading", { name: "Workspaces" }),
       ).toBeTruthy();
-      expect(await screen.findByText("Active workspace")).toBeTruthy();
+      expect(
+        await screen.findByLabelText("Meyhouse is the current workspace"),
+      ).toBeTruthy();
     },
     15000,
   );
