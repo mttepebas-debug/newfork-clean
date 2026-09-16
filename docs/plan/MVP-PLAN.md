@@ -34,6 +34,8 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | OPS-014 | Notification outbox dakikalık tetikleme: Supabase pg_cron (Vercel Hobby) | OPS-010 sonrası |
 | OPS-011 | Minimal CI: push'ta typecheck ve unit testler (GitHub Actions) | küçük |
 | OPS-012 | Production hijyeni: `/dev/*` ve lab route'ları, Kiosk ve Time Entries gizlenir; SSN env temizlenir | küçük, kod silmeden önce sorulur |
+| THEME-001 | Dark temayı emekliye ayır (yalnızca light) | TEST-001 ve EXP-001 sonrası |
+| THEME-002 | Light token seti, z-index ve kontrast sıkılaştırması | THEME-001 sonrası |
 | OPS-013 | Hata izleme: Sentry (ücretsiz) + Vercel logları | OPS-010 sonrası |
 
 ### F1 — Çekirdek akışların kapanışı (manager + employee)
@@ -88,6 +90,7 @@ Native mobil uygulama, BL-067 saat limitleri, Kiosk, Time Tracking, payroll, com
 - Hosted: eski Supabase hesabı referans olarak kalır. Kullanıcı yeni Supabase hesabını bağlayacak ve OPS-010 o hesapta yeni proje ile yapılacak.
 - Push: MVP'de web push (PWA). Native uygulama MVP sonrası.
 - Compliance, payroll, time tracking, break ve bunlarla ilişkili her şey (BL-067 saat limitleri dahil) MVP sonrası.
+- Tema: yalnızca light; dark emekli (THEME-001/002). Mobilde Schedule Export yok.
 - Fazlar sırayla ilerler: F0 → F6. Bir faz içindeki task'lar paralel çalışabilir.
 
 ## Açık kararlar

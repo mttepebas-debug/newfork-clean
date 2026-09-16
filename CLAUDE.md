@@ -45,11 +45,13 @@ Ardından yalnızca [ROADMAP](docs/plan/ROADMAP.md) "Sıradaki" bölümünü ve 
 - `origin/wip/rescue-2026-09-16`: RESCUE-001 ile main'e alındı (d19542d); yalnızca uzak yedek olarak duruyor, F0 sonunda silinecek. Üzerine iş yazılmaz.
 
 ## UI mockup kuralı
-- Mockup'lar her zaman gerçek uygulama üzerinde hazırlanır: gerçek sayfa, menü, bileşen ve davranışlar; etkileşimli; light/dark geçişli; implementasyon sonunda çıkacak ürünün birebir aynısı. Soyut widget ya da ASCII taslak mockup sayılmaz.
+- Mockup'lar her zaman gerçek uygulama üzerinde hazırlanır: gerçek sayfa, menü, bileşen ve davranışlar; etkileşimli; yalnızca light tema (dark emekli, THEME-001); uygulamanın mevcut tasarım dili; implementasyon sonunda çıkacak ürünün birebir aynısı. Soyut widget ya da ASCII taslak mockup sayılmaz.
 - Yöntem: varyantlar gerçek bileşen olarak yazılır, yalnızca DEV'de query param ile seçilir (`import.meta.env.DEV`). Worker kendi worktree'sinde ayrı bir web portunda çalıştırır (5557+). Seçilen varyant implementasyon olur, diğerleri silinir.
 
 ## Proje sabitleri
 - Windows: `pnpm.cmd`. Paket filtresi `@newfork/web|api|shared|ui`. Örnek: `pnpm.cmd --filter @newfork/web exec vitest run <dosya>`, `pnpm.cmd --filter @newfork/web typecheck`.
 - DB testleri: `pnpm.cmd test:db` (pgTAP). Local DB seed ile birebir aynı değil, bkz. memory `local-db-test-fixture-drift`.
+- Tema: yalnızca light. Dark tema emekli (THEME-001); yeni kodda dark kuralı yazılmaz. Renkler `--theme-*` light token'larından gelir (THEME-002).
+- Mobil: Schedule Export mobilde yok (karar).
 - Kapsam dışı (MVP sonrası): Kiosk, Time Tracking/clock-in, break, payroll, geniş compliance, Time Entries menüsü, SSN toplama.
 - Eski Codex belgeleri (AGENTS.md, docs/project) kaldırıldı; `docs/rebuild/` tarihsel referanstır ve oradaki PASS kayıtları bugünkü kanıt değildir.
