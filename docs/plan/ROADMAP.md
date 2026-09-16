@@ -2,13 +2,16 @@
 
 **MVP sonucu:** Employer organizasyonu kurar, çalışanları davet eder, Schedule yayınlar ve günlük personel değişikliklerini yönetir. Employee doğru workspace'e katılır, onboarding'i tamamlar, yayınlanmış programı görür, talep gönderir ve kararı görür. Ücretli plan (Stripe) ile satılabilir.
 
-Durum her task'ın kendi dosyasındadır (`tasks/`). Bu dosya yalnızca sıra ve hedef değişince güncellenir.
+Faz planı ve gerekçe: [MVP-PLAN](MVP-PLAN.md). Durum her task'ın kendi dosyasındadır (`tasks/`). Bu dosya yalnızca sıra ve hedef değişince güncellenir.
 
-## Sıradaki
-1. **RESCUE-001:** rescue branch'teki WIP'i dilimlere ayırıp main'e taşımak (kayıp riski en yüksek iş).
-2. **UI-DOC-001:** Documents publication runtime kapanışı (RESCUE-001'in Documents dilimi ile birlikte yürür).
+## Sıradaki (Faz F0 → F1)
+1. **RESCUE-001** (çalışıyor): WIP'i main'e almak.
+2. **F0:** OPS-010 hosted (yeni Supabase hesabı bağlanınca), OPS-011 CI, OPS-012 production hijyeni, OPS-013 hata izleme.
+3. **F1 ilk grup:** UI-DOC-001, BL-038, BL-048, REQ-AUDIT.
 
-## Sıra
+Fazlar sırayla ilerler: F0 → F6 ([MVP-PLAN](MVP-PLAN.md)). Bir faz içindeki task'lar paralel çalışabilir.
+
+## Önceki 13 adımlık sıra (referans; güncel sıra MVP-PLAN fazlarıdır)
 | # | Task | Bitiş özeti |
 |---|---|---|
 | 1 | RESCUE-001 WIP → main | Rescue'daki her dilim ya main'e alınır ya da backlog'a düşer; rescue branch silinir |
@@ -23,13 +26,13 @@ Durum her task'ın kendi dosyasındadır (`tasks/`). Bu dosya yalnızca sıra ve
 | 8 | BL-055 date/time tüketimi, OBS-001 invite/access, BL-053 | Global tarih/saat tercihi her yerde uygulanır; invite mutasyonları kabul edilir; Acknowledgements kararı verilir |
 | 9 | BL-042/043/047/054/034 admin/public polish | Drawer, Important Dates, General/Location, Support ve landing tamamlanır |
 | 10 | BL-059 Billing/Stripe | Plan/limit, 14 gün trial, ücretli plana geçiş; tekrar trial yok (workspace = ayrı abonelik) |
-| 11 | BL-067 Schedule saat limitleri | Gün/hafta limiti, overnight/DST, warn/confirm/block, publish recap |
+| 11 | (MVP sonrası) BL-067 Schedule saat limitleri | - |
 | 12 | BL-058 Beş tenant E2E | Invite'tan publish'e, taleplerden rol değişikliğine uçtan uca akış; fixture ve cleanup dahil |
 | 13 | Release | Seed/SQL replay, hedef ortamda migration, provider/cron, deploy (yetkili) |
 
 Backlog maddeleri sırayı bozmaz. İlgili task içinde doğal olarak gerekiyorsa ya da kullanıcı "araya al" derse alınır.
 
 ## Kapsam kararları
-- MVP sonrası: Kiosk, Time Tracking, clock-in/out, break, payroll, geniş compliance, Time Entries menüsü, default-hours review butonu.
+- MVP sonrası: BL-067 saat limitleri, Kiosk, Time Tracking, clock-in/out, break, payroll, geniş compliance, Time Entries menüsü, default-hours review butonu.
 - Kapsam dışı: SSN toplama.
 - Billing domain: bir workspace ayrı bir company ve ayrı bir abonelik demektir. Aynı company'nin şubeleri aynı workspace içinde location olarak tutulur. Daha önce trial kullanmış bir owner yeni workspace açınca tekrar trial alamaz.
