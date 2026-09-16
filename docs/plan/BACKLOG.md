@@ -58,3 +58,4 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - ScheduleExportSchedules.test.tsx makine TZ'sine bağlı; testte TZ'yi mock'la (CI şu an TZ pin'liyor).
 - Kullanıcı dizinindeki `C:/Users/TheWe/node_modules` (ör. @types/node 25.5) repo bağımlılıklarını maskeleyebilir; kaldırılması değerlendirilsin.
 - CI test adımı ~7dk (concurrency=1); ileride concurrency=2 denensin.
+- Hosted advisor: `public.read_role_workspace(uuid)` SECURITY DEFINER ve authenticated RPC ile çağrılabiliyor; kasıtlı mı kontrol et (güvenlik).
