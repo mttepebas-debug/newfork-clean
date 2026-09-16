@@ -170,7 +170,9 @@ export function AuthProvider({
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [context, setContext] = useState<ActiveWorkspaceContext | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(supabaseClient === null);
+  const [ready, setReady] = useState(
+    supabaseClient === null && storedDevelopmentRole() === null,
+  );
   const [error, setError] = useState<string | null>(null);
   const contextFingerprintRef = useRef("none");
   const resolvedUserIdRef = useRef<string | null>(null);
@@ -285,7 +287,11 @@ export function AuthProvider({
   );
 
   useEffect(() => {
-    if (!supabaseClient) return;
+    if (!supabaseClient) {
+      const role = storedDevelopmentRole();
+      if (role) applyDevelopmentIdentity(role);
+      return;
+    }
 
     let active = true;
     void supabaseClient.auth
