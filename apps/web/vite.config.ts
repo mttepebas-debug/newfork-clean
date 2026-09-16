@@ -1,7 +1,9 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // Tests must not read developer .env files.
+  envDir: mode === "test" ? false : undefined,
   plugins: [react()],
   build: {
     rollupOptions: {
@@ -21,4 +23,4 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
   },
-});
+}));
