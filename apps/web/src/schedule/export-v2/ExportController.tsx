@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authorizeScheduleExportV2 } from "../schedule-data";
 import { ExportSettingsPanel } from "./ExportSettingsPanel";
 import { ExportPreview } from "./ExportPreview";
+import { ExportVariantPanel, readExportVariant } from "./ExportVariantPanel";
 import { downloadExportFile, exportAuthorizationScope, renderExportFiles, type ExportDownload } from "./files";
 import { defaultExportPreferences, exportPreferencesKey, loadExportPreferences, saveExportPreferences, type ExportPreferences } from "./preferences";
 import type { ScheduleExportSnapshot, SnapshotResult } from "./snapshot";
@@ -23,6 +24,10 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
   const urls = useRef(new Set<string>());
   const previewWindow = useRef<Window | null>(null);
   const [previewTarget, setPreviewTarget] = useState<HTMLElement | null>(null);
+  const [variant] = useState(readExportVariant);
+  const [inlineTarget, setInlineTarget] = useState<HTMLElement | null>(null);
+  const onInlineTarget = useCallback((target: HTMLElement | null) => setInlineTarget(target), []);
+  const previewing = Boolean(previewTarget || inlineTarget);
   const [downloads, setDownloads] = useState<{ snapshot: ScheduleExportSnapshot; files: readonly ExportDownload[] } | null>(null);
   const [preview, setPreview] = useState<{ key: string; files: readonly ExportDownload[]; error: string | null } | null>(null);
   const inputKey = useMemo(() => JSON.stringify({ result, preferences }), [result, preferences]);
@@ -51,7 +56,7 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
     return () => window.clearInterval(timer);
   }, [previewTarget]);
   useEffect(() => {
-    if (!previewTarget) return;
+    if (!previewing) return;
     const request = new AbortController(); requests.current.add(request);
     let files: readonly ExportDownload[] = [];
     const timer = window.setTimeout(() => {
@@ -69,7 +74,7 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
       }).finally(() => requests.current.delete(request));
     }, 250);
     return () => { window.clearTimeout(timer); request.abort(); requests.current.delete(request); release(files); };
-  }, [inputKey, preferences, previewTarget, result, sourceError, workspaceId]);
+  }, [inputKey, preferences, previewing, result, sourceError, workspaceId]);
 
   const changePreferences = (value: ExportPreferences) => {
     setPreferences(value); setError(null);
@@ -117,16 +122,22 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
     } finally { requests.current.delete(request); }
   };
   const currentPreview = preview?.key === inputKey ? preview : null;
+  const panelProps = {
+    result, preferences, onChange: changePreferences, onReset: () => changePreferences({ ...defaultExportPreferences }), onClose, onPreview: openPreview,
+    onExport: () => preferences.destination === "print" && preferences.format !== "xlsx" ? openPreview() : void runDownload(),
+    busy, error: sourceError ?? error, canManageLocations,
+    footer: downloads ? <div className="export-v2-downloads"><p>Last generated files{downloads.files.length > 1 ? ". If your browser blocks multiple downloads, save each file below." : ""}</p>
+      {downloads.files.map(file => <button type="button" key={file.url} onClick={() => void downloadAgain(file)}>{file.name}</button>)}
+    </div> : null,
+  };
+  const previewProps = {
+    snapshot: result.status === "ready" ? result.snapshot : null, preferences, files: currentPreview?.files ?? [],
+    loading: !currentPreview && result.status === "ready", error: currentPreview?.error ?? sourceError ?? null, onDownload: () => void runDownload(),
+  };
   return <>
-    <ExportSettingsPanel result={result} preferences={preferences} onChange={changePreferences}
-      onReset={() => changePreferences({ ...defaultExportPreferences })} onClose={onClose} onPreview={openPreview}
-      onExport={() => preferences.destination === "print" && preferences.format !== "xlsx" ? openPreview() : void runDownload()}
-      busy={busy} error={sourceError ?? error} canManageLocations={canManageLocations}
-      footer={downloads ? <div className="export-v2-downloads"><p>Last generated files{downloads.files.length > 1 ? ". If your browser blocks multiple downloads, save each file below." : ""}</p>
-        {downloads.files.map(file => <button type="button" key={file.url} onClick={() => void downloadAgain(file)}>{file.name}</button>)}
-      </div> : null} />
-    {previewTarget ? <ExportPreview target={previewTarget} snapshot={result.status === "ready" ? result.snapshot : null}
-      preferences={preferences} files={currentPreview?.files ?? []} loading={!currentPreview && result.status === "ready"}
-      error={currentPreview?.error ?? sourceError ?? null} onDownload={() => void runDownload()} /> : null}
+    {variant ? <ExportVariantPanel {...panelProps} variant={variant} onInlineTarget={onInlineTarget}
+      inline={{ files: previewProps.files, loading: previewProps.loading }} /> : <ExportSettingsPanel {...panelProps} />}
+    {inlineTarget ? <ExportPreview target={inlineTarget} {...previewProps} /> : null}
+    {previewTarget ? <ExportPreview target={previewTarget} {...previewProps} /> : null}
   </>;
 }
