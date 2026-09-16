@@ -37,15 +37,6 @@
   --filter-accent: #376554;
   --filter-selected: #edf4ef;
 }
-:root[data-theme="dark"] .schedule-topbar-filter {
-  --filter-surface: #202724;
-  --filter-text: #e3eae5;
-  --filter-muted: #a1afa7;
-  --filter-border: #3c4942;
-  --filter-soft: #29332d;
-  --filter-accent: #98c4b0;
-  --filter-selected: #32473b;
-}
 /* Specificity keeps this component independent of legacy global menu rules. */
 :root .schedule-topbar-filter[data-filter-id] .schedule-topbar-filter-menu {
   top: calc(100% + 7px);

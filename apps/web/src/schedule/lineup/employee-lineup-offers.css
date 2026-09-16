@@ -113,11 +113,3 @@
   border-left: 3px solid #b17b27;
   padding-left: 12px;
 }
-[data-theme="dark"] .lu-staffing-offers {
-  --offer-surface: #1d2b25;
-  --offer-ink: #edf3ed;
-  --offer-muted: #b6c8ba;
-  --offer-border: #405348;
-  --offer-accent: #8dc4a5;
-  --offer-tint: #2c4437;
-}

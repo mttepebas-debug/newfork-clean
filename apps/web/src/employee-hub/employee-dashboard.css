@@ -1224,33 +1224,6 @@
     padding: 7px 0 0;
   }
 }
-:root[data-theme="dark"]
-  :is(.eh-dashboard, .eh-more, .eh-mobile-nav, .eh-sheet) {
-  --eh-ink: #e0e9df;
-  --eh-muted: #a0b0a3;
-  --eh-line: #334039;
-  --eh-paper: #202a24;
-  --eh-wash: #263229;
-  --eh-green: #b3d0a9;
-}
-:root[data-theme="dark"]
-  :is(
-    .eh-workspace-mark,
-    .eh-avatar,
-    .eh-shortcut-icon,
-    .eh-week a.is-today,
-    .eh-mobile-nav a.active,
-    .eh-team-avatar
-  ) {
-  background: #324232;
-  color: #c8dfbc;
-}
-:root[data-theme="dark"] .eh-shortcuts > a:hover {
-  background: #2c3b2e;
-}
-:root[data-theme="dark"] .eh-hero {
-  background: #264b38;
-}
 @media (prefers-reduced-motion: reduce) {
   .eh-dashboard * {
     transition: none !important;

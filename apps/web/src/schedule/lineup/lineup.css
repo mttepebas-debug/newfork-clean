@@ -1504,14 +1504,6 @@
     animation: none !important;
   }
 }
-[data-theme="dark"] .lu-workspace,
-[data-theme="dark"] .lu-dialog {
-  --lu-ink: #e4ece2;
-  --lu-muted: #a2aea0;
-  --lu-border: #364236;
-  --lu-surface: #212b23;
-  --lu-bg: #18211b;
-}
 .dark .lu-workspace {
   --lu-ink: #e4ece2;
   --lu-muted: #a2aea0;
@@ -1812,65 +1804,6 @@
   --lu-ink: #22352d;
   --lu-muted: #59685d;
   --lu-border: #e1e6e0;
-}
-[data-theme="dark"] .lu-employee {
-  --lu-surface: #212b23;
-  --lu-ink: #e4ece2;
-  --lu-muted: #b8c8b5;
-  --lu-border: #364236;
-  color: var(--lu-ink);
-}
-[data-theme="dark"]
-  :is(
-    .lu-sharing-card,
-    .lu-editor-context,
-    .lu-impact,
-    .lu-note-pinned,
-    .lu-open,
-    .lu-section-unassigned,
-    .lu-employee-plan
-  ) {
-  background: #24342b;
-  color: #e4ece2;
-  border-color: #3d4e3f;
-}
-[data-theme="dark"]
-  :is(
-    .lu-note p,
-    .lu-note > div,
-    .lu-note small,
-    .lu-sharing-card p,
-    .lu-brief-empty h3,
-    .lu-brief-empty p,
-    .lu-sharing-card button,
-    .lu-section-setup,
-    .lu-candidate:disabled strong
-  ) {
-  color: #b8c8b5;
-}
-[data-theme="dark"]
-  :is(.lu-section-setup button, .lu-now, .lu-dialog .lu-candidate:disabled) {
-  background: #26372c;
-  color: #c8dcc7;
-  border-color: #3d4e3f;
-}
-[data-theme="dark"] .lu-dialog :is(input, select, textarea) {
-  background: #1b2921;
-  color: #e4ece2;
-  border-color: #3d4e3f;
-}
-[data-theme="dark"]
-  :is(
-    .lu-service-tabs button[aria-pressed="true"],
-    .lu-view-switch,
-    .lu-section-rows .lu-avatar
-  ) {
-  background: #344735;
-  color: #d6e7cf;
-}
-[data-theme="dark"] .lu-view-switch button[aria-pressed="true"] {
-  background: #25382b;
-  color: #e4ece2;
 }
 /* Export is a fixed paper surface, independent of the app theme. */
 .lineup-visual-preview {

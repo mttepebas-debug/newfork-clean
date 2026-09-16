@@ -574,13 +574,3 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-:root[data-theme="dark"] .requests-catalog-page .sx-root,
-:root[data-theme="dark"] .requests-catalog-page.sx-root {
-  --sx-bg: var(--job-bg);
-  --sx-card: var(--job-bg);
-  --sx-ink: var(--job-text);
-  --sx-muted: var(--job-muted);
-  --sx-border: var(--job-border);
-  --sx-green: var(--job-accent);
-  --sx-tint: var(--job-soft);
-}

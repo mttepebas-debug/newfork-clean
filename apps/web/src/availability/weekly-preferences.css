@@ -122,16 +122,6 @@
   color: var(--wp-text);
   min-width: 0;
 }
-:root[data-theme="dark"] :is(.employee-weekly-workspace, .weekly-unavailable, .weekly-preferences-panel) {
-  --wp-border: #3b4b42;
-  --wp-text: #e0ebe5;
-  --wp-muted: #a1b2a7;
-  --wp-bg: #232e29;
-  --wp-soft: #28352f;
-  --wp-red: #ffaaa4;
-  --wp-red-bg: #432e30;
-  --wp-accent: #9acfb7;
-}
 .weekly-unavailable button {
   font: inherit;
   cursor: pointer;

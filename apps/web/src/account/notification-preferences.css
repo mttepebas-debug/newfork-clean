@@ -198,24 +198,3 @@
     font-size: 11px;
   }
 }
-
-:root[data-theme="dark"] .notification-preference-group {
-  background: #222b28;
-}
-
-:root[data-theme="dark"] .notification-preference-details,
-:root[data-theme="dark"] .notification-preference-card {
-  border-color: #3c4944;
-}
-
-:root[data-theme="dark"] .notification-matrix-header,
-:root[data-theme="dark"] .notification-preference-group-heading p,
-:root[data-theme="dark"] .notification-preference-card-heading p,
-:root[data-theme="dark"] .notification-preference-details > h3,
-:root[data-theme="dark"] .notification-disclosure {
-  color: #a9b6b1;
-}
-
-:root[data-theme="dark"] .notification-disclosure:hover {
-  background: #303b37;
-}

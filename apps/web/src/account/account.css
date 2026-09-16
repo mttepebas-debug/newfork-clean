@@ -632,41 +632,6 @@
     align-items: flex-start;
   }
 }
-
-:root[data-theme="dark"] .account-shell,
-:root[data-theme="dark"] .account-sidebar {
-  background: #141a18;
-  color: #e7eeeb;
-}
-
-:root[data-theme="dark"] .account-identity {
-  background: #222b28;
-  border-color: #3c4944;
-}
-
-:root[data-theme="dark"] .account-field {
-  color: #e7eeeb;
-}
-
-:root[data-theme="dark"] .account-main,
-:root[data-theme="dark"] .account-section-block,
-:root[data-theme="dark"] .account-theme-choice,
-:root[data-theme="dark"] .account-field input,
-:root[data-theme="dark"] .account-field select,
-:root[data-theme="dark"] .account-main .notification-preference-card,
-:root[data-theme="dark"] .account-main .workspace-list,
-:root[data-theme="dark"] .account-main .create-workspace-form {
-  border-color: #3c4944;
-  background: #222b28;
-  color: #e7eeeb;
-}
-
-:root[data-theme="dark"] .account-section-copy p,
-:root[data-theme="dark"] .account-field small,
-:root[data-theme="dark"] .account-page-header > div > p:last-child,
-:root[data-theme="dark"] .account-overview-header p {
-  color: #a9b6b1;
-}
 .account-crop-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
 .account-crop-preview { width: min(100%, 280px); aspect-ratio: 1; overflow: hidden; position: relative; margin: 16px auto; background: #edf1ee; border-radius: 8px; }
 .account-crop-preview img { position: absolute; height: auto; }
@@ -750,14 +715,4 @@
   .account-main .workspace-row-actions { flex-wrap: nowrap; }
   .workspace-actions-popover { max-width: calc(100vw - 48px); }
 }
-:root[data-theme="dark"] .account-create-workspace-dialog { background: #1e2b25; color: #edf3ef; border-color: #46574e; }
-:root[data-theme="dark"] .workspace-actions-trigger,
-:root[data-theme="dark"] .workspace-actions-popover { background: #222b28; border-color: #46574e; color: #e7eeeb; }
-:root[data-theme="dark"] .workspace-actions-popover button { color: #e7eeeb; }
-:root[data-theme="dark"] .workspace-actions-trigger:hover,
-:root[data-theme="dark"] .workspace-actions-trigger:focus-visible,
-:root[data-theme="dark"] .workspace-actions-trigger[aria-expanded="true"],
-:root[data-theme="dark"] .workspace-actions-popover button:hover,
-:root[data-theme="dark"] .workspace-actions-popover button:focus-visible { background: #2c3834; }
-:root[data-theme="dark"] .workspace-actions-popover .workspace-actions-danger { color: #ffaaa2; }
 .account-create-workspace-form label { width: 100%; }

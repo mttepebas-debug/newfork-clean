@@ -8,16 +8,6 @@
   --wt-red: #ad3042;
   --wt-red-bg: #fff3f4;
 }
-:root[data-theme="dark"] .weekly-team-page {
-  --wt-line: #3b4b42;
-  --wt-surface: #232e29;
-  --wt-soft: #28352f;
-  --wt-text: #e0ebe5;
-  --wt-muted: #a1b2a7;
-  --wt-accent: #9acfb7;
-  --wt-red: #ffaaa4;
-  --wt-red-bg: #432e30;
-}
 .weekly-team-toolbar:not(.catalog-toolbar) {
   display: grid;
   align-items: start;

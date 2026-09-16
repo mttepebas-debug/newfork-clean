@@ -15,10 +15,3 @@
   border-top: 1px solid #e1e7e3;
   border-radius: 0 0 8px 8px;
 }
-:root[data-theme="dark"] .employee-schedule-board {
-  border-color: var(--theme-divider);
-  background: transparent;
-}
-:root[data-theme="dark"] .employee-schedule-board .schedule-grid-scroll {
-  border-top-color: var(--theme-divider);
-}
