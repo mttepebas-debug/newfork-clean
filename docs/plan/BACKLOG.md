@@ -48,3 +48,4 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 ## Yeni bulgular (2026-09-16, RESCUE-001)
 - README.md eski içerik taşıyor (payroll/kiosk fazları); rescue'da silinmişti, geri tutuldu. Güncel komutlarla yeniden yaz (OPS-012 ile birlikte).
 - Schedule topbar dar pane'de (~936px) iki satıra sarıyor; taşma yok, polish (F5).
+- Schedule topbar filtre çipleri Settings dropdown'ının üstünde render ediliyor (z-index); F5 polish.
