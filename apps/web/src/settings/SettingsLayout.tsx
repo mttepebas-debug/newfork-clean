@@ -15,6 +15,7 @@ import {
 import { NavLink, Navigate, Outlet, useLocation } from "react-router";
 import type { Permission } from "@newfork/shared";
 import { useAuth } from "../auth/AuthContext";
+import { postMvpSurfaces } from "../lib/post-mvp";
 import { settingsEntryPermissions } from "../auth/PermissionRoute";
 
 const groups = [
@@ -97,23 +98,27 @@ const groups = [
       },
     ],
   },
-  {
-    label: "Time clock",
-    items: [
-      {
-        to: "/app/settings/kiosk",
-        label: "Kiosk",
-        icon: MonitorSmartphone,
-        permissions: [
-          "kiosk.device.enroll.location",
-          "kiosk.device.read.location",
-          "kiosk.device.revoke.location",
-          "kiosk.pin.reset.location",
-          "kiosk.audit.read.location",
-        ],
-      },
-    ],
-  },
+  ...(postMvpSurfaces
+    ? ([
+        {
+          label: "Time clock",
+          items: [
+            {
+              to: "/app/settings/kiosk",
+              label: "Kiosk",
+              icon: MonitorSmartphone,
+              permissions: [
+                "kiosk.device.enroll.location",
+                "kiosk.device.read.location",
+                "kiosk.device.revoke.location",
+                "kiosk.pin.reset.location",
+                "kiosk.audit.read.location",
+              ],
+            },
+          ],
+        },
+      ] as const)
+    : []),
   {
     label: "Help",
     items: [

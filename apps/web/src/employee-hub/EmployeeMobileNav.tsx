@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { postMvpSurfaces } from "../lib/post-mvp";
 import { CurrentUserAvatar } from "../account/AccountAvatar";
 import "./employee-dashboard.css";
 
@@ -59,7 +60,8 @@ export function EmployeeMorePage() {
       detail: "Breaks, clock out and corrections",
       to: "/app/employee-hub/time-tracking",
       icon: Clock3,
-      enabled: context?.permissions.includes("time.read.own"),
+      enabled:
+        postMvpSurfaces && context?.permissions.includes("time.read.own"),
     },
     {
       label: "My availability",

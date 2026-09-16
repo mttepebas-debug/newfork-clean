@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { Navigate, useLocation, useNavigate } from "react-router";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { AvailabilityDraftScope, requestAvailabilityNavigation, timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { loadWeeklyPreferences } from "../availability/availability-data";
@@ -34,6 +34,7 @@ import { EmployeeMorePage } from "../employee-hub/EmployeeMobileNav";
 import { EarlierShiftRequests } from "../employee-hub/shift-exchanges/EarlierShiftRequests";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { CatalogPageHeader } from "./CatalogPageHeader";
+import { postMvpSurfaces } from "../lib/post-mvp";
 
 // Navigation between these pages lives in the app sidebar. This map supplies
 // the shared catalog header copy, written for the employee reading it.
@@ -113,6 +114,8 @@ export function EmployeeHubPage() {
     });
     return () => cancelAnimationFrame(frame);
   }, [location.key, location.hash, hasHubData]);
+  if (!postMvpSurfaces && path === "time-tracking")
+    return <Navigate to="/app/employee-hub" replace />;
   if (independentPage)
     return (
       <section

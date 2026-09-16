@@ -219,6 +219,8 @@ const scheduleBoard = {
 } satisfies ScheduleReadModel;
 
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
+// Time Tracking is post-MVP; these tests cover the surface with the flag on.
+vi.mock("../lib/post-mvp", () => ({ postMvpSurfaces: true }));
 vi.mock("../communications/communications-data", () => ({
   getAnnouncements: vi.fn(),
   getNotifications: vi.fn(),

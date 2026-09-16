@@ -36,6 +36,7 @@ import {
 
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { CatalogPageHeader } from "./CatalogPageHeader";
+import { postMvpSurfaces } from "../lib/post-mvp";
 
 const widgetLabels: Record<WorkspaceWidgetId, string> = {
   operations: "Today",
@@ -243,12 +244,16 @@ const ownerSetupChecklistItems: readonly ChecklistItem[] = [
     to: "/app/employees",
     required: false,
   },
-  {
-    id: "kiosk",
-    label: "Kiosk",
-    to: "/app/settings/kiosk",
-    required: false,
-  },
+  ...(postMvpSurfaces
+    ? [
+        {
+          id: "kiosk" as const,
+          label: "Kiosk",
+          to: "/app/settings/kiosk",
+          required: false,
+        },
+      ]
+    : []),
   {
     id: "documents",
     label: "Documents",

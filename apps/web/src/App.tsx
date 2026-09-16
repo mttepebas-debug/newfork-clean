@@ -14,6 +14,7 @@ import { AppShell } from "./shell/AppShell";
 import { DocumentNotificationRedirect } from "./documents/DocumentNotificationRedirect";
 import { DocumentAccessRoute } from "./documents/DocumentAccessRoute";
 import { SignInPage } from "./views/SignInPage";
+import { postMvpSurfaces } from "./lib/post-mvp";
 import "./styles.css";
 import "./dark-theme.css";
 
@@ -188,7 +189,9 @@ export function App() {
                   />
                 </>
               ) : null}
-              <Route path="/kiosk" element={<KioskPage />} />
+              {postMvpSurfaces ? (
+                <Route path="/kiosk" element={<KioskPage />} />
+              ) : null}
               <Route path="/accept-invite" element={<AcceptInvitationPage />} />
               <Route path="/invite/accept" element={<AcceptInvitationPage />} />
               <Route
@@ -383,17 +386,19 @@ export function App() {
                     />
                   </>
                 ) : null}
-                <Route
-                  path="time-entries"
-                  element={
-                    <PermissionRoute
-                      anyOf={["time.read.location"]}
-                      roles={["owner", "admin", "manager"]}
-                    >
-                      <TimeEntriesPage />
-                    </PermissionRoute>
-                  }
-                />
+                {postMvpSurfaces ? (
+                  <Route
+                    path="time-entries"
+                    element={
+                      <PermissionRoute
+                        anyOf={["time.read.location"]}
+                        roles={["owner", "admin", "manager"]}
+                      >
+                        <TimeEntriesPage />
+                      </PermissionRoute>
+                    }
+                  />
+                ) : null}
                 <Route
                   path="schedule/lineup"
                   element={
@@ -602,22 +607,24 @@ export function App() {
                       </PermissionRoute>
                     }
                   />
-                  <Route
-                    path="kiosk"
-                    element={
-                      <PermissionRoute
-                        anyOf={[
-                          "kiosk.device.enroll.location",
-                          "kiosk.device.read.location",
-                          "kiosk.device.revoke.location",
-                          "kiosk.pin.reset.location",
-                          "kiosk.audit.read.location",
-                        ]}
-                      >
-                        <KioskSettingsPage />
-                      </PermissionRoute>
-                    }
-                  />
+                  {postMvpSurfaces ? (
+                    <Route
+                      path="kiosk"
+                      element={
+                        <PermissionRoute
+                          anyOf={[
+                            "kiosk.device.enroll.location",
+                            "kiosk.device.read.location",
+                            "kiosk.device.revoke.location",
+                            "kiosk.pin.reset.location",
+                            "kiosk.audit.read.location",
+                          ]}
+                        >
+                          <KioskSettingsPage />
+                        </PermissionRoute>
+                      }
+                    />
+                  ) : null}
                   <Route
                     path="support"
                     element={

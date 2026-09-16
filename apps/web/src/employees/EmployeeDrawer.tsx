@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { postMvpSurfaces } from "../lib/post-mvp";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import {
   getEmployeeDetail,
@@ -2420,25 +2421,27 @@ function AccessSection({
         />
       </section>
 
-      <section className="employee-access-group">
-        <header>
-          <div>
-            <h3>Kiosk</h3>
-            <p>
-              Reset the employee PIN used to clock in or out from shared kiosk
-              devices.
-            </p>
+      {postMvpSurfaces ? (
+        <section className="employee-access-group">
+          <header>
+            <div>
+              <h3>Kiosk</h3>
+              <p>
+                Reset the employee PIN used to clock in or out from shared kiosk
+                devices.
+              </p>
+            </div>
+            <KeyRound size={18} aria-hidden />
+          </header>
+          <div className="employee-access-empty">
+            <strong>Kiosk access is not configured</strong>
+            <Button className="secondary-button" type="button" disabled>
+              <RotateCcw size={15} aria-hidden />
+              Reset PIN
+            </Button>
           </div>
-          <KeyRound size={18} aria-hidden />
-        </header>
-        <div className="employee-access-empty">
-          <strong>Kiosk access is not configured</strong>
-          <Button className="secondary-button" type="button" disabled>
-            <RotateCcw size={15} aria-hidden />
-            Reset PIN
-          </Button>
-        </div>
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }

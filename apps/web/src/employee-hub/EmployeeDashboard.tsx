@@ -23,6 +23,7 @@ import {
   formatTimeRange,
 } from "../schedule/lib/scheduleDateTime";
 import { getEmployeeTimeTracking } from "./employee-hub-data";
+import { postMvpSurfaces } from "../lib/post-mvp";
 import {
   dateInZone,
   greeting,
@@ -91,7 +92,9 @@ export function EmployeeDashboard({
     )
     .sort((a, b) => shiftInstant(a, model) - shiftInstant(b, model));
   const selected = model.shifts.find((item) => item.id === search.get("shift"));
-  const canTime = context?.permissions.includes("time.read.own") ?? false;
+  const canTime =
+    postMvpSurfaces &&
+    (context?.permissions.includes("time.read.own") ?? false);
   const time = useQuery({
     queryKey: ["employee-time-tracking", model.workspace_id, context?.userId],
     queryFn: () => getEmployeeTimeTracking(model.workspace_id),

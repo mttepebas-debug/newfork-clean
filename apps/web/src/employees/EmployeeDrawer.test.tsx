@@ -761,11 +761,8 @@ describe("EmployeeDrawer", () => {
       "disabled",
       true,
     );
-    expect(
-      screen.getByText(
-        "Reset the employee PIN used to clock in or out from shared kiosk devices.",
-      ),
-    ).toBeTruthy();
+    // Kiosk section is post-MVP and hidden while postMvpSurfaces is false.
+    expect(screen.queryByText("Reset PIN")).toBeNull();
   });
 
   it("removes the workspace profile photo when one exists", async () => {
