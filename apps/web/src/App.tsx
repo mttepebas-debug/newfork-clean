@@ -16,7 +16,6 @@ import { DocumentAccessRoute } from "./documents/DocumentAccessRoute";
 import { SignInPage } from "./views/SignInPage";
 import { postMvpSurfaces } from "./lib/post-mvp";
 import "./styles.css";
-import "./dark-theme.css";
 
 const AccountLayout = lazy(() => import("./account/AccountLayout"));
 const AccountRecoveryPage = lazy(() => import("./account/AccountRecoveryPage"));

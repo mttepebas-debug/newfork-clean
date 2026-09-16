@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { AccountProfile } from "@newfork/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PreferencesPage from "./PreferencesPage";
@@ -14,25 +14,9 @@ vi.mock("../auth/AuthContext", () => ({
   }),
 }));
 
+const dateFormat = () => screen.getByLabelText(/Date format/) as HTMLSelectElement;
+
 describe("PreferencesPage", () => {
-  it("previews live, retains on Stay, and rolls back on Discard navigation", () => {
-    account = { ...account!, theme: "light" };
-    const view = render(<PreferencesPage />);
-    fireEvent.click(screen.getByRole("radio", { name: /dark/i }));
-    expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(updateAccount).not.toHaveBeenCalled();
-    const navigate = vi.fn();
-    act(() => requestAvailabilityNavigation(navigate));
-    fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
-    expect(navigate).not.toHaveBeenCalled();
-    expect(document.documentElement.dataset.theme).toBe("dark");
-    act(() => requestAvailabilityNavigation(navigate));
-    fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
-    expect(document.documentElement.dataset.theme).toBe("light");
-    expect(navigate).toHaveBeenCalledOnce();
-    view.unmount();
-    expect(document.documentElement.dataset.theme).toBe("light");
-  });
   beforeEach(() => {
     vi.clearAllMocks();
     account = {
@@ -42,34 +26,57 @@ describe("PreferencesPage", () => {
       phone: null,
       avatarObjectPath: null,
       avatarUrl: null,
-      theme: "system",
+      theme: "dark",
       timeFormat: "system",
       dateFormat: "system",
     };
   });
 
-  it("syncs clean preference state when the account refreshes", () => {
-    const view = render(<PreferencesPage />);
-
-    account = { ...account!, theme: "dark" };
-    view.rerender(<PreferencesPage />);
-
-    expect(
-      (screen.getByRole("radio", { name: /dark/i }) as HTMLInputElement)
-        .checked,
-    ).toBe(true);
+  it("offers no appearance choice", () => {
+    render(<PreferencesPage />);
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.queryByText("Appearance")).toBeNull();
   });
 
-  it("does not overwrite an unsaved theme choice during account refresh", () => {
+  it("retains changes on Stay and restores them on Discard navigation", () => {
+    render(<PreferencesPage />);
+    fireEvent.change(dateFormat(), { target: { value: "YYYY-MM-DD" } });
+    const navigate = vi.fn();
+    act(() => requestAvailabilityNavigation(navigate));
+    fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
+    expect(navigate).not.toHaveBeenCalled();
+    expect(dateFormat().value).toBe("YYYY-MM-DD");
+    act(() => requestAvailabilityNavigation(navigate));
+    fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
+    expect(dateFormat().value).toBe("system");
+    expect(navigate).toHaveBeenCalledOnce();
+    expect(updateAccount).not.toHaveBeenCalled();
+  });
+
+  it("keeps the stored theme value when saving formats", async () => {
+    render(<PreferencesPage />);
+    fireEvent.change(dateFormat(), { target: { value: "YYYY-MM-DD" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save preferences" }));
+    await waitFor(() =>
+      expect(updateAccount).toHaveBeenCalledWith("Owner User", "dark", null, {
+        timeFormat: "system",
+        dateFormat: "YYYY-MM-DD",
+      }),
+    );
+  });
+
+  it("syncs clean preference state when the account refreshes", () => {
     const view = render(<PreferencesPage />);
-
-    fireEvent.click(screen.getByRole("radio", { name: /light/i }));
-    account = { ...account!, theme: "dark" };
+    account = { ...account!, dateFormat: "DD-MM-YYYY" };
     view.rerender(<PreferencesPage />);
+    expect(dateFormat().value).toBe("DD-MM-YYYY");
+  });
 
-    expect(
-      (screen.getByRole("radio", { name: /light/i }) as HTMLInputElement)
-        .checked,
-    ).toBe(true);
+  it("does not overwrite an unsaved choice during account refresh", () => {
+    const view = render(<PreferencesPage />);
+    fireEvent.change(dateFormat(), { target: { value: "YYYY-MM-DD" } });
+    account = { ...account!, dateFormat: "DD-MM-YYYY" };
+    view.rerender(<PreferencesPage />);
+    expect(dateFormat().value).toBe("YYYY-MM-DD");
   });
 });

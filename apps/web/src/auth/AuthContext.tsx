@@ -21,7 +21,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  applyThemePreference,
   clearTabWorkspaceId,
   developmentBearerToken,
   developmentIdentityRoleStorageKey,
@@ -372,10 +371,6 @@ export function AuthProvider({
       );
     };
   }, [refresh]);
-
-  useEffect(() => {
-    if (account) applyThemePreference(account.theme, true);
-  }, [account?.theme]);
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<boolean> => {

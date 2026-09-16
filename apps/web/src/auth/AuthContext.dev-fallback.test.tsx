@@ -5,7 +5,6 @@ import { AuthProvider, useAuth } from "./AuthContext";
 const flags = vi.hoisted(() => ({ developmentIdentityAllowed: true }));
 
 vi.mock("../lib/supabase", () => ({
-  applyThemePreference: vi.fn(),
   clearTabWorkspaceId: vi.fn(),
   developmentBearerToken: vi.fn(() => null),
   get developmentIdentityAllowed() {

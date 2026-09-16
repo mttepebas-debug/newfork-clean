@@ -1,44 +1,29 @@
 import type {
   PersonalDateFormat,
   PersonalTimeFormat,
-  ThemePreference,
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
-import { Monitor, Moon, Sun } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { AccountPageHeader } from "./components";
 import { useAvailabilityNavigationGuard } from "../availability/availability-navigation";
-import { applyThemePreference } from "../lib/supabase";
-
-const themes = [
-  { value: "light", label: "Light", description: "Always use light", icon: Sun },
-  { value: "dark", label: "Dark", description: "Always use dark", icon: Moon },
-  { value: "system", label: "System", description: "Match this device", icon: Monitor },
-] as const;
 
 export default function PreferencesPage() {
   const { account, updateAccount } = useAuth();
-  const [theme, setTheme] = useState<ThemePreference>(account?.theme ?? "system");
   const [timeFormat, setTimeFormat] = useState<PersonalTimeFormat>(account?.timeFormat ?? "system");
   const [dateFormat, setDateFormat] = useState<PersonalDateFormat>(account?.dateFormat ?? "system");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
-  const savedTheme = useRef(account?.theme ?? "system");
-  useEffect(() => { savedTheme.current = account?.theme ?? "system"; }, [account?.theme]);
-  useEffect(() => { applyThemePreference(theme); }, [theme]);
-  useEffect(() => () => applyThemePreference(savedTheme.current), []);
   const navigationDialog = useAvailabilityNavigationGuard({
-    dirty, busy: saving, onDiscard: () => { applyThemePreference(savedTheme.current); discard(); },
+    dirty, busy: saving, onDiscard: () => discard(),
     labels: { saving: "Saving preferences", discard: "Discard preference changes?", saved: "Preferences saved",
-      unsaved: "Your unsaved preferences will be lost and your saved appearance restored." },
+      unsaved: "Your unsaved preferences will be lost." },
   });
 
   useEffect(() => {
     if (!account || dirty) return;
-    setTheme(account.theme);
     setTimeFormat(account.timeFormat);
     setDateFormat(account.dateFormat);
   }, [account, dirty]);
@@ -51,8 +36,8 @@ export default function PreferencesPage() {
     setSaved(false);
     setError(null);
     try {
-      await updateAccount(account.displayName, theme, account.phone, { timeFormat, dateFormat });
-      savedTheme.current = theme;
+      // The app is light-only; keep the stored theme value unchanged.
+      await updateAccount(account.displayName, account.theme, account.phone, { timeFormat, dateFormat });
       setDirty(false);
       setSaved(true);
     } catch (saveError: unknown) {
@@ -63,8 +48,6 @@ export default function PreferencesPage() {
   };
 
   const discard = () => {
-    applyThemePreference(account.theme);
-    setTheme(account.theme);
     setTimeFormat(account.timeFormat);
     setDateFormat(account.dateFormat);
     setDirty(false);
@@ -78,40 +61,9 @@ export default function PreferencesPage() {
       <AccountPageHeader
         title="Preferences"
         titleId="preferences-title"
-        description="Choose how Newfork looks and formats information for this account."
+        description="Choose how Newfork formats information for this account."
       />
       <form onSubmit={submit}>
-        <section className="account-section-block">
-          <div className="account-section-copy">
-            <h2>Appearance</h2>
-            <p>Preview your preferred theme before saving.</p>
-          </div>
-          <fieldset className="account-section-body account-theme-choices">
-            <legend className="visually-hidden">Appearance</legend>
-            {themes.map((option) => {
-              const Icon = option.icon;
-              return (
-                <label key={option.value} className={`account-theme-choice${theme === option.value ? " selected" : ""}`}>
-                  <input
-                    type="radio"
-                    name="theme"
-                    value={option.value}
-                    checked={theme === option.value}
-                    onChange={() => {
-                      setTheme(option.value);
-                      setDirty(true);
-                      setSaved(false);
-                    }}
-                  />
-                  <span className={`account-theme-preview ${option.value}`} aria-hidden><Icon size={17} /></span>
-                  <strong>{option.label}</strong>
-                  <small>{option.description}</small>
-                </label>
-              );
-            })}
-          </fieldset>
-        </section>
-
         <section className="account-section-block">
           <div className="account-section-copy">
             <h2>Regional format</h2>

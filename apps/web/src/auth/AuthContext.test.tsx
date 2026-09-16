@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "./AuthContext";
 
 const supabaseMock = vi.hoisted(() => ({
-  applyThemePreference: vi.fn(),
   clearTabWorkspaceId: vi.fn(),
   developmentBearerToken: vi.fn(() => "development-owner-token"),
   getSession: vi.fn(async () => ({ data: { session: null }, error: null })),
@@ -22,7 +21,6 @@ const supabaseMock = vi.hoisted(() => ({
 vi.mock("../lib/supabase", () => ({
   accountProfileSchema: undefined,
   activeWorkspaceContextSchema: undefined,
-  applyThemePreference: supabaseMock.applyThemePreference,
   clearTabWorkspaceId: supabaseMock.clearTabWorkspaceId,
   developmentBearerToken: supabaseMock.developmentBearerToken,
   developmentIdentityAllowed: true,
@@ -89,7 +87,6 @@ describe("AuthProvider development identity", () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.localStorage.setItem("newfork.development.workspaceRole", "owner");
-    supabaseMock.applyThemePreference.mockClear();
     supabaseMock.clearTabWorkspaceId.mockClear();
     supabaseMock.developmentBearerToken.mockClear();
     supabaseMock.getSession.mockReset();
@@ -156,9 +153,6 @@ describe("AuthProvider development identity", () => {
       ).toBeTruthy(),
     );
     expect(screen.queryByLabelText("Loading workspace")).toBeNull();
-    expect(supabaseMock.applyThemePreference).not.toHaveBeenLastCalledWith(
-      "system",
-    );
   });
 
   it("refreshes development context from the tab-local workspace without a real session", async () => {
