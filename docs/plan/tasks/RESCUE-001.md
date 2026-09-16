@@ -15,7 +15,10 @@ In scope:
   - EmployeeScheduleBoard + Employee Hub menüsü (My Team dosyaları silinmiş; kanıtı yok)
 - Kabul edilmiş dilimler: typecheck ve hedefli test çalıştırılıp main'e merge edilir.
 
-Out of scope: yeni özellik, redesign, kabul edilmemiş dilimleri "bitti" saymak.
+Out of scope:
+- Yeni özellik ve redesign.
+- Kabul edilmemiş dilimleri "bitti" saymak.
+- Rescue içindeki `AGENTS.md` ve `docs/project/*` dosyalarını main'e geri almak (bunlar arşivlendi).
 
 Done when:
 - Her dilim ya main'e alınmış ya da bir task dosyasına veya backlog'a bağlanmış.
