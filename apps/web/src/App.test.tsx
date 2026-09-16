@@ -4296,7 +4296,7 @@ describe("App", () => {
     expect(screen.getByText("2 open shifts")).toBeTruthy();
   });
 
-  it("reviews soft publication findings and submits audited overrides", async () => {
+  it("reviews soft publication findings and submits recorded confirmations", async () => {
     const draft = {
       id: "99999999-9999-4999-8999-999999999999",
       workspace_id: scheduleFixture.workspace_id,
@@ -4422,25 +4422,11 @@ describe("App", () => {
         "Every override is recorded with the published audit trail.",
       ).length,
     ).toBeGreaterThan(0);
-    expect(
-      await screen.findByText("Blockers — override with a reason"),
-    ).toBeTruthy();
+    expect(await screen.findByText("Warnings to review")).toBeTruthy();
     expect(screen.getByText("2026-08-17 · Main Dining")).toBeTruthy();
-    const blockedOverrideButton = screen.getByRole("button", {
-      name: "Override and continue",
-    });
-    expect(blockedOverrideButton).toHaveProperty("disabled", true);
-    fireEvent.change(screen.getByRole("textbox", { name: "Reason" }), {
-      target: { value: "short" },
-    });
-    expect(screen.getByText("At least 10 characters.")).toBeTruthy();
-    fireEvent.change(screen.getByRole("textbox", { name: "Reason" }), {
-      target: { value: "Approved for a private service." },
-    });
-    await waitFor(() =>
-      expect(blockedOverrideButton).toHaveProperty("disabled", false),
-    );
-    fireEvent.click(blockedOverrideButton);
+    // Soft findings are confirmed from the recap without a reason form.
+    expect(screen.queryByRole("textbox", { name: "Reason" })).toBeNull();
+    await clickReadyButton(screen, "Next");
     await waitFor(() =>
       expect(
         container.querySelector(
@@ -4472,7 +4458,7 @@ describe("App", () => {
         [
           {
             finding_id: "closed-location-finding",
-            reason: "Approved for a private service.",
+            reason: "Schedule conflict confirmed by manager.",
           },
         ],
         affectedEmployeeIds,
@@ -4481,7 +4467,7 @@ describe("App", () => {
           decisions: [
             {
               finding_id: "closed-location-finding",
-              reason: "Approved for a private service.",
+              reason: "Schedule conflict confirmed by manager.",
             },
           ],
         },
@@ -4489,7 +4475,7 @@ describe("App", () => {
       ),
     );
     expect(
-      await screen.findByText("Published 1 locations · 1 changes"),
+      await screen.findByText("Schedule published"),
     ).toBeTruthy();
     expect(
       screen.getByText(
@@ -4740,7 +4726,7 @@ describe("App", () => {
     );
   }, 15_000);
 
-  it("requires acknowledgement before publishing schedule risks", async () => {
+  it("records confirmation when publishing schedule risks", async () => {
     const draft = {
       id: "99999999-9999-4999-8999-999999999998",
       workspace_id: scheduleFixture.workspace_id,
@@ -4827,17 +4813,9 @@ describe("App", () => {
     expect(
       screen.getByText("Confirm the employee can still cover the shift."),
     ).toBeTruthy();
-    const continueButton = screen.getByRole("button", {
-      name: "Override and continue",
-    });
-    expect(continueButton).toHaveProperty("disabled", true);
-
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: "Publish with this risk." }),
-    );
-
-    expect(continueButton).toHaveProperty("disabled", false);
-    fireEvent.click(continueButton);
+    // Risks are confirmed from the recap; there is no extra checkbox.
+    expect(within(screen.getByRole("dialog")).queryByRole("checkbox")).toBeNull();
+    await clickReadyButton(screen, "Next");
     expect(screen.getByText("1 of 1 employees will be notified")).toBeTruthy();
     const publishButton = screen.getByRole("button", {
       name: "Publish 1 location",
@@ -4849,11 +4827,21 @@ describe("App", () => {
       expect(publishScheduleDraft).toHaveBeenCalledWith(
         scheduleFixture.workspace_id,
         expect.objectContaining({ fingerprint: "b".repeat(64) }),
-        [],
+        [
+          {
+            finding_id: "risk-advance-notice",
+            reason: "Schedule conflict confirmed by manager.",
+          },
+        ],
         [scheduleFixture.employees[0]!.id],
         {
           fingerprint: "b".repeat(64),
-          decisions: [],
+          decisions: [
+            {
+              finding_id: "risk-advance-notice",
+              reason: "Schedule conflict confirmed by manager.",
+            },
+          ],
         },
         {},
       ),
