@@ -44,6 +44,7 @@ import {
   updateScheduleExportSchedule,
   unpublishSchedule,
 } from "./schedule/schedule-data";
+import { loadShiftAvailability } from "./availability/availability-data";
 
 vi.mock("./schedule/export-v2/files", async importOriginal => ({
   ...await importOriginal<typeof import("./schedule/export-v2/files")>(),
@@ -66,6 +67,14 @@ const scheduleFixture = vi.hoisted(() => ({
   week_start_day: "monday",
   settings: {
     time_format: "12h",
+    // Database defaults; the read model always carries conflict rules.
+    conflict_rules: {
+      availability: "confirm",
+      approved_time_off: "block",
+      closed_location: "confirm",
+      minimum_travel: "confirm",
+      minimum_rest: "confirm",
+    },
   },
   locations: [
     {
@@ -238,6 +247,24 @@ function makeDefaultEditAcquireResult() {
 }
 
 function resetScheduleApiMocks() {
+  vi.mocked(loadShiftAvailability).mockReset();
+  vi.mocked(loadShiftAvailability).mockResolvedValue({
+    coverage: "full",
+    operation: "allowed",
+    time_basis: "type_default",
+    timezone: "America/Los_Angeles",
+    assessment_scope: "shift_interval",
+    intervals: [],
+    available_intervals: [],
+    unavailable_intervals: [],
+    unknown_intervals: [],
+    reasons: [],
+    fingerprint: "a".repeat(64),
+    policy_revision: 1,
+    fold_resolution: null,
+    assessment_minutes: 360,
+    can_override: false,
+  });
   vi.mocked(getScheduleReadModel).mockReset();
   vi.mocked(getScheduleReadModel).mockResolvedValue(scheduleFixture);
   vi.mocked(listScheduleDrafts).mockReset();
@@ -402,6 +429,11 @@ function resetScheduleApiMocks() {
   vi.mocked(deleteScheduleExportSchedule).mockReset();
   vi.mocked(deleteScheduleExportSchedule).mockResolvedValue(undefined);
 }
+
+vi.mock("./availability/availability-data", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./availability/availability-data")>()),
+  loadShiftAvailability: vi.fn(),
+}));
 
 vi.mock("./schedule/schedule-data", () => ({
   ScheduleRequestError: class ScheduleRequestError extends Error {
@@ -774,7 +806,7 @@ describe("App", () => {
     expect(screen.getByRole("link", { name: "Employees" })).toBeTruthy();
     const footerLinks = Array.from(
       container.querySelectorAll(".sidebar-footer .nav-item"),
-    ).map((item) => item.textContent);
+    ).map((item) => item.lastElementChild?.textContent);
     expect(footerLinks).toEqual(["Settings", "Account", "Sign out"]);
     fireEvent.click(screen.getByRole("link", { name: "Employees" }));
     expect(
@@ -784,24 +816,24 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "General" }),
     ).toBeTruthy();
-    expect(
+    const settingsNav = within(
       screen.getByRole("navigation", { name: "Organization settings" }),
-    ).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Schedule rules" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Shift types" })).toBeTruthy();
+    );
+    expect(settingsNav.getByRole("link", { name: "Schedule rules" })).toBeTruthy();
+    expect(settingsNav.getByRole("link", { name: "Shift catalog" })).toBeTruthy();
     expect(
-      screen.getByRole("link", { name: "Roles & permissions" }),
+      settingsNav.getByRole("link", { name: "Roles & permissions" }),
     ).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Documents" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Acknowledgements" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Support" })).toBeTruthy();
+    expect(settingsNav.getByRole("link", { name: "Documents" })).toBeTruthy();
+    expect(settingsNav.getByRole("link", { name: "Acknowledgements" })).toBeTruthy();
+    expect(settingsNav.getByRole("link", { name: "Support" })).toBeTruthy();
     fireEvent.click(screen.getByRole("link", { name: "Acknowledgements" }));
     expect(
       await screen.findByRole("heading", { name: "Acknowledgements" }),
     ).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Templates" })).toBeTruthy();
     expect(
-      screen.getByRole("tab", { name: "Retention policies" }),
+      screen.getByRole("tab", { name: "Retention" }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("link", { name: "Roles & permissions" }));
     expect(
@@ -1962,17 +1994,6 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-09-04");
     const { container } = render(<App />);
     const app = within(container);
-    fireEvent.change(
-      await app.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    await act(async () => {
-      fireEvent.click(
-        app.getByRole("button", { name: "Use development identity" }),
-      );
-    });
     await app.findByRole("heading", { name: "Schedule" }, { timeout: 5000 });
 
     const employeeOrder = () =>
@@ -2168,8 +2189,10 @@ describe("App", () => {
       expect(
         container.querySelector("[data-shift-type-preset-drag-preview='true']"),
       ).toBeTruthy();
+      // Allowed, but flagged: the fixture has no weekly availability
+      // evidence for the assigned target.
       expect(presetDropTarget?.getAttribute("data-drop-status")).toBe(
-        "allowed",
+        "warning",
       );
     });
     fireEvent.pointerCancel(window);
