@@ -35,7 +35,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | OPS-011 | Minimal CI (GitHub Actions) | done 6509e38 |
 | OPS-012 | Production hijyeni: Kiosk ve Time Entries gizlendi, SSN env ve README temizlendi | done 8642575 |
 | THEME-001 | Dark temayı emekliye ayır (yalnızca light) | done c0ecf3d |
-| THEME-002 | Light token seti, z-index ve kontrast sıkılaştırması | THEME-001 sonrası |
+| THEME-002 | Light token seti, z-index ve kontrast sıkılaştırması | done 6f677a0 |
 | AUTH-001 | Kayıt sonrası döngü, switcher UI, sign-in prod metni (OPS-010 smoke'unu blokluyor) | başladı |
 | AUTH-002 | Davet guard'ı, Not now, çoklu üyelik onboarding | AUTH-001 sonrası |
 | OPS-013 | Hata izleme: Sentry (ücretsiz) + Vercel logları | OPS-010 sonrası |

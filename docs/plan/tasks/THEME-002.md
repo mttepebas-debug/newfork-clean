@@ -1,5 +1,5 @@
 # THEME-002 Light temayı sıkılaştır: token seti ve tutarlılık
-Status: active
+Status: done
 Session: TEST-001 session (local_24e92640, Opus 5 medium)   Branch: task/theme-002   Worktree: newfork-wt/theme-002   DB: yok
 Öneri: Opus 5, medium. Görsel tutarlılık ve kontrast değerlendirmesi gerekiyor; redesign yok.
 
@@ -54,3 +54,15 @@ Risk: toplu renk değişimi istemeden görünümü kaydırabilir. Değişiklikle
   - Yalnızca birebir hex eşleşmeleri çevrilir.
   - Bilinçli tek değişiklik: documents.css'te tanımsız `--theme-muted/text` bug'ının düzeltilmesi.
   - Audit bulgusu: CSS'te 1250 farklı hex ve 2815 kullanım var.
+- 2026-09-16 main 6f677a0:
+  - 23 `--theme-*` token'ı eklendi; `--schedule-*` bu token'lara alias.
+  - 420 birebir hex, token'a çevrildi.
+  - account-theme-* kuralları silindi.
+  - Topbar panellerine z-index:105 verildi.
+  - Kontrast (b): muted #66716c; 7 seçici token'a bağlandı; 7 sayfada AA ihlali 0.
+- Kanıt: postcss eşdeğerliği; 4031 elemanda hesaplanmış stil farkı 0 (1–4. adımlar); typecheck ve build PASS; 80 test PASS.
+- Kalanlar (backlog):
+  - THEME-003 yakın tonlar.
+  - Sayfa CSS'leri (lineup, account…) henüz token'a geçmedi.
+  - Beyaz metin için token yok (on-accent).
+  - Gerçek Employee Hub, çalışan hesabıyla ölçülmedi.
