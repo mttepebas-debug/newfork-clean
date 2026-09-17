@@ -14,6 +14,7 @@ import {
   saveEmployee,
 } from "../employees/employee-data";
 import {
+  listAccountWorkspaces,
   queueOwnerOnboardingInvitationIntent,
   resetOwnerOnboarding,
   saveOwnerOnboarding,
@@ -38,6 +39,7 @@ const authState = vi.hoisted(() => ({
   },
   context: null as ActiveWorkspaceContext | null,
   refresh: vi.fn(),
+  signOut: vi.fn(),
   updateAccount: vi.fn(),
 }));
 
@@ -50,6 +52,7 @@ vi.mock("../auth/AuthContext", () => ({
     account: authState.account,
     context: authState.context,
     refresh: authState.refresh,
+    signOut: authState.signOut,
     updateAccount: authState.updateAccount,
   }),
 }));
@@ -61,6 +64,7 @@ vi.mock("../employees/employee-data", () => ({
 
 vi.mock("../lib/supabase", () => ({
   apiRequest: vi.fn().mockResolvedValue({ timezone: null, status: "unavailable" }),
+  listAccountWorkspaces: vi.fn(),
   queueOwnerOnboardingInvitationIntent: vi.fn(),
   resetOwnerOnboarding: vi.fn(),
   saveOwnerOnboarding: vi.fn(),
@@ -161,6 +165,7 @@ describe("OwnerOnboardingPage", () => {
     authState.context = null;
     authState.refresh.mockResolvedValue(undefined);
     authState.updateAccount.mockResolvedValue(undefined);
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
     vi.mocked(listLocations).mockResolvedValue([]);
     vi.mocked(listDepartments).mockResolvedValue([]);
     vi.mocked(listJobs).mockResolvedValue([]);
@@ -633,5 +638,31 @@ describe("OwnerOnboardingPage", () => {
       }),
     ).toBeTruthy();
     expect(await screen.findByText("Setup reset")).toBeTruthy();
+  });
+
+  it("lets the owner sign out of setup; one workspace has nowhere to switch to", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      { id: workspaceId, name: "Meyhouse", role: "owner", status: "active", isActive: true, onboarding: { status: "incomplete", currentStep: 1 } },
+    ]);
+    renderPage(1);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(authState.signOut).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(listAccountWorkspaces).toHaveBeenCalled());
+    expect(
+      screen.queryByRole("button", { name: "Switch organization" }),
+    ).toBeNull();
+  });
+
+  it("offers the organization switcher when the account has another workspace", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      { id: workspaceId, name: "Meyhouse", role: "owner", status: "active", isActive: true, onboarding: { status: "incomplete", currentStep: 1 } },
+      { id: "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd", name: "West Room", role: "employee", status: "pending", isActive: false, onboarding: { status: "complete", currentStep: 4 } },
+    ]);
+    renderPage(1);
+
+    expect(
+      await screen.findByRole("button", { name: "Switch organization" }),
+    ).toBeTruthy();
   });
 });

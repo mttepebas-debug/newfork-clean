@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, type InitialEntry, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspacesPage from "./WorkspacesPage";
+import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import {
   cancelWorkspaceClosure,
   cancelWorkspaceOwnershipTransfer,
@@ -122,6 +123,20 @@ vi.mock("../lib/supabase", () => ({
   setTabWorkspaceId: vi.fn(),
 }));
 
+vi.mock("../employees/employee-data", () => ({
+  acceptPendingEmployeeInvitation: vi.fn(),
+  declinePendingEmployeeInvitation: vi.fn(),
+  listPendingEmployeeInvitations: vi.fn(),
+}));
+
+const invitation = {
+  id: "46000000-0000-4000-8000-000000000001",
+  workspaceId: "26000000-0000-4000-8000-000000000001",
+  workspaceName: "Northstar",
+  emailHint: "ne**********@example.test",
+  expiresAt: "2026-10-01T12:00:00.000Z",
+};
+
 function LocationProbe() {
   const location = useLocation();
   return <output aria-label="Current path">{location.pathname}</output>;
@@ -148,6 +163,7 @@ function renderPage(entry: InitialEntry = "/account/workspaces") {
           <Route path="/app/employee-hub" element={<LocationProbe />} />
           <Route path="/onboarding" element={<LocationProbe />} />
           <Route path="/organization-switcher" element={<LocationProbe />} />
+          <Route path="/welcome/:workspaceId" element={<LocationProbe />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -201,6 +217,35 @@ describe("WorkspacesPage", () => {
     expect(await screen.findByRole("dialog", { name: "Create workspace" })).toBeTruthy();
   });
 
+  it("hides create for an invited account that has no organization yet", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
+    renderPage();
+    expect(await screen.findByText("Respond to your invitation to continue.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Create workspace" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Join Northstar" })).toBeTruthy();
+  });
+
+  it("keeps create for an owner who also has an invitation", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
+    renderPage();
+    expect(await screen.findByRole("button", { name: "Join Northstar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create workspace" })).toBeTruthy();
+  });
+
+  it("continues the onboarding of an accepted invitation", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      ownerWorkspace,
+      { ...workspaces[1]!, role: "employee", status: "pending", isActive: false },
+    ]);
+    renderPage();
+    expect(await screen.findByText(/employee · onboarding in progress/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Continue onboarding for West Room" }));
+    expect(screen.getByLabelText("Current path").textContent).toBe(`/welcome/${workspaces[1]!.id}`);
+    expect(selectActiveWorkspace).not.toHaveBeenCalled();
+  });
+
   it("fails closed after a workspace list error", async () => {
     vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(new Error("Unavailable"));
     renderPage();
@@ -243,6 +288,7 @@ describe("WorkspacesPage", () => {
     refreshedContext = context;
     vi.mocked(createOwnerWorkspace).mockResolvedValue(secondWorkspaceId);
     vi.mocked(listAccountWorkspaces).mockResolvedValue(workspaces);
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
     vi.mocked(selectActiveWorkspace).mockResolvedValue(undefined);
     vi.mocked(setDefaultWorkspace).mockResolvedValue(undefined);
     vi.mocked(requestWorkspaceClosure).mockResolvedValue(undefined);

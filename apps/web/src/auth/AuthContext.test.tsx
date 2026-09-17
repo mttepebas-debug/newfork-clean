@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "./AuthContext";
 const supabaseMock = vi.hoisted(() => ({
   clearTabWorkspaceId: vi.fn(),
   developmentBearerToken: vi.fn(() => "development-owner-token"),
+  ensureSessionAlive: vi.fn(async () => true),
   getSession: vi.fn(async () => ({ data: { session: null }, error: null })),
   getTabWorkspaceId: vi.fn(() => null as string | null),
   onAuthStateChange: vi.fn((_callback: (event: string, session: unknown) => void) => ({
@@ -25,6 +26,8 @@ vi.mock("../lib/supabase", () => ({
   developmentBearerToken: supabaseMock.developmentBearerToken,
   developmentIdentityAllowed: true,
   developmentIdentityRoleStorageKey: "newfork.development.workspaceRole",
+  ensureSessionAlive: supabaseMock.ensureSessionAlive,
+  invitationsCheckedStorageKey: "newfork.invitationsChecked",
   getTabWorkspaceId: supabaseMock.getTabWorkspaceId,
   loadAccountProfile: supabaseMock.loadAccountProfile,
   resolveWorkspaceContext: supabaseMock.resolveWorkspaceContext,
@@ -89,6 +92,8 @@ describe("AuthProvider development identity", () => {
     window.localStorage.setItem("newfork.development.workspaceRole", "owner");
     supabaseMock.clearTabWorkspaceId.mockClear();
     supabaseMock.developmentBearerToken.mockClear();
+    supabaseMock.ensureSessionAlive.mockReset();
+    supabaseMock.ensureSessionAlive.mockResolvedValue(true);
     supabaseMock.getSession.mockReset();
     supabaseMock.getSession.mockResolvedValue({
       data: { session: null },
@@ -207,6 +212,40 @@ describe("AuthProvider development identity", () => {
       expect.objectContaining({ email: "new-user@example.test" }),
     );
     expect(supabaseMock.signOut).not.toHaveBeenCalled();
+  });
+
+  it("does not treat a session the server ended as an account without a workspace", async () => {
+    window.localStorage.clear();
+    supabaseMock.getSession.mockResolvedValue({
+      data: {
+        session: {
+          user: {
+            id: "new-user",
+            email: "new-user@example.test",
+            user_metadata: {},
+          },
+        },
+      },
+      error: null,
+    } as never);
+    supabaseMock.resolveWorkspaceContext.mockRejectedValue(
+      new Error("Invalid session or membership"),
+    );
+    // ensureSessionAlive signs out locally and reports the ended session.
+    supabaseMock.ensureSessionAlive.mockResolvedValue(false);
+
+    render(
+      <AuthProvider>
+        <AuthStateProbe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(supabaseMock.ensureSessionAlive).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() => expect(screen.getAllByText("ready")).toHaveLength(2));
+    expect(supabaseMock.loadAccountProfile).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("no-error")).toBeTruthy();
   });
 
   it("clears tenant scoped cache when a real session loses workspace context", async () => {

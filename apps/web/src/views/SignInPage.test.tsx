@@ -169,4 +169,20 @@ describe("SignInPage", () => {
       expect(screen.getByLabelText("Current path").textContent).toBe("/app"),
     );
   });
+
+  it("explains a session the server ended, once", () => {
+    window.sessionStorage.setItem("newfork.sessionExpired", "1");
+    const first = renderPage();
+
+    expect(
+      screen.getByText("Your session ended. Sign in again to continue."),
+    ).toBeTruthy();
+    expect(window.sessionStorage.getItem("newfork.sessionExpired")).toBeNull();
+
+    first.unmount();
+    renderPage();
+    expect(
+      screen.getByText("Sign in with your email and password."),
+    ).toBeTruthy();
+  });
 });

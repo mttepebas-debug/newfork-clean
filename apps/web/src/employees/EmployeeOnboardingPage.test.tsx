@@ -59,6 +59,18 @@ vi.mock("./onboarding-data", () => ({
   acknowledgeMyRequirement: vi.fn(),
 }));
 
+function OnboardingRoute() {
+  return (
+    <Routes>
+      <Route
+        path="/welcome/:workspaceId/*"
+        element={<EmployeeOnboardingPage />}
+      />
+      <Route path="/welcome" element={<p>Welcome redirect</p>} />
+    </Routes>
+  );
+}
+
 const onboarding = {
   case_id: "0e4e60ab-a80c-4f95-a70d-8c01ab3e9a33",
   workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
@@ -171,8 +183,8 @@ describe("EmployeeOnboardingPage", () => {
           })
         }
       >
-        <MemoryRouter initialEntries={["/welcome/availability"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability"]}>
+          <OnboardingRoute />
           <RouteMarker />
         </MemoryRouter>
       </QueryClientProvider>,
@@ -180,7 +192,7 @@ describe("EmployeeOnboardingPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Save" }));
     expect(await screen.findByText("Onboarding refresh offline")).toBeTruthy();
     expect(screen.getByLabelText("Current test route").textContent).toBe(
-      "/welcome/availability",
+      "/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability",
     );
     expect(saveWeeklyPreferences).toHaveBeenCalledOnce();
     expect(authMock.refresh).not.toHaveBeenCalled();
@@ -207,8 +219,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -227,8 +239,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome/availability"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -256,8 +268,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome/availability"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -304,8 +316,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome/availability"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -328,8 +340,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome/availability"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -353,8 +365,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -376,8 +388,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome/profile"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -419,6 +431,7 @@ describe("EmployeeOnboardingPage", () => {
 
     await waitFor(() =>
       expect(saveMyOnboardingProfile).toHaveBeenCalledWith(
+        onboarding.workspace_id,
         expect.objectContaining({ phone: "4155550135" }),
         1,
       ),
@@ -440,8 +453,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome/profile"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -462,9 +475,12 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome"]}>
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd"]}>
           <Routes>
-            <Route path="/welcome/*" element={<EmployeeOnboardingPage />} />
+            <Route
+              path="/welcome/:workspaceId/*"
+              element={<EmployeeOnboardingPage />}
+            />
             <Route
               path="/organization-switcher"
               element={<output>Organization switcher</output>}
@@ -501,8 +517,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome/profile"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -519,8 +535,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -559,8 +575,8 @@ describe("EmployeeOnboardingPage", () => {
           new QueryClient({ defaultOptions: { queries: { retry: false } } })
         }
       >
-        <MemoryRouter initialEntries={["/welcome/review"]}>
-          <EmployeeOnboardingPage />
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/review"]}>
+          <OnboardingRoute />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -569,7 +585,56 @@ describe("EmployeeOnboardingPage", () => {
       await screen.findByRole("button", { name: /submit for review/i }),
     );
 
-    await waitFor(() => expect(submitMyOnboarding).toHaveBeenCalledWith(1));
+    await waitFor(() =>
+      expect(submitMyOnboarding).toHaveBeenCalledWith(
+        onboarding.workspace_id,
+        1,
+      ),
+    );
     await waitFor(() => expect(authMock.refresh).toHaveBeenCalled());
+  });
+
+  it("loads the onboarding of the workspace in the route and keeps stored paths under it", async () => {
+    function RouteMarker() {
+      return (
+        <output aria-label="Current test route">{useLocation().pathname}</output>
+      );
+    }
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd"]}>
+          <OnboardingRoute />
+          <RouteMarker />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /begin/i }));
+
+    expect(getMyOnboarding).toHaveBeenCalledWith(onboarding.workspace_id);
+    expect(screen.getByLabelText("Current test route").textContent).toBe(
+      "/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile",
+    );
+  });
+
+  it("sends links from before workspace routes back through the welcome redirect", async () => {
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <MemoryRouter initialEntries={["/welcome/profile"]}>
+          <OnboardingRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Welcome redirect")).toBeTruthy();
+    expect(getMyOnboarding).not.toHaveBeenCalled();
   });
 });
