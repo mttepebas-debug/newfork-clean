@@ -8,7 +8,7 @@ Genel kurallar (task başlangıcı, git/worktree, test zamanı, token) `~/.claud
   - Aktif kod yazmaz.
 - **Worker session:** koordinatörün verdiği tek task'ı kendi worktree/branch'inde yapar.
   - `docs/plan/` altına yazmaz, main'e merge etmez.
-  - İş bitince branch'i push eder ve SendMessage ile koordinatöre rapor verir.
+  - İş bitince branch'i push eder ve koordinatöre rapor verir (aşağıdaki mesaj iletimi kuralı).
   - Kapsam dışı bir bulgu çıkarsa uygulamaz, rapora ekler.
   - Karar gerekirse durur; soruyu kullanıcıya ya da koordinatöre iletir.
 - **Worker rapor formatı:**
@@ -19,7 +19,11 @@ Genel kurallar (task başlangıcı, git/worktree, test zamanı, token) `~/.claud
   Done kriterleri: karşılandı / eksik
   Açık risk, kapsam dışı bulgu, gereken karar
   ```
-- **Mesaj iletimi:** SendMessage farklı izin modundaki bir session'da kullanıcı onayına takılırsa koordinatör aynı mesajı `mcp__ccd_session_mgmt__send_message` ile (session id üzerinden) gönderir; bu yol mesajı doğrudan kullanıcı turu olarak iletir. Worker raporu teslim edilemezse raporu kendi session'ında kullanıcıya yazar.
+- **Mesaj iletimi (kural):**
+  - Worker ile koordinatör arasındaki görev ve raporlar `mcp__ccd_session_mgmt__send_message` ile gönderilir: önce `list_sessions` ile hedef session bulunur (koordinatörün başlığı "Agent.md geliştirme ve Claude.md entegrasyonu"), ardından mesaj `session_id` ile gönderilir. Bu yol izin modu farkında onaya takılmaz.
+  - Araç yüklü değilse ToolSearch ile yüklenir (`select:mcp__ccd_session_mgmt__list_sessions,mcp__ccd_session_mgmt__send_message`).
+  - SendMessage yalnızca yedek yoldur.
+  - İki yol da başarısız olursa worker raporu kendi session'ında kullanıcıya yazar.
 - **Task verme:** koordinatör kullanıcıyla kapsamda uzlaşır, task dosyasını yazıp commit'ler, ardından worker prompt'unu hazırlar. Prompt'ta task dosyası yolu, worktree ve branch adı, önerilen model/effort ve rapor talebi bulunur.
 
 ## Session başı (ucuz tur)
