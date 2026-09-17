@@ -79,3 +79,4 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Oturumlu açılışta `/invitations/pending` başlığı ("Active invitation found") davetler yüklenirken kısa süre görünüyor; başlık yükleme bitene kadar gizlenebilir (AUTH-UX-001 bulgusu; F5 polish).
 - main CI THEME-004'ten beri kırmızıydı: `MainNavigationHeaderContract.test.ts` eski `--lu-muted` literal'ini bekliyordu. Düzeltme AUTH-UX-001 branch'iyle geliyor. Ders: merge sonrası main CI sonucu koordinatör turunda kontrol edilir (`gh run list --branch main -L 3`).
 - CI: `.github/workflows/ci.yml` yalnız `docs/**` değişen push'larda tetiklenmesin (`paths-ignore`). Bugün art arda docs push'ları concurrency yüzünden süren kod koşularını iptal ediyor ve kırmızı sonuç gizleniyor. Tek dosya, küçük iş.
+- `POST /owner-onboarding/invitation-intents` body'yi yetkiden önce doğruluyor (yetkisiz + geçersiz body → 400). Bilgi sızdırmıyor; sıra düzeltilebilir (AUTH-004 bulgusu, düşük).

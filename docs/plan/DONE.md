@@ -30,3 +30,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-17 | AUTH-001 | kayıt sonrası döngü kırıldı, switcher panel görünümü, sign-in prod metni, incomplete onboarding'de context 503 düzeltmesi | a69276e
 2026-09-17 | AUTH-002 | davetli hesap workspace yaratamaz (DB guard + 403), onboarding case'i workspace'e göre seçilir (getter + mutasyonlar + availability), API ?workspaceId= | 58eeb99
 2026-09-17 | AUTH-UX-001 | auth/davet/onboarding UI: owner onboarding çıkışı, switcher davet satırı + recovery, Not now + login kapısı, no-org bekleme, sonlanan oturum → sign-in, /welcome/:workspaceId; lineup contract testi (CI) | 59446ff
+2026-09-17 | AUTH-004 | owner kurulumu yarım workspace'te owner olmayan üye owner sihirbazı yerine "Workspace setup in progress" paneli görür | dfe6fb4

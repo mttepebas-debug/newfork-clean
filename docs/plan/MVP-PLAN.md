@@ -40,7 +40,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | AUTH-002 | DB guard (davetli create edemez) + workspace bazlı onboarding case seçimi + API | done 58eeb99 (hosted push bekliyor) |
 | AUTH-UX-001 | Auth/davet/onboarding akışı UI: mockup → web implementasyonu (owner onboarding çıkışı, switcher recovery, Not now, davet satırı, /welcome/:workspaceId, sonlanan oturum) | done 59446ff |
 | THEME-004 | Kalan sayfa CSS'leri token'a, `--theme-on-accent`, employee ve kalan manager yüzeylerinde AA | done bd6877a |
-| AUTH-004 | Owner kurulumu yarım workspace'te owner olmayan üye owner sihirbazına düşüyor (guard + durum paneli) | active |
+| AUTH-004 | Owner kurulumu yarım workspace'te owner olmayan üye owner sihirbazına düşüyor (guard + durum paneli) | done dfe6fb4 |
 | OPS-015 | Hosted push: AUTH-002 migration'ları (052509 hariç) | active; parola adımı kullanıcıda |
 | THEME-005 | Buton rolleri: aksiyon yeşil, vazgeçme beyaz, destructive iki tık (cascade kök düzeltmesi dahil); Workspaces o anki satır highlight | active; kullanıcı yönüyle genişledi, tablo + mockup onayı bekliyor |
 | OPS-013 | Hata izleme: Sentry (ücretsiz) + Vercel logları | OPS-010 sonrası |

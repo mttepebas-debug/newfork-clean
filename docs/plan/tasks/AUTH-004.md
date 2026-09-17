@@ -1,5 +1,5 @@
 # AUTH-004 Owner kurulumu yarım workspace'te owner olmayan üye owner onboarding'e yönleniyor
-Status: active (2026-09-17; koordinatör kararı: şimdi, THEME-005 ile paralel)
+Status: done
 Session: "AUTH-004: owner olmayan üye owner sihirbazına düşüyor" (local_2e3cd091; AUTH-UX-001 worker'ı, hatayı o buldu)   Branch: task/auth-004   Worktree: newfork-wt/auth-004   DB: -
 Öneri: Sonnet 5, medium. Tek guard ve küçük bir durum paneli.
 
@@ -20,3 +20,5 @@ Risk: düşük; yönlendirme kuralı değişiyor, döngü testi şart.
 
 ## Notes / Result
 - 2026-09-17: kullanıcı local fixture temizliğini onayladı; temizlik AUTH-004 doğrulamasından SONRA yapılır (fixture'lar hatayı yeniden üretmek için gerekli). Temizlik öncesi local DB yedeği repo dışına alınır.
+- 2026-09-17 kapanış: main dfe6fb4 (ff-merge, push). ProtectedRoute: onboarding incomplete + rol owner değil → `WorkspaceSetupPending` paneli (render, redirect değil); owner → `/onboarding`. `/onboarding`'e doğrudan gelen non-owner da paneli görür. Testler: 9 dosya / 103 test, typecheck PASS (worker). Local doğrulama: test2'de active employee → panel, Check again döngü yok, Switch organization, owner → sihirbaz. API: owner onboarding mutasyonları employee token'ıyla 403; DB'de ayrıca `role = 'owner'` kontrolü var.
+  - Ekran görüntüsü: `artifacts/auth-004/workspace-setup-in-progress.png`.
