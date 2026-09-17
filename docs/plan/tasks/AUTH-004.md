@@ -22,3 +22,4 @@ Risk: düşük; yönlendirme kuralı değişiyor, döngü testi şart.
 - 2026-09-17: kullanıcı local fixture temizliğini onayladı; temizlik AUTH-004 doğrulamasından SONRA yapılır (fixture'lar hatayı yeniden üretmek için gerekli). Temizlik öncesi local DB yedeği repo dışına alınır.
 - 2026-09-17 kapanış: main dfe6fb4 (ff-merge, push). ProtectedRoute: onboarding incomplete + rol owner değil → `WorkspaceSetupPending` paneli (render, redirect değil); owner → `/onboarding`. `/onboarding`'e doğrudan gelen non-owner da paneli görür. Testler: 9 dosya / 103 test, typecheck PASS (worker). Local doğrulama: test2'de active employee → panel, Check again döngü yok, Switch organization, owner → sihirbaz. API: owner onboarding mutasyonları employee token'ıyla 403; DB'de ayrıca `role = 'owner'` kontrolü var.
   - Ekran görüntüsü: `artifacts/auth-004/workspace-setup-in-progress.png`.
+- 2026-09-17: AUTH-004 merge'ü sonrası main CI YEŞİL (dfe6fb4).
