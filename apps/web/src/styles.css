@@ -108,7 +108,7 @@
   border: 1px solid #bdcac1;
   border-radius: 6px;
   padding: 0 10px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #1f2a26;
   display: inline-flex;
   align-items: center;
@@ -131,7 +131,7 @@
   border: 1px solid #bdcac1;
   border-radius: 6px;
   padding: 0 10px;
-  background: #fff;
+  background: var(--theme-surface);
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -229,7 +229,7 @@
     min-height: 30px;
     border: 1px solid #cdd8d2;
     border-radius: 6px;
-    background: #fff;
+    background: var(--theme-surface);
     color: #293833;
     cursor: pointer;
     font: inherit;
@@ -259,7 +259,7 @@
     border: 1px solid #d4ddd8;
     border-radius: 6px;
     padding: 7px 9px;
-    background: #fff;
+    background: var(--theme-surface);
     color: #47574f;
     font-size: 12px;
     line-height: 1.35;
@@ -277,7 +277,7 @@
     border: 1px solid #d4ddd8;
     border-radius: 6px;
     padding: 0 8px;
-    background: #fff;
+    background: var(--theme-surface);
     color: #293833;
     display: grid;
     grid-template-columns: 68px minmax(64px, 1fr) 54px 18px;
@@ -324,7 +324,7 @@
     border: 1px solid #ccd7d1;
     border-radius: 4px;
     padding: 3px 5px;
-    background: #fff;
+    background: var(--theme-surface);
     color: #293833;
     font: inherit;
     font-size: 12px;
@@ -935,7 +935,7 @@
   border: 1px solid #cbd3da;
   border-radius: 5px;
   padding: 0 11px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #17202a;
   font: inherit;
 }
@@ -988,7 +988,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--theme-surface);
   transition: transform 150ms ease;
 }
 .onboarding-toggle > input:checked + span {
@@ -1039,7 +1039,7 @@
   min-height: 190px;
   border: 1px dashed #9ba8b2;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   display: grid;
   place-items: center;
   align-content: center;
@@ -1070,7 +1070,7 @@
   margin: 0;
   padding: 12px 14px;
   border-left: 3px solid #c54d42;
-  background: #fff0ee;
+  background: var(--theme-danger-soft);
   color: #8d3028;
   display: flex;
   gap: 9px;
@@ -1083,7 +1083,7 @@
   padding: 24px;
   border: 1px solid #d5dce1;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #26333e;
   line-height: 1.65;
   white-space: pre-wrap;
@@ -1393,11 +1393,11 @@
   padding: 0 11px;
   border: 1px solid #cdd3d0;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #6b7571;
 }
 .employee-search:focus-within {
-  border-color: #177a64;
+  border-color: var(--theme-focus);
   box-shadow: 0 0 0 2px rgb(23 122 100 / 12%);
 }
 .employee-search input {
@@ -1405,7 +1405,7 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: #1d2525;
+  color: var(--theme-text-body);
 }
 .catalog-status-tabs,
 .employee-status-tabs {
@@ -1449,7 +1449,7 @@
 }
 .catalog-status-tabs button.active,
 .employee-status-tabs button.active {
-  background: #fff;
+  background: var(--theme-surface);
   color: #1e2925;
   box-shadow: 0 1px 2px rgb(22 35 30 / 12%);
 }
@@ -1460,8 +1460,8 @@
   border: 1px solid #d5dad7;
   border-radius: 6px;
   padding: 7px 10px;
-  background: #fff;
-  color: #1d2525;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
   font: inherit;
   font-size: 12px;
 }
@@ -1567,7 +1567,7 @@
   overflow: auto;
   border: 1px solid #d7dcda;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .employee-table {
   width: 100%;
@@ -1658,7 +1658,7 @@
   width: 278px;
   border: 1px solid #d2d8d5;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 18px 42px rgb(19 31 27 / 16%);
 }
 .employee-column-popover header {
@@ -1707,7 +1707,7 @@
 .employee-column-row input {
   width: 14px;
   height: 14px;
-  accent-color: #177a64;
+  accent-color: var(--theme-focus);
 }
 .employee-column-move {
   display: flex;
@@ -1721,7 +1721,7 @@
   gap: 6px;
   border: 1px solid #d7dcda;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #45524d;
   cursor: pointer;
   font-size: 12px;
@@ -1826,7 +1826,7 @@
   top: 0;
   right: 0;
   overflow: hidden;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: -16px 0 42px rgb(18 28 24 / 18%);
   animation: employee-slide-in 210ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -1906,7 +1906,7 @@
 }
 .employee-work-status.warning {
   background: #fff3cf;
-  color: #8a5a00;
+  color: var(--theme-warning);
 }
 .employee-work-status.danger {
   background: #fde5e7;
@@ -2109,7 +2109,7 @@
   width: 100%;
   border: 1px solid #cbd2ce;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #1e2824;
 }
 .employee-field input,
@@ -2149,7 +2149,7 @@
   padding: 8px 10px;
   border: 1px solid #d5dad7;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #424d48;
   font-size: 13px;
   font-weight: 750;
@@ -2184,7 +2184,7 @@
   border: 1px solid #d5dad7;
   border-radius: 6px;
   padding: 10px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .employee-assignment-picker legend {
   padding: 0 5px;
@@ -2242,7 +2242,7 @@
   border: 1px solid #d8deda;
   border-radius: 6px;
   padding: 13px 14px;
-  background: #f7f9f8;
+  background: var(--theme-surface-soft);
   color: #53605a;
 }
 .employee-access-state > svg {
@@ -2763,7 +2763,7 @@
   overflow: auto;
   border: 1px solid #d5dbd8;
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 22px 60px rgba(15, 25, 20, 0.22);
 }
 .employee-termination-dialog > header {
@@ -2803,7 +2803,7 @@
   min-height: 40px;
   border: 1px solid #cbd2ce;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #26312c;
   font: inherit;
   font-weight: 500;
@@ -2939,7 +2939,7 @@
 }
 .kiosk-management-summary div {
   padding: 16px 18px;
-  border-right: 1px solid #e2e6e4;
+  border-right: 1px solid var(--theme-border-subtle);
 }
 .kiosk-management-summary div:last-child {
   border-right: 0;
@@ -2971,8 +2971,8 @@
   border: 1px solid #c7cfcb;
   border-radius: 6px;
   padding: 0 11px;
-  background: #fff;
-  color: #1d2525;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
 }
 .kiosk-enrollment-result {
   display: grid;
@@ -3024,7 +3024,7 @@
   margin-bottom: 22px;
   border: 1px solid #d9dfdc;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .kiosk-device-row {
   display: grid;
@@ -3033,7 +3033,7 @@
   align-items: center;
   gap: 13px;
   padding: 12px 14px 12px 18px;
-  border-bottom: 1px solid #e2e6e4;
+  border-bottom: 1px solid var(--theme-border-subtle);
 }
 .kiosk-device-row:last-child {
   border-bottom: 0;
@@ -3087,7 +3087,7 @@
 }
 .kiosk-status-badge.active {
   background: #dff2eb;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .kiosk-status-badge.revoked {
   background: #eceeed;
@@ -3132,7 +3132,7 @@
   align-items: center;
   gap: 13px;
   padding: 10px 18px;
-  border-bottom: 1px solid #e2e6e4;
+  border-bottom: 1px solid var(--theme-border-subtle);
 }
 .kiosk-audit-row:last-child {
   border-bottom: 0;
@@ -3206,7 +3206,7 @@
   width: min(100%, 440px);
   border-radius: 7px;
   padding: 24px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 18px 55px rgb(0 0 0 / 24%);
 }
 .confirm-dialog h2 {
@@ -3233,7 +3233,7 @@
   }
   .kiosk-management-summary div {
     border-right: 0;
-    border-bottom: 1px solid #e2e6e4;
+    border-bottom: 1px solid var(--theme-border-subtle);
   }
   .kiosk-management-summary div:last-child {
     border-bottom: 0;
@@ -3290,7 +3290,7 @@ p {
   padding: 36px;
   border: 1px solid #d8ddda;
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 16px 40px rgb(22 35 30 / 9%);
 }
 .product-mark,
@@ -3324,8 +3324,8 @@ p {
   padding: 0 12px;
   border: 1px solid #c9cfcc;
   border-radius: 6px;
-  background: #fff;
-  color: #1d2525;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
 }
 .sign-in-panel .nf-button {
   width: 100%;
@@ -3346,7 +3346,7 @@ p {
 }
 .secondary-button {
   border: 1px solid #bdc8c3;
-  background: #fff;
+  background: var(--theme-surface);
   color: #315048;
 }
 .secondary-button:hover {
@@ -3359,7 +3359,7 @@ p {
 }
 .auth-loading {
   min-height: 100vh;
-  background: #f4f5f3;
+  background: var(--theme-page);
 }
 .auth-recovery {
   min-height: 100vh;
@@ -3415,7 +3415,7 @@ p {
 button:focus-visible,
 a:focus-visible,
 select:focus-visible {
-  outline: 2px solid #177a64;
+  outline: 2px solid var(--theme-focus);
   outline-offset: 2px;
 }
 :root[data-escape-focus="true"] :focus {
@@ -3445,7 +3445,7 @@ select:focus-visible {
   flex-direction: column;
   overflow: hidden;
   border-right: 1px solid #d9ddda;
-  background: #fff;
+  background: var(--theme-surface);
   transition: width 180ms ease;
 }
 .app-shell[data-sidebar-collapsed="true"] .app-sidebar {
@@ -3483,7 +3483,7 @@ select:focus-visible {
 }
 .icon-button:hover,
 .nav-item:hover {
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
 }
 .sidebar-calendar {
   border-block: 1px solid #e2e5e3;
@@ -3496,7 +3496,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d4d9d6;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   transition:
     border-color 140ms ease,
     background-color 140ms ease,
@@ -3552,7 +3552,7 @@ select:focus-visible {
 .calendar-current-button:hover,
 .calendar-toggle:hover,
 .calendar-trigger-collapsed:hover {
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
 }
 .calendar-control:focus-within,
 .calendar-control:hover {
@@ -3741,14 +3741,14 @@ select:focus-visible {
   margin-top: 7px;
   border: 1px solid #d4d9d6;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #46514d;
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
 }
 .today-button:hover {
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
 }
 .sidebar-nav {
   min-height: 0;
@@ -3796,7 +3796,7 @@ select:focus-visible {
 }
 .nav-item.active {
   background: #e9f2ee;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .nav-item-has-children {
   padding-right: 36px;
@@ -3819,7 +3819,7 @@ select:focus-visible {
 .nav-group-toggle:hover,
 .nav-group-toggle:focus-visible {
   background: #eef2ef;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .nav-item-child {
   min-height: 34px;
@@ -3862,7 +3862,7 @@ select:focus-visible {
   padding-right: 14px;
   border: 1px solid #d9ddda;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #45504c;
   box-shadow:
     0 8px 24px -8px rgba(27, 39, 34, 0.18),
@@ -3887,7 +3887,7 @@ select:focus-visible {
 .rail-peek-item[data-rail-active="true"] .rail-flyout {
   border-color: #e9f2ee;
   background: #e9f2ee;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .sidebar-footer {
   padding: 8px;
@@ -3923,7 +3923,7 @@ select:focus-visible {
   border: 1px solid #cbd4cf;
   border-radius: 5px;
   color: #5b6762;
-  background: #fff;
+  background: var(--theme-surface);
   font-size: 12px;
   font-weight: 700;
 }
@@ -3934,7 +3934,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d8ddda;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .grid-corner,
 .grid-day,
@@ -3986,7 +3986,7 @@ select:focus-visible {
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-topbar,
 .schedule-toolbar,
@@ -4065,8 +4065,8 @@ select:focus-visible {
   border: 1px solid #aeb9b4;
   border-radius: 5px;
   padding: 0 12px;
-  background: #fff;
-  color: #17221e;
+  background: var(--theme-surface);
+  color: var(--theme-text);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -4138,7 +4138,7 @@ select:focus-visible {
   padding: 6px;
   border: 1px solid #cdd5d1;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 12px 28px rgba(27, 39, 34, 0.16);
 }
 .schedule-topbar-filter-menu {
@@ -4152,7 +4152,7 @@ select:focus-visible {
   overflow-y: auto;
   border-color: #bcc9c3;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 16px 34px rgba(25, 38, 33, 0.16);
 }
 .schedule-mini-calendar-panel {
@@ -4177,7 +4177,7 @@ select:focus-visible {
   border: 1px solid #c8d2ce;
   border-radius: 7px;
   padding: 10px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #17231f;
   box-shadow: 0 16px 36px rgba(27, 39, 34, 0.18);
 }
@@ -4200,7 +4200,7 @@ select:focus-visible {
   border: 1px solid #c8d2ce;
   border-radius: 6px;
   padding: 0 10px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #20342d;
   font-size: 0.78rem;
   font-weight: 700;
@@ -4219,7 +4219,7 @@ select:focus-visible {
 }
 .schedule-draft-menu-trigger[aria-expanded="true"] {
   border-color: #6c9b8c;
-  background: #e7f1ed;
+  background: var(--theme-selected);
   color: #155f4d;
 }
 .schedule-draft-menu-panel {
@@ -4235,7 +4235,7 @@ select:focus-visible {
   border: 1px solid #c8d2ce;
   border-radius: 7px;
   padding: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 16px 36px rgba(27, 39, 34, 0.18);
 }
 .schedule-draft-menu-start,
@@ -4267,7 +4267,7 @@ select:focus-visible {
 .schedule-draft-menu-published:hover,
 .schedule-draft-menu-row:hover,
 .schedule-draft-menu-row:focus-visible {
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
 }
 .schedule-draft-menu-start > span,
 .schedule-draft-menu-published > span:first-child {
@@ -4286,7 +4286,7 @@ select:focus-visible {
 }
 .schedule-draft-menu-published small,
 .schedule-draft-menu-row small {
-  color: #68756f;
+  color: var(--theme-muted);
   font-size: 11px;
   font-weight: 600;
 }
@@ -4334,7 +4334,7 @@ select:focus-visible {
   background: #ecfdf5;
 }
 .schedule-draft-menu-row[data-active="true"] {
-  background: #e7f1ed;
+  background: var(--theme-selected);
   color: #155f4d;
 }
 .schedule-draft-menu-row[data-published-draft-row="true"][data-active="true"],
@@ -4421,12 +4421,12 @@ select:focus-visible {
 }
 .schedule-draft-menu-row > button:hover {
   border-color: #cad5d0;
-  background: #fff;
-  color: #17221e;
+  background: var(--theme-surface);
+  color: var(--theme-text);
 }
 .schedule-draft-menu-row > button[data-confirming="true"] {
   border-color: #c97e75;
-  background: #fff0ee;
+  background: var(--theme-danger-soft);
   color: #9f352a;
 }
 .schedule-draft-menu-action-icon {
@@ -4436,7 +4436,7 @@ select:focus-visible {
 .schedule-draft-menu-empty {
   margin: 0;
   padding: 10px 8px 12px;
-  color: #68756f;
+  color: var(--theme-muted);
   font-size: 12px;
   font-weight: 600;
 }
@@ -4473,7 +4473,7 @@ select:focus-visible {
 }
 .schedule-draft-menu-template-row:hover,
 .schedule-draft-menu-template-row:focus-visible {
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
 }
 .schedule-draft-menu-template-icon {
   display: inline-flex;
@@ -4500,7 +4500,7 @@ select:focus-visible {
   font-size: 12px;
 }
 .schedule-draft-menu-template-row small {
-  color: #68756f;
+  color: var(--theme-muted);
   font-size: 11px;
   font-weight: 600;
 }
@@ -4518,12 +4518,12 @@ select:focus-visible {
 }
 .schedule-draft-menu-template-row > button:hover {
   border-color: #cad5d0;
-  background: #fff;
-  color: #17221e;
+  background: var(--theme-surface);
+  color: var(--theme-text);
 }
 .schedule-draft-menu-template-row > button[data-confirming="true"] {
   border-color: #c97e75;
-  background: #fff0ee;
+  background: var(--theme-danger-soft);
   color: #9f352a;
 }
 .schedule-draft-menu-save-template {
@@ -4532,7 +4532,7 @@ select:focus-visible {
   align-items: center;
   gap: 8px;
   border: 0;
-  border-top: 1px solid #dce3df;
+  border-top: 1px solid var(--theme-border);
   background: transparent;
   color: #5f6d66;
   cursor: pointer;
@@ -4541,8 +4541,8 @@ select:focus-visible {
   font-weight: 800;
 }
 .schedule-draft-menu-save-template:hover:not(:disabled) {
-  background: #f0f3f1;
-  color: #17221e;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text);
 }
 .schedule-draft-menu-save-template:disabled {
   cursor: not-allowed;
@@ -4550,7 +4550,7 @@ select:focus-visible {
 }
 .schedule-topbar-filter[data-active="true"] summary {
   border-color: #6c9b8c;
-  background: #e7f1ed;
+  background: var(--theme-selected);
   color: #155f4d;
 }
 .schedule-command-menu-panel strong {
@@ -4583,7 +4583,7 @@ select:focus-visible {
 .schedule-command-menu-panel button:hover,
 .schedule-topbar-filter-menu button:hover,
 .schedule-action-menu-panel button:hover {
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
 }
 .schedule-settings-menu-panel {
   width: 252px;
@@ -4608,7 +4608,7 @@ select:focus-visible {
   justify-content: flex-start;
 }
 .schedule-settings-row[data-pressed="true"] {
-  color: #17221e;
+  color: var(--theme-text);
   font-weight: 750;
 }
 .schedule-settings-row > svg {
@@ -4703,7 +4703,7 @@ select:focus-visible {
 .schedule-topbar-filter-group-button[data-mixed="true"],
 .schedule-topbar-filter-item[data-selected="true"] {
   background: transparent;
-  color: #17221e;
+  color: var(--theme-text);
   font-weight: 750;
   box-shadow: none;
 }
@@ -4748,8 +4748,8 @@ select:focus-visible {
   border: 1px solid color-mix(in srgb, var(--schedule-chip-color) 55%, #cdd5d1);
   border-radius: 999px;
   padding: 0 10px;
-  background: color-mix(in srgb, var(--schedule-chip-color) 12%, #fff);
-  color: #17221e;
+  background: color-mix(in srgb, var(--schedule-chip-color) 12%, var(--theme-surface));
+  color: var(--theme-text);
   cursor: pointer;
   font: inherit;
   font-size: 11px;
@@ -4776,7 +4776,7 @@ select:focus-visible {
 }
 .schedule-hide-unscheduled[aria-pressed="true"] {
   border-color: #6c9b8c;
-  background: #e7f1ed;
+  background: var(--theme-selected);
   color: #155f4d;
 }
 .schedule-action-button,
@@ -4799,8 +4799,8 @@ select:focus-visible {
 }
 .schedule-publish-action[data-schedule-top-action-trigger="publish"][data-publication-tone="none"],
 .schedule-published-indicator[data-schedule-top-action-trigger="published"][data-publication-tone="none"] {
-  border-color: #111827;
-  background: #111827;
+  border-color: var(--theme-action);
+  background: var(--theme-action);
 }
 .schedule-publish-action[data-schedule-top-action-trigger="publish"][data-publication-tone="partial"],
 .schedule-published-indicator[data-schedule-top-action-trigger="published"][data-publication-tone="partial"] {
@@ -4814,8 +4814,8 @@ select:focus-visible {
 }
 .schedule-publish-action[data-schedule-top-action-trigger="publish"][data-publication-tone="none"]:hover,
 .schedule-published-indicator[data-schedule-top-action-trigger="published"][data-publication-tone="none"]:hover {
-  border-color: #1f2937;
-  background: #1f2937;
+  border-color: var(--theme-action-hover);
+  background: var(--theme-action-hover);
 }
 .schedule-publish-action[data-schedule-top-action-trigger="publish"][data-publication-tone="partial"]:hover,
 .schedule-published-indicator[data-schedule-top-action-trigger="published"][data-publication-tone="partial"]:hover {
@@ -4857,7 +4857,7 @@ select:focus-visible {
 .schedule-clear-filters {
   min-height: 34px;
   border: 1px solid #ccd4d0;
-  background: #fff;
+  background: var(--theme-surface);
   color: #2b3531;
   font: inherit;
   font-size: 12px;
@@ -4872,7 +4872,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #ccd4d0;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-view-controls button,
 .schedule-layout-control button {
@@ -4887,7 +4887,7 @@ select:focus-visible {
 .schedule-view-controls button[aria-pressed="true"],
 .schedule-layout-control button[aria-pressed="true"] {
   background: #dcece6;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .schedule-toolbar {
   position: relative;
@@ -4900,7 +4900,7 @@ select:focus-visible {
   border: 1px solid #d7ddda;
   border-bottom: 0;
   border-radius: 0;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-filter-row {
   min-width: 0;
@@ -4926,7 +4926,7 @@ select:focus-visible {
 }
 .schedule-filter[data-active="true"] summary {
   border-color: #6c9b8c;
-  background: #e7f1ed;
+  background: var(--theme-selected);
   color: #155f4d;
 }
 .schedule-filter-menu {
@@ -4939,7 +4939,7 @@ select:focus-visible {
   padding: 6px;
   border: 1px solid #cdd5d1;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 12px 28px rgba(27, 39, 34, 0.15);
 }
 .schedule-filter-menu label {
@@ -4964,7 +4964,7 @@ select:focus-visible {
 .schedule-clear-filters {
   border: 0;
   padding: 0 8px;
-  color: #176954;
+  color: var(--theme-accent);
 }
 .schedule-layout-control button {
   display: inline-flex;
@@ -4979,18 +4979,18 @@ select:focus-visible {
   padding: 0 12px;
   border: 1px solid #d7ddda;
   border-bottom: 0;
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
   color: #5a6661;
   font-size: 11px;
   font-weight: 700;
 }
 .schedule-readonly-banner strong {
-  color: #176954;
+  color: var(--theme-accent);
   text-transform: uppercase;
 }
 .schedule-edit-mode-indicator {
   background: #ecfdf5;
-  color: #176954;
+  color: var(--theme-accent);
 }
 .schedule-edit-mode-indicator strong {
   color: #0f5f4a;
@@ -5020,7 +5020,7 @@ select:focus-visible {
   gap: 4px;
   border: 1px solid #fcd34d;
   border-radius: 4px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #451a03;
   padding: 0 12px;
   font-size: 11px;
@@ -5055,7 +5055,7 @@ select:focus-visible {
   padding: 6px 10px;
   border: 1px solid #bfd3ca;
   border-bottom: 0;
-  background: #e7f1ed;
+  background: var(--theme-selected);
 }
 .schedule-edit-banner {
   justify-content: flex-end;
@@ -5066,7 +5066,7 @@ select:focus-visible {
   border: 1px solid #aabeb5;
   border-radius: 4px;
   padding: 0 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #25433a;
   font-size: 11px;
   font-weight: 750;
@@ -5093,7 +5093,7 @@ select:focus-visible {
   gap: 9px;
   border: 1px solid #cfd9d5;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 18px 46px rgb(31 48 42 / 18%);
   padding: 11px;
   color: #26332e;
@@ -5107,10 +5107,10 @@ select:focus-visible {
 }
 .schedule-save-draft-menu input {
   min-height: 36px;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 5px;
   padding: 7px 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #25312c;
   font: inherit;
 }
@@ -5191,7 +5191,7 @@ select:focus-visible {
 .schedule-save-menu-row button[data-confirming="true"] {
   border-color: #89c8b2;
   background: #e9f7f0;
-  color: #176954;
+  color: var(--theme-accent);
 }
 .schedule-save-menu-published-chip {
   display: inline-flex !important;
@@ -5266,7 +5266,7 @@ select:focus-visible {
   scrollbar-width: none;
   border: 1px solid #cfd6d2;
   border-radius: 0;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-grid-scroll::-webkit-scrollbar {
   display: none;
@@ -5381,14 +5381,14 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #c7d0cc;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #202b27;
 }
 .schedule-grid-logo-frame {
   align-self: center;
   min-height: 0;
   max-height: calc(var(--schedule-location-header-height) - 4px);
-  border-color: #cbd4d0;
+  border-color: var(--theme-border-strong);
 }
 .schedule-grid-logo-frame .schedule-generated-logo span {
   width: 42px;
@@ -5593,8 +5593,8 @@ select:focus-visible {
     ),
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--schedule-location-status-color) 88%, #ffffff),
-      color-mix(in srgb, var(--schedule-location-status-color) 82%, #111827)
+      color-mix(in srgb, var(--schedule-location-status-color) 88%, var(--theme-surface)),
+      color-mix(in srgb, var(--schedule-location-status-color) 82%, var(--theme-action))
     );
   box-shadow:
     inset 0 0 0 1px rgba(18, 28, 24, 0.22),
@@ -5629,7 +5629,7 @@ select:focus-visible {
   gap: 6px;
   overflow-x: auto;
   border-bottom: 1px solid #dce4e0;
-  background: #fff;
+  background: var(--theme-surface);
   padding: 6px 16px;
 }
 .schedule-location-publication-chips button {
@@ -5641,7 +5641,7 @@ select:focus-visible {
   border: 1px solid #d6dfda;
   border-radius: 6px;
   padding: 0 8px;
-  background: #f7f9f8;
+  background: var(--theme-surface-soft);
   color: #5d6863;
   cursor: pointer;
   font: inherit;
@@ -5656,7 +5656,7 @@ select:focus-visible {
 .schedule-location-publication-chips button[data-live="true"] {
   border-color: #b6dfd1;
   background: #e9f7f2;
-  color: #176954;
+  color: var(--theme-accent);
 }
 .schedule-location-publication-chips button[data-historical="true"] {
   border-color: #b9d1ec;
@@ -5701,7 +5701,7 @@ select:focus-visible {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #176954;
+  background: var(--theme-accent);
   box-shadow: 0 0 0 3px rgb(23 105 84 / 13%);
 }
 .schedule-viewer-presence strong {
@@ -5820,7 +5820,7 @@ select:focus-visible {
   color: #9c4f42;
 }
 .schedule-day-header-important {
-  color: #b7791f;
+  color: var(--theme-current);
 }
 .schedule-day-header[data-today="true"] {
   box-shadow: none;
@@ -5895,7 +5895,7 @@ select:focus-visible {
   border: 0;
   padding: 0;
   background: transparent;
-  color: #17221e;
+  color: var(--theme-text);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -5906,7 +5906,7 @@ select:focus-visible {
 }
 .schedule-employee-name-button:hover,
 .schedule-employee-name-button:focus-visible {
-  color: #12624f;
+  color: var(--theme-accent-strong);
   text-decoration: underline;
   outline: none;
 }
@@ -6004,7 +6004,7 @@ select:focus-visible {
   position: relative;
   min-height: var(--schedule-row-min-height, 94px);
   padding: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   transition:
     background-color 0.12s ease,
     box-shadow 0.12s ease;
@@ -6110,7 +6110,7 @@ select:focus-visible {
   border-radius: 4px;
   margin-inline: 0;
   padding: 0 8px;
-  background: color-mix(in srgb, var(--shift-color) 14%, #fff);
+  background: color-mix(in srgb, var(--shift-color) 14%, var(--theme-surface));
   color: #000;
   cursor: grab;
   display: inline-flex;
@@ -6421,7 +6421,7 @@ select:focus-visible {
   border: 1px solid color-mix(in srgb, var(--shift-color) 65%, #26332e);
   border-radius: var(--schedule-badge-radius);
   padding: 6px 8px;
-  background: color-mix(in srgb, var(--shift-color) 13%, #fff);
+  background: color-mix(in srgb, var(--shift-color) 13%, var(--theme-surface));
   color: #26312d;
   font: inherit;
   text-align: left;
@@ -6487,7 +6487,7 @@ select:focus-visible {
     [data-ghost="true"]
   ):hover {
   border-color: color-mix(in srgb, var(--shift-color) 78%, #26332e);
-  background: color-mix(in srgb, var(--shift-color) 17%, #fff);
+  background: color-mix(in srgb, var(--shift-color) 17%, var(--theme-surface));
   box-shadow: inset 0 0 0 1px
     color-mix(in srgb, var(--shift-color) 24%, transparent);
 }
@@ -6503,7 +6503,7 @@ select:focus-visible {
       rgba(255, 255, 255, 0.58) 0 6px,
       transparent 6px 12px
     ),
-    color-mix(in srgb, var(--shift-color) 13%, #fff);
+    color-mix(in srgb, var(--shift-color) 13%, var(--theme-surface));
   box-shadow: none;
   opacity: 0.6;
 }
@@ -6560,7 +6560,7 @@ select:focus-visible {
     );
   border-radius: 4px;
   padding: 0 8px;
-  background: color-mix(in srgb, var(--shift-color) 14%, #fff);
+  background: color-mix(in srgb, var(--shift-color) 14%, var(--theme-surface));
   color: #000;
   font-size: 10px;
   font-weight: 850;
@@ -6695,7 +6695,7 @@ select:focus-visible {
   border: 1px solid #cfd8d3;
   border-radius: 6px;
   padding: 4px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 18px 34px rgba(24, 36, 31, 0.18);
 }
 .schedule-context-menu button {
@@ -6763,7 +6763,7 @@ select:focus-visible {
   border: 1px solid #d4dbd7;
   border-radius: 8px;
   padding: 15px 44px 15px 16px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #202a27;
   box-shadow:
     0 12px 32px -14px rgb(16 24 40 / 22%),
@@ -6834,7 +6834,7 @@ select:focus-visible {
   overflow: auto;
   border: 1px solid rgba(184, 197, 191, 0.92);
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow:
     0 16px 34px rgba(24, 36, 31, 0.16),
     0 0 0 1px rgba(255, 255, 255, 0.72);
@@ -6857,7 +6857,7 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border-bottom: 1px solid #dce3df;
+  border-bottom: 1px solid var(--theme-border);
   padding: 0 8px 0 12px;
   background: linear-gradient(180deg, #fbfdfc, #f5f8f6);
   cursor: move;
@@ -6925,9 +6925,9 @@ select:focus-visible {
   bottom: 0;
   z-index: 3;
   margin: 2px -8px 0;
-  border-top: 1px solid #dce3df;
+  border-top: 1px solid var(--theme-border);
   padding: 7px 8px 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), #fff);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), var(--theme-surface));
   box-shadow: 0 -6px 14px rgba(24, 36, 31, 0.07);
 }
 .schedule-quick-editor--floating .schedule-dialog-actions button {
@@ -6961,9 +6961,9 @@ select:focus-visible {
   bottom: 0;
   z-index: 2;
   margin: 2px -18px 0;
-  border-top: 1px solid #dce3df;
+  border-top: 1px solid var(--theme-border);
   padding: 12px 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), #fff);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), var(--theme-surface));
   box-shadow: 0 -8px 18px rgba(24, 36, 31, 0.08);
 }
 .schedule-time-input {
@@ -6977,7 +6977,7 @@ select:focus-visible {
   border: 1px solid #cad4cf;
   border-radius: 5px;
   padding: 0 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #1f2b26;
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
@@ -7087,7 +7087,7 @@ select:focus-visible {
   border: 1px solid #d7dfdb;
   border-radius: 6px;
   padding: 9px 10px 9px 13px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #1e2925;
   box-shadow: 0 8px 18px rgba(25, 38, 33, 0.08);
 }
@@ -7126,7 +7126,7 @@ select:focus-visible {
   line-height: 1.35;
 }
 .schedule-conflict-notice-copy strong {
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -7150,7 +7150,7 @@ select:focus-visible {
   border: 1px solid rgba(194, 205, 200, 0.82);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.88);
-  color: #17221e;
+  color: var(--theme-text);
   box-shadow:
     0 18px 45px rgba(15, 23, 42, 0.18),
     0 2px 8px rgba(15, 23, 42, 0.08);
@@ -7186,7 +7186,7 @@ select:focus-visible {
   justify-content: center;
   border-radius: 999px;
   background: rgba(255, 244, 242, 0.86);
-  color: #b84234;
+  color: var(--theme-danger);
   box-shadow: inset 0 0 0 1px #f0c5bd;
 }
 .schedule-conflict-sheet[data-tone="warning"] .schedule-conflict-sheet-icon {
@@ -7257,7 +7257,7 @@ select:focus-visible {
   border: 1px solid #bac7c1;
   border-radius: 5px;
   padding: 0 11px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #26312d;
   cursor: pointer;
   font: inherit;
@@ -7265,8 +7265,8 @@ select:focus-visible {
   font-weight: 750;
 }
 .schedule-conflict-sheet-copy footer button.primary {
-  border-color: #176954;
-  background: #176954;
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
   color: #fff;
 }
 .schedule-conflict-sheet-copy footer button:disabled {
@@ -7291,7 +7291,7 @@ select:focus-visible {
 }
 .schedule-conflict-sheet-close:hover {
   background: #eef3f0;
-  color: #17221e;
+  color: var(--theme-text);
 }
 .schedule-save-recovery-layer {
   position: fixed;
@@ -7316,8 +7316,8 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d8c180;
   border-radius: 8px;
-  background: #fff;
-  color: #17221e;
+  background: var(--theme-surface);
+  color: var(--theme-text);
   box-shadow:
     0 18px 36px rgba(15, 23, 42, 0.12),
     0 0 0 1px rgba(216, 193, 128, 0.46);
@@ -7338,7 +7338,7 @@ select:focus-visible {
   justify-content: center;
   border: 1px solid #e5c991;
   border-radius: 6px;
-  background: #fff7e2;
+  background: var(--theme-warning-soft);
   color: #8b611b;
 }
 .schedule-save-recovery-alert-icon {
@@ -7347,7 +7347,7 @@ select:focus-visible {
 }
 .schedule-save-recovery-sheet h2 {
   margin: 0;
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 16px;
   font-weight: 800;
 }
@@ -7383,7 +7383,7 @@ select:focus-visible {
   border: 1px solid #b9c7c0;
   border-radius: 5px;
   padding: 0 12px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #26312d;
   cursor: pointer;
   font: inherit;
@@ -7391,8 +7391,8 @@ select:focus-visible {
   font-weight: 800;
 }
 .schedule-save-recovery-sheet footer button.primary {
-  border-color: #176954;
-  background: #176954;
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
   color: #fff;
 }
 .schedule-save-recovery-action-icon {
@@ -7411,18 +7411,18 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #cfd8d3;
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 22px 45px rgba(24, 36, 31, 0.24);
 }
 .schedule-enter-edit-dialog > header {
   display: grid;
   gap: 5px;
-  border-bottom: 1px solid #dce3df;
+  border-bottom: 1px solid var(--theme-border);
   padding: 18px 20px 14px;
 }
 .schedule-enter-edit-dialog h2 {
   margin: 0;
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 17px;
   font-weight: 800;
 }
@@ -7445,7 +7445,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d8e1dc;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-enter-edit-list > button {
   align-items: center;
@@ -7469,7 +7469,7 @@ select:focus-visible {
   gap: 2px;
 }
 .schedule-enter-edit-list strong {
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 13px;
   font-weight: 800;
 }
@@ -7516,7 +7516,7 @@ select:focus-visible {
 .schedule-enter-edit-dialog > footer {
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid #dce3df;
+  border-top: 1px solid var(--theme-border);
   padding: 14px 20px;
 }
 .schedule-enter-edit-dialog > footer button {
@@ -7524,7 +7524,7 @@ select:focus-visible {
   border: 1px solid #b9c7c0;
   border-radius: 5px;
   padding: 0 12px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #26312d;
   cursor: pointer;
   font: inherit;
@@ -7554,8 +7554,8 @@ select:focus-visible {
   flex-direction: column;
   overflow: hidden;
   border-left: 1px solid #cfd8d3;
-  background: #fff;
-  color: #17221e;
+  background: var(--theme-surface);
+  color: var(--theme-text);
   box-shadow: -18px 0 38px rgba(24, 36, 31, 0.18);
 }
 .schedule-shift-drawer > header {
@@ -7564,7 +7564,7 @@ select:focus-visible {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid #dce3df;
+  border-bottom: 1px solid var(--theme-border);
   padding: 15px 16px 13px 18px;
   background: #f8faf9;
 }
@@ -7575,7 +7575,7 @@ select:focus-visible {
 }
 .schedule-shift-drawer h2 {
   margin: 0;
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 15px;
   font-weight: 850;
 }
@@ -7618,16 +7618,16 @@ select:focus-visible {
   font-weight: 650;
 }
 .schedule-shift-drawer-status strong {
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 14px;
 }
 .schedule-shift-drawer-status button {
   min-height: 34px;
   justify-self: start;
-  border: 1px solid #176954;
+  border: 1px solid var(--theme-accent);
   border-radius: 5px;
   padding: 0 12px;
-  background: #176954;
+  background: var(--theme-accent);
   color: #fff;
   cursor: pointer;
   font: inherit;
@@ -7638,7 +7638,7 @@ select:focus-visible {
   gap: 10px;
   border-top: 1px solid #e5c991;
   padding: 13px 16px;
-  background: #fff7e2;
+  background: var(--theme-warning-soft);
   color: #7a5415;
   font-size: 12px;
 }
@@ -7656,7 +7656,7 @@ select:focus-visible {
   border: 1px solid #d8bd79;
   border-radius: 5px;
   padding: 0 10px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #6d480c;
   cursor: pointer;
   font: inherit;
@@ -7691,7 +7691,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d8c3a4;
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.2);
 }
 .schedule-discard-dialog > header {
@@ -7708,12 +7708,12 @@ select:focus-visible {
   justify-content: center;
   border: 1px solid #edcfa1;
   border-radius: 7px;
-  background: #fff7e2;
+  background: var(--theme-warning-soft);
   color: #a06412;
 }
 .schedule-discard-dialog h2 {
   margin: 0;
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 16px;
   font-weight: 850;
 }
@@ -7741,7 +7741,7 @@ select:focus-visible {
   border: 1px solid #c8b695;
   border-radius: 5px;
   padding: 0 13px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #3d3428;
   cursor: pointer;
   font: inherit;
@@ -7753,8 +7753,8 @@ select:focus-visible {
   background: #fff8ea;
 }
 .schedule-discard-dialog > footer button.danger {
-  border-color: #b84234;
-  background: #b84234;
+  border-color: var(--theme-danger);
+  background: var(--theme-danger);
   color: #fff;
 }
 .schedule-discard-dialog > footer button.danger:hover:not(:disabled) {
@@ -7772,9 +7772,9 @@ select:focus-visible {
 }
 .schedule-stale-editor button {
   min-height: 36px;
-  border: 1px solid #176954;
+  border: 1px solid var(--theme-accent);
   border-radius: 5px;
-  background: #176954;
+  background: var(--theme-accent);
   color: #fff;
   font-weight: 750;
 }
@@ -7800,9 +7800,9 @@ select:focus-visible {
   width: min(100%, 510px);
   max-height: calc(100dvh - 36px);
   overflow: auto;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 22px 60px rgb(17 28 23 / 22%);
 }
 .schedule-dialog > header {
@@ -7831,7 +7831,7 @@ select:focus-visible {
   justify-content: center;
   border: 1px solid #c9d2ce;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #32403a;
 }
 .schedule-source-list {
@@ -7846,7 +7846,7 @@ select:focus-visible {
   border: 1px solid #d5dcda;
   border-radius: 5px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #26332e;
   text-align: left;
 }
@@ -7855,7 +7855,7 @@ select:focus-visible {
   background: #f2f7f5;
 }
 .schedule-source-list span {
-  color: #68756f;
+  color: var(--theme-muted);
   font-size: 11px;
 }
 .schedule-shift-form,
@@ -7920,13 +7920,13 @@ select:focus-visible {
 .schedule-shift-type-picker button:hover,
 .schedule-shift-type-picker button:focus-visible {
   border-color: var(--shift-type-color, #176f59);
-  background: color-mix(in srgb, var(--shift-type-color, #176f59) 10%, #fff);
+  background: color-mix(in srgb, var(--shift-type-color, #176f59) 10%, var(--theme-surface));
   color: var(--shift-type-color, #176f59);
   outline: none;
 }
 .schedule-shift-type-picker button[aria-pressed="true"] {
   border-color: var(--shift-type-color, #172033);
-  background: color-mix(in srgb, var(--shift-type-color, #172033) 12%, #fff);
+  background: color-mix(in srgb, var(--shift-type-color, #172033) 12%, var(--theme-surface));
   color: var(--shift-type-color, #172033);
   box-shadow: inset 0 0 0 1px var(--shift-type-color, #172033);
 }
@@ -7974,7 +7974,7 @@ select:focus-visible {
   border: 1px solid #e1e7e4;
   border-radius: 7px;
   padding: 13px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-shift-form-section--details,
 .schedule-shift-form-section--time {
@@ -8009,7 +8009,7 @@ select:focus-visible {
   justify-content: center;
 }
 .schedule-shift-form-section-title strong {
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 13px;
   font-weight: 850;
 }
@@ -8043,10 +8043,10 @@ select:focus-visible {
 .schedule-save-form select {
   width: 100%;
   min-height: 34px;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 5px;
   padding: 7px 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #25312c;
   font: inherit;
 }
@@ -8061,10 +8061,10 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 5px;
   padding: 7px 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #25312c;
   cursor: pointer;
   font: inherit;
@@ -8110,10 +8110,10 @@ select:focus-visible {
   max-height: 192px;
   gap: 1px;
   overflow-y: auto;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 6px;
   padding: 4px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 12px 28px rgba(27, 39, 34, 0.16);
 }
 .schedule-quick-select [role="option"] {
@@ -8134,7 +8134,7 @@ select:focus-visible {
 }
 .schedule-quick-select [role="option"]:hover,
 .schedule-quick-select [role="option"]:focus-visible {
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
   outline: none;
 }
 .schedule-quick-select [role="option"][aria-selected="true"] {
@@ -8237,9 +8237,9 @@ select:focus-visible {
 }
 .schedule-break-options button {
   min-height: 30px;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #34413b;
   cursor: pointer;
   font-size: 11px;
@@ -8258,7 +8258,7 @@ select:focus-visible {
   transform: translateY(-1px);
 }
 .schedule-break-options button[aria-pressed="true"] {
-  border-color: #176954;
+  border-color: var(--theme-accent);
   background: #e8f4f0;
   color: #114a3b;
 }
@@ -8282,7 +8282,7 @@ select:focus-visible {
   min-height: 16px;
   height: 16px;
   margin: 0;
-  accent-color: #176954;
+  accent-color: var(--theme-accent);
 }
 .schedule-count-stepper button,
 .schedule-count-stepper input {
@@ -8291,7 +8291,7 @@ select:focus-visible {
 .schedule-count-stepper button {
   display: grid;
   place-items: center;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 5px;
   background: #f8faf8;
   color: #25312c;
@@ -8330,7 +8330,7 @@ select:focus-visible {
   border: 1px solid #c7d0cc;
   border-radius: 5px;
   padding: 0 13px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #34413b;
   cursor: pointer;
   font-weight: 750;
@@ -8348,8 +8348,8 @@ select:focus-visible {
   transform: translateY(-1px);
 }
 .schedule-dialog-actions button.primary {
-  border-color: #176954;
-  background: #176954;
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
   color: #fff;
 }
 .schedule-dialog-actions button.primary:hover,
@@ -8486,7 +8486,7 @@ select:focus-visible {
   place-items: center;
   border: 1px solid #e5c991;
   border-radius: 8px;
-  background: #fff7e2;
+  background: var(--theme-warning-soft);
   color: #8b611b;
 }
 .schedule-lock-dialog p {
@@ -8513,14 +8513,14 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #cfd8d3;
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 22px 45px rgba(24, 36, 31, 0.24);
 }
 .schedule-edit-locked-dialog > header {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  border-bottom: 1px solid #dce3df;
+  border-bottom: 1px solid var(--theme-border);
   padding: 16px 20px;
 }
 .schedule-edit-locked-dialog > header > span {
@@ -8532,12 +8532,12 @@ select:focus-visible {
   justify-content: center;
   border: 1px solid #e5c991;
   border-radius: 8px;
-  background: #fff7e2;
+  background: var(--theme-warning-soft);
   color: #8b611b;
 }
 .schedule-edit-locked-dialog h2 {
   margin: 0;
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 17px;
   font-weight: 800;
 }
@@ -8563,9 +8563,9 @@ select:focus-visible {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  border-top: 1px solid #dce3df;
+  border-top: 1px solid var(--theme-border);
   padding: 16px 20px;
-  background: #f7f9f8;
+  background: var(--theme-surface-soft);
 }
 .schedule-edit-locked-dialog > footer button {
   display: inline-flex;
@@ -8576,7 +8576,7 @@ select:focus-visible {
   border: 1px solid #b9c7c0;
   border-radius: 5px;
   padding: 0 12px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #26312d;
   cursor: pointer;
   font: inherit;
@@ -8584,8 +8584,8 @@ select:focus-visible {
   font-weight: 800;
 }
 .schedule-edit-locked-dialog > footer button.primary {
-  border-color: #176954;
-  background: #176954;
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
   color: #fff;
 }
 .schedule-edit-locked-refresh {
@@ -8601,7 +8601,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #cfd8d3;
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 22px 45px rgba(24, 36, 31, 0.24);
 }
 .schedule-timeout-dialog aside {
@@ -8609,7 +8609,7 @@ select:focus-visible {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-right: 1px solid #dce3df;
+  border-right: 1px solid var(--theme-border);
   padding: 16px 14px;
   background: #f4f6f4;
   text-align: center;
@@ -8671,7 +8671,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #cfd8d3;
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 22px 45px rgb(24 36 31 / 24%);
 }
 .schedule-retroactive-dialog header {
@@ -8740,13 +8740,13 @@ select:focus-visible {
   min-height: 36px;
   border: 1px solid #c8d3ce;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #27332e;
   font-weight: 750;
 }
 .schedule-retroactive-dialog footer button.primary {
-  border-color: #176954;
-  background: #176954;
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
   color: #fff;
 }
 .schedule-timeout-progress {
@@ -8834,7 +8834,7 @@ select:focus-visible {
 }
 .schedule-publication-steps span[data-complete="true"] i {
   background: #dff1e8;
-  color: #176954;
+  color: var(--theme-accent);
 }
 .schedule-publication-form > label {
   display: grid;
@@ -8848,7 +8848,7 @@ select:focus-visible {
   width: 100%;
   border: 1px solid #bdc8c3;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #1f2d27;
   font: inherit;
 }
@@ -8891,7 +8891,7 @@ select:focus-visible {
   margin-top: 2px;
   width: 16px;
   height: 16px;
-  accent-color: #176954;
+  accent-color: var(--theme-accent);
 }
 .schedule-publication-location-body {
   display: grid;
@@ -9031,7 +9031,7 @@ select:focus-visible {
   border: 1px solid #efc6c6;
   border-radius: 5px;
   padding: 0 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #9d2f2f;
   cursor: pointer;
   font: inherit;
@@ -9077,7 +9077,7 @@ select:focus-visible {
 .schedule-publication-departments input {
   width: 14px;
   height: 14px;
-  accent-color: #176954;
+  accent-color: var(--theme-accent);
 }
 .schedule-publication-departments small {
   color: #a34132;
@@ -9129,7 +9129,7 @@ select:focus-visible {
   border: 1px solid #d8a19a;
   border-radius: 8px;
   padding: 6px 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #8d3228;
   font-size: 12px;
   font-weight: 750;
@@ -9159,11 +9159,11 @@ select:focus-visible {
   height: 26px;
   place-items: center;
   border-radius: 999px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #7a4d22;
 }
 .schedule-publication-preflight[data-status="publish_ready"] > span {
-  color: #176954;
+  color: var(--theme-accent);
 }
 .schedule-publication-preflight > div {
   display: grid;
@@ -9241,7 +9241,7 @@ select:focus-visible {
   color: #56635d;
 }
 .schedule-publish-preflight-summary[data-ready="true"] svg {
-  color: #176954;
+  color: var(--theme-accent);
 }
 .schedule-publish-preflight-summary div,
 .schedule-publish-finding-row {
@@ -9304,7 +9304,7 @@ select:focus-visible {
   border: 1px solid #f0cfc9;
   border-radius: 6px;
   padding: 9px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-publish-finding-group.soft .schedule-publish-finding-row,
 .schedule-publish-finding-group.risk .schedule-publish-finding-row {
@@ -9474,7 +9474,7 @@ select:focus-visible {
   border: 1px solid #cfd8d4;
   border-radius: 5px;
   padding: 5px 8px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #405049;
   font-size: 11px;
   font-weight: 750;
@@ -9487,7 +9487,7 @@ select:focus-visible {
   border: 1px solid #d8e0dc;
   border-radius: 6px;
   padding: 7px 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #6b7671;
 }
 .schedule-publish-notify-search input {
@@ -9621,7 +9621,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #cdd7d2;
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
 }
 .schedule-unpublish-dialog > header {
@@ -9640,7 +9640,7 @@ select:focus-visible {
   border-radius: 5px;
   padding: 5px 7px;
   background: #fff4f2;
-  color: #b84234;
+  color: var(--theme-danger);
   font-size: 11px;
   font-weight: 800;
   line-height: 1;
@@ -9648,7 +9648,7 @@ select:focus-visible {
 }
 .schedule-unpublish-dialog h2 {
   margin: 0;
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 17px;
   font-weight: 800;
 }
@@ -9670,7 +9670,7 @@ select:focus-visible {
   justify-content: center;
   border: 1px solid #d6dfda;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #69756f;
 }
 .schedule-unpublish-week-card div {
@@ -9686,7 +9686,7 @@ select:focus-visible {
 }
 .schedule-unpublish-week-card strong {
   overflow: hidden;
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -9708,7 +9708,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #dfe6e2;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-unpublish-locations label {
   display: flex;
@@ -9737,7 +9737,7 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #17221e;
+  color: var(--theme-text);
   font-size: 13px;
 }
 .schedule-unpublish-location-dot {
@@ -9761,7 +9761,7 @@ select:focus-visible {
   color: #66726c;
 }
 .schedule-unpublish-effects div[data-destructive="true"] {
-  color: #b84234;
+  color: var(--theme-danger);
 }
 .schedule-unpublish-effects span {
   color: #26312d;
@@ -9795,7 +9795,7 @@ select:focus-visible {
   border: 1px solid #b9c7c0;
   border-radius: 5px;
   padding: 0 13px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #26312d;
   cursor: pointer;
   font: inherit;
@@ -9803,8 +9803,8 @@ select:focus-visible {
   font-weight: 800;
 }
 .schedule-unpublish-dialog > footer button.danger {
-  border-color: #b84234;
-  background: #b84234;
+  border-color: var(--theme-danger);
+  background: var(--theme-danger);
   color: #fff;
 }
 .schedule-unpublish-dialog > footer button:disabled {
@@ -9836,7 +9836,7 @@ select:focus-visible {
   flex: 0 0 320px;
   flex-direction: column;
   border-right: 1px solid #d4ddd8;
-  background: #fff;
+  background: var(--theme-surface);
   color: #17231f;
   box-shadow: 10px 0 24px -24px rgba(15, 23, 42, 0.55);
 }
@@ -9903,7 +9903,7 @@ select:focus-visible {
   min-height: 280px;
   border: 1px solid #c8d2ce;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-export-panel > footer {
   display: flex;
@@ -9918,7 +9918,7 @@ select:focus-visible {
   border: 1px solid #c8d2ce;
   border-radius: 6px;
   padding: 0 10px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #20342d;
   font-size: 0.8rem;
   font-weight: 800;
@@ -9961,7 +9961,7 @@ select:focus-visible {
 }
 .schedule-template-dialog > form {
   padding-left: 16px;
-  border-left: 1px solid #dce3df;
+  border-left: 1px solid var(--theme-border);
 }
 .schedule-template-list {
   display: grid;
@@ -9978,7 +9978,7 @@ select:focus-visible {
   border: 1px solid #d5ddda;
   border-radius: 5px;
   padding: 8px 10px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #27342e;
   text-align: left;
 }
@@ -10017,10 +10017,10 @@ select:focus-visible {
 .schedule-preset-row input {
   width: 100%;
   min-height: 38px;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 5px;
   padding: 7px 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #25312c;
   font: inherit;
 }
@@ -10052,7 +10052,7 @@ select:focus-visible {
   font-size: 0.74rem;
 }
 .schedule-template-departments p {
-  color: #b84234;
+  color: var(--theme-danger);
   font-weight: 700;
 }
 .schedule-template-departments > div:last-of-type {
@@ -10067,7 +10067,7 @@ select:focus-visible {
   border: 1px solid #c9d4ce;
   border-radius: 999px;
   padding: 5px 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #24352f;
   font-size: 0.76rem;
   font-weight: 700;
@@ -10098,10 +10098,10 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 6px;
   padding: 0 12px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #33403a;
   font-size: 13px;
   font-weight: 750;
@@ -10122,7 +10122,7 @@ select:focus-visible {
   gap: 10px;
   border: 1px dashed #cbd5d0;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #59645f;
   font-size: 13px;
 }
@@ -10137,7 +10137,7 @@ select:focus-visible {
   border: 1px solid #d59b93;
   border-radius: 5px;
   padding: 0 10px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #8a2f27;
   font-weight: 750;
 }
@@ -10157,7 +10157,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d7dcda;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-template-table {
   width: 100%;
@@ -10219,7 +10219,7 @@ select:focus-visible {
   border: 1px solid #d5ddda;
   border-radius: 8px;
   padding: 16px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 20px 60px rgb(28 40 35 / 18%);
 }
 .schedule-template-rename-dialog header,
@@ -10249,10 +10249,10 @@ select:focus-visible {
 }
 .schedule-template-rename-dialog input {
   min-height: 38px;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 5px;
   padding: 7px 9px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #25312c;
   font: inherit;
 }
@@ -10270,13 +10270,13 @@ select:focus-visible {
   border: 1px solid #c7d0cc;
   border-radius: 5px;
   padding: 0 11px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #34413b;
   font-weight: 750;
 }
 .schedule-template-rename-dialog button.primary-command {
-  border-color: #176954;
-  background: #176954;
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
   color: #fff;
 }
 .schedule-tool-dialog button {
@@ -10288,13 +10288,13 @@ select:focus-visible {
   border: 1px solid #c7d0cc;
   border-radius: 5px;
   padding: 0 11px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #34413b;
   font-weight: 750;
 }
 .schedule-tool-dialog button.primary-command {
-  border-color: #176954;
-  background: #176954;
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
   color: #fff;
 }
 .schedule-tool-dialog button.danger-text {
@@ -10312,7 +10312,7 @@ select:focus-visible {
 .schedule-check input {
   width: 16px !important;
   min-height: 16px !important;
-  accent-color: #176954;
+  accent-color: var(--theme-accent);
 }
 .schedule-autofill-list {
   display: grid;
@@ -10345,14 +10345,14 @@ select:focus-visible {
   justify-items: stretch;
 }
 .schedule-autofill-list small {
-  color: #68756f;
+  color: var(--theme-muted);
 }
 .schedule-autofill-list select {
   min-height: 38px;
   border: 1px solid #c7d0cc;
   border-radius: 5px;
   padding: 0 8px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #26332e;
 }
 .schedule-autofill-reasons {
@@ -10369,7 +10369,7 @@ select:focus-visible {
   border-radius: 999px;
   padding: 0 7px;
   background: #eef8f3;
-  color: #176954;
+  color: var(--theme-accent);
   font-size: 11px;
   font-style: normal;
   font-weight: 750;
@@ -10417,8 +10417,8 @@ select:focus-visible {
   padding: 0 8px;
 }
 .schedule-export-segment-group button[aria-pressed="true"] {
-  border-color: #176954;
-  background: #176954;
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
   color: #fff;
 }
 .schedule-export-segment-group button svg {
@@ -10488,7 +10488,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d5ddda;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-export-schedule-row > label {
   display: flex;
@@ -10499,7 +10499,7 @@ select:focus-visible {
 }
 .schedule-export-schedule-row input[type="checkbox"] {
   flex: 0 0 auto;
-  accent-color: #176954;
+  accent-color: var(--theme-accent);
 }
 .schedule-export-schedule-row svg {
   flex: 0 0 auto;
@@ -10547,10 +10547,10 @@ select:focus-visible {
 .schedule-export-schedule-form select {
   width: 100%;
   min-height: 34px;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 5px;
   padding: 6px 8px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #25312c;
   font: inherit;
 }
@@ -10584,7 +10584,7 @@ select:focus-visible {
   border: 1px solid #d5ddda;
   border-radius: 5px;
   padding: 8px 10px;
-  background: #fff;
+  background: var(--theme-surface);
   font-size: 12px;
 }
 .schedule-export-recent-events li > span {
@@ -10704,13 +10704,13 @@ select:focus-visible {
   border: 1px solid #c7d0cc;
   border-radius: 5px;
   padding: 0 11px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #34413b;
   font-weight: 750;
 }
 .schedule-export-workspace-preview button.primary-command {
-  border-color: #176954;
-  background: #176954;
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
   color: #fff;
 }
 .schedule-export-workspace-preview button:disabled {
@@ -10724,7 +10724,7 @@ select:focus-visible {
   margin: 0;
   border: 1px dashed #c6d1cc;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #66736d;
   font-size: 13px;
   font-weight: 700;
@@ -10733,9 +10733,9 @@ select:focus-visible {
 .schedule-export-workspace-frame {
   width: 100%;
   min-height: min(620px, calc(100dvh - 240px));
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .schedule-logo-dialog-layer {
   position: fixed;
@@ -10759,7 +10759,7 @@ select:focus-visible {
   overflow: auto;
   border: 1px solid #d7dfdb;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 22px 72px rgb(33 43 39 / 0.28);
   padding: 18px;
   padding-top: 40px;
@@ -10812,7 +10812,7 @@ select:focus-visible {
   border: 1px solid #c7d0cc;
   border-radius: 6px;
   padding: 0 12px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #26332e;
   cursor: pointer;
   font: inherit;
@@ -10832,7 +10832,7 @@ select:focus-visible {
   gap: 12px;
   border: 1px solid #e0e6e3;
   border-radius: 7px;
-  background: #f7f9f8;
+  background: var(--theme-surface-soft);
   padding: 13px;
 }
 .schedule-logo-controls label {
@@ -10941,7 +10941,7 @@ select:focus-visible {
   border: 1px solid color-mix(in srgb, var(--shift-color) 62%, #26332e);
   border-radius: 999px;
   padding: 1px 5px;
-  background: color-mix(in srgb, var(--shift-color) 78%, #fff);
+  background: color-mix(in srgb, var(--shift-color) 78%, var(--theme-surface));
   color: #17231d;
   font-size: 10px;
   font-weight: 900;
@@ -11017,7 +11017,7 @@ select:focus-visible {
   margin: 20px;
   border: 1px solid #d6ddda;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #65706b;
 }
 .schedule-state strong {
@@ -11079,7 +11079,7 @@ select:focus-visible {
   .schedule-template-dialog > form {
     padding-top: 14px;
     padding-left: 0;
-    border-top: 1px solid #dce3df;
+    border-top: 1px solid var(--theme-border);
     border-left: 0;
   }
   .schedule-autofill-list > label {
@@ -11121,7 +11121,7 @@ select:focus-visible {
   padding: 30px;
   border: 1px solid #d8ddda;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .empty-state h2 {
   margin-bottom: 10px;
@@ -11144,7 +11144,7 @@ select:focus-visible {
   justify-content: space-between;
   padding: 0 32px;
   border-bottom: 1px solid #dce1de;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .onboarding-brand {
   display: inline-flex;
@@ -11218,8 +11218,8 @@ select:focus-visible {
   border: 1px solid #c7cfcb;
   border-radius: 6px;
   padding: 0 12px;
-  background: #fff;
-  color: #1d2525;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
 }
 .onboarding-form label > input,
 .onboarding-form label > select {
@@ -11233,7 +11233,7 @@ select:focus-visible {
   border: 1px solid #d8ddda;
   border-radius: 7px;
   padding: 14px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .onboarding-summary > span {
   display: grid;
@@ -11243,7 +11243,7 @@ select:focus-visible {
   place-items: center;
   border-radius: 6px;
   background: #e6f0ec;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .onboarding-summary strong {
   display: block;
@@ -11261,7 +11261,7 @@ select:focus-visible {
   border: 1px solid #d8ddda;
   border-radius: 7px;
   padding: 12px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .onboarding-check input {
   width: 18px;
@@ -11297,10 +11297,10 @@ select:focus-visible {
   margin-bottom: 22px;
   border-radius: 50%;
   background: #dceee7;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .form-success {
-  color: #12624f;
+  color: var(--theme-accent-strong);
   font-size: 13px;
   font-weight: 700;
 }
@@ -11316,7 +11316,7 @@ select:focus-visible {
   min-height: 100dvh;
   flex-direction: column;
   border-right: 1px solid #d9dfdc;
-  background: #fff;
+  background: var(--theme-surface);
   padding: 20px 14px;
 }
 .account-identity {
@@ -11334,7 +11334,7 @@ select:focus-visible {
   place-items: center;
   border-radius: 50%;
   background: #dceee7;
-  color: #12624f;
+  color: var(--theme-accent-strong);
   font-weight: 800;
 }
 .account-identity div {
@@ -11373,16 +11373,16 @@ select:focus-visible {
   text-decoration: none;
 }
 .account-nav-item:hover {
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
 }
 .account-nav-item.active {
   background: #e8f1ed;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .account-sidebar-footer {
   margin-top: auto;
   padding-top: 12px;
-  border-top: 1px solid #e2e6e4;
+  border-top: 1px solid var(--theme-border-subtle);
 }
 .account-main {
   min-width: 0;
@@ -11416,7 +11416,7 @@ select:focus-visible {
   place-items: center;
   border: 1px solid #d2dad6;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #196f5b;
 }
 .account-page-header h1,
@@ -11429,7 +11429,7 @@ select:focus-visible {
 }
 .account-page-header > div > p:last-child {
   margin: 6px 0 0;
-  color: #68756f;
+  color: var(--theme-muted);
   font-size: 13px;
 }
 .account-header-action {
@@ -11437,7 +11437,7 @@ select:focus-visible {
   justify-self: end;
 }
 .settings-form {
-  background: #fff;
+  background: var(--theme-surface);
   border: 1px solid #d9dfdc;
   border-radius: 7px;
 }
@@ -11446,7 +11446,7 @@ select:focus-visible {
   grid-template-columns: 190px minmax(0, 1fr);
   gap: 24px;
   padding: 22px;
-  border-bottom: 1px solid #e2e6e4;
+  border-bottom: 1px solid var(--theme-border-subtle);
 }
 .field-row > label {
   padding-top: 12px;
@@ -11502,7 +11502,7 @@ select:focus-visible {
 }
 .segmented-control label.selected {
   background: #e8f1ed;
-  color: #12624f;
+  color: var(--theme-accent-strong);
   box-shadow: inset 0 0 0 1px #5c9787;
 }
 .segmented-control input {
@@ -11515,7 +11515,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d9dfdc;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .workspace-row {
   display: flex;
@@ -11524,7 +11524,7 @@ select:focus-visible {
   justify-content: space-between;
   gap: 20px;
   padding: 12px 18px;
-  border-bottom: 1px solid #e2e6e4;
+  border-bottom: 1px solid var(--theme-border-subtle);
 }
 .workspace-row[data-active="true"] {
   background: #f7fbf9;
@@ -11572,7 +11572,7 @@ select:focus-visible {
   padding: 20px;
   border: 1px solid #d9dfdc;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .create-workspace-form > div {
   display: grid;
@@ -11670,7 +11670,7 @@ select:focus-visible {
   min-height: 0;
   overflow: hidden;
   border-right: 1px solid #d9dfdc;
-  background: #fff;
+  background: var(--theme-surface);
   padding: 18px 10px;
 }
 .settings-rail-title {
@@ -11710,11 +11710,11 @@ select:focus-visible {
   text-decoration: none;
 }
 .settings-nav-item:hover {
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
 }
 .settings-nav-item.active {
   background: #e8f1ed;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .settings-content {
   min-width: 0;
@@ -11809,7 +11809,7 @@ select:focus-visible {
 .settings-empty {
   border: 1px solid #d9dfdc;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .organization-form-row {
   display: grid;
@@ -11835,11 +11835,11 @@ select:focus-visible {
   border: 1px solid #c7cfcb;
   border-radius: 6px;
   padding: 0 11px;
-  background: #fff;
-  color: #1d2525;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
 }
 .organization-logo-row {
-  border-bottom: 1px solid #e2e6e4;
+  border-bottom: 1px solid var(--theme-border-subtle);
 }
 .organization-logo-control {
   display: grid;
@@ -11854,7 +11854,7 @@ select:focus-visible {
   display: flex;
   justify-content: flex-end;
   padding: 17px 24px;
-  border-top: 1px solid #e2e6e4;
+  border-top: 1px solid var(--theme-border-subtle);
 }
 .setup-checklist-settings {
   margin-top: 18px;
@@ -11900,7 +11900,7 @@ select:focus-visible {
   justify-content: space-between;
   gap: 20px;
   padding: 10px 14px 10px 20px;
-  border-bottom: 1px solid #e2e6e4;
+  border-bottom: 1px solid var(--theme-border-subtle);
 }
 .entity-editor-heading strong,
 .entity-editor-heading span {
@@ -11942,7 +11942,7 @@ select:focus-visible {
   justify-content: flex-end;
   gap: 9px;
   padding: 15px 20px;
-  border-top: 1px solid #e2e6e4;
+  border-top: 1px solid var(--theme-border-subtle);
 }
 .entity-list {
   overflow: hidden;
@@ -11954,7 +11954,7 @@ select:focus-visible {
   align-items: center;
   gap: 12px;
   padding: 10px 12px 10px 18px;
-  border-bottom: 1px solid #e2e6e4;
+  border-bottom: 1px solid var(--theme-border-subtle);
 }
 .entity-row:last-child {
   border-bottom: 0;
@@ -12010,7 +12010,7 @@ select:focus-visible {
   border: 1px solid #dbe2de;
   border-radius: 7px;
   padding: 13px 14px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .settings-summary-tile span,
 .entity-meta span {
@@ -12076,7 +12076,7 @@ select:focus-visible {
   border: 1px solid #d5dbd8;
   border-radius: 999px;
   padding: 4px 7px;
-  background: #f7f9f8;
+  background: var(--theme-surface-soft);
 }
 .entity-actions {
   display: inline-flex;
@@ -12121,7 +12121,7 @@ select:focus-visible {
   border: 1px solid #dbe2de;
   border-radius: 7px;
   padding: 13px 14px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .availability-metric span {
   display: block;
@@ -12145,7 +12145,7 @@ select:focus-visible {
   border: 1px solid #dbe2de;
   border-radius: 7px;
   padding: 14px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .availability-person {
   display: flex;
@@ -12228,7 +12228,7 @@ select:focus-visible {
   border: 1px solid #d5dbd8;
   border-radius: 999px;
   padding: 4px 8px;
-  background: #f7f9f8;
+  background: var(--theme-surface-soft);
 }
 .availability-card-footer .availability-warning {
   border-color: #e4c6a0;
@@ -12243,7 +12243,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d9dfdc;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .role-directory {
   overflow-y: auto;
@@ -12280,7 +12280,7 @@ select:focus-visible {
   place-items: center;
   border: 1px solid #d6ddda;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .role-directory strong,
 .role-directory small {
@@ -12364,8 +12364,8 @@ select:focus-visible {
   border: 1px solid #c7cfcb;
   border-radius: 6px;
   padding: 10px 11px;
-  background: #fff;
-  color: #1d2525;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
   font: inherit;
   line-height: 1.45;
 }
@@ -12539,7 +12539,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #c7cfcb;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .number-suffix-input input {
   border: 0;
@@ -12591,7 +12591,7 @@ select:focus-visible {
   cursor: pointer;
 }
 .settings-tabs button[aria-selected="true"] {
-  background: #fff;
+  background: var(--theme-surface);
   color: #155e4d;
   box-shadow: 0 1px 3px rgb(22 38 32 / 12%);
 }
@@ -12667,7 +12667,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d9dfdc;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .template-preview-heading {
   display: flex;
@@ -12698,7 +12698,7 @@ select:focus-visible {
   gap: 18px;
   margin: 0;
   padding: 15px 22px;
-  background: #f7f9f8;
+  background: var(--theme-surface-soft);
 }
 .template-preview dt {
   color: #7b8580;
@@ -12743,7 +12743,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d9dfdc;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .support-section {
   display: flex;
@@ -12752,7 +12752,7 @@ select:focus-visible {
   justify-content: space-between;
   gap: 24px;
   padding: 22px 24px;
-  border-bottom: 1px solid #e2e6e4;
+  border-bottom: 1px solid var(--theme-border-subtle);
 }
 .support-section:last-child {
   border-bottom: 0;
@@ -12783,7 +12783,7 @@ select:focus-visible {
   gap: 24px;
   margin: 22px 0 0;
   padding-top: 20px;
-  border-top: 1px solid #e2e6e4;
+  border-top: 1px solid var(--theme-border-subtle);
 }
 .support-details dt {
   color: #7b8580;
@@ -12825,7 +12825,7 @@ select:focus-visible {
   border: 1px solid #d5dbd8;
   border-radius: 5px;
   color: #67716d;
-  background: #fff;
+  background: var(--theme-surface);
   font-size: 10px;
   font-weight: 800;
 }
@@ -12853,7 +12853,7 @@ select:focus-visible {
   padding: 28px;
   border: 1px solid #d9dfdc;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #66716c;
   font-size: 13px;
 }
@@ -12876,7 +12876,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #cbd3cf;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .two-tab-control button {
   min-height: 36px;
@@ -12893,7 +12893,7 @@ select:focus-visible {
 }
 .two-tab-control button[aria-selected="true"] {
   background: #e8f1ed;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .job-fields {
   display: grid;
@@ -12914,7 +12914,7 @@ select:focus-visible {
   gap: 34px;
   align-items: center;
   padding: 22px 24px;
-  border-bottom: 1px solid #e2e6e4;
+  border-bottom: 1px solid var(--theme-border-subtle);
 }
 .scheduling-setting-row strong {
   font-size: 13px;
@@ -12935,8 +12935,8 @@ select:focus-visible {
   border: 1px solid #c7cfcb;
   border-radius: 6px;
   padding: 0 10px;
-  background: #fff;
-  color: #1d2525;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
 }
 .conflict-setting-controls {
   display: grid;
@@ -12951,8 +12951,8 @@ select:focus-visible {
   border: 1px solid #c7cfcb;
   border-radius: 6px;
   padding: 0 10px;
-  background: #fff;
-  color: #1d2525;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
 }
 .conflict-minimum-field {
   display: grid;
@@ -12989,7 +12989,7 @@ select:focus-visible {
 }
 .settings-segmented label[data-selected="true"] {
   background: #e8f1ed;
-  color: #12624f;
+  color: var(--theme-accent-strong);
 }
 .settings-segmented input {
   position: absolute;
@@ -13304,15 +13304,15 @@ select:focus-visible {
   border-radius: 4px;
 }
 .schedule-subnav a.active {
-  background: #fff;
-  color: #17221e;
+  background: var(--theme-surface);
+  color: var(--theme-text);
   box-shadow: 0 1px 2px #15251e18;
 }
 .lineup-page {
   min-height: 100%;
   padding: 24px 28px 48px;
   background: #f4f6f5;
-  color: #17221e;
+  color: var(--theme-text);
 }
 .lineup-header {
   display: flex;
@@ -13340,7 +13340,7 @@ select:focus-visible {
 }
 .lineup-actions label {
   border: 1px solid #ccd4d0;
-  background: #fff;
+  background: var(--theme-surface);
   padding: 8px 10px;
   border-radius: 5px;
 }
@@ -13357,7 +13357,7 @@ select:focus-visible {
 }
 .lineup-location-filter button {
   border: 1px solid #cbd3cf;
-  background: #fff;
+  background: var(--theme-surface);
   color: #53615a;
   border-radius: 4px;
   padding: 7px 11px;
@@ -13379,7 +13379,7 @@ select:focus-visible {
 }
 .lineup-location {
   border: 1px solid #d3dad6;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .lineup-location > header {
   display: flex;
@@ -13546,7 +13546,7 @@ select:focus-visible {
 .lineup-drawer {
   position: relative;
   z-index: 1;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 18px 50px #0c171240;
 }
 .lineup-dialog {
@@ -13676,9 +13676,9 @@ select:focus-visible {
   max-height: 360px;
   overflow: auto;
   box-sizing: border-box;
-  border: 1px solid #dce3df;
+  border: 1px solid var(--theme-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--theme-surface);
   color: #1f2d27;
   padding: 18px;
 }
@@ -13806,7 +13806,7 @@ select:focus-visible {
   padding: 8px;
   border: 1px solid #cbd3cf;
   border-radius: 4px;
-  background: #fff;
+  background: var(--theme-surface);
   color: inherit;
 }
 .lineup-section-row input[type="color"] {
@@ -13883,7 +13883,7 @@ select:focus-visible {
 
 /* Phase 6B Schedule Requests */
 .requests-page {
-  color: #17221e;
+  color: var(--theme-text);
 }
 .requests-tabs {
   display: flex;
@@ -13896,7 +13896,7 @@ select:focus-visible {
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
-  color: #68756f;
+  color: var(--theme-muted);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -13960,8 +13960,8 @@ select:focus-visible {
   cursor: pointer;
 }
 .request-queue-toggle button.active {
-  background: #fff;
-  color: #17221e;
+  background: var(--theme-surface);
+  color: var(--theme-text);
   box-shadow: 0 1px 2px #17221e20;
 }
 .requests-search,
@@ -13970,14 +13970,14 @@ select:focus-visible {
   min-height: 42px;
   border: 1px solid #ccd5d1;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .requests-search {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0 12px;
-  color: #68756f;
+  color: var(--theme-muted);
 }
 .requests-search input {
   width: 100%;
@@ -14012,7 +14012,7 @@ select:focus-visible {
   display: grid;
   grid-template-columns: minmax(330px, 0.86fr) minmax(470px, 1.4fr);
   border: 1px solid #ccd5d1;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .requests-list {
   min-width: 0;
@@ -14048,7 +14048,7 @@ select:focus-visible {
   place-items: center;
   border: 1px solid #d4ddd8;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #3b6655;
 }
 .request-row-main {
@@ -14101,7 +14101,7 @@ select:focus-visible {
 .status-rejected,
 .status-revoked {
   border-color: #e0b8b3;
-  background: #fff0ee;
+  background: var(--theme-danger-soft);
   color: #8b3730;
 }
 .status-partially-approved {
@@ -14121,7 +14121,7 @@ select:focus-visible {
 }
 .request-detail {
   min-width: 0;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .request-detail-inner {
   min-width: 0;
@@ -14239,7 +14239,7 @@ select:focus-visible {
   justify-content: flex-end;
   gap: 8px;
   border-top: 1px solid #dce2df;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .requests-page .nf-button.danger {
   background: #a94139;
@@ -14251,7 +14251,7 @@ select:focus-visible {
 .view-only-note {
   padding: 9px 11px;
   border-left: 3px solid #80928a;
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
   color: #5c6a64;
   font-size: 12px;
 }
@@ -14299,7 +14299,7 @@ select:focus-visible {
 }
 .request-conflicts > div.hard {
   border-color: #aa4037;
-  background: #fff0ee;
+  background: var(--theme-danger-soft);
   color: #84372f;
 }
 .request-conflicts > div.soft {
@@ -14360,7 +14360,7 @@ select:focus-visible {
   display: grid;
   gap: 18px;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 18px 60px #10161340;
 }
 .request-dialog > header,
@@ -14392,7 +14392,7 @@ select:focus-visible {
   grid-column: 1 / -1;
   resize: vertical;
   padding: 9px;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 4px;
   font: inherit;
 }
@@ -14415,9 +14415,9 @@ select:focus-visible {
 }
 .partial-decisions select {
   min-height: 32px;
-  border: 1px solid #cbd4d0;
+  border: 1px solid var(--theme-border-strong);
   border-radius: 4px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 @media (max-width: 1040px) {
   .requests-workbench {
@@ -14461,7 +14461,7 @@ select:focus-visible {
     inset: 0;
     display: block;
     overflow: auto;
-    background: #fff;
+    background: var(--theme-surface);
   }
   .request-detail-inner {
     min-height: 100%;
@@ -14581,8 +14581,8 @@ select:focus-visible {
   border-bottom: 2px solid transparent;
 }
 .hub-tabs a.active {
-  color: #176b4e;
-  border-color: #176b4e;
+  color: var(--theme-success);
+  border-color: var(--theme-success);
 }
 .hub-overview,
 .hub-two-column {
@@ -14595,7 +14595,7 @@ select:focus-visible {
   padding: 22px;
   border: 1px solid #d9dfdc;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .hub-panel h2 {
   margin: 0;
@@ -14613,7 +14613,7 @@ select:focus-visible {
 }
 .hub-panel .panel-heading p:not(.eyebrow) {
   margin: 5px 0 0;
-  color: #68756f;
+  color: var(--theme-muted);
   font-size: 13px;
 }
 .hub-next {
@@ -14745,7 +14745,7 @@ select:focus-visible {
   padding: 4px 7px;
   border-radius: 4px;
   background: #edf5f1;
-  color: #176b4e;
+  color: var(--theme-success);
   text-transform: capitalize;
 }
 .row-actions {
@@ -14769,7 +14769,7 @@ select:focus-visible {
   padding: 8px 10px;
   border: 1px solid #cbd3cf;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: inherit;
   font: inherit;
 }
@@ -14800,7 +14800,7 @@ select:focus-visible {
   place-items: center;
   border-radius: 50%;
   background: #dceee7;
-  color: #176b4e;
+  color: var(--theme-success);
   font-weight: 750;
 }
 .availability-list {
@@ -14893,7 +14893,7 @@ select:focus-visible {
 }
 .connection-state.online {
   background: #e5f3ec;
-  color: #176b4e;
+  color: var(--theme-success);
 }
 .connection-state.offline {
   background: #f8e8e5;
@@ -14945,7 +14945,7 @@ select:focus-visible {
   justify-content: center;
 }
 .time-primary-action {
-  background: #176b4e;
+  background: var(--theme-success);
 }
 .time-action-status {
   margin: 14px 0 0;
@@ -15140,7 +15140,7 @@ select:focus-visible {
   padding: 8px 10px;
   border: 1px solid #cbd4cf;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   color: inherit;
   font: inherit;
 }
@@ -15152,7 +15152,7 @@ select:focus-visible {
   gap: 8px !important;
   border: 1px solid #cbd4cf;
   border-radius: 5px;
-  background: #fff;
+  background: var(--theme-surface);
   white-space: nowrap;
 }
 .time-attention-toggle input {
@@ -15180,7 +15180,7 @@ select:focus-visible {
   border: 1px solid #d6ddda;
   border-radius: 7px;
   overflow: hidden;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .time-entries-list {
   min-width: 0;
@@ -15232,7 +15232,7 @@ select:focus-visible {
   border-radius: 4px;
   display: inline-flex;
   background: #e8f2ed;
-  color: #176b4e;
+  color: var(--theme-success);
   font-size: 11px;
   font-weight: 750;
 }
@@ -15378,7 +15378,7 @@ select:focus-visible {
   padding: 22px;
   border: 1px solid #ccd5d0;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #1c2622;
   overflow-y: auto;
 }
@@ -15632,7 +15632,7 @@ select:focus-visible {
   background: transparent;
 }
 .correction-decision-control button.selected {
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 1px 3px rgb(20 35 29 / 14%);
   font-weight: 700;
 }
@@ -15811,7 +15811,7 @@ select:focus-visible {
 .page-header p {
   display: block;
   margin-top: 6px;
-  color: #68756f;
+  color: var(--theme-muted);
   font-size: 13px;
 }
 .workspace-header-actions {
@@ -15822,7 +15822,7 @@ select:focus-visible {
   margin-top: 0;
   border: 1px solid #d6ded9;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .owner-setup-checklist > header {
   min-height: 58px;
@@ -15838,7 +15838,7 @@ select:focus-visible {
 }
 .owner-setup-checklist p {
   margin-top: 4px;
-  color: #68756f;
+  color: var(--theme-muted);
   font-size: 12px;
 }
 .owner-setup-checklist-list {
@@ -15915,7 +15915,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d8dfdb;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .workspace-widget:nth-child(1),
 .workspace-widget:nth-child(2),
@@ -15961,7 +15961,7 @@ select:focus-visible {
 }
 .workspace-metrics span,
 .workspace-focus-number > span {
-  color: #68756f;
+  color: var(--theme-muted);
   font-size: 12px;
 }
 .workspace-metrics .widget-link {
@@ -15991,7 +15991,7 @@ select:focus-visible {
 .workspace-todo-form input {
   width: 100%;
   min-height: 36px;
-  border: 1px solid #dce3df;
+  border: 1px solid var(--theme-border);
   border-radius: 8px;
   padding: 0 11px;
   color: #13201a;
@@ -16105,7 +16105,7 @@ select:focus-visible {
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
-  color: #68756f;
+  color: var(--theme-muted);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -16122,7 +16122,7 @@ select:focus-visible {
   display: grid;
   grid-template-columns: minmax(320px, 0.8fr) minmax(420px, 1.2fr);
   overflow: hidden;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .announcement-list {
   overflow-y: auto;
@@ -16294,7 +16294,7 @@ select:focus-visible {
   border-radius: 7px;
   display: grid;
   gap: 16px;
-  background: #fff;
+  background: var(--theme-surface);
   box-shadow: 0 20px 60px rgb(24 40 33 / 25%);
 }
 .announcement-editor > header {
@@ -16321,7 +16321,7 @@ select:focus-visible {
   border: 1px solid #cbd4cf;
   border-radius: 5px;
   padding: 8px 10px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #1d2925;
   font: inherit;
 }
@@ -16396,7 +16396,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid #d8dfdb;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 .notification-list article {
   min-height: 84px;
@@ -16626,7 +16626,7 @@ select:focus-visible {
   padding: 0 14px;
   border: 1px solid #9ebcaf;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   font-size: 13px;
 }
 .public-trust-app-link:hover {
@@ -16767,7 +16767,7 @@ select:focus-visible {
   padding: 10px 13px;
   border: 1px solid #9ebcaf;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   font-size: 14px;
 }
 .public-choice-status {
@@ -17004,7 +17004,7 @@ select:focus-visible {
   align-items: center;
   gap: 10px;
   padding: 0 14px;
-  background: #fff;
+  background: var(--theme-surface);
   border: 1px solid #b8c6c2;
   border-radius: 6px;
 }
@@ -17038,7 +17038,7 @@ select:focus-visible {
   gap: 14px;
   padding: 16px;
   text-align: left;
-  background: #fff;
+  background: var(--theme-surface);
   border: 1px solid #cad5d2;
   border-radius: 7px;
   color: #17201e;
@@ -17113,7 +17113,7 @@ select:focus-visible {
   margin-bottom: 16px;
   border: 1px solid #9eaeaa;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   text-align: center;
   font-size: 2rem;
   letter-spacing: 0.45em;
@@ -17165,7 +17165,7 @@ select:focus-visible {
   padding: 16px;
   border: 1px solid #087d70;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #06675d;
   font: inherit;
   font-weight: 800;
@@ -17349,8 +17349,8 @@ select:focus-visible {
   border: 1px solid #c7cfcb;
   border-radius: 6px;
   padding: 0 12px;
-  background: #fff;
-  color: #1d2525;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
   font: inherit;
   font-variant-numeric: tabular-nums;
 }
