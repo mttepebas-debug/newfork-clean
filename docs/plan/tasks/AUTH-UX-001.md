@@ -1,6 +1,6 @@
 # AUTH-UX-001 Auth, davet ve onboarding akışı: UI tasarımı (mockup) ve web implementasyonu
-Status: draft (prompt paylaşıldı; worker başlayınca active)
-Session: -   Branch: task/auth-ux-001   Worktree: newfork-wt/auth-ux-001   DB: -   Portlar: web 5557, API 5556 (ana checkout)
+Status: active (faz 1 teslim edildi 28d4e7a; kullanıcı varyant onayı bekleniyor)
+Session: "AUTH-UX-001 mockup tasarımları" (local_2e3cd091)   Branch: task/auth-ux-001   Worktree: newfork-wt/auth-ux-001   DB: -   Portlar: web 5557, API 5556 (ana checkout)
 Öneri: Opus 5, high. Çok yüzeyli akış, routing ve auth state; mockup'lar gerçek bileşen olarak yazılır ve seçilen varyant implementasyon olur.
 Kaynaklar (bağlayıcı): `C:/Users/TheWe/.claude/plans/kay-t-olduktan-sonra-login-idempotent-eich.md` (T2 kararları, edge case'ler) ve bu dosya. Çelişkide bu dosya kazanır (koordinatör keşfi 2026-09-17).
 İlişki: AUTH-002 (DB/API) paralel yürür; final uçtan uca doğrulama AUTH-002 merge edildikten sonra rebase ile yapılır. AUTH-001 raporundaki madde 1, 2a, 2b ve T1 açığı ("Start my own") burada kapanır. AUTH-003 ayrı task olarak açılmadı: revoke edilmiş oturumun kök çözümü yalnız web'dedir (S6).
@@ -49,7 +49,8 @@ Goal: Davetli kişi employee olarak doğru workspace'in onboarding'ine gitsin; w
 
 ### S4 Active invitation found (`employees/PendingInvitationsPage.tsx`)
 - `context` varsa: `p.muted` "You have been invited to join another organization. Join now or decide later. Declining cannot be undone." Alt satır `a.text-button` "Not now" → bayrak set + `appLandingPath(context)`.
-- `context` yoksa: `p.muted` "Join the organization that invited you. Declining cannot be undone." Alt link yok. "Start my own organization" tamamen kalkar (T2 sert engel kararı).
+- `context` yok ama hesabın en az bir `pending` (onboarding in progress) üyeliği varsa (plan kararı 5-A): "Not now" yine gösterilir ve `/welcome`'a (WelcomeRedirect) döner. Metin context'li sürümle aynı.
+- `context` yok ve pending üyelik de yoksa: `p.muted` "Join the organization that invited you. Declining cannot be undone." Alt link yok. "Start my own organization" tamamen kalkar (T2 sert engel kararı).
 - Birden fazla davet aynı listede; her satır bağımsız Join/Decline.
 - Join → `/welcome/{workspaceId}` (mutation sonucu). Decline sonrası davet kalmadıysa: `listAccountWorkspaces` active sayısı 0 → `/no-organization`; 1 → `refresh()` sonra `appLandingPath(context)`; >1 → `/organization-switcher`.
 - Login'de kontrol (ProtectedRoute, `workspace !== "none"` dalı, context varken): sessionStorage `newfork.invitationsChecked` yoksa `["account-pending-invitations"]` sorgusu; yüklenirken `main.auth-loading`; sonuç >0 ve pathname `/invitations/pending` değilse oraya `Navigate`; sonuç ne olursa olsun bayrak set edilir (hata dahil; hata uygulamayı bloklamaz). Bayrak `signIn`, `signUp` ve `signOut`'ta silinir. Polling yok; sayfa odağında yeniden kontrol yok (kilitli karar).
@@ -67,6 +68,7 @@ Goal: Davetli kişi employee olarak doğru workspace'in onboarding'ine gitsin; w
 
 ### S7 Workspace bazlı employee onboarding (`employees/EmployeeOnboardingPage.tsx`, `App.tsx`, `onboarding-data.ts`)
 - Route `/welcome/:workspaceId/*` eklenir; `base = "/welcome/" + workspaceId`; DB'den gelen `/welcome/...` yolları `base + path.slice(8)` ile önek alır; `location.pathname` karşılaştırmaları ve `requirementPath` aynı yardımcıyı kullanır. Query key `["my-employee-onboarding", workspaceId]`; `getMyOnboarding(workspaceId)` → `?workspaceId=`.
+- Onboarding mutasyonları (`onboarding-data.ts`: profile, documents prepare/confirm, submit, reset, leave) da `?workspaceId=` gönderir (AUTH-002 API'si; merge'e kadar yok sayılır). Aksi halde çoklu üyelikte yanlış case'e yazılır.
 - `/welcome/*` (id'siz) → `WelcomeRedirect`: `listAccountWorkspaces` → pending 1 → `/welcome/{id}`; >1 → `/organization-switcher`; 0 → `appLandingPath(context)`.
 - `AcceptInvitationPage` "Start onboarding" → `/welcome/{acceptance.data}`; PendingInvitationsPage Join → `/welcome/{workspaceId}`.
 - `PendingOrganizationStatusPage` ve `/organization-switcher/pending(/ :workspaceId)` route'ları silinir; ilgili test beklentileri güncellenir.
@@ -99,3 +101,8 @@ Risk:
 - AUTH-002 gecikirse `?workspaceId=` etkisiz kalır; çoklu üyelik senaryosu (b) final doğrulaması merge'ü bekler.
 
 ## Notes / Result
+- 2026-09-17 faz 1 teslimi (28d4e7a, push edildi): S1–S7 gerçek bileşen olarak yazıldı; 16 light ekran görüntüsü `artifacts/auth-ux-001/` (ana checkout, gitignored); URL listesi worker raporunda. Web typecheck PASS; vitest faz 2'de.
+  - Koordinatör incelemesi: tasarım diline uygun. Öneri S1 → A (header); S3 → B (liste satırı: S2/S4 ile tek bileşen, daha az kod, daha kompakt). Kullanıcı seçimi bekleniyor.
+  - Kararlar (koordinatör): 5-A gereği pending üyeliği olan context'siz kullanıcıya da "Not now" (→ `/welcome`). Onboarding mutasyonları workspaceId gönderir (AUTH-002 kapsamı genişledi). Global `.nf-button`/`.secondary-button` cascade hatası → tasks/THEME-005; bu task'taki kapsamlı (scoped) düzeltme şimdilik kalır, THEME-005 kaldırır.
+  - Worker ek değişiklikleri kabul: pending satırda "Set as default" disabled; aktivasyon sonrası `setTabWorkspaceId` ile yeni org'a land; signOut scope local.
+  - Local DB fixture kalıntısı (3 auth-ux-* kullanıcı, "AUTH-UX Bistro", 6 employee_profiles, davetler): uçtan uca doğrulama bitene kadar kalır; silme kullanıcı onayıyla.

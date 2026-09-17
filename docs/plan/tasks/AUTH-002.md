@@ -21,12 +21,18 @@ In scope:
    - Seçim: parametre verildiyse o workspace'in case'i (`employee_onboarding_cases.workspace_id`); yoksa `raise exception 'employee onboarding is unavailable' using errcode = 'P0002'`. Parametre null ise `order by (onboarding.status = 'approved'), onboarding.created_at limit 1` (tamamlanmamış case önce). `needs_selection` gibi yeni JSON şekli yok; seçim web'de yapılır (AUTH-UX-001 S7).
    - Gövdenin geri kalanı `20260908192000_employee_onboarding_getter_allows_initialization.sql` ile aynı kalır (kopyala, yalnız seçim ve başlatma satırları değişir).
    - pgTAP: iki workspace'te case'i olan kullanıcı için (i) parametreli çağrı doğru workspace; (ii) parametresiz çağrı approved olmayanı döner; (iii) yanlış workspace → P0002.
-3. **API:** `GET /v1/me/onboarding?workspaceId=<uuid>` (`onboarding-routes.ts:51`, zod uuid optional) → `service.get(token, workspaceId)` → RPC'ye `target_workspace_id` (yalnız verildiyse). Diğer onboarding route'ları case id ile çalışır, dokunulmaz (kontrol edilip raporlanır). `workspace-account-routes.ts:524` `requestError`: "must be resolved" içeren mesaj → 403.
+3. **Migration B devamı — mutasyonlar (2026-09-17 koordinatör bulgusu; AUTH-UX-001 faz 1 notundan doğrulandı):** `save_employee_onboarding_profile_service` (`20260914211402_...`), `submit_employee_onboarding_service` (`20260908153000_...`), `reset_employee_onboarding_service` ve `leave_employee_onboarding_service` case'i yalnız `user_id = target_user_id` ile seçiyor (save'de sıralama bile yok). Çoklu üyelikte yanlış workspace'in case'ine yazar. Çözüm:
+   - Tek iç yardımcı: `app_private.employee_onboarding_case_id(target_user_id uuid, target_workspace_id uuid)`; seçim kuralı getter ile aynı (workspace verildiyse o; değilse approved olmayan, en eski). Getter ve 4 mutasyon bu yardımcıyı kullanır; mutasyonlar `select ... where id = <yardımcı> for update` ile kilitler.
+   - 4 mutasyona `target_workspace_id uuid default null` eklenir; her biri için eski imza drop edilir, grant/revoke yeniden yazılır (aynı PGRST203 tuzağı). Gövdelerin geri kalanı en güncel tanımdan birebir kopyalanır.
+   - `confirm_employee_document_service` ve `acknowledge_employee_requirement_service` requirement id ile çalışır; requirement → case → employee.user_id doğrulamasını kontrol et, doğruysa dokunma, raporla.
+   - pgTAP: iki case'li kullanıcıda workspace parametreli save/submit doğru case'i değiştirir; diğer case'in revision'ı değişmez.
+4. **API:** `GET /v1/me/onboarding?workspaceId=<uuid>` (`onboarding-routes.ts:51`, zod uuid optional) → `service.get(token, workspaceId)` → RPC'ye `target_workspace_id` (yalnız verildiyse). Aynı opsiyonel `workspaceId` query parametresi `PATCH /v1/me/onboarding/profile`, documents prepare/confirm (servis içindeki `get` çağrısı dahil), submit, reset ve leave route'larına eklenir ve ilgili RPC'ye geçirilir. Parametre yoksa davranış bugünkü gibi kalır. `workspace-account-routes.ts:524` `requestError`: "must be resolved" içeren mesaj → 403.
    - Testler: `onboarding-routes`/`onboarding-service` testine parametre geçişi; `workspace-account-routes.test.ts` guard hatası 403.
 
 Out of scope: web (AUTH-UX-001), `/v1/invitations/*` 409/401 düzeni (BACKLOG), davet token'ı kalıcılığı (düşürüldü), "terminated" filtresi (böyle bir status yok), hosted push (OPS-010 akışıyla, koordinatör).
 
 Done when:
+- Getter ve 4 mutasyon workspace parametresi alıyor; seçim tek yardımcı üzerinden.
 - İki migration local'e uygulanmış (DB lock), pgTAP ilgili dosyalar PASS (fixture drift için memory `local-db-test-fixture-drift`).
 - API testleri ve api typecheck PASS.
 - Branch push edilmiş, rapor koordinatöre gönderilmiş (migration adları ve pgTAP sonuçları tek satır).
