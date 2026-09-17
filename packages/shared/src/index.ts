@@ -620,16 +620,45 @@ export const colorSchema = z
 export { scheduleExportV2PreferencesSchema, scheduleExportV2ScopeSchema, scheduleExportV2AuthorizationSchema,
   type ScheduleExportV2Preferences, type ScheduleExportV2Scope } from "./schedule-export-v2";
 
-export const locationShortNameSchema = z.string().trim().regex(
+// Stored names predate the A–Z rule; reads and exports keep accepting them.
+export const storedLocationShortNameSchema = z.string().trim().regex(
   /^[\p{L}\p{N}-]{2,12}$/u,
   "Use 2–12 letters, numbers or hyphens, without spaces",
 );
+export const locationShortNameSchema = z.string().trim().toUpperCase().regex(
+  /^[A-Z0-9-]{2,12}$/,
+  "Use 2–12 characters: letters A–Z, numbers or hyphens. No spaces or other symbols.",
+);
+export const locationPhoneSchema = accountPhoneSchema.regex(
+  /^\+1[2-9]\d{9}$/,
+  "Enter a 10-digit US phone number",
+);
+
+function asciiLetters(value: string): string {
+  return value.replace(/ı/g, "i").replace(/İ/g, "I").normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+// Multi-word: initials. One word: first letter + following consonants (max 3).
+// Empty when nothing of length 2 fits.
+export function suggestLocationShortName(name: string): string {
+  const words = asciiLetters(name).toUpperCase().match(/[A-Z0-9]+/g) ?? [];
+  if (words.length > 1) {
+    const initials = words.map((word) => word[0]).join("").slice(0, 12);
+    return initials.length >= 2 ? initials : "";
+  }
+  const word = words[0] ?? "";
+  const consonants = word.slice(0, 1) + word.slice(1).replace(/[AEIOU0-9]/g, "");
+  // Too few consonants: first 3 distinct characters (Deea → DEA).
+  const pick = consonants.length >= 2 ? consonants.slice(0, 3) : [...new Set(word)].join("").slice(0, 3);
+  return pick.length >= 2 ? pick : "";
+}
 
 export const locationSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
-  short_name: locationShortNameSchema.nullable().optional(),
+  short_name: storedLocationShortNameSchema.nullable().optional(),
+  phone: locationPhoneSchema.nullable().optional(),
   street_address: z.string().trim().max(180),
   city: z.string().trim().max(100),
   region: z.string().trim().max(100),
@@ -670,7 +699,7 @@ export const locationInputSchema = locationSchema.pick({
   postal_code: true,
   country_code: true,
   timezone: true,
-}).extend({ short_name: locationShortNameSchema, timezone: z.string().trim().max(80).refine(isValidIanaTimezone, "Select a valid IANA time zone") });
+}).extend({ short_name: locationShortNameSchema, phone: locationPhoneSchema.nullable(), timezone: z.string().trim().max(80).refine(isValidIanaTimezone, "Select a valid IANA time zone") });
 export type LocationInput = z.infer<typeof locationInputSchema>;
 
 export const departmentInputSchema = departmentSchema.pick({
@@ -1001,7 +1030,7 @@ export type ScheduleView = z.infer<typeof scheduleViewSchema>;
 export const scheduleLocationSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
-  short_name: locationShortNameSchema.nullable().optional(),
+  short_name: storedLocationShortNameSchema.nullable().optional(),
   timezone: z.string().trim().min(1).max(80),
   sort_order: z.coerce.number().int().nonnegative(),
   publication_status: z.enum(["published", "unpublished"]),
