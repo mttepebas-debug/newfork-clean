@@ -4,6 +4,7 @@ import { Navigate, useLocation } from "react-router";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { invitationsCheckedStorageKey } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
+import { WorkspaceSetupPending } from "./WorkspaceSetupPending";
 
 type WorkspaceRequirement = "none" | "any" | "complete";
 
@@ -95,11 +96,15 @@ export function ProtectedRoute({
       return <Navigate to="/invitations/pending" replace />;
   }
   if (
-    workspace === "complete" &&
+    workspace !== "none" &&
     context &&
     context.onboarding.status !== "complete"
   ) {
-    return <Navigate to="/onboarding" replace />;
+    // Setup belongs to the owner. Other members can be active before it is
+    // finished (the owner invites the team in the last step) and wait here,
+    // also when they open /onboarding directly.
+    if (context.membership.role !== "owner") return <WorkspaceSetupPending />;
+    if (workspace === "complete") return <Navigate to="/onboarding" replace />;
   }
   return children;
 }

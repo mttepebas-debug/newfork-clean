@@ -39,13 +39,13 @@ function LocationProbe() {
   return <output aria-label="Current path">{location.pathname}</output>;
 }
 
-function renderRoute() {
+function renderRoute(entry = "/app/workspace") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/app/workspace"]}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route
             path="/app/workspace"
@@ -56,7 +56,14 @@ function renderRoute() {
             }
           />
           <Route path="/invitations/pending" element={<LocationProbe />} />
-          <Route path="/onboarding" element={<LocationProbe />} />
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute workspace="any">
+                <LocationProbe />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -107,9 +114,68 @@ describe("ProtectedRoute", () => {
   it("routes incomplete owner onboarding contexts away from the app shell", async () => {
     authState.value.error = null;
     authState.value.context = {
+      membership: { role: "owner" },
       onboarding: { status: "incomplete", currentStep: 2 },
     } as never;
     renderRoute();
+
+    expect((await screen.findByLabelText("Current path")).textContent).toBe(
+      "/onboarding",
+    );
+  });
+
+  it.each(["admin", "manager", "employee"] as const)(
+    "keeps an active %s out of the owner setup while it is unfinished",
+    async (role) => {
+      authState.value.error = null;
+      authState.value.context = {
+        workspace: { name: "Harbor Grill" },
+        membership: { role },
+        onboarding: { status: "incomplete", currentStep: 2 },
+      } as never;
+      renderRoute();
+
+      expect(
+        await screen.findByRole("heading", {
+          name: "Workspace setup in progress",
+        }),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(/The owner has not finished setting up Harbor Grill\./),
+      ).toBeTruthy();
+      // A status view, not a redirect: nothing to loop on.
+      expect(screen.queryByLabelText("Current path")).toBeNull();
+      expect(screen.queryByRole("heading", { name: "Workspace" })).toBeNull();
+
+      fireEvent.click(screen.getByRole("button", { name: "Check again" }));
+      expect(authState.value.refresh).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+      expect(authState.value.signOut).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("shows the same status when a non-owner opens the owner setup directly", async () => {
+    authState.value.error = null;
+    authState.value.context = {
+      workspace: { name: "Harbor Grill" },
+      membership: { role: "employee" },
+      onboarding: { status: "incomplete", currentStep: 2 },
+    } as never;
+    renderRoute("/onboarding");
+
+    expect(
+      await screen.findByRole("heading", { name: "Workspace setup in progress" }),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText("Current path")).toBeNull();
+  });
+
+  it("lets the owner into the setup route", async () => {
+    authState.value.error = null;
+    authState.value.context = {
+      membership: { role: "owner" },
+      onboarding: { status: "incomplete", currentStep: 2 },
+    } as never;
+    renderRoute("/onboarding");
 
     expect((await screen.findByLabelText("Current path")).textContent).toBe(
       "/onboarding",
