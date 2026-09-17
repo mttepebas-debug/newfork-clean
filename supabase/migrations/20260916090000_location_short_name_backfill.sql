@@ -60,6 +60,8 @@ end;
 $$;
 
 drop function pg_temp.suggest_short_name(text);
+-- Flush deferred triggers fired by the updates before altering the table.
+set constraints all immediate;
 
 -- Every row now conforms: enforce the contract in the table itself. The
 -- legacy-null trigger is no longer needed.
