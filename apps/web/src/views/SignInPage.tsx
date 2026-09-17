@@ -16,7 +16,7 @@ export function SignInPage() {
     supabaseConfigured,
   } = useAuth();
   const [role, setRole] = useState<WorkspaceRole>("manager");
-  const [email, setEmail] = useState("owner@newfork.test");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -67,7 +67,7 @@ export function SignInPage() {
         </h1>
         <p className="muted">
           {supabaseConfigured
-            ? "Authenticate with the local Supabase workspace."
+            ? "Sign in with your email and password."
             : "Supabase is not configured for this browser session."}
         </p>
         {supabaseConfigured ? (

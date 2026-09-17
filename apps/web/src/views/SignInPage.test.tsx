@@ -102,6 +102,15 @@ describe("SignInPage", () => {
     expect(auth.signIn).not.toHaveBeenCalled();
   });
 
+  it("starts with an empty email and no local development copy", () => {
+    renderPage();
+    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("");
+    expect(
+      screen.getByText("Sign in with your email and password."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/local Supabase/i)).toBeNull();
+  });
+
   it("keeps invite-link visitors in employee account creation mode by default", () => {
     renderPage({
       pathname: "/sign-in",
@@ -148,6 +157,9 @@ describe("SignInPage", () => {
       state: { from: "https://outside.example/phish" },
     });
 
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "owner@example.test" },
+    });
     fireEvent.change(screen.getByLabelText("Password"), {
       target: { value: "newfork-local" },
     });
