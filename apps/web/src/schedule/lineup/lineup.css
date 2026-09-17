@@ -767,6 +767,9 @@
   color: var(--theme-muted-strong);
   margin: 0 0 10px;
 }
+.lu-sharing-card .lu-eyebrow {
+  color: var(--theme-muted-strong);
+}
 .lu-sharing-card button {
   border: 0;
   background: transparent;
