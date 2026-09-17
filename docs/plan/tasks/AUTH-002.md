@@ -1,6 +1,6 @@
 # AUTH-002 Davet guard'ı ve workspace bazlı onboarding getter'ı (DB + API)
-Status: draft (prompt paylaşıldı; worker başlayınca active)
-Session: -   Branch: task/auth-002   Worktree: newfork-wt/auth-002   DB: lock (2 yeni migration)
+Status: active (2026-09-17; DB kilidi bu task'ta)
+Session: "AUTH-002: davet guard'ı ve onboarding getter" (local_0bcb5eb5; eski AUTH-001 session'ı, bağlam sıcak)   Branch: task/auth-002   Worktree: newfork-wt/auth-002   DB: lock (2 yeni migration)
 Öneri: Opus 5, high. Yetki guard'ı ve RPC imza değişikliği; PostgREST overload tuzağı var.
 Kaynak plan (bağlayıcı): `C:/Users/TheWe/.claude/plans/kay-t-olduktan-sonra-login-idempotent-eich.md` → T2 madde 1 ve 5, "Edge case'ler". Web tarafı AUTH-UX-001'de; bu task yalnız `supabase/` ve `apps/api/`.
 
