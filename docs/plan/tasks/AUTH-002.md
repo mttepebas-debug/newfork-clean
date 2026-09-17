@@ -45,3 +45,9 @@ Risk:
 - pgTAP fixture drift.
 
 ## Notes / Result
+- 2026-09-17 koordinatör kararı (Migration B; worker çakışma bildirdi): `20260916052509_document_publication_initial.sql` (uygulanmamış: local 0 satır, hosted hariç) get/submit gövdelerini `pg_get_functiondef + replace` ile yamalıyor ve eski imzaları `::regprocedure` ile arıyor.
+  - Karar: dinamik yama yok. Yeni tanımlar statik tam gövde; kaynak local DB'de kurulu tanım (`pg_get_functiondef`), yalnız case seçim satırları yardımcıya bağlanır. Yeni parametre sonda: get(uuid, uuid), save(uuid, jsonb, integer, uuid), submit(uuid, integer, uuid), leave(uuid, integer, uuid); hepsi `default null`.
+  - 052509'da yalnız iki literal `coalesce(to_regprocedure(yeni), to_regprocedure(eski))` olur. Üç replace parçası yeni gövdelerde aynen kalır (metin eşleşmesiyle doğrulanır).
+  - reset ve confirm stub: dokunulmaz (task'taki "reset'e parametre" maddesi iptal). acknowledge doğru bağlı, dokunulmaz.
+  - Kabul edilen pencere: temiz DB'de 052509 eski timestamp'le önce çalışırsa get/submit'te publication filtresi düşer; UI-DOC-001 rename'i bunu kapatır (o dosyaya zorunlu adım yazıldı).
+  - Ek kapsam: `availability-service.ts` `onboardingIdentity(token, workspaceId?)` ve onu kullanan onboarding availability route'ları opsiyonel `?workspaceId=` alır (plan 5-A aynı anda iki yarım case'e izin veriyor). Web tarafı AUTH-UX-001.
