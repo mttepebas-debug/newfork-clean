@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import LocationsSettingsPage, { formatUsPhone } from "./LocationsSettingsPage";
+import LocationsSettingsPage from "./LocationsSettingsPage";
+import { formatUsPhone } from "./location-draft";
 import { listLocations, saveLocation } from "./organization-data";
 
 const state = vi.hoisted(() => ({ canEdit: true }));

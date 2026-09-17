@@ -332,9 +332,11 @@ describe("OwnerOnboardingPage", () => {
     fireEvent.change(screen.getByLabelText("Location name"), {
       target: { value: "Patio" },
     });
-    fireEvent.change(screen.getByLabelText(/^Short name/), {
-      target: { value: "PATIO" },
+    expect(screen.getByLabelText(/^Short name/)).toHaveProperty("placeholder", "PT");
+    fireEvent.change(screen.getByLabelText(/^Phone number/), {
+      target: { value: "4155550100" },
     });
+    expect(screen.getByLabelText(/^Phone number/)).toHaveProperty("value", "(415) 555-0100");
     fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), {
       target: { value: "America/New_York" },
     });
@@ -345,6 +347,8 @@ describe("OwnerOnboardingPage", () => {
         workspaceId,
         expect.objectContaining({
           name: "Patio",
+          short_name: "PT",
+          phone: "+14155550100",
           street_address: "",
           city: "",
           region: "",
@@ -354,6 +358,23 @@ describe("OwnerOnboardingPage", () => {
         }),
       ),
     );
+  });
+
+  it("reports an invalid short name or phone only after submit", async () => {
+    renderPage(2);
+    await screen.findByRole("heading", { name: "Add at least one location" });
+    fireEvent.change(screen.getByLabelText("Location name"), { target: { value: "Patio" } });
+    fireEvent.change(screen.getByLabelText(/^Short name/), { target: { value: "p!" } });
+    fireEvent.change(screen.getByLabelText(/^Phone number/), { target: { value: "415" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), { target: { value: "America/New_York" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /add location/i }));
+    expect(screen.getAllByRole("alert").map((alert) => alert.textContent)).toEqual([
+      expect.stringContaining("letters A–Z, numbers or hyphens"),
+      "Enter a 10-digit US phone number",
+    ]);
+    expect(screen.getByLabelText(/^Short name/).getAttribute("aria-invalid")).toBe("true");
+    expect(saveLocation).not.toHaveBeenCalled();
   });
 
   it("continues from locations after at least one location exists", async () => {

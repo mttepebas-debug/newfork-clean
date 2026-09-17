@@ -1,4 +1,5 @@
-import { isValidIanaTimezone, locationShortNameSchema, type Department, type Job, type Location } from "@newfork/shared";
+import { suggestLocationShortName, type Department, type Job, type Location } from "@newfork/shared";
+import { checkLocationDraft, formatUsPhone, type LocationDraft, type LocationFieldErrors } from "../settings/location-draft";
 import { LocationTimezoneField } from "../settings/LocationTimezoneField";
 import { Button } from "@newfork/ui";
 import {
@@ -41,9 +42,10 @@ import {
 
 type OwnerStep = 1 | 2 | 3 | 4;
 
-const defaultLocation = {
+const defaultLocation: LocationDraft = {
   name: "",
   short_name: "",
+  phone: "",
   street_address: "",
   city: "",
   region: "",
@@ -79,6 +81,7 @@ export default function OwnerOnboardingPage() {
   const [ownerNameDirty, setOwnerNameDirty] = useState(false);
   const [locationDraft, setLocationDraft] = useState(defaultLocation);
   const [locationDraftEpoch, setLocationDraftEpoch] = useState(0);
+  const [locationErrors, setLocationErrors] = useState<LocationFieldErrors>({});
   const [departmentName, setDepartmentName] = useState("");
   const [jobName, setJobName] = useState("");
   const [jobDepartmentId, setJobDepartmentId] = useState("");
@@ -199,11 +202,15 @@ export default function OwnerOnboardingPage() {
   ): Promise<void> => {
     event.preventDefault();
     if (!supabaseClient || !workspaceId) return;
+    const checked = checkLocationDraft(locationDraft);
+    setLocationDraft({ ...locationDraft, short_name: checked.input.short_name });
+    setLocationErrors(checked.errors);
+    if (!checked.parsed.success) return;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
     try {
-      await saveLocation(workspaceId, locationDraft);
+      await saveLocation(workspaceId, checked.parsed.data);
       await saveOwnerOnboarding(supabaseClient, {
         workspaceId,
         workspaceName,
@@ -213,6 +220,7 @@ export default function OwnerOnboardingPage() {
       });
       await refreshOwnerReferences(workspaceId);
       setLocationDraft(defaultLocation);
+      setLocationErrors({});
       setLocationDraftEpoch((value) => value + 1);
       setSuccess("Location added");
       await refresh();
@@ -444,6 +452,7 @@ export default function OwnerOnboardingPage() {
       await resetOwnerOnboarding(supabaseClient, workspaceId);
       setStep(1);
       setLocationDraft(defaultLocation);
+      setLocationErrors({});
       setLocationDraftEpoch((value) => value + 1);
       setDepartmentName("");
       setJobName("");
@@ -581,7 +590,11 @@ export default function OwnerOnboardingPage() {
               <LocationFields
                 key={locationDraftEpoch}
                 draft={locationDraft}
-                onChange={setLocationDraft}
+                errors={locationErrors}
+                onChange={(draft, field) => {
+                  setLocationDraft(draft);
+                  if (field) setLocationErrors((current) => ({ ...current, [field]: undefined }));
+                }}
               />
             </div>
             <Feedback error={error} success={success} />
@@ -598,7 +611,7 @@ export default function OwnerOnboardingPage() {
                   className="secondary-button"
                   type="submit"
                   disabled={
-                    submitting || !locationDraftIsComplete(locationDraft)
+                    submitting || !checkLocationDraft(locationDraft).complete
                   }
                 >
                   <MapPin size={16} aria-hidden /> Add location
@@ -815,10 +828,12 @@ function employeeDraftHasInput(draft: typeof defaultEmployee): boolean {
 
 function LocationFields({
   draft,
+  errors,
   onChange,
 }: {
-  readonly draft: typeof defaultLocation;
-  readonly onChange: (draft: typeof defaultLocation) => void;
+  readonly draft: LocationDraft;
+  readonly errors: LocationFieldErrors;
+  readonly onChange: (draft: LocationDraft, field?: keyof LocationFieldErrors) => void;
 }) {
   return (
     <>
@@ -839,12 +854,28 @@ function LocationFields({
           id="location-short-name"
           value={draft.short_name}
           maxLength={12}
-          onChange={(event) => onChange({ ...draft, short_name: event.target.value.toUpperCase() })}
-          placeholder="MAIN"
-          aria-describedby="onboarding-location-short-name-help"
-          required
+          onChange={(event) => onChange({ ...draft, short_name: event.target.value.toUpperCase() }, "short_name")}
+          placeholder={suggestLocationShortName(draft.name)}
+          aria-invalid={errors.short_name ? true : undefined}
+          aria-describedby={errors.short_name ? "location-short-name-error" : undefined}
+          aria-required
         />
-        <small id="onboarding-location-short-name-help">2–12 letters, numbers or hyphens; unique in this workspace.</small>
+        {errors.short_name ? <small className="form-error" id="location-short-name-error" role="alert">{errors.short_name}</small> : null}
+      </label>
+      <label htmlFor="location-phone">
+        Phone number (optional)
+        <input
+          id="location-phone"
+          type="tel"
+          inputMode="numeric"
+          value={draft.phone}
+          maxLength={14}
+          onChange={(event) => onChange({ ...draft, phone: formatUsPhone(event.target.value) }, "phone")}
+          placeholder="(415) 555-0100"
+          aria-invalid={errors.phone ? true : undefined}
+          aria-describedby={errors.phone ? "location-phone-error" : undefined}
+        />
+        {errors.phone ? <small className="form-error" id="location-phone-error" role="alert">{errors.phone}</small> : null}
       </label>
       <label htmlFor="location-timezone">
         Timezone
@@ -1024,12 +1055,6 @@ function Feedback({
     );
   if (success) return <p className="form-success">{success}</p>;
   return null;
-}
-
-function locationDraftIsComplete(draft: typeof defaultLocation): boolean {
-  return isValidIanaTimezone(draft.timezone) && locationShortNameSchema.safeParse(draft.short_name).success && [draft.name, draft.country_code, draft.timezone].every(
-    (value) => value.trim().length > 0,
-  );
 }
 
 async function loadOwnerReferences(workspaceId: string): Promise<{

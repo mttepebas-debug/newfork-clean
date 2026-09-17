@@ -1,6 +1,5 @@
 import { CatalogDrawer } from "./CatalogDrawer";
 import {
-  locationInputSchema,
   suggestLocationShortName,
   type Location,
   type LocationInput,
@@ -16,14 +15,16 @@ import "./jobs-settings.css";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import { LocationTimezoneField } from "./LocationTimezoneField";
 import {
+  checkLocationDraft,
+  formatUsPhone,
+  type LocationDraft,
+  type LocationFieldErrors as FieldErrors,
+} from "./location-draft";
+import {
   listLocations,
   saveLocation,
   setLocationArchived,
 } from "./organization-data";
-
-// Phone is kept as the formatted text shown in the input until save.
-type LocationDraft = Omit<LocationInput, "phone"> & { phone: string };
-type FieldErrors = Partial<Record<"short_name" | "phone", string>>;
 
 const emptyLocation: LocationDraft = {
   name: "",
@@ -48,25 +49,6 @@ const timezones = [
 
 function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
-}
-
-// US numbers only: "(415) 555-0100", built progressively while typing.
-export function formatUsPhone(value: string): string {
-  const digits = value.replace(/\D/g, "").replace(/^1/, "").slice(0, 10);
-  if (!digits) return "";
-  if (digits.length <= 3) return `(${digits}`;
-  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-}
-
-// An empty short name falls back to the suggestion; phone goes to E.164.
-function toInput(draft: LocationDraft) {
-  const digits = draft.phone.replace(/\D/g, "");
-  return {
-    ...draft,
-    short_name: draft.short_name.trim() || suggestLocationShortName(draft.name),
-    phone: digits ? `+1${digits}` : null,
-  };
 }
 
 // Legacy locations may not have a short name yet. Do not parse them through
@@ -137,24 +119,17 @@ export default function LocationsSettingsPage() {
     setFieldErrors({});
   };
 
-  // Short name and phone problems are reported on submit, next to the input.
-  const draftInput = toInput(draft);
-  const parsedDraft = locationInputSchema.safeParse(draftInput);
-  const fieldsComplete =
-    parsedDraft.success ||
-    parsedDraft.error.issues.every((issue) =>
-      ["short_name", "phone"].includes(String(issue.path[0])),
-    );
+  const checked = checkLocationDraft(draft);
   const canSave =
     canEdit &&
     !deleteLocked &&
     !saveMutation.isPending &&
     Boolean(editing) &&
-    fieldsComplete &&
+    checked.complete &&
     (editing === "new" ||
       Boolean(
         editing &&
-        !sameJson(draftInput, {
+        !sameJson(checked.input, {
           ...locationDraft(editing),
           short_name: editing.short_name ?? "",
           phone: editing.phone ?? null,
@@ -164,22 +139,11 @@ export default function LocationsSettingsPage() {
   const submit = (event: FormEvent): void => {
     event.preventDefault();
     if (!canSave) return;
-    setDraft((current) => ({ ...current, short_name: draftInput.short_name }));
-    if (!parsedDraft.success) {
-      const errors: FieldErrors = {};
-      for (const issue of parsedDraft.error.issues) {
-        if (issue.path[0] === "phone") errors.phone = issue.message;
-        else
-          errors.short_name = draftInput.short_name
-            ? issue.message
-            : "Short name is required. Use 2–12 characters: letters A–Z, numbers or hyphens.";
-      }
-      setFieldErrors(errors);
-      return;
-    }
-    setFieldErrors({});
+    setDraft((current) => ({ ...current, short_name: checked.input.short_name }));
+    setFieldErrors(checked.errors);
+    if (!checked.parsed.success) return;
     saveMutation.mutate({
-      values: parsedDraft.data,
+      values: checked.parsed.data,
       ...(editing !== "new" && editing ? { id: editing.id } : {}),
     });
   };
@@ -187,7 +151,6 @@ export default function LocationsSettingsPage() {
     setDraft((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => ({ ...current, [field]: undefined }));
   };
-
   const visible = (locations.data ?? []).filter(
     (location) =>
       (showArchived || !location.archived_at) &&
