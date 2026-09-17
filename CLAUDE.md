@@ -19,6 +19,7 @@ Genel kurallar (task başlangıcı, git/worktree, test zamanı, token) `~/.claud
   Done kriterleri: karşılandı / eksik
   Açık risk, kapsam dışı bulgu, gereken karar
   ```
+- **Mesaj iletimi:** SendMessage farklı izin modundaki bir session'da kullanıcı onayına takılırsa koordinatör aynı mesajı `mcp__ccd_session_mgmt__send_message` ile (session id üzerinden) gönderir; bu yol mesajı doğrudan kullanıcı turu olarak iletir. Worker raporu teslim edilemezse raporu kendi session'ında kullanıcıya yazar.
 - **Task verme:** koordinatör kullanıcıyla kapsamda uzlaşır, task dosyasını yazıp commit'ler, ardından worker prompt'unu hazırlar. Prompt'ta task dosyası yolu, worktree ve branch adı, önerilen model/effort ve rapor talebi bulunur.
 
 ## Session başı (ucuz tur)
