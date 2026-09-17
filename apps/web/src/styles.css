@@ -1,6 +1,30 @@
 :root {
-  --schedule-action: #111827;
-  --schedule-action-hover: #1f2937;
+  /* Light theme tokens (THEME-002). New UI uses these instead of raw hex. */
+  --theme-page: #f4f5f3;
+  --theme-surface: #ffffff;
+  --theme-surface-soft: #f7f9f8;
+  --theme-surface-muted: #f0f3f1;
+  --theme-text: #17221e;
+  --theme-text-body: #1d2525;
+  --theme-muted: #68756f;
+  --theme-border: #dce3df;
+  --theme-border-subtle: #e2e6e4;
+  --theme-border-strong: #cbd4d0;
+  --theme-accent: #176954;
+  --theme-accent-strong: #12624f;
+  --theme-selected: #e7f1ed;
+  --theme-focus: #177a64;
+  --theme-action: #111827;
+  --theme-action-hover: #1f2937;
+  --theme-danger: #b84234;
+  --theme-danger-soft: #fff0ee;
+  --theme-warning: #8a5a00;
+  --theme-warning-soft: #fff7e2;
+  --theme-success: #176b4e;
+  --theme-success-soft: #e7f1ed;
+  --theme-current: #b7791f;
+  --schedule-action: var(--theme-action);
+  --schedule-action-hover: var(--theme-action-hover);
   --schedule-grid-line-color: #dce2df;
   --schedule-grid-line-width: 1px;
   --schedule-section-line-color: #8fa098;
@@ -13,12 +37,12 @@
   --schedule-badge-edit-gap: 2px;
   --schedule-badge-preview-gap: 1px;
   --schedule-add-shift-lane-height: 28px;
-  --schedule-focus-ring-color: #177a64;
-  --schedule-current-ring-color: #b7791f;
+  --schedule-focus-ring-color: var(--theme-focus);
+  --schedule-current-ring-color: var(--theme-current);
   --schedule-motion-fast: 120ms;
   --schedule-motion-state: 150ms;
-  color: #1d2525;
-  background: #f4f5f3;
+  color: var(--theme-text-body);
+  background: var(--theme-page);
   font-family:
     Inter,
     ui-sans-serif,
