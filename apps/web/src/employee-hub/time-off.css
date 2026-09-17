@@ -74,7 +74,7 @@
 .time-off-cancellation-endpoint label:last-child { grid-column: 1 / -1; }
 .time-off-cancellation button { min-height: 2.75rem; white-space: normal; overflow-wrap: anywhere; }
 .time-off-cancellation button[type="button"] { justify-self: start; padding: 0.5rem 0.75rem; border: 1px solid var(--border, #c5ccd6); border-radius: 0.35rem; background: transparent; color: inherit; }
-.time-off-cancellation button[type="submit"] { padding: 0.65rem 1rem; border: 1px solid #176b4e; border-radius: 0.35rem; background: #176b4e; color: #fff; font-weight: 600; }
+.time-off-cancellation button[type="submit"] { padding: 0.65rem 1rem; border: 1px solid var(--theme-success); border-radius: 0.35rem; background: var(--theme-success); color: var(--theme-on-accent); font-weight: 600; }
 .time-off-cancellation button:disabled { opacity: 0.55; cursor: not-allowed; }
 .time-off-cancellation button:focus-visible { outline: 2px solid #508dc8; outline-offset: 2px; }
 .time-off-cancellation { min-width: 0; }

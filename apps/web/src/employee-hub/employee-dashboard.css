@@ -176,7 +176,7 @@
   padding: 27px 30px;
   border-radius: 20px;
   background: #244d3c;
-  color: #fff;
+  color: var(--theme-on-accent);
   min-height: 277px;
   box-shadow: 0 7px 22px #244d3c0d;
 }
@@ -862,7 +862,7 @@
   min-height: 48px;
   padding: 12px;
   background: #28583f;
-  color: #fff !important;
+  color: var(--theme-on-accent) !important;
   border-radius: 10px;
   font-size: 14px;
   margin-top: 24px;

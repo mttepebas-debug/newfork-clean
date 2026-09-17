@@ -87,7 +87,7 @@
   text-underline-offset: 3px;
 }
 .lu-staffing-offers button.lu-offer-primary {
-  color: #fff;
+  color: var(--theme-on-accent);
   background: #25624d;
   border-color: #25624d;
 }

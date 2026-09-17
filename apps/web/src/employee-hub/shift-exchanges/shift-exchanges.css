@@ -420,7 +420,7 @@
   color: var(--sx-amber);
 }
 .sx-error {
-  background: #fff0ee;
+  background: var(--theme-danger-soft);
   color: #a13028;
 }
 .sx-notice {

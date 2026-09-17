@@ -135,7 +135,7 @@
   padding: 0 12px;
   border: 1px solid #a53936;
   border-radius: 6px;
-  color: #fff;
+  color: var(--theme-on-accent);
   background: #a53936;
   font-size: 12px !important;
   font-weight: 600 !important;
@@ -281,7 +281,7 @@
 }
 .job-row-menu.job-create-menu[open] > summary,
 .job-row-menu.job-create-menu > summary:hover {
-  color: #fff;
+  color: var(--theme-on-accent);
   background: #205943;
 }
 .job-create-menu .job-menu-popover button {

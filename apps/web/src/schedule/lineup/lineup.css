@@ -111,7 +111,7 @@
 .lu-workspace .lu-dark {
   background: #263b30;
   border: 1px solid #263b30;
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .lu-context {
   display: flex;
@@ -1553,7 +1553,7 @@
 }
 .lu-employee-plan {
   padding: 22px;
-  background: #fff;
+  background: var(--theme-surface);
   border: 1px solid #e0e7da;
   border-radius: 12px;
   margin-bottom: 18px;
@@ -1713,7 +1713,7 @@
   padding: 4px 10px;
   border: 1px solid #dfe5dd;
   border-radius: 6px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #375c47;
   font-size: 11px;
   cursor: pointer;
@@ -1807,7 +1807,7 @@
 }
 /* Export is a fixed paper surface, independent of the app theme. */
 .lineup-visual-preview {
-  background: #fff;
+  background: var(--theme-surface);
   color: #22352d;
   color-scheme: light;
 }

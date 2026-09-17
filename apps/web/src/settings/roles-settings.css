@@ -184,7 +184,7 @@
   min-height: 44px;
   padding-left: 30px;
   border-top: 1px solid light-dark(#e8edea, #2c3631);
-  background: light-dark(#f7f9f8, #202623);
+  background: light-dark(var(--theme-surface-soft), #202623);
   font-size: 14px;
 }
 .bl051-roles .rp-permission-row small {
@@ -246,7 +246,7 @@
 }
 .bl051-roles .rp-delete-button.is-armed:not(.is-blocked):hover {
   background: light-dark(#a84034, #8d332b);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .bl051-roles .rp-delete-button.is-blocked {
   cursor: default;

@@ -5,7 +5,7 @@
 .notification-audit {
   border: 1px solid #d9dedb;
   border-radius: 10px;
-  background: #fff;
+  background: var(--theme-surface);
 }
 
 .notification-readonly {
@@ -64,8 +64,8 @@
   border: 1px solid #cbd3cf;
   border-radius: 7px;
   padding: 7px 10px;
-  background: #fff;
-  color: #1d2525;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
   font: inherit;
 }
 
@@ -140,7 +140,7 @@
 .notification-tags span {
   border-radius: 999px;
   padding: 3px 8px;
-  background: #f0f3f1;
+  background: var(--theme-surface-muted);
 }
 
 .notification-enabled {

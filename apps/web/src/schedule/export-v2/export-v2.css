@@ -40,7 +40,7 @@
 
 /* Buttons in the top-bar language */
 .export-v2-primary, .export-v2-secondary { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid #aeb9b4; border-radius: 5px; background: var(--theme-surface); font-size: 12px; font-weight: 750; white-space: nowrap; cursor: pointer; }
-.schedule-export-v2 .export-v2-primary { width: 100%; border-color: var(--schedule-action, #111827); background: var(--schedule-action, #111827); color: #fff; }
+.schedule-export-v2 .export-v2-primary { width: 100%; border-color: var(--schedule-action, #111827); background: var(--schedule-action, #111827); color: var(--theme-on-accent); }
 .export-v2-primary:not(:disabled):hover { border-color: var(--schedule-action-hover, #1f2937); background: var(--schedule-action-hover, #1f2937); }
 .export-v2-secondary:not(:disabled):hover { background: var(--theme-surface-muted); }
 .export-v2-footer { display: flex; flex-direction: column; gap: 8px; }

@@ -8,7 +8,7 @@
 .account-confirmation-dialog {
   width: min(460px, calc(100vw - 32px));
   padding: 24px;
-  border: 1px solid #dce3df;
+  border: 1px solid var(--theme-border);
   border-radius: 10px;
   background: var(--surface, #fff);
   color: inherit;
@@ -70,7 +70,7 @@
   display: inline-flex;
   white-space: nowrap;
   border-radius: 999px;
-  background: #e7f1ed;
+  background: var(--theme-selected);
   color: #195f4d;
   padding: 6px 9px;
   font-size: 11px;
@@ -105,7 +105,7 @@
   gap: 14px;
   margin-bottom: 18px;
   padding: 20px 18px;
-  border-bottom: 1px solid #dce3df;
+  border-bottom: 1px solid var(--theme-border);
   border-radius: 10px;
   background: #f0f5f2;
 }
@@ -139,7 +139,7 @@
 }
 
 .account-nav-item.active {
-  background: #e7f1ed;
+  background: var(--theme-selected);
   color: #195f4d;
   font-weight: 700;
 }
@@ -158,9 +158,9 @@
 
 .account-main {
   min-width: 0;
-  border: 1px solid #dce3df;
+  border: 1px solid var(--theme-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--theme-surface);
   padding: 24px 28px;
 }
 
@@ -291,7 +291,7 @@
   min-height: 39px;
   border: 1px solid #c8d2cd;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
   padding: 8px 10px;
   outline: none;
 }
@@ -323,7 +323,7 @@
   justify-content: flex-end;
   margin-top: 6px;
   padding-top: 18px;
-  border-top: 1px solid #dce3df;
+  border-top: 1px solid var(--theme-border);
 }
 
 .account-info-row,
@@ -335,13 +335,13 @@
   gap: 18px;
   padding: 14px 0;
   border: 0;
-  border-bottom: 1px solid #dce3df;
+  border-bottom: 1px solid var(--theme-border);
   background: transparent;
 }
 
 .account-info-row:first-child,
 .account-main .workspace-row:first-child {
-  border-top: 1px solid #dce3df;
+  border-top: 1px solid var(--theme-border);
 }
 
 .account-info-row strong,
@@ -432,9 +432,9 @@
 
 .account-recovery-card {
   width: min(100%, 460px);
-  border: 1px solid #dce3df;
+  border: 1px solid var(--theme-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--theme-surface);
   padding: 28px;
   box-shadow: 0 18px 50px rgb(22 45 36 / 11%);
 }
@@ -594,7 +594,7 @@
   place-items: center;
   border: 1px solid #c8d2cd;
   border-radius: 7px;
-  background: #fff;
+  background: var(--theme-surface);
   color: #50605a;
   cursor: pointer;
 }
@@ -620,7 +620,7 @@
   overflow: hidden;
   border: 1px solid #d4ddd8;
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface);
   padding: 5px;
   box-shadow: 0 12px 30px rgb(26 49 40 / 14%);
 }
@@ -645,7 +645,7 @@
 .workspace-actions-separator { height: 1px; margin: 4px 6px; background: #dce3df; }
 .workspace-actions-popover .workspace-actions-danger { color: #a43830; }
 .workspace-candidates { display: grid; gap: 8px; }
-.workspace-candidate { display: flex !important; align-items: center; gap: 10px; padding: 10px; border: 1px solid #dce3df; border-radius: 8px; }
+.workspace-candidate { display: flex !important; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--theme-border); border-radius: 8px; }
 .workspace-candidate input { width: auto !important; }
 .workspace-candidate span { min-width: 0; overflow-wrap: anywhere; }
 .workspace-candidate small { display: block; }
