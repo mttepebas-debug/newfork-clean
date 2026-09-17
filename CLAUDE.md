@@ -24,6 +24,7 @@ Genel kurallar (task başlangıcı, git/worktree, test zamanı, token) `~/.claud
   - Araç yüklü değilse ToolSearch ile yüklenir (`select:mcp__ccd_session_mgmt__list_sessions,mcp__ccd_session_mgmt__send_message`).
   - SendMessage yalnızca yedek yoldur.
   - İki yol da başarısız olursa worker raporu kendi session'ında kullanıcıya yazar.
+- **Session kapanışı (kural):** Task merge edilip temizlendikten sonra koordinatör, boşta kalan worker session'ının app worktree'sini doğrular: status temiz (eol artifact'ında hash HEAD ile aynı olmalı), `origin/main..branch` 0 commit, stash yok, untracked yalnızca yerel config, açık görev ya da soru yok. Hepsi sağlanırsa kullanıcıya "arşivleyebilirsin" diye açıkça haber verir; sağlanmazsa nedenini söyler.
 - **Task verme:** koordinatör kullanıcıyla kapsamda uzlaşır, task dosyasını yazıp commit'ler, ardından worker prompt'unu hazırlar. Prompt'ta task dosyası yolu, worktree ve branch adı, önerilen model/effort ve rapor talebi bulunur.
 
 ## Session başı (ucuz tur)
