@@ -131,7 +131,7 @@ export default function PendingInvitationsPage() {
           ))}
         </div>
 
-        <Link className="text-button" to="/account/workspaces">
+        <Link className="text-button" to="/account/workspaces" state={{ openCreate: true }}>
           Start my own organization
         </Link>
       </section>

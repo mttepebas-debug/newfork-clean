@@ -5,7 +5,14 @@ import NoOrganizationPage from "./NoOrganizationPage";
 
 function LocationProbe() {
   const location = useLocation();
-  return <output aria-label="Current path">{location.pathname}</output>;
+  return (
+    <output aria-label="Current path">
+      {location.pathname}
+      {(location.state as { openCreate?: boolean } | null)?.openCreate
+        ? " openCreate"
+        : ""}
+    </output>
+  );
 }
 
 describe("NoOrganizationPage", () => {
@@ -31,11 +38,25 @@ describe("NoOrganizationPage", () => {
     expect(
       screen.getByRole("heading", { name: "No organization found" }),
     ).toBeTruthy();
-    expect(
+    fireEvent.click(
       screen.getByRole("link", {
         name: "Create your business organization",
       }),
-    ).toBeTruthy();
+    );
+    expect(screen.getByLabelText("Current path").textContent).toBe(
+      "/account/workspaces openCreate",
+    );
+  });
+
+  it("lets the user wait for another invitation", async () => {
+    render(
+      <MemoryRouter initialEntries={["/no-organization"]}>
+        <Routes>
+          <Route path="/no-organization" element={<NoOrganizationPage />} />
+          <Route path="/invitations/pending" element={<LocationProbe />} />
+        </Routes>
+      </MemoryRouter>,
+    );
 
     fireEvent.click(
       screen.getByRole("button", {

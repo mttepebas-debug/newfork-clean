@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { MemoryRouter, Route, Routes, type InitialEntry, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspacesPage from "./WorkspacesPage";
 import {
@@ -127,13 +127,13 @@ function LocationProbe() {
   return <output aria-label="Current path">{location.pathname}</output>;
 }
 
-function renderPage() {
+function renderPage(entry: InitialEntry = "/account/workspaces") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/account/workspaces"]}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route
             path="/account/workspaces"
@@ -181,6 +181,24 @@ describe("WorkspacesPage", () => {
     expect(createButton.closest(".account-header-action")).toBeTruthy();
     expect(document.querySelector(".workspace-row strong")?.textContent).toBe("Meyhouse");
     expect(screen.getByRole("button", { name: "Open West Room" }).className).toContain("secondary-button");
+  });
+
+  it("offers first workspace creation from the empty state", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
+    renderPage();
+    expect(await screen.findByText("Create your first workspace to continue.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Workspace switcher" })).toBeNull();
+    const buttons = screen.getAllByRole("button", { name: "Create workspace" });
+    expect(buttons).toHaveLength(2);
+    expect(document.querySelectorAll("#create-workspace-trigger")).toHaveLength(1);
+    fireEvent.click(buttons[1]!);
+    expect(screen.getByRole("dialog", { name: "Create workspace" })).toBeTruthy();
+  });
+
+  it("opens the create dialog when navigation requests it", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
+    renderPage({ pathname: "/account/workspaces", state: { openCreate: true } });
+    expect(await screen.findByRole("dialog", { name: "Create workspace" })).toBeTruthy();
   });
 
   it("fails closed after a workspace list error", async () => {

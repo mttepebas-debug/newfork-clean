@@ -14,7 +14,7 @@ export default function NoOrganizationPage() {
           This account is not connected to an active or pending organization.
           You can create a business organization or wait for a new invitation.
         </p>
-        <Link className="nf-button" to="/account/workspaces">
+        <Link className="nf-button" to="/account/workspaces" state={{ openCreate: true }}>
           Create your business organization
         </Link>
         <Button

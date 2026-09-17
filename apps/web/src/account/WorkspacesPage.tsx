@@ -3,7 +3,7 @@ import { Button } from "@newfork/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Check, Crown, Ellipsis, Plus, Star, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { AccountPageHeader } from "./components";
@@ -27,12 +27,16 @@ import {
 export default function WorkspacesPage() {
   const { account, context, refresh } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [workspaceName, setWorkspaceName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(
+    () => (location.state as { openCreate?: boolean } | null)?.openCreate === true,
+  );
   const createDialog = useRef<HTMLDialogElement>(null);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
   const actionTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -73,7 +77,7 @@ export default function WorkspacesPage() {
   const accessibleWorkspaces = workspaces.filter(workspace => workspace.status === "active" &&
     ((workspace.lifecycleStatus ?? "active") === "active" ||
       (workspace.lifecycleStatus === "closure_scheduled" && !!workspace.closureEffectiveAt && Date.parse(workspace.closureEffectiveAt) > Date.now())));
-  const canCreate = !loading && accessibleWorkspaces.some(workspace => workspace.role === "owner");
+  const canCreate = loaded && !loading && (accessibleWorkspaces.length === 0 || accessibleWorkspaces.some(workspace => workspace.role === "owner"));
   const currentWorkspaceId = context?.workspace.id ?? null;
   const orderedWorkspaces = [...accessibleWorkspaces].sort((a, b) =>
     Number(b.id === currentWorkspaceId) - Number(a.id === currentWorkspaceId) ||
@@ -136,10 +140,12 @@ export default function WorkspacesPage() {
   useEffect(() => {
     if (!supabaseClient) {
       setWorkspaces(context ? [workspaceSummaryFromContext(context)] : []);
+      setLoaded(true);
       return;
     }
     let active = true;
     setLoading(true);
+    setLoaded(false);
     setWorkspaces([]);
     setError(null);
     void (async () => {
@@ -147,6 +153,7 @@ export default function WorkspacesPage() {
         const items = await listAccountWorkspaces(supabaseClient);
         if (!active) return;
         setWorkspaces(items);
+        setLoaded(true);
       } catch (loadError: unknown) {
         if (active)
           setError(
@@ -195,6 +202,12 @@ export default function WorkspacesPage() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const openCreateDialog = (): void => {
+    setWorkspaceName("");
+    setError(null);
+    setCreateOpen(true);
   };
 
   const activate = async (workspace: WorkspaceSummary): Promise<void> => {
@@ -428,11 +441,7 @@ export default function WorkspacesPage() {
             id="create-workspace-trigger"
             type="button"
             className="primary-button"
-            onClick={() => {
-              setWorkspaceName("");
-              setError(null);
-              setCreateOpen(true);
-            }}
+            onClick={openCreateDialog}
           >
             <Plus size={16} aria-hidden /> Create workspace
           </Button>
@@ -464,8 +473,8 @@ export default function WorkspacesPage() {
           <div className="workspace-row empty-workspace-row">
             <div>
               <strong>No workspaces yet</strong>
-              <span>Open the workspace switcher to continue.</span>
-              <Button type="button" onClick={() => navigate("/organization-switcher")}>Workspace switcher</Button>
+              <span>Create your first workspace to continue.</span>
+              {canCreate ? <Button type="button" onClick={openCreateDialog}>Create workspace</Button> : null}
             </div>
           </div>
         ) : null}
