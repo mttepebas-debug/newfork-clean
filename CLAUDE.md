@@ -27,9 +27,28 @@ Genel kurallar (task başlangıcı, git/worktree, test zamanı, token) `~/.claud
 - **Session kapanışı (kural):** Task merge edilip temizlendikten sonra koordinatör, boşta kalan worker session'ının app worktree'sini doğrular: status temiz (eol artifact'ında hash HEAD ile aynı olmalı), `origin/main..branch` 0 commit, stash yok, untracked yalnızca yerel config, açık görev ya da soru yok. Hepsi sağlanırsa kullanıcıya "arşivleyebilirsin" diye açıkça haber verir; sağlanmazsa nedenini söyler.
 - **Task verme:** koordinatör kullanıcıyla kapsamda uzlaşır, task dosyasını yazıp commit'ler, ardından worker prompt'unu hazırlar. Prompt'ta task dosyası yolu, worktree ve branch adı, önerilen model/effort ve rapor talebi bulunur.
 
+## Git hijyeni (koordinatör kuralı)
+- Amaç: kontrolsüz dallanmayı önlemek, temiz çalışmak, toparlama maliyetini (token ve zaman) sıfırlamak.
+- **Doğrudan yapılır:**
+  - Task bitiminde merge, main push, task branch'i ve worktree'nin silinmesi.
+  - Merge'ü doğrulanmış `claude/*` ve `task/*` branch'lerinin silinmesi.
+  - Kayıtsız artık klasörlerin silinmesi.
+- **Önerilir:**
+  - Uzak yedek branch silme.
+  - Açık bir session'ın worktree'sine müdahale.
+  - Aktif worker'ın geride kalan branch'ini rebase etme.
+  - Eski task'ları kapatma ya da park etme.
+- **Tetikleyiciler:**
+  - Her merge ve session kapanışı.
+  - Koordinatör session başı taraması.
+  - 3'ten fazla açık worktree/branch.
+  - Main'den ~10 commit geride kalan branch.
+- Silmeden önce doğrulama: merge-base ya da `git cherry`, temiz status. Merge ve silme ayrı adımlarda yapılır.
+
 ## Session başı (ucuz tur)
 ```bash
 git worktree list
+git branch -a
 git status -sb
 grep -H "^Status:" docs/plan/tasks/*.md
 ```
