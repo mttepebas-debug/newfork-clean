@@ -620,11 +620,6 @@ export const colorSchema = z
 export { scheduleExportV2PreferencesSchema, scheduleExportV2ScopeSchema, scheduleExportV2AuthorizationSchema,
   type ScheduleExportV2Preferences, type ScheduleExportV2Scope } from "./schedule-export-v2";
 
-// Stored names predate the A–Z rule; reads and exports keep accepting them.
-export const storedLocationShortNameSchema = z.string().trim().regex(
-  /^[\p{L}\p{N}-]{2,12}$/u,
-  "Use 2–12 letters, numbers or hyphens, without spaces",
-);
 export const locationShortNameSchema = z.string().trim().toUpperCase().regex(
   /^[A-Z0-9-]{2,12}$/,
   "Use 2–12 characters: letters A–Z, numbers or hyphens. No spaces or other symbols.",
@@ -657,7 +652,7 @@ export const locationSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
-  short_name: storedLocationShortNameSchema.nullable().optional(),
+  short_name: locationShortNameSchema,
   phone: locationPhoneSchema.nullable().optional(),
   street_address: z.string().trim().max(180),
   city: z.string().trim().max(100),
@@ -1030,7 +1025,8 @@ export type ScheduleView = z.infer<typeof scheduleViewSchema>;
 export const scheduleLocationSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
-  short_name: storedLocationShortNameSchema.nullable().optional(),
+  // Only the schedule read carries it; other projections omit it.
+  short_name: locationShortNameSchema.optional(),
   timezone: z.string().trim().min(1).max(80),
   sort_order: z.coerce.number().int().nonnegative(),
   publication_status: z.enum(["published", "unpublished"]),

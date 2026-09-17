@@ -64,6 +64,7 @@ const location = {
   timezone: "America/Los_Angeles",
   sort_order: 0,
   archived_at: null,
+  short_name: "MAIN",
 } satisfies Location;
 
 const dates = [

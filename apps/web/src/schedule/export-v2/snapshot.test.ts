@@ -89,7 +89,7 @@ describe("Export v2 immutable preview projection", () => {
   });
   it("blocks missing scoped short names but not filtered-out locations", () => {
     const value = input();
-    value.model.locations[1]!.short_name = null;
+    delete value.model.locations[1]!.short_name;
     expect(createScheduleExportSnapshot(value)).toEqual({ status: "blocked", reason: "short_names", locationNames: ["Location b"] });
     value.search.set("locations", "loc-a");
     expect(createScheduleExportSnapshot(value).status).toBe("ready");

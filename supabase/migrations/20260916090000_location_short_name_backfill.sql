@@ -60,3 +60,12 @@ end;
 $$;
 
 drop function pg_temp.suggest_short_name(text);
+
+-- Every row now conforms: enforce the contract in the table itself. The
+-- legacy-null trigger is no longer needed.
+alter table public.locations drop constraint locations_short_name_format;
+alter table public.locations add constraint locations_short_name_format
+  check (short_name ~ '^[A-Z0-9-]{2,12}$');
+alter table public.locations alter column short_name set not null;
+drop trigger locations_require_short_name on public.locations;
+drop function public.require_location_short_name();

@@ -1,4 +1,4 @@
-import { storedLocationShortNameSchema, scheduleExportV2ScopeSchema } from "@newfork/shared";
+import { locationShortNameSchema, scheduleExportV2ScopeSchema } from "@newfork/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { resolveAuthorizedWorkspaceContext, type WorkspaceContextResolver } from "../auth/workspace-context";
@@ -36,7 +36,7 @@ export function registerScheduleExportV2Routes(app: FastifyInstance, options: {
       if (scope.location_ids.some(id => !allowedLocations.has(id)) || scope.employee_ids.some(id => !allowedEmployees.has(id))) {
         return reply.code(403).send({ error: "The selected export scope is no longer accessible" });
       }
-      if (scope.location_ids.some(id => !storedLocationShortNameSchema.safeParse(allowedLocations.get(id)?.short_name).success)) {
+      if (scope.location_ids.some(id => !locationShortNameSchema.safeParse(allowedLocations.get(id)?.short_name).success)) {
         return reply.code(409).send({ error: "Add location short names before exporting" });
       }
       if (scope.source.kind === "draft") {

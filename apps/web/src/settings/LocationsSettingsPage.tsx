@@ -51,12 +51,10 @@ function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-// Legacy locations may not have a short name yet. Do not parse them through
-// the stricter write schema just to open the editor.
 function locationDraft(location: Location): LocationDraft {
   return {
     name: location.name,
-    short_name: location.short_name ?? "",
+    short_name: location.short_name,
     phone: formatUsPhone(location.phone ?? ""),
     street_address: location.street_address,
     city: location.city,
@@ -131,7 +129,6 @@ export default function LocationsSettingsPage() {
         editing &&
         !sameJson(checked.input, {
           ...locationDraft(editing),
-          short_name: editing.short_name ?? "",
           phone: editing.phone ?? null,
         }),
       ));

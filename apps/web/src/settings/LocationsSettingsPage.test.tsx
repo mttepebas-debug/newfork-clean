@@ -15,7 +15,7 @@ vi.mock("./LocationTimezoneField", () => ({ LocationTimezoneField: () => null })
 
 const legacy = { id: "location", workspace_id: "workspace", name: "Main",
   street_address: "1 Road", city: "City", region: "CA", postal_code: "90001",
-  country_code: "US", timezone: "America/Los_Angeles", sort_order: 0, archived_at: null, short_name: null };
+  country_code: "US", timezone: "America/Los_Angeles", sort_order: 0, archived_at: null, short_name: "MAIN" };
 const current = { ...legacy, id: "deniz", name: "Deniz", short_name: "DNZ", phone: "+14155550100" };
 function page() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -37,7 +37,6 @@ describe("Locations table", () => {
     expect(screen.getByText("Phone number")).toBeTruthy();
     expect(screen.getByText("(415) 555-0100")).toBeTruthy();
     expect(screen.queryByText("DNZ")).toBeNull();
-    expect(screen.queryByText(/Short name needed/)).toBeNull();
   });
 });
 
@@ -46,6 +45,7 @@ describe("Location short name editor", () => {
     const client = page();
     const invalidate = vi.spyOn(client, "invalidateQueries");
     fireEvent.click(await screen.findByRole("button", { name: /^Main/ }));
+    fireEvent.change(screen.getByLabelText("Short name"), { target: { value: "" } });
     expect(screen.getByLabelText("Short name")).toHaveProperty("placeholder", "MN");
     fireEvent.click(save());
     await waitFor(() => expect(saveLocation).toHaveBeenCalledWith("workspace", expect.objectContaining({ short_name: "MN", phone: null }), "location"));
@@ -66,6 +66,7 @@ describe("Location short name editor", () => {
     page();
     fireEvent.click(await screen.findByRole("button", { name: /^Main/ }));
     fireEvent.change(screen.getByLabelText("Location name"), { target: { value: "A" } });
+    fireEvent.change(screen.getByLabelText("Short name"), { target: { value: "" } });
     fireEvent.click(save());
     expect(screen.getByLabelText("Short name").getAttribute("aria-invalid")).toBe("true");
     expect(saveLocation).not.toHaveBeenCalled();
@@ -74,10 +75,10 @@ describe("Location short name editor", () => {
     vi.mocked(saveLocation).mockRejectedValue(new Error("This short name is already used in this workspace. Choose another one."));
     page();
     fireEvent.click(await screen.findByRole("button", { name: /^Main/ }));
-    fireEvent.change(screen.getByLabelText("Short name"), { target: { value: "MAIN" } });
+    fireEvent.change(screen.getByLabelText("Short name"), { target: { value: "MN" } });
     fireEvent.click(save());
     expect(await screen.findByRole("alert")).toHaveProperty("textContent", "This short name is already used in this workspace. Choose another one.");
-    expect(screen.getByLabelText("Short name")).toHaveProperty("value", "MAIN");
+    expect(screen.getByLabelText("Short name")).toHaveProperty("value", "MN");
   });
   it("keeps readonly locations readonly", async () => {
     state.canEdit = false; page();

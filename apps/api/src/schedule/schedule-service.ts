@@ -509,7 +509,7 @@ export function createScheduleReadService(options: {
         ...readModelPayload,
         locations: Array.isArray(readModelPayload.locations)
           ? readModelPayload.locations.map((location: Record<string, unknown>) => ({
-              ...location, short_name: shortNames.get(location.id as string) ?? null,
+              ...location, short_name: shortNames.get(location.id as string),
             }))
           : [],
         settings: {

@@ -13,12 +13,14 @@ describe("location short name contract", () => {
     expect(locationInputSchema.shape.short_name.safeParse(undefined).success).toBe(false);
     expect(locationInputSchema.shape.short_name.safeParse(null).success).toBe(false);
   });
-  it("keeps legacy reads valid without inventing names", () => {
+  it("requires strict short names on reads too", () => {
     for (const schema of [locationSchema.shape.short_name, scheduleLocationSchema.shape.short_name]) {
-      expect(schema.parse(null)).toBeNull();
-      expect(schema.parse(undefined)).toBeUndefined();
-      expect(schema.parse("Şişli")).toBe("Şişli");
+      expect(schema.parse("MAIN")).toBe("MAIN");
+      expect(schema.safeParse(null).success).toBe(false);
+      expect(schema.safeParse("Şişli").success).toBe(false);
     }
+    expect(locationSchema.shape.short_name.safeParse(undefined).success).toBe(false);
+    expect(scheduleLocationSchema.shape.short_name.parse(undefined)).toBeUndefined();
   });
   it.each([
     ["Deniz", "DNZ"], ["Deni", "DN"], ["Deea", "DEA"], ["Ankara", "ANK"],
