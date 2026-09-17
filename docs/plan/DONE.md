@@ -24,3 +24,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-16 | OPS-011 | GitHub Actions CI (typecheck+test, concurrency=1) yeşil | 6509e38
 2026-09-16 | THEME-001 | dark tema emekli, light sabit; görsel kontrol OK | c0ecf3d
 2026-09-16 | THEME-002 | light token seti, z-index, AA kontrast | 6f677a0
+2026-09-16 | LOC-001 | Locations tablo/drawer: adres+telefon, short name önerisi, inline delete | 4f0413c
