@@ -419,7 +419,7 @@ export default function LocationsSettingsPage() {
         <div className="job-catalog" aria-label="Locations">
           <div className="job-column-headings location-catalog-row">
             <span>Location</span>
-            <span>Address</span>
+            <span className="location-address-col">Address</span>
             <span>Phone number</span>
             <span>Time zone</span>
             <span />
@@ -446,15 +446,15 @@ export default function LocationsSettingsPage() {
                     <span className="job-row-name" title={location.name}>
                       {location.name}
                     </span>
-                    <span className="job-mobile-meta">{address}</span>
-                    <span className="job-mobile-meta">{zone}</span>
+                    <span className="location-catalog-address location-address-meta">{address}</span>
+                    <span className="job-mobile-meta">{location.phone ? `${zone} · ${phone}` : zone}</span>
                   </span>
                   {location.archived_at && (
                     <span className="job-archived-label">Archived</span>
                   )}
                 </button>
                 <span
-                  className="location-catalog-address location-catalog-cell"
+                  className="location-catalog-address location-catalog-cell location-address-col"
                   title={address}
                 >
                   {address}

@@ -1350,6 +1350,21 @@
 .location-catalog-address.location-catalog-cell {
   margin-top: 0;
 }
+.locations-catalog-settings-page .location-address-meta {
+  display: none;
+}
+/* Narrow content: address moves under the name. */
+@media (max-width: 1100px) {
+  .locations-catalog-settings-page .location-catalog-row {
+    grid-template-columns: minmax(0, 1fr) 100px 90px 32px;
+  }
+  .locations-catalog-settings-page .location-address-col {
+    display: none;
+  }
+  .locations-catalog-settings-page .location-address-meta {
+    display: block;
+  }
+}
 .job-field input[aria-invalid="true"] {
   border-color: var(--job-error);
   box-shadow: 0 0 0 1px var(--job-error);
