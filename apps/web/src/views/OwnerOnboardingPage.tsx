@@ -23,7 +23,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { uxVariantB } from "../dev/uxMock";
 import {
   loadEmployeeReferenceData,
   saveEmployee,
@@ -79,7 +78,6 @@ export default function OwnerOnboardingPage() {
   });
   // With a single workspace the switcher would only lead back here.
   const canSwitchOrganization = (accountWorkspaces.data?.length ?? 0) > 1;
-  const exitVariantB = uxVariantB();
   const navigate = useNavigate();
   const [step, setStep] = useState<OwnerStep>(
     ownerStepFromContext(context?.onboarding.currentStep),
@@ -491,7 +489,7 @@ export default function OwnerOnboardingPage() {
           <Building2 size={20} aria-hidden /> Newfork
         </span>
         <div className="onboarding-header-actions">
-          {!exitVariantB && canSwitchOrganization ? (
+          {canSwitchOrganization ? (
             <Button
               className="secondary-button compact-button"
               type="button"
@@ -500,15 +498,13 @@ export default function OwnerOnboardingPage() {
               <Building2 size={16} aria-hidden /> Switch organization
             </Button>
           ) : null}
-          {!exitVariantB ? (
-            <Button
-              className="secondary-button compact-button"
-              type="button"
-              onClick={() => void signOut()}
-            >
-              <LogOut size={16} aria-hidden /> Sign out
-            </Button>
-          ) : null}
+          <Button
+            className="secondary-button compact-button"
+            type="button"
+            onClick={() => void signOut()}
+          >
+            <LogOut size={16} aria-hidden /> Sign out
+          </Button>
           <Button
             className="secondary-button compact-button"
             type="button"
@@ -831,26 +827,6 @@ export default function OwnerOnboardingPage() {
             </div>
           </form>
         </section>
-      ) : null}
-      {exitVariantB ? (
-        <p className="onboarding-exit">
-          {canSwitchOrganization ? (
-            <button
-              className="text-button"
-              type="button"
-              onClick={() => navigate("/organization-switcher")}
-            >
-              Switch organization
-            </button>
-          ) : null}
-          <button
-            className="text-button"
-            type="button"
-            onClick={() => void signOut()}
-          >
-            Sign out
-          </button>
-        </p>
       ) : null}
     </main>
   );

@@ -232,6 +232,10 @@ describe("WorkspacesPage", () => {
     renderPage();
     expect(await screen.findByRole("button", { name: "Join Northstar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create workspace" })).toBeTruthy();
+    const rows = [...document.querySelectorAll(".workspace-list > .workspace-row")];
+    expect(rows.map(row => row.querySelector("strong")?.textContent)).toEqual(["Northstar", "Meyhouse"]);
+    expect(rows[0]?.textContent).toContain("Invitation · expires");
+    expect(screen.queryByRole("region", { name: "Invitation to Northstar" })).toBeNull();
   });
 
   it("continues the onboarding of an accepted invitation", async () => {

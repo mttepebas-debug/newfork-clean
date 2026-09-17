@@ -3,7 +3,6 @@ import { Button } from "@newfork/ui";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { uxMock } from "../dev/uxMock";
 import { sessionExpiredStorageKey } from "../lib/supabase";
 
 export function SignInPage() {
@@ -30,9 +29,7 @@ export function SignInPage() {
   const inviteFlow = isInviteAcceptDestination(destination);
   const [creatingAccount, setCreatingAccount] = useState(inviteFlow);
   const [sessionExpired] = useState(
-    () =>
-      window.sessionStorage.getItem(sessionExpiredStorageKey) === "1" ||
-      uxMock() === "session-expired",
+    () => window.sessionStorage.getItem(sessionExpiredStorageKey) === "1",
   );
   useEffect(() => {
     window.sessionStorage.removeItem(sessionExpiredStorageKey);

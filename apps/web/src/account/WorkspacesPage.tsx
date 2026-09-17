@@ -6,7 +6,6 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
-import { uxVariantB } from "../dev/uxMock";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { InvitationRow } from "../employees/InvitationRow";
 import { AccountPageHeader } from "./components";
@@ -461,9 +460,6 @@ export default function WorkspacesPage() {
           </Button>
         ) : undefined}
       />
-      {uxVariantB() ? null : invitations.map(invitation => (
-        <InvitationRow key={invitation.id} invitation={invitation} notice />
-      ))}
       {orderedWorkspaces.filter(workspace => workspace.pendingOwnershipTransfer?.role === "target").map(workspace => (
         <div key={workspace.id} className="account-notice workspace-transfer-banner" role="region" aria-label={`Ownership request for ${workspace.name}`}>
           <strong>Ownership transfer · {workspace.name}</strong>
@@ -486,9 +482,9 @@ export default function WorkspacesPage() {
         </p>
       ) : null}
       <div className="workspace-list">
-        {uxVariantB() ? invitations.map(invitation => (
+        {invitations.map(invitation => (
           <InvitationRow key={invitation.id} invitation={invitation} />
-        )) : null}
+        ))}
         {orderedWorkspaces.length === 0 && !loading ? (
           <div className="workspace-row empty-workspace-row">
             <div>

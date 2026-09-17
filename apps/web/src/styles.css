@@ -11201,14 +11201,6 @@ select:focus-visible {
     flex-wrap: wrap;
   }
 }
-/* AUTH-UX-001 mockup variant B; removed with the losing variant. */
-.onboarding-exit {
-  display: flex;
-  gap: 20px;
-  width: min(100% - 48px, 660px);
-  margin: -58px auto 0;
-  padding-bottom: 40px;
-}
 .onboarding-progress {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

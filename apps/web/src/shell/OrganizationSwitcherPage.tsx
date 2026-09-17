@@ -10,7 +10,6 @@ import {
   workspaceLandingPathForRole,
 } from "../auth/routeDestinations";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
-import { uxMock } from "../dev/uxMock";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { InvitationRow } from "../employees/InvitationRow";
 import {
@@ -43,13 +42,11 @@ export default function OrganizationSwitcherPage() {
   const invitations = invitationsQuery.data ?? [];
   const loading = workspacesQuery.isLoading || invitationsQuery.isLoading;
   const loadError =
-    uxMock() === "error"
-      ? "Organizations could not be loaded"
-      : workspaces === null && workspacesQuery.error
-        ? workspacesQuery.error instanceof Error
-          ? workspacesQuery.error.message
-          : "Organizations could not be loaded"
-        : null;
+    workspaces === null && workspacesQuery.error
+      ? workspacesQuery.error instanceof Error
+        ? workspacesQuery.error.message
+        : "Organizations could not be loaded"
+      : null;
   const [activatingWorkspaceId, setActivatingWorkspaceId] = useState<
     string | null
   >(null);
