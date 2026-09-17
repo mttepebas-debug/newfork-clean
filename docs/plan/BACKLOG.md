@@ -62,6 +62,6 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Tam local `pnpm test`'te yük altında flaky testler: api organization-settings-routes, web EmployeeOnboardingPage (3), ScheduleRequestsPage, LineupEditor (2). İzole PASS; CI concurrency=1 ile koşuyor. Kök nedeni (timeout ya da ortak state) araştır.
 - EXP-002: export çıktı görünümünün kalanı (PNG önizleme ölçeği + kullanıcı geri bildirimi); task dosyası kullanıcıyla konuşulunca açılacak.
 - THEME-003: yakın renk tonlarını (ΔE<4) THEME-002 token'larına birleştir; görsel değişiklik içerir, önce kullanıcıyla önce/sonra karşılaştırmasıyla konuşulur.
-- THEME-003 ek kapsam: sayfa CSS'leri (lineup, account, …) token'a; beyaz metin için --theme-on-accent; Employee Hub çalışan hesabıyla AA ölçümü.
+- THEME-002 açıkları → tasks/THEME-004 (sayfa CSS token'ları, on-accent, employee AA). Yakın tonlar → MVP-PLAN F5 THEME-003.
 - Owner onboarding'de lokasyon short name önerisi ve phone alanı yok → tasks/LOC-002.
 - Hosted'a location_phone migration'ı → tasks/LOC-002 (publication migration'ı UI-DOC-001 sonrası).

@@ -38,6 +38,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | THEME-002 | Light token seti, z-index ve kontrast sıkılaştırması | done 6f677a0 |
 | AUTH-001 | Kayıt sonrası döngü, switcher UI, sign-in prod metni (OPS-010 smoke'unu blokluyor) | başladı |
 | AUTH-002 | Davet guard'ı, Not now, çoklu üyelik onboarding | AUTH-001 sonrası |
+| THEME-004 | Kalan sayfa CSS'leri token'a, `--theme-on-accent`, employee ve kalan manager yüzeylerinde AA | başladı |
 | OPS-013 | Hata izleme: Sentry (ücretsiz) + Vercel logları | OPS-010 sonrası |
 
 ### F1 — Çekirdek akışların kapanışı (manager + employee)
@@ -76,6 +77,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | ID | İş |
 |---|---|
 | BL-042/043/047/054 | Admin polish (Jobs drawer dahil) |
+| THEME-003 | Yakın renk tonlarını token'lara birleştir (görsel değişiklik; kullanıcıyla önce/sonra karşılaştırması) |
 | OBS-001 | Invite/access mutasyon kabulü |
 
 ### F6 — Lansman hazırlığı
