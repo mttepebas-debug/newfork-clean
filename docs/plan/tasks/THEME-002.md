@@ -1,6 +1,6 @@
 # THEME-002 Light temayı sıkılaştır: token seti ve tutarlılık
-Status: draft (hazır; dev server gerektirir)
-Session: -   Branch: task/theme-002   Worktree: newfork-wt/theme-002   DB: yok
+Status: active
+Session: TEST-001 session (local_24e92640, Opus 5 medium)   Branch: task/theme-002   Worktree: newfork-wt/theme-002   DB: yok
 Öneri: Opus 5, medium. Görsel tutarlılık ve kontrast değerlendirmesi gerekiyor; redesign yok.
 
 Goal: Light tema tek bir semantik token setinden beslensin. Yeni UI sabit renk yazmak zorunda kalmasın. Bilinen light sorunları kapatılsın.
