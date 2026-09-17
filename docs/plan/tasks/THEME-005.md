@@ -1,5 +1,5 @@
-# THEME-005 İkincil buton cascade hatası: `<Button className="secondary-button">` birincil gibi render oluyor
-Status: active (2026-09-17)
+# THEME-005 Buton rolleri: aksiyon yeşil, vazgeçme beyaz, destructive iki tık (ikincil buton cascade düzeltmesinden genişledi)
+Status: active (2026-09-17; kapsam kullanıcı yönüyle genişledi, merge beklemede)
 Session: "THEME-005: ikincil buton cascade düzeltmesi" (local_739c4385)   Branch: task/theme-005   Worktree: newfork-wt/theme-005   DB: -   Port: web 5558 (API 5556)
 Öneri: Sonnet 5, medium. Tek kök kural ve görsel tarama.
 
@@ -29,3 +29,11 @@ Risk: uygulama genelinde görünür değişiklik (yeşil ikincil butonlar beyaza
 ## Notes / Result
 - 2026-09-17 koordinatör kararları (worker kanıtı: artifacts/theme-005, 32 senaryo): (1) Kök kural `.nf-button:where(.secondary-button)` (+ :hover) olur; (0,1,0) özgüllük sayesinde `.active-workspace`, `.compact-button`, `.danger-button` tasarlandığı gibi kazanır. `.nf-button.secondary-button` (0,2,0) switcher'daki aktif workspace butonunu ve danger hover'ı bozuyordu. (2) ProfilePage "Remove" ve SecurityPage "Cancel change" kullanımlarından çelişkili `secondary-button` sınıfı kaldırılır (görünüm bugünküyle aynı kalır). `.employee-drawer-create` istisnası kalır.
 - 2026-09-17 worker raporu (031b544, push edildi): `:where` kök kuralı, 33 senaryo / 100 buton ölçümü (yeşil → ikincil), aktif workspace görünümü korunuyor, light-theme 2/2, typecheck ve build PASS; kanıt `artifacts/theme-005/` (surfaces.md, 76 png). Koordinatör güncellemesi: yeni kural yerine mevcut `.secondary-button` bloklarının `.nf-button:disabled` altına TAŞINMASI (aynı cascade, değer tekrarı yok); tarama yeniden koşulup ölçümlerin birebir aynı olduğu doğrulanacak. Karar 2 (iki çelişkili danger buton) uygulanacak. Merge: bu ikisi + kullanıcı görsel onayı sonrası. AUTH-UX-001'in scoped seçicileri rebase'de düşürülecek (worker notu: (0,3,0) seçiciler switcher'da `.active-workspace`'i eziyor).
+- 2026-09-17 KULLANICI YÖNÜ (mobilden, doğrudan worker session'ına): "tüm ikincil butonlar beyaz" sonucu onaylanmadı. Niyet:
+  1. Destructive ve yanlış tıklamaya açık butonlar (Start over, Remove photo, Revoke invitation …) iki tıkla çalışsın; ilk tıkta onay için kırmızıya dönsün. Referans: Roles & permissions rol silme butonu.
+  2. Add location, Send reminder, Resend yeşil kalsın.
+  3. "Cancel change" metni "Cancel" olsun; kendiliğinden kırmızı butonlar yumuşatılsın, onay aşamasında daha kırmızı olsun.
+  4. Account > Workspaces: o anki workspace satırı highlight; Open butonları yeşil; seçili satırın Open'ı yeşil ama disabled.
+- Koordinatör kararı: yeni ID yok; aynı worker/branch. Kök kural (taşınan `.secondary-button` bloğu) beyaz kalacak vazgeçme butonları için gerekli, tek başına merge edilmez. AUTH-UX-001 main'de olduğu için dosya kısıtı kalktı; branch main'e rebase edilir.
+- Süreç: (1) tüm tüketiciler için sınıflandırma tablosu (aksiyon / vazgeçme / destructive), kullanıcı onayı olmadan kod yok; (2) gerçek uygulamada mockup: yumuşatılmış kırmızı, armed kırmızı, Workspaces satır highlight + disabled Open (rozet varyantı); (3) implementasyon: REUSE UI-09, tek ortak iki-tık parçası, mevcut ad hoc uygulamalar taşınmaz (backlog), erişilebilirlik (metin değişir, blur/Escape söndürür), `window.confirm` hedeflerde iki tıkla değişir, yalnız token'lar; (4) testler + tarama.
+- Önceki kararlar geçerli: kök kural taşıma biçimi, iki çelişkili danger butondan `secondary-button` sınıfının kaldırılması (metin "Cancel" olacak).
