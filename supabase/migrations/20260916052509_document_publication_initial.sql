@@ -110,8 +110,9 @@ begin
  -- Pending onboarding paths must not reintroduce a required-document gate while paused.
  foreach proc in array array[
   'public.activate_employee_onboarding_case_service(uuid,uuid,text)'::regprocedure,
-  'public.submit_employee_onboarding_service(uuid,integer)'::regprocedure,
-  'public.get_employee_onboarding_service(uuid)'::regprocedure,
+  -- AUTH-002 signature change: patch the new signature when it exists, else the old one.
+  coalesce(to_regprocedure('public.submit_employee_onboarding_service(uuid,integer,uuid)'), to_regprocedure('public.submit_employee_onboarding_service(uuid,integer)')),
+  coalesce(to_regprocedure('public.get_employee_onboarding_service(uuid,uuid)'), to_regprocedure('public.get_employee_onboarding_service(uuid)')),
   'app_private.document_sync_onboarding(uuid,uuid)'::regprocedure
  ] loop
   body:=pg_get_functiondef(proc);

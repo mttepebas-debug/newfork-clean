@@ -241,7 +241,7 @@ select is(
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and p.proname = 'get_employee_onboarding_service'
-      and pg_get_function_identity_arguments(p.oid) = 'target_user_id uuid'
+      and pg_get_function_identity_arguments(p.oid) = 'target_user_id uuid, target_workspace_id uuid'
   ),
   'v',
   'employee onboarding getter remains volatile because it initializes missing cases'
