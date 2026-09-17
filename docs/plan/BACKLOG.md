@@ -63,5 +63,5 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - EXP-002: export çıktı görünümünün kalanı (PNG önizleme ölçeği + kullanıcı geri bildirimi); task dosyası kullanıcıyla konuşulunca açılacak.
 - THEME-003: yakın renk tonlarını (ΔE<4) THEME-002 token'larına birleştir; görsel değişiklik içerir, önce kullanıcıyla önce/sonra karşılaştırmasıyla konuşulur.
 - THEME-003 ek kapsam: sayfa CSS'leri (lineup, account, …) token'a; beyaz metin için --theme-on-accent; Employee Hub çalışan hesabıyla AA ölçümü.
-- Owner onboarding'de lokasyon short name önerisi ve phone alanı yok (LOC-001 kapsam dışı).
-- Hosted'a gönderilecek migration'lar: 20260916080000_location_phone (+ UI-DOC-001 publication kabulü sonrası). Bir sonraki hosted push'ta ele alınsın.
+- Owner onboarding'de lokasyon short name önerisi ve phone alanı yok → tasks/LOC-002.
+- Hosted'a location_phone migration'ı → tasks/LOC-002 (publication migration'ı UI-DOC-001 sonrası).
