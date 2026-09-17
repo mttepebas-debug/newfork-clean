@@ -6,7 +6,7 @@
   --theme-surface-muted: #f0f3f1;
   --theme-text: #17221e;
   --theme-text-body: #1d2525;
-  --theme-muted: #68756f;
+  --theme-muted: #66716c;
   --theme-border: #dce3df;
   --theme-border-subtle: #e2e6e4;
   --theme-border-strong: #cbd4d0;
@@ -1622,7 +1622,7 @@
   text-overflow: ellipsis;
 }
 .employee-table td small {
-  color: #87908c;
+  color: var(--theme-muted);
   font-size: 11px;
 }
 .employee-table-avatar,
@@ -11693,7 +11693,7 @@ select:focus-visible {
 .settings-nav-label {
   display: block;
   margin: 0 10px 6px;
-  color: #8a938f;
+  color: var(--theme-muted);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
@@ -11741,7 +11741,7 @@ select:focus-visible {
   --settings-header-title-font-size: 28px;
   --settings-header-title-font-weight: 800;
   --settings-header-title-line-height: 1.15;
-  --settings-header-description-color: #68756f;
+  --settings-header-description-color: var(--theme-muted);
   --settings-header-description-font-size: 13px;
   --settings-header-description-line-height: 1.45;
   --settings-header-description-gap: 6px;
@@ -11825,7 +11825,7 @@ select:focus-visible {
 }
 .organization-form-row p {
   margin: 6px 0 0;
-  color: #75807b;
+  color: var(--theme-muted);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -12837,7 +12837,7 @@ select:focus-visible {
   place-items: center;
   align-content: center;
   padding: 28px;
-  color: #71807a;
+  color: var(--theme-muted);
   text-align: center;
 }
 .settings-empty strong {
@@ -16065,7 +16065,7 @@ select:focus-visible {
 .communication-empty {
   margin: 0;
   padding: 44px 18px;
-  color: #718078;
+  color: var(--theme-muted);
   text-align: center;
 }
 .workspace-state,

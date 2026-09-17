@@ -31,7 +31,7 @@
 .schedule-topbar-filter {
   --filter-surface: #fff;
   --filter-text: #23312b;
-  --filter-muted: #78847d;
+  --filter-muted: var(--theme-muted);
   --filter-border: #dfe5e1;
   --filter-soft: #f5f7f5;
   --filter-accent: #376554;
