@@ -49,3 +49,8 @@ Test plan: CSS ağırlıklı iş olduğu için test yok. Sonda typecheck ve buil
 Risk: toplu renk değişimi istemeden görünümü kaydırabilir. Değişiklikler küçük commit'lerle yapılır ve her grup ayrı karşılaştırılır.
 
 ## Notes / Result
+- 2026-09-16 audit onaylandı (kullanıcı):
+  - 22 `--theme-*` token'ı: page, surface, surface-soft, surface-muted, text, text-body, muted, border, border-subtle, border-strong, accent, accent-strong, selected, focus, action, action-hover, danger(+soft), warning(+soft), success(+soft), current. `--schedule-*` değişkenleri bu token'lara alias olur.
+  - Yalnızca birebir hex eşleşmeleri çevrilir.
+  - Bilinçli tek değişiklik: documents.css'te tanımsız `--theme-muted/text` bug'ının düzeltilmesi.
+  - Audit bulgusu: CSS'te 1250 farklı hex ve 2815 kullanım var.
