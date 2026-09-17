@@ -1,5 +1,5 @@
 # AUTH-UX-001 Auth, davet ve onboarding akışı: UI tasarımı (mockup) ve web implementasyonu
-Status: active (faz 1 teslim edildi 28d4e7a; kullanıcı varyant onayı bekleniyor)
+Status: active (faz 2; varyantlar seçildi: S1-A, S3-B; AUTH-002 merge bekleniyor)
 Session: "AUTH-UX-001 mockup tasarımları" (local_2e3cd091)   Branch: task/auth-ux-001   Worktree: newfork-wt/auth-ux-001   DB: -   Portlar: web 5557, API 5556 (ana checkout)
 Öneri: Opus 5, high. Çok yüzeyli akış, routing ve auth state; mockup'lar gerçek bileşen olarak yazılır ve seçilen varyant implementasyon olur.
 Kaynaklar (bağlayıcı): `C:/Users/TheWe/.claude/plans/kay-t-olduktan-sonra-login-idempotent-eich.md` (T2 kararları, edge case'ler) ve bu dosya. Çelişkide bu dosya kazanır (koordinatör keşfi 2026-09-17).
@@ -107,3 +107,4 @@ Risk:
   - Worker ek değişiklikleri kabul: pending satırda "Set as default" disabled; aktivasyon sonrası `setTabWorkspaceId` ile yeni org'a land; signOut scope local.
   - Local DB fixture kalıntısı (3 auth-ux-* kullanıcı, "AUTH-UX Bistro", 6 employee_profiles, davetler): uçtan uca doğrulama bitene kadar kalır; silme kullanıcı onayıyla.
 - 2026-09-17 ara rapor (c7d5795, push edildi): karar 2 (5-A Not now), 3 (mutasyonlarda workspaceId) ve 6 (Switch account stili, hover yakalanmıştı) uygulandı; varyanttan bağımsız testler yazıldı: 19 dosya / 204 test PASS, web typecheck PASS. Uçtan uca (a): local'de fixture + magic-link eşdeğeri; gerçek sign-up OPS-010 hosted smoke'unda (kullanıcı). Bekleyen: kullanıcı varyant/metin onayı, AUTH-002 merge'ü.
+- 2026-09-17 kullanıcı kararı: S1 → A (header), S3 → B (liste satırı). Metinlere itiraz yok, onaylı. Worker kaybeden varyantları, `?variant=` kodunu ve `dev/uxMock.ts`'i siliyor.
