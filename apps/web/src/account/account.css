@@ -326,63 +326,6 @@
   border-top: 1px solid #dce3df;
 }
 
-.account-theme-choices {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  border: 0;
-  padding: 0;
-}
-
-.account-theme-choice {
-  display: grid;
-  gap: 4px;
-  border: 1px solid #dce3df;
-  border-radius: 8px;
-  background: #fff;
-  padding: 12px;
-  cursor: pointer;
-}
-
-.account-theme-choice.selected {
-  border-color: #195f4d;
-  box-shadow: 0 0 0 2px #e7f1ed;
-}
-
-.account-theme-choice input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
-.account-theme-choice small {
-  color: #64716c;
-  font-size: 11px;
-}
-
-.account-theme-preview {
-  display: flex;
-  height: 40px;
-  align-items: center;
-  justify-content: flex-end;
-  margin-bottom: 5px;
-  border: 1px solid #cbd4d0;
-  border-radius: 5px;
-  background: linear-gradient(90deg, #16382d 0 28%, #f7f8f7 28%);
-  color: #195f4d;
-  padding-right: 10px;
-}
-
-.account-theme-preview.dark {
-  background: linear-gradient(90deg, #111a17 0 28%, #26312d 28%);
-  color: #d8e8e1;
-}
-
-.account-theme-preview.system {
-  background: linear-gradient(90deg, #16382d 0 14%, #111a17 14% 28%, #f7f8f7 28% 64%, #26312d 64%);
-  color: #d8e8e1;
-}
-
 .account-info-row,
 .account-main .workspace-row {
   display: flex;
@@ -587,8 +530,7 @@
     padding: 16px;
   }
 
-  .account-field-grid,
-  .account-theme-choices {
+  .account-field-grid {
     grid-template-columns: 1fr;
   }
 
