@@ -73,3 +73,5 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Vercel Authentication (newfork-clean-api, Production) smoke bitince yeniden açılacak (memory `vercel-prod-protection-disabled`).
 - `.employee-remove-access { color: #9b3442 }` (styles.css ~2359) ölü kural: "Remove access" kırmızı yazı almıyor; `.secondary-button` sonradan geldiği için eziliyor (THEME-005 bulgusu). Tasarım kararıyla birlikte düzelt ya da sil.
 - SecurityPage "Cancel change" butonu kırmızı (danger) görünüyor; iptal eylemi için doğru ton mu, F5 polish'te karar (THEME-005 bulgusu).
+- Onboarding getter geçersiz ya da erişilemeyen `workspaceId` için "unavailable" (P0002) veriyor ve API bunu 503'e çeviriyor; 404 daha doğru (AUTH-002 bulgusu).
+- pgTAP borcu: BL-052 sonrası üç onboarding/document test dosyası kırmızı; `employee_onboarding_rls` reset/confirm stub'larında transaction abort olduğu için testlerin çoğunu koşmuyor. Dosyalar güncel sözleşmeye göre yenilenmeli (AUTH-002 bulgusu; TEST-002 adayı).

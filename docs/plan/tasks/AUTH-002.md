@@ -1,5 +1,5 @@
 # AUTH-002 Davet guard'ı ve workspace bazlı onboarding getter'ı (DB + API)
-Status: active (2026-09-17; DB kilidi bu task'ta)
+Status: done
 Session: "AUTH-002: davet guard'ı ve onboarding getter" (local_0bcb5eb5; eski AUTH-001 session'ı, bağlam sıcak)   Branch: task/auth-002   Worktree: newfork-wt/auth-002   DB: lock (2 yeni migration)
 Öneri: Opus 5, high. Yetki guard'ı ve RPC imza değişikliği; PostgREST overload tuzağı var.
 Kaynak plan (bağlayıcı): `C:/Users/TheWe/.claude/plans/kay-t-olduktan-sonra-login-idempotent-eich.md` → T2 madde 1 ve 5, "Edge case'ler". Web tarafı AUTH-UX-001'de; bu task yalnız `supabase/` ve `apps/api/`.
@@ -51,3 +51,10 @@ Risk:
   - reset ve confirm stub: dokunulmaz (task'taki "reset'e parametre" maddesi iptal). acknowledge doğru bağlı, dokunulmaz.
   - Kabul edilen pencere: temiz DB'de 052509 eski timestamp'le önce çalışırsa get/submit'te publication filtresi düşer; UI-DOC-001 rename'i bunu kapatır (o dosyaya zorunlu adım yazıldı).
   - Ek kapsam: `availability-service.ts` `onboardingIdentity(token, workspaceId?)` ve onu kullanan onboarding availability route'ları opsiyonel `?workspaceId=` alır (plan 5-A aynı anda iki yarım case'e izin veriyor). Web tarafı AUTH-UX-001.
+- 2026-09-17 kapanış (koordinatör): worker raporu teslim edilemedi (zaman aşımı); session transcript'inden okundu ve git/DB durumuyla doğrulandı. main 58eeb99 (rebase + ff-merge, push). DB kilidi serbest.
+  - Migration A `20260917100000_owner_workspace_pending_invitation_guard`, Migration B `20260917101000_employee_onboarding_workspace_selection` (yardımcı `app_private.employee_onboarding_case_id`; get/save/submit/leave sonda `target_workspace_id default null`; eski imzalar drop, grant'ler yeniden). İkisi local'e uygulandı. LF.
+  - Plandan sapma (kabul): parametresiz seçimde `cancelled` case'ler de `approved` gibi sona konur.
+  - 052509'da yalnız iki literal `coalesce(to_regprocedure(yeni), to_regprocedure(eski))`.
+  - API: onboarding okuma/profile/upload-url/submit/leave ve weekly onboarding availability opsiyonel `?workspaceId=`; guard hatası 403. reset bilinçli olarak aynı.
+  - Doğrulama (worker): pgTAP `account_workspace_controls` 52/52, `employee_onboarding_workspace_selection` 17/17, `bl052_document_onboarding` 35/35; API 7 dosya 207/207; api typecheck PASS.
+  - Açık: hosted'a push (OPS-010 akışı); deploy sırası riski OPS-010 notunda. Kapsam dışı bulgular BACKLOG'da.
