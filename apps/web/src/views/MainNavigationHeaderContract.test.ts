@@ -66,7 +66,7 @@ describe("main navigation header contract", () => {
     expect(styles).toContain("width: min(100% - 64px, 1320px);");
     expect(styles).toContain("padding: 30px 0 44px;");
     expect(lineupStyles).toContain(
-      ".lu-workspace { --lu-ink: #22352d; --lu-muted: #768078; --lu-border: #e1e6e0; --lu-surface: #fff; --lu-bg: #f6f7f4; --lu-green: #386b53; color: var(--lu-ink); background: var(--lu-bg); box-sizing: border-box; width: min(100% - 64px, 1320px); padding: 30px 0 44px;",
+      ".lu-workspace { --lu-ink: #22352d; --lu-muted: var(--theme-muted); --lu-border: #e1e6e0; --lu-surface: #fff; --lu-bg: #f6f7f4; --lu-green: #386b53; color: var(--lu-ink); background: var(--lu-bg); box-sizing: border-box; width: min(100% - 64px, 1320px); padding: 30px 0 44px;",
     );
     expect(lineupStyles).toContain(
       ".lu-header { display: flex; align-items: center; justify-content: space-between; min-height: 118px; gap: 24px; margin: 0 0 18px; padding: 32px 0 20px; border-bottom: 1px solid #d9dfdb;",
