@@ -38,7 +38,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | THEME-002 | Light token seti, z-index ve kontrast sıkılaştırması | done 6f677a0 |
 | AUTH-001 | Kayıt sonrası döngü, switcher UI, sign-in prod metni, context 503 | done a69276e |
 | AUTH-002 | DB guard (davetli create edemez) + workspace bazlı onboarding case seçimi + API | done 58eeb99 (hosted push bekliyor) |
-| AUTH-UX-001 | Auth/davet/onboarding akışı UI: mockup → web implementasyonu (owner onboarding çıkışı, switcher recovery, Not now, davet kartı, /welcome/:workspaceId, revoke edilmiş oturum) | hazır |
+| AUTH-UX-001 | Auth/davet/onboarding akışı UI: mockup → web implementasyonu (owner onboarding çıkışı, switcher recovery, Not now, davet satırı, /welcome/:workspaceId, sonlanan oturum) | done 59446ff |
 | THEME-004 | Kalan sayfa CSS'leri token'a, `--theme-on-accent`, employee ve kalan manager yüzeylerinde AA | done bd6877a |
 | AUTH-004 | Owner kurulumu yarım workspace'te owner olmayan üye owner sihirbazına düşüyor (guard + durum paneli) | taslak; lansman öncesi gerekli |
 | THEME-005 | İkincil buton cascade hatası: `Button` + `secondary-button` birincil gibi görünüyor (kök kural + görsel tarama) | onaylandı, hazır |

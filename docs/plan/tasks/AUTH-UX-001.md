@@ -1,5 +1,5 @@
 # AUTH-UX-001 Auth, davet ve onboarding akışı: UI tasarımı (mockup) ve web implementasyonu
-Status: active (faz 2; varyantlar seçildi: S1-A, S3-B; AUTH-002 merge bekleniyor)
+Status: done
 Session: "AUTH-UX-001 mockup tasarımları" (local_2e3cd091)   Branch: task/auth-ux-001   Worktree: newfork-wt/auth-ux-001   DB: -   Portlar: web 5557, API 5556 (ana checkout)
 Öneri: Opus 5, high. Çok yüzeyli akış, routing ve auth state; mockup'lar gerçek bileşen olarak yazılır ve seçilen varyant implementasyon olur.
 Kaynaklar (bağlayıcı): `C:/Users/TheWe/.claude/plans/kay-t-olduktan-sonra-login-idempotent-eich.md` (T2 kararları, edge case'ler) ve bu dosya. Çelişkide bu dosya kazanır (koordinatör keşfi 2026-09-17).
@@ -114,3 +114,5 @@ Risk:
   - Merge öncesi istenen: scoped secondary-button seçicilerinin düşürülmesi (THEME-005'ten bağımsızlaşma), lineup contract testinin THEME-004 token'ına hizalanması (main CI'ı açar), rebase.
   - Bulgular: employee'nin owner onboarding'e yönlenmesi → tasks/AUTH-004; capitalize ve başlık flaşı → BACKLOG.
   - Hosted sırası: bu branch merge olunca web `?workspaceId=` gönderir; hosted DB'de Migration B yokken employee onboarding çağrıları PGRST202 alır (gerçek kullanıcı yok). Hosted push OPS-010 akışıyla hemen ardından yapılmalı.
+- 2026-09-17 kapanış (koordinatör): merge öncesi üç iş tamamlandı (scoped seçiciler düşürüldü; lineup contract testi THEME-004 token'ına hizalandı, 3/3; rebase). main 59446ff (ff-merge, push). Etkilenen set + light-theme 21 dosya / 152 test, typecheck PASS (worker).
+  - Açık: hosted'a AUTH-002 migration push'u (OPS-010); local DB fixture temizliği kullanıcı onayıyla; THEME-005 merge olunca yeni yüzeylerdeki ikincil butonlar beyaza döner.
