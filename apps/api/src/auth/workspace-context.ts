@@ -231,7 +231,10 @@ export function createSupabaseWorkspaceContextResolver(
 
       const context = activeWorkspaceContextFromRow(row, locationIds);
       let documentAccess: ActiveWorkspaceContext["documentAccess"];
-      if (serviceClient && ["active", "pending_activation"].includes(context.membership.status)) {
+      // Incomplete workspaces are closed to data routes anyway, and the access
+      // service rejects them, so document access only applies once complete.
+      if (serviceClient && context.onboarding.status === "complete" &&
+        ["active", "pending_activation"].includes(context.membership.status)) {
         const access = await serviceClient.rpc("get_employee_document_access_service", {
           actor_user_id: userData.user.id, target_workspace_id: context.workspace.id,
         });

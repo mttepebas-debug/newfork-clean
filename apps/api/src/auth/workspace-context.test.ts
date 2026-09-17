@@ -314,6 +314,25 @@ describe("createSupabaseWorkspaceContextResolver", () => {
     } else await expect(resolver.resolve("valid-token", workspaceId)).rejects.toThrow("Document access could not be checked");
   });
 
+  it("skips document access for a workspace whose onboarding is incomplete", async () => {
+    mocks.authGetUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    mocks.serviceRpc.mockResolvedValueOnce({ data: [{ user_id: userId, workspace_id: workspaceId, workspace_name: "Bistro", membership_id: membershipId, workspace_role: "owner", permission_keys: ["workspace.read"], all_locations: true, onboarding_status: "incomplete", onboarding_current_step: 1, onboarding_revision: 1 }], error: null })
+      .mockResolvedValueOnce({ data: null, error: { code: "P0002", message: "workspace unavailable" } });
+    const resolver = createSupabaseWorkspaceContextResolver({ url: "https://example.supabase.co", anonKey: "anon", serviceRoleKey: "service-role" });
+    const result = await resolver.resolve("valid-token", workspaceId);
+    expect(result?.onboarding.status).toBe("incomplete");
+    expect(result?.documentAccess).toBeUndefined();
+    expect(mocks.serviceRpc).not.toHaveBeenCalledWith("get_employee_document_access_service", expect.anything());
+  });
+
+  it("still fails closed when document access errors for a complete workspace", async () => {
+    mocks.authGetUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    mocks.serviceRpc.mockResolvedValueOnce({ data: [{ user_id: userId, workspace_id: workspaceId, workspace_name: "Bistro", membership_id: membershipId, workspace_role: "owner", permission_keys: ["workspace.read"], all_locations: true, onboarding_status: "complete", onboarding_current_step: 4, onboarding_revision: 1 }], error: null })
+      .mockResolvedValueOnce({ data: null, error: { code: "P0002", message: "workspace unavailable" } });
+    const resolver = createSupabaseWorkspaceContextResolver({ url: "https://example.supabase.co", anonKey: "anon", serviceRoleKey: "service-role" });
+    await expect(resolver.resolve("valid-token", workspaceId)).rejects.toThrow("Document access could not be checked");
+  });
+
   it("fails closed instead of widening access when scoped locations cannot be resolved", async () => {
     mocks.authGetUser.mockResolvedValue({
       data: { user: { id: userId } },
