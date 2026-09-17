@@ -33,10 +33,11 @@ async function request(
   if (selectedWorkspace)
     headers.set("X-Newfork-Workspace-Id", selectedWorkspace);
   if (init.body) headers.set("Content-Type", "application/json");
-  const endpoint = onboarding
-    ? "/v1/me/onboarding/availability-lifecycle"
-    : `/v1/workspaces/${workspace}/availability`;
-  const response = await fetch(`${newforkApiUrl}${endpoint}${path}`, {
+  // Onboarding belongs to one workspace; its paths carry no other query.
+  const url = onboarding
+    ? `/v1/me/onboarding/availability-lifecycle${path}?workspaceId=${encodeURIComponent(workspace)}`
+    : `/v1/workspaces/${workspace}/availability${path}`;
+  const response = await fetch(`${newforkApiUrl}${url}`, {
     ...init,
     headers,
   });

@@ -526,6 +526,7 @@ function DocumentStep({
 }
 
 function AvailabilityStep({ model, onSaved }: StepProps) {
+  const { workspaceId = "" } = useParams();
   const requirement = model.requirements.find(
     (item) => item.kind === "availability",
   );
@@ -538,7 +539,7 @@ function AvailabilityStep({ model, onSaved }: StepProps) {
         copy=""
       />
       <WeeklyPreferencesPanel
-        workspaceId={model.workspace_id}
+        workspaceId={workspaceId}
         employeeId={model.employee_id}
         audience="employee"
         onboarding
