@@ -1,6 +1,6 @@
 # AUTH-004 Owner kurulumu yarım workspace'te owner olmayan üye owner onboarding'e yönleniyor
-Status: draft
-Session: -   Branch: task/auth-004   Worktree: newfork-wt/auth-004   DB: -
+Status: active (2026-09-17; koordinatör kararı: şimdi, THEME-005 ile paralel)
+Session: "AUTH-004: owner olmayan üye owner sihirbazına düşüyor" (local_2e3cd091; AUTH-UX-001 worker'ı, hatayı o buldu)   Branch: task/auth-004   Worktree: newfork-wt/auth-004   DB: -
 Öneri: Sonnet 5, medium. Tek guard ve küçük bir durum paneli.
 
 Goal: Owner kurulumu bitmemiş bir workspace'te aktif olan admin/manager/employee, owner kurulum sihirbazını görmesin; ne olduğunu anlatan bir durum ekranı görsün.
@@ -19,3 +19,4 @@ Done when: iki rol senaryosu testte ve local'de doğrulandı; web typecheck PASS
 Risk: düşük; yönlendirme kuralı değişiyor, döngü testi şart.
 
 ## Notes / Result
+- 2026-09-17: kullanıcı local fixture temizliğini onayladı; temizlik AUTH-004 doğrulamasından SONRA yapılır (fixture'lar hatayı yeniden üretmek için gerekli). Temizlik öncesi local DB yedeği repo dışına alınır.
