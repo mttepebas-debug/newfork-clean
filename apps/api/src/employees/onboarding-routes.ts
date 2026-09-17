@@ -27,6 +27,9 @@ const acknowledgeBodySchema = z.object({
   revision: revisionSchema,
 });
 const submitBodySchema = z.object({ revision: revisionSchema });
+const workspaceQuerySchema = z.object({
+  workspaceId: z.string().uuid().optional(),
+});
 const managerParamsSchema = z.object({
   workspaceId: z.string().uuid(),
   employeeId: z.string().uuid(),
@@ -50,25 +53,34 @@ export function registerEmployeeOnboardingRoutes(
 ): void {
   app.get("/v1/me/onboarding", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
+    const query = workspaceQuerySchema.safeParse(request.query);
     if (!token)
       return reply.status(401).send({ error: "Valid bearer session required" });
-    return serviceReply(reply, () => options.service.get(token));
+    if (!query.success)
+      return reply.status(400).send({ error: "Valid workspace required" });
+    return serviceReply(reply, () =>
+      options.service.get(token, query.data.workspaceId),
+    );
   });
 
   app.patch("/v1/me/onboarding/profile", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
     const body = profileBodySchema.safeParse(request.body);
+    const query = workspaceQuerySchema.safeParse(request.query);
     if (!token)
       return reply.status(401).send({ error: "Valid bearer session required" });
     if (!body.success)
       return reply
         .status(400)
         .send({ error: "Complete private profile required" });
+    if (!query.success)
+      return reply.status(400).send({ error: "Valid workspace required" });
     return serviceReply(reply, async () => ({
       revision: await options.service.saveProfile(
         token,
         body.data.profile,
         body.data.revision,
+        query.data.workspaceId,
       ),
     }));
   });
@@ -93,11 +105,12 @@ export function registerEmployeeOnboardingRoutes(
       const token = bearerToken(request.headers.authorization);
       const params = requirementParamsSchema.safeParse(request.params);
       const body = uploadBodySchema.safeParse(request.body);
+      const query = workspaceQuerySchema.safeParse(request.query);
       if (!token)
         return reply
           .status(401)
           .send({ error: "Valid bearer session required" });
-      if (!params.success || !body.success)
+      if (!params.success || !body.success || !query.success)
         return reply
           .status(400)
           .send({ error: "Valid private document required" });
@@ -107,6 +120,7 @@ export function registerEmployeeOnboardingRoutes(
           params.data.requirementId,
           body.data.filename,
           body.data.sizeBytes,
+          query.data.workspaceId,
         ),
       );
     },
@@ -161,42 +175,53 @@ export function registerEmployeeOnboardingRoutes(
   app.post("/v1/me/onboarding/submit", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
     const body = submitBodySchema.safeParse(request.body);
+    const query = workspaceQuerySchema.safeParse(request.query);
     if (!token)
       return reply.status(401).send({ error: "Valid bearer session required" });
-    if (!body.success)
+    if (!body.success || !query.success)
       return reply
         .status(400)
         .send({ error: "Current onboarding revision required" });
     return serviceReply(reply, async () => ({
-      revision: await options.service.submit(token, body.data.revision),
+      revision: await options.service.submit(
+        token,
+        body.data.revision,
+        query.data.workspaceId,
+      ),
     }));
   });
 
   app.post("/v1/me/onboarding/reset", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
     const body = submitBodySchema.safeParse(request.body);
+    const query = workspaceQuerySchema.safeParse(request.query);
     if (!token)
       return reply.status(401).send({ error: "Valid bearer session required" });
-    if (!body.success)
+    if (!body.success || !query.success)
       return reply
         .status(400)
         .send({ error: "Current onboarding revision required" });
     return serviceReply(reply, async () => ({
-      revision: await options.service.reset(token, body.data.revision),
+      revision: await options.service.reset(
+        token,
+        body.data.revision,
+        query.data.workspaceId,
+      ),
     }));
   });
 
   app.post("/v1/me/onboarding/leave", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
     const body = submitBodySchema.safeParse(request.body);
+    const query = workspaceQuerySchema.safeParse(request.query);
     if (!token)
       return reply.status(401).send({ error: "Valid bearer session required" });
-    if (!body.success)
+    if (!body.success || !query.success)
       return reply
         .status(400)
         .send({ error: "Current onboarding revision required" });
     return serviceReply(reply, () =>
-      options.service.leave(token, body.data.revision),
+      options.service.leave(token, body.data.revision, query.data.workspaceId),
     );
   });
 

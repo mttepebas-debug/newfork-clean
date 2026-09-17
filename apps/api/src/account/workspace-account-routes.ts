@@ -528,7 +528,8 @@ function requestError(reply: FastifyReply, error: unknown) {
     message.includes("access required") ||
     message.includes("not available") ||
     message.includes("session required") ||
-    message.includes("authentication required")
+    message.includes("authentication required") ||
+    message.includes("must be resolved")
   )
     return reply.status(403).send({ error: message });
   if (message.includes("not found"))

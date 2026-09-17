@@ -24,17 +24,20 @@ const mediaTypes = {
 } as const;
 
 export interface EmployeeOnboardingService {
-  get(accessToken: string): Promise<EmployeeOnboarding>;
+  // workspaceId selects the case when the account onboards in several workspaces.
+  get(accessToken: string, workspaceId?: string): Promise<EmployeeOnboarding>;
   saveProfile(
     accessToken: string,
     profile: EmployeeOnboardingProfile,
     revision: number,
+    workspaceId?: string,
   ): Promise<number>;
   prepareDocumentUpload(
     accessToken: string,
     requirementId: string,
     filename: string,
     sizeBytes: number,
+    workspaceId?: string,
   ): Promise<{ path: string; token: string }>;
   confirmDocument(
     accessToken: string,
@@ -57,9 +60,21 @@ export interface EmployeeOnboardingService {
       revision: number;
     },
   ): Promise<number>;
-  submit(accessToken: string, revision: number): Promise<number>;
-  reset(accessToken: string, revision: number): Promise<number>;
-  leave(accessToken: string, revision: number): Promise<{
+  submit(
+    accessToken: string,
+    revision: number,
+    workspaceId?: string,
+  ): Promise<number>;
+  reset(
+    accessToken: string,
+    revision: number,
+    workspaceId?: string,
+  ): Promise<number>;
+  leave(
+    accessToken: string,
+    revision: number,
+    workspaceId?: string,
+  ): Promise<{
     status: "left";
     workspaceId: string;
     employeeId: string;
@@ -104,22 +119,23 @@ export function createEmployeeOnboardingService(
     auth: { autoRefreshToken: false, persistSession: false },
   });
   return {
-    async get(accessToken) {
+    async get(accessToken, workspaceId) {
       const user = await authenticatedUser(client, accessToken);
       const { data, error } = await client.rpc(
         "get_employee_onboarding_service",
-        { target_user_id: user.id },
+        { target_user_id: user.id, ...workspaceArg(workspaceId) },
       );
       if (error) throw new Error(error.message);
       return employeeOnboardingSchema.parse(data);
     },
-    async saveProfile(accessToken, input, revision) {
+    async saveProfile(accessToken, input, revision, workspaceId) {
       const user = await authenticatedUser(client, accessToken);
       const profile = employeeOnboardingProfileSchema.parse(input);
       return numericRpc(client, "save_employee_onboarding_profile_service", {
         target_user_id: user.id,
         profile_payload: profile,
         expected_revision: revision,
+        ...workspaceArg(workspaceId),
       });
     },
     async prepareDocumentUpload(
@@ -127,8 +143,9 @@ export function createEmployeeOnboardingService(
       requirementId,
       filename,
       sizeBytes,
+      workspaceId,
     ) {
-      const onboarding = await this.get(accessToken);
+      const onboarding = await this.get(accessToken, workspaceId);
       const requirement = onboarding.requirements.find(
         (candidate) =>
           candidate.id === requirementId && candidate.kind === "document",
@@ -219,25 +236,28 @@ export function createEmployeeOnboardingService(
         expected_revision: input.revision,
       });
     },
-    async submit(accessToken, revision) {
+    async submit(accessToken, revision, workspaceId) {
       const user = await authenticatedUser(client, accessToken);
       return numericRpc(client, "submit_employee_onboarding_service", {
         target_user_id: user.id,
         expected_revision: revision,
+        ...workspaceArg(workspaceId),
       });
     },
-    async reset(accessToken, revision) {
+    async reset(accessToken, revision, workspaceId) {
       const user = await authenticatedUser(client, accessToken);
       return numericRpc(client, "reset_employee_onboarding_service", {
         target_user_id: user.id,
         expected_revision: revision,
+        ...workspaceArg(workspaceId),
       });
     },
-    async leave(accessToken, revision) {
+    async leave(accessToken, revision, workspaceId) {
       const user = await authenticatedUser(client, accessToken);
       const body = await rpc(client, "leave_employee_onboarding_service", {
         target_user_id: user.id,
         expected_revision: revision,
+        ...workspaceArg(workspaceId),
       });
       return leaveResultSchema.parse(body);
     },
@@ -379,4 +399,9 @@ async function ensurePrivateBucket(client: SupabaseClient): Promise<void> {
     throw new Error(
       `Private document bucket unavailable: ${created.error.message}`,
     );
+}
+
+// Omit the argument when absent so the RPC keeps its default case selection.
+function workspaceArg(workspaceId: string | undefined) {
+  return workspaceId ? { target_workspace_id: workspaceId } : {};
 }

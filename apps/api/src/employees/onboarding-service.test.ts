@@ -36,6 +36,23 @@ describe("employee onboarding review availability", () => {
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("get_employee_onboarding_service", { target_user_id: actorUserId });
   });
 
+  it("passes the requested workspace to onboarding reads and writes", async () => {
+    mocks.auth.getUser.mockResolvedValue({ data: { user: { id: actorUserId } }, error: null });
+    mocks.rpc.mockResolvedValue({ error: null, data: 3 });
+    await service().submit("test-access-token", 2, workspaceId);
+    await service().reset("test-access-token", 2, workspaceId);
+    await service().submit("test-access-token", 2);
+    expect(mocks.rpc.mock.calls).toEqual([
+      ["submit_employee_onboarding_service", { target_user_id: actorUserId, expected_revision: 2, target_workspace_id: workspaceId }],
+      ["reset_employee_onboarding_service", { target_user_id: actorUserId, expected_revision: 2, target_workspace_id: workspaceId }],
+      ["submit_employee_onboarding_service", { target_user_id: actorUserId, expected_revision: 2 }],
+    ]);
+    mocks.rpc.mockReset();
+    mocks.rpc.mockResolvedValue({ error: null, data: { status: "left", workspace_id: workspaceId, employee_id: employeeId, membership_id: actorUserId, revision: 3 } });
+    await service().leave("test-access-token", 2, workspaceId);
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("leave_employee_onboarding_service", { target_user_id: actorUserId, expected_revision: 2, target_workspace_id: workspaceId });
+  });
+
   it("returns an empty review for the RPC's absent or inaccessible case result", async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: missingCase });
 

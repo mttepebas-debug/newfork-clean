@@ -2409,6 +2409,61 @@ describe("api app", () => {
     });
   });
 
+  it("forwards an optional workspace query to self-scoped onboarding", async () => {
+    const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+    const calls: unknown[][] = [];
+    const base = onboardingServiceMock();
+    const service = onboardingServiceMock({
+      get: async (...input) => {
+        calls.push(["get", ...input]);
+        return base.get(input[0]);
+      },
+      submit: async (...input) => {
+        calls.push(["submit", ...input]);
+        return 2;
+      },
+      leave: async (...input) => {
+        calls.push(["leave", ...input]);
+        return base.leave(input[0], input[1]);
+      },
+    });
+    const app = buildApp({ contextResolver: null, onboardingService: service });
+    const headers = { authorization: "Bearer pending-member-token" };
+
+    const read = await app.inject({
+      method: "GET",
+      url: `/v1/me/onboarding?workspaceId=${workspaceId}`,
+      headers,
+    });
+    const submit = await app.inject({
+      method: "POST",
+      url: `/v1/me/onboarding/submit?workspaceId=${workspaceId}`,
+      headers,
+      payload: { revision: 1 },
+    });
+    const leave = await app.inject({
+      method: "POST",
+      url: `/v1/me/onboarding/leave?workspaceId=${workspaceId}`,
+      headers,
+      payload: { revision: 1 },
+    });
+    const invalid = await app.inject({
+      method: "GET",
+      url: "/v1/me/onboarding?workspaceId=not-a-uuid",
+      headers,
+    });
+
+    expect([read.statusCode, submit.statusCode, leave.statusCode]).toEqual([
+      200, 200, 200,
+    ]);
+    expect(invalid.statusCode).toBe(400);
+    expect(calls).toEqual([
+      ["get", "pending-member-token", workspaceId],
+      ["submit", "pending-member-token", 1, workspaceId],
+      ["leave", "pending-member-token", 1, workspaceId],
+    ]);
+  });
+
   it("forwards self-scoped onboarding writes only from token, path and validated fields", async () => {
     const calls: Array<{ kind: string; input: unknown[] }> = [];
     const service = onboardingServiceMock({
@@ -2569,7 +2624,8 @@ describe("api app", () => {
     }
 
     expect(calls).toEqual([
-      { kind: "profile", input: ["pending-member-token", profile, 1] },
+      // Body workspace fields are ignored; only the query selects a workspace.
+      { kind: "profile", input: ["pending-member-token", profile, 1, undefined] },
       {
         kind: "prepare-document",
         input: [
@@ -2577,6 +2633,7 @@ describe("api app", () => {
           requirementId,
           "food-handler.pdf",
           1024,
+          undefined,
         ],
       },
       {
@@ -2607,9 +2664,9 @@ describe("api app", () => {
           },
         ],
       },
-      { kind: "submit", input: ["pending-member-token", 5] },
-      { kind: "reset", input: ["pending-member-token", 6] },
-      { kind: "leave", input: ["pending-member-token", 7] },
+      { kind: "submit", input: ["pending-member-token", 5, undefined] },
+      { kind: "reset", input: ["pending-member-token", 6, undefined] },
+      { kind: "leave", input: ["pending-member-token", 7, undefined] },
     ]);
   });
 

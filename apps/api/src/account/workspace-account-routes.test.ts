@@ -73,6 +73,15 @@ describe("workspace account routes", () => {
     expect(response.statusCode).toBe(403);
   });
 
+  it("returns 403 when a pending invitation blocks workspace creation", async () => {
+    const message = "pending invitation must be resolved first";
+    const createWorkspace = vi.fn(async () => { throw new Error(message); });
+    const app = buildApp({ workspaceAccountService: { createWorkspace } as unknown as WorkspaceAccountService });
+    const response = await app.inject({ method: "POST", url: "/v1/account/workspaces", headers: { authorization: `Bearer ${accessToken}` }, payload: { name: "Invitee business" } });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: message });
+  });
+
   it("rejects with an older authenticated session without requiring a password", async () => {
     const respondOwnershipTransfer = vi.fn(async () => ({ status: "rejected" }));
     const app = buildApp({ workspaceAccountService: { respondOwnershipTransfer } as unknown as WorkspaceAccountService });
