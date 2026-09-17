@@ -43,3 +43,12 @@ Risk:
 - Mockup kuralı: switcher görünümü mevcut kardeş sayfa kalıbına alındığı için ayrı mockup gerekmez.
 
 ## Notes / Result
+- 2026-09-16 ara rapor (task/auth-001 @ 8532d6a):
+  - Döngü kırıldı: local'de yeni kullanıcı → /no-organization → create → 201 → /onboarding.
+  - Switcher panel görünümüne alındı. `loaded` bayrağı eklendi (fail-closed korunuyor).
+  - 39 test PASS; typecheck PASS.
+- Engel bulundu: yeni owner workspace'te GET /v1/context 503 dönüyor.
+  - workspace-context.ts, `get_employee_document_access_service`'i çağırıyor; bu fonksiyon onboarding'i tamamlanmamış workspace'i `workspace_allows_interactive_access` ile reddediyor (P0002).
+  - Koordinatör kararı: hedefi engellediği için bu task'ta çözülüyor. Document access yalnızca onboarding complete iken hesaplanır (yalnızca API; DB değişmez); API testi eklenir.
+- Ek: `.sign-in-panel .workspace-row .nf-button { width: auto; }` onaylandı.
+- Local'de test verisi var: "AUTH001 Test Kitchen".
