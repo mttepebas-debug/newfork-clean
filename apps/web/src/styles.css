@@ -23,6 +23,7 @@
   --theme-success: #176b4e;
   --theme-success-soft: #e7f1ed;
   --theme-current: #b7791f;
+  --theme-on-accent: #ffffff;
   --schedule-action: var(--theme-action);
   --schedule-action-hover: var(--theme-action-hover);
   --schedule-grid-line-color: #dce2df;
@@ -188,7 +189,7 @@
     border: 0;
     border-radius: 8px 8px 0 0;
     background: #20332c;
-    color: #fff;
+    color: var(--theme-on-accent);
     font: inherit;
     font-size: 12px;
     font-weight: 850;
@@ -749,7 +750,7 @@
 .employee-onboarding-progress nav button:hover,
 .employee-onboarding-progress nav button.active {
   background: #26333e;
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 
 .employee-onboarding-progress nav button svg {
@@ -2362,7 +2363,7 @@
   min-height: 240px;
   place-content: center;
   justify-items: center;
-  color: #66716c;
+  color: var(--theme-muted);
   text-align: center;
 }
 .employee-summary-panel strong {
@@ -5448,7 +5449,7 @@ select:focus-visible {
   place-items: center;
   border-radius: 5px;
   background: #202b27;
-  color: #fff;
+  color: var(--theme-on-accent);
   font-size: 10px;
   font-weight: 800;
 }
@@ -5830,7 +5831,7 @@ select:focus-visible {
 }
 .schedule-day-header[data-today="true"] .schedule-day-header-date {
   background: #0f172a;
-  color: #fff;
+  color: var(--theme-on-accent);
   box-shadow: 0 1px 2px rgba(23, 32, 51, 0.18);
 }
 .schedule-day-header .schedule-day-header-partial-closed {
@@ -6630,7 +6631,7 @@ select:focus-visible {
   place-items: center;
   border-radius: 999px;
   background: color-mix(in srgb, var(--shift-color) 62%, #173e34);
-  color: #fff;
+  color: var(--theme-on-accent);
   font-size: 9px;
   font-weight: 900;
   line-height: 1;
@@ -7269,7 +7270,7 @@ select:focus-visible {
 .schedule-conflict-sheet-copy footer button.primary {
   border-color: var(--theme-accent);
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-conflict-sheet-copy footer button:disabled {
   cursor: not-allowed;
@@ -7395,7 +7396,7 @@ select:focus-visible {
 .schedule-save-recovery-sheet footer button.primary {
   border-color: var(--theme-accent);
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-save-recovery-action-icon {
   width: 14px;
@@ -7630,7 +7631,7 @@ select:focus-visible {
   border-radius: 5px;
   padding: 0 12px;
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
   cursor: pointer;
   font: inherit;
   font-weight: 800;
@@ -7757,7 +7758,7 @@ select:focus-visible {
 .schedule-discard-dialog > footer button.danger {
   border-color: var(--theme-danger);
   background: var(--theme-danger);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-discard-dialog > footer button.danger:hover:not(:disabled) {
   border-color: #96372d;
@@ -7777,7 +7778,7 @@ select:focus-visible {
   border: 1px solid var(--theme-accent);
   border-radius: 5px;
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
   font-weight: 750;
 }
 
@@ -8141,7 +8142,7 @@ select:focus-visible {
 }
 .schedule-quick-select [role="option"][aria-selected="true"] {
   background: #173e34;
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-quick-label-option {
   display: flex;
@@ -8352,13 +8353,13 @@ select:focus-visible {
 .schedule-dialog-actions button.primary {
   border-color: var(--theme-accent);
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-dialog-actions button.primary:hover,
 .schedule-dialog-actions button.primary:focus-visible {
   border-color: #115241;
   background: #115241;
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-dialog-actions button.danger {
   margin-right: auto;
@@ -8588,7 +8589,7 @@ select:focus-visible {
 .schedule-edit-locked-dialog > footer button.primary {
   border-color: var(--theme-accent);
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-edit-locked-refresh {
   width: 15px;
@@ -8749,7 +8750,7 @@ select:focus-visible {
 .schedule-retroactive-dialog footer button.primary {
   border-color: var(--theme-accent);
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-timeout-progress {
   position: absolute;
@@ -8832,7 +8833,7 @@ select:focus-visible {
 }
 .schedule-publication-steps span[data-active="true"] i {
   background: #20312a;
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-publication-steps span[data-complete="true"] i {
   background: #dff1e8;
@@ -9807,7 +9808,7 @@ select:focus-visible {
 .schedule-unpublish-dialog > footer button.danger {
   border-color: var(--theme-danger);
   background: var(--theme-danger);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-unpublish-dialog > footer button:disabled {
   cursor: not-allowed;
@@ -9816,7 +9817,7 @@ select:focus-visible {
 .schedule-dialog-actions button.danger {
   border-color: #a53636;
   background: #a53636;
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-dialog-actions button:disabled {
   cursor: not-allowed;
@@ -10279,7 +10280,7 @@ select:focus-visible {
 .schedule-template-rename-dialog button.primary-command {
   border-color: var(--theme-accent);
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-tool-dialog button {
   display: inline-flex;
@@ -10297,7 +10298,7 @@ select:focus-visible {
 .schedule-tool-dialog button.primary-command {
   border-color: var(--theme-accent);
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-tool-dialog button.danger-text {
   color: #9a392f;
@@ -10421,7 +10422,7 @@ select:focus-visible {
 .schedule-export-segment-group button[aria-pressed="true"] {
   border-color: var(--theme-accent);
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-export-segment-group button svg {
   flex: 0 0 auto;
@@ -10713,7 +10714,7 @@ select:focus-visible {
 .schedule-export-workspace-preview button.primary-command {
   border-color: var(--theme-accent);
   background: var(--theme-accent);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-export-workspace-preview button:disabled {
   cursor: not-allowed;
@@ -10827,7 +10828,7 @@ select:focus-visible {
 .schedule-logo-dialog footer button.primary {
   border-color: #173e34;
   background: #173e34;
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-logo-controls {
   display: grid;
@@ -12017,7 +12018,7 @@ select:focus-visible {
 .settings-summary-tile span,
 .entity-meta span {
   display: block;
-  color: #66716c;
+  color: var(--theme-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -12127,7 +12128,7 @@ select:focus-visible {
 }
 .availability-metric span {
   display: block;
-  color: #66716c;
+  color: var(--theme-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -12164,7 +12165,7 @@ select:focus-visible {
 }
 .availability-person span {
   margin-top: 3px;
-  color: #66716c;
+  color: var(--theme-muted);
   font-size: 12px;
 }
 .availability-week-grid {
@@ -12185,7 +12186,7 @@ select:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #66716c;
+  color: var(--theme-muted);
   font-size: 11px;
   font-weight: 700;
 }
@@ -12219,7 +12220,7 @@ select:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: #66716c;
+  color: var(--theme-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -12311,7 +12312,7 @@ select:focus-visible {
   place-content: center;
   justify-items: center;
   padding: 40px;
-  color: #66716c;
+  color: var(--theme-muted);
   text-align: center;
 }
 .role-placeholder strong {
@@ -12856,7 +12857,7 @@ select:focus-visible {
   border: 1px solid #d9dfdc;
   border-radius: 7px;
   background: var(--theme-surface);
-  color: #66716c;
+  color: var(--theme-muted);
   font-size: 13px;
 }
 .settings-state.error {
@@ -14245,7 +14246,7 @@ select:focus-visible {
 }
 .requests-page .nf-button.danger {
   background: #a94139;
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .requests-page .nf-button.danger:hover {
   background: #91372f;
@@ -15659,7 +15660,7 @@ select:focus-visible {
   display: grid;
   place-items: center;
   background: #b33a35;
-  color: #fff;
+  color: var(--theme-on-accent);
   font-size: 10px;
   font-weight: 800;
 }
