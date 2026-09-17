@@ -40,7 +40,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | AUTH-002 | DB guard (davetli create edemez) + workspace bazlı onboarding getter + API (DB lock) | hazır, AUTH-UX-001 ile paralel |
 | AUTH-UX-001 | Auth/davet/onboarding akışı UI: mockup → web implementasyonu (owner onboarding çıkışı, switcher recovery, Not now, davet kartı, /welcome/:workspaceId, revoke edilmiş oturum) | hazır |
 | THEME-004 | Kalan sayfa CSS'leri token'a, `--theme-on-accent`, employee ve kalan manager yüzeylerinde AA | done bd6877a |
-| THEME-005 | İkincil buton cascade hatası: `Button` + `secondary-button` birincil gibi görünüyor (kök kural + görsel tarama) | kullanıcı onayı, AUTH-UX-001 sonrası |
+| THEME-005 | İkincil buton cascade hatası: `Button` + `secondary-button` birincil gibi görünüyor (kök kural + görsel tarama) | onaylandı, hazır |
 | OPS-013 | Hata izleme: Sentry (ücretsiz) + Vercel logları | OPS-010 sonrası |
 
 ### F1 — Çekirdek akışların kapanışı (manager + employee)
