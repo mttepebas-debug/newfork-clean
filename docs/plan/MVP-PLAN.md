@@ -42,7 +42,8 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | THEME-004 | Kalan sayfa CSS'leri token'a, `--theme-on-accent`, employee ve kalan manager yüzeylerinde AA | done bd6877a |
 | AUTH-004 | Owner kurulumu yarım workspace'te owner olmayan üye owner sihirbazına düşüyor (guard + durum paneli) | done dfe6fb4 |
 | OPS-015 | Hosted push: AUTH-002 migration'ları (052509 hariç) | active; parola adımı kullanıcıda |
-| THEME-005 | Buton rolleri: aksiyon yeşil, vazgeçme beyaz, destructive iki tık (cascade kök düzeltmesi dahil); Workspaces o anki satır highlight | active; kullanıcı yönüyle genişledi, tablo + mockup onayı bekliyor |
+| THEME-005 | Buton rolleri: aksiyon yeşil, vazgeçme beyaz, destructive iki tık (cascade kök düzeltmesi dahil); Workspaces o anki satır highlight | beklemede; kararlar UI-LAB-001 F2 üzerinden |
+| UI-LAB-001 | UI Lab (DEV-only): tıklanabilir parçaların envanteri, galerisi, Inspector ve canlı stil editörü; faz başına merge | active (kullanıcı kararı; MVP yolunu bloklamaz) |
 | OPS-013 | Hata izleme: Sentry (ücretsiz) + Vercel logları | OPS-010 sonrası |
 
 ### F1 — Çekirdek akışların kapanışı (manager + employee)
