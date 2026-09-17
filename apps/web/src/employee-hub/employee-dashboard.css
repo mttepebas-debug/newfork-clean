@@ -3,7 +3,7 @@
 .eh-mobile-nav,
 .eh-sheet {
   --eh-ink: #243a32;
-  --eh-muted: #6a786f;
+  --eh-muted: var(--theme-muted);
   --eh-line: #e3e9e3;
   --eh-paper: #fff;
   --eh-wash: #f5f7f3;

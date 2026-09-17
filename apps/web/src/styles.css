@@ -1886,7 +1886,7 @@
 }
 .employee-identity > span:not(.employee-avatar, .employee-state) {
   margin-bottom: 10px;
-  color: #7a8480;
+  color: var(--theme-muted);
   font-size: 11px;
 }
 .employee-work-statuses {
@@ -1974,7 +1974,7 @@
 }
 .employee-section-header p {
   margin: 0;
-  color: #77817d;
+  color: var(--theme-muted);
   font-size: 12px;
 }
 .employee-section-scroll {
@@ -2025,7 +2025,7 @@
 .employee-profile-group header p,
 .employee-access-group header p {
   margin: 4px 0 0;
-  color: #77817d;
+  color: var(--theme-muted);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -2130,7 +2130,7 @@
   color: #727b77;
 }
 .employee-field small {
-  color: #7b8581;
+  color: var(--theme-muted);
   font-weight: 500;
 }
 .employee-field-helper {
@@ -2220,7 +2220,7 @@
 }
 .employee-assignment-picker > p {
   margin: 8px;
-  color: #7b8581;
+  color: var(--theme-muted);
   font-size: 12px;
 }
 .employee-access-status {
@@ -2281,7 +2281,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  color: #77817d;
+  color: var(--theme-muted);
   font-size: 12px;
 }
 .employee-access-empty span {
@@ -2318,7 +2318,7 @@
 }
 .employee-avatar-control span,
 .employee-avatar-control small {
-  color: #77817d;
+  color: var(--theme-muted);
   font-size: 12px;
 }
 .employee-avatar-control small {
@@ -2336,7 +2336,7 @@
   min-width: 0;
 }
 .employee-access-details dt {
-  color: #77817d;
+  color: var(--theme-muted);
   font-size: 11px;
   font-weight: 800;
 }
@@ -2402,7 +2402,7 @@
   font-size: 13px;
 }
 .employee-history small {
-  color: #7b8581;
+  color: var(--theme-muted);
 }
 .employee-panel-state {
   color: #68726e;
@@ -3964,7 +3964,7 @@ select:focus-visible {
 }
 .employee-cell span {
   margin-top: 6px;
-  color: #77817d;
+  color: var(--theme-muted);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -11459,7 +11459,7 @@ select:focus-visible {
 .field-help {
   display: block;
   margin-top: 7px;
-  color: #75807b;
+  color: var(--theme-muted);
   font-size: 12px;
 }
 .settings-actions {

@@ -1,6 +1,6 @@
 .lu-workspace {
   --lu-ink: #22352d;
-  --lu-muted: #768078;
+  --lu-muted: var(--theme-muted);
   --lu-border: #e1e6e0;
   --lu-surface: #fff;
   --lu-bg: #f6f7f4;
@@ -202,7 +202,7 @@
   align-items: center;
   gap: 5px;
   font-size: 10px;
-  color: #6d8070;
+  color: var(--theme-muted);
 }
 .lu-servicebar {
   display: flex;
@@ -576,7 +576,7 @@
 .lu-empty-section {
   padding: 24px 10px;
   text-align: center;
-  color: #9da79d;
+  color: var(--theme-muted);
 }
 .lu-empty-section svg {
   opacity: 0.65;
@@ -716,7 +716,7 @@
   border: 1px dashed #d8dfd3;
   border-radius: 6px;
   background: none;
-  color: #78886f;
+  color: var(--theme-muted);
   padding: 9px;
   font-size: 11px !important;
 }
@@ -727,7 +727,7 @@
   width: 100%;
   border: 0;
   background: none;
-  color: #8b9687;
+  color: var(--theme-muted);
   font-size: 10px !important;
   margin-top: 9px;
   padding: 7px;
@@ -740,14 +740,14 @@
 .lu-brief-empty h3 {
   font-weight: 500;
   font-size: 12px;
-  color: #76836e;
+  color: var(--theme-muted);
   line-height: 1.5;
   margin: 12px 0 7px;
 }
 .lu-brief-empty p {
   font-size: 10px;
   line-height: 1.8;
-  color: #919b8d;
+  color: var(--theme-muted);
   margin: 0;
 }
 .lu-sharing-card {
@@ -764,7 +764,7 @@
 .lu-sharing-card p {
   font-size: 10px;
   line-height: 1.8;
-  color: #7e8a75;
+  color: var(--theme-muted);
   margin: 0 0 10px;
 }
 .lu-sharing-card button {
@@ -930,7 +930,7 @@
 .lu-dialog {
   --lu-surface: #fff;
   --lu-ink: #22352d;
-  --lu-muted: #768078;
+  --lu-muted: var(--theme-muted);
   --lu-border: #e1e6e0;
   border: 1px solid var(--lu-border) !important;
   border-radius: 14px !important;
