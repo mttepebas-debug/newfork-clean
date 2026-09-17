@@ -3333,6 +3333,19 @@ p {
 .sign-in-panel .nf-button {
   width: 100%;
 }
+.text-button {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--theme-accent-strong);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
 .development-access {
   margin-top: 24px;
   padding-top: 20px;

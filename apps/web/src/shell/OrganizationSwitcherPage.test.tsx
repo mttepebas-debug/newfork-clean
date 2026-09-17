@@ -107,6 +107,7 @@ function renderPage() {
           <Route path="/app/workspace" element={<LocationProbe />} />
           <Route path="/app/employee-hub" element={<LocationProbe />} />
           <Route path="/account/workspaces" element={<LocationProbe />} />
+          <Route path="/no-organization" element={<LocationProbe />} />
           <Route
             path="/organization-switcher/pending/:workspaceId"
             element={<LocationProbe />}
@@ -153,6 +154,24 @@ describe("OrganizationSwitcherPage", () => {
     expect(
       screen.getByRole("link", { name: "Manage account workspaces" }),
     ).toBeTruthy();
+  });
+
+  it("uses the sign-in panel layout", async () => {
+    const { container } = renderPage();
+    await screen.findByText("Meyhouse");
+    expect(container.querySelector("main.sign-in-page > section.sign-in-panel")).toBeTruthy();
+    expect(screen.getByText("NEWFORK").className).toBe("product-mark");
+  });
+
+  it("sends accounts without organizations to the no-organization page", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByLabelText("Current path").textContent).toBe(
+        "/no-organization",
+      ),
+    );
+    expect(screen.queryByRole("heading", { name: "Choose organization" })).toBeNull();
   });
 
   it("selects an organization before opening its role landing", async () => {
