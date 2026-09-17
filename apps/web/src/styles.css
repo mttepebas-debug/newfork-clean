@@ -3363,12 +3363,18 @@ p {
 .development-access label {
   margin-top: 12px;
 }
-.secondary-button {
+.secondary-button,
+.sign-in-panel .nf-button.secondary-button,
+.onboarding-header-actions .nf-button.secondary-button,
+.workspace-row-actions .nf-button.secondary-button {
   border: 1px solid #bdc8c3;
   background: var(--theme-surface);
   color: #315048;
 }
-.secondary-button:hover {
+.secondary-button:hover,
+.sign-in-panel .nf-button.secondary-button:hover,
+.onboarding-header-actions .nf-button.secondary-button:hover,
+.workspace-row-actions .nf-button.secondary-button:hover {
   background: #f0f4f2;
 }
 .form-error {
@@ -11184,12 +11190,12 @@ select:focus-visible {
   font-weight: 700;
 }
 @media (max-width: 640px) {
-  .onboarding-header {
+  .onboarding-page .onboarding-header {
     height: auto;
     min-height: 64px;
     flex-wrap: wrap;
     gap: 8px;
-    padding-block: 10px;
+    padding: 10px 20px;
   }
   .onboarding-header-actions {
     flex-wrap: wrap;
