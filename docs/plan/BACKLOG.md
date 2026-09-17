@@ -71,3 +71,5 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - `/v1/invitations/pending|accept|decline` auth hatasını 409 ile döndürüyor (app.ts:655,686,716); 401 olmalı. Web S6 ile artık bu yola düşülmüyor; düşük öncelik.
 - T2 madde 6 (davet token'ını sessionStorage'da saklama) YAGNI ile düşürüldü; hosted'da e-posta onayı açılırsa yeniden değerlendir.
 - Vercel Authentication (newfork-clean-api, Production) smoke bitince yeniden açılacak (memory `vercel-prod-protection-disabled`).
+- `.employee-remove-access { color: #9b3442 }` (styles.css ~2359) ölü kural: "Remove access" kırmızı yazı almıyor; `.secondary-button` sonradan geldiği için eziliyor (THEME-005 bulgusu). Tasarım kararıyla birlikte düzelt ya da sil.
+- SecurityPage "Cancel change" butonu kırmızı (danger) görünüyor; iptal eylemi için doğru ton mu, F5 polish'te karar (THEME-005 bulgusu).
