@@ -239,7 +239,7 @@ export async function listLocations(workspaceId: string): Promise<Location[]> {
   const { data, error } = await client()
     .from("locations")
     .select(
-      "id,workspace_id,name,short_name,street_address,city,region,postal_code,country_code,timezone,sort_order,archived_at",
+      "id,workspace_id,name,short_name,phone,street_address,city,region,postal_code,country_code,timezone,sort_order,archived_at",
     )
     .is("deleted_at", null)
     .eq("workspace_id", workspaceId)

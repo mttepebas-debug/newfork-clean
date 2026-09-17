@@ -34,6 +34,7 @@ export function CatalogDeleteAction({
   onDeleted,
   onLockChange,
   note,
+  inline = false,
 }: {
   kind: CatalogKind;
   id: string;
@@ -41,6 +42,8 @@ export function CatalogDeleteAction({
   workspaceId: string;
   disabled?: boolean;
   note?: string;
+  /** Two-click delete on the trigger itself, without the warning panel. */
+  inline?: boolean;
   onDeleted: () => void;
   onLockChange: (locked: boolean) => void;
 }) {
@@ -90,6 +93,30 @@ export function CatalogDeleteAction({
     onLockChange(false);
     deletion.reset();
     requestAnimationFrame(() => trigger.current?.focus());
+  }
+  if (inline) {
+    return (
+      <div className="catalog-delete-action" data-confirming={confirming}>
+        <button
+          ref={trigger}
+          type="button"
+          className={confirming ? "catalog-delete-confirm-button" : "catalog-delete-trigger"}
+          disabled={disabled || deletion.isPending}
+          onBlur={() => {
+            if (!deletion.isPending) setConfirming(false);
+          }}
+          onClick={() => {
+            if (!confirming) return setConfirming(true);
+            onLockChange(true);
+            deletion.mutate(undefined, { onError: () => onLockChange(false) });
+          }}
+        >
+          <Trash2 size={14} aria-hidden />{" "}
+          {deletion.isPending ? "Deleting…" : confirming ? "Confirm delete" : `Delete ${nouns[kind]}`}
+        </button>
+        {deletion.isError && <span role="alert">{deletion.error.message}</span>}
+      </div>
+    );
   }
   return (
     <div className="catalog-delete-action" data-confirming={confirming}>

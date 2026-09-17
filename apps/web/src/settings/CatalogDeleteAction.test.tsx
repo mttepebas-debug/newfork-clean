@@ -18,7 +18,7 @@ beforeEach(() => {
   vi.mocked(organizationRequest).mockResolvedValue({ removed_count: 1 });
   vi.mocked(deleteJob).mockResolvedValue({ removed_count: 1 });
 });
-function setup(kind: CatalogKind) {
+function setup(kind: CatalogKind, inline = false) {
   const onDeleted = vi.fn(),
     onLockChange = vi.fn();
   const client = new QueryClient({
@@ -33,6 +33,7 @@ function setup(kind: CatalogKind) {
         workspaceId="workspace"
         onDeleted={onDeleted}
         onLockChange={onLockChange}
+        inline={inline}
       />
     </QueryClientProvider>,
   );
@@ -105,5 +106,27 @@ describe("inline catalog deletion", () => {
     );
     expect(onDeleted).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Keep location" })).toBeTruthy();
+  });
+});
+describe("trigger-only confirmation", () => {
+  it("turns the button into a confirm step and deletes on the second click", async () => {
+    const { onDeleted } = setup("locations", true);
+    fireEvent.click(screen.getByRole("button", { name: "Delete location" }));
+    expect(organizationRequest).not.toHaveBeenCalled();
+    expect(screen.queryByRole("group")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
+    await waitFor(() => expect(onDeleted).toHaveBeenCalledOnce());
+    expect(organizationRequest).toHaveBeenCalledWith("workspace", "/organization/locations/item", { method: "DELETE" });
+  });
+  it("resets on blur and shows failures inline", async () => {
+    vi.mocked(organizationRequest).mockRejectedValueOnce(new Error("Employee access denied"));
+    const { onDeleted, onLockChange } = setup("locations", true);
+    fireEvent.click(screen.getByRole("button", { name: "Delete location" }));
+    fireEvent.blur(screen.getByRole("button", { name: "Confirm delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete location" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Employee access denied");
+    expect(onDeleted).not.toHaveBeenCalled();
+    expect(onLockChange).toHaveBeenLastCalledWith(false);
   });
 });

@@ -1345,7 +1345,18 @@
   grid-column: 1/-1;
 }
 .locations-catalog-settings-page .location-catalog-row {
-  grid-template-columns: minmax(0, 1fr) 160px 32px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 130px 140px 32px;
+}
+.location-catalog-address.location-catalog-cell {
+  margin-top: 0;
+}
+.job-field input[aria-invalid="true"] {
+  border-color: var(--job-error);
+  box-shadow: 0 0 0 1px var(--job-error);
+}
+.location-field-error {
+  color: var(--job-error);
+  font-size: 12px;
 }
 .locations-catalog-settings-page .job-catalog-row {
   min-height: 64px;
@@ -1377,7 +1388,8 @@
   .locations-catalog-settings-page .location-catalog-row {
     grid-template-columns: minmax(0, 1fr) 44px;
   }
-  .location-catalog-zone {
+  .location-catalog-zone,
+  .location-catalog-cell {
     display: none;
   }
   .job-catalog-editor .location-catalog-fields {

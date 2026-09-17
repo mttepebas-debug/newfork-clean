@@ -1,13 +1,14 @@
 import { CatalogDrawer } from "./CatalogDrawer";
 import {
   locationInputSchema,
+  suggestLocationShortName,
   type Location,
   type LocationInput,
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Plus, Search, X } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { CatalogRowMenu } from "./CatalogRowMenu";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
@@ -20,9 +21,14 @@ import {
   setLocationArchived,
 } from "./organization-data";
 
-const emptyLocation: LocationInput = {
+// Phone is kept as the formatted text shown in the input until save.
+type LocationDraft = Omit<LocationInput, "phone"> & { phone: string };
+type FieldErrors = Partial<Record<"short_name" | "phone", string>>;
+
+const emptyLocation: LocationDraft = {
   name: "",
   short_name: "",
+  phone: "",
   street_address: "",
   city: "",
   region: "CA",
@@ -44,14 +50,38 @@ function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+// US numbers only: "(415) 555-0100", built progressively while typing.
+export function formatUsPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").replace(/^1/, "").slice(0, 10);
+  if (!digits) return "";
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+// An empty short name falls back to the suggestion; phone goes to E.164.
+function toInput(draft: LocationDraft) {
+  const digits = draft.phone.replace(/\D/g, "");
+  return {
+    ...draft,
+    short_name: draft.short_name.trim() || suggestLocationShortName(draft.name),
+    phone: digits ? `+1${digits}` : null,
+  };
+}
+
 // Legacy locations may not have a short name yet. Do not parse them through
 // the stricter write schema just to open the editor.
-function locationDraft(location: Location): LocationInput {
+function locationDraft(location: Location): LocationDraft {
   return {
-    name: location.name, short_name: location.short_name ?? "",
-    street_address: location.street_address, city: location.city,
-    region: location.region, postal_code: location.postal_code,
-    country_code: location.country_code, timezone: location.timezone,
+    name: location.name,
+    short_name: location.short_name ?? "",
+    phone: formatUsPhone(location.phone ?? ""),
+    street_address: location.street_address,
+    city: location.city,
+    region: location.region,
+    postal_code: location.postal_code,
+    country_code: location.country_code,
+    timezone: location.timezone,
   };
 }
 
@@ -70,8 +100,9 @@ export default function LocationsSettingsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Location | "new" | null>(null);
-  const [draft, setDraft] = useState<LocationInput>(emptyLocation);
+  const [draft, setDraft] = useState<LocationDraft>(emptyLocation);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [deleteLocked, setDeleteLocked] = useState(false);
 
   const closeEditor = (): void => {
@@ -83,7 +114,9 @@ export default function LocationsSettingsPage() {
       saveLocation(workspaceId, values, id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey });
-      await queryClient.invalidateQueries({ queryKey: ["schedule-read", workspaceId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["schedule-read", workspaceId],
+      });
       setEditing(null);
       setFormError(null);
     },
@@ -101,44 +134,68 @@ export default function LocationsSettingsPage() {
     setEditing(location ?? "new");
     setDraft(location ? locationDraft(location) : emptyLocation);
     setFormError(null);
+    setFieldErrors({});
   };
+
+  // Short name and phone problems are reported on submit, next to the input.
+  const draftInput = toInput(draft);
+  const parsedDraft = locationInputSchema.safeParse(draftInput);
+  const fieldsComplete =
+    parsedDraft.success ||
+    parsedDraft.error.issues.every((issue) =>
+      ["short_name", "phone"].includes(String(issue.path[0])),
+    );
+  const canSave =
+    canEdit &&
+    !deleteLocked &&
+    !saveMutation.isPending &&
+    Boolean(editing) &&
+    fieldsComplete &&
+    (editing === "new" ||
+      Boolean(
+        editing &&
+        !sameJson(draftInput, {
+          ...locationDraft(editing),
+          short_name: editing.short_name ?? "",
+          phone: editing.phone ?? null,
+        }),
+      ));
+
   const submit = (event: FormEvent): void => {
     event.preventDefault();
-    const parsed = locationInputSchema.safeParse(draft);
     if (!canSave) return;
-    if (!parsed.success) {
-      setFormError(
-        parsed.error.issues[0]?.message ?? "Complete every location field",
-      );
+    setDraft((current) => ({ ...current, short_name: draftInput.short_name }));
+    if (!parsedDraft.success) {
+      const errors: FieldErrors = {};
+      for (const issue of parsedDraft.error.issues) {
+        if (issue.path[0] === "phone") errors.phone = issue.message;
+        else
+          errors.short_name = draftInput.short_name
+            ? issue.message
+            : "Short name is required. Use 2–12 characters: letters A–Z, numbers or hyphens.";
+      }
+      setFieldErrors(errors);
       return;
     }
+    setFieldErrors({});
     saveMutation.mutate({
-      values: parsed.data,
+      values: parsedDraft.data,
       ...(editing !== "new" && editing ? { id: editing.id } : {}),
     });
+  };
+  const setField = (field: keyof FieldErrors, value: string): void => {
+    setDraft((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
   };
 
   const visible = (locations.data ?? []).filter(
     (location) =>
       (showArchived || !location.archived_at) &&
       (!search.trim() ||
-        `${location.name} ${location.short_name ?? ""} ${location.street_address} ${location.city}`
+        `${location.name} ${location.street_address} ${location.city}`
           .toLowerCase()
           .includes(search.trim().toLowerCase())),
   );
-  const parsedDraft = locationInputSchema.safeParse(draft);
-  const locationBaseline =
-    editing && editing !== "new" ? locationDraft(editing) : null;
-  const canSave =
-    canEdit &&
-    !deleteLocked &&
-    !saveMutation.isPending &&
-    Boolean(editing) &&
-    parsedDraft.success &&
-    (editing === "new" ||
-      Boolean(
-        locationBaseline && !sameJson(parsedDraft.data, locationBaseline),
-      ));
 
   return (
     <section
@@ -190,6 +247,7 @@ export default function LocationsSettingsPage() {
           <form
             className="job-catalog-editor"
             onSubmit={submit}
+            noValidate
             aria-label={
               editing === "new" ? "Add location" : `Edit ${editing.name}`
             }
@@ -197,7 +255,7 @@ export default function LocationsSettingsPage() {
             <div className="job-editor-title">
               <div>
                 <h2>{editing === "new" ? "New location" : "Edit location"}</h2>
-                <p>All fields are required.</p>
+                <p>Phone number is optional.</p>
               </div>
               <button
                 type="button"
@@ -225,19 +283,25 @@ export default function LocationsSettingsPage() {
                 />
                 <FormField
                   label="Short name"
-                  describedBy="location-short-name-help"
                   value={draft.short_name}
                   maxLength={12}
+                  placeholder={suggestLocationShortName(draft.name)}
+                  error={fieldErrors.short_name}
                   onChange={(value) =>
-                    setDraft((current) => ({ ...current, short_name: value }))
+                    setField("short_name", value.toUpperCase())
                   }
                 />
-                <p className="field-wide" id="location-short-name-help">
-                  2–12 letters, numbers or hyphens, without spaces. Unique in this workspace; used in export filenames.
-                </p>
-                {draft.short_name && !locationInputSchema.shape.short_name.safeParse(draft.short_name).success ? (
-                  <p className="form-error" role="alert">Use 2–12 letters, numbers or hyphens, without spaces.</p>
-                ) : null}
+                <FormField
+                  label="Phone number"
+                  type="tel"
+                  inputMode="numeric"
+                  optional
+                  value={draft.phone}
+                  maxLength={14}
+                  placeholder="(415) 555-0100"
+                  error={fieldErrors.phone}
+                  onChange={(value) => setField("phone", formatUsPhone(value))}
+                />
                 <FormField
                   label="Street address"
                   value={draft.street_address}
@@ -276,7 +340,14 @@ export default function LocationsSettingsPage() {
                 />
                 <label className="job-field">
                   <span>Time zone</span>
-                  <LocationTimezoneField country={draft.country_code} postal={draft.postal_code} value={draft.timezone} onChange={(timezone) => setDraft((current) => ({ ...current, timezone }))} />
+                  <LocationTimezoneField
+                    country={draft.country_code}
+                    postal={draft.postal_code}
+                    value={draft.timezone}
+                    onChange={(timezone) =>
+                      setDraft((current) => ({ ...current, timezone }))
+                    }
+                  />
                 </label>
               </fieldset>
               {formError ? (
@@ -289,6 +360,7 @@ export default function LocationsSettingsPage() {
               {editing !== "new" && (
                 <CatalogDeleteAction
                   key={editing.id}
+                  inline
                   kind="locations"
                   id={editing.id}
                   name={editing.name}
@@ -347,6 +419,8 @@ export default function LocationsSettingsPage() {
         <div className="job-catalog" aria-label="Locations">
           <div className="job-column-headings location-catalog-row">
             <span>Location</span>
+            <span>Address</span>
+            <span>Phone number</span>
             <span>Time zone</span>
             <span />
           </div>
@@ -355,6 +429,7 @@ export default function LocationsSettingsPage() {
               timezones.find(([value]) => value === location.timezone)?.[1] ??
               location.timezone;
             const address = `${location.street_address}, ${location.city}, ${location.region} ${location.postal_code}`;
+            const phone = location.phone ? formatUsPhone(location.phone) : "—";
             return (
               <div
                 className="job-catalog-row location-catalog-row"
@@ -371,18 +446,22 @@ export default function LocationsSettingsPage() {
                     <span className="job-row-name" title={location.name}>
                       {location.name}
                     </span>
-                    <span className="location-catalog-address">
-                      {location.short_name ?? "Short name needed for export"}
-                    </span>
-                    <span className="location-catalog-address" title={address}>
-                      {address}
-                    </span>
+                    <span className="job-mobile-meta">{address}</span>
                     <span className="job-mobile-meta">{zone}</span>
                   </span>
                   {location.archived_at && (
                     <span className="job-archived-label">Archived</span>
                   )}
                 </button>
+                <span
+                  className="location-catalog-address location-catalog-cell"
+                  title={address}
+                >
+                  {address}
+                </span>
+                <span className="location-catalog-zone location-catalog-cell">
+                  {phone}
+                </span>
                 <span className="location-catalog-zone">{zone}</span>
                 {canEdit && (
                   <CatalogRowMenu name={location.name}>
@@ -421,25 +500,45 @@ function FormField({
   onChange,
   maxLength,
   className = "",
-  describedBy,
+  placeholder,
+  error,
+  optional = false,
+  type = "text",
+  inputMode,
 }: {
   readonly label: string;
   readonly value: string;
   readonly onChange: (value: string) => void;
   readonly maxLength: number;
   readonly className?: string;
-  readonly describedBy?: string;
+  readonly placeholder?: string;
+  readonly error?: string;
+  readonly optional?: boolean;
+  readonly type?: "text" | "tel";
+  readonly inputMode?: "numeric";
 }) {
+  const errorId = useId();
   return (
-    <label className={`job-field ${className}`}>
-      <span>{label}</span>
-      <input
-        value={value}
-        maxLength={maxLength}
-        aria-describedby={describedBy}
-        onChange={(event) => onChange(event.target.value)}
-        required
-      />
-    </label>
+    <div className={`location-field ${className}`}>
+      <label className="job-field">
+        <span>{label}</span>
+        <input
+          type={type}
+          inputMode={inputMode}
+          value={value}
+          maxLength={maxLength}
+          placeholder={placeholder}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          onChange={(event) => onChange(event.target.value)}
+          required={!optional}
+        />
+      </label>
+      {error ? (
+        <small className="location-field-error" id={errorId} role="alert">
+          {error}
+        </small>
+      ) : null}
+    </div>
   );
 }

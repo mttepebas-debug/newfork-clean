@@ -839,7 +839,7 @@ function LocationFields({
           id="location-short-name"
           value={draft.short_name}
           maxLength={12}
-          onChange={(event) => onChange({ ...draft, short_name: event.target.value })}
+          onChange={(event) => onChange({ ...draft, short_name: event.target.value.toUpperCase() })}
           placeholder="MAIN"
           aria-describedby="onboarding-location-short-name-help"
           required

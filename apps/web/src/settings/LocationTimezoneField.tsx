@@ -26,5 +26,5 @@ export function LocationTimezoneField({ country, postal, value, onChange, id }: 
     }, 400);
     return () => { window.clearTimeout(timer); ++generation.current; };
   }, [country, postal]);
-  return <><TimezoneSelect id={id} value={value} onChange={(zone) => { manual.current = true; ++generation.current; setStatus(""); onChange(zone); }} />{status && <small role="status">{status}</small>}<small><a href="https://www.zippopotam.us/" target="_blank" rel="noreferrer">Postal data: Zippopotam.us / GeoNames</a>{" · "}<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">Timezone boundaries: © OpenStreetMap contributors</a></small></>;
+  return <><TimezoneSelect id={id} value={value} onChange={(zone) => { manual.current = true; ++generation.current; setStatus(""); onChange(zone); }} />{status && <small role="status">{status}</small>}</>;
 }

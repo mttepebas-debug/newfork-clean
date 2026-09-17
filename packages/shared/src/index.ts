@@ -699,7 +699,7 @@ export const locationInputSchema = locationSchema.pick({
   postal_code: true,
   country_code: true,
   timezone: true,
-}).extend({ short_name: locationShortNameSchema, phone: locationPhoneSchema.nullable(), timezone: z.string().trim().max(80).refine(isValidIanaTimezone, "Select a valid IANA time zone") });
+}).extend({ short_name: locationShortNameSchema, phone: locationPhoneSchema.nullable().optional(), timezone: z.string().trim().max(80).refine(isValidIanaTimezone, "Select a valid IANA time zone") });
 export type LocationInput = z.infer<typeof locationInputSchema>;
 
 export const departmentInputSchema = departmentSchema.pick({
