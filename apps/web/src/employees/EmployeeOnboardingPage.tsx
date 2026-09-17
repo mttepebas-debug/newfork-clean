@@ -253,6 +253,7 @@ function WelcomeStep({
 }
 
 function ProfileStep({ model, onSaved }: StepProps) {
+  const { workspaceId = "" } = useParams();
   const { account } = useAuth();
   const accountPhone = account?.phone ?? "";
   const accountEmail = account?.email ?? "";
@@ -301,7 +302,7 @@ function ProfileStep({ model, onSaved }: StepProps) {
         : "",
   );
   const mutation = useMutation({
-    mutationFn: () => saveMyOnboardingProfile(profile, model.revision),
+    mutationFn: () => saveMyOnboardingProfile(workspaceId, profile, model.revision),
     onSuccess: onSaved,
   });
   const submit = (event: FormEvent) => {
@@ -558,7 +559,7 @@ function AvailabilityStep({ model, onSaved }: StepProps) {
 function ReviewStep({ model, onSaved }: StepProps) {
   const { workspaceId = "" } = useParams();
   const mutation = useMutation({
-    mutationFn: () => submitMyOnboarding(model.revision),
+    mutationFn: () => submitMyOnboarding(workspaceId, model.revision),
     onSuccess: onSaved,
   });
   const submit = (event: FormEvent) => {

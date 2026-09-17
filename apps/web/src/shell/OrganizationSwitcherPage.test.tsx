@@ -5,6 +5,10 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import OrganizationSwitcherPage from "./OrganizationSwitcherPage";
 import {
+  acceptPendingEmployeeInvitation,
+  listPendingEmployeeInvitations,
+} from "../employees/employee-data";
+import {
   listAccountWorkspaces,
   selectActiveWorkspace,
 } from "../lib/supabase";
@@ -72,9 +76,25 @@ const workspaces = [
   },
 ] satisfies WorkspaceSummary[];
 
+const signOut = vi.fn();
+
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({ context: managerContext, refresh }),
+  useAuth: () => ({ context: managerContext, refresh, signOut }),
 }));
+
+vi.mock("../employees/employee-data", () => ({
+  acceptPendingEmployeeInvitation: vi.fn(),
+  declinePendingEmployeeInvitation: vi.fn(),
+  listPendingEmployeeInvitations: vi.fn(),
+}));
+
+const invitation = {
+  id: "46000000-0000-4000-8000-000000000001",
+  workspaceId: "26000000-0000-4000-8000-000000000001",
+  workspaceName: "Northstar",
+  emailHint: "ne**********@example.test",
+  expiresAt: "2026-10-01T12:00:00.000Z",
+};
 
 vi.mock("../lib/supabase", () => ({
   supabaseClient: {},
@@ -108,10 +128,7 @@ function renderPage() {
           <Route path="/app/employee-hub" element={<LocationProbe />} />
           <Route path="/account/workspaces" element={<LocationProbe />} />
           <Route path="/no-organization" element={<LocationProbe />} />
-          <Route
-            path="/organization-switcher/pending/:workspaceId"
-            element={<LocationProbe />}
-          />
+          <Route path="/welcome/:workspaceId" element={<LocationProbe />} />
           <Route
             path="/organization-switcher/suspended/:workspaceId"
             element={<LocationProbe />}
@@ -128,6 +145,7 @@ describe("OrganizationSwitcherPage", () => {
     refreshedContext = managerContext;
     vi.mocked(listAccountWorkspaces).mockResolvedValue(workspaces);
     vi.mocked(selectActiveWorkspace).mockResolvedValue(undefined);
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
   });
 
   it("lists organizations without promoting workspace creation", async () => {
@@ -136,6 +154,7 @@ describe("OrganizationSwitcherPage", () => {
     expect(
       await screen.findByRole("heading", { name: "Choose organization" }),
     ).toBeTruthy();
+    await screen.findByText("Meyhouse");
     expect(
       container
         .querySelector("[aria-labelledby='organization-switcher-title']")
@@ -147,7 +166,7 @@ describe("OrganizationSwitcherPage", () => {
     expect(screen.getByText("West Room")).toBeTruthy();
     expect(
       screen.getByText(
-        "Select the organization you want to work in. Pending or suspended organizations open a limited status view.",
+        "Select the organization you want to work in. Suspended organizations open a limited status view.",
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Create/i })).toBeNull();
@@ -197,7 +216,67 @@ describe("OrganizationSwitcherPage", () => {
     );
   });
 
-  it("routes pending and suspended organizations to limited status surfaces", async () => {
+  it("lists invitations above organizations and joins into that onboarding", async () => {
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
+    vi.mocked(acceptPendingEmployeeInvitation).mockResolvedValue(
+      invitation.workspaceId,
+    );
+    renderPage();
+
+    expect(await screen.findByText("Northstar")).toBeTruthy();
+    const rows = screen.getAllByRole("listitem");
+    expect(rows).toHaveLength(3);
+    expect(rows[0]?.textContent).toContain("Northstar");
+    expect(
+      screen.getByRole("button", { name: "Decline invitation to Northstar" }),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Join Northstar" }));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Current path").textContent).toBe(
+        `/welcome/${invitation.workspaceId}`,
+      ),
+    );
+  });
+
+  it("stays on the switcher when only invitations exist", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
+    renderPage();
+
+    expect(await screen.findByText("Northstar")).toBeTruthy();
+    expect(screen.getByLabelText("Current path").textContent).toBe(
+      "/organization-switcher",
+    );
+  });
+
+  it("offers recovery when organizations cannot be loaded", async () => {
+    vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(
+      new Error("Service unavailable"),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { name: "Organizations unavailable" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toBe("Service unavailable");
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Meyhouse")).toBeTruthy();
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("signs out from the recovery view", async () => {
+    vi.mocked(listAccountWorkspaces).mockRejectedValue(
+      new Error("Service unavailable"),
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("continues onboarding for pending organizations and limits suspended ones", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([
       {
         id: "8ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
@@ -219,18 +298,20 @@ describe("OrganizationSwitcherPage", () => {
     renderPage();
 
     expect(await screen.findByText("Pending Room")).toBeTruthy();
-    expect(screen.getByText("employee · pending")).toBeTruthy();
+    expect(screen.getByText("employee · onboarding in progress")).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "View status for Suspended Room" }),
     ).toBeTruthy();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "View status for Pending Room" }),
+      screen.getByRole("button", {
+        name: "Continue onboarding for Pending Room",
+      }),
     );
     expect(selectActiveWorkspace).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(screen.getByLabelText("Current path").textContent).toBe(
-        "/organization-switcher/pending/8ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        "/welcome/8ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
       ),
     );
   });

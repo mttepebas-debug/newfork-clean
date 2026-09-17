@@ -24,8 +24,14 @@ export default function PendingInvitationsPage() {
     queryKey: ["account-workspaces"],
     queryFn: () =>
       supabaseClient ? listAccountWorkspaces(supabaseClient) : [],
-    enabled: noInvitations,
   });
+  // An account that can work elsewhere, or is mid-onboarding elsewhere, may
+  // postpone the decision.
+  const deferPath = context
+    ? appLandingPath(context)
+    : workspaces.data?.some((workspace) => workspace.status === "pending")
+      ? "/welcome"
+      : null;
   const activeCount =
     noInvitations && workspaces.isSuccess
       ? workspaces.data.filter((workspace) => workspace.status === "active")
@@ -64,7 +70,7 @@ export default function PendingInvitationsPage() {
         <KeyRound size={28} aria-hidden />
         <h1 id="pending-invites-title">Active invitation found</h1>
         <p className="muted">
-          {context
+          {deferPath
             ? "You have been invited to join another organization. Join now or decide later. Declining cannot be undone."
             : "Join the organization that invited you. Declining cannot be undone."}
         </p>
@@ -88,10 +94,10 @@ export default function PendingInvitationsPage() {
           ))}
         </div>
 
-        {context ? (
+        {deferPath ? (
           <Link
             className="text-button"
-            to={appLandingPath(context)}
+            to={deferPath}
             replace
             onClick={() =>
               window.sessionStorage.setItem(invitationsCheckedStorageKey, "1")
