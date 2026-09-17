@@ -1,6 +1,6 @@
 # THEME-005 İkincil buton cascade hatası: `<Button className="secondary-button">` birincil gibi render oluyor
-Status: hazır (kullanıcı onayladı 2026-09-17; prompt paylaşıldı, worker başlayınca active)
-Session: -   Branch: task/theme-005   Worktree: newfork-wt/theme-005   DB: -   Port: web 5558 (API 5556)
+Status: active (2026-09-17)
+Session: "THEME-005: ikincil buton cascade düzeltmesi" (local_739c4385)   Branch: task/theme-005   Worktree: newfork-wt/theme-005   DB: -   Port: web 5558 (API 5556)
 Öneri: Sonnet 5, medium. Tek kök kural ve görsel tarama.
 
 Goal: `@newfork/ui` `Button` ile kullanılan `secondary-button` uygulamanın her yerinde tasarlandığı gibi (beyaz zemin, çerçeveli) görünsün.
@@ -27,3 +27,4 @@ Test plan: CSS işi; sonda typecheck, build, light-theme testi bir kez.
 Risk: uygulama genelinde görünür değişiklik (yeşil ikincil butonlar beyaza döner). Tasarlanan görünüm budur; kullanıcı onayladı.
 
 ## Notes / Result
+- 2026-09-17 koordinatör kararları (worker kanıtı: artifacts/theme-005, 32 senaryo): (1) Kök kural `.nf-button:where(.secondary-button)` (+ :hover) olur; (0,1,0) özgüllük sayesinde `.active-workspace`, `.compact-button`, `.danger-button` tasarlandığı gibi kazanır. `.nf-button.secondary-button` (0,2,0) switcher'daki aktif workspace butonunu ve danger hover'ı bozuyordu. (2) ProfilePage "Remove" ve SecurityPage "Cancel change" kullanımlarından çelişkili `secondary-button` sınıfı kaldırılır (görünüm bugünküyle aynı kalır). `.employee-drawer-create` istisnası kalır.
