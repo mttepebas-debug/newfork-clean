@@ -117,3 +117,4 @@ Risk:
 - 2026-09-17 kapanış (koordinatör): merge öncesi üç iş tamamlandı (scoped seçiciler düşürüldü; lineup contract testi THEME-004 token'ına hizalandı, 3/3; rebase). main 59446ff (ff-merge, push). Etkilenen set + light-theme 21 dosya / 152 test, typecheck PASS (worker).
   - Açık: hosted'a AUTH-002 migration push'u (OPS-010); local DB fixture temizliği kullanıcı onayıyla; THEME-005 merge olunca yeni yüzeylerdeki ikincil butonlar beyaza döner.
 - 2026-09-17: main CI YEŞİL (fa5fce4; AUTH-002 + AUTH-UX-001 + lineup contract düzeltmesi dahil).
+- 2026-09-17 fixture temizliği (kullanıcı onayı worker tarafından doğrudan alındı): yedek alındı; tek transaction'da 7 employee_profiles (E-7701…06, E-7710) ve cascade satırları, 3 üyelik, 2 weekly_preference_events, auth-ux-noinvite kullanıcısı silindi (employee_profiles 95 → 88, auth.users 61 → 60). Kalan: iki fixture workspace + iki owner kullanıcı (last-owner trigger'ı; BACKLOG). AUTH001 Test Kitchen'a dokunulmadı.
