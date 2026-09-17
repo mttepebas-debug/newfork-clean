@@ -65,11 +65,7 @@ export interface EmployeeOnboardingService {
     revision: number,
     workspaceId?: string,
   ): Promise<number>;
-  reset(
-    accessToken: string,
-    revision: number,
-    workspaceId?: string,
-  ): Promise<number>;
+  reset(accessToken: string, revision: number): Promise<number>;
   leave(
     accessToken: string,
     revision: number,
@@ -244,12 +240,11 @@ export function createEmployeeOnboardingService(
         ...workspaceArg(workspaceId),
       });
     },
-    async reset(accessToken, revision, workspaceId) {
+    async reset(accessToken, revision) {
       const user = await authenticatedUser(client, accessToken);
       return numericRpc(client, "reset_employee_onboarding_service", {
         target_user_id: user.id,
         expected_revision: revision,
-        ...workspaceArg(workspaceId),
       });
     },
     async leave(accessToken, revision, workspaceId) {

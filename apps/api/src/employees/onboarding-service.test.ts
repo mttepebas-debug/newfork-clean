@@ -40,11 +40,9 @@ describe("employee onboarding review availability", () => {
     mocks.auth.getUser.mockResolvedValue({ data: { user: { id: actorUserId } }, error: null });
     mocks.rpc.mockResolvedValue({ error: null, data: 3 });
     await service().submit("test-access-token", 2, workspaceId);
-    await service().reset("test-access-token", 2, workspaceId);
     await service().submit("test-access-token", 2);
     expect(mocks.rpc.mock.calls).toEqual([
       ["submit_employee_onboarding_service", { target_user_id: actorUserId, expected_revision: 2, target_workspace_id: workspaceId }],
-      ["reset_employee_onboarding_service", { target_user_id: actorUserId, expected_revision: 2, target_workspace_id: workspaceId }],
       ["submit_employee_onboarding_service", { target_user_id: actorUserId, expected_revision: 2 }],
     ]);
     mocks.rpc.mockReset();

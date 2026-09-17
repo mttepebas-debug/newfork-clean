@@ -194,19 +194,14 @@ export function registerEmployeeOnboardingRoutes(
   app.post("/v1/me/onboarding/reset", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
     const body = submitBodySchema.safeParse(request.body);
-    const query = workspaceQuerySchema.safeParse(request.query);
     if (!token)
       return reply.status(401).send({ error: "Valid bearer session required" });
-    if (!body.success || !query.success)
+    if (!body.success)
       return reply
         .status(400)
         .send({ error: "Current onboarding revision required" });
     return serviceReply(reply, async () => ({
-      revision: await options.service.reset(
-        token,
-        body.data.revision,
-        query.data.workspaceId,
-      ),
+      revision: await options.service.reset(token, body.data.revision),
     }));
   });
 

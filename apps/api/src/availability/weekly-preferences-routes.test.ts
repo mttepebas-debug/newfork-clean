@@ -337,19 +337,55 @@ describe("weekly preference routes", () => {
           })
         ).statusCode,
       ).toBe(200);
+      // No query: the default onboarding case is used.
       expect(service.onboardingReadWeekly).toHaveBeenCalledWith(
         "employee-token",
+        undefined,
       );
       expect(service.onboardingPreviewWeekly).toHaveBeenCalledWith(
         "employee-token",
         command,
+        undefined,
       );
       expect(service.onboardingSaveWeekly).toHaveBeenCalledWith(
         "employee-token",
         command,
         key,
+        undefined,
       );
       expect(service.saveWeekly).not.toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+  });
+  it("forwards an optional onboarding workspace query", async () => {
+    const { app, service } = setup();
+    const workspaceId = "ad418000-0000-4000-8000-000000000009";
+    const headers = { authorization: "Bearer employee-token" };
+    try {
+      expect(
+        (
+          await app.inject({
+            method: "GET",
+            url: `/v1/me/onboarding/availability-lifecycle/weekly?workspaceId=${workspaceId}`,
+            headers,
+          })
+        ).statusCode,
+      ).toBe(200);
+      expect(service.onboardingReadWeekly).toHaveBeenCalledWith(
+        "employee-token",
+        workspaceId,
+      );
+      expect(
+        (
+          await app.inject({
+            method: "GET",
+            url: "/v1/me/onboarding/availability-lifecycle/weekly?workspaceId=nope",
+            headers,
+          })
+        ).statusCode,
+      ).toBe(400);
+      expect(service.onboardingReadWeekly).toHaveBeenCalledTimes(1);
     } finally {
       await app.close();
     }

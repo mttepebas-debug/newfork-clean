@@ -2665,7 +2665,7 @@ describe("api app", () => {
         ],
       },
       { kind: "submit", input: ["pending-member-token", 5, undefined] },
-      { kind: "reset", input: ["pending-member-token", 6, undefined] },
+      { kind: "reset", input: ["pending-member-token", 6] },
       { kind: "leave", input: ["pending-member-token", 7, undefined] },
     ]);
   });

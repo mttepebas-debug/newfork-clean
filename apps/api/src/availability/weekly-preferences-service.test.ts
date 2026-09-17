@@ -77,6 +77,22 @@ describe("weekly preferences onboarding identity", () => {
       command: command(),
     });
   });
+  it("resolves onboarding identity in the requested workspace", async () => {
+    await service.onboardingPreviewWeekly(
+      "validated-token",
+      command(),
+      workspace,
+    );
+    expect(rpc).toHaveBeenNthCalledWith(1, "get_employee_onboarding_service", {
+      target_user_id: actor,
+      target_workspace_id: workspace,
+    });
+    rpc.mockClear();
+    await service.onboardingPreviewWeekly("validated-token", command());
+    expect(rpc).toHaveBeenNthCalledWith(1, "get_employee_onboarding_service", {
+      target_user_id: actor,
+    });
+  });
   it("rejects an expired token without calling a service RPC", async () => {
     getUser.mockResolvedValue({
       data: { user: null },

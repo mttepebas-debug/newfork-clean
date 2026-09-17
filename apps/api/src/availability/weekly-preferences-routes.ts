@@ -170,7 +170,11 @@ export function registerWeeklyPreferenceRoutes(
             .object({ workspaceId: z.string().uuid().optional() })
             .safeParse(request.params);
           const query = z
-            .object({ employee_id: z.string().uuid().optional() })
+            .object({
+              employee_id: z.string().uuid().optional(),
+              // Onboarding only: selects the case when several are open.
+              workspaceId: z.string().uuid().optional(),
+            })
             .safeParse(request.query);
           const command =
             operation === "read"
@@ -213,7 +217,10 @@ export function registerWeeklyPreferenceRoutes(
           try {
             if (operation === "read")
               return onboarding
-                ? await options.service.onboardingReadWeekly(token)
+                ? await options.service.onboardingReadWeekly(
+                    token,
+                    query.data.workspaceId,
+                  )
                 : await options.service.readWeekly(
                     auth!.context!.userId,
                     params.data.workspaceId!,
@@ -228,6 +235,7 @@ export function registerWeeklyPreferenceRoutes(
                 ? await options.service.onboardingPreviewWeekly(
                     token,
                     command.data,
+                    query.data.workspaceId,
                   )
                 : await options.service.previewWeekly(
                     auth!.context!.userId,
@@ -243,6 +251,7 @@ export function registerWeeklyPreferenceRoutes(
                   token,
                   command.data,
                   key.data,
+                  query.data.workspaceId,
                 )
               : await options.service.saveWeekly(
                   auth!.context!.userId,

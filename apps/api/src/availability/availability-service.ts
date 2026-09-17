@@ -25,7 +25,7 @@ export function createAvailabilityService(options: {
       throw Object.assign(new Error(error.message), { code: error.code });
     return data;
   }
-  async function onboardingIdentity(token: string) {
+  async function onboardingIdentity(token: string, workspaceId?: string) {
     const { data, error } = await client.auth.getUser(token);
     if (error || !data.user)
       throw Object.assign(
@@ -41,12 +41,13 @@ export function createAvailabilityService(options: {
       .parse(
         await rpc("get_employee_onboarding_service", {
           target_user_id: data.user.id,
+          ...(workspaceId ? { target_workspace_id: workspaceId } : {}),
         }),
       );
     return { actor: data.user.id, ...context };
   }
-  async function weeklyOnboardingIdentity(token: string, command?: WeeklyPreferenceSave) {
-    const identity = await onboardingIdentity(token);
+  async function weeklyOnboardingIdentity(token: string, command?: WeeklyPreferenceSave, workspaceId?: string) {
+    const identity = await onboardingIdentity(token, workspaceId);
     if (command && (command.employee_id !== identity.employee_id || command.source !== "employee"))
       throw Object.assign(new Error("Only your own onboarding preferences can be changed"), { code: "42501" });
     return identity;
@@ -70,16 +71,16 @@ export function createAvailabilityService(options: {
     async saveWeekly(actor: string, workspace: string, command: WeeklyPreferenceSave, key: string) {
       return weeklyPreferenceMutationSchema.parse(await rpc("weekly_preferences_save_service", { actor, w: workspace, command, request_key: key }));
     },
-    async onboardingReadWeekly(token: string) {
-      const identity = await weeklyOnboardingIdentity(token);
+    async onboardingReadWeekly(token: string, workspaceId?: string) {
+      const identity = await weeklyOnboardingIdentity(token, undefined, workspaceId);
       return weeklyPreferenceReadSchema.parse(await rpc("weekly_preferences_read_service", { actor: identity.actor, w: identity.workspace_id, emp: identity.employee_id }));
     },
-    async onboardingPreviewWeekly(token: string, command: WeeklyPreferenceSave) {
-      const identity = await weeklyOnboardingIdentity(token, command);
+    async onboardingPreviewWeekly(token: string, command: WeeklyPreferenceSave, workspaceId?: string) {
+      const identity = await weeklyOnboardingIdentity(token, command, workspaceId);
       return weeklyCommitmentPreviewSchema.parse(await rpc("weekly_preferences_preview_service", { actor: identity.actor, w: identity.workspace_id, command }));
     },
-    async onboardingSaveWeekly(token: string, command: WeeklyPreferenceSave, key: string) {
-      const identity = await weeklyOnboardingIdentity(token, command);
+    async onboardingSaveWeekly(token: string, command: WeeklyPreferenceSave, key: string, workspaceId?: string) {
+      const identity = await weeklyOnboardingIdentity(token, command, workspaceId);
       return weeklyPreferenceMutationSchema.parse(await rpc("weekly_preferences_save_service", { actor: identity.actor, w: identity.workspace_id, command, request_key: key }));
     },
     async assessShift(
