@@ -30,14 +30,15 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 |---|---|---|
 | RESCUE-001 | WIP'i main'e al | done d19542d |
 | TEST-001 | Kırmızı unit testler ve vitest env izolasyonu | done 95063a7 |
-| OPS-010 | Hosted: proje hvyvyisrqyathtliyyyv (86 migration uygulanmış, veri yok) güncellenir, Vercel preview | hazır |
+| OPS-010 | Hosted: migration'lar uygulandı, Vercel deploy; smoke AUTH-002 + AUTH-UX-001 sonrası | smoke bekliyor |
 | OPS-014 | Notification outbox dakikalık tetikleme: Supabase pg_cron (Vercel Hobby) | OPS-010 sonrası |
 | OPS-011 | Minimal CI (GitHub Actions) | done 6509e38 |
 | OPS-012 | Production hijyeni: Kiosk ve Time Entries gizlendi, SSN env ve README temizlendi | done 8642575 |
 | THEME-001 | Dark temayı emekliye ayır (yalnızca light) | done c0ecf3d |
 | THEME-002 | Light token seti, z-index ve kontrast sıkılaştırması | done 6f677a0 |
-| AUTH-001 | Kayıt sonrası döngü, switcher UI, sign-in prod metni (OPS-010 smoke'unu blokluyor) | başladı |
-| AUTH-002 | Davet guard'ı, Not now, çoklu üyelik onboarding | AUTH-001 sonrası |
+| AUTH-001 | Kayıt sonrası döngü, switcher UI, sign-in prod metni, context 503 | done a69276e |
+| AUTH-002 | DB guard (davetli create edemez) + workspace bazlı onboarding getter + API (DB lock) | hazır, AUTH-UX-001 ile paralel |
+| AUTH-UX-001 | Auth/davet/onboarding akışı UI: mockup → web implementasyonu (owner onboarding çıkışı, switcher recovery, Not now, davet kartı, /welcome/:workspaceId, revoke edilmiş oturum) | hazır |
 | THEME-004 | Kalan sayfa CSS'leri token'a, `--theme-on-accent`, employee ve kalan manager yüzeylerinde AA | done bd6877a |
 | OPS-013 | Hata izleme: Sentry (ücretsiz) + Vercel logları | OPS-010 sonrası |
 

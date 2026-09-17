@@ -5,7 +5,7 @@
 Faz planı ve gerekçe: [MVP-PLAN](MVP-PLAN.md). Durum her task'ın kendi dosyasındadır (`tasks/`). Bu dosya yalnızca sıra ve hedef değişince güncellenir.
 
 ## Sıradaki (Faz F0 → F1)
-1. **F0:** TEST-001 test kaymaları, OPS-010 hosted (yeni Supabase hesabı bağlanınca), OPS-011 CI, OPS-012 production hijyeni, OPS-013 hata izleme.
+1. **F0 (kalan):** AUTH-002 (DB/API) ve AUTH-UX-001 (mockup → web) paralel; sonra OPS-010 hosted smoke (2 migration push + Vercel), OPS-013 hata izleme, OPS-014 pg_cron.
 2. **F1 ilk grup:** UI-DOC-001, BL-038, BL-048, REQ-AUDIT.
 
 Fazlar sırayla ilerler: F0 → F6 ([MVP-PLAN](MVP-PLAN.md)). Bir faz içindeki task'lar paralel çalışabilir.
