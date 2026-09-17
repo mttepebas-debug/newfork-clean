@@ -10,6 +10,7 @@ import {
 } from "@newfork/shared";
 import {
   createClient,
+  isAuthRetryableFetchError,
   type SupabaseClient,
   type User,
 } from "@supabase/supabase-js";
@@ -40,6 +41,8 @@ export const developmentIdentityAllowed =
 export const developmentIdentityRoleStorageKey =
   "newfork.development.workspaceRole";
 export const tabWorkspaceIdStorageKey = "newfork.tabWorkspaceId";
+export const invitationsCheckedStorageKey = "newfork.invitationsChecked";
+export const sessionExpiredStorageKey = "newfork.sessionExpired";
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -88,6 +91,22 @@ export async function getApiAccessToken(
   return accessToken(client);
 }
 
+/**
+ * PostgREST keeps accepting a revoked session's JWT until it expires, so ask
+ * the auth server. Returns false after a local sign-out when the session ended.
+ */
+export async function ensureSessionAlive(
+  client: SupabaseClient,
+): Promise<boolean> {
+  if (developmentBearerToken()) return true;
+  const { error } = await client.auth.getUser();
+  // Offline is not a revoked session.
+  if (!error || isAuthRetryableFetchError(error)) return true;
+  window.sessionStorage.setItem(sessionExpiredStorageKey, "1");
+  await client.auth.signOut({ scope: "local" });
+  return false;
+}
+
 export async function apiRequest(
   client: SupabaseClient,
   path: string,
@@ -106,6 +125,7 @@ export async function apiRequest(
     headers,
   });
   const body = (await response.json().catch(() => null)) as unknown;
+  if (response.status === 401) await ensureSessionAlive(client);
   if (!response.ok) {
     throw new Error(
       typeof body === "object" && body && "error" in body

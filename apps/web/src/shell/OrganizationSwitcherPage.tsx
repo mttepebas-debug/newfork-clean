@@ -1,8 +1,8 @@
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { Button } from "@newfork/ui";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -10,6 +10,9 @@ import {
   workspaceLandingPathForRole,
 } from "../auth/routeDestinations";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
+import { uxMock } from "../dev/uxMock";
+import { listPendingEmployeeInvitations } from "../employees/employee-data";
+import { InvitationRow } from "../employees/InvitationRow";
 import {
   listAccountWorkspaces,
   selectActiveWorkspace,
@@ -17,51 +20,44 @@ import {
 } from "../lib/supabase";
 
 export default function OrganizationSwitcherPage() {
-  const { context, refresh } = useAuth();
+  const { context, refresh, signOut } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[] | null>(
-    null,
-  );
-  const [loading, setLoading] = useState(false);
+  const workspacesQuery = useQuery({
+    queryKey: ["account-workspaces"],
+    queryFn: () =>
+      supabaseClient ? listAccountWorkspaces(supabaseClient) : [],
+    enabled: supabaseClient !== null,
+  });
+  const invitationsQuery = useQuery({
+    queryKey: ["account-pending-invitations"],
+    queryFn: listPendingEmployeeInvitations,
+    enabled: supabaseClient !== null,
+  });
+  const workspaces: WorkspaceSummary[] | null = supabaseClient
+    ? (workspacesQuery.data ?? null)
+    : context
+      ? [workspaceSummaryFromContext(context)]
+      : [];
+  // Invitations are an addition here; a failed load never blocks the list.
+  const invitations = invitationsQuery.data ?? [];
+  const loading = workspacesQuery.isLoading || invitationsQuery.isLoading;
+  const loadError =
+    uxMock() === "error"
+      ? "Organizations could not be loaded"
+      : workspaces === null && workspacesQuery.error
+        ? workspacesQuery.error instanceof Error
+          ? workspacesQuery.error.message
+          : "Organizations could not be loaded"
+        : null;
   const [activatingWorkspaceId, setActivatingWorkspaceId] = useState<
     string | null
   >(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!supabaseClient) {
-      setWorkspaces(context ? [workspaceSummaryFromContext(context)] : []);
-      return;
-    }
-    let active = true;
-    setLoading(true);
-    setError(null);
-    void (async () => {
-      try {
-        const items = await listAccountWorkspaces(supabaseClient);
-        if (active) setWorkspaces(items);
-      } catch (loadError: unknown) {
-        if (active)
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Organizations could not be loaded",
-          );
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [context]);
-
   const openWorkspace = async (workspace: WorkspaceSummary): Promise<void> => {
     if (workspace.status === "pending") {
-      navigate(`/organization-switcher/pending/${workspace.id}`, {
-        replace: true,
-      });
+      navigate(`/welcome/${workspace.id}`);
       return;
     }
     if (workspace.status === "suspended") {
@@ -94,7 +90,41 @@ export default function OrganizationSwitcherPage() {
     }
   };
 
-  if (workspaces?.length === 0) {
+  if (loadError) {
+    return (
+      <main className="sign-in-page" aria-labelledby="organizations-error-title">
+        <section className="sign-in-panel">
+          <p className="product-mark">NEWFORK</p>
+          <h1 id="organizations-error-title">Organizations unavailable</h1>
+          <p className="muted">
+            Your account is signed in, but your organizations could not be
+            loaded.
+          </p>
+          <p className="form-error" role="alert">
+            {loadError}
+          </p>
+          <div className="auth-recovery-actions">
+            <button
+              className="nf-button"
+              type="button"
+              onClick={() => void workspacesQuery.refetch()}
+            >
+              Try again
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => void signOut()}
+            >
+              Sign out
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (workspaces?.length === 0 && !loading && invitations.length === 0) {
     return <Navigate to="/no-organization" replace />;
   }
 
@@ -108,8 +138,8 @@ export default function OrganizationSwitcherPage() {
         <p className="product-mark">NEWFORK</p>
         <h1 id="organization-switcher-title">Choose organization</h1>
         <p className="muted">
-          Select the organization you want to work in. Pending or suspended
-          organizations open a limited status view.
+          Select the organization you want to work in. Suspended organizations
+          open a limited status view.
         </p>
 
         {loading ? (
@@ -123,6 +153,9 @@ export default function OrganizationSwitcherPage() {
           role="list"
           aria-label="Organizations"
         >
+          {invitations.map((invitation) => (
+            <InvitationRow key={invitation.id} invitation={invitation} />
+          ))}
           {(workspaces ?? []).map((workspace) => {
             const activating = activatingWorkspaceId === workspace.id;
             const status = workspace.status;
@@ -148,7 +181,9 @@ export default function OrganizationSwitcherPage() {
                   aria-label={
                     isOpenable
                       ? `Open ${workspace.name}`
-                      : `View status for ${workspace.name}`
+                      : status === "pending"
+                        ? `Continue onboarding for ${workspace.name}`
+                        : `View status for ${workspace.name}`
                   }
                   disabled={activating}
                   onClick={() => openWorkspace(workspace)}
@@ -156,7 +191,13 @@ export default function OrganizationSwitcherPage() {
                   {isOpenable && workspace.isActive ? (
                     <Check size={15} aria-hidden />
                   ) : null}
-                  {activating ? "Opening" : isOpenable ? "Open" : "View status"}
+                  {activating
+                    ? "Opening"
+                    : isOpenable
+                      ? "Open"
+                      : status === "pending"
+                        ? "Continue"
+                        : "View status"}
                 </Button>
               </div>
             );
@@ -191,7 +232,8 @@ function workspaceSummaryFromContext(
 }
 
 function workspaceStatusLabel(workspace: WorkspaceSummary): string {
-  if (workspace.status === "pending") return `${workspace.role} · pending`;
+  if (workspace.status === "pending")
+    return `${workspace.role} · onboarding in progress`;
   if (workspace.status === "suspended") return `${workspace.role} · suspended`;
   return workspace.role;
 }

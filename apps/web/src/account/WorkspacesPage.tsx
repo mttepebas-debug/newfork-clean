@@ -1,11 +1,14 @@
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { Button } from "@newfork/ui";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Check, Crown, Ellipsis, Plus, Star, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
+import { uxVariantB } from "../dev/uxMock";
+import { listPendingEmployeeInvitations } from "../employees/employee-data";
+import { InvitationRow } from "../employees/InvitationRow";
 import { AccountPageHeader } from "./components";
 import {
   createOwnerWorkspace,
@@ -77,9 +80,20 @@ export default function WorkspacesPage() {
   const accessibleWorkspaces = workspaces.filter(workspace => workspace.status === "active" &&
     ((workspace.lifecycleStatus ?? "active") === "active" ||
       (workspace.lifecycleStatus === "closure_scheduled" && !!workspace.closureEffectiveAt && Date.parse(workspace.closureEffectiveAt) > Date.now())));
-  const canCreate = loaded && !loading && (accessibleWorkspaces.length === 0 || accessibleWorkspaces.some(workspace => workspace.role === "owner"));
+  const invitationsQuery = useQuery({
+    queryKey: ["account-pending-invitations"],
+    queryFn: listPendingEmployeeInvitations,
+    enabled: supabaseClient !== null,
+  });
+  const invitations = invitationsQuery.data ?? [];
+  // An invited account without an owner membership is an employee: it answers
+  // the invitation first. The database enforces the same rule.
+  const canCreate = loaded && !loading && (
+    workspaces.some(workspace => workspace.role === "owner" && workspace.status === "active") ||
+    (workspaces.length === 0 && (supabaseClient === null || (invitationsQuery.isSuccess && invitations.length === 0))));
   const currentWorkspaceId = context?.workspace.id ?? null;
-  const orderedWorkspaces = [...accessibleWorkspaces].sort((a, b) =>
+  const onboardingWorkspaces = workspaces.filter(workspace => workspace.status === "pending");
+  const orderedWorkspaces = [...accessibleWorkspaces, ...onboardingWorkspaces].sort((a, b) =>
     Number(b.id === currentWorkspaceId) - Number(a.id === currentWorkspaceId) ||
     Number(b.isActive) - Number(a.isActive));
 
@@ -447,6 +461,9 @@ export default function WorkspacesPage() {
           </Button>
         ) : undefined}
       />
+      {uxVariantB() ? null : invitations.map(invitation => (
+        <InvitationRow key={invitation.id} invitation={invitation} notice />
+      ))}
       {orderedWorkspaces.filter(workspace => workspace.pendingOwnershipTransfer?.role === "target").map(workspace => (
         <div key={workspace.id} className="account-notice workspace-transfer-banner" role="region" aria-label={`Ownership request for ${workspace.name}`}>
           <strong>Ownership transfer · {workspace.name}</strong>
@@ -469,11 +486,14 @@ export default function WorkspacesPage() {
         </p>
       ) : null}
       <div className="workspace-list">
+        {uxVariantB() ? invitations.map(invitation => (
+          <InvitationRow key={invitation.id} invitation={invitation} />
+        )) : null}
         {orderedWorkspaces.length === 0 && !loading ? (
           <div className="workspace-row empty-workspace-row">
             <div>
               <strong>No workspaces yet</strong>
-              <span>Create your first workspace to continue.</span>
+              <span>{invitations.length > 0 ? "Respond to your invitation to continue." : "Create your first workspace to continue."}</span>
               {canCreate ? <Button type="button" onClick={openCreateDialog}>Create workspace</Button> : null}
             </div>
           </div>
@@ -483,6 +503,7 @@ export default function WorkspacesPage() {
           const lifecycleStatus = workspace.lifecycleStatus ?? "active";
           const pendingTransfer = workspace.pendingOwnershipTransfer ?? null;
           const isCurrent = workspace.id === currentWorkspaceId;
+          const onboarding = workspace.status === "pending";
           const hasOwnerActions = workspace.role === "owner" && (
             (!pendingTransfer && (lifecycleStatus === "active" || lifecycleStatus === "closure_scheduled")) ||
             pendingTransfer?.role === "initiator"
@@ -498,6 +519,7 @@ export default function WorkspacesPage() {
                 <strong>{workspace.name}</strong>
                 <span>
                   {workspace.role}
+                  {onboarding ? " · onboarding in progress" : ""}
                   {workspace.isActive ? " · default" : ""}
                   {lifecycleStatus === "closure_scheduled"
                     ? ` · closes ${formatClosureDate(workspace.closureEffectiveAt ?? null)}`
@@ -513,6 +535,15 @@ export default function WorkspacesPage() {
                     <Check size={15} aria-hidden />
                     Current
                   </span>
+                ) : onboarding ? (
+                  <Button
+                    className="secondary-button compact-button"
+                    type="button"
+                    aria-label={`Continue onboarding for ${workspace.name}`}
+                    onClick={() => navigate(`/welcome/${workspace.id}`)}
+                  >
+                    Continue
+                  </Button>
                 ) : (
                   <Button
                     className="secondary-button compact-button"
@@ -544,7 +575,7 @@ export default function WorkspacesPage() {
                         <button
                           role="menuitem"
                           type="button"
-                          disabled={workspace.isActive || defaultingWorkspaceId === workspace.id}
+                          disabled={workspace.isActive || onboarding || defaultingWorkspaceId === workspace.id}
                           onClick={() => {
                             closeActionsMenu(workspace.id);
                             void makeDefault(workspace);

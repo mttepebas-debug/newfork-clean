@@ -25,7 +25,9 @@ import {
   developmentBearerToken,
   developmentIdentityRoleStorageKey,
   developmentIdentityAllowed,
+  ensureSessionAlive,
   getTabWorkspaceId,
+  invitationsCheckedStorageKey,
   loadAccountProfile,
   resolveWorkspaceContext,
   saveAccountProfile,
@@ -212,6 +214,14 @@ export function AuthProvider({
     [],
   );
 
+  // A new login re-runs the invitation check and must not see the previous
+  // account's cached invitations or workspaces.
+  const resetAccountScope = useCallback((): void => {
+    window.sessionStorage.removeItem(invitationsCheckedStorageKey);
+    queryClient?.removeQueries({ queryKey: ["account-pending-invitations"] });
+    queryClient?.removeQueries({ queryKey: ["account-workspaces"] });
+  }, [queryClient]);
+
   const resolveAuthenticatedSession = useCallback(
     async (
       activeSession: Session,
@@ -241,6 +251,8 @@ export function AuthProvider({
         return resolvedContext;
       } catch (resolutionError: unknown) {
         if (isNoWorkspaceContextError(resolutionError)) {
+          // The API answers a revoked session the same way as "no workspace".
+          if (!(await ensureSessionAlive(supabaseClient))) return null;
           try {
             const resolvedAccount = await loadAccountProfile(
               supabaseClient,
@@ -377,6 +389,7 @@ export function AuthProvider({
       if (!supabaseClient) return false;
       setError(null);
       clearTabWorkspaceId();
+      resetAccountScope();
       if (developmentIdentityAllowed)
         window.localStorage.removeItem(developmentIdentityRoleStorageKey);
       const { data, error: signInError } =
@@ -392,7 +405,7 @@ export function AuthProvider({
       }
       return true;
     },
-    [resolveAuthenticatedSession],
+    [resetAccountScope, resolveAuthenticatedSession],
   );
 
   const signUp = useCallback(
@@ -404,6 +417,7 @@ export function AuthProvider({
       if (!supabaseClient) return false;
       setError(null);
       clearTabWorkspaceId();
+      resetAccountScope();
       if (developmentIdentityAllowed)
         window.localStorage.removeItem(developmentIdentityRoleStorageKey);
       const trimmedDisplayName = displayName?.trim();
@@ -436,7 +450,7 @@ export function AuthProvider({
       }
       return true;
     },
-    [resolveAuthenticatedSession],
+    [resetAccountScope, resolveAuthenticatedSession],
   );
 
   const signInForDevelopment = useCallback((role: WorkspaceRole): void => {
@@ -447,8 +461,10 @@ export function AuthProvider({
   }, [applyDevelopmentIdentity]);
 
   const signOut = useCallback(async (): Promise<void> => {
-    if (supabaseClient && session) await supabaseClient.auth.signOut();
+    if (supabaseClient && session)
+      await supabaseClient.auth.signOut({ scope: "local" });
     clearTabWorkspaceId();
+    resetAccountScope();
     window.localStorage.removeItem(developmentIdentityRoleStorageKey);
     window.localStorage.removeItem(developmentAccountStorageKey);
     resolvedUserIdRef.current = null;
@@ -458,7 +474,7 @@ export function AuthProvider({
     setAccount(null);
     setError(null);
     setReady(true);
-  }, [session]);
+  }, [resetAccountScope, session]);
 
   const updateAccount = useCallback(
     async (

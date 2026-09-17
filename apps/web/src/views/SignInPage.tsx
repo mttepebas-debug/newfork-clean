@@ -1,8 +1,10 @@
 import type { WorkspaceRole } from "@newfork/shared";
 import { Button } from "@newfork/ui";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { uxMock } from "../dev/uxMock";
+import { sessionExpiredStorageKey } from "../lib/supabase";
 
 export function SignInPage() {
   const {
@@ -27,6 +29,14 @@ export function SignInPage() {
   const destination = safeSignInDestination(requestedDestination);
   const inviteFlow = isInviteAcceptDestination(destination);
   const [creatingAccount, setCreatingAccount] = useState(inviteFlow);
+  const [sessionExpired] = useState(
+    () =>
+      window.sessionStorage.getItem(sessionExpiredStorageKey) === "1" ||
+      uxMock() === "session-expired",
+  );
+  useEffect(() => {
+    window.sessionStorage.removeItem(sessionExpiredStorageKey);
+  }, []);
 
   if (context) return <Navigate to={destination} replace />;
   if (authenticated && !error)
@@ -66,9 +76,11 @@ export function SignInPage() {
             : "Sign in to your workspace"}
         </h1>
         <p className="muted">
-          {supabaseConfigured
-            ? "Sign in with your email and password."
-            : "Supabase is not configured for this browser session."}
+          {!supabaseConfigured
+            ? "Supabase is not configured for this browser session."
+            : sessionExpired
+              ? "Your session ended. Sign in again to continue."
+              : "Sign in with your email and password."}
         </p>
         {supabaseConfigured ? (
           <form onSubmit={handleSupabaseSignIn}>

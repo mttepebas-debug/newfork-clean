@@ -1,5 +1,8 @@
-import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
+import { listPendingEmployeeInvitations } from "../employees/employee-data";
+import { invitationsCheckedStorageKey } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
 
 type WorkspaceRequirement = "none" | "any" | "complete";
@@ -13,6 +16,26 @@ export function ProtectedRoute({
 }) {
   const { authenticated, context, error, ready, refresh, signOut } = useAuth();
   const location = useLocation();
+  // Once per tab session after login: a member with a new invitation sees it
+  // before landing. No polling, no recheck on focus.
+  const checkInvitations =
+    ready &&
+    authenticated &&
+    workspace !== "none" &&
+    context !== null &&
+    window.sessionStorage.getItem(invitationsCheckedStorageKey) === null;
+  const invitations = useQuery({
+    queryKey: ["account-pending-invitations"],
+    queryFn: listPendingEmployeeInvitations,
+    enabled: checkInvitations,
+    retry: false,
+  });
+  const invitationsSettled = invitations.isSuccess || invitations.isError;
+  useEffect(() => {
+    // A failed check never blocks the app.
+    if (checkInvitations && invitationsSettled)
+      window.sessionStorage.setItem(invitationsCheckedStorageKey, "1");
+  }, [checkInvitations, invitationsSettled]);
 
   if (!ready)
     return <main className="auth-loading" aria-label="Loading workspace" />;
@@ -61,6 +84,15 @@ export function ProtectedRoute({
       );
     }
     return <Navigate to="/invitations/pending" replace />;
+  }
+  if (checkInvitations) {
+    if (!invitationsSettled)
+      return <main className="auth-loading" aria-label="Loading workspace" />;
+    if (
+      (invitations.data?.length ?? 0) > 0 &&
+      location.pathname !== "/invitations/pending"
+    )
+      return <Navigate to="/invitations/pending" replace />;
   }
   if (
     workspace === "complete" &&
