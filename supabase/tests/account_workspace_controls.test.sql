@@ -121,5 +121,31 @@ select lives_ok($q$select public.request_workspace_closure_service('a5500000-000
 select lives_ok($q$select public.cancel_workspace_closure_service('a5500000-0000-4000-8000-000000000002','a5500000-0000-4000-8000-000000000101')$q$,'owner cancels scheduled closure');
 select lives_ok($q$select public.request_workspace_closure_service('a5500000-0000-4000-8000-000000000002','a5500000-0000-4000-8000-000000000101','immediate','Gate2 Workspace',true,null)$q$,'owner closes workspace');
 select is((select count(*)::int from public.list_my_workspaces_service('a5500000-0000-4000-8000-000000000002') where workspace_id='a5500000-0000-4000-8000-000000000101'),0,'closed workspace disappears');
+reset role;
+-- AUTH-002: a pending invitation blocks first-workspace creation until resolved.
+insert into auth.users(id,email,email_confirmed_at) values
+('a5500000-0000-4000-8000-000000000012','invitee-gate2@example.test',now()),
+('a5500000-0000-4000-8000-000000000013','expired-invitee-gate2@example.test',now()),
+('a5500000-0000-4000-8000-000000000014','owner-invitee-gate2@example.test',now());
+insert into public.workspaces(id,name,created_by) values ('a5500000-0000-4000-8000-000000000103','Invitee Own Workspace','a5500000-0000-4000-8000-000000000014');
+insert into public.workspace_memberships(workspace_id,user_id,role,status) values ('a5500000-0000-4000-8000-000000000103','a5500000-0000-4000-8000-000000000014','owner','active');
+insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by) values
+('a5500000-0000-4000-8000-000000000312','a5500000-0000-4000-8000-000000000102',null,'E-9912','Pending','Invitee','a5500000-0000-4000-8000-000000000008'),
+('a5500000-0000-4000-8000-000000000313','a5500000-0000-4000-8000-000000000102',null,'E-9913','Expired','Invitee','a5500000-0000-4000-8000-000000000008'),
+('a5500000-0000-4000-8000-000000000314','a5500000-0000-4000-8000-000000000102',null,'E-9914','Owner','Invitee','a5500000-0000-4000-8000-000000000008');
+insert into public.employee_invitations(workspace_id,employee_id,email,role_id,token_hash,expires_at,created_by)
+select 'a5500000-0000-4000-8000-000000000102', invitee.employee_id, invitee.email,
+  (select id from public.workspace_roles where workspace_id='a5500000-0000-4000-8000-000000000102' order by created_at limit 1),
+  repeat(invitee.hash_char,64), now() + invitee.expires_in, 'a5500000-0000-4000-8000-000000000008'
+from (values
+  ('a5500000-0000-4000-8000-000000000312'::uuid,'invitee-gate2@example.test','b',interval '1 day'),
+  ('a5500000-0000-4000-8000-000000000313'::uuid,'expired-invitee-gate2@example.test','c',interval '-1 day'),
+  ('a5500000-0000-4000-8000-000000000314'::uuid,'owner-invitee-gate2@example.test','d',interval '1 day')
+) as invitee(employee_id,email,hash_char,expires_in);
+set local role service_role;
+select throws_ok($q$select public.create_owner_workspace_service('a5500000-0000-4000-8000-000000000012','Invitee business')$q$,'42501','pending invitation must be resolved first','pending invitee without owner membership cannot create');
+select lives_ok($q$select public.create_owner_workspace_service('a5500000-0000-4000-8000-000000000013','Expired invitee business')$q$,'expired invitation does not block creation');
+select lives_ok($q$select public.create_owner_workspace_service('a5500000-0000-4000-8000-000000000014','Owner second business')$q$,'active owner can create while an invitation is pending');
+reset role;
 select * from finish();
 rollback;
