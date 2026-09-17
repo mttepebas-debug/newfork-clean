@@ -479,6 +479,9 @@
   background: #eaf0e2;
   color: #325c37;
 }
+.eh-week a.is-today span {
+  color: var(--theme-muted-strong);
+}
 .eh-upcoming-row {
   display: flex;
   align-items: center;

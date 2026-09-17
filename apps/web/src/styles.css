@@ -7,6 +7,8 @@
   --theme-text: #17221e;
   --theme-text-body: #1d2525;
   --theme-muted: #66716c;
+  /* Secondary text on tinted surfaces where --theme-muted misses AA. */
+  --theme-muted-strong: #5f6b66;
   --theme-border: #dce3df;
   --theme-border-subtle: #e2e6e4;
   --theme-border-strong: #cbd4d0;
