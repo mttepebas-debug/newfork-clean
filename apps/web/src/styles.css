@@ -3363,18 +3363,12 @@ p {
 .development-access label {
   margin-top: 12px;
 }
-.secondary-button,
-.sign-in-panel .nf-button.secondary-button,
-.onboarding-header-actions .nf-button.secondary-button,
-.workspace-row-actions .nf-button.secondary-button {
+.secondary-button {
   border: 1px solid #bdc8c3;
   background: var(--theme-surface);
   color: #315048;
 }
-.secondary-button:hover,
-.sign-in-panel .nf-button.secondary-button:hover,
-.onboarding-header-actions .nf-button.secondary-button:hover,
-.workspace-row-actions .nf-button.secondary-button:hover {
+.secondary-button:hover {
   background: #f0f4f2;
 }
 .form-error {
