@@ -66,3 +66,5 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Owner onboarding'de lokasyon short name önerisi ve phone alanı yok → tasks/LOC-002.
 - Hosted'a location_phone migration'ı → tasks/LOC-002 (publication migration'ı UI-DOC-001 sonrası).
 - THEME-003 ek: sayfa yerel paletleri (--lu-*, --wt-*, --eh-*, --filter-*) token'lara bağlansın; employee sayfaları dolu veriyle AA tekrar ölçülsün.
+- Supabase CLI v2.109 → v2.117 güncellemesi (db push sırasında pg-delta sertifika ENOENT gürültüsü).
+- Hosted: Supabase panelinden leaked password protection açılacak (kullanıcı).

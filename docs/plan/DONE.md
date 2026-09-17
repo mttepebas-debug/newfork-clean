@@ -26,3 +26,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-16 | THEME-002 | light token seti, z-index, AA kontrast | 6f677a0
 2026-09-16 | LOC-001 | Locations tablo/drawer: adres+telefon, short name önerisi, inline delete | 4f0413c
 2026-09-16 | THEME-004 | sayfa CSS token'ları, on-accent/muted-strong, employee+manager AA 0 | bd6877a
+2026-09-16 | LOC-002 | short name backfill+strict, onboarding öneri/telefon, hosted migration | 198f305
