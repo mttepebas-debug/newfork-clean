@@ -29,6 +29,7 @@ import {
   getTabWorkspaceId,
   invitationsCheckedStorageKey,
   loadAccountProfile,
+  sessionExpiredStorageKey,
   resolveWorkspaceContext,
   saveAccountProfile,
   supabaseClient,
@@ -218,6 +219,7 @@ export function AuthProvider({
   // account's cached invitations or workspaces.
   const resetAccountScope = useCallback((): void => {
     window.sessionStorage.removeItem(invitationsCheckedStorageKey);
+    window.sessionStorage.removeItem(sessionExpiredStorageKey);
     queryClient?.removeQueries({ queryKey: ["account-pending-invitations"] });
     queryClient?.removeQueries({ queryKey: ["account-workspaces"] });
   }, [queryClient]);

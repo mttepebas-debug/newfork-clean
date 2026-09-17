@@ -170,19 +170,13 @@ describe("SignInPage", () => {
     );
   });
 
-  it("explains a session the server ended, once", () => {
+  it("explains a session the server ended", () => {
     window.sessionStorage.setItem("newfork.sessionExpired", "1");
-    const first = renderPage();
+    renderPage();
 
     expect(
       screen.getByText("Your session ended. Sign in again to continue."),
     ).toBeTruthy();
-    expect(window.sessionStorage.getItem("newfork.sessionExpired")).toBeNull();
-
-    first.unmount();
-    renderPage();
-    expect(
-      screen.getByText("Sign in with your email and password."),
-    ).toBeTruthy();
+    window.sessionStorage.clear();
   });
 });

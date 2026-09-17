@@ -28,6 +28,7 @@ vi.mock("../lib/supabase", () => ({
   developmentIdentityRoleStorageKey: "newfork.development.workspaceRole",
   ensureSessionAlive: supabaseMock.ensureSessionAlive,
   invitationsCheckedStorageKey: "newfork.invitationsChecked",
+  sessionExpiredStorageKey: "newfork.sessionExpired",
   getTabWorkspaceId: supabaseMock.getTabWorkspaceId,
   loadAccountProfile: supabaseMock.loadAccountProfile,
   resolveWorkspaceContext: supabaseMock.resolveWorkspaceContext,

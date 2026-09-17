@@ -7,6 +7,7 @@ import {
   clearTabWorkspaceId,
   developmentIdentityAllowed,
   developmentIdentityRoleStorageKey,
+  ensureSessionAlive,
   getTabWorkspaceId,
   loadAccountProfile,
   loadAccountDeletionBlockers,
@@ -29,9 +30,51 @@ function client(): SupabaseClient {
       getSession: vi.fn(async () => ({
         data: { session: { access_token: "session-token" } },
       })),
+      getUser: vi.fn(async () => ({ data: { user: {} }, error: null })),
     },
   } as unknown as SupabaseClient;
 }
+
+describe("ensureSessionAlive", () => {
+  beforeEach(() => window.sessionStorage.clear());
+
+  function authClient(session: unknown, userError: unknown) {
+    const signOut = vi.fn(async () => ({ error: null }));
+    return {
+      signOut,
+      client: {
+        auth: {
+          getSession: vi.fn(async () => ({ data: { session } })),
+          getUser: vi.fn(async () => ({ data: { user: null }, error: userError })),
+          signOut,
+        },
+      } as unknown as SupabaseClient,
+    };
+  }
+
+  it("keeps a session the auth server still accepts", async () => {
+    const { client: live, signOut } = authClient({ access_token: "t" }, null);
+    expect(await ensureSessionAlive(live)).toBe(true);
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("signs out locally and leaves a note when the server ended the session", async () => {
+    const { client: ended, signOut } = authClient(
+      { access_token: "t" },
+      { name: "AuthApiError", status: 403, message: "session not found" },
+    );
+    expect(await ensureSessionAlive(ended)).toBe(false);
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(window.sessionStorage.getItem("newfork.sessionExpired")).toBe("1");
+  });
+
+  it("does not leave a second note once the session is already gone", async () => {
+    const { client: gone, signOut } = authClient(null, { message: "missing" });
+    expect(await ensureSessionAlive(gone)).toBe(false);
+    expect(signOut).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem("newfork.sessionExpired")).toBeNull();
+  });
+});
 
 describe("tab workspace context", () => {
   beforeEach(() => {

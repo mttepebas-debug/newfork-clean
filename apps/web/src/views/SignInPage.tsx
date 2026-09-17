@@ -1,6 +1,6 @@
 import type { WorkspaceRole } from "@newfork/shared";
 import { Button } from "@newfork/ui";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { sessionExpiredStorageKey } from "../lib/supabase";
@@ -28,12 +28,10 @@ export function SignInPage() {
   const destination = safeSignInDestination(requestedDestination);
   const inviteFlow = isInviteAcceptDestination(destination);
   const [creatingAccount, setCreatingAccount] = useState(inviteFlow);
+  // Set when the server ended the session; the next sign-in clears it.
   const [sessionExpired] = useState(
     () => window.sessionStorage.getItem(sessionExpiredStorageKey) === "1",
   );
-  useEffect(() => {
-    window.sessionStorage.removeItem(sessionExpiredStorageKey);
-  }, []);
 
   if (context) return <Navigate to={destination} replace />;
   if (authenticated && !error)

@@ -99,6 +99,8 @@ export async function ensureSessionAlive(
   client: SupabaseClient,
 ): Promise<boolean> {
   if (developmentBearerToken()) return true;
+  // Already signed out (a parallel check got here first): nothing to report.
+  if (!(await client.auth.getSession()).data.session) return false;
   const { error } = await client.auth.getUser();
   // Offline is not a revoked session.
   if (!error || isAuthRetryableFetchError(error)) return true;
