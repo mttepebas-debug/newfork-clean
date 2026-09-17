@@ -62,9 +62,6 @@ const OrganizationSwitcherPage = lazy(
   () => import("./shell/OrganizationSwitcherPage"),
 );
 const NoOrganizationPage = lazy(() => import("./shell/NoOrganizationPage"));
-const PendingOrganizationStatusPage = lazy(
-  () => import("./shell/PendingOrganizationStatusPage"),
-);
 const SuspendedOrganizationStatusPage = lazy(
   () => import("./shell/SuspendedOrganizationStatusPage"),
 );
@@ -84,6 +81,7 @@ const PendingInvitationsPage = lazy(
 const EmployeeOnboardingPage = lazy(
   () => import("./employees/EmployeeOnboardingPage"),
 );
+const WelcomeRedirect = lazy(() => import("./employees/WelcomeRedirect"));
 const OwnerOnboardingPage = lazy(() => import("./views/OwnerOnboardingPage"));
 const SchedulePage = lazy(() => import("./views/SchedulePage"));
 const ScheduleShiftDesignPage = lazy(
@@ -202,10 +200,18 @@ export function App() {
                 }
               />
               <Route
-                path="/welcome/*"
+                path="/welcome/:workspaceId/*"
                 element={
                   <ProtectedRoute>
                     <EmployeeOnboardingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/welcome"
+                element={
+                  <ProtectedRoute>
+                    <WelcomeRedirect />
                   </ProtectedRoute>
                 }
               />
@@ -230,22 +236,6 @@ export function App() {
                 element={
                   <ProtectedRoute>
                     <NoOrganizationPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/organization-switcher/pending"
-                element={
-                  <ProtectedRoute>
-                    <PendingOrganizationStatusPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/organization-switcher/pending/:workspaceId"
-                element={
-                  <ProtectedRoute>
-                    <PendingOrganizationStatusPage />
                   </ProtectedRoute>
                 }
               />

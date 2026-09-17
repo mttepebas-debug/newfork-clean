@@ -61,7 +61,9 @@ export default function AcceptInvitationPage() {
             </p>
             <Button
               type="button"
-              onClick={() => navigate("/welcome", { replace: true })}
+              onClick={() =>
+                navigate(`/welcome/${acceptance.data}`, { replace: true })
+              }
             >
               Start onboarding
             </Button>

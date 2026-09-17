@@ -8,8 +8,12 @@ import {
 } from "@newfork/shared";
 import { apiRequest, supabaseClient } from "../lib/supabase";
 
-export async function getMyOnboarding(): Promise<EmployeeOnboarding> {
-  return employeeOnboardingSchema.parse(await api("/v1/me/onboarding"));
+export async function getMyOnboarding(
+  workspaceId: string,
+): Promise<EmployeeOnboarding> {
+  return employeeOnboardingSchema.parse(
+    await api(`/v1/me/onboarding?workspaceId=${encodeURIComponent(workspaceId)}`),
+  );
 }
 
 export async function saveMyOnboardingProfile(

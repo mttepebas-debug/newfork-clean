@@ -25,11 +25,12 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router";
 import { DocumentReviewDrawer } from "../documents/DocumentReviewDrawer";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { useAuth } from "../auth/AuthContext";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
+import { setTabWorkspaceId } from "../lib/supabase";
 import {
   getMyOnboarding,
   saveMyOnboardingProfile,
@@ -39,21 +40,31 @@ import {
 export default function EmployeeOnboardingPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const navigateRequirement = (path: string) => navigate(path);
+  const { workspaceId = "" } = useParams();
+  // Pre-workspace links ("/welcome/profile") land here with a non-id segment.
+  const validWorkspaceId = /^[0-9a-f-]{36}$/i.test(workspaceId);
+  const at = (path: string) => workspacePath(workspaceId, path);
+  // Route-relative path in the database's "/welcome/..." form.
+  const pathname = `/welcome${location.pathname.slice(`/welcome/${workspaceId}`.length)}`;
+  const navigateRequirement = (path: string) => navigate(at(path));
   const queryClient = useQueryClient();
   const { refresh, signOut } = useAuth();
   const onboarding = useQuery({
-    queryKey: ["my-employee-onboarding"],
-    queryFn: getMyOnboarding,
+    queryKey: ["my-employee-onboarding", workspaceId],
+    queryFn: () => getMyOnboarding(workspaceId),
+    enabled: validWorkspaceId,
   });
 
   const finalizeActivation = useCallback(async () => {
     await clearTenantQueriesForOrganizationSwitch(queryClient);
     await queryClient.cancelQueries({ queryKey: ["my-employee-onboarding"] });
     queryClient.removeQueries({ queryKey: ["my-employee-onboarding"] });
+    void queryClient.invalidateQueries({ queryKey: ["account-workspaces"] });
+    // Land in the organization that was just activated, not the default one.
+    setTabWorkspaceId(workspaceId);
     await refresh();
     navigate("/app/employee-hub", { replace: true });
-  }, [navigate, queryClient, refresh]);
+  }, [navigate, queryClient, refresh, workspaceId]);
 
   const continueAfterSave = async () => {
     const refreshed = await onboarding.refetch();
@@ -62,13 +73,14 @@ export default function EmployeeOnboardingPage() {
       await finalizeActivation();
       return;
     }
-    navigate(refreshed.data.first_actionable_path);
+    navigate(at(refreshed.data.first_actionable_path));
   };
   useEffect(() => {
     if (onboarding.data?.case_status !== "approved") return;
     void finalizeActivation();
   }, [finalizeActivation, onboarding.data?.case_status]);
 
+  if (!validWorkspaceId) return <Navigate to="/welcome" replace />;
   if (onboarding.isLoading)
     return (
       <main
@@ -129,7 +141,7 @@ export default function EmployeeOnboardingPage() {
                 key={item.id}
                 type="button"
                 className={
-                  requirementPath(item) === location.pathname ? "active" : ""
+                  requirementPath(item) === pathname ? "active" : ""
                 }
                 onClick={() => navigateRequirement(requirementPath(item))}
               >
@@ -146,7 +158,7 @@ export default function EmployeeOnboardingPage() {
             ))}
           <button
             type="button"
-            className={location.pathname === "/welcome/review" ? "active" : ""}
+            className={pathname === "/welcome/review" ? "active" : ""}
             onClick={() => navigateRequirement("/welcome/review")}
           >
             <FileCheck2 size={17} aria-hidden />
@@ -168,29 +180,29 @@ export default function EmployeeOnboardingPage() {
         </div>
       </aside>
       <section className="employee-onboarding-stage">
-        {location.pathname === "/welcome" ? (
+        {pathname === "/welcome" ? (
           <WelcomeStep
             model={model}
-            onContinue={() => navigate(model.first_actionable_path)}
+            onContinue={() => navigate(at(model.first_actionable_path))}
           />
-        ) : location.pathname === "/welcome/profile" ? (
+        ) : pathname === "/welcome/profile" ? (
           <ProfileStep model={model} onSaved={continueAfterSave} />
-        ) : location.pathname === "/welcome/availability" ? (
+        ) : pathname === "/welcome/availability" ? (
           <AvailabilityStep
             key={`${model.workspace_id}:${model.employee_id}`}
             model={model}
             onSaved={continueAfterSave}
           />
-        ) : location.pathname === "/welcome/review" ? (
+        ) : pathname === "/welcome/review" ? (
           <ReviewStep model={model} onSaved={continueAfterSave} />
-        ) : location.pathname.includes("/documents/") &&
+        ) : pathname.includes("/documents/") &&
           requirement?.kind === "document" ? (
           <DocumentStep
             model={model}
             requirement={requirement}
             onSaved={continueAfterSave}
           />
-        ) : location.pathname.includes("/acknowledgements/") &&
+        ) : pathname.includes("/acknowledgements/") &&
           requirement?.kind === "acknowledgement" ? (
           <DocumentStep
             model={model}
@@ -198,7 +210,7 @@ export default function EmployeeOnboardingPage() {
             onSaved={continueAfterSave}
           />
         ) : (
-          <Navigate to={model.first_actionable_path} replace />
+          <Navigate to={at(model.first_actionable_path)} replace />
         )}
       </section>
     </main>
@@ -544,6 +556,7 @@ function AvailabilityStep({ model, onSaved }: StepProps) {
 }
 
 function ReviewStep({ model, onSaved }: StepProps) {
+  const { workspaceId = "" } = useParams();
   const mutation = useMutation({
     mutationFn: () => submitMyOnboarding(model.revision),
     onSuccess: onSaved,
@@ -584,7 +597,11 @@ function ReviewStep({ model, onSaved }: StepProps) {
             <button
               type="button"
               key={item.id}
-              onClick={() => window.location.assign(requirementPath(item))}
+              onClick={() =>
+                window.location.assign(
+                  workspacePath(workspaceId, requirementPath(item)),
+                )
+              }
             >
               <RequirementIcon requirement={item} />
               <span>
@@ -745,6 +762,12 @@ function RequirementIcon({
     return <CircleAlert size={17} aria-hidden />;
   if (requirement.kind === "ssn") return <IdCard size={17} aria-hidden />;
   return <span className="requirement-dot" aria-hidden />;
+}
+
+// Onboarding paths are stored as "/welcome/..."; the route carries the
+// workspace: "/welcome/:workspaceId/...".
+function workspacePath(workspaceId: string, path: string): string {
+  return `/welcome/${workspaceId}${path.slice("/welcome".length)}`;
 }
 
 function requirementPath(requirement: EmployeeOnboardingRequirement): string {

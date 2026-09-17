@@ -8,6 +8,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  LogOut,
   MapPin,
   Send,
   Users,
@@ -19,13 +20,16 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { uxVariantB } from "../dev/uxMock";
 import {
   loadEmployeeReferenceData,
   saveEmployee,
 } from "../employees/employee-data";
 import {
+  listAccountWorkspaces,
   queueOwnerOnboardingInvitationIntent,
   resetOwnerOnboarding,
   saveOwnerOnboarding,
@@ -67,7 +71,15 @@ const departmentColor = "#3C7A68";
 const jobColor = "#4478A8";
 
 export default function OwnerOnboardingPage() {
-  const { account, context, refresh, updateAccount } = useAuth();
+  const { account, context, refresh, signOut, updateAccount } = useAuth();
+  const accountWorkspaces = useQuery({
+    queryKey: ["account-workspaces"],
+    queryFn: () =>
+      supabaseClient ? listAccountWorkspaces(supabaseClient) : [],
+  });
+  // With a single workspace the switcher would only lead back here.
+  const canSwitchOrganization = (accountWorkspaces.data?.length ?? 0) > 1;
+  const exitVariantB = uxVariantB();
   const navigate = useNavigate();
   const [step, setStep] = useState<OwnerStep>(
     ownerStepFromContext(context?.onboarding.currentStep),
@@ -479,6 +491,24 @@ export default function OwnerOnboardingPage() {
           <Building2 size={20} aria-hidden /> Newfork
         </span>
         <div className="onboarding-header-actions">
+          {!exitVariantB && canSwitchOrganization ? (
+            <Button
+              className="secondary-button compact-button"
+              type="button"
+              onClick={() => navigate("/organization-switcher")}
+            >
+              <Building2 size={16} aria-hidden /> Switch organization
+            </Button>
+          ) : null}
+          {!exitVariantB ? (
+            <Button
+              className="secondary-button compact-button"
+              type="button"
+              onClick={() => void signOut()}
+            >
+              <LogOut size={16} aria-hidden /> Sign out
+            </Button>
+          ) : null}
           <Button
             className="secondary-button compact-button"
             type="button"
@@ -801,6 +831,26 @@ export default function OwnerOnboardingPage() {
             </div>
           </form>
         </section>
+      ) : null}
+      {exitVariantB ? (
+        <p className="onboarding-exit">
+          {canSwitchOrganization ? (
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => navigate("/organization-switcher")}
+            >
+              Switch organization
+            </button>
+          ) : null}
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => void signOut()}
+          >
+            Sign out
+          </button>
+        </p>
       ) : null}
     </main>
   );
