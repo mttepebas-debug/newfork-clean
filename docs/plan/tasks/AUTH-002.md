@@ -29,6 +29,7 @@ In scope: plan T2 madde 1–6.
 - `/welcome/:workspaceId`.
 - Token'ın sessionStorage'da tutulması.
 - terminated filtresi.
+- Revoke edilmiş ya da sunucuda sonlanmış session (getUser "Auth session missing!"): uygulama sign-in'e yönlendirir; davet ekranı ya da "Valid bearer session required" hatası gösterilmez (THEME-004 bulgusu).
 
 Out of scope: billing, e-posta lookup'ı, polling.
 

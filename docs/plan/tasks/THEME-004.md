@@ -1,5 +1,5 @@
 # THEME-004 THEME-002 takibi: kalan sayfaların token'a geçişi ve AA kontrolü
-Status: active
+Status: done
 Session: TEST-001 session (local_24e92640; THEME-001/002 worker'ı, Opus 5 medium)   Branch: task/theme-004   Worktree: newfork-wt/theme-004   DB: yok
 Öneri: aynı session (bağlam sıcak).
 
@@ -42,3 +42,12 @@ Done when:
 Test plan: CSS işi; sonunda typecheck, build ve light-theme testleri bir kez. Web'i 5558'de çalıştır (API 5556).
 
 ## Notes / Result
+- 2026-09-16 main bd6877a:
+  - `--theme-on-accent` eklendi; 12 sayfa CSS'i ve styles.css'te 69 birebir dönüşüm (34 on-accent). Hesaplanmış stil farkı 0 (24 manager + 7 employee görünümü).
+  - Muted düzeltmeleri: lineup, employee-dashboard, drawer.
+  - Kullanıcı onaylı değişiklikler:
+    - D1: `--theme-muted-strong` #5f6b66, renkli zeminde ikincil metin için.
+    - D2: Line Up uyarı metinleri `--theme-warning`, sharing butonu `--theme-accent`.
+  - AA: listelenen employee ve manager yüzeylerinde 0 ihlal (employee sayfaları boş veriyle ölçüldü).
+  - typecheck/build PASS; light-theme 2/2.
+- Bulgu: sunucu tarafında sonlanan session sign-in'e yönlenmiyor → AUTH-002 kapsamına eklendi.
