@@ -1,5 +1,5 @@
 # THEME-001 Dark temayı emekliye ayır
-Status: review (main'e alındı; görsel kontrol kullanıcıda)
+Status: done
 Session: TEST-001 session (local_24e92640, Opus 5 medium)   Branch: task/theme-001   Worktree: newfork-wt/theme-001   DB: yok
 Öneri: Opus 5, medium. Çok dosyalı ama mekanik silme; seçicileri doğru ayırmak dikkat istiyor.
 
@@ -59,3 +59,4 @@ Risk:
 - Görsel önce/sonra karşılaştırması yapılamadı (dev server'lar kapalıydı). Light kurallarının aynı kaldığı kod düzeyinde kanıtlandığı için merge edildi. Kullanıcı 6 sayfaya bir kez göz atacak.
 - Bulgular: account.css'teki `account-theme-*` kuralları artık kullanılmıyor (THEME-002'de silinebilir). localStorage'daki eski "newfork.theme" anahtarı zararsız.
 - REUSE UI-05 güncellendi.
+- 2026-09-16: kullanıcı 6 sayfayı görsel olarak kontrol etti, sorun yok. Task kapandı.
