@@ -4130,6 +4130,8 @@ select:focus-visible {
 .schedule-topbar-filter-menu,
 .schedule-action-menu-panel {
   position: absolute;
+  /* Above sibling topbar controls such as filter chips. */
+  z-index: 105;
   top: calc(100% + 6px);
   left: 0;
   display: grid;
