@@ -4,6 +4,8 @@ import {
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 
+import { rpcFailure } from "../http-error.js";
+
 export interface RolesService {
   save(input: {
     readonly actorUserId: string;
@@ -22,7 +24,10 @@ interface RpcClient {
   rpc(
     name: string,
     args: Record<string, unknown>,
-  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  ): PromiseLike<{
+    data: unknown;
+    error: { message: string; code?: string } | null;
+  }>;
 }
 
 export function createRolesService(options: {
@@ -38,7 +43,7 @@ export function createRolesService(options: {
 export function createRolesServiceWithClient(client: RpcClient): RolesService {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
-    if (error) throw new Error(error.message);
+    if (error) throw rpcFailure(error);
     return data;
   }
 

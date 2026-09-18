@@ -1,5 +1,6 @@
 import { workspaceRoleInputSchema, type Permission } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
+import { HttpError } from "../http-error.js";
 import { z } from "zod";
 import {
   resolveWorkspaceAuthorization,
@@ -141,6 +142,10 @@ async function authorize(
 function requestError(reply: FastifyReply, error: unknown) {
   const message =
     error instanceof Error ? error.message : "Role operation failed";
+  // A typed status wins: it comes from the SQLSTATE the RPC raised, not from
+  // the wording of its message. The matching below stays for untyped throws.
+  if (error instanceof HttpError)
+    return reply.status(error.statusCode).send({ error: message });
   if (
     message.includes("not eligible") ||
     message.includes("limited to personal") ||
