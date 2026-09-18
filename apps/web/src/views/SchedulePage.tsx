@@ -3482,12 +3482,4 @@ function blurScheduleEditorActivationTarget(): void {
   }
 }
 
-function isMissingScheduleDraftError(error: unknown): boolean {
-  return (
-    error instanceof ScheduleRequestError &&
-    error.status === 404 &&
-    /draft not found/i.test(error.message)
-  );
-}
-
 export default SchedulePage;

@@ -5,7 +5,6 @@ import {
   workspaceSummarySchema,
   type AccountProfile,
   type ActiveWorkspaceContext,
-  type ThemePreference,
   type WorkspaceSummary,
 } from "@newfork/shared";
 import {

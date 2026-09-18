@@ -103,8 +103,8 @@ function PreferenceForm({ model, audience, onSave, onPreview }: Props) {
 
   useEffect(() => {
     if (!dirty && !inFlight.current) reset(latestModel);
-    // Keep the revision captured by the first edit for optimistic concurrency.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Deliberately keyed on `model` only: the revision captured by the first
+    // edit must survive re-renders for optimistic concurrency.
   }, [model]);
 
   function changed(week = false) {

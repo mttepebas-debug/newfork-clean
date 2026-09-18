@@ -498,9 +498,8 @@ function RoleEditor({
                 onClick={() =>
                   setOpen((current) => {
                     const next = new Set(current);
-                    next.has(group.label)
-                      ? next.delete(group.label)
-                      : next.add(group.label);
+                    if (next.has(group.label)) next.delete(group.label);
+                    else next.add(group.label);
                     return next;
                   })
                 }

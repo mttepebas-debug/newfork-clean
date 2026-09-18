@@ -10,7 +10,6 @@ import {
   Megaphone,
   Settings2,
   UserCircle,
-  Users,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";

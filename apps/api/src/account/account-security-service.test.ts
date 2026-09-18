@@ -39,7 +39,7 @@ function serviceFixture(options: {
 } = {}) {
   const auth = authGateway(options.authOverrides);
   const deliverRecoveryEmail = vi.fn(async () => undefined);
-  const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
+  const rpc = vi.fn(async (name: string, _args: Record<string, unknown>) => {
     if (name === "get_account_deletion_blockers_service")
       return { data: options.blockers ?? [], error: null };
     if (name === "request_account_deletion_v2_service")

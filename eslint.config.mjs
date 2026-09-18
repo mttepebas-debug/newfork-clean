@@ -18,9 +18,15 @@ export default [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      // Omitting fields with a rest destructure is deliberate, and so is an
+      // underscore-named binding; neither is an unused variable.
       "@typescript-eslint/no-unused-vars": [
         "error",
-        { argsIgnorePattern: "^_" },
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
       ],
     },
   },

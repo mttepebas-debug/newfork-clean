@@ -12,7 +12,6 @@ import {
   Check,
   CircleAlert,
   FileCheck2,
-  FileUp,
   IdCard,
   LogOut,
   UserRound,
