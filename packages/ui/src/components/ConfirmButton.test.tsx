@@ -32,6 +32,22 @@ describe("ConfirmButton", () => {
     ).not.toContain("is-armed");
   });
 
+  it("does not confirm on the second click of a double-click", () => {
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmButton confirmLabel="Click again to delete" onConfirm={onConfirm}>
+        Discard
+      </ConfirmButton>,
+    );
+    const button = screen.getByRole("button");
+
+    fireEvent.click(button, { detail: 1 });
+    fireEvent.click(button, { detail: 2 });
+
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(button.textContent).toBe("Click again to delete");
+  });
+
   it("disarms on Escape, on blur and after the timeout", () => {
     vi.useFakeTimers();
     const onConfirm = vi.fn();

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { KeyboardEvent, ReactNode } from "react";
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Button } from "./Button";
 import type { ButtonProps } from "./Button";
 
@@ -21,12 +21,16 @@ export function useConfirmClick(onConfirm: () => void) {
     confirmProps: {
       onBlur: () => setArmed(false),
       onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => {
+        // A held Enter repeats the click; it must not arm and confirm in one press.
+        if (event.repeat) event.preventDefault();
         if (armed && event.key === "Escape") {
           event.stopPropagation();
           setArmed(false);
         }
       },
-      onClick: () => {
+      onClick: (event: MouseEvent<HTMLButtonElement>) => {
+        // The second click of a double-click is one gesture, not a confirmation.
+        if (event.detail > 1) return;
         if (!armed) {
           setArmed(true);
           return;
