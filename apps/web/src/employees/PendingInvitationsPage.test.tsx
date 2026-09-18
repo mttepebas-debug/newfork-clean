@@ -62,13 +62,13 @@ function LocationProbe() {
   return <output aria-label="Current path">{location.pathname}</output>;
 }
 
-function renderPage() {
+function renderPage(entry = "/invitations/pending") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/invitations/pending"]}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route
             path="/invitations/pending"
@@ -295,6 +295,32 @@ describe("PendingInvitationsPage", () => {
         "/welcome/26000000-0000-4000-8000-000000000001",
       ),
     );
+  });
+
+  it("kit path (?shell): declining takes two clicks and no native confirm", async () => {
+    vi.mocked(window.confirm).mockClear();
+    renderPage("/invitations/pending?shell=a");
+
+    expect(
+      await screen.findByRole("heading", { name: "You have an invitation" }),
+    ).toBeTruthy();
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Decline invitation to Northstar",
+      }),
+    );
+    expect(declinePendingEmployeeInvitation).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Click again to decline" }),
+    );
+    await waitFor(() =>
+      expect(declinePendingEmployeeInvitation).toHaveBeenCalledWith(
+        "46000000-0000-4000-8000-000000000001",
+        expect.anything(),
+      ),
+    );
+    expect(window.confirm).not.toHaveBeenCalled();
   });
 
   it("requires explicit confirmation before declining", async () => {
