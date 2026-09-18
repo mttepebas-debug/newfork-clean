@@ -691,7 +691,7 @@ describe("EmployeeOnboardingPage", () => {
       ).toBe(String(nav.getAllByRole("button").length));
     });
 
-    it("groups documents and policies into steps instead of listing each one", async () => {
+    it("groups documents and policies into one step instead of listing each one", async () => {
       vi.mocked(getMyOnboarding).mockResolvedValue({
         ...onboarding,
         requirements: [
@@ -711,17 +711,11 @@ describe("EmployeeOnboardingPage", () => {
         ],
       });
 
-      const two = await renderMode("2");
-      expect(two.getByRole("button", { name: "Documents" })).toBeTruthy();
-      expect(two.getByRole("button", { name: "Policies" })).toBeTruthy();
-      expect(two.queryByText("Food handler card")).toBeNull();
-      expect(two.queryByText("Team handbook")).toBeNull();
-      cleanup();
-
-      const one = await renderMode("1");
-      expect(one.getByRole("button", { name: "Documents" })).toBeTruthy();
-      expect(one.queryByRole("button", { name: "Policies" })).toBeNull();
-      expect(one.queryByText("Team handbook")).toBeNull();
+      const nav = await renderMode("1");
+      expect(nav.getByRole("button", { name: "Documents" })).toBeTruthy();
+      expect(nav.queryByRole("button", { name: "Policies" })).toBeNull();
+      expect(nav.queryByText("Food handler card")).toBeNull();
+      expect(nav.queryByText("Team handbook")).toBeNull();
     });
   });
 });

@@ -128,7 +128,7 @@ export default function EmployeeOnboardingPage() {
   );
   // UI-PRE-001 mockup: without ?docs these stay empty/undefined, so the stage
   // below renders exactly what it did before.
-  const docsSteps = docsMode ? docsStepsFor(docsMode, model.requirements) : [];
+  const docsSteps = docsMode ? docsStepsFor(model.requirements) : [];
   const docsIndex = docsSteps.find(
     (step) => step.title && step.path === pathname,
   );
@@ -266,27 +266,24 @@ export default function EmployeeOnboardingPage() {
 const docsModeKey = "ui-pre-001.docs";
 
 /**
- * UI-PRE-001 Faz 1: how documents and policies are grouped, DEV only.
- * `?docs=1` one step, `?docs=2` two steps, `?docs=0` off. The choice is kept in
- * sessionStorage because every navigation here rebuilds a bare pathname and
+ * UI-PRE-001 Faz 1: the step model the user picked (documents and policies as
+ * one "Documents" step), DEV only behind `?docs=1`; `?docs=0` turns it off.
+ * Slice D2 makes it the only path and deletes this switch. The choice is kept
+ * in sessionStorage because every navigation here rebuilds a bare pathname and
  * ReviewStep does a full reload, so the param alone is gone after one click.
  */
-function useDevDocsMode(): "1" | "2" | null {
+function useDevDocsMode(): boolean {
   const [params] = useSearchParams();
-  if (!import.meta.env.DEV) return null;
+  if (!import.meta.env.DEV) return false;
   const param = params.get("docs");
-  const fromUrl = param === "1" || param === "2" ? param : null;
   try {
-    if (fromUrl) sessionStorage.setItem(docsModeKey, fromUrl);
-    else if (param === "0") sessionStorage.removeItem(docsModeKey);
-    else {
-      const stored = sessionStorage.getItem(docsModeKey);
-      if (stored === "1" || stored === "2") return stored;
-    }
+    if (param === "1") sessionStorage.setItem(docsModeKey, param);
+    else if (param !== null) sessionStorage.removeItem(docsModeKey);
+    else return sessionStorage.getItem(docsModeKey) === "1";
   } catch {
     // Storage is blocked: the param still works for the page it is on.
   }
-  return fromUrl;
+  return param === "1";
 }
 
 interface OnboardingStep {
@@ -299,7 +296,6 @@ interface OnboardingStep {
 }
 
 function docsStepsFor(
-  mode: "1" | "2",
   requirements: readonly EmployeeOnboardingRequirement[],
 ): OnboardingStep[] {
   const step = (
@@ -313,28 +309,14 @@ function docsStepsFor(
     items: requirements.filter((item) => kinds.includes(item.kind)),
     ...heading,
   });
-  const groups =
-    mode === "1"
-      ? [
-          step("Documents", "/welcome/documents", ["document", "acknowledgement"], {
-            title: "Your documents",
-            copy: "Open each one to upload it or to read and acknowledge it.",
-          }),
-        ]
-      : [
-          step("Documents", "/welcome/documents", ["document"], {
-            title: "Your documents",
-            copy: "Open each document to upload it.",
-          }),
-          step("Policies", "/welcome/policies", ["acknowledgement"], {
-            title: "Policies to read",
-            copy: "Open each policy to read and acknowledge it.",
-          }),
-        ];
   return [
     step("Profile", "/welcome/profile", ["profile"]),
     ...[
-      ...groups,
+      // Uploads and policies are one step: the user chose this over two.
+      step("Documents", "/welcome/documents", ["document", "acknowledgement"], {
+        title: "Your documents",
+        copy: "Open each one to upload it or to read and acknowledge it.",
+      }),
       step("Availability", "/welcome/availability", ["availability"]),
     ].filter((item) => item.items.length > 0),
     step("Review", "/welcome/review", []),
