@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@newfork/ui";
 import { Building2, MailCheck } from "lucide-react";
 import { useState } from "react";
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { accountLandingPath } from "../auth/routeDestinations";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
@@ -15,7 +16,13 @@ import { CreateOrganizationButton } from "./CreateOrganizationButton";
  */
 export default function NoOrganizationPage() {
   const { account, signOut } = useAuth();
-  const [waiting, setWaiting] = useState(false);
+  const location = useLocation();
+  // Arriving straight from an answered invitation: the check already happened.
+  const [waiting, setWaiting] = useState(
+    () =>
+      (location.state as { invitationsChecked?: boolean } | null)
+        ?.invitationsChecked === true,
+  );
   const everLinked = useQuery({
     queryKey: ["account-ever-linked"],
     queryFn: () =>
@@ -101,8 +108,8 @@ export default function NoOrganizationPage() {
             : "Tell us what brings you here. Set up your own business organization, or join the one that invited you."}
         </p>
         <CreateOrganizationButton />
-        <button
-          className="secondary-button"
+        <Button
+          className="secondary"
           type="button"
           onClick={() => setWaiting(true)}
         >
@@ -110,7 +117,7 @@ export default function NoOrganizationPage() {
           {returning
             ? "I'm waiting for another invitation"
             : "I have an invite for a workspace"}
-        </button>
+        </Button>
         <button
           className="text-button"
           type="button"

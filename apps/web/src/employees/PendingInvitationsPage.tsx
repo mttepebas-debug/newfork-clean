@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { KeyRound } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -42,15 +42,20 @@ export default function PendingInvitationsPage() {
   const pending = invitations.data ?? [];
   const unfinished = unfinishedWorkspaces(workspaceList);
   const ready = readyWorkspaces(workspaceList);
+  // A cached empty list must not forward the account before the refresh lands.
   const settled =
     (invitations.isSuccess || invitations.isError) &&
-    (workspaces.isSuccess || workspaces.isError);
+    (workspaces.isSuccess || workspaces.isError) &&
+    !invitations.isFetching &&
+    !workspaces.isFetching;
   const nothingOpen = settled && pending.length === 0 && unfinished.length === 0;
   // An account that can work elsewhere, or is mid-onboarding elsewhere, may
   // postpone the decision.
   const deferPath = deferredLandingPath(context, workspaceList);
   const employerDraft =
     unfinished.find((workspace) => workspace.status === "active") ?? null;
+  const answeredInvitations = useRef(false);
+  if (pending.length > 0) answeredInvitations.current = true;
 
   // Nothing left to decide and exactly one organization: land in it.
   const landInOnly = nothingOpen && ready.length === 1;
@@ -68,7 +73,15 @@ export default function PendingInvitationsPage() {
   if (nothingOpen) {
     if (ready.length === 1)
       return <main className="auth-loading" aria-label="Loading workspace" />;
-    if (ready.length === 0) return <Navigate to={noOrganizationPath} replace />;
+    if (ready.length === 0)
+      return (
+        <Navigate
+          to={noOrganizationPath}
+          replace
+          // Answering the last invitation is an answer: do not ask again.
+          state={{ invitationsChecked: answeredInvitations.current }}
+        />
+      );
     return <Navigate to={organizationSwitcherPath} replace />;
   }
 

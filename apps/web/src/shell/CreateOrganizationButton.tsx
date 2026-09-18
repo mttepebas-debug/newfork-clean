@@ -1,5 +1,6 @@
 import type { WorkspaceSummary } from "@newfork/shared";
 import { Button } from "@newfork/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import { Building2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -28,6 +29,7 @@ export function CreateOrganizationButton({
 }) {
   const navigate = useNavigate();
   const { refresh } = useAuth();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +42,11 @@ export function CreateOrganizationButton({
         existingDraft?.id ??
         (await createOwnerWorkspace(supabaseClient, draftWorkspaceName));
       setTabWorkspaceId(workspaceId);
+      // The account now owns a workspace and counts as linked; both are cached.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["account-workspaces"] }),
+        queryClient.invalidateQueries({ queryKey: ["account-ever-linked"] }),
+      ]);
       await refresh();
       navigate("/onboarding", { replace: true });
     } catch (startError: unknown) {
