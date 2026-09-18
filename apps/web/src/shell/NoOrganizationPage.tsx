@@ -1,11 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { MailCheck } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { accountLandingPath } from "../auth/routeDestinations";
+import {
+  accountLandingPath,
+  organizationSwitcherPath,
+  readyWorkspaces,
+  unfinishedWorkspaces,
+} from "../auth/routeDestinations";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
-import { loadAccountEverLinked, supabaseClient } from "../lib/supabase";
+import {
+  listAccountWorkspaces,
+  loadAccountEverLinked,
+  supabaseClient,
+} from "../lib/supabase";
 import { CreateOrganizationButton } from "./CreateOrganizationButton";
 import { PreBizFrame } from "./prebiz/PreBiz";
 
@@ -34,6 +43,31 @@ export default function NoOrganizationPage() {
     queryFn: listPendingEmployeeInvitations,
     enabled: waiting,
   });
+  const workspaces = useQuery({
+    queryKey: ["account-workspaces"],
+    queryFn: () =>
+      supabaseClient ? listAccountWorkspaces(supabaseClient) : [],
+  });
+
+  // The guard answers once, on arrival. Create refetches this list on its way
+  // to onboarding, and the draft it just made must not bounce to the landing.
+  const arrived = useRef(false);
+
+  if (!arrived.current) {
+    // Never claim "belongs nowhere" before the list has answered.
+    if (workspaces.isLoading)
+      return (
+        <PreBizFrame titleId="no-org-title" title="Checking your account" />
+      );
+    // Reached by URL or the back button with businesses: not told to create or
+    // join one. A failed list reads as empty, so the page never traps anyone.
+    const workspaceList = workspaces.data ?? [];
+    if (unfinishedWorkspaces(workspaceList).length > 0)
+      return <Navigate to={accountLandingPath} replace />;
+    if (readyWorkspaces(workspaceList).length > 0)
+      return <Navigate to={organizationSwitcherPath} replace />;
+    arrived.current = true;
+  }
 
   if (waiting && (invitations.data?.length ?? 0) > 0)
     return <Navigate to={accountLandingPath} replace />;
