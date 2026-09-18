@@ -3,7 +3,10 @@ name: CI
 on:
   push:
     branches: [main, "task/**"]
+    # Docs-only pushes used to cancel a running code check (concurrency below).
+    paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -24,5 +27,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # ponytail: concurrency=1 only in CI to avoid load flakiness; local scripts unchanged
+      - run: pnpm run lint --concurrency=1
       - run: pnpm run typecheck --concurrency=1
       - run: pnpm run test --concurrency=1
+      - run: pnpm run build --concurrency=1
