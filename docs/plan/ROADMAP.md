@@ -5,7 +5,7 @@
 Faz planı ve gerekçe: [MVP-PLAN](MVP-PLAN.md). Durum her task'ın kendi dosyasındadır (`tasks/`). Bu dosya yalnızca sıra ve hedef değişince güncellenir.
 
 ## Sıradaki (Faz F0 → F1)
-1. **F0 (kalan, sırayla):** OPS-015 hosted push (kullanıcı `supabase link` adımında), hosted smoke (OPS-010 kapanışı) + Vercel Authentication'ı geri açma, DEBT-001 P0 (fastify yaması, CI paths-ignore+lint+build, ölü paket), OPS-013 hata izleme + tipli hatalar, OPS-014 pg_cron. Beklemede: THEME-005 (buton rolleri) ve UI-LAB-001 (kullanıcı kararı 2026-09-18). OPS-010 hosted push (AUTH-002'nin 2 migration'ı) + smoke, AUTH-004 (owner olmayan üye owner sihirbazına düşüyor), OPS-013 hata izleme, OPS-014 pg_cron.
+1. **F0 (kalan, sırayla):** OPS-015 hosted push (kullanıcı `supabase link` adımında), hosted smoke (OPS-010 kapanışı) + Vercel Authentication'ı geri açma, DEBT-001 P0 (fastify yaması, CI paths-ignore+lint+build, ölü paket), OPS-013 hata izleme + tipli hatalar, OPS-014 pg_cron. Beklemede: THEME-005 (buton rolleri) ve UI-LAB-001 (kullanıcı kararı 2026-09-18).
 2. **F1 ilk grup:** UI-DOC-001, BL-038, BL-048, REQ-AUDIT.
 
 Fazlar sırayla ilerler: F0 → F6 ([MVP-PLAN](MVP-PLAN.md)). Bir faz içindeki task'lar paralel çalışabilir.
