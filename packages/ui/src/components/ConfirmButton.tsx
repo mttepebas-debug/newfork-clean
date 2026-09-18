@@ -62,14 +62,22 @@ export function ConfirmButton({
   const { armed, confirmProps } = useConfirmClick(onConfirm);
 
   return (
-    <Button
-      {...props}
-      {...confirmProps}
-      // While armed the visible label is the name, so the change is announced.
-      aria-label={armed ? undefined : ariaLabel}
-      className={`${className ?? ""}${armed ? " is-armed" : ""}`.trim()}
-    >
-      {armed ? confirmLabel : children}
-    </Button>
+    <>
+      <Button
+        {...props}
+        {...confirmProps}
+        // While armed the visible label is the name.
+        aria-label={armed ? undefined : ariaLabel}
+        className={`${className ?? ""}${armed ? " is-armed" : ""}`.trim()}
+      >
+        {armed ? confirmLabel : children}
+      </Button>
+      {/* A name change on the focused button is not reliably spoken, so the
+          armed state is also announced. Always mounted: a live region must
+          exist before its text changes. `sr-only` comes from the app's CSS. */}
+      <span className="sr-only" role="status">
+        {armed ? confirmLabel : ""}
+      </span>
+    </>
   );
 }

@@ -32,6 +32,22 @@ describe("ConfirmButton", () => {
     ).not.toContain("is-armed");
   });
 
+  it("announces the armed state through a live region", () => {
+    render(
+      <ConfirmButton confirmLabel="Click again to decline" onConfirm={vi.fn()}>
+        Decline
+      </ConfirmButton>,
+    );
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("");
+
+    fireEvent.click(screen.getByRole("button"));
+    expect(status.textContent).toBe("Click again to decline");
+
+    fireEvent.keyDown(screen.getByRole("button"), { key: "Escape" });
+    expect(status.textContent).toBe("");
+  });
+
   it("does not confirm on the second click of a double-click", () => {
     const onConfirm = vi.fn();
     render(
