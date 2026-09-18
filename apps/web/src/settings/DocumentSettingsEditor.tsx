@@ -201,7 +201,13 @@ export function DocumentSettingsEditor({
     >
       <div className="job-editor-title">
         <div>
-          <h2>{documentId ? "Edit document type" : "New document type"}</h2>
+          <h2>
+            {readOnly
+              ? "View document type"
+              : documentId
+                ? "Edit document type"
+                : "New document type"}
+          </h2>
 
           <p>
             {readOnly
@@ -456,7 +462,7 @@ export function DocumentSettingsEditor({
 
             onClick={onClose}
           >
-            Cancel
+            {readOnly ? "Close" : "Cancel"}
           </Button>
 
           {section === "fields" && (
