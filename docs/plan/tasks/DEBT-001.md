@@ -1,5 +1,5 @@
 # DEBT-001 Teknik borç: P0 dilimi (güvenlik yaması, CI kapsamı, lint, ölü paket)
-Status: draft (kullanıcı onayı bekliyor)
+Status: done (P0 dilimi; P1/P2 backlog'da)
 Session: -   Branch: task/debt-p0 (fastify bump zaten commit'li: 341c86c)   Worktree: newfork-wt/debt-p0   DB: -
 Öneri: Sonnet 5, medium. Mekanik işler; her biri küçük ve bağımsız.
 Kaynak: teknik borç denetimi (session "Technical debt audit and refactoring plan", 2026-09-18, salt okunur). Denetimin tamamı o session'ın transcript'inde; buraya yalnız karar ve iş kalemleri yazıldı.
@@ -26,3 +26,11 @@ Risk: `react-hooks` warn açılınca uyarı sayısı yüksek olabilir (kabul; er
 
 ## Notes / Result
 - 2026-09-18: denetim raporu alındı (salt okunur). fastify bump ana checkout'ta commit'siz duruyordu; koordinatör `task/debt-p0` branch'ine taşıdı, main temiz.
+- 2026-09-18 kapanış (koordinatör bu session'da yaptı; kullanıcı "bu session içinde yap" dedi): main c56bf8e, CI yeşil (lint + build adımları dahil).
+  1. fastify `^5.12.5` tek başına yetmedi: `fast-uri` alt bağımlılık olarak 3.1.5 / 4.1.2'de kalıyordu. Root `pnpm.overrides` ile `^3.1.8` / `^4.2.1` sabitlendi. `pnpm audit --prod`: 8 high + 1 moderate → 1 moderate. Kalan moderate `exceljs@4.4.0 > uuid@8.3.2`; advisory v3/v5/v6 bounds check, exceljs yalnız `uuid.v4` kullanıyor → istismar edilebilir değil, exceljs yükseltmesiyle kapanır (backlog).
+  2. ESLint: `no-unused-vars` artık `ignoreRestSiblings` ve `varsIgnorePattern: "^_"` kullanıyor (10 hatanın 9'u alan atlayan destructure'lardı, kod hatası değil). Kalan gerçek ölü kod temizlendi: 5 kullanılmayan import, 1 kullanılmayan yardımcı (`isMissingScheduleDraftError`), 1 deyim olarak yazılmış ternary, 1 kullanılmayan test argümanı.
+  3. `WeeklyPreferencesForm.tsx` içindeki kurulu olmayan kurala ait `eslint-disable` satırı kaldırıldı; yerine niyeti anlatan düz yorum kondu. `eslint-plugin-react-hooks` KURULMADI: yeni bağımlılık kullanıcı onayı ister. Onaylanırsa warn olarak açılmalı.
+  4. CI: `paths-ignore` (`docs/**`, `**/*.md`) eklendi — docs push'u artık çalışan kod koşusunu iptal etmiyor; `lint` ve `build` adımları eklendi.
+  5. `@newfork/scheduling-shared` silindi. Tek canlı parça `toInterval`, `apps/web/src/schedule/lib/shiftInterval.ts`'e testleriyle taşındı; auto-fill skorlayıcı, yerini `schedule-conflicts.ts`'e bırakmış çakışma dedektörü ve format yardımcısının çağıranı yoktu. İki app'ten bağımlılık kaydı düştü. Net −1.930 satır.
+  - Doğrulama (worktree): lint 4/4, build 4/4, test 6/6 (2.266 test), web+api typecheck PASS. Merge sonrası main CI yeşil.
+  - Kalan: P1 (OPS-013 + tipli hatalar, CI'da pgTAP job'ı, Kiosk/Time Entries kararı) ve P2 kalemleri BACKLOG'da.

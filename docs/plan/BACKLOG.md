@@ -91,3 +91,5 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
   - Fırsatçı: bağımlılık major'ları tek parti (vitest 3→5, vite 7→8, react-router 7→8, TypeScript 5.9→7 …); `SchedulePage.tsx` (55 useState + 26 useEffect) parça parça çıkarım; E2E smoke akışını BL-058'in önüne çekme.
 - Documents: migration öncesi published kayıtların `published_at`'i null; listede "-" görünüyor. Backfill istenirse ayrı task (UI-DOC-002 bulgusu).
 - Documents: DB trigger'ı published tanımın düzenlenmesini reddediyor; drawer bu yüzden salt okunur. Published dokümanı doğrudan düzenlemek istenirse ayrı DB task'ı gerekir (UI-DOC-002 bulgusu, kullanıcı mevcut davranışı onayladı).
+- `exceljs@4.4.0 > uuid@8.3.2` moderate advisory: exceljs yalnız `uuid.v4` kullandığı için istismar edilebilir değil; exceljs major yükseltmesiyle kapanır (DEBT-001 P0 kalıntısı).
+- `eslint-plugin-react-hooks` kurulumu kullanıcı onayı bekliyor: kurulunca `exhaustive-deps` ilk kez gerçekten denetlenir (501 web dosyası, yoğun `useEffect`). Warn olarak açılmalı, error değil.

@@ -33,3 +33,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-17 | AUTH-004 | owner kurulumu yarım workspace'te owner olmayan üye owner sihirbazı yerine "Workspace setup in progress" paneli görür | dfe6fb4
 2026-09-18 | UI-DOC-002 | Documents ayar listesi: requirement filtresi, ayrı kolonlar, published için salt okunur drawer | abd79ed
 2026-09-18 | OPS-015 | AUTH-002 migration'ları hosted'a uygulandı; imzalar ve publication filtresi hosted+local doğrulandı | - (kod değişikliği yok)
+2026-09-18 | DEBT-001 P0 | fast-uri zafiyet zinciri kapandı, lint yeşil + CI'a lint/build, docs push'ları CI'ı iptal etmiyor, ölü paket silindi (−1.930 satır) | c56bf8e
