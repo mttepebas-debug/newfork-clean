@@ -36,6 +36,8 @@
 .pb-shell-b {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
+  /* The side panel carries the tint, so the stage stays white to read as separate. */
+  background: var(--theme-surface);
 }
 .pb-shell-b .pb-side {
   position: sticky;
