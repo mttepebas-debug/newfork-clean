@@ -43,6 +43,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | AUTH-004 | Owner kurulumu yarım workspace'te owner olmayan üye owner sihirbazına düşüyor (guard + durum paneli) | done dfe6fb4 |
 | OPS-015 | Hosted push: AUTH-002 migration'ları (052509 hariç) | active; `supabase link` adımı kullanıcıda bekliyor |
 | THEME-005 | Buton rolleri: aksiyon yeşil, vazgeçme beyaz, destructive iki tık (cascade kök düzeltmesi dahil); Workspaces o anki satır highlight | beklemede; kararlar UI-LAB-001 F2 üzerinden |
+| UI-PRE-001 | Business öncesi ekranlar: tek tasarım dili ve sihirbaz mantığı (Faz 1 mockup → D1-D5) | active |
 | UI-LAB-001 | UI Lab (DEV-only): envanter, galeri, Inspector, canlı stil editörü | beklemede (kullanıcı kararı 2026-09-18); branch task/ui-lab-001 @ 482d2c8 |
 | DEBT-001 | Teknik borç P0: fastify yaması, CI paths-ignore+lint+build, ESLint config, ölü paket | taslak; kullanıcı onayı bekliyor |
 | OPS-013 | Hata izleme: Sentry (ücretsiz) + Vercel logları | OPS-010 sonrası |
