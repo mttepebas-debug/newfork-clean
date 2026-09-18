@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@newfork/ui";
-import { Building2, MailCheck } from "lucide-react";
+import { MailCheck } from "lucide-react";
 import { useState } from "react";
 import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -8,7 +7,7 @@ import { accountLandingPath } from "../auth/routeDestinations";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { loadAccountEverLinked, supabaseClient } from "../lib/supabase";
 import { CreateOrganizationButton } from "./CreateOrganizationButton";
-import { PreBizFrame, useDevKit } from "./prebiz/PreBiz";
+import { PreBizFrame } from "./prebiz/PreBiz";
 
 /**
  * The account has nothing open and belongs nowhere. A first visitor is welcomed
@@ -16,9 +15,8 @@ import { PreBizFrame, useDevKit } from "./prebiz/PreBiz";
  * welcomed again.
  */
 export default function NoOrganizationPage() {
-  const { account, signOut } = useAuth();
+  const { account } = useAuth();
   const location = useLocation();
-  const shell = useDevKit();
   // Arriving straight from an answered invitation: the check already happened.
   const [waiting, setWaiting] = useState(
     () =>
@@ -42,160 +40,71 @@ export default function NoOrganizationPage() {
 
   // Never claim "no invitation" before the check has answered.
   if (waiting && invitations.isLoading)
-    // The kit keeps its frame while it checks, so Sign out never disappears.
-    return shell ? (
+    // The frame stays while it checks, so Sign out never disappears.
+    return (
       <PreBizFrame titleId="no-org-title" title="Checking for invitations" />
-    ) : (
-      <main className="auth-loading" aria-label="Checking invitations" />
     );
 
   // Unknown history reads as returning: welcoming someone twice is the worse miss.
   const returning = everLinked.data !== false;
 
-  if (shell) {
-    const ownBusiness = (primary: boolean) => (
-      <CreateOrganizationButton
-        className={`pb-btn pb-btn-block ${primary ? "pb-btn-primary" : "pb-btn-secondary"}`}
-        label="Create your business"
-      />
-    );
-    if (waiting) {
-      return (
-        <PreBizFrame
-          titleId="no-org-title"
-          title="No invitation yet"
-          description={`Nothing has been sent to ${account?.email ?? "this account"} so far — ask your manager to invite this address.`}
-        >
-          {invitations.error ? (
-            <p className="form-error" role="alert">
-              Invitations could not be loaded
-            </p>
-          ) : null}
-          <div className="pb-footer">
-            <button
-              className="pb-btn pb-btn-primary"
-              type="button"
-              disabled={invitations.isFetching}
-              onClick={() => void invitations.refetch()}
-            >
-              {invitations.isFetching ? "Checking" : "Check again"}
-            </button>
-            <button
-              className="pb-btn pb-btn-secondary"
-              type="button"
-              onClick={() => setWaiting(false)}
-            >
-              Back
-            </button>
-          </div>
-          <div className="pb-section">
-            <h2>Your own business</h2>
-            {ownBusiness(false)}
-          </div>
-        </PreBizFrame>
-      );
-    }
+  const ownBusiness = (primary: boolean) => (
+    <CreateOrganizationButton
+      className={`pb-btn pb-btn-block ${primary ? "pb-btn-primary" : "pb-btn-secondary"}`}
+    />
+  );
+  if (waiting) {
     return (
       <PreBizFrame
         titleId="no-org-title"
-        title={returning ? "Welcome back" : "Welcome to Newfork"}
-        description="Start your own business, or join one that invited you."
+        title="No invitation yet"
+        description={`Nothing has been sent to ${account?.email ?? "this account"} so far — ask your manager to invite this address.`}
       >
-        <div className="pb-stack">
-          {ownBusiness(true)}
-          <button
-            className="pb-btn pb-btn-secondary pb-btn-block"
-            type="button"
-            onClick={() => setWaiting(true)}
-          >
-            <MailCheck size={16} aria-hidden /> I have an invitation
-          </button>
-        </div>
-      </PreBizFrame>
-    );
-  }
-
-  if (waiting) {
-    return (
-      <main className="sign-in-page">
-        <section className="sign-in-panel" aria-labelledby="no-org-title">
-          <p className="product-mark">NEWFORK</p>
-          <MailCheck size={28} aria-hidden />
-          <h1 id="no-org-title">No invitation found</h1>
-          <p className="muted">
-            No pending invitation for {account?.email ?? "this account"}. Ask
-            your manager to invite this address, or sign in with the email
-            address the invitation was sent to.
+        {invitations.error ? (
+          <p className="form-error" role="alert">
+            Invitations could not be loaded
           </p>
-          {invitations.error ? (
-            <p className="form-error" role="alert">
-              {invitations.error instanceof Error
-                ? invitations.error.message
-                : "Pending invitations could not be loaded"}
-            </p>
-          ) : null}
-          <CreateOrganizationButton />
-          <div className="auth-recovery-actions">
-            <button
-              className="secondary-button"
-              type="button"
-              disabled={invitations.isFetching}
-              onClick={() => void invitations.refetch()}
-            >
-              {invitations.isFetching ? "Checking" : "Check again"}
-            </button>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => void signOut()}
-            >
-              Switch account
-            </button>
-          </div>
+        ) : null}
+        <div className="pb-footer">
           <button
-            className="text-button"
+            className="pb-btn pb-btn-primary"
+            type="button"
+            disabled={invitations.isFetching}
+            onClick={() => void invitations.refetch()}
+          >
+            {invitations.isFetching ? "Checking" : "Check again"}
+          </button>
+          <button
+            className="pb-btn pb-btn-secondary"
             type="button"
             onClick={() => setWaiting(false)}
           >
             Back
           </button>
-        </section>
-      </main>
+        </div>
+        <div className="pb-section">
+          <h2>Your own business</h2>
+          {ownBusiness(false)}
+        </div>
+      </PreBizFrame>
     );
   }
-
   return (
-    <main className="sign-in-page">
-      <section className="sign-in-panel" aria-labelledby="no-org-title">
-        <p className="product-mark">NEWFORK</p>
-        <Building2 size={28} aria-hidden />
-        <h1 id="no-org-title">
-          {returning ? "Welcome back" : "Welcome to Newfork"}
-        </h1>
-        <p className="muted">
-          {returning
-            ? "This account is not connected to an active or pending organization. You can create a business organization or wait for a new invitation."
-            : "Tell us what brings you here. Set up your own business organization, or join the one that invited you."}
-        </p>
-        <CreateOrganizationButton />
-        <Button
-          className="secondary"
+    <PreBizFrame
+      titleId="no-org-title"
+      title={returning ? "Welcome back" : "Welcome to Newfork"}
+      description="Start your own business, or join one that invited you."
+    >
+      <div className="pb-stack">
+        {ownBusiness(true)}
+        <button
+          className="pb-btn pb-btn-secondary pb-btn-block"
           type="button"
           onClick={() => setWaiting(true)}
         >
-          <MailCheck size={16} aria-hidden />
-          {returning
-            ? "I'm waiting for another invitation"
-            : "I have an invite for a workspace"}
-        </Button>
-        <button
-          className="text-button"
-          type="button"
-          onClick={() => void signOut()}
-        >
-          Sign out
+          <MailCheck size={16} aria-hidden /> I have an invitation
         </button>
-      </section>
-    </main>
+      </div>
+    </PreBizFrame>
   );
 }

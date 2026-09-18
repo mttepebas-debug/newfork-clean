@@ -12,7 +12,7 @@ import {
 } from "../lib/supabase";
 
 // Owner onboarding step 1 asks for the real name, so nothing is asked here.
-const draftWorkspaceName = "New organization";
+const draftWorkspaceName = "New business";
 
 /**
  * Starts employer onboarding in one click. An unfinished setup is resumed
@@ -21,7 +21,7 @@ const draftWorkspaceName = "New organization";
 export function CreateOrganizationButton({
   className = "",
   existingDraft = null,
-  label = "Create your business organization",
+  label = "Create your business",
 }: {
   readonly className?: string;
   readonly existingDraft?: WorkspaceSummary | null;
@@ -49,12 +49,9 @@ export function CreateOrganizationButton({
       ]);
       await refresh();
       navigate("/onboarding", { replace: true });
-    } catch (startError: unknown) {
-      setError(
-        startError instanceof Error
-          ? startError.message
-          : "Organization could not be created",
-      );
+    } catch {
+      // The server's wording is not for the user: one fixed sentence.
+      setError("Business could not be created");
       setBusy(false);
     }
   };

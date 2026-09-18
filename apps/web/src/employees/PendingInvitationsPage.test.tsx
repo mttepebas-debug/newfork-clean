@@ -62,13 +62,13 @@ function LocationProbe() {
   return <output aria-label="Current path">{location.pathname}</output>;
 }
 
-function renderPage(entry = "/invitations/pending") {
+function renderPage() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[entry]}>
+      <MemoryRouter initialEntries={["/invitations/pending"]}>
         <Routes>
           <Route
             path="/invitations/pending"
@@ -116,14 +116,13 @@ describe("PendingInvitationsPage", () => {
     );
     vi.mocked(requestWorkspaceClosure).mockResolvedValue(undefined);
     vi.mocked(leaveMyOnboarding).mockResolvedValue(undefined);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   it("shows active invitations without showing a person name", async () => {
     renderPage();
 
     expect(
-      await screen.findByRole("heading", { name: "Active invitation found" }),
+      await screen.findByRole("heading", { name: "You have an invitation" }),
     ).toBeTruthy();
     expect(await screen.findByText("Northstar")).toBeTruthy();
     expect(screen.queryByText(/Alex|Taylor|Employee One/i)).toBeNull();
@@ -132,11 +131,7 @@ describe("PendingInvitationsPage", () => {
   it("is a hard stop for an invited account without any organization", async () => {
     renderPage();
 
-    expect(
-      await screen.findByText(
-        "Join the organization that invited you. Declining cannot be undone.",
-      ),
-    ).toBeTruthy();
+    expect(await screen.findByText("Declining can't be undone.")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Not now" })).toBeNull();
   });
 
@@ -145,9 +140,7 @@ describe("PendingInvitationsPage", () => {
 
     await screen.findByText("Northstar");
     expect(
-      screen.queryByRole("button", {
-        name: "Create your business organization",
-      }),
+      screen.queryByRole("button", { name: "Create your business" }),
     ).toBeNull();
   });
 
@@ -160,9 +153,7 @@ describe("PendingInvitationsPage", () => {
     renderPage();
 
     fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Create your business organization",
-      }),
+      await screen.findByRole("button", { name: "Create your business" }),
     );
 
     await waitFor(() =>
@@ -242,6 +233,10 @@ describe("PendingInvitationsPage", () => {
         name: "Decline onboarding for Northstar",
       }),
     );
+    expect(leaveMyOnboarding).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Click again to decline" }),
+    );
 
     await waitFor(() =>
       expect(leaveMyOnboarding).toHaveBeenCalledWith(
@@ -266,6 +261,10 @@ describe("PendingInvitationsPage", () => {
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "Discard setup for Northstar" }),
+    );
+    expect(requestWorkspaceClosure).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Click again to delete" }),
     );
 
     await waitFor(() =>
@@ -297,13 +296,9 @@ describe("PendingInvitationsPage", () => {
     );
   });
 
-  it("kit path (?shell): declining takes two clicks and no native confirm", async () => {
-    vi.mocked(window.confirm).mockClear();
-    renderPage("/invitations/pending?shell=b");
+  it("declines an invitation only on the second click", async () => {
+    renderPage();
 
-    expect(
-      await screen.findByRole("heading", { name: "You have an invitation" }),
-    ).toBeTruthy();
     fireEvent.click(
       await screen.findByRole("button", {
         name: "Decline invitation to Northstar",
@@ -313,27 +308,6 @@ describe("PendingInvitationsPage", () => {
 
     fireEvent.click(
       screen.getByRole("button", { name: "Click again to decline" }),
-    );
-    await waitFor(() =>
-      expect(declinePendingEmployeeInvitation).toHaveBeenCalledWith(
-        "46000000-0000-4000-8000-000000000001",
-        expect.anything(),
-      ),
-    );
-    expect(window.confirm).not.toHaveBeenCalled();
-  });
-
-  it("requires explicit confirmation before declining", async () => {
-    renderPage();
-
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Decline invitation to Northstar",
-      }),
-    );
-
-    expect(window.confirm).toHaveBeenCalledWith(
-      "Declining this invitation cannot be undone. You will need a new invitation to join later.",
     );
     await waitFor(() =>
       expect(declinePendingEmployeeInvitation).toHaveBeenCalledWith(

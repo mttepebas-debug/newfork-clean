@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { KeyRound } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link, Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -17,11 +16,7 @@ import {
   supabaseClient,
 } from "../lib/supabase";
 import { CreateOrganizationButton } from "../shell/CreateOrganizationButton";
-import {
-  PreBizFrame,
-  Section,
-  useDevKit,
-} from "../shell/prebiz/PreBiz";
+import { PreBizFrame, Section } from "../shell/prebiz/PreBiz";
 import { listPendingEmployeeInvitations } from "./employee-data";
 import { InvitationRow } from "./InvitationRow";
 import { UnfinishedSetupRow } from "./UnfinishedSetupRow";
@@ -31,9 +26,8 @@ import { UnfinishedSetupRow } from "./UnfinishedSetupRow";
  * invitations and unfinished setups — and forwards on when there are none.
  */
 export default function PendingInvitationsPage() {
-  const { context, refresh, signOut } = useAuth();
+  const { context, refresh } = useAuth();
   const navigate = useNavigate();
-  const shell = useDevKit();
   const invitations = useQuery({
     queryKey: ["account-pending-invitations"],
     queryFn: listPendingEmployeeInvitations,
@@ -78,7 +72,13 @@ export default function PendingInvitationsPage() {
 
   if (nothingOpen) {
     if (ready.length === 1)
-      return <main className="auth-loading" aria-label="Loading workspace" />;
+      // Still inside the frame while it lands, so the way out stays on screen.
+      return (
+        <PreBizFrame
+          titleId="pending-invites-title"
+          title="Checking your account"
+        />
+      );
     if (ready.length === 0)
       return (
         <Navigate
@@ -93,128 +93,65 @@ export default function PendingInvitationsPage() {
 
   const inviteOnly = unfinished.length === 0;
 
-  if (shell) {
-    // Past the redirects above, two empty lists mean a refetch is still in flight.
-    const loading =
-      invitations.isLoading ||
-      workspaces.isLoading ||
-      (pending.length === 0 && unfinished.length === 0);
-    return (
-      <PreBizFrame
-        titleId="pending-invites-title"
-        // The heading only claims what the lists below actually show.
-        title={
-          loading
-            ? "Checking your account"
-            : inviteOnly
-              ? pending.length === 1
-                ? "You have an invitation"
-                : `You have ${pending.length} invitations`
-              : "Pick up where you left off"
-        }
-        description={
-          loading
-            ? undefined
-            : inviteOnly
-              ? "Declining can't be undone."
-              : "Your progress is saved."
-        }
-      >
-        {invitations.error ? (
-          <p className="form-error" role="alert">
-            Invitations could not be loaded
-          </p>
-        ) : null}
-        {pending.length > 0 ? (
-          <Section title="Invitations">
-            {pending.map((invitation) => (
-              <InvitationRow key={invitation.id} invitation={invitation} kit />
-            ))}
-          </Section>
-        ) : null}
-        {unfinished.length > 0 ? (
-          <Section title="In progress">
-            {unfinished.map((workspace) => (
-              <UnfinishedSetupRow key={workspace.id} workspace={workspace} kit />
-            ))}
-          </Section>
-        ) : null}
-        {!loading && pending.length === 0 && !employerDraft ? (
-          <div className="pb-section">
-            <h2>Your own business</h2>
-            <CreateOrganizationButton
-              className="pb-btn pb-btn-secondary pb-btn-block"
-              label="Create your business"
-            />
-          </div>
-        ) : null}
-        {deferPath ? (
-          <div className="pb-footer">
-            <Link
-              className="pb-btn pb-btn-secondary"
-              to={deferPath}
-              replace
-              onClick={() =>
-                window.sessionStorage.setItem(invitationsCheckedStorageKey, "1")
-              }
-            >
-              Not now
-            </Link>
-          </div>
-        ) : null}
-      </PreBizFrame>
-    );
-  }
-
+  // Past the redirects above, two empty lists mean a refetch is still in flight.
+  const loading =
+    invitations.isLoading ||
+    workspaces.isLoading ||
+    (pending.length === 0 && unfinished.length === 0);
   return (
-    <main className="sign-in-page">
-      <section className="sign-in-panel" aria-labelledby="pending-invites-title">
-        <p className="product-mark">NEWFORK</p>
-        <KeyRound size={28} aria-hidden />
-        <h1 id="pending-invites-title">
-          {inviteOnly ? "Active invitation found" : "Continue where you left off"}
-        </h1>
-        <p className="muted">
-          {inviteOnly
-            ? deferPath
-              ? "You have been invited to join another organization. Join now or decide later. Declining cannot be undone."
-              : "Join the organization that invited you. Declining cannot be undone."
-            : "Pick up an unfinished setup, answer an invitation, or start your own organization."}
+    <PreBizFrame
+      titleId="pending-invites-title"
+      // The heading only claims what the lists below actually show.
+      title={
+        loading
+          ? "Checking your account"
+          : inviteOnly
+            ? pending.length === 1
+              ? "You have an invitation"
+              : `You have ${pending.length} invitations`
+            : "Pick up where you left off"
+      }
+      description={
+        loading
+          ? undefined
+          : inviteOnly
+            ? "Declining can't be undone."
+            : "Your progress is saved."
+      }
+    >
+      {invitations.error ? (
+        <p className="form-error" role="alert">
+          Invitations could not be loaded
         </p>
-
-        {invitations.isLoading || workspaces.isLoading ? (
-          <p className="settings-state" role="status">
-            Loading invitations...
-          </p>
-        ) : null}
-        {invitations.error ? (
-          <p className="form-error" role="alert">
-            {invitations.error instanceof Error
-              ? invitations.error.message
-              : "Pending invitations could not be loaded"}
-          </p>
-        ) : null}
-
-        <div className="workspace-list" role="list" aria-label="Invitations">
+      ) : null}
+      {pending.length > 0 ? (
+        <Section title="Invitations">
           {pending.map((invitation) => (
-            <InvitationRow key={invitation.id} invitation={invitation} />
+            <InvitationRow key={invitation.id} invitation={invitation} kit />
           ))}
+        </Section>
+      ) : null}
+      {unfinished.length > 0 ? (
+        <Section title="In progress">
           {unfinished.map((workspace) => (
-            <UnfinishedSetupRow key={workspace.id} workspace={workspace} />
+            <UnfinishedSetupRow key={workspace.id} workspace={workspace} kit />
           ))}
+        </Section>
+      ) : null}
+      {/*
+        An open invitation is the account's to answer before it owns a
+        business, and an existing draft is already offered by its own row.
+      */}
+      {!loading && pending.length === 0 && !employerDraft ? (
+        <div className="pb-section">
+          <h2>Your own business</h2>
+          <CreateOrganizationButton className="pb-btn pb-btn-secondary pb-btn-block" />
         </div>
-
-        {/*
-          An open invitation is the account's to answer before it owns a
-          workspace, and an existing draft is already offered by its own row.
-        */}
-        {pending.length === 0 && !employerDraft ? (
-          <CreateOrganizationButton className="secondary" />
-        ) : null}
-
-        {deferPath ? (
+      ) : null}
+      {deferPath ? (
+        <div className="pb-footer">
           <Link
-            className="text-button"
+            className="pb-btn pb-btn-secondary"
             to={deferPath}
             replace
             onClick={() =>
@@ -223,15 +160,8 @@ export default function PendingInvitationsPage() {
           >
             Not now
           </Link>
-        ) : null}
-        <button
-          className="text-button"
-          type="button"
-          onClick={() => void signOut()}
-        >
-          Sign out
-        </button>
-      </section>
-    </main>
+        </div>
+      ) : null}
+    </PreBizFrame>
   );
 }

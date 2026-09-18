@@ -1,19 +1,8 @@
 import { useId, type ReactNode } from "react";
 import type { WorkspaceSummary } from "@newfork/shared";
 import { LogOut } from "lucide-react";
-import { useSearchParams } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
 import "./prebiz.css";
-
-/**
- * UI-PRE-001 Faz 1: the kit renders on the real pages only in DEV behind
- * `?shell=b` (the two-panel frame the user picked over the top-bar one).
- * Slice D1 makes it the only path and deletes this switch.
- */
-export function useDevKit(): boolean {
-  const [params] = useSearchParams();
-  return import.meta.env.DEV && params.get("shell") === "b";
-}
 
 /** The account and its way out. Every screen before a business shows this one block. */
 export function AccountBlock() {

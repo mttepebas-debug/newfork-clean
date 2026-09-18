@@ -82,7 +82,7 @@ describe("NoOrganizationPage", () => {
       await screen.findByRole("heading", { name: "Welcome to Newfork" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "I have an invite for a workspace" }),
+      screen.getByRole("button", { name: "I have an invitation" }),
     ).toBeTruthy();
   });
 
@@ -93,9 +93,7 @@ describe("NoOrganizationPage", () => {
       await screen.findByRole("heading", { name: "Welcome back" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", {
-        name: "I'm waiting for another invitation",
-      }),
+      screen.getByRole("button", { name: "I have an invitation" }),
     ).toBeTruthy();
   });
 
@@ -103,9 +101,7 @@ describe("NoOrganizationPage", () => {
     renderPage();
 
     fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Create your business organization",
-      }),
+      await screen.findByRole("button", { name: "Create your business" }),
     );
 
     await waitFor(() =>
@@ -120,21 +116,17 @@ describe("NoOrganizationPage", () => {
     renderPage();
 
     fireEvent.click(
-      await screen.findByRole("button", {
-        name: "I'm waiting for another invitation",
-      }),
+      await screen.findByRole("button", { name: "I have an invitation" }),
     );
 
     expect(
-      await screen.findByRole("heading", { name: "No invitation found" }),
+      await screen.findByRole("heading", { name: "No invitation yet" }),
     ).toBeTruthy();
     expect(
-      screen.getByText(/No pending invitation for cook@example\.test\./),
+      screen.getByText(/Nothing has been sent to cook@example\.test so far/),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", {
-        name: "Create your business organization",
-      }),
+      screen.getByRole("button", { name: "Create your business" }),
     ).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
@@ -146,9 +138,7 @@ describe("NoOrganizationPage", () => {
   it("checks again and opens a newly arrived invitation", async () => {
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", {
-        name: "I'm waiting for another invitation",
-      }),
+      await screen.findByRole("button", { name: "I have an invitation" }),
     );
     await screen.findByRole("button", { name: "Check again" });
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([
@@ -170,16 +160,14 @@ describe("NoOrganizationPage", () => {
     );
   });
 
-  it("switches account from the no invitation state", async () => {
+  it("can sign out from the no invitation state", async () => {
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", {
-        name: "I'm waiting for another invitation",
-      }),
+      await screen.findByRole("button", { name: "I have an invitation" }),
     );
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Switch account" }),
-    );
+    // Wait for the state itself: the checking frame has a Sign out too.
+    await screen.findByRole("heading", { name: "No invitation yet" });
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalledTimes(1);
   });
 
