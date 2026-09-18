@@ -40,6 +40,7 @@ import { setTabWorkspaceId } from "../lib/supabase";
 import {
   AccountBlock,
   BusinessRow,
+  PreBizFrame,
   Section,
   StatusBadge,
   type BadgeTone,
@@ -95,32 +96,37 @@ export default function EmployeeOnboardingPage() {
   }, [finalizeActivation, onboarding.data?.case_status]);
 
   if (!validWorkspaceId) return <Navigate to="/welcome" replace />;
+  // Loading, failure and activation keep the frame, so Sign out never disappears.
   if (onboarding.isLoading)
     return (
-      <main
-        className="employee-onboarding-loading"
-        aria-label="Loading onboarding"
+      <PreBizFrame
+        titleId="onboarding-status-title"
+        title="Loading your onboarding"
       />
     );
   if (onboarding.error || !onboarding.data)
     return (
-      <main className="employee-onboarding-error">
-        <CircleAlert size={24} aria-hidden />
-        <h1>Onboarding is unavailable</h1>
-        <p>{errorMessage(onboarding.error)}</p>
-        <Button type="button" onClick={() => onboarding.refetch()}>
-          Try again
-        </Button>
-      </main>
+      <PreBizFrame
+        titleId="onboarding-status-title"
+        title="Your onboarding didn't load"
+        description="Try again, or ask your manager to check your invitation."
+      >
+        <div className="pb-footer">
+          <Button
+            className="pb-btn pb-btn-primary"
+            type="button"
+            onClick={() => onboarding.refetch()}
+          >
+            Try again
+          </Button>
+        </div>
+      </PreBizFrame>
     );
 
   const model = onboarding.data;
   if (model.case_status === "approved")
     return (
-      <main
-        className="employee-onboarding-loading"
-        aria-label="Activating workspace"
-      />
+      <PreBizFrame titleId="onboarding-status-title" title="Finishing up" />
     );
   const requirementId = location.pathname.split("/").at(-1) ?? "";
   const requirement = model.requirements.find(

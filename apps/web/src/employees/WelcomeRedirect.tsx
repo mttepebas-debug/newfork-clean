@@ -3,6 +3,7 @@ import { Navigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { appLandingPath } from "../auth/routeDestinations";
 import { listAccountWorkspaces, supabaseClient } from "../lib/supabase";
+import { PreBizFrame } from "../shell/prebiz/PreBiz";
 
 /** "/welcome" without a workspace: find the organization whose onboarding is open. */
 export default function WelcomeRedirect() {
@@ -13,7 +14,8 @@ export default function WelcomeRedirect() {
       supabaseClient ? listAccountWorkspaces(supabaseClient) : [],
   });
   if (workspaces.isLoading)
-    return <main className="auth-loading" aria-label="Loading workspace" />;
+    // The frame stays while it checks, so Sign out never disappears.
+    return <PreBizFrame titleId="welcome-title" title="Checking your account" />;
   const onboarding = (workspaces.data ?? []).filter(
     (workspace) => workspace.status === "pending",
   );

@@ -191,7 +191,11 @@ describe("EmployeeOnboardingPage", () => {
       </QueryClientProvider>,
     );
     fireEvent.click(await screen.findByRole("button", { name: "Save" }));
-    expect(await screen.findByText("Onboarding refresh offline")).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "Try again, or ask your manager to check your invitation.",
+      ),
+    ).toBeTruthy();
     expect(screen.getByLabelText("Current test route").textContent).toBe(
       "/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability",
     );

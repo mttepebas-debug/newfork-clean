@@ -1,21 +1,28 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AcceptInvitationPage from "./AcceptInvitationPage";
 import {
   acceptEmployeeInvitation,
   previewEmployeeInvitation,
 } from "./employee-data";
 
-const signOut = vi.hoisted(() => vi.fn(async () => undefined));
+// Mutable, so a test can render the page signed out.
+const auth = vi.hoisted(() => ({
+  authenticated: true,
+  ready: true,
+  signOut: vi.fn(async () => undefined),
+}));
 
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({
-    authenticated: true,
-    ready: true,
-    signOut,
-  }),
+  useAuth: () => auth,
 }));
 
 vi.mock("./employee-data", () => ({
@@ -57,8 +64,10 @@ function renderPage() {
 }
 
 describe("AcceptInvitationPage", () => {
+  afterEach(cleanup);
   beforeEach(() => {
     vi.clearAllMocks();
+    auth.authenticated = true;
     vi.mocked(previewEmployeeInvitation).mockResolvedValue({
       workspaceName: "Northstar",
       emailHint: "ne**********@example.test",
@@ -69,23 +78,32 @@ describe("AcceptInvitationPage", () => {
     );
   });
 
-  it("shows a masked-email switch-account flow for wrong authenticated accounts", async () => {
+  it("names the invited address for a wrong account and leaves Sign out as the way out", async () => {
     renderPage();
 
     fireEvent.click(
       await screen.findByRole("button", { name: "Accept invitation" }),
     );
 
-    expect(
-      await screen.findByText(/This invitation is for ne\*+@example\.test/i),
-    ).toBeTruthy();
+    const alert = await screen.findByText(
+      /This invitation is for ne\*+@example\.test/i,
+    );
+    expect(alert.getAttribute("role")).toBe("alert");
+    // The server's own sentence only picks the state; it is never printed.
+    expect(screen.queryByText(/does not match/i)).toBeNull();
     expect(
       screen.queryByRole("button", { name: "Accept invitation" }),
     ).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Switch account" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
 
-    await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends a signed-out visitor to sign-in", async () => {
+    auth.authenticated = false;
+    renderPage();
+
     await waitFor(() =>
       expect(screen.getByLabelText("Current path").textContent).toBe(
         "/sign-in",
