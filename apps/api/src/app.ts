@@ -6,7 +6,7 @@ import {
   type WorkspaceRole,
   workspaceRoleSchema,
 } from "@newfork/shared";
-import Fastify from "fastify";
+import Fastify, { type FastifyError } from "fastify";
 import { createDocumentLifecycleService } from "./employees/document-lifecycle-service";
 import { registerDocumentLifecycleRoutes } from "./employees/document-lifecycle-routes";
 import { registerTimezoneSuggestionRoutes } from "./settings/timezone-suggestion";
@@ -235,10 +235,43 @@ const invitationActionParamsSchema = z.object({
   invitationId: z.string().uuid(),
 });
 
+/**
+ * Pino ships with Fastify, so this adds no dependency. Tests stay silent; every
+ * other environment writes structured JSON that Vercel collects.
+ */
+function apiLoggerOptions() {
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) return false;
+  return {
+    level: process.env.LOG_LEVEL ?? "info",
+    // Bearer tokens and cookies must never reach the log sink.
+    redact: {
+      paths: ["req.headers.authorization", "req.headers.cookie"],
+      remove: true,
+    },
+  };
+}
+
 export function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({
-    logger: false,
+    logger: apiLoggerOptions(),
   });
+
+  // An unhandled throw used to return a bare 500 that vanished without a trace.
+  // Log it against the request id and hand the same id to the caller so a bug
+  // report can be matched to a log line. Internals never reach the response.
+  app.setErrorHandler((error: FastifyError, request, reply) => {
+    const statusCode = error.statusCode ?? 500;
+    if (statusCode >= 500) request.log.error({ err: error }, "request failed");
+    else request.log.warn({ err: error, statusCode }, "request rejected");
+    return reply.status(statusCode).send({
+      error: statusCode >= 500 ? "Internal server error" : error.message,
+      requestId: request.id,
+    });
+  });
+
+  app.setNotFoundHandler((_request, reply) =>
+    reply.status(404).send({ error: "Not found" }),
+  );
   const allowDevelopmentIdentity =
     options.allowDevelopmentIdentity ?? process.env.NODE_ENV !== "production";
   const environmentContextResolver =
