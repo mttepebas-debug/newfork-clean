@@ -8,7 +8,12 @@ import {
   declinePendingEmployeeInvitation,
   listPendingEmployeeInvitations,
 } from "./employee-data";
-import { listAccountWorkspaces } from "../lib/supabase";
+import { getMyOnboarding, leaveMyOnboarding } from "./onboarding-data";
+import {
+  createOwnerWorkspace,
+  listAccountWorkspaces,
+  requestWorkspaceClosure,
+} from "../lib/supabase";
 
 vi.mock("./employee-data", () => ({
   acceptPendingEmployeeInvitation: vi.fn(),
@@ -16,24 +21,28 @@ vi.mock("./employee-data", () => ({
   listPendingEmployeeInvitations: vi.fn(),
 }));
 
+vi.mock("./onboarding-data", () => ({
+  getMyOnboarding: vi.fn(),
+  leaveMyOnboarding: vi.fn(),
+}));
+
 vi.mock("../lib/supabase", () => ({
+  createOwnerWorkspace: vi.fn(),
   invitationsCheckedStorageKey: "newfork.invitationsChecked",
   listAccountWorkspaces: vi.fn(),
+  requestWorkspaceClosure: vi.fn(),
+  setTabWorkspaceId: vi.fn(),
   supabaseClient: {},
 }));
 
 const authState = vi.hoisted(() => ({
-  value: { context: null as unknown, refresh: vi.fn() },
+  value: { context: null as unknown, refresh: vi.fn(), signOut: vi.fn() },
 }));
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => authState.value,
 }));
 
-const ownerContext = {
-  membership: { role: "owner" },
-  permissions: ["workspace.read"],
-};
 const northstar = {
   id: "26000000-0000-4000-8000-000000000001",
   name: "Northstar",
@@ -41,6 +50,11 @@ const northstar = {
   status: "active" as const,
   isActive: true,
   onboarding: { status: "complete" as const, currentStep: 4 },
+};
+const ownerContext = {
+  workspace: { id: northstar.id },
+  membership: { role: "owner" },
+  permissions: ["workspace.read"],
 };
 
 function LocationProbe() {
@@ -67,6 +81,7 @@ function renderPage() {
           />
           <Route path="/welcome" element={<LocationProbe />} />
           <Route path="/welcome/:workspaceId" element={<LocationProbe />} />
+          <Route path="/onboarding" element={<LocationProbe />} />
           <Route path="/app/workspace" element={<LocationProbe />} />
           <Route path="/organization-switcher" element={<LocationProbe />} />
           <Route path="/no-organization" element={<LocationProbe />} />
@@ -96,6 +111,11 @@ describe("PendingInvitationsPage", () => {
     );
     vi.mocked(declinePendingEmployeeInvitation).mockResolvedValue(undefined);
     vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
+    vi.mocked(createOwnerWorkspace).mockResolvedValue(
+      "26000000-0000-4000-8000-000000000009",
+    );
+    vi.mocked(requestWorkspaceClosure).mockResolvedValue(undefined);
+    vi.mocked(leaveMyOnboarding).mockResolvedValue(undefined);
     vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
@@ -117,10 +137,39 @@ describe("PendingInvitationsPage", () => {
         "Join the organization that invited you. Declining cannot be undone.",
       ),
     ).toBeTruthy();
-    expect(
-      screen.queryByRole("link", { name: "Start my own organization" }),
-    ).toBeNull();
     expect(screen.queryByRole("link", { name: "Not now" })).toBeNull();
+  });
+
+  it("hides business creation while an invitation is unanswered", async () => {
+    renderPage();
+
+    await screen.findByText("Northstar");
+    expect(
+      screen.queryByRole("button", {
+        name: "Create your business organization",
+      }),
+    ).toBeNull();
+  });
+
+  it("offers business creation once no invitation is left to answer", async () => {
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      { ...northstar, role: "employee", status: "pending", isActive: false },
+    ]);
+
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Create your business organization",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Current path").textContent).toBe(
+        "/onboarding",
+      ),
+    );
   });
 
   it("lets a member postpone the invitation for this tab session", async () => {
@@ -138,15 +187,94 @@ describe("PendingInvitationsPage", () => {
     );
   });
 
-  it("lets an account that is mid-onboarding elsewhere return to it", async () => {
+  it("postpones to the switcher when several organizations are open", async () => {
+    authState.value.context = ownerContext;
     vi.mocked(listAccountWorkspaces).mockResolvedValue([
-      { ...northstar, role: "employee", status: "pending", isActive: false },
+      northstar,
+      {
+        ...northstar,
+        id: "26000000-0000-4000-8000-000000000002",
+        name: "Second",
+        isActive: false,
+      },
     ]);
     renderPage();
 
     fireEvent.click(await screen.findByRole("link", { name: "Not now" }));
 
-    expect(screen.getByLabelText("Current path").textContent).toBe("/welcome");
+    expect(screen.getByLabelText("Current path").textContent).toBe(
+      "/organization-switcher",
+    );
+  });
+
+  it("lists an unfinished employee onboarding instead of forcing it", async () => {
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      { ...northstar, role: "employee", status: "pending", isActive: false },
+    ]);
+
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Continue onboarding for Northstar",
+      }),
+    );
+
+    expect(screen.getByLabelText("Current path").textContent).toBe(
+      "/welcome/26000000-0000-4000-8000-000000000001",
+    );
+  });
+
+  it("leaves an unfinished employee onboarding behind on decline", async () => {
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      { ...northstar, role: "employee", status: "pending", isActive: false },
+    ]);
+    vi.mocked(getMyOnboarding).mockResolvedValue({
+      revision: 7,
+    } as unknown as Awaited<ReturnType<typeof getMyOnboarding>>);
+
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Decline onboarding for Northstar",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(leaveMyOnboarding).toHaveBeenCalledWith(
+        "26000000-0000-4000-8000-000000000001",
+        7,
+      ),
+    );
+  });
+
+  it("lists an unfinished employer setup and can discard it", async () => {
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      { ...northstar, onboarding: { status: "incomplete", currentStep: 2 } },
+    ]);
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Continue setup for Northstar",
+      }),
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Discard setup for Northstar" }),
+    );
+
+    await waitFor(() =>
+      expect(requestWorkspaceClosure).toHaveBeenCalledWith(expect.anything(), {
+        workspaceId: "26000000-0000-4000-8000-000000000001",
+        mode: "immediate",
+        typedWorkspaceName: "Northstar",
+      }),
+    );
   });
 
   it("accepts an invitation by id and sends the user to onboarding", async () => {
@@ -231,25 +359,11 @@ describe("PendingInvitationsPage", () => {
     );
   });
 
-  it("sends accepted pending members to employee onboarding when no invitation remains", async () => {
-    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
-    vi.mocked(listAccountWorkspaces).mockResolvedValue([
-      {
-        id: "26000000-0000-4000-8000-000000000001",
-        name: "Northstar",
-        role: "employee",
-        status: "pending",
-        isActive: false,
-        onboarding: { status: "complete", currentStep: 4 },
-      },
-    ]);
-
+  it("can sign out from the landing", async () => {
     renderPage();
 
-    await waitFor(() =>
-      expect(screen.getByLabelText("Current path").textContent).toBe(
-        "/welcome",
-      ),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+
+    expect(authState.value.signOut).toHaveBeenCalledTimes(1);
   });
 });

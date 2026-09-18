@@ -3,44 +3,59 @@ import { KeyRound } from "lucide-react";
 import { useEffect } from "react";
 import { Link, Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { appLandingPath } from "../auth/routeDestinations";
+import {
+  appLandingPath,
+  deferredLandingPath,
+  organizationSwitcherPath,
+  noOrganizationPath,
+  readyWorkspaces,
+  unfinishedWorkspaces,
+} from "../auth/routeDestinations";
 import {
   invitationsCheckedStorageKey,
   listAccountWorkspaces,
   supabaseClient,
 } from "../lib/supabase";
+import { CreateOrganizationButton } from "../shell/CreateOrganizationButton";
 import { listPendingEmployeeInvitations } from "./employee-data";
 import { InvitationRow } from "./InvitationRow";
+import { UnfinishedSetupRow } from "./UnfinishedSetupRow";
 
+/**
+ * Where every sign-in lands. It shows the decisions the account still owes —
+ * invitations and unfinished setups — and forwards on when there are none.
+ */
 export default function PendingInvitationsPage() {
-  const { context, refresh } = useAuth();
+  const { context, refresh, signOut } = useAuth();
   const navigate = useNavigate();
   const invitations = useQuery({
     queryKey: ["account-pending-invitations"],
     queryFn: listPendingEmployeeInvitations,
   });
-  const noInvitations = invitations.isSuccess && invitations.data.length === 0;
   const workspaces = useQuery({
     queryKey: ["account-workspaces"],
     queryFn: () =>
       supabaseClient ? listAccountWorkspaces(supabaseClient) : [],
   });
+
+  const workspaceList = workspaces.data ?? [];
+  const pending = invitations.data ?? [];
+  const unfinished = unfinishedWorkspaces(workspaceList);
+  const ready = readyWorkspaces(workspaceList);
+  const settled =
+    (invitations.isSuccess || invitations.isError) &&
+    (workspaces.isSuccess || workspaces.isError);
+  const nothingOpen = settled && pending.length === 0 && unfinished.length === 0;
   // An account that can work elsewhere, or is mid-onboarding elsewhere, may
   // postpone the decision.
-  const deferPath = context
-    ? appLandingPath(context)
-    : workspaces.data?.some((workspace) => workspace.status === "pending")
-      ? "/welcome"
-      : null;
-  const activeCount =
-    noInvitations && workspaces.isSuccess
-      ? workspaces.data.filter((workspace) => workspace.status === "active")
-          .length
-      : null;
+  const deferPath = deferredLandingPath(context, workspaceList);
+  const employerDraft =
+    unfinished.find((workspace) => workspace.status === "active") ?? null;
 
   // Nothing left to decide and exactly one organization: land in it.
+  const landInOnly = nothingOpen && ready.length === 1;
   useEffect(() => {
-    if (activeCount !== 1) return;
+    if (!landInOnly) return;
     let live = true;
     void refresh().then((resolved) => {
       if (live) navigate(appLandingPath(resolved), { replace: true });
@@ -48,34 +63,33 @@ export default function PendingInvitationsPage() {
     return () => {
       live = false;
     };
-  }, [activeCount, navigate, refresh]);
+  }, [landInOnly, navigate, refresh]);
 
-  if (noInvitations && (workspaces.isSuccess || workspaces.error)) {
-    if (activeCount === 1)
+  if (nothingOpen) {
+    if (ready.length === 1)
       return <main className="auth-loading" aria-label="Loading workspace" />;
-    if (
-      activeCount === 0 &&
-      workspaces.data?.some((workspace) => workspace.status === "pending")
-    )
-      return <Navigate to="/welcome" replace />;
-    if (workspaces.data?.length === 0)
-      return <Navigate to="/no-organization" replace />;
-    return <Navigate to="/organization-switcher" replace />;
+    if (ready.length === 0) return <Navigate to={noOrganizationPath} replace />;
+    return <Navigate to={organizationSwitcherPath} replace />;
   }
 
+  const inviteOnly = unfinished.length === 0;
   return (
     <main className="sign-in-page">
       <section className="sign-in-panel" aria-labelledby="pending-invites-title">
         <p className="product-mark">NEWFORK</p>
         <KeyRound size={28} aria-hidden />
-        <h1 id="pending-invites-title">Active invitation found</h1>
+        <h1 id="pending-invites-title">
+          {inviteOnly ? "Active invitation found" : "Continue where you left off"}
+        </h1>
         <p className="muted">
-          {deferPath
-            ? "You have been invited to join another organization. Join now or decide later. Declining cannot be undone."
-            : "Join the organization that invited you. Declining cannot be undone."}
+          {inviteOnly
+            ? deferPath
+              ? "You have been invited to join another organization. Join now or decide later. Declining cannot be undone."
+              : "Join the organization that invited you. Declining cannot be undone."
+            : "Pick up an unfinished setup, answer an invitation, or start your own organization."}
         </p>
 
-        {invitations.isLoading ? (
+        {invitations.isLoading || workspaces.isLoading ? (
           <p className="settings-state" role="status">
             Loading invitations...
           </p>
@@ -89,10 +103,21 @@ export default function PendingInvitationsPage() {
         ) : null}
 
         <div className="workspace-list" role="list" aria-label="Invitations">
-          {(invitations.data ?? []).map((invitation) => (
+          {pending.map((invitation) => (
             <InvitationRow key={invitation.id} invitation={invitation} />
           ))}
+          {unfinished.map((workspace) => (
+            <UnfinishedSetupRow key={workspace.id} workspace={workspace} />
+          ))}
         </div>
+
+        {/*
+          An open invitation is the account's to answer before it owns a
+          workspace, and an existing draft is already offered by its own row.
+        */}
+        {pending.length === 0 && !employerDraft ? (
+          <CreateOrganizationButton className="secondary" />
+        ) : null}
 
         {deferPath ? (
           <Link
@@ -106,6 +131,13 @@ export default function PendingInvitationsPage() {
             Not now
           </Link>
         ) : null}
+        <button
+          className="text-button"
+          type="button"
+          onClick={() => void signOut()}
+        >
+          Sign out
+        </button>
       </section>
     </main>
   );

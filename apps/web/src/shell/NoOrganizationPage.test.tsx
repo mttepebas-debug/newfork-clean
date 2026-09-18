@@ -4,16 +4,29 @@ import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
+import { createOwnerWorkspace, loadAccountEverLinked } from "../lib/supabase";
 import NoOrganizationPage from "./NoOrganizationPage";
 
 const signOut = vi.fn();
+const refresh = vi.fn();
 
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({ account: { email: "cook@example.test" }, signOut }),
+  useAuth: () => ({
+    account: { email: "cook@example.test" },
+    refresh,
+    signOut,
+  }),
 }));
 
 vi.mock("../employees/employee-data", () => ({
   listPendingEmployeeInvitations: vi.fn(),
+}));
+
+vi.mock("../lib/supabase", () => ({
+  createOwnerWorkspace: vi.fn(),
+  loadAccountEverLinked: vi.fn(),
+  setTabWorkspaceId: vi.fn(),
+  supabaseClient: {},
 }));
 
 function renderWithQuery(children: ReactNode) {
@@ -27,94 +40,113 @@ function renderWithQuery(children: ReactNode) {
 
 function LocationProbe() {
   const location = useLocation();
-  return (
-    <output aria-label="Current path">
-      {location.pathname}
-      {(location.state as { openCreate?: boolean } | null)?.openCreate
-        ? " openCreate"
-        : ""}
-    </output>
+  return <output aria-label="Current path">{location.pathname}</output>;
+}
+
+function renderPage() {
+  return renderWithQuery(
+    <MemoryRouter initialEntries={["/no-organization"]}>
+      <Routes>
+        <Route
+          path="/no-organization"
+          element={
+            <>
+              <NoOrganizationPage />
+              <LocationProbe />
+            </>
+          }
+        />
+        <Route path="/onboarding" element={<LocationProbe />} />
+        <Route path="/invitations/pending" element={<LocationProbe />} />
+      </Routes>
+    </MemoryRouter>,
   );
 }
 
 describe("NoOrganizationPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    refresh.mockResolvedValue(null);
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
+    vi.mocked(loadAccountEverLinked).mockResolvedValue(true);
+    vi.mocked(createOwnerWorkspace).mockResolvedValue(
+      "26000000-0000-4000-8000-000000000001",
+    );
   });
 
-  it("offers business creation without adding it to the organization switcher", async () => {
-    renderWithQuery(
-      <MemoryRouter initialEntries={["/no-organization"]}>
-        <Routes>
-          <Route
-            path="/no-organization"
-            element={
-              <>
-                <NoOrganizationPage />
-                <LocationProbe />
-              </>
-            }
-          />
-          <Route path="/account/workspaces" element={<LocationProbe />} />
-          <Route path="/invitations/pending" element={<LocationProbe />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+  it("welcomes an account that has never been linked to an organization", async () => {
+    vi.mocked(loadAccountEverLinked).mockResolvedValue(false);
+    renderPage();
 
     expect(
-      screen.getByRole("heading", { name: "No organization found" }),
+      await screen.findByRole("heading", { name: "Welcome to Newfork" }),
     ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "I have an invite for a workspace" }),
+    ).toBeTruthy();
+  });
+
+  it("does not welcome an account that has lost its organizations", async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { name: "Welcome back" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: "I'm waiting for another invitation",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("starts employer onboarding directly, without an account detour", async () => {
+    renderPage();
+
     fireEvent.click(
-      screen.getByRole("link", {
+      await screen.findByRole("button", {
         name: "Create your business organization",
       }),
     );
-    expect(screen.getByLabelText("Current path").textContent).toBe(
-      "/account/workspaces openCreate",
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Current path").textContent).toBe(
+        "/onboarding",
+      ),
     );
+    expect(createOwnerWorkspace).toHaveBeenCalledTimes(1);
   });
 
-  it("lets the user wait for another invitation", async () => {
-    renderWithQuery(
-      <MemoryRouter initialEntries={["/no-organization"]}>
-        <Routes>
-          <Route path="/no-organization" element={<NoOrganizationPage />} />
-          <Route path="/invitations/pending" element={<LocationProbe />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+  it("reports that no invitation is waiting", async () => {
+    renderPage();
 
     fireEvent.click(
-      screen.getByRole("button", {
+      await screen.findByRole("button", {
         name: "I'm waiting for another invitation",
       }),
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Waiting for an invitation" }),
+      await screen.findByRole("heading", { name: "No invitation found" }),
     ).toBeTruthy();
     expect(
       screen.getByText(/No pending invitation for cook@example\.test\./),
     ).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: "Create your business organization",
+      }),
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(
-      screen.getByRole("heading", { name: "No organization found" }),
+      screen.getByRole("heading", { name: "Welcome back" }),
     ).toBeTruthy();
   });
 
   it("checks again and opens a newly arrived invitation", async () => {
-    renderWithQuery(
-      <MemoryRouter initialEntries={["/no-organization"]}>
-        <Routes>
-          <Route path="/no-organization" element={<NoOrganizationPage />} />
-          <Route path="/invitations/pending" element={<LocationProbe />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderPage();
     fireEvent.click(
-      screen.getByRole("button", {
+      await screen.findByRole("button", {
         name: "I'm waiting for another invitation",
       }),
     );
@@ -138,20 +170,24 @@ describe("NoOrganizationPage", () => {
     );
   });
 
-  it("switches account from the waiting state", async () => {
-    renderWithQuery(
-      <MemoryRouter initialEntries={["/no-organization"]}>
-        <NoOrganizationPage />
-      </MemoryRouter>,
-    );
+  it("switches account from the no invitation state", async () => {
+    renderPage();
     fireEvent.click(
-      screen.getByRole("button", {
+      await screen.findByRole("button", {
         name: "I'm waiting for another invitation",
       }),
     );
     fireEvent.click(
       await screen.findByRole("button", { name: "Switch account" }),
     );
+    expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("can sign out from the landing itself", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+
     expect(signOut).toHaveBeenCalledTimes(1);
   });
 });

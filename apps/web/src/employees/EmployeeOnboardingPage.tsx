@@ -29,6 +29,7 @@ import { Navigate, useLocation, useNavigate, useParams } from "react-router";
 import { DocumentReviewDrawer } from "../documents/DocumentReviewDrawer";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { useAuth } from "../auth/AuthContext";
+import { accountLandingPath } from "../auth/routeDestinations";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { setTabWorkspaceId } from "../lib/supabase";
 import {
@@ -166,12 +167,10 @@ export default function EmployeeOnboardingPage() {
           </button>
         </nav>
         <div className="employee-onboarding-reset">
-          <button
-            type="button"
-            onClick={() => navigate("/organization-switcher")}
-          >
+          {/* Back to the account landing, which re-checks what is still open. */}
+          <button type="button" onClick={() => navigate(accountLandingPath)}>
             <Building2 size={16} aria-hidden />
-            <span>Switch organization</span>
+            <span>Back</span>
           </button>
           <button type="button" onClick={() => void signOut()}>
             <LogOut size={16} aria-hidden />

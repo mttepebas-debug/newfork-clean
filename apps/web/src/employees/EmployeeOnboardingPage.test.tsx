@@ -468,7 +468,7 @@ describe("EmployeeOnboardingPage", () => {
     expect(screen.getByLabelText(/^Phone/)).toHaveProperty("value", "4155550123");
   });
 
-  it("lets the employee switch organizations without abandoning onboarding", async () => {
+  it("lets the employee step back to the account landing without abandoning onboarding", async () => {
     render(
       <QueryClientProvider
         client={
@@ -482,19 +482,17 @@ describe("EmployeeOnboardingPage", () => {
               element={<EmployeeOnboardingPage />}
             />
             <Route
-              path="/organization-switcher"
-              element={<output>Organization switcher</output>}
+              path="/invitations/pending"
+              element={<output>Account landing</output>}
             />
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>,
     );
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: /switch organization/i }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: /^back$/i }));
 
-    expect(await screen.findByText("Organization switcher")).toBeTruthy();
+    expect(await screen.findByText("Account landing")).toBeTruthy();
   });
 
   it("shows the rejected profile reason on the correction step", async () => {

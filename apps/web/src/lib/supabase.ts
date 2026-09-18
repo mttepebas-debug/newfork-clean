@@ -161,6 +161,20 @@ export async function resolveWorkspaceContext(
   }
 }
 
+/**
+ * True once the account has ever held a workspace membership, including one it
+ * has since lost. A new visitor is welcomed; a returning one is not.
+ */
+export async function loadAccountEverLinked(
+  client: SupabaseClient,
+): Promise<boolean> {
+  const { count, error } = await client
+    .from("account_organization_history")
+    .select("user_id", { count: "exact", head: true });
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
+}
+
 export async function loadAccountProfile(
   client: SupabaseClient,
   user: User,

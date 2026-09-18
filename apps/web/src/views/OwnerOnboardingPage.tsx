@@ -23,6 +23,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { accountLandingPath } from "../auth/routeDestinations";
 import {
   loadEmployeeReferenceData,
   saveEmployee,
@@ -489,6 +490,14 @@ export default function OwnerOnboardingPage() {
           <Building2 size={20} aria-hidden /> Newfork
         </span>
         <div className="onboarding-header-actions">
+          {/* Back to the account landing, where this draft stays available. */}
+          <Button
+            className="secondary-button compact-button"
+            type="button"
+            onClick={() => navigate(accountLandingPath)}
+          >
+            <ChevronLeft size={16} aria-hidden /> Back
+          </Button>
           {canSwitchOrganization ? (
             <Button
               className="secondary-button compact-button"
