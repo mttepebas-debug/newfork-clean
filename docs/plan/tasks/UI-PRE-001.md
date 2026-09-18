@@ -38,3 +38,8 @@ Risk: kapsam büyük (~10 ekran) → dilimleme şart; THEME-005 ile 6 ortak dosy
 
 ## Notes / Result
 - 2026-09-18: Faz 0 tamam (ConfirmButton main'de, a4330f3). Session Faz 1'e başlayabilir.
+- 2026-09-18 Faz 1 ara durum (worker branch `task/ui-pre-001`, henüz push yok):
+  - **Kullanıcı kararı:** iniş çerçevesi **B = her yerde iki panel**. A varyantı silindi (000e695). `?docs=1|2` (belgeler tek adım / Documents + Policies) hazırlanıyor.
+  - **Ortak pakete dokunuldu (koordinatör onayladı):** `ConfirmButton` çift tıklamanın ikinci tıkını onay sayıyordu; kullanıcı "Click again to…" etiketini görmeden eylem çalışıyordu. Düzeltme 144e763: `event.detail > 1` ise dönüyor, basılı Enter'ın tekrarı engelleniyor. Kit `window.confirm` yerine bu butona güvendiği için açık kapatılmadan ilerlenemezdi. THEME-005 rebase'inde bu dosya main'deki hâliyle alınır.
+  - Aynı bileşende iki bulgu: (a) silahlı durum ekran okuyucuya duyurulmuyor → **bu dilimde düzeltilecek** (erişilebilirlik temeli, testiyle); (b) 3,2 sn süre → **dokunulmuyor**, kullanıcının 2026-09-17 kararı, blur ve Escape zaten söndürüyor.
+  - `DocumentReviewDrawer`'a geriye uyumlu tek opsiyonel prop (`hideHeader`) eklenecek; uygulama içi Documents ekranı değişmez, raporda kanıtlanacak.
