@@ -1,5 +1,5 @@
 # UI-DOC-002 Documents settings liste UI düzeni
-Status: active
+Status: review (branch pushed, koordinatör merge bekliyor)
 Session: ceeb830c   Branch: task/ui-doc-002   Worktree: newfork-wt/ui-doc-002   DB: -
 
 Goal: `/app/settings/documents` listesinde filtre, column düzeni ve satır etkileşimi kullanıcı isteğine göre düzeltilsin.
@@ -30,3 +30,8 @@ Test plan: DocumentsSettingsPage.test.tsx + DocumentSettingsEditor.test.tsx vite
 Risk: sort key değişimi mevcut testleri kırar; grid column sayısı artınca dar ekran taşması.
 
 ## Notes / Result
+- Commits: 1ec3222 (filtre + columnlar + row kilidi), becd047 (read-only drawer başlığı), cfc2335 (dar ekranda Description column'u).
+- Doğrulama: `pnpm.cmd --filter @newfork/web typecheck` PASS; `vitest run src/settings/` 20 dosya / 114 test PASS; 5557'de Meyhouse owner oturumuyla göz kontrolü (filtre 3 değer, 4 column, published satır normal renkte + salt okunur drawer, draft satır düzenlenebilir).
+- Published column yalnızca `publication_status='published'` iken dolu. Migration öncesi legacy published kayıtların `published_at`'i null olduğu için onlarda `-` görünüyor; yeni publish sonrası dolacak.
+- Republish zamanı kanıtı kod okumadan: `20260916052509_document_publication_initial.sql` publish'te `published_at=now()`, unpublish'te alanı bırakıyor. Canlı republish denenmedi (paylaşılan local DB'yi değiştirirdi).
+- Kapsam dışı bulgu: DB trigger published tanımı düzenlemeyi hâlâ reddediyor; drawer bu yüzden salt okunur. Published dokümanı canlı düzenlemek istenirse ayrı bir DB task'ı gerekir.
