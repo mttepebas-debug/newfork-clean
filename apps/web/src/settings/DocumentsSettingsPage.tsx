@@ -208,6 +208,7 @@ export default function DocumentsSettingsPage() {
       <button
         type="button"
         className="job-sort-button"
+        data-column={key}
         aria-label={`Sort by ${label}`}
         aria-pressed={selected}
         onClick={() =>
@@ -431,7 +432,7 @@ export default function DocumentsSettingsPage() {
                     </span>
                   </button>
                   <span
-                    className="job-department-cell"
+                    className="job-department-cell document-description-cell"
                     title={item.description}
                   >
                     {item.description || "No description"}

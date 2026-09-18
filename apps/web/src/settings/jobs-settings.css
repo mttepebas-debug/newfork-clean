@@ -1471,6 +1471,28 @@
     minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(88px, 0.4fr)
     minmax(120px, 0.6fr) 32px;
 }
+/* Two settings sidebars leave the catalog under ~500px below this width, so
+   Description yields before the columns collide. */
+@media (max-width: 1200px) {
+  .document-catalog-settings-page .document-catalog-row {
+    grid-template-columns:
+      minmax(0, 1fr) minmax(88px, 0.4fr) minmax(120px, 0.6fr)
+      32px;
+  }
+  .document-catalog-settings-page .job-sort-button[data-column="description"],
+  .document-catalog-settings-page .document-description-cell {
+    display: none;
+  }
+  .document-catalog-settings-page
+    .job-column-headings.document-catalog-row
+    .job-sort-button:first-child {
+    padding-left: 0;
+  }
+  .document-catalog-settings-page .job-column-headings .job-sort-button {
+    min-width: 0;
+    overflow: hidden;
+  }
+}
 
 .document-catalog-settings-page .job-catalog-row,
 .acknowledgement-page .job-catalog-row {
