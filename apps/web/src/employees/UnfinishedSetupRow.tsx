@@ -8,15 +8,8 @@ import {
   setTabWorkspaceId,
   supabaseClient,
 } from "../lib/supabase";
-import { BusinessRow, StatusBadge } from "../shell/prebiz/PreBiz";
+import { BusinessRow, StatusBadge, roleLabel } from "../shell/prebiz/PreBiz";
 import { getMyOnboarding, leaveMyOnboarding } from "./onboarding-data";
-
-const roleLabel: Record<WorkspaceSummary["role"], string> = {
-  owner: "Owner",
-  admin: "Admin",
-  manager: "Manager",
-  employee: "Employee",
-};
 
 /**
  * A setup the account started and never finished. An employee case is left

@@ -109,6 +109,9 @@
 .pb-row:last-child {
   border-bottom: 0;
 }
+.pb-row[aria-current="true"] {
+  background: var(--theme-selected);
+}
 .pb-row-text {
   display: grid;
   min-width: 0;
@@ -132,6 +135,7 @@
 .pb-row-actions {
   display: flex;
   flex: 0 0 auto;
+  align-items: center;
   gap: 8px;
 }
 

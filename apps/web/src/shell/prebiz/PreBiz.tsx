@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+import type { WorkspaceSummary } from "@newfork/shared";
 import { LogOut } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
@@ -73,6 +74,14 @@ export function StatusBadge({
   return <span className={`pb-badge pb-badge-${tone}`}>{children}</span>;
 }
 
+/** The role as a row shows it. One map, so every screen says the same word. */
+export const roleLabel: Record<WorkspaceSummary["role"], string> = {
+  owner: "Owner",
+  admin: "Admin",
+  manager: "Manager",
+  employee: "Employee",
+};
+
 export function Section({
   title,
   children,
@@ -80,10 +89,12 @@ export function Section({
   readonly title: string;
   readonly children: ReactNode;
 }) {
+  // A page can hold several lists; the heading names each one for a screen reader.
+  const headingId = useId();
   return (
     <div className="pb-section">
-      <h2>{title}</h2>
-      <div className="pb-list" role="list">
+      <h2 id={headingId}>{title}</h2>
+      <div className="pb-list" role="list" aria-labelledby={headingId}>
         {children}
       </div>
     </div>
@@ -96,16 +107,23 @@ export function BusinessRow({
   role,
   badge,
   error,
+  current,
   children,
 }: {
   readonly name: string;
   readonly role?: string;
   readonly badge?: ReactNode;
   readonly error?: string | null;
+  /** The business this tab is working in; the row is tinted and announced as current. */
+  readonly current?: boolean;
   readonly children: ReactNode;
 }) {
   return (
-    <div className="pb-row" role="listitem">
+    <div
+      className="pb-row"
+      role="listitem"
+      aria-current={current ? "true" : undefined}
+    >
       <div className="pb-row-text">
         <strong title={name}>{name}</strong>
         <span className="pb-row-meta">
