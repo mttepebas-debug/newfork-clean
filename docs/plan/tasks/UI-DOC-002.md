@@ -1,5 +1,5 @@
 # UI-DOC-002 Documents settings liste UI düzeni
-Status: review (branch pushed, koordinatör merge bekliyor)
+Status: done
 Session: ceeb830c   Branch: task/ui-doc-002   Worktree: newfork-wt/ui-doc-002   DB: -
 
 Goal: `/app/settings/documents` listesinde filtre, column düzeni ve satır etkileşimi kullanıcı isteğine göre düzeltilsin.
@@ -35,3 +35,5 @@ Risk: sort key değişimi mevcut testleri kırar; grid column sayısı artınca 
 - Published column yalnızca `publication_status='published'` iken dolu. Migration öncesi legacy published kayıtların `published_at`'i null olduğu için onlarda `-` görünüyor; yeni publish sonrası dolacak.
 - Republish zamanı kanıtı kod okumadan: `20260916052509_document_publication_initial.sql` publish'te `published_at=now()`, unpublish'te alanı bırakıyor. Canlı republish denenmedi (paylaşılan local DB'yi değiştirirdi).
 - Kapsam dışı bulgu: DB trigger published tanımı düzenlemeyi hâlâ reddediyor; drawer bu yüzden salt okunur. Published dokümanı canlı düzenlemek istenirse ayrı bir DB task'ı gerekir.
+- 2026-09-18 kapanış (koordinatör): main abd79ed (ff-merge, push). Requirement filtresi (All/Required/Conditional/Optional), 4 kolon (Document name | Description | Status | Published), published satır artık tıklanabilir ve salt okunur drawer açıyor, ≤1200px'te Description gizleniyor. Worker: web typecheck PASS, `src/settings/` 20 dosya / 114 test PASS, browser doğrulaması yapıldı.
+- 2026-09-18: merge sonrası main CI YEŞİL (abd79ed).
