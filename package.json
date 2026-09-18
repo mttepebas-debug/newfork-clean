@@ -13,6 +13,12 @@
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset --local"
   },
+  "pnpm": {
+    "overrides": {
+      "fast-uri@>=3.0.0 <4": "^3.1.8",
+      "fast-uri@>=4": "^4.2.1"
+    }
+  },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@typescript-eslint/parser": "^8.40.0",
