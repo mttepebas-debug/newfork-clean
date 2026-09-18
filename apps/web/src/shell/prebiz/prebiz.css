@@ -27,6 +27,9 @@
   height: 100vh;
   flex-direction: column;
   justify-content: space-between;
+  /* A wizard fills the panel: on a short screen it scrolls instead of hiding the ways out. */
+  gap: 18px;
+  overflow-y: auto;
   padding: 28px 22px;
   border-right: 1px solid var(--theme-border);
   background: var(--theme-surface-muted);
@@ -223,6 +226,117 @@
   margin-top: 28px;
 }
 
+/* Wizard: the same frame, the side panel also says where you are. */
+.pb-side-group {
+  display: grid;
+  min-width: 0;
+  gap: 18px;
+}
+.pb-context {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  margin-top: 10px;
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+.pb-context strong {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pb-progress {
+  display: grid;
+  gap: 8px;
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.pb-progress [role="progressbar"] {
+  overflow: hidden;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--theme-border);
+}
+.pb-progress [role="progressbar"] span {
+  display: block;
+  height: 100%;
+  background: var(--theme-accent);
+}
+.pb-progress p {
+  margin: 0;
+}
+.pb-steps {
+  display: grid;
+  gap: 4px;
+}
+.pb-step {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--theme-muted-strong);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.pb-step:hover {
+  background: var(--theme-surface);
+}
+.pb-step-number {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 50%;
+  background: var(--theme-surface);
+  font-size: 11px;
+  font-weight: 700;
+}
+.pb-step.is-done .pb-step-number {
+  border-color: var(--theme-success);
+  color: var(--theme-success);
+}
+.pb-step.is-active {
+  background: var(--theme-selected);
+  color: var(--theme-accent-strong);
+  font-weight: 700;
+}
+.pb-step.is-active .pb-step-number {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.pb-step-label {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A wizard step is a form, not a notice: wider, and it starts higher. */
+.pb-stage-wide {
+  width: min(100% - 48px, 760px);
+  padding: 48px 0 72px;
+}
+/* The step heading spaces itself with its own grid gap. */
+.pb-stage-wide h1 {
+  margin: 0;
+}
+/* Grid children stretch by default; these keep their own width. */
+.pb-stage-wide .onboarding-step > .pb-btn,
+.pb-stage-wide .onboarding-step > .pb-badge {
+  justify-self: start;
+}
+
 @media (max-width: 720px) {
   .pb {
     grid-template-columns: 1fr;
@@ -233,6 +347,8 @@
     position: static;
     height: auto;
     flex-direction: row;
+    /* At 320px the two exits do not fit beside the brand; they drop to a second row. */
+    flex-wrap: wrap;
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
@@ -259,5 +375,15 @@
   }
   .pb-row-actions .pb-btn {
     flex: 1;
+  }
+  /* The wizard bar keeps brand, progress, the account e-mail and the two ways out. */
+  .pb-context,
+  .pb-steps {
+    display: none;
+  }
+  .pb-side-group:last-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 }

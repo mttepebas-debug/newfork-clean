@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -634,5 +635,93 @@ describe("EmployeeOnboardingPage", () => {
 
     expect(await screen.findByText("Welcome redirect")).toBeTruthy();
     expect(getMyOnboarding).not.toHaveBeenCalled();
+  });
+
+  describe("documents grouping mockup (?docs)", () => {
+    // The switch is kept in sessionStorage; it must not reach the other tests.
+    beforeEach(() => sessionStorage.clear());
+    afterEach(() => sessionStorage.clear());
+
+    const renderMode = async (mode: string) => {
+      render(
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
+          <MemoryRouter
+            initialEntries={[
+              `/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile?docs=${mode}`,
+            ]}
+          >
+            <OnboardingRoute />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      return within(
+        await screen.findByRole("navigation", { name: "Onboarding steps" }),
+      );
+    };
+
+    it("counts every listed step, and a conditional document is not optional", async () => {
+      vi.mocked(getMyOnboarding).mockResolvedValue({
+        ...onboarding,
+        requirements: [
+          ...onboarding.requirements,
+          {
+            // The server sends conditional documents with required=false but
+            // still counts them and blocks "Submit for review" on them.
+            ...onboarding.requirements[0]!,
+            id: "ab930000-0000-4000-8000-000000000005",
+            kind: "document",
+            title: "Work permit",
+            required: false,
+            document_mode: "conditional",
+          },
+        ],
+      });
+
+      const nav = await renderMode("1");
+      expect(nav.getByRole("button", { name: "Documents" })).toBeTruthy();
+      expect(nav.queryByRole("button", { name: /optional/i })).toBeNull();
+      expect(
+        screen.getByRole("progressbar", { name: "Steps done" }).getAttribute(
+          "aria-valuemax",
+        ),
+      ).toBe(String(nav.getAllByRole("button").length));
+    });
+
+    it("groups documents and policies into steps instead of listing each one", async () => {
+      vi.mocked(getMyOnboarding).mockResolvedValue({
+        ...onboarding,
+        requirements: [
+          ...onboarding.requirements,
+          {
+            ...onboarding.requirements[0]!,
+            id: "ab930000-0000-4000-8000-000000000003",
+            kind: "document",
+            title: "Food handler card",
+          },
+          {
+            ...onboarding.requirements[0]!,
+            id: "ab930000-0000-4000-8000-000000000004",
+            kind: "acknowledgement",
+            title: "Team handbook",
+          },
+        ],
+      });
+
+      const two = await renderMode("2");
+      expect(two.getByRole("button", { name: "Documents" })).toBeTruthy();
+      expect(two.getByRole("button", { name: "Policies" })).toBeTruthy();
+      expect(two.queryByText("Food handler card")).toBeNull();
+      expect(two.queryByText("Team handbook")).toBeNull();
+      cleanup();
+
+      const one = await renderMode("1");
+      expect(one.getByRole("button", { name: "Documents" })).toBeTruthy();
+      expect(one.queryByRole("button", { name: "Policies" })).toBeNull();
+      expect(one.queryByText("Team handbook")).toBeNull();
+    });
   });
 });

@@ -24,13 +24,26 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { Navigate, useLocation, useNavigate, useParams } from "react-router";
+import {
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router";
 import { DocumentReviewDrawer } from "../documents/DocumentReviewDrawer";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { useAuth } from "../auth/AuthContext";
 import { accountLandingPath } from "../auth/routeDestinations";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { setTabWorkspaceId } from "../lib/supabase";
+import {
+  AccountBlock,
+  BusinessRow,
+  Section,
+  StatusBadge,
+  type BadgeTone,
+} from "../shell/prebiz/PreBiz";
 import {
   getMyOnboarding,
   saveMyOnboardingProfile,
@@ -49,6 +62,7 @@ export default function EmployeeOnboardingPage() {
   const navigateRequirement = (path: string) => navigate(at(path));
   const queryClient = useQueryClient();
   const { refresh, signOut } = useAuth();
+  const docsMode = useDevDocsMode();
   const onboarding = useQuery({
     queryKey: ["my-employee-onboarding", workspaceId],
     queryFn: () => getMyOnboarding(workspaceId),
@@ -112,6 +126,73 @@ export default function EmployeeOnboardingPage() {
   const requirement = model.requirements.find(
     (item) => item.id === requirementId,
   );
+  // UI-PRE-001 mockup: without ?docs these stay empty/undefined, so the stage
+  // below renders exactly what it did before.
+  const docsSteps = docsMode ? docsStepsFor(docsMode, model.requirements) : [];
+  const docsIndex = docsSteps.find(
+    (step) => step.title && step.path === pathname,
+  );
+  const docsParent = docsSteps.find(
+    (step) => requirement && step.items.includes(requirement),
+  );
+  const docsBack = docsParent && {
+    label: docsParent.label,
+    go: () => navigateRequirement(docsParent.path),
+  };
+
+  const stage =
+    pathname === "/welcome" ? (
+      <WelcomeStep
+        model={model}
+        onContinue={() => navigate(at(model.first_actionable_path))}
+      />
+    ) : pathname === "/welcome/profile" ? (
+      <ProfileStep model={model} onSaved={continueAfterSave} />
+    ) : pathname === "/welcome/availability" ? (
+      <AvailabilityStep
+        key={`${model.workspace_id}:${model.employee_id}`}
+        model={model}
+        onSaved={continueAfterSave}
+      />
+    ) : pathname === "/welcome/review" ? (
+      <ReviewStep model={model} onSaved={continueAfterSave} />
+    ) : pathname.includes("/documents/") && requirement?.kind === "document" ? (
+      <DocumentStep
+        model={model}
+        requirement={requirement}
+        onSaved={continueAfterSave}
+        back={docsBack}
+      />
+    ) : pathname.includes("/acknowledgements/") &&
+      requirement?.kind === "acknowledgement" ? (
+      <DocumentStep
+        model={model}
+        requirement={requirement}
+        onSaved={continueAfterSave}
+        back={docsBack}
+      />
+    ) : docsIndex ? (
+      <DocsGroupStep
+        step={docsIndex}
+        onOpen={navigateRequirement}
+        nextPath={model.first_actionable_path}
+      />
+    ) : (
+      <Navigate to={at(model.first_actionable_path)} replace />
+    );
+
+  if (docsMode)
+    return (
+      <DocsShell
+        model={model}
+        steps={docsSteps}
+        pathname={pathname}
+        onOpen={navigateRequirement}
+        onExit={() => navigate(accountLandingPath)}
+      >
+        {stage}
+      </DocsShell>
+    );
 
   return (
     <main className="employee-onboarding-shell">
@@ -177,41 +258,294 @@ export default function EmployeeOnboardingPage() {
           </button>
         </div>
       </aside>
-      <section className="employee-onboarding-stage">
-        {pathname === "/welcome" ? (
-          <WelcomeStep
-            model={model}
-            onContinue={() => navigate(at(model.first_actionable_path))}
-          />
-        ) : pathname === "/welcome/profile" ? (
-          <ProfileStep model={model} onSaved={continueAfterSave} />
-        ) : pathname === "/welcome/availability" ? (
-          <AvailabilityStep
-            key={`${model.workspace_id}:${model.employee_id}`}
-            model={model}
-            onSaved={continueAfterSave}
-          />
-        ) : pathname === "/welcome/review" ? (
-          <ReviewStep model={model} onSaved={continueAfterSave} />
-        ) : pathname.includes("/documents/") &&
-          requirement?.kind === "document" ? (
-          <DocumentStep
-            model={model}
-            requirement={requirement}
-            onSaved={continueAfterSave}
-          />
-        ) : pathname.includes("/acknowledgements/") &&
-          requirement?.kind === "acknowledgement" ? (
-          <DocumentStep
-            model={model}
-            requirement={requirement}
-            onSaved={continueAfterSave}
-          />
-        ) : (
-          <Navigate to={at(model.first_actionable_path)} replace />
-        )}
-      </section>
+      <section className="employee-onboarding-stage">{stage}</section>
     </main>
+  );
+}
+
+const docsModeKey = "ui-pre-001.docs";
+
+/**
+ * UI-PRE-001 Faz 1: how documents and policies are grouped, DEV only.
+ * `?docs=1` one step, `?docs=2` two steps, `?docs=0` off. The choice is kept in
+ * sessionStorage because every navigation here rebuilds a bare pathname and
+ * ReviewStep does a full reload, so the param alone is gone after one click.
+ */
+function useDevDocsMode(): "1" | "2" | null {
+  const [params] = useSearchParams();
+  if (!import.meta.env.DEV) return null;
+  const param = params.get("docs");
+  const fromUrl = param === "1" || param === "2" ? param : null;
+  try {
+    if (fromUrl) sessionStorage.setItem(docsModeKey, fromUrl);
+    else if (param === "0") sessionStorage.removeItem(docsModeKey);
+    else {
+      const stored = sessionStorage.getItem(docsModeKey);
+      if (stored === "1" || stored === "2") return stored;
+    }
+  } catch {
+    // Storage is blocked: the param still works for the page it is on.
+  }
+  return fromUrl;
+}
+
+interface OnboardingStep {
+  readonly label: string;
+  readonly path: string;
+  readonly items: readonly EmployeeOnboardingRequirement[];
+  /** Only a group has an index page, so only a group has its heading. */
+  readonly title?: string;
+  readonly copy?: string;
+}
+
+function docsStepsFor(
+  mode: "1" | "2",
+  requirements: readonly EmployeeOnboardingRequirement[],
+): OnboardingStep[] {
+  const step = (
+    label: string,
+    path: string,
+    kinds: readonly EmployeeOnboardingRequirement["kind"][],
+    heading?: { readonly title: string; readonly copy: string },
+  ): OnboardingStep => ({
+    label,
+    path,
+    items: requirements.filter((item) => kinds.includes(item.kind)),
+    ...heading,
+  });
+  const groups =
+    mode === "1"
+      ? [
+          step("Documents", "/welcome/documents", ["document", "acknowledgement"], {
+            title: "Your documents",
+            copy: "Open each one to upload it or to read and acknowledge it.",
+          }),
+        ]
+      : [
+          step("Documents", "/welcome/documents", ["document"], {
+            title: "Your documents",
+            copy: "Open each document to upload it.",
+          }),
+          step("Policies", "/welcome/policies", ["acknowledgement"], {
+            title: "Policies to read",
+            copy: "Open each policy to read and acknowledge it.",
+          }),
+        ];
+  return [
+    step("Profile", "/welcome/profile", ["profile"]),
+    ...[
+      ...groups,
+      step("Availability", "/welcome/availability", ["availability"]),
+    ].filter((item) => item.items.length > 0),
+    step("Review", "/welcome/review", []),
+  ];
+}
+
+function requirementDone(item: EmployeeOnboardingRequirement): boolean {
+  return item.status === "completed" || item.status === "awaiting_review";
+}
+
+/**
+ * What the server counts: required items, and conditional documents. Those
+ * arrive with required=false but still block "Submit for review".
+ */
+function counts(item: EmployeeOnboardingRequirement): boolean {
+  return item.required || item.document_mode === "conditional";
+}
+
+/** A conditional document is also settled once the employee said why it comes later. */
+function itemDone(item: EmployeeOnboardingRequirement): boolean {
+  return (
+    requirementDone(item) ||
+    (item.document_mode === "conditional" &&
+      Boolean(item.conditional_reason?.trim()) &&
+      item.status !== "rejected")
+  );
+}
+
+function stepOptional(step: OnboardingStep): boolean {
+  return step.items.length > 0 && !step.items.some(counts);
+}
+
+/** Every listed step counts, so the number matches what the panel shows. */
+function stepDone(step: OnboardingStep, submitted: boolean): boolean {
+  if (step.path === "/welcome/review") return submitted;
+  const counted = step.items.filter(counts);
+  const pool = counted.length > 0 ? counted : step.items;
+  return pool.length > 0 && pool.every(itemDone);
+}
+
+function DocsShell({
+  model,
+  steps,
+  pathname,
+  onOpen,
+  onExit,
+  children,
+}: {
+  readonly model: EmployeeOnboarding;
+  readonly steps: readonly OnboardingStep[];
+  readonly pathname: string;
+  readonly onOpen: (path: string) => void;
+  readonly onExit: () => void;
+  readonly children: ReactNode;
+}) {
+  const submitted =
+    model.case_status === "submitted" || model.case_status === "approved";
+  const total = steps.length;
+  const done = steps.filter((step) => stepDone(step, submitted)).length;
+  return (
+    <div className="pb">
+      <aside className="pb-side">
+        <div className="pb-side-group">
+          <span className="pb-brand">NEWFORK</span>
+          <div className="pb-context">
+            <strong title={model.workspace_name}>{model.workspace_name}</strong>
+            <span>{model.employee_name}</span>
+          </div>
+          <div className="pb-progress">
+            <div
+              role="progressbar"
+              aria-label="Steps done"
+              aria-valuemin={0}
+              aria-valuemax={total}
+              aria-valuenow={done}
+            >
+              <span style={{ width: `${(done / Math.max(total, 1)) * 100}%` }} />
+            </div>
+            <p>
+              {done} of {total} steps done
+            </p>
+          </div>
+          <nav className="pb-steps" aria-label="Onboarding steps">
+            {steps.map((step, index) => {
+              const active =
+                pathname === step.path ||
+                step.items.some((item) => requirementPath(item) === pathname);
+              const state = stepDone(step, submitted);
+              return (
+                <button
+                  key={step.path}
+                  type="button"
+                  className={`pb-step${active ? " is-active" : ""}${state ? " is-done" : ""}`}
+                  aria-current={active ? "step" : undefined}
+                  onClick={() => onOpen(step.path)}
+                >
+                  <span className="pb-step-number" aria-hidden>
+                    {state ? <Check size={13} /> : index + 1}
+                  </span>
+                  <span className="pb-step-label">
+                    {step.label}
+                    {stepOptional(step) ? " (optional)" : ""}
+                    {/* The tick is decorative, so the done state is also said. */}
+                    {state ? <span className="sr-only">, done</span> : null}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+        <div className="pb-side-group">
+          {/* Leaves the wizard, not the account: the landing re-checks what is still open. */}
+          <button
+            type="button"
+            className="pb-btn pb-btn-secondary"
+            onClick={onExit}
+          >
+            Exit onboarding
+          </button>
+          <AccountBlock />
+        </div>
+      </aside>
+      <main className="pb-stage pb-stage-wide">{children}</main>
+    </div>
+  );
+}
+
+const requirementBadge: Record<
+  EmployeeOnboardingRequirement["status"],
+  readonly [string, BadgeTone]
+> = {
+  not_started: ["To do", "neutral"],
+  in_progress: ["In progress", "progress"],
+  awaiting_review: ["In review", "progress"],
+  completed: ["Done", "success"],
+  rejected: ["Needs changes", "danger"],
+  manual_follow_up: ["Follow-up needed", "danger"],
+  superseded: ["Replaced", "neutral"],
+};
+
+function RequirementBadge({
+  requirement,
+}: {
+  readonly requirement: EmployeeOnboardingRequirement;
+}) {
+  const [label, tone] = requirementBadge[requirement.status];
+  return <StatusBadge tone={tone}>{label}</StatusBadge>;
+}
+
+function DocsGroupStep({
+  step,
+  onOpen,
+  nextPath,
+}: {
+  readonly step: OnboardingStep;
+  readonly onOpen: (path: string) => void;
+  readonly nextPath: string;
+}) {
+  const next = step.items.find((item) => counts(item) && !itemDone(item));
+  return (
+    <>
+      <StepHeading
+        eyebrow={step.label}
+        title={step.title ?? step.label}
+        copy={step.copy ?? ""}
+      />
+      {(
+        [
+          ["document", "To upload"],
+          ["acknowledgement", "To read"],
+        ] as const
+      ).map(([kind, title]) => {
+        const items = step.items.filter((item) => item.kind === kind);
+        return items.length > 0 ? (
+          <Section key={kind} title={title}>
+            {items.map((item) => (
+              <BusinessRow
+                key={item.id}
+                name={item.title}
+                role={
+                  item.document_mode === "conditional"
+                    ? "Only if it applies to you"
+                    : item.required
+                      ? "Required"
+                      : "Optional"
+                }
+                badge={<RequirementBadge requirement={item} />}
+              >
+                <button
+                  type="button"
+                  className="pb-btn pb-btn-secondary"
+                  aria-label={`Open ${item.title}`}
+                  onClick={() => onOpen(requirementPath(item))}
+                >
+                  Open
+                </button>
+              </BusinessRow>
+            ))}
+          </Section>
+        ) : null;
+      })}
+      <div className="pb-footer">
+        <button
+          type="button"
+          className="pb-btn pb-btn-primary"
+          onClick={() => onOpen(next ? requirementPath(next) : nextPath)}
+        >
+          Continue
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -503,13 +837,36 @@ function DocumentStep({
   model,
   requirement,
   onSaved,
-}: StepProps & { readonly requirement: EmployeeOnboardingRequirement }) {
+  back,
+}: StepProps & {
+  readonly requirement: EmployeeOnboardingRequirement;
+  /** UI-PRE-001 mockup: the group this page belongs to; the page then owns the heading. */
+  readonly back?: { readonly label: string; readonly go: () => void };
+}) {
   const { account } = useAuth();
   if (!account) return null;
   return (
     <div className="onboarding-step">
+      {back ? (
+        <>
+          <button
+            type="button"
+            className="pb-btn pb-btn-secondary"
+            onClick={back.go}
+          >
+            <span aria-hidden>‹</span> {back.label}
+          </button>
+          <StepHeading
+            eyebrow={back.label}
+            title={requirement.title}
+            copy={requirement.description}
+          />
+          <RequirementBadge requirement={requirement} />
+        </>
+      ) : null}
       <DocumentReviewDrawer
         inline
+        hideHeader={back !== undefined}
         audience={{ workspaceId: model.workspace_id, selfOnly: true }}
         userId={account.userId}
         requirementId={requirement.id}

@@ -34,6 +34,8 @@ export function DocumentReviewDrawer(props: {
   onClose: () => void;
   onNext?: () => void;
   inline?: boolean;
+  /** Inline only: the host page shows its own heading and status. A drawer keeps its header, it carries the close button. */
+  hideHeader?: boolean;
 }) {
   const query = useQuery({
     queryKey: documentQueryKey(
@@ -93,6 +95,7 @@ function DocumentDetailContent({
   onClose: () => void;
   onNext?: () => void;
   inline?: boolean;
+  hideHeader?: boolean;
 }) {
   const cache = useQueryClient();
   const obligation = detail.obligation;
@@ -128,13 +131,20 @@ function DocumentDetailContent({
     detail.timezone_settings?.configured_value ?? "",
   );
   const refresh = () =>
-    cache.invalidateQueries({
-      queryKey: [
-        "document-lifecycle",
-        props.userId,
-        props.audience.workspaceId,
-      ],
-    });
+    Promise.all([
+      cache.invalidateQueries({
+        queryKey: [
+          "document-lifecycle",
+          props.userId,
+          props.audience.workspaceId,
+        ],
+      }),
+      // Employee onboarding embeds this drawer and shows each document's
+      // status in its own step list; nothing else observes this key.
+      cache.invalidateQueries({
+        queryKey: ["my-employee-onboarding", props.audience.workspaceId],
+      }),
+    ]);
   const review = useMutation({
     mutationFn: (decision: "approve" | "reject") =>
       reviewDocument(props.audience, obligation.id, {
@@ -283,27 +293,30 @@ function DocumentDetailContent({
     !["exempt", "removed", "paused"].includes(obligation.status) &&
     current &&
     ["pending_review", "accepted"].includes(current.state);
+  const hideHeader = props.inline && props.hideHeader;
   const content = (
     <div className="job-catalog-editor">
-      <div className="job-editor-title">
-        <div>
-          <h2>{obligation.title}</h2>
-          <p>{obligation.employee_name}</p>
+      {!hideHeader && (
+        <div className="job-editor-title">
+          <div>
+            <h2>{obligation.title}</h2>
+            <p>{obligation.employee_name}</p>
+          </div>
+          {!props.inline && (
+            <button
+              type="button"
+              className="job-icon-button"
+              aria-label="Close document details"
+              disabled={busy}
+              onClick={() => navigate(props.onClose)}
+            >
+              <X size={17} />
+            </button>
+          )}
         </div>
-        {!props.inline && (
-          <button
-            type="button"
-            className="job-icon-button"
-            aria-label="Close document details"
-            disabled={busy}
-            onClick={() => navigate(props.onClose)}
-          >
-            <X size={17} />
-          </button>
-        )}
-      </div>
+      )}
       <div className="catalog-drawer-body document-detail-body">
-        <p>{obligation.status.replaceAll("_", " ")}</p>
+        {!hideHeader && <p>{obligation.status.replaceAll("_", " ")}</p>}
         {obligation.tracks_expiry && !obligation.timezone && (
           <p role="note">
             An administrator needs to set this employee's document time zone
