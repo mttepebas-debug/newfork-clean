@@ -33,9 +33,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@newfork/scheduling-shared':
-        specifier: workspace:*
-        version: link:../../packages/scheduling-shared
       '@newfork/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -73,9 +70,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@newfork/scheduling-shared':
-        specifier: workspace:*
-        version: link:../../packages/scheduling-shared
       '@newfork/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -137,15 +131,6 @@ importers:
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.7(@types/node@22.20.3)(jsdom@26.1.0)(tsx@4.23.12)
-
-  packages/scheduling-shared:
-    devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3

@@ -1,3 +1,7 @@
+/**
+ * Minute arithmetic for shift times. Moved here from @newfork/scheduling-shared
+ * when that package was deleted; this is the only part anything imported.
+ */
 export interface Interval {
   readonly s: number;
   readonly e: number;
@@ -22,17 +26,8 @@ export function toInterval(
 ): Interval {
   const base = dateDelta * 1440;
   const s = base + parseMin(startStr);
-  const e = crossesMidnight ? base + 1440 + parseMin(endStr) : base + parseMin(endStr);
+  const e = crossesMidnight
+    ? base + 1440 + parseMin(endStr)
+    : base + parseMin(endStr);
   return { s, e };
-}
-
-export function intervalsOverlap(a: Interval, b: Interval): boolean {
-  return a.s < b.e && b.s < a.e;
-}
-
-export function timeToBucket(startStr: string): "morning" | "evening" | "night" {
-  const min = parseMin(startStr);
-  if (min >= 5 * 60 && min < 12 * 60) return "morning";
-  if (min >= 12 * 60 && min < 18 * 60) return "evening";
-  return "night";
 }

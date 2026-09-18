@@ -10,7 +10,6 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@newfork/scheduling-shared": "workspace:*",
     "@newfork/shared": "workspace:*",
     "@newfork/ui": "workspace:*",
     "@supabase/supabase-js": "^2.112.3",

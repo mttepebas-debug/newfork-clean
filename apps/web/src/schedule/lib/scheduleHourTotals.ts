@@ -1,5 +1,5 @@
 import type { ScheduleShift } from "@newfork/shared/schedule";
-import { toInterval } from "@newfork/scheduling-shared";
+import { toInterval } from "./shiftInterval";
 import { getShiftTimeBasis } from "@newfork/shared";
 
 export interface ScheduleHourTotalValue {
