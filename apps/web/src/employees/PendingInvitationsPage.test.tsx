@@ -299,7 +299,7 @@ describe("PendingInvitationsPage", () => {
 
   it("kit path (?shell): declining takes two clicks and no native confirm", async () => {
     vi.mocked(window.confirm).mockClear();
-    renderPage("/invitations/pending?shell=a");
+    renderPage("/invitations/pending?shell=b");
 
     expect(
       await screen.findByRole("heading", { name: "You have an invitation" }),

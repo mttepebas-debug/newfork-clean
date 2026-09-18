@@ -1,10 +1,15 @@
 /* UI-PRE-001 kit: every screen an account sees before it is linked to a business.
-   Light tokens only. Selectors carry two classes so they win over the global
-   `.nf-button` rule without touching it (THEME-005 owns that cascade). */
+   Light tokens only. Button selectors double the class (`.pb-btn.pb-btn-*`) so
+   they match outside the frame too and tie the global `.nf-button:hover` on
+   specificity; this file loads after styles.css, so the tie goes to the kit.
+   The global button rules stay untouched (THEME-005 owns that cascade). */
 
 .pb {
+  display: grid;
   min-height: 100vh;
-  background: var(--theme-page);
+  grid-template-columns: 280px minmax(0, 1fr);
+  /* The side panel carries the tint, so the stage stays white to read as separate. */
+  background: var(--theme-surface);
   color: var(--theme-text-body);
 }
 
@@ -15,31 +20,7 @@
   letter-spacing: 0.08em;
 }
 
-/* Variant A: top bar and one centred column. */
-.pb-shell-a .pb-topbar {
-  display: flex;
-  min-height: 56px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--theme-border);
-  background: var(--theme-surface);
-}
-.pb-shell-a .pb-stage {
-  width: min(100% - 48px, 600px);
-  margin: 0 auto;
-  padding: 72px 0 96px;
-}
-
-/* Variant B: the wizard's two panels on every screen. */
-.pb-shell-b {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  /* The side panel carries the tint, so the stage stays white to read as separate. */
-  background: var(--theme-surface);
-}
-.pb-shell-b .pb-side {
+.pb-side {
   position: sticky;
   top: 0;
   display: flex;
@@ -50,11 +31,7 @@
   border-right: 1px solid var(--theme-border);
   background: var(--theme-surface-muted);
 }
-.pb-shell-b .pb-side .pb-account {
-  flex-direction: column;
-  align-items: stretch;
-}
-.pb-shell-b .pb-stage {
+.pb-stage {
   width: min(100% - 48px, 600px);
   margin: 0 auto;
   padding: 96px 0;
@@ -62,7 +39,9 @@
 
 .pb-account {
   display: flex;
-  align-items: center;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
   gap: 14px;
 }
 .pb-account-id {
@@ -82,14 +61,6 @@
   white-space: nowrap;
 }
 
-.pb-eyebrow {
-  margin: 0 0 10px;
-  color: var(--theme-muted-strong);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
 .pb-stage h1 {
   margin: 0 0 10px;
   color: var(--theme-text);
@@ -101,6 +72,8 @@
   color: var(--theme-muted);
   font-size: 15px;
   line-height: 1.55;
+  /* An e-mail address is one unbreakable word. */
+  overflow-wrap: anywhere;
 }
 
 .pb-section {
@@ -153,9 +126,6 @@
   color: var(--theme-muted);
   font-size: 13px;
 }
-.pb-row-role {
-  text-transform: capitalize;
-}
 .pb-row-actions {
   display: flex;
   flex: 0 0 auto;
@@ -186,7 +156,7 @@
 }
 
 /* Buttons: green acts, white steps back, red only once armed. */
-.pb .pb-btn {
+.pb-btn.pb-btn {
   display: inline-flex;
   width: auto;
   min-height: 36px;
@@ -203,34 +173,38 @@
   white-space: nowrap;
   cursor: pointer;
 }
-.pb .pb-btn:disabled {
+.pb-btn.pb-btn:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.pb-btn.pb-btn:disabled {
   cursor: default;
   opacity: 0.55;
 }
-.pb .pb-btn-primary {
+.pb-btn.pb-btn-primary {
   background: var(--theme-accent);
   color: var(--theme-on-accent);
 }
-.pb .pb-btn-primary:hover:not(:disabled) {
+.pb-btn.pb-btn-primary:hover:not(:disabled) {
   background: var(--theme-accent-strong);
 }
-.pb .pb-btn-secondary,
-.pb .pb-btn-danger {
+.pb-btn.pb-btn-secondary,
+.pb-btn.pb-btn-danger {
   border-color: var(--theme-border-strong);
   background: var(--theme-surface);
   color: var(--theme-text);
 }
-.pb .pb-btn-secondary:hover:not(:disabled),
-.pb .pb-btn-danger:hover:not(:disabled) {
+.pb-btn.pb-btn-secondary:hover:not(:disabled),
+.pb-btn.pb-btn-danger:hover:not(:disabled) {
   background: var(--theme-surface-soft);
 }
-.pb .pb-btn-danger.is-armed,
-.pb .pb-btn-danger.is-armed:hover:not(:disabled) {
+.pb-btn.pb-btn-danger.is-armed,
+.pb-btn.pb-btn-danger.is-armed:hover:not(:disabled) {
   border-color: var(--theme-danger);
   background: var(--theme-danger);
   color: var(--theme-on-accent);
 }
-.pb .pb-btn-block {
+.pb-btn.pb-btn-block {
   width: 100%;
   min-height: 44px;
   font-size: 14px;
@@ -248,35 +222,36 @@
   gap: 10px;
   margin-top: 28px;
 }
-.pb-state {
-  margin-top: 28px;
-  color: var(--theme-muted);
-  font-size: 14px;
-}
 
 @media (max-width: 720px) {
-  .pb-shell-b {
+  .pb {
     grid-template-columns: 1fr;
+    /* Without this the two auto rows split the free height and the bar balloons. */
+    align-content: start;
   }
-  .pb-shell-b .pb-side {
+  .pb-side {
     position: static;
     height: auto;
     flex-direction: row;
     align-items: center;
+    gap: 12px;
     padding: 12px 16px;
     border-right: 0;
     border-bottom: 1px solid var(--theme-border);
   }
-  .pb-shell-b .pb-side .pb-account {
+  .pb-account {
     flex-direction: row;
     align-items: center;
   }
-  .pb-shell-a .pb-stage,
-  .pb-shell-b .pb-stage {
+  /* The e-mail stays: it says which account an invitation must match. */
+  .pb-account-id strong {
+    display: none;
+  }
+  .pb-stage {
     padding: 40px 0 64px;
   }
-  .pb-account-id {
-    display: none;
+  .pb-stage h1 {
+    font-size: 24px;
   }
   .pb-row {
     flex-direction: column;

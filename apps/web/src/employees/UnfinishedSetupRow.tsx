@@ -11,6 +11,13 @@ import {
 import { BusinessRow, StatusBadge } from "../shell/prebiz/PreBiz";
 import { getMyOnboarding, leaveMyOnboarding } from "./onboarding-data";
 
+const roleLabel: Record<WorkspaceSummary["role"], string> = {
+  owner: "Owner",
+  admin: "Admin",
+  manager: "Manager",
+  employee: "Employee",
+};
+
 /**
  * A setup the account started and never finished. An employee case is left
  * behind; an employer draft is discarded with the workspace it created.
@@ -64,19 +71,13 @@ export function UnfinishedSetupRow({
     return (
       <BusinessRow
         name={workspace.name}
-        role={workspace.role}
+        role={roleLabel[workspace.role]}
         badge={
           <StatusBadge tone="progress">
             {employer ? "Setup in progress" : "Onboarding in progress"}
           </StatusBadge>
         }
-        error={
-          discard.error
-            ? discard.error instanceof Error
-              ? discard.error.message
-              : "Setup could not be updated"
-            : null
-        }
+        error={discard.error ? "Setup could not be updated" : null}
       >
         <ConfirmButton
           className="pb-btn pb-btn-danger"
@@ -87,7 +88,7 @@ export function UnfinishedSetupRow({
           }
           // Discarding deletes the draft business, so the armed label says so.
           confirmLabel={
-            employer ? "Click again to delete setup" : "Click again to decline"
+            employer ? "Click again to delete" : "Click again to decline"
           }
           disabled={discard.isPending}
           onConfirm={() => discard.mutate()}

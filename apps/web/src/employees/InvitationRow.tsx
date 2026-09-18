@@ -40,9 +40,10 @@ export function InvitationRow({
   const failure = accept.error ?? decline.error;
 
   if (kit) {
+    // Floor, so the label errs toward urgency: three hours left reads "today".
     const days = Math.max(
       0,
-      Math.ceil((Date.parse(invitation.expiresAt) - Date.now()) / 86_400_000),
+      Math.floor((Date.parse(invitation.expiresAt) - Date.now()) / 86_400_000),
     );
     return (
       <BusinessRow
@@ -57,13 +58,7 @@ export function InvitationRow({
             )}
           </StatusBadge>
         }
-        error={
-          failure
-            ? failure instanceof Error
-              ? failure.message
-              : "Invitation update failed"
-            : null
-        }
+        error={failure ? "Invitation update failed" : null}
       >
         <ConfirmButton
           className="pb-btn pb-btn-danger"

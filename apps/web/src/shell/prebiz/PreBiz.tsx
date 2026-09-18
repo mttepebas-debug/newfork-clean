@@ -4,18 +4,14 @@ import { useSearchParams } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
 import "./prebiz.css";
 
-export type PreBizShellVariant = "a" | "b";
-
 /**
- * UI-PRE-001 Faz 1: the landing frame is chosen by eye, so both candidates
- * render on the real pages behind `?shell=a|b`. DEV only; the pick becomes
- * the implementation and this switch is deleted.
+ * UI-PRE-001 Faz 1: the kit renders on the real pages only in DEV behind
+ * `?shell=b` (the two-panel frame the user picked over the top-bar one).
+ * Slice D1 makes it the only path and deletes this switch.
  */
-export function useDevShellVariant(): PreBizShellVariant | null {
+export function useDevKit(): boolean {
   const [params] = useSearchParams();
-  if (!import.meta.env.DEV) return null;
-  const value = params.get("shell");
-  return value === "a" || value === "b" ? value : null;
+  return import.meta.env.DEV && params.get("shell") === "b";
 }
 
 /** The account and its way out. Every screen before a business shows this one block. */
@@ -39,48 +35,29 @@ export function AccountBlock() {
 }
 
 export function PreBizFrame({
-  variant,
   titleId,
-  eyebrow,
   title,
   description,
   children,
 }: {
-  readonly variant: PreBizShellVariant;
   readonly titleId: string;
-  readonly eyebrow?: string;
   readonly title: string;
   readonly description?: string;
-  readonly children: ReactNode;
+  readonly children?: ReactNode;
 }) {
-  const stage = (
-    <section className="pb-stage" aria-labelledby={titleId}>
-      {eyebrow ? <p className="pb-eyebrow">{eyebrow}</p> : null}
-      <h1 id={titleId}>{title}</h1>
-      {description ? <p className="pb-description">{description}</p> : null}
-      {children}
-    </section>
-  );
-
-  if (variant === "a") {
-    return (
-      <main className="pb pb-shell-a">
-        <header className="pb-topbar">
-          <span className="pb-brand">NEWFORK</span>
-          <AccountBlock />
-        </header>
-        {stage}
-      </main>
-    );
-  }
   return (
-    <main className="pb pb-shell-b">
+    <div className="pb">
       <aside className="pb-side">
         <span className="pb-brand">NEWFORK</span>
         <AccountBlock />
       </aside>
-      {stage}
-    </main>
+      {/* The stage is the main landmark, so "skip to main" lands on the heading. */}
+      <main className="pb-stage" aria-labelledby={titleId}>
+        <h1 id={titleId}>{title}</h1>
+        {description ? <p className="pb-description">{description}</p> : null}
+        {children}
+      </main>
+    </div>
   );
 }
 
@@ -132,7 +109,7 @@ export function BusinessRow({
       <div className="pb-row-text">
         <strong title={name}>{name}</strong>
         <span className="pb-row-meta">
-          {role ? <span className="pb-row-role">{role}</span> : null}
+          {role ? <span>{role}</span> : null}
           {badge}
         </span>
         {error ? (

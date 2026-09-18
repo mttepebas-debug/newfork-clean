@@ -8,7 +8,7 @@ import { accountLandingPath } from "../auth/routeDestinations";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { loadAccountEverLinked, supabaseClient } from "../lib/supabase";
 import { CreateOrganizationButton } from "./CreateOrganizationButton";
-import { PreBizFrame, useDevShellVariant } from "./prebiz/PreBiz";
+import { PreBizFrame, useDevKit } from "./prebiz/PreBiz";
 
 /**
  * The account has nothing open and belongs nowhere. A first visitor is welcomed
@@ -18,7 +18,7 @@ import { PreBizFrame, useDevShellVariant } from "./prebiz/PreBiz";
 export default function NoOrganizationPage() {
   const { account, signOut } = useAuth();
   const location = useLocation();
-  const shell = useDevShellVariant();
+  const shell = useDevKit();
   // Arriving straight from an answered invitation: the check already happened.
   const [waiting, setWaiting] = useState(
     () =>
@@ -42,7 +42,12 @@ export default function NoOrganizationPage() {
 
   // Never claim "no invitation" before the check has answered.
   if (waiting && invitations.isLoading)
-    return <main className="auth-loading" aria-label="Checking invitations" />;
+    // The kit keeps its frame while it checks, so Sign out never disappears.
+    return shell ? (
+      <PreBizFrame titleId="no-org-title" title="Checking for invitations" />
+    ) : (
+      <main className="auth-loading" aria-label="Checking invitations" />
+    );
 
   // Unknown history reads as returning: welcoming someone twice is the worse miss.
   const returning = everLinked.data !== false;
@@ -57,16 +62,13 @@ export default function NoOrganizationPage() {
     if (waiting) {
       return (
         <PreBizFrame
-          variant={shell}
           titleId="no-org-title"
           title="No invitation yet"
           description={`Nothing has been sent to ${account?.email ?? "this account"} so far — ask your manager to invite this address.`}
         >
           {invitations.error ? (
             <p className="form-error" role="alert">
-              {invitations.error instanceof Error
-                ? invitations.error.message
-                : "Invitations could not be loaded"}
+              Invitations could not be loaded
             </p>
           ) : null}
           <div className="pb-footer">
@@ -95,7 +97,6 @@ export default function NoOrganizationPage() {
     }
     return (
       <PreBizFrame
-        variant={shell}
         titleId="no-org-title"
         title={returning ? "Welcome back" : "Welcome to Newfork"}
         description="Start your own business, or join one that invited you."

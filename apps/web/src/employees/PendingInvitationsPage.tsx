@@ -20,7 +20,7 @@ import { CreateOrganizationButton } from "../shell/CreateOrganizationButton";
 import {
   PreBizFrame,
   Section,
-  useDevShellVariant,
+  useDevKit,
 } from "../shell/prebiz/PreBiz";
 import { listPendingEmployeeInvitations } from "./employee-data";
 import { InvitationRow } from "./InvitationRow";
@@ -33,7 +33,7 @@ import { UnfinishedSetupRow } from "./UnfinishedSetupRow";
 export default function PendingInvitationsPage() {
   const { context, refresh, signOut } = useAuth();
   const navigate = useNavigate();
-  const shell = useDevShellVariant();
+  const shell = useDevKit();
   const invitations = useQuery({
     queryKey: ["account-pending-invitations"],
     queryFn: listPendingEmployeeInvitations,
@@ -94,10 +94,13 @@ export default function PendingInvitationsPage() {
   const inviteOnly = unfinished.length === 0;
 
   if (shell) {
-    const loading = invitations.isLoading || workspaces.isLoading;
+    // Past the redirects above, two empty lists mean a refetch is still in flight.
+    const loading =
+      invitations.isLoading ||
+      workspaces.isLoading ||
+      (pending.length === 0 && unfinished.length === 0);
     return (
       <PreBizFrame
-        variant={shell}
         titleId="pending-invites-title"
         // The heading only claims what the lists below actually show.
         title={
@@ -113,17 +116,13 @@ export default function PendingInvitationsPage() {
           loading
             ? undefined
             : inviteOnly
-              ? deferPath
-                ? "Join now or decide later. Declining can't be undone."
-                : "Declining can't be undone."
+              ? "Declining can't be undone."
               : "Your progress is saved."
         }
       >
         {invitations.error ? (
           <p className="form-error" role="alert">
-            {invitations.error instanceof Error
-              ? invitations.error.message
-              : "Invitations could not be loaded"}
+            Invitations could not be loaded
           </p>
         ) : null}
         {pending.length > 0 ? (
