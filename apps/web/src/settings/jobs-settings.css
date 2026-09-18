@@ -1461,12 +1461,17 @@
 .shift-catalog-settings-page .job-column-headings .job-sort-button {
   justify-content: flex-start;
 }
-.document-catalog-settings-page .document-catalog-row,
 .acknowledgement-page .acknowledgement-catalog-row {
   grid-template-columns:
     minmax(0, 1.5fr) minmax(180px, 0.85fr) minmax(130px, 0.65fr)
     32px;
 }
+.document-catalog-settings-page .document-catalog-row {
+  grid-template-columns:
+    minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(88px, 0.4fr)
+    minmax(120px, 0.6fr) 32px;
+}
+
 .document-catalog-settings-page .job-catalog-row,
 .acknowledgement-page .job-catalog-row {
   min-height: 60px;

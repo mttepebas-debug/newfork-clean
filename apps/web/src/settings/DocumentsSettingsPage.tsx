@@ -53,7 +53,9 @@ const formatLabels: Record<DocumentFormat, string> = {
   webp: "WebP",
 };
 
-type SortKey = "title" | "required_at_onboarding" | "requires_review";
+type SortKey = "title" | "description" | "publication_status" | "published_at";
+
+type RequirementFilter = "" | "required" | "conditional" | "optional";
 
 function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
@@ -87,7 +89,8 @@ export default function DocumentsSettingsPage() {
     "all" | "draft" | "published" | "archived"
   >("all");
   const [publication, setPublication] = useState<DocumentType | null>(null);
-  const [documentTypeFilter, setDocumentTypeFilter] = useState("");
+  const [requirementFilter, setRequirementFilter] =
+    useState<RequirementFilter>("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{
     key: SortKey;
@@ -127,13 +130,7 @@ export default function DocumentsSettingsPage() {
   });
 
   const openEditor = (documentType?: DocumentType): void => {
-    if (
-      !canManage ||
-      !query.isSuccess ||
-      saveMutation.isPending ||
-      applyBusy ||
-      (documentType && documentType.publication_status !== "draft")
-    )
+    if (!canManage || !query.isSuccess || saveMutation.isPending || applyBusy)
       return;
     setEditing(documentType ?? "new");
     setDraft(documentType ? editableDocument(documentType) : defaultDraft);
@@ -155,14 +152,6 @@ export default function DocumentsSettingsPage() {
 
   const items = query.data ?? [];
   const active = items.filter((item) => !item.archived_at);
-  const typeOptions = items
-    .map((item) => ({ id: item.id, title: item.title }))
-    .sort((a, b) =>
-      a.title.localeCompare(b.title, undefined, {
-        sensitivity: "base",
-        numeric: true,
-      }),
-    );
   const visible = items
     .filter(
       (item) =>
@@ -172,7 +161,8 @@ export default function DocumentsSettingsPage() {
         (status === "all" ||
           status === "archived" ||
           item.publication_status === status) &&
-        (!documentTypeFilter || item.id === documentTypeFilter) &&
+        (!requirementFilter ||
+          documentRequirementKey(item) === requirementFilter) &&
         `${item.title} ${item.description}`
           .toLowerCase()
           .includes(search.trim().toLowerCase()),
@@ -183,6 +173,10 @@ export default function DocumentsSettingsPage() {
       return sort.descending ? -comparison : comparison;
     });
   const parsedDraft = documentTypeInputSchema.safeParse(draft);
+  const readOnly =
+    editing !== null &&
+    editing !== "new" &&
+    editing.publication_status === "published";
   const documentBaseline =
     editing && editing !== "new" ? editableDocument(editing) : null;
   const canSave =
@@ -290,16 +284,16 @@ export default function DocumentsSettingsPage() {
             <div className="catalog-toolbar-filter-row">
               <select
                 className="toolbar-filter-select"
-                aria-label="Filter by document type"
-                value={documentTypeFilter}
-                onChange={(event) => setDocumentTypeFilter(event.target.value)}
+                aria-label="Filter by requirement"
+                value={requirementFilter}
+                onChange={(event) =>
+                  setRequirementFilter(event.target.value as RequirementFilter)
+                }
               >
-                <option value="">All document types</option>
-                {typeOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
+                <option value="">All requirements</option>
+                <option value="required">Required</option>
+                <option value="conditional">Conditional</option>
+                <option value="optional">Optional</option>
               </select>
               <label className="job-search toolbar-search">
                 <Search size={16} aria-hidden />
@@ -330,6 +324,7 @@ export default function DocumentsSettingsPage() {
                 workspaceId={workspaceId}
                 documentId={editing === "new" ? undefined : editing.id}
                 busy={saveMutation.isPending || applyBusy}
+                readOnly={readOnly}
                 saving={saveMutation.isPending}
                 saveDisabled={!query.isSuccess}
                 dirty={editing === "new" || !sameJson(draft, documentBaseline)}
@@ -358,13 +353,13 @@ export default function DocumentsSettingsPage() {
           {!query.isLoading && !query.error && visible.length === 0 ? (
             <div className="job-empty-state">
               <h2>
-                {search || documentTypeFilter
+                {search || requirementFilter
                   ? "No matches found"
                   : "No document types"}
               </h2>
               <p>
-                {search || documentTypeFilter
-                  ? "Try another document type or clear your search."
+                {search || requirementFilter
+                  ? "Try another requirement or clear your search."
                   : "Add the first document requirement to get started."}
               </p>
             </div>
@@ -373,8 +368,9 @@ export default function DocumentsSettingsPage() {
             <div className="job-catalog" aria-label="Document types">
               <div className="job-column-headings document-catalog-row">
                 {sortColumn("title", "Document name")}
-                {sortColumn("required_at_onboarding", "Requirement")}
-                {sortColumn("requires_review", "Review")}
+                {sortColumn("description", "Description")}
+                {sortColumn("publication_status", "Status")}
+                {sortColumn("published_at", "Published")}
                 {sort ? (
                   <button
                     type="button"
@@ -394,10 +390,7 @@ export default function DocumentsSettingsPage() {
                   key={item.id}
                   data-archived={Boolean(item.archived_at)}
                   data-editable={
-                    canManage &&
-                    item.publication_status === "draft" &&
-                    !saveMutation.isPending &&
-                    !applyBusy
+                    canManage && !saveMutation.isPending && !applyBusy
                   }
                   onClick={(event) => {
                     if (
@@ -415,12 +408,7 @@ export default function DocumentsSettingsPage() {
                   <button
                     type="button"
                     className="job-row-identity"
-                    disabled={
-                      !canManage ||
-                      item.publication_status !== "draft" ||
-                      saveMutation.isPending ||
-                      applyBusy
-                    }
+                    disabled={!canManage || saveMutation.isPending || applyBusy}
                     onClick={() => openEditor(item)}
                   >
                     <span className="document-catalog-marker" aria-hidden>
@@ -430,52 +418,48 @@ export default function DocumentsSettingsPage() {
                       <span className="job-row-name" title={item.title}>
                         {item.title}
                       </span>
-                      <span
-                        className="document-catalog-description"
-                        title={item.description}
-                      >
-                        {item.description || "No description"}
-                      </span>
                       <span className="job-mobile-meta">
-                        {documentRequirementLabel(item)} -{" "}
+                        {documentStatusLabel(item)}
+                        {publishedAtLabel(item)
+                          ? ` - ${publishedAtLabel(item)}`
+                          : ""}
+                        {" - "}
                         {item.accepted_formats
                           .map((format) => formatLabels[format])
                           .join(", ")}
                       </span>
                     </span>
-                    {item.publication_status && !item.archived_at && (
-                      <span className="job-archived-label">
-                        {item.publication_status === "draft"
-                          ? "Draft"
-                          : "Published"}
-                      </span>
-                    )}
-                    {item.archived_at && (
-                      <span className="job-archived-label">Archived</span>
-                    )}
                   </button>
-                  <span className="job-department-cell">
-                    {documentRequirementLabel(item)}
+                  <span
+                    className="job-department-cell"
+                    title={item.description}
+                  >
+                    {item.description || "No description"}
                   </span>
                   <span className="job-department-cell">
-                    {item.tracks_expiry
-                      ? "Expiration tracked"
-                      : item.requires_review
-                        ? "Review required"
-                        : "No review"}
+                    <span className="job-archived-label">
+                      {documentStatusLabel(item)}
+                    </span>
+                  </span>
+                  <span className="job-department-cell">
+                    {publishedAtLabel(item) ? (
+                      <time dateTime={item.published_at ?? undefined}>
+                        {publishedAtLabel(item)}
+                      </time>
+                    ) : (
+                      "-"
+                    )}
                   </span>
                   {canManage ? (
                     <CatalogRowMenu name={item.title}>
                       <button
                         type="button"
-                        disabled={
-                          item.publication_status !== "draft" ||
-                          saveMutation.isPending ||
-                          applyBusy
-                        }
+                        disabled={saveMutation.isPending || applyBusy}
                         onClick={() => openEditor(item)}
                       >
-                        Edit document type
+                        {item.publication_status === "published"
+                          ? "View document type"
+                          : "Edit document type"}
                       </button>
                       {!item.archived_at && item.publication_status && (
                         <button
@@ -542,9 +526,27 @@ export default function DocumentsSettingsPage() {
   );
 }
 
-function documentRequirementLabel(item: DocumentType): string {
-  if (item.lifecycle_settings?.mode === "conditional") return "Conditional";
-  return item.required_at_onboarding ? "Required" : "Optional";
+function documentRequirementKey(item: DocumentType): RequirementFilter {
+  if (item.lifecycle_settings?.mode === "conditional") return "conditional";
+  return item.required_at_onboarding ? "required" : "optional";
+}
+
+function documentStatusLabel(item: DocumentType): string {
+  if (item.archived_at) return "Archived";
+  return item.publication_status === "published" ? "Published" : "Draft";
+}
+
+// Publication keeps published_at on unpublish, so a republish shows the newest
+// time while a draft shows none.
+function publishedAtLabel(item: DocumentType): string {
+  if (item.publication_status !== "published" || !item.published_at) return "";
+  return new Date(item.published_at).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function compareDocument(
@@ -552,14 +554,23 @@ function compareDocument(
   b: DocumentType,
   key: SortKey,
 ): number {
-  if (key === "title")
+  const tiebreak = (): number =>
+    a.title.localeCompare(b.title, undefined, {
+      sensitivity: "base",
+      numeric: true,
+    }) || a.id.localeCompare(b.id);
+  if (key === "title" || key === "description")
     return (
-      a.title.localeCompare(b.title, undefined, {
+      a[key].localeCompare(b[key], undefined, {
         sensitivity: "base",
         numeric: true,
-      }) || a.id.localeCompare(b.id)
+      }) || tiebreak()
     );
-  const av = Number(Boolean(a[key]));
-  const bv = Number(Boolean(b[key]));
-  return bv - av || a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
+  if (key === "publication_status")
+    return (
+      documentStatusLabel(a).localeCompare(documentStatusLabel(b)) || tiebreak()
+    );
+  return (
+    (b.published_at ?? "").localeCompare(a.published_at ?? "") || tiebreak()
+  );
 }

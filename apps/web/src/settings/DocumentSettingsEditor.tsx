@@ -52,6 +52,8 @@ export function DocumentSettingsEditor({
   saving,
   saveDisabled = false,
 
+  readOnly = false,
+
   dirty,
 
   issues,
@@ -74,6 +76,8 @@ export function DocumentSettingsEditor({
 
   saving: boolean;
   saveDisabled?: boolean;
+
+  readOnly?: boolean;
 
   dirty: boolean;
 
@@ -180,7 +184,7 @@ export function DocumentSettingsEditor({
       return;
     }
 
-    if (!dirty) return;
+    if (!dirty || readOnly) return;
 
     onSubmit(event);
   };
@@ -200,9 +204,11 @@ export function DocumentSettingsEditor({
           <h2>{documentId ? "Edit document type" : "New document type"}</h2>
 
           <p>
-            {section === "details"
-              ? "Step 1 of 2 - Details"
-              : "Step 2 of 2 - Fields & review"}
+            {readOnly
+              ? "Published - unpublish to edit"
+              : section === "details"
+                ? "Step 1 of 2 - Details"
+                : "Step 2 of 2 - Fields & review"}
           </p>
         </div>
 
@@ -237,7 +243,10 @@ export function DocumentSettingsEditor({
 
           tabIndex={-1}
         >
-          <fieldset className="document-editor-fields" disabled={busy}>
+          <fieldset
+            className="document-editor-fields"
+            disabled={busy || readOnly}
+          >
             {section === "details" && (
               <>
                 <label className="job-field">
@@ -461,21 +470,23 @@ export function DocumentSettingsEditor({
             </Button>
           )}
 
-          <Button
-            type="submit"
+          {!(readOnly && section === "fields") && (
+            <Button
+              type="submit"
 
-            className="job-primary-button"
+              className="job-primary-button"
 
-            disabled={
-              busy ||
-              saveDisabled ||
-              (section === "fields" && (!dirty || issues.length > 0)) ||
-              (section === "details" &&
-                issues.some((issue) => issueSection(issue) === "details"))
-            }
-          >
-            {section === "details" ? "Next" : saving ? "Saving" : "Save"}
-          </Button>
+              disabled={
+                busy ||
+                saveDisabled ||
+                (section === "fields" && (!dirty || issues.length > 0)) ||
+                (section === "details" &&
+                  issues.some((issue) => issueSection(issue) === "details"))
+              }
+            >
+              {section === "details" ? "Next" : saving ? "Saving" : "Save"}
+            </Button>
+          )}
         </div>
       </div>
     </form>

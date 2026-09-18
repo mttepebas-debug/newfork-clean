@@ -56,7 +56,13 @@ const initial = (): DocumentTypeInput => ({
   },
 });
 const submitted = vi.fn();
-function Harness({ draft = initial() }: { draft?: DocumentTypeInput }) {
+function Harness({
+  draft = initial(),
+  readOnly = false,
+}: {
+  draft?: DocumentTypeInput;
+  readOnly?: boolean;
+}) {
   const [value, setValue] = useState(draft);
   const parsed = documentTypeInputSchema.safeParse(value);
   return (
@@ -65,6 +71,7 @@ function Harness({ draft = initial() }: { draft?: DocumentTypeInput }) {
       onChange={setValue}
       workspaceId={id(100)}
       busy={false}
+      readOnly={readOnly}
       saving={false}
       dirty={true}
       issues={parsed.success ? [] : parsed.error.issues}
@@ -316,5 +323,14 @@ describe("Document guided editor", () => {
       ...defaultDocumentLifecycleSettings,
       mode: "required",
     });
+  });
+
+  it("opens read-only for a published document without a save path", () => {
+    mount(<Harness readOnly />);
+    expect(screen.getByText("Published - unpublish to edit")).toBeTruthy();
+    expect(screen.getByLabelText("Name").matches(":disabled")).toBe(true);
+    next();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    expect(submitted).not.toHaveBeenCalled();
   });
 });

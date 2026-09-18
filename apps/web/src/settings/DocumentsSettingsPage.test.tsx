@@ -71,7 +71,7 @@ it("opens from row cells and blank space without swallowing menu actions", async
   const row = (await screen.findByTitle("Safety certificate")).closest(
     ".job-catalog-row",
   ) as HTMLElement;
-  fireEvent.click(within(row).getByText("Review required"));
+  fireEvent.click(within(row).getByText("Current certification"));
   expect(
     screen.getByRole("dialog", { name: "Edit Safety certificate" }),
   ).toBeTruthy();
@@ -101,12 +101,13 @@ it("keeps read-only rows closed and retains a native keyboard edit button", asyn
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
-it("composes exclusive status, type and search filters and locks published rows", async () => {
+it("composes exclusive status, requirement and search filters and keeps published rows open", async () => {
   const published = {
     ...record,
     id: "00000000-0000-4000-8000-000000000003",
     title: "Published safety",
     publication_status: "published" as const,
+    published_at: "2026-09-17T15:04:00.000Z",
   };
   const archived = {
     ...record,
@@ -124,14 +125,22 @@ it("composes exclusive status, type and search filters and locks published rows"
   const row = screen
     .getByTitle("Published safety")
     .closest(".job-catalog-row") as HTMLElement;
+  expect(within(row).getByText("Published")).toBeTruthy();
+  expect(within(row).getByRole("time")).toHaveProperty(
+    "dateTime",
+    "2026-09-17T15:04:00.000Z",
+  );
   fireEvent.click(row);
-  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(
+    screen.getByRole("dialog", { name: "Edit Published safety" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Close test editor" }));
   fireEvent.click(
     within(row).getByRole("button", { name: "Actions for Published safety" }),
   );
   expect(
-    within(row).getByRole("button", { name: "Edit document type" }),
-  ).toHaveProperty("disabled", true);
+    within(row).getByRole("button", { name: "View document type" }),
+  ).toHaveProperty("disabled", false);
   expect(within(row).getByRole("button", { name: "Unpublish" })).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Search document types"), {
     target: { value: "no match" },
@@ -144,10 +153,14 @@ it("composes exclusive status, type and search filters and locks published rows"
   expect(screen.getByTitle("Archived safety")).toBeTruthy();
   expect(screen.queryByTitle("Published safety")).toBeNull();
   fireEvent.click(screen.getByRole("tab", { name: "Draft" }));
-  fireEvent.change(screen.getByLabelText("Filter by document type"), {
-    target: { value: record.id },
+  fireEvent.change(screen.getByLabelText("Filter by requirement"), {
+    target: { value: "optional" },
   });
   expect(screen.getByTitle("Safety certificate")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Filter by requirement"), {
+    target: { value: "required" },
+  });
+  expect(screen.queryByTitle("Safety certificate")).toBeNull();
 });
 
 it("shows unavailable state and disables creation when publication storage is unavailable", async () => {
