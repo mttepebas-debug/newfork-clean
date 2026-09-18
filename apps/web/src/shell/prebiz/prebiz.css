@@ -1,0 +1,286 @@
+/* UI-PRE-001 kit: every screen an account sees before it is linked to a business.
+   Light tokens only. Selectors carry two classes so they win over the global
+   `.nf-button` rule without touching it (THEME-005 owns that cascade). */
+
+.pb {
+  min-height: 100vh;
+  background: var(--theme-page);
+  color: var(--theme-text-body);
+}
+
+.pb-brand {
+  color: var(--theme-accent-strong);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+/* Variant A: top bar and one centred column. */
+.pb-shell-a .pb-topbar {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+.pb-shell-a .pb-stage {
+  width: min(100% - 48px, 600px);
+  margin: 0 auto;
+  padding: 72px 0 96px;
+}
+
+/* Variant B: the wizard's two panels on every screen. */
+.pb-shell-b {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+.pb-shell-b .pb-side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 28px 22px;
+  border-right: 1px solid var(--theme-border);
+  background: var(--theme-surface-muted);
+}
+.pb-shell-b .pb-side .pb-account {
+  flex-direction: column;
+  align-items: stretch;
+}
+.pb-shell-b .pb-stage {
+  width: min(100% - 48px, 600px);
+  margin: 0 auto;
+  padding: 96px 0;
+}
+
+.pb-account {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.pb-account-id {
+  display: grid;
+  min-width: 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.pb-account-id strong {
+  color: var(--theme-text);
+  font-size: 13px;
+}
+.pb-account-id span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pb-eyebrow {
+  margin: 0 0 10px;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pb-stage h1 {
+  margin: 0 0 10px;
+  color: var(--theme-text);
+  font-size: 30px;
+  line-height: 1.2;
+}
+.pb-description {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.pb-section {
+  margin-top: 32px;
+}
+.pb-section h2 {
+  margin: 0 0 10px;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pb-list {
+  overflow: hidden;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-surface);
+}
+
+.pb-row {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+}
+.pb-row:last-child {
+  border-bottom: 0;
+}
+.pb-row-text {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+.pb-row-text strong {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pb-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+.pb-row-role {
+  text-transform: capitalize;
+}
+.pb-row-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.pb-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+.pb-badge-progress {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+}
+.pb-badge-success {
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+}
+.pb-badge-danger {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger);
+}
+
+/* Buttons: green acts, white steps back, red only once armed. */
+.pb .pb-btn {
+  display: inline-flex;
+  width: auto;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pb .pb-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.pb .pb-btn-primary {
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.pb .pb-btn-primary:hover:not(:disabled) {
+  background: var(--theme-accent-strong);
+}
+.pb .pb-btn-secondary,
+.pb .pb-btn-danger {
+  border-color: var(--theme-border-strong);
+  background: var(--theme-surface);
+  color: var(--theme-text);
+}
+.pb .pb-btn-secondary:hover:not(:disabled),
+.pb .pb-btn-danger:hover:not(:disabled) {
+  background: var(--theme-surface-soft);
+}
+.pb .pb-btn-danger.is-armed,
+.pb .pb-btn-danger.is-armed:hover:not(:disabled) {
+  border-color: var(--theme-danger);
+  background: var(--theme-danger);
+  color: var(--theme-on-accent);
+}
+.pb .pb-btn-block {
+  width: 100%;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.pb-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+.pb-stack {
+  display: grid;
+  gap: 10px;
+  margin-top: 28px;
+}
+.pb-state {
+  margin-top: 28px;
+  color: var(--theme-muted);
+  font-size: 14px;
+}
+
+@media (max-width: 720px) {
+  .pb-shell-b {
+    grid-template-columns: 1fr;
+  }
+  .pb-shell-b .pb-side {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--theme-border);
+  }
+  .pb-shell-b .pb-side .pb-account {
+    flex-direction: row;
+    align-items: center;
+  }
+  .pb-shell-a .pb-stage,
+  .pb-shell-b .pb-stage {
+    padding: 40px 0 64px;
+  }
+  .pb-account-id {
+    display: none;
+  }
+  .pb-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pb-row-actions .pb-btn {
+    flex: 1;
+  }
+}

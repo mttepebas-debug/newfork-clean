@@ -17,6 +17,11 @@ import {
   supabaseClient,
 } from "../lib/supabase";
 import { CreateOrganizationButton } from "../shell/CreateOrganizationButton";
+import {
+  PreBizFrame,
+  Section,
+  useDevShellVariant,
+} from "../shell/prebiz/PreBiz";
 import { listPendingEmployeeInvitations } from "./employee-data";
 import { InvitationRow } from "./InvitationRow";
 import { UnfinishedSetupRow } from "./UnfinishedSetupRow";
@@ -28,6 +33,7 @@ import { UnfinishedSetupRow } from "./UnfinishedSetupRow";
 export default function PendingInvitationsPage() {
   const { context, refresh, signOut } = useAuth();
   const navigate = useNavigate();
+  const shell = useDevShellVariant();
   const invitations = useQuery({
     queryKey: ["account-pending-invitations"],
     queryFn: listPendingEmployeeInvitations,
@@ -86,6 +92,81 @@ export default function PendingInvitationsPage() {
   }
 
   const inviteOnly = unfinished.length === 0;
+
+  if (shell) {
+    const loading = invitations.isLoading || workspaces.isLoading;
+    return (
+      <PreBizFrame
+        variant={shell}
+        titleId="pending-invites-title"
+        // The heading only claims what the lists below actually show.
+        title={
+          loading
+            ? "Checking your account"
+            : inviteOnly
+              ? pending.length === 1
+                ? "You have an invitation"
+                : `You have ${pending.length} invitations`
+              : "Pick up where you left off"
+        }
+        description={
+          loading
+            ? undefined
+            : inviteOnly
+              ? deferPath
+                ? "Join now or decide later. Declining can't be undone."
+                : "Declining can't be undone."
+              : "Your progress is saved."
+        }
+      >
+        {invitations.error ? (
+          <p className="form-error" role="alert">
+            {invitations.error instanceof Error
+              ? invitations.error.message
+              : "Invitations could not be loaded"}
+          </p>
+        ) : null}
+        {pending.length > 0 ? (
+          <Section title="Invitations">
+            {pending.map((invitation) => (
+              <InvitationRow key={invitation.id} invitation={invitation} kit />
+            ))}
+          </Section>
+        ) : null}
+        {unfinished.length > 0 ? (
+          <Section title="In progress">
+            {unfinished.map((workspace) => (
+              <UnfinishedSetupRow key={workspace.id} workspace={workspace} kit />
+            ))}
+          </Section>
+        ) : null}
+        {!loading && pending.length === 0 && !employerDraft ? (
+          <div className="pb-section">
+            <h2>Your own business</h2>
+            <CreateOrganizationButton
+              className="pb-btn pb-btn-secondary pb-btn-block"
+              label="Create your business"
+            />
+          </div>
+        ) : null}
+        {deferPath ? (
+          <div className="pb-footer">
+            <Link
+              className="pb-btn pb-btn-secondary"
+              to={deferPath}
+              replace
+              onClick={() =>
+                window.sessionStorage.setItem(invitationsCheckedStorageKey, "1")
+              }
+            >
+              Not now
+            </Link>
+          </div>
+        ) : null}
+      </PreBizFrame>
+    );
+  }
+
   return (
     <main className="sign-in-page">
       <section className="sign-in-panel" aria-labelledby="pending-invites-title">

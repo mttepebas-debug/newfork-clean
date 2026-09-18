@@ -1,5 +1,5 @@
 import type { WorkspaceSummary } from "@newfork/shared";
-import { Button } from "@newfork/ui";
+import { Button, ConfirmButton } from "@newfork/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -8,6 +8,7 @@ import {
   setTabWorkspaceId,
   supabaseClient,
 } from "../lib/supabase";
+import { BusinessRow, StatusBadge } from "../shell/prebiz/PreBiz";
 import { getMyOnboarding, leaveMyOnboarding } from "./onboarding-data";
 
 /**
@@ -16,8 +17,11 @@ import { getMyOnboarding, leaveMyOnboarding } from "./onboarding-data";
  */
 export function UnfinishedSetupRow({
   workspace,
+  kit = false,
 }: {
   readonly workspace: WorkspaceSummary;
+  /** UI-PRE-001 Faz 1: render with the shared kit instead of the legacy row. */
+  readonly kit?: boolean;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -55,6 +59,56 @@ export function UnfinishedSetupRow({
     setTabWorkspaceId(workspace.id);
     void refresh().then(() => navigate("/onboarding"));
   };
+
+  if (kit) {
+    return (
+      <BusinessRow
+        name={workspace.name}
+        role={workspace.role}
+        badge={
+          <StatusBadge tone="progress">
+            {employer ? "Setup in progress" : "Onboarding in progress"}
+          </StatusBadge>
+        }
+        error={
+          discard.error
+            ? discard.error instanceof Error
+              ? discard.error.message
+              : "Setup could not be updated"
+            : null
+        }
+      >
+        <ConfirmButton
+          className="pb-btn pb-btn-danger"
+          aria-label={
+            employer
+              ? `Discard setup for ${workspace.name}`
+              : `Decline onboarding for ${workspace.name}`
+          }
+          // Discarding deletes the draft business, so the armed label says so.
+          confirmLabel={
+            employer ? "Click again to delete setup" : "Click again to decline"
+          }
+          disabled={discard.isPending}
+          onConfirm={() => discard.mutate()}
+        >
+          {employer ? "Discard" : "Decline"}
+        </ConfirmButton>
+        <Button
+          className="pb-btn pb-btn-primary"
+          aria-label={
+            employer
+              ? `Continue setup for ${workspace.name}`
+              : `Continue onboarding for ${workspace.name}`
+          }
+          disabled={discard.isPending}
+          onClick={resume}
+        >
+          Continue
+        </Button>
+      </BusinessRow>
+    );
+  }
 
   return (
     <div className="workspace-row" role="listitem">
