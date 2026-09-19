@@ -1,9 +1,9 @@
 import type { WorkspaceRole } from "@newfork/shared";
-import { Button } from "@newfork/ui";
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { sessionExpiredStorageKey } from "../lib/supabase";
+import { PreBizFrame } from "../shell/prebiz/PreBiz";
 
 export function SignInPage() {
   const {
@@ -60,38 +60,41 @@ export function SignInPage() {
   };
 
   return (
-    <main className="sign-in-page">
-      <section className="sign-in-panel" aria-labelledby="sign-in-title">
-        <p className="product-mark">NEWFORK</p>
-        <h1 id="sign-in-title">
-          {creatingAccount
-            ? inviteFlow
-              ? "Create your employee account"
-              : "Create your business account"
-            : "Sign in to your workspace"}
-        </h1>
-        <p className="muted">
-          {!supabaseConfigured
-            ? "Supabase is not configured for this browser session."
-            : sessionExpired
-              ? "Your session ended. Sign in again to continue."
-              : "Sign in with your email and password."}
-        </p>
-        {supabaseConfigured ? (
-          <form onSubmit={handleSupabaseSignIn}>
-            {creatingAccount && !inviteFlow ? (
-              <>
-                <label htmlFor="full-name">Full name</label>
-                <input
-                  id="full-name"
-                  autoComplete="name"
-                  value={fullName}
-                  maxLength={100}
-                  onChange={(event) => setFullName(event.target.value)}
-                  required
-                />
-              </>
-            ) : null}
+    <PreBizFrame
+      titleId="sign-in-title"
+      title={
+        creatingAccount
+          ? inviteFlow
+            ? "Create your employee account"
+            : "Create your business account"
+          : "Sign in"
+      }
+      description={
+        !supabaseConfigured
+          ? "Sign-in is unavailable in this browser session."
+          : sessionExpired
+            ? "Your session ended. Sign in again to pick up where you left off."
+            : creatingAccount
+              ? "Your email and a password of at least eight characters."
+              : undefined
+      }
+    >
+      {supabaseConfigured ? (
+        <form className="sign-in-form" onSubmit={handleSupabaseSignIn}>
+          {creatingAccount && !inviteFlow ? (
+            <div className="onboarding-field">
+              <label htmlFor="full-name">Full name</label>
+              <input
+                id="full-name"
+                autoComplete="name"
+                value={fullName}
+                maxLength={100}
+                onChange={(event) => setFullName(event.target.value)}
+                required
+              />
+            </div>
+          ) : null}
+          <div className="onboarding-field">
             <label htmlFor="email">Email</label>
             <input
               id="email"
@@ -101,25 +104,28 @@ export function SignInPage() {
               onChange={(event) => setEmail(event.target.value)}
               required
             />
+          </div>
+          <div className="onboarding-field">
             <label htmlFor="password">Password</label>
             <input
               id="password"
               type="password"
               minLength={8}
-              autoComplete={
-                creatingAccount ? "new-password" : "current-password"
-              }
+              autoComplete={creatingAccount ? "new-password" : "current-password"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
             />
-            {error ? (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            ) : null}
-            <Button
+          </div>
+          {error ? (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <div className="pb-stack">
+            <button
               type="submit"
+              className="pb-btn pb-btn-primary pb-btn-block"
               disabled={
                 submitting ||
                 (creatingAccount && !inviteFlow && fullName.trim().length === 0)
@@ -130,9 +136,10 @@ export function SignInPage() {
                 : creatingAccount
                   ? "Create account"
                   : "Sign in"}
-            </Button>
+            </button>
+            {/* The second way off this screen, so it is never the green one. */}
             <button
-              className="auth-mode-button"
+              className="pb-btn pb-btn-secondary pb-btn-block"
               type="button"
               onClick={() => setCreatingAccount((value) => !value)}
             >
@@ -142,11 +149,13 @@ export function SignInPage() {
                   ? "Create a new account"
                   : "Create a business account"}
             </button>
-          </form>
-        ) : null}
-        {developmentIdentityAllowed ? (
-          <div className="development-access">
-            <p>Development fallback</p>
+          </div>
+        </form>
+      ) : null}
+      {developmentIdentityAllowed ? (
+        <div className="development-access">
+          <p>Development fallback</p>
+          <div className="onboarding-field">
             <label htmlFor="development-role">Workspace role</label>
             <select
               id="development-role"
@@ -158,24 +167,29 @@ export function SignInPage() {
               <option value="manager">Manager</option>
               <option value="employee">Employee</option>
             </select>
-            <Button className="secondary-button" onClick={handleSignIn}>
-              Use development identity
-            </Button>
           </div>
-        ) : null}
-        <nav className="sign-in-trust-links" aria-label="Trust and legal">
-          <Link to="/privacy">Privacy</Link>
-          <Link to="/terms">Terms</Link>
-          <Link to="/accessibility">Accessibility</Link>
-          <Link to="/contact">Contact</Link>
-        </nav>
-      </section>
-    </main>
+          <button
+            type="button"
+            className="pb-btn pb-btn-secondary"
+            onClick={handleSignIn}
+          >
+            Use development identity
+          </button>
+        </div>
+      ) : null}
+      <nav className="sign-in-trust-links" aria-label="Trust and legal">
+        <Link to="/privacy">Privacy</Link>
+        <Link to="/terms">Terms</Link>
+        <Link to="/accessibility">Accessibility</Link>
+        <Link to="/contact">Contact</Link>
+      </nav>
+    </PreBizFrame>
   );
 }
 
 function safeSignInDestination(destination: string): string {
-  if (!destination.startsWith("/") || destination.startsWith("//")) return "/app";
+  if (!destination.startsWith("/") || destination.startsWith("//"))
+    return "/app";
   try {
     const parsed = new URL(destination, "http://newfork.local");
     if (parsed.origin !== "http://newfork.local") return "/app";
@@ -187,7 +201,9 @@ function safeSignInDestination(destination: string): string {
 
 function isInviteAcceptDestination(destination: string): boolean {
   try {
-    return new URL(destination, "http://newfork.local").pathname === "/invite/accept";
+    return (
+      new URL(destination, "http://newfork.local").pathname === "/invite/accept"
+    );
   } catch {
     return false;
   }

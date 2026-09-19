@@ -980,15 +980,6 @@
   align-items: center;
 }
 
-.auth-mode-button {
-  margin-top: 12px;
-  border: 0;
-  background: transparent;
-  color: #146c4d;
-  font-weight: 700;
-  cursor: pointer;
-}
-
 .manager-onboarding-review {
   display: grid;
   gap: 14px;
@@ -3120,19 +3111,30 @@ p {
   text-underline-offset: 3px;
   cursor: pointer;
 }
+/* The sign-in form in the prebiz stage; it carries its own spacing there. */
+.sign-in-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 26px;
+  max-width: 420px;
+}
 .development-access {
-  margin-top: 24px;
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  max-width: 420px;
+  margin-top: 32px;
   padding-top: 20px;
   border-top: 1px solid #e2e5e3;
 }
 .development-access > p {
-  margin-bottom: 0;
+  margin: 0;
   color: #79837f;
   font-size: 12px;
   font-weight: 750;
 }
-.development-access label {
-  margin-top: 12px;
+.development-access .onboarding-field {
+  width: 100%;
 }
 .secondary-button {
   border: 1px solid #bdc8c3;
@@ -16583,12 +16585,12 @@ select:focus-visible {
   gap: 14px 22px;
 }
 .sign-in-trust-links {
-  margin-top: 24px;
+  max-width: 420px;
+  margin-top: 32px;
   padding-top: 18px;
   border-top: 1px solid #e2e5e3;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: 8px 14px;
 }
 .sign-in-trust-links a {

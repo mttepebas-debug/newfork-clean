@@ -36,7 +36,14 @@ vi.mock("../lib/supabase", () => ({
 }));
 
 const authState = vi.hoisted(() => ({
-  value: { context: null as unknown, refresh: vi.fn(), signOut: vi.fn() },
+  // These screens only ever render for a signed-in account; the account block
+  // now hides itself when there is no session to sign out of.
+  value: {
+    context: null as unknown,
+    authenticated: true,
+    refresh: vi.fn(),
+    signOut: vi.fn(),
+  },
 }));
 
 vi.mock("../auth/AuthContext", () => ({

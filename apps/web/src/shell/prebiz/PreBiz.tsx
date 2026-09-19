@@ -6,7 +6,10 @@ import "./prebiz.css";
 
 /** The account and its way out. Every screen before a business shows this one block. */
 export function AccountBlock() {
-  const { account, signOut } = useAuth();
+  const { account, authenticated, signOut } = useAuth();
+  // Sign-in is in this frame too, and a visitor with no session has nothing to
+  // sign out of. A session with no account loaded keeps the way out anyway.
+  if (!account && !authenticated) return null;
   return (
     <div className="pb-account">
       <span className="pb-account-id">

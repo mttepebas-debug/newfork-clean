@@ -85,7 +85,12 @@ const workspaces = [
 const signOut = vi.fn();
 
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({ context: managerContext, refresh, signOut }),
+  useAuth: () => ({
+    context: managerContext,
+    authenticated: true,
+    refresh,
+    signOut,
+  }),
 }));
 
 vi.mock("../employees/employee-data", () => ({

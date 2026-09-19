@@ -71,7 +71,7 @@ describe("SignInPage", () => {
     renderPage();
 
     expect(
-      screen.getByRole("heading", { name: "Sign in to your workspace" }),
+      screen.getByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
 
     fireEvent.click(
@@ -105,9 +105,8 @@ describe("SignInPage", () => {
   it("starts with an empty email and no local development copy", () => {
     renderPage();
     expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("");
-    expect(
-      screen.getByText("Sign in with your email and password."),
-    ).toBeTruthy();
+    // Sign-in carries no explanation: the heading and the two fields say it.
+    expect(screen.queryByText(/password\./)).toBeNull();
     expect(screen.queryByText(/local Supabase/i)).toBeNull();
   });
 
@@ -127,7 +126,7 @@ describe("SignInPage", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Sign in to your workspace" }),
+      screen.getByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Create a new account" }),
@@ -141,7 +140,7 @@ describe("SignInPage", () => {
     });
 
     expect(
-      screen.getByRole("heading", { name: "Sign in to your workspace" }),
+      screen.getByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "Create a business account" }),
@@ -175,7 +174,7 @@ describe("SignInPage", () => {
     renderPage();
 
     expect(
-      screen.getByText("Your session ended. Sign in again to continue."),
+      screen.getByText("Your session ended. Sign in again to pick up where you left off."),
     ).toBeTruthy();
     window.sessionStorage.clear();
   });

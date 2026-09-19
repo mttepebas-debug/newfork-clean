@@ -723,7 +723,7 @@ describe("App", () => {
     const { container } = render(<App />);
 
     expect(
-      await screen.findByRole("heading", { name: "Sign in to your workspace" }),
+      await screen.findByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox", { name: "Workspace role" }), {
       target: { value: "owner" },
@@ -5441,7 +5441,7 @@ describe("App", () => {
     render(<App />);
 
     expect(
-      await screen.findByRole("heading", { name: "Sign in to your workspace" }),
+      await screen.findByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "Use development identity" }),
@@ -5465,7 +5465,7 @@ describe("App", () => {
 
       expect(
         await screen.findByRole("heading", {
-          name: "Sign in to your workspace",
+          name: "Sign in",
         }),
       ).toBeTruthy();
       fireEvent.change(
@@ -5489,7 +5489,7 @@ describe("App", () => {
     render(<App />);
 
     expect(
-      await screen.findByRole("heading", { name: "Sign in to your workspace" }),
+      await screen.findByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox", { name: "Workspace role" }), {
       target: { value: "employee" },
@@ -5509,7 +5509,7 @@ describe("App", () => {
     render(<App />);
 
     expect(
-      await screen.findByRole("heading", { name: "Sign in to your workspace" }),
+      await screen.findByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox", { name: "Workspace role" }), {
       target: { value: "employee" },
