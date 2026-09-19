@@ -587,6 +587,14 @@
 .workspace-row-actions { flex: 0 0 auto; }
 /* The kit row brings its own side padding; this panel already has one. */
 .account-main .workspace-list .pb-row { padding-inline: 0; }
+/* The current row's tint runs to the panel edge, so its text keeps the same left
+   line as the other rows instead of touching the edge of the band. */
+.account-main .workspace-list .pb-row[aria-current="true"] {
+  margin-inline: -18px;
+  padding-inline: 18px;
+}
+/* The pill has the tint's own green; on that row it turns white. */
+.account-main .pb-row[aria-current="true"] .account-pill { background: var(--theme-surface); }
 /* Stacked on a narrow screen, the current row has no button to push the menu to
    the right edge, and its right-anchored popover would open off the left side. */
 .pb-row-actions .workspace-actions-menu { margin-left: auto; }
