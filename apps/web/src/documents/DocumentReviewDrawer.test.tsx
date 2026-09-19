@@ -587,12 +587,22 @@ describe("employee surface", () => {
     );
     await waitFor(() => expectRefreshed(invalidate));
   });
-  it("submits a null expiry date when none is typed", async () => {
+  it("submits a null expiry date when none is typed, and refreshes only once it succeeds", async () => {
     vi.mocked(getDocument).mockResolvedValue(withDraft());
-    page(true);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Submit document" }),
-    );
+    vi.mocked(submitDocument)
+      .mockRejectedValueOnce(new Error("Submit unavailable"))
+      .mockResolvedValue(undefined);
+    const { invalidate } = page(true);
+
+    const submit = await screen.findByRole("button", {
+      name: "Submit document",
+    });
+    fireEvent.click(submit);
+    await screen.findByText("Submit unavailable");
+    // A failed mutation must not tell the rest of the app the document moved.
+    expect(invalidate).not.toHaveBeenCalled();
+
+    fireEvent.click(submit);
     await waitFor(() =>
       expect(submitDocument).toHaveBeenCalledWith(employee, "requirement", {
         revision: 1,
@@ -601,6 +611,7 @@ describe("employee surface", () => {
         metadata: {},
       }),
     );
+    expectRefreshed(invalidate);
   });
   it("keeps Submit disabled while the draft has no kept file", async () => {
     const doc = withDraft();
