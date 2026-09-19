@@ -17,11 +17,8 @@ import { getMyOnboarding, leaveMyOnboarding } from "./onboarding-data";
  */
 export function UnfinishedSetupRow({
   workspace,
-  kit = false,
 }: {
   readonly workspace: WorkspaceSummary;
-  /** UI-PRE-001 Faz 1: render with the shared kit instead of the legacy row. */
-  readonly kit?: boolean;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -60,104 +57,45 @@ export function UnfinishedSetupRow({
     void refresh().then(() => navigate("/onboarding"));
   };
 
-  if (kit) {
-    return (
-      <BusinessRow
-        name={workspace.name}
-        role={roleLabel[workspace.role]}
-        badge={
-          <StatusBadge tone="progress">
-            {employer ? "Setup in progress" : "Onboarding in progress"}
-          </StatusBadge>
-        }
-        error={discard.error ? "Setup could not be updated" : null}
-      >
-        <ConfirmButton
-          className="pb-btn pb-btn-danger"
-          aria-label={
-            employer
-              ? `Discard setup for ${workspace.name}`
-              : `Decline onboarding for ${workspace.name}`
-          }
-          // Discarding deletes the draft business, so the armed label says so.
-          confirmLabel={
-            employer ? "Click again to delete" : "Click again to decline"
-          }
-          disabled={discard.isPending}
-          onConfirm={() => discard.mutate()}
-        >
-          {employer ? "Discard" : "Decline"}
-        </ConfirmButton>
-        <Button
-          className="pb-btn pb-btn-primary"
-          aria-label={
-            employer
-              ? `Continue setup for ${workspace.name}`
-              : `Continue onboarding for ${workspace.name}`
-          }
-          disabled={discard.isPending}
-          onClick={resume}
-        >
-          Continue
-        </Button>
-      </BusinessRow>
-    );
-  }
-
   return (
-    <div className="workspace-row" role="listitem">
-      <div>
-        <strong>{workspace.name}</strong>
-        <span>
-          {employer ? "Setup in progress" : "Onboarding in progress"} ·{" "}
-          {workspace.role}
-        </span>
-        {discard.error ? (
-          <p className="form-error" role="alert">
-            {discard.error instanceof Error
-              ? discard.error.message
-              : "Setup could not be updated"}
-          </p>
-        ) : null}
-      </div>
-      <div className="workspace-row-actions">
-        <Button
-          className="compact-button"
-          type="button"
-          aria-label={
-            employer
-              ? `Continue setup for ${workspace.name}`
-              : `Continue onboarding for ${workspace.name}`
-          }
-          disabled={discard.isPending}
-          onClick={resume}
-        >
-          {employer ? "Continue setup" : "Continue onboarding"}
-        </Button>
-        <Button
-          className="secondary-button compact-button"
-          type="button"
-          aria-label={
-            employer
-              ? `Discard setup for ${workspace.name}`
-              : `Decline onboarding for ${workspace.name}`
-          }
-          disabled={discard.isPending}
-          onClick={() => {
-            if (
-              window.confirm(
-                employer
-                  ? `Discarding removes ${workspace.name} and everything entered during setup. This cannot be undone.`
-                  : `Declining leaves this onboarding. You will need a new invitation to join ${workspace.name} later.`,
-              )
-            ) {
-              discard.mutate();
-            }
-          }}
-        >
-          {employer ? "Discard" : "Decline"}
-        </Button>
-      </div>
-    </div>
+    <BusinessRow
+      name={workspace.name}
+      role={roleLabel[workspace.role]}
+      badge={
+        <StatusBadge tone="progress">
+          {employer ? "Setup in progress" : "Onboarding in progress"}
+        </StatusBadge>
+      }
+      error={discard.error ? "Setup could not be updated" : null}
+    >
+      <ConfirmButton
+        className="pb-btn pb-btn-danger"
+        aria-label={
+          employer
+            ? `Discard setup for ${workspace.name}`
+            : `Decline onboarding for ${workspace.name}`
+        }
+        // Discarding deletes the draft business, so the armed label says so.
+        confirmLabel={
+          employer ? "Click again to delete" : "Click again to decline"
+        }
+        disabled={discard.isPending}
+        onConfirm={() => discard.mutate()}
+      >
+        {employer ? "Discard" : "Decline"}
+      </ConfirmButton>
+      <Button
+        className="pb-btn pb-btn-primary"
+        aria-label={
+          employer
+            ? `Continue setup for ${workspace.name}`
+            : `Continue onboarding for ${workspace.name}`
+        }
+        disabled={discard.isPending}
+        onClick={resume}
+      >
+        Continue
+      </Button>
+    </BusinessRow>
   );
 }

@@ -5306,7 +5306,7 @@ describe("App", () => {
         await screen.findByRole("heading", { name: "Workspaces" }),
       ).toBeTruthy();
       expect(
-        await screen.findByLabelText("Meyhouse is the current workspace"),
+        await screen.findByLabelText("Meyhouse is the current business"),
       ).toBeTruthy();
     },
     15000,

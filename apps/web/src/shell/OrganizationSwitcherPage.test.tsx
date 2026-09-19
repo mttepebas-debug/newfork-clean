@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
@@ -148,38 +154,40 @@ describe("OrganizationSwitcherPage", () => {
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
   });
 
-  it("lists organizations without promoting workspace creation", async () => {
-    const { container } = renderPage();
+  it("lists businesses without promoting business creation", async () => {
+    renderPage();
 
+    // The title claims nothing before both lists have answered.
     expect(
-      await screen.findByRole("heading", { name: "Choose organization" }),
+      screen.getByRole("heading", { name: "Loading your businesses" }),
     ).toBeTruthy();
-    await screen.findByText("Meyhouse");
     expect(
-      container
-        .querySelector("[aria-labelledby='organization-switcher-title']")
-        ?.getAttribute("aria-busy"),
-    ).toBe("false");
-    expect(screen.getByRole("list", { name: "Organizations" })).toBeTruthy();
+      await screen.findByRole("heading", { name: "Choose a business" }),
+    ).toBeTruthy();
+    const rows = within(
+      screen.getByRole("list", { name: "Your businesses" }),
+    ).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByText("Meyhouse")).toBeTruthy();
     expect(screen.getByText("West Room")).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Select the organization you want to work in. Suspended organizations open a limited status view.",
-      ),
-    ).toBeTruthy();
+    expect(screen.getByText("Manager")).toBeTruthy();
+    // The tab's business is marked, in words and for a screen reader.
+    expect(rows[0]?.getAttribute("aria-current")).toBe("true");
+    expect(within(rows[0]!).getByText("Current")).toBeTruthy();
+    expect(rows[1]?.getAttribute("aria-current")).toBeNull();
+    expect(within(rows[1]!).queryByText("Current")).toBeNull();
     expect(screen.queryByRole("button", { name: /Create/i })).toBeNull();
     expect(
-      screen.getByRole("link", { name: "Manage account workspaces" }),
+      screen.getByRole("link", { name: "Manage your businesses" }),
     ).toBeTruthy();
   });
 
-  it("uses the sign-in panel layout", async () => {
-    const { container } = renderPage();
-    await screen.findByText("Meyhouse");
-    expect(container.querySelector("main.sign-in-page > section.sign-in-panel")).toBeTruthy();
-    expect(screen.getByText("NEWFORK").className).toBe("product-mark");
+  it("keeps Sign out on the list through the account block", async () => {
+    renderPage();
+    await screen.findByRole("heading", { name: "Choose a business" });
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(signOut).toHaveBeenCalledTimes(1);
   });
 
   it("sends accounts without organizations to the no-organization page", async () => {
@@ -190,7 +198,9 @@ describe("OrganizationSwitcherPage", () => {
         "/no-organization",
       ),
     );
-    expect(screen.queryByRole("heading", { name: "Choose organization" })).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "Choose a business" }),
+    ).toBeNull();
   });
 
   it("selects an organization before opening its role landing", async () => {
@@ -213,6 +223,26 @@ describe("OrganizationSwitcherPage", () => {
       expect(screen.getByLabelText("Current path").textContent).toBe(
         "/app/employee-hub",
       ),
+    );
+  });
+
+  it("says a failed open in plain words on that row", async () => {
+    vi.mocked(selectActiveWorkspace).mockRejectedValueOnce(
+      new Error("workspace membership not found"),
+    );
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Open West Room" }),
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("This business could not be opened");
+    expect(alert.closest("[role='listitem']")?.textContent).toContain(
+      "West Room",
+    );
+    expect(screen.getByLabelText("Current path").textContent).toBe(
+      "/organization-switcher",
     );
   });
 
@@ -257,9 +287,15 @@ describe("OrganizationSwitcherPage", () => {
     renderPage();
 
     expect(
-      await screen.findByRole("heading", { name: "Organizations unavailable" }),
+      await screen.findByRole("heading", {
+        name: "Your businesses didn't load",
+      }),
     ).toBeTruthy();
-    expect(screen.getByRole("alert").textContent).toBe("Service unavailable");
+    // A fixed sentence: the server's own message never reaches the screen.
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Your businesses could not be loaded",
+    );
+    expect(screen.queryByText(/Service unavailable/)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Meyhouse")).toBeTruthy();
@@ -272,8 +308,96 @@ describe("OrganizationSwitcherPage", () => {
     );
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    // The loading frame has Sign out too, so wait for the recovery view itself.
+    await screen.findByRole("heading", { name: "Your businesses didn't load" });
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives each row the action set of its state", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      workspaces[0]!,
+      {
+        id: "aea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        name: "Draft Room",
+        role: "owner",
+        status: "active",
+        isActive: false,
+        onboarding: { status: "incomplete", currentStep: 1 },
+      },
+      {
+        id: "8ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        name: "Pending Room",
+        role: "employee",
+        status: "pending",
+        isActive: false,
+        onboarding: { status: "incomplete", currentStep: 1 },
+      },
+      {
+        id: "9ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        name: "Suspended Room",
+        role: "manager",
+        status: "suspended",
+        isActive: false,
+        onboarding: { status: "complete", currentStep: 2 },
+      },
+    ]);
+    renderPage();
+    await screen.findByRole("heading", { name: "Choose a business" });
+
+    const rowsOf = (list: string) =>
+      within(screen.getByRole("list", { name: list }))
+        .getAllByRole("listitem")
+        .map((row) => ({
+          name: row.querySelector("strong")?.textContent,
+          // Role first, then the state: the same order on every screen.
+          meta: [...row.querySelectorAll(".pb-row-meta > *")].map(
+            (part) => part.textContent,
+          ),
+          actions: within(row)
+            .getAllByRole("button")
+            .map((button) => button.getAttribute("aria-label")),
+        }));
+
+    // A setup somebody still has to finish is continued, never opened.
+    expect(rowsOf("In progress")).toEqual([
+      {
+        name: "Draft Room",
+        meta: ["Owner", "Setup in progress"],
+        actions: [
+          "Discard setup for Draft Room",
+          "Continue setup for Draft Room",
+        ],
+      },
+      {
+        name: "Pending Room",
+        meta: ["Employee", "Onboarding in progress"],
+        actions: [
+          "Decline onboarding for Pending Room",
+          "Continue onboarding for Pending Room",
+        ],
+      },
+    ]);
+    expect(rowsOf("Your businesses")).toEqual([
+      {
+        name: "Meyhouse",
+        meta: ["Manager", "Current"],
+        actions: ["Open Meyhouse"],
+      },
+      {
+        name: "Suspended Room",
+        meta: ["Manager", "Suspended"],
+        actions: ["View status for Suspended Room"],
+      },
+    ]);
+    // Opening is green; looking at a suspended business is the white side route.
+    expect(
+      screen.getByRole("button", { name: "Open Meyhouse" }).className,
+    ).toContain("pb-btn-primary");
+    expect(
+      screen.getByRole("button", { name: "View status for Suspended Room" })
+        .className,
+    ).toContain("pb-btn-secondary");
   });
 
   it("continues onboarding for pending organizations and limits suspended ones", async () => {
@@ -298,7 +422,7 @@ describe("OrganizationSwitcherPage", () => {
     renderPage();
 
     expect(await screen.findByText("Pending Room")).toBeTruthy();
-    expect(screen.getByText("employee · onboarding in progress")).toBeTruthy();
+    expect(screen.getByText("Onboarding in progress")).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "View status for Suspended Room" }),
     ).toBeTruthy();
@@ -330,7 +454,7 @@ describe("OrganizationSwitcherPage", () => {
     renderPage();
 
     expect(await screen.findByText("Suspended Room")).toBeTruthy();
-    expect(screen.getByText("manager · suspended")).toBeTruthy();
+    expect(screen.getByText("Suspended")).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "View status for Suspended Room" }),
     );

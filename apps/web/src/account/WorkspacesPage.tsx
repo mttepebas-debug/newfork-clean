@@ -8,6 +8,7 @@ import { useAuth } from "../auth/AuthContext";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { InvitationRow } from "../employees/InvitationRow";
+import { BusinessRow, StatusBadge, roleLabel } from "../shell/prebiz/PreBiz";
 import { AccountPageHeader } from "./components";
 import {
   createOwnerWorkspace,
@@ -456,7 +457,7 @@ export default function WorkspacesPage() {
             className="primary-button"
             onClick={openCreateDialog}
           >
-            <Plus size={16} aria-hidden /> Create workspace
+            <Plus size={16} aria-hidden /> Create business
           </Button>
         ) : undefined}
       />
@@ -481,16 +482,17 @@ export default function WorkspacesPage() {
           Loading workspaces...
         </p>
       ) : null}
-      <div className="workspace-list">
+      {/* The kit rows are list items, so the container says it is their list. */}
+      <div className="workspace-list" role="list" aria-label="Businesses">
         {invitations.map(invitation => (
           <InvitationRow key={invitation.id} invitation={invitation} />
         ))}
         {orderedWorkspaces.length === 0 && !loading ? (
-          <div className="workspace-row empty-workspace-row">
+          <div className="workspace-row empty-workspace-row" role="listitem">
             <div>
-              <strong>No workspaces yet</strong>
-              <span>{invitations.length > 0 ? "Respond to your invitation to continue." : "Create your first workspace to continue."}</span>
-              {canCreate ? <Button type="button" onClick={openCreateDialog}>Create workspace</Button> : null}
+              <strong>No businesses yet</strong>
+              <span>{invitations.length > 0 ? "Respond to your invitation to continue." : "Create your first business to continue."}</span>
+              {canCreate ? <Button type="button" onClick={openCreateDialog}>Create business</Button> : null}
             </div>
           </div>
         ) : null}
@@ -500,40 +502,41 @@ export default function WorkspacesPage() {
           const pendingTransfer = workspace.pendingOwnershipTransfer ?? null;
           const isCurrent = workspace.id === currentWorkspaceId;
           const onboarding = workspace.status === "pending";
+          // An employer draft is active but not set up: it is continued, not opened.
+          const draft = workspace.status === "active" && workspace.onboarding.status !== "complete";
           const hasOwnerActions = workspace.role === "owner" && (
             (!pendingTransfer && (lifecycleStatus === "active" || lifecycleStatus === "closure_scheduled")) ||
             pendingTransfer?.role === "initiator"
           );
           const actionsOpen = openActionsWorkspaceId === workspace.id;
           return (
-            <div
-              className="workspace-row"
+            <BusinessRow
               key={workspace.id}
-              data-current={isCurrent}
-            >
-              <div>
-                <strong>{workspace.name}</strong>
-                <span>
-                  {workspace.role}
-                  {onboarding ? " · onboarding in progress" : ""}
-                  {workspace.isActive ? " · default" : ""}
+              name={workspace.name}
+              role={roleLabel[workspace.role]}
+              current={isCurrent}
+              badge={
+                <>
+                  {onboarding ? <StatusBadge tone="progress">Onboarding in progress</StatusBadge> : null}
+                  {draft ? <StatusBadge tone="progress">Setup in progress</StatusBadge> : null}
+                  {workspace.isActive ? <StatusBadge>Default</StatusBadge> : null}
                   {lifecycleStatus === "closure_scheduled"
-                    ? ` · closes ${formatClosureDate(workspace.closureEffectiveAt ?? null)}`
-                    : ""}
+                    ? <StatusBadge>Closes {formatClosureDate(workspace.closureEffectiveAt ?? null)}</StatusBadge>
+                    : null}
                   {pendingTransfer
-                    ? ` · ownership transfer ${pendingTransfer.role === "target" ? "needs response" : "pending"}`
-                    : ""}
-                </span>
-              </div>
-              <div className="workspace-row-actions">
+                    ? <StatusBadge tone="progress">Ownership transfer {pendingTransfer.role === "target" ? "needs response" : "pending"}</StatusBadge>
+                    : null}
+                </>
+              }
+            >
                 {isCurrent ? (
-                  <span className="account-pill active-workspace" aria-label={`${workspace.name} is the current workspace`}>
+                  <span className="account-pill active-workspace" aria-label={`${workspace.name} is the current business`}>
                     <Check size={15} aria-hidden />
                     Current
                   </span>
                 ) : onboarding ? (
                   <Button
-                    className="secondary-button compact-button"
+                    className="pb-btn pb-btn-primary"
                     type="button"
                     aria-label={`Continue onboarding for ${workspace.name}`}
                     onClick={() => navigate(`/welcome/${workspace.id}`)}
@@ -542,13 +545,13 @@ export default function WorkspacesPage() {
                   </Button>
                 ) : (
                   <Button
-                    className="secondary-button compact-button"
+                    className="pb-btn pb-btn-primary"
                     type="button"
-                    aria-label={`Open ${workspace.name}`}
+                    aria-label={draft ? `Continue setup for ${workspace.name}` : `Open ${workspace.name}`}
                     disabled={activating}
                     onClick={() => activate(workspace)}
                   >
-                    {activating ? "Opening" : "Open"}
+                    {activating ? "Opening" : draft ? "Continue" : "Open"}
                   </Button>
                 )}
                 <div className="workspace-actions-menu" ref={actionsOpen ? actionsMenuRef : undefined}>
@@ -559,7 +562,7 @@ export default function WorkspacesPage() {
                       }}
                       type="button"
                       className="workspace-actions-trigger"
-                      aria-label={`Workspace actions for ${workspace.name}`}
+                      aria-label={`Actions for ${workspace.name}`}
                       aria-haspopup="menu"
                       aria-expanded={actionsOpen}
                       onClick={() => setOpenActionsWorkspaceId(current => current === workspace.id ? null : workspace.id)}
@@ -567,7 +570,7 @@ export default function WorkspacesPage() {
                       <Ellipsis size={18} aria-hidden />
                     </button>
                     {actionsOpen ? (
-                      <div className="workspace-actions-popover" role="menu" aria-label={`Workspace actions for ${workspace.name}`}>
+                      <div className="workspace-actions-popover" role="menu" aria-label={`Actions for ${workspace.name}`}>
                         <button
                           role="menuitem"
                           type="button"
@@ -579,7 +582,7 @@ export default function WorkspacesPage() {
                         >
                           {workspace.isActive ? <Check size={15} aria-hidden /> : <Star size={15} aria-hidden />}
                           {workspace.isActive
-                            ? "Default workspace"
+                            ? "Default business"
                             : defaultingWorkspaceId === workspace.id
                               ? "Setting default"
                               : "Set as default"}
@@ -619,8 +622,7 @@ export default function WorkspacesPage() {
                       </div>
                     ) : null}
                   </div>
-              </div>
-            </div>
+            </BusinessRow>
           );
         })}
       </div>

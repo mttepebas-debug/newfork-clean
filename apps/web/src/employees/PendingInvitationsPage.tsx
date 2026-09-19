@@ -127,14 +127,14 @@ export default function PendingInvitationsPage() {
       {pending.length > 0 ? (
         <Section title="Invitations">
           {pending.map((invitation) => (
-            <InvitationRow key={invitation.id} invitation={invitation} kit />
+            <InvitationRow key={invitation.id} invitation={invitation} />
           ))}
         </Section>
       ) : null}
       {unfinished.length > 0 ? (
         <Section title="In progress">
           {unfinished.map((workspace) => (
-            <UnfinishedSetupRow key={workspace.id} workspace={workspace} kit />
+            <UnfinishedSetupRow key={workspace.id} workspace={workspace} />
           ))}
         </Section>
       ) : null}

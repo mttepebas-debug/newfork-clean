@@ -586,6 +586,11 @@
 .account-main .workspace-row > div:first-child span { overflow-wrap: anywhere; }
 .active-workspace { gap: 5px; }
 .workspace-row-actions { flex: 0 0 auto; }
+/* The kit row brings its own side padding; this panel already has one. */
+.account-main .workspace-list .pb-row { padding-inline: 0; }
+/* Stacked on a narrow screen, the current row has no button to push the menu to
+   the right edge, and its right-anchored popover would open off the left side. */
+.pb-row-actions .workspace-actions-menu { margin-left: auto; }
 .workspace-actions-menu { position: relative; }
 .workspace-actions-trigger {
   display: inline-grid;

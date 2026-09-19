@@ -1,25 +1,33 @@
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
   appLandingPath,
+  unfinishedWorkspaces,
   workspaceLandingPathForRole,
 } from "../auth/routeDestinations";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { InvitationRow } from "../employees/InvitationRow";
+import { UnfinishedSetupRow } from "../employees/UnfinishedSetupRow";
 import {
   listAccountWorkspaces,
   selectActiveWorkspace,
   supabaseClient,
 } from "../lib/supabase";
+import {
+  BusinessRow,
+  PreBizFrame,
+  Section,
+  StatusBadge,
+  roleLabel,
+} from "./prebiz/PreBiz";
 
 export default function OrganizationSwitcherPage() {
-  const { context, refresh, signOut } = useAuth();
+  const { context, refresh } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const workspacesQuery = useQuery({
@@ -41,22 +49,16 @@ export default function OrganizationSwitcherPage() {
   // Invitations are an addition here; a failed load never blocks the list.
   const invitations = invitationsQuery.data ?? [];
   const loading = workspacesQuery.isLoading || invitationsQuery.isLoading;
-  const loadError =
-    workspaces === null && workspacesQuery.error
-      ? workspacesQuery.error instanceof Error
-        ? workspacesQuery.error.message
-        : "Organizations could not be loaded"
-      : null;
+  const loadError = workspaces === null && workspacesQuery.isError;
   const [activatingWorkspaceId, setActivatingWorkspaceId] = useState<
     string | null
   >(null);
-  const [error, setError] = useState<string | null>(null);
+  const [failedWorkspaceId, setFailedWorkspaceId] = useState<string | null>(
+    null,
+  );
 
+  // Pending and draft businesses never get here: their own row continues them.
   const openWorkspace = async (workspace: WorkspaceSummary): Promise<void> => {
-    if (workspace.status === "pending") {
-      navigate(`/welcome/${workspace.id}`);
-      return;
-    }
     if (workspace.status === "suspended") {
       navigate(`/organization-switcher/suspended/${workspace.id}`, {
         replace: true,
@@ -69,19 +71,16 @@ export default function OrganizationSwitcherPage() {
       return;
     }
     setActivatingWorkspaceId(workspace.id);
-    setError(null);
+    setFailedWorkspaceId(null);
     try {
       await clearTenantQueriesForOrganizationSwitch(queryClient);
       await selectActiveWorkspace(supabaseClient, workspace.id);
       const resolvedContext = await refresh();
       await clearTenantQueriesForOrganizationSwitch(queryClient);
       navigate(appLandingPath(resolvedContext), { replace: true });
-    } catch (activationError: unknown) {
-      setError(
-        activationError instanceof Error
-          ? activationError.message
-          : "Organization could not be opened",
-      );
+    } catch {
+      // The server's own message is not for the screen; the row says it plainly.
+      setFailedWorkspaceId(workspace.id);
     } finally {
       setActivatingWorkspaceId(null);
     }
@@ -89,35 +88,22 @@ export default function OrganizationSwitcherPage() {
 
   if (loadError) {
     return (
-      <main className="sign-in-page" aria-labelledby="organizations-error-title">
-        <section className="sign-in-panel">
-          <p className="product-mark">NEWFORK</p>
-          <h1 id="organizations-error-title">Organizations unavailable</h1>
-          <p className="muted">
-            Your account is signed in, but your organizations could not be
-            loaded.
-          </p>
-          <p className="form-error" role="alert">
-            {loadError}
-          </p>
-          <div className="auth-recovery-actions">
-            <button
-              className="nf-button"
-              type="button"
-              onClick={() => void workspacesQuery.refetch()}
-            >
-              Try again
-            </button>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => void signOut()}
-            >
-              Sign out
-            </button>
-          </div>
-        </section>
-      </main>
+      <PreBizFrame
+        titleId="organization-switcher-title"
+        title="Your businesses didn't load"
+      >
+        <p className="form-error" role="alert">
+          Your businesses could not be loaded
+        </p>
+        <div className="pb-footer">
+          <Button
+            className="pb-btn pb-btn-primary"
+            onClick={() => void workspacesQuery.refetch()}
+          >
+            Try again
+          </Button>
+        </div>
+      </PreBizFrame>
     );
   }
 
@@ -125,93 +111,87 @@ export default function OrganizationSwitcherPage() {
     return <Navigate to="/no-organization" replace />;
   }
 
+  // A setup somebody still has to finish is not a business to open yet. The
+  // rest is what the account can work in, plus the suspended ones.
+  const unfinished = unfinishedWorkspaces(workspaces ?? []);
+  const businesses = (workspaces ?? []).filter(
+    (workspace) => !unfinished.includes(workspace),
+  );
+
   return (
-    <main className="sign-in-page">
-      <section
-        className="sign-in-panel"
-        aria-busy={loading}
-        aria-labelledby="organization-switcher-title"
-      >
-        <p className="product-mark">NEWFORK</p>
-        <h1 id="organization-switcher-title">Choose organization</h1>
-        <p className="muted">
-          Select the organization you want to work in. Suspended organizations
-          open a limited status view.
-        </p>
-
-        {loading ? (
-          <p className="settings-state" role="status">
-            Loading organizations...
-          </p>
-        ) : null}
-
-        <div
-          className="workspace-list"
-          role="list"
-          aria-label="Organizations"
-        >
+    <PreBizFrame
+      titleId="organization-switcher-title"
+      title={loading ? "Loading your businesses" : "Choose a business"}
+    >
+      {invitations.length > 0 ? (
+        <Section title="Invitations">
           {invitations.map((invitation) => (
             <InvitationRow key={invitation.id} invitation={invitation} />
           ))}
-          {(workspaces ?? []).map((workspace) => {
+        </Section>
+      ) : null}
+      {unfinished.length > 0 ? (
+        <Section title="In progress">
+          {unfinished.map((workspace) => (
+            <UnfinishedSetupRow key={workspace.id} workspace={workspace} />
+          ))}
+        </Section>
+      ) : null}
+      {businesses.length > 0 ? (
+        <Section title="Your businesses">
+          {businesses.map((workspace) => {
+            const suspended = workspace.status === "suspended";
             const activating = activatingWorkspaceId === workspace.id;
-            const status = workspace.status;
-            const isOpenable = status === "active";
+            // The business this tab works in. `isActive` is the saved default,
+            // which can be a different one.
+            const current =
+              !suspended && context?.workspace.id === workspace.id;
             return (
-              <div
-                className="workspace-row"
+              <BusinessRow
                 key={workspace.id}
-                data-active={isOpenable && workspace.isActive}
-                role="listitem"
+                name={workspace.name}
+                role={roleLabel[workspace.role]}
+                current={current}
+                badge={
+                  suspended ? (
+                    <StatusBadge tone="danger">Suspended</StatusBadge>
+                  ) : current ? (
+                    <StatusBadge tone="success">Current</StatusBadge>
+                  ) : undefined
+                }
+                error={
+                  failedWorkspaceId === workspace.id
+                    ? "This business could not be opened"
+                    : null
+                }
               >
-                <div>
-                  <strong>{workspace.name}</strong>
-                  <span>{workspaceStatusLabel(workspace)}</span>
-                </div>
                 <Button
                   className={
-                    isOpenable && workspace.isActive
-                      ? "secondary-button compact-button active-workspace"
-                      : "secondary-button compact-button"
+                    suspended
+                      ? "pb-btn pb-btn-secondary"
+                      : "pb-btn pb-btn-primary"
                   }
-                  type="button"
                   aria-label={
-                    isOpenable
-                      ? `Open ${workspace.name}`
-                      : status === "pending"
-                        ? `Continue onboarding for ${workspace.name}`
-                        : `View status for ${workspace.name}`
+                    suspended
+                      ? `View status for ${workspace.name}`
+                      : `Open ${workspace.name}`
                   }
                   disabled={activating}
                   onClick={() => openWorkspace(workspace)}
                 >
-                  {isOpenable && workspace.isActive ? (
-                    <Check size={15} aria-hidden />
-                  ) : null}
-                  {activating
-                    ? "Opening"
-                    : isOpenable
-                      ? "Open"
-                      : status === "pending"
-                        ? "Continue"
-                        : "View status"}
+                  {suspended ? "View status" : activating ? "Opening" : "Open"}
                 </Button>
-              </div>
+              </BusinessRow>
             );
           })}
-        </div>
-
-        <Link className="text-button" to="/account/workspaces">
-          Manage account workspaces
+        </Section>
+      ) : null}
+      <div className="pb-footer">
+        <Link className="pb-btn pb-btn-secondary" to="/account/workspaces">
+          Manage your businesses
         </Link>
-
-        {error ? (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </section>
-    </main>
+      </div>
+    </PreBizFrame>
   );
 }
 
@@ -226,11 +206,4 @@ function workspaceSummaryFromContext(
     isActive: true,
     onboarding: context.onboarding,
   };
-}
-
-function workspaceStatusLabel(workspace: WorkspaceSummary): string {
-  if (workspace.status === "pending")
-    return `${workspace.role} · onboarding in progress`;
-  if (workspace.status === "suspended") return `${workspace.role} · suspended`;
-  return workspace.role;
 }
