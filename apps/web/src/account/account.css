@@ -580,7 +580,6 @@
 .account-crop-controls { border: 0; margin: 0; padding: 0; display: grid; gap: 12px; min-width: 0; }
 .account-crop-controls label { display: grid; gap: 6px; }
 .account-crop-controls input { width: 100%; accent-color: var(--account-accent, #244c3d); }
-.account-main .workspace-row[data-current="true"] { background: rgb(40 113 84 / 3%); }
 .account-main .workspace-row > div:first-child { min-width: 0; }
 .account-main .workspace-row > div:first-child strong,
 .account-main .workspace-row > div:first-child span { overflow-wrap: anywhere; }

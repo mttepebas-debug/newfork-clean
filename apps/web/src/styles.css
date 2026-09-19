@@ -1163,21 +1163,6 @@
   color: #687581;
 }
 
-.employee-onboarding-loading,
-.employee-onboarding-error {
-  min-height: 100vh;
-  display: grid;
-  place-content: center;
-}
-.employee-onboarding-error {
-  justify-items: center;
-  gap: 12px;
-  text-align: center;
-}
-.employee-onboarding-error h1,
-.employee-onboarding-error p {
-  margin: 0;
-}
 .auth-mode-button {
   margin-top: 12px;
   border: 0;
@@ -3332,9 +3317,6 @@ p {
 }
 .sign-in-panel .nf-button {
   width: 100%;
-}
-.sign-in-panel .workspace-row .nf-button {
-  width: auto;
 }
 .text-button {
   display: inline-block;
@@ -11559,9 +11541,6 @@ select:focus-visible {
   padding: 12px 18px;
   border-bottom: 1px solid var(--theme-border-subtle);
 }
-.workspace-row[data-active="true"] {
-  background: #f7fbf9;
-}
 .workspace-row:last-child {
   border-bottom: 0;
 }
@@ -11573,7 +11552,6 @@ select:focus-visible {
   margin-top: 4px;
   color: #76817d;
   font-size: 12px;
-  text-transform: capitalize;
 }
 .workspace-row-actions {
   display: flex;
