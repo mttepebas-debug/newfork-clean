@@ -4,6 +4,8 @@ import {
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 
+import { rpcFailure } from "../http-error.js";
+
 export interface WorkspaceAccountService {
   listWorkspaces(accessToken: string): Promise<WorkspaceSummary[]>;
   createWorkspace(accessToken: string, workspaceName: string): Promise<string>;
@@ -86,7 +88,10 @@ interface RpcClient {
   rpc(
     name: string,
     args: Record<string, unknown>,
-  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  ): PromiseLike<{
+    data: unknown;
+    error: { message: string; code?: string } | null;
+  }>;
 }
 
 interface AccountLifecycleAuthAdmin {
@@ -142,7 +147,7 @@ export function createWorkspaceAccountServiceWithClients(options: {
 }): WorkspaceAccountService {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await options.rpcClient.rpc(name, args);
-    if (error) throw new Error(error.message);
+    if (error) throw rpcFailure(error);
     return data;
   }
 

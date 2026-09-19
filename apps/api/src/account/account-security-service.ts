@@ -3,6 +3,8 @@ import { createCommunicationServiceWithClient, type CommunicationService } from 
 import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
+import { rpcFailure } from "../http-error.js";
+
 export interface AccountSecurityState {
   readonly email: string;
   readonly pendingEmail: string | null;
@@ -46,7 +48,10 @@ interface AccountSecurityRpcClient {
   rpc(
     functionName: string,
     args: Record<string, unknown>,
-  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  ): PromiseLike<{
+    data: unknown;
+    error: { message: string; code?: string } | null;
+  }>;
 }
 
 interface RecoveryEmailInput {
@@ -194,7 +199,7 @@ export function createAccountSecurityServiceWithClients(options: {
 }): AccountSecurityService {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await options.rpcClient.rpc(name, args);
-    if (error) throw new Error(error.message);
+    if (error) throw rpcFailure(error);
     return data;
   }
 

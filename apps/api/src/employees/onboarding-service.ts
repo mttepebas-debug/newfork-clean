@@ -13,6 +13,8 @@ import {
   type EmployeeOnboardingProfile,
 } from "@newfork/shared";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+import { rpcFailure } from "../http-error.js";
 import { z } from "zod";
 
 const mediaTypes = {
@@ -121,7 +123,7 @@ export function createEmployeeOnboardingService(
         "get_employee_onboarding_service",
         { target_user_id: user.id, ...workspaceArg(workspaceId) },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return employeeOnboardingSchema.parse(data);
     },
     async saveProfile(accessToken, input, revision, workspaceId) {
@@ -273,7 +275,7 @@ export function createEmployeeOnboardingService(
       ) {
         return null;
       }
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return employeeOnboardingManagerSchema.parse(data);
     },
     async getDocumentDownload(
@@ -360,7 +362,7 @@ async function rpc(
   input: Record<string, unknown>,
 ): Promise<unknown> {
   const { data, error } = await client.rpc(name, input);
-  if (error) throw new Error(error.message);
+  if (error) throw rpcFailure(error);
   return data;
 }
 

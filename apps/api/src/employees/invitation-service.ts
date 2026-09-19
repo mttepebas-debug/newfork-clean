@@ -4,6 +4,8 @@ import {
 } from "@newfork/shared";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { rpcFailure } from "../http-error.js";
+
 export interface PrepareEmployeeInvitationInput {
   readonly actorUserId: string;
   readonly workspaceId: string;
@@ -94,7 +96,7 @@ export function createEmployeeInvitationService(
           invitation_expires_at: expiresAt,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const developmentUrl = `${options.appUrl.replace(/\/$/, "")}/invite/accept?token=${token}`;
       try {
         await restoreAuthAccountForInvitation(client, input.email);
@@ -208,7 +210,7 @@ export function createEmployeeInvitationService(
           invitation_token_hash: await sha256(token),
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       await initializeEmployeeOnboarding(client, actor.id);
       return { workspaceId: String(data) };
     },
@@ -218,7 +220,7 @@ export function createEmployeeInvitationService(
         "list_pending_employee_invitations_for_account_service",
         { actor_user_id: actor.id },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return accountPendingInvitationSchema.array().parse(
         ((data ?? []) as unknown[]).map((row) => {
           const value = row as {
@@ -247,7 +249,7 @@ export function createEmployeeInvitationService(
           target_invitation_id: invitationId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       await initializeEmployeeOnboarding(client, actor.id);
       return { workspaceId: String(data) };
     },
@@ -260,7 +262,7 @@ export function createEmployeeInvitationService(
           target_invitation_id: invitationId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
     },
   };
 }
@@ -323,7 +325,7 @@ async function revokePrepared(
     target_workspace_id: input.workspaceId,
     target_employee_id: input.employeeId,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw rpcFailure(error);
 }
 
 async function markDelivery(
@@ -346,7 +348,7 @@ async function markDelivery(
       delivery_failure_message: input.error,
     },
   );
-  if (error) throw new Error(error.message);
+  if (error) throw rpcFailure(error);
 }
 
 export async function storeDeliverySecret(
@@ -367,7 +369,7 @@ export async function storeDeliverySecret(
       invitation_token: input.token,
     },
   );
-  if (error) throw new Error(error.message);
+  if (error) throw rpcFailure(error);
 }
 
 export async function restoreAuthAccountForInvitation(

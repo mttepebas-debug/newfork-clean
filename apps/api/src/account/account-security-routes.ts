@@ -1,6 +1,7 @@
 import { notificationActionSchema } from "@newfork/shared";
 import { inboxQuery } from "../communications/communication-routes";
 import type { FastifyInstance, FastifyReply } from "fastify";
+import { HttpError } from "../http-error.js";
 import { z } from "zod";
 import { bearerToken } from "../auth/workspace-context";
 import type { AccountSecurityService } from "./account-security-service";
@@ -228,6 +229,10 @@ function unavailable(reply: FastifyReply) {
 
 function requestError(reply: FastifyReply, error: unknown) {
   const message = error instanceof Error ? error.message : "Account security request failed";
+  // A typed status wins: it comes from the SQLSTATE the RPC raised, not from
+  // the wording of its message. The matching below stays for untyped throws.
+  if (error instanceof HttpError)
+    return reply.status(error.statusCode).send({ error: message });
   if (/bearer|session|required|incorrect|password|blocked/i.test(message)) {
     const status = /bearer|session/i.test(message) ? 401 : /blocked/i.test(message) ? 409 : 400;
     return reply.status(status).send({ error: message });
