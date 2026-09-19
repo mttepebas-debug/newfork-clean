@@ -404,6 +404,18 @@ describe("EmployeeDrawer", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("holds Save when an edit clears the last location, unless remote or excluded", async () => {
+    renderDrawer("employment");
+    fireEvent.click(await screen.findByLabelText("Main Dining"));
+    const save = screen.getByRole("button", { name: "Save changes" });
+    // The server refuses this shape; before, Save stayed enabled and failed
+    // after the round trip.
+    expect(save).toHaveProperty("disabled", true);
+    fireEvent.click(screen.getByLabelText("Remote"));
+    expect(save).toHaveProperty("disabled", false);
+    expect(saveEmployee).not.toHaveBeenCalled();
+  });
+
   it("terminates with archived location and job without reassigning or saving", async () => {
     renderDrawer("employment", {
       ...detail,

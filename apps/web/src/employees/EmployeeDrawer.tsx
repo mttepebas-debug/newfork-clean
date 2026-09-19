@@ -1324,7 +1324,13 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   <Button
                     type="submit"
                     disabled={
-                      busy || documentPreviewBlocked || (!dirty && !done)
+                      busy ||
+                      documentPreviewBlocked ||
+                      (!dirty && !done) ||
+                      // Same gate the create flow already has. Without it,
+                      // clearing the last location or job left Save enabled and
+                      // the server refused it after the round trip.
+                      (dirty && !readiness.employeeReady)
                     }
                   >
                     {saveMutation.isPending

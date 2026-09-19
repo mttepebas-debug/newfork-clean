@@ -27,6 +27,7 @@ import {
   saveDepartment,
   saveJob,
   saveLocation,
+  setDepartmentArchived,
 } from "../settings/organization-data";
 
 const authState = vi.hoisted(() => ({
@@ -63,7 +64,9 @@ vi.mock("../employees/employee-data", () => ({
 }));
 
 vi.mock("../lib/supabase", () => ({
-  apiRequest: vi.fn().mockResolvedValue({ timezone: null, status: "unavailable" }),
+  apiRequest: vi
+    .fn()
+    .mockResolvedValue({ timezone: null, status: "unavailable" }),
   listAccountWorkspaces: vi.fn(),
   queueOwnerOnboardingInvitationIntent: vi.fn(),
   resetOwnerOnboarding: vi.fn(),
@@ -78,6 +81,9 @@ vi.mock("../settings/organization-data", () => ({
   saveDepartment: vi.fn(),
   saveJob: vi.fn(),
   saveLocation: vi.fn(),
+  setDepartmentArchived: vi.fn(),
+  setJobArchived: vi.fn(),
+  setLocationArchived: vi.fn(),
 }));
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -174,7 +180,9 @@ describe("OwnerOnboardingPage", () => {
     vi.mocked(saveJob).mockResolvedValue(job);
     vi.mocked(resetOwnerOnboarding).mockResolvedValue(undefined);
     vi.mocked(saveOwnerOnboarding).mockResolvedValue(undefined);
-    vi.mocked(queueOwnerOnboardingInvitationIntent).mockResolvedValue(undefined);
+    vi.mocked(queueOwnerOnboardingInvitationIntent).mockResolvedValue(
+      undefined,
+    );
     vi.mocked(saveEmployee).mockResolvedValue(employeeId);
     vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
       locations: [{ id: locationId, name: "Main Dining", archived: false }],
@@ -188,17 +196,15 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Name the organization",
+        name: "Name your business",
       }),
     ).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Your full name"), {
       target: { value: "Taylor Owner" },
     });
-    const progress = screen.getByRole("progressbar", {
-      name: "Owner onboarding progress",
-    });
-    expect(progress.getAttribute("aria-valuenow")).toBe("1");
-    expect(progress.getAttribute("aria-valuetext")).toBe("Step 1 of 4");
+    const progress = screen.getByRole("progressbar", { name: "Steps done" });
+    expect(progress.getAttribute("aria-valuenow")).toBe("0");
+    expect(progress.getAttribute("aria-valuemax")).toBe("4");
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() =>
@@ -218,14 +224,14 @@ describe("OwnerOnboardingPage", () => {
     expect(saveLocation).not.toHaveBeenCalled();
     expect(
       await screen.findByRole("heading", {
-        name: "Add at least one location",
+        name: "Where does your team work?",
       }),
     ).toBeTruthy();
     expect(
       screen
-        .getByRole("progressbar", { name: "Owner onboarding progress" })
+        .getByRole("progressbar", { name: "Steps done" })
         .getAttribute("aria-valuenow"),
-    ).toBe("2");
+    ).toBe("1");
   });
 
   it("requires the owner account name before moving to locations", async () => {
@@ -233,7 +239,7 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Name the organization",
+        name: "Name your business",
       }),
     ).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Your full name"), {
@@ -251,10 +257,10 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Name the organization",
+        name: "Name your business",
       }),
     ).toBeTruthy();
-    const workspaceNameInput = screen.getByLabelText("Workspace name");
+    const workspaceNameInput = screen.getByLabelText("Business name");
     fireEvent.submit(workspaceNameInput.closest("form")!);
 
     await waitFor(() =>
@@ -278,7 +284,7 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Add at least one location",
+        name: "Where does your team work?",
       }),
     ).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Location name"), {
@@ -299,11 +305,15 @@ describe("OwnerOnboardingPage", () => {
     fireEvent.change(screen.getByLabelText("Postal code"), {
       target: { value: "90001" },
     });
-    expect(screen.getByRole("combobox", { name: "Time zone" })).toHaveProperty("value", "");
-    expect(screen.getByRole("button", { name: /add location/i })).toHaveProperty("disabled", true);
-    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), {
-      target: { value: "America/Los_Angeles" },
-    });
+    // The zone starts on the one the browser is in; the owner is normally
+    // setting up the place they are standing in.
+    const zone = screen.getByRole("combobox", { name: "Time zone" });
+    expect((zone as HTMLSelectElement).value).not.toBe("");
+    fireEvent.change(zone, { target: { value: "" } });
+    expect(
+      screen.getByRole("button", { name: /add location/i }),
+    ).toHaveProperty("disabled", true);
+    fireEvent.change(zone, { target: { value: "America/Los_Angeles" } });
     fireEvent.click(screen.getByRole("button", { name: /add location/i }));
 
     await waitFor(() =>
@@ -332,17 +342,23 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Add at least one location",
+        name: "Where does your team work?",
       }),
     ).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Location name"), {
       target: { value: "Patio" },
     });
-    expect(screen.getByLabelText(/^Short name/)).toHaveProperty("placeholder", "PT");
+    expect(screen.getByLabelText(/^Short name/)).toHaveProperty(
+      "placeholder",
+      "PT",
+    );
     fireEvent.change(screen.getByLabelText(/^Phone number/), {
       target: { value: "4155550100" },
     });
-    expect(screen.getByLabelText(/^Phone number/)).toHaveProperty("value", "(415) 555-0100");
+    expect(screen.getByLabelText(/^Phone number/)).toHaveProperty(
+      "value",
+      "(415) 555-0100",
+    );
     fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), {
       target: { value: "America/New_York" },
     });
@@ -368,18 +384,30 @@ describe("OwnerOnboardingPage", () => {
 
   it("reports an invalid short name or phone only after submit", async () => {
     renderPage(2);
-    await screen.findByRole("heading", { name: "Add at least one location" });
-    fireEvent.change(screen.getByLabelText("Location name"), { target: { value: "Patio" } });
-    fireEvent.change(screen.getByLabelText(/^Short name/), { target: { value: "p!" } });
-    fireEvent.change(screen.getByLabelText(/^Phone number/), { target: { value: "415" } });
-    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), { target: { value: "America/New_York" } });
+    await screen.findByRole("heading", { name: "Where does your team work?" });
+    fireEvent.change(screen.getByLabelText("Location name"), {
+      target: { value: "Patio" },
+    });
+    fireEvent.change(screen.getByLabelText(/^Short name/), {
+      target: { value: "p!" },
+    });
+    fireEvent.change(screen.getByLabelText(/^Phone number/), {
+      target: { value: "415" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), {
+      target: { value: "America/New_York" },
+    });
     expect(screen.queryByRole("alert")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /add location/i }));
-    expect(screen.getAllByRole("alert").map((alert) => alert.textContent)).toEqual([
+    expect(
+      screen.getAllByRole("alert").map((alert) => alert.textContent),
+    ).toEqual([
       expect.stringContaining("letters A–Z, numbers or hyphens"),
       "Enter a 10-digit US phone number",
     ]);
-    expect(screen.getByLabelText(/^Short name/).getAttribute("aria-invalid")).toBe("true");
+    expect(
+      screen.getByLabelText(/^Short name/).getAttribute("aria-invalid"),
+    ).toBe("true");
     expect(saveLocation).not.toHaveBeenCalled();
   });
 
@@ -389,7 +417,7 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Add at least one location",
+        name: "Where does your team work?",
       }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
@@ -405,9 +433,57 @@ describe("OwnerOnboardingPage", () => {
     );
     expect(
       await screen.findByRole("heading", {
-        name: "Create the first team structure",
+        name: "What jobs do people work?",
       }),
     ).toBeTruthy();
+  });
+
+  it("can add a second department, and take one back off the list", async () => {
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    vi.mocked(listDepartments).mockResolvedValue([department]);
+    vi.mocked(listJobs).mockResolvedValue([job]);
+    renderPage(3);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "What jobs do people work?",
+      }),
+    ).toBeTruthy();
+    // The wizard used to hide this field once a department existed, so a second
+    // one could not be created here at all.
+    expect(screen.queryByLabelText("New department")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Department for this job"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByLabelText("New department"), {
+      target: { value: "Back of house" },
+    });
+    fireEvent.change(screen.getByLabelText("Job or role"), {
+      target: { value: "Line cook" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /add job/i }));
+
+    await waitFor(() =>
+      expect(saveDepartment).toHaveBeenCalledWith(workspaceId, {
+        name: "Back of house",
+        color: "#3C7A68",
+      }),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove Front of house" }),
+    );
+    expect(setDepartmentArchived).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Click again to remove" }),
+    );
+    await waitFor(() =>
+      expect(setDepartmentArchived).toHaveBeenCalledWith(
+        workspaceId,
+        departmentId,
+        true,
+      ),
+    );
   });
 
   it("uses existing references when creating the first job", async () => {
@@ -418,7 +494,7 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Create the first team structure",
+        name: "What jobs do people work?",
       }),
     ).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Job or role"), {
@@ -452,7 +528,7 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Create the first team structure",
+        name: "What jobs do people work?",
       }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
@@ -489,6 +565,12 @@ describe("OwnerOnboardingPage", () => {
     fireEvent.change(screen.getByLabelText("Invitation email"), {
       target: { value: "alex@example.test" },
     });
+    // Same gate as the in-app drawer: no assignment, no save.
+    expect(
+      screen.getByRole("button", { name: /add employee/i }),
+    ).toHaveProperty("disabled", true);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Main Dining" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Server" }));
     fireEvent.click(screen.getByRole("button", { name: /add employee/i }));
 
     await waitFor(() =>
@@ -516,11 +598,11 @@ describe("OwnerOnboardingPage", () => {
     );
     expect(
       await screen.findByText(
-        "Team member added. Invite will be sent after setup finishes.",
+        "Added. The invitation goes out when setup finishes.",
       ),
     ).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /skip and finish/i }));
+    fireEvent.click(screen.getByRole("button", { name: /finish setup/i }));
 
     await waitFor(() =>
       expect(saveOwnerOnboarding).toHaveBeenCalledWith(supabaseClient, {
@@ -540,7 +622,7 @@ describe("OwnerOnboardingPage", () => {
     expect(
       await screen.findByRole("heading", { name: "Add your team" }),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /skip and finish/i }));
+    fireEvent.click(screen.getByRole("button", { name: /finish setup/i }));
 
     expect(
       await screen.findByText(
@@ -562,7 +644,7 @@ describe("OwnerOnboardingPage", () => {
     expect(
       await screen.findByRole("heading", { name: "Add your team" }),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /skip and finish/i }));
+    fireEvent.click(screen.getByRole("button", { name: /finish setup/i }));
 
     await waitFor(() =>
       expect(saveOwnerOnboarding).toHaveBeenCalledWith(supabaseClient, {
@@ -589,7 +671,7 @@ describe("OwnerOnboardingPage", () => {
     fireEvent.change(screen.getByLabelText("Invitation email"), {
       target: { value: "draft@example.test" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /skip and finish/i }));
+    fireEvent.click(screen.getByRole("button", { name: /finish setup/i }));
 
     expect(
       await screen.findByText(
@@ -602,7 +684,10 @@ describe("OwnerOnboardingPage", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Clear draft" }));
-    fireEvent.click(screen.getByRole("button", { name: /skip and finish/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Click again to clear" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /finish setup/i }));
 
     await waitFor(() =>
       expect(saveOwnerOnboarding).toHaveBeenCalledWith(
@@ -616,15 +701,18 @@ describe("OwnerOnboardingPage", () => {
     vi.mocked(listLocations).mockResolvedValue([location]);
     vi.mocked(listDepartments).mockResolvedValue([department]);
     vi.mocked(listJobs).mockResolvedValue([job]);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     renderPage(2);
 
     expect(
       await screen.findByRole("heading", {
-        name: "Add at least one location",
+        name: "Where does your team work?",
       }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Start over" }));
+    expect(resetOwnerOnboarding).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Click again to start over" }),
+    );
 
     await waitFor(() =>
       expect(resetOwnerOnboarding).toHaveBeenCalledWith(
@@ -634,7 +722,7 @@ describe("OwnerOnboardingPage", () => {
     );
     expect(
       await screen.findByRole("heading", {
-        name: "Name the organization",
+        name: "Name your business",
       }),
     ).toBeTruthy();
     expect(await screen.findByText("Setup reset")).toBeTruthy();
@@ -642,7 +730,14 @@ describe("OwnerOnboardingPage", () => {
 
   it("lets the owner sign out of setup; one workspace has nowhere to switch to", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([
-      { id: workspaceId, name: "Meyhouse", role: "owner", status: "active", isActive: true, onboarding: { status: "incomplete", currentStep: 1 } },
+      {
+        id: workspaceId,
+        name: "Meyhouse",
+        role: "owner",
+        status: "active",
+        isActive: true,
+        onboarding: { status: "incomplete", currentStep: 1 },
+      },
     ]);
     renderPage(1);
 
@@ -650,19 +745,33 @@ describe("OwnerOnboardingPage", () => {
     expect(authState.signOut).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(listAccountWorkspaces).toHaveBeenCalled());
     expect(
-      screen.queryByRole("button", { name: "Switch organization" }),
+      screen.queryByRole("button", { name: "Switch business" }),
     ).toBeNull();
   });
 
   it("offers the organization switcher when the account has another workspace", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([
-      { id: workspaceId, name: "Meyhouse", role: "owner", status: "active", isActive: true, onboarding: { status: "incomplete", currentStep: 1 } },
-      { id: "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd", name: "West Room", role: "employee", status: "pending", isActive: false, onboarding: { status: "complete", currentStep: 4 } },
+      {
+        id: workspaceId,
+        name: "Meyhouse",
+        role: "owner",
+        status: "active",
+        isActive: true,
+        onboarding: { status: "incomplete", currentStep: 1 },
+      },
+      {
+        id: "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        name: "West Room",
+        role: "employee",
+        status: "pending",
+        isActive: false,
+        onboarding: { status: "complete", currentStep: 4 },
+      },
     ]);
     renderPage(1);
 
     expect(
-      await screen.findByRole("button", { name: "Switch organization" }),
+      await screen.findByRole("button", { name: "Switch business" }),
     ).toBeTruthy();
   });
 });

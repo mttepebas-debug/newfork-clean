@@ -10925,78 +10925,14 @@ select:focus-visible {
   line-height: 1.55;
 }
 
-.onboarding-page {
-  min-height: 100dvh;
-  background: #f6f7f5;
-}
-.onboarding-header {
-  display: flex;
-  height: 64px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
-  border-bottom: 1px solid #dce1de;
-  background: var(--theme-surface);
-}
-.onboarding-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  font-weight: 800;
-}
-.onboarding-header-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-.step-count {
-  color: #69736f;
-  font-size: 13px;
-  font-weight: 700;
-}
-@media (max-width: 640px) {
-  .onboarding-page .onboarding-header {
-    height: auto;
-    min-height: 64px;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 10px 20px;
-  }
-  .onboarding-header-actions {
-    flex-wrap: wrap;
-  }
-}
-.onboarding-progress {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  width: min(100% - 48px, 660px);
-  margin: 26px auto 0;
-}
-.onboarding-progress span {
-  height: 4px;
-  border-radius: 2px;
-  background: #d9dfdc;
-}
-.onboarding-progress .complete {
-  background: #196f5b;
-}
+/* The owner wizard sits in the prebiz frame, which owns the width and padding. */
 .onboarding-content {
-  width: min(100% - 48px, 660px);
-  margin: 0 auto;
-  padding: 82px 0;
-}
-.onboarding-content h1 {
-  max-width: 560px;
-  margin-bottom: 14px;
-  font-size: 36px;
-  line-height: 1.15;
-}
-.onboarding-content > .muted {
-  max-width: 560px;
+  display: grid;
+  gap: 28px;
 }
 .onboarding-form {
-  margin-top: 38px;
+  display: grid;
+  gap: 28px;
 }
 .owner-onboarding-grid {
   display: grid;
@@ -11010,7 +10946,8 @@ select:focus-visible {
   font-size: 13px;
   font-weight: 750;
 }
-.onboarding-form label.wide {
+.onboarding-form label.wide,
+.owner-onboarding-grid > .wide {
   grid-column: 1 / -1;
 }
 .onboarding-form input,
@@ -11077,11 +11014,36 @@ select:focus-visible {
   align-items: center;
   gap: 8px;
 }
-.onboarding-action-group {
-  display: flex;
-  flex-wrap: wrap;
+/* One picked location or job is all the schema needs; the list is short here
+   because the owner only just created it. */
+.owner-assignment-checks {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #d8ddda;
+  border-radius: 7px;
+  background: var(--theme-surface);
+}
+.owner-assignment-checks legend {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 750;
+}
+.owner-assignment-checks legend span {
+  color: #66706c;
+  font-weight: 600;
+}
+.owner-assignment-checks label {
+  display: flex !important;
+  margin: 0 !important;
   gap: 10px;
-  justify-content: flex-end;
+  align-items: center;
+}
+.owner-assignment-checks input {
+  width: 18px !important;
+  height: 18px !important;
+  margin: 0 !important;
 }
 .form-actions {
   display: flex;
