@@ -53,13 +53,8 @@ export function OnboardingDocumentStep({
   });
   return (
     <div className="onboarding-step">
-      <button
-        type="button"
-        className="pb-btn pb-btn-secondary"
-        onClick={back.go}
-      >
-        <span aria-hidden>‹</span> {back.label}
-      </button>
+      {/* The only way back is the one in the bar: two of them, one above the
+          heading and one below the page, read as two different exits. */}
       <header className="onboarding-step-heading">
         <h1>{requirement.title}</h1>
         <div>{requirement.description}</div>

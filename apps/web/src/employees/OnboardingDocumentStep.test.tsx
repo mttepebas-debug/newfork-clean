@@ -294,11 +294,11 @@ describe("OnboardingDocumentStep", () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce());
   });
 
-  it("names the group it came from as the way back", async () => {
+  it("offers exactly one way back, and it names the group it came from", async () => {
     const { go } = page();
-    fireEvent.click(
-      (await screen.findAllByRole("button", { name: /documents/i }))[0]!,
-    );
+    const backs = await screen.findAllByRole("button", { name: /documents/i });
+    expect(backs).toHaveLength(1);
+    fireEvent.click(backs[0]!);
     expect(go).toHaveBeenCalled();
   });
 });
