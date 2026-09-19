@@ -31,7 +31,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | RESCUE-001 | WIP'i main'e al | done d19542d |
 | TEST-001 | Kırmızı unit testler ve vitest env izolasyonu | done 95063a7 |
 | OPS-010 | Hosted: migration'lar uygulandı, Vercel deploy; smoke AUTH-002 + AUTH-UX-001 sonrası | smoke bekliyor |
-| OPS-014 | Notification outbox dakikalık tetikleme: Supabase pg_cron (Vercel Hobby) | OPS-010 sonrası |
+| OPS-014 | Dört cron işi Supabase pg_cron ile tetikleniyor (Vercel Hobby) | done b7052f6 |
 | OPS-011 | Minimal CI (GitHub Actions) | done 6509e38 |
 | OPS-012 | Production hijyeni: Kiosk ve Time Entries gizlendi, SSN env ve README temizlendi | done 8642575 |
 | THEME-001 | Dark temayı emekliye ayır (yalnızca light) | done c0ecf3d |
