@@ -91,8 +91,15 @@ export default function NoOrganizationPage() {
     return (
       <PreBizFrame
         titleId="no-org-title"
-        title="No invitation yet"
-        description={`Nothing has been sent to ${account?.email ?? "this account"} so far — ask your manager to invite this address.`}
+        // A failed check is not an answer: it must not read as "none".
+        title={
+          invitations.error ? "Invitations didn't load" : "No invitation yet"
+        }
+        description={
+          invitations.error
+            ? undefined
+            : `Nothing has been sent to ${account?.email ?? "this account"} so far — ask your manager to invite this address.`
+        }
       >
         {invitations.error ? (
           <p className="form-error" role="alert">

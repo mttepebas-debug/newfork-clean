@@ -43,7 +43,11 @@ export function PreBizFrame({
       </aside>
       {/* The stage is the main landmark, so "skip to main" lands on the heading. */}
       <main className="pb-stage" aria-labelledby={titleId}>
-        <h1 id={titleId}>{title}</h1>
+        {/* Pages show "Checking…" first and then swap this title; without a
+            live region a screen reader never hears that the page is ready. */}
+        <h1 id={titleId} aria-live="polite">
+          {title}
+        </h1>
         {description ? <p className="pb-description">{description}</p> : null}
         {children}
       </main>

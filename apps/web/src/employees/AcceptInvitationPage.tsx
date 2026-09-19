@@ -19,11 +19,13 @@ export default function AcceptInvitationPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const token = params.get("token") ?? "";
+  // A cut-off or missing link can never be previewed or accepted.
+  const brokenLink = token.length < 32;
   const invitePath = `/invite/accept${location.search}`;
   const preview = useQuery({
     queryKey: ["invitation-preview", token],
     queryFn: () => previewEmployeeInvitation(token),
-    enabled: token.length >= 32,
+    enabled: !brokenLink,
   });
   const acceptance = useMutation({
     mutationFn: () => acceptEmployeeInvitation(token),
@@ -77,10 +79,12 @@ export default function AcceptInvitationPage() {
       description={
         preview.data
           ? `Join ${preview.data.workspaceName} with ${preview.data.emailHint}.`
-          : "Continue with the account matching the invited email address."
+          : brokenLink
+            ? undefined
+            : "Continue with the account matching the invited email address."
       }
     >
-      {preview.error ? (
+      {preview.error || brokenLink ? (
         <p className="form-error" role="alert">
           This invitation could not be loaded — it may have expired, so ask
           your manager for a new one.
@@ -98,12 +102,12 @@ export default function AcceptInvitationPage() {
           manager for a new one.
         </p>
       ) : null}
-      {wrongAccount ? null : (
+      {wrongAccount || brokenLink ? null : (
         <div className="pb-footer">
           <Button
             className="pb-btn pb-btn-primary"
             type="button"
-            disabled={token.length < 32 || acceptance.isPending}
+            disabled={acceptance.isPending}
             onClick={() => acceptance.mutate()}
           >
             {acceptance.isPending ? "Accepting" : "Accept invitation"}

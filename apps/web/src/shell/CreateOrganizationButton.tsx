@@ -21,11 +21,9 @@ const draftWorkspaceName = "New business";
 export function CreateOrganizationButton({
   className = "",
   existingDraft = null,
-  label = "Create your business",
 }: {
   readonly className?: string;
   readonly existingDraft?: WorkspaceSummary | null;
-  readonly label?: string;
 }) {
   const navigate = useNavigate();
   const { refresh } = useAuth();
@@ -65,7 +63,7 @@ export function CreateOrganizationButton({
         onClick={() => void start()}
       >
         <Building2 size={16} aria-hidden />
-        {busy ? "Starting" : label}
+        {busy ? "Starting" : "Create your business"}
       </Button>
       {error ? (
         <p className="form-error" role="alert">

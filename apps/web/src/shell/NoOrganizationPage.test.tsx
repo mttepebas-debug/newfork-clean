@@ -196,7 +196,9 @@ describe("NoOrganizationPage", () => {
   it("can sign out from the landing itself", async () => {
     renderPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
+    // The "Checking your account" frame also has Sign out, so wait for the landing.
+    await screen.findByRole("heading", { name: "Welcome back" });
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
 
     expect(signOut).toHaveBeenCalledTimes(1);
   });
