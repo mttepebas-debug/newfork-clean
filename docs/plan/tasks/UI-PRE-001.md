@@ -20,7 +20,8 @@ Koordinatör kararları (2026-09-18):
 - Tek şemsiye task; dilimler burada izlenir. Paralel session gerekirse dilim kendi ID'sini alır.
 - **Faz 0 tamam:** `ConfirmButton` main'de (a4330f3; `packages/ui`). THEME-005'ten yalnız bileşen, testi ve export alındı; o branch'in kalanı beklemede ve sonra bu işin üstüne rebase edecek.
 - THEME-005 ile çakışmayı küçültmek için yeni CSS kit sınıflarında toplanır; global `.secondary-button` kuralına dokunulmaz. Not: bugün "ikincil" işaretli butonların yeşil görünmesi bilinen cascade hatası; kök düzeltmesi THEME-005'te, kullanıcı görsel onayını bekliyor. Bu task o ekranları zaten yeniden giydirdiği için beklemesi sorun değil.
-- Onay bekleyen tek madde (kullanıcıya soruldu): owner adım 4'e lokasyon + job seçimi (bugün her employee ilk aktif lokasyon ve job'a atanıyor, `:371-381`).
+- **Owner adım 4 — KULLANICI KARARI (2026-09-18, çoktan seçmeli): "Evet, seçim ekle."** Çalışan eklerken lokasyon ve job seçilir; bugünkü otomatik "ilk aktif lokasyon + ilk aktif job" ataması (`OwnerOnboardingPage.tsx:371-381`) kalkar. D3 kapsamı.
+  - Kullanıcıya "sadece birden fazlaysa göster" seçeneği de sunuldu ve SEÇİLMEDİ. Koordinatörün "tek lokasyon/tek job varken alanı gizle" sadeleştirmesi bu yüzden karar değil, **öneridir**; D3 başlarken kullanıcıya tek satırla sorulacak ("tek lokasyon/tek job varken seçim alanı yine görünsün mü?"). Cevap gelene kadar kullanıcının seçtiği hâl geçerli: seçim her zaman görünür.
 
 Dilimler:
 - **Faz 1 mockup (karar için, kod kalıcı değil):** `?shell=a|b` (iniş çerçevesi: üst bar + ortalı kolon / her yerde iki panel) pending ve no-org üzerinde; `?docs=1|2` (belgeler tek adım / Documents + Policies) employee onboarding üzerinde. Yalnız DEV. Kullanıcı görerek seçer, seçilmeyen silinir.
