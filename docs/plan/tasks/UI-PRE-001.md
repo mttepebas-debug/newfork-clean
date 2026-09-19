@@ -55,3 +55,12 @@ Risk: kapsam büyük (~10 ekran) → dilimleme şart; THEME-005 ile 6 ortak dosy
   - THEME-005 notu: `ConfirmButton` artık fragment döndürüyor (buton + `role="status"`); o branch'teki testler `getByRole` kullanmalı ve `?variant=b` armed kuralı rebase'de düşmeli.
   - D2'ye devreden, drawer içinde bilinçli dokunulmayanlar: ham hata metni, ham sürüm/durum değerleri, stilsiz dosya seçici, aynı ekranda iki yeşil.
 - 2026-09-18 ek: worker branch'i 2632880'e rebase etti ve kullanıcının açık onayıyla (yalnız kendi task branch'i) `--force-with-lease` ile push etti. Merge yerel branch'ten yapıldığı için koordinatör tarafında etkisi yok.
+- 2026-09-18 **D1 MERGE EDİLDİ** (Faz 1 ile birlikte; main 6d9f0e7, 18 commit, 24 dosya +2055/−693):
+  - Kit tek yol oldu: `?shell` anahtarı ve eski dallar silindi. `shell/prebiz/PreBiz.tsx` + `prebiz.css` (çerçeve, hesap bloğu, `BusinessRow`, rozet, `.pb-btn`). REUSE UI-11 ve UI-12 girdileri yazıldı.
+  - Ekranlar: pending, no-organization (+ business'ı olan hesabı yönlendiren guard), switcher (davetler / sürenler / business'lar, o anki "Current"), accept-invite (dört durum, ham mesaj yok), onboarding erken dönüşleri, `account/workspaces` SATIRI (rozetler; Open/Continue ve başlıktaki Create yeşil — kullanıcı kararı).
+  - `window.confirm` D1 ekranlarında sıfır; yıkıcı eylemler `ConfirmButton`. Sözlük: kullanıcı metninde "workspace"/"organization" yok; yeni taslak adı "New business".
+  - Ölü CSS temizliği (23 satır, her sınıf grep'le sayıldı). F5 backlog maddeleri (capitalize, başlığın yüklenirken görünmesi) kapandı.
+  - Koordinatör doğrulaması (merge öncesi, rebase sonrası): typecheck 6/6, lint 4/4 (20 react-hooks warn, 0 error), test 6/6 (ui 8, shared 175, api 591, web 1519 +1 skip), build 4/4.
+  - Worker bulguları BACKLOG'a: son satır "…" menüsünün kırpılması (main'de de var), Discard'ın 10 dk reauth kapısı (karar kullanıcıda), accept "yanlış hesap" durumunun sunucu cümlesine bağlı olması, pending'in sahibi olmayan üyeye kurulumu bitmemiş business'ı listelemesi, `finalizeActivation` reddinde asılı kalma, Workspaces'in satır dışı metinleri.
+  - Düzeltilen önemli bulgu: kurulumu bitmemiş business'ın sahibi olmayan üyesine "Discard" sunuluyordu (API her zaman reddederdi); artık o üye "Open" görüyor.
+  - Sıradaki: D2 (employee onboarding). İlk adım, ortak `DocumentReviewDrawer` için iki seçeneğin ölçülüp raporlanması; üçüncü opsiyonel prop eklenmeyecek.
