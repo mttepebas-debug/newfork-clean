@@ -518,6 +518,7 @@ export default function WorkspacesPage() {
               current={isCurrent}
               badge={
                 <>
+                  {isCurrent ? <StatusBadge tone="success">Current</StatusBadge> : null}
                   {onboarding ? <StatusBadge tone="progress">Onboarding in progress</StatusBadge> : null}
                   {draft ? <StatusBadge tone="progress">Setup in progress</StatusBadge> : null}
                   {workspace.isActive ? <StatusBadge>Default</StatusBadge> : null}
@@ -530,14 +531,7 @@ export default function WorkspacesPage() {
                 </>
               }
             >
-                {/* A draft is usually this tab's business (creating it selects it),
-                    so the pill must not hide the only way back into its setup. */}
-                {isCurrent && !draft ? (
-                  <span className="account-pill active-workspace" aria-label={`${workspace.name} is the current business`}>
-                    <Check size={15} aria-hidden />
-                    Current
-                  </span>
-                ) : onboarding ? (
+                {onboarding ? (
                   <Button
                     className="pb-btn pb-btn-primary"
                     type="button"

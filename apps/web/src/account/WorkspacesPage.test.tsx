@@ -185,7 +185,7 @@ describe("WorkspacesPage", () => {
   it.each(["admin", "manager", "employee"] as const)("hides create for %s without another owned workspace", async role => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([{ ...ownerWorkspace, role }]);
     renderPage();
-    await screen.findByLabelText("Meyhouse is the current business");
+    await screen.findByRole("button", { name: "Open Meyhouse" });
     expect(screen.queryByRole("button", { name: "Create business" })).toBeNull();
     expect(screen.getByRole("button", { name: "Actions for Meyhouse" })).toBeTruthy();
   });
@@ -278,7 +278,7 @@ describe("WorkspacesPage", () => {
     renderPage();
     const resume = await screen.findByRole("button", { name: `Continue setup for ${ownerWorkspace.name}` });
     expect(resume.closest("[role='listitem']")?.getAttribute("aria-current")).toBe("true");
-    expect(screen.queryByLabelText(`${ownerWorkspace.name} is the current business`)).toBeNull();
+    expect(screen.queryByRole("button", { name: `Open ${ownerWorkspace.name}` })).toBeNull();
   });
 
   it("lets another member open a business whose owner is still setting up", async () => {
@@ -362,13 +362,15 @@ describe("WorkspacesPage", () => {
     );
   });
 
-  it("marks the current tab without offering an Open action and labels the saved default separately", async () => {
+  it("marks the current tab, which stays openable, and labels the saved default separately", async () => {
     renderPage();
-    const pill = await screen.findByLabelText("Meyhouse is the current business");
-    expect(pill.closest("[role='listitem']")?.getAttribute("aria-current")).toBe("true");
+    const open = await screen.findByRole("button", { name: "Open Meyhouse" });
+    const row = open.closest<HTMLElement>("[role='listitem']")!;
+    expect(row.getAttribute("aria-current")).toBe("true");
     expect(screen.getByRole("button", { name: "Open West Room" }).closest("[role='listitem']")?.getAttribute("aria-current")).toBeNull();
-    expect(within(pill.closest<HTMLElement>("[role='listitem']")!).getByText("Default")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Open Meyhouse" })).toBeNull();
+    // The marker is a badge beside the role, not a control that takes Open's place.
+    expect(within(row).getByText("Current")).toBeTruthy();
+    expect(within(row).getByText("Default")).toBeTruthy();
     await openWorkspaceActions();
     expect(screen.getByRole("menuitem", { name: "Default business" })).toHaveProperty("disabled", true);
     expect(selectActiveWorkspace).not.toHaveBeenCalled();
@@ -407,7 +409,7 @@ describe("WorkspacesPage", () => {
       secondWorkspaceId,
     ));
     await waitFor(() => expect(document.activeElement).toBe(trigger));
-    expect(screen.getByLabelText("Meyhouse is the current business")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open Meyhouse" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open West Room" })).toBeTruthy();
     await openWorkspaceActions("West Room");
     expect(screen.getByRole("menuitem", { name: "Default business" })).toHaveProperty("disabled", true);
