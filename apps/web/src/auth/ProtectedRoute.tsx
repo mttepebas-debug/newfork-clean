@@ -3,6 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { invitationsCheckedStorageKey } from "../lib/supabase";
+import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import { useAuth } from "./AuthContext";
 import { WorkspaceSetupPending } from "./WorkspaceSetupPending";
 
@@ -15,7 +16,7 @@ export function ProtectedRoute({
   readonly children: ReactNode;
   readonly workspace?: WorkspaceRequirement;
 }) {
-  const { authenticated, context, error, ready, refresh, signOut } = useAuth();
+  const { authenticated, context, error, ready, refresh } = useAuth();
   const location = useLocation();
   // Once per tab session after login: a member with a new invitation sees it
   // before landing. No polling, no recheck on focus.
@@ -54,34 +55,25 @@ export function ProtectedRoute({
   if (workspace !== "none" && !context) {
     if (error) {
       return (
-        <main className="auth-recovery" aria-labelledby="workspace-error-title">
-          <section className="sign-in-panel">
-            <p className="product-mark">NEWFORK</p>
-            <h1 id="workspace-error-title">Workspace unavailable</h1>
-            <p className="muted">
-              Your account is signed in, but the workspace could not be loaded.
-            </p>
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-            <div className="auth-recovery-actions">
-              <button
-                className="nf-button"
-                type="button"
-                onClick={() => void refresh()}
-              >
-                Try again
-              </button>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => void signOut()}
-              >
-                Sign out
-              </button>
-            </div>
-          </section>
-        </main>
+        // Sign out lives in the frame's account block, so this is not a dead end.
+        <PreBizFrame
+          titleId="workspace-error-title"
+          title="That business didn't load"
+          description="You are signed in. Try again, or pick a different business."
+        >
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+          <div className="pb-footer">
+            <button
+              className="pb-btn pb-btn-primary"
+              type="button"
+              onClick={() => void refresh()}
+            >
+              Try again
+            </button>
+          </div>
+        </PreBizFrame>
       );
     }
     return <Navigate to="/invitations/pending" replace />;

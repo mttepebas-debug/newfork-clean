@@ -422,34 +422,6 @@
   box-shadow: none;
 }
 
-.account-recovery-page {
-  display: grid;
-  min-height: 100dvh;
-  place-items: center;
-  background: #f2f5f3;
-  padding: 24px;
-}
-
-.account-recovery-card {
-  width: min(100%, 460px);
-  border: 1px solid var(--theme-border);
-  border-radius: 12px;
-  background: var(--theme-surface);
-  padding: 28px;
-  box-shadow: 0 18px 50px rgb(22 45 36 / 11%);
-}
-
-.account-recovery-card h1 {
-  margin: 0;
-  font: 600 27px/1.2 Georgia, serif;
-}
-
-.account-recovery-card > p {
-  color: #64716c;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
 @media (max-width: 820px) {
   :root:has(.account-shell) {
     scrollbar-gutter: stable;

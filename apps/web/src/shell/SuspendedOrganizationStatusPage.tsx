@@ -1,37 +1,23 @@
-import { Link } from "react-router";
+import { useNavigate } from "react-router";
+import { PreBizFrame } from "./prebiz/PreBiz";
 
 export default function SuspendedOrganizationStatusPage() {
+  const navigate = useNavigate();
   return (
-    <section
-      className="account-page"
-      aria-labelledby="suspended-organization-title"
+    <PreBizFrame
+      titleId="suspended-organization-title"
+      title="This business is on hold"
+      description="Nothing in it can be opened until an owner or an admin lifts the hold. Ask one of them if you think it should be."
     >
-      <header className="account-page-header">
-        <div>
-          <p>Organization access</p>
-          <h1 id="suspended-organization-title">Access suspended</h1>
-          <p>
-            This organization cannot be opened right now. Contact an owner or
-            admin if you think access should be restored.
-          </p>
-        </div>
-      </header>
-
-      <div className="workspace-list">
-        <div className="workspace-row empty-workspace-row">
-          <div>
-            <strong>Limited account view only</strong>
-            <span>
-              Suspended organizations do not expose schedules, employees,
-              documents, todos, notifications or settings here.
-            </span>
-          </div>
-        </div>
+      <div className="pb-footer">
+        <button
+          type="button"
+          className="pb-btn pb-btn-primary"
+          onClick={() => navigate("/organization-switcher")}
+        >
+          Choose a business
+        </button>
       </div>
-
-      <Link className="text-button" to="/organization-switcher">
-        Back to organization switcher
-      </Link>
-    </section>
+    </PreBizFrame>
   );
 }

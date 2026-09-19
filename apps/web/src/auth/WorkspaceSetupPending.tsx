@@ -1,56 +1,45 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { listAccountWorkspaces, supabaseClient } from "../lib/supabase";
+import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import { useAuth } from "./AuthContext";
 
-/** Shown to a non-owner member while the owner has not finished workspace setup. */
+/** Shown to a non-owner member while the owner has not finished business setup. */
 export function WorkspaceSetupPending() {
-  const { context, refresh, signOut } = useAuth();
+  const { context, refresh } = useAuth();
   const navigate = useNavigate();
   const workspaces = useQuery({
     queryKey: ["account-workspaces"],
-    queryFn: () =>
-      supabaseClient ? listAccountWorkspaces(supabaseClient) : [],
+    queryFn: () => (supabaseClient ? listAccountWorkspaces(supabaseClient) : []),
   });
-  // With a single workspace the switcher would only lead back here.
+  // With a single business the switcher would only lead back here.
   const canSwitchOrganization = (workspaces.data?.length ?? 0) > 1;
+  const name = context?.workspace.name;
 
   return (
-    <main className="sign-in-page" aria-labelledby="workspace-setup-title">
-      <section className="sign-in-panel">
-        <p className="product-mark">NEWFORK</p>
-        <h1 id="workspace-setup-title">Workspace setup in progress</h1>
-        <p className="muted">
-          The owner has not finished setting up{" "}
-          {context?.workspace.name ?? "this workspace"}. You will get access
-          when setup is complete.
-        </p>
-        <div className="auth-recovery-actions">
+    <PreBizFrame
+      titleId="workspace-setup-title"
+      title="Almost ready"
+      description={`${name ?? "The business"} is still being set up. You'll get access the moment the owner finishes.`}
+    >
+      <div className="pb-footer">
+        <button
+          className="pb-btn pb-btn-primary"
+          type="button"
+          onClick={() => void refresh()}
+        >
+          Check again
+        </button>
+        {canSwitchOrganization ? (
           <button
-            className="nf-button"
+            className="pb-btn pb-btn-secondary"
             type="button"
-            onClick={() => void refresh()}
+            onClick={() => navigate("/organization-switcher")}
           >
-            Check again
+            Choose a business
           </button>
-          {canSwitchOrganization ? (
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => navigate("/organization-switcher")}
-            >
-              Switch organization
-            </button>
-          ) : null}
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => void signOut()}
-          >
-            Sign out
-          </button>
-        </div>
-      </section>
-    </main>
+        ) : null}
+      </div>
+    </PreBizFrame>
   );
 }

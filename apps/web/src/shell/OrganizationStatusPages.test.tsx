@@ -1,24 +1,38 @@
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { describe, expect, it, vi } from "vitest";
 import SuspendedOrganizationStatusPage from "./SuspendedOrganizationStatusPage";
+
+vi.mock("../auth/AuthContext", () => ({
+  useAuth: () => ({
+    account: { email: "member@example.test", displayName: "Member" },
+    authenticated: true,
+    signOut: vi.fn(),
+  }),
+}));
 
 describe("organization status pages", () => {
   it("keeps suspended organizations on a limited status surface", () => {
     render(
-      <MemoryRouter>
-        <SuspendedOrganizationStatusPage />
+      <MemoryRouter initialEntries={["/organization-switcher/suspended"]}>
+        <Routes>
+          <Route
+            path="/organization-switcher/suspended"
+            element={<SuspendedOrganizationStatusPage />}
+          />
+          <Route path="/organization-switcher" element={<p>Switcher</p>} />
+        </Routes>
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "Access suspended" })).toBeTruthy();
-    expect(screen.getByText("Limited account view only")).toBeTruthy();
     expect(
-      screen
-        .getByRole("link", { name: "Back to organization switcher" })
-        .getAttribute("href"),
-    ).toBe("/organization-switcher");
+      screen.getByRole("heading", { name: "This business is on hold" }),
+    ).toBeTruthy();
     expect(screen.queryByText("Documents")).toBeNull();
     expect(screen.queryByText("Notifications")).toBeNull();
+    // Still a way out, and the frame's account block still carries Sign out.
+    expect(screen.getByRole("button", { name: /sign out/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Choose a business" }));
+    expect(screen.getByText("Switcher")).toBeTruthy();
   });
 });

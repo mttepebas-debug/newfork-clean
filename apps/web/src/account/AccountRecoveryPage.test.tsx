@@ -8,6 +8,12 @@ vi.mock("../lib/supabase", () => ({
   restoreAccountDeletionWithToken: vi.fn(),
 }));
 
+// The page draws in the shared frame now; nobody has a session on a link from
+// a recovery email, so the frame shows no account block.
+vi.mock("../auth/AuthContext", () => ({
+  useAuth: () => ({ account: null, authenticated: false, signOut: vi.fn() }),
+}));
+
 describe("AccountRecoveryPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,13 +34,16 @@ describe("AccountRecoveryPage", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Restore account" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restore my account" }));
 
     await waitFor(() =>
       expect(restoreAccountDeletionWithToken).toHaveBeenCalledWith(token),
     );
-    expect(await screen.findByRole("heading", { name: "Account restored" })).toBeTruthy();
-    expect(screen.getByText(/did not create a session/i)).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { name: "Your account is back" }),
+    ).toBeTruthy();
+    expect(screen.getByText(/sign in to pick up/i)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /sign out/i })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Go to sign in" }));
     expect(await screen.findByText("Sign in destination")).toBeTruthy();

@@ -3046,22 +3046,6 @@ h2,
 p {
   margin-top: 0;
 }
-.sign-in-page {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: #eef1ed;
-}
-.sign-in-panel {
-  width: min(100%, 420px);
-  padding: 36px;
-  border: 1px solid #d8ddda;
-  border-radius: 8px;
-  background: var(--theme-surface);
-  box-shadow: 0 16px 40px rgb(22 35 30 / 9%);
-}
-.product-mark,
 .eyebrow {
   margin-bottom: 10px;
   color: #9b3e28;
@@ -3069,34 +3053,9 @@ p {
   font-weight: 800;
   letter-spacing: 0;
 }
-.sign-in-panel h1 {
-  margin-bottom: 12px;
-  font-size: 29px;
-  line-height: 1.2;
-}
 .muted {
   color: #66706c;
   line-height: 1.55;
-}
-.sign-in-panel label {
-  display: block;
-  margin: 26px 0 8px;
-  font-size: 13px;
-  font-weight: 700;
-}
-.sign-in-panel input,
-.sign-in-panel select {
-  width: 100%;
-  height: 42px;
-  margin-bottom: 14px;
-  padding: 0 12px;
-  border: 1px solid #c9cfcc;
-  border-radius: 6px;
-  background: var(--theme-surface);
-  color: var(--theme-text-body);
-}
-.sign-in-panel .nf-button {
-  width: 100%;
 }
 .text-button {
   display: inline-block;
@@ -3152,24 +3111,6 @@ p {
 .auth-loading {
   min-height: 100vh;
   background: var(--theme-page);
-}
-.auth-recovery {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: #eef1ed;
-}
-.auth-recovery-actions {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-.auth-recovery-actions .secondary-button {
-  min-height: 42px;
-  border-radius: 6px;
-  padding: 10px 16px;
-  font-weight: 700;
 }
 .nf-button {
   display: inline-flex;

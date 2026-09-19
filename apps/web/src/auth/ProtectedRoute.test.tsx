@@ -88,7 +88,7 @@ describe("ProtectedRoute", () => {
     renderRoute();
 
     expect(
-      screen.getByRole("heading", { name: "Workspace unavailable" }),
+      screen.getByRole("heading", { name: "That business didn't load" }),
     ).toBeTruthy();
     expect(screen.getByRole("alert").textContent).toContain(
       "Could not query the database",
@@ -137,11 +137,11 @@ describe("ProtectedRoute", () => {
 
       expect(
         await screen.findByRole("heading", {
-          name: "Workspace setup in progress",
+          name: "Almost ready",
         }),
       ).toBeTruthy();
       expect(
-        screen.getByText(/The owner has not finished setting up Harbor Grill\./),
+        screen.getByText(/Harbor Grill is still being set up/),
       ).toBeTruthy();
       // A status view, not a redirect: nothing to loop on.
       expect(screen.queryByLabelText("Current path")).toBeNull();
@@ -164,7 +164,7 @@ describe("ProtectedRoute", () => {
     renderRoute("/onboarding");
 
     expect(
-      await screen.findByRole("heading", { name: "Workspace setup in progress" }),
+      await screen.findByRole("heading", { name: "Almost ready" }),
     ).toBeTruthy();
     expect(screen.queryByLabelText("Current path")).toBeNull();
   });
