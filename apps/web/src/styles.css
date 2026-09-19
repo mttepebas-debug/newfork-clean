@@ -901,6 +901,33 @@
   align-items: center;
 }
 
+/* Onboarding reads the whole policy in the page flow: a box that scrolls inside
+   a page that also scrolls hides how much is left to read. */
+.onboarding-policy-text {
+  max-height: none;
+  overflow: visible;
+}
+/* A quiet line of context: a deadline, a signature, a note from the manager. */
+.onboarding-note {
+  margin: 0;
+  color: #687581;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.onboarding-file-list {
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  list-style: none;
+}
+.onboarding-file-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .onboarding-document-content {
   max-height: 390px;
   overflow: auto;

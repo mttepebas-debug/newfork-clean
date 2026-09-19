@@ -15,13 +15,8 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import {
-  Navigate,
-  useLocation,
-  useNavigate,
-  useParams,
-} from "react-router";
-import { DocumentReviewDrawer } from "../documents/DocumentReviewDrawer";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router";
+import { OnboardingDocumentStep } from "./OnboardingDocumentStep";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { useAuth } from "../auth/AuthContext";
 import { accountLandingPath } from "../auth/routeDestinations";
@@ -123,9 +118,7 @@ export default function EmployeeOnboardingPage() {
     (item) => item.id === requirementId,
   );
   const steps = stepsFor(model.requirements);
-  const groupIndex = steps.find(
-    (step) => step.title && step.path === pathname,
-  );
+  const groupIndex = steps.find((step) => step.title && step.path === pathname);
   const groupOf = steps.find(
     (step) => requirement && step.items.includes(requirement),
   );
@@ -163,15 +156,11 @@ export default function EmployeeOnboardingPage() {
         steps={steps}
         onOpen={navigateRequirement}
       />
-    ) : pathname.includes("/documents/") && requirement?.kind === "document" ? (
-      <DocumentStep
-        model={model}
-        requirement={requirement}
-        onSaved={continueAfterSave}
-        back={back}
-      />
-    ) : pathname.includes("/acknowledgements/") &&
-      requirement?.kind === "acknowledgement" ? (
+    ) : requirement &&
+      back &&
+      (requirement.kind === "document" ||
+        requirement.kind === "acknowledgement") &&
+      pathname === requirementPath(requirement) ? (
       <DocumentStep
         model={model}
         requirement={requirement}
@@ -315,7 +304,9 @@ function OnboardingShell({
               aria-valuemax={total}
               aria-valuenow={done}
             >
-              <span style={{ width: `${(done / Math.max(total, 1)) * 100}%` }} />
+              <span
+                style={{ width: `${(done / Math.max(total, 1)) * 100}%` }}
+              />
             </div>
             <p>
               {done} of {total} steps done
@@ -471,7 +462,9 @@ function WelcomeStep({
       <dl className="onboarding-assignment-summary">
         <div>
           <dt>Locations</dt>
-          <dd>{model.assignments.locations.join(", ") || "Not assigned yet"}</dd>
+          <dd>
+            {model.assignments.locations.join(", ") || "Not assigned yet"}
+          </dd>
         </div>
         <div>
           <dt>Jobs</dt>
@@ -562,7 +555,8 @@ function ProfileStep({
         : "",
   );
   const mutation = useMutation({
-    mutationFn: () => saveMyOnboardingProfile(workspaceId, profile, model.revision),
+    mutationFn: () =>
+      saveMyOnboardingProfile(workspaceId, profile, model.revision),
     onSuccess: onSaved,
   });
   const submit = (event: FormEvent) => {
@@ -574,8 +568,7 @@ function ProfileStep({
       ? undefined
       : parsed.error.issues.find(
           (item) =>
-            personalFields.has(String(item.path[0])) ===
-            (page === "personal"),
+            personalFields.has(String(item.path[0])) === (page === "personal"),
         );
     if (issue || (page === "emergency" && !parsed.success)) {
       setValidationError(issue?.message ?? "Complete all required fields.");
@@ -784,42 +777,20 @@ function DocumentStep({
   back,
 }: StepProps & {
   readonly requirement: EmployeeOnboardingRequirement;
-  /** UI-PRE-001 mockup: the group this page belongs to; the page then owns the heading. */
-  readonly back?: { readonly label: string; readonly go: () => void };
+  /** The group this page belongs to; the only way back out of a sub-page. */
+  readonly back: { readonly label: string; readonly go: () => void };
 }) {
   const { account } = useAuth();
   if (!account) return null;
   return (
-    <div className="onboarding-step">
-      {back ? (
-        <>
-          <button
-            type="button"
-            className="pb-btn pb-btn-secondary"
-            onClick={back.go}
-          >
-            <span aria-hidden>‹</span> {back.label}
-          </button>
-          <StepHeading
-            title={requirement.title}
-            copy={requirement.description}
-          />
-          <RequirementBadge requirement={requirement} />
-        </>
-      ) : null}
-      <DocumentReviewDrawer
-        inline
-        hideHeader={back !== undefined}
-        audience={{ workspaceId: model.workspace_id, selfOnly: true }}
-        userId={account.userId}
-        requirementId={requirement.id}
-        canReview={false}
-        onClose={() => {}}
-        onNext={() => {
-          void onSaved();
-        }}
-      />
-    </div>
+    <OnboardingDocumentStep
+      workspaceId={model.workspace_id}
+      userId={account.userId}
+      requirement={requirement}
+      badge={<RequirementBadge requirement={requirement} />}
+      back={back}
+      onDone={onSaved}
+    />
   );
 }
 

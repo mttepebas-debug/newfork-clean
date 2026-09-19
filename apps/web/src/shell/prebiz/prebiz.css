@@ -353,6 +353,14 @@
 .pb-stage-wide .onboarding-step > .pb-badge {
   justify-self: start;
 }
+/* A document page's blocks carry their own spacing inside the step grid. */
+.pb-doc-block {
+  display: grid;
+  gap: 14px;
+}
+.pb-doc-block > .pb-btn {
+  justify-self: start;
+}
 
 /* The step's action bar. Sticky, so on a form taller than the screen the way
    forward stays in reach; it settles into place at the end of the form. */
