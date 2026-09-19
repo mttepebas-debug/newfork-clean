@@ -26,7 +26,7 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - BL-058 Beş tenant E2E prova verisi ve kabul turu.
 - BL-059 Billing/Stripe: plan, limit, promo, trial.
 - BL-067 Schedule günlük/haftalık saat limitleri.
-- OBS-001 Invite/access mutasyonları (reminder/revoke/remove access) ve provider kabulü.
+- OBS-001 Invite/access mutasyonları (reminder/revoke/remove access) ve provider kabulü → tasks/JOIN-001.md (J2).
 - OBS-002 Availability save → manager → Schedule browser zinciri ve otomatik bildirim (local cron 503 hatası dahil).
 
 ## Geliştirme ortamı
@@ -111,3 +111,4 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - ~~Üç cron endpoint'i tetiklenmiyor~~ KAPANDI 2026-09-19: dördü de pg_cron'da (OPS-014, b7052f6).
 - Zamanlanmış export işi hosted'da 503 `"Email delivery is not configured"` dönüyor: job ve yetki yolu doğru, teslimat sağlayıcısı yok (F3, BL-046). E-posta açılınca ayrı iş gerekmez.
 - Hosted'da `VITE_API_URL` tanımlı değil; web aynı alan adına relative istek atıyor. Bugün doğru çalışıyor ama web ayrı bir alan adına taşınırsa bu değişken tanımlanmalı ve `vercel.json` önekleri gözden geçirilmeli.
+- 2026-09-19 kullanıcı kararı: katılım zinciri (davet, onboarding, çakışmalar, business kapatma/devir/suspend, belge adımı) MVP sırasının BAŞINA alındı. Bu dosyadaki ilgili satırların çoğu artık tasks/JOIN-001.md durum matrisinde izleniyor; oradaki dilim kapanınca buradaki satır üstü çizilir.

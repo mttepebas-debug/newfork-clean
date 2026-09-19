@@ -43,10 +43,25 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 | AUTH-004 | Owner kurulumu yarım workspace'te owner olmayan üye owner sihirbazına düşüyor (guard + durum paneli) | done dfe6fb4 |
 | OPS-015 | Hosted push: AUTH-002 migration'ları (052509 hariç) | active; `supabase link` adımı kullanıcıda bekliyor |
 | THEME-005 | Buton rolleri: aksiyon yeşil, vazgeçme beyaz, destructive iki tık (cascade kök düzeltmesi dahil); Workspaces o anki satır highlight | beklemede; kararlar UI-LAB-001 F2 üzerinden |
-| UI-PRE-001 | Business öncesi ekranlar: tek tasarım dili ve sihirbaz mantığı (Faz 1 mockup → D1-D5) | active |
+| UI-PRE-001 | Business öncesi ekranlar: tek tasarım dili ve sihirbaz mantığı | active; D1 done, kalanı FJ altında |
 | UI-LAB-001 | UI Lab (DEV-only): envanter, galeri, Inspector, canlı stil editörü | beklemede (kullanıcı kararı 2026-09-18); branch task/ui-lab-001 @ 482d2c8 |
 | DEBT-001 | Teknik borç P0: fastify yaması, CI paths-ignore+lint+build, ESLint config, ölü paket | taslak; kullanıcı onayı bekliyor |
 | OPS-013 | Hata izleme: Sentry (ücretsiz) + Vercel logları | OPS-010 sonrası |
+
+### FJ — Katılım zinciri (SIRADAKİ KAPI, kullanıcı kararı 2026-09-19)
+F0'dan sonra, F1'den önce. Bir kullanıcının bir business'a bağlanma yolunun tamamı: giriş, davet, onboarding, çakışma durumları, belge adımı, business'ın kapanması/devri/askıya alınması. Durum matrisi ve dilimler: [JOIN-001](tasks/JOIN-001.md).
+
+| ID | İş | Not |
+|---|---|---|
+| JOIN-001 | Şemsiye: durum matrisi, dilim sırası, kapanış turu | active |
+| UI-PRE-001 D2-D5 | Employee onboarding, owner sihirbazı, sign-in, davet satırı | active (UI ayağı) |
+| J1 | Durum turu: matristeki "bilinmiyor" satırları local'de üretilir (salt okunur kapı) | önce bu |
+| J2 | Davet yaşam döngüsü: çoklu davet, revoke/reminder/remove access (OBS-001), status'a bağlı hata ekranları | |
+| J3 | Yarım kalan onboarding: reset/leave, finalize reddi, P0002 → 404, seed düzeltmesi | DB kilidi |
+| J4 | Business yaşam döngüsü: discard reauth kapısı, closure, ownership transfer, suspended, hesap silme | kullanıcı kararı (E1) |
+| J5 | Belge tarafı: `lifecycle_revision` veri kaybı hatası, test edilmeyen mutation'lar | |
+| J6 | Kalan giriş ekranları (kayıt modu, account-recovery) ve kırmızı pgTAP dosyaları | DB kilidi |
+| J7 | Employee drawer atama kapısı (kullanıcı kararı 2026-09-18) | küçük |
 
 ### F1 — Çekirdek akışların kapanışı (manager + employee)
 | ID | İş |
@@ -85,7 +100,7 @@ Her faz bir kapıdır. Paralel çalışma DB kilidi kuralına bağlıdır (CLAUD
 |---|---|
 | BL-042/043/047/054 | Admin polish (Jobs drawer dahil) |
 | THEME-003 | Yakın renk tonlarını token'lara birleştir (görsel değişiklik; kullanıcıyla önce/sonra karşılaştırması) |
-| OBS-001 | Invite/access mutasyon kabulü |
+| ~~OBS-001~~ | Invite/access mutasyon kabulü → FJ / J2 |
 
 ### F6 — Lansman hazırlığı
 | ID | İş |
@@ -102,7 +117,7 @@ Native mobil uygulama, BL-067 saat limitleri, Kiosk, Time Tracking, payroll, com
 - Push: MVP'de web push (PWA). Native uygulama MVP sonrası.
 - Compliance, payroll, time tracking, break ve bunlarla ilişkili her şey (BL-067 saat limitleri dahil) MVP sonrası.
 - Tema: yalnızca light; dark emekli (THEME-001/002). Mobilde Schedule Export yok.
-- Fazlar sırayla ilerler: F0 → F6. Bir faz içindeki task'lar paralel çalışabilir.
+- Fazlar sırayla ilerler: F0 → FJ → F1 → F6 (FJ 2026-09-19 kullanıcı kararıyla araya girdi). Bir faz içindeki task'lar paralel çalışabilir.
 
 ## Açık kararlar
 1. Onboarding yedi adım ve avatar (BL-007/008) lansman için şart mı? (F4'ten önce sorulacak)
