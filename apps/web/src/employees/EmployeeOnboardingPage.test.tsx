@@ -233,7 +233,9 @@ describe("EmployeeOnboardingPage", () => {
       await screen.findByRole("button", { name: "Availability (optional)" }),
     );
     expect(await screen.findByRole("button", { name: "Save" })).toBeTruthy();
-    expect(screen.getByRole("progressbar").getAttribute("max")).toBe("1");
+    // The step is listed and reachable, but an optional one never counts.
+    const progress = screen.getByRole("progressbar", { name: "Steps done" });
+    expect(progress.getAttribute("aria-valuenow")).toBe("0");
     expect(saveWeeklyPreferences).not.toHaveBeenCalled();
   });
 
@@ -252,9 +254,7 @@ describe("EmployeeOnboardingPage", () => {
     fireEvent.click(
       await screen.findByRole("switch", { name: "Monday all day unavailable" }),
     );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Profile and privacy" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Profile" }));
     expect(
       await screen.findByText("Your private employee details"),
     ).toBeTruthy();
@@ -495,7 +495,9 @@ describe("EmployeeOnboardingPage", () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: /^back$/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Exit onboarding" }),
+    );
 
     expect(await screen.findByText("Account landing")).toBeTruthy();
   });
@@ -641,12 +643,8 @@ describe("EmployeeOnboardingPage", () => {
     expect(getMyOnboarding).not.toHaveBeenCalled();
   });
 
-  describe("documents grouping mockup (?docs)", () => {
-    // The switch is kept in sessionStorage; it must not reach the other tests.
-    beforeEach(() => sessionStorage.clear());
-    afterEach(() => sessionStorage.clear());
-
-    const renderMode = async (mode: string) => {
+  describe("step list", () => {
+    const renderSteps = async () => {
       render(
         <QueryClientProvider
           client={
@@ -655,7 +653,7 @@ describe("EmployeeOnboardingPage", () => {
         >
           <MemoryRouter
             initialEntries={[
-              `/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile?docs=${mode}`,
+              "/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile",
             ]}
           >
             <OnboardingRoute />
@@ -685,7 +683,7 @@ describe("EmployeeOnboardingPage", () => {
         ],
       });
 
-      const nav = await renderMode("1");
+      const nav = await renderSteps();
       expect(nav.getByRole("button", { name: "Documents" })).toBeTruthy();
       expect(nav.queryByRole("button", { name: /optional/i })).toBeNull();
       expect(
@@ -715,7 +713,7 @@ describe("EmployeeOnboardingPage", () => {
         ],
       });
 
-      const nav = await renderMode("1");
+      const nav = await renderSteps();
       expect(nav.getByRole("button", { name: "Documents" })).toBeTruthy();
       expect(nav.queryByRole("button", { name: "Policies" })).toBeNull();
       expect(nav.queryByText("Food handler card")).toBeNull();

@@ -8,12 +8,9 @@ import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
-  Building2,
   Check,
   CircleAlert,
-  FileCheck2,
   IdCard,
-  LogOut,
   UserRound,
 } from "lucide-react";
 import {
@@ -29,7 +26,6 @@ import {
   useLocation,
   useNavigate,
   useParams,
-  useSearchParams,
 } from "react-router";
 import { DocumentReviewDrawer } from "../documents/DocumentReviewDrawer";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
@@ -62,8 +58,7 @@ export default function EmployeeOnboardingPage() {
   const pathname = `/welcome${location.pathname.slice(`/welcome/${workspaceId}`.length)}`;
   const navigateRequirement = (path: string) => navigate(at(path));
   const queryClient = useQueryClient();
-  const { refresh, signOut } = useAuth();
-  const docsMode = useDevDocsMode();
+  const { refresh } = useAuth();
   const onboarding = useQuery({
     queryKey: ["my-employee-onboarding", workspaceId],
     queryFn: () => getMyOnboarding(workspaceId),
@@ -132,18 +127,16 @@ export default function EmployeeOnboardingPage() {
   const requirement = model.requirements.find(
     (item) => item.id === requirementId,
   );
-  // UI-PRE-001 mockup: without ?docs these stay empty/undefined, so the stage
-  // below renders exactly what it did before.
-  const docsSteps = docsMode ? docsStepsFor(model.requirements) : [];
-  const docsIndex = docsSteps.find(
+  const steps = stepsFor(model.requirements);
+  const groupIndex = steps.find(
     (step) => step.title && step.path === pathname,
   );
-  const docsParent = docsSteps.find(
+  const groupOf = steps.find(
     (step) => requirement && step.items.includes(requirement),
   );
-  const docsBack = docsParent && {
-    label: docsParent.label,
-    go: () => navigateRequirement(docsParent.path),
+  const back = groupOf && {
+    label: groupOf.label,
+    go: () => navigateRequirement(groupOf.path),
   };
 
   const stage =
@@ -167,7 +160,7 @@ export default function EmployeeOnboardingPage() {
         model={model}
         requirement={requirement}
         onSaved={continueAfterSave}
-        back={docsBack}
+        back={back}
       />
     ) : pathname.includes("/acknowledgements/") &&
       requirement?.kind === "acknowledgement" ? (
@@ -175,11 +168,11 @@ export default function EmployeeOnboardingPage() {
         model={model}
         requirement={requirement}
         onSaved={continueAfterSave}
-        back={docsBack}
+        back={back}
       />
-    ) : docsIndex ? (
-      <DocsGroupStep
-        step={docsIndex}
+    ) : groupIndex ? (
+      <GroupStep
+        step={groupIndex}
         onOpen={navigateRequirement}
         nextPath={model.first_actionable_path}
       />
@@ -187,109 +180,17 @@ export default function EmployeeOnboardingPage() {
       <Navigate to={at(model.first_actionable_path)} replace />
     );
 
-  if (docsMode)
-    return (
-      <DocsShell
-        model={model}
-        steps={docsSteps}
-        pathname={pathname}
-        onOpen={navigateRequirement}
-        onExit={() => navigate(accountLandingPath)}
-      >
-        {stage}
-      </DocsShell>
-    );
-
   return (
-    <main className="employee-onboarding-shell">
-      <aside className="employee-onboarding-progress">
-        <p className="product-mark">NEWFORK</p>
-        <div>
-          <span>{model.workspace_name}</span>
-          <strong>{model.employee_name}</strong>
-        </div>
-        <progress
-          value={model.progress_completed}
-          max={Math.max(model.progress_total, 1)}
-        />
-        <p>
-          {model.progress_completed} of {model.progress_total} complete
-        </p>
-        <nav aria-label="Onboarding requirements">
-          {model.requirements
-            .filter(
-              (item) =>
-                item.required ||
-                item.kind === "availability" ||
-                item.kind === "document",
-            )
-            .map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={
-                  requirementPath(item) === pathname ? "active" : ""
-                }
-                onClick={() => navigateRequirement(requirementPath(item))}
-              >
-                <RequirementIcon requirement={item} />
-                <span>
-                  {item.title}
-                  {item.document_mode === "conditional"
-                    ? " (conditional)"
-                    : !item.required
-                      ? " (optional)"
-                      : ""}
-                </span>
-              </button>
-            ))}
-          <button
-            type="button"
-            className={pathname === "/welcome/review" ? "active" : ""}
-            onClick={() => navigateRequirement("/welcome/review")}
-          >
-            <FileCheck2 size={17} aria-hidden />
-            <span>Review</span>
-          </button>
-        </nav>
-        <div className="employee-onboarding-reset">
-          {/* Back to the account landing, which re-checks what is still open. */}
-          <button type="button" onClick={() => navigate(accountLandingPath)}>
-            <Building2 size={16} aria-hidden />
-            <span>Back</span>
-          </button>
-          <button type="button" onClick={() => void signOut()}>
-            <LogOut size={16} aria-hidden />
-            <span>Sign out</span>
-          </button>
-        </div>
-      </aside>
-      <section className="employee-onboarding-stage">{stage}</section>
-    </main>
+    <OnboardingShell
+      model={model}
+      steps={steps}
+      pathname={pathname}
+      onOpen={navigateRequirement}
+      onExit={() => navigate(accountLandingPath)}
+    >
+      {stage}
+    </OnboardingShell>
   );
-}
-
-const docsModeKey = "ui-pre-001.docs";
-
-/**
- * UI-PRE-001 Faz 1: the step model the user picked (documents and policies as
- * one "Documents" step), DEV only behind `?docs=1`; `?docs=0` turns it off.
- * Slice D2 makes it the only path and deletes this switch. The choice is kept
- * in sessionStorage because every navigation here rebuilds a bare pathname and
- * ReviewStep does a full reload, so the param alone is gone after one click.
- */
-function useDevDocsMode(): boolean {
-  const [params] = useSearchParams();
-  if (!import.meta.env.DEV) return false;
-  const param = params.get("docs");
-  try {
-    if (param === "1") sessionStorage.setItem(docsModeKey, param);
-    else if (param !== null) sessionStorage.removeItem(docsModeKey);
-    else return sessionStorage.getItem(docsModeKey) === "1";
-  } catch {
-    // Storage is blocked: the param still works for the page it is on.
-  }
-  return param === "1";
 }
 
 interface OnboardingStep {
@@ -301,7 +202,7 @@ interface OnboardingStep {
   readonly copy?: string;
 }
 
-function docsStepsFor(
+function stepsFor(
   requirements: readonly EmployeeOnboardingRequirement[],
 ): OnboardingStep[] {
   const step = (
@@ -363,7 +264,7 @@ function stepDone(step: OnboardingStep, submitted: boolean): boolean {
   return pool.length > 0 && pool.every(itemDone);
 }
 
-function DocsShell({
+function OnboardingShell({
   model,
   steps,
   pathname,
@@ -389,7 +290,7 @@ function DocsShell({
           <span className="pb-brand">NEWFORK</span>
           <div className="pb-context">
             <strong title={model.workspace_name}>{model.workspace_name}</strong>
-            <span>{model.employee_name}</span>
+            <span>Employee onboarding</span>
           </div>
           <div className="pb-progress">
             <div
@@ -472,7 +373,7 @@ function RequirementBadge({
   return <StatusBadge tone={tone}>{label}</StatusBadge>;
 }
 
-function DocsGroupStep({
+function GroupStep({
   step,
   onOpen,
   nextPath,
