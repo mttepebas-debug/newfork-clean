@@ -78,6 +78,14 @@
   /* An e-mail address is one unbreakable word. */
   overflow-wrap: anywhere;
 }
+/* A stage-level alert follows the heading; the global rule is spaced and sized
+   for a form field, so here it sat tight under the title in small print. */
+.pb-stage > .form-error {
+  margin: 18px 0 0;
+  color: var(--theme-danger);
+  font-size: 14px;
+  line-height: 1.5;
+}
 
 .pb-section {
   margin-top: 32px;
