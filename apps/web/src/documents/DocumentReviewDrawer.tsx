@@ -25,6 +25,11 @@ import {
   uploadDocument,
   type DocumentAudience,
 } from "./document-data";
+import {
+  acceptAttribute,
+  isObligationClosed,
+  sameSignerName,
+} from "./document-rules";
 
 export function DocumentReviewDrawer(props: {
   audience: DocumentAudience;
@@ -290,7 +295,7 @@ function DocumentDetailContent({
   };
   const canDecide =
     props.canReview &&
-    !["exempt", "removed", "paused"].includes(obligation.status) &&
+    !isObligationClosed(obligation.status) &&
     current &&
     ["pending_review", "accepted"].includes(current.state);
   const hideHeader = props.inline && props.hideHeader;
@@ -386,7 +391,7 @@ function DocumentDetailContent({
               </p>
             ) : (
               props.audience.selfOnly &&
-              !["removed", "exempt", "paused"].includes(obligation.status) && (
+              !isObligationClosed(obligation.status) && (
                 <fieldset disabled={busy}>
                   <label className="onboarding-intent">
                     <input
@@ -414,14 +419,7 @@ function DocumentDetailContent({
                     disabled={
                       busy ||
                       !policyRead ||
-                      signerName
-                        .trim()
-                        .replace(/\s+/g, " ")
-                        .toLocaleLowerCase() !==
-                        obligation.employee_name
-                          .trim()
-                          .replace(/\s+/g, " ")
-                          .toLocaleLowerCase()
+                      !sameSignerName(signerName, obligation.employee_name)
                     }
                     onClick={() => acknowledge.mutate()}
                   >
@@ -595,7 +593,7 @@ function DocumentDetailContent({
         )}
         {props.audience.selfOnly &&
           obligation.kind === "document" &&
-          !["removed", "exempt", "paused"].includes(obligation.status) && (
+          !isObligationClosed(obligation.status) && (
             <section>
               <h3>Upload a new version</h3>
               <p>
@@ -629,9 +627,7 @@ function DocumentDetailContent({
               <input
                 type="file"
                 aria-label="Upload document"
-                accept={obligation.accepted_formats
-                  .map((f) => (f === "jpeg" ? ".jpg,.jpeg" : `.${f}`))
-                  .join(",")}
+                accept={acceptAttribute(obligation.accepted_formats)}
                 disabled={busy}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
