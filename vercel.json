@@ -22,11 +22,19 @@
       "destination": "/api?__path=/schedule/:path*"
     },
     {
+      "source": "/shifts/:path*",
+      "destination": "/api?__path=/shifts/:path*"
+    },
+    {
+      "source": "/shifts",
+      "destination": "/api?__path=/shifts"
+    },
+    {
       "source": "/health",
       "destination": "/api?__path=/health"
     },
     {
-      "source": "/((?!api/|v1/|schedule/|health).*)",
+      "source": "/((?!api/|v1/|schedule/|shifts|health).*)",
       "destination": "/index.html"
     }
   ]
