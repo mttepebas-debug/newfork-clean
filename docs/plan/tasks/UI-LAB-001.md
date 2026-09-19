@@ -1,5 +1,5 @@
 # UI-LAB-001 UI Lab: tıklanabilir parçaların DEV-only envanteri, galerisi ve canlı stil editörü
-Status: active (2026-09-17; kullanıcı planı onayladı ve "başla" dedi)
+Status: kapatıldı (2026-09-18 kullanıcı kararı: ertelendi, kullanılmıyor)
 Session: "THEME-005: ikincil buton cascade düzeltmesi" (local_739c4385; aynı worker, bağlam ve tarama altyapısı hazır)   Branch: task/ui-lab-001 (main'den)   Worktree: newfork-wt/ui-lab-001   DB: -   Port: web 5559 (API 5556)
 Öneri: Opus 5, high (session şu an Fable 5.1 / max; maliyet kararı kullanıcıda).
 Plan (bağlayıcı, tamamı okunur): `C:/Users/TheWe/.claude/plans/snuggly-humming-dusk.md`.
@@ -24,3 +24,4 @@ Test plan: plandaki "Doğrulama" bölümü.
 Risk: kapsam büyüklüğü ve süre; `display: contents` sapmaları; tarama süresi; CSS sıra farkı (planda ayrıntılı).
 
 ## Notes / Result
+- 2026-09-18 kapanış: kullanıcı "UI Lab şu an için ertelendi, onu hiçbir şekilde kullanmıyoruz" dedi; akıbeti için "yedekle ve kapat" seçildi. Branch `origin/task/ui-lab-001` @ 482d2c8 uzak yedekte (12 commit, 0 unpushed). Worktree kaldırıldı, local branch silindi. Geri dönülürse uzak branch'ten açılır; F2 editörü ve F3 derin tarama hiç yazılmadı.

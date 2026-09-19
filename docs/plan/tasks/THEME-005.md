@@ -1,5 +1,5 @@
 # THEME-005 Buton rolleri: aksiyon yeşil, vazgeçme beyaz, destructive iki tık (ikincil buton cascade düzeltmesinden genişledi)
-Status: beklemede (2026-09-17 kullanıcı kararı: kararlar UI-LAB-001 F2 hazır olunca lab üzerinden verilecek)
+Status: beklemede (UI-PRE-001 main'e girdikten sonra onun üstüne rebase edilecek)
 Session: "THEME-005: ikincil buton cascade düzeltmesi" (local_739c4385)   Branch: task/theme-005   Worktree: newfork-wt/theme-005   DB: -   Port: web 5558 (API 5556)
 Öneri: Sonnet 5, medium. Tek kök kural ve görsel tarama.
 
@@ -50,3 +50,4 @@ Risk: uygulama genelinde görünür değişiklik (yeşil ikincil butonlar beyaza
 - 2026-09-17 BEKLEMEDE: branch `task/theme-005` yerelde @ a362fe4, force'suz yedek `origin/task/theme-005-r2`. 12 web testi bilerek kırmızı, WIP commit'ler duruyor, merge yok. UI-LAB-001 F2 main'e girince branch main'e rebase edilir, 5558'de `VITE_UI_LAB=true` ile açılır; kullanıcı 5555 (main) ile yan yana karşılaştırıp armed rengi, soft danger tonu, satır highlight, etiket kayması, görünür "cannot be undone" metni ve düz buton adayları kararlarını verir. Sonra `?variant=b` iskelesi silinir, testler güncellenir, tarama + rapor.
 - 2026-09-18: `ConfirmButton` (+ testi ve `packages/ui` export'u) bu branch'ten ayrılıp main'e alındı (a4330f3), çünkü UI-PRE-001 aynı iki-tık bileşenine ihtiyaç duyuyor ve ikinci kez yazılmayacaktı. Branch'in kalanı beklemede; devam ederken main'e rebase edilecek ve ConfirmButton commit'i tekrar uygulanmayacak (aynı dosyalar main'de).
 - Not: "ikincil işaretli butonlar yeşil görünüyor" bulgusu bu branch'teki cascade düzeltmesinin konusu; UI-PRE-001 o ekranları yeni kit sınıflarıyla yeniden giydiriyor, global `.secondary-button` kuralına dokunmuyor.
+- 2026-09-18: UI Lab kapatıldığı için bu task artık lab'ı beklemiyor. Yeni sıra: UI-PRE-001 (business öncesi ekranların yeni tasarım dili) merge edilince `task/theme-005` onun üstüne rebase edilir; uygulamanın geri kalanındaki buton rolleri oradan tamamlanır. Yedek `origin/task/theme-005-r2` @ a362fe4 (0 unpushed). Rebase notları: `ConfirmButton` main'de (fragment + `role="status"`), o commit tekrar uygulanmaz, testler `getByRole` kullanır, `?variant=b` armed kuralı düşer.
