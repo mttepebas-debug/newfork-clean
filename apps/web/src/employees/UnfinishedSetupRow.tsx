@@ -24,6 +24,10 @@ export function UnfinishedSetupRow({
   const queryClient = useQueryClient();
   const { refresh } = useAuth();
   const employer = workspace.status === "active";
+  // Only the owner can finish or delete a business's setup. Another member of
+  // that business can only open it and wait, so it gets no Discard: the server
+  // would refuse it every time.
+  const ownSetup = !employer || workspace.role === "owner";
 
   const discard = useMutation({
     mutationFn: async () => {
@@ -66,35 +70,47 @@ export function UnfinishedSetupRow({
           {employer ? "Setup in progress" : "Onboarding in progress"}
         </StatusBadge>
       }
-      error={discard.error ? "Setup could not be updated" : null}
+      error={
+        discard.error
+          ? // Deleting a business needs a sign-in from the last ten minutes. The
+            // server's sentence only picks the state; the row says what to do.
+            discard.error.message === "Recent reauthentication required"
+            ? "Sign in again to discard this setup"
+            : "Setup could not be updated"
+          : null
+      }
     >
-      <ConfirmButton
-        className="pb-btn pb-btn-danger"
-        aria-label={
-          employer
-            ? `Discard setup for ${workspace.name}`
-            : `Decline onboarding for ${workspace.name}`
-        }
-        // Discarding deletes the draft business, so the armed label says so.
-        confirmLabel={
-          employer ? "Click again to delete" : "Click again to decline"
-        }
-        disabled={discard.isPending}
-        onConfirm={() => discard.mutate()}
-      >
-        {employer ? "Discard" : "Decline"}
-      </ConfirmButton>
+      {ownSetup ? (
+        <ConfirmButton
+          className="pb-btn pb-btn-danger"
+          aria-label={
+            employer
+              ? `Discard setup for ${workspace.name}`
+              : `Decline onboarding for ${workspace.name}`
+          }
+          // Discarding deletes the draft business, so the armed label says so.
+          confirmLabel={
+            employer ? "Click again to delete" : "Click again to decline"
+          }
+          disabled={discard.isPending}
+          onConfirm={() => discard.mutate()}
+        >
+          {employer ? "Discard" : "Decline"}
+        </ConfirmButton>
+      ) : null}
       <Button
         className="pb-btn pb-btn-primary"
         aria-label={
-          employer
-            ? `Continue setup for ${workspace.name}`
-            : `Continue onboarding for ${workspace.name}`
+          !ownSetup
+            ? `Open ${workspace.name}`
+            : employer
+              ? `Continue setup for ${workspace.name}`
+              : `Continue onboarding for ${workspace.name}`
         }
         disabled={discard.isPending}
         onClick={resume}
       >
-        Continue
+        {ownSetup ? "Continue" : "Open"}
       </Button>
     </BusinessRow>
   );

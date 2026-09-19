@@ -112,6 +112,11 @@
 .pb-row[aria-current="true"] {
   background: var(--theme-selected);
 }
+/* The tint is the success badge's own green, so on that row the badge turns
+   white or it would read as loose text beside the role. */
+.pb-row[aria-current="true"] .pb-badge-success {
+  background: var(--theme-surface);
+}
 .pb-row-text {
   display: grid;
   min-width: 0;

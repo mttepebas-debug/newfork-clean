@@ -111,9 +111,13 @@ export default function OrganizationSwitcherPage() {
     return <Navigate to="/no-organization" replace />;
   }
 
-  // A setup somebody still has to finish is not a business to open yet. The
+  // A setup this account still has to finish is not a business to open yet:
+  // its own onboarding, or a business it owns. Another member of a business
+  // whose owner is still setting up can only open it and wait, as before. The
   // rest is what the account can work in, plus the suspended ones.
-  const unfinished = unfinishedWorkspaces(workspaces ?? []);
+  const unfinished = unfinishedWorkspaces(workspaces ?? []).filter(
+    (workspace) => workspace.status === "pending" || workspace.role === "owner",
+  );
   const businesses = (workspaces ?? []).filter(
     (workspace) => !unfinished.includes(workspace),
   );

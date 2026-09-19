@@ -209,13 +209,13 @@ describe("WorkspacesPage", () => {
     expect(buttons).toHaveLength(2);
     expect(document.querySelectorAll("#create-workspace-trigger")).toHaveLength(1);
     fireEvent.click(buttons[1]!);
-    expect(screen.getByRole("dialog", { name: "Create workspace" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Create business" })).toBeTruthy();
   });
 
   it("opens the create dialog when navigation requests it", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
     renderPage({ pathname: "/account/workspaces", state: { openCreate: true } });
-    expect(await screen.findByRole("dialog", { name: "Create workspace" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Create business" })).toBeTruthy();
   });
 
   it("hides create for an invited account that has no organization yet", async () => {
@@ -267,6 +267,29 @@ describe("WorkspacesPage", () => {
     expect(screen.queryByRole("button", { name: "Open West Room" })).toBeNull();
     fireEvent.click(resume);
     await waitFor(() => expect(selectActiveWorkspace).toHaveBeenCalledWith(supabaseClientMock, secondWorkspaceId));
+  });
+
+  it("keeps Continue on a draft that is also this tab's business", async () => {
+    // Creating a business selects it for the tab, so the Current pill would
+    // otherwise hide the only way back into its setup.
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      { ...ownerWorkspace, onboarding: { status: "incomplete", currentStep: 1 } },
+    ]);
+    renderPage();
+    const resume = await screen.findByRole("button", { name: `Continue setup for ${ownerWorkspace.name}` });
+    expect(resume.closest("[role='listitem']")?.getAttribute("aria-current")).toBe("true");
+    expect(screen.queryByLabelText(`${ownerWorkspace.name} is the current business`)).toBeNull();
+  });
+
+  it("lets another member open a business whose owner is still setting up", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      ownerWorkspace,
+      { ...ownerWorkspace, id: secondWorkspaceId, name: "West Room", role: "manager", isActive: false, onboarding: { status: "incomplete", currentStep: 1 } },
+    ]);
+    renderPage();
+    const open = await screen.findByRole("button", { name: "Open West Room" });
+    expect(open.textContent).toBe("Open");
+    expect(screen.queryByText("Setup in progress")).toBeNull();
   });
 
   it("fails closed after a workspace list error", async () => {
@@ -345,7 +368,7 @@ describe("WorkspacesPage", () => {
     expect(pill.closest("[role='listitem']")?.getAttribute("aria-current")).toBe("true");
     expect(screen.getByRole("button", { name: "Open West Room" }).closest("[role='listitem']")?.getAttribute("aria-current")).toBeNull();
     expect(within(pill.closest<HTMLElement>("[role='listitem']")!).getByText("Default")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Open app for Meyhouse" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open Meyhouse" })).toBeNull();
     await openWorkspaceActions();
     expect(screen.getByRole("menuitem", { name: "Default business" })).toHaveProperty("disabled", true);
     expect(selectActiveWorkspace).not.toHaveBeenCalled();
@@ -460,10 +483,10 @@ describe("WorkspacesPage", () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "Create business" }));
-    expect(screen.getByRole("dialog", { name: "Create workspace" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Create business" })).toBeTruthy();
 
     fireEvent.change(
-      await screen.findByRole("textbox", { name: "Workspace name" }),
+      await screen.findByRole("textbox", { name: "Business name" }),
       {
         target: { value: "New Business" },
       },

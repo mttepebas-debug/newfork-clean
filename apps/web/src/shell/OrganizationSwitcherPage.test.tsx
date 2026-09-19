@@ -341,6 +341,16 @@ describe("OrganizationSwitcherPage", () => {
         isActive: false,
         onboarding: { status: "complete", currentStep: 2 },
       },
+      {
+        // Its owner has not finished setup. A manager cannot finish or delete
+        // it, so it is a business to open (and wait in), not a draft.
+        id: "bea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+        name: "Waiting Room",
+        role: "manager",
+        status: "active",
+        isActive: false,
+        onboarding: { status: "incomplete", currentStep: 1 },
+      },
     ]);
     renderPage();
     await screen.findByRole("heading", { name: "Choose a business" });
@@ -389,7 +399,15 @@ describe("OrganizationSwitcherPage", () => {
         meta: ["Manager", "Suspended"],
         actions: ["View status for Suspended Room"],
       },
+      {
+        name: "Waiting Room",
+        meta: ["Manager"],
+        actions: ["Open Waiting Room"],
+      },
     ]);
+    expect(
+      screen.queryByRole("button", { name: "Discard setup for Waiting Room" }),
+    ).toBeNull();
     // Opening is green; looking at a suspended business is the white side route.
     expect(
       screen.getByRole("button", { name: "Open Meyhouse" }).className,

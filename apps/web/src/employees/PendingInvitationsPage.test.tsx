@@ -276,6 +276,48 @@ describe("PendingInvitationsPage", () => {
     );
   });
 
+  it("tells the owner to sign in again when the discard needs a recent sign-in", async () => {
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      { ...northstar, onboarding: { status: "incomplete", currentStep: 2 } },
+    ]);
+    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
+      new Error("Recent reauthentication required"),
+    );
+
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Discard setup for Northstar" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Click again to delete" }),
+    );
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Sign in again to discard this setup",
+    );
+  });
+
+  it("offers no Discard to a member who does not own the unfinished business", async () => {
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      {
+        ...northstar,
+        role: "manager",
+        onboarding: { status: "incomplete", currentStep: 2 },
+      },
+    ]);
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: "Open Northstar" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Discard setup for Northstar" }),
+    ).toBeNull();
+  });
+
   it("accepts an invitation by id and sends the user to onboarding", async () => {
     renderPage();
 

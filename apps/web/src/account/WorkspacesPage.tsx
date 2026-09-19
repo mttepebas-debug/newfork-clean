@@ -502,8 +502,9 @@ export default function WorkspacesPage() {
           const pendingTransfer = workspace.pendingOwnershipTransfer ?? null;
           const isCurrent = workspace.id === currentWorkspaceId;
           const onboarding = workspace.status === "pending";
-          // An employer draft is active but not set up: it is continued, not opened.
-          const draft = workspace.status === "active" && workspace.onboarding.status !== "complete";
+          // An employer draft is active but not set up: its owner continues it, it
+          // is not opened. Another member can only open it and wait, as before.
+          const draft = workspace.role === "owner" && workspace.status === "active" && workspace.onboarding.status !== "complete";
           const hasOwnerActions = workspace.role === "owner" && (
             (!pendingTransfer && (lifecycleStatus === "active" || lifecycleStatus === "closure_scheduled")) ||
             pendingTransfer?.role === "initiator"
@@ -529,7 +530,9 @@ export default function WorkspacesPage() {
                 </>
               }
             >
-                {isCurrent ? (
+                {/* A draft is usually this tab's business (creating it selects it),
+                    so the pill must not hide the only way back into its setup. */}
+                {isCurrent && !draft ? (
                   <span className="account-pill active-workspace" aria-label={`${workspace.name} is the current business`}>
                     <Check size={15} aria-hidden />
                     Current
@@ -876,10 +879,11 @@ export default function WorkspacesPage() {
           else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
         }}
         onCancel={event => { event.preventDefault(); if (!creating) setCreateOpen(false); }}>
-      <h2 id="create-workspace-title">Create workspace</h2>
-      <p>Start a separate workspace and complete its setup.</p>
+      {/* Opened by "Create business": the dialog says the same word as its button. */}
+      <h2 id="create-workspace-title">Create business</h2>
+      <p>Start a separate business and complete its setup.</p>
       <form className="account-create-workspace-form" onSubmit={createWorkspace}>
-        <label htmlFor="new-workspace-name">Workspace name</label>
+        <label htmlFor="new-workspace-name">Business name</label>
         <div className="account-field">
           <input
             id="new-workspace-name"
