@@ -18,6 +18,8 @@ type Props = {
   onPreview?: (
     command: WeeklyPreferenceSave,
   ) => Promise<WeeklyCommitmentPreview>;
+  /** In onboarding: there are no assigned shifts yet and no time off to request. */
+  wizard?: boolean;
 };
 
 // Remount on actor changes; an employee's unsaved rules must never follow a
@@ -36,7 +38,13 @@ export function WeeklyPreferencesForm(props: Props) {
   );
 }
 
-function PreferenceForm({ model, audience, onSave, onPreview }: Props) {
+function PreferenceForm({
+  model,
+  audience,
+  onSave,
+  onPreview,
+  wizard = false,
+}: Props) {
   const manager = audience === "manager";
   const canEdit = manager
     ? model.can_manage && model.manager !== null
@@ -409,9 +417,9 @@ function PreferenceForm({ model, audience, onSave, onPreview }: Props) {
         <footer className="weekly-preferences-footer">
           {!manager && (
             <p>
-              Changes apply immediately and do not change assigned shifts. Your
-              manager may miss the notification; tell them directly too. For
-              temporary changes, request time off.
+              {wizard
+                ? "You can change this later from your own availability page."
+                : "Changes apply immediately and do not change assigned shifts. Your manager may miss the notification; tell them directly too. For temporary changes, request time off."}
             </p>
           )}
           {error && (

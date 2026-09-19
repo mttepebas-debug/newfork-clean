@@ -4,18 +4,12 @@ import {
   type EmployeeOnboardingProfile,
   type EmployeeOnboardingRequirement,
 } from "@newfork/shared";
-import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  Check,
-  CircleAlert,
-  IdCard,
-  UserRound,
-} from "lucide-react";
+import { ArrowRight, Check, CircleAlert, UserRound } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useState,
   type FormEvent,
@@ -39,6 +33,7 @@ import {
   PreBizFrame,
   Section,
   StatusBadge,
+  WizardBar,
   type BadgeTone,
 } from "../shell/prebiz/PreBiz";
 import {
@@ -107,13 +102,13 @@ export default function EmployeeOnboardingPage() {
         description="Try again, or ask your manager to check your invitation."
       >
         <div className="pb-footer">
-          <Button
+          <button
             className="pb-btn pb-btn-primary"
             type="button"
             onClick={() => onboarding.refetch()}
           >
             Try again
-          </Button>
+          </button>
         </div>
       </PreBizFrame>
     );
@@ -145,8 +140,16 @@ export default function EmployeeOnboardingPage() {
         model={model}
         onContinue={() => navigate(at(model.first_actionable_path))}
       />
-    ) : pathname === "/welcome/profile" ? (
-      <ProfileStep model={model} onSaved={continueAfterSave} />
+    ) : pathname === "/welcome/profile" ||
+      pathname === profilePagePath.emergency ? (
+      // One step, two pages. Both render the same component at the same spot, so
+      // the draft survives the move; the server only accepts a whole profile.
+      <ProfileStep
+        model={model}
+        onSaved={continueAfterSave}
+        page={pathname === profilePagePath.emergency ? "emergency" : "personal"}
+        onPage={(next) => navigateRequirement(profilePagePath[next])}
+      />
     ) : pathname === "/welcome/availability" ? (
       <AvailabilityStep
         key={`${model.workspace_id}:${model.employee_id}`}
@@ -154,7 +157,12 @@ export default function EmployeeOnboardingPage() {
         onSaved={continueAfterSave}
       />
     ) : pathname === "/welcome/review" ? (
-      <ReviewStep model={model} onSaved={continueAfterSave} />
+      <ReviewStep
+        model={model}
+        onSaved={continueAfterSave}
+        steps={steps}
+        onOpen={navigateRequirement}
+      />
     ) : pathname.includes("/documents/") && requirement?.kind === "document" ? (
       <DocumentStep
         model={model}
@@ -193,6 +201,13 @@ export default function EmployeeOnboardingPage() {
   );
 }
 
+type ProfilePage = "personal" | "emergency";
+
+const profilePagePath: Record<ProfilePage, string> = {
+  personal: "/welcome/profile",
+  emergency: "/welcome/profile/emergency",
+};
+
 interface OnboardingStep {
   readonly label: string;
   readonly path: string;
@@ -222,7 +237,7 @@ function stepsFor(
       // Uploads and policies are one step: the user chose this over two.
       step("Documents", "/welcome/documents", ["document", "acknowledgement"], {
         title: "Your documents",
-        copy: "Open each one to upload it or to read and acknowledge it.",
+        copy: "Open each one to send a photo or file, or to read it and confirm.",
       }),
       step("Availability", "/welcome/availability", ["availability"]),
     ].filter((item) => item.items.length > 0),
@@ -309,7 +324,9 @@ function OnboardingShell({
           <nav className="pb-steps" aria-label="Onboarding steps">
             {steps.map((step, index) => {
               const active =
-                pathname === step.path ||
+                // startsWith, so a step's own sub-page (profile page two) keeps
+                // the step marked; a requirement's page is matched separately.
+                pathname.startsWith(step.path) ||
                 step.items.some((item) => requirementPath(item) === pathname);
               const state = stepDone(step, submitted);
               return (
@@ -385,11 +402,7 @@ function GroupStep({
   const next = step.items.find((item) => counts(item) && !itemDone(item));
   return (
     <>
-      <StepHeading
-        eyebrow={step.label}
-        title={step.title ?? step.label}
-        copy={step.copy ?? ""}
-      />
+      <StepHeading title={step.title ?? step.label} copy={step.copy ?? ""} />
       {(
         [
           ["document", "To upload"],
@@ -425,7 +438,7 @@ function GroupStep({
           </Section>
         ) : null;
       })}
-      <div className="pb-footer">
+      <WizardBar>
         <button
           type="button"
           className="pb-btn pb-btn-primary"
@@ -433,7 +446,7 @@ function GroupStep({
         >
           Continue
         </button>
-      </div>
+      </WizardBar>
     </>
   );
 }
@@ -446,34 +459,60 @@ function WelcomeStep({
   readonly onContinue: () => void;
 }) {
   return (
-    <div className="onboarding-step onboarding-welcome">
+    <div className="onboarding-step">
       <span className="onboarding-step-icon">
         <UserRound size={24} aria-hidden />
       </span>
       <p className="onboarding-eyebrow">Welcome to {model.workspace_name}</p>
-      <h1>Let's prepare your employee account</h1>
+      <h1>Let's set up your employee account</h1>
       <p className="onboarding-lead">
-        Complete your information for manager review before your workspace
-        access begins.
+        A few steps, then your manager checks them and opens your access.
       </p>
       <dl className="onboarding-assignment-summary">
         <div>
           <dt>Locations</dt>
-          <dd>{model.assignments.locations.join(", ") || "Not assigned"}</dd>
+          <dd>{model.assignments.locations.join(", ") || "Not assigned yet"}</dd>
         </div>
         <div>
           <dt>Jobs</dt>
-          <dd>{model.assignments.jobs.join(", ") || "Not assigned"}</dd>
+          <dd>{model.assignments.jobs.join(", ") || "Not assigned yet"}</dd>
         </div>
       </dl>
-      <Button type="button" onClick={onContinue}>
-        Begin <ArrowRight size={17} aria-hidden />
-      </Button>
+      <WizardBar>
+        <button
+          type="button"
+          className="pb-btn pb-btn-primary"
+          onClick={onContinue}
+        >
+          Begin <ArrowRight size={17} aria-hidden />
+        </button>
+      </WizardBar>
     </div>
   );
 }
 
-function ProfileStep({ model, onSaved }: StepProps) {
+/** The fields page one owns; a zod complaint about any other one belongs to page two. */
+const personalFields = new Set([
+  "legal_first_name",
+  "legal_last_name",
+  "phone",
+  "street_address",
+  "city",
+  "region",
+  "postal_code",
+  "country_code",
+  "date_of_birth",
+]);
+
+function ProfileStep({
+  model,
+  onSaved,
+  page,
+  onPage,
+}: StepProps & {
+  readonly page: ProfilePage;
+  readonly onPage: (page: ProfilePage) => void;
+}) {
   const { workspaceId = "" } = useParams();
   const { account } = useAuth();
   const accountPhone = account?.phone ?? "";
@@ -529,144 +568,75 @@ function ProfileStep({ model, onSaved }: StepProps) {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const parsed = employeeOnboardingProfileSchema.safeParse(profile);
-    if (!parsed.success) {
-      setValidationError(
-        parsed.error.issues[0]?.message ?? "Complete all required fields.",
-      );
+    // The server only ever stores a whole profile, so both pages are checked
+    // against the same schema; each page shows only its own complaints.
+    const issue = parsed.success
+      ? undefined
+      : parsed.error.issues.find(
+          (item) =>
+            personalFields.has(String(item.path[0])) ===
+            (page === "personal"),
+        );
+    if (issue || (page === "emergency" && !parsed.success)) {
+      setValidationError(issue?.message ?? "Complete all required fields.");
       return;
     }
     setValidationError(null);
+    if (page === "personal") {
+      onPage("emergency");
+      return;
+    }
     mutation.mutate();
   };
-  return (
-    <form className="onboarding-step" onSubmit={submit}>
-      <StepHeading
-        eyebrow="Profile and privacy"
-        title="Your private employee details"
-        copy="These details are restricted to authorized employee records."
+  const rejection =
+    profileRequirement?.status === "rejected" ? (
+      <Attention
+        text={
+          profileRequirement.rejection_reason ??
+          "Your manager asked for a change here before you save again."
+        }
       />
-      {profileRequirement?.status === "rejected" ? (
-        <Attention
-          text={
-            profileRequirement.rejection_reason ??
-            "Review requested changes before saving again."
-          }
+    ) : null;
+  if (page === "emergency")
+    return (
+      <form className="onboarding-step" onSubmit={submit}>
+        <StepHeading
+          title="Who we call in an emergency"
+          copy="One person we can reach if something happens while you are at work."
         />
-      ) : null}
-      <section className="onboarding-profile-group">
-        <header>
-          <h2>Personal information</h2>
-          <p>Your verified account and private employee details.</p>
-        </header>
+        {rejection}
         <div className="onboarding-form-grid">
           <TextField
-            label="First name"
-            value={profile.legal_first_name}
-            onChange={(value) =>
-              setProfile({ ...profile, legal_first_name: value })
-            }
-          />
-          <TextField
-            label="Last name"
-            value={profile.legal_last_name}
-            onChange={(value) =>
-              setProfile({ ...profile, legal_last_name: value })
-            }
-          />
-          <TextField
-            label="E-mail"
-            type="email"
-            value={accountEmail}
-            onChange={() => undefined}
-            readOnly
-            wide
-            help="This is the verified e-mail for your Newfork account."
-          />
-          <TextField
-            label="Phone"
-            type="tel"
-            value={profile.phone}
-            onChange={(value) => setProfile({ ...profile, phone: value })}
-            help="Suggested from your account only when empty. This workspace phone can be different and stays independent."
-          />
-          <TextField
-            label="Date of birth"
-            type="date"
-            value={profile.date_of_birth}
-            onChange={(value) =>
-              setProfile({ ...profile, date_of_birth: value })
-            }
-            max={new Date().toISOString().slice(0, 10)}
-          />
-          <TextField
-            label="Street address"
-            value={profile.street_address}
-            onChange={(value) =>
-              setProfile({ ...profile, street_address: value })
-            }
-            wide
-          />
-          <TextField
-            label="City"
-            value={profile.city}
-            onChange={(value) => setProfile({ ...profile, city: value })}
-          />
-          <TextField
-            label="State"
-            value={profile.region}
-            onChange={(value) => setProfile({ ...profile, region: value })}
-            maxLength={100}
-          />
-          <TextField
-            label="ZIP code"
-            value={profile.postal_code}
-            onChange={(value) => setProfile({ ...profile, postal_code: value })}
-            maxLength={20}
-          />
-        </div>
-      </section>
-      <section className="onboarding-profile-group">
-        <header>
-          <h2>Emergency contact</h2>
-          <p>One person we can contact in an emergency.</p>
-        </header>
-        <div className="onboarding-form-grid">
-          <TextField
-            label="Emergency contact"
+            label="Full name"
             value={profile.emergency_contact_name}
             onChange={(value) =>
               setProfile({ ...profile, emergency_contact_name: value })
             }
           />
-          <label className="onboarding-field">
-            <span>Emergency relationship</span>
-            <select
-              value={relationshipMode}
-              required
-              onChange={(event) => {
-                const value = event.target.value;
-                setRelationshipMode(value);
-                setProfile({
-                  ...profile,
-                  emergency_contact_relationship:
-                    value === "Other" ? "" : value,
-                });
-              }}
-            >
-              <option value="" disabled>
-                Select relationship
+          <SelectField
+            label="Relationship"
+            value={relationshipMode}
+            onChange={(value) => {
+              setRelationshipMode(value);
+              setProfile({
+                ...profile,
+                emergency_contact_relationship: value === "Other" ? "" : value,
+              });
+            }}
+          >
+            <option value="" disabled>
+              Select relationship
+            </option>
+            {relationshipOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
               </option>
-              {relationshipOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-              <option value="Other">Other</option>
-            </select>
-          </label>
+            ))}
+            <option value="Other">Other</option>
+          </SelectField>
           {relationshipMode === "Other" ? (
             <TextField
-              label="Other relationship"
+              label="How you know them"
               value={profile.emergency_contact_relationship}
               onChange={(value) =>
                 setProfile({
@@ -677,15 +647,16 @@ function ProfileStep({ model, onSaved }: StepProps) {
             />
           ) : null}
           <TextField
-            label="Emergency phone"
+            label="Phone"
             type="tel"
+            minLength={7}
             value={profile.emergency_contact_phone}
             onChange={(value) =>
               setProfile({ ...profile, emergency_contact_phone: value })
             }
           />
           <TextField
-            label="Emergency email"
+            label="Email (optional)"
             type="email"
             value={profile.emergency_contact_email}
             onChange={(value) =>
@@ -694,7 +665,89 @@ function ProfileStep({ model, onSaved }: StepProps) {
             required={false}
           />
         </div>
-      </section>
+        {validationError ? (
+          <p className="form-error" role="alert">
+            {validationError}
+          </p>
+        ) : null}
+        <MutationFooter
+          mutation={mutation}
+          back={{ label: "Your details", onClick: () => onPage("personal") }}
+        />
+      </form>
+    );
+  return (
+    <form className="onboarding-step" onSubmit={submit}>
+      <StepHeading
+        title="Your details"
+        copy="Only your manager and whoever runs payroll can see these."
+      />
+      {rejection}
+      <div className="onboarding-form-grid">
+        <TextField
+          label="First name"
+          value={profile.legal_first_name}
+          onChange={(value) =>
+            setProfile({ ...profile, legal_first_name: value })
+          }
+        />
+        <TextField
+          label="Last name"
+          value={profile.legal_last_name}
+          onChange={(value) =>
+            setProfile({ ...profile, legal_last_name: value })
+          }
+        />
+        <TextField
+          label="E-mail"
+          type="email"
+          value={accountEmail}
+          onChange={() => undefined}
+          readOnly
+          wide
+          help="The address you signed in with. Change it in your account settings."
+        />
+        <TextField
+          label="Phone"
+          type="tel"
+          minLength={7}
+          value={profile.phone}
+          onChange={(value) => setProfile({ ...profile, phone: value })}
+          help="The number this business can reach you on."
+        />
+        <TextField
+          label="Date of birth"
+          type="date"
+          value={profile.date_of_birth}
+          onChange={(value) => setProfile({ ...profile, date_of_birth: value })}
+          max={new Date().toISOString().slice(0, 10)}
+        />
+        <TextField
+          label="Street address"
+          value={profile.street_address}
+          onChange={(value) =>
+            setProfile({ ...profile, street_address: value })
+          }
+          wide
+        />
+        <TextField
+          label="City"
+          value={profile.city}
+          onChange={(value) => setProfile({ ...profile, city: value })}
+        />
+        <TextField
+          label="State"
+          value={profile.region}
+          onChange={(value) => setProfile({ ...profile, region: value })}
+          maxLength={100}
+        />
+        <TextField
+          label="ZIP code"
+          value={profile.postal_code}
+          onChange={(value) => setProfile({ ...profile, postal_code: value })}
+          maxLength={20}
+        />
+      </div>
       <fieldset className="onboarding-privacy-options">
         <legend>Team visibility</legend>
         <Toggle
@@ -717,7 +770,9 @@ function ProfileStep({ model, onSaved }: StepProps) {
           {validationError}
         </p>
       ) : null}
-      <MutationFooter mutation={mutation} />
+      {/* Page one only moves on; the single save happens on page two, because the
+          server rejects a profile that is missing its emergency contact. */}
+      <MutationFooter mutation={mutation} label="Continue" />
     </form>
   );
 }
@@ -746,7 +801,6 @@ function DocumentStep({
             <span aria-hidden>‹</span> {back.label}
           </button>
           <StepHeading
-            eyebrow={back.label}
             title={requirement.title}
             copy={requirement.description}
           />
@@ -776,11 +830,10 @@ function AvailabilityStep({ model, onSaved }: StepProps) {
   );
   const completed = requirement?.status === "completed";
   return (
-    <section className="onboarding-step onboarding-weekly-step">
+    <section className="onboarding-step">
       <StepHeading
-        eyebrow="Availability"
-        title="Your weekly availability"
-        copy=""
+        title="The hours you can work"
+        copy="Mark the hours you are not available in a normal week. Your manager builds the schedule around it."
       />
       <WeeklyPreferencesPanel
         workspaceId={workspaceId}
@@ -790,18 +843,31 @@ function AvailabilityStep({ model, onSaved }: StepProps) {
         onSaved={() => void onSaved()}
       />
       {completed || requirement?.required === false ? (
-        <div className="onboarding-weekly-continue">
-          <Button type="button" onClick={() => void onSaved()}>
+        <WizardBar>
+          {/* Saving is the green action above; this only leaves the step. */}
+          <button
+            type="button"
+            className={`pb-btn ${completed ? "pb-btn-primary" : "pb-btn-secondary"}`}
+            onClick={() => void onSaved()}
+          >
             {completed ? "Continue" : "Skip for now"}{" "}
             <ArrowRight size={17} aria-hidden />
-          </Button>
-        </div>
+          </button>
+        </WizardBar>
       ) : null}
     </section>
   );
 }
 
-function ReviewStep({ model, onSaved }: StepProps) {
+function ReviewStep({
+  model,
+  onSaved,
+  steps,
+  onOpen,
+}: StepProps & {
+  readonly steps: readonly OnboardingStep[];
+  readonly onOpen: (path: string) => void;
+}) {
   const { workspaceId = "" } = useParams();
   const mutation = useMutation({
     mutationFn: () => submitMyOnboarding(workspaceId, model.revision),
@@ -817,52 +883,57 @@ function ReviewStep({ model, onSaved }: StepProps) {
       (item) =>
         item.status === "completed" || item.status === "awaiting_review",
     );
+  // The same steps the panel lists, so the two never disagree on what is left.
+  const listed = steps.filter((step) => step.path !== "/welcome/review");
   return (
     <form className="onboarding-step" onSubmit={submit}>
       <StepHeading
-        eyebrow="Review"
         title={
           model.case_status === "submitted"
-            ? "Submitted for manager review"
+            ? "Sent to your manager"
             : model.case_status === "changes_requested"
-              ? "Changes requested"
-              : "Review your onboarding"
+              ? "Your manager asked for a change"
+              : "Check it over, then send it"
         }
         copy={
           model.case_status === "submitted"
-            ? "Your account remains pending until the review is complete."
+            ? "You'll get access as soon as they approve it."
             : model.case_status === "changes_requested"
-              ? "Open the highlighted requirement, make the correction, and submit again."
-              : "Check each requirement before submitting."
+              ? "Open the step marked Needs changes, fix it, and send it again."
+              : "Open anything you want to change. Your manager sees it after you send it."
         }
       />
-      <div className="onboarding-review-list">
-        {model.requirements
-          .filter((item) => item.required)
-          .map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              onClick={() =>
-                window.location.assign(
-                  workspacePath(workspaceId, requirementPath(item)),
-                )
+      <Section title="Your steps">
+        {listed.map((step) => {
+          const done = stepDone(step, false);
+          return (
+            <BusinessRow
+              key={step.path}
+              name={step.label}
+              role={stepOptional(step) ? "Optional" : "Required"}
+              badge={
+                <StatusBadge tone={done ? "success" : "neutral"}>
+                  {done ? "Done" : "To do"}
+                </StatusBadge>
               }
             >
-              <RequirementIcon requirement={item} />
-              <span>
-                <strong>{item.title}</strong>
-                <small>{statusLabel(item.status)}</small>
-              </span>
-              <ArrowRight size={16} aria-hidden />
-            </button>
-          ))}
-      </div>
+              <button
+                type="button"
+                className="pb-btn pb-btn-secondary"
+                aria-label={`Open ${step.label}`}
+                onClick={() => onOpen(step.path)}
+              >
+                Open
+              </button>
+            </BusinessRow>
+          );
+        })}
+      </Section>
       {model.case_status !== "submitted" ? (
         <MutationFooter
           mutation={mutation}
           disabled={!ready}
-          label="Submit for review"
+          label="Send for review"
         />
       ) : null}
     </form>
@@ -874,21 +945,19 @@ interface StepProps {
   readonly onSaved: () => Promise<void>;
 }
 
+/**
+ * The step's own heading. No eyebrow: the side panel already names the step and
+ * marks it, so repeating it here read as three titles stacked on one page.
+ */
 function StepHeading({
-  eyebrow,
   title,
   copy,
-  icon,
 }: {
-  readonly eyebrow: string;
   readonly title: string;
   readonly copy: string;
-  readonly icon?: ReactNode;
 }) {
   return (
     <header className="onboarding-step-heading">
-      {icon ? <span>{icon}</span> : null}
-      <p>{eyebrow}</p>
       <h1>{title}</h1>
       <div>{copy}</div>
     </header>
@@ -899,28 +968,35 @@ function MutationFooter({
   mutation,
   disabled = false,
   label = "Save and continue",
+  back,
 }: {
   readonly mutation: { isPending: boolean; error: unknown; mutate: () => void };
   readonly disabled?: boolean;
   readonly label?: string;
+  readonly back?: { readonly label: string; readonly onClick: () => void };
 }) {
   return (
-    <footer className="onboarding-step-footer">
-      {mutation.error ? (
-        <p className="form-error" role="alert">
-          {errorMessage(mutation.error)}
-        </p>
-      ) : (
-        <span />
-      )}
-      <Button type="submit" disabled={disabled || mutation.isPending}>
+    <WizardBar
+      back={back}
+      error={mutation.error ? errorMessage(mutation.error) : null}
+    >
+      <button
+        type="submit"
+        className="pb-btn pb-btn-primary"
+        disabled={disabled || mutation.isPending}
+      >
         {mutation.isPending ? "Saving" : label}
         <ArrowRight size={17} aria-hidden />
-      </Button>
-    </footer>
+      </button>
+    </WizardBar>
   );
 }
 
+/**
+ * The help text sits outside the label: inside it, a screen reader read the whole
+ * sentence as the field's name, and the extra line pushed the next field in the
+ * row out of line.
+ */
 function TextField({
   label,
   value,
@@ -929,6 +1005,7 @@ function TextField({
   required = true,
   wide = false,
   maxLength,
+  minLength,
   readOnly = false,
   help,
   max,
@@ -940,24 +1017,56 @@ function TextField({
   readonly required?: boolean;
   readonly wide?: boolean;
   readonly maxLength?: number;
+  readonly minLength?: number;
   readonly readOnly?: boolean;
   readonly help?: string;
   readonly max?: string;
 }) {
+  const id = useId();
   return (
-    <label className={`onboarding-field${wide ? " wide" : ""}`}>
-      <span>{label}</span>
+    <div className={`onboarding-field${wide ? " wide" : ""}`}>
+      <label htmlFor={id}>{label}</label>
       <input
+        id={id}
         type={type}
         value={value}
         required={required}
         maxLength={maxLength}
+        minLength={minLength}
         max={max}
         readOnly={readOnly}
+        aria-describedby={help ? `${id}-help` : undefined}
         onChange={(event) => onChange(event.target.value)}
       />
-      {help ? <small>{help}</small> : null}
-    </label>
+      {help ? <small id={`${id}-help`}>{help}</small> : null}
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+  readonly children: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <div className="onboarding-field">
+      <label htmlFor={id}>{label}</label>
+      <select
+        id={id}
+        value={value}
+        required
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {children}
+      </select>
+    </div>
   );
 }
 
@@ -994,22 +1103,6 @@ function Attention({ text }: { readonly text: string }) {
   );
 }
 
-function RequirementIcon({
-  requirement,
-}: {
-  readonly requirement: EmployeeOnboardingRequirement;
-}) {
-  if (
-    requirement.status === "completed" ||
-    requirement.status === "awaiting_review"
-  )
-    return <Check size={17} aria-hidden />;
-  if (requirement.status === "rejected")
-    return <CircleAlert size={17} aria-hidden />;
-  if (requirement.kind === "ssn") return <IdCard size={17} aria-hidden />;
-  return <span className="requirement-dot" aria-hidden />;
-}
-
 // Onboarding paths are stored as "/welcome/..."; the route carries the
 // workspace: "/welcome/:workspaceId/...".
 function workspacePath(workspaceId: string, path: string): string {
@@ -1023,18 +1116,6 @@ function requirementPath(requirement: EmployeeOnboardingRequirement): string {
   if (requirement.kind === "document")
     return `/welcome/documents/${requirement.id}`;
   return `/welcome/acknowledgements/${requirement.id}`;
-}
-
-function statusLabel(value: EmployeeOnboardingRequirement["status"]): string {
-  return {
-    not_started: "Not started",
-    in_progress: "In progress",
-    awaiting_review: "Awaiting review",
-    completed: "Complete",
-    rejected: "Changes requested",
-    manual_follow_up: "Follow-up required",
-    superseded: "Superseded",
-  }[value];
 }
 
 function errorMessage(error: unknown): string {

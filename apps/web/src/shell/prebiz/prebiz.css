@@ -354,6 +354,38 @@
   justify-self: start;
 }
 
+/* The step's action bar. Sticky, so on a form taller than the screen the way
+   forward stays in reach; it settles into place at the end of the form. */
+.pb-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  border-top: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+.pb-bar-end {
+  display: flex;
+  /* Whatever comes before it, the green button keeps the right edge. */
+  margin-left: auto;
+  gap: 10px;
+}
+.pb-bar .form-error {
+  max-width: 380px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.pb-bar .pb-btn-primary {
+  min-height: 42px;
+  padding: 0 20px;
+  font-size: 14px;
+}
+
 @media (max-width: 720px) {
   .pb {
     grid-template-columns: 1fr;

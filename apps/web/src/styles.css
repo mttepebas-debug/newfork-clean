@@ -669,142 +669,7 @@
   }
 }
 
-/* Phase 4B employee onboarding */
-.employee-onboarding-shell {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 276px minmax(0, 1fr);
-  background: #f4f6f8;
-  color: #17202a;
-}
-
-.employee-onboarding-progress {
-  min-height: 100vh;
-  padding: 28px 22px;
-  background: #17202a;
-  color: #f8fafc;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.employee-onboarding-progress .product-mark {
-  color: #73d6af;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.employee-onboarding-progress > div {
-  display: grid;
-  gap: 4px;
-}
-
-.employee-onboarding-progress > div span,
-.employee-onboarding-progress > p {
-  color: #aeb9c4;
-  font-size: 12px;
-}
-
-.employee-onboarding-progress > div strong {
-  font-size: 17px;
-}
-
-.employee-onboarding-progress progress {
-  width: 100%;
-  height: 6px;
-  border: 0;
-  border-radius: 3px;
-  overflow: hidden;
-  background: #34414c;
-}
-
-.employee-onboarding-progress progress::-webkit-progress-bar {
-  background: #34414c;
-}
-.employee-onboarding-progress progress::-webkit-progress-value {
-  background: #73d6af;
-}
-.employee-onboarding-progress progress::-moz-progress-bar {
-  background: #73d6af;
-}
-
-.employee-onboarding-progress nav {
-  display: grid;
-  gap: 4px;
-}
-
-.employee-onboarding-progress nav button {
-  width: 100%;
-  min-height: 42px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #cbd4dc;
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.employee-onboarding-progress nav button:hover,
-.employee-onboarding-progress nav button.active {
-  background: #26333e;
-  color: var(--theme-on-accent);
-}
-
-.employee-onboarding-progress nav button svg {
-  color: #73d6af;
-}
-.employee-onboarding-reset {
-  display: grid;
-  gap: 8px;
-  margin-top: auto;
-}
-.employee-onboarding-reset button {
-  display: flex;
-  min-height: 38px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid #3a4955;
-  border-radius: 6px;
-  background: transparent;
-  color: #cbd4dc;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.employee-onboarding-reset button:hover,
-.employee-onboarding-reset button:focus-visible {
-  border-color: #73d6af;
-  color: #fff;
-}
-.employee-onboarding-reset button:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-.employee-onboarding-reset p {
-  margin: 0;
-  color: #ffb4a8;
-  font-size: 12px;
-  line-height: 1.4;
-}
-.requirement-dot {
-  width: 9px;
-  height: 9px;
-  border: 1px solid #7e8b96;
-  border-radius: 50%;
-}
-
-.employee-onboarding-stage {
-  min-width: 0;
-  padding: 48px clamp(24px, 6vw, 88px) 72px;
-}
-
+/* Employee onboarding steps. The frame around them is the prebiz kit. */
 .onboarding-step {
   width: min(760px, 100%);
   margin: 0 auto;
@@ -812,14 +677,7 @@
   gap: 28px;
 }
 
-.onboarding-welcome {
-  min-height: calc(100vh - 120px);
-  align-content: center;
-  justify-items: start;
-}
-
-.onboarding-step-icon,
-.onboarding-step-heading > span {
+.onboarding-step-icon {
   width: 48px;
   height: 48px;
   border-radius: 6px;
@@ -829,8 +687,7 @@
   background: #dff5ec;
 }
 
-.onboarding-eyebrow,
-.onboarding-step-heading > p {
+.onboarding-eyebrow {
   margin: 0;
   color: #557169;
   font-size: 12px;
@@ -889,41 +746,31 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
-}
-
-.onboarding-profile-group {
-  display: grid;
-  gap: 16px;
-  padding-top: 4px;
-}
-.onboarding-profile-group + .onboarding-profile-group {
-  padding-top: 24px;
-  border-top: 1px solid #d9dfe4;
-}
-.onboarding-profile-group > header {
-  display: grid;
-  gap: 4px;
-}
-.onboarding-profile-group h2,
-.onboarding-profile-group p {
-  margin: 0;
-}
-.onboarding-profile-group h2 {
-  color: #1f2a33;
-  font-size: 17px;
-}
-.onboarding-profile-group p {
-  color: #687581;
-  font-size: 13px;
+  /* Without this a taller cell (one with help text) stretches its neighbour and
+     the two inputs in the row stop lining up. */
+  align-items: start;
 }
 
 .onboarding-field {
   min-width: 0;
   display: grid;
+  /* Same reason: the field's own rows keep their height instead of spreading. */
+  align-content: start;
   gap: 7px;
   color: #3c4853;
   font-size: 13px;
   font-weight: 700;
+}
+.onboarding-field small {
+  color: #687581;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+.onboarding-field input[readonly] {
+  border-style: dashed;
+  background: #f4f6f7;
+  color: #687581;
 }
 
 .onboarding-field.wide {
@@ -1008,34 +855,8 @@
   font-size: 13px;
 }
 
-.onboarding-step-footer {
-  min-height: 54px;
-  padding-top: 18px;
-  border-top: 1px solid #d9dfe4;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-}
-
-.onboarding-step-footer .form-error {
-  margin: 0;
-  max-width: 480px;
-}
-.onboarding-step-footer button {
-  min-width: 160px;
-}
-
 .onboarding-identity {
   max-width: 620px;
-}
-.onboarding-ssn-field {
-  max-width: 340px;
-}
-.onboarding-ssn-field input {
-  font-size: 21px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
 }
 
 .onboarding-upload {
@@ -1132,37 +953,6 @@
   align-items: center;
 }
 
-.onboarding-review-list {
-  display: grid;
-  border-top: 1px solid #d5dce1;
-}
-.onboarding-review-list button {
-  min-height: 64px;
-  padding: 10px 4px;
-  border: 0;
-  border-bottom: 1px solid #d5dce1;
-  background: transparent;
-  color: inherit;
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 20px;
-  align-items: center;
-  text-align: left;
-  cursor: pointer;
-}
-.onboarding-review-list button:hover {
-  background: #edf2f0;
-}
-.onboarding-review-list button > svg:first-child {
-  color: #248663;
-}
-.onboarding-review-list button span {
-  display: grid;
-  gap: 3px;
-}
-.onboarding-review-list button small {
-  color: #687581;
-}
-
 .auth-mode-button {
   margin-top: 12px;
   border: 0;
@@ -1218,29 +1008,8 @@
 }
 
 @media (max-width: 760px) {
-  .employee-onboarding-shell {
-    display: block;
-  }
-  .employee-onboarding-progress {
-    min-height: 0;
-    padding: 18px;
-    gap: 12px;
-  }
-  .employee-onboarding-progress > div,
-  .employee-onboarding-progress nav {
-    display: none;
-  }
-  .employee-onboarding-progress progress {
-    height: 5px;
-  }
-  .employee-onboarding-stage {
-    padding: 30px 18px 48px;
-  }
   .onboarding-step {
     gap: 22px;
-  }
-  .onboarding-welcome {
-    min-height: calc(100vh - 180px);
   }
   .onboarding-step h1,
   .onboarding-step-heading h1 {
@@ -1259,13 +1028,6 @@
     padding: 14px 0;
   }
   .availability-times {
-    width: 100%;
-  }
-  .onboarding-step-footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .onboarding-step-footer button {
     width: 100%;
   }
 }

@@ -256,7 +256,7 @@ describe("EmployeeOnboardingPage", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Profile" }));
     expect(
-      await screen.findByText("Your private employee details"),
+      await screen.findByText("Your details"),
     ).toBeTruthy();
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(saveWeeklyPreferences).not.toHaveBeenCalled();
@@ -282,7 +282,7 @@ describe("EmployeeOnboardingPage", () => {
     expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
     expect(screen.queryByLabelText("Starts on")).toBeNull();
     fireEvent.click(save);
-    expect(await screen.findByText("Review your onboarding")).toBeTruthy();
+    expect(await screen.findByText("Check it over, then send it")).toBeTruthy();
     expect(saveWeeklyPreferences).toHaveBeenCalledWith(
       onboarding.workspace_id,
       expect.objectContaining({
@@ -330,7 +330,7 @@ describe("EmployeeOnboardingPage", () => {
       await screen.findByRole("button", { name: "Skip for now" }),
     );
     expect(
-      await screen.findByText("Your private employee details"),
+      await screen.findByText("Your details"),
     ).toBeTruthy();
     expect(saveWeeklyPreferences).not.toHaveBeenCalled();
   });
@@ -376,12 +376,12 @@ describe("EmployeeOnboardingPage", () => {
       </QueryClientProvider>,
     );
     expect(
-      await screen.findByText("Let's prepare your employee account"),
+      await screen.findByText("Let's set up your employee account"),
     ).toBeTruthy();
     expect(screen.getByText("Downtown")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /begin/i }));
     expect(
-      await screen.findByText("Your private employee details"),
+      await screen.findByText("Your details"),
     ).toBeTruthy();
   });
 
@@ -423,13 +423,17 @@ describe("EmployeeOnboardingPage", () => {
     fireEvent.change(screen.getByLabelText("ZIP code"), {
       target: { value: "90012" },
     });
-    fireEvent.change(screen.getByLabelText("Emergency contact"), {
+    // Page one only moves on; the emergency contact lives on page two and the
+    // draft has to survive the move because the server saves the whole profile.
+    fireEvent.click(screen.getByRole("button", { name: /^continue/i }));
+
+    fireEvent.change(await screen.findByLabelText("Full name"), {
       target: { value: "Morgan Reed" },
     });
-    fireEvent.change(screen.getByLabelText("Emergency relationship"), {
+    fireEvent.change(screen.getByLabelText("Relationship"), {
       target: { value: "Spouse/partner" },
     });
-    fireEvent.change(screen.getByLabelText("Emergency phone"), {
+    fireEvent.change(screen.getByLabelText("Phone"), {
       target: { value: "3105550101" },
     });
     fireEvent.click(screen.getByRole("button", { name: /save and continue/i }));
@@ -587,7 +591,7 @@ describe("EmployeeOnboardingPage", () => {
     );
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /submit for review/i }),
+      await screen.findByRole("button", { name: /send for review/i }),
     );
 
     await waitFor(() =>

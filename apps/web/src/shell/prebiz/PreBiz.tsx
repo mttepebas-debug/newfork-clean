@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from "react";
 import type { WorkspaceSummary } from "@newfork/shared";
-import { LogOut } from "lucide-react";
+import { ChevronLeft, LogOut } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 import "./prebiz.css";
 
@@ -52,6 +52,41 @@ export function PreBizFrame({
         {children}
       </main>
     </div>
+  );
+}
+
+/**
+ * How every wizard step ends: the way back on the left, the one green step
+ * forward on the right. It sticks to the bottom of a long form, so the step
+ * never hides its own action below the fold.
+ */
+export function WizardBar({
+  back,
+  error,
+  children,
+}: {
+  readonly back?: { readonly label: string; readonly onClick: () => void };
+  readonly error?: string | null;
+  readonly children: ReactNode;
+}) {
+  return (
+    <footer className="pb-bar">
+      {back ? (
+        <button
+          type="button"
+          className="pb-btn pb-btn-secondary"
+          onClick={back.onClick}
+        >
+          <ChevronLeft size={15} aria-hidden /> {back.label}
+        </button>
+      ) : null}
+      {error ? (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="pb-bar-end">{children}</div>
+    </footer>
   );
 }
 

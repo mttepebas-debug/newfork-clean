@@ -132,6 +132,7 @@ function ConnectedPreferences({
         audience={audience}
         onPreview={preview}
         onSave={save}
+        wizard={onboarding}
       />
     </>
   );
