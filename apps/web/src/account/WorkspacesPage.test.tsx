@@ -92,6 +92,15 @@ const workspaces = [
   },
 ] satisfies WorkspaceSummary[];
 
+// A scheduled closure only stays on the list while it is still ahead, so the
+// fixture dates from today instead of a day that eventually falls behind.
+const scheduledClosureAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+const scheduledClosureLabel = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+}).format(new Date(scheduledClosureAt));
+
 const ownerWorkspace = {
   id: workspaceId,
   name: "Meyhouse",
@@ -517,7 +526,7 @@ describe("WorkspacesPage", () => {
         {
           ...ownerWorkspace,
           lifecycleStatus: "closure_scheduled",
-          closureEffectiveAt: "2026-09-19T12:00:00.000Z",
+          closureEffectiveAt: scheduledClosureAt,
         },
         workspaces[1]!,
       ]);
@@ -543,7 +552,9 @@ describe("WorkspacesPage", () => {
         },
       ),
     );
-    expect(await screen.findByText(/Closes Sep 19, 2026/)).toBeTruthy();
+    expect(
+      await screen.findByText(`Closes ${scheduledClosureLabel}`),
+    ).toBeTruthy();
   });
 
   it("requires the exact organization name before immediate closure", async () => {
