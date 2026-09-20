@@ -20,7 +20,7 @@ export function WorkspaceSetupPending() {
     <PreBizFrame
       titleId="workspace-setup-title"
       title="Almost ready"
-      description={`${name ?? "The business"} is still being set up. You'll get access the moment the owner finishes.`}
+      description={`${name ?? "The workspace"} is still being set up. You'll get access the moment the owner finishes.`}
     >
       <div className="pb-footer">
         <button
@@ -36,7 +36,7 @@ export function WorkspaceSetupPending() {
             type="button"
             onClick={() => navigate("/organization-switcher")}
           >
-            Choose a business
+            Choose a workspace
           </button>
         ) : null}
       </div>

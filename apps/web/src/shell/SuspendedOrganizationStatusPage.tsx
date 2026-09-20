@@ -6,7 +6,7 @@ export default function SuspendedOrganizationStatusPage() {
   return (
     <PreBizFrame
       titleId="suspended-organization-title"
-      title="This business is on hold"
+      title="This workspace is on hold"
       description="Nothing in it can be opened until an owner or an admin lifts the hold. Ask one of them if you think it should be."
     >
       <div className="pb-footer">
@@ -15,7 +15,7 @@ export default function SuspendedOrganizationStatusPage() {
           className="pb-btn pb-btn-primary"
           onClick={() => navigate("/organization-switcher")}
         >
-          Choose a business
+          Choose a workspace
         </button>
       </div>
     </PreBizFrame>

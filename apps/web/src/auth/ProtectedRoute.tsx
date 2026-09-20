@@ -58,8 +58,8 @@ export function ProtectedRoute({
         // Sign out lives in the frame's account block, so this is not a dead end.
         <PreBizFrame
           titleId="workspace-error-title"
-          title="That business didn't load"
-          description="You are signed in. Try again, or pick a different business."
+          title="That workspace didn't load"
+          description="You are signed in. Try again, or pick a different workspace."
         >
           <p className="form-error" role="alert">
             {error}

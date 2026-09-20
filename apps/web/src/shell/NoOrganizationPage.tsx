@@ -124,7 +124,7 @@ export default function NoOrganizationPage() {
           </button>
         </div>
         <div className="pb-section">
-          <h2>Your own business</h2>
+          <h2>Your own workspace</h2>
           {ownBusiness(false)}
         </div>
       </PreBizFrame>
@@ -134,7 +134,7 @@ export default function NoOrganizationPage() {
     <PreBizFrame
       titleId="no-org-title"
       title={returning ? "Welcome back" : "Welcome to Newfork"}
-      description="Start your own business, or join one that invited you."
+      description="Start your own workspace, or join one that invited you."
     >
       <div className="pb-stack">
         {ownBusiness(true)}

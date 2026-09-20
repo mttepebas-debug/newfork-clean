@@ -144,7 +144,7 @@ export default function PendingInvitationsPage() {
       */}
       {!loading && pending.length === 0 && !employerDraft ? (
         <div className="pb-section">
-          <h2>Your own business</h2>
+          <h2>Your own workspace</h2>
           <CreateOrganizationButton className="pb-btn pb-btn-secondary pb-btn-block" />
         </div>
       ) : null}

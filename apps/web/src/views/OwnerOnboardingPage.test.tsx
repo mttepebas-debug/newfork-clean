@@ -196,7 +196,7 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Name your business",
+        name: "Name your workspace",
       }),
     ).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Your full name"), {
@@ -239,7 +239,7 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Name your business",
+        name: "Name your workspace",
       }),
     ).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Your full name"), {
@@ -257,10 +257,10 @@ describe("OwnerOnboardingPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Name your business",
+        name: "Name your workspace",
       }),
     ).toBeTruthy();
-    const workspaceNameInput = screen.getByLabelText("Business name");
+    const workspaceNameInput = screen.getByLabelText("Workspace name");
     fireEvent.submit(workspaceNameInput.closest("form")!);
 
     await waitFor(() =>
@@ -722,7 +722,7 @@ describe("OwnerOnboardingPage", () => {
     );
     expect(
       await screen.findByRole("heading", {
-        name: "Name your business",
+        name: "Name your workspace",
       }),
     ).toBeTruthy();
     expect(await screen.findByText("Setup reset")).toBeTruthy();
@@ -745,7 +745,7 @@ describe("OwnerOnboardingPage", () => {
     expect(authState.signOut).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(listAccountWorkspaces).toHaveBeenCalled());
     expect(
-      screen.queryByRole("button", { name: "Switch business" }),
+      screen.queryByRole("button", { name: "Switch workspace" }),
     ).toBeNull();
   });
 
@@ -771,7 +771,7 @@ describe("OwnerOnboardingPage", () => {
     renderPage(1);
 
     expect(
-      await screen.findByRole("button", { name: "Switch business" }),
+      await screen.findByRole("button", { name: "Switch workspace" }),
     ).toBeTruthy();
   });
 });

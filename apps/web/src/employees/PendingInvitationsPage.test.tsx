@@ -147,7 +147,7 @@ describe("PendingInvitationsPage", () => {
 
     await screen.findByText("Northstar");
     expect(
-      screen.queryByRole("button", { name: "Create your business" }),
+      screen.queryByRole("button", { name: "Create your workspace" }),
     ).toBeNull();
   });
 
@@ -160,7 +160,7 @@ describe("PendingInvitationsPage", () => {
     renderPage();
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Create your business" }),
+      await screen.findByRole("button", { name: "Create your workspace" }),
     );
 
     await waitFor(() =>

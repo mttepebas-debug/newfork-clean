@@ -706,7 +706,7 @@ function ProfileStep({
           minLength={7}
           value={profile.phone}
           onChange={(value) => setProfile({ ...profile, phone: value })}
-          help="The number this business can reach you on."
+          help="The number this workspace can reach you on."
         />
         <TextField
           label="Date of birth"

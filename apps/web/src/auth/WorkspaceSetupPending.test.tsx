@@ -54,7 +54,7 @@ describe("WorkspaceSetupPending", () => {
     renderPanel();
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Choose a business" }),
+      await screen.findByRole("button", { name: "Choose a workspace" }),
     );
     expect(screen.getByText("Switcher")).toBeTruthy();
   });
@@ -66,7 +66,7 @@ describe("WorkspaceSetupPending", () => {
     await screen.findByRole("button", { name: "Check again" });
     await vi.waitFor(() => expect(listAccountWorkspaces).toHaveBeenCalled());
     expect(
-      screen.queryByRole("button", { name: "Choose a business" }),
+      screen.queryByRole("button", { name: "Choose a workspace" }),
     ).toBeNull();
   });
 });

@@ -164,13 +164,13 @@ describe("OrganizationSwitcherPage", () => {
 
     // The title claims nothing before both lists have answered.
     expect(
-      screen.getByRole("heading", { name: "Loading your businesses" }),
+      screen.getByRole("heading", { name: "Loading your workspaces" }),
     ).toBeTruthy();
     expect(
-      await screen.findByRole("heading", { name: "Choose a business" }),
+      await screen.findByRole("heading", { name: "Choose a workspace" }),
     ).toBeTruthy();
     const rows = within(
-      screen.getByRole("list", { name: "Your businesses" }),
+      screen.getByRole("list", { name: "Your workspaces" }),
     ).getAllByRole("listitem");
     expect(rows).toHaveLength(2);
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
@@ -184,13 +184,13 @@ describe("OrganizationSwitcherPage", () => {
     expect(within(rows[1]!).queryByText("Current")).toBeNull();
     expect(screen.queryByRole("button", { name: /Create/i })).toBeNull();
     expect(
-      screen.getByRole("link", { name: "Manage your businesses" }),
+      screen.getByRole("link", { name: "Manage your workspaces" }),
     ).toBeTruthy();
   });
 
   it("keeps Sign out on the list through the account block", async () => {
     renderPage();
-    await screen.findByRole("heading", { name: "Choose a business" });
+    await screen.findByRole("heading", { name: "Choose a workspace" });
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalledTimes(1);
   });
@@ -204,7 +204,7 @@ describe("OrganizationSwitcherPage", () => {
       ),
     );
     expect(
-      screen.queryByRole("heading", { name: "Choose a business" }),
+      screen.queryByRole("heading", { name: "Choose a workspace" }),
     ).toBeNull();
   });
 
@@ -242,7 +242,7 @@ describe("OrganizationSwitcherPage", () => {
     );
 
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toBe("This business could not be opened");
+    expect(alert.textContent).toBe("This workspace could not be opened");
     expect(alert.closest("[role='listitem']")?.textContent).toContain(
       "West Room",
     );
@@ -293,12 +293,12 @@ describe("OrganizationSwitcherPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Your businesses didn't load",
+        name: "Your workspaces didn't load",
       }),
     ).toBeTruthy();
     // A fixed sentence: the server's own message never reaches the screen.
     expect(screen.getByRole("alert").textContent).toBe(
-      "Your businesses could not be loaded",
+      "Your workspaces could not be loaded",
     );
     expect(screen.queryByText(/Service unavailable/)).toBeNull();
 
@@ -314,7 +314,7 @@ describe("OrganizationSwitcherPage", () => {
     renderPage();
 
     // The loading frame has Sign out too, so wait for the recovery view itself.
-    await screen.findByRole("heading", { name: "Your businesses didn't load" });
+    await screen.findByRole("heading", { name: "Your workspaces didn't load" });
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalledTimes(1);
   });
@@ -358,7 +358,7 @@ describe("OrganizationSwitcherPage", () => {
       },
     ]);
     renderPage();
-    await screen.findByRole("heading", { name: "Choose a business" });
+    await screen.findByRole("heading", { name: "Choose a workspace" });
 
     const rowsOf = (list: string) =>
       within(screen.getByRole("list", { name: list }))
@@ -393,7 +393,7 @@ describe("OrganizationSwitcherPage", () => {
         ],
       },
     ]);
-    expect(rowsOf("Your businesses")).toEqual([
+    expect(rowsOf("Your workspaces")).toEqual([
       {
         name: "Meyhouse",
         meta: ["Manager", "Current"],

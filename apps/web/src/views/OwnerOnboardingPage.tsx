@@ -541,9 +541,9 @@ export default function OwnerOnboardingPage() {
           <span className="pb-brand">NEWFORK</span>
           <div className="pb-context">
             <strong title={workspaceName || undefined}>
-              {workspaceName || "Your business"}
+              {workspaceName || "Your workspace"}
             </strong>
-            <span>Business setup</span>
+            <span>Workspace setup</span>
           </div>
           <div className="pb-progress">
             <div
@@ -597,7 +597,7 @@ export default function OwnerOnboardingPage() {
               className="pb-btn pb-btn-secondary"
               onClick={() => navigate("/organization-switcher")}
             >
-              <Building2 size={15} aria-hidden /> Switch business
+              <Building2 size={15} aria-hidden /> Switch workspace
             </button>
           ) : null}
           {/* Leaves the wizard, not the account: the draft stays on the landing. */}
@@ -633,7 +633,7 @@ export default function OwnerOnboardingPage() {
             aria-labelledby="workspace-identity-title"
           >
             <header className="onboarding-step-heading">
-              <h1 id="workspace-identity-title">Name your business</h1>
+              <h1 id="workspace-identity-title">Name your workspace</h1>
               <div>This is the name your team sees when they sign in.</div>
             </header>
             <form className="onboarding-form" onSubmit={saveWorkspaceIdentity}>
@@ -654,7 +654,7 @@ export default function OwnerOnboardingPage() {
                   />
                 </label>
                 <label className="wide" htmlFor="workspace-name">
-                  Business name
+                  Workspace name
                   <input
                     id="workspace-name"
                     value={workspaceName}
@@ -718,7 +718,7 @@ export default function OwnerOnboardingPage() {
               </div>
               <Feedback success={success} />
               <WizardBar
-                back={{ label: "Business", onClick: () => setStep(1) }}
+                back={{ label: "Workspace", onClick: () => setStep(1) }}
                 error={error}
               >
                 <button
@@ -946,7 +946,7 @@ export default function OwnerOnboardingPage() {
   );
 }
 
-const ownerSteps = ["Business", "Locations", "Jobs", "Team"] as const;
+const ownerSteps = ["Workspace", "Locations", "Jobs", "Team"] as const;
 
 function ownerStepFromContext(currentStep: number | undefined): OwnerStep {
   return currentStep === 4

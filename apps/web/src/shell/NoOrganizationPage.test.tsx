@@ -123,7 +123,7 @@ describe("NoOrganizationPage", () => {
     renderPage();
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Create your business" }),
+      await screen.findByRole("button", { name: "Create your workspace" }),
     );
 
     await waitFor(() =>
@@ -148,7 +148,7 @@ describe("NoOrganizationPage", () => {
       screen.getByText(/Nothing has been sent to cook@example\.test so far/),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Create your business" }),
+      screen.getByRole("button", { name: "Create your workspace" }),
     ).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
@@ -258,7 +258,7 @@ describe("NoOrganizationPage", () => {
       await screen.findByRole("heading", { name: "Welcome back" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Create your business" }),
+      screen.getByRole("button", { name: "Create your workspace" }),
     ).toBeTruthy();
   });
 
@@ -274,7 +274,7 @@ describe("NoOrganizationPage", () => {
     renderPage();
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Create your business" }),
+      await screen.findByRole("button", { name: "Create your workspace" }),
     );
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
     // Let the refetched list reach the page before reading the path.

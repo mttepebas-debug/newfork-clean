@@ -88,7 +88,7 @@ describe("ProtectedRoute", () => {
     renderRoute();
 
     expect(
-      screen.getByRole("heading", { name: "That business didn't load" }),
+      screen.getByRole("heading", { name: "That workspace didn't load" }),
     ).toBeTruthy();
     expect(screen.getByRole("alert").textContent).toContain(
       "Could not query the database",

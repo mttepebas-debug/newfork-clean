@@ -90,10 +90,10 @@ export default function OrganizationSwitcherPage() {
     return (
       <PreBizFrame
         titleId="organization-switcher-title"
-        title="Your businesses didn't load"
+        title="Your workspaces didn't load"
       >
         <p className="form-error" role="alert">
-          Your businesses could not be loaded
+          Your workspaces could not be loaded
         </p>
         <div className="pb-footer">
           <Button
@@ -125,7 +125,7 @@ export default function OrganizationSwitcherPage() {
   return (
     <PreBizFrame
       titleId="organization-switcher-title"
-      title={loading ? "Loading your businesses" : "Choose a business"}
+      title={loading ? "Loading your workspaces" : "Choose a workspace"}
     >
       {invitations.length > 0 ? (
         <Section title="Invitations">
@@ -142,7 +142,7 @@ export default function OrganizationSwitcherPage() {
         </Section>
       ) : null}
       {businesses.length > 0 ? (
-        <Section title="Your businesses">
+        <Section title="Your workspaces">
           {businesses.map((workspace) => {
             const suspended = workspace.status === "suspended";
             const activating = activatingWorkspaceId === workspace.id;
@@ -165,7 +165,7 @@ export default function OrganizationSwitcherPage() {
                 }
                 error={
                   failedWorkspaceId === workspace.id
-                    ? "This business could not be opened"
+                    ? "This workspace could not be opened"
                     : null
                 }
               >
@@ -192,7 +192,7 @@ export default function OrganizationSwitcherPage() {
       ) : null}
       <div className="pb-footer">
         <Link className="pb-btn pb-btn-secondary" to="/account/workspaces">
-          Manage your businesses
+          Manage your workspaces
         </Link>
       </div>
     </PreBizFrame>

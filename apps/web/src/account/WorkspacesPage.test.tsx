@@ -195,14 +195,14 @@ describe("WorkspacesPage", () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([{ ...ownerWorkspace, role }]);
     renderPage();
     await screen.findByRole("button", { name: "Open Meyhouse" });
-    expect(screen.queryByRole("button", { name: "Create business" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Create workspace" })).toBeNull();
     expect(screen.getByRole("button", { name: "Actions for Meyhouse" })).toBeTruthy();
   });
 
   it("sorts the current tab first and enables create for an owner in another workspace", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([{ ...ownerWorkspace, isActive: false }, { ...workspaces[1]!, isActive: true }]);
     renderPage();
-    const createButton = await screen.findByRole("button", { name: "Create business" });
+    const createButton = await screen.findByRole("button", { name: "Create workspace" });
     expect(createButton.closest(".account-header-action")).toBeTruthy();
     expect(document.querySelector(".pb-row strong")?.textContent).toBe("Meyhouse");
     expect(screen.getByRole("button", { name: "Open West Room" }).className).toContain("pb-btn-primary");
@@ -211,20 +211,20 @@ describe("WorkspacesPage", () => {
   it("offers first workspace creation from the empty state", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
     renderPage();
-    expect(await screen.findByText("Create your first business to continue.")).toBeTruthy();
-    expect(within(screen.getByRole("list", { name: "Businesses" })).getAllByRole("listitem")).toHaveLength(1);
+    expect(await screen.findByText("Create your first workspace to continue.")).toBeTruthy();
+    expect(within(screen.getByRole("list", { name: "Workspaces" })).getAllByRole("listitem")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Workspace switcher" })).toBeNull();
-    const buttons = screen.getAllByRole("button", { name: "Create business" });
+    const buttons = screen.getAllByRole("button", { name: "Create workspace" });
     expect(buttons).toHaveLength(2);
     expect(document.querySelectorAll("#create-workspace-trigger")).toHaveLength(1);
     fireEvent.click(buttons[1]!);
-    expect(screen.getByRole("dialog", { name: "Create business" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Create workspace" })).toBeTruthy();
   });
 
   it("opens the create dialog when navigation requests it", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
     renderPage({ pathname: "/account/workspaces", state: { openCreate: true } });
-    expect(await screen.findByRole("dialog", { name: "Create business" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Create workspace" })).toBeTruthy();
   });
 
   it("hides create for an invited account that has no organization yet", async () => {
@@ -232,7 +232,7 @@ describe("WorkspacesPage", () => {
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
     renderPage();
     expect(await screen.findByText("Respond to your invitation to continue.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Create business" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Create workspace" })).toBeNull();
     expect(screen.getByRole("button", { name: "Join Northstar" })).toBeTruthy();
   });
 
@@ -241,8 +241,8 @@ describe("WorkspacesPage", () => {
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
     renderPage();
     expect(await screen.findByRole("button", { name: "Join Northstar" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Create business" })).toBeTruthy();
-    const rows = within(screen.getByRole("list", { name: "Businesses" })).getAllByRole("listitem");
+    expect(screen.getByRole("button", { name: "Create workspace" })).toBeTruthy();
+    const rows = within(screen.getByRole("list", { name: "Workspaces" })).getAllByRole("listitem");
     expect(rows.map(row => row.querySelector("strong")?.textContent)).toEqual(["Northstar", "Meyhouse"]);
     expect(rows[0]?.textContent).toContain("Invitation");
     // The badge counts days from today, so only its first word is stable.
@@ -305,7 +305,7 @@ describe("WorkspacesPage", () => {
     vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(new Error("Unavailable"));
     renderPage();
     await screen.findByRole("alert");
-    expect(screen.queryByRole("button", { name: "Create business" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Create workspace" })).toBeNull();
   });
 
   it("lets a sender cancel pending transfer without a password", async () => {
@@ -381,7 +381,7 @@ describe("WorkspacesPage", () => {
     expect(within(row).getByText("Current")).toBeTruthy();
     expect(within(row).getByText("Default")).toBeTruthy();
     await openWorkspaceActions();
-    expect(screen.getByRole("menuitem", { name: "Default business" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("menuitem", { name: "Default workspace" })).toHaveProperty("disabled", true);
     expect(selectActiveWorkspace).not.toHaveBeenCalled();
   });
 
@@ -393,7 +393,7 @@ describe("WorkspacesPage", () => {
     expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual([
-      "Default business",
+      "Default workspace",
       "Transfer ownership",
       "Close later",
       "Close now",
@@ -421,7 +421,7 @@ describe("WorkspacesPage", () => {
     expect(screen.getByRole("button", { name: "Open Meyhouse" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open West Room" })).toBeTruthy();
     await openWorkspaceActions("West Room");
-    expect(screen.getByRole("menuitem", { name: "Default business" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("menuitem", { name: "Default workspace" })).toHaveProperty("disabled", true);
     expect(selectActiveWorkspace).not.toHaveBeenCalled();
   });
 
@@ -452,7 +452,7 @@ describe("WorkspacesPage", () => {
 
     await openWorkspaceActions();
     expect(screen.getAllByRole("menuitem")).toHaveLength(2);
-    expect(screen.getByRole("menuitem", { name: "Default business" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Default workspace" })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: "Cancel close" })).toBeTruthy();
   });
 
@@ -493,11 +493,11 @@ describe("WorkspacesPage", () => {
   it("stores a newly created workspace as the tab-local context before onboarding", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Create business" }));
-    expect(screen.getByRole("dialog", { name: "Create business" })).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Create workspace" }));
+    expect(screen.getByRole("dialog", { name: "Create workspace" })).toBeTruthy();
 
     fireEvent.change(
-      await screen.findByRole("textbox", { name: "Business name" }),
+      await screen.findByRole("textbox", { name: "Workspace name" }),
       {
         target: { value: "New Business" },
       },

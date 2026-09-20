@@ -12,7 +12,7 @@ import {
 } from "../lib/supabase";
 
 // Owner onboarding step 1 asks for the real name, so nothing is asked here.
-const draftWorkspaceName = "New business";
+const draftWorkspaceName = "New workspace";
 
 /**
  * Starts employer onboarding in one click. An unfinished setup is resumed
@@ -49,7 +49,7 @@ export function CreateOrganizationButton({
       navigate("/onboarding", { replace: true });
     } catch {
       // The server's wording is not for the user: one fixed sentence.
-      setError("Business could not be created");
+      setError("Workspace could not be created");
       setBusy(false);
     }
   };
@@ -63,7 +63,7 @@ export function CreateOrganizationButton({
         onClick={() => void start()}
       >
         <Building2 size={16} aria-hidden />
-        {busy ? "Starting" : "Create your business"}
+        {busy ? "Starting" : "Create your workspace"}
       </Button>
       {error ? (
         <p className="form-error" role="alert">

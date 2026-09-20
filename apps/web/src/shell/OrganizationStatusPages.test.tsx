@@ -26,13 +26,13 @@ describe("organization status pages", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "This business is on hold" }),
+      screen.getByRole("heading", { name: "This workspace is on hold" }),
     ).toBeTruthy();
     expect(screen.queryByText("Documents")).toBeNull();
     expect(screen.queryByText("Notifications")).toBeNull();
     // Still a way out, and the frame's account block still carries Sign out.
     expect(screen.getByRole("button", { name: /sign out/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Choose a business" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose a workspace" }));
     expect(screen.getByText("Switcher")).toBeTruthy();
   });
 });

@@ -457,7 +457,7 @@ export default function WorkspacesPage() {
             className="primary-button"
             onClick={openCreateDialog}
           >
-            <Plus size={16} aria-hidden /> Create business
+            <Plus size={16} aria-hidden /> Create workspace
           </Button>
         ) : undefined}
       />
@@ -483,16 +483,16 @@ export default function WorkspacesPage() {
         </p>
       ) : null}
       {/* The kit rows are list items, so the container says it is their list. */}
-      <div className="workspace-list" role="list" aria-label="Businesses">
+      <div className="workspace-list" role="list" aria-label="Workspaces">
         {invitations.map(invitation => (
           <InvitationRow key={invitation.id} invitation={invitation} />
         ))}
         {orderedWorkspaces.length === 0 && !loading ? (
           <div className="workspace-row empty-workspace-row" role="listitem">
             <div>
-              <strong>No businesses yet</strong>
-              <span>{invitations.length > 0 ? "Respond to your invitation to continue." : "Create your first business to continue."}</span>
-              {canCreate ? <Button type="button" onClick={openCreateDialog}>Create business</Button> : null}
+              <strong>No workspaces yet</strong>
+              <span>{invitations.length > 0 ? "Respond to your invitation to continue." : "Create your first workspace to continue."}</span>
+              {canCreate ? <Button type="button" onClick={openCreateDialog}>Create workspace</Button> : null}
             </div>
           </div>
         ) : null}
@@ -579,7 +579,7 @@ export default function WorkspacesPage() {
                         >
                           {workspace.isActive ? <Check size={15} aria-hidden /> : <Star size={15} aria-hidden />}
                           {workspace.isActive
-                            ? "Default business"
+                            ? "Default workspace"
                             : defaultingWorkspaceId === workspace.id
                               ? "Setting default"
                               : "Set as default"}
@@ -873,11 +873,11 @@ export default function WorkspacesPage() {
           else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
         }}
         onCancel={event => { event.preventDefault(); if (!creating) setCreateOpen(false); }}>
-      {/* Opened by "Create business": the dialog says the same word as its button. */}
-      <h2 id="create-workspace-title">Create business</h2>
-      <p>Start a separate business and complete its setup.</p>
+      {/* Opened by "Create workspace": the dialog says the same word as its button. */}
+      <h2 id="create-workspace-title">Create workspace</h2>
+      <p>Start a separate workspace and complete its setup.</p>
       <form className="account-create-workspace-form" onSubmit={createWorkspace}>
-        <label htmlFor="new-workspace-name">Business name</label>
+        <label htmlFor="new-workspace-name">Workspace name</label>
         <div className="account-field">
           <input
             id="new-workspace-name"
