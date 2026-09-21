@@ -1,5 +1,5 @@
 # JOIN-002 Durum modeli: workspace yaşam döngüsü, üyelik durumu, son kullanım
-Status: draft
+Status: done (2026-09-21, 33658d6)
 Session: -   Branch: task/join-002   Worktree: newfork-wt/join-002   DB: KİLİT
 
 Plan ID'leri: M2, M3, R5 (veri tarafı), S14 (temel), E7 (temel)
@@ -25,3 +25,12 @@ Test plan: pgTAP (yeni dosya `workspace_lifecycle.test.sql`, `membership_status.
 Risk: `workspace_allows_interactive_access` 72 fonksiyonun erişim kapısı; backfill yanlışsa var olan workspace'ler kilitlenir. Backfill öncesi/sonrası satır sayısı raporlanır.
 
 ## Notes / Result
+- 2026-09-21 sonuç. İki migration (`20260921100000`, `20260921100100`) local'e uygulandı ve `supabase_migrations.schema_migrations`'a işlendi. Backfill: 5 workspace `draft`, 42 üyelik `employee_id` aldı.
+- **Plandan üç sapma, gerekçeleriyle:**
+  1. `closed` etiketi eklenmedi. Planın "closed"ı repoda `deleted` adıyla zaten var ve 7 fonksiyon o değeri yazıp okuyor. Plan kuralı 5 (yalnız isim farkı çelişki değil) gereği yeniden adlandırılmadı.
+  2. `lifecycle_status` varsayılanı `active` bırakıldı; `draft`'ı onboarding tetikleyicisi yazıyor. Varsayılanı `draft` yapmak 119 assert'lik `workspace_rls.test.sql` dâhil bütün fixture'ları bozuyordu; tetikleyici aynı sonucu sıfır fixture değişikliğiyle veriyor.
+  3. Tetikleyicinin adı `onboarding_syncs_workspace_lifecycle_trigger`. Tetikleyiciler ad sırasına göre çalışıyor ve `set_active_workspace_when_owner_onboarding_completes_trigger` açılamayan workspace'i reddediyor; draft'tan çıkış ondan önce olmalı.
+- Yol üstünde düzeltilen: `workspace_rls.test.sql`'deki üç kapanış fixture'ı `'2026-09-19T12:00:00.000Z'` sabitini kullanıyordu, bugün geçmişte kaldığı için üç assert kırmızıydı. `now() + interval '30 days'` oldu. (Web tarafının aynı hatası `3a13b95`'te düzeltilmişti.)
+- **Kanıt:** `workspace_lifecycle.test.sql` 17/17, `workspace_rls` 119/119, `explicit_workspace_context` 8/8, `account_workspace_controls` 52/52. `pnpm.cmd typecheck` PASS, `pnpm.cmd test` PASS (214 dosya / 1556 test).
+- **Kapsam dışı bulgu:** local `pnpm.cmd test:db` bu değişiklikten ÖNCE de 664 subtest'te kırmızıydı; değişiklikten sonra 662. A/B aynı DB üzerinde ölçüldü (eski gate fonksiyonu geri konup tetikleyici kapatılarak). Yani bu dilim iki testi düzeltti, hiçbirini bozmadı; kalan 662 local veri sapmasından geliyor. BACKLOG'a yazıldı, JOIN-007 ile kapanır.
+
