@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(21);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -134,6 +134,48 @@ select is(
   '13000000-0000-4000-8000-000000000001',
   'a membership names the employee record it is'
 );
+
+-- The owner keeps building inside a draft workspace, straight from the browser.
+-- Everybody else still waits outside until setup is finished. The closure above
+-- revoked both memberships, so they come back first.
+update public.workspace_memberships set status = 'active'
+where workspace_id = (select workspace_id from lifecycle_target);
+update public.workspaces set lifecycle_status = 'draft'
+where id = (select workspace_id from lifecycle_target);
+-- auth.uid() reads request.jwt.claim.sub first, and the service calls above
+-- left the owner in it, so both settings name the account being tested.
+select set_config('request.jwt.claim.sub', '11000000-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claims', '{"sub":"11000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
+select ok(
+  app_private.is_workspace_member((select workspace_id from lifecycle_target)),
+  'the owner setting a workspace up still reads what they are building'
+);
+select set_config('request.jwt.claim.sub', '11000000-0000-4000-8000-000000000002', true);
+select set_config('request.jwt.claims', '{"sub":"11000000-0000-4000-8000-000000000002","role":"authenticated"}', true);
+select ok(
+  not app_private.is_workspace_member((select workspace_id from lifecycle_target)),
+  'a member who is not the owner cannot read a workspace that is still a draft'
+);
+-- The role lookup has to agree, because workspace_onboarding_update_owner reads
+-- it: without a role the owner cannot write the very setup row the wizard is
+-- filling in.
+select set_config('request.jwt.claim.sub', '11000000-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claims', '{"sub":"11000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
+select is(
+  app_private.workspace_role_for((select workspace_id from lifecycle_target)),
+  'owner'::public.workspace_role,
+  'the owner still holds their role inside a draft they are setting up'
+);
+select set_config('request.jwt.claim.sub', '11000000-0000-4000-8000-000000000002', true);
+select set_config('request.jwt.claims', '{"sub":"11000000-0000-4000-8000-000000000002","role":"authenticated"}', true);
+select ok(
+  app_private.workspace_role_for((select workspace_id from lifecycle_target)) is null,
+  'a member who is not the owner holds no role inside a draft'
+);
+select set_config('request.jwt.claim.sub', '', true);
+select set_config('request.jwt.claims', '', true);
+update public.workspaces set lifecycle_status = 'active'
+where id = (select workspace_id from lifecycle_target);
 
 -- Removal is its own state now, not a suspension wearing the wrong name.
 update public.workspace_memberships set status = 'removed'

@@ -18,7 +18,7 @@ import {
 } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import {
   getDocument,
   listDocuments,
@@ -759,9 +759,16 @@ describe("EmployeeDrawer", () => {
 
   it("copies the invitation link when email did not get there", async () => {
     const writeText = vi.fn(async () => undefined);
+    const clipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText },
       configurable: true,
+    });
+    // Put it back, so a file that runs after this one in the same environment
+    // still finds the clipboard it expects.
+    onTestFinished(() => {
+      if (clipboard) Object.defineProperty(navigator, "clipboard", clipboard);
+      else Reflect.deleteProperty(navigator, "clipboard");
     });
     vi.mocked(loadEmployeeInvitationLink).mockResolvedValue({
       url: "http://newfork.test/invite/accept?token=abc",
