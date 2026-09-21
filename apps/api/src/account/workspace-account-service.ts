@@ -1,5 +1,7 @@
 import {
+  workspaceIdentitySchema,
   workspaceSummaryFromRow,
+  type WorkspaceIdentity,
   type WorkspaceSummary,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
@@ -61,6 +63,8 @@ export interface WorkspaceAccountService {
   ): Promise<void>;
   /** Records that this account just opened this workspace. */
   touchWorkspace(accessToken: string, workspaceId: string): Promise<void>;
+  /** How each workspace this account belongs to has it on file. */
+  listWorkspaceIdentities(accessToken: string): Promise<WorkspaceIdentity[]>;
   queueOwnerOnboardingInvitationIntent(
     accessToken: string,
     input: {
@@ -289,6 +293,26 @@ export function createWorkspaceAccountServiceWithClients(options: {
         owner_last_name: input.ownerLastName ?? null,
         owner_works_shifts: input.ownerWorksShifts ?? null,
       });
+    },
+    async listWorkspaceIdentities(accessToken) {
+      const rows = (await rpc("list_my_workspace_identities_service", {
+        ...(await actorArgs(accessToken)),
+      })) as readonly {
+        workspace_id: string;
+        workspace_name: string;
+        workspace_role: string;
+        employee_name: string | null;
+        employee_code: string | null;
+      }[];
+      return workspaceIdentitySchema.array().parse(
+        (rows ?? []).map((row) => ({
+          workspaceId: row.workspace_id,
+          workspaceName: row.workspace_name,
+          role: row.workspace_role,
+          employeeName: row.employee_name,
+          employeeCode: row.employee_code,
+        })),
+      );
     },
     async touchWorkspace(accessToken, workspaceId) {
       await rpc("touch_workspace_membership_service", {

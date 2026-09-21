@@ -347,6 +347,21 @@ export function registerWorkspaceAccountRoutes(
     }
   });
 
+  // How each workspace has this account on file. Read-only, and only the
+  // account's own rows.
+  app.get("/v1/account/workspace-identities", async (request, reply) => {
+    const accessToken = bearerToken(request.headers.authorization);
+    if (!accessToken)
+      return reply.status(401).send({ error: "Authenticated account required" });
+    if (!options.service)
+      return reply
+        .status(503)
+        .send({ error: "Workspace account service is not configured" });
+    return reply.send(
+      await options.service.listWorkspaceIdentities(accessToken),
+    );
+  });
+
   app.patch(
     "/v1/workspaces/:workspaceId/owner-onboarding",
     async (request, reply) => {

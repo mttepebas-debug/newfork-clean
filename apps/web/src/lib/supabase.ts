@@ -1,4 +1,6 @@
 import {
+  workspaceIdentitySchema,
+  type WorkspaceIdentity,
   accountProfileSchema,
   activeWorkspaceContextSchema,
   normalizeAccountPhone,
@@ -304,6 +306,15 @@ export async function listAccountWorkspaces(
   return workspaceSummarySchema
     .array()
     .parse(await apiRequest(client, "/v1/account/workspaces"));
+}
+
+/** How each workspace this account belongs to has it on file. */
+export async function listWorkspaceIdentities(
+  client: SupabaseClient,
+): Promise<WorkspaceIdentity[]> {
+  return workspaceIdentitySchema
+    .array()
+    .parse(await apiRequest(client, "/v1/account/workspace-identities"));
 }
 
 export async function createOwnerWorkspace(

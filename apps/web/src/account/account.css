@@ -642,3 +642,60 @@
   .workspace-actions-popover { max-width: calc(100vw - 48px); }
 }
 .account-create-workspace-form label { width: 100%; }
+
+/* The account beside the record each workspace keeps: two columns so the pair
+   reads as a pair, stacked once there is no room for two. */
+.account-identity-list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-border);
+  list-style: none;
+}
+.account-identity-list li {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--theme-surface);
+}
+.account-identity-where {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.account-identity-where strong {
+  font-size: 13.5px;
+}
+.account-identity-where span {
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.account-identity-who {
+  display: grid;
+  gap: 2px;
+  flex: 0 0 auto;
+  color: var(--theme-text);
+  font-size: 13px;
+  text-align: right;
+}
+.account-identity-who small {
+  color: var(--theme-muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 620px) {
+  .account-identity-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .account-identity-who {
+    text-align: left;
+  }
+}

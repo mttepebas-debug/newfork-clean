@@ -1,9 +1,11 @@
 import { normalizeAccountPhone } from "@newfork/shared";
 import { Button } from "@newfork/ui";
+import { useQuery } from "@tanstack/react-query";
 import { Camera, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
+  listWorkspaceIdentities,
   removeAccountAvatar,
   supabaseClient,
   uploadAccountAvatar,
@@ -13,6 +15,7 @@ import { useAvailabilityNavigationGuard } from "../availability/availability-nav
 import { AvatarCropDialog } from "./AvatarCropDialog";
 import { validateAvatarFile } from "./avatar-crop";
 import { AccountAvatar } from "./AccountAvatar";
+import { roleLabel } from "../shell/prebiz/PreBiz";
 
 const callingCodes = [
   { value: "1", label: "US/CA +1" },
@@ -253,6 +256,52 @@ export default function ProfilePage() {
           </Button>
         </div>
       </form>
+      <WorkspaceIdentities />
+    </section>
+  );
+}
+
+/**
+ * The account is one thing; each workspace keeps its own record of the person.
+ * Editing the name above changes what teammates see; it does not touch the name
+ * a workspace files them under, and until now nothing said so.
+ */
+function WorkspaceIdentities() {
+  const identities = useQuery({
+    queryKey: ["account-workspace-identities"],
+    queryFn: () =>
+      supabaseClient ? listWorkspaceIdentities(supabaseClient) : [],
+  });
+
+  if (identities.isLoading || (identities.data ?? []).length === 0) return null;
+
+  return (
+    <section className="account-section-block" aria-labelledby="account-identities-title">
+      <div className="account-section-copy">
+        <h2 id="account-identities-title">How you appear in each workspace</h2>
+        <p>
+          Your account is yours. Each workspace keeps its own record of you, and
+          a manager there can correct it.
+        </p>
+      </div>
+      <div className="account-section-body">
+        <ul className="account-identity-list">
+          {(identities.data ?? []).map((identity) => (
+            <li key={identity.workspaceId}>
+              <span className="account-identity-where">
+                <strong>{identity.workspaceName}</strong>
+                <span>{roleLabel[identity.role]}</span>
+              </span>
+              <span className="account-identity-who">
+                {identity.employeeName ?? "No record yet"}
+                {identity.employeeCode ? (
+                  <small>{identity.employeeCode}</small>
+                ) : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }

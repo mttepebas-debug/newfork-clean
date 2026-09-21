@@ -438,6 +438,20 @@ export type AccountPendingInvitation = z.infer<
   typeof accountPendingInvitationSchema
 >;
 
+/**
+ * How one workspace has this account on file. The account is global and each
+ * workspace keeps its own record of the person; this is the pair, side by side.
+ */
+export const workspaceIdentitySchema = z.object({
+  workspaceId: z.string().uuid(),
+  workspaceName: z.string().trim().min(1).max(120),
+  role: workspaceRoleSchema,
+  /** Null while the workspace has no employee record for this account. */
+  employeeName: z.string().trim().min(1).max(200).nullable(),
+  employeeCode: z.string().trim().min(1).max(40).nullable(),
+});
+export type WorkspaceIdentity = z.infer<typeof workspaceIdentitySchema>;
+
 export const workspaceSummaryRowSchema = z.object({
   workspace_id: z.string().uuid(),
   workspace_name: z.string().trim().min(1).max(120),

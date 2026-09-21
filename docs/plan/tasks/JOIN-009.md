@@ -1,6 +1,6 @@
 # JOIN-009 Kapı ekranları ve hesap alanı: yeniden tasarım
-Status: draft
-Session: -   Branch: task/join-009   Worktree: newfork-wt/join-009   DB: -
+Status: kismen done (2026-09-21); kalan kisim JOIN-011
+Session: -   Branch: task/join-009   Worktree: yok   DB: KILIT (yeni okuma fonksiyonu)
 
 Plan ID'leri: E1, E3, E4 (görsel), M1 (hesap globaldir) + kullanıcı kapsamı 2026-09-21 (login/signup/onboarding/switcher/account sekmeleri yeniden tasarım)
 
@@ -34,3 +34,10 @@ Test plan: ekran başına render testi (başlık, tek birincil, eylem adları) +
 Risk: yüzey geniş. Ekran ekran ilerlenir, her ekranın testi o ekranla birlikte yazılır; tasarım kararı değişirse canvas artboard'ı da güncellenir.
 
 ## Notes / Result
+- 2026-09-21. Bu dilimin **kapi ekranlari** kismi baska dilimlerde zaten kapandi: sign-up metni ve alti davet hali JOIN-004'te, owner sihirbazi adim 1 JOIN-008'de, switcher JOIN-005'te, durum ekranlari JOIN-006'da. Burada kalan is hesap alaniydi.
+- **Yapilan: Profile > "How you appear in each workspace".** Migration `20260921230000_how_you_appear_in_each_workspace`; `list_my_workspace_identities_service` hesabin kendi satirlarini okuyor (baska izin gerekmiyor, kisi zaten o hesap). Profile sayfasinda salt okunur liste: workspace, oradaki rol, orada kayitli ad ve calisan kodu; kayit yoksa "No record yet".
+- Neden bu: hesabin global oldugu, her workspace'in kendi kaydini tuttugu ve oradaki adi bir yoneticinin duzeltebildigi ekranda hicbir yerde yazmiyordu. Ustteki adi degistiren kisi bir workspace'in onu baska bir adla tuttugunu ogrenemiyordu.
+- **Olculen ve kapsamdan cikan:** `WorkspacesPage` 937 satir ama hub'in kopyasi degil - sahiplik devri ve kapatma akislarini tasiyor. JOIN-003'te ertelenen "tek bilesen iki mount" hedefi **yanlis hedefmis**; iki sayfa farkli isler yapiyor. Paylasilacak sey satir sunumu, sayfa degil.
+- **JOIN-011'e kalan:** Account > Documents'in workspace `<select>`'i yerine grupli liste; kisinin kendi istihdam kaydini (resmi ad, acil durum kisisi) duzenledigi ekran (BL-080, owner'in resmi adi buna bagli); account nav'inda rozet kurali.
+- **Kanit:** `ProfilePage.test.tsx` 10/10 (iki yeni test: kayit varken liste, hicbir yere ait degilken bolum hic cikmiyor), `typecheck`/`test` PASS, tarayicida iki workspace'li hesapta goruldu.
+
