@@ -1,6 +1,6 @@
 # THEME-005 Buton rolleri: aksiyon yeşil, vazgeçme beyaz, destructive iki tık (ikincil buton cascade düzeltmesinden genişledi)
-Status: beklemede (UI-PRE-001 main'e girdikten sonra onun üstüne rebase edilecek)
-Session: "THEME-005: ikincil buton cascade düzeltmesi" (local_739c4385)   Branch: task/theme-005   Worktree: newfork-wt/theme-005   DB: -   Port: web 5558 (API 5556)
+Status: arşivlendi (2026-09-21, AŞAMA 0 temizliği; branch ve worktree kaldırıldı)
+Session: "THEME-005: ikincil buton cascade düzeltmesi" (local_739c4385)   Branch: yok (arşiv tag: `backup/2026-09-21/task-theme-005`)   Worktree: yok   DB: -   Port: web 5558 (API 5556)
 Öneri: Sonnet 5, medium. Tek kök kural ve görsel tarama.
 
 Goal: `@newfork/ui` `Button` ile kullanılan `secondary-button` uygulamanın her yerinde tasarlandığı gibi (beyaz zemin, çerçeveli) görünsün.
@@ -51,3 +51,4 @@ Risk: uygulama genelinde görünür değişiklik (yeşil ikincil butonlar beyaza
 - 2026-09-18: `ConfirmButton` (+ testi ve `packages/ui` export'u) bu branch'ten ayrılıp main'e alındı (a4330f3), çünkü UI-PRE-001 aynı iki-tık bileşenine ihtiyaç duyuyor ve ikinci kez yazılmayacaktı. Branch'in kalanı beklemede; devam ederken main'e rebase edilecek ve ConfirmButton commit'i tekrar uygulanmayacak (aynı dosyalar main'de).
 - Not: "ikincil işaretli butonlar yeşil görünüyor" bulgusu bu branch'teki cascade düzeltmesinin konusu; UI-PRE-001 o ekranları yeni kit sınıflarıyla yeniden giydiriyor, global `.secondary-button` kuralına dokunmuyor.
 - 2026-09-18: UI Lab kapatıldığı için bu task artık lab'ı beklemiyor. Yeni sıra: UI-PRE-001 (business öncesi ekranların yeni tasarım dili) merge edilince `task/theme-005` onun üstüne rebase edilir; uygulamanın geri kalanındaki buton rolleri oradan tamamlanır. Yedek `origin/task/theme-005-r2` @ a362fe4 (0 unpushed). Rebase notları: `ConfirmButton` main'de (fragment + `role="status"`), o commit tekrar uygulanmaz, testler `getByRole` kullanır, `?variant=b` armed kuralı düşer.
+- 2026-09-21 (AŞAMA 0 temizliği): branch main'in 87 commit gerisindeydi ve iki ana çıktısı (`packages/ui/src/components/ConfirmButton.tsx` + testi, `useConfirmClick`) main'e başka yoldan zaten girmişti. Rebase yerine arşivlendi: `backup/2026-09-21/task-theme-005` (= `origin/task/theme-005-r2`), rebase öncesi tabanı `backup/2026-09-21/task-theme-005-old`. Branch'te kalan ve main'e ALINMAYAN iş: DEV `?variant=b` mockup'ı, restore-employee önerisi, switcher varyantları ve `styles.css`'teki `.nf-button:where(.secondary-button)` kök kuralı. Kök kuralın main'de olup olmadığı doğrulanmadı; hâlâ gerekiyorsa yeni bir dilim olarak açılmalı.

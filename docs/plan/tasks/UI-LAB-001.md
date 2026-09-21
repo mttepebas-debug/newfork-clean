@@ -1,5 +1,5 @@
 # UI-LAB-001 UI Lab: tıklanabilir parçaların DEV-only envanteri, galerisi ve canlı stil editörü
-Status: kapatıldı (2026-09-18 kullanıcı kararı: ertelendi, kullanılmıyor)
+Status: kapatıldı (2026-09-18 kullanıcı kararı: ertelendi, kullanılmıyor). 2026-09-21: lokal iz yok; `origin/task/ui-lab-001` yalnız arşiv tag'i olarak tutuluyor (`backup/2026-09-21/task-ui-lab-001`).
 Session: "THEME-005: ikincil buton cascade düzeltmesi" (local_739c4385; aynı worker, bağlam ve tarama altyapısı hazır)   Branch: task/ui-lab-001 (main'den)   Worktree: newfork-wt/ui-lab-001   DB: -   Port: web 5559 (API 5556)
 Öneri: Opus 5, high (session şu an Fable 5.1 / max; maliyet kararı kullanıcıda).
 Plan (bağlayıcı, tamamı okunur): `C:/Users/TheWe/.claude/plans/snuggly-humming-dusk.md`.

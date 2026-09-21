@@ -1,6 +1,6 @@
 # UI-PRE-001 Business öncesi ekranlar: tek tasarım dili ve akış (şemsiye)
 Status: active (2026-09-18; kullanıcı planı onayladı)
-Session: "Pending invitations sayfası UI tasarımı" (local_563f7591)   Branch: task/ui-pre-001   Worktree: newfork-wt/ui-pre-001   DB: - (D5 hariç)   Portlar: web 5557, API 5556 (5559 UI Lab'de)
+Session: "Pending invitations sayfası UI tasarımı" (local_563f7591)   Branch: yok (2026-09-21 AŞAMA 0: `task/ui-pre-002`'nin 11 commit'i patch-id ile main'in içinde; arşiv tag `backup/2026-09-21/task-ui-pre-002`)   Worktree: yok   DB: - (D5 hariç)   Portlar: web 5557, API 5556 (5559 UI Lab'de)
 Öneri: Opus 5, high. Çok ekranlı, hem UI hem mantık; dilim dilim merge edilir.
 Plan (bağlayıcı, tamamı okunur): `C:/Users/TheWe/.claude/plans/resilient-crafting-pearl.md`. Okuma sırası: Kararlar → Ortak kit → Kapsam kararları → Yürütme planı. Problem günlüğü kanıt ekidir.
 İlişki: AUTH-UX-001 (done, 59446ff) bu ekranların *akışını* düzeltti; bu task görsel dil + sihirbaz mantığı. THEME-005 beklemede; yalnız `ConfirmButton` main'e alındı (a4330f3).
@@ -77,3 +77,7 @@ Risk: kapsam büyük (~10 ekran) → dilimleme şart; THEME-005 ile 6 ortak dosy
   4. "Create your business" rengi: değişiklik yok. Kural (worker'ın, kullanıcı ona bıraktı): yeşil, ekranın istediği eylemi işaretler — no-organization karşılamada business kurmak tek yol olduğu için yeşil; pending ve "No invitation yet"te ekran başka bir karar sorduğu için beyaz. Hiçbir ekranda rakip iki yeşil yok.
   5. **Owner adım 4 (D3) — kullanıcı teyit etti ve kuralı verdi:** uygulama içi employee drawer ile paralel; en az 1 job + 1 lokasyon zorunlu, **Remote** ya da **Exclude from schedule** seçiliyse muaf; karşılanmazsa buton deaktif. Kaynak: `EmployeeDrawer.tsx:2049-2085`, `:2090`/`:2105`. Koordinatörün "tek lokasyon/tek job varsa seçimi gizle" sadeleştirmesi DÜŞTÜ.
      - Worker bulgusu: uygulama içi drawer'da `required` yalnız işaret basıyor, kaydetmeyi engellemiyor; kullanıcının talimatı bugünkü uygulama içi davranıştan katı. Kullanıcıya sorulacak. **Koordinatör sınırı: cevap "evet" olsa bile o düzeltme D3'e girmez, ayrı küçük task olur.**
+- 2026-09-21 (AŞAMA 0 temizliği): `task/ui-gate-001` (2 commit, main'den bugün açılmış, task dosyası yoktu) main'e fast-forward ile alındı; typecheck ve tüm test suite PASS (214 dosya / 1556 test).
+  - `e203109 feat(web): the gate screens get a top bar, not an empty side panel` — sign-in ve gate ekranları 280px yan panel yerine 62px üst bar alıyor; sihirbazlarda yan panel kalıyor. **Bu, yukarıdaki 2026-09-18 "iniş çerçevesi B = her yerde iki panel" kararını gate ekranları için daraltıyor.** Yeni hâl main'de.
+  - `6307d68 feat(web): an invitation stops standing in the way` — bekleyen daveti olan hesap artık sekme başına bir kez davet ekranına çekilmiyor; inecek yeri varsa oraya iniyor, davet Workspaces'te bekliyor. "Not now", sekme başına storage anahtarı, ertelenmiş iniş yolu ve her inişten önce koşan davet sorgusu kaldırıldı.
+  - Sözlük notu: bu dosyadaki "business/team" kararı 2026-09-20'de geri alındı; güncel UI sözlüğü **workspace + team** (main `3a6569b`).
