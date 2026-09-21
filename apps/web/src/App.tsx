@@ -59,9 +59,7 @@ const AccountDocumentsPage = lazy(
   () => import("./account/AccountDocumentsPage"),
 );
 const WorkspaceHubPage = lazy(() => import("./shell/WorkspaceHubPage"));
-const SuspendedOrganizationStatusPage = lazy(
-  () => import("./shell/SuspendedOrganizationStatusPage"),
-);
+const WorkspaceStatusPage = lazy(() => import("./shell/WorkspaceStatusPage"));
 const EmployeeHubPage = lazy(() => import("./views/EmployeeHubPage"));
 const KioskPage = lazy(() => import("./kiosk/KioskPage"));
 const WorkspacePage = lazy(() => import("./views/WorkspacePage"));
@@ -228,25 +226,30 @@ export function App() {
                 }
               />
               <Route
-                path="/workspaces/suspended"
+                path="/workspaces/status/:workspaceId"
                 element={
                   <ProtectedRoute>
-                    <SuspendedOrganizationStatusPage />
+                    <WorkspaceStatusPage />
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/workspaces/suspended/:workspaceId"
+                path="/workspaces/status"
                 element={
                   <ProtectedRoute>
-                    <SuspendedOrganizationStatusPage />
+                    <WorkspaceStatusPage />
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/organization-switcher/suspended/*"
-                element={<Navigate to="/workspaces/suspended" replace />}
-              />
+              {["/workspaces/suspended", "/organization-switcher/suspended"].map(
+                (retired) => (
+                  <Route
+                    key={retired}
+                    path={`${retired}/*`}
+                    element={<Navigate to="/workspaces/status" replace />}
+                  />
+                ),
+              )}
               <Route
                 path="/app/account/documents"
                 element={

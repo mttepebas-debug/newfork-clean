@@ -1047,6 +1047,7 @@ describe("shared contracts", () => {
       isActive: true,
       onboarding: { status: "incomplete", currentStep: 1, revision: 1 },
       lifecycleStatus: "active",
+      accessRemoved: false,
       lastUsedAt: null,
       closureEffectiveAt: null,
       pendingOwnershipTransfer: null,
@@ -1165,7 +1166,9 @@ describe("shared contracts", () => {
       closureEffectiveAt: "2026-09-19T12:00:00.000Z",
     });
 
-    expect(() =>
+    // A closed workspace is no longer a malformed row: the account is owed an
+    // explanation for it, so the list carries it and says what it is.
+    expect(
       workspaceSummaryFromRow({
         workspace_id: workspaceId,
         workspace_name: "Northstar",
@@ -1175,9 +1178,8 @@ describe("shared contracts", () => {
         onboarding_status: "complete",
         onboarding_current_step: 4,
         workspace_lifecycle_status: "deleted",
-        pending_ownership_transfer_id: "81000000-0000-4000-8000-000000000001",
       }),
-    ).toThrow();
+    ).toMatchObject({ status: "suspended", lifecycleStatus: "deleted" });
   });
 
   it("rejects malformed account workspace rows instead of coercing them into switcher targets", async () => {

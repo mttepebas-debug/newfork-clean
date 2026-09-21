@@ -39,11 +39,11 @@ export function ProtectedRoute({
         <PreBizFrame
           titleId="workspace-error-title"
           title="That workspace didn't load"
-          description="You are signed in. Try again, or pick a different workspace."
+          // The server's own sentence is not for the screen. It said things like
+          // "invalid session or membership", which reads as an accusation and
+          // tells nobody what to do next.
+          description="Something went wrong on our side, not yours. Try again, or pick a different workspace."
         >
-          <p className="form-error" role="alert">
-            {error}
-          </p>
           <div className="pb-footer">
             <button
               className="pb-btn pb-btn-primary"

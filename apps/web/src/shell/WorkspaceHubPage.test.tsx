@@ -202,18 +202,32 @@ describe("WorkspaceHubPage", () => {
     expect(screen.getByText("Where you work")).toBeTruthy();
   });
 
-  it("marks a workspace on hold and offers its status rather than opening it", async () => {
+  // Three ways a workspace stops being somewhere to work. Two of them used to
+  // be filtered out of the list entirely, which reads as never having existed.
+  it.each([
+    [{ status: "suspended" as const }, "On hold"],
+    [{ status: "suspended" as const, accessRemoved: true }, "Access removed"],
+    [
+      { status: "suspended" as const, lifecycleStatus: "deleted" as const },
+      "Closed",
+    ],
+  ])("sorts an ended workspace under its own ending (%#)", async (state, badge) => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([
-      workspace({ ...meyhouse, status: "suspended" }),
+      workspace({ ...meyhouse, ...state }),
       ridgeline,
     ]);
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
-    renderHub();
+    renderHub(false);
 
-    expect(await screen.findByText("On hold")).toBeTruthy();
+    expect(await screen.findByText("No longer open to you")).toBeTruthy();
+    expect(screen.getByText(badge)).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "View status for Meyhouse" }),
+      screen.getByRole("button", { name: "Why Meyhouse is not open" }),
     ).toBeTruthy();
+    // It is not offered as somewhere to work.
+    expect(
+      screen.queryByRole("button", { name: "Open Meyhouse" }),
+    ).toBeNull();
   });
 
   it("says so plainly when the list does not load", async () => {

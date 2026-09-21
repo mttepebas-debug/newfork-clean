@@ -84,15 +84,18 @@ describe("ProtectedRoute", () => {
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
   });
 
-  it("shows workspace resolution errors instead of a blank loading screen", () => {
+  it("says a workspace did not load without repeating the server at the reader", () => {
     renderRoute();
 
     expect(
       screen.getByRole("heading", { name: "That workspace didn't load" }),
     ).toBeTruthy();
-    expect(screen.getByRole("alert").textContent).toContain(
-      "Could not query the database",
-    );
+    // "Could not query the database" reads as an accusation and tells nobody
+    // what to do next.
+    expect(screen.queryByText(/Could not query the database/)).toBeNull();
+    expect(
+      screen.getByText(/went wrong on our side, not yours/),
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(authState.value.refresh).toHaveBeenCalledTimes(1);

@@ -80,14 +80,15 @@ export type WorkspaceSummaryStatus = z.infer<
   typeof workspaceSummaryStatusSchema
 >;
 
-// What list_my_workspaces can return, not every label the database type has:
-// a closed workspace ('deleted' in the database, which is what the plan calls
-// closed) is filtered out there, so a row claiming it is a malformed row.
+// Every state the account's own list can report, endings included: a workspace
+// it cannot open any more is still a workspace it is owed an explanation about.
 export const workspaceLifecycleStatusSchema = z.enum([
   "draft",
   "active",
   "suspended",
   "closure_scheduled",
+  // What the plan calls closed. Seven database functions write this word.
+  "deleted",
 ]);
 export type WorkspaceLifecycleStatus = z.infer<
   typeof workspaceLifecycleStatusSchema
@@ -367,6 +368,8 @@ export const workspaceSummarySchema = z.object({
   isActive: z.boolean(),
   onboarding: workspaceOnboardingSchema,
   lifecycleStatus: workspaceLifecycleStatusSchema.optional(),
+  /** The account's access was taken, rather than the workspace being on hold. */
+  accessRemoved: z.boolean().optional(),
   /** When this membership was last opened; the landing decision sorts by it. */
   lastUsedAt: z
     .string()
@@ -459,6 +462,7 @@ export const workspaceSummaryRowSchema = z.object({
     .datetime({ offset: true })
     .nullable()
     .optional(),
+  access_removed: z.boolean().optional(),
   pending_ownership_transfer_id: z.string().uuid().nullable().optional(),
   pending_ownership_transfer_role: z
     .enum(["initiator", "target"])
@@ -489,6 +493,7 @@ export function workspaceSummaryFromRow(input: unknown): WorkspaceSummary {
     },
     lifecycleStatus: row.workspace_lifecycle_status,
     lastUsedAt: row.last_used_at ?? null,
+    accessRemoved: row.access_removed ?? false,
     closureEffectiveAt: row.closure_effective_at,
     pendingOwnershipTransfer:
       status === "active" &&

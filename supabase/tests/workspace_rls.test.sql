@@ -1044,14 +1044,16 @@ select throws_ok(
   'workspace not found',
   'deleted workspace cannot re-enter the closure lifecycle'
 );
+-- It used to be filtered out, which reads as the workspace having never
+-- existed; the account is owed a sentence about it instead.
 select is(
   (
-    select count(*)::integer
+    select workspace_lifecycle_status::text
     from public.list_my_workspaces_service('10000000-0000-4000-8000-000000000001')
     where workspace_id = '20000000-0000-4000-8000-000000000002'
   ),
-  0,
-  'deleted workspace is absent from the account workspace projection'
+  'deleted',
+  'a closed workspace stays in the account projection, marked closed'
 );
 select is(
   (

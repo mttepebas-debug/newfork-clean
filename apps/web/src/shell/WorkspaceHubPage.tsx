@@ -21,6 +21,7 @@ import {
   supabaseClient,
 } from "../lib/supabase";
 import { CreateOrganizationButton } from "./CreateOrganizationButton";
+import { endingFor } from "./WorkspaceStatusPage";
 import {
   BusinessRow,
   PreBizFrame,
@@ -69,10 +70,11 @@ export default function WorkspaceHubPage() {
   const unfinished = unfinishedWorkspaces(workspaces).filter(
     (workspace) => workspace.status === "pending" || workspace.role === "owner",
   );
-  const suspended = workspaces.filter(
-    (workspace) => workspace.status === "suspended",
-  );
-  const openable = [...ready, ...suspended];
+  // Three ways a workspace stops being somewhere to work, and the account is
+  // owed a different sentence for each. They used to be filtered out of the
+  // list entirely, which reads as the workspace having never existed.
+  const ended = workspaces.filter((workspace) => endingFor(workspace) !== null);
+  const openable = ready;
   const ownDraft =
     unfinished.find((workspace) => workspace.role === "owner") ?? null;
 
@@ -94,7 +96,7 @@ export default function WorkspaceHubPage() {
     settled &&
     landing &&
     ready.length >= 1 &&
-    suspended.length === 0 &&
+    ended.length === 0 &&
     invitations.length === 0 &&
     unfinished.length === 0;
   useEffect(() => {
@@ -114,10 +116,6 @@ export default function WorkspaceHubPage() {
   }, [onlyOne, navigate, refresh]);
 
   const open = async (workspace: WorkspaceSummary): Promise<void> => {
-    if (workspace.status === "suspended") {
-      navigate(`/workspaces/suspended/${workspace.id}`);
-      return;
-    }
     setOpeningId(workspace.id);
     setFailedId(null);
     try {
@@ -159,7 +157,10 @@ export default function WorkspaceHubPage() {
     );
 
   const nothingHere =
-    openable.length === 0 && unfinished.length === 0 && invitations.length === 0;
+    openable.length === 0 &&
+    ended.length === 0 &&
+    unfinished.length === 0 &&
+    invitations.length === 0;
 
   if (nothingHere && expectingInvitation)
     return (
@@ -263,22 +264,16 @@ export default function WorkspaceHubPage() {
       {openable.length > 0 ? (
         <Section title="Where you work">
           {openable.map((workspace) => {
-            const onHold = workspace.status === "suspended";
             const opening = openingId === workspace.id;
             // The workspace this tab is in. `isActive` is the saved default,
             // which can be a different one.
-            const current = !onHold && context?.workspace.id === workspace.id;
+            const current = context?.workspace.id === workspace.id;
             return (
               <BusinessRow
                 key={workspace.id}
                 name={workspace.name}
                 role={roleLabel[workspace.role]}
                 current={current}
-                badge={
-                  onHold ? (
-                    <StatusBadge tone="danger">On hold</StatusBadge>
-                  ) : undefined
-                }
                 error={
                   failedId === workspace.id
                     ? "This workspace could not be opened"
@@ -286,22 +281,40 @@ export default function WorkspaceHubPage() {
                 }
               >
                 <Button
-                  className={
-                    onHold ? "pb-btn pb-btn-secondary" : "pb-btn pb-btn-primary"
-                  }
-                  aria-label={
-                    onHold
-                      ? `View status for ${workspace.name}`
-                      : `Open ${workspace.name}`
-                  }
+                  className="pb-btn pb-btn-primary"
+                  aria-label={`Open ${workspace.name}`}
                   disabled={opening}
                   onClick={() => void open(workspace)}
                 >
-                  {onHold ? "View status" : opening ? "Opening" : "Open"}
+                  {opening ? "Opening" : "Open"}
                 </Button>
               </BusinessRow>
             );
           })}
+        </Section>
+      ) : null}
+      {ended.length > 0 ? (
+        <Section title="No longer open to you">
+          {ended.map((workspace) => (
+            <BusinessRow
+              key={workspace.id}
+              name={workspace.name}
+              role={roleLabel[workspace.role]}
+              badge={
+                <StatusBadge tone="danger">
+                  {endingLabel(endingFor(workspace))}
+                </StatusBadge>
+              }
+            >
+              <Button
+                className="pb-btn pb-btn-secondary"
+                aria-label={`Why ${workspace.name} is not open`}
+                onClick={() => navigate(`/workspaces/status/${workspace.id}`)}
+              >
+                Why
+              </Button>
+            </BusinessRow>
+          ))}
         </Section>
       ) : null}
       {/*
@@ -316,4 +329,10 @@ export default function WorkspaceHubPage() {
       ) : null}
     </PreBizFrame>
   );
+}
+
+function endingLabel(ending: ReturnType<typeof endingFor>): string {
+  if (ending === "closed") return "Closed";
+  if (ending === "access_removed") return "Access removed";
+  return "On hold";
 }

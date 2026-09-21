@@ -120,7 +120,7 @@ select is((select count(*)::int from public.search_workspace_ownership_candidate
 select lives_ok($q$select public.request_workspace_closure_service('a5500000-0000-4000-8000-000000000002','a5500000-0000-4000-8000-000000000101','scheduled_end_period',null,true,now()+interval '3 days')$q$,'owner schedules closure');
 select lives_ok($q$select public.cancel_workspace_closure_service('a5500000-0000-4000-8000-000000000002','a5500000-0000-4000-8000-000000000101')$q$,'owner cancels scheduled closure');
 select lives_ok($q$select public.request_workspace_closure_service('a5500000-0000-4000-8000-000000000002','a5500000-0000-4000-8000-000000000101','immediate','Gate2 Workspace',true,null)$q$,'owner closes workspace');
-select is((select count(*)::int from public.list_my_workspaces_service('a5500000-0000-4000-8000-000000000002') where workspace_id='a5500000-0000-4000-8000-000000000101'),0,'closed workspace disappears');
+select is((select workspace_lifecycle_status::text from public.list_my_workspaces_service('a5500000-0000-4000-8000-000000000002') where workspace_id='a5500000-0000-4000-8000-000000000101'),'deleted','closed workspace stays listed as closed');
 reset role;
 -- AUTH-002: a pending invitation blocks first-workspace creation until resolved.
 insert into auth.users(id,email,email_confirmed_at) values
