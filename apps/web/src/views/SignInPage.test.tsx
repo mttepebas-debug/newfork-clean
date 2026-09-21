@@ -67,7 +67,7 @@ describe("SignInPage", () => {
     auth.signInForDevelopment.mockReset();
   });
 
-  it("lets a potential customer switch from sign-in to business account creation", async () => {
+  it("lets a potential customer switch from sign-in to workspace account creation", async () => {
     renderPage();
 
     expect(
@@ -75,11 +75,11 @@ describe("SignInPage", () => {
     ).toBeTruthy();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Create a business account" }),
+      screen.getByRole("button", { name: "Create a workspace account" }),
     );
 
     expect(
-      screen.getByRole("heading", { name: "Create your business account" }),
+      screen.getByRole("heading", { name: "Create your workspace account" }),
     ).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Full name"), {
       target: { value: "Future Owner" },
@@ -143,10 +143,10 @@ describe("SignInPage", () => {
       screen.getByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
     fireEvent.click(
-      screen.getByRole("button", { name: "Create a business account" }),
+      screen.getByRole("button", { name: "Create a workspace account" }),
     );
     expect(
-      screen.getByRole("heading", { name: "Create your business account" }),
+      screen.getByRole("heading", { name: "Create your workspace account" }),
     ).toBeTruthy();
   });
 

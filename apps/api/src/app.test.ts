@@ -1988,6 +1988,7 @@ describe("api app", () => {
       contextResolver: { resolve: async () => resolvedContext },
       invitationService: {
         preview: async () => ({
+          state: "valid" as const,
           workspaceName: "Meyhouse",
           emailHint: "em***@example.test",
           expiresAt: "2026-08-24T12:00:00.000Z",
@@ -2238,6 +2239,7 @@ describe("api app", () => {
       contextResolver: null,
       invitationService: {
         preview: async () => ({
+          state: "valid" as const,
           workspaceName: "Meyhouse",
           emailHint: "em***@example.test",
           expiresAt: "2026-08-24T12:00:00.000Z",

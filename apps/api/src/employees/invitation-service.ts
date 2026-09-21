@@ -1,4 +1,6 @@
 import {
+  invitationPreviewSchema,
+  type InvitationPreview,
   accountPendingInvitationSchema,
   type AccountPendingInvitation,
 } from "@newfork/shared";
@@ -21,11 +23,8 @@ export interface PreparedEmployeeInvitation {
 }
 
 export interface EmployeeInvitationService {
-  preview(token: string): Promise<{
-    workspaceName: string;
-    emailHint: string;
-    expiresAt: string;
-  }>;
+  /** Null when no invitation carries this token at all. */
+  preview(token: string): Promise<InvitationPreview | null>;
   prepare(
     input: PrepareEmployeeInvitationInput,
   ): Promise<PreparedEmployeeInvitation>;
@@ -63,17 +62,20 @@ export function createEmployeeInvitationService(
         "preview_employee_invitation_service",
         { invitation_token_hash: await sha256(token) },
       );
-      if (error || !data) throw new Error("Active invitation not found");
-      const row = data as {
-        workspace_name: string;
-        email: string;
-        expires_at: string;
+      if (error) throw rpcFailure(error);
+      const row = (data ?? { state: "not_found" }) as {
+        state: string;
+        workspace_name?: string;
+        email?: string;
+        expires_at?: string;
       };
-      return {
+      if (row.state === "not_found") return null;
+      return invitationPreviewSchema.parse({
+        state: row.state,
         workspaceName: row.workspace_name,
-        emailHint: maskEmail(row.email),
+        emailHint: maskEmail(row.email ?? ""),
         expiresAt: row.expires_at,
-      };
+      });
     },
     async prepare(input) {
       const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll(

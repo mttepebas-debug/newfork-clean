@@ -8,7 +8,11 @@ import {
   type EmployeeCreateResult,
   employeeRoleUpdateInputSchema,
   employeeSummarySchema,
+  invitationFailureCodeSchema,
+  invitationPreviewSchema,
   type AccountPendingInvitation,
+  type InvitationFailureCode,
+  type InvitationPreview,
   type EmployeeDetail,
   type EmployeeInput,
   type EmployeeSummary,
@@ -47,12 +51,6 @@ export interface PreparedInvitation {
   readonly id: string;
   readonly expiresAt: string;
   readonly developmentUrl?: string;
-}
-
-export interface InvitationPreview {
-  readonly workspaceName: string;
-  readonly emailHint: string;
-  readonly expiresAt: string;
 }
 
 export type TerminationTimeEntryAction = "block" | "close_at" | "keep_open";
@@ -386,6 +384,17 @@ export async function removeEmployeeAccess(
   }
 }
 
+/** An invitation that could not be answered, carrying the server's word for why. */
+export class InvitationError extends Error {
+  readonly code: InvitationFailureCode;
+
+  constructor(code: InvitationFailureCode) {
+    super(code);
+    this.name = "InvitationError";
+    this.code = code;
+  }
+}
+
 export async function acceptEmployeeInvitation(
   tokenValue: string,
 ): Promise<string> {
@@ -398,12 +407,16 @@ export async function acceptEmployeeInvitation(
     },
     body: JSON.stringify({ token: tokenValue }),
   });
-  const body = (await response.json()) as {
+  const body = (await response.json().catch(() => null)) as {
     workspaceId?: string;
-    error?: string;
-  };
-  if (!response.ok || !body.workspaceId)
-    throw new Error(body.error ?? "Invitation acceptance failed");
+    code?: string;
+  } | null;
+  if (!response.ok || !body?.workspaceId)
+    throw new InvitationError(
+      invitationFailureCodeSchema.catch("invitation_unavailable").parse(
+        body?.code,
+      ),
+    );
   return body.workspaceId;
 }
 
@@ -464,13 +477,13 @@ export async function declinePendingEmployeeInvitation(
 
 export async function previewEmployeeInvitation(
   tokenValue: string,
-): Promise<InvitationPreview> {
+): Promise<InvitationPreview | null> {
   const response = await fetch(
     `${newforkApiUrl}/v1/invitations/preview?token=${encodeURIComponent(tokenValue)}`,
   );
-  const body = (await response.json()) as InvitationPreview & {
-    error?: string;
-  };
-  if (!response.ok) throw new Error(body.error ?? "Invitation is unavailable");
-  return body;
+  const body = (await response.json().catch(() => null)) as unknown;
+  // A token no invitation carries is its own state, not an error to show.
+  if (response.status === 404) return null;
+  if (!response.ok) throw new InvitationError("invitation_unavailable");
+  return invitationPreviewSchema.parse(body);
 }

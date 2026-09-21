@@ -389,6 +389,41 @@ export const workspaceSummarySchema = z.object({
 });
 export type WorkspaceSummary = z.infer<typeof workspaceSummarySchema>;
 
+/**
+ * What an invitation link turned out to be. The screen picks its words from
+ * this, not from the server's English sentence: a reworded message used to move
+ * the page to a different branch without anyone noticing.
+ */
+export const invitationPreviewStateSchema = z.enum([
+  "valid",
+  "expired",
+  "revoked",
+  "declined",
+  "accepted",
+  "workspace_unavailable",
+]);
+export type InvitationPreviewState = z.infer<
+  typeof invitationPreviewStateSchema
+>;
+
+export const invitationPreviewSchema = z.object({
+  state: invitationPreviewStateSchema,
+  workspaceName: z.string().trim().min(1).max(120),
+  /** Masked: enough to recognise the address, not enough to learn it. */
+  emailHint: z.string().trim().min(1),
+  expiresAt: z.string().datetime({ offset: true }),
+});
+export type InvitationPreview = z.infer<typeof invitationPreviewSchema>;
+
+/** Why an invitation could not be accepted, in a word the screen can branch on. */
+export const invitationFailureCodeSchema = z.enum([
+  "invitation_not_found",
+  "invitation_email_mismatch",
+  "already_member",
+  "invitation_unavailable",
+]);
+export type InvitationFailureCode = z.infer<typeof invitationFailureCodeSchema>;
+
 export const accountPendingInvitationSchema = z.object({
   id: z.string().uuid(),
   workspaceId: z.string().uuid(),

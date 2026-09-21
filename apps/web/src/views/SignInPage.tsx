@@ -68,7 +68,7 @@ export function SignInPage() {
         creatingAccount
           ? inviteFlow
             ? "Create your employee account"
-            : "Create your business account"
+            : "Create your workspace account"
           : "Sign in"
       }
       description={
@@ -77,7 +77,9 @@ export function SignInPage() {
           : sessionExpired
             ? "Your session ended. Sign in again to pick up where you left off."
             : creatingAccount
-              ? "Your email and a password of at least eight characters."
+              ? inviteFlow
+                ? "Your email and a password of at least eight characters."
+                : "You will name the workspace itself in the next step."
               : undefined
       }
     >
@@ -149,7 +151,7 @@ export function SignInPage() {
                 ? "I already have an account"
                 : inviteFlow
                   ? "Create a new account"
-                  : "Create a business account"}
+                  : "Create a workspace account"}
             </button>
           </div>
         </form>

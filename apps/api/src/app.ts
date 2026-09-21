@@ -11,6 +11,7 @@ import { createDocumentLifecycleService } from "./employees/document-lifecycle-s
 import { registerDocumentLifecycleRoutes } from "./employees/document-lifecycle-routes";
 import { registerTimezoneSuggestionRoutes } from "./settings/timezone-suggestion";
 import { z } from "zod";
+import { HttpError } from "./http-error.js";
 import { registerAccountDeletionRoutes } from "./account/account-deletion-routes";
 import {
   createAccountDeletionWorker,
@@ -215,6 +216,56 @@ interface BuildAppOptions {
   readonly notificationOutboxCron?: {
     readonly cronSecret?: string;
   };
+}
+
+/**
+ * An invitation that could not be answered, told in a word instead of a
+ * sentence. The RPCs already raise the right SQLSTATE; the screen needs
+ * something stable to branch on, and the server's English is not it.
+ */
+function invitationFailure(error: unknown): {
+  readonly status: number;
+  readonly body: { readonly error: string; readonly code: string };
+} {
+  const pgCode =
+    error instanceof HttpError ? error.pgCode : undefined;
+  switch (pgCode) {
+    case "42501":
+      return {
+        status: 403,
+        body: {
+          error: "This invitation is for a different account",
+          code: "invitation_email_mismatch",
+        },
+      };
+    case "P0002":
+      return {
+        status: 404,
+        body: {
+          error: "This invitation is no longer open",
+          code: "invitation_not_found",
+        },
+      };
+    case "23505":
+      return {
+        status: 409,
+        body: {
+          error: "This account is already a member",
+          code: "already_member",
+        },
+      };
+    default:
+      return {
+        status:
+          error instanceof HttpError && error.statusCode < 500
+            ? error.statusCode
+            : 409,
+        body: {
+          error: "This invitation could not be answered",
+          code: "invitation_unavailable",
+        },
+      };
+  }
 }
 
 const invitationParamsSchema = z.object({
@@ -661,13 +712,9 @@ export function buildApp(options: BuildAppOptions = {}) {
         await activeInvitationService.accept(accessToken, body.data.token),
       );
     } catch (error) {
-      request.log.error(error);
-      return reply.status(409).send({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Invitation could not be accepted",
-      });
+      request.log.warn({ err: error }, "invitation not accepted");
+      const failure = invitationFailure(error);
+      return reply.status(failure.status).send(failure.body);
     }
   });
 
@@ -684,13 +731,9 @@ export function buildApp(options: BuildAppOptions = {}) {
     try {
       return reply.send(await activeInvitationService.listPending(accessToken));
     } catch (error) {
-      request.log.error(error);
-      return reply.status(409).send({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Pending invitations could not be loaded",
-      });
+      request.log.warn({ err: error }, "pending invitations not listed");
+      const failure = invitationFailure(error);
+      return reply.status(failure.status).send(failure.body);
     }
   });
 
@@ -715,13 +758,9 @@ export function buildApp(options: BuildAppOptions = {}) {
         ),
       );
     } catch (error) {
-      request.log.error(error);
-      return reply.status(409).send({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Invitation could not be accepted",
-      });
+      request.log.warn({ err: error }, "invitation not accepted");
+      const failure = invitationFailure(error);
+      return reply.status(failure.status).send(failure.body);
     }
   });
 
@@ -745,13 +784,9 @@ export function buildApp(options: BuildAppOptions = {}) {
       );
       return reply.status(204).send();
     } catch (error) {
-      request.log.error(error);
-      return reply.status(409).send({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Invitation could not be declined",
-      });
+      request.log.warn({ err: error }, "invitation not declined");
+      const failure = invitationFailure(error);
+      return reply.status(failure.status).send(failure.body);
     }
   });
 
@@ -765,12 +800,20 @@ export function buildApp(options: BuildAppOptions = {}) {
       return reply
         .status(503)
         .send({ error: "Employee invitation service is not configured" });
+    // Every state but "no such token" is a found invitation the screen has to
+    // render its own way, so it answers 200 and says which state it is.
     try {
-      return reply.send(
-        await activeInvitationService.preview(query.data.token),
-      );
-    } catch {
-      return reply.status(404).send({ error: "Active invitation not found" });
+      const preview = await activeInvitationService.preview(query.data.token);
+      if (!preview)
+        return reply.status(404).send({
+          error: "This invitation is no longer open",
+          code: "invitation_not_found",
+        });
+      return reply.send(preview);
+    } catch (error) {
+      request.log.warn({ err: error }, "invitation preview failed");
+      const failure = invitationFailure(error);
+      return reply.status(failure.status).send(failure.body);
     }
   });
 
