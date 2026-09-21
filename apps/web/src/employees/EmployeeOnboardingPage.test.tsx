@@ -491,7 +491,7 @@ describe("EmployeeOnboardingPage", () => {
               element={<EmployeeOnboardingPage />}
             />
             <Route
-              path="/invitations/pending"
+              path="/workspaces"
               element={<output>Account landing</output>}
             />
           </Routes>

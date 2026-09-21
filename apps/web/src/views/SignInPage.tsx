@@ -2,6 +2,7 @@ import type { WorkspaceRole } from "@newfork/shared";
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { hubPath } from "../auth/resolveLanding";
 import { sessionExpiredStorageKey } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 
@@ -36,7 +37,7 @@ export function SignInPage() {
   if (context) return <Navigate to={destination} replace />;
   if (authenticated && !error)
     return (
-      <Navigate to={inviteFlow ? destination : "/invitations/pending"} replace />
+      <Navigate to={inviteFlow ? destination : hubPath} replace />
     );
 
   const handleSupabaseSignIn = async (

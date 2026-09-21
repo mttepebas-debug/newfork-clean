@@ -9,7 +9,7 @@ import {
   PermissionRoute,
   settingsEntryPermissions,
 } from "./auth/PermissionRoute";
-import { appLandingPath } from "./auth/routeDestinations";
+import { appLandingPath, hubPath } from "./auth/resolveLanding";
 import { AppShell } from "./shell/AppShell";
 import { DocumentNotificationRedirect } from "./documents/DocumentNotificationRedirect";
 import { DocumentAccessRoute } from "./documents/DocumentAccessRoute";
@@ -58,10 +58,7 @@ const WorkspacesPage = lazy(() => import("./account/WorkspacesPage"));
 const AccountDocumentsPage = lazy(
   () => import("./account/AccountDocumentsPage"),
 );
-const OrganizationSwitcherPage = lazy(
-  () => import("./shell/OrganizationSwitcherPage"),
-);
-const NoOrganizationPage = lazy(() => import("./shell/NoOrganizationPage"));
+const WorkspaceHubPage = lazy(() => import("./shell/WorkspaceHubPage"));
 const SuspendedOrganizationStatusPage = lazy(
   () => import("./shell/SuspendedOrganizationStatusPage"),
 );
@@ -74,9 +71,6 @@ const EmployeeDocumentsPage = lazy(() => import("./documents/EmployeeDocumentsPa
 const EmployeesPage = lazy(() => import("./employees/EmployeesPage"));
 const AcceptInvitationPage = lazy(
   () => import("./employees/AcceptInvitationPage"),
-);
-const PendingInvitationsPage = lazy(
-  () => import("./employees/PendingInvitationsPage"),
 );
 const EmployeeOnboardingPage = lazy(
   () => import("./employees/EmployeeOnboardingPage"),
@@ -191,14 +185,24 @@ export function App() {
               ) : null}
               <Route path="/accept-invite" element={<AcceptInvitationPage />} />
               <Route path="/invite/accept" element={<AcceptInvitationPage />} />
+              {/* One hub replaced three routes that each knew a third of it. */}
               <Route
-                path="/invitations/pending"
+                path={hubPath}
                 element={
                   <ProtectedRoute>
-                    <PendingInvitationsPage />
+                    <WorkspaceHubPage />
                   </ProtectedRoute>
                 }
               />
+              {["/invitations/pending", "/no-organization", "/organization-switcher"].map(
+                (retired) => (
+                  <Route
+                    key={retired}
+                    path={retired}
+                    element={<Navigate to={hubPath} replace />}
+                  />
+                ),
+              )}
               <Route
                 path="/welcome/:workspaceId/*"
                 element={
@@ -224,23 +228,7 @@ export function App() {
                 }
               />
               <Route
-                path="/organization-switcher"
-                element={
-                  <ProtectedRoute>
-                    <OrganizationSwitcherPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/no-organization"
-                element={
-                  <ProtectedRoute>
-                    <NoOrganizationPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/organization-switcher/suspended"
+                path="/workspaces/suspended"
                 element={
                   <ProtectedRoute>
                     <SuspendedOrganizationStatusPage />
@@ -248,12 +236,16 @@ export function App() {
                 }
               />
               <Route
-                path="/organization-switcher/suspended/:workspaceId"
+                path="/workspaces/suspended/:workspaceId"
                 element={
                   <ProtectedRoute>
                     <SuspendedOrganizationStatusPage />
                   </ProtectedRoute>
                 }
+              />
+              <Route
+                path="/organization-switcher/suspended/*"
+                element={<Navigate to="/workspaces/suspended" replace />}
               />
               <Route
                 path="/app/account/documents"

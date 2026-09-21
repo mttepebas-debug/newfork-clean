@@ -32,7 +32,7 @@ import {
   Section,
   WizardBar,
 } from "../shell/prebiz/PreBiz";
-import { accountLandingPath } from "../auth/routeDestinations";
+import { hubPath } from "../auth/resolveLanding";
 import { saveEmployee } from "../employees/employee-data";
 import { employeeCreateReadiness } from "../employees/employee-create-flow";
 import {
@@ -604,7 +604,7 @@ export default function OwnerOnboardingPage() {
           <button
             type="button"
             className="pb-btn pb-btn-secondary"
-            onClick={() => navigate(accountLandingPath)}
+            onClick={() => navigate(hubPath)}
           >
             Exit setup
           </button>

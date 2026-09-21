@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import { useAuth } from "./AuthContext";
+import { hubPath } from "./resolveLanding";
 import { WorkspaceSetupPending } from "./WorkspaceSetupPending";
 
 type WorkspaceRequirement = "none" | "any" | "complete";
@@ -55,7 +56,7 @@ export function ProtectedRoute({
         </PreBizFrame>
       );
     }
-    return <Navigate to="/invitations/pending" replace />;
+    return <Navigate to={hubPath} replace />;
   }
   if (
     workspace !== "none" &&
@@ -66,7 +67,7 @@ export function ProtectedRoute({
     // finished (the owner invites the team in the last step) and wait here,
     // also when they open /onboarding directly.
     if (context.membership.role !== "owner") return <WorkspaceSetupPending />;
-    if (workspace === "complete") return <Navigate to="/onboarding" replace />;
+    if (workspace === "complete") return <Navigate to={hubPath} replace />;
   }
   return children;
 }

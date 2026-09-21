@@ -55,7 +55,7 @@ function renderRoute(entry = "/app/workspace") {
               </ProtectedRoute>
             }
           />
-          <Route path="/invitations/pending" element={<LocationProbe />} />
+          <Route path="/workspaces" element={<LocationProbe />} />
           <Route
             path="/onboarding"
             element={
@@ -101,17 +101,19 @@ describe("ProtectedRoute", () => {
     expect(authState.value.signOut).toHaveBeenCalledTimes(1);
   });
 
-  it("routes authenticated no-context workspace access to pending invitation review", () => {
+  it("routes authenticated no-context workspace access to the hub", () => {
     authState.value.error = null;
     renderRoute();
 
     expect(screen.getByLabelText("Current path").textContent).toBe(
-      "/invitations/pending",
+      "/workspaces",
     );
     expect(listPendingEmployeeInvitations).not.toHaveBeenCalled();
   });
 
-  it("routes incomplete owner onboarding contexts away from the app shell", async () => {
+  // The setup is a decision the hub offers, not a place the guard drags the
+  // owner into: that was the old behaviour and the plan's R3 reverses it.
+  it("offers an unfinished owner setup in the hub instead of forcing it", async () => {
     authState.value.error = null;
     authState.value.context = {
       membership: { role: "owner" },
@@ -120,7 +122,7 @@ describe("ProtectedRoute", () => {
     renderRoute();
 
     expect((await screen.findByLabelText("Current path")).textContent).toBe(
-      "/onboarding",
+      "/workspaces",
     );
   });
 

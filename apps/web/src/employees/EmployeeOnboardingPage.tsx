@@ -19,7 +19,7 @@ import { Navigate, useLocation, useNavigate, useParams } from "react-router";
 import { OnboardingDocumentStep } from "./OnboardingDocumentStep";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { useAuth } from "../auth/AuthContext";
-import { accountLandingPath } from "../auth/routeDestinations";
+import { hubPath } from "../auth/resolveLanding";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { setTabWorkspaceId } from "../lib/supabase";
 import {
@@ -183,7 +183,7 @@ export default function EmployeeOnboardingPage() {
       steps={steps}
       pathname={pathname}
       onOpen={navigateRequirement}
-      onExit={() => navigate(accountLandingPath)}
+      onExit={() => navigate(hubPath)}
     >
       {stage}
     </OnboardingShell>

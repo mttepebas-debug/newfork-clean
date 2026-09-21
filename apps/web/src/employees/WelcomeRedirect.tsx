@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { appLandingPath } from "../auth/routeDestinations";
+import { appLandingPath } from "../auth/resolveLanding";
 import { listAccountWorkspaces, supabaseClient } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 

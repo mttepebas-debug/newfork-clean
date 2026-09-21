@@ -1,0 +1,139 @@
+import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
+import { describe, expect, it } from "vitest";
+import { hubPath, resolveLanding } from "./resolveLanding";
+
+function workspace(
+  overrides: Partial<WorkspaceSummary> & Pick<WorkspaceSummary, "id" | "name">,
+): WorkspaceSummary {
+  return {
+    role: "owner",
+    status: "active",
+    isActive: false,
+    onboarding: { status: "complete", currentStep: 4, revision: 1 },
+    ...overrides,
+  } as WorkspaceSummary;
+}
+
+const ready = workspace({ id: "11111111-1111-4111-8111-111111111111", name: "Meyhouse" });
+const second = workspace({
+  id: "22222222-2222-4222-8222-222222222222",
+  name: "Ridgeline",
+  role: "manager",
+});
+const unfinished = workspace({
+  id: "33333333-3333-4333-8333-333333333333",
+  name: "Palo Alto",
+  onboarding: { status: "incomplete", currentStep: 2, revision: 1 },
+});
+
+const employeeContext = {
+  workspace: { id: ready.id, name: ready.name },
+  membership: { role: "employee" },
+  permissions: [],
+} as unknown as ActiveWorkspaceContext;
+
+describe("resolveLanding", () => {
+  it("answers an invitation token before anything else (R1)", () => {
+    expect(
+      resolveLanding({
+        inviteToken: "abc 123",
+        pendingInvitationCount: 2,
+        workspaces: [ready, second],
+      }),
+    ).toEqual({
+      kind: "invitation",
+      path: "/invite/accept?token=abc%20123",
+    });
+  });
+
+  it("sends an account with a waiting invitation and nowhere to work to the hub (R2)", () => {
+    expect(
+      resolveLanding({ pendingInvitationCount: 1, workspaces: [] }),
+    ).toEqual({ kind: "hub", path: hubPath });
+  });
+
+  it("sends an unfinished setup with nowhere to work to the hub (R3)", () => {
+    expect(resolveLanding({ workspaces: [unfinished] })).toEqual({
+      kind: "hub",
+      path: hubPath,
+    });
+  });
+
+  it("lands straight in the only workspace there is (R4)", () => {
+    expect(resolveLanding({ workspaces: [ready] })).toMatchObject({
+      kind: "workspace",
+      workspaceId: ready.id,
+      path: "/app/workspace",
+    });
+  });
+
+  it("picks the most recently used of several (R5)", () => {
+    const older = workspace({
+      ...ready,
+      lastUsedAt: "2026-09-01T00:00:00.000Z",
+    });
+    const newer = workspace({
+      ...second,
+      lastUsedAt: "2026-09-20T00:00:00.000Z",
+    });
+
+    expect(resolveLanding({ workspaces: [older, newer] })).toMatchObject({
+      kind: "workspace",
+      workspaceId: newer.id,
+    });
+  });
+
+  it("falls back to the saved default while nothing has been used yet (R5)", () => {
+    expect(
+      resolveLanding({
+        workspaces: [ready, workspace({ ...second, isActive: true })],
+      }),
+    ).toMatchObject({ kind: "workspace", workspaceId: second.id });
+  });
+
+  it("orders by name rather than arbitrarily when nothing distinguishes them (R5)", () => {
+    expect(
+      resolveLanding({ workspaces: [second, ready] }),
+    ).toMatchObject({ kind: "workspace", workspaceId: ready.id });
+  });
+
+  it("sends an account that belongs nowhere to the hub (R6)", () => {
+    expect(
+      resolveLanding({ workspaces: [], pendingInvitationCount: 0 }),
+    ).toEqual({ kind: "hub", path: hubPath });
+  });
+
+  it("does not pull an account with somewhere to work into the hub (R7)", () => {
+    expect(
+      resolveLanding({
+        pendingInvitationCount: 3,
+        workspaces: [ready, unfinished],
+      }),
+    ).toMatchObject({ kind: "workspace", workspaceId: ready.id });
+  });
+
+  it("names the page the role can open, not the one it cannot", () => {
+    expect(
+      resolveLanding({ workspaces: [ready], context: employeeContext }),
+    ).toMatchObject({ path: "/app/employee-hub" });
+  });
+
+  it("does not use a context that belongs to a different workspace", () => {
+    const elsewhere = {
+      ...employeeContext,
+      workspace: { id: second.id, name: second.name },
+    } as ActiveWorkspaceContext;
+
+    expect(
+      resolveLanding({ workspaces: [ready], context: elsewhere }),
+    ).toMatchObject({ path: "/app/workspace" });
+  });
+
+  it("treats a suspended workspace as nowhere to work", () => {
+    expect(
+      resolveLanding({
+        workspaces: [workspace({ ...ready, status: "suspended" })],
+      }),
+    ).toEqual({ kind: "hub", path: hubPath });
+  });
+});

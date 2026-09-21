@@ -2,7 +2,7 @@ import type { Permission, WorkspaceRole } from "@newfork/shared";
 import type { ReactNode } from "react";
 import { Navigate } from "react-router";
 import { useAuth } from "./AuthContext";
-import { appLandingPath } from "./routeDestinations";
+import { appLandingPath } from "./resolveLanding";
 
 export const settingsEntryPermissions = [
   "settings.general.read",

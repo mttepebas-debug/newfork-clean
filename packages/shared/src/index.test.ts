@@ -1047,6 +1047,7 @@ describe("shared contracts", () => {
       isActive: true,
       onboarding: { status: "incomplete", currentStep: 1, revision: 1 },
       lifecycleStatus: "active",
+      lastUsedAt: null,
       closureEffectiveAt: null,
       pendingOwnershipTransfer: null,
     });

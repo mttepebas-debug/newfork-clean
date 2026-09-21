@@ -367,6 +367,12 @@ export const workspaceSummarySchema = z.object({
   isActive: z.boolean(),
   onboarding: workspaceOnboardingSchema,
   lifecycleStatus: workspaceLifecycleStatusSchema.optional(),
+  /** When this membership was last opened; the landing decision sorts by it. */
+  lastUsedAt: z
+    .string()
+    .datetime({ offset: true })
+    .nullable()
+    .optional(),
   closureEffectiveAt: z
     .string()
     .datetime({ offset: true })
@@ -413,6 +419,11 @@ export const workspaceSummaryRowSchema = z.object({
     .nullable()
     .optional()
     .default(null),
+  last_used_at: z
+    .string()
+    .datetime({ offset: true })
+    .nullable()
+    .optional(),
   pending_ownership_transfer_id: z.string().uuid().nullable().optional(),
   pending_ownership_transfer_role: z
     .enum(["initiator", "target"])
@@ -442,6 +453,7 @@ export function workspaceSummaryFromRow(input: unknown): WorkspaceSummary {
       revision: 1,
     },
     lifecycleStatus: row.workspace_lifecycle_status,
+    lastUsedAt: row.last_used_at ?? null,
     closureEffectiveAt: row.closure_effective_at,
     pendingOwnershipTransfer:
       status === "active" &&
