@@ -14,6 +14,7 @@ function serviceThrowing(error: unknown): EmployeeInvitationService {
   };
   return {
     preview: fail,
+    link: fail,
     prepare: fail,
     retry: fail,
     revoke: fail,
@@ -93,6 +94,15 @@ describe("invitation endpoints", () => {
 
     expect(response.statusCode).toBe(409);
     expect(response.json().code).toBe("already_member");
+  });
+
+  it("answers 401 for an admin link request with no credentials", async () => {
+    const response = await appWith(serviceThrowing(new Error("unused"))).inject({
+      method: "GET",
+      url: "/v1/workspaces/1131ca31-392f-4ea0-bdc2-e1235e1496b1/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/invitations/link",
+    });
+
+    expect(response.statusCode).toBe(401);
   });
 
   it("answers 404 for a token no invitation carries", async () => {

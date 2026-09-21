@@ -420,6 +420,25 @@ export async function acceptEmployeeInvitation(
   return body.workspaceId;
 }
 
+/** The open invitation's own link, for an admin to pass along by hand. */
+export async function loadEmployeeInvitationLink(
+  workspaceId: string,
+  employeeId: string,
+): Promise<{ url: string; expiresAt: string }> {
+  const token = await getApiAccessToken(client());
+  const response = await fetch(
+    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations/link`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  const body = (await response.json().catch(() => null)) as {
+    url?: string;
+    expiresAt?: string;
+  } | null;
+  if (!response.ok || !body?.url || !body.expiresAt)
+    throw new InvitationError("invitation_unavailable");
+  return { url: body.url, expiresAt: body.expiresAt };
+}
+
 export async function listPendingEmployeeInvitations(): Promise<
   AccountPendingInvitation[]
 > {

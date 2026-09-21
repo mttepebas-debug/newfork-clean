@@ -22,5 +22,10 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: "jsdom",
     globals: true,
+    // Whole-repo runs put four packages on the same cores, and these are
+    // jsdom-rendered pages waiting on queries: at the 5s default a different
+    // handful timed out on every run while each passed alone. The timeout is
+    // about how long a slow machine may take, not about what the test asserts.
+    testTimeout: 20000,
   },
 }));

@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(17);
 
 insert into auth.users(id, email) values ('b1370000-0000-4000-8000-000000000001', 'export-short-name@example.test');
 insert into public.workspaces(id,name,created_by) values
@@ -22,6 +22,9 @@ select throws_ok($$select pg_temp.add_location('Unicode','Şişli-2')$$,'23514',
 select throws_ok($$update public.locations set short_name=null where workspace_id='b1370000-0000-4000-8000-000000000002' and name='One'$$,'23502',null,'assigned name cannot be cleared');
 select lives_ok($$update public.locations set short_name='MAIN-2' where workspace_id='b1370000-0000-4000-8000-000000000002' and name='One'$$,'short name is editable');
 select is((select count(*) from public.locations where short_name !~ '^[A-Z0-9-]{2,12}$')::int, 0, 'every stored short name follows the contract');
+update public.locations set archived_at=now() where workspace_id='b1370000-0000-4000-8000-000000000002' and name='One';
+select lives_ok($$select pg_temp.add_location('One again','MAIN-2')$$,'archiving a location frees its short name');
+select throws_ok($$update public.locations set archived_at=null where workspace_id='b1370000-0000-4000-8000-000000000002' and name='One'$$,'23505',null,'restoring a location cannot reclaim a short name taken since');
 select ok((select relrowsecurity from pg_class where oid='public.locations'::regclass),'existing RLS remains enabled');
 set local role service_role;
 select lives_ok($$select id,short_name from public.locations where workspace_id='b1370000-0000-4000-8000-000000000002'$$,'service enrichment can read scoped short names');

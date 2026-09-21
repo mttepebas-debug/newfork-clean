@@ -1,5 +1,5 @@
 # JOIN-004 Davet: sunucu sözleşmesi, altı hâl, admin yönetimi
-Status: draft
+Status: done (2026-09-21)
 Session: -   Branch: task/join-004   Worktree: newfork-wt/join-004   DB: KİLİT
 
 Plan ID'leri: E2, E6, G4, S5, S6, S8, S9, S15, M4
@@ -22,3 +22,13 @@ Test plan: Vitest (API kodları + UI hâlleri) + pgTAP (`invitation_preview_stat
 Risk: davet linkini API'den döndürmek sızıntı yüzeyi açar — yalnız `employee_access.manage` izni olana, yalnız pending davet için, log'a yazmadan.
 
 ## Notes / Result
+- 2026-09-21 sonuc. Iki migration: `20260921120000_invitation_preview_states` (preview artik `valid | expired | revoked | declined | accepted | workspace_unavailable | not_found` donuyor) ve `20260921130000_invitation_admin_view` (`get_employee_detail` davetin rolunu ve gonderenini tasiyor, `load_employee_invitation_link_service` eklendi).
+- API: `invitationFailure` errcode'u HTTP'ye ceviriyor (42501 -> 403, P0002 -> 404, 23505 -> 409) ve gövdede sabit bir `code` donuyor; ham Postgres cumlesi artik istemciye gitmiyor. Kanit: `invitation-routes.test.ts` 7/7.
+- UI: `AcceptInvitationPage` alti ayri ekran; durum artik Ingilizce cumle karsilastirmasiyla degil sunucunun kelimesiyle seciliyor. Hicbir hal cikmaz sokak degil.
+- Admin: davet blogunda **Copy link**, davetin rolu ve gondereni, son gecerlilik tarihi. Link kopyalama sunucuda `employee.invitation_link_copied` olarak kayda geciyor - link bir kimlik bilgisi.
+- `EmployeeDrawer`'daki uc `window.confirm` iki tik `ConfirmButton`'a cevrildi (erisim kaldirma, davet iptali, fotograf silme); rehire geri alma zaten kendi onayini tasiyordu.
+- Sign-up metni: "Create your workspace account" + "You will name the workspace itself in the next step."
+- **Kapsam disi birakilan:** oturumsuz cagrilarin 404 yerine 401 donmesi yalniz davet linki ucunda duzeltildi; 29 rotanin tamami BL-076.
+- **Yol ustunde duzeltilen:** web testleri paralel yukte zaman asimina ugruyordu, `testTimeout: 20000` (BL-077).
+- **Kanit:** `typecheck` PASS, `test` PASS (6/6 paket), `lint` 0 hata. Canli API: yetkili link 200, uye olmayan 404, oturumsuz 401.
+

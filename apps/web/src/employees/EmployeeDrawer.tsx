@@ -15,7 +15,7 @@ import {
   type EmployeeSection,
   type WorkspaceRole,
 } from "@newfork/shared";
-import { Button } from "@newfork/ui";
+import { Button, ConfirmButton } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -31,6 +31,7 @@ import {
   ImageOff,
   KeyRound,
   MailPlus,
+  ClipboardCopy,
   Pencil,
   RotateCcw,
   UserRound,
@@ -45,6 +46,7 @@ import {
   getEmployeeAvatar,
   createEmployee,
   type InviteRoleOption,
+  loadEmployeeInvitationLink,
   loadEmployeeReferenceData,
   prepareEmployeeInvitation,
   removeEmployeeAvatar,
@@ -1238,12 +1240,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                         setTerminationOpen(true);
                         return;
                       }
-                      if (
-                        window.confirm(
-                          "Restore this employee record for rehire? Workspace access stays off until they accept a new invite and complete onboarding.",
-                        )
-                      )
-                        archiveMutation.mutate(false);
+                      archiveMutation.mutate(false);
                     }}
                   >
                     {archived ? (
@@ -2343,22 +2340,17 @@ function AccessSection({
               <small>Owner access is managed separately.</small>
             </label>
             {!readOnly && detail?.role_name !== "Owner" ? (
-              <Button
-                className="secondary-button employee-remove-access"
+              <ConfirmButton
+                className="secondary-button employee-remove-access danger-button"
                 type="button"
                 disabled={removingAccess}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Remove this employee's workspace access? Their employee record, shifts, time history, and kiosk access will be preserved.",
-                    )
-                  )
-                    onRemoveAccess();
-                }}
+                confirmLabel="Click again to remove access"
+                title="The employee record, shifts, time history and kiosk access are kept."
+                onConfirm={onRemoveAccess}
               >
                 <KeyRound size={15} aria-hidden />
                 {removingAccess ? "Removing" : "Remove access"}
-              </Button>
+              </ConfirmButton>
             ) : null}
           </div>
         ) : state !== "no_email" ? (
@@ -2369,12 +2361,26 @@ function AccessSection({
             </div>
             <div>
               <dt>Invite role</dt>
-              <dd>{inviteRoleName ?? "Choose a role"}</dd>
+              <dd>
+                {invitation?.role_name ?? inviteRoleName ?? "Choose a role"}
+              </dd>
             </div>
             {invitation ? (
               <div>
                 <dt>Invitation status</dt>
                 <dd>{stateContent.title}</dd>
+              </div>
+            ) : null}
+            {invitation?.invited_by_name ? (
+              <div>
+                <dt>Invited by</dt>
+                <dd>{invitation.invited_by_name}</dd>
+              </div>
+            ) : null}
+            {invitation?.status === "pending" ? (
+              <div>
+                <dt>Expires</dt>
+                <dd>{formatDateTime(invitation.expires_at)}</dd>
               </div>
             ) : null}
             {invitation?.delivery_attempted_at ? (
@@ -2397,14 +2403,19 @@ function AccessSection({
               <RotateCcw size={15} aria-hidden />
               {retryingInvitation ? "Sending" : "Send reminder"}
             </Button>
-            <Button
-              className="secondary-button employee-revoke-invite"
+            <CopyInvitationLinkButton
+              workspaceId={detail?.workspace_id ?? ""}
+              employeeId={detail?.id ?? ""}
+            />
+            <ConfirmButton
+              className="secondary-button employee-revoke-invite danger-button"
               type="button"
               disabled={revokingInvitation}
-              onClick={onRevokeInvitation}
+              confirmLabel="Click again to revoke"
+              onConfirm={onRevokeInvitation}
             >
               Revoke invitation
-            </Button>
+            </ConfirmButton>
           </div>
         ) : null}
       </section>
@@ -2515,22 +2526,16 @@ function EmployeeAvatarControl({
         ) : null}
       </div>
       {!readOnly ? (
-        <Button
-          className="secondary-button"
+        <ConfirmButton
+          className="secondary-button danger-button"
           type="button"
           disabled={!hasAvatar || remove.isPending}
-          onClick={() => {
-            if (
-              window.confirm(
-                "Remove this employee's profile photo from this workspace?",
-              )
-            )
-              remove.mutate();
-          }}
+          confirmLabel="Click again to remove"
+          onConfirm={() => remove.mutate()}
         >
           <ImageOff size={15} aria-hidden />
           {remove.isPending ? "Removing" : "Remove photo"}
-        </Button>
+        </ConfirmButton>
       ) : null}
     </div>
   );
@@ -2879,6 +2884,55 @@ function statusLabel(status: string): string {
   return status
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+/**
+ * The invitation link itself, for when email did not arrive and the admin has
+ * to hand it over another way. The server records the copy; the button says
+ * plainly that it happened.
+ */
+function CopyInvitationLinkButton({
+  workspaceId,
+  employeeId,
+}: {
+  readonly workspaceId: string;
+  readonly employeeId: string;
+}) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const copy = useMutation({
+    mutationFn: () => loadEmployeeInvitationLink(workspaceId, employeeId),
+    onSuccess: async (link) => {
+      try {
+        await navigator.clipboard.writeText(link.url);
+        setState("copied");
+      } catch {
+        setState("failed");
+      }
+    },
+    // The server's own wording is not for the screen.
+    onError: () => setState("failed"),
+  });
+
+  return (
+    <Button
+      className="secondary-button"
+      type="button"
+      disabled={copy.isPending || !workspaceId || !employeeId}
+      onClick={() => {
+        setState("idle");
+        copy.mutate();
+      }}
+    >
+      <ClipboardCopy size={15} aria-hidden />
+      {copy.isPending
+        ? "Copying"
+        : state === "copied"
+          ? "Link copied"
+          : state === "failed"
+            ? "Copy failed"
+            : "Copy link"}
+    </Button>
+  );
 }
 
 function formatDateTime(value: string): string {

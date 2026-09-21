@@ -6,7 +6,7 @@ import {
 } from "@newfork/shared";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { rpcFailure } from "../http-error.js";
+import { HttpError, rpcFailure } from "../http-error.js";
 
 export interface PrepareEmployeeInvitationInput {
   readonly actorUserId: string;
@@ -32,6 +32,10 @@ export interface EmployeeInvitationService {
     input: Omit<PrepareEmployeeInvitationInput, "email" | "roleId">,
   ): Promise<PreparedEmployeeInvitation>;
   revoke(input: Omit<PrepareEmployeeInvitationInput, "email">): Promise<void>;
+  /** The open invitation's own link, for an admin to pass along by hand. */
+  link(
+    input: Omit<PrepareEmployeeInvitationInput, "email" | "roleId">,
+  ): Promise<{ readonly url: string; readonly expiresAt: string }>;
   accept(accessToken: string, token: string): Promise<{ workspaceId: string }>;
   listPending(accessToken: string): Promise<AccountPendingInvitation[]>;
   acceptPending(
@@ -202,6 +206,24 @@ export function createEmployeeInvitationService(
     },
     async revoke(input) {
       await revokePrepared(client, input);
+    },
+    async link(input) {
+      const { data, error } = await client.rpc(
+        "load_employee_invitation_link_service",
+        {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+          target_employee_id: input.employeeId,
+        },
+      );
+      if (error) throw rpcFailure(error);
+      const row = data as { token?: unknown; expires_at?: unknown };
+      if (typeof row?.token !== "string" || typeof row.expires_at !== "string")
+        throw new HttpError("Invitation link is unavailable", 404);
+      return {
+        url: `${options.appUrl.replace(/\/$/, "")}/invite/accept?token=${row.token}`,
+        expiresAt: row.expires_at,
+      };
     },
     async accept(accessToken, token) {
       const actor = await resolveActor(client, accessToken);

@@ -1987,6 +1987,9 @@ describe("api app", () => {
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       invitationService: {
+        link: async () => {
+          throw new Error("not used");
+        },
         preview: async () => ({
           state: "valid" as const,
           workspaceName: "Meyhouse",
@@ -2096,6 +2099,9 @@ describe("api app", () => {
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       invitationService: {
+        link: async () => {
+          throw new Error("not used");
+        },
         preview: async () => {
           throw new Error("not used");
         },
@@ -2187,6 +2193,9 @@ describe("api app", () => {
         markOwnerOnboardingInvitationIntentDispatched,
       } as never,
       invitationService: {
+        link: async () => {
+          throw new Error("not used");
+        },
         prepare: async () => ({
           id: "8ce12c4a-216e-4e52-bca4-66c32c996542",
           expiresAt: "2026-08-24T12:00:00.000Z",
@@ -2238,6 +2247,9 @@ describe("api app", () => {
     const app = buildApp({
       contextResolver: null,
       invitationService: {
+        link: async () => {
+          throw new Error("not used");
+        },
         preview: async () => ({
           state: "valid" as const,
           workspaceName: "Meyhouse",
@@ -2284,6 +2296,9 @@ describe("api app", () => {
     const app = buildApp({
       contextResolver: null,
       invitationService: {
+        link: async () => {
+          throw new Error("not used");
+        },
         preview: async () => {
           throw new Error("not used");
         },
@@ -2340,6 +2355,9 @@ describe("api app", () => {
     const app = buildApp({
       contextResolver: null,
       invitationService: {
+        link: async () => {
+          throw new Error("not used");
+        },
         preview: async () => {
           throw new Error("not used");
         },

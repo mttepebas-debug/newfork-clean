@@ -2699,6 +2699,8 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
         .nullable()
         .optional(),
       delivery_error: z.string().max(500).nullable().optional(),
+      role_name: z.string().trim().min(1).max(120).nullable().optional(),
+      invited_by_name: z.string().trim().min(1).max(320).nullable().optional(),
     })
     .nullable(),
   onboarding: z.object({

@@ -692,6 +692,58 @@ export function buildApp(options: BuildAppOptions = {}) {
     },
   );
 
+  // The invitation's own link, for an admin who has to pass it along by hand
+  // because email did not arrive. Same permission as sending one.
+  app.get(
+    "/v1/workspaces/:workspaceId/employees/:employeeId/invitations/link",
+    async (request, reply) => {
+      const params = invitationParamsSchema.safeParse(request.params);
+      if (!params.success)
+        return reply.status(400).send({ error: "Valid employee required" });
+      if (!contextResolver || !activeInvitationService) {
+        return reply
+          .status(503)
+          .send({ error: "Employee invitation service is not configured" });
+      }
+      // No credentials at all is a different answer from "not yours": the
+      // workspace helper folds both into 404 to avoid confirming a workspace
+      // exists, which is right for a stranger and wrong for a caller that
+      // simply forgot to sign in.
+      if (!bearerToken(request.headers.authorization))
+        return reply
+          .status(401)
+          .send({ error: "Authenticated account required" });
+      const authorization = await resolveWorkspaceAuthorization({
+        authorization: request.headers.authorization,
+        workspaceId: params.data.workspaceId,
+        permission: "employee_access.manage",
+        resolver: contextResolver,
+      });
+      if (!authorization.context)
+        return reply
+          .status(authorization.denied === "workspace_not_found" ? 404 : 403)
+          .send({
+            error:
+              authorization.denied === "workspace_not_found"
+                ? "Workspace not found"
+                : "Employee access management required",
+          });
+      try {
+        return reply.send(
+          await activeInvitationService.link({
+            actorUserId: authorization.context.userId,
+            workspaceId: params.data.workspaceId,
+            employeeId: params.data.employeeId,
+          }),
+        );
+      } catch (error) {
+        request.log.warn({ err: error }, "invitation link unavailable");
+        const failure = invitationFailure(error);
+        return reply.status(failure.status).send(failure.body);
+      }
+    },
+  );
+
   app.post("/v1/invitations/accept", async (request, reply) => {
     const body = invitationAcceptanceSchema.safeParse(request.body);
     if (!body.success)

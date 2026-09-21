@@ -44,6 +44,7 @@ vi.mock("../availability/availability-data", () => ({
 import {
   getEmployeeDetail,
   getEmployeeAvatar,
+  loadEmployeeInvitationLink,
   loadEmployeeReferenceData,
   prepareEmployeeInvitation,
   removeEmployeeAccess,
@@ -193,6 +194,7 @@ vi.mock("./onboarding-data", () => ({
 vi.mock("./employee-data", () => ({
   getEmployeeDetail: vi.fn(),
   getEmployeeAvatar: vi.fn(),
+  loadEmployeeInvitationLink: vi.fn(),
   loadEmployeeReferenceData: vi.fn(),
   prepareEmployeeInvitation: vi.fn(),
   removeEmployeeAccess: vi.fn(),
@@ -732,6 +734,96 @@ describe("EmployeeDrawer", () => {
     expect(screen.getByRole("button", { name: "Resend" })).toBeTruthy();
   });
 
+  it("names the role an invitation grants and the person who sent it", async () => {
+    renderDrawer("access", {
+      ...detail,
+      display_status: "invited",
+      invitation: {
+        id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+        email: "alex@example.test",
+        role_id: employeeRoleId,
+        status: "pending",
+        expires_at: "2099-08-24T12:00:00.000Z",
+        sent_at: "2026-08-17T12:00:00.000Z",
+        delivery_status: "sent",
+        role_name: "Manager",
+        invited_by_name: "Mert Tepebas",
+      },
+    });
+
+    expect(await screen.findByText("Invited by")).toBeTruthy();
+    expect(screen.getByText("Mert Tepebas")).toBeTruthy();
+    expect(screen.getAllByText("Manager").length).toBeGreaterThan(0);
+    expect(screen.getByText("Expires")).toBeTruthy();
+  });
+
+  it("copies the invitation link when email did not get there", async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+    vi.mocked(loadEmployeeInvitationLink).mockResolvedValue({
+      url: "http://newfork.test/invite/accept?token=abc",
+      expiresAt: "2099-08-24T12:00:00.000Z",
+    });
+    renderDrawer("access", {
+      ...detail,
+      display_status: "invited",
+      invitation: {
+        id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+        email: "alex@example.test",
+        role_id: employeeRoleId,
+        status: "pending",
+        expires_at: "2099-08-24T12:00:00.000Z",
+        sent_at: "2026-08-17T12:00:00.000Z",
+        delivery_status: "sent",
+      },
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Copy link" }));
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        "http://newfork.test/invite/accept?token=abc",
+      ),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Link copied" }),
+    ).toBeTruthy();
+  });
+
+  it("asks twice before revoking an invitation", async () => {
+    renderDrawer("access", {
+      ...detail,
+      display_status: "invited",
+      invitation: {
+        id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+        email: "alex@example.test",
+        role_id: employeeRoleId,
+        status: "pending",
+        expires_at: "2099-08-24T12:00:00.000Z",
+        sent_at: "2026-08-17T12:00:00.000Z",
+        delivery_status: "sent",
+      },
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Revoke invitation" }),
+    );
+    expect(revokeEmployeeInvitation).not.toHaveBeenCalled();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Click again to revoke/ }),
+    );
+
+    await waitFor(() =>
+      expect(revokeEmployeeInvitation).toHaveBeenCalledWith(
+        workspaceId,
+        employeeId,
+      ),
+    );
+  });
+
   it("sends a reminder for the current pending invitation", async () => {
     renderDrawer("access", {
       ...detail,
@@ -776,8 +868,7 @@ describe("EmployeeDrawer", () => {
     expect(screen.queryByText("Reset PIN")).toBeNull();
   });
 
-  it("removes the workspace profile photo when one exists", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("removes the workspace profile photo when one exists, on the second click", async () => {
     const { client } = renderDrawer("access");
 
     const removePhoto = await screen.findByRole("button", {
@@ -792,7 +883,13 @@ describe("EmployeeDrawer", () => {
       queryKey: ["employee-avatar", workspaceId, employeeId],
     });
     await waitFor(() => expect(removePhoto).toHaveProperty("disabled", false));
+    // The first click only arms it: losing a photo to one stray click is what
+    // the two-click button exists to prevent.
     fireEvent.click(removePhoto);
+    expect(removeEmployeeAvatar).not.toHaveBeenCalled();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Click again to remove/ }),
+    );
 
     await waitFor(() =>
       expect(removeEmployeeAvatar).toHaveBeenCalledWith(
@@ -800,7 +897,6 @@ describe("EmployeeDrawer", () => {
         employeeId,
       ),
     );
-    confirm.mockRestore();
   });
 
   it("locks profile identity and email while an invitation is pending", async () => {
