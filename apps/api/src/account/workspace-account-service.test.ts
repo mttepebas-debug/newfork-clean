@@ -157,6 +157,9 @@ describe("workspace account service", () => {
       next_step: 2,
       mark_complete: false,
       expected_revision: 3,
+      owner_first_name: null,
+      owner_last_name: null,
+      owner_works_shifts: null,
     });
   });
 

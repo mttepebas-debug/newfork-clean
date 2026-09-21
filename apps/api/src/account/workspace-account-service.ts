@@ -54,6 +54,9 @@ export interface WorkspaceAccountService {
       readonly nextStep: 1 | 2 | 3 | 4;
       readonly complete: boolean;
       readonly expectedRevision?: number | null;
+      readonly ownerFirstName?: string | null;
+      readonly ownerLastName?: string | null;
+      readonly ownerWorksShifts?: boolean | null;
     },
   ): Promise<void>;
   queueOwnerOnboardingInvitationIntent(
@@ -280,6 +283,9 @@ export function createWorkspaceAccountServiceWithClients(options: {
         next_step: input.nextStep,
         mark_complete: input.complete,
         expected_revision: input.expectedRevision ?? null,
+        owner_first_name: input.ownerFirstName ?? null,
+        owner_last_name: input.ownerLastName ?? null,
+        owner_works_shifts: input.ownerWorksShifts ?? null,
       });
     },
     async queueOwnerOnboardingInvitationIntent(accessToken, input) {

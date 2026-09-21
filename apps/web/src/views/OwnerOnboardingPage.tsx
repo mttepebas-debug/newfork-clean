@@ -123,6 +123,9 @@ export default function OwnerOnboardingPage() {
     account?.displayName ?? "",
   );
   const [ownerNameDirty, setOwnerNameDirty] = useState(false);
+  // The owner is on the team unless they say otherwise. Nobody was asked before,
+  // and the record was filed as excluded either way.
+  const [ownerWorksShifts, setOwnerWorksShifts] = useState(false);
   const [locationDraft, setLocationDraft] = useState(defaultLocation);
   const [locationDraftEpoch, setLocationDraftEpoch] = useState(0);
   const [locationErrors, setLocationErrors] = useState<LocationFieldErrors>({});
@@ -258,6 +261,7 @@ export default function OwnerOnboardingPage() {
         nextStep: 2,
         complete: false,
         expectedRevision: ownerOnboardingRevision,
+        ownerWorksShifts,
       });
       setStep(2);
       await refresh();
@@ -662,6 +666,21 @@ export default function OwnerOnboardingPage() {
                     onChange={(event) => setWorkspaceName(event.target.value)}
                     required
                   />
+                </label>
+                <label className="wide owner-onboarding-choice" htmlFor="owner-works-shifts">
+                  <input
+                    id="owner-works-shifts"
+                    type="checkbox"
+                    checked={ownerWorksShifts}
+                    onChange={(event) => setOwnerWorksShifts(event.target.checked)}
+                  />
+                  <span>
+                    I work shifts too
+                    <small>
+                      Put me on the schedule with the rest of the team. You can
+                      change this later in Employees.
+                    </small>
+                  </span>
                 </label>
               </div>
               <Feedback success={success} />

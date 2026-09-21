@@ -454,8 +454,10 @@ select is(
     where workspace_id = '20000000-0000-4000-8000-000000000001'
       and user_id = '10000000-0000-4000-8000-000000000001'
   ),
-  'Test Owner',
-  'owner onboarding completion repairs the linked owner employee name from the account display name'
+  'Stale Legal Name',
+  -- It used to overwrite this from the account name on every completion, which
+  -- threw away whatever the employees tab had been corrected to.
+  'owner onboarding completion leaves the name the employees tab holds alone'
 );
 update public.user_profiles
 set display_name = 'Independent Account Name'
@@ -467,7 +469,7 @@ select is(
     where workspace_id = '20000000-0000-4000-8000-000000000001'
       and user_id = '10000000-0000-4000-8000-000000000001'
   ),
-  'Test Owner',
+  'Stale Legal Name',
   'post-onboarding Account display name edits do not change the owner employee legal name'
 );
 update public.user_profiles

@@ -63,6 +63,11 @@ const ownerOnboardingBody = z.object({
   nextStep: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   complete: z.boolean(),
   expectedRevision: z.number().int().positive().nullable().optional(),
+  // The owner's own employee record: the name the workspace files them under,
+  // and whether they take shifts themselves.
+  ownerFirstName: z.string().trim().min(1).max(80).optional(),
+  ownerLastName: z.string().trim().min(1).max(80).optional(),
+  ownerWorksShifts: z.boolean().optional(),
 });
 const ownerOnboardingInvitationIntentBody = z.object({
   employeeId: z.string().uuid(),
@@ -384,6 +389,9 @@ export function registerWorkspaceAccountRoutes(
           nextStep: body.data.nextStep,
           complete: body.data.complete,
           expectedRevision: body.data.expectedRevision ?? null,
+          ownerFirstName: body.data.ownerFirstName ?? null,
+          ownerLastName: body.data.ownerLastName ?? null,
+          ownerWorksShifts: body.data.ownerWorksShifts ?? null,
         });
         if (body.data.complete && options.invitationService) {
           const intents =

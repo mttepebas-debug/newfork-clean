@@ -1,5 +1,5 @@
 # JOIN-008 Kimlik sahipliği: hesabın adı, çalışan kaydı, owner'ın kendi kaydı
-Status: draft
+Status: done (2026-09-21, kapsam daraltildi)
 Session: -   Branch: task/join-008   Worktree: newfork-wt/join-008   DB: KİLİT
 
 Plan ID'leri: M1, M3, M5, M6, E4 + kullanıcı kapsamı 2026-09-21 (bilgi sahipliği, owner'ın employees girdisi)
@@ -34,3 +34,12 @@ Test plan: pgTAP (`owner_employee_record.test.sql`, `identity_ownership.test.sql
 Risk: görünen ad hesaplaması schedule, employees, announcements ve export yüzeylerinin hepsine dokunuyor. Tek yardımcı fonksiyon + grep kanıtı zorunlu; adım adım, yüzey yüzey doğrulanır.
 
 ## Notes / Result
+- 2026-09-21 sonuc. Migration `20260921200000_owner_record_is_the_owners`.
+- **Olculen iki sey kapsami degistirdi:**
+  1. `employee_profiles.preferred_name` uzerinde `CHECK (preferred_name = '')` var - kolon V1'de kilitli, yani plandaki "cift preferred_name" sorunu pratikte yok. Gercek tercih edilen ad yalniz `employee_private_profiles.preferred_name`'de. Yapilacak bir sey cikmadi, belgelendi.
+  2. Gorunen adi tek kaynaga baglamak 57 DB fonksiyonuna (38'i `preferred_name` kullaniyor: schedule, kiosk, lineup, export, time tracking, shift exchange) dokunuyor. Katilim zincirinin disinda kaliyor, **BL-079** olarak backlog'a alindi.
+- **Yapilanlar:** owner kaydi artik kurulumun 1. adiminda aciliyor; ad son bosluktan bolunuyor (orta ad verilen adla kaliyor); `internal_note` bos; **var olan kaydin adi bir daha uzerine yazilmiyor** (`employee.owner_identity_synced` olayi dustu); sihirbas 1. adimda "I work shifts too" soruyor ve cevap `is_excluded_from_schedule`'i belirliyor.
+- **Yol ustunde bulunan uc guvenlik/dogruluk sorunu:** yeni `update_owner_onboarding_service` PUBLIC'e acik kalmisti (revoke edildi, yalniz service_role); eski 6 argumanli overload'lari yenisiyle **ayni adlari kabul ediyordu** ve PostgREST cagrisini belirsiz birakirdi (dusuruldu); `ensure_owner_employee_profile`'in 2 argumanli eski govdesi hala cagrilabilirdi (dusuruldu).
+- **Kapsam disi birakildi:** owner'in **resmi adi** (`employee_private_profiles.legal_*`). Calisanlar onu kendi onboarding'inde veriyor; owner'in karsiligi kendi istihdam kaydini duzenledigi yer, o da JOIN-009'un hesap alani isi. Sihirbaza iki alan daha eklemek yerine oraya birakildi.
+- **Kanit:** `owner_employee_record.test.sql` 9/9, `workspace_rls` 119/119 (iki test eski "tamamlamada adi onar" davranisini sabitliyordu, yeni sozlesmeye cevrildi), `workspace_lifecycle` 21/21, `typecheck`/`test`/`build`/`lint` PASS, tarayicida adim 1 ekran goruntusu alindi.
+
