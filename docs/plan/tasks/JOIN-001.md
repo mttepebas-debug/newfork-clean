@@ -1,5 +1,5 @@
 # JOIN-001 Katılım zinciri: davet, onboarding ve business yaşam döngüsü (şemsiye)
-Status: active (2026-09-19; kullanıcı kararı: "MVP roadmap listesinde ilk sıraya bu oturmalı")
+Status: active (2026-09-19; kullanıcı kararı: "MVP roadmap listesinde ilk sıraya bu oturmalı"). 2026-09-21: dilimler JOIN-002…JOIN-007 olarak yeniden çıkarıldı; aşağıdaki J1–J7 taslağı ve durum matrisi ölçüm öncesi tahmindir, yerini denetim tablosuna bıraktı.
 Session: koordinatör dağıtır; dilim başına ayrı session. DB: J3 ve J6 kilit ister.
 Öneri: dilim başına Opus 5 / high (mantık + DB), UI dilimlerinde mevcut UI-PRE-001 session'ı devam eder.
 
@@ -75,3 +75,19 @@ Risk: kapsam geniş ve çoğu "bilinmiyor" — bu yüzden J1 salt okunur kapı o
 
 ## Notes / Result
 - 2026-09-19 açılış: kullanıcı bu zinciri MVP sırasının başına koydu. OBS-001 ve UI-PRE-001 bu şemsiyenin altına alındı; BACKLOG'daki ilgili satırlar buraya işaret ediyor.
+
+## 2026-09-21 — plan ↔ uygulama denetimi ve yeni dilimler
+
+Katılım mimarisi PLAN'ı (M/R/E/G/B/S) kanıtla ölçüldü: 45 maddenin 9'u ✅, 19'u 🟡, 5'i ⚠️, 5'i ❌, 7'si doğrulanamadı. Ölçüm özeti ve kanıtlar bu task'ın oturum raporunda; yapısal kararlar aşağıda.
+
+**Kullanıcı kararları (2026-09-21):**
+- `manager` rolü ve workspace başına rol/izin sistemi **korunur**, planın rol listesi genişler.
+- `membership_status = 'pending_activation'` **korunur**; kullanılmayan `'invited'` değeri kullanımdan kalkar.
+- Workspace durumu **tek alanda** toplanır: `draft | active | suspended | closure_scheduled | closed`.
+- B1/B2 ödeme **kapsam dışı** (Stripe sonra); `workspace_entitlements` tabloları silinmez, okunmaz.
+- Tasarım kararları Claude'a bırakıldı: ölçüt uygulamanın kendi renk/token/buton dili ve profesyonel sonuç. Canvas bağlayıcı değil, referans.
+
+**Bu task'ın iddialarından ölçümle düşenler:** B3 ("API artık 403 dönüyor" — 409 dönüyor), B9 ("auth hatasında 409" — 401 dönüyor, düzelmiş), B7 ("revoke kabul edilmedi" — çalışıyor, 204).
+
+**Dilimler (sıra bağlayıcı):** JOIN-002 (durum modeli, DB) → JOIN-003 (resolver + tek hub) → JOIN-004 (davet sözleşmesi + altı hâl + admin) → JOIN-005 (switcher + davet bildirimi) → JOIN-006 (durum ekranları) → JOIN-007 (senaryo kapanışı).
+
