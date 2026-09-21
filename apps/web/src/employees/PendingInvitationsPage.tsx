@@ -1,20 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { Link, Navigate, useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
   appLandingPath,
-  deferredLandingPath,
   organizationSwitcherPath,
   noOrganizationPath,
   readyWorkspaces,
   unfinishedWorkspaces,
 } from "../auth/routeDestinations";
-import {
-  invitationsCheckedStorageKey,
-  listAccountWorkspaces,
-  supabaseClient,
-} from "../lib/supabase";
+import { listAccountWorkspaces, supabaseClient } from "../lib/supabase";
 import { CreateOrganizationButton } from "../shell/CreateOrganizationButton";
 import { PreBizFrame, Section } from "../shell/prebiz/PreBiz";
 import { listPendingEmployeeInvitations } from "./employee-data";
@@ -26,7 +21,7 @@ import { UnfinishedSetupRow } from "./UnfinishedSetupRow";
  * invitations and unfinished setups — and forwards on when there are none.
  */
 export default function PendingInvitationsPage() {
-  const { context, refresh } = useAuth();
+  const { refresh } = useAuth();
   const navigate = useNavigate();
   const invitations = useQuery({
     queryKey: ["account-pending-invitations"],
@@ -49,9 +44,6 @@ export default function PendingInvitationsPage() {
     !invitations.isFetching &&
     !workspaces.isFetching;
   const nothingOpen = settled && pending.length === 0 && unfinished.length === 0;
-  // An account that can work elsewhere, or is mid-onboarding elsewhere, may
-  // postpone the decision.
-  const deferPath = deferredLandingPath(context, workspaceList);
   const employerDraft =
     unfinished.find((workspace) => workspace.status === "active") ?? null;
   const answeredInvitations = useRef(false);
@@ -146,20 +138,6 @@ export default function PendingInvitationsPage() {
         <div className="pb-section">
           <h2>Your own workspace</h2>
           <CreateOrganizationButton className="pb-btn pb-btn-secondary pb-btn-block" />
-        </div>
-      ) : null}
-      {deferPath ? (
-        <div className="pb-footer">
-          <Link
-            className="pb-btn pb-btn-secondary"
-            to={deferPath}
-            replace
-            onClick={() =>
-              window.sessionStorage.setItem(invitationsCheckedStorageKey, "1")
-            }
-          >
-            Not now
-          </Link>
         </div>
       ) : null}
     </PreBizFrame>

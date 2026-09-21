@@ -170,39 +170,13 @@ describe("PendingInvitationsPage", () => {
     );
   });
 
-  it("lets a member postpone the invitation for this tab session", async () => {
+  it("offers no way to postpone: the screen only shows when nothing else is open", async () => {
     authState.value.context = ownerContext;
     vi.mocked(listAccountWorkspaces).mockResolvedValue([northstar]);
     renderPage();
 
-    fireEvent.click(await screen.findByRole("link", { name: "Not now" }));
-
-    expect(screen.getByLabelText("Current path").textContent).toBe(
-      "/app/workspace",
-    );
-    expect(window.sessionStorage.getItem("newfork.invitationsChecked")).toBe(
-      "1",
-    );
-  });
-
-  it("postpones to the switcher when several organizations are open", async () => {
-    authState.value.context = ownerContext;
-    vi.mocked(listAccountWorkspaces).mockResolvedValue([
-      northstar,
-      {
-        ...northstar,
-        id: "26000000-0000-4000-8000-000000000002",
-        name: "Second",
-        isActive: false,
-      },
-    ]);
-    renderPage();
-
-    fireEvent.click(await screen.findByRole("link", { name: "Not now" }));
-
-    expect(screen.getByLabelText("Current path").textContent).toBe(
-      "/organization-switcher",
-    );
+    expect(await screen.findByText("Northstar")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Not now" })).toBeNull();
   });
 
   it("lists an unfinished employee onboarding instead of forcing it", async () => {

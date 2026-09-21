@@ -27,7 +27,6 @@ import {
   developmentIdentityAllowed,
   ensureSessionAlive,
   getTabWorkspaceId,
-  invitationsCheckedStorageKey,
   loadAccountProfile,
   sessionExpiredStorageKey,
   resolveWorkspaceContext,
@@ -215,10 +214,9 @@ export function AuthProvider({
     [],
   );
 
-  // A new login re-runs the invitation check and must not see the previous
-  // account's cached invitations or workspaces.
+  // A new login must not see the previous account's cached invitations or
+  // workspaces.
   const resetAccountScope = useCallback((): void => {
-    window.sessionStorage.removeItem(invitationsCheckedStorageKey);
     window.sessionStorage.removeItem(sessionExpiredStorageKey);
     queryClient?.removeQueries({ queryKey: ["account-pending-invitations"] });
     queryClient?.removeQueries({ queryKey: ["account-workspaces"] });

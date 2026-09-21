@@ -36,19 +36,6 @@ export function unfinishedWorkspaces(
   );
 }
 
-/** Where "Not now" leads: the single organization, or the choice between several. */
-export function deferredLandingPath(
-  context: ActiveWorkspaceContext | null,
-  workspaces: readonly WorkspaceSummary[],
-): string | null {
-  const ready = readyWorkspaces(workspaces);
-  if (ready.length === 0) return null;
-  // The switcher also activates, so anything but "already in the only one" goes there.
-  if (ready.length === 1 && context && context.workspace.id === ready[0]!.id)
-    return appLandingPath(context);
-  return organizationSwitcherPath;
-}
-
 export function workspaceLandingPathForRole(role: WorkspaceRole): string {
   return role === "employee" ? "/app/employee-hub" : "/app/workspace";
 }

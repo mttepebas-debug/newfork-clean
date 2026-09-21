@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
@@ -182,49 +182,16 @@ describe("ProtectedRoute", () => {
     );
   });
 
-  it("shows a new invitation to a member once per tab session", async () => {
+  it("lands a member with a pending invitation in the app, not on the invitation", async () => {
     authState.value.error = null;
     authState.value.context = {
       onboarding: { status: "complete", currentStep: 4 },
     } as never;
-    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
-    renderRoute();
-
-    expect((await screen.findByLabelText("Current path")).textContent).toBe(
-      "/invitations/pending",
-    );
-    await waitFor(() =>
-      expect(
-        window.sessionStorage.getItem("newfork.invitationsChecked"),
-      ).toBe("1"),
-    );
-  });
-
-  it("lets the member through once the invitation check has run", async () => {
-    authState.value.error = null;
-    authState.value.context = {
-      onboarding: { status: "complete", currentStep: 4 },
-    } as never;
-    window.sessionStorage.setItem("newfork.invitationsChecked", "1");
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
     renderRoute();
 
     expect(screen.getByRole("heading", { name: "Workspace" })).toBeTruthy();
+    // The invitation waits in Workspaces; the route never asks for it.
     expect(listPendingEmployeeInvitations).not.toHaveBeenCalled();
-  });
-
-  it("never blocks the app when the invitation check fails", async () => {
-    authState.value.error = null;
-    authState.value.context = {
-      onboarding: { status: "complete", currentStep: 4 },
-    } as never;
-    vi.mocked(listPendingEmployeeInvitations).mockRejectedValue(
-      new Error("offline"),
-    );
-    renderRoute();
-
-    expect(
-      await screen.findByRole("heading", { name: "Workspace" }),
-    ).toBeTruthy();
   });
 });
