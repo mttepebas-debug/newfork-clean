@@ -264,9 +264,21 @@ export async function saveLocation(
     : client()
         .from("locations")
         .insert({ ...values, workspace_id: workspaceId });
-  const { error } = await query;
-  if (error?.code === "23505" && error.message.includes("locations_workspace_short_name")) {
-    throw new Error("This short name is already used in this workspace. Choose another one.");
+  locationMessage(await query);
+}
+
+function locationMessage({
+  error,
+}: {
+  error: { code?: string; message: string } | null;
+}): void {
+  if (
+    error?.code === "23505" &&
+    error.message.includes("locations_workspace_short_name")
+  ) {
+    throw new Error(
+      "This short name is already used in this workspace. Choose another one.",
+    );
   }
   message(error);
 }
@@ -276,15 +288,16 @@ export async function setLocationArchived(
   id: string,
   archived: boolean,
 ): Promise<void> {
-  const { error } = await client()
-    .from("locations")
-    .update({
-      archived_at: archived ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .eq("workspace_id", workspaceId);
-  message(error);
+  locationMessage(
+    await client()
+      .from("locations")
+      .update({
+        archived_at: archived ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("workspace_id", workspaceId),
+  );
 }
 
 export async function listDepartments(
