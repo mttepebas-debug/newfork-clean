@@ -356,11 +356,11 @@ describe("AppShell notification badge", () => {
     const { container } = renderShell();
 
     expect(await screen.findByText("Workspace route")).toBeTruthy();
+    // The slot used to be a placeholder marked "tbd"; it carries the switcher
+    // now, and with one workspace and nothing waiting it is the plain name.
     expect(
-      container
-        .querySelector("[data-organization-switcher-slot]")
-        ?.getAttribute("data-organization-switcher-slot"),
-    ).toBe("tbd");
+      container.querySelector(".organization-context-slot")?.textContent,
+    ).toBe("Meyhouse");
     const labels = Array.from(
       container.querySelectorAll(".sidebar-nav .nav-item"),
     ).map((item) => item.textContent);

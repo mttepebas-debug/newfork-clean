@@ -59,6 +59,8 @@ export interface WorkspaceAccountService {
       readonly ownerWorksShifts?: boolean | null;
     },
   ): Promise<void>;
+  /** Records that this account just opened this workspace. */
+  touchWorkspace(accessToken: string, workspaceId: string): Promise<void>;
   queueOwnerOnboardingInvitationIntent(
     accessToken: string,
     input: {
@@ -286,6 +288,12 @@ export function createWorkspaceAccountServiceWithClients(options: {
         owner_first_name: input.ownerFirstName ?? null,
         owner_last_name: input.ownerLastName ?? null,
         owner_works_shifts: input.ownerWorksShifts ?? null,
+      });
+    },
+    async touchWorkspace(accessToken, workspaceId) {
+      await rpc("touch_workspace_membership_service", {
+        ...(await actorArgs(accessToken)),
+        target_workspace_id: workspaceId,
       });
     },
     async queueOwnerOnboardingInvitationIntent(accessToken, input) {

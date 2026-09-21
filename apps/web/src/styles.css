@@ -3202,6 +3202,147 @@ select:focus-visible {
   white-space: nowrap;
   font-size: 14px;
 }
+
+/* The workspace name becomes a control only when there is a second workspace
+   or an invitation waiting; with one workspace it stays the plain name above. */
+.workspace-switcher {
+  position: relative;
+  flex-grow: 1;
+}
+.workspace-switcher-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--theme-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.workspace-switcher-trigger:hover,
+.workspace-switcher-trigger[aria-expanded="true"] {
+  border-color: var(--theme-border);
+  background: var(--theme-surface);
+}
+.workspace-switcher-trigger .workspace-name {
+  flex-grow: 1;
+}
+/* A number that means "you owe someone an answer", not "something is new". */
+.workspace-switcher-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--theme-danger);
+  color: var(--theme-on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.workspace-switcher-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.workspace-switcher-mark .workspace-switcher-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 9px;
+  height: 9px;
+  padding: 0;
+}
+.workspace-switcher-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 264px;
+  padding: 8px;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  box-shadow: 0 16px 40px rgb(22 35 30 / 14%);
+}
+.workspace-switcher-label {
+  margin: 6px 0 4px;
+  padding: 0 8px;
+  color: var(--theme-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.workspace-switcher-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--theme-text);
+  font: inherit;
+  text-align: left;
+}
+button.workspace-switcher-item {
+  cursor: pointer;
+}
+button.workspace-switcher-item:hover:not(:disabled) {
+  background: var(--theme-surface-muted);
+}
+.workspace-switcher-item.is-current {
+  background: var(--theme-selected);
+}
+.workspace-switcher-text {
+  display: grid;
+  gap: 1px;
+  flex-grow: 1;
+  min-width: 0;
+}
+.workspace-switcher-text strong {
+  overflow: hidden;
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-switcher-text span {
+  color: var(--theme-muted);
+  font-size: 11.5px;
+}
+/* The menu is narrow, so its one action is sized for the row it sits in. */
+.workspace-switcher-answer.pb-btn.pb-btn {
+  min-height: 30px;
+  padding: 0 11px;
+  font-size: 12.5px;
+}
+.workspace-switcher-all {
+  display: block;
+  margin-top: 6px;
+  padding: 9px 8px 4px;
+  border-top: 1px solid var(--theme-border);
+  color: var(--theme-accent);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
 .icon-button {
   display: inline-grid;
   width: 38px;
@@ -10911,14 +11052,14 @@ select:focus-visible {
 .onboarding-form label.owner-onboarding-choice input[type="checkbox"] {
   width: auto;
   margin: 2px 0 0;
-  accent-color: var(--theme-primary);
+  accent-color: var(--theme-accent);
 }
 .onboarding-form label.owner-onboarding-choice span {
   display: grid;
   gap: 2px;
 }
 .onboarding-form label.owner-onboarding-choice small {
-  color: var(--theme-text-muted);
+  color: var(--theme-muted);
   font-size: 12px;
   font-weight: 500;
   line-height: 1.45;

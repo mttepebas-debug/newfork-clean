@@ -56,7 +56,9 @@ export function ProtectedRoute({
         </PreBizFrame>
       );
     }
-    return <Navigate to={hubPath} replace />;
+    // Landing, not a deliberate visit: the hub may hand the account straight
+    // to a workspace instead of asking which one.
+    return <Navigate to={hubPath} replace state={{ landing: true }} />;
   }
   if (
     workspace !== "none" &&

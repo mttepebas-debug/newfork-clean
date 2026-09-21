@@ -522,6 +522,14 @@ export function buildApp(options: BuildAppOptions = {}) {
           .status(401)
           .send({ error: "Invalid session or membership" });
       }
+      // Opening a workspace is what makes it the most recently used one, and
+      // the switcher opens on that. A failed stamp is not worth the page.
+      if (workspaceAccountService)
+        void workspaceAccountService
+          .touchWorkspace(accessToken, context.workspace.id)
+          .catch((stampError: unknown) => {
+            request.log.warn({ err: stampError }, "workspace not stamped");
+          });
       return reply.send(context);
     } catch (error) {
       request.log.error(error);

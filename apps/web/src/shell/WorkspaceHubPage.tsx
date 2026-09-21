@@ -3,7 +3,7 @@ import { Button } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MailCheck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
   readyWorkspaces,
@@ -38,6 +38,7 @@ import {
 export default function WorkspaceHubPage() {
   const { context, refresh } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [failedId, setFailedId] = useState<string | null>(null);
@@ -77,8 +78,12 @@ export default function WorkspaceHubPage() {
 
   const loading = workspacesQuery.isLoading || invitationsQuery.isLoading;
 
-  // Nothing left to decide and exactly one workspace: there is no choice to
-  // offer, so the hub hands the account straight to it (R4). A cached empty
+  // Arriving here because a sign-in had nowhere else to go, rather than because
+  // somebody asked for the list. Only then may the hub forward on its own.
+  const landing =
+    (location.state as { landing?: boolean } | null)?.landing === true;
+  // Nothing left to decide: there is no choice worth asking about, so the hub
+  // hands the account to the workspace it used last (R4, R5). A cached empty
   // list must not do this before the refetch lands.
   const settled =
     (workspacesQuery.isSuccess || workspacesQuery.isError) &&
@@ -87,7 +92,8 @@ export default function WorkspaceHubPage() {
     !invitationsQuery.isFetching;
   const onlyOne =
     settled &&
-    ready.length === 1 &&
+    landing &&
+    ready.length >= 1 &&
     suspended.length === 0 &&
     invitations.length === 0 &&
     unfinished.length === 0;

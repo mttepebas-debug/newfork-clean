@@ -23,6 +23,7 @@ import { AppSidebarPanelContext } from "./AppSidebarPanel";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { EmployeeMobileNav } from "../employee-hub/EmployeeMobileNav";
 import { useAuth } from "../auth/AuthContext";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { CurrentUserAvatar } from "../account/AccountAvatar";
 
 import {
@@ -312,16 +313,10 @@ export function AppShell() {
               <span className="rail-flyout">Expand menu</span>
             ) : null}
           </button>
-          {collapsed ? null : (
-            <div
-              className="organization-context-slot"
-              data-organization-switcher-slot="tbd"
-            >
-              <strong className="workspace-name">
-                {context.workspace.name}
-              </strong>
-            </div>
-          )}
+          <WorkspaceSwitcher
+            workspaceName={context.workspace.name}
+            collapsed={collapsed}
+          />
         </div>
 
         <nav className="sidebar-nav" aria-label="Primary">

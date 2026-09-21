@@ -76,13 +76,15 @@ function Probe() {
   return <output aria-label="Current path">{useLocation().pathname}</output>;
 }
 
-function renderHub() {
+function renderHub(landing = true) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/workspaces"]}>
+      <MemoryRouter
+        initialEntries={[{ pathname: "/workspaces", state: { landing } }]}
+      >
         <Routes>
           <Route path="/workspaces" element={<WorkspaceHubPage />} />
           <Route path="/app/workspace" element={<Probe />} />
@@ -163,10 +165,25 @@ describe("WorkspaceHubPage", () => {
     );
   });
 
+  it("lands on the workspace used last rather than asking which one (R5)", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      workspace({ ...meyhouse, lastUsedAt: "2026-09-01T00:00:00.000Z" }),
+      workspace({ ...ridgeline, lastUsedAt: "2026-09-20T00:00:00.000Z" }),
+    ]);
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
+    renderHub();
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Current path").textContent).toBe(
+        "/app/workspace",
+      ),
+    );
+  });
+
   it("keeps several workspaces on the hub and names each one's role (R5)", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([meyhouse, ridgeline]);
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
-    renderHub();
+    renderHub(false);
 
     expect(await screen.findByText("Where you work")).toBeTruthy();
     expect(screen.getByText("Meyhouse")).toBeTruthy();
