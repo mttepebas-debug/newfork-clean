@@ -16525,13 +16525,14 @@ select:focus-visible {
   justify-content: flex-end;
   gap: 14px 22px;
 }
+/* The separator runs the width of the stage; the links sit centred under it. */
 .sign-in-trust-links {
-  max-width: 420px;
   margin-top: 32px;
   padding-top: 18px;
   border-top: 1px solid #e2e5e3;
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 8px 14px;
 }
 .sign-in-trust-links a {

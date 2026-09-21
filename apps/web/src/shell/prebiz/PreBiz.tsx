@@ -31,21 +31,29 @@ export function PreBizFrame({
   titleId,
   title,
   description,
+  /** A screen that is one column of fields, not a list: the stage narrows to it. */
+  narrow,
   children,
 }: {
   readonly titleId: string;
   readonly title: string;
   readonly description?: string;
+  readonly narrow?: boolean;
   readonly children?: ReactNode;
 }) {
   return (
-    <div className="pb">
-      <aside className="pb-side">
+    // A gate screen has no steps to carry, so the frame is a thin bar instead
+    // of the wizard's side panel: nothing is left holding an empty column.
+    <div className="pb-gate">
+      <header className="pb-topbar">
         <span className="pb-brand">NEWFORK</span>
         <AccountBlock />
-      </aside>
+      </header>
       {/* The stage is the main landmark, so "skip to main" lands on the heading. */}
-      <main className="pb-stage" aria-labelledby={titleId}>
+      <main
+        className={narrow ? "pb-stage pb-stage-narrow" : "pb-stage"}
+        aria-labelledby={titleId}
+      >
         {/* Pages show "Checking…" first and then swap this title; without a
             live region a screen reader never hears that the page is ready. */}
         <h1 id={titleId} aria-live="polite">

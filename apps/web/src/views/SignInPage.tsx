@@ -61,6 +61,7 @@ export function SignInPage() {
 
   return (
     <PreBizFrame
+      narrow
       titleId="sign-in-title"
       title={
         creatingAccount

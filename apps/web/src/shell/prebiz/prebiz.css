@@ -20,6 +20,32 @@
   letter-spacing: 0.08em;
 }
 
+/* The gate frame: a bar across the top, the stage centred on the page under it.
+   Wizards keep `.pb` below, because their panel actually carries the steps. */
+.pb-gate {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+}
+.pb-topbar {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+/* The account block stacks in the side panel; in the bar it reads as one row. */
+.pb-topbar .pb-account {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
 .pb-side {
   position: sticky;
   top: 0;
@@ -33,6 +59,16 @@
   padding: 28px 22px;
   border-right: 1px solid var(--theme-border);
   background: var(--theme-surface-muted);
+}
+/* One column of fields: heading, form and the legal row share one centre line. */
+.pb-stage.pb-stage-narrow {
+  width: min(100% - 48px, 420px);
+  text-align: center;
+}
+.pb-stage-narrow .onboarding-field,
+.pb-stage-narrow .development-access {
+  /* A label read over its field, so those stay left even when the page is centred. */
+  text-align: left;
 }
 .pb-stage {
   width: min(100% - 48px, 600px);
