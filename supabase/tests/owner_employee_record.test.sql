@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(11);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values ('14000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'owner-record@example.test', '', '{}', '{}', now(), now());
@@ -29,7 +29,7 @@ select public.update_owner_onboarding_service(
   'Owner Record Co', 2::smallint, false,
   (select revision from public.workspace_onboarding
    where workspace_id = (select workspace_id from owner_record_target)),
-  null, null, null
+  null, null
 );
 
 select is(
@@ -52,25 +52,18 @@ select is(
   '',
   'the system writes nothing into a manager note'
 );
-select ok(
-  (select is_excluded_from_schedule from public.employee_profiles
-   where workspace_id = (select workspace_id from owner_record_target)),
-  'an owner who was not asked is left off the schedule'
-);
-
--- Saying yes puts them on it, and the answer survives further steps.
-select public.update_owner_onboarding_service(
-  '14000000-0000-4000-8000-000000000001',
-  (select workspace_id from owner_record_target),
-  'Owner Record Co', 3::smallint, false,
-  (select revision from public.workspace_onboarding
-   where workspace_id = (select workspace_id from owner_record_target)),
-  null, null, true
-);
+-- On the schedule like everyone else; hiding is a choice made in the row, not
+-- a question the wizard asks.
 select ok(
   not (select is_excluded_from_schedule from public.employee_profiles
        where workspace_id = (select workspace_id from owner_record_target)),
-  'an owner who works shifts is on the schedule with the team'
+  'the owner arrives on the schedule like any other employee'
+);
+select is(
+  (select first_name || ' ' || last_name from public.employee_profiles
+   where workspace_id = (select workspace_id from owner_record_target)),
+  'Mert Ali Tepebas',
+  'the name typed at sign-up is the name the workspace files them under'
 );
 
 -- What the employees tab says is what the workspace decided to call this
@@ -96,7 +89,7 @@ select public.update_owner_onboarding_service(
   'Owner Record Co', 4::smallint, true,
   (select revision from public.workspace_onboarding
    where workspace_id = (select workspace_id from owner_record_target)),
-  null, null, true
+  null, null
 );
 
 select is(
@@ -117,6 +110,23 @@ select is(
    where id = (select workspace_id from owner_record_target)),
   'active',
   'the workspace is open once its setup is done'
+);
+
+-- Every location and every job, the way a manager adding somebody by hand
+-- would leave it.
+select is(
+  (select count(*)::integer from public.employee_location_assignments
+   where workspace_id = (select workspace_id from owner_record_target)
+     and ended_at is null),
+  1,
+  'the owner can work at every location the setup created'
+);
+select is(
+  (select count(*)::integer from public.employee_job_assignments
+   where workspace_id = (select workspace_id from owner_record_target)
+     and ended_at is null),
+  1,
+  'the owner can work every job the setup created'
 );
 
 select * from finish();

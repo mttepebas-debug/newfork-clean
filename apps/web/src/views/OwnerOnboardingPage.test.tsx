@@ -220,7 +220,6 @@ describe("OwnerOnboardingPage", () => {
       nextStep: 2,
       complete: false,
       expectedRevision: 1,
-      ownerWorksShifts: false,
     });
     expect(saveLocation).not.toHaveBeenCalled();
     expect(
@@ -253,31 +252,6 @@ describe("OwnerOnboardingPage", () => {
     expect(saveOwnerOnboarding).not.toHaveBeenCalled();
   });
 
-  // The owner used to be filed as excluded from the schedule without anyone
-  // asking, which is wrong for the owner who works alongside the team.
-  it("puts the owner on the schedule when they say they work shifts", async () => {
-    renderPage();
-
-    expect(
-      await screen.findByRole("heading", { name: "Name your workspace" }),
-    ).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Your full name"), {
-      target: { value: "Taylor Owner" },
-    });
-    fireEvent.click(screen.getByLabelText(/I work shifts too/));
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-
-    await waitFor(() =>
-      expect(saveOwnerOnboarding).toHaveBeenCalledWith(supabaseClient, {
-        workspaceId,
-        workspaceName: "Meyhouse",
-        nextStep: 2,
-        complete: false,
-        expectedRevision: 1,
-        ownerWorksShifts: true,
-      }),
-    );
-  });
 
   it("supports keyboard-style form submission for workspace identity", async () => {
     renderPage();
@@ -297,8 +271,7 @@ describe("OwnerOnboardingPage", () => {
         nextStep: 2,
         complete: false,
         expectedRevision: 1,
-        ownerWorksShifts: false,
-      }),
+        }),
     );
     expect(authState.updateAccount).toHaveBeenCalledWith(
       "Owner User",

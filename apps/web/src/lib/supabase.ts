@@ -594,7 +594,6 @@ export async function saveOwnerOnboarding(
     readonly expectedRevision?: number | null;
     readonly ownerFirstName?: string;
     readonly ownerLastName?: string;
-    readonly ownerWorksShifts?: boolean;
   },
 ): Promise<void> {
   await apiRequest(
@@ -609,9 +608,6 @@ export async function saveOwnerOnboarding(
         expectedRevision: input.expectedRevision ?? null,
         ...(input.ownerFirstName ? { ownerFirstName: input.ownerFirstName } : {}),
         ...(input.ownerLastName ? { ownerLastName: input.ownerLastName } : {}),
-        ...(input.ownerWorksShifts === undefined
-          ? {}
-          : { ownerWorksShifts: input.ownerWorksShifts }),
       }),
     },
   );

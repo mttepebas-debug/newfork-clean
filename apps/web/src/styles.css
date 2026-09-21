@@ -11035,35 +11035,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   grid-column: 1 / -1;
 }
 
-/* A yes/no the wizard asks inline: the box sits beside its sentence rather than
-   above it, so it does not read as another field to fill in. */
-/* `.onboarding-form label` sets display:block at the same weight plus an
-   element, so the class alone loses to it. */
-.onboarding-form label.owner-onboarding-choice {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 12px 14px;
-  border: 1px solid var(--theme-border);
-  border-radius: 8px;
-  background: var(--theme-surface);
-  font-weight: 600;
-}
-.onboarding-form label.owner-onboarding-choice input[type="checkbox"] {
-  width: auto;
-  margin: 2px 0 0;
-  accent-color: var(--theme-accent);
-}
-.onboarding-form label.owner-onboarding-choice span {
-  display: grid;
-  gap: 2px;
-}
-.onboarding-form label.owner-onboarding-choice small {
-  color: var(--theme-muted);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.45;
-}
 .onboarding-form input,
 .onboarding-form select,
 .settings-form input,
