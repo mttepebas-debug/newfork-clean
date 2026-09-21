@@ -822,7 +822,7 @@ select throws_ok(
     'scheduled_end_period',
     null,
     true,
-    '2026-09-19T12:00:00.000Z'
+    (now() + interval '30 days')
   )$$,
   '42501',
   'workspace owner access required',
@@ -968,7 +968,7 @@ select lives_ok(
     'scheduled_end_period',
     null,
     true,
-    '2026-09-19T12:00:00.000Z'
+    (now() + interval '30 days')
   )$$,
   'owner can schedule closure at period end'
 );
@@ -1036,7 +1036,7 @@ select throws_ok(
     'scheduled_end_period',
     null,
     true,
-    '2026-09-19T12:00:00.000Z'
+    (now() + interval '30 days')
   )$$,
   '02000',
   'workspace not found',

@@ -1107,9 +1107,9 @@ describe("shared contracts", () => {
 
     const cases = [
       ["active", "active", true],
-      ["invited", "pending", false],
       ["pending_activation", "pending", false],
       ["suspended", "suspended", false],
+      ["removed", "removed", false],
     ] as const;
 
     for (const [membershipStatus, summaryStatus, expectedActive] of cases) {

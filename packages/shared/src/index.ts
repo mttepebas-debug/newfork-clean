@@ -62,9 +62,9 @@ export type WorkspaceRole = z.infer<typeof workspaceRoleSchema>;
 
 export const workspaceMembershipLifecycleStatusSchema = z.enum([
   "active",
-  "invited",
   "pending_activation",
   "suspended",
+  "removed",
 ]);
 export type WorkspaceMembershipLifecycleStatus = z.infer<
   typeof workspaceMembershipLifecycleStatusSchema
@@ -74,13 +74,19 @@ export const workspaceSummaryStatusSchema = z.enum([
   "active",
   "pending",
   "suspended",
+  "removed",
 ]);
 export type WorkspaceSummaryStatus = z.infer<
   typeof workspaceSummaryStatusSchema
 >;
 
+// What list_my_workspaces can return, not every label the database type has:
+// a closed workspace ('deleted' in the database, which is what the plan calls
+// closed) is filtered out there, so a row claiming it is a malformed row.
 export const workspaceLifecycleStatusSchema = z.enum([
+  "draft",
   "active",
+  "suspended",
   "closure_scheduled",
 ]);
 export type WorkspaceLifecycleStatus = z.infer<
@@ -454,8 +460,9 @@ export function workspaceSummaryFromRow(input: unknown): WorkspaceSummary {
 export function workspaceSummaryStatusFromMembershipStatus(
   status: WorkspaceMembershipLifecycleStatus,
 ): WorkspaceSummaryStatus {
+  if (status === "removed") return "removed";
   if (status === "suspended") return "suspended";
-  if (status === "invited" || status === "pending_activation") return "pending";
+  if (status === "pending_activation") return "pending";
   return "active";
 }
 
