@@ -89,5 +89,6 @@ Katılım mimarisi PLAN'ı (M/R/E/G/B/S) kanıtla ölçüldü: 45 maddenin 9'u �
 
 **Bu task'ın iddialarından ölçümle düşenler:** B3 ("API artık 403 dönüyor" — 409 dönüyor), B9 ("auth hatasında 409" — 401 dönüyor, düzelmiş), B7 ("revoke kabul edilmedi" — çalışıyor, 204).
 
-**Dilimler (sıra bağlayıcı):** JOIN-002 (durum modeli, DB) → JOIN-003 (resolver + tek hub) → JOIN-004 (davet sözleşmesi + altı hâl + admin) → JOIN-005 (switcher + davet bildirimi) → JOIN-006 (durum ekranları) → JOIN-007 (senaryo kapanışı).
+**Dilimler (sıra bağlayıcı):** JOIN-002 (durum modeli, DB) → JOIN-003 (resolver + tek hub) → JOIN-004 (davet sözleşmesi + altı hâl + admin) → JOIN-008 (kimlik sahipliği ve owner'ın çalışan kaydı, DB) → JOIN-005 (switcher + davet bildirimi) → JOIN-006 (durum ekranları) → JOIN-009 (kapı ekranları ve hesap alanı tasarımı) → JOIN-007 (senaryo kapanışı).
 
+**Kullanıcı kapsam genişletmesi (2026-09-21, ikinci mesaj):** login, signup, onboarding, switcher ve account sekmelerinin tamamı yeniden tasarlanacak; hesap ↔ üyelik ↔ istihdam kaydı bilgi sahipliği yeniden kurgulanacak; workspace kuran kişinin resmî adı ve employees sekmesindeki girdisi düzeltilecek; owner'ın da shift alan bir çalışan olabileceği desteklenecek. Karşılıkları JOIN-008 ve JOIN-009.
