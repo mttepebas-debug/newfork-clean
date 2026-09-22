@@ -145,7 +145,7 @@ export default function WorkspacesPage() {
     const timer = window.setTimeout(() => {
       void searchWorkspaceOwnershipCandidates(client, transferTarget.id, candidateQuery.trim())
         .then(items => { if (active) setCandidates(items); })
-        .catch(error => { if (active) setSearchError(error instanceof Error ? error.message : "Admins could not be loaded"); })
+        .catch(() => { if (active) setSearchError("Admins could not be searched right now. Try the search again."); })
         .finally(() => { if (active) setSearching(false); });
     }, 300);
     return () => { active = false; window.clearTimeout(timer); };
@@ -294,15 +294,21 @@ export default function WorkspacesPage() {
   const reauthenticateForSensitiveAction = async (): Promise<void> => {
     if (!supabaseClient) return;
     const password = sensitivePassword.trim();
-    if (!password) throw new Error("Enter your account password to continue");
+    if (!password)
+      throw new PersonFacingError("Type your account password to continue.");
     if (!account?.email)
-      throw new Error("Account email is required to reauthenticate");
+      throw new PersonFacingError(
+        "Sign out and sign in again, then try once more.",
+      );
     const { error: signInError } =
       await supabaseClient.auth.signInWithPassword({
         email: account.email,
         password,
       });
-    if (signInError) throw new Error("Recent reauthentication failed");
+    if (signInError)
+      throw new PersonFacingError(
+        "That password did not match. Type it again.",
+      );
   };
 
   const submitClosure = async (): Promise<void> => {
@@ -340,9 +346,10 @@ export default function WorkspacesPage() {
       setSensitivePassword("");
     } catch (closureError: unknown) {
       setError(
-        closureError instanceof Error
-          ? closureError.message
-          : "Workspace closure could not be requested",
+        lifecycleMessage(
+          closureError,
+          "This workspace was not closed. Reload the page and try again.",
+        ),
       );
     } finally {
       setClosingWorkspaceId(null);
@@ -358,9 +365,10 @@ export default function WorkspacesPage() {
       await reloadWorkspaces();
     } catch (closureError: unknown) {
       setError(
-        closureError instanceof Error
-          ? closureError.message
-          : "Workspace closure could not be cancelled",
+        lifecycleMessage(
+          closureError,
+          "The scheduled closure is still in place. Reload the page and try again.",
+        ),
       );
     } finally {
       setClosingWorkspaceId(null);
@@ -394,9 +402,10 @@ export default function WorkspacesPage() {
       setSensitivePassword("");
     } catch (transferError: unknown) {
       setError(
-        transferError instanceof Error
-          ? transferError.message
-          : "Ownership transfer could not be started",
+        lifecycleMessage(
+          transferError,
+          "The transfer was not started. Reload the page and try again.",
+        ),
       );
     } finally {
       setTransferringWorkspaceId(null);
@@ -424,14 +433,23 @@ export default function WorkspacesPage() {
       setSensitivePassword("");
     } catch (transferError: unknown) {
       setError(
-        transferError instanceof Error
-          ? transferError.message
-          : "Ownership transfer response could not be saved",
+        lifecycleMessage(
+          transferError,
+          "Your answer was not saved. Reload the page and answer again.",
+        ),
       );
     } finally {
       setTransferringWorkspaceId(null);
     }
   };
+
+  // What went wrong belongs next to the thing that went wrong, not at the end
+  // of the page. Only one of these is ever on screen at a time.
+  const errorNotice = error ? (
+    <p className="form-error" role="alert">
+      {error}
+    </p>
+  ) : null;
 
   const cancelTransfer = async (workspace: WorkspaceSummary): Promise<void> => {
     if (!supabaseClient || !workspace.pendingOwnershipTransfer) return;
@@ -440,7 +458,14 @@ export default function WorkspacesPage() {
     try {
       await cancelWorkspaceOwnershipTransfer(supabaseClient, workspace.id, workspace.pendingOwnershipTransfer.id);
       await reloadWorkspaces();
-    } catch (error) { setError(error instanceof Error ? error.message : "Transfer could not be cancelled"); }
+    } catch (error) {
+      setError(
+        lifecycleMessage(
+          error,
+          "The transfer is still waiting. Reload the page and try again.",
+        ),
+      );
+    }
     finally { setTransferringWorkspaceId(null); }
   };
 
@@ -464,7 +489,10 @@ export default function WorkspacesPage() {
       {orderedWorkspaces.filter(workspace => workspace.pendingOwnershipTransfer?.role === "target").map(workspace => (
         <div key={workspace.id} className="account-notice workspace-transfer-banner" role="region" aria-label={`Ownership request for ${workspace.name}`}>
           <strong>Ownership transfer · {workspace.name}</strong>
-          <p>You have been asked to become the owner. Review the request before it expires.</p>
+          <p>
+            The owner has asked you to take {workspace.name} over. Answer by{" "}
+            {formatDate(workspace.pendingOwnershipTransfer?.expiresAt ?? null, "the deadline in the request")}, or the request runs out.
+          </p>
           <div className="workspace-row-actions">
             {(["reject", "accept"] as const).map(action => (
               <Button key={action} type="button" className={action === "accept" ? "primary-button compact-button" : "secondary-button compact-button"}
@@ -523,7 +551,7 @@ export default function WorkspacesPage() {
                   {draft ? <StatusBadge tone="progress">Setup in progress</StatusBadge> : null}
                   {workspace.isActive ? <StatusBadge>Default</StatusBadge> : null}
                   {lifecycleStatus === "closure_scheduled"
-                    ? <StatusBadge>Closes {formatClosureDate(workspace.closureEffectiveAt ?? null)}</StatusBadge>
+                    ? <StatusBadge>Closes {formatDate(workspace.closureEffectiveAt ?? null, "on its scheduled date")}</StatusBadge>
                     : null}
                   {pendingTransfer
                     ? <StatusBadge tone="progress">Ownership transfer {pendingTransfer.role === "target" ? "needs response" : "pending"}</StatusBadge>
@@ -633,11 +661,13 @@ export default function WorkspacesPage() {
         >
           <div>
             <strong id="workspace-transfer-title">Transfer ownership</strong>
+            {/* The rule is stated once, then what it costs, then the way
+                back out of it. */}
             <p id="workspace-transfer-description">
-              The target must be an active admin with completed onboarding and a
-              verified email. Accepting the transfer promotes that admin to
-              owner, demotes you to admin and requires billing details to be
-              added again before the next payment.
+              Only an admin who has finished setting up their account and
+              confirmed their email can take this workspace over. When they
+              accept, they become the owner and you become an admin. You can
+              cancel while the request is still waiting.
             </p>
           </div>
           <label className="account-field">
@@ -652,7 +682,9 @@ export default function WorkspacesPage() {
           <div className="workspace-candidates" aria-live="polite">
             {searching ? <p role="status">Searching eligible admins...</p> : null}
             {searchError ? <p role="alert" className="form-error">{searchError}</p> : null}
-            {!searching && !searchError && candidateQuery.trim().length >= 2 && candidates.length === 0 ? <p>No eligible admins found.</p> : null}
+            {!searching && !searchError && candidateQuery.trim().length >= 2 && candidates.length === 0
+              ? <p>Nobody here matches that and can take the workspace over. Make someone an admin in Employees and have them finish setting up, then come back.</p>
+              : null}
             {candidates.map(candidate => <label className="workspace-candidate" key={candidate.userId}>
               <input type="radio" name="ownership-candidate" checked={transferTargetUserId === candidate.userId}
                 onChange={() => setTransferTargetUserId(candidate.userId)} />
@@ -667,7 +699,7 @@ export default function WorkspacesPage() {
                 setTransferAcknowledged(event.target.checked)
               }
             />
-            <span>I understand an accepted ownership transfer cannot be reversed. I can cancel while it is pending.</span>
+            <span>I understand I cannot undo this once they accept it.</span>
           </label>
           <label className="account-field">
             Account password
@@ -706,6 +738,7 @@ export default function WorkspacesPage() {
               Cancel
             </Button>
           </div>
+          {errorNotice}
         </section>
       ) : null}
       {closureTarget ? (
@@ -719,19 +752,21 @@ export default function WorkspacesPage() {
           <div>
             <strong id="workspace-closure-title">
               {closureTarget.mode === "immediate"
-                ? "Close organization now"
-                : "Schedule organization closure"}
+                ? `Close ${closureTarget.workspace.name} now`
+                : `Schedule ${closureTarget.workspace.name} to close`}
             </strong>
+            {/* One sentence for the whole rule: what happens to everyone at
+                once, not a line per person it happens to. */}
             <p id="workspace-closure-description">
               {closureTarget.mode === "immediate"
-                ? "This cancels active access immediately, revokes pending invitations and removes this organization from every member's switcher. It cannot be restored by support."
-                : "This keeps access until the current trial or paid period ends. You can cancel the closure before that time."}
+                ? "Everyone loses access to this workspace the moment you close it, and invitations that are still waiting stop working. Nobody, including support, can bring it back."
+                : "Everyone keeps access until the closure date, and you can cancel the closure any time before it."}
             </p>
           </div>
           {closureTarget.mode === "immediate" ? (
             <>
               <label className="account-field">
-                Type organization name
+                Type the workspace name
                 <input
                   value={closureNameConfirmation}
                   onChange={(event) =>
@@ -757,7 +792,11 @@ export default function WorkspacesPage() {
               checked={closureAcknowledged}
               onChange={(event) => setClosureAcknowledged(event.target.checked)}
             />
-            <span>I understand the organization closure impact.</span>
+            <span>
+              {closureTarget.mode === "immediate"
+                ? "I understand everyone loses access and this cannot be undone."
+                : "I understand everyone loses access on the closure date."}
+            </span>
           </label>
           <div className="workspace-row-actions">
             <Button
@@ -791,9 +830,10 @@ export default function WorkspacesPage() {
                 setSensitivePassword("");
               }}
             >
-              Keep organization
+              Keep this workspace
             </Button>
           </div>
+          {errorNotice}
         </section>
       ) : null}
       {transferResponseTarget ? (
@@ -807,11 +847,13 @@ export default function WorkspacesPage() {
           <div>
             <strong id="workspace-transfer-response-title">
               {transferResponseTarget.action === "accept"
-                ? "Accept ownership transfer"
-                : "Reject ownership transfer"}
+                ? `Take over ${transferResponseTarget.workspace.name}`
+                : `Turn down ${transferResponseTarget.workspace.name}`}
             </strong>
             <p id="workspace-transfer-response-description">
-              {transferResponseTarget.action === "accept" ? "Enter your account password to accept ownership of this workspace." : "Reject this request without changing workspace ownership. No password is needed."}
+              {transferResponseTarget.action === "accept"
+                ? "You become the owner of this workspace and the owner who asked you becomes an admin. Type your account password to confirm."
+                : "Ownership stays where it is and nothing about your access changes. The owner can ask you again later."}
             </p>
           </div>
           {transferResponseTarget.action === "accept" ? <label className="account-field">
@@ -862,6 +904,7 @@ export default function WorkspacesPage() {
               Cancel
             </Button>
           </div>
+          {errorNotice}
         </section>
       ) : null}
       {createOpen && canCreate ? <dialog ref={createDialog} className="account-confirmation-dialog account-create-workspace-dialog" aria-labelledby="create-workspace-title"
@@ -899,13 +942,62 @@ export default function WorkspacesPage() {
       </form>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       </dialog> : null}
-      {error && !createOpen ? (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {!createOpen && !closureTarget && !transferTarget && !transferResponseTarget
+        ? errorNotice
+        : null}
     </section>
   );
+}
+
+/** An error whose sentence was written for the person, so it is shown as it is. */
+class PersonFacingError extends Error {}
+
+/**
+ * The closure and transfer rules live in the database, and it states them for
+ * the people who wrote them. Each one is said here once, in the words of the
+ * person reading it, and with the single thing they can do next. A sentence
+ * that is not listed never reaches the screen: the flow shows its own fallback,
+ * so nobody is left reading a rule written for somebody else.
+ */
+const lifecycleSentences: Readonly<Record<string, string>> = {
+  "pending ownership transfer must be resolved before workspace closure":
+    "An ownership transfer is still waiting on this workspace. Cancel it from the actions menu, then close the workspace.",
+  "workspace owner access required":
+    "Only the owner of this workspace can do that, and you are not the owner any more. Reload the page to see where you stand.",
+  "workspace not found":
+    "This workspace is already closed. Reload the page to see the ones you still have.",
+  "workspace closure is not scheduled":
+    "This workspace has no closure scheduled any more. Reload the page to see its current state.",
+  "workspace name confirmation does not match":
+    "The name you typed is not this workspace's name. Type it exactly as it appears on the row.",
+  "workspace closure requires explicit acknowledgement":
+    "Tick the box to say you understand what closing does, then try again.",
+  "Recent reauthentication required":
+    "You have been signed in too long for this. Sign out, sign in again, and come back to this screen.",
+  "pending ownership transfer already exists":
+    "This workspace already has a transfer waiting. Cancel that one from the actions menu before starting another.",
+  "ownership transfer target must be an active admin":
+    "That person is no longer an admin here. Pick someone else, or make them an admin in Employees first.",
+  "ownership transfer target must have a verified email":
+    "That person has not confirmed their email yet. Ask them to confirm it, then start the transfer again.",
+  "ownership transfer target must have completed onboarding":
+    "That person has not finished setting up their account. Ask them to finish it, then start the transfer again.",
+  "ownership transfer target must be another account":
+    "You already own this workspace. Pick somebody else to hand it to.",
+  "pending ownership transfer not found":
+    "This request is no longer waiting for an answer. Reload the page to see the workspaces you have.",
+  "ownership transfer target access required":
+    "This request was not sent to you. Reload the page to see the ones that were.",
+  "ownership transfer has expired":
+    "This request ran out of time. Ask the owner to send it again.",
+};
+
+/** The sentence for this failure, never the server's own. */
+function lifecycleMessage(error: unknown, fallback: string): string {
+  if (error instanceof PersonFacingError) return error.message;
+  const sentence =
+    error instanceof Error ? lifecycleSentences[error.message] : undefined;
+  return sentence ?? fallback;
 }
 
 function workspaceDestinationFromRole(role: WorkspaceSummary["role"]): string {
@@ -927,8 +1019,9 @@ function workspaceSummaryFromContext(
   };
 }
 
-function formatClosureDate(value: string | null): string {
-  if (!value) return "at period end";
+/** A date the person can read, or the words to use when there is no date yet. */
+function formatDate(value: string | null, fallback: string): string {
+  if (!value) return fallback;
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",

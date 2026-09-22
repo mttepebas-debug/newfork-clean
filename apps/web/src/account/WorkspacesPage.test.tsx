@@ -326,9 +326,9 @@ describe("WorkspacesPage", () => {
     renderPage();
     await openWorkspaceActions();
     fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
-    fireEvent.change(screen.getByLabelText("Type organization name"), { target: { value: "Meyhouse" } });
+    fireEvent.change(screen.getByLabelText("Type the workspace name"), { target: { value: "Meyhouse" } });
     fireEvent.change(screen.getByLabelText("Account password"), { target: { value: "fresh-password" } });
-    fireEvent.click(screen.getByLabelText(/I understand the organization closure impact/));
+    fireEvent.click(screen.getByLabelText(/I understand everyone loses access/));
     fireEvent.click(screen.getByRole("button", { name: "Close now" }));
     await waitFor(() => expect(screen.getByLabelText("Current path").textContent).toBe(another ? "/app/employee-hub" : "/organization-switcher"));
     expect(clearTabWorkspaceId).toHaveBeenCalled();
@@ -535,10 +535,10 @@ describe("WorkspacesPage", () => {
     await openWorkspaceActions();
     fireEvent.click(screen.getByRole("menuitem", { name: "Close later" }));
     expect(
-      screen.getByRole("region", { name: "Schedule organization closure" }),
+      screen.getByRole("region", { name: "Schedule Meyhouse to close" }),
     ).toBeTruthy();
     fireEvent.click(
-      screen.getByLabelText(/I understand the organization closure impact/),
+      screen.getByLabelText(/I understand everyone loses access/),
     );
     fireEvent.click(screen.getByRole("button", { name: "Schedule close" }));
 
@@ -564,7 +564,7 @@ describe("WorkspacesPage", () => {
     await openWorkspaceActions();
     fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
     const closureRegion = screen.getByRole("region", {
-      name: "Close organization now",
+      name: "Close Meyhouse now",
     });
     expect(closureRegion).toBeTruthy();
     expect(closureRegion.getAttribute("aria-describedby")).toBe(
@@ -572,16 +572,16 @@ describe("WorkspacesPage", () => {
     );
     expect(
       document.getElementById("workspace-closure-description")?.textContent,
-    ).toContain("It cannot be restored by support");
+    ).toContain("Nobody, including support, can bring it back");
     fireEvent.click(
-      screen.getByLabelText(/I understand the organization closure impact/),
+      screen.getByLabelText(/I understand everyone loses access/),
     );
 
     const submitButton = screen.getByRole("button", {
       name: "Close now",
     });
     expect(submitButton).toHaveProperty("disabled", true);
-    fireEvent.change(screen.getByLabelText("Type organization name"), {
+    fireEvent.change(screen.getByLabelText("Type the workspace name"), {
       target: { value: "Meyhouse" },
     });
     fireEvent.change(screen.getByLabelText("Account password"), {
@@ -618,9 +618,9 @@ describe("WorkspacesPage", () => {
     await openWorkspaceActions();
     fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
     fireEvent.click(
-      screen.getByLabelText(/I understand the organization closure impact/),
+      screen.getByLabelText(/I understand everyone loses access/),
     );
-    fireEvent.change(screen.getByLabelText("Type organization name"), {
+    fireEvent.change(screen.getByLabelText("Type the workspace name"), {
       target: { value: "Meyhouse" },
     });
     fireEvent.change(screen.getByLabelText("Account password"), {
@@ -628,9 +628,10 @@ describe("WorkspacesPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Close now" }));
 
-    expect((await screen.findByRole("alert")).textContent).toContain(
-      "Recent reauthentication failed",
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "That password did not match. Type it again.",
     );
+    expect(screen.queryByText(/Recent reauthentication failed/)).toBeNull();
     expect(requestWorkspaceClosure).not.toHaveBeenCalled();
   });
 
@@ -649,7 +650,7 @@ describe("WorkspacesPage", () => {
     );
     expect(
       document.getElementById("workspace-transfer-description")?.textContent,
-    ).toContain("requires billing details to be added again");
+    ).toContain("they become the owner and you become an admin");
 
     const submitButton = screen.getByRole("button", { name: "Start transfer" });
     expect(submitButton).toHaveProperty("disabled", true);
@@ -659,7 +660,7 @@ describe("WorkspacesPage", () => {
     });
     fireEvent.click(await screen.findByRole("radio", { name: /Eligible Admin/ }));
     fireEvent.click(
-      screen.getByLabelText(/I understand an accepted ownership transfer/),
+      screen.getByLabelText(/I understand I cannot undo this/),
     );
     fireEvent.change(screen.getByLabelText("Account password"), {
       target: { value: "fresh-password" },
@@ -702,7 +703,7 @@ describe("WorkspacesPage", () => {
       }),
     );
     const responseRegion = screen.getByRole("region", {
-      name: "Accept ownership transfer",
+      name: "Take over Meyhouse",
     });
     expect(responseRegion).toBeTruthy();
     expect(responseRegion.getAttribute("aria-describedby")).toBe(
@@ -751,7 +752,7 @@ describe("WorkspacesPage", () => {
       }),
     );
     expect(
-      screen.getByRole("region", { name: "Reject ownership transfer" }),
+      screen.getByRole("region", { name: "Turn down Meyhouse" }),
     ).toBeTruthy();
     expect(screen.queryByLabelText("Account password")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Reject transfer" }));
@@ -768,5 +769,200 @@ describe("WorkspacesPage", () => {
       ),
     );
     expect(refresh).toHaveBeenCalled();
+  });
+
+  async function openScheduledClosure() {
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close later" }));
+    fireEvent.click(screen.getByLabelText(/I understand everyone loses access/));
+    fireEvent.click(screen.getByRole("button", { name: "Schedule close" }));
+  }
+
+  it("states the rule that blocks a closure once, with the way out of it", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
+      new Error("pending ownership transfer must be resolved before workspace closure"),
+    );
+    renderPage();
+
+    await openScheduledClosure();
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "An ownership transfer is still waiting on this workspace. Cancel it from the actions menu, then close the workspace.",
+    );
+    expect(screen.queryByText(/pending ownership transfer must be resolved/)).toBeNull();
+  });
+
+  it("keeps a server sentence it does not know off the screen", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
+      new Error("new row violates check constraint workspace_closure_requests_mode_check"),
+    );
+    renderPage();
+
+    await openScheduledClosure();
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This workspace was not closed. Reload the page and try again.",
+    );
+    expect(screen.queryByText(/violates check constraint/)).toBeNull();
+  });
+
+  it("puts the failure inside the panel that failed", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
+      new Error("workspace owner access required"),
+    );
+    renderPage();
+
+    await openScheduledClosure();
+
+    const region = screen.getByRole("region", { name: "Schedule Meyhouse to close" });
+    expect((await within(region).findByRole("alert")).textContent).toBe(
+      "Only the owner of this workspace can do that, and you are not the owner any more. Reload the page to see where you stand.",
+    );
+  });
+
+  it("does not print the server's sentence when the admin search fails", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(searchWorkspaceOwnershipCandidates).mockRejectedValue(
+      new Error("permission denied for relation workspace_memberships"),
+    );
+    renderPage();
+
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Transfer ownership" }));
+    fireEvent.change(screen.getByLabelText("Find an admin by name or email"), {
+      target: { value: "Admin" },
+    });
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Admins could not be searched right now. Try the search again.",
+    );
+    expect(screen.queryByText(/permission denied for relation/)).toBeNull();
+  });
+
+  it("names the next step when nobody can take the workspace over", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(searchWorkspaceOwnershipCandidates).mockResolvedValue([]);
+    renderPage();
+
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Transfer ownership" }));
+    fireEvent.change(screen.getByLabelText("Find an admin by name or email"), {
+      target: { value: "Admin" },
+    });
+
+    expect(
+      await screen.findByText(/Make someone an admin in Employees/),
+    ).toBeTruthy();
+  });
+
+  it("never calls a workspace an organization while it is being closed", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    renderPage();
+
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
+    expect(
+      screen.getByRole("region", { name: "Close Meyhouse now" }).textContent,
+    ).not.toMatch(/organi[sz]ation|business|tenant/i);
+  });
+
+  it("tells a target admin when the request runs out", async () => {
+    const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+    const label = new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(expiresAt));
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      {
+        ...ownerWorkspace,
+        role: "admin",
+        pendingOwnershipTransfer: { id: transferId, role: "target", expiresAt },
+      },
+    ]);
+    renderPage();
+
+    expect(
+      (await screen.findByRole("region", { name: "Ownership request for Meyhouse" }))
+        .textContent,
+    ).toContain(`Answer by ${label}`);
+  });
+
+  it("speaks for the person when an expired transfer is answered", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      {
+        ...ownerWorkspace,
+        role: "admin",
+        pendingOwnershipTransfer: {
+          id: transferId,
+          role: "target",
+          expiresAt: "2099-01-01T00:00:00Z",
+        },
+      },
+    ]);
+    vi.mocked(respondWorkspaceOwnershipTransfer).mockRejectedValueOnce(
+      new Error("ownership transfer has expired"),
+    );
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Reject owner transfer for Meyhouse" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Reject transfer" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This request ran out of time. Ask the owner to send it again.",
+    );
+    expect(screen.queryByText(/ownership transfer has expired/)).toBeNull();
+  });
+
+  it("speaks for the person when a cancelled closure is already gone", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      {
+        ...ownerWorkspace,
+        lifecycleStatus: "closure_scheduled",
+        closureEffectiveAt: scheduledClosureAt,
+      },
+    ]);
+    vi.mocked(cancelWorkspaceClosure).mockRejectedValueOnce(
+      new Error("workspace closure is not scheduled"),
+    );
+    renderPage();
+
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Cancel close" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This workspace has no closure scheduled any more. Reload the page to see its current state.",
+    );
+    expect(screen.queryByText(/workspace closure is not scheduled/)).toBeNull();
+  });
+
+  it("speaks for the person when a cancelled transfer is already gone", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      {
+        ...ownerWorkspace,
+        pendingOwnershipTransfer: {
+          id: transferId,
+          role: "initiator",
+          expiresAt: "2099-01-01T00:00:00Z",
+        },
+      },
+    ]);
+    vi.mocked(cancelWorkspaceOwnershipTransfer).mockRejectedValueOnce(
+      new Error("pending ownership transfer not found"),
+    );
+    renderPage();
+
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Cancel transfer" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This request is no longer waiting for an answer. Reload the page to see the workspaces you have.",
+    );
+    expect(screen.queryByText(/pending ownership transfer not found/)).toBeNull();
   });
 });
