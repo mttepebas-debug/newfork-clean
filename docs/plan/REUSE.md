@@ -20,6 +20,7 @@ Yeni UI ya da akış yazmadan önce buradaki girdiye bak. Ölçü ve CSS değerl
 | DATA-02 | Schedule RPC review hatası | migration `20260915075033_bl064_schedule_conflict_result.sql`, `api/src/schedule/schedule-routes.ts` | İş kuralı reddi PT409 döner; 40001 kullanma (PostgREST 40001'i yeniden dener). |
 | DATA-03 | Schedule export ve async save | `schedule/export-v2/*` (rescue), `SchedulePage` içindeki mutationContext | Badge metni için ShiftCard'daki `formatShiftLabelDisplay` kullanılır; ikinci bir label motoru ya da save motoru yazma. |
 | DATA-04 | Edit-session lease | migration `20260915112516_bl069_resume_edit_session_lease.sql` | Aynı sahip session'ı yeniden alırsa lease yenilenir, revision korunur. |
+| DATA-05 | Haftalık müsaitliği bir giriş modundan ötekine çevirmek | `public.weekly_preference_convert(w, preference, target_mode)`, migration `20260922180000_changing_the_entry_mode_converts_every_saved_week.sql`; çağıran yer `weekly_preference_settings_save_service` | Kural tek yerde: saatten tipe en az 1 dakika çakışan aktif tip (sınıra değmek çakışma değil), tipten saate en erken başlangıç–en geç bitiş, gece yarısını aşan tip 24:00'e kadar, boş ve tüm-gün gün olduğu gibi. İkinci bir dönüştürücü yazma. Dönüşüm kayıplı; eski hafta `weekly_preference_events`'e yazılmadan değiştirilmez. |
 
 ## Sayfa envanteri
 
@@ -65,7 +66,7 @@ gelince çözülür.
 | ayarlar | LocationsSettingsPage | `locations` | `settings/LocationsSettingsPage.tsx` | belgelenmedi |
 | ayarlar | JobsSettingsPage | `jobs` | `settings/JobsSettingsPage.tsx` | belgelenmedi |
 | ayarlar | RolesSettingsPage | `roles`, `roles/:roleId` | `settings/RolesSettingsPage.tsx` | belgelenmedi |
-| ayarlar | SchedulingSettingsPage | `scheduling` | `settings/SchedulingSettingsPage.tsx` | belgelenmedi |
+| ayarlar | SchedulingSettingsPage | `scheduling` | `settings/SchedulingSettingsPage.tsx` | belgelendi 2026-09-22 |
 | ayarlar | ShiftTypesSettingsPage | `scheduling/shift-types` | `settings/ShiftTypesSettingsPage.tsx` | belgelenmedi |
 | ayarlar | ShiftLabelsSettingsPage | `scheduling/shift-labels` | `settings/ShiftLabelsSettingsPage.tsx` | belgelenmedi |
 | ayarlar | ShiftCatalogSettingsPage | | `settings/ShiftCatalogSettingsPage.tsx` | belgelenmedi |
@@ -83,3 +84,41 @@ Bir sayfanın bölümü yazılırken başlık `### <Sayfa adı>` olur, tablodaki
 durumu `belgelendi <tarih>` yapılır, ve bölüm şunları söyler: sayfa ne işe
 yarar, yukarıdaki reuse girdilerinden hangilerini kullanır, kendine özgü
 kuralları neler, bilinen tuhaflıkları var mı.
+
+### SchedulingSettingsPage
+
+**Ne işe yarar.** Settings → Scheduling (`/app/settings/scheduling`). İki
+bölüm, iki ayrı kaydetme:
+
+- **Schedule basics**: haftanın ilk günü (Sunday / Monday), "Publish by"
+  hedef günü ve saat biçimi (12 / 24 saat). "Save rules" ile kaydedilir
+  (`update_scheduling_settings_service`). Conflict kuralları bu kayda
+  girmez; onlar Conflict handling sayfasının.
+- **Availability and staffing** (`availability/WeeklyPreferenceSettings.tsx`):
+  müsaitlik giriş modu ("Time range" / "Shift type") ve "Required during
+  onboarding". Kendi Save / Discard düğmeleri ve kendi revizyonu var
+  (`weekly_preference_settings_save_service`).
+
+**Kullandığı ortak parçalar.** UI-03 (`SettingsHeader`). Mod değişince
+çalışanların kayıtlı haftaları DATA-05 ile dönüştürülür.
+
+**Kendine özgü kurallar.**
+- Düzenleme `settings.schedule_rules.manage` izni ister. İzni olmayan
+  Schedule basics'i salt okunur görür; Availability and staffing bölümünü
+  hiç görmez.
+- "Shift type" moduna geçiş, saati eksik aktif bir vardiya tipi varken
+  kapalı; eksik tipler Shift types sayfasına (`?edit=<id>`) linklenir.
+- Mod değişimi (AVAIL-001, 2026-09-22): kaydedince workspace'teki her
+  kayıtlı hafta (çalışanın kendi haftası ve yöneticinin "Manager reminders"
+  haftası) yeni moda çevrilir, eski hali geçmiş tablosuna yazılır, sonra
+  haftası çevrilen çalışanlara "Check your availability" bildirimi gider.
+  Mod seçilir seçilmez not gösterilir: "Saved weeks will be converted to
+  the new entry mode. Employees will be notified to check theirs."
+- Başka biri ayarı bu arada değiştirdiyse taslak korunur, kaydetme kapanır;
+  "Discard and reload" ile en son hal yüklenir.
+
+**Bilinen tuhaflıklar.**
+- `?checklist=setup` ile açılınca (owner kurulum listesinden) hafta başı ve
+  saat biçimi boş gelir; ikisi seçilmeden kaydedilemez.
+- Veri yüklenmeden önce form sabit varsayılanlarla (Monday, 12-hour)
+  çizilir.
