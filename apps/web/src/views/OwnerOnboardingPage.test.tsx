@@ -337,6 +337,9 @@ describe("OwnerOnboardingPage", () => {
           street_address: "1 Main St",
           timezone: "America/Los_Angeles",
         }),
+        // A third argument now: the id when a row is being edited, and nothing
+        // when the form is adding one.
+        undefined,
       ),
     );
     expect(saveOwnerOnboarding).toHaveBeenCalledWith(supabaseClient, {
@@ -390,6 +393,7 @@ describe("OwnerOnboardingPage", () => {
           country_code: "US",
           timezone: "America/New_York",
         }),
+        undefined,
       ),
     );
   });
@@ -448,6 +452,84 @@ describe("OwnerOnboardingPage", () => {
         name: "What jobs do people work?",
       }),
     ).toBeTruthy();
+  });
+
+  it("says the list is empty rather than showing nothing", async () => {
+    vi.mocked(listLocations).mockResolvedValue([]);
+    renderPage(2);
+
+    expect(
+      await screen.findByText("No locations yet. Add the first one below."),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: /continue/i })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
+  // Two places called "Main" are told apart by these, not by the name.
+  it("shows what tells one location from another", async () => {
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    renderPage(2);
+
+    await screen.findByRole("heading", { name: "Where does your team work?" });
+    expect(screen.getByText("MAIN")).toBeTruthy();
+    expect(screen.getByText("Los Angeles, CA")).toBeTruthy();
+    expect(screen.getByText("America/Los_Angeles")).toBeTruthy();
+  });
+
+  it("edits a location in the form instead of asking for all nine fields again", async () => {
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    renderPage(2);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Main Dining" }));
+
+    expect(
+      (screen.getByLabelText("Location name") as HTMLInputElement).value,
+    ).toBe("Main Dining");
+    expect((screen.getByLabelText("City") as HTMLInputElement).value).toBe(
+      "Los Angeles",
+    );
+    // Leaving the edit half done and walking on is the one way out of this
+    // screen that would save nothing and lose the change.
+    expect(screen.getByRole("button", { name: /continue/i })).toHaveProperty(
+      "disabled",
+      true,
+    );
+
+    fireEvent.change(screen.getByLabelText("Location name"), {
+      target: { value: "Main Dining Room" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() =>
+      expect(saveLocation).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({ name: "Main Dining Room" }),
+        locationId,
+      ),
+    );
+  });
+
+  it("says which location already goes by a short name, and saves nothing", async () => {
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    renderPage(2);
+
+    await screen.findByRole("heading", { name: "Where does your team work?" });
+    fireEvent.change(screen.getByLabelText("Location name"), {
+      target: { value: "Main Bar" },
+    });
+    fireEvent.change(screen.getByLabelText("Short name"), {
+      target: { value: "main" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /add location/i }));
+
+    // The unique index would have answered this as a constraint violation with
+    // nowhere to read it.
+    expect(
+      await screen.findByText("Main Dining already goes by that short name."),
+    ).toBeTruthy();
+    expect(saveLocation).not.toHaveBeenCalled();
   });
 
   it("adds a department on its own, and keeps the next job pointed at it", async () => {

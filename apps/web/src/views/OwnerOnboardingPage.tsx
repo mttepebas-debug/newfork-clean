@@ -128,6 +128,9 @@ export default function OwnerOnboardingPage() {
   const [locationDraft, setLocationDraft] = useState(defaultLocation);
   const [locationDraftEpoch, setLocationDraftEpoch] = useState(0);
   const [locationErrors, setLocationErrors] = useState<LocationFieldErrors>({});
+  // Editing a location fills the same form the next one is typed into.
+  // Nine fields is too many to retype because a name has a typo in it.
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
   const [departmentName, setDepartmentName] = useState("");
   const [jobName, setJobName] = useState("");
   const [jobDepartmentId, setJobDepartmentId] = useState("");
@@ -199,6 +202,13 @@ export default function OwnerOnboardingPage() {
     () => jobs.filter((job) => !job.archived_at),
     [jobs],
   );
+  // Saving bumps locationDraftEpoch, which remounts the fields and drops focus
+  // on the body. The next location starts where the last one did.
+  useEffect(() => {
+    if (step !== 2 || locationDraftEpoch === 0) return;
+    document.getElementById("location-name")?.focus();
+  }, [step, locationDraftEpoch]);
+
   const jobsIn = (departmentId: string): Job[] =>
     activeJobs.filter((job) => job.department_id === departmentId);
   // Nothing here makes one, but older data can carry a job whose department is
@@ -217,6 +227,9 @@ export default function OwnerOnboardingPage() {
   );
   const creatingDepartment =
     addingDepartment || activeDepartments.length === 0;
+  const editingLocationName =
+    activeLocations.find((location) => location.id === editingLocationId)?.name ??
+    null;
   // Same rule, same source as the in-app employee drawer: a name, and either an
   // assignment or one of the two exemptions.
   const teamDraftReady = employeeCreateReadiness(employeeDraft).employeeReady;
@@ -317,6 +330,31 @@ export default function OwnerOnboardingPage() {
     }
   };
 
+  const editLocation = (location: Location): void => {
+    setEditingLocationId(location.id);
+    setLocationDraft({
+      name: location.name,
+      short_name: location.short_name,
+      phone: location.phone ?? "",
+      street_address: location.street_address,
+      city: location.city,
+      region: location.region,
+      postal_code: location.postal_code,
+      country_code: location.country_code,
+      timezone: location.timezone,
+    });
+    setLocationErrors({});
+    setLocationDraftEpoch((value) => value + 1);
+    setSuccess(null);
+  };
+
+  const stopEditingLocation = (): void => {
+    setEditingLocationId(null);
+    setLocationDraft(defaultLocation);
+    setLocationErrors({});
+    setLocationDraftEpoch((value) => value + 1);
+  };
+
   const saveLocationStep = async (
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
@@ -327,13 +365,32 @@ export default function OwnerOnboardingPage() {
       ...locationDraft,
       short_name: checked.input.short_name,
     });
+    // The database has a unique index on it, so without this the second "Main"
+    // came back as a constraint violation with nowhere to read it.
+    const takenBy = activeLocations.find(
+      (location) =>
+        location.id !== editingLocationId &&
+        location.short_name.toLowerCase() ===
+          checked.input.short_name.toLowerCase(),
+    );
+    if (takenBy) {
+      setLocationErrors({
+        ...checked.errors,
+        short_name: `${takenBy.name} already goes by that short name.`,
+      });
+      return;
+    }
     setLocationErrors(checked.errors);
     if (!checked.parsed.success) return;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
     try {
-      await saveLocation(workspaceId, checked.parsed.data);
+      await saveLocation(
+        workspaceId,
+        checked.parsed.data,
+        editingLocationId ?? undefined,
+      );
       await saveOwnerOnboarding(supabaseClient, {
         workspaceId,
         workspaceName,
@@ -342,16 +399,18 @@ export default function OwnerOnboardingPage() {
         expectedRevision: ownerOnboardingRevision,
       });
       await refreshOwnerReferences(workspaceId);
+      const wasEditing = editingLocationId !== null;
+      setEditingLocationId(null);
       setLocationDraft(defaultLocation);
       setLocationErrors({});
       setLocationDraftEpoch((value) => value + 1);
-      setSuccess("Location added");
+      setSuccess(wasEditing ? "Location updated" : "Location added");
       await refresh();
     } catch (saveError: unknown) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Location setup could not be saved",
+          : "The location could not be saved",
       );
     } finally {
       setSubmitting(false);
@@ -926,33 +985,110 @@ export default function OwnerOnboardingPage() {
                 later.
               </div>
             </header>
-            <form className="onboarding-form" onSubmit={saveLocationStep}>
-              <div className="owner-onboarding-grid">
-                <AddedList
-                  title="Locations added"
-                  items={activeLocations}
-                  disabled={submitting}
-                  onRemove={(id) => void removeEntity("location", id)}
-                />
-                <LocationFields
-                  key={locationDraftEpoch}
-                  draft={locationDraft}
-                  errors={locationErrors}
-                  onChange={(draft, field) => {
-                    setLocationDraft(draft);
-                    if (field)
-                      setLocationErrors((current) => ({
-                        ...current,
-                        [field]: undefined,
-                      }));
-                  }}
-                />
+
+            {/* The list is its own block. It used to sit inside the form, above
+                the fields it was the output of. */}
+            <div className="pb-section">
+              <div className="ob-section-head">
+                <h2 id="locations-list-title">Your locations</h2>
+                <span className="pb-badge pb-badge-success">
+                  {countLabel(activeLocations.length, "location")}
+                </span>
               </div>
+              <div
+                className="pb-list"
+                role="list"
+                aria-labelledby="locations-list-title"
+              >
+                {activeLocations.length === 0 ? (
+                  <p className="ob-empty">
+                    No locations yet. Add the first one below.
+                  </p>
+                ) : null}
+                {activeLocations.map((location) => (
+                  <BusinessRow
+                    key={location.id}
+                    name={location.name}
+                    badge={
+                      <>
+                        {/* Two places called "Main" are told apart by these,
+                            not by the name the row leads with. */}
+                        <span className="pb-badge">{location.short_name}</span>
+                        {location.city ? (
+                          <span>
+                            {[location.city, location.region]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </span>
+                        ) : null}
+                        <span>{location.timezone}</span>
+                      </>
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="pb-btn pb-btn-secondary"
+                      disabled={submitting}
+                      aria-label={"Edit " + location.name}
+                      onClick={() => editLocation(location)}
+                    >
+                      Edit
+                    </button>
+                    <ConfirmButton
+                      className="pb-btn pb-btn-danger"
+                      type="button"
+                      disabled={submitting}
+                      aria-label={"Remove " + location.name}
+                      confirmLabel="Click again to remove"
+                      onConfirm={() => void removeEntity("location", location.id)}
+                    >
+                      Remove
+                    </ConfirmButton>
+                  </BusinessRow>
+                ))}
+              </div>
+            </div>
+
+            <form className="onboarding-form" onSubmit={saveLocationStep}>
+              <div className="ob-form-head">
+                <h2>
+                  {editingLocationId
+                    ? "Edit " + (editingLocationName ?? "this location")
+                    : "Add a location"}
+                </h2>
+                <p>
+                  A location is a place with its own schedule. The short name is
+                  what the schedule has room for.
+                </p>
+              </div>
+              <LocationFields
+                key={locationDraftEpoch}
+                draft={locationDraft}
+                errors={locationErrors}
+                onChange={(draft, field) => {
+                  setLocationDraft(draft);
+                  if (field)
+                    setLocationErrors((current) => ({
+                      ...current,
+                      [field]: undefined,
+                    }));
+                }}
+              />
               <Feedback success={success} />
               <WizardBar
                 back={{ label: "Workspace", onClick: () => setStep(1) }}
                 error={error}
               >
+                {editingLocationId ? (
+                  <button
+                    type="button"
+                    className="pb-btn pb-btn-secondary"
+                    disabled={submitting}
+                    onClick={stopEditingLocation}
+                  >
+                    Cancel
+                  </button>
+                ) : null}
                 <button
                   className="pb-btn pb-btn-secondary"
                   type="submit"
@@ -960,12 +1096,17 @@ export default function OwnerOnboardingPage() {
                     submitting || !checkLocationDraft(locationDraft).complete
                   }
                 >
-                  <MapPin size={15} aria-hidden /> Add location
+                  <MapPin size={15} aria-hidden />{" "}
+                  {editingLocationId ? "Save changes" : "Add location"}
                 </button>
                 <button
                   type="button"
                   className="pb-btn pb-btn-primary"
-                  disabled={submitting || activeLocations.length === 0}
+                  disabled={
+                    submitting ||
+                    activeLocations.length === 0 ||
+                    editingLocationId !== null
+                  }
                   onClick={continueFromLocations}
                 >
                   Continue <ChevronRight size={16} aria-hidden />
@@ -1396,6 +1537,10 @@ function LocationFields({
 }) {
   return (
     <>
+      {/* Nine fields in one flat run read as a wall. Three named groups
+          say what each answer is for. */}
+      <fieldset className="ob-fieldset">
+        <legend>What the app calls it</legend>
       <label htmlFor="location-name">
         Location name
         <input
@@ -1436,30 +1581,6 @@ function LocationFields({
           </small>
         ) : null}
       </label>
-      <label htmlFor="location-phone">
-        Phone number (optional)
-        <input
-          id="location-phone"
-          type="tel"
-          inputMode="numeric"
-          value={draft.phone}
-          maxLength={14}
-          onChange={(event) =>
-            onChange(
-              { ...draft, phone: formatUsPhone(event.target.value) },
-              "phone",
-            )
-          }
-          placeholder="(415) 555-0100"
-          aria-invalid={errors.phone ? true : undefined}
-          aria-describedby={errors.phone ? "location-phone-error" : undefined}
-        />
-        {errors.phone ? (
-          <small className="form-error" id="location-phone-error" role="alert">
-            {errors.phone}
-          </small>
-        ) : null}
-      </label>
       <label htmlFor="location-timezone">
         Timezone
         <LocationTimezoneField
@@ -1470,6 +1591,9 @@ function LocationFields({
           onChange={(timezone) => onChange({ ...draft, timezone })}
         />
       </label>
+      </fieldset>
+      <fieldset className="ob-fieldset">
+        <legend>Address</legend>
       <label className="wide" htmlFor="location-street">
         Street address
         <input
@@ -1527,6 +1651,34 @@ function LocationFields({
           required
         />
       </label>
+      </fieldset>
+      <fieldset className="ob-fieldset">
+        <legend>Contact</legend>
+      <label htmlFor="location-phone">
+        Phone number (optional)
+        <input
+          id="location-phone"
+          type="tel"
+          inputMode="numeric"
+          value={draft.phone}
+          maxLength={14}
+          onChange={(event) =>
+            onChange(
+              { ...draft, phone: formatUsPhone(event.target.value) },
+              "phone",
+            )
+          }
+          placeholder="(415) 555-0100"
+          aria-invalid={errors.phone ? true : undefined}
+          aria-describedby={errors.phone ? "location-phone-error" : undefined}
+        />
+        {errors.phone ? (
+          <small className="form-error" id="location-phone-error" role="alert">
+            {errors.phone}
+          </small>
+        ) : null}
+      </label>
+      </fieldset>
     </>
   );
 }
@@ -1714,41 +1866,6 @@ function JobChips({
           {job.name}
         </button>
       ))}
-    </div>
-  );
-}
-
-/** What the owner has added so far, and the way to take one back off. */
-function AddedList({
-  title,
-  items,
-  disabled,
-  onRemove,
-}: {
-  readonly title: string;
-  readonly items: readonly { readonly id: string; readonly name: string }[];
-  readonly disabled: boolean;
-  readonly onRemove: (id: string) => void;
-}) {
-  if (items.length === 0) return null;
-  return (
-    <div className="wide">
-      <Section title={title}>
-        {items.map((item) => (
-          <BusinessRow key={item.id} name={item.name}>
-            <ConfirmButton
-              className="pb-btn pb-btn-danger"
-              type="button"
-              disabled={disabled}
-              aria-label={"Remove " + item.name}
-              confirmLabel="Click again to remove"
-              onConfirm={() => onRemove(item.id)}
-            >
-              Remove
-            </ConfirmButton>
-          </BusinessRow>
-        ))}
-      </Section>
     </div>
   );
 }
