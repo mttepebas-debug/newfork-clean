@@ -21,7 +21,12 @@ select emp,w,actor,'E-995601','Draft impact','Employee',manager from di;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
 select w,emp,loc,manager from di union all select w,emp,hidden_loc,manager from di;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by) select w,emp,job,manager from di;
-insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) select typ,w,'Impact Lunch','12:00','16:00' from di;
+-- Lunch used to run 12:00-16:00, which put this person on it while also on
+-- the far location's 13:00 shift and the 14:00 edit -- three places at once.
+-- Nobody can hold overlapping shifts any more. At 10:00-12:00 it sits beside
+-- the other two instead of on top of them, and is still inside the 10:00-17:00
+-- the proposal takes away, which is what this suite is looking at.
+insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) select typ,w,'Impact Lunch','10:00','12:00' from di;
 insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from)
 select w,emp,1,'UTC',(select jsonb_agg(jsonb_build_object('day',d,'mode','unrestricted','windows','[]'::jsonb)) from generate_series(0,6)d),'employee',actor,'2034-01-01' from di;
 update public.workspace_scheduling_settings set availability_ownership='hybrid',availability_approval='narrowing',availability_initial_review=false,availability_notice_days=0,availability_enforcement='hard' where workspace_id=(select w from di);
@@ -30,6 +35,14 @@ insert into public.workspace_role_permissions(workspace_id,role_id,permission_ke
 select w,'afa41000-0000-4000-8000-000000000001',p from di,unnest(array['workspace.read','employees.read','employees.manage'])p;
 insert into public.workspace_memberships(workspace_id,user_id,role,role_id,status,all_locations)
 select w,hr,'manager','afa41000-0000-4000-8000-000000000001','active',true from di;
+-- A manager-class role cannot hold every location at once any more -- the
+-- membership's all_locations is turned off on the way in -- so HR is given
+-- both locations by name. That is what all_locations used to mean here: HR
+-- reaches every location this person works at, which is what approving
+-- their request requires. What stays hidden from HR is the schedule itself,
+-- because the role has no schedule permission, not the LA location.
+insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
+select di.w,m.id,l from di join public.workspace_memberships m on m.workspace_id=di.w and m.user_id=di.hr cross join lateral (values (di.loc),(di.hidden_loc)) v(l);
 insert into public.schedule_drafts(id,workspace_id,week_start,name,created_by,updated_by) select draft,w,'2035-01-15','Impact saved draft',manager,manager from di;
 insert into public.schedule_edit_sessions(id,workspace_id,week_start,source_kind,holder_user_id) select session,w,'2035-01-15','blank',manager from di;
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,time_basis,time_snapshot,time_timezone)
