@@ -9,7 +9,10 @@ select 'people.documents.'||kind,1,'people',case when kind in ('review','missing
  case when kind='review' then 'document_reviewers' else 'document_employee' end,
  jsonb_build_object('route',case when kind='review' then '/app/settings/documents' else '/app/account/documents' end,'allowed_query_keys',jsonb_build_array('workspace','requirement','kind')),
  '{"strategy":"keep_first","scope":"event_recipient","key_fields":["event_id","recipient_user_id"]}'::jsonb,'sensitive_30d','people.documents.'||kind||'.v1','active'
-from unnest(array['review','missing','expiry','approved','rejected','restricted','restored','assigned','activated']) kind;
+from unnest(array['review','missing','expiry','approved','rejected','restricted','restored','assigned','activated']) kind
+-- The migrations already put these rows in on a full reset; the insert is only
+-- for a replay of the schema alone. Either way the catalog ends up the same.
+on conflict do nothing;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select ('15200000-0000-4000-8000-00000000000'||n)::uuid,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','bl052-'||n||'@example.test','','{}','{}',now(),now() from generate_series(1,5) n;
 insert into public.workspaces(id,name,created_by) values('25200000-0000-4000-8000-000000000001','BL052 test','15200000-0000-4000-8000-000000000001');
@@ -142,7 +145,9 @@ select throws_ok($$select public.preview_document_publication_service('15200000-
 
 -- Full target visibility is required even if a scoped manager can see the employee through one location.
 insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations) values('35200000-0000-4000-8000-000000000004','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000004','manager','active',false);
-insert into public.workspace_role_permissions(workspace_id,role_id,permission_key) select workspace_id,role_id,'documents.manage' from public.workspace_memberships where id='35200000-0000-4000-8000-000000000004' on conflict do nothing;
+-- documents.manage cannot be held without documents.read; the roles model
+-- refuses the pair split, so the manager gets both.
+insert into public.workspace_role_permissions(workspace_id,role_id,permission_key) select workspace_id,role_id,k from public.workspace_memberships, unnest(array['documents.read','documents.manage']) k where id='35200000-0000-4000-8000-000000000004' on conflict do nothing;
 insert into public.membership_location_scopes(workspace_id,membership_id,location_id) values('25200000-0000-4000-8000-000000000001','35200000-0000-4000-8000-000000000004','85200000-0000-4000-8000-000000000003');
 select throws_ok($$select public.preview_document_publication_service('15200000-0000-4000-8000-000000000004','25200000-0000-4000-8000-000000000001',(select id from publication_test))$$,'42501','Complete document target access required','partial location visibility cannot publish broader effects');
 insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations) values('35200000-0000-4000-8000-000000000005','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000005','employee','pending_activation',true);

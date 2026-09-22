@@ -24,12 +24,17 @@ set local role service_role;
 
 create temporary table employee_ids (label text primary key, id uuid not null);
 
+-- save_employee_service takes a middle name after the first name, and whether
+-- the person works remotely or is left out of the schedule before the
+-- revision. The fourteen-argument form these calls were written against was
+-- dropped on 2026-09-21; it had been silently losing middle names.
+
 insert into employee_ids values ('first', public.save_employee_service(
   '16100000-0000-4000-8000-000000000001',
-  '26100000-0000-4000-8000-000000000001', null, 'First', 'Employee', '', '',
+  '26100000-0000-4000-8000-000000000001', null, 'First', '', 'Employee', '', '',
   null, '', array['46100000-0000-4000-8000-000000000001']::uuid[],
   '46100000-0000-4000-8000-000000000001', array['66100000-0000-4000-8000-000000000001']::uuid[],
-  '66100000-0000-4000-8000-000000000001', null
+  '66100000-0000-4000-8000-000000000001', false, false, null
 ));
 set local role postgres;
 select is((select employee_code from public.employee_profiles where id = (select id from employee_ids where label = 'first')), 'E-0001', 'first employee receives initial generated code');
@@ -37,10 +42,10 @@ select is((select employee_code from public.employee_profiles where id = (select
 set local role service_role;
 insert into employee_ids values ('second', public.save_employee_service(
   '16100000-0000-4000-8000-000000000001',
-  '26100000-0000-4000-8000-000000000001', null, 'Second', 'Employee', '', '',
+  '26100000-0000-4000-8000-000000000001', null, 'Second', '', 'Employee', '', '',
   null, '', array['46100000-0000-4000-8000-000000000001']::uuid[],
   '46100000-0000-4000-8000-000000000001', array['66100000-0000-4000-8000-000000000001']::uuid[],
-  '66100000-0000-4000-8000-000000000001', null
+  '66100000-0000-4000-8000-000000000001', false, false, null
 ));
 set local role postgres;
 select is((select employee_code from public.employee_profiles where id = (select id from employee_ids where label = 'second')), 'E-0002', 'second employee receives next generated code');
@@ -54,10 +59,10 @@ set local role service_role;
 select lives_ok(
   $$insert into employee_ids values ('third', public.save_employee_service(
     '16100000-0000-4000-8000-000000000001',
-    '26100000-0000-4000-8000-000000000001', null, 'Third', 'Employee', '', '',
+    '26100000-0000-4000-8000-000000000001', null, 'Third', '', 'Employee', '', '',
     null, '', array['46100000-0000-4000-8000-000000000001']::uuid[],
     '46100000-0000-4000-8000-000000000001', array['66100000-0000-4000-8000-000000000001']::uuid[],
-    '66100000-0000-4000-8000-000000000001', null
+    '66100000-0000-4000-8000-000000000001', false, false, null
   ))$$,
   'employee creation survives a stale employee code counter'
 );
