@@ -566,21 +566,6 @@ export function registerWorkspaceAccountRoutes(
  * database. It carries a key like the others do, so the screen answers it the
  * same way and the sentence stays free to change.
  */
-function reauthenticationRequired(reply: FastifyReply) {
-  return reply.status(403).send({
-    error: "Recent reauthentication required",
-    reason: "session.reauthentication_required",
-  });
-}
-
-function requestError(reply: FastifyReply, error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "Workspace operation failed";
-  // A typed status wins: it comes from the SQLSTATE the RPC raised, not from
-  // the wording of its message. The matching below stays for untyped throws.
-  // The reason is a machine key from the RPC's `hint`. It travels with the
-  // message so a screen can say its own sentence without reading ours.
-  if (error instanceof HttpError)
 /**
  * A setup its owner never finished holds nothing: they are its only member, no
  * invitation has gone out yet, and there is no schedule to lose. Deleting one
@@ -607,6 +592,21 @@ async function isUnfinishedSetup(
   }
 }
 
+function reauthenticationRequired(reply: FastifyReply) {
+  return reply.status(403).send({
+    error: "Recent reauthentication required",
+    reason: "session.reauthentication_required",
+  });
+}
+
+function requestError(reply: FastifyReply, error: unknown) {
+  const message =
+    error instanceof Error ? error.message : "Workspace operation failed";
+  // A typed status wins: it comes from the SQLSTATE the RPC raised, not from
+  // the wording of its message. The matching below stays for untyped throws.
+  // The reason is a machine key from the RPC's `hint`. It travels with the
+  // message so a screen can say its own sentence without reading ours.
+  if (error instanceof HttpError)
     return reply
       .status(error.statusCode)
       .send(
