@@ -180,7 +180,12 @@ export function registerWorkspaceAccountRoutes(
           .send({ error: "Workspace account service is not configured" });
       if (
         body.data.mode === "immediate" &&
-        !hasRecentReauthentication(accessToken)
+        !hasRecentReauthentication(accessToken) &&
+        !(await isUnfinishedSetup(
+          options.service,
+          accessToken,
+          params.data.workspaceId,
+        ))
       ) {
         return reauthenticationRequired(reply);
       }
@@ -576,6 +581,32 @@ function requestError(reply: FastifyReply, error: unknown) {
   // The reason is a machine key from the RPC's `hint`. It travels with the
   // message so a screen can say its own sentence without reading ours.
   if (error instanceof HttpError)
+/**
+ * A setup its owner never finished holds nothing: they are its only member, no
+ * invitation has gone out yet, and there is no schedule to lose. Deleting one
+ * undoes a false start, so it does not ask for the password that closing a
+ * live workspace asks for. The answer comes from the server's own list, never
+ * from the request; a lookup that fails leaves the password gate shut.
+ */
+async function isUnfinishedSetup(
+  service: WorkspaceAccountService,
+  accessToken: string,
+  workspaceId: string,
+): Promise<boolean> {
+  try {
+    const workspace = (await service.listWorkspaces(accessToken)).find(
+      (candidate) => candidate.id === workspaceId,
+    );
+    return (
+      workspace?.role === "owner" &&
+      workspace.status === "active" &&
+      workspace.onboarding.status !== "complete"
+    );
+  } catch {
+    return false;
+  }
+}
+
     return reply
       .status(error.statusCode)
       .send(

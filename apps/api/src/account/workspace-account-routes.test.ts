@@ -634,6 +634,74 @@ describe("workspace account routes", () => {
     expect(requestClosure).not.toHaveBeenCalled();
   });
 
+  it("closes a setup its owner never finished without a fresh sign-in", async () => {
+    const requestClosure = vi.fn(async () => ({ status: "deleted" }));
+    const listWorkspaces = vi.fn(async () => [
+      {
+        id: workspaceId,
+        name: "Meyhouse",
+        role: "owner",
+        status: "active",
+        isActive: false,
+        onboarding: { status: "incomplete", currentStep: 2 },
+      },
+    ]);
+    const app = buildApp({
+      workspaceAccountService: {
+        requestClosure,
+        listWorkspaces,
+      } as unknown as WorkspaceAccountService,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/account/workspaces/${workspaceId}/closure`,
+      headers: { authorization: `Bearer ${staleAccessToken}` },
+      payload: {
+        mode: "immediate",
+        typedWorkspaceName: "Meyhouse",
+        acknowledged: true,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(requestClosure).toHaveBeenCalledTimes(1);
+  });
+
+  it("still asks for a fresh sign-in to close a workspace that is set up", async () => {
+    const requestClosure = vi.fn(async () => ({ status: "deleted" }));
+    const listWorkspaces = vi.fn(async () => [
+      {
+        id: workspaceId,
+        name: "Meyhouse",
+        role: "owner",
+        status: "active",
+        isActive: true,
+        onboarding: { status: "complete", currentStep: 4 },
+      },
+    ]);
+    const app = buildApp({
+      workspaceAccountService: {
+        requestClosure,
+        listWorkspaces,
+      } as unknown as WorkspaceAccountService,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/account/workspaces/${workspaceId}/closure`,
+      headers: { authorization: `Bearer ${staleAccessToken}` },
+      payload: {
+        mode: "immediate",
+        typedWorkspaceName: "Meyhouse",
+        acknowledged: true,
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(requestClosure).not.toHaveBeenCalled();
+  });
+
   it("does not treat malformed or future-issued tokens as recent reauthentication", async () => {
     const requestClosure = vi.fn(async () => ({ status: "deleted" }));
     const app = buildApp({
