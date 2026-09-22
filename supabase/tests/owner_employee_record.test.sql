@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(17);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values ('14000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'owner-record@example.test', '', '{}', '{}', now(), now());
@@ -153,6 +153,56 @@ select is(
      and ended_at is null),
   2,
   'a job added after setup reaches the owner on its own'
+);
+
+-- Everyone but the owner gives an emergency contact during onboarding, and the
+-- owner never runs onboarding. They enter it by hand, and only for themselves.
+create temporary table owner_employee on commit drop as
+select id from public.employee_profiles
+where workspace_id = (select workspace_id from owner_record_target)
+  and user_id = '14000000-0000-4000-8000-000000000001';
+
+select is(
+  (select count(*)::integer from public.employee_private_profiles
+   where employee_id = (select id from owner_employee limit 1)),
+  0,
+  'nothing is invented for the owner before they enter anything'
+);
+
+select public.save_owner_emergency_contact_service(
+  '14000000-0000-4000-8000-000000000001',
+  (select workspace_id from owner_record_target),
+  (select id from owner_employee limit 1),
+  'Morgan Tepebas', 'Spouse', '3105550101', ''
+);
+
+select is(
+  (select emergency_contact_name || ' / ' || emergency_contact_phone
+   from public.employee_private_profiles
+   where employee_id = (select id from owner_employee limit 1)),
+  'Morgan Tepebas / 3105550101',
+  'the owner can record an emergency contact by hand'
+);
+select ok(
+  (select phone is null from public.employee_private_profiles
+   where employee_id = (select id from owner_employee limit 1)),
+  'a personal phone is not invented to satisfy the row'
+);
+
+-- Somebody else's record is not theirs to write, owner or not.
+insert into public.employee_profiles (id, workspace_id, employee_code, first_name, last_name, created_by)
+values ('17000000-0000-4000-8000-000000000009', (select workspace_id from owner_record_target), 'E-7001', 'Someone', 'Else', '14000000-0000-4000-8000-000000000001');
+
+select throws_ok(
+  $$select public.save_owner_emergency_contact_service(
+    '14000000-0000-4000-8000-000000000001',
+    (select workspace_id from owner_record_target),
+    '17000000-0000-4000-8000-000000000009',
+    'Morgan', 'Spouse', '3105550101', ''
+  )$$,
+  '42501',
+  'this record belongs to somebody else',
+  'an owner cannot write an emergency contact onto somebody else'
 );
 
 select * from finish();

@@ -47,6 +47,7 @@ import {
   createEmployee,
   type InviteRoleOption,
   loadEmployeeInvitationLink,
+  saveOwnEmergencyContact,
   loadEmployeeReferenceData,
   prepareEmployeeInvitation,
   removeEmployeeAvatar,
@@ -1012,6 +1013,12 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       context?.membership.role ?? "employee",
                       (roleId) => roleMutation.mutate(roleId),
                       roleMutation.isPending,
+                      Boolean(
+                        detail.data &&
+                          context?.userId &&
+                          detail.data.user_id === context.userId &&
+                          detail.data.role_name === "Owner",
+                      ),
                       props.creating,
                     )
                   : null}
@@ -1620,6 +1627,8 @@ function renderSection(
   actorRole: WorkspaceRole,
   onRoleChange: (roleId: string) => void,
   changingRole: boolean,
+  /** The viewer is looking at their own record, and they own the workspace. */
+  ownOwnerRecord: boolean,
   creating = false,
 ) {
   if (section === "profile")
@@ -1634,6 +1643,11 @@ function renderSection(
         invitePending={detail?.invitation?.status === "pending"}
         accountEmail={detail?.account_email ?? null}
         privateContact={detail?.private_contact ?? null}
+        ownEmergencyContact={
+          ownOwnerRecord && detail
+            ? { workspaceId: detail.workspace_id, employeeId: detail.id }
+            : null
+        }
         emailInputRef={emailInputRef}
         onboarding={onboarding}
         onboardingLoading={onboardingLoading}
@@ -1848,6 +1862,7 @@ function ProfileSection({
   invitePending,
   accountEmail,
   privateContact,
+  ownEmergencyContact,
   emailInputRef,
   onboarding,
   onboardingLoading,
@@ -1866,6 +1881,8 @@ function ProfileSection({
   invitePending: boolean;
   accountEmail: string | null;
   privateContact: EmployeeDetail["private_contact"];
+  /** Present only on the owner's own record, which onboarding never asks. */
+  ownEmergencyContact: { workspaceId: string; employeeId: string } | null;
   emailInputRef: React.RefObject<HTMLInputElement | null>;
   onboarding: EmployeeOnboardingManager | null | undefined;
   onboardingLoading: boolean;
@@ -1976,19 +1993,26 @@ function ProfileSection({
               value={privateContact?.phone ?? null}
             />
           )}
-          {!creating && canReadPrivate ? (
+          {ownEmergencyContact ? (
+            <OwnEmergencyContact
+              workspaceId={ownEmergencyContact.workspaceId}
+              employeeId={ownEmergencyContact.employeeId}
+              contact={privateContact}
+            />
+          ) : null}
+          {!creating && canReadPrivate && !ownEmergencyContact ? (
             <ReadOnlyField
               label="Emergency contact"
               value={privateContact?.emergency_contact_name ?? null}
             />
           ) : null}
-          {!creating && canReadPrivate ? (
+          {!creating && canReadPrivate && !ownEmergencyContact ? (
             <ReadOnlyField
               label="Relationship"
               value={privateContact?.emergency_contact_relationship ?? null}
             />
           ) : null}
-          {!creating && canReadPrivate ? (
+          {!creating && canReadPrivate && !ownEmergencyContact ? (
             <ReadOnlyField
               label="Emergency phone"
               value={privateContact?.emergency_contact_phone ?? null}
@@ -2968,4 +2992,87 @@ function formatDateTime(value: string): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Employee operation failed";
+}
+
+/**
+ * The owner's own emergency contact. Everyone else gives one while onboarding,
+ * and the owner never runs it, so theirs is entered here — by them, and never
+ * required.
+ */
+function OwnEmergencyContact({
+  workspaceId,
+  employeeId,
+  contact,
+}: {
+  readonly workspaceId: string;
+  readonly employeeId: string;
+  readonly contact: EmployeeDetail["private_contact"];
+}) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState(contact?.emergency_contact_name ?? "");
+  const [relationship, setRelationship] = useState(
+    contact?.emergency_contact_relationship ?? "",
+  );
+  const [phone, setPhone] = useState(contact?.emergency_contact_phone ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: () =>
+      saveOwnEmergencyContact(workspaceId, employeeId, {
+        name: name.trim(),
+        relationship: relationship.trim(),
+        phone: phone.trim(),
+        email: contact?.emergency_contact_email ?? "",
+      }),
+    onSuccess: async () => {
+      setError(null);
+      await queryClient.invalidateQueries({
+        queryKey: ["employee-detail", workspaceId, employeeId],
+      });
+    },
+    onError: () => setError("Emergency contact could not be saved"),
+  });
+  // Both halves or neither: a name with no number is not a contact.
+  const ready = name.trim().length > 0 && phone.trim().length >= 7;
+
+  return (
+    <>
+      <Field
+        label="Emergency contact"
+        optional
+        value={name}
+        disabled={save.isPending}
+        onChange={setName}
+      />
+      <Field
+        label="Relationship"
+        optional
+        value={relationship}
+        disabled={save.isPending}
+        onChange={setRelationship}
+      />
+      <Field
+        label="Emergency phone"
+        optional
+        value={phone}
+        disabled={save.isPending}
+        onChange={setPhone}
+      />
+      <div className="employee-field">
+        <span />
+        <Button
+          className="secondary-button"
+          type="button"
+          disabled={!ready || save.isPending}
+          onClick={() => save.mutate()}
+        >
+          {save.isPending ? "Saving" : "Save emergency contact"}
+        </Button>
+        {error ? (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    </>
+  );
 }

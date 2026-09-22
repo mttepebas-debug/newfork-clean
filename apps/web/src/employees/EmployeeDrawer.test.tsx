@@ -46,6 +46,7 @@ import {
   getEmployeeAvatar,
   loadEmployeeInvitationLink,
   loadEmployeeReferenceData,
+  saveOwnEmergencyContact,
   prepareEmployeeInvitation,
   removeEmployeeAccess,
   removeEmployeeAvatar,
@@ -195,6 +196,7 @@ vi.mock("./employee-data", () => ({
   getEmployeeDetail: vi.fn(),
   getEmployeeAvatar: vi.fn(),
   loadEmployeeInvitationLink: vi.fn(),
+  saveOwnEmergencyContact: vi.fn(),
   loadEmployeeReferenceData: vi.fn(),
   prepareEmployeeInvitation: vi.fn(),
   removeEmployeeAccess: vi.fn(),
@@ -732,6 +734,64 @@ describe("EmployeeDrawer", () => {
       ),
     );
     expect(screen.getByRole("button", { name: "Resend" })).toBeTruthy();
+  });
+
+  // Everyone else gives an emergency contact while onboarding. The owner never
+  // runs it, so theirs is entered here — by them, and never required.
+  it("lets the owner enter their own emergency contact", async () => {
+    vi.mocked(saveOwnEmergencyContact).mockResolvedValue(undefined);
+    renderDrawer("profile", {
+      ...detail,
+      user_id: context.userId,
+      role_name: "Owner",
+      private_contact: null,
+    });
+
+    const name = await screen.findByLabelText("Emergency contact");
+    fireEvent.change(name, { target: { value: "Morgan Tepebas" } });
+    fireEvent.change(screen.getByLabelText("Emergency phone"), {
+      target: { value: "3105550101" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save emergency contact" }),
+    );
+
+    await waitFor(() =>
+      expect(saveOwnEmergencyContact).toHaveBeenCalledWith(
+        workspaceId,
+        employeeId,
+        expect.objectContaining({
+          name: "Morgan Tepebas",
+          phone: "3105550101",
+        }),
+      ),
+    );
+  });
+
+  it("will not save half an emergency contact", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      user_id: context.userId,
+      role_name: "Owner",
+      private_contact: null,
+    });
+
+    fireEvent.change(await screen.findByLabelText("Emergency contact"), {
+      target: { value: "Morgan Tepebas" },
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Save emergency contact" }),
+    ).toHaveProperty("disabled", true);
+  });
+
+  it("shows somebody else's emergency contact without offering to edit it", async () => {
+    renderDrawer("profile", { ...detail, role_name: "Employee" });
+
+    await screen.findByLabelText("First name");
+    expect(
+      screen.queryByRole("button", { name: "Save emergency contact" }),
+    ).toBeNull();
   });
 
   it("names the role an invitation grants and the person who sent it", async () => {

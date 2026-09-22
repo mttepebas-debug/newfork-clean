@@ -420,6 +420,36 @@ export async function acceptEmployeeInvitation(
   return body.workspaceId;
 }
 
+/**
+ * The owner's own emergency contact. Everyone else gives one during onboarding;
+ * the owner never runs it, so theirs is entered by hand in their own record.
+ */
+export async function saveOwnEmergencyContact(
+  workspaceId: string,
+  employeeId: string,
+  contact: {
+    readonly name: string;
+    readonly relationship: string;
+    readonly phone: string;
+    readonly email: string;
+  },
+): Promise<void> {
+  const token = await getApiAccessToken(client());
+  const response = await fetch(
+    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/emergency-contact`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(contact),
+    },
+  );
+  // The server's own sentence is not for the screen.
+  if (!response.ok) throw new Error("Emergency contact could not be saved");
+}
+
 /** The open invitation's own link, for an admin to pass along by hand. */
 export async function loadEmployeeInvitationLink(
   workspaceId: string,

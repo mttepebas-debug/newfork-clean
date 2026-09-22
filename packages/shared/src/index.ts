@@ -2683,7 +2683,9 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
       legal_middle_name: z.string().trim().max(80).optional(),
       legal_last_name: z.string().trim().min(1).max(80).optional(),
       preferred_name: z.string().trim().max(80).optional(),
-      phone: z.string().trim().min(7).max(30),
+      // Null for a person the workspace only knows an emergency contact for:
+      // the owner, who never runs employee onboarding.
+      phone: z.string().trim().min(7).max(30).nullable(),
       street_address: z.string().trim().max(180).nullable().optional(),
       city: z.string().trim().max(100).nullable().optional(),
       region: z.string().trim().max(100).nullable().optional(),
@@ -2691,7 +2693,7 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
       country_code: z.string().trim().length(2).nullable().optional(),
       date_of_birth: z.string().date().nullable(),
       emergency_contact_name: z.string().trim().min(1).max(120),
-      emergency_contact_relationship: z.string().trim().min(1).max(80),
+      emergency_contact_relationship: z.string().trim().min(1).max(80).nullable(),
       emergency_contact_email: z.string().trim().email().or(z.literal("")),
       emergency_contact_phone: z.string().trim().min(7).max(30),
       share_phone_with_teammates: z.boolean(),

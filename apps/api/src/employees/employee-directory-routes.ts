@@ -17,6 +17,13 @@ import type {
 } from "./employee-directory-service";
 import type { EmployeeCreateService } from "./employee-create-service";
 
+const ownEmergencyContactBody = z.object({
+  name: z.string().trim().min(1).max(120),
+  relationship: z.string().trim().max(80).optional(),
+  phone: z.string().trim().min(7).max(30),
+  email: z.string().trim().email().or(z.literal("")).optional(),
+});
+
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 const employeeParams = workspaceParams.extend({
   employeeId: z.string().uuid(),
@@ -267,6 +274,48 @@ export function registerEmployeeDirectoryRoutes(
           actorUserId: context.userId,
           workspaceId: params.data.workspaceId,
           employeeId: params.data.employeeId,
+        });
+        return reply.status(204).send();
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  );
+
+  // The owner's own emergency contact. Everyone else gives one during
+  // onboarding; the owner never runs it. The database checks that the record is
+  // the caller's own and that the caller owns the workspace.
+  app.put(
+    "/v1/workspaces/:workspaceId/employees/:employeeId/emergency-contact",
+    async (request, reply) => {
+      const params = employeeParams.safeParse(request.params);
+      const body = ownEmergencyContactBody.safeParse(request.body);
+      if (!params.success || !body.success)
+        return reply
+          .status(400)
+          .send({ error: "An emergency contact needs a name and a phone number" });
+      const context = await authorize(
+        request.headers.authorization,
+        params.data.workspaceId,
+        "employees.read",
+        options.contextResolver,
+        reply,
+        "Employee access required",
+      );
+      if (!context) return;
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee directory service is not configured" });
+      try {
+        await options.service.saveOwnEmergencyContact({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+          name: body.data.name,
+          relationship: body.data.relationship ?? "",
+          phone: body.data.phone,
+          email: body.data.email ?? "",
         });
         return reply.status(204).send();
       } catch (error) {

@@ -87,6 +87,16 @@ export interface EmployeeDirectoryService {
     readonly workspaceId: string;
     readonly employeeId: string;
   }): Promise<void>;
+  /** The owner's own emergency contact, which onboarding never asks them for. */
+  saveOwnEmergencyContact(input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+    readonly employeeId: string;
+    readonly name: string;
+    readonly relationship: string;
+    readonly phone: string;
+    readonly email: string;
+  }): Promise<void>;
 }
 
 interface RpcClient {
@@ -257,6 +267,17 @@ export function createEmployeeDirectoryServiceWithClient(
       if (typeof path === "string" && path) {
         await client.storage?.from("employee-profile-photos").remove([path]);
       }
+    },
+    async saveOwnEmergencyContact(input) {
+      await rpc("save_owner_emergency_contact_service", {
+        actor_user_id: input.actorUserId,
+        target_workspace_id: input.workspaceId,
+        target_employee_id: input.employeeId,
+        contact_name: input.name,
+        contact_relationship: input.relationship,
+        contact_phone: input.phone,
+        contact_email: input.email,
+      });
     },
     async removeAccess(input) {
       await rpc("remove_employee_access_service", {
