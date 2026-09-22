@@ -126,5 +126,5 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 
 ## Yeni bulgular (2026-09-22)
 - **BL-081 (leave: medium / do: safe) Iki test artik kurulamayan senaryoyu olcuyor.** `time_off_physical_request_counts` bir kisiyi iki lokasyonda ayni saate koyuyor; `availability_complement_ranges` saatsiz bir shift type yaratiyor. Ikisi de veritabani tarafindan reddediliyor. Her biri tek satirlik bir urun karari bekliyor: durum gercekten imkansiz mi olmali, yoksa kural mi fazla siki.
-- **BL-082 (leave: high / do: safe) Vercel Authentication `newfork-clean-api` uzerinde kapali.** Test icin kapatilmisti, acilmadi. Kullanicinin panelinden: Project > Settings > Deployment Protection.
+- BL-082 kapandi (2026-09-22): Vercel Authentication `newfork-clean-api` uzerinde kullanici tarafindan yeniden acildi.
 - **BL-083 (leave: low / do: safe) Seed replay hatalari.** Vardiya demo blogu seed'den cikinca `supabase db reset` tamamlandi; baska replay hatasi kaldi mi olculmedi.
