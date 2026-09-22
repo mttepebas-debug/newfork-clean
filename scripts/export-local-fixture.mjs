@@ -557,8 +557,10 @@ mkdirSync(dirname(outfile), { recursive: true });
 function withoutSeedCollisions(sql) {
   const seed = readFileSync(resolve("supabase/seed.sql"), "utf8");
   const uuid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
-  const shared = [...new Set(seed.match(uuid) ?? [])].filter((id) =>
-    sql.includes(id),
+  // The all-zero id is not a row: it is auth's instance id, the same on every
+  // account. Moving it aside breaks sign-in for every exported account.
+  const shared = [...new Set(seed.match(uuid) ?? [])].filter(
+    (id) => id !== "00000000-0000-0000-0000-000000000000" && sql.includes(id),
   );
   let moved = 0;
   for (const id of shared) {
