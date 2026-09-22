@@ -3,10 +3,16 @@ import {
   employeeInputSchema,
   employeeRoleUpdateInputSchema,
   employeeSummarySchema,
+  pendingPreferredNameFromRow,
+  preferredNameApprovalSchema,
+  preferredNameOutcomeSchema,
   type EmployeeDetail,
   type EmployeeInput,
   type EmployeeRoleUpdateInput,
   type EmployeeSummary,
+  type PendingPreferredName,
+  type PreferredNameApproval,
+  type PreferredNameOutcome,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -86,6 +92,33 @@ export interface EmployeeDirectoryService {
     readonly actorUserId: string;
     readonly workspaceId: string;
     readonly employeeId: string;
+  }): Promise<void>;
+  /** How this workspace answers a preferred name. */
+  getPreferredNameApproval(input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+  }): Promise<PreferredNameApproval>;
+  setPreferredNameApproval(input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+    readonly approval: PreferredNameApproval;
+  }): Promise<void>;
+  /** The person asks for their own. What happens next is the setting's answer. */
+  requestPreferredName(input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+    readonly employeeId: string;
+    readonly preferredName: string;
+  }): Promise<PreferredNameOutcome>;
+  listPendingPreferredNames(input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+  }): Promise<PendingPreferredName[]>;
+  decidePreferredName(input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+    readonly requestId: string;
+    readonly approve: boolean;
   }): Promise<void>;
   /**
    * A person's own emergency contact and personal phone. Onboarding asks for
@@ -272,6 +305,47 @@ export function createEmployeeDirectoryServiceWithClient(
       if (typeof path === "string" && path) {
         await client.storage?.from("employee-profile-photos").remove([path]);
       }
+    },
+    async getPreferredNameApproval(input) {
+      return preferredNameApprovalSchema.parse(
+        await rpc("get_employee_name_settings_service", {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+        }),
+      );
+    },
+    async setPreferredNameApproval(input) {
+      await rpc("set_employee_name_settings_service", {
+        actor_user_id: input.actorUserId,
+        target_workspace_id: input.workspaceId,
+        approval: input.approval,
+      });
+    },
+    async requestPreferredName(input) {
+      return preferredNameOutcomeSchema.parse(
+        await rpc("request_employee_preferred_name_service", {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+          target_employee_id: input.employeeId,
+          preferred_name: input.preferredName,
+        }),
+      );
+    },
+    async listPendingPreferredNames(input) {
+      return (
+        (await rpc("list_pending_preferred_names_service", {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+        })) as unknown[]
+      ).map(pendingPreferredNameFromRow);
+    },
+    async decidePreferredName(input) {
+      await rpc("decide_employee_preferred_name_service", {
+        actor_user_id: input.actorUserId,
+        target_workspace_id: input.workspaceId,
+        target_request_id: input.requestId,
+        approve: input.approve,
+      });
     },
     async saveOwnEmploymentContact(input) {
       await rpc("save_own_employment_contact_service", {

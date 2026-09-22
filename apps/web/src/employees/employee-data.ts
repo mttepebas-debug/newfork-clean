@@ -10,6 +10,12 @@ import {
   employeeSummarySchema,
   invitationFailureCodeSchema,
   invitationPreviewSchema,
+  pendingPreferredNameSchema,
+  preferredNameApprovalSchema,
+  preferredNameOutcomeSchema,
+  type PendingPreferredName,
+  type PreferredNameApproval,
+  type PreferredNameOutcome,
   type AccountPendingInvitation,
   type InvitationFailureCode,
   type InvitationPreview,
@@ -424,6 +430,85 @@ export async function acceptEmployeeInvitation(
  * The owner's own emergency contact. Everyone else gives one during onboarding;
  * the owner never runs it, so theirs is entered by hand in their own record.
  */
+/** How this workspace answers a preferred name. */
+export async function loadPreferredNameApproval(
+  workspaceId: string,
+): Promise<PreferredNameApproval> {
+  const body = (await employeeApi(
+    `/v1/workspaces/${workspaceId}/preferred-name-approval`,
+  )) as { approval: unknown };
+  return preferredNameApprovalSchema.parse(body.approval);
+}
+
+export async function savePreferredNameApproval(
+  workspaceId: string,
+  approval: PreferredNameApproval,
+): Promise<void> {
+  await employeeApi(`/v1/workspaces/${workspaceId}/preferred-name-approval`, {
+    method: "PUT",
+    body: JSON.stringify({ approval }),
+  });
+}
+
+/** The person asks for their own. The answer says what happened to it. */
+export async function requestPreferredName(
+  workspaceId: string,
+  employeeId: string,
+  preferredName: string,
+): Promise<PreferredNameOutcome> {
+  const body = (await employeeApi(
+    `/v1/workspaces/${workspaceId}/employees/${employeeId}/preferred-name`,
+    { method: "PUT", body: JSON.stringify({ preferredName }) },
+  )) as { outcome: unknown };
+  return preferredNameOutcomeSchema.parse(body.outcome);
+}
+
+export async function listPendingPreferredNames(
+  workspaceId: string,
+): Promise<PendingPreferredName[]> {
+  return pendingPreferredNameSchema
+    .array()
+    .parse(
+      await employeeApi(`/v1/workspaces/${workspaceId}/preferred-names/pending`),
+    );
+}
+
+export async function decidePreferredName(
+  workspaceId: string,
+  requestId: string,
+  approve: boolean,
+): Promise<void> {
+  await employeeApi(
+    `/v1/workspaces/${workspaceId}/preferred-names/${requestId}/decision`,
+    { method: "POST", body: JSON.stringify({ approve }) },
+  );
+}
+
+/** One fetch shape for all of the above: token, JSON, and a plain refusal. */
+async function employeeApi(
+  path: string,
+  init: RequestInit = {},
+): Promise<unknown> {
+  const token = await getApiAccessToken(client());
+  const response = await fetch(`${newforkApiUrl}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as {
+      error?: unknown;
+    } | null;
+    throw new Error(
+      typeof body?.error === "string" ? body.error : "That could not be saved",
+    );
+  }
+  return response.status === 204 ? null : await response.json();
+}
+
 export async function saveOwnEmploymentContact(
   workspaceId: string,
   employeeId: string,

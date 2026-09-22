@@ -361,6 +361,52 @@ export const accountProfileSchema = z
 export type AccountProfile = z.infer<typeof accountProfileSchema>;
 
 /**
+ * How a workspace answers a preferred name: "auto" lets it through and tells
+ * the managers, "manager" holds it until one of them answers. Not the
+ * onboarding approval setting, which decides something else entirely.
+ */
+export const preferredNameApprovalSchema = z.enum(["auto", "manager"]);
+export type PreferredNameApproval = z.infer<typeof preferredNameApprovalSchema>;
+
+/** What a request for a preferred name did: took effect, or is waiting. */
+export const preferredNameOutcomeSchema = z.enum([
+  "published",
+  "waiting",
+  "cleared",
+]);
+export type PreferredNameOutcome = z.infer<typeof preferredNameOutcomeSchema>;
+
+export const pendingPreferredNameSchema = z.object({
+  requestId: z.string().uuid(),
+  employeeId: z.string().uuid(),
+  employeeName: z.string(),
+  requestedName: z.string(),
+  requestedAt: z.string(),
+});
+export type PendingPreferredName = z.infer<typeof pendingPreferredNameSchema>;
+
+export function pendingPreferredNameFromRow(
+  input: unknown,
+): PendingPreferredName {
+  const row = z
+    .object({
+      request_id: z.string().uuid(),
+      employee_id: z.string().uuid(),
+      employee_name: z.string(),
+      requested_name: z.string(),
+      requested_at: z.string(),
+    })
+    .parse(input);
+  return {
+    requestId: row.request_id,
+    employeeId: row.employee_id,
+    employeeName: row.employee_name,
+    requestedName: row.requested_name,
+    requestedAt: row.requested_at,
+  };
+}
+
+/**
  * What each part of the account area is waiting for from this person. A number
  * means somebody is waiting for an answer; it closes when the thing is done,
  * not when the tab is opened.
@@ -379,6 +425,7 @@ export const employmentContactRecordSchema = z.object({
   workspaceId: z.string().uuid(),
   workspaceName: z.string(),
   employeeId: z.string().uuid(),
+  preferredName: z.string(),
   phone: z.string().nullable(),
   emergencyContactName: z.string(),
   emergencyContactRelationship: z.string(),
@@ -397,6 +444,7 @@ export function employmentContactRecordFromRow(
       workspace_id: z.string().uuid(),
       workspace_name: z.string(),
       employee_id: z.string().uuid(),
+      preferred_name: z.string(),
       phone: z.string().nullable(),
       emergency_contact_name: z.string(),
       emergency_contact_relationship: z.string(),
@@ -408,6 +456,7 @@ export function employmentContactRecordFromRow(
     workspaceId: row.workspace_id,
     workspaceName: row.workspace_name,
     employeeId: row.employee_id,
+    preferredName: row.preferred_name,
     phone: row.phone,
     emergencyContactName: row.emergency_contact_name,
     emergencyContactRelationship: row.emergency_contact_relationship,

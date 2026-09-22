@@ -1,12 +1,23 @@
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, ImagePlus, ListChecks, Save } from "lucide-react";
+import {
+  Building2,
+  ImagePlus,
+  ListChecks,
+  Save,
+  UserRoundCheck,
+} from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
   getOwnerSetupChecklistProgress,
   setOwnerSetupChecklistClosed,
 } from "../communications/communications-data";
+import {
+  loadPreferredNameApproval,
+  savePreferredNameApproval,
+} from "../employees/employee-data";
+import type { PreferredNameApproval } from "@newfork/shared";
 import {
   ScheduleLogoUploadDialog,
   type ScheduleLogoSaveDraft,
@@ -47,6 +58,22 @@ export default function GeneralSettingsPage() {
     },
   });
   const checklistClosed = Boolean(checklistQuery.data?.closed_at);
+  // Whether a preferred name is answered here or let through. Separate from the
+  // onboarding approval setting on purpose, and separate in the database too.
+  const preferredQueryKey = ["preferred-name-approval", workspaceId];
+  const preferredQuery = useQuery({
+    queryKey: preferredQueryKey,
+    queryFn: () => loadPreferredNameApproval(workspaceId),
+    enabled: Boolean(workspaceId),
+  });
+  const preferredMutation = useMutation({
+    mutationFn: (approval: PreferredNameApproval) =>
+      savePreferredNameApproval(workspaceId, approval),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: preferredQueryKey });
+    },
+  });
+  const preferredApproval = preferredQuery.data ?? "auto";
 
   if (!context) return null;
 
@@ -172,7 +199,7 @@ export default function GeneralSettingsPage() {
             <label id="setup-checklist-settings-title">Setup checklist</label>
             <p>
               Controls whether the guided setup checklist appears on the
-              Workspace dashboard for this organization.
+              Workspace dashboard for this workspace.
             </p>
           </div>
           <div className="setup-checklist-settings-control">
@@ -198,6 +225,51 @@ export default function GeneralSettingsPage() {
         {checklistQuery.error || checklistMutation.error ? (
           <p className="form-error" role="alert">
             Setup checklist visibility could not be saved.
+          </p>
+        ) : null}
+      </section>
+      <section
+        className="organization-form setup-checklist-settings"
+        aria-labelledby="preferred-name-settings-title"
+      >
+        <div className="organization-form-row">
+          <div>
+            <label id="preferred-name-settings-title">Preferred names</label>
+            <p>
+              A preferred name is what people here call somebody. Documents and
+              signatures always use the name on file. This is not the onboarding
+              approval setting.
+            </p>
+          </div>
+          <div className="setup-checklist-settings-control">
+            <span>
+              {preferredApproval === "manager"
+                ? "Answered here before it is used"
+                : "Used as soon as it is entered"}
+            </span>
+            <Button
+              type="button"
+              disabled={
+                !canEdit ||
+                preferredQuery.isLoading ||
+                preferredMutation.isPending
+              }
+              onClick={() =>
+                preferredMutation.mutate(
+                  preferredApproval === "manager" ? "auto" : "manager",
+                )
+              }
+            >
+              <UserRoundCheck size={16} aria-hidden />
+              {preferredApproval === "manager"
+                ? "Let them through"
+                : "Answer them here"}
+            </Button>
+          </div>
+        </div>
+        {preferredQuery.error || preferredMutation.error ? (
+          <p className="form-error" role="alert">
+            That setting could not be saved.
           </p>
         ) : null}
       </section>

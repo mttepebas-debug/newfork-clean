@@ -11175,6 +11175,21 @@ button.workspace-switcher-item:hover:not(:disabled) {
   line-height: 1;
 }
 
+/* A preferred name this person asked for, waiting for the workspace to answer.
+   Only appears where the workspace chose to answer them. */
+.employee-preferred-name-pending {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--theme-warning-soft);
+  color: var(--theme-text-body);
+  font-size: 13px;
+}
+
 /* The workspace name and what it is still waiting for, on one line. */
 .account-documents-group-head {
   display: flex;

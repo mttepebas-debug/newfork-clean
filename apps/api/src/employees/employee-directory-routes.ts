@@ -285,6 +285,185 @@ export function registerEmployeeDirectoryRoutes(
     },
   );
 
+  // How this workspace answers a preferred name, and the asking and answering
+  // of one. Reading the setting needs only employee access; changing it is a
+  // workspace setting, and answering a request is employee management.
+  app.get(
+    "/v1/workspaces/:workspaceId/preferred-name-approval",
+    async (request, reply) => {
+      const params = workspaceParams.safeParse(request.params);
+      if (!params.success)
+        return reply.status(400).send({ error: "Valid workspace required" });
+      const context = await authorize(
+        request.headers.authorization,
+        params.data.workspaceId,
+        "employees.read",
+        options.contextResolver,
+        reply,
+        "Employee access required",
+      );
+      if (!context) return;
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee directory service is not configured" });
+      try {
+        return reply.send({
+          approval: await options.service.getPreferredNameApproval({
+            actorUserId: context.userId,
+            workspaceId: params.data.workspaceId,
+          }),
+        });
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  );
+
+  app.put(
+    "/v1/workspaces/:workspaceId/preferred-name-approval",
+    async (request, reply) => {
+      const params = workspaceParams.safeParse(request.params);
+      const body = z
+        .object({ approval: z.enum(["auto", "manager"]) })
+        .safeParse(request.body);
+      if (!params.success || !body.success)
+        return reply
+          .status(400)
+          .send({ error: "A preferred name is either answered here or let through" });
+      const context = await authorize(
+        request.headers.authorization,
+        params.data.workspaceId,
+        "settings.general.manage",
+        options.contextResolver,
+        reply,
+        "Workspace settings access required",
+      );
+      if (!context) return;
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee directory service is not configured" });
+      try {
+        await options.service.setPreferredNameApproval({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          approval: body.data.approval,
+        });
+        return reply.status(204).send();
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  );
+
+  app.put(
+    "/v1/workspaces/:workspaceId/employees/:employeeId/preferred-name",
+    async (request, reply) => {
+      const params = employeeParams.safeParse(request.params);
+      const body = z
+        .object({ preferredName: z.string().trim().max(80) })
+        .safeParse(request.body);
+      if (!params.success || !body.success)
+        return reply
+          .status(400)
+          .send({ error: "A preferred name is at most 80 characters" });
+      const context = await authorize(
+        request.headers.authorization,
+        params.data.workspaceId,
+        "employees.read",
+        options.contextResolver,
+        reply,
+        "Employee access required",
+      );
+      if (!context) return;
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee directory service is not configured" });
+      try {
+        return reply.send({
+          outcome: await options.service.requestPreferredName({
+            actorUserId: context.userId,
+            workspaceId: params.data.workspaceId,
+            employeeId: params.data.employeeId,
+            preferredName: body.data.preferredName,
+          }),
+        });
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  );
+
+  app.get(
+    "/v1/workspaces/:workspaceId/preferred-names/pending",
+    async (request, reply) => {
+      const params = workspaceParams.safeParse(request.params);
+      if (!params.success)
+        return reply.status(400).send({ error: "Valid workspace required" });
+      const context = await authorize(
+        request.headers.authorization,
+        params.data.workspaceId,
+        "employees.manage",
+        options.contextResolver,
+        reply,
+        "Employee management access required",
+      );
+      if (!context) return;
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee directory service is not configured" });
+      try {
+        return reply.send(
+          await options.service.listPendingPreferredNames({
+            actorUserId: context.userId,
+            workspaceId: params.data.workspaceId,
+          }),
+        );
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  );
+
+  app.post(
+    "/v1/workspaces/:workspaceId/preferred-names/:requestId/decision",
+    async (request, reply) => {
+      const params = workspaceParams
+        .extend({ requestId: z.string().uuid() })
+        .safeParse(request.params);
+      const body = z.object({ approve: z.boolean() }).safeParse(request.body);
+      if (!params.success || !body.success)
+        return reply.status(400).send({ error: "Valid decision required" });
+      const context = await authorize(
+        request.headers.authorization,
+        params.data.workspaceId,
+        "employees.manage",
+        options.contextResolver,
+        reply,
+        "Employee management access required",
+      );
+      if (!context) return;
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee directory service is not configured" });
+      try {
+        await options.service.decidePreferredName({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          requestId: params.data.requestId,
+          approve: body.data.approve,
+        });
+        return reply.status(204).send();
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  );
+
   // A person's own emergency contact and personal phone. Onboarding asks once
   // and never comes back; the owner is never asked at all. The database checks
   // the one rule that matters, which is that the record is the caller's own.

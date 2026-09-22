@@ -47,6 +47,8 @@ import {
   createEmployee,
   type InviteRoleOption,
   loadEmployeeInvitationLink,
+  decidePreferredName,
+  listPendingPreferredNames,
   saveOwnEmploymentContact,
   loadEmployeeReferenceData,
   prepareEmployeeInvitation,
@@ -1643,6 +1645,9 @@ function renderSection(
         invitePending={detail?.invitation?.status === "pending"}
         accountEmail={detail?.account_email ?? null}
         privateContact={detail?.private_contact ?? null}
+        pendingNameTarget={
+          detail ? { workspaceId: detail.workspace_id, employeeId: detail.id } : null
+        }
         ownEmergencyContact={
           ownOwnerRecord && detail
             ? { workspaceId: detail.workspace_id, employeeId: detail.id }
@@ -1863,6 +1868,7 @@ function ProfileSection({
   accountEmail,
   privateContact,
   ownEmergencyContact,
+  pendingNameTarget,
   emailInputRef,
   onboarding,
   onboardingLoading,
@@ -1883,6 +1889,8 @@ function ProfileSection({
   privateContact: EmployeeDetail["private_contact"];
   /** Present only on the owner's own record, which onboarding never asks. */
   ownEmergencyContact: { workspaceId: string; employeeId: string } | null;
+  /** The record being looked at, so a waiting preferred name can be answered. */
+  pendingNameTarget: { workspaceId: string; employeeId: string } | null;
   emailInputRef: React.RefObject<HTMLInputElement | null>;
   onboarding: EmployeeOnboardingManager | null | undefined;
   onboardingLoading: boolean;
@@ -1964,6 +1972,12 @@ function ProfileSection({
               setDraft((current) => ({ ...current, preferred_name: value }))
             }
           />
+          {!creating && pendingNameTarget ? (
+            <PendingPreferredNameRow
+              workspaceId={pendingNameTarget.workspaceId}
+              employeeId={pendingNameTarget.employeeId}
+            />
+          ) : null}
           {!creating && canReadPrivate ? (
             <ReadOnlyField
               label="Date of birth"
@@ -3074,5 +3088,68 @@ function OwnEmergencyContact({
         ) : null}
       </div>
     </>
+  );
+}
+
+/**
+ * A preferred name this person has asked for and the workspace has not
+ * answered. It only appears where a workspace chose to answer them; on the
+ * other setting a name is simply the name.
+ *
+ * Refusing says nothing to the person. That is the decision: a refusal is not
+ * a conversation the workspace has to have, and a name that never appears is
+ * the whole of it.
+ */
+export function PendingPreferredNameRow({
+  workspaceId,
+  employeeId,
+}: {
+  readonly workspaceId: string;
+  readonly employeeId: string;
+}) {
+  const cache = useQueryClient();
+  const pending = useQuery({
+    queryKey: ["preferred-names-pending", workspaceId],
+    queryFn: () => listPendingPreferredNames(workspaceId),
+  });
+  const decide = useMutation({
+    mutationFn: (approve: boolean) =>
+      decidePreferredName(workspaceId, waiting!.requestId, approve),
+    onSuccess: async () => {
+      await cache.invalidateQueries({
+        queryKey: ["preferred-names-pending", workspaceId],
+      });
+      await cache.invalidateQueries({ queryKey: ["employee-detail"] });
+    },
+  });
+  const waiting = (pending.data ?? []).find(
+    (request) => request.employeeId === employeeId,
+  );
+
+  if (!waiting) return null;
+
+  return (
+    <div className="employee-preferred-name-pending wide">
+      <span>
+        Asked to be called <strong>{waiting.requestedName}</strong> here.
+      </span>
+      <div className="pb-row-actions">
+        <Button
+          type="button"
+          disabled={decide.isPending}
+          onClick={() => decide.mutate(true)}
+        >
+          Use it
+        </Button>
+        <Button
+          type="button"
+          className="secondary-button"
+          disabled={decide.isPending}
+          onClick={() => decide.mutate(false)}
+        >
+          Leave it
+        </Button>
+      </div>
+    </div>
   );
 }
