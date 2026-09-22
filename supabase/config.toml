@@ -68,7 +68,11 @@ schema_paths = []
 enabled = true
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
+# ./local-fixture/*.sql is the working Meyhouse data: the workspace, its four
+# locations, its people. It is gitignored because it carries real names, so on
+# a machine that has never run scripts/export-local-fixture.mjs the glob simply
+# matches nothing and the reset still finishes.
+sql_paths = ["./seed.sql", "./local-fixture/*.sql"]
 
 [db.network_restrictions]
 # Enable management of network restrictions.

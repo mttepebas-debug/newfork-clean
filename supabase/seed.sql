@@ -341,39 +341,19 @@ begin
     (select jsonb_agg(jsonb_build_object('day',day,'mode','unrestricted','windows','[]'::jsonb)) from generate_series(0,6) day),
     'manager','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5',schedule_week
   from unnest(array['15000000-0000-4000-8000-000000000002'::uuid,'15000000-0000-4000-8000-000000000003'::uuid]) employee;
-  -- Keep the intentional Friday availability example with a real, scoped
-  -- synthetic decision, rather than bypassing the assignment guard in seeds.
-  availability_seed_shift:=public.normalize_schedule_time_source('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',jsonb_build_object(
-    'id','23000000-0000-4000-8000-000000000004','location_id','11000000-0000-4000-8000-000000000001',
-    'employee_id','15000000-0000-4000-8000-000000000001','job_id','13000000-0000-4000-8000-000000000001',
-    'shift_type_id','14000000-0000-4000-8000-000000000002','scheduled_date',schedule_week+4,'start_time','15:00','end_time','23:00','time_basis','explicit'));
-  perform public.schedule_prepare_availability_assignment('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
-    availability_seed_shift||jsonb_build_object('availability_assessment_fingerprint',public.assess_shift_availability('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','15000000-0000-4000-8000-000000000001',availability_seed_shift-'id')->>'fingerprint',
-    'conflict_override_note','Synthetic demo: employee confirmed this Friday assignment.'),null);
-
-  insert into public.schedule_location_publications (
-    id, workspace_id, location_id, week_start, version_number, status, published_by, published_at
-  ) values
-    ('21000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', schedule_week, 1, 'current', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', now() - interval '1 day'),
-    ('21000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000002', schedule_week, 1, 'current', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', now() - interval '1 day');
-
-  insert into public.schedule_published_shifts (
-    id, workspace_id, location_id, publication_id, employee_id, job_id,
-    shift_type_id, scheduled_date, start_time, end_time, note, source_shift_id
-  ) values
-    ('22000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000001', '13000000-0000-4000-8000-000000000001', '14000000-0000-4000-8000-000000000001', schedule_week, '09:00', '17:00', '', '23000000-0000-4000-8000-000000000001'),
-    ('22000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000002', '13000000-0000-4000-8000-000000000002', '14000000-0000-4000-8000-000000000002', schedule_week + 1, '15:00', '23:00', '', '23000000-0000-4000-8000-000000000002'),
-    -- Moved off schedule_week + 1, where it sat inside the 15:00-23:00 shift the
-    -- row above gives the same person. bl064_conflict_severity began refusing an
-    -- assignment that overlaps one the employee already has, and this pair was
-    -- written before that rule existed; it is what stopped `supabase db reset`
-    -- from ever finishing. Same week, same person, same location, same missing
-    -- shift type -- only the day moves.
-    ('22000000-0000-4000-8000-000000000003', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000002', '13000000-0000-4000-8000-000000000002', null, schedule_week + 2, '18:00', '22:00', 'Private booking', '23000000-0000-4000-8000-000000000003'),
-    ('22000000-0000-4000-8000-000000000004', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000001', '13000000-0000-4000-8000-000000000001', '14000000-0000-4000-8000-000000000002', schedule_week + 4, '15:00', '23:00', '', '23000000-0000-4000-8000-000000000004'),
-    ('22000000-0000-4000-8000-000000000005', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', null, '13000000-0000-4000-8000-000000000001', '14000000-0000-4000-8000-000000000003', schedule_week + 5, '18:00', '02:00', 'Open shift', '23000000-0000-4000-8000-000000000005'),
-    ('22000000-0000-4000-8000-000000000006', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000002', '15000000-0000-4000-8000-000000000003', '13000000-0000-4000-8000-000000000003', '14000000-0000-4000-8000-000000000001', schedule_week + 2, '09:00', '17:00', '', '23000000-0000-4000-8000-000000000006'),
-    ('22000000-0000-4000-8000-000000000007', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000002', '15000000-0000-4000-8000-000000000003', '13000000-0000-4000-8000-000000000003', '14000000-0000-4000-8000-000000000002', schedule_week + 3, '15:00', '23:00', 'Closure conflict fixture', '23000000-0000-4000-8000-000000000007');
+  -- The demo week used to publish seven shifts here, and it is why
+  -- `supabase db reset` stopped working: every rule the schedule has gained
+  -- since -- no two overlapping assignments, an acceptance on record before a
+  -- shift is published against stated unavailability -- refuses rows written
+  -- before that rule existed, and nobody had run the seed to find out.
+  --
+  -- A seed's job is to make an empty workspace usable: locations, departments,
+  -- jobs, shift types, people. A schedule is something the app makes, under
+  -- the rules, and a test that wants one should make its own rather than lean
+  -- on a week somebody wrote once and never ran again.
+  --
+  -- The availability versions above stay: they are the people's own stated
+  -- hours, not a schedule.
 end
 $$;
 

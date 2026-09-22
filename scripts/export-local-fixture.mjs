@@ -23,21 +23,44 @@
  * Usage: node scripts/export-local-fixture.mjs [outfile]
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 const CONTAINER =
   process.env.SUPABASE_DB_CONTAINER ?? "supabase_db_newfork-clean";
+// Which database to read from. The working data now lives in a restored copy,
+// because the live one was reset; SUPABASE_DB_NAME points this at it.
+const DATABASE = process.env.SUPABASE_DB_NAME ?? "postgres";
 const WORKSPACE = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+// The seed owns the id above, and both have to exist in the same database
+// once the fixture loads on every reset, so the export is rewritten to this
+// one on the way out.
+const NEW_WORKSPACE = "6ea5d512-bc7f-4cf3-aad4-2f0815de0fa1";
 const PASSWORD = "123456789";
+
+// The structure this workspace is meant to have, rather than the one it grew.
+// Everything outside these two lists is left behind: BOH, MANAGEMENT, two
+// departments called deneme, and jobs called Deneme, kkk and oooo, none of
+// which has a single person in it.
+const DEPARTMENTS = ["FOH", "BAR"];
+const JOBS = [
+  "Server", "Busser", "Hostess", "Stocker", "Expo",
+  "Jr. Bartender", "Freshman Bartender", "Core Bartender",
+];
+// The one job with people on it that the list above does not keep. FOH had a
+// plain "Bartender" alongside BAR's three grades; its three people move to the
+// grade they would hold.
+const JOB_MERGED_AWAY = "Bartender";
+const JOB_MERGED_INTO = "Core Bartender";
 
 const OWNER = "merttepebas@meyhousefood.com";
 const ACTIVE_LINK = "theweiwuer@gmail.com";
+const SECOND_ACTIVE_LINK = "mt.tepebas@gmail.com";
 const ARCHIVED_LINK = "theweiwuer3@gmail.com";
-const INVITED = "mt.tepebas@gmail.com";
 
 /** Which employee record each account is attached to, by employee code. */
 const ACTIVE_LINK_CODE = "E-9006";
+const SECOND_ACTIVE_LINK_CODE = "E-9008";
 const ARCHIVED_LINK_CODE = "E-0002";
 /** The owner's own employee record, created here because none exists. */
 const OWNER_EMPLOYEE_CODE = "E-9100";
@@ -46,7 +69,7 @@ const OWNER_EMPLOYEE_CODE = "E-9100";
 const OWNER_FIRST_NAME = "Mert";
 const OWNER_LAST_NAME = "Tepebas";
 
-const KEPT_EMAILS = [OWNER, ACTIVE_LINK, ARCHIVED_LINK, INVITED];
+const KEPT_EMAILS = [OWNER, ACTIVE_LINK, SECOND_ACTIVE_LINK, ARCHIVED_LINK];
 const emailList = KEPT_EMAILS.map((email) => `'${email}'`).join(", ");
 const ownerId = `(select id from auth.users where email = '${OWNER}')`;
 
@@ -61,7 +84,7 @@ function psql(sql) {
       "-U",
       "postgres",
       "-d",
-      "postgres",
+      DATABASE,
       "-Atq",
       "-c",
       sql,
@@ -315,7 +338,9 @@ parts.push(
     "public",
     "departments",
     `select ${rowJson("d")} from public.departments d
-     where d.workspace_id = '${WORKSPACE}' order by d.name`,
+     where d.workspace_id = '${WORKSPACE}'
+       and d.name = any(array[${DEPARTMENTS.map(quote).join(", ")}])
+     order by d.name`,
   ),
 );
 
@@ -325,7 +350,11 @@ parts.push(
     "public",
     "jobs",
     `select ${rowJson("j")} from public.jobs j
-     where j.workspace_id = '${WORKSPACE}' order by j.name`,
+     join public.departments d on d.id = j.department_id
+     where j.workspace_id = '${WORKSPACE}'
+       and d.name = any(array[${DEPARTMENTS.map(quote).join(", ")}])
+       and j.name = any(array[${JOBS.map(quote).join(", ")}])
+     order by d.name, j.name`,
   ),
 );
 
@@ -335,10 +364,11 @@ parts.push(
     "public",
     "shift_types",
     `select ${rowJson("s")}
-       || case when s.name = 'Lunch'
-               then jsonb_build_object(
-                      'default_start_time', '11:30:00',
-                      'default_end_time', '15:30:00')
+       || case s.name
+               when 'Lunch' then jsonb_build_object(
+                 'default_start_time', '11:30:00', 'default_end_time', '15:30:00')
+               when 'Dinner' then jsonb_build_object(
+                 'default_start_time', '16:15:00', 'default_end_time', '23:30:00')
                else '{}'::jsonb end
      from public.shift_types s
      where s.workspace_id = '${WORKSPACE}' and s.archived_at is null
@@ -352,8 +382,11 @@ parts.push(
     "public",
     "shift_type_time_versions",
     `select ${rowJson("v")}
-       || case when s.name = 'Lunch' and v.revision = s.default_revision
-               then jsonb_build_object('start_time', '11:30:00', 'end_time', '15:30:00')
+       || case when v.revision <> s.default_revision then '{}'::jsonb
+               when s.name = 'Lunch'
+                 then jsonb_build_object('start_time', '11:30:00', 'end_time', '15:30:00')
+               when s.name = 'Dinner'
+                 then jsonb_build_object('start_time', '16:15:00', 'end_time', '23:30:00')
                else '{}'::jsonb end
      from public.shift_type_time_versions v
      join public.shift_types s on s.id = v.shift_type_id
@@ -374,6 +407,8 @@ parts.push(
             'user_id', case
               when e.employee_code = '${ACTIVE_LINK_CODE}'
                 then (select id from auth.users where email = '${ACTIVE_LINK}')
+              when e.employee_code = '${SECOND_ACTIVE_LINK_CODE}'
+                then (select id from auth.users where email = '${SECOND_ACTIVE_LINK}')
               when e.employee_code = '${ARCHIVED_LINK_CODE}'
                 then (select id from auth.users where email = '${ARCHIVED_LINK}')
               else null end)
@@ -413,7 +448,7 @@ select '${WORKSPACE}', u.id,
         where e.workspace_id = '${WORKSPACE}' and e.user_id = u.id limit 1),
        true
 from auth.users u
-where u.email in ('${OWNER}', '${ACTIVE_LINK}', '${ARCHIVED_LINK}')
+where u.email in ('${OWNER}', '${ACTIVE_LINK}', '${SECOND_ACTIVE_LINK}', '${ARCHIVED_LINK}')
 on conflict do nothing;
 `);
 
@@ -434,9 +469,25 @@ parts.push(
     "what they do",
     "public",
     "employee_job_assignments",
-    `select ${rowJson("a")} || jsonb_build_object('created_by', ${ownerId})
+    `select ${rowJson("a")}
+       || jsonb_build_object('created_by', ${ownerId})
+       || case when job.name = ${quote(JOB_MERGED_AWAY)}
+               then jsonb_build_object('job_id', (
+                 select kept.id from public.jobs kept
+                 join public.departments dept on dept.id = kept.department_id
+                 where kept.workspace_id = '${WORKSPACE}'
+                   and kept.name = ${quote(JOB_MERGED_INTO)}
+                   and dept.name = any(array[${DEPARTMENTS.map(quote).join(", ")}])))
+               else '{}'::jsonb end
      from public.employee_job_assignments a
-     where a.workspace_id = '${WORKSPACE}'`,
+     join public.jobs job on job.id = a.job_id
+     left join public.departments job_dept on job_dept.id = job.department_id
+     where a.workspace_id = '${WORKSPACE}'
+       and (
+         (job.name = any(array[${JOBS.map(quote).join(", ")}])
+          and job_dept.name = any(array[${DEPARTMENTS.map(quote).join(", ")}]))
+         or job.name = ${quote(JOB_MERGED_AWAY)}
+       )`,
   ),
 );
 
@@ -450,27 +501,6 @@ parts.push(
   ),
 );
 
-parts.push(`-- One invitation left waiting, so there is something to accept.
--- The token is a fresh random one: the emailed link from the old database
--- would not have survived the export anyway, and the account page finds a
--- waiting invitation by address.
-insert into public.employee_invitations (
-  workspace_id, employee_id, email, role_id, all_locations,
-  token_hash, status, expires_at, created_by
-)
-select '${WORKSPACE}',
-       (select id from public.employee_profiles
-        where workspace_id = '${WORKSPACE}'
-          and archived_at is null and user_id is null
-        order by employee_code limit 1),
-       '${INVITED}',
-       (select r.id from public.workspace_roles r
-        where r.workspace_id = '${WORKSPACE}' and r.access_class::text = 'employee'),
-       true,
-       encode(extensions.digest(gen_random_uuid()::text, 'sha256'), 'hex'),
-       'pending', now() + interval '14 days', ${ownerId}
-on conflict do nothing;
-`);
 
 parts.push(
   block(
@@ -513,5 +543,40 @@ commit;
 
 const outfile = resolve(process.argv[2] ?? "supabase/local-fixture/meyhouse.sql");
 mkdirSync(dirname(outfile), { recursive: true });
-writeFileSync(outfile, parts.join("\n"), "utf8");
+/**
+ * This workspace grew out of the seed's own workspace, so it still holds rows
+ * the seed will insert again under the same ids -- the FOH department carries
+ * the id the seed gives "Dining Room". Both now load into the same database,
+ * and `on conflict do nothing` would silently drop ours and leave every job
+ * pointing at a department that is not there.
+ *
+ * So every id the two have in common is moved aside. Rewriting the text rather
+ * than each select keeps the queries readable and cannot miss a column: an id
+ * is the same string wherever it appears.
+ */
+function withoutSeedCollisions(sql) {
+  const seed = readFileSync(resolve("supabase/seed.sql"), "utf8");
+  const uuid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
+  const shared = [...new Set(seed.match(uuid) ?? [])].filter((id) =>
+    sql.includes(id),
+  );
+  let moved = 0;
+  for (const id of shared) {
+    let replacement;
+    do {
+      // A uuid's last group is twelve characters; keeping thirty and adding
+      // six leaves it exactly that long.
+      replacement = `${id.slice(0, 30)}fa${(++moved).toString(16).padStart(4, "0")}`;
+    } while (sql.includes(replacement) || seed.includes(replacement));
+    sql = sql.replaceAll(id, replacement);
+  }
+  console.log(`moved ${moved} id${moved === 1 ? "" : "s"} the seed also uses`);
+  return sql;
+}
+
+writeFileSync(
+  outfile,
+  withoutSeedCollisions(parts.join("\n").replaceAll(WORKSPACE, NEW_WORKSPACE)),
+  "utf8",
+);
 console.log(`wrote ${outfile}`);
