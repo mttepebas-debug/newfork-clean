@@ -138,6 +138,7 @@ export async function apiRequest(
     throw new RequestError(
       "error" in shape ? String(shape.error) : "Workspace operation failed",
       typeof shape.reason === "string" ? shape.reason : undefined,
+      typeof shape.detail === "string" ? shape.detail : undefined,
     );
   }
   return body;

@@ -78,6 +78,11 @@ export default function WorkspacesPage() {
     string | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  // The refusal names the transfer standing in the way. Describing where to
+  // find it was the best the screen could do while it did not know which one.
+  const [blockingTransferId, setBlockingTransferId] = useState<string | null>(
+    null,
+  );
   const accessibleWorkspaces = workspaces.filter(workspace => workspace.status === "active" &&
     ((workspace.lifecycleStatus ?? "active") === "active" ||
       (workspace.lifecycleStatus === "closure_scheduled" && !!workspace.closureEffectiveAt && Date.parse(workspace.closureEffectiveAt) > Date.now())));
@@ -352,6 +357,12 @@ export default function WorkspacesPage() {
           "This workspace was not closed. Reload the page and try again.",
         ),
       );
+      setBlockingTransferId(
+        closureError instanceof RequestError &&
+          closureError.reason === "workspace.closure.transfer_pending"
+          ? (closureError.detail ?? null)
+          : null,
+      );
     } finally {
       setClosingWorkspaceId(null);
     }
@@ -447,10 +458,53 @@ export default function WorkspacesPage() {
   // What went wrong belongs next to the thing that went wrong, not at the end
   // of the page. Only one of these is ever on screen at a time.
   const errorNotice = error ? (
-    <p className="form-error" role="alert">
-      {error}
-    </p>
+    <div className="workspace-error-notice">
+      <p className="form-error" role="alert">
+        {error}
+      </p>
+      {/* The refusal named the transfer, so the way out is a button rather
+          than directions to a menu. */}
+      {blockingTransferId && closureTarget ? (
+        <Button
+          type="button"
+          className="secondary-button"
+          disabled={transferringWorkspaceId !== null}
+          onClick={() => void cancelBlockingTransfer()}
+        >
+          Cancel that transfer
+        </Button>
+      ) : null}
+    </div>
   ) : null;
+
+  /**
+   * Cancels the one the refusal named, rather than whichever this row happens
+   * to know about. They are the same today; they would not be if a second were
+   * ever started while the first was waiting.
+   */
+  const cancelBlockingTransfer = async (): Promise<void> => {
+    if (!supabaseClient || !closureTarget || !blockingTransferId) return;
+    setTransferringWorkspaceId(closureTarget.workspace.id);
+    setError(null);
+    try {
+      await cancelWorkspaceOwnershipTransfer(
+        supabaseClient,
+        closureTarget.workspace.id,
+        blockingTransferId,
+      );
+      setBlockingTransferId(null);
+      await reloadWorkspaces();
+    } catch (cancelError: unknown) {
+      setError(
+        lifecycleMessage(
+          cancelError,
+          "That transfer was not cancelled. Reload the page and try again.",
+        ),
+      );
+    } finally {
+      setTransferringWorkspaceId(null);
+    }
+  };
 
   const cancelTransfer = async (workspace: WorkspaceSummary): Promise<void> => {
     if (!supabaseClient || !workspace.pendingOwnershipTransfer) return;
@@ -764,7 +818,9 @@ export default function WorkspacesPage() {
               {whoIsInIt(closureTarget.workspace)}{" "}
               {closureTarget.mode === "immediate"
                 ? "Everyone loses access to this workspace the moment you close it, and invitations that are still waiting stop working. Nobody, including support, can bring it back."
-                : "Everyone keeps access until the closure date, and you can cancel the closure any time before it."}
+                : closesOn(closureTarget.workspace)
+                  ? `Everyone keeps access until ${closesOn(closureTarget.workspace)}, and you can cancel the closure any time before it.`
+                  : "Everyone keeps access until the closure date, and you can cancel the closure any time before it."}
             </p>
           </div>
           {closureTarget.mode === "immediate" ? (
@@ -978,6 +1034,15 @@ class PersonFacingError extends Error {}
  * an older payload, a summary built from context — the sentence is left out
  * rather than guessed at.
  */
+/**
+ * When a scheduled closure would land. The rule belongs to the database, which
+ * sends the date it produces; the screen says it rather than working it out and
+ * risking a different answer from the one that will be applied.
+ */
+function closesOn(workspace: WorkspaceSummary): string {
+  return formatDate(workspace.defaultClosureEffectiveAt ?? null, "");
+}
+
 export function whoIsInIt(workspace: WorkspaceSummary): string {
   const members = workspace.otherMemberCount;
   const invitations = workspace.pendingInvitationCount ?? 0;

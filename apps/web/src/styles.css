@@ -11175,6 +11175,15 @@ button.workspace-switcher-item:hover:not(:disabled) {
   line-height: 1;
 }
 
+/* The refusal and, when it named one thing, the way out of it. */
+.workspace-error-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* A preferred name this person asked for, waiting for the workspace to answer.
    Only appears where the workspace chose to answer them. */
 .employee-preferred-name-pending {

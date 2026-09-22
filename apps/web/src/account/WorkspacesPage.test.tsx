@@ -851,6 +851,52 @@ describe("WorkspacesPage", () => {
     expect(screen.queryByText(/Recent reauthentication required/)).toBeNull();
   });
 
+  // The refusal names the transfer standing in the way, so the way out is a
+  // button rather than directions to a menu.
+  it("offers to cancel the transfer the refusal named", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
+      new RequestError(
+        "pending ownership transfer must be resolved before workspace closure",
+        "workspace.closure.transfer_pending",
+        "77777777-7777-4777-8777-777777777777",
+      ),
+    );
+    vi.mocked(cancelWorkspaceOwnershipTransfer).mockResolvedValue(undefined);
+    renderPage();
+
+    await openScheduledClosure();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Cancel that transfer" }),
+    );
+
+    await waitFor(() =>
+      expect(cancelWorkspaceOwnershipTransfer).toHaveBeenCalledWith(
+        expect.anything(),
+        ownerWorkspace.id,
+        "77777777-7777-4777-8777-777777777777",
+      ),
+    );
+  });
+
+  it("offers nothing to press when the refusal named nothing", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
+      new RequestError(
+        "workspace closure requires explicit acknowledgement",
+        "workspace.closure.acknowledgement_required",
+      ),
+    );
+    renderPage();
+
+    await openScheduledClosure();
+
+    await screen.findByRole("alert");
+    expect(
+      screen.queryByRole("button", { name: "Cancel that transfer" }),
+    ).toBeNull();
+  });
+
   it("keeps a server sentence it does not know off the screen", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
@@ -1022,6 +1068,48 @@ describe("WorkspacesPage", () => {
       "This request is no longer waiting for an answer. Reload the page to see the workspaces you have.",
     );
     expect(screen.queryByText(/pending ownership transfer not found/)).toBeNull();
+  });
+});
+
+describe("closing later", () => {
+  it("says the date the closure would land on, from the rule the database owns", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      {
+        ...ownerWorkspace,
+        defaultClosureEffectiveAt: "2026-10-06T00:00:00.000Z",
+      } as typeof ownerWorkspace,
+    ]);
+    renderPage();
+
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close later" }));
+
+    // The instant is formatted where the reader is, so the expected text is
+    // built the same way rather than pinned to one zone.
+    const localDate = new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date("2026-10-06T00:00:00.000Z"));
+    expect(
+      await screen.findByText(
+        new RegExp(`Everyone keeps access until ${localDate},`),
+      ),
+    ).toBeTruthy();
+  });
+
+  // Rather than work the rule out again and risk a different answer from the
+  // one that will actually be applied.
+  it("falls back to naming no date when the payload carries none", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    renderPage();
+
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close later" }));
+
+    expect(
+      await screen.findByText(/Everyone keeps access until the closure date/),
+    ).toBeTruthy();
   });
 });
 

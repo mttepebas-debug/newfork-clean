@@ -1048,6 +1048,10 @@ describe("shared contracts", () => {
       onboarding: { status: "incomplete", currentStep: 1, revision: 1 },
       lifecycleStatus: "active",
       accessRemoved: false,
+      // A row that carries no counts and no date says so rather than guessing.
+      otherMemberCount: undefined,
+      pendingInvitationCount: undefined,
+      defaultClosureEffectiveAt: null,
       lastUsedAt: null,
       closureEffectiveAt: null,
       pendingOwnershipTransfer: null,

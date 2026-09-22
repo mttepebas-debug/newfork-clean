@@ -16,6 +16,12 @@ export class HttpError extends Error {
    * reworded or translated without anything downstream noticing.
    */
   readonly reason?: string;
+  /**
+   * What the refusal was about, when it is about one thing in particular: the
+   * id of the transfer standing in the way, say. The key says which refusal;
+   * this says which one of them.
+   */
+  readonly detail?: string;
 
   constructor(
     message: string,
@@ -23,6 +29,7 @@ export class HttpError extends Error {
     options: {
       readonly pgCode?: string;
       readonly reason?: string;
+      readonly detail?: string;
       readonly cause?: unknown;
     } = {},
   ) {
@@ -31,6 +38,7 @@ export class HttpError extends Error {
     this.statusCode = statusCode;
     this.pgCode = options.pgCode;
     this.reason = options.reason;
+    this.detail = options.detail;
   }
 }
 
@@ -65,12 +73,18 @@ export function rpcFailure(
     readonly message: string;
     readonly code?: string;
     readonly hint?: string | null;
+    readonly details?: string | null;
   },
   fallbackStatus = 400,
 ): HttpError {
   return new HttpError(
     error.message,
     statusForPostgresCode(error.code) ?? fallbackStatus,
-    { pgCode: error.code, reason: error.hint ?? undefined, cause: error },
+    {
+      pgCode: error.code,
+      reason: error.hint ?? undefined,
+      detail: error.details ?? undefined,
+      cause: error,
+    },
   );
 }

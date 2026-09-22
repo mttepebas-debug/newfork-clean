@@ -622,11 +622,11 @@ function requestError(reply: FastifyReply, error: unknown) {
   // The reason is a machine key from the RPC's `hint`. It travels with the
   // message so a screen can say its own sentence without reading ours.
   if (error instanceof HttpError)
-    return reply
-      .status(error.statusCode)
-      .send(
-        error.reason ? { error: message, reason: error.reason } : { error: message },
-      );
+    return reply.status(error.statusCode).send({
+      error: message,
+      ...(error.reason ? { reason: error.reason } : {}),
+      ...(error.detail ? { detail: error.detail } : {}),
+    });
   if (
     message.includes("access required") ||
     message.includes("not available") ||

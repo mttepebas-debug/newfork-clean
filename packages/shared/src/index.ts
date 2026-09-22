@@ -483,6 +483,16 @@ export const workspaceSummarySchema = z.object({
    */
   otherMemberCount: z.number().int().nonnegative().optional(),
   pendingInvitationCount: z.number().int().nonnegative().optional(),
+  /**
+   * Where a scheduled closure would land if nobody names a date. The rule is
+   * the database's; this is what it produces, so the panel can say it before
+   * anybody commits to anything.
+   */
+  defaultClosureEffectiveAt: z
+    .string()
+    .datetime({ offset: true })
+    .nullable()
+    .optional(),
   /** When this membership was last opened; the landing decision sorts by it. */
   lastUsedAt: z
     .string()
@@ -592,6 +602,7 @@ export const workspaceSummaryRowSchema = z.object({
   access_removed: z.boolean().optional(),
   other_member_count: z.number().int().nonnegative().nullable().optional(),
   pending_invitation_count: z.number().int().nonnegative().nullable().optional(),
+  default_closure_effective_at: z.string().nullable().optional(),
   pending_ownership_transfer_id: z.string().uuid().nullable().optional(),
   pending_ownership_transfer_role: z
     .enum(["initiator", "target"])
@@ -625,6 +636,7 @@ export function workspaceSummaryFromRow(input: unknown): WorkspaceSummary {
     accessRemoved: row.access_removed ?? false,
     otherMemberCount: row.other_member_count ?? undefined,
     pendingInvitationCount: row.pending_invitation_count ?? undefined,
+    defaultClosureEffectiveAt: row.default_closure_effective_at ?? null,
     closureEffectiveAt: row.closure_effective_at,
     pendingOwnershipTransfer:
       status === "active" &&
