@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(72);
+select plan(70);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -54,6 +54,7 @@ insert into public.employee_profiles (
   '17000000-0000-4000-8000-000000000007', 'E-0004', 'Jame', 'Porter', '',
   'review-auto@example.test', '17000000-0000-4000-8000-000000000004'
 );
+
 
 insert into public.employee_onboarding_settings (workspace_id, final_approval_required, updated_by)
 values ('27000000-0000-4000-8000-000000000002', true, '17000000-0000-4000-8000-000000000004');
@@ -157,16 +158,18 @@ set local role postgres;
 select is((select first_name from public.employee_profiles where id = '47000000-0000-4000-8000-000000000002'), 'Taylor', 'legal name approval updates employee display name source');
 
 set local role service_role;
-select is(
-  public.reset_employee_onboarding_service('17000000-0000-4000-8000-000000000005', 3),
-  4,
-  'employee can reset onboarding before activation'
+-- "Start over" was taken out of the product on 2026-09-16: it could delete
+-- document and signature history the workspace is obliged to keep. The call
+-- is still there so an old client gets a clear answer, and the answer is no.
+select throws_ok(
+  $$select public.reset_employee_onboarding_service('17000000-0000-4000-8000-000000000005', 3)$$,
+  '22023',
+  'Continue your existing onboarding to update its documents',
+  'onboarding can no longer be started over'
 );
 set local role postgres;
-select is((select count(*)::integer from public.employee_private_profiles where employee_id = '47000000-0000-4000-8000-000000000002'), 0, 'reset clears private profile answers');
-select is((select status::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000002' and kind = 'profile'), 'not_started', 'reset returns profile requirement to not started');
 select is(
-  (public.leave_employee_onboarding_service('17000000-0000-4000-8000-000000000005', 4)->>'status'),
+  (public.leave_employee_onboarding_service('17000000-0000-4000-8000-000000000005', 3)->>'status'),
   'left',
   'pending employee can leave onboarding after warning'
 );
