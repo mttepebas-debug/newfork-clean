@@ -28,12 +28,14 @@ select is((public.availability_capacity_for_span(w,emp,tstzrange((starts+time '0
 
 insert into public.shift_types(id,workspace_id,name,color,default_start_time,default_end_time)
 select typ,w,'Complement Lunch','#123456','12:00','16:00' from ac_state;
-insert into public.shift_types(id,workspace_id,name,color,default_start_time,default_end_time)
-select 'af930000-0000-4000-8000-000000000002',w,'Complement No Hours','#123456',null,null from ac_state;
+-- There used to be a third type here with no hours at all, to prove it was
+-- never offered as a clock shortcut. A shift type without hours cannot be
+-- created any more -- the database refuses it on the way in -- so the only
+-- kind left to keep out of the shortcuts is an archived one.
 insert into public.shift_types(id,workspace_id,name,color,default_start_time,default_end_time,archived_at)
 select 'af930000-0000-4000-8000-000000000003',w,'Complement Archived','#123456','12:00','16:00',now() from ac_state;
 select ok(exists(select 1 from jsonb_array_elements(public.availability_read_service(actor,w)->'clock_presets') p where p->>'id'=typ::text and p->>'start_time'='12:00' and p->>'end_time'='16:00'),'employee reads usable current shift-type clock shortcuts') from ac_state;
-select ok(not exists(select 1 from jsonb_array_elements(public.availability_read_service(actor,w)->'clock_presets') p where p->>'id' in ('af930000-0000-4000-8000-000000000002','af930000-0000-4000-8000-000000000003')),'unresolved and archived types are not offered as clock shortcuts') from ac_state;
+select ok(not exists(select 1 from jsonb_array_elements(public.availability_read_service(actor,w)->'clock_presets') p where p->>'id'='af930000-0000-4000-8000-000000000003'),'an archived type is not offered as a clock shortcut') from ac_state;
 update public.shift_types set default_start_time='18:00',default_end_time='22:00' where id=(select typ from ac_state);
 select is(public.availability_read_service(actor,w)->'latest'->'days',proposal->'days','changing preset defaults never rewrites saved employee availability') from ac_state;
 select is(public.availability_read_service(actor,w)->>'revision','1','a shift-type change does not fabricate an availability revision') from ac_state;

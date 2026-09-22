@@ -36,8 +36,14 @@ select p.id,w,p.location,p.week,1,owner from cq,cq_publications p;
 create temp table cq_shifts as select n,('afa30000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid id,
  case when n=4 then 2 when n=5 then 3 else 1 end pub,
  case when n=5 then '2035-01-14'::date when n=6 then '2035-01-16'::date else '2035-01-15'::date end scheduled_date,
- (array['08:00','10:00','12:00','04:00','23:00','18:00'])[n] start_time,
- (array['10:00','12:00','16:00','05:00','02:00','20:00'])[n] end_time from generate_series(1,6)n;
+ -- The fourth shift is at the other location, which runs eight hours behind.
+ -- It used to sit at 04:00 there, which is the same hour of the day as the
+ -- third shift here, and the point of it was that the counter measures real
+ -- time rather than the clock on the wall. Nobody can hold two shifts at once
+ -- any more, so it moved to 10:00 there -- still the far location, still the
+ -- other time zone, no longer the same moment.
+ (array['08:00','10:00','12:00','10:00','23:00','18:00'])[n] start_time,
+ (array['10:00','12:00','16:00','11:00','02:00','20:00'])[n] end_time from generate_series(1,6)n;
 insert into public.schedule_published_shifts(id,workspace_id,publication_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,time_basis,time_snapshot,time_timezone,source_shift_id)
 select s.id,w,p.id,p.location,emp,job,case when s.n in(3,6) then typ end,s.scheduled_date,(value->>'start_time')::time,(value->>'end_time')::time,
  value->>'time_basis',value->'time_snapshot',value->>'time_timezone',s.id
@@ -52,7 +58,9 @@ create function pg_temp.cq_row(who uuid,closed boolean default false) returns js
  select r from cq,jsonb_array_elements(public.get_schedule_requests_service(who,w,case when closed then 'closed' else 'needs_review' end,'history',null,'Counts 24001')->'time_off_requests') r where r->>'id'=request::text;
 $$;
 savepoint overlapping;
-update cq set request=pg_temp.cq_request('2035-01-15','12:00','13:00');
+-- Wide enough to reach both: the Lunch shift here, and the one at the far
+-- location whose hours land in the evening once the time zone is applied.
+update cq set request=pg_temp.cq_request('2035-01-15','12:00','19:00');
 select is((pg_temp.cq_row(owner)->>'conflict_count')::int,2,'counter includes the saved Lunch interval and cross-location LA assignment') from cq;
 update cq set preview=public.preview_time_off_assignment_decision_service(owner,w,request,1,'approve','[]');
 select is((pg_temp.cq_row(owner)->>'conflict_count')::int,jsonb_array_length(preview->'affected_shifts')+(preview->>'restricted_count')::int,'summary count matches the final full-approval preview') from cq;
