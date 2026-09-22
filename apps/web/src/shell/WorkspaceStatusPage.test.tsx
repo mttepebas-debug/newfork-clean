@@ -97,6 +97,58 @@ describe("WorkspaceStatusPage", () => {
     expect(screen.getByText(/closed on/)).toBeTruthy();
   });
 
+  it("calls a workspace closed once its scheduled date has passed", async () => {
+    // Nothing flips the stored status when the day comes -- the date is what
+    // ends access -- so the screen has to read the date, or it falls through
+    // to a sentence about the person instead of the workspace.
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      workspace({
+        status: "active",
+        lifecycleStatus: "closure_scheduled",
+        closureEffectiveAt: "2026-09-01T12:00:00.000Z",
+      }),
+    ]);
+    renderStatus();
+
+    expect(
+      await screen.findByRole("heading", { name: "Harbour & Co has closed" }),
+    ).toBeTruthy();
+    expect(screen.getByText(/not your access to it/)).toBeTruthy();
+  });
+
+  it("leaves a workspace closing later alone", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      workspace({
+        status: "suspended",
+        lifecycleStatus: "closure_scheduled",
+        closureEffectiveAt: new Date(Date.now() + 86_400_000).toISOString(),
+      }),
+    ]);
+    renderStatus();
+
+    expect(
+      await screen.findByRole("heading", { name: "Harbour & Co is on hold" }),
+    ).toBeTruthy();
+  });
+
+  it("says closed rather than on hold when closing suspended the membership", async () => {
+    // Closing a workspace suspends every membership in it. Reading the
+    // membership first would promise an owner who could lift the hold.
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      workspace({
+        status: "suspended",
+        accessRemoved: true,
+        lifecycleStatus: "closed",
+        closureEffectiveAt: "2026-09-01T12:00:00.000Z",
+      }),
+    ]);
+    renderStatus();
+
+    expect(
+      await screen.findByRole("heading", { name: "Harbour & Co has closed" }),
+    ).toBeTruthy();
+  });
+
   it("does not guess when the workspace is not in the account's list", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
     renderStatus();

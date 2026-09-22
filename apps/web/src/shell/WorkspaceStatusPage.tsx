@@ -10,10 +10,32 @@ import { PreBizFrame } from "./prebiz/PreBiz";
 export type WorkspaceEnding = "on_hold" | "access_removed" | "closed";
 
 export function endingFor(workspace: WorkspaceSummary): WorkspaceEnding | null {
-  if (workspace.lifecycleStatus === "deleted") return "closed";
+  // What happened to the workspace is answered before what happened to the
+  // person. Closing a workspace suspends every membership in it, so reading
+  // the membership first would tell everybody who was in it that they are "on
+  // hold until an owner lifts the hold" -- about a workspace that has no owner
+  // left to lift anything.
+  if (workspaceHasClosed(workspace)) return "closed";
   if (workspace.accessRemoved === true) return "access_removed";
   if (workspace.status === "suspended") return "on_hold";
   return null;
+}
+
+function workspaceHasClosed(workspace: WorkspaceSummary): boolean {
+  if (
+    workspace.lifecycleStatus === "deleted" ||
+    workspace.lifecycleStatus === "closed"
+  )
+    return true;
+  // A scheduled closure is not something a job flips when the day comes: the
+  // date itself is what ends access, checked wherever access is checked. So
+  // the day it passes is the day the workspace is closed, whatever the stored
+  // status still says.
+  if (workspace.lifecycleStatus !== "closure_scheduled") return false;
+  const effective = workspace.closureEffectiveAt
+    ? Date.parse(workspace.closureEffectiveAt)
+    : Number.NaN;
+  return Number.isFinite(effective) && effective <= Date.now();
 }
 
 /**
@@ -80,9 +102,11 @@ function wording(
     case "closed":
       return {
         title: `${name} has closed`,
+        // Said plainly because the alternative reading -- that something was
+        // done to this person -- is the one people reach for first.
         description: closedOn(workspace)
-          ? `It closed on ${closedOn(workspace)}. Nothing in it can be opened any more.`
-          : "Nothing in it can be opened any more.",
+          ? `It closed on ${closedOn(workspace)}. The workspace itself closed, not your access to it, and it will not reopen.`
+          : "The workspace itself closed, not your access to it, and it will not reopen.",
       };
     default:
       return {
