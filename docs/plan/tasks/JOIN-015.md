@@ -147,3 +147,14 @@ bir `<li>`** olarak sayıyor.
    kullanıcıya ait (kapsam dışı), fakat karar hangi yöne çıkarsa çıksın bu yanıtın
    kalan süreyi ya da "yeniden giriş yap" eylemini taşıması gerekiyor; web şu an
    kendi cümlesini uyduruyor.
+
+## İkinci yarı (koordinatör, 2026-09-22)
+
+- **Deliverable 2 md. 1 yapıldı** (`71c8fc4`). Hesap silme paneli artık üyelik/devir başına satır değil, üç şeyi sayan tek cümle. RPC değişmedi: satırlar zaten geliyordu ve başka kimse okumuyor, o yüzden sayma cümlenin yazıldığı yerde. `SecurityPage.test.tsx` 6/6, ikisi cümleyi birebir sabitliyor.
+- **Deliverable 2 md. 4 yapıldı** (`f808489`). Raporun tarifi uygulandı ve bir madde daha çıktı: durum kodu da İngilizceye bakıyordu (`requestError`, `message.includes("access required")`), ayrıca `02000` `statusForPostgresCode`'da yoktu — "workspace not found" 404'ünü İngilizce eşleşmesinden alıyordu.
+  - Migration `20260922060000`: yedi lifecycle fonksiyonundaki **32 raise**'in hepsi `hint`'te makine anahtarı taşıyor (`workspace.closure.name_mismatch`, `transfer.target_not_admin`, …). Metinler aynen duruyor; gövdeler `pg_get_functiondef` çıktısından üretildi, anahtar dışında hiçbir şey değişmedi.
+  - `rpcFailure` hint'i `HttpError.reason`'a alıyor, rota cümlenin yanında `reason` yolluyor, web `RequestError` fırlatıyor, ekran anahtardan cevaplıyor. Eski cümle haritası yalnız henüz anahtarlanmamışlar için duruyor.
+  - `RequestError` kendi modülünde: `lib/supabase` testlerde toptan mock'lanıyor, oradan export edilen sınıf `undefined` dönerdi ve her `instanceof` sessizce false olurdu.
+  - **Kanıt:** `lifecycle_refusals_carry_keys.test.sql` 4/4 — `prosrc` tarıyor (sonradan anahtarsız eklenen raise düşer), 32 anahtarın noktalı ad olduğunu sayıyor, iki gerçek çağrıyı yakalayıp anahtarın raise'den sağ çıktığını gösteriyor. `WorkspacesPage` 41/41, API 44. `pnpm test` yeşil.
+- **Kalan:** md. 2 (üye/davet sayısı payload'da yok), md. 3 (kapanış tarihi önceden okunamıyor), md. 5 (`transfer_id` detail'de), md. 6 (reauth yanıtı kalan süreyi taşısın). Şifre kapısı kararı hâlâ kullanıcıda.
+- `task/join-015a` çalışma dalına merge edildi (`6406185`), `main`'e değil.
