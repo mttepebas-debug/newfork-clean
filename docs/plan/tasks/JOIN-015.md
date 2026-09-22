@@ -1,5 +1,5 @@
 # JOIN-015 Workspace yaşam döngüsü: kapatma, planlı kapatma, devir
-Status: draft
+Status: bitti (2026-09-22)
 Session: -   Branch: task/join-015   Worktree: yok   DB: KİLİT (muhtemel)
 
 Plan ID'leri: M2, E7, S12, S13 + kullanıcı kapsamı 2026-09-21
@@ -158,3 +158,29 @@ bir `<li>`** olarak sayıyor.
   - **Kanıt:** `lifecycle_refusals_carry_keys.test.sql` 4/4 — `prosrc` tarıyor (sonradan anahtarsız eklenen raise düşer), 32 anahtarın noktalı ad olduğunu sayıyor, iki gerçek çağrıyı yakalayıp anahtarın raise'den sağ çıktığını gösteriyor. `WorkspacesPage` 41/41, API 44. `pnpm test` yeşil.
 - **Kalan:** md. 2 (üye/davet sayısı payload'da yok), md. 3 (kapanış tarihi önceden okunamıyor), md. 5 (`transfer_id` detail'de), md. 6 (reauth yanıtı kalan süreyi taşısın). Şifre kapısı kararı hâlâ kullanıcıda.
 - `task/join-015a` çalışma dalına merge edildi (`6406185`), `main`'e değil.
+
+## Kapanış (koordinatör, 2026-09-22)
+
+Yukarıdaki "Kalan" satırı artık geçerli değil; hepsi kapandı.
+
+- **md. 2 — üye ve davet sayısı.** Yapıldı. `WorkspaceSummary` `otherMemberCount`
+  ve `pendingInvitationCount` taşıyor; kapatma diyaloğu sayıyı söylüyor.
+- **md. 3 — kapanış tarihi önceden okunamıyor.** Yapıldı
+  (`20260922130000_a_closing_workspace_says_when_and_which.sql`). Süre tek bir
+  tanımda toplandı (`app_private.default_closure_period()`), liste
+  `default_closure_effective_at` döndürüyor, panel tarihi kimse bir şeye söz
+  vermeden önce söylüyor.
+- **md. 5 — `transfer_id` detail'de.** Aynı migration'da yapıldı: kapatmayı
+  engelleyen trigger artık hangi devrin engellediğini `detail` içinde adlandırıyor.
+- **md. 6 — reauth yanıtı kalan süreyi taşısın.** DÜŞÜRÜLDÜ. Yanıt anahtarını
+  taşıyor (`session.reauthentication_required`, `f808489`) ve ekranın sunduğu
+  eylem parola alanı; kalan süreyi göstermek kullanıcıya bir karar
+  kazandırmıyor. Yeniden gerekirse burada yazılı.
+- **Şifre kapısı.** Karar kullanıcıdan 2026-09-19'da alınmıştı (yarım kurulum
+  parola istemesin) ve 2026-09-22'de uygulandı (`4fb0712`, düzeltmesi `96b6346`):
+  sunucu işletmeyi kendi listesinden okuyup kurulumun bitmediğini doğrularsa
+  kapıyı atlıyor, sorgu başarısız olursa kapı kapalı kalıyor. Aynı commit'te
+  yarım kurulum satırı sunucunun İngilizce cümlesi yerine makine anahtarını
+  okumaya geçti.
+- `task/join-015a`'nın çalışma dalı sonradan main'e alındı; 159. satırdaki
+  "main'e değil" notu o an için doğruydu, bugün değil.
