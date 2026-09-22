@@ -370,6 +370,14 @@ export const workspaceSummarySchema = z.object({
   lifecycleStatus: workspaceLifecycleStatusSchema.optional(),
   /** The account's access was taken, rather than the workspace being on hold. */
   accessRemoved: z.boolean().optional(),
+  /**
+   * How many other people hold access, and how many invitations are waiting
+   * for an answer. The reader is not counted in the first: they know about
+   * themselves, and what a closing screen has to say is what it costs everyone
+   * else.
+   */
+  otherMemberCount: z.number().int().nonnegative().optional(),
+  pendingInvitationCount: z.number().int().nonnegative().optional(),
   /** When this membership was last opened; the landing decision sorts by it. */
   lastUsedAt: z
     .string()
@@ -477,6 +485,8 @@ export const workspaceSummaryRowSchema = z.object({
     .nullable()
     .optional(),
   access_removed: z.boolean().optional(),
+  other_member_count: z.number().int().nonnegative().nullable().optional(),
+  pending_invitation_count: z.number().int().nonnegative().nullable().optional(),
   pending_ownership_transfer_id: z.string().uuid().nullable().optional(),
   pending_ownership_transfer_role: z
     .enum(["initiator", "target"])
@@ -508,6 +518,8 @@ export function workspaceSummaryFromRow(input: unknown): WorkspaceSummary {
     lifecycleStatus: row.workspace_lifecycle_status,
     lastUsedAt: row.last_used_at ?? null,
     accessRemoved: row.access_removed ?? false,
+    otherMemberCount: row.other_member_count ?? undefined,
+    pendingInvitationCount: row.pending_invitation_count ?? undefined,
     closureEffectiveAt: row.closure_effective_at,
     pendingOwnershipTransfer:
       status === "active" &&

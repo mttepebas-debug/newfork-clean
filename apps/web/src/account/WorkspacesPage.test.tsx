@@ -20,6 +20,7 @@ import {
   setTabWorkspaceId,
 } from "../lib/supabase";
 import { RequestError } from "../lib/request-error";
+import { whoIsInIt } from "./WorkspacesPage";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const secondWorkspaceId = "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -1021,5 +1022,44 @@ describe("WorkspacesPage", () => {
       "This request is no longer waiting for an answer. Reload the page to see the workspaces you have.",
     );
     expect(screen.queryByText(/pending ownership transfer not found/)).toBeNull();
+  });
+});
+
+describe("whoIsInIt", () => {
+  const sized = (
+    otherMemberCount?: number,
+    pendingInvitationCount?: number,
+  ) =>
+    ({
+      ...ownerWorkspace,
+      otherMemberCount,
+      pendingInvitationCount,
+    }) as typeof ownerWorkspace;
+
+  it("counts everybody but the reader, and the invitations separately", () => {
+    expect(whoIsInIt(sized(11, 3))).toBe(
+      "11 other people have access and 3 invitations are waiting for an answer here.",
+    );
+  });
+
+  it("reads as one person rather than one people", () => {
+    expect(whoIsInIt(sized(1, 1))).toBe(
+      "1 other person has access and 1 invitation is waiting for an answer here.",
+    );
+  });
+
+  it("says so plainly when the workspace is the reader alone", () => {
+    expect(whoIsInIt(sized(0, 0))).toBe(
+      "Nobody else has access to this workspace yet.",
+    );
+  });
+
+  it("drops the invitation half when none are waiting", () => {
+    expect(whoIsInIt(sized(4, 0))).toBe("4 other people have access here.");
+  });
+
+  // Rather than guess a number onto a screen that asks for a confirmation.
+  it("says nothing at all when the count did not arrive", () => {
+    expect(whoIsInIt(sized(undefined, undefined))).toBe("");
   });
 });

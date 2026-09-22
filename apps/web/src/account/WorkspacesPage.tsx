@@ -757,8 +757,11 @@ export default function WorkspacesPage() {
                 : `Schedule ${closureTarget.workspace.name} to close`}
             </strong>
             {/* One sentence for the whole rule: what happens to everyone at
-                once, not a line per person it happens to. */}
+                once, not a line per person it happens to. The count says how
+                many that is, which is the part a number can carry and a rule
+                cannot. */}
             <p id="workspace-closure-description">
+              {whoIsInIt(closureTarget.workspace)}{" "}
               {closureTarget.mode === "immediate"
                 ? "Everyone loses access to this workspace the moment you close it, and invitations that are still waiting stop working. Nobody, including support, can bring it back."
                 : "Everyone keeps access until the closure date, and you can cancel the closure any time before it."}
@@ -965,6 +968,31 @@ class PersonFacingError extends Error {}
  * machine key the RPC raises in `hint`. Keys, not sentences: the English the
  * server raises is a log line, and rewording it must not change this screen.
  */
+/**
+ * How big the thing being closed is. "Everyone loses access" is equally true
+ * of a workspace with one person in it and of one with forty, and the owner
+ * deciding is the reader least able to tell which they have.
+ *
+ * The reader is not counted. They know about themselves; what the screen has
+ * to say is what closing costs everybody else. When the counts are missing —
+ * an older payload, a summary built from context — the sentence is left out
+ * rather than guessed at.
+ */
+export function whoIsInIt(workspace: WorkspaceSummary): string {
+  const members = workspace.otherMemberCount;
+  const invitations = workspace.pendingInvitationCount ?? 0;
+  if (members === undefined) return "";
+  if (members === 0 && invitations === 0)
+    return "Nobody else has access to this workspace yet.";
+  const parts: string[] = [];
+  if (members === 1) parts.push("1 other person has access");
+  else if (members > 1) parts.push(`${members} other people have access`);
+  if (invitations === 1) parts.push("1 invitation is waiting for an answer");
+  else if (invitations > 1)
+    parts.push(`${invitations} invitations are waiting for an answer`);
+  return `${parts.join(" and ")} here.`;
+}
+
 const lifecycleReasons: Readonly<Record<string, string>> = {
   "workspace.closure.transfer_pending":
     "An ownership transfer is still waiting on this workspace. Cancel it from the actions menu, then close the workspace.",
