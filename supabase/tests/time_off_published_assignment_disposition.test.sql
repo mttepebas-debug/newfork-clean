@@ -45,6 +45,12 @@ savepoint restricted_reviewer;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 values('af9b0000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','timeoff-reviewer@example.test','','{}','{}',now(),now());
 insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,'af9b0000-0000-4000-8000-000000000002','manager','active',true from tad;
+-- all_locations is turned off for a manager-class role on the way in, so the
+-- reviewer is given every location in the workspace by name -- which is
+-- what all_locations meant here.
+insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
+select t.w,m.id,l.id from tad t join public.workspace_memberships m on m.workspace_id=t.w and m.user_id='af9b0000-0000-4000-8000-000000000002'
+ join public.locations l on l.workspace_id=t.w on conflict do nothing;
 insert into public.workspace_role_permissions(workspace_id,role_id,permission_key)
 select w,m.role_id,'schedule.time_off_requests.manage' from tad t join public.workspace_memberships m on m.workspace_id=t.w and m.user_id='af9b0000-0000-4000-8000-000000000002' on conflict do nothing;
 delete from public.workspace_role_permissions where permission_key='schedule.publish' and role_id=(select role_id from public.workspace_memberships where workspace_id=(select w from tad) and user_id='af9b0000-0000-4000-8000-000000000002');
