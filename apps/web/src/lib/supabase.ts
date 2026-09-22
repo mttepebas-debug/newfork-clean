@@ -1,7 +1,9 @@
 import { RequestError } from "./request-error";
 import {
+  accountAttentionSchema,
   employmentContactRecordSchema,
   workspaceIdentitySchema,
+  type AccountAttention,
   type EmploymentContactRecord,
   type WorkspaceIdentity,
   accountProfileSchema,
@@ -301,6 +303,15 @@ export async function removeAccountAvatar(
 export async function getCurrentUserWorkspaceAvatar(workspaceId: string): Promise<{ url: string | null }> {
   if (!supabaseClient) return { url: null };
   return await apiRequest(supabaseClient, `/v1/workspaces/${workspaceId}/me/avatar`) as { url: string | null };
+}
+
+/** What each part of the account area is waiting for from this person. */
+export async function countAccountAttention(
+  client: SupabaseClient,
+): Promise<AccountAttention> {
+  return accountAttentionSchema.parse(
+    await apiRequest(client, "/v1/account/attention"),
+  );
 }
 
 /**

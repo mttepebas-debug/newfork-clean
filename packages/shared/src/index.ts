@@ -361,6 +361,17 @@ export const accountProfileSchema = z
 export type AccountProfile = z.infer<typeof accountProfileSchema>;
 
 /**
+ * What each part of the account area is waiting for from this person. A number
+ * means somebody is waiting for an answer; it closes when the thing is done,
+ * not when the tab is opened.
+ */
+export const accountAttentionSchema = z.object({
+  documents: z.number().int().nonnegative(),
+  workspaces: z.number().int().nonnegative(),
+});
+export type AccountAttention = z.infer<typeof accountAttentionSchema>;
+
+/**
  * A person's own employment record in one workspace. There is one per
  * workspace they are in, because that is where an employment record lives.
  */

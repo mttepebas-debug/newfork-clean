@@ -1,7 +1,9 @@
 import {
+  accountAttentionSchema,
   employmentContactRecordFromRow,
   workspaceIdentitySchema,
   workspaceSummaryFromRow,
+  type AccountAttention,
   type EmploymentContactRecord,
   type WorkspaceIdentity,
   type WorkspaceSummary,
@@ -12,6 +14,8 @@ import { rpcFailure } from "../http-error.js";
 
 export interface WorkspaceAccountService {
   listWorkspaces(accessToken: string): Promise<WorkspaceSummary[]>;
+  /** What the account area is waiting for, per tab. */
+  countAttention(accessToken: string): Promise<AccountAttention>;
   /** The caller's own employment record in each workspace they are in. */
   listEmploymentRecords(
     accessToken: string,
@@ -213,6 +217,14 @@ export function createWorkspaceAccountServiceWithClients(options: {
           ...(await actorArgs(accessToken)),
         })) as unknown[]
       ).map(workspaceSummaryFromRow);
+    },
+    async countAttention(accessToken) {
+      const rows = (await rpc("count_account_attention_service", {
+        ...(await actorArgs(accessToken)),
+      })) as unknown[];
+      return accountAttentionSchema.parse(
+        rows[0] ?? { documents: 0, workspaces: 0 },
+      );
     },
     async listEmploymentRecords(accessToken) {
       return (

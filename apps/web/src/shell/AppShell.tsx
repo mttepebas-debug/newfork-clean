@@ -31,7 +31,7 @@ import {
   notificationChangeEventName,
   notificationChangeStorageKey,
 } from "../communications/communications-data";
-import { supabaseClient } from "../lib/supabase";
+import { countAccountAttention, supabaseClient } from "../lib/supabase";
 
 import { requestAvailabilityNavigation } from "../availability/availability-navigation";
 
@@ -216,6 +216,19 @@ export function AppShell() {
     enabled: Boolean(workspaceId),
     refetchInterval: 60_000,
   });
+  // What the account area is waiting for, totalled. The same query the account
+  // nav runs, so opening the account costs no second fetch.
+  const accountAttention = useQuery({
+    queryKey: ["account-attention", account?.userId],
+    queryFn: () =>
+      supabaseClient
+        ? countAccountAttention(supabaseClient)
+        : { documents: 0, workspaces: 0 },
+    enabled: Boolean(account),
+  });
+  const accountWaiting =
+    (accountAttention.data?.documents ?? 0) +
+    (accountAttention.data?.workspaces ?? 0);
   useEffect(() => {
     if (!workspaceId) return;
     const invalidateNotifications = () => {
@@ -448,7 +461,13 @@ export function AppShell() {
               }`
             }
             to="/account/profile"
-            aria-label={collapsed ? "Account" : undefined}
+            aria-label={
+              accountWaiting > 0
+                ? `Account, ${accountWaiting} waiting on you`
+                : collapsed
+                  ? "Account"
+                  : undefined
+            }
             data-rail-peek={collapsed ? "" : undefined}
             data-rail-active={
               collapsed &&
@@ -463,6 +482,13 @@ export function AppShell() {
             <span className={collapsed ? "rail-flyout" : undefined}>
               Account
             </span>
+            {/* The total behind the tabs. Somebody is waiting for an answer
+                that lives in there, and the rail is where the person is. */}
+            {accountWaiting > 0 ? (
+              <span className="nav-item-count" aria-hidden>
+                {accountWaiting}
+              </span>
+            ) : null}
           </NavLink>
           <button
             className={`nav-item${collapsed ? " rail-peek-item" : ""}`}

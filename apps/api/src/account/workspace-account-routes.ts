@@ -100,6 +100,21 @@ export function registerWorkspaceAccountRoutes(
     }
   });
 
+  app.get("/v1/account/attention", async (request, reply) => {
+    const accessToken = bearerToken(request.headers.authorization);
+    if (!accessToken)
+      return reply.status(401).send({ error: "Bearer token required" });
+    if (!options.service)
+      return reply
+        .status(503)
+        .send({ error: "Workspace account service is not configured" });
+    try {
+      return reply.send(await options.service.countAttention(accessToken));
+    } catch (error) {
+      return requestError(reply, error);
+    }
+  });
+
   // Your own employment record, one per workspace you are in. Nothing here is
   // anybody else's: the RPC answers for the caller and nobody else.
   app.get("/v1/account/employment-records", async (request, reply) => {

@@ -11155,6 +11155,26 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 /* Nine location fields in one flat run read as a wall; three named groups say
    what each answer is for. The grid lives on the group, not on the form. */
+/* A count on a nav item. It means somebody is waiting for an answer, so it is
+   the warning tint rather than the accent one, and it closes when the thing is
+   done rather than when the item is opened. */
+.account-nav-count,
+.nav-item-count {
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 0 6px;
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* The workspace name and what it is still waiting for, on one line. */
 .account-documents-group-head {
   display: flex;
