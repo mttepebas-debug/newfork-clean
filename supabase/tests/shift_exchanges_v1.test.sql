@@ -335,6 +335,15 @@ update sx_state set cid=(result->>'case_id')::uuid;
 select public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','apply','shift_id',pg_temp.shift(14),'case_id',cid),gen_random_uuid()) from sx_state;
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid);
 update public.workspace_memberships set role='manager',role_id=(select role_id from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(6)) where workspace_id=pg_temp.w() and user_id in(pg_temp.actor(1),pg_temp.actor(2));
+-- A manager with no location of their own is turned away before anything
+-- else is looked at, so these two would never reach the rule this block is
+-- about: that nobody approves their own exchange. They are given the
+-- workspace's locations first, so the refusal they get is that one.
+insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
+select pg_temp.w(),m.id,l from public.workspace_memberships m
+ cross join unnest(array['11000000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000002']::uuid[]) l
+ where m.workspace_id=pg_temp.w() and m.user_id in(pg_temp.actor(1),pg_temp.actor(2))
+on conflict do nothing;
 select is(public.shift_exchange_preview(pg_temp.actor(1),pg_temp.w(),cid,aid)->>'allowed','false','AT41 owner with manager role cannot approve their own release') from sx_state;
 select is(public.shift_exchange_preview(pg_temp.actor(2),pg_temp.w(),cid,aid)->>'allowed','false','AT41 recipient with manager role cannot approve their own pickup') from sx_state;
 select ok(public.shift_exchange_preview(pg_temp.actor(1),pg_temp.w(),cid,aid)->'reasons' @> '["A separate manager must approve your own exchange"]'::jsonb,'AT41 self-approval rejection explains the independent reviewer requirement') from sx_state;
