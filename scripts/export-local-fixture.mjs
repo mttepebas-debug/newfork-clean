@@ -41,6 +41,10 @@ const ACTIVE_LINK_CODE = "E-9006";
 const ARCHIVED_LINK_CODE = "E-0002";
 /** The owner's own employee record, created here because none exists. */
 const OWNER_EMPLOYEE_CODE = "E-9100";
+// Not user_profiles.display_name: that reads "Account owner" on this
+// database, which is not a name to put in the Employees tab.
+const OWNER_FIRST_NAME = "Mert";
+const OWNER_LAST_NAME = "Tepebas";
 
 const KEPT_EMAILS = [OWNER, ACTIVE_LINK, ARCHIVED_LINK, INVITED];
 const emailList = KEPT_EMAILS.map((email) => `'${email}'`).join(", ");
@@ -66,8 +70,15 @@ function psql(sql) {
   ).trim();
 }
 
+/**
+ * Every select below returns one jsonb value per row -- the row itself, with
+ * the columns this export rewrites already replaced. Naming that column keeps
+ * the aggregate from wrapping it in another object.
+ */
 function rows(sql) {
-  const out = psql(`select coalesce(json_agg(t), '[]')::text from (${sql}) t`);
+  const out = psql(
+    `select coalesce(json_agg(row_json), '[]')::text from (${sql}) as source(row_json)`,
+  );
   return JSON.parse(out || "[]");
 }
 
@@ -85,6 +96,45 @@ function typesOf(schema, table) {
       .map((line) => line.split("=")),
   );
 }
+
+/**
+ * Columns the database computes for itself. auth.users.confirmed_at is one:
+ * writing to it is an error, not a no-op, so they have to come back out.
+ */
+function generatedIn(schema, table) {
+  const out = psql(
+    `select string_agg(column_name, chr(10))
+     from information_schema.columns
+     where table_schema = '${schema}' and table_name = '${table}'
+       and (is_generated = 'ALWAYS' or identity_generation = 'ALWAYS')`,
+  );
+  return new Set(out.split("\n").filter(Boolean));
+}
+
+/** Columns that point at an account, so rows can stop pointing at dropped ones. */
+function accountColumns(schema, table) {
+  const out = psql(
+    `select string_agg(attribute.attname, chr(10))
+     from pg_constraint reference
+     join unnest(reference.conkey) as key(attnum) on true
+     join pg_attribute attribute
+       on attribute.attrelid = reference.conrelid and attribute.attnum = key.attnum
+     where reference.contype = 'f'
+       and reference.confrelid = 'auth.users'::regclass
+       and reference.conrelid = '${schema}.${table}'::regclass`,
+  );
+  return new Set(out.split("\n").filter(Boolean));
+}
+
+/** The four accounts this export keeps. Everything else pointed at the owner. */
+const keptIds = new Set(
+  psql(`select string_agg(id::text, chr(10)) from auth.users where email in (${emailList})`)
+    .split("\n")
+    .filter(Boolean),
+);
+const ownerIdValue = psql(
+  `select id::text from auth.users where email = '${OWNER}'`,
+);
 
 const quote = (text) => `'${text.replaceAll("'", "''")}'`;
 
@@ -107,16 +157,28 @@ function literal(value, udt) {
  * rather than a value, which is how the password never lands in the file.
  */
 function block(title, schema, table, selectSql, options = {}) {
-  const { raw = {}, conflict = "(id)" } = options;
+  // No conflict target: "on conflict do nothing" covers every unique
+  // constraint a table has, which saves knowing which one each table uses.
+  const { raw = {} } = options;
   const data = rows(selectSql);
   if (data.length === 0) return `-- ${title}: nothing to write\n`;
   const types = typesOf(schema, table);
-  const columns = [...Object.keys(data[0]), ...Object.keys(raw)];
+  const computed = generatedIn(schema, table);
+  const accounts = accountColumns(schema, table);
+  const names = Object.keys(data[0]).filter((name) => !computed.has(name));
+  const columns = [...names, ...Object.keys(raw)];
   const lines = data.map((row) => {
     const values = [
-      ...Object.entries(row).map(([name, value]) =>
-        literal(value, types.get(name) ?? "text"),
-      ),
+      ...names.map((name) => {
+        // Whoever created or last touched a row is usually an account this
+        // export drops. The row is still wanted; the finger pointing at a
+        // missing account is not, so it points at the owner instead.
+        const value =
+          accounts.has(name) && row[name] !== null && !keptIds.has(row[name])
+            ? ownerIdValue
+            : row[name];
+        return literal(value, types.get(name) ?? "text");
+      }),
       ...Object.values(raw),
     ];
     return `  (${values.join(", ")})`;
@@ -125,7 +187,7 @@ function block(title, schema, table, selectSql, options = {}) {
     `-- ${title} (${data.length})`,
     `insert into ${schema}.${table} (${columns.join(", ")}) values`,
     lines.join(",\n"),
-    `on conflict ${conflict} do nothing;`,
+    "on conflict do nothing;",
     "",
   ].join("\n");
 }
@@ -189,7 +251,6 @@ parts.push(
     `select ${rowJson("p")} from public.user_profiles p
      join auth.users u on u.id = p.user_id
      where u.email in (${emailList})`,
-    { conflict: "(user_id)" },
   ),
 );
 
@@ -210,19 +271,31 @@ parts.push(
   ),
 );
 
-parts.push(`-- Who is in it: the owner, one account that can sign in as an
--- employee, and one whose access was taken so there is something suspended to
--- look at. Everybody else keeps their employee record and loses the account
--- that was attached to it.
-insert into public.workspace_memberships (workspace_id, user_id, role, status)
-select '${WORKSPACE}', u.id,
-       case when u.email = '${OWNER}' then 'owner'::public.workspace_role
-            else 'employee'::public.workspace_role end,
-       case when u.email = '${ARCHIVED_LINK}' then 'suspended'::public.membership_status
-            else 'active'::public.membership_status end
-from auth.users u
-where u.email in ('${OWNER}', '${ACTIVE_LINK}', '${ARCHIVED_LINK}')
-on conflict (workspace_id, user_id) do nothing;
+// Creating the workspace seeds its four system roles through a trigger, with
+// ids of its own making, so the roles themselves are not exported -- only what
+// this workspace decided each of them may do, keyed by the role's system name
+// rather than by an id that will not exist on the other side.
+const rolePermissions = rows(
+  `select to_jsonb(p) - 'role_id' - 'workspace_id' - 'created_at'
+     || jsonb_build_object('system_key', r.system_key)
+   from public.workspace_role_permissions p
+   join public.workspace_roles r on r.id = p.role_id
+   where p.workspace_id = '${WORKSPACE}'
+   order by r.system_key, p.permission_key`,
+);
+
+parts.push(`-- what each role may do (${rolePermissions.length})
+delete from public.workspace_role_permissions where workspace_id = '${WORKSPACE}';
+insert into public.workspace_role_permissions (workspace_id, role_id, permission_key)
+select '${WORKSPACE}', role.id, wanted.permission_key
+from (values
+${rolePermissions
+  .map((row) => `  (${quote(row.system_key)}, ${quote(row.permission_key)})`)
+  .join(",\n")}
+) as wanted(system_key, permission_key)
+join public.workspace_roles role
+  on role.workspace_id = '${WORKSPACE}' and role.system_key::text = wanted.system_key
+on conflict do nothing;
 `);
 
 parts.push(
@@ -275,6 +348,22 @@ parts.push(
 
 parts.push(
   block(
+    "the hours those shift types have run, with Lunch's current one retimed",
+    "public",
+    "shift_type_time_versions",
+    `select ${rowJson("v")}
+       || case when s.name = 'Lunch' and v.revision = s.default_revision
+               then jsonb_build_object('start_time', '11:30:00', 'end_time', '15:30:00')
+               else '{}'::jsonb end
+     from public.shift_type_time_versions v
+     join public.shift_types s on s.id = v.shift_type_id
+     where v.workspace_id = '${WORKSPACE}' and s.archived_at is null
+     order by s.name, v.revision`,
+  ),
+);
+
+parts.push(
+  block(
     "people",
     "public",
     "employee_profiles",
@@ -300,13 +389,32 @@ insert into public.employee_profiles (
   invitation_email, user_id, created_by
 )
 select '${WORKSPACE}', '${OWNER_EMPLOYEE_CODE}',
-       coalesce(nullif(split_part(coalesce(p.display_name, ''), ' ', 1), ''), 'Mert'),
-       coalesce(nullif(split_part(coalesce(p.display_name, ''), ' ', 2), ''), 'Tepebas'),
+       '${OWNER_FIRST_NAME}', '${OWNER_LAST_NAME}',
        '', '${OWNER}', u.id, u.id
 from auth.users u
-left join public.user_profiles p on p.user_id = u.id
 where u.email = '${OWNER}'
 on conflict (workspace_id, employee_code) do nothing;
+`);
+
+parts.push(`-- Who is in it: the owner, one account that can sign in as an
+-- employee, and one whose access was taken so there is something suspended to
+-- look at. Everybody else keeps their employee record and loses the account
+-- that was attached to it.
+insert into public.workspace_memberships (
+  workspace_id, user_id, role, role_id, status, employee_id, all_locations
+)
+select '${WORKSPACE}', u.id,
+       (case when u.email = '${OWNER}' then 'owner' else 'employee' end)::public.workspace_role,
+       (select r.id from public.workspace_roles r
+        where r.workspace_id = '${WORKSPACE}'
+          and r.access_class::text = case when u.email = '${OWNER}' then 'owner' else 'employee' end),
+       (case when u.email = '${ARCHIVED_LINK}' then 'suspended' else 'active' end)::public.membership_status,
+       (select e.id from public.employee_profiles e
+        where e.workspace_id = '${WORKSPACE}' and e.user_id = u.id limit 1),
+       true
+from auth.users u
+where u.email in ('${OWNER}', '${ACTIVE_LINK}', '${ARCHIVED_LINK}')
+on conflict do nothing;
 `);
 
 parts.push(
@@ -339,23 +447,60 @@ parts.push(
     "employee_private_profiles",
     `select ${rowJson("p")} from public.employee_private_profiles p
      where p.workspace_id = '${WORKSPACE}'`,
-    { conflict: "(employee_id)" },
   ),
 );
 
 parts.push(`-- One invitation left waiting, so there is something to accept.
+-- The token is a fresh random one: the emailed link from the old database
+-- would not have survived the export anyway, and the account page finds a
+-- waiting invitation by address.
 insert into public.employee_invitations (
-  workspace_id, employee_id, email, role, status, created_by, expires_at
+  workspace_id, employee_id, email, role_id, all_locations,
+  token_hash, status, expires_at, created_by
 )
 select '${WORKSPACE}',
        (select id from public.employee_profiles
         where workspace_id = '${WORKSPACE}'
           and archived_at is null and user_id is null
         order by employee_code limit 1),
-       '${INVITED}', 'employee'::public.workspace_role, 'pending',
-       ${ownerId}, now() + interval '14 days'
+       '${INVITED}',
+       (select r.id from public.workspace_roles r
+        where r.workspace_id = '${WORKSPACE}' and r.access_class::text = 'employee'),
+       true,
+       encode(extensions.digest(gen_random_uuid()::text, 'sha256'), 'hex'),
+       'pending', now() + interval '14 days', ${ownerId}
 on conflict do nothing;
 `);
+
+parts.push(
+  block(
+    "the owner's setup, already finished",
+    "public",
+    "workspace_onboarding",
+    `select ${rowJson("o")} from public.workspace_onboarding o
+     where o.workspace_id = '${WORKSPACE}'`,
+  ),
+);
+
+parts.push(
+  block(
+    "scheduling settings",
+    "public",
+    "workspace_scheduling_settings",
+    `select ${rowJson("g")} from public.workspace_scheduling_settings g
+     where g.workspace_id = '${WORKSPACE}'`,
+  ),
+);
+
+parts.push(
+  block(
+    "weekly preference defaults",
+    "public",
+    "weekly_preference_type_defaults",
+    `select ${rowJson("d")} from public.weekly_preference_type_defaults d
+     where d.workspace_id = '${WORKSPACE}'`,
+  ),
+);
 
 parts.push(`-- So the next employee added gets a code nobody is using.
 insert into public.workspace_employee_counters (workspace_id, next_value)
