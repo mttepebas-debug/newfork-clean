@@ -87,6 +87,10 @@ export const workspaceLifecycleStatusSchema = z.enum([
   "active",
   "suspended",
   "closure_scheduled",
+  // In the database's own enum and nothing writes it, which is exactly why it
+  // belongs here: the day something does, a workspace that says it is closed
+  // would fail to parse and the account would be told nothing at all.
+  "closed",
   // What the plan calls closed. Seven database functions write this word.
   "deleted",
 ]);
