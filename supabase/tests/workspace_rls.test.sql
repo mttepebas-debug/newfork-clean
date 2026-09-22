@@ -560,6 +560,7 @@ select throws_ok(
     '20000000-0000-4000-8000-000000000001',
     (select id from owner_employee_ids limit 1),
     'Owner',
+    '',
     'Edited',
     '',
     'owner@example.test',

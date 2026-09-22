@@ -1,5 +1,5 @@
 # JOIN-014 İsim mimarisi: bir kez sor, açıkça etiketle, tercih edilen adı yönet
-Status: draft
+Status: kısmen done (2026-09-21); tercih edilen ad onay modeli kaldı
 Session: -   Branch: task/join-014   Worktree: yok   DB: KİLİT
 
 Plan ID'leri: M1, M5, E1, E4 + kullanıcı kararları 2026-09-21
@@ -38,3 +38,15 @@ Touches: `SignInPage`, `OwnerOnboardingPage`, `EmployeeDrawer`, `EmployeeOnboard
 Risk: `preferred_name` kilidini açmak gösterilen adın hesaplandığı her yüzeye dokunur; önce tek yardımcı fonksiyon, sonra yüzeyler.
 
 ## Notes / Result
+- **2026-09-21 kullanıcı düzeltmesi:** karar 1 tersine çevrildi — **kayıt ekranı ad sormasın, sihirbaz sorsun**. Gerekçe kabul edildi: kayıt sürtünmesi azalır, iki giriş yolu (davet ve kendi kuran) eşitlenir, ad gerçekten gerektiği anda sorulur.
+- **Yapılan:**
+  - `SignInPage` artık ad sormuyor; hesap oluşturmak e-posta + paroladır. `signUp(email, password)` üçüncü argümanı kalktı.
+  - Owner sihirbazı adım 1: **Your first name (zorunlu) · Middle name (optional) · Your last name (zorunlu)**. Tek "full name" alanı ve onu son boşluktan bölme tahmini tamamen kalktı. Hesabın görünen adı `ad soyad` olarak buradan yazılıyor; orta ad kayda gider, her listeye değil.
+  - Sihirbaz **preferred name sormuyor** (karar).
+  - Employee onboarding: etiketler **"Legal first name / Legal middle name (optional) / Legal last name"** oldu ve **"Preferred name (optional)"** eklendi.
+  - `employee_profiles.middle_name` ve `employee_private_profiles.legal_middle_name` kolonları eklendi (ikisi de `not null default ''`, ≤80).
+  - `save_employee_onboarding_profile_service` **artık `preferred_name = ''` zorlamıyor** — kişi ne yazdıysa o kaydediliyor, boş bırakmak geçerli bir cevap.
+  - Employee drawer'da **Middle name (optional)**; `save_employee` ve `save_employee_service` sarmalayıcıları orta adı taşıyor.
+- **Kalan (bu task'ın gerisi):** `preferred_name_approval` workspace ayarı ve iki onay modu, bildirim, `employee_profiles.preferred_name` CHECK'inin açılması, tercih edilen adın hangi yüzeylerde görüneceği.
+- **Kanıt:** `owner_employee_record` 11/11, `workspace_rls` 119/119, `workspace_lifecycle` 21/21, `account_workspace_controls` 52/52, `typecheck`/`test`/`lint`/`build` PASS. Tarayıcıda adım 1: "Your first name · Middle name optional · Your last name · Workspace name".
+

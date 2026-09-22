@@ -196,6 +196,7 @@ describe("workspace account routes", () => {
       complete: false,
       expectedRevision: null,
       ownerFirstName: null,
+      ownerMiddleName: null,
       ownerLastName: null,
     });
   });
@@ -234,6 +235,7 @@ describe("workspace account routes", () => {
       complete: false,
       expectedRevision: 1,
       ownerFirstName: null,
+      ownerMiddleName: null,
       ownerLastName: null,
     });
   });
@@ -346,6 +348,7 @@ describe("workspace account routes", () => {
       complete: true,
       expectedRevision: null,
       ownerFirstName: null,
+      ownerMiddleName: null,
       ownerLastName: null,
     });
     expect(listOwnerOnboardingInvitationIntents).toHaveBeenCalledWith(

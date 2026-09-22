@@ -1914,6 +1914,19 @@ function ProfileSection({
             }
           />
           <Field
+            label="Middle name"
+            optional
+            value={draft.middle_name ?? ""}
+            disabled={identityReadOnly}
+            readOnly={invitePending}
+            hint={
+              identityLocked ? "Locked after activation" : pendingInviteHint
+            }
+            onChange={(value) =>
+              setDraft((current) => ({ ...current, middle_name: value }))
+            }
+          />
+          <Field
             label="Last name"
             required={creating}
             value={draft.last_name}
@@ -2689,6 +2702,7 @@ function Field({
   type = "text",
   hint,
   required = false,
+  optional = false,
 }: {
   label: string;
   value: string;
@@ -2699,6 +2713,8 @@ function Field({
   type?: string;
   hint?: string;
   required?: boolean;
+  /** Says so beside the label, rather than leaving it to be inferred. */
+  optional?: boolean;
 }) {
   const [touched, setTouched] = useState(false);
   const id = useId();
@@ -2721,6 +2737,10 @@ function Field({
         {required ? (
           <small className="employee-field-requirement" aria-hidden>
             Required
+          </small>
+        ) : optional ? (
+          <small className="field-optional" aria-hidden>
+            optional
           </small>
         ) : null}
       </span>

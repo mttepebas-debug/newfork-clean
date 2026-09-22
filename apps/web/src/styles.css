@@ -11035,6 +11035,17 @@ button.workspace-switcher-item:hover:not(:disabled) {
   grid-column: 1 / -1;
 }
 
+/* A field that may be left blank says so beside its label, rather than leaving
+   the reader to infer it from the absence of a required mark. */
+.field-optional {
+  margin-left: 6px;
+  color: var(--theme-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+
 .onboarding-form input,
 .onboarding-form select,
 .settings-form input,

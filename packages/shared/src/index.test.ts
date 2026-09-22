@@ -1355,7 +1355,9 @@ describe("employee onboarding schemas", () => {
     ).toThrow("Employee onboarding action path");
   });
 
-  it("requires the V1 private profile without accepting SSN or preferred name", () => {
+  // The preferred name is asked now, and it is optional. The SSN still is not
+  // part of this payload.
+  it("keeps the SSN out of the private profile while accepting a preferred name", () => {
     const profile = employeeOnboardingProfileSchema.parse({
       legal_first_name: "Taylor",
       legal_last_name: "Reed",
@@ -1376,7 +1378,7 @@ describe("employee onboarding schemas", () => {
       ssn: "123456789",
     });
     expect(profile).not.toHaveProperty("ssn");
-    expect(profile).not.toHaveProperty("preferred_name");
+    expect(profile.preferred_name).toBe("Tay");
   });
 
   it("accepts birthday only as a full date when provided", () => {

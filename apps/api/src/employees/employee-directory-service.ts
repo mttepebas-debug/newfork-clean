@@ -176,6 +176,7 @@ export function createEmployeeDirectoryServiceWithClient(
           target_employee_id: input.employeeId ?? null,
           employee_first_name: value.first_name,
           employee_last_name: value.last_name,
+          employee_middle_name: value.middle_name ?? "",
           employee_preferred_name: value.preferred_name,
           employee_invitation_email: value.invitation_email,
           employee_start_date: value.start_date || null,

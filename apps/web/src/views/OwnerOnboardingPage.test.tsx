@@ -199,28 +199,36 @@ describe("OwnerOnboardingPage", () => {
         name: "Name your workspace",
       }),
     ).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Your full name"), {
-      target: { value: "Taylor Owner" },
+    fireEvent.change(screen.getByLabelText("Your first name"), {
+      target: { value: "Taylor" },
+    });
+    fireEvent.change(screen.getByLabelText("Your last name"), {
+      target: { value: "Owner" },
     });
     const progress = screen.getByRole("progressbar", { name: "Steps done" });
     expect(progress.getAttribute("aria-valuenow")).toBe("0");
     expect(progress.getAttribute("aria-valuemax")).toBe("4");
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
 
+    // The name belongs to the account and was given at sign-up; this step
+    // states it rather than asking for it again.
     await waitFor(() =>
-      expect(authState.updateAccount).toHaveBeenCalledWith(
-        "Taylor Owner",
-        "system",
-        null,
-      ),
+      expect(saveOwnerOnboarding).toHaveBeenCalledWith(supabaseClient, {
+        workspaceId,
+        workspaceName: "Meyhouse",
+        nextStep: 2,
+        complete: false,
+        expectedRevision: 1,
+        ownerFirstName: "Taylor",
+        ownerMiddleName: "",
+        ownerLastName: "Owner",
+      }),
     );
-    expect(saveOwnerOnboarding).toHaveBeenCalledWith(supabaseClient, {
-      workspaceId,
-      workspaceName: "Meyhouse",
-      nextStep: 2,
-      complete: false,
-      expectedRevision: 1,
-    });
+    expect(authState.updateAccount).toHaveBeenCalledWith(
+      "Taylor Owner",
+      "system",
+      null,
+    );
     expect(saveLocation).not.toHaveBeenCalled();
     expect(
       await screen.findByRole("heading", {
@@ -234,22 +242,20 @@ describe("OwnerOnboardingPage", () => {
     ).toBe("1");
   });
 
-  it("requires the owner account name before moving to locations", async () => {
+  // Creating an account is an email and a password; the name is asked here,
+  // where an employee record is about to need it, in the two parts it holds.
+  it("asks for a first and last name rather than guessing at one string", async () => {
     renderPage();
 
     expect(
-      await screen.findByRole("heading", {
-        name: "Name your workspace",
-      }),
+      await screen.findByRole("heading", { name: "Name your workspace" }),
     ).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Your full name"), {
-      target: { value: "   " },
-    });
-
-    const submitButton = screen.getByRole("button", { name: /continue/i });
-    expect(submitButton).toHaveProperty("disabled", true);
-    expect(authState.updateAccount).not.toHaveBeenCalled();
-    expect(saveOwnerOnboarding).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("Your full name")).toBeNull();
+    expect(screen.getByLabelText("Your first name")).toBeTruthy();
+    expect(screen.getByLabelText("Your last name")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /continue/i }),
+    ).toHaveProperty("disabled", true);
   });
 
 
@@ -261,6 +267,12 @@ describe("OwnerOnboardingPage", () => {
         name: "Name your workspace",
       }),
     ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Your first name"), {
+      target: { value: "Taylor" },
+    });
+    fireEvent.change(screen.getByLabelText("Your last name"), {
+      target: { value: "Owner" },
+    });
     const workspaceNameInput = screen.getByLabelText("Workspace name");
     fireEvent.submit(workspaceNameInput.closest("form")!);
 
@@ -271,12 +283,10 @@ describe("OwnerOnboardingPage", () => {
         nextStep: 2,
         complete: false,
         expectedRevision: 1,
-        }),
-    );
-    expect(authState.updateAccount).toHaveBeenCalledWith(
-      "Owner User",
-      "system",
-      null,
+        ownerFirstName: "Taylor",
+        ownerMiddleName: "",
+        ownerLastName: "Owner",
+      }),
     );
   });
 

@@ -593,6 +593,7 @@ export async function saveOwnerOnboarding(
     readonly complete: boolean;
     readonly expectedRevision?: number | null;
     readonly ownerFirstName?: string;
+    readonly ownerMiddleName?: string;
     readonly ownerLastName?: string;
   },
 ): Promise<void> {
@@ -607,6 +608,9 @@ export async function saveOwnerOnboarding(
         complete: input.complete,
         expectedRevision: input.expectedRevision ?? null,
         ...(input.ownerFirstName ? { ownerFirstName: input.ownerFirstName } : {}),
+        ...(input.ownerMiddleName
+          ? { ownerMiddleName: input.ownerMiddleName }
+          : {}),
         ...(input.ownerLastName ? { ownerLastName: input.ownerLastName } : {}),
       }),
     },

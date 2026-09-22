@@ -2633,6 +2633,8 @@ export const employeeSummarySchema = z.object({
   workspace_id: z.string().uuid(),
   employee_code: z.string().min(1).max(24),
   first_name: z.string().trim().min(1).max(80),
+  /** Optional everywhere: empty string when the person has none. */
+  middle_name: z.string().max(80).optional(),
   last_name: z.string().trim().min(1).max(80),
   preferred_name: z.string().max(80),
   display_name: z.string().trim().min(1).max(161),
@@ -2678,6 +2680,7 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
   private_contact: z
     .object({
       legal_first_name: z.string().trim().min(1).max(80).optional(),
+      legal_middle_name: z.string().trim().max(80).optional(),
       legal_last_name: z.string().trim().min(1).max(80).optional(),
       preferred_name: z.string().trim().max(80).optional(),
       phone: z.string().trim().min(7).max(30),
@@ -2749,6 +2752,7 @@ export type EmployeeRoleUpdateInput = z.infer<
 export const employeeInputSchema = z
   .object({
     first_name: z.string().trim().min(1).max(80),
+    middle_name: z.string().trim().max(80).optional(),
     last_name: z.string().trim().min(1).max(80),
     preferred_name: z.string().trim().max(80),
     invitation_email: z.string().trim().email().or(z.literal("")),
@@ -2869,7 +2873,10 @@ export type EmployeeOnboardingRequirement = z.infer<
 
 const employeeOnboardingProfileObjectSchema = z.object({
   legal_first_name: z.string().trim().min(1).max(80),
+  legal_middle_name: z.string().trim().max(80).optional(),
   legal_last_name: z.string().trim().min(1).max(80),
+  /** What the team calls this person; documents keep the legal name. */
+  preferred_name: z.string().trim().max(80).optional(),
   phone: z.string().trim().min(7).max(30),
   street_address: z.string().trim().min(1).max(180),
   city: z.string().trim().min(1).max(100),

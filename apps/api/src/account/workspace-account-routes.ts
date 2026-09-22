@@ -66,6 +66,7 @@ const ownerOnboardingBody = z.object({
   // The owner's own employee record: the name the workspace files them under,
   // and whether they take shifts themselves.
   ownerFirstName: z.string().trim().min(1).max(80).optional(),
+  ownerMiddleName: z.string().trim().max(80).optional(),
   ownerLastName: z.string().trim().min(1).max(80).optional(),
 });
 const ownerOnboardingInvitationIntentBody = z.object({
@@ -404,6 +405,7 @@ export function registerWorkspaceAccountRoutes(
           complete: body.data.complete,
           expectedRevision: body.data.expectedRevision ?? null,
           ownerFirstName: body.data.ownerFirstName ?? null,
+          ownerMiddleName: body.data.ownerMiddleName ?? null,
           ownerLastName: body.data.ownerLastName ?? null,
         });
         if (body.data.complete && options.invitationService) {

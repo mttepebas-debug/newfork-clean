@@ -487,7 +487,9 @@ function WelcomeStep({
 /** The fields page one owns; a zod complaint about any other one belongs to page two. */
 const personalFields = new Set([
   "legal_first_name",
+  "legal_middle_name",
   "legal_last_name",
+  "preferred_name",
   "phone",
   "street_address",
   "city",
@@ -516,7 +518,9 @@ function ProfileStep({
   const initial = useMemo<EmployeeOnboardingProfile>(
     () => ({
       legal_first_name: model.profile?.legal_first_name ?? "",
+      legal_middle_name: model.profile?.legal_middle_name ?? "",
       legal_last_name: model.profile?.legal_last_name ?? "",
+      preferred_name: model.profile?.preferred_name ?? "",
       phone: model.profile?.phone || accountPhone || "",
       street_address: model.profile?.street_address ?? "",
       city: model.profile?.city ?? "",
@@ -677,18 +681,39 @@ function ProfileStep({
       />
       {rejection}
       <div className="onboarding-form-grid">
+        {/*
+          These are the names payroll and documents use, so they are asked as
+          they appear on an ID rather than as the person is usually called.
+        */}
         <TextField
-          label="First name"
+          label="Legal first name"
           value={profile.legal_first_name}
           onChange={(value) =>
             setProfile({ ...profile, legal_first_name: value })
           }
         />
         <TextField
-          label="Last name"
+          label="Legal middle name"
+          optional
+          value={profile.legal_middle_name ?? ""}
+          onChange={(value) =>
+            setProfile({ ...profile, legal_middle_name: value })
+          }
+        />
+        <TextField
+          label="Legal last name"
           value={profile.legal_last_name}
           onChange={(value) =>
             setProfile({ ...profile, legal_last_name: value })
+          }
+        />
+        {/* What the team calls you day to day; documents keep the legal name. */}
+        <TextField
+          label="Preferred name"
+          optional
+          value={profile.preferred_name ?? ""}
+          onChange={(value) =>
+            setProfile({ ...profile, preferred_name: value })
           }
         />
         <TextField
@@ -980,6 +1005,7 @@ function TextField({
   readOnly = false,
   help,
   max,
+  optional = false,
 }: {
   readonly label: string;
   readonly value: string;
@@ -992,16 +1018,21 @@ function TextField({
   readonly readOnly?: boolean;
   readonly help?: string;
   readonly max?: string;
+  /** Says so beside the label, and stops the browser demanding a value. */
+  readonly optional?: boolean;
 }) {
   const id = useId();
   return (
     <div className={`onboarding-field${wide ? " wide" : ""}`}>
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id}>
+        {label}
+        {optional ? <span className="field-optional">optional</span> : null}
+      </label>
       <input
         id={id}
         type={type}
         value={value}
-        required={required}
+        required={required && !optional}
         maxLength={maxLength}
         minLength={minLength}
         max={max}

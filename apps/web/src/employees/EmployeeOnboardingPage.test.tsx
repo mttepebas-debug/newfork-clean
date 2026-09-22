@@ -399,13 +399,13 @@ describe("EmployeeOnboardingPage", () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.change(await screen.findByLabelText("First name"), {
+    fireEvent.change(await screen.findByLabelText("Legal first name"), {
       target: { value: "Taylor" },
     });
     expect(screen.getByLabelText(/^Phone/)).toHaveProperty("value", "3105559999");
     expect(screen.getByLabelText(/^Phone/)).toHaveProperty("readOnly", false);
     fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: "4155550135" } });
-    fireEvent.change(screen.getByLabelText("Last name"), {
+    fireEvent.change(screen.getByLabelText("Legal last name"), {
       target: { value: "Reed" },
     });
     fireEvent.change(screen.getByLabelText("Date of birth"), {
@@ -469,9 +469,9 @@ describe("EmployeeOnboardingPage", () => {
     );
 
     expect(
-      ((await screen.findByLabelText("First name")) as HTMLInputElement).value,
+      ((await screen.findByLabelText("Legal first name")) as HTMLInputElement).value,
     ).toBe("Taylor");
-    expect((screen.getByLabelText("Last name") as HTMLInputElement).value).toBe(
+    expect((screen.getByLabelText("Legal last name") as HTMLInputElement).value).toBe(
       "Reed",
     );
     expect(screen.getByLabelText(/^Phone/)).toHaveProperty("value", "4155550123");

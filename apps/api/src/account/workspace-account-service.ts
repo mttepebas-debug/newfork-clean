@@ -57,6 +57,7 @@ export interface WorkspaceAccountService {
       readonly complete: boolean;
       readonly expectedRevision?: number | null;
       readonly ownerFirstName?: string | null;
+      readonly ownerMiddleName?: string | null;
       readonly ownerLastName?: string | null;
     },
   ): Promise<void>;
@@ -289,6 +290,7 @@ export function createWorkspaceAccountServiceWithClients(options: {
         mark_complete: input.complete,
         expected_revision: input.expectedRevision ?? null,
         owner_first_name: input.ownerFirstName ?? null,
+        owner_middle_name: input.ownerMiddleName ?? null,
         owner_last_name: input.ownerLastName ?? null,
       });
     },

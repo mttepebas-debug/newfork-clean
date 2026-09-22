@@ -81,9 +81,9 @@ describe("SignInPage", () => {
     expect(
       screen.getByRole("heading", { name: "Create your workspace account" }),
     ).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Full name"), {
-      target: { value: "Future Owner" },
-    });
+    // Creating an account is an email and a password. The name is asked where
+    // an employment record needs one, which is the setup wizard.
+    expect(screen.queryByLabelText("Full name")).toBeNull();
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "future-owner@example.test" },
     });
@@ -96,7 +96,6 @@ describe("SignInPage", () => {
       expect(auth.signUp).toHaveBeenCalledWith(
         "future-owner@example.test",
         "newfork-local",
-        "Future Owner",
       ),
     );
     expect(auth.signIn).not.toHaveBeenCalled();

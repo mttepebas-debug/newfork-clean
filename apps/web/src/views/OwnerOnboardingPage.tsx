@@ -119,10 +119,11 @@ export default function OwnerOnboardingPage() {
   const [workspaceName, setWorkspaceName] = useState(
     context?.workspace.name ?? "",
   );
-  const [ownerFullName, setOwnerFullName] = useState(
-    account?.displayName ?? "",
-  );
-  const [ownerNameDirty, setOwnerNameDirty] = useState(false);
+  // Two parts, because two parts are what an employee record holds. Asking
+  // for one "full name" meant guessing where the family name started.
+  const [ownerFirstName, setOwnerFirstName] = useState("");
+  const [ownerMiddleName, setOwnerMiddleName] = useState("");
+  const [ownerLastName, setOwnerLastName] = useState("");
   const [locationDraft, setLocationDraft] = useState(defaultLocation);
   const [locationDraftEpoch, setLocationDraftEpoch] = useState(0);
   const [locationErrors, setLocationErrors] = useState<LocationFieldErrors>({});
@@ -144,10 +145,6 @@ export default function OwnerOnboardingPage() {
   const workspaceId = context?.workspace.id;
   const ownerOnboardingRevision = context?.onboarding.revision ?? null;
 
-  useEffect(() => {
-    if (!account || ownerNameDirty) return;
-    setOwnerFullName(account.displayName);
-  }, [account, ownerNameDirty]);
 
   useEffect(() => {
     if (!workspaceId || !supabaseClient) return;
@@ -244,20 +241,26 @@ export default function OwnerOnboardingPage() {
   ): Promise<void> => {
     event.preventDefault();
     if (!supabaseClient || !workspaceId || !account) return;
-    const trimmedOwnerFullName = ownerFullName.trim();
-    if (!trimmedOwnerFullName) return;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
     try {
-      await updateAccount(trimmedOwnerFullName, account.theme, account.phone);
-      setOwnerNameDirty(false);
+      const first = ownerFirstName.trim();
+      const last = ownerLastName.trim();
+      // The account's name and the workspace's record of the person are set
+      // from the same two answers, so they cannot disagree on arrival.
+      // Teammates see the given and family name; a middle name belongs on the
+      // record, not in every list.
+      await updateAccount(`${first} ${last}`, account.theme, account.phone);
       await saveOwnerOnboarding(supabaseClient, {
         workspaceId,
         workspaceName,
         nextStep: 2,
         complete: false,
         expectedRevision: ownerOnboardingRevision,
+        ownerFirstName: first,
+        ownerMiddleName: ownerMiddleName.trim(),
+        ownerLastName: last,
       });
       setStep(2);
       await refresh();
@@ -638,18 +641,36 @@ export default function OwnerOnboardingPage() {
             </header>
             <form className="onboarding-form" onSubmit={saveWorkspaceIdentity}>
               <div className="owner-onboarding-grid">
-                <label className="wide" htmlFor="owner-full-name">
-                  Your full name
+                <label htmlFor="owner-first-name">
+                  Your first name
                   <input
-                    id="owner-full-name"
-                    value={ownerFullName}
-                    maxLength={100}
-                    onChange={(event) => {
-                      setOwnerFullName(event.target.value);
-                      setOwnerNameDirty(true);
-                    }}
-                    autoComplete="name"
+                    id="owner-first-name"
+                    value={ownerFirstName}
+                    maxLength={80}
+                    onChange={(event) => setOwnerFirstName(event.target.value)}
+                    autoComplete="given-name"
                     autoFocus
+                    required
+                  />
+                </label>
+                <label htmlFor="owner-middle-name">
+                  Middle name <span className="field-optional">optional</span>
+                  <input
+                    id="owner-middle-name"
+                    value={ownerMiddleName}
+                    maxLength={80}
+                    onChange={(event) => setOwnerMiddleName(event.target.value)}
+                    autoComplete="additional-name"
+                  />
+                </label>
+                <label htmlFor="owner-last-name">
+                  Your last name
+                  <input
+                    id="owner-last-name"
+                    value={ownerLastName}
+                    maxLength={80}
+                    onChange={(event) => setOwnerLastName(event.target.value)}
+                    autoComplete="family-name"
                     required
                   />
                 </label>
@@ -672,7 +693,8 @@ export default function OwnerOnboardingPage() {
                   disabled={
                     submitting ||
                     workspaceName.trim().length === 0 ||
-                    ownerFullName.trim().length === 0
+                    ownerFirstName.trim().length === 0 ||
+                    ownerLastName.trim().length === 0
                   }
                 >
                   Continue <ChevronRight size={16} aria-hidden />

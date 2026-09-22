@@ -20,7 +20,6 @@ export function SignInPage() {
   const [role, setRole] = useState<WorkspaceRole>("manager");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,12 +43,9 @@ export function SignInPage() {
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
-    const ownerDisplayName =
-      creatingAccount && !inviteFlow ? fullName.trim() : undefined;
-    if (creatingAccount && !inviteFlow && !ownerDisplayName) return;
     setSubmitting(true);
     const signedIn = creatingAccount
-      ? await signUp(email, password, ownerDisplayName)
+      ? await signUp(email, password)
       : await signIn(email, password);
     setSubmitting(false);
     if (signedIn) navigate(destination, { replace: true });
@@ -85,19 +81,12 @@ export function SignInPage() {
     >
       {supabaseConfigured ? (
         <form className="sign-in-form" onSubmit={handleSupabaseSignIn}>
-          {creatingAccount && !inviteFlow ? (
-            <div className="onboarding-field">
-              <label htmlFor="full-name">Full name</label>
-              <input
-                id="full-name"
-                autoComplete="name"
-                value={fullName}
-                maxLength={100}
-                onChange={(event) => setFullName(event.target.value)}
-                required
-              />
-            </div>
-          ) : null}
+          {/*
+            Creating an account is an email and a password. A name is asked
+            where an employment record needs one — the setup wizard for an
+            owner, onboarding for someone who was invited — which is also the
+            only place it means anything.
+          */}
           <div className="onboarding-field">
             <label htmlFor="email">Email</label>
             <input
@@ -130,10 +119,7 @@ export function SignInPage() {
             <button
               type="submit"
               className="pb-btn pb-btn-primary pb-btn-block"
-              disabled={
-                submitting ||
-                (creatingAccount && !inviteFlow && fullName.trim().length === 0)
-              }
+              disabled={submitting}
             >
               {submitting
                 ? "Please wait"
