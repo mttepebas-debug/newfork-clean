@@ -52,16 +52,27 @@ grant select on employee_ids to service_role;
 select lives_ok(
   $$insert into employee_ids values ('downtown', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
-    '26000000-0000-4000-8000-000000000001', null, 'Ada', 'Lovelace', 'Ada', 'ada@example.test',
+    '26000000-0000-4000-8000-000000000001', null, 'Ada', '', 'Lovelace', 'Ada', 'ada@example.test',
     '2026-08-20', 'Opening team', array['46000000-0000-4000-8000-000000000001']::uuid[],
     '46000000-0000-4000-8000-000000000001', array['66000000-0000-4000-8000-000000000001']::uuid[],
-    '66000000-0000-4000-8000-000000000001', null
+    '66000000-0000-4000-8000-000000000001', false, false, null
   ))$$,
   'owner creates an employee transactionally'
 );
 set local role postgres;
 select is((select employee_code from public.employee_profiles where id = (select id from employee_ids where label = 'downtown')), 'E-0001', 'employee code is server generated');
-select is((select preferred_name from public.employee_profiles where id = (select id from employee_ids where label = 'downtown')), '', 'preferred name input is ignored in V1');
+-- Still dropped here, for a better reason than before. It used to be a check
+-- constraint holding the column at the empty string because nothing had decided
+-- who may set one. Now save_employee_service passes an empty string on purpose:
+-- a preferred name belongs to the person whose name it is, and reaches the
+-- record through request_employee_preferred_name_service and whatever answer
+-- the workspace has chosen to give it.
+select is(
+  (select preferred_name from public.employee_profiles
+   where id = (select id from employee_ids where label = 'downtown')),
+  '',
+  'a manager editing the record does not set somebody elses preferred name'
+);
 insert into public.employee_private_profiles (
   employee_id,
   workspace_id,
@@ -215,10 +226,10 @@ set local role service_role;
 select lives_ok(
   $$insert into employee_ids values ('uptown', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
-    '26000000-0000-4000-8000-000000000001', null, 'Grace', 'Hopper', '', '',
+    '26000000-0000-4000-8000-000000000001', null, 'Grace','', 'Hopper', '', '',
     null, '', array['46000000-0000-4000-8000-000000000002']::uuid[],
     '46000000-0000-4000-8000-000000000002', array['66000000-0000-4000-8000-000000000001']::uuid[],
-    '66000000-0000-4000-8000-000000000001', null
+    '66000000-0000-4000-8000-000000000001', false, false, null
   ))$$,
   'owner creates an employee outside manager scope'
 );
@@ -288,9 +299,9 @@ select throws_ok(
   $$select public.save_employee_service(
     '16000000-0000-4000-8000-000000000002',
     '26000000-0000-4000-8000-000000000001', '76000000-0000-4000-8000-000000000001',
-    'Mona', 'Manager', '', 'employee-manager@example.test', null, '',
+    'Mona','', 'Manager', '', 'employee-manager@example.test', null, '',
     array['46000000-0000-4000-8000-000000000001']::uuid[], '46000000-0000-4000-8000-000000000001',
-    array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', 1
+    array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, false, 1
   )$$,
   'P0002', 'employee not found', 'manager cannot edit a linked manager employee drawer'
 );
@@ -349,7 +360,7 @@ select throws_ok(
   $$select public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001', null,
-    'No', 'Assignment', '', '', null, '',
+    'No','', 'Assignment', '', '', null, '',
     '{}'::uuid[], null, '{}'::uuid[], null, false, false, null
   )$$,
   '22023', 'employee requires a location and job unless remote or excluded from schedule', 'non-remote scheduled employee requires location and job'
@@ -358,7 +369,7 @@ select lives_ok(
   $$insert into employee_ids values ('excluded', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001', null,
-    'Excluded', 'Worker', '', '', null, '',
+    'Excluded','', 'Worker', '', '', null, '',
     '{}'::uuid[], null, '{}'::uuid[], null, false, true, null
   ))$$,
   'excluded employee can be saved without location or job'
@@ -367,7 +378,7 @@ select lives_ok(
   $$insert into employee_ids values ('remote', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001', null,
-    'Remote', 'Worker', '', '', null, '',
+    'Remote','', 'Worker', '', '', null, '',
     '{}'::uuid[], null, '{}'::uuid[], null, true, false, null
   ))$$,
   'remote employee can be saved without location or job'
@@ -376,9 +387,9 @@ select lives_ok(
   $$select public.save_employee_service(
     '16000000-0000-4000-8000-000000000002',
     '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'),
-    'Ada', 'Lovelace', 'Ada', 'ada@example.test', '2026-08-20', 'Updated note',
+    'Ada','', 'Lovelace', 'Ada', 'ada@example.test', '2026-08-20', 'Updated note',
     array['46000000-0000-4000-8000-000000000001']::uuid[], '46000000-0000-4000-8000-000000000001',
-    array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', 1
+    array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, false, 1
   )$$,
   'manager edits an employee inside location scope'
 );
@@ -386,9 +397,9 @@ select throws_ok(
   $$select public.save_employee_service(
     '16000000-0000-4000-8000-000000000002',
     '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'),
-    'Ada', 'Lovelace', '', 'ada@example.test', '2026-08-20', 'Invalid scope move',
+    'Ada','', 'Lovelace', '', 'ada@example.test', '2026-08-20', 'Invalid scope move',
     array['46000000-0000-4000-8000-000000000002']::uuid[], '46000000-0000-4000-8000-000000000002',
-    array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', 2
+    array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, false, 2
   )$$,
   '42501', 'invalid or inaccessible employee location', 'manager cannot move an employee outside assigned location scope'
 );
@@ -399,9 +410,9 @@ select throws_ok(
   $$select public.save_employee_service(
     '16000000-0000-4000-8000-000000000002',
     '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'),
-    'Ada', 'Lovelace', 'Ada', 'ada@example.test', null, '',
+    'Ada','', 'Lovelace', 'Ada', 'ada@example.test', null, '',
     array['46000000-0000-4000-8000-000000000001']::uuid[], '46000000-0000-4000-8000-000000000001',
-    array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', 1
+    array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, false, 1
   )$$,
   '40001', 'employee revision conflict', 'stale employee update fails closed'
 );
@@ -468,7 +479,7 @@ select lives_ok(
   $$select public.save_employee_service(
     '16000000-0000-4000-8000-000000000002',
     '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'excluded'),
-    'Excluded', 'Worker', '', '', null, 'Admin edited employee',
+    'Excluded','', 'Worker', '', '', null, 'Admin edited employee',
     '{}'::uuid[], null, '{}'::uuid[], null, false, true, 1
   )$$,
   'admin edits an employee-class record'
@@ -477,7 +488,7 @@ select throws_ok(
   $$select public.save_employee_service(
     '16000000-0000-4000-8000-000000000002',
     '26000000-0000-4000-8000-000000000001', '76000000-0000-4000-8000-000000000001',
-    'Mona', 'Manager', '', 'employee-manager@example.test', null, '',
+    'Mona','', 'Manager', '', 'employee-manager@example.test', null, '',
     array['46000000-0000-4000-8000-000000000001']::uuid[], '46000000-0000-4000-8000-000000000001',
     array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, false, 3
   )$$,
@@ -558,10 +569,10 @@ select throws_ok(
 select lives_ok(
   $$insert into employee_ids values ('duplicate-existing-member', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
-    '26000000-0000-4000-8000-000000000001', null, 'Duplicate', 'Member', '', 'new-employee@example.test',
+    '26000000-0000-4000-8000-000000000001', null, 'Duplicate','', 'Member', '', 'new-employee@example.test',
     null, '', array['46000000-0000-4000-8000-000000000001']::uuid[],
     '46000000-0000-4000-8000-000000000001', array['66000000-0000-4000-8000-000000000001']::uuid[],
-    '66000000-0000-4000-8000-000000000001', null
+    '66000000-0000-4000-8000-000000000001', false, false, null
   ))$$,
   'owner creates a second employee record for an already linked account edge case'
 );
@@ -583,10 +594,10 @@ set local role service_role;
 select lives_ok(
   $$insert into employee_ids values ('expired-invite', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
-    '26000000-0000-4000-8000-000000000001', null, 'Expired', 'Invite', '', 'expired-invite@example.test',
+    '26000000-0000-4000-8000-000000000001', null, 'Expired','', 'Invite', '', 'expired-invite@example.test',
     null, '', array['46000000-0000-4000-8000-000000000001']::uuid[],
     '46000000-0000-4000-8000-000000000001', array['66000000-0000-4000-8000-000000000001']::uuid[],
-    '66000000-0000-4000-8000-000000000001', null
+    '66000000-0000-4000-8000-000000000001', false, false, null
   ))$$,
   'owner creates an employee for expired invitation edge case'
 );
@@ -610,10 +621,10 @@ select is((select user_id from public.employee_profiles where id = (select id fr
 select lives_ok(
   $$insert into employee_ids values ('generic-accept', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
-    '26000000-0000-4000-8000-000000000001', null, 'Generic', 'Accept', '', 'generic-accept@example.test',
+    '26000000-0000-4000-8000-000000000001', null, 'Generic','', 'Accept', '', 'generic-accept@example.test',
     null, '', array['46000000-0000-4000-8000-000000000001']::uuid[],
     '46000000-0000-4000-8000-000000000001', array['66000000-0000-4000-8000-000000000001']::uuid[],
-    '66000000-0000-4000-8000-000000000001', null
+    '66000000-0000-4000-8000-000000000001', false, false, null
   ))$$,
   'owner creates a generic-signup accept employee'
 );
@@ -644,10 +655,10 @@ select is((select count(*)::integer from public.employee_onboarding_cases where 
 select lives_ok(
   $$insert into employee_ids values ('generic-decline', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
-    '26000000-0000-4000-8000-000000000001', null, 'Generic', 'Decline', '', 'generic-decline@example.test',
+    '26000000-0000-4000-8000-000000000001', null, 'Generic','', 'Decline', '', 'generic-decline@example.test',
     null, '', array['46000000-0000-4000-8000-000000000001']::uuid[],
     '46000000-0000-4000-8000-000000000001', array['66000000-0000-4000-8000-000000000001']::uuid[],
-    '66000000-0000-4000-8000-000000000001', null
+    '66000000-0000-4000-8000-000000000001', false, false, null
   ))$$,
   'owner creates a generic-signup decline employee'
 );
@@ -670,10 +681,10 @@ select is((select status::text from public.employee_invitations where token_hash
 select lives_ok(
   $$insert into employee_ids values ('admin-invite', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
-    '26000000-0000-4000-8000-000000000001', null, 'Admin', 'Invitee', '', 'admin-invite@example.test',
+    '26000000-0000-4000-8000-000000000001', null, 'Admin','', 'Invitee', '', 'admin-invite@example.test',
     null, '', array['46000000-0000-4000-8000-000000000001']::uuid[],
     '46000000-0000-4000-8000-000000000001', array['66000000-0000-4000-8000-000000000001']::uuid[],
-    '66000000-0000-4000-8000-000000000001', null
+    '66000000-0000-4000-8000-000000000001', false, false, null
   ))$$,
   'owner creates an admin-role invite employee'
 );
@@ -718,7 +729,7 @@ select throws_ok(
 
 set local role service_role;
 select throws_ok(
-  $$select public.save_employee_service('16000000-0000-4000-8000-000000000003', '26000000-0000-4000-8000-000000000001', null, 'Cross', 'Tenant', '', '', null, '', '{}'::uuid[], null, '{}'::uuid[], null, null)$$,
+  $$select public.save_employee_service('16000000-0000-4000-8000-000000000003', '26000000-0000-4000-8000-000000000001', null, 'Cross','', 'Tenant', '', '', null, '', '{}'::uuid[], null, '{}'::uuid[], null, false, false, null)$$,
   '42501', 'employee management access required', 'cross-tenant employee creation is denied'
 );
 
