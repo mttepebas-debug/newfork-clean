@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { buildApp } from "../app";
+import { rpcFailure } from "../http-error.js";
 import type { WorkspaceAccountService } from "./workspace-account-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -524,6 +525,38 @@ describe("workspace account routes", () => {
       typedWorkspaceName: null,
       acknowledged: true,
       effectiveAt: "2026-09-19T12:00:00.000Z",
+    });
+  });
+
+  it("sends the machine key alongside the sentence a refusal came with", async () => {
+    const requestClosure = vi.fn(async () => {
+      throw rpcFailure({
+        message: "pending ownership transfer must be resolved before workspace closure",
+        code: "23514",
+        hint: "workspace.closure.transfer_pending",
+      });
+    });
+    const app = buildApp({
+      workspaceAccountService: {
+        requestClosure,
+      } as unknown as WorkspaceAccountService,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/account/workspaces/${workspaceId}/closure`,
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: {
+        mode: "scheduled_end_period",
+        acknowledged: true,
+        effectiveAt: "2026-09-19T12:00:00.000Z",
+      },
+    });
+
+    // The screen reads the key. The sentence rides along for the log.
+    expect(response.json()).toEqual({
+      error: "pending ownership transfer must be resolved before workspace closure",
+      reason: "workspace.closure.transfer_pending",
     });
   });
 

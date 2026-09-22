@@ -9,6 +9,7 @@ import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-ca
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { InvitationRow } from "../employees/InvitationRow";
 import { BusinessRow, StatusBadge, roleLabel } from "../shell/prebiz/PreBiz";
+import { RequestError } from "../lib/request-error";
 import { AccountPageHeader } from "./components";
 import {
   createOwnerWorkspace,
@@ -959,6 +960,46 @@ class PersonFacingError extends Error {}
  * that is not listed never reaches the screen: the flow shows its own fallback,
  * so nobody is left reading a rule written for somebody else.
  */
+/**
+ * What the app says for each thing the database can refuse, keyed by the
+ * machine key the RPC raises in `hint`. Keys, not sentences: the English the
+ * server raises is a log line, and rewording it must not change this screen.
+ */
+const lifecycleReasons: Readonly<Record<string, string>> = {
+  "workspace.closure.transfer_pending":
+    "An ownership transfer is still waiting on this workspace. Cancel it from the actions menu, then close the workspace.",
+  "workspace.owner_required":
+    "Only the owner of this workspace can do that, and you are not the owner any more. Reload the page to see where you stand.",
+  "workspace.not_found":
+    "This workspace is already closed. Reload the page to see the ones you still have.",
+  "workspace.closure.not_scheduled":
+    "This workspace has no closure scheduled any more. Reload the page to see its current state.",
+  "workspace.closure.name_mismatch":
+    "The name you typed is not this workspace's name. Type it exactly as it appears on the row.",
+  "workspace.closure.acknowledgement_required":
+    "Tick the box to say you understand what closing does, then try again.",
+  "transfer.already_pending":
+    "This workspace already has a transfer waiting. Cancel that one from the actions menu before starting another.",
+  "transfer.target_not_admin":
+    "That person is no longer an admin here. Pick someone else, or make them an admin in Employees first.",
+  "transfer.target_email_unverified":
+    "That person has not confirmed their email yet. Ask them to confirm it, then start the transfer again.",
+  "transfer.target_onboarding_incomplete":
+    "That person has not finished setting up their account. Ask them to finish it, then start the transfer again.",
+  "transfer.target_is_self":
+    "You already own this workspace. Pick somebody else to hand it to.",
+  "transfer.not_found":
+    "This request is no longer waiting for an answer. Reload the page to see the workspaces you have.",
+  "transfer.target_required":
+    "This request was not sent to you. Reload the page to see the ones that were.",
+  "transfer.expired":
+    "This request ran out of time. Ask the owner to send it again.",
+};
+
+/**
+ * The same answers keyed by the English the server raises, for anything that
+ * has not been given a key yet. Nothing new belongs here.
+ */
 const lifecycleSentences: Readonly<Record<string, string>> = {
   "pending ownership transfer must be resolved before workspace closure":
     "An ownership transfer is still waiting on this workspace. Cancel it from the actions menu, then close the workspace.",
@@ -995,8 +1036,13 @@ const lifecycleSentences: Readonly<Record<string, string>> = {
 /** The sentence for this failure, never the server's own. */
 function lifecycleMessage(error: unknown, fallback: string): string {
   if (error instanceof PersonFacingError) return error.message;
+  const keyed =
+    error instanceof RequestError && error.reason
+      ? lifecycleReasons[error.reason]
+      : undefined;
   const sentence =
-    error instanceof Error ? lifecycleSentences[error.message] : undefined;
+    keyed ??
+    (error instanceof Error ? lifecycleSentences[error.message] : undefined);
   return sentence ?? fallback;
 }
 

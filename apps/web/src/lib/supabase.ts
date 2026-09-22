@@ -1,3 +1,4 @@
+import { RequestError } from "./request-error";
 import {
   workspaceIdentitySchema,
   type WorkspaceIdentity,
@@ -129,10 +130,10 @@ export async function apiRequest(
   const body = (await response.json().catch(() => null)) as unknown;
   if (response.status === 401) await ensureSessionAlive(client);
   if (!response.ok) {
-    throw new Error(
-      typeof body === "object" && body && "error" in body
-        ? String(body.error)
-        : "Workspace operation failed",
+    const shape = typeof body === "object" && body ? (body as Record<string, unknown>) : {};
+    throw new RequestError(
+      "error" in shape ? String(shape.error) : "Workspace operation failed",
+      typeof shape.reason === "string" ? shape.reason : undefined,
     );
   }
   return body;

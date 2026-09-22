@@ -550,8 +550,14 @@ function requestError(reply: FastifyReply, error: unknown) {
     error instanceof Error ? error.message : "Workspace operation failed";
   // A typed status wins: it comes from the SQLSTATE the RPC raised, not from
   // the wording of its message. The matching below stays for untyped throws.
+  // The reason is a machine key from the RPC's `hint`. It travels with the
+  // message so a screen can say its own sentence without reading ours.
   if (error instanceof HttpError)
-    return reply.status(error.statusCode).send({ error: message });
+    return reply
+      .status(error.statusCode)
+      .send(
+        error.reason ? { error: message, reason: error.reason } : { error: message },
+      );
   if (
     message.includes("access required") ||
     message.includes("not available") ||

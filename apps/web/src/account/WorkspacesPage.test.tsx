@@ -19,6 +19,7 @@ import {
   setDefaultWorkspace,
   setTabWorkspaceId,
 } from "../lib/supabase";
+import { RequestError } from "../lib/request-error";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const secondWorkspaceId = "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -791,6 +792,26 @@ describe("WorkspacesPage", () => {
       "An ownership transfer is still waiting on this workspace. Cancel it from the actions menu, then close the workspace.",
     );
     expect(screen.queryByText(/pending ownership transfer must be resolved/)).toBeNull();
+  });
+
+  // The key is the contract, not the prose. Somebody rewording the raise in a
+  // migration must not be able to take this sentence off the screen.
+  it("answers the key the server raised, whatever sentence came with it", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
+      new RequestError(
+        "a wording nobody on this screen has ever seen",
+        "workspace.closure.transfer_pending",
+      ),
+    );
+    renderPage();
+
+    await openScheduledClosure();
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "An ownership transfer is still waiting on this workspace. Cancel it from the actions menu, then close the workspace.",
+    );
+    expect(screen.queryByText(/a wording nobody/)).toBeNull();
   });
 
   it("keeps a server sentence it does not know off the screen", async () => {
