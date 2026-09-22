@@ -93,14 +93,24 @@ select lives_ok($$select public.mutate_schedule_edit_shift_service(s.actor,s.w,s
 select is(jsonb_array_length(public.preview_schedule_auto_fill_service(actor,w,session)->'proposals'),0,'auto-fill never assigns unknown hours') from time_source_state;
 select ok(exists(select 1 from jsonb_array_elements(public.preview_schedule_auto_fill_service(actor,w,session)->'unfilled') u where u->>'reason'='Confirm shift hours before auto-fill'),'auto-fill explains unknown source') from time_source_state;
 
+-- This used to build two overlapping draft shifts for one person and check
+-- that publication called the overlap soft while the hours came from a shift
+-- type and hard once they were typed in by hand. A draft cannot hold that any
+-- more: an overlapping assignment is refused where it is written, not where it
+-- is published, and a schedule nobody can publish is not worth drafting.
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,time_basis,time_snapshot,hide_time_on_badge)
 select 'b7a00000-0000-4000-8000-000000000010',w,draft,loc,employee,job,typ,week+2,'12:00','16:00','type_default',
  jsonb_build_object('shift_type_id',typ,'default_revision',1,'start_time','12:00','end_time','16:00'),true from time_source_state;
-insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,hide_time_on_badge)
-select 'b7a00000-0000-4000-8000-000000000011',w,draft,loc,employee,job,week+2,'13:00','15:00','explicit',true from time_source_state;
-select ok(exists(select 1 from jsonb_array_elements(public.preview_schedule_publication_service(actor,w,draft,array[loc])->'findings') f where f->>'code'='overlap' and f->>'severity'='soft'),'reference overlap requires review rather than definite double-booking') from time_source_state;
-update public.schedule_draft_shifts set time_basis='explicit',time_snapshot=null where id='b7a00000-0000-4000-8000-000000000010';
-select ok(exists(select 1 from jsonb_array_elements(public.preview_schedule_publication_service(actor,w,draft,array[loc])->'findings') f where f->>'code'='overlap' and f->>'severity'='hard'),'explicit overlap blocks even when both badges hide hours') from time_source_state;
+select throws_ok($$insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,hide_time_on_badge)
+ select 'b7a00000-0000-4000-8000-000000000011',w,draft,loc,employee,job,week+2,'13:00','15:00','explicit',true from time_source_state$$,
+ '23514',null,'a draft refuses a second shift that runs while the first one does');
+
+-- And hiding the hours on both badges does not make it any less of a clash:
+-- the rule reads the times, not what the badge shows.
+select throws_ok($$insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,time_basis,time_snapshot,hide_time_on_badge)
+ select 'b7a00000-0000-4000-8000-000000000012',w,draft,loc,employee,job,typ,week+2,'12:00','16:00','type_default',
+ jsonb_build_object('shift_type_id',typ,'default_revision',1,'start_time','12:00','end_time','16:00'),true from time_source_state$$,
+ '23514',null,'nor when both badges hide the hours');
 
 select throws_ok($$insert into public.schedule_published_shifts(workspace_id,publication_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,time_basis,source_shift_id)
  select s.w,p.id,s.loc,s.employee,s.job,s.typ,s.week+3,null,null,'unresolved',gen_random_uuid() from time_source_state s join public.schedule_location_publications p on p.workspace_id=s.w and p.location_id=s.loc and p.week_start=s.week and p.status='current'$$,'23514',null,'direct published inserts cannot bypass the source guard');
