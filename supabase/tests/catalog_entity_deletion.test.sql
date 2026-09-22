@@ -26,8 +26,10 @@ insert into public.locations(short_name, id,workspace_id,name,street_address,cit
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,is_primary,created_by) values
 ('28000000-0000-4000-8000-000000000091','78000000-0000-4000-8000-000000000091','48000000-0000-4000-8000-000000000091',true,'18000000-0000-4000-8000-000000000091'),
 ('28000000-0000-4000-8000-000000000091','78000000-0000-4000-8000-000000000091','48000000-0000-4000-8000-000000000092',false,'18000000-0000-4000-8000-000000000091');
-insert into public.shift_types(id,workspace_id,name,color) values
-('68000000-0000-4000-8000-000000000091','28000000-0000-4000-8000-000000000091','Lunch','#123456');
+-- A shift type is refused without its hours now; the fixture never gave any
+-- because deletion does not care about them. Lunch's own hours will do.
+insert into public.shift_types(id,workspace_id,name,color,default_start_time,default_end_time) values
+('68000000-0000-4000-8000-000000000091','28000000-0000-4000-8000-000000000091','Lunch','#123456','11:30','15:30');
 insert into public.shift_labels(id,workspace_id,name,color) values
 ('69000000-0000-4000-8000-000000000091','28000000-0000-4000-8000-000000000091','Training','#123456');
 

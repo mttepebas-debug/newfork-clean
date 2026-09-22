@@ -15,7 +15,11 @@ insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first
 select emp,w,actor,'E-994950','Service','Tester',manager from atr;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by) select w,emp,loc,manager from atr;
 insert into public.shift_types(id,workspace_id,name,color,default_start_time,default_end_time)
-select lunch,w,'Semantic Lunch','#123456','12:00'::time,'16:00'::time from atr union all select dinner,w,'Semantic Dinner','#123456',null,null from atr;
+-- Dinner used to have no hours at all. A shift type cannot be created without
+-- them now, so it gets Lunch's exact hours instead -- which keeps the harder
+-- half of what this suite proves: a restriction follows the type's name, not
+-- a clock that happens to match.
+select lunch,w,'Semantic Lunch','#123456','12:00'::time,'16:00'::time from atr union all select dinner,w,'Semantic Dinner','#123456','12:00'::time,'16:00'::time from atr;
 update public.workspace_scheduling_settings set availability_ownership='hybrid',availability_approval='narrowing',availability_initial_review=false,availability_notice_days=0,availability_enforcement='soft' where workspace_id=(select w from atr);
 create function pg_temp.atr_submit(proposal jsonb) returns jsonb language sql as $$
  select public.availability_command_service(actor,w,jsonb_build_object('action','submit','employee_id',emp,'expected_revision',coalesce((select max(version_number) from public.employee_schedule_availability_versions where workspace_id=t.w and employee_id=t.emp),0),
@@ -47,7 +51,7 @@ select is(pg_temp.atr_assess()->>'coverage','full','semantic result preserves in
 select is(pg_temp.atr_assess()->>'operation','warning_requires_override','soft type restriction requires an explicit override');
 select is(pg_temp.atr_assess()->'reasons'->0->>'code','shift_type_restricted','assessment explains the service restriction');
 select is(pg_temp.atr_assess()->'type_restrictions'->0->>'shift_type_id',lunch::text,'assessment evidence carries the restricted type identity') from atr;
-select is(pg_temp.atr_assess(jsonb_build_object('shift_type_id',dinner))->>'operation','allowed','different named service is not inferred from matching or missing default hours') from atr;
+select is(pg_temp.atr_assess(jsonb_build_object('shift_type_id',dinner))->>'operation','allowed','different named service is not inferred from matching default hours') from atr;
 select is(pg_temp.atr_assess('{"shift_type_id":null}')->>'operation','verification_required','deleting type identity cannot silently bypass a restriction');
 select is(pg_temp.atr_assess('{"scheduled_date":"2035-01-16"}')->>'operation','allowed','restriction applies only to its availability weekday');
 select is(pg_temp.atr_assess('{"scheduled_date":"2035-01-14","start_time":"23:00","end_time":"01:00"}')->>'operation','verification_required','overnight evaluates missing prior availability and the next restricted weekday');
