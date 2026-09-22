@@ -11034,6 +11034,156 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .owner-onboarding-grid > .wide {
   grid-column: 1 / -1;
 }
+.owner-name-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr;
+  gap: 16px;
+}
+
+/* The setup wizard's structure step. The list is a block and the form is a
+   block; a selector belongs beside the field it names, never between two
+   lists of what has already been added. */
+.ob-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ob-section-head h2 {
+  margin: 0 0 10px;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* A department is a row with a body under it, so unlike .pb-row it stacks. */
+.ob-dept-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+}
+.ob-dept-row:last-child {
+  border-bottom: 0;
+}
+.ob-dept-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ob-dept-head > strong {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ob-dept-head > .pb-row-actions {
+  margin-left: auto;
+}
+.ob-rename {
+  max-width: 260px;
+  height: 36px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+  font-size: 14px;
+}
+.ob-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ob-chip {
+  height: 30px;
+  border: 1px solid var(--theme-border);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ob-chip:hover:not(:disabled) {
+  border-color: var(--theme-border-strong);
+}
+.ob-chip[aria-expanded="true"] {
+  border-color: var(--theme-accent);
+  background: var(--theme-selected);
+}
+.ob-chip:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+/* Opens under the chips, in the flow, so the list does not jump and nothing
+   is hidden behind a layer. */
+.ob-job-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--theme-surface-muted);
+}
+.ob-job-panel label {
+  display: block;
+  font-size: 13px;
+  font-weight: 750;
+}
+.ob-job-panel input,
+.ob-job-panel select {
+  width: 100%;
+  height: 44px;
+  margin-top: 8px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+}
+.ob-job-panel-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ob-form-head h2 {
+  margin: 0 0 4px;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ob-form-head p {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+.ob-empty {
+  margin: 0;
+  padding: 18px;
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+.ob-chips + .ob-job-panel,
+.ob-dept-row > .ob-empty {
+  padding: 14px;
+}
+@media (max-width: 720px) {
+  .ob-job-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ob-dept-head {
+    flex-wrap: wrap;
+  }
+}
 
 /* A field that may be left blank says so beside its label, rather than leaving
    the reader to infer it from the absence of a required mark. */

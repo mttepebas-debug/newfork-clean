@@ -19,6 +19,7 @@ import {
   Check,
   ChevronRight,
   MapPin,
+  Plus,
   Send,
   Users,
 } from "lucide-react";
@@ -130,6 +131,18 @@ export default function OwnerOnboardingPage() {
   const [departmentName, setDepartmentName] = useState("");
   const [jobName, setJobName] = useState("");
   const [jobDepartmentId, setJobDepartmentId] = useState("");
+  // Adding a department is its own act, not a mode hidden inside the job
+  // selector. With nothing added yet there is nothing to choose from, so the
+  // department field is what the form opens with.
+  const [addingDepartment, setAddingDepartment] = useState(false);
+  const [renamingDepartmentId, setRenamingDepartmentId] = useState<
+    string | null
+  >(null);
+  const [renameDepartmentName, setRenameDepartmentName] = useState("");
+  // A job chip opens in place. Moving one is the reason it opens at all.
+  const [openJobId, setOpenJobId] = useState<string | null>(null);
+  const [jobPanelName, setJobPanelName] = useState("");
+  const [jobPanelDepartmentId, setJobPanelDepartmentId] = useState("");
   const [employeeDraft, setEmployeeDraft] = useState(defaultEmployee);
   const [addedTeam, setAddedTeam] = useState<readonly string[]>([]);
   const [inviteAfterSave, setInviteAfterSave] = useState(true);
@@ -186,6 +199,24 @@ export default function OwnerOnboardingPage() {
     () => jobs.filter((job) => !job.archived_at),
     [jobs],
   );
+  const jobsIn = (departmentId: string): Job[] =>
+    activeJobs.filter((job) => job.department_id === departmentId);
+  // Nothing here makes one, but older data can carry a job whose department is
+  // gone. It stays in view rather than disappearing out of the structure.
+  const looseJobs = useMemo(
+    () =>
+      activeJobs.filter(
+        (job) =>
+          !job.department_id ||
+          !departments.some(
+            (department) =>
+              department.id === job.department_id && !department.archived_at,
+          ),
+      ),
+    [activeJobs, departments],
+  );
+  const creatingDepartment =
+    addingDepartment || activeDepartments.length === 0;
   // Same rule, same source as the in-app employee drawer: a name, and either an
   // assignment or one of the two exemptions.
   const teamDraftReady = employeeCreateReadiness(employeeDraft).employeeReady;
@@ -198,15 +229,26 @@ export default function OwnerOnboardingPage() {
     return <Navigate to="/app" replace />;
   }
 
-  const refreshOwnerReferences = async (id: string): Promise<void> => {
+  const refreshOwnerReferences = async (
+    id: string,
+    preferDepartmentId?: string,
+  ): Promise<void> => {
     const references = await loadOwnerReferences(id);
     setLocations(references.locations);
     setDepartments(references.departments);
     setJobs(references.jobs);
-    setJobDepartmentId(
-      references.departments.find((department) => !department.archived_at)
-        ?.id ?? "",
+    const open = references.departments.filter(
+      (department) => !department.archived_at,
     );
+    // Staying put is the whole point. This used to snap back to the first
+    // department after every save, so a job typed straight after adding a
+    // second one landed silently in the first.
+    setJobDepartmentId((current) => {
+      if (preferDepartmentId && open.some((one) => one.id === preferDepartmentId))
+        return preferDepartmentId;
+      if (current && open.some((one) => one.id === current)) return current;
+      return open[0]?.id ?? "";
+    });
   };
 
   const removeEntity = async (
@@ -342,36 +384,52 @@ export default function OwnerOnboardingPage() {
     }
   };
 
-  const saveDepartmentAndJob = async (
+  const addDepartment = async (
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
-    if (!supabaseClient || !workspaceId) return;
+    if (!workspaceId) return;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
     try {
-      let departmentId = jobDepartmentId;
-      if (!departmentId) {
-        await saveDepartment(workspaceId, {
-          name: departmentName,
-          color: departmentColor,
-        });
-        const nextDepartments = await listDepartments(workspaceId);
-        setDepartments(nextDepartments);
-        departmentId =
-          nextDepartments.find(
-            (department) =>
-              department.name.toLowerCase() ===
-              departmentName.trim().toLowerCase(),
-          )?.id ??
-          nextDepartments.find((department) => !department.archived_at)?.id ??
-          "";
-      }
+      await saveDepartment(workspaceId, {
+        name: departmentName,
+        color: departmentColor,
+      });
+      const named = departmentName.trim().toLowerCase();
+      const saved = await listDepartments(workspaceId);
+      // The new one is where the next job should go, not the first one.
+      const created = saved.find(
+        (department) =>
+          !department.archived_at && department.name.toLowerCase() === named,
+      );
+      await refreshOwnerReferences(workspaceId, created?.id);
+      setDepartmentName("");
+      setAddingDepartment(false);
+      setSuccess("Department added");
+    } catch (saveError: unknown) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "The department could not be saved",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const addJob = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    if (!supabaseClient || !workspaceId || !jobDepartmentId) return;
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
       await saveJob(workspaceId, {
         name: jobName,
         color: jobColor,
-        department_id: departmentId || null,
+        department_id: jobDepartmentId,
       });
       await saveOwnerOnboarding(supabaseClient, {
         workspaceId,
@@ -380,20 +438,170 @@ export default function OwnerOnboardingPage() {
         complete: false,
         expectedRevision: ownerOnboardingRevision,
       });
-      await refreshOwnerReferences(workspaceId);
-      setDepartmentName("");
+      await refreshOwnerReferences(workspaceId, jobDepartmentId);
       setJobName("");
-      setSuccess("Department and job added");
+      setSuccess("Job added");
       await refresh();
     } catch (saveError: unknown) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Department and job setup could not be saved",
+          : "The job could not be saved",
       );
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const renameDepartment = async (department: Department): Promise<void> => {
+    if (!workspaceId || renameDepartmentName.trim().length === 0) return;
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await saveDepartment(
+        workspaceId,
+        { name: renameDepartmentName, color: department.color },
+        department.id,
+      );
+      await refreshOwnerReferences(workspaceId, department.id);
+      setRenamingDepartmentId(null);
+      setSuccess("Renamed");
+    } catch (saveError: unknown) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "The department could not be renamed",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // A department leaves with its jobs. A job with no department is a half-built
+  // structure to walk out of setup with, and nothing here asks for one.
+  const removeDepartment = async (department: Department): Promise<void> => {
+    if (!workspaceId) return;
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      for (const job of activeJobs.filter(
+        (candidate) => candidate.department_id === department.id,
+      ))
+        await setJobArchived(workspaceId, job.id, true);
+      await setDepartmentArchived(workspaceId, department.id, true);
+      await refreshOwnerReferences(workspaceId);
+      setSuccess("Removed");
+    } catch (removeError: unknown) {
+      setError(
+        removeError instanceof Error
+          ? removeError.message
+          : "It could not be removed",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const saveOpenJob = async (job: Job): Promise<void> => {
+    if (!workspaceId || jobPanelName.trim().length === 0) return;
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await saveJob(
+        workspaceId,
+        {
+          name: jobPanelName,
+          color: job.color,
+          department_id: jobPanelDepartmentId || null,
+        },
+        job.id,
+      );
+      await refreshOwnerReferences(workspaceId);
+      setOpenJobId(null);
+      setSuccess("Job saved");
+    } catch (saveError: unknown) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "The job could not be saved",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openJobChip = (job: Job): void => {
+    setOpenJobId(job.id);
+    setJobPanelName(job.name);
+    setJobPanelDepartmentId(job.department_id ?? "");
+  };
+
+  // A selector inside a list is right when it belongs to the row and wrong when
+  // it belongs to the form. This one belongs to the job it sits under.
+  const jobPanel = (group: readonly Job[]) => {
+    const job = group.find((candidate) => candidate.id === openJobId);
+    if (!job) return null;
+    return (
+      <div className="ob-job-panel">
+        <label htmlFor="job-panel-name">
+          Job name
+          <input
+            id="job-panel-name"
+            value={jobPanelName}
+            maxLength={100}
+            onChange={(event) => setJobPanelName(event.target.value)}
+          />
+        </label>
+        <label htmlFor="job-panel-department">
+          Department
+          <select
+            id="job-panel-department"
+            value={jobPanelDepartmentId}
+            onChange={(event) => setJobPanelDepartmentId(event.target.value)}
+          >
+            {activeDepartments.map((department) => (
+              <option key={department.id} value={department.id}>
+                {department.name}
+              </option>
+            ))}
+            {jobPanelDepartmentId === "" ? (
+              <option value="">No department</option>
+            ) : null}
+          </select>
+        </label>
+        <div className="ob-job-panel-actions">
+          <button
+            type="button"
+            className="pb-btn pb-btn-primary"
+            disabled={submitting || jobPanelName.trim().length === 0}
+            onClick={() => void saveOpenJob(job)}
+          >
+            Save
+          </button>
+          <ConfirmButton
+            className="pb-btn pb-btn-danger"
+            type="button"
+            disabled={submitting}
+            aria-label={"Remove " + job.name}
+            confirmLabel="Click again to remove"
+            onConfirm={() => void removeEntity("job", job.id)}
+          >
+            Remove
+          </ConfirmButton>
+          <button
+            type="button"
+            className="pb-btn pb-btn-secondary"
+            disabled={submitting}
+            onClick={() => setOpenJobId(null)}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
   };
 
   const continueFromStructure = async (): Promise<void> => {
@@ -641,39 +849,41 @@ export default function OwnerOnboardingPage() {
             </header>
             <form className="onboarding-form" onSubmit={saveWorkspaceIdentity}>
               <div className="owner-onboarding-grid">
-                <label htmlFor="owner-first-name">
-                  Your first name
-                  <input
-                    id="owner-first-name"
-                    value={ownerFirstName}
-                    maxLength={80}
-                    onChange={(event) => setOwnerFirstName(event.target.value)}
-                    autoComplete="given-name"
-                    autoFocus
-                    required
-                  />
-                </label>
-                <label htmlFor="owner-middle-name">
-                  Middle name <span className="field-optional">optional</span>
-                  <input
-                    id="owner-middle-name"
-                    value={ownerMiddleName}
-                    maxLength={80}
-                    onChange={(event) => setOwnerMiddleName(event.target.value)}
-                    autoComplete="additional-name"
-                  />
-                </label>
-                <label htmlFor="owner-last-name">
-                  Your last name
-                  <input
-                    id="owner-last-name"
-                    value={ownerLastName}
-                    maxLength={80}
-                    onChange={(event) => setOwnerLastName(event.target.value)}
-                    autoComplete="family-name"
-                    required
-                  />
-                </label>
+                <div className="owner-name-row wide">
+                  <label htmlFor="owner-first-name">
+                    Your first name
+                    <input
+                      id="owner-first-name"
+                      value={ownerFirstName}
+                      maxLength={80}
+                      onChange={(event) => setOwnerFirstName(event.target.value)}
+                      autoComplete="given-name"
+                      autoFocus
+                      required
+                    />
+                  </label>
+                  <label htmlFor="owner-middle-name">
+                    Middle name <span className="field-optional">optional</span>
+                    <input
+                      id="owner-middle-name"
+                      value={ownerMiddleName}
+                      maxLength={80}
+                      onChange={(event) => setOwnerMiddleName(event.target.value)}
+                      autoComplete="additional-name"
+                    />
+                  </label>
+                  <label htmlFor="owner-last-name">
+                    Your last name
+                    <input
+                      id="owner-last-name"
+                      value={ownerLastName}
+                      maxLength={80}
+                      onChange={(event) => setOwnerLastName(event.target.value)}
+                      autoComplete="family-name"
+                      required
+                    />
+                  </label>
+                </div>
                 <label className="wide" htmlFor="workspace-name">
                   Workspace name
                   <input
@@ -777,38 +987,169 @@ export default function OwnerOnboardingPage() {
                 that work together.
               </div>
             </header>
-            <form className="onboarding-form" onSubmit={saveDepartmentAndJob}>
-              <div className="owner-onboarding-grid">
-                <AddedList
-                  title="Departments added"
-                  items={activeDepartments}
-                  disabled={submitting}
-                  onRemove={(id) => void removeEntity("department", id)}
-                />
-                {activeDepartments.length > 0 ? (
-                  <label className="wide" htmlFor="job-department">
-                    Department for this job
-                    <select
-                      id="job-department"
-                      value={jobDepartmentId}
-                      onChange={(event) =>
-                        setJobDepartmentId(event.target.value)
-                      }
-                    >
-                      {activeDepartments.map((department) => (
-                        <option key={department.id} value={department.id}>
-                          {department.name}
-                        </option>
-                      ))}
-                      {/* The wizard used to drop this field after the first
-                          department, so a second one could not be created. */}
-                      <option value="">Add a new department</option>
-                    </select>
-                  </label>
+
+            {/* The list is one block and the form is another. What has been
+                built shows as a structure, because that is what it is. */}
+            <div className="pb-section">
+              <div className="ob-section-head">
+                <h2 id="structure-list-title">Your structure</h2>
+                <span className="pb-badge pb-badge-success">
+                  {countLabel(activeDepartments.length, "department")}
+                  {" \u00b7 "}
+                  {countLabel(activeJobs.length, "job")}
+                </span>
+              </div>
+              <div
+                className="pb-list"
+                role="list"
+                aria-labelledby="structure-list-title"
+              >
+                {activeDepartments.length === 0 && looseJobs.length === 0 ? (
+                  <p className="ob-empty">
+                    No departments yet. Add the first one below.
+                  </p>
                 ) : null}
-                {jobDepartmentId === "" ? (
-                  <label className="wide" htmlFor="department-name">
-                    New department
+                {activeDepartments.map((department) => (
+                  <div
+                    className="ob-dept-row"
+                    role="listitem"
+                    key={department.id}
+                  >
+                    <div className="ob-dept-head">
+                      {renamingDepartmentId === department.id ? (
+                        <input
+                          className="ob-rename"
+                          aria-label={"Rename " + department.name}
+                          value={renameDepartmentName}
+                          maxLength={100}
+                          onChange={(event) =>
+                            setRenameDepartmentName(event.target.value)
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void renameDepartment(department);
+                            }
+                            if (event.key === "Escape")
+                              setRenamingDepartmentId(null);
+                          }}
+                        />
+                      ) : (
+                        <strong>{department.name}</strong>
+                      )}
+                      <span className="pb-badge">
+                        {countLabel(jobsIn(department.id).length, "job")}
+                      </span>
+                      <div className="pb-row-actions">
+                        {renamingDepartmentId === department.id ? (
+                          <>
+                            <button
+                              type="button"
+                              className="pb-btn pb-btn-secondary"
+                              disabled={
+                                submitting ||
+                                renameDepartmentName.trim().length === 0
+                              }
+                              onClick={() => void renameDepartment(department)}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              className="pb-btn pb-btn-secondary"
+                              disabled={submitting}
+                              onClick={() => setRenamingDepartmentId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="pb-btn pb-btn-secondary"
+                              disabled={submitting}
+                              onClick={() => {
+                                setRenamingDepartmentId(department.id);
+                                setRenameDepartmentName(department.name);
+                              }}
+                            >
+                              Rename
+                            </button>
+                            {/* Its jobs go with it, and the second click says
+                                how many. */}
+                            <ConfirmButton
+                              className="pb-btn pb-btn-danger"
+                              type="button"
+                              disabled={submitting}
+                              aria-label={"Remove " + department.name}
+                              confirmLabel={
+                                jobsIn(department.id).length === 0
+                                  ? "Click again to remove"
+                                  : "Click again, takes " +
+                                    countLabel(
+                                      jobsIn(department.id).length,
+                                      "job",
+                                    ) +
+                                    " with it"
+                              }
+                              onConfirm={() =>
+                                void removeDepartment(department)
+                              }
+                            >
+                              Remove
+                            </ConfirmButton>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <JobChips
+                      jobs={jobsIn(department.id)}
+                      empty="No jobs in this department yet."
+                      openJobId={openJobId}
+                      disabled={submitting}
+                      onOpen={openJobChip}
+                    />
+                    {jobPanel(jobsIn(department.id))}
+                  </div>
+                ))}
+                {looseJobs.length > 0 ? (
+                  <div className="ob-dept-row" role="listitem">
+                    <div className="ob-dept-head">
+                      <strong>No department</strong>
+                      <span className="pb-badge pb-badge-progress">
+                        {countLabel(looseJobs.length, "job")}
+                      </span>
+                    </div>
+                    <JobChips
+                      jobs={looseJobs}
+                      empty=""
+                      openJobId={openJobId}
+                      disabled={submitting}
+                      onOpen={openJobChip}
+                    />
+                    {jobPanel(looseJobs)}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <form
+              className="onboarding-form"
+              onSubmit={creatingDepartment ? addDepartment : addJob}
+            >
+              <div className="ob-form-head">
+                <h2>{creatingDepartment ? "Add a department" : "Add a job"}</h2>
+                <p>
+                  {creatingDepartment
+                    ? "A department groups the jobs that work together."
+                    : "The department sits beside the job it belongs to."}
+                </p>
+              </div>
+              <div className="owner-onboarding-grid">
+                {creatingDepartment ? (
+                  <label htmlFor="department-name">
+                    Department name
                     <input
                       id="department-name"
                       value={departmentName}
@@ -820,42 +1161,87 @@ export default function OwnerOnboardingPage() {
                       required
                     />
                   </label>
-                ) : null}
-                <AddedList
-                  title="Jobs added"
-                  items={activeJobs}
-                  disabled={submitting}
-                  onRemove={(id) => void removeEntity("job", id)}
-                />
-                <label className="wide" htmlFor="job-name">
-                  Job or role
-                  <input
-                    id="job-name"
-                    value={jobName}
-                    maxLength={100}
-                    onChange={(event) => setJobName(event.target.value)}
-                    placeholder="Server"
-                    required
-                  />
-                </label>
+                ) : (
+                  <>
+                    <label htmlFor="job-department">
+                      Department
+                      <select
+                        id="job-department"
+                        value={jobDepartmentId}
+                        onChange={(event) =>
+                          setJobDepartmentId(event.target.value)
+                        }
+                      >
+                        {activeDepartments.map((department) => (
+                          <option key={department.id} value={department.id}>
+                            {department.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label htmlFor="job-name">
+                      Job or role
+                      <input
+                        id="job-name"
+                        value={jobName}
+                        maxLength={100}
+                        onChange={(event) => setJobName(event.target.value)}
+                        placeholder="Server"
+                        required
+                      />
+                    </label>
+                  </>
+                )}
               </div>
               <Feedback success={success} />
               <WizardBar
                 back={{ label: "Locations", onClick: () => setStep(2) }}
                 error={error}
               >
-                <button
-                  className="pb-btn pb-btn-secondary"
-                  type="submit"
-                  disabled={
-                    submitting ||
-                    jobName.trim().length === 0 ||
-                    (jobDepartmentId === "" &&
-                      departmentName.trim().length === 0)
-                  }
-                >
-                  <BriefcaseBusiness size={15} aria-hidden /> Add job
-                </button>
+                {creatingDepartment ? (
+                  <>
+                    {activeDepartments.length > 0 ? (
+                      <button
+                        type="button"
+                        className="pb-btn pb-btn-secondary"
+                        disabled={submitting}
+                        onClick={() => {
+                          setAddingDepartment(false);
+                          setDepartmentName("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    ) : null}
+                    <button
+                      className="pb-btn pb-btn-secondary"
+                      type="submit"
+                      disabled={
+                        submitting || departmentName.trim().length === 0
+                      }
+                    >
+                      <Plus size={15} aria-hidden /> Add department
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="pb-btn pb-btn-secondary"
+                      disabled={submitting}
+                      onClick={() => setAddingDepartment(true)}
+                    >
+                      <Plus size={15} aria-hidden /> New department
+                    </button>
+                    <button
+                      className="pb-btn pb-btn-secondary"
+                      type="submit"
+                      disabled={submitting || jobName.trim().length === 0}
+                    >
+                      <BriefcaseBusiness size={15} aria-hidden /> Add job
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   className="pb-btn pb-btn-primary"
@@ -1291,6 +1677,44 @@ function EmployeeFields({
         </p>
       ) : null}
     </>
+  );
+}
+
+function countLabel(count: number, noun: string): string {
+  return count + " " + noun + (count === 1 ? "" : "s");
+}
+
+/** The jobs in one department, and the way into one of them. */
+function JobChips({
+  jobs,
+  empty,
+  openJobId,
+  disabled,
+  onOpen,
+}: {
+  readonly jobs: readonly Job[];
+  readonly empty: string;
+  readonly openJobId: string | null;
+  readonly disabled: boolean;
+  readonly onOpen: (job: Job) => void;
+}) {
+  if (jobs.length === 0)
+    return empty ? <p className="ob-empty">{empty}</p> : null;
+  return (
+    <div className="ob-chips">
+      {jobs.map((job) => (
+        <button
+          key={job.id}
+          type="button"
+          className="ob-chip"
+          disabled={disabled}
+          aria-expanded={openJobId === job.id}
+          onClick={() => onOpen(job)}
+        >
+          {job.name}
+        </button>
+      ))}
+    </div>
   );
 }
 

@@ -28,6 +28,7 @@ import {
   saveJob,
   saveLocation,
   setDepartmentArchived,
+  setJobArchived,
 } from "../settings/organization-data";
 
 const authState = vi.hoisted(() => ({
@@ -449,7 +450,12 @@ describe("OwnerOnboardingPage", () => {
     ).toBeTruthy();
   });
 
-  it("can add a second department, and take one back off the list", async () => {
+  it("adds a department on its own, and keeps the next job pointed at it", async () => {
+    const second = {
+      ...department,
+      id: "12000000-0000-4000-8000-000000000002",
+      name: "Back of house",
+    };
     vi.mocked(listLocations).mockResolvedValue([location]);
     vi.mocked(listDepartments).mockResolvedValue([department]);
     vi.mocked(listJobs).mockResolvedValue([job]);
@@ -460,19 +466,15 @@ describe("OwnerOnboardingPage", () => {
         name: "What jobs do people work?",
       }),
     ).toBeTruthy();
-    // The wizard used to hide this field once a department existed, so a second
-    // one could not be created here at all.
-    expect(screen.queryByLabelText("New department")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Department for this job"), {
-      target: { value: "" },
-    });
-    fireEvent.change(screen.getByLabelText("New department"), {
+    // Adding a department is its own act now, not a mode hidden under an
+    // option inside the job selector.
+    expect(screen.queryByLabelText("Department name")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /new department/i }));
+    fireEvent.change(screen.getByLabelText("Department name"), {
       target: { value: "Back of house" },
     });
-    fireEvent.change(screen.getByLabelText("Job or role"), {
-      target: { value: "Line cook" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /add job/i }));
+    vi.mocked(listDepartments).mockResolvedValue([department, second]);
+    fireEvent.click(screen.getByRole("button", { name: /add department/i }));
 
     await waitFor(() =>
       expect(saveDepartment).toHaveBeenCalledWith(workspaceId, {
@@ -480,21 +482,83 @@ describe("OwnerOnboardingPage", () => {
         color: "#3C7A68",
       }),
     );
+    // A job entered straight afterwards used to land silently in the first
+    // department, because every refresh reset the selector.
+    const selector = (await screen.findByLabelText(
+      "Department",
+    )) as HTMLSelectElement;
+    await waitFor(() => expect(selector.value).toBe(second.id));
+    expect(saveJob).not.toHaveBeenCalled();
+  });
 
+  it("takes a department's jobs with it, and says how many", async () => {
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    vi.mocked(listDepartments).mockResolvedValue([department]);
+    vi.mocked(listJobs).mockResolvedValue([job]);
+    renderPage(3);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "What jobs do people work?",
+      }),
+    ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "Remove Front of house" }),
     );
     expect(setDepartmentArchived).not.toHaveBeenCalled();
     fireEvent.click(
-      screen.getByRole("button", { name: "Click again to remove" }),
+      screen.getByRole("button", { name: "Click again, takes 1 job with it" }),
     );
+
     await waitFor(() =>
-      expect(setDepartmentArchived).toHaveBeenCalledWith(
+      expect(setJobArchived).toHaveBeenCalledWith(workspaceId, jobId, true),
+    );
+    expect(setDepartmentArchived).toHaveBeenCalledWith(
+      workspaceId,
+      departmentId,
+      true,
+    );
+  });
+
+  it("moves a job to another department from the chip it sits in", async () => {
+    const second = {
+      ...department,
+      id: "12000000-0000-4000-8000-000000000002",
+      name: "Back of house",
+    };
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    vi.mocked(listDepartments).mockResolvedValue([department, second]);
+    vi.mocked(listJobs).mockResolvedValue([job]);
+    renderPage(3);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Server" }));
+    fireEvent.change(screen.getByLabelText("Department", { selector: "#job-panel-department" }), {
+      target: { value: second.id },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(saveJob).toHaveBeenCalledWith(
         workspaceId,
-        departmentId,
-        true,
+        { name: "Server", color: "#4478A8", department_id: second.id },
+        jobId,
       ),
     );
+  });
+
+  it("says the list is empty instead of showing nothing at all", async () => {
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    vi.mocked(listDepartments).mockResolvedValue([]);
+    vi.mocked(listJobs).mockResolvedValue([]);
+    renderPage(3);
+
+    expect(
+      await screen.findByText("No departments yet. Add the first one below."),
+    ).toBeTruthy();
+    // Nothing to choose from, so the form opens on the department field and
+    // the selector is never drawn.
+    expect(screen.getByLabelText("Department name")).toBeTruthy();
+    expect(screen.queryByLabelText("Department")).toBeNull();
   });
 
   it("uses existing references when creating the first job", async () => {
@@ -528,7 +592,7 @@ describe("OwnerOnboardingPage", () => {
       complete: false,
       expectedRevision: 1,
     });
-    expect(await screen.findByText("Department and job added")).toBeTruthy();
+    expect(await screen.findByText("Job added")).toBeTruthy();
   });
 
   it("continues to the optional team step when structure exists", async () => {
