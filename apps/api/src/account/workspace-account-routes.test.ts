@@ -509,7 +509,7 @@ describe("workspace account routes", () => {
     const response = await app.inject({
       method: "POST",
       url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: `Bearer ${accessToken}` },
+      headers: { authorization: `Bearer ${freshAccessToken}` },
       payload: {
         workspaceId: "spoofed",
         mode: "scheduled_end_period",
@@ -519,7 +519,7 @@ describe("workspace account routes", () => {
     });
 
     expect(response.statusCode, response.body).toBe(200);
-    expect(requestClosure).toHaveBeenCalledWith(accessToken, {
+    expect(requestClosure).toHaveBeenCalledWith(freshAccessToken, {
       workspaceId,
       mode: "scheduled_end_period",
       typedWorkspaceName: null,
@@ -545,7 +545,7 @@ describe("workspace account routes", () => {
     const response = await app.inject({
       method: "POST",
       url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: `Bearer ${accessToken}` },
+      headers: { authorization: `Bearer ${freshAccessToken}` },
       payload: {
         mode: "scheduled_end_period",
         acknowledged: true,
@@ -605,6 +605,83 @@ describe("workspace account routes", () => {
       error: "Valid workspace closure details required",
     });
     expect(requestClosure).not.toHaveBeenCalled();
+  });
+
+  it("requires recent reauthentication for scheduled workspace closure", async () => {
+    // Scheduling used to be the way round the password. The workspace is
+    // marked as closing the moment it is asked for, and the date arrives on
+    // its own, so it is not a lesser thing than closing it now.
+    const requestClosure = vi.fn(async () => ({ status: "scheduled" }));
+    const listWorkspaces = vi.fn(async () => [
+      {
+        id: workspaceId,
+        name: "Meyhouse",
+        role: "owner",
+        status: "active",
+        isActive: true,
+        onboarding: { status: "complete", currentStep: 4 },
+      },
+    ]);
+    const app = buildApp({
+      workspaceAccountService: {
+        requestClosure,
+        listWorkspaces,
+      } as unknown as WorkspaceAccountService,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/account/workspaces/${workspaceId}/closure`,
+      headers: { authorization: `Bearer ${staleAccessToken}` },
+      payload: {
+        mode: "scheduled_end_period",
+        acknowledged: true,
+        effectiveAt: "2026-09-19T12:00:00.000Z",
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: "Recent reauthentication required",
+      reason: "session.reauthentication_required",
+    });
+    expect(requestClosure).not.toHaveBeenCalled();
+  });
+
+  it("schedules a closure on a setup its owner never finished without a fresh sign-in", async () => {
+    // The exemption is about the workspace, not the mode: nothing is in there
+    // to lose.
+    const requestClosure = vi.fn(async () => ({ status: "scheduled" }));
+    const listWorkspaces = vi.fn(async () => [
+      {
+        id: workspaceId,
+        name: "Meyhouse",
+        role: "owner",
+        status: "active",
+        isActive: false,
+        onboarding: { status: "incomplete", currentStep: 2 },
+      },
+    ]);
+    const app = buildApp({
+      workspaceAccountService: {
+        requestClosure,
+        listWorkspaces,
+      } as unknown as WorkspaceAccountService,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/account/workspaces/${workspaceId}/closure`,
+      headers: { authorization: `Bearer ${staleAccessToken}` },
+      payload: {
+        mode: "scheduled_end_period",
+        acknowledged: true,
+        effectiveAt: "2026-09-19T12:00:00.000Z",
+      },
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(requestClosure).toHaveBeenCalledTimes(1);
   });
 
   it("requires recent reauthentication for immediate workspace closure", async () => {

@@ -193,8 +193,16 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
+      // Both ways of closing a workspace ask for a fresh sign-in. Scheduling it
+      // used to be exempt, on the reading that a date in the future is not
+      // destructive yet -- but the workspace is marked as closing the moment it
+      // is asked for, everybody in it is told, and the date arrives on its own.
+      // Somebody who walked away from an unlocked laptop should not be able to
+      // lose a workspace that way either.
+      //
+      // The exemption that stays is the one about the workspace, not the mode:
+      // a setup its owner never finished holds nothing worth a password.
       if (
-        body.data.mode === "immediate" &&
         !hasRecentReauthentication(accessToken) &&
         !(await isUnfinishedSetup(
           options.service,
