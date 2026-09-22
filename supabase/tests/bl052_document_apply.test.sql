@@ -30,17 +30,26 @@ select '25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000
 
 create temp table definition_test(id uuid);
 insert into definition_test select public.save_document_type_lifecycle_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',null,null,'{"title":"Safety","description":"Document","requires_review":true,"accepted_formats":["pdf"],"tracks_expiry":false,"expiry_warning_days":30,"lifecycle_settings":{"mode":"conditional","assignment_scope":"all_active","target":{"operator":"and","location_ids":[],"department_ids":[],"job_ids":[],"employee_ids":[]},"period_days":7,"suspend_on_overdue":false,"extra_fields":[]}}');
+-- A document definition is applied to people only once it is published; a
+-- draft has no one to reach. It is saved as a draft above, so it is
+-- published before anything is attached to it.
+update public.document_types set publication_status='published' where id=(select id from definition_test);
 insert into public.employee_onboarding_requirements(id,workspace_id,employee_id,case_id,kind,source_id,title,required,blocks_activation,requires_review,sort_order,source_snapshot)
 select '65200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000001','55200000-0000-4000-8000-000000000001','document',id,'Safety',true,true,true,2,'{}' from definition_test;
 
+-- A published definition is changed the way the app changes it: taken back
+-- to draft, edited, published again. Publishing moves the revision on, so the
+-- apply calls below read the revision as it stands rather than assume 2.
+update public.document_types set publication_status='draft' where id=(select id from definition_test);
 update public.document_types set lifecycle_settings=jsonb_set(lifecycle_settings,'{period_days}','14'),lifecycle_revision=2 where id=(select id from definition_test);
+update public.document_types set publication_status='published' where id=(select id from definition_test);
 create temp table impact_test as select public.preview_document_definition_apply_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',(select id from definition_test)) as data;
 select is((select data->'employees'->0->>'action' from impact_test),'update','preview identifies an existing snapshot update');
 select is((select data->'employees'->0->>'deadline_action' from impact_test),'restart','changed period is explicitly previewed as restart');
-select is(public.apply_document_definition_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',(select id from definition_test),2,(select data->>'preview_token' from impact_test),'Update delivery period')->>'applied','1','explicit apply updates exactly one scoped assignment');
+select is(public.apply_document_definition_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',(select id from definition_test),(select lifecycle_revision from public.document_types where id=(select id from definition_test)),(select data->>'preview_token' from impact_test),'Update delivery period')->>'applied','1','explicit apply updates exactly one scoped assignment');
 select is((select lifecycle_settings->>'period_days' from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000002'),'14','explicit apply replaces old snapshot');
 select is((select deadline_at from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000002'),now()+interval '14 days','previewed deadline restart is applied');
-select throws_ok($$select public.apply_document_definition_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',(select id from definition_test),2,(select data->>'preview_token' from impact_test),'Retry old preview')$$,'PT409','document impact changed; refresh preview','stale impact cannot be replayed after assignment changes');
+select throws_ok($$select public.apply_document_definition_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',(select id from definition_test),(select lifecycle_revision from public.document_types where id=(select id from definition_test)),(select data->>'preview_token' from impact_test),'Retry old preview')$$,'PT409','document impact changed; refresh preview','stale impact cannot be replayed after assignment changes');
 select is(public.preview_document_definition_apply_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',(select id from definition_test))->'employees'->0->>'action','unchanged','fresh preview recognizes an already-applied definition');
 select is((select count(*)::integer from public.onboarding_events where action='document.definition_applied'),1,'stale retry does not duplicate application audit');
 update public.document_types set archived_at=now(),lifecycle_revision=3 where id=(select id from definition_test);
