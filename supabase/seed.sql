@@ -273,6 +273,8 @@ select public.initialize_employee_onboarding_service('e44f1741-9d58-4e38-8a62-3b
 do $$
 declare
   schedule_week date := current_date - (extract(isodow from current_date)::integer - 1);
+  friday_detail text;
+  demo record;
   availability_seed_shift jsonb;
 begin
   insert into public.locations (
@@ -341,19 +343,67 @@ begin
     (select jsonb_agg(jsonb_build_object('day',day,'mode','unrestricted','windows','[]'::jsonb)) from generate_series(0,6) day),
     'manager','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5',schedule_week
   from unnest(array['15000000-0000-4000-8000-000000000002'::uuid,'15000000-0000-4000-8000-000000000003'::uuid]) employee;
-  -- The demo week used to publish seven shifts here, and it is why
-  -- `supabase db reset` stopped working: every rule the schedule has gained
-  -- since -- no two overlapping assignments, an acceptance on record before a
-  -- shift is published against stated unavailability -- refuses rows written
-  -- before that rule existed, and nobody had run the seed to find out.
-  --
-  -- A seed's job is to make an empty workspace usable: locations, departments,
-  -- jobs, shift types, people. A schedule is something the app makes, under
-  -- the rules, and a test that wants one should make its own rather than lean
-  -- on a week somebody wrote once and never ran again.
-  --
-  -- The availability versions above stay: they are the people's own stated
-  -- hours, not a schedule.
+  -- The demo week. Removed on 2026-09-22 because it no longer loaded under the
+  -- schedule's rules, and put back the same day, rewritten to satisfy them:
+  -- seven test suites build on these exact rows, and one week kept here beats
+  -- seven copies kept in seven files. The owner's own Meyhouse workspace, loaded
+  -- from supabase/local-fixture, has no shifts; this one is the test fixture.
+  -- Keep the intentional Friday availability example with a real, scoped
+  -- synthetic decision, rather than bypassing the assignment guard in seeds.
+  availability_seed_shift:=public.normalize_schedule_time_source('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',jsonb_build_object(
+    'id','23000000-0000-4000-8000-000000000004','location_id','11000000-0000-4000-8000-000000000001',
+    'employee_id','15000000-0000-4000-8000-000000000001','job_id','13000000-0000-4000-8000-000000000001',
+    'shift_type_id','14000000-0000-4000-8000-000000000002','scheduled_date',schedule_week+4,'start_time','15:00','end_time','23:00','time_basis','explicit'));
+
+
+  insert into public.schedule_location_publications (
+    id, workspace_id, location_id, week_start, version_number, status, published_by, published_at
+  ) values
+    ('21000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', schedule_week, 1, 'current', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', now() - interval '1 day'),
+    ('21000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000002', schedule_week, 1, 'current', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', now() - interval '1 day');
+
+  -- Two of these are on purpose: Alex Kim working the Friday they said they
+  -- could not, and Sam Rivera working the day their location is closed.
+  -- Publishing refuses each until a manager's acceptance is on record, and
+  -- records it against an assessment it computes itself -- so each row is
+  -- tried, and a refusal of that kind is answered by recording exactly the
+  -- assessment the refusal carried, the way a manager's "publish anyway" would.
+  for demo in
+    select * from (values
+      ('22000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000001', '13000000-0000-4000-8000-000000000001', '14000000-0000-4000-8000-000000000001', schedule_week, '09:00', '17:00', '', '23000000-0000-4000-8000-000000000001'),
+      ('22000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000002', '13000000-0000-4000-8000-000000000002', '14000000-0000-4000-8000-000000000002', schedule_week + 1, '15:00', '23:00', '', '23000000-0000-4000-8000-000000000002'),
+      ('22000000-0000-4000-8000-000000000003', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000002', '13000000-0000-4000-8000-000000000002', null, schedule_week + 2, '18:00', '22:00', 'Private booking', '23000000-0000-4000-8000-000000000003'),
+      ('22000000-0000-4000-8000-000000000004', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000001', '13000000-0000-4000-8000-000000000001', '14000000-0000-4000-8000-000000000002', schedule_week + 4, '15:00', '23:00', '', '23000000-0000-4000-8000-000000000004'),
+      ('22000000-0000-4000-8000-000000000005', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', null, '13000000-0000-4000-8000-000000000001', '14000000-0000-4000-8000-000000000003', schedule_week + 5, '18:00', '02:00', 'Open shift', '23000000-0000-4000-8000-000000000005'),
+      ('22000000-0000-4000-8000-000000000006', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000002', '15000000-0000-4000-8000-000000000003', '13000000-0000-4000-8000-000000000003', '14000000-0000-4000-8000-000000000001', schedule_week + 2, '09:00', '17:00', '', '23000000-0000-4000-8000-000000000006'),
+      ('22000000-0000-4000-8000-000000000007', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000002', '15000000-0000-4000-8000-000000000003', '13000000-0000-4000-8000-000000000003', '14000000-0000-4000-8000-000000000002', schedule_week + 3, '15:00', '23:00', 'Closure conflict fixture', '23000000-0000-4000-8000-000000000007')
+    ) v(id, workspace_id, location_id, publication_id, employee_id, job_id,
+        shift_type_id, scheduled_date, start_time, end_time, note, source_shift_id)
+  loop
+    begin
+      insert into public.schedule_published_shifts (
+        id, workspace_id, location_id, publication_id, employee_id, job_id,
+        shift_type_id, scheduled_date, start_time, end_time, note, source_shift_id
+      ) values (
+        demo.id::uuid, demo.workspace_id::uuid, demo.location_id::uuid, demo.publication_id::uuid,
+        demo.employee_id::uuid, demo.job_id::uuid, demo.shift_type_id::uuid, demo.scheduled_date,
+        demo.start_time::time, demo.end_time::time, demo.note, demo.source_shift_id::uuid);
+    exception when sqlstate '23514' then
+      get stacked diagnostics friday_detail = pg_exception_detail;
+      insert into public.schedule_availability_overrides(workspace_id,shift_id,employee_id,location_id,assessment_fingerprint,assessment,reason,actor_user_id)
+      values (demo.workspace_id::uuid, demo.source_shift_id::uuid, demo.employee_id::uuid, demo.location_id::uuid,
+              friday_detail::jsonb->>'fingerprint', friday_detail::jsonb,
+              'Synthetic demo: the manager accepted this on purpose.', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
+      insert into public.schedule_published_shifts (
+        id, workspace_id, location_id, publication_id, employee_id, job_id,
+        shift_type_id, scheduled_date, start_time, end_time, note, source_shift_id
+      ) values (
+        demo.id::uuid, demo.workspace_id::uuid, demo.location_id::uuid, demo.publication_id::uuid,
+        demo.employee_id::uuid, demo.job_id::uuid, demo.shift_type_id::uuid, demo.scheduled_date,
+        demo.start_time::time, demo.end_time::time, demo.note, demo.source_shift_id::uuid);
+    end;
+  end loop;
+
 end
 $$;
 

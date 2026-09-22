@@ -124,6 +124,12 @@ insert into public.employee_onboarding_cases (
   now()
 );
 
+-- A document requirement is only created against a published document
+-- type; against a draft, or a type that does not exist, the row is dropped
+-- without a word and everything that points at it fails later.
+insert into public.document_types (id, workspace_id, title, created_by, publication_status)
+values ('27000000-0000-4000-8000-000000000071', '27000000-0000-4000-8000-000000000021', 'Storage document', '27000000-0000-4000-8000-000000000011', 'published');
+
 insert into public.employee_onboarding_requirements (
   id, workspace_id, case_id, employee_id, kind, source_id, title,
   required, blocks_activation, requires_review, sort_order, status

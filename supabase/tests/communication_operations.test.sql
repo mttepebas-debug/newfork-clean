@@ -137,6 +137,10 @@ insert into public.document_types(
 ) values (
  'a9700000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Food handler card','Expiring certificate',true,false,array['pdf'],true,14,'track_only',90,'d9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
 );
+-- A document requirement is only created against a published document
+-- type; against a draft, or a type that does not exist, the row is dropped
+-- without a word and everything that points at it fails later.
+update public.document_types set publication_status='published' where id='a9700000-0000-4000-8000-000000000001';
 insert into public.employee_onboarding_cases(id,workspace_id,employee_id,membership_id,status)
 values('a9700000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','15000000-0000-4000-8000-000000000001','a8100000-0000-4000-8000-000000000002','in_progress');
 insert into public.employee_onboarding_requirements(id,workspace_id,case_id,employee_id,kind,source_id,title,required,blocks_activation,requires_review,sort_order,status)

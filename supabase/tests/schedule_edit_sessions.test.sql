@@ -118,6 +118,10 @@ insert into public.document_types(
   true, false, array['pdf'], true, 14, 'block', 400,
   'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
 );
+-- A document requirement is only created against a published document
+-- type; against a draft, or a type that does not exist, the row is dropped
+-- without a word and everything that points at it fails later.
+update public.document_types set publication_status='published' where id='e9500000-0000-4000-8000-000000000001';
 insert into public.employee_onboarding_cases(
   id, workspace_id, employee_id, membership_id, status,
   submitted_at, approved_at, approved_by
