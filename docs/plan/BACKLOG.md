@@ -32,7 +32,7 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 ## Geliştirme ortamı
 - BL-002 `pnpm.cmd dev` için yapılandırılabilir portlar; aynı sunucu ikinci kez başlatılmasın.
 - BL-003 Tek komutla env anahtarlarının varlığı (değer göstermeden), port ve checkout kontrolü.
-- BL-004 Tekrar kullanılabilir owner/manager/employee local fixture'ları ve temizliği.
+- BL-004 kapandi (2026-09-22): `scripts/export-local-fixture.mjs` + `supabase/local-fixture/` + `config.toml` sql_paths. `supabase db reset --local` workspace, 4 lokasyon, FOH/BAR, 8 job, 45 kisi, 2 shift type ve 4 hesabi tek komutta kuruyor.
 - Genel seed/SQL replay hataları (release öncesi).
 
 ## MVP sonrası
@@ -113,7 +113,7 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Hosted'da `VITE_API_URL` tanımlı değil; web aynı alan adına relative istek atıyor. Bugün doğru çalışıyor ama web ayrı bir alan adına taşınırsa bu değişken tanımlanmalı ve `vercel.json` önekleri gözden geçirilmeli.
 - 2026-09-19 kullanıcı kararı: katılım zinciri (davet, onboarding, çakışmalar, business kapatma/devir/suspend, belge adımı) MVP sırasının BAŞINA alındı. Bu dosyadaki ilgili satırların çoğu artık tasks/JOIN-001.md durum matrisinde izleniyor; oradaki dilim kapanınca buradaki satır üstü çizilir.
 
-- **BL-070 local pgTAP paketi ~%26 kırmızı (2026-09-21, JOIN-002 ölçümü).** `pnpm.cmd test:db` 121 dosya / 2558 testte 662 subtest'te düşüyor ve bu JOIN çalışmasından önce de böyleydi (A/B: değişiklik öncesi 664, sonrası 662). Neden local veritabanının `supabase/seed.sql`'den sapmış olması; testlerin bir kısmı seed satırlarına dayanıyor. Aşama 5'in "`test:db` PASS" kabul koşulu bu kapanmadan sağlanamaz. JOIN-007 ile birlikte ele alınacak: ya testler local veriden bağımsız hâle gelir ya da kullanıcı onayıyla `supabase db reset` yapılır (local dev verisi silinir, kullanıcı kararı).
+- **BL-070 pgTAP paketi: 34 dosya ilk fixture satirinda duruyor (2026-09-22 olcumu) (leave: high / do: moderate).** Eski kayit "local DB seed'den sapmis" diyordu; o sorun bitti -- `supabase db reset` artik calisiyor ve veritabani her seferinde tarifin ayni. Reset sonrasi olcum: 130 dosya / 3235 test, 57 kirmizi dosya, 35'i ilk hatada duruyor. Duranlar 23 ayri sebepten: ~12'si testin unuttugu bir fixture satiri (mekanik), ~10'u kurallarin artik izin vermedigi bir durumu kuruyor (her biri urun karari), gerisi acilmadi. Bugun 3 dosya kapandi. `test:db` hala CI kapisi degil.
 - **BL-071 `membership_status='invited'` ve enum temizliği (2026-09-21).** Kullanılmayan `invited` etiketi enum'da duruyor; tipi takas etmek 72 fonksiyona dokunmayı gerektirdiği için ertelendi. Kullanımı pgTAP ile yasaklandı.
 - **BL-072 iki avatar alanı (2026-09-21).** `user_profiles.avatar_object_path` ve `employee_private_profiles.avatar_object_path` aynı kişinin fotoğrafını iki yerde tutuyor. JOIN-008 kapsamı dışında bırakıldı.
 - **BL-073 canvas önerisi: hesap butonu + switcher tek kontrol (2026-09-21).** Tasarım canvas'ı ikisini sidebar dibinde birleştiriyor; plan E5 switcher'ı menünün tepesine koyuyor ve JOIN-005 planı izliyor. Birleştirme önerisi burada bekliyor.
@@ -123,3 +123,8 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - **BL-078 `20260921180000_location_short_name_released_by_archive.sql` yanlislikla JOIN-004 commit'ine girdi (2026-09-21).** Dosya calisma agacinda takipsiz duruyordu ve local veritabanina uygulanmisti (canli indeks `archived_at is null` sartini tasiyor, `20260915224354`'teki orijinali tasimiyor). `git add -A` onu `d03532c`'ye supurdu. Icerik tutarli ve DB zaten oyle; geri almak migration'lari DB'nin gerisine dusururdu, o yuzden birakildi. Kullanici LOC dilimine mi ait karar verecek.
 - **BL-079 gorunen ad tek kaynaktan okunmali (2026-09-21, JOIN-008 olcumu).** Bir kisinin adi `user_profiles.display_name`, `employee_profiles.first_name/last_name` ve `employee_private_profiles.legal_*` olmak uzere uc yerde. 57 DB fonksiyonu `first_name` birlestiriyor, 38'i `preferred_name` okuyor (schedule, kiosk, lineup, export, time tracking, shift exchange). Tek yardimci fonksiyon (`app_private.person_display_name`) ve yuzey yuzey gecis gerekiyor; katilim zincirinin disinda kaldigi icin JOIN-008'de yapilmadi.
 - **BL-080 owner'in resmi adi (2026-09-21).** Calisan onboarding'i `legal_first_name/legal_last_name` topluyor, owner hicbir yerde vermiyor; belge ve imza yuzeyleri isteyince bos kaliyor. Kisinin kendi istihdam kaydini duzenledigi yer JOIN-009'da aciliyor, oraya baglanacak.
+
+## Yeni bulgular (2026-09-22)
+- **BL-081 (leave: medium / do: safe) Iki test artik kurulamayan senaryoyu olcuyor.** `time_off_physical_request_counts` bir kisiyi iki lokasyonda ayni saate koyuyor; `availability_complement_ranges` saatsiz bir shift type yaratiyor. Ikisi de veritabani tarafindan reddediliyor. Her biri tek satirlik bir urun karari bekliyor: durum gercekten imkansiz mi olmali, yoksa kural mi fazla siki.
+- **BL-082 (leave: high / do: safe) Vercel Authentication `newfork-clean-api` uzerinde kapali.** Test icin kapatilmisti, acilmadi. Kullanicinin panelinden: Project > Settings > Deployment Protection.
+- **BL-083 (leave: low / do: safe) Seed replay hatalari.** Vardiya demo blogu seed'den cikinca `supabase db reset` tamamlandi; baska replay hatasi kaldi mi olculmedi.
