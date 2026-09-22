@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { AccountProfile } from "@newfork/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import SecurityPage from "./SecurityPage";
+import SecurityPage, { deletionBlockerSummary } from "./SecurityPage";
 import {
   cancelAccountEmailChange,
   changeAccountPassword,
@@ -103,7 +103,7 @@ describe("SecurityPage", () => {
     }));
   });
 
-  it("lists ownership blockers and disables account deletion", async () => {
+  it("says what stands in the way once, not once per workspace", async () => {
     vi.mocked(loadAccountDeletionBlockers).mockResolvedValue([{
       kind: "active_membership",
       workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
@@ -112,8 +112,48 @@ describe("SecurityPage", () => {
       is_owner: true,
     }]);
     render(<SecurityPage />);
-    expect(await screen.findByText(/Meyhouse: transfer ownership/)).toBeTruthy();
+    expect(
+      await screen.findByText(/you own 1 workspace, so hand it to somebody else/),
+    ).toBeTruthy();
+    // The list used to grow with the account, repeating one instruction.
+    expect(screen.queryByText(/Meyhouse/)).toBeNull();
     expect(screen.getByRole("button", { name: "Delete account" })).toHaveProperty("disabled", true);
     expect(requestSecureAccountDeletion).not.toHaveBeenCalled();
+  });
+});
+
+describe("deletionBlockerSummary", () => {
+  const membership = (name: string, owner: boolean) => ({
+    kind: "active_membership" as const,
+    workspace_id: name,
+    workspace_name: name,
+    role_name: owner ? "Owner" : "Employee",
+    is_owner: owner,
+  });
+
+  it("counts instead of naming, and keeps the three answers apart", () => {
+    expect(
+      deletionBlockerSummary([
+        membership("Meyhouse", true),
+        membership("Ridgeline", true),
+        membership("Juniper", false),
+        {
+          kind: "pending_ownership_transfer",
+          workspace_id: "Juniper",
+          workspace_name: "Juniper",
+          is_owner: false,
+          transfer_id: "9a3d5f0e-2b71-4f0a-9a52-6c4a1c9f1f22",
+          transfer_direction: "outgoing",
+        },
+      ]),
+    ).toBe(
+      "Before you can delete your account: you own 2 workspaces, so hand them to somebody else in Account \u203a Workspaces; you still have access to 1 workspace you do not own, which an owner or an admin there has to remove; and 1 ownership transfer is still waiting for an answer.",
+    );
+  });
+
+  it("does not say \"and\" when there is only one thing to do", () => {
+    expect(deletionBlockerSummary([membership("Juniper", false)])).toBe(
+      "Before you can delete your account: you still have access to 1 workspace you do not own, which an owner or an admin there has to remove.",
+    );
   });
 });

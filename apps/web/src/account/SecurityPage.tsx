@@ -173,7 +173,7 @@ export default function SecurityPage() {
         <div className="account-section-copy"><h2 id="delete-account-title">Delete account</h2><p>A 14-day recovery window starts after your current password is verified.</p></div>
         <div className="account-section-body">
           {blockers.length > 0 ? (
-            <div className="account-danger-notice"><strong>Resolve these items first</strong><ul>{blockers.map((blocker) => <li key={`${blocker.kind}-${blocker.workspace_id}-${blocker.transfer_id ?? ""}`}>{blocker.workspace_name}: {blocker.is_owner ? "transfer ownership in Account > Workspaces, then ask the new owner or an administrator to remove your access" : blocker.kind === "active_membership" ? "ask the workspace owner or an administrator to remove your active access" : `resolve ${blocker.transfer_direction ?? "pending"} ownership transfer`}</li>)}</ul></div>
+            <div className="account-danger-notice"><strong>Your account is still in use</strong><p>{deletionBlockerSummary(blockers)}</p></div>
           ) : (
             <p className="field-help">Pending invitations will be cancelled and their workspace managers notified.</p>
           )}
@@ -209,4 +209,50 @@ export default function SecurityPage() {
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+function plural(count: number, noun: string): string {
+  return count + " " + noun + (count === 1 ? "" : "s");
+}
+
+/**
+ * One message covering all of it. This used to be a line per workspace and per
+ * transfer, each repeating the same instruction, so an account with ten
+ * workspaces met a list of ten sentences before it could be deleted.
+ */
+export function deletionBlockerSummary(
+  blockers: readonly AccountDeletionBlocker[],
+): string {
+  const memberships = blockers.filter(
+    (blocker) => blocker.kind === "active_membership",
+  );
+  const owned = memberships.filter((blocker) => blocker.is_owner);
+  const joined = memberships.length - owned.length;
+  const transfers = blockers.filter(
+    (blocker) => blocker.kind === "pending_ownership_transfer",
+  );
+  const parts: string[] = [];
+  if (owned.length > 0)
+    parts.push(
+      "you own " +
+        plural(owned.length, "workspace") +
+        ", so hand " +
+        (owned.length === 1 ? "it" : "them") +
+        " to somebody else in Account \u203a Workspaces",
+    );
+  if (joined > 0)
+    parts.push(
+      "you still have access to " +
+        plural(joined, "workspace") +
+        " you do not own, which an owner or an admin there has to remove",
+    );
+  if (transfers.length > 0)
+    parts.push(
+      plural(transfers.length, "ownership transfer") +
+        (transfers.length === 1 ? " is" : " are") +
+        " still waiting for an answer",
+    );
+  const last = parts.pop() ?? "";
+  const lead = parts.length > 0 ? parts.join("; ") + "; and " : "";
+  return "Before you can delete your account: " + lead + last + ".";
 }
