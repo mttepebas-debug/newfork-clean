@@ -217,6 +217,14 @@ select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000002
 set local role postgres;
 create temporary table signature_role_state (role_id uuid primary key);
 grant all on table signature_role_state to service_role, authenticated;
+set local role postgres;
+-- An admin holds every default permission except roles.manage, which stays
+-- with the owner unless the owner hands it over. This suite has its admin
+-- build a custom role, so the owner hands it over first.
+insert into public.workspace_role_permissions(workspace_id,role_id,permission_key)
+select r.workspace_id, r.id, 'roles.manage' from public.workspace_roles r
+where r.workspace_id='25000000-0000-4000-8000-000000000001' and r.system_key='admin'
+on conflict do nothing;
 set local role service_role;
 insert into signature_role_state
 select public.save_workspace_role_service(
