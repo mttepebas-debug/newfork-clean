@@ -62,8 +62,13 @@ where e.id in('ada50000-0000-4000-8000-000000000001','ada50000-0000-4000-8000-00
 
 
 
+-- A change to the conflict rules has to say which revision of them it is
+-- changing, so two managers editing at once cannot overwrite each other. The
+-- settings screen sends back the revision it read; so does this.
 create function pg_temp.settings(value jsonb) returns jsonb language sql as $$
- select public.update_scheduling_settings_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',value);
+ select public.update_scheduling_settings_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+  value || jsonb_build_object('conflict_rules_revision',
+   (select conflict_rules_revision from public.workspace_scheduling_settings where workspace_id='6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')));
 $$;
 
 select is(pg_temp.settings('{"minimum_travel_minutes":30}')->>'minimum_travel_minutes','30','manager sets shared travel minimum');
