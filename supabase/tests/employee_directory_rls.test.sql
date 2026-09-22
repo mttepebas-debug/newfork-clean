@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(115);
+select plan(116);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -44,7 +44,12 @@ select ok(public.workspace_has_permission('26000000-0000-4000-8000-000000000001'
 select set_config('request.jwt.claim.sub', '16000000-0000-4000-8000-000000000002', true);
 select ok(public.workspace_has_permission('26000000-0000-4000-8000-000000000001', 'employees.read'), 'manager receives employee read');
 select ok(public.workspace_has_permission('26000000-0000-4000-8000-000000000001', 'employees.manage'), 'manager receives employee management');
-select isnt(public.workspace_has_permission('26000000-0000-4000-8000-000000000001', 'employees.archive'), true, 'manager does not receive archive by default');
+-- A manager could already add, edit and invite; taking somebody off the roster
+-- came with that in bl051_roles_permissions. It stays a narrow power: only over
+-- plain employees, only inside their own locations, never themselves, and they
+-- cannot give the access back afterwards — that needs employee_access.manage,
+-- which is admin and owner only.
+select ok(public.workspace_has_permission('26000000-0000-4000-8000-000000000001', 'employees.archive'), 'manager receives archive with the rest of employee management');
 
 set local role service_role;
 create temporary table employee_ids (label text primary key, id uuid not null);
@@ -126,8 +131,8 @@ select is(
     '26000000-0000-4000-8000-000000000001',
     (select id from employee_ids where label = 'downtown')
   )->'private_contact'->>'emergency_contact_name'),
-  'Jamie Kim',
-  'location-scoped manager sees private contact for assigned employee detail'
+  null,
+  'a manager sees the roster but not the private contact on it'
 );
 select is(
   concat_ws('|',
@@ -416,10 +421,16 @@ select throws_ok(
   )$$,
   '40001', 'employee revision conflict', 'stale employee update fails closed'
 );
-select throws_ok(
+select lives_ok(
   $$select public.set_employee_archived_service('16000000-0000-4000-8000-000000000002', '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'), true, false)$$,
-  '42501', 'employee archive access required', 'manager cannot archive by default'
+  'manager archives an employee inside their own scope'
 );
+-- Put it back: the rest of the suite works on this same record, and the point
+-- above was the capability rather than the state it leaves behind.
+set local role postgres;
+select set_config('request.jwt.claim.sub', '16000000-0000-4000-8000-000000000001', true);
+set local role service_role;
+select public.set_employee_archived_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'), false, false);
 set local role postgres;
 insert into public.employee_profiles (
   id, workspace_id, user_id, employee_code, first_name, last_name, preferred_name,
@@ -444,7 +455,7 @@ insert into public.employee_location_assignments (
 set local role service_role;
 select throws_ok(
   $$select public.set_employee_archived_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', '76000000-0000-4000-8000-000000000004', true, false)$$,
-  '23514', 'owner role can only be changed through ownership transfer', 'owner cannot archive another owner through drawer lifecycle'
+  'P0002', 'employee not found', 'an owner cannot reach another owner''s record to archive it'
 );
 set local role postgres;
 delete from public.employee_location_assignments where employee_id = '76000000-0000-4000-8000-000000000004';
@@ -724,7 +735,7 @@ where role_id = (select id from public.workspace_roles where workspace_id = '260
   and permission_key = 'employees.read';
 select throws_ok(
   $$set constraints enforce_role_permission_dependencies_trigger immediate$$,
-  '23514', 'employee management requires employees.read', 'database enforces employee permission dependency'
+  '23514', 'permission set requires dependent read access', 'database enforces employee permission dependency'
 );
 
 set local role service_role;
@@ -873,10 +884,19 @@ select lives_ok(
 set local role postgres;
 select is((select user_id from public.employee_profiles where id = '76000000-0000-4000-8000-000000000010'), null, 'rehire restore detaches the previous linked account from the employee record');
 set local role service_role;
+-- It used to be hidden, and hiding it was the problem: somebody whose access
+-- had been taken opened the app, found the workspace simply gone, and had
+-- nothing to tell them whether it had closed, been put on hold, or stopped
+-- being theirs. The list carries it now and says which of the three it was,
+-- which is what JOIN-006 was for.
 select is(
   (select count(*)::integer from public.list_my_workspaces_service('16000000-0000-4000-8000-000000000010')),
-  0,
-  'rehire-ready suspended membership remains hidden from the old account switcher'
+  1,
+  'the old account still sees the workspace, so it can be told what happened to it'
+);
+select ok(
+  (select access_removed from public.list_my_workspaces_service('16000000-0000-4000-8000-000000000010')),
+  'and it says their access was taken rather than the workspace ending'
 );
 select lives_ok(
   $$select public.prepare_employee_invitation_service(
@@ -928,7 +948,7 @@ update public.employee_profiles set user_id = '16000000-0000-4000-8000-000000000
 set local role service_role;
 select throws_ok(
   $$select public.set_employee_archived_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'), true, false)$$,
-  '42501', 'self archive is not permitted', 'linked user cannot archive their own employee record'
+  'P0002', 'employee not found', 'a linked user cannot reach their own record to archive it'
 );
 set local role postgres;
 select is((select count(*)::integer from public.employee_events where employee_id = (select id from employee_ids where label = 'downtown') and action in ('employee.created', 'employee.updated', 'employee.invited', 'employee.invitation_revoked')), 5, 'employee lifecycle changes are audited without private payloads');
