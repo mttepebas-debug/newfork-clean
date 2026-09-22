@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(40);
+select plan(41);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data)
 values ('19000000-0000-4000-8000-000000000001', 'create-owner@example.test', '{}', '{}'),
@@ -13,7 +13,7 @@ values ('29000000-0000-4000-8000-000000000001', '19000000-0000-4000-8000-0000000
 
 create temporary table create_fixture (employee jsonb, employee_role uuid, owner_role uuid, result jsonb);
 insert into create_fixture
-select '{"first_name":"Ada","last_name":"Lovelace","preferred_name":"","invitation_email":"create-remote@example.test","start_date":"","internal_note":"","location_ids":[],"primary_location_id":null,"job_ids":[],"primary_job_id":null,"is_remote":true,"is_excluded_from_schedule":false,"expected_revision":null}'::jsonb,
+select '{"first_name":"Ada","middle_name":"Byron","last_name":"Lovelace","preferred_name":"","invitation_email":"create-remote@example.test","start_date":"","internal_note":"","location_ids":[],"primary_location_id":null,"job_ids":[],"primary_job_id":null,"is_remote":true,"is_excluded_from_schedule":false,"expected_revision":null}'::jsonb,
   (select id from public.workspace_roles where workspace_id = '29000000-0000-4000-8000-000000000001' and system_key = 'employee'),
   (select id from public.workspace_roles where workspace_id = '29000000-0000-4000-8000-000000000001' and system_key = 'owner'), null;
 grant all on create_fixture to service_role;
@@ -21,6 +21,18 @@ set local role service_role;
 select lives_ok($$update create_fixture set result = public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000001', employee, employee_role)$$, 'remote create and invitation need no assignments');
+-- The command path passed a positional argument list written before a middle
+-- name existed, so this was dropped on the way in and nothing noticed. The
+-- record itself is read as postgres; service_role cannot select the table.
+set local role postgres;
+select is(
+  (select profile.first_name || ' ' || profile.middle_name || ' ' || profile.last_name
+   from public.employee_profiles profile
+   where profile.id = (select (result->>'id')::uuid from create_fixture)),
+  'Ada Byron Lovelace',
+  'a middle name survives the create command'
+);
+set local role service_role;
 select is((select result->>'delivery_status' from create_fixture), 'pending', 'delivery starts pending');
 select is((select length(result->>'token') from create_fixture), 64, 'service receives recoverable invitation token');
 select is((select public.create_employee_command_service(

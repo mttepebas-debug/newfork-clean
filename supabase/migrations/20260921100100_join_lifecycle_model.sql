@@ -111,6 +111,12 @@ alter table public.workspace_memberships
   add column if not exists employee_id uuid
     references public.employee_profiles(id) on delete set null;
 
+-- The index goes in before the backfill. Postgres refuses to build an index on
+-- a table that has pending trigger events in the same transaction, and the
+-- backfill below queues them on every row it touches.
+create index if not exists workspace_memberships_last_used_idx
+  on public.workspace_memberships (user_id, last_used_at desc nulls last);
+
 update public.workspace_memberships membership
 set employee_id = employee.id
 from public.employee_profiles employee
@@ -118,9 +124,6 @@ where employee.workspace_id = membership.workspace_id
   and employee.user_id = membership.user_id
   and employee.archived_at is null
   and membership.employee_id is null;
-
-create index if not exists workspace_memberships_last_used_idx
-  on public.workspace_memberships (user_id, last_used_at desc nulls last);
 
 comment on column public.workspace_memberships.last_used_at is
   'When this membership was last opened. The landing decision picks the most recent one.';
