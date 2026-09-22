@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(25);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values ('14000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'owner-record@example.test', '', '{}', '{}', now(), now());
@@ -169,7 +169,7 @@ select is(
   'nothing is invented for the owner before they enter anything'
 );
 
-select public.save_owner_emergency_contact_service(
+select public.save_own_employment_contact_service(
   '14000000-0000-4000-8000-000000000001',
   (select workspace_id from owner_record_target),
   (select id from owner_employee limit 1),
@@ -189,12 +189,55 @@ select ok(
   'a personal phone is not invented to satisfy the row'
 );
 
+-- Your own number, on your own record. Onboarding takes it once and nothing
+-- gives it back; an owner is never asked for it at all.
+select public.save_own_employment_contact_service(
+  '14000000-0000-4000-8000-000000000001',
+  (select workspace_id from owner_record_target),
+  (select id from owner_employee limit 1),
+  'Morgan Tepebas', 'Spouse', '3105550101', '', '3105550102'
+);
+select is(
+  (select phone from public.employee_private_profiles
+   where employee_id = (select id from owner_employee limit 1)),
+  '3105550102',
+  'a personal phone can be written after the fact'
+);
+select throws_ok(
+  $$select public.save_own_employment_contact_service(
+    '14000000-0000-4000-8000-000000000001',
+    (select workspace_id from owner_record_target),
+    (select id from owner_employee limit 1),
+    'Morgan Tepebas', 'Spouse', '3105550101', '', '311'
+  )$$,
+  '22023',
+  'a personal phone number is too short to reach anybody',
+  'and half a number is refused where it can be read'
+);
+-- The legal name has its own review during onboarding; this surface must not
+-- be a way around it. Moving the record's own first name and saving again is
+-- the way to see whether it follows.
+update public.employee_profiles set first_name = 'Renamed'
+where id = (select id from owner_employee limit 1);
+select public.save_own_employment_contact_service(
+  '14000000-0000-4000-8000-000000000001',
+  (select workspace_id from owner_record_target),
+  (select id from owner_employee limit 1),
+  'Morgan Tepebas', 'Spouse', '3105550101', '', '3105550102'
+);
+select isnt(
+  (select legal_first_name from public.employee_private_profiles
+   where employee_id = (select id from owner_employee limit 1)),
+  'Renamed',
+  'the legal name on file is left where onboarding and its review put it'
+);
+
 -- Somebody else's record is not theirs to write, owner or not.
 insert into public.employee_profiles (id, workspace_id, employee_code, first_name, last_name, created_by)
 values ('17000000-0000-4000-8000-000000000009', (select workspace_id from owner_record_target), 'E-7001', 'Someone', 'Else', '14000000-0000-4000-8000-000000000001');
 
 select throws_ok(
-  $$select public.save_owner_emergency_contact_service(
+  $$select public.save_own_employment_contact_service(
     '14000000-0000-4000-8000-000000000001',
     (select workspace_id from owner_record_target),
     '17000000-0000-4000-8000-000000000009',

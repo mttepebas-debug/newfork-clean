@@ -1,6 +1,8 @@
 import {
+  employmentContactRecordFromRow,
   workspaceIdentitySchema,
   workspaceSummaryFromRow,
+  type EmploymentContactRecord,
   type WorkspaceIdentity,
   type WorkspaceSummary,
 } from "@newfork/shared";
@@ -10,6 +12,10 @@ import { rpcFailure } from "../http-error.js";
 
 export interface WorkspaceAccountService {
   listWorkspaces(accessToken: string): Promise<WorkspaceSummary[]>;
+  /** The caller's own employment record in each workspace they are in. */
+  listEmploymentRecords(
+    accessToken: string,
+  ): Promise<EmploymentContactRecord[]>;
   createWorkspace(accessToken: string, workspaceName: string): Promise<string>;
   selectWorkspace(accessToken: string, workspaceId: string): Promise<void>;
   requestClosure(
@@ -207,6 +213,13 @@ export function createWorkspaceAccountServiceWithClients(options: {
           ...(await actorArgs(accessToken)),
         })) as unknown[]
       ).map(workspaceSummaryFromRow);
+    },
+    async listEmploymentRecords(accessToken) {
+      return (
+        (await rpc("list_own_employment_records_service", {
+          ...(await actorArgs(accessToken)),
+        })) as unknown[]
+      ).map(employmentContactRecordFromRow);
     },
     async createWorkspace(accessToken, workspaceName) {
       return String(

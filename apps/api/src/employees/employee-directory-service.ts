@@ -87,8 +87,12 @@ export interface EmployeeDirectoryService {
     readonly workspaceId: string;
     readonly employeeId: string;
   }): Promise<void>;
-  /** The owner's own emergency contact, which onboarding never asks them for. */
-  saveOwnEmergencyContact(input: {
+  /**
+   * A person's own emergency contact and personal phone. Onboarding asks for
+   * them once and never comes back; the owner is never asked at all. One way
+   * in, whoever is writing.
+   */
+  saveOwnEmploymentContact(input: {
     readonly actorUserId: string;
     readonly workspaceId: string;
     readonly employeeId: string;
@@ -96,6 +100,7 @@ export interface EmployeeDirectoryService {
     readonly relationship: string;
     readonly phone: string;
     readonly email: string;
+    readonly personalPhone?: string | null;
   }): Promise<void>;
 }
 
@@ -268,8 +273,8 @@ export function createEmployeeDirectoryServiceWithClient(
         await client.storage?.from("employee-profile-photos").remove([path]);
       }
     },
-    async saveOwnEmergencyContact(input) {
-      await rpc("save_owner_emergency_contact_service", {
+    async saveOwnEmploymentContact(input) {
+      await rpc("save_own_employment_contact_service", {
         actor_user_id: input.actorUserId,
         target_workspace_id: input.workspaceId,
         target_employee_id: input.employeeId,
@@ -277,6 +282,7 @@ export function createEmployeeDirectoryServiceWithClient(
         contact_relationship: input.relationship,
         contact_phone: input.phone,
         contact_email: input.email,
+        personal_phone: input.personalPhone ?? null,
       });
     },
     async removeAccess(input) {

@@ -46,7 +46,7 @@ import {
   getEmployeeAvatar,
   loadEmployeeInvitationLink,
   loadEmployeeReferenceData,
-  saveOwnEmergencyContact,
+  saveOwnEmploymentContact,
   prepareEmployeeInvitation,
   removeEmployeeAccess,
   removeEmployeeAvatar,
@@ -196,7 +196,7 @@ vi.mock("./employee-data", () => ({
   getEmployeeDetail: vi.fn(),
   getEmployeeAvatar: vi.fn(),
   loadEmployeeInvitationLink: vi.fn(),
-  saveOwnEmergencyContact: vi.fn(),
+  saveOwnEmploymentContact: vi.fn(),
   loadEmployeeReferenceData: vi.fn(),
   prepareEmployeeInvitation: vi.fn(),
   removeEmployeeAccess: vi.fn(),
@@ -739,7 +739,7 @@ describe("EmployeeDrawer", () => {
   // Everyone else gives an emergency contact while onboarding. The owner never
   // runs it, so theirs is entered here — by them, and never required.
   it("lets the owner enter their own emergency contact", async () => {
-    vi.mocked(saveOwnEmergencyContact).mockResolvedValue(undefined);
+    vi.mocked(saveOwnEmploymentContact).mockResolvedValue(undefined);
     renderDrawer("profile", {
       ...detail,
       user_id: context.userId,
@@ -757,7 +757,7 @@ describe("EmployeeDrawer", () => {
     );
 
     await waitFor(() =>
-      expect(saveOwnEmergencyContact).toHaveBeenCalledWith(
+      expect(saveOwnEmploymentContact).toHaveBeenCalledWith(
         workspaceId,
         employeeId,
         expect.objectContaining({

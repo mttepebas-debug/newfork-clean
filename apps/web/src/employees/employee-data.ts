@@ -424,7 +424,7 @@ export async function acceptEmployeeInvitation(
  * The owner's own emergency contact. Everyone else gives one during onboarding;
  * the owner never runs it, so theirs is entered by hand in their own record.
  */
-export async function saveOwnEmergencyContact(
+export async function saveOwnEmploymentContact(
   workspaceId: string,
   employeeId: string,
   contact: {
@@ -432,6 +432,8 @@ export async function saveOwnEmergencyContact(
     readonly relationship: string;
     readonly phone: string;
     readonly email: string;
+    /** Left out means leave the number already on file. */
+    readonly personalPhone?: string;
   },
 ): Promise<void> {
   const token = await getApiAccessToken(client());

@@ -1,6 +1,8 @@
 import { RequestError } from "./request-error";
 import {
+  employmentContactRecordSchema,
   workspaceIdentitySchema,
+  type EmploymentContactRecord,
   type WorkspaceIdentity,
   accountProfileSchema,
   activeWorkspaceContextSchema,
@@ -299,6 +301,19 @@ export async function removeAccountAvatar(
 export async function getCurrentUserWorkspaceAvatar(workspaceId: string): Promise<{ url: string | null }> {
   if (!supabaseClient) return { url: null };
   return await apiRequest(supabaseClient, `/v1/workspaces/${workspaceId}/me/avatar`) as { url: string | null };
+}
+
+/**
+ * The caller's own employment record in each workspace they are in. One per
+ * workspace, because an employment record belongs to a workspace rather than
+ * to the account.
+ */
+export async function listOwnEmploymentRecords(
+  client: SupabaseClient,
+): Promise<EmploymentContactRecord[]> {
+  return employmentContactRecordSchema
+    .array()
+    .parse(await apiRequest(client, "/v1/account/employment-records"));
 }
 
 export async function listAccountWorkspaces(

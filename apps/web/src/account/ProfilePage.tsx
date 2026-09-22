@@ -1,15 +1,20 @@
-import { normalizeAccountPhone } from "@newfork/shared";
+import {
+  normalizeAccountPhone,
+  type EmploymentContactRecord,
+} from "@newfork/shared";
 import { Button } from "@newfork/ui";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
+  listOwnEmploymentRecords,
   listWorkspaceIdentities,
   removeAccountAvatar,
   supabaseClient,
   uploadAccountAvatar,
 } from "../lib/supabase";
+import { saveOwnEmploymentContact } from "../employees/employee-data";
 import { AccountPageHeader } from "./components";
 import { useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { AvatarCropDialog } from "./AvatarCropDialog";
@@ -257,6 +262,7 @@ export default function ProfilePage() {
         </div>
       </form>
       <WorkspaceIdentities />
+      <EmploymentContacts />
     </section>
   );
 }
@@ -303,5 +309,174 @@ function WorkspaceIdentities() {
         </ul>
       </div>
     </section>
+  );
+}
+
+/**
+ * Who to call, and the number to reach you on. Onboarding asks for both once
+ * and never comes back to them; an owner is never asked at all, because an
+ * owner never runs onboarding.
+ *
+ * One block per workspace, because that is where the record lives. A phone
+ * number changes and a person moves house, and until now the only way to
+ * correct either was to ask a manager.
+ */
+function EmploymentContacts() {
+  const cache = useQueryClient();
+  const records = useQuery({
+    queryKey: ["account-employment-records"],
+    queryFn: () =>
+      supabaseClient ? listOwnEmploymentRecords(supabaseClient) : [],
+  });
+
+  if (records.isLoading || (records.data ?? []).length === 0) return null;
+
+  return (
+    <section
+      className="account-section-block"
+      aria-labelledby="account-employment-title"
+    >
+      <div className="account-section-copy">
+        <h2 id="account-employment-title">Who to reach</h2>
+        <p>
+          Kept by each workspace separately, and yours to correct. The name a
+          workspace files you under is not changed here.
+        </p>
+      </div>
+      <div className="account-section-body">
+        {(records.data ?? []).map((record) => (
+          <EmploymentContactForm
+            key={record.workspaceId}
+            record={record}
+            onSaved={() =>
+              cache.invalidateQueries({
+                queryKey: ["account-employment-records"],
+              })
+            }
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EmploymentContactForm({
+  record,
+  onSaved,
+}: {
+  readonly record: EmploymentContactRecord;
+  readonly onSaved: () => void;
+}) {
+  const [name, setName] = useState(record.emergencyContactName);
+  const [relationship, setRelationship] = useState(
+    record.emergencyContactRelationship,
+  );
+  const [contactPhone, setContactPhone] = useState(
+    record.emergencyContactPhone,
+  );
+  const [personalPhone, setPersonalPhone] = useState(record.phone ?? "");
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const dirty =
+    name !== record.emergencyContactName ||
+    relationship !== record.emergencyContactRelationship ||
+    contactPhone !== record.emergencyContactPhone ||
+    personalPhone !== (record.phone ?? "");
+  // The row will not accept half a contact, so neither does the form.
+  const ready = name.trim().length > 0 && contactPhone.trim().length >= 7;
+
+  const save = async (): Promise<void> => {
+    setBusy(true);
+    setFailure(null);
+    setSaved(false);
+    try {
+      await saveOwnEmploymentContact(record.workspaceId, record.employeeId, {
+        name,
+        relationship,
+        phone: contactPhone,
+        email: record.emergencyContactEmail,
+        personalPhone: personalPhone.trim(),
+      });
+      setSaved(true);
+      onSaved();
+    } catch {
+      setFailure("That could not be saved. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const field = (suffix: string) =>
+    `employment-${record.workspaceId}-${suffix}`;
+
+  return (
+    <form
+      className="account-employment-record"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void save();
+      }}
+    >
+      <strong>{record.workspaceName}</strong>
+      <div className="account-field-grid">
+        <label className="account-field" htmlFor={field("own-phone")}>
+          <span>Your phone number</span>
+          <input
+            id={field("own-phone")}
+            value={personalPhone}
+            maxLength={30}
+            onChange={(event) => setPersonalPhone(event.target.value)}
+            placeholder="415 555 0142"
+          />
+        </label>
+        <label className="account-field" htmlFor={field("contact-name")}>
+          <span>Emergency contact</span>
+          <input
+            id={field("contact-name")}
+            value={name}
+            maxLength={120}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Morgan Reyes"
+          />
+        </label>
+        <label className="account-field" htmlFor={field("relationship")}>
+          <span>Relationship</span>
+          <input
+            id={field("relationship")}
+            value={relationship}
+            maxLength={80}
+            onChange={(event) => setRelationship(event.target.value)}
+            placeholder="Spouse"
+          />
+        </label>
+        <label className="account-field" htmlFor={field("contact-phone")}>
+          <span>Emergency phone</span>
+          <input
+            id={field("contact-phone")}
+            value={contactPhone}
+            maxLength={30}
+            onChange={(event) => setContactPhone(event.target.value)}
+            placeholder="415 555 0199"
+          />
+        </label>
+      </div>
+      {failure ? (
+        <p className="form-error" role="alert">
+          {failure}
+        </p>
+      ) : null}
+      {saved && !dirty ? (
+        <p className="form-success" role="status">
+          Saved
+        </p>
+      ) : null}
+      <div className="account-button-row">
+        <Button type="submit" disabled={busy || !dirty || !ready}>
+          {busy ? "Saving" : "Save"}
+        </Button>
+      </div>
+    </form>
   );
 }

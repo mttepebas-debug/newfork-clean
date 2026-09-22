@@ -47,7 +47,7 @@ import {
   createEmployee,
   type InviteRoleOption,
   loadEmployeeInvitationLink,
-  saveOwnEmergencyContact,
+  saveOwnEmploymentContact,
   loadEmployeeReferenceData,
   prepareEmployeeInvitation,
   removeEmployeeAvatar,
@@ -3017,7 +3017,7 @@ function OwnEmergencyContact({
   const [error, setError] = useState<string | null>(null);
   const save = useMutation({
     mutationFn: () =>
-      saveOwnEmergencyContact(workspaceId, employeeId, {
+      saveOwnEmploymentContact(workspaceId, employeeId, {
         name: name.trim(),
         relationship: relationship.trim(),
         phone: phone.trim(),

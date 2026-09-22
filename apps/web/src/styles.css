@@ -11155,6 +11155,23 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 /* Nine location fields in one flat run read as a wall; three named groups say
    what each answer is for. The grid lives on the group, not on the form. */
+/* One block per workspace, because that is where the employment record lives.
+   A rule between them says where one ends. */
+.account-employment-record {
+  display: grid;
+  gap: 12px;
+  padding-block: 16px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+}
+.account-employment-record:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.account-employment-record > strong {
+  color: var(--theme-text);
+  font-size: 14px;
+}
+
 .ob-fieldset {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

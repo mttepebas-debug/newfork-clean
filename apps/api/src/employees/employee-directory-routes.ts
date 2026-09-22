@@ -17,11 +17,14 @@ import type {
 } from "./employee-directory-service";
 import type { EmployeeCreateService } from "./employee-create-service";
 
-const ownEmergencyContactBody = z.object({
+const ownEmploymentContactBody = z.object({
   name: z.string().trim().min(1).max(120),
   relationship: z.string().trim().max(80).optional(),
   phone: z.string().trim().min(7).max(30),
   email: z.string().trim().email().or(z.literal("")).optional(),
+  // The person's own number, which onboarding takes once and nothing gives
+  // back. Left out means leave what is on file.
+  personalPhone: z.string().trim().min(7).max(30).or(z.literal("")).optional(),
 });
 
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
@@ -282,14 +285,14 @@ export function registerEmployeeDirectoryRoutes(
     },
   );
 
-  // The owner's own emergency contact. Everyone else gives one during
-  // onboarding; the owner never runs it. The database checks that the record is
-  // the caller's own and that the caller owns the workspace.
+  // A person's own emergency contact and personal phone. Onboarding asks once
+  // and never comes back; the owner is never asked at all. The database checks
+  // the one rule that matters, which is that the record is the caller's own.
   app.put(
     "/v1/workspaces/:workspaceId/employees/:employeeId/emergency-contact",
     async (request, reply) => {
       const params = employeeParams.safeParse(request.params);
-      const body = ownEmergencyContactBody.safeParse(request.body);
+      const body = ownEmploymentContactBody.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)
@@ -308,7 +311,7 @@ export function registerEmployeeDirectoryRoutes(
           .status(503)
           .send({ error: "Employee directory service is not configured" });
       try {
-        await options.service.saveOwnEmergencyContact({
+        await options.service.saveOwnEmploymentContact({
           actorUserId: context.userId,
           workspaceId: params.data.workspaceId,
           employeeId: params.data.employeeId,
@@ -316,6 +319,7 @@ export function registerEmployeeDirectoryRoutes(
           relationship: body.data.relationship ?? "",
           phone: body.data.phone,
           email: body.data.email ?? "",
+          personalPhone: body.data.personalPhone ?? null,
         });
         return reply.status(204).send();
       } catch (error) {

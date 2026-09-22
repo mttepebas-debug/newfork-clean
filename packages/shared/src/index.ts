@@ -360,6 +360,51 @@ export const accountProfileSchema = z
   });
 export type AccountProfile = z.infer<typeof accountProfileSchema>;
 
+/**
+ * A person's own employment record in one workspace. There is one per
+ * workspace they are in, because that is where an employment record lives.
+ */
+export const employmentContactRecordSchema = z.object({
+  workspaceId: z.string().uuid(),
+  workspaceName: z.string(),
+  employeeId: z.string().uuid(),
+  phone: z.string().nullable(),
+  emergencyContactName: z.string(),
+  emergencyContactRelationship: z.string(),
+  emergencyContactPhone: z.string(),
+  emergencyContactEmail: z.string(),
+});
+export type EmploymentContactRecord = z.infer<
+  typeof employmentContactRecordSchema
+>;
+
+export function employmentContactRecordFromRow(
+  input: unknown,
+): EmploymentContactRecord {
+  const row = z
+    .object({
+      workspace_id: z.string().uuid(),
+      workspace_name: z.string(),
+      employee_id: z.string().uuid(),
+      phone: z.string().nullable(),
+      emergency_contact_name: z.string(),
+      emergency_contact_relationship: z.string(),
+      emergency_contact_phone: z.string(),
+      emergency_contact_email: z.string(),
+    })
+    .parse(input);
+  return employmentContactRecordSchema.parse({
+    workspaceId: row.workspace_id,
+    workspaceName: row.workspace_name,
+    employeeId: row.employee_id,
+    phone: row.phone,
+    emergencyContactName: row.emergency_contact_name,
+    emergencyContactRelationship: row.emergency_contact_relationship,
+    emergencyContactPhone: row.emergency_contact_phone,
+    emergencyContactEmail: row.emergency_contact_email,
+  });
+}
+
 export const workspaceSummarySchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
