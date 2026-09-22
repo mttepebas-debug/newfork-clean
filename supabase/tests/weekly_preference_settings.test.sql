@@ -36,7 +36,7 @@ insert into public.shift_types(id,workspace_id,name,color,default_start_time,def
 
 create function pg_temp.settings_save(changes jsonb default '{}', key_suffix integer default 1, acting uuid default null) returns jsonb language sql as $$
  select public.weekly_preference_settings_save_service(coalesce(acting,owner_id),w,
-  '{"input_mode":"shift_type","warning_policy":"warn","onboarding_required":false,"expected_revision":0}'::jsonb||changes,
+  '{"input_mode":"shift_type","onboarding_required":false,"expected_revision":0}'::jsonb||changes,
   ('ad420000-0000-4000-8000-'||lpad(key_suffix::text,12,'0'))::uuid) from wp_fixture;
 $$;
 select is(public.weekly_preference_settings_read_service(owner_id,w)->>'can_edit','true','owner can edit settings') from wp_fixture;
@@ -62,11 +62,11 @@ insert into public.manager_weekly_reminders(workspace_id,employee_id,preference,
  select w,emp,jsonb_set(p,'{days,2,all_day}','true'),1,manager,array['','Private manager note','','','','',''] from wp_fixture;
 select is(pg_temp.settings_save()->'settings'->>'revision','1','mode save increments only availability revision');
 select is(pg_temp.settings_save()->'settings'->>'revision','1','same-key retry returns current settings');
-select is((select preference->>'input_mode' from public.employee_weekly_preferences where workspace_id=(select w from wp_fixture)),'time_range','employee old mode is preserved');
+select is((select preference->>'input_mode' from public.employee_weekly_preferences where workspace_id=(select w from wp_fixture)),'shift_type','employee week is converted to the new mode');
 select is((select preference->'days'->2->>'all_day' from public.manager_weekly_reminders where workspace_id=(select w from wp_fixture)),'true','manager rules survive mode change');
 select is((select count(*) from public.notification_outbox where workspace_id=(select w from wp_fixture) and subject_type='availability_settings'),1::bigint,'mode change and retry create one outbox event');
 select is((select payload->'recipient_user_ids' from public.notification_outbox where workspace_id=(select w from wp_fixture) and subject_type='availability_settings'),
- jsonb_build_array((select actor from wp_fixture)),'only employees whose saved mode needs renewal are notified');
+ jsonb_build_array((select actor from wp_fixture)),'only employees whose saved week was converted are notified');
 select ok((select bool_and(position('Private manager note' in payload::text)=0) from public.notification_outbox where workspace_id=(select w from wp_fixture)),'mode notice contains no private reminders');
 select throws_ok($$select pg_temp.settings_save('{"warning_policy":"confirm"}')$$,'22023',null,'key cannot be reused for another payload');
 select throws_ok($$select pg_temp.settings_save('{"warning_policy":"confirm"}',2)$$,'40001',null,'stale revision cannot overwrite settings');

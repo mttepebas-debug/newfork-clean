@@ -200,8 +200,8 @@ export function WeeklyPreferenceSettings({
       )}
       {draft.input_mode !== base.input_mode && (
         <p className="weekly-settings-notice">
-          Saved weeks remain in effect. Employees will be notified to update
-          their availability.
+          Saved weeks will be converted to the new entry mode. Employees will be
+          notified to check theirs.
         </p>
       )}
       <div className="weekly-settings-row">

@@ -51,6 +51,9 @@ describe("weekly preference settings", () => {
       </MemoryRouter>,
     );
     fireEvent.click(screen.getByRole("radio", { name: "Shift type" }));
+    expect(
+      screen.getByText(/Saved weeks will be converted to the new entry mode/),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("switch"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText("Saved");
