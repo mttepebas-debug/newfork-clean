@@ -253,6 +253,12 @@ export function deletionBlockerSummary(
         " still waiting for an answer",
     );
   const last = parts.pop() ?? "";
-  const lead = parts.length > 0 ? parts.join("; ") + "; and " : "";
+  // Two reasons read as a pair; three or more need the semicolons to stay apart.
+  const lead =
+    parts.length === 0
+      ? ""
+      : parts.length === 1
+        ? parts[0] + ", and "
+        : parts.join("; ") + "; and ";
   return "Before you can delete your account: " + lead + last + ".";
 }
