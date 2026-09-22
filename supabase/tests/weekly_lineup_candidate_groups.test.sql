@@ -63,21 +63,19 @@ select is(pg_temp.candidate('{"start_time":"12:00","end_time":"13:00"}')->>'disp
 -- The display includes an existing source, while eligibility may exclude it for editing.
 select is(public.weekly_lineup_candidate_option(manager,w,emp,pg_temp.target('{"start_time":"09:00","end_time":"12:00"}'),
  array['ad432000-0000-4000-8000-000000000020'::uuid],null)->>'display_group','working_here','excluded editing source remains visible as published work') from ws;
-insert into public.schedule_published_shifts(id,source_shift_id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
- select 'ad432000-0000-4000-8000-000000000021','ad432000-0000-4000-8000-000000000031',w,other_loc,
-  'ad432000-0000-4000-8000-000000000011',emp,job,service,'2035-01-15','13:00','15:00','explicit','America/New_York' from ws;
-select is(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}')->>'display_group','working_elsewhere','physical overlap elsewhere wins over working here');
-select is(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}')->'context_labels','["Working here as Server"]'::jsonb,'simultaneous local responsibility remains an additional label');
-select is(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}')->>'status','ineligible','multiple simultaneous responsibilities remain a real conflict');
+-- This used to give the same person a second published shift at the other
+-- location, at the same moment as the one here, and then check how the
+-- candidate list labels somebody working in two places at once. Nobody can
+-- hold two shifts at the same time any more, so the three checks that
+-- described that person are gone with the shift that made them.
 select is(jsonb_array_length(pg_temp.candidates('{"start_time":"10:00","end_time":"11:00"}',true)),1,'location-scoped search does not gain employees outside its scope');
 select ok(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}',true)::text not like '%Private East name%','foreign location name is not disclosed');
-select is(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}',true)->>'display_group','working_elsewhere','scoped manager still sees the generic busy classification');
 
 update public.employee_job_assignments set ended_at='2035-01-15 18:30Z' where workspace_id=(select w from ws) and employee_id=(select emp from ws);
 select is(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}')->>'display_group','missing_job','job assignment must cover the entire interval and outranks working groups');
 update public.employee_location_assignments set ended_at='2035-01-15 18:30Z' where workspace_id=(select w from ws) and employee_id=(select emp from ws) and location_id=(select loc from ws);
 select is(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}')->>'display_group','missing_location','missing location outranks missing job and both working groups');
-select ok(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}')->'context_labels' @> '["Not assigned to this job","Working somewhere else","Working here as Server"]'::jsonb,'other applicable states remain labels on one row');
+select ok(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}')->'context_labels' @> '["Not assigned to this job","Working here as Server"]'::jsonb,'other applicable states remain labels on one row');
 select is((select count(*)::integer from jsonb_array_elements(pg_temp.candidates()) c,ws where c->>'employee_id'=emp::text),1,'a candidate occurs exactly once despite multiple states');
 update public.employee_job_assignments set ended_at=null where workspace_id=(select w from ws);
 update public.employee_location_assignments set ended_at=null where workspace_id=(select w from ws);
