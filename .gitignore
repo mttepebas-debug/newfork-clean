@@ -37,3 +37,7 @@ __pycache__/
 .claude/worktrees/
 .claude/settings.local.json
 .claude/launch.json
+
+# Local working data: real names, contact details and a throwaway password.
+# Regenerate with `node scripts/export-local-fixture.mjs`.
+/supabase/local-fixture/
