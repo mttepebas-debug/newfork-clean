@@ -120,6 +120,11 @@ create temp table wp_legacy as select gen_random_uuid() publication,gen_random_u
 insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from,kind)
  select w,emp,1,'UTC',(select jsonb_agg(jsonb_build_object('day',d,'mode','unrestricted','windows','[]'::jsonb)) from generate_series(0,6) d),'employee',actor,'2035-01-15','weekly' from wp_fixture;
 insert into public.jobs(id,workspace_id,name,color) select job,w,'Legacy test job','#256b56' from wp_legacy,wp_fixture;
+-- A shift is refused now unless the person holds an active assignment to its
+-- job as well as its location. The fixture gave them the location only,
+-- because that was the whole of the rule when it was written.
+insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by)
+ select w,emp,job,owner_id from wp_legacy,wp_fixture;
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
  select publication,w,loc,'2035-01-15',1,owner_id from wp_legacy,wp_fixture;
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,job_id,scheduled_date,start_time,end_time,source_shift_id,time_basis,time_timezone,employee_id)

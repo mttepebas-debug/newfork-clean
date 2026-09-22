@@ -57,6 +57,16 @@ insert into public.employee_location_assignments (
   '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000002',
   '4a000000-0000-4000-8000-000000000001', true, '1a000000-0000-4000-8000-000000000001'
 );
+-- A shift is refused now unless the person holds an active assignment to its
+-- job as well as its location. The fixture gave them the location only, which
+-- was the whole of the rule when it was written.
+insert into public.employee_job_assignments (
+  workspace_id, employee_id, job_id, is_primary, created_by
+) values
+  ('2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001',
+   '6a000000-0000-4000-8000-000000000001', true, '1a000000-0000-4000-8000-000000000001'),
+  ('2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000002',
+   '6a000000-0000-4000-8000-000000000001', true, '1a000000-0000-4000-8000-000000000001');
 insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
 values (
   '3a000000-0000-4000-8000-000000000002', '2a000000-0000-4000-8000-000000000001',
