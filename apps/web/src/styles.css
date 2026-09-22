@@ -11155,6 +11155,14 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 /* Nine location fields in one flat run read as a wall; three named groups say
    what each answer is for. The grid lives on the group, not on the form. */
+/* The workspace name and what it is still waiting for, on one line. */
+.account-documents-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 /* One block per workspace, because that is where the employment record lives.
    A rule between them says where one ends. */
 .account-employment-record {
