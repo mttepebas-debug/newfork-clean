@@ -31,6 +31,9 @@ select '25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000
 set constraints all immediate;
 create temp table definition_test(id uuid);
 insert into definition_test select public.save_document_type_lifecycle_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',null,null,'{"title":"Safety","description":"Document","requires_review":true,"accepted_formats":["pdf"],"tracks_expiry":false,"expiry_warning_days":30,"lifecycle_settings":{"mode":"conditional","assignment_scope":"all_active","target":{"operator":"and","location_ids":["85200000-0000-4000-8000-000000000002"],"department_ids":[],"job_ids":["a5200000-0000-4000-8000-000000000001"],"employee_ids":[]},"period_days":7,"suspend_on_overdue":true,"extra_fields":[]}}');
+-- A requirement is only created against a published definition, so it is
+-- published before anybody is matched to it.
+update public.document_types set publication_status='published' where id=(select id from definition_test);
 select is((select count(*)::integer from public.employee_onboarding_requirements where source_id=(select id from definition_test)),0,'definition save does not apply to existing employees');
 update public.employee_job_assignments set ended_at=now() where job_id='a5200000-0000-4000-8000-000000000001';
 select is((select count(*)::integer from public.employee_onboarding_requirements where source_id=(select id from definition_test)),0,'unmatched employee gets no assignment');
@@ -38,7 +41,11 @@ update public.employee_job_assignments set ended_at=null where job_id='a5200000-
 create temp table dynamic_req as select id from public.employee_onboarding_requirements where source_id=(select id from definition_test);
 select is((select count(*)::integer from dynamic_req),1,'matching job at the second location creates one obligation');
 select is((select deadline_at from public.employee_onboarding_requirements where id=(select id from dynamic_req)),now()+interval '7 days','new active assignment starts full configured period');
+-- Changed the way the app changes a published definition: back to draft,
+-- edited, published again.
+update public.document_types set publication_status='draft' where id=(select id from definition_test);
 update public.document_types set lifecycle_settings=jsonb_set(lifecycle_settings,'{period_days}','21') where id=(select id from definition_test);
+update public.document_types set publication_status='published' where id=(select id from definition_test);
 update public.employee_profiles set first_name='Renamed' where id='45200000-0000-4000-8000-000000000001';
 select is((select lifecycle_settings->>'period_days' from public.employee_onboarding_requirements where id=(select id from dynamic_req)),'7','unrelated employee edit preserves assigned definition snapshot');
 update public.employee_onboarding_requirements set deadline_at=now()-interval '1 day',document_suspended_at=now() where id=(select id from dynamic_req);
