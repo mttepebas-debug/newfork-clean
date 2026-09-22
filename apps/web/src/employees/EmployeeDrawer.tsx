@@ -2874,6 +2874,7 @@ function AssignmentPicker({
 function toDraft(detail: EmployeeDetail): EmployeeInput {
   return {
     first_name: detail.first_name,
+    middle_name: detail.middle_name ?? "",
     last_name: detail.last_name,
     preferred_name: detail.preferred_name,
     invitation_email: detail.invitation_email ?? "",
@@ -2885,6 +2886,9 @@ function toDraft(detail: EmployeeDetail): EmployeeInput {
     primary_job_id: detail.primary_job_id,
     is_remote: detail.is_remote ?? false,
     is_excluded_from_schedule: detail.is_excluded_from_schedule ?? false,
+    // The owner holds every location and every job, so the form does not ask
+    // which one is primary.
+    is_owner_record: detail.role_name === "Owner",
     expected_revision: detail.revision,
   };
 }

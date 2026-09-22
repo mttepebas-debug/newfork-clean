@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(13);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values ('14000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'owner-record@example.test', '', '{}', '{}', now(), now());
@@ -127,6 +127,32 @@ select is(
      and ended_at is null),
   1,
   'the owner can work every job the setup created'
+);
+
+-- A place added after setup has to reach the owner too; before this the record
+-- was opened once and never again.
+insert into public.locations (workspace_id, name, street_address, city, region, postal_code, timezone, short_name)
+values ((select workspace_id from owner_record_target), 'Second Site', '2 St', 'Austin', 'TX', '78702', 'America/Chicago', 'SEC');
+insert into public.jobs (workspace_id, name, department_id)
+values (
+  (select workspace_id from owner_record_target),
+  'Host',
+  (select id from public.departments where workspace_id = (select workspace_id from owner_record_target) limit 1)
+);
+
+select is(
+  (select count(*)::integer from public.employee_location_assignments
+   where workspace_id = (select workspace_id from owner_record_target)
+     and ended_at is null),
+  2,
+  'a location added after setup reaches the owner on its own'
+);
+select is(
+  (select count(*)::integer from public.employee_job_assignments
+   where workspace_id = (select workspace_id from owner_record_target)
+     and ended_at is null),
+  2,
+  'a job added after setup reaches the owner on its own'
 );
 
 select * from finish();

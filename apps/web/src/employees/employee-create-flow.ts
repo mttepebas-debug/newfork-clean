@@ -7,7 +7,7 @@ import {
 export function employeeCreateReadiness(draft: EmployeeInput) {
   const namesReady = Boolean(draft.first_name.trim() && draft.last_name.trim());
   const assignmentsOptional = Boolean(
-    draft.is_remote || draft.is_excluded_from_schedule,
+    draft.is_remote || draft.is_excluded_from_schedule || draft.is_owner_record,
   );
   const parsed = employeeInputSchema.safeParse(draft);
   return {

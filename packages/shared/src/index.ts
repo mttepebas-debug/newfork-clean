@@ -2764,11 +2764,20 @@ export const employeeInputSchema = z
     primary_job_id: z.string().uuid().nullable(),
     is_remote: z.boolean().optional(),
     is_excluded_from_schedule: z.boolean().optional(),
+    /**
+     * The workspace's owner. They hold every location and every job, so naming
+     * one of them primary says nothing, and requiring it would stop the record
+     * saving at all. The server decides this for itself; this only keeps the
+     * form from refusing first.
+     */
+    is_owner_record: z.boolean().optional(),
     expected_revision: z.number().int().positive().nullable(),
   })
   .superRefine((value, issue) => {
     const assignmentOptional =
-      value.is_remote === true || value.is_excluded_from_schedule === true;
+      value.is_remote === true ||
+      value.is_excluded_from_schedule === true ||
+      value.is_owner_record === true;
     if (assignmentOptional) return;
     if (value.location_ids.length === 0 || value.primary_location_id === null) {
       issue.addIssue({

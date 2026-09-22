@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(119);
+select plan(120);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -554,7 +554,9 @@ where workspace_id = '20000000-0000-4000-8000-000000000001'
   and user_id = '10000000-0000-4000-8000-000000000001';
 grant select on owner_employee_ids to service_role;
 set local role service_role;
-select throws_ok(
+-- The owner's record used to be the one record in a workspace nobody could
+-- touch, including the owner. They can edit their own; nobody else can.
+select lives_ok(
   $$select public.save_employee_service(
     '10000000-0000-4000-8000-000000000001',
     '20000000-0000-4000-8000-000000000001',
@@ -574,9 +576,31 @@ select throws_ok(
     true,
     (select revision from owner_employee_ids limit 1)
   )$$,
+  'an owner can edit their own employee record'
+);
+select throws_ok(
+  $$select public.save_employee_service(
+    '10000000-0000-4000-8000-000000000003',
+    '20000000-0000-4000-8000-000000000001',
+    (select id from owner_employee_ids limit 1),
+    'Owner',
+    '',
+    'EditedByAdmin',
+    '',
+    'owner@example.test',
+    null,
+    '',
+    '{}'::uuid[],
+    null,
+    '{}'::uuid[],
+    null,
+    false,
+    true,
+    (select revision + 1 from owner_employee_ids limit 1)
+  )$$,
   'P0002',
   null,
-  'owner employee record cannot be edited through ordinary employee save'
+  'an admin still cannot edit the owner employee record'
 );
 select throws_ok(
   $$select public.set_employee_archived_service(
