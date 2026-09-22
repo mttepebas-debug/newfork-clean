@@ -1,6 +1,6 @@
 # REF-OB-001 Referans uygulamanın onboarding lokasyon + departman/görev adımlarının denetimi
 
-Status: active
+Status: bitti (2026-09-22)
 Session: "Audit reference onboarding location and job steps" (local_a643f440)   Branch: claude/confident-visvesvaraya-3b327e   Worktree: .claude/worktrees/confident-visvesvaraya-3b327e   DB: dokunulmaz (paylaşımlı local DB)   Port: -
 Öneri: Opus 5, high. (Oturum zaten claude-opus-5 / effort=max ile açılmış; `set_session_model`/`set_session_effort` bir oturumun kendisini değiştirmesini reddediyor, değişiklik gerekmedi.)
 Koordinatör: local_57e31a55
@@ -396,3 +396,6 @@ https://claude.ai/artifact/1tqjthXstKrm3DStTePSsa
 - **Referans depo değişmedi.** `git -C C:\Users\TheWe\newfork status --porcelain` **temiz değil** — ama bu benden önce de böyleydi: çalışma ağacında 1416 dosyalık, bana ait olmayan bir yığın var, son commit `53892e75` (2026-08-11). Kapsamımdaki dosyalardan üçü o yığında görünüyor (`apps/web/src/features/onboarding/StepRestaurantLocations.test.tsx`, `apps/web/src/routes/settings/locations.tsx`, `locations.test.tsx`). **Bunların hiçbirine dokunmadım:** `apps/web/src` altındaki hiçbir dosyanın mtime'ı 2026-08-11'den yeni değil (`find apps/web/src -newermt "2026-09-22 06:30"` boş döndü, oturum 2026-09-22 06:36'da açıldı). Yalnız `cat`/`sed`/`grep`/Read kullanıldı; dev server başlatılmadı, test koşulmadı.
 - **Hedef depoda** yalnız bu dosya (`docs/plan/tasks/REF-OB-001.md`) yazıldı. `supabase db reset` koşulmadı, migration uygulanmadı.
 - **Oturum modeli/effort'u:** zaten `claude-opus-5`, `effort=max`. `set_session_model` / `set_session_effort` bir oturumun kendi ayarını değiştirmesini reddediyor ("a session must not silently re-price its own turns"), ama istenen seviyenin üstünde olduğu için değişiklik gerekmedi.
+
+## Kapanış (koordinatör, 2026-09-22)
+Rapor teslim edildi ve main'de (6079f8f). Yedi kararın hepsi kapandı: D1/D3/D5 kullanıcı cevabıyla, D2/D4/D6 önerilen varsayılanla, D7 sıra kararıyla. Uygulama OB-001 (adım 3, f9f9e32) ve OB-002 (adım 2) olarak bitti. Bu task'ın açık işi kalmadı; oturum arşivlenebilir.
