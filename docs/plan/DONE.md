@@ -36,3 +36,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-18 | DEBT-001 P0 | fast-uri zafiyet zinciri kapandı, lint yeşil + CI'a lint/build, docs push'ları CI'ı iptal etmiyor, ölü paket silindi (−1.930 satır) | c56bf8e
 2026-09-19 | OPS-014 | Dört cron işi Postgres'ten tetikleniyor (outbox dakikalık, exports 5 dk, hesap silme ve saklama günlük); sırlar Vault'ta | b7052f6
 2026-09-19 | HOSTED-FIX | `/shifts` Vercel'de API'ye yönlendirilmiyordu; vardiya ekleme/güncelleme/silme/toplu işlemler hosted'da kırıktı, düzeltildi | 49a789b
+2026-09-22 | AVAIL-001 | Settings → Scheduling'de Entry mode değişince her kayıtlı hafta (çalışanınki + Manager reminders) aynı kaydetmede yeni moda çevriliyor; çevrilemeyen hafta mod değişimini durduruyor; bildirim yalnız haftası çevrilenlere, dönüşümden sonra | 944bad7
