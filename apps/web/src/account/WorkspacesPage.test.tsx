@@ -814,6 +814,42 @@ describe("WorkspacesPage", () => {
     expect(screen.queryByText(/a wording nobody/)).toBeNull();
   });
 
+  // The API raises this one itself rather than passing it on from the database,
+  // and it was the last refusal these screens still matched by its English.
+  it("answers a reauthentication refusal by its key too", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
+      new RequestError(
+        "Recent reauthentication required",
+        "session.reauthentication_required",
+      ),
+    );
+    renderPage();
+
+    await openScheduledClosure();
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "You have been signed in too long for this. Sign out, sign in again, and come back to this screen.",
+    );
+    expect(screen.queryByText(/Recent reauthentication required/)).toBeNull();
+  });
+
+  // Without the key it is a sentence like any other the screen does not know.
+  it("no longer recognises that refusal by its English alone", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
+      new Error("Recent reauthentication required"),
+    );
+    renderPage();
+
+    await openScheduledClosure();
+
+    expect((await screen.findByRole("alert")).textContent).not.toContain(
+      "signed in too long",
+    );
+    expect(screen.queryByText(/Recent reauthentication required/)).toBeNull();
+  });
+
   it("keeps a server sentence it does not know off the screen", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(

@@ -994,11 +994,15 @@ const lifecycleReasons: Readonly<Record<string, string>> = {
     "This request was not sent to you. Reload the page to see the ones that were.",
   "transfer.expired":
     "This request ran out of time. Ask the owner to send it again.",
+  "session.reauthentication_required":
+    "You have been signed in too long for this. Sign out, sign in again, and come back to this screen.",
 };
 
 /**
- * The same answers keyed by the English the server raises, for anything that
- * has not been given a key yet. Nothing new belongs here.
+ * The same answers keyed by the English the database raises, for a refusal that
+ * has not been given a key yet. Nothing new belongs here: every refusal these
+ * screens read now carries one, and supabase/tests/lifecycle_refusals_carry_keys
+ * fails if a later one does not.
  */
 const lifecycleSentences: Readonly<Record<string, string>> = {
   "pending ownership transfer must be resolved before workspace closure":
@@ -1013,8 +1017,6 @@ const lifecycleSentences: Readonly<Record<string, string>> = {
     "The name you typed is not this workspace's name. Type it exactly as it appears on the row.",
   "workspace closure requires explicit acknowledgement":
     "Tick the box to say you understand what closing does, then try again.",
-  "Recent reauthentication required":
-    "You have been signed in too long for this. Sign out, sign in again, and come back to this screen.",
   "pending ownership transfer already exists":
     "This workspace already has a transfer waiting. Cancel that one from the actions menu before starting another.",
   "ownership transfer target must be an active admin":

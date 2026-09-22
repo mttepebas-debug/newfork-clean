@@ -629,6 +629,7 @@ describe("workspace account routes", () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: "Recent reauthentication required",
+      reason: "session.reauthentication_required",
     });
     expect(requestClosure).not.toHaveBeenCalled();
   });
@@ -656,6 +657,7 @@ describe("workspace account routes", () => {
       expect(response.statusCode).toBe(403);
       expect(response.json()).toEqual({
         error: "Recent reauthentication required",
+      reason: "session.reauthentication_required",
       });
     }
     expect(requestClosure).not.toHaveBeenCalled();
@@ -700,6 +702,7 @@ describe("workspace account routes", () => {
       expect(productionResponse.statusCode).toBe(403);
       expect(productionResponse.json()).toEqual({
         error: "Recent reauthentication required",
+      reason: "session.reauthentication_required",
       });
     } finally {
       process.env.NODE_ENV = originalNodeEnv;
@@ -774,6 +777,7 @@ describe("workspace account routes", () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: "Recent reauthentication required",
+      reason: "session.reauthentication_required",
     });
     expect(initiateOwnershipTransfer).not.toHaveBeenCalled();
   });
@@ -828,6 +832,7 @@ describe("workspace account routes", () => {
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
       error: "Recent reauthentication required",
+      reason: "session.reauthentication_required",
     });
     expect(respondOwnershipTransfer).not.toHaveBeenCalled();
   });

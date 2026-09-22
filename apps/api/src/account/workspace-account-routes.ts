@@ -165,9 +165,7 @@ export function registerWorkspaceAccountRoutes(
         body.data.mode === "immediate" &&
         !hasRecentReauthentication(accessToken)
       ) {
-        return reply
-          .status(403)
-          .send({ error: "Recent reauthentication required" });
+        return reauthenticationRequired(reply);
       }
       try {
         return reply.send(
@@ -228,9 +226,7 @@ export function registerWorkspaceAccountRoutes(
           .status(503)
           .send({ error: "Workspace account service is not configured" });
       if (!hasRecentReauthentication(accessToken)) {
-        return reply
-          .status(403)
-          .send({ error: "Recent reauthentication required" });
+        return reauthenticationRequired(reply);
       }
       try {
         return reply.send(
@@ -262,9 +258,7 @@ export function registerWorkspaceAccountRoutes(
           .status(503)
           .send({ error: "Workspace account service is not configured" });
       if (body.data.action === "accept" && !hasRecentReauthentication(accessToken)) {
-        return reply
-          .status(403)
-          .send({ error: "Recent reauthentication required" });
+        return reauthenticationRequired(reply);
       }
       try {
         return reply.send(
@@ -543,6 +537,18 @@ export function registerWorkspaceAccountRoutes(
       }
     },
   );
+}
+
+/**
+ * The one refusal this module raises itself rather than passing on from the
+ * database. It carries a key like the others do, so the screen answers it the
+ * same way and the sentence stays free to change.
+ */
+function reauthenticationRequired(reply: FastifyReply) {
+  return reply.status(403).send({
+    error: "Recent reauthentication required",
+    reason: "session.reauthentication_required",
+  });
 }
 
 function requestError(reply: FastifyReply, error: unknown) {
