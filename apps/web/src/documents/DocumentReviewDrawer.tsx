@@ -704,7 +704,13 @@ function DocumentDetailContent({
             )}
           {props.canReview &&
             !props.audience.selfOnly &&
-            obligation.kind === "document" && (
+            obligation.kind === "document" &&
+            (obligation.exemption_locked ? (
+              <p className="document-exemption-note">
+                An owner is not asked for the documents they ask of everyone
+                else. This one is listed here, never required.
+              </p>
+            ) : (
               <DocumentExemptionAction
                 obligation={obligation}
                 audience={props.audience}
@@ -712,7 +718,7 @@ function DocumentDetailContent({
                 disabled={busy || dirty}
                 onLockChange={setExemptionLocked}
               />
-            )}
+            ))}
           {props.canReview &&
             !props.audience.selfOnly &&
             obligation.mode !== "optional" &&

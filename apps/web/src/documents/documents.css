@@ -61,6 +61,16 @@
 .document-detail-body .onboarding-document-content {
   white-space: pre-wrap;
 }
+/* Stands where a reviewer would find the exemption button, and says why it
+   is not there. */
+.document-exemption-note {
+  border-left: 2px solid var(--theme-border);
+  color: var(--theme-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+  padding-left: 10px;
+}
 @media (max-width: 720px) {
   .employee-documents-list
     .catalog-toolbar-filter-row

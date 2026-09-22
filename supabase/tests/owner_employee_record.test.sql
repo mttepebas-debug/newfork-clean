@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(22);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values ('14000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'owner-record@example.test', '', '{}', '{}', now(), now());
@@ -203,6 +203,113 @@ select throws_ok(
   '42501',
   'this record belongs to somebody else',
   'an owner cannot write an emergency contact onto somebody else'
+);
+
+-- The documents a workspace asks for are the owner's own request. They still
+-- reach the owner's record, so the Documents tab shows what is asked of
+-- everyone -- but they arrive excused, however long after setup they appear.
+
+-- Setup finishes, so the workspace is open and "everyone on staff" means
+-- something.
+select public.update_owner_onboarding_service(
+  '14000000-0000-4000-8000-000000000001',
+  (select workspace_id from owner_record_target),
+  'Owner Record Co', 4::smallint, true,
+  (select revision from public.workspace_onboarding
+   where workspace_id = (select workspace_id from owner_record_target)),
+  null, null
+);
+
+-- Somebody else on staff, so the comparison is between two real records.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('14000000-0000-4000-8000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'staff-record@example.test', '', '{}', '{}', now(), now());
+
+update public.employee_profiles
+set user_id = '14000000-0000-4000-8000-000000000002'
+where id = '17000000-0000-4000-8000-000000000009';
+
+insert into public.workspace_memberships (workspace_id, user_id, role, role_id, status, employee_id)
+select
+  (select workspace_id from owner_record_target),
+  '14000000-0000-4000-8000-000000000002',
+  'employee'::public.workspace_role,
+  (select id from public.workspace_roles
+   where workspace_id = (select workspace_id from owner_record_target)
+     and system_key = 'employee'),
+  'active'::public.membership_status,
+  '17000000-0000-4000-8000-000000000009';
+
+-- Added long after setup, required of everyone on staff.
+insert into public.document_types (
+  id, workspace_id, title, description, required_at_onboarding, requires_review,
+  created_by, publication_status, published_at, lifecycle_settings
+)
+values (
+  '18000000-0000-4000-8000-000000000001',
+  (select workspace_id from owner_record_target),
+  'Food handler card', '', true, true,
+  '14000000-0000-4000-8000-000000000001', 'published', now(),
+  jsonb_build_object(
+    'mode', 'required',
+    'target', jsonb_build_object(
+      'operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb
+    ),
+    'assignment_scope', 'all_active', 'period_days', null,
+    'suspend_on_overdue', false, 'extra_fields', '[]'::jsonb
+  )
+);
+
+select app_private.document_reconcile_employee(
+  (select workspace_id from owner_record_target),
+  (select id from owner_employee limit 1)
+);
+select app_private.document_reconcile_employee(
+  (select workspace_id from owner_record_target),
+  '17000000-0000-4000-8000-000000000009'
+);
+
+select is(
+  (select count(*)::integer from public.employee_onboarding_requirements
+   where employee_id = (select id from owner_employee limit 1) and kind = 'document'),
+  1,
+  'a document asked of everyone still reaches the owner''s record'
+);
+select is(
+  (select app_private.document_obligation_state(requirement, now())
+   from public.employee_onboarding_requirements requirement
+   where requirement.employee_id = (select id from owner_employee limit 1)
+     and requirement.kind = 'document'),
+  'exempt',
+  'it arrives excused rather than missing'
+);
+select ok(
+  not (select app_private.document_activation_blocked(requirement)
+       from public.employee_onboarding_requirements requirement
+       where requirement.employee_id = (select id from owner_employee limit 1)
+         and requirement.kind = 'document'),
+  'a document marked required never holds the owner up'
+);
+-- The exemption is about the owner, not about the document.
+select ok(
+  (select required and not lifecycle_exempt
+   from public.employee_onboarding_requirements
+   where employee_id = '17000000-0000-4000-8000-000000000009' and kind = 'document'),
+  'everybody else is still asked for the same document'
+);
+select throws_ok(
+  $$select public.set_employee_document_exemption_service(
+    '14000000-0000-4000-8000-000000000001',
+    (select workspace_id from owner_record_target),
+    (select id from public.employee_onboarding_requirements
+     where employee_id = (select id from owner_employee limit 1) and kind = 'document'),
+    (select lifecycle_revision from public.employee_onboarding_requirements
+     where employee_id = (select id from owner_employee limit 1) and kind = 'document'),
+    false, 'because I said so'
+  )$$,
+  '42501',
+  'an owner is not asked for the documents they ask of everyone else',
+  'the excuse is not a decision a reviewer can take back'
 );
 
 select * from finish();

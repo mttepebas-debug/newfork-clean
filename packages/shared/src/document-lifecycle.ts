@@ -128,6 +128,8 @@ export const documentObligationSchema = z.object({
   remaining_seconds: z.number().nonnegative().nullable(),
   rejection_reason: z.string().nullable(),
   suspended: z.boolean(),
+  /** An owner is never asked for the documents they ask of everyone else. */
+  exemption_locked: z.boolean().optional(),
   publication_paused: z.boolean().optional(),
   submitted_id: z.string().uuid().nullable(),
   approved_id: z.string().uuid().nullable(),

@@ -247,6 +247,23 @@ describe("shared document review", () => {
     ).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
   });
+  // The owner asked for the document in the first place. Taking their excuse
+  // away is refused by the service, so the button is not offered.
+  it("explains the owner's standing excuse instead of offering to lift it", async () => {
+    const owner = detail();
+    owner.obligation.status = "exempt";
+    owner.obligation.exemption_locked = true;
+    vi.mocked(getDocument).mockResolvedValue(owner);
+    page();
+
+    expect(
+      await screen.findByText(/not asked for the documents they ask of everyone/),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Remove exemption" }),
+    ).toBeNull();
+  });
+
   it("never offers manager review or exemption on the employee's own surface", async () => {
     page(true);
     await screen.findByRole("heading", { name: "Safety certificate" });
