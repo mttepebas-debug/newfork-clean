@@ -24,6 +24,7 @@ supabase/tests/bl052_document_timezone.test.sql
 supabase/tests/bl052_policy_lifecycle.test.sql
 supabase/tests/bl052_policy_withdrawal.test.sql
 supabase/tests/bl064_conflict_severity.test.sql
+supabase/tests/browser_privileges.test.sql
 supabase/tests/catalog_entity_deletion.test.sql
 supabase/tests/communication_operations.test.sql
 supabase/tests/document_publication.test.sql
@@ -68,6 +69,7 @@ supabase/tests/shift_exchange_range_read.test.sql
 supabase/tests/shift_exchange_requested_publication.test.sql
 supabase/tests/shift_exchanges_v1.test.sql
 supabase/tests/signature_templates_rls.test.sql
+supabase/tests/tenant_owned_composite_foreign_keys.test.sql
 supabase/tests/the_schedule_uses_the_preferred_name.test.sql
 supabase/tests/time_capture_foundation.test.sql
 supabase/tests/time_corrections_review.test.sql
