@@ -70,6 +70,7 @@ supabase/tests/shift_exchange_requested_publication.test.sql
 supabase/tests/shift_exchanges_v1.test.sql
 supabase/tests/signature_templates_rls.test.sql
 supabase/tests/tenant_owned_composite_foreign_keys.test.sql
+supabase/tests/test_world.test.sql
 supabase/tests/the_schedule_uses_the_preferred_name.test.sql
 supabase/tests/time_capture_foundation.test.sql
 supabase/tests/time_corrections_review.test.sql

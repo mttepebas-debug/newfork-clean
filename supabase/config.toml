@@ -72,7 +72,9 @@ enabled = true
 # locations, its people. It is gitignored because it carries real names, so on
 # a machine that has never run scripts/export-local-fixture.mjs the glob simply
 # matches nothing and the reset still finishes.
-sql_paths = ["./seed.sql", "./local-fixture/*.sql"]
+# ./test-support/*.sql is the test world builder (schema tests); pgTAP files
+# call it, so it loads on every reset and in CI, before any fixture data.
+sql_paths = ["./seed.sql", "./test-support/*.sql", "./local-fixture/*.sql"]
 
 [db.network_restrictions]
 # Enable management of network restrictions.
