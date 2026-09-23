@@ -117,6 +117,8 @@ const acquireBodySchema = z.object({
   week_start: z.string().date(),
   source_kind: scheduleEditSourceSchema,
   source_draft_id: z.string().uuid().nullable().default(null),
+  // The locations to edit; none named means every location the person may edit.
+  location_ids: z.array(z.string().uuid()).min(1).max(200).nullable().default(null),
 });
 const activeSessionBodySchema = z.object({
   session_id: z.string().uuid(),
@@ -418,6 +420,7 @@ export function registerScheduleRoutes(
             weekStart: body.data.week_start,
             sourceKind: body.data.source_kind,
             sourceDraftId: body.data.source_draft_id,
+            locationIds: body.data.location_ids,
           }),
         );
       } catch (error) {
@@ -2010,6 +2013,7 @@ export function registerScheduleRoutes(
           weekStart: body.data.week_start,
           sourceKind: body.data.source_kind,
           sourceDraftId: body.data.source_draft_id,
+          locationIds: body.data.location_ids,
         }),
       );
     } catch (error) {

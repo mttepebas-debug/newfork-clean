@@ -75,8 +75,9 @@ insert into public.schedule_drafts(id,workspace_id,week_start,name,created_by,up
 values('98040000-0000-4000-8000-000000000001',pg_temp.w(),'2030-01-07','Earlier draft',pg_temp.manager(),pg_temp.manager(),now()-interval '1 day');
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,note)
 select source_shift_id,workspace_id,'98040000-0000-4000-8000-000000000001',location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,'KEEP DRAFT NOTE' from public.schedule_published_shifts where id=pg_temp.shift(1);
-insert into public.schedule_edit_sessions(id,workspace_id,week_start,source_kind,holder_user_id,dirty,created_at)
-values('98040000-0000-4000-8000-000000000002',pg_temp.w(),'2030-01-07','published',pg_temp.manager(),true,now()-interval '1 day');
+insert into public.schedule_edit_sessions(id,workspace_id,week_start,source_kind,holder_user_id,dirty,created_at,location_ids)
+values('98040000-0000-4000-8000-000000000002',pg_temp.w(),'2030-01-07','published',pg_temp.manager(),true,now()-interval '1 day',
+ array[(select location_id from public.schedule_published_shifts where id=pg_temp.shift(1))]);
 insert into public.schedule_edit_session_shifts(id,workspace_id,session_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,note,source_published_shift_id)
 select id,workspace_id,'98040000-0000-4000-8000-000000000002',location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,'KEEP SESSION NOTE',id from public.schedule_published_shifts where id=pg_temp.shift(1);
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.manager(),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',5,'fingerprint',preview->>'fingerprint'),'98030000-0000-4000-8000-000000000002');

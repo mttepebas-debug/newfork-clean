@@ -49,8 +49,9 @@ export function useScheduleRealtime({
     const client = supabaseClient;
     if (!workspaceId || !client) return undefined;
 
+    // Private: only people who can read this workspace's schedule may join.
     const channel = client
-      .channel(`schedule:invalidation:${workspaceId}`)
+      .channel(`schedule:invalidation:${workspaceId}`, { config: { private: true } })
       .on("broadcast", { event: "schedule_invalidation" }, (event) => {
         const payload = event.payload;
         if (!isScheduleInvalidationPayload(payload)) return;

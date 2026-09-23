@@ -907,13 +907,14 @@ insert into public.employee_profiles (
   '10000000-0000-4000-8000-000000000003'
 );
 insert into public.schedule_edit_sessions (
-  id, workspace_id, week_start, source_kind, holder_user_id
+  id, workspace_id, week_start, source_kind, holder_user_id, location_ids
 ) values (
   '44000000-0000-4000-8000-000000000002',
   '20000000-0000-4000-8000-000000000002',
   current_date - (extract(isodow from current_date)::integer - 1),
   'blank',
-  '10000000-0000-4000-8000-000000000003'
+  '10000000-0000-4000-8000-000000000003',
+  array['40000000-0000-4000-8000-000000000002']::uuid[]
 );
 insert into public.kiosk_devices (
   id, workspace_id, location_id, label, credential_hash, created_by

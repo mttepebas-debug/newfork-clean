@@ -1,21 +1,5 @@
-import { readFileSync } from "node:fs";
-import { expect, test, type Page } from "@playwright/test";
-
-type World = {
-  readonly password: string;
-  readonly emails: Record<"ayse" | "emre" | "mehmet", string>;
-};
-
-const world: World = JSON.parse(
-  readFileSync(new URL("../.world.json", import.meta.url), "utf8"),
-);
-
-async function signIn(page: Page, person: keyof World["emails"]) {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(world.emails[person]);
-  await page.getByLabel("Password").fill(world.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-}
+import { expect, test } from "@playwright/test";
+import { signIn } from "../fixtures/world";
 
 test("an employee signs in and lands in Employee Hub", async ({ page }) => {
   await signIn(page, "emre");

@@ -193,6 +193,10 @@ interface ScheduleLockConflict {
   readonly holderName: string;
   readonly lastHeartbeat: string;
   readonly expiresAt: string;
+  readonly locks: readonly { readonly locationName: string; readonly holderName: string }[];
+  readonly freeLocationIds: readonly string[];
+  readonly source: "blank" | "published" | "draft";
+  readonly draftId: string | null;
 }
 
 type SaveRecoveryIntent =
@@ -1098,7 +1102,12 @@ export function SchedulePage({
   };
 
   const enterEditModeWithResetFilters = useCallback(
-    (sourceDraftId: string | null, preserveFilters = false) => {
+    (
+      sourceDraftId: string | null,
+      preserveFilters = false,
+      // An edit that holds only some locations shows only those.
+      editLocationIds: readonly string[] | null = null,
+    ) => {
       setFocusedShiftId(null);
       updateSelectedIds([]);
       setClipboard(null);
@@ -1115,6 +1124,7 @@ export function SchedulePage({
           if (sourceDraftId) next.set("draft", sourceDraftId);
           else next.delete("draft");
           if (!preserveFilters) for (const param of SCHEDULE_FILTER_QUERY_PARAMS) next.delete(param);
+          if (editLocationIds?.length) next.set("locations", editLocationIds.join(","));
           return next;
         },
         { replace: true },
@@ -1127,8 +1137,14 @@ export function SchedulePage({
     source: "blank" | "published" | "draft",
     draftId: string | null = null,
     preserveFilters = false,
+    requestedLocationIds: readonly string[] | null = null,
   ) => {
     if (!context || !query.data || pastWeek) return;
+    const allLocationIds = query.data.locations.map((item) => item.id);
+    const filteredLocationIds = validIds(search.get("locations"), allLocationIds);
+    // The filtered locations, or every location the person may edit.
+    const editLocationIds =
+      requestedLocationIds ?? (filteredLocationIds.length ? filteredLocationIds : null);
     const requestId = Symbol(
       source === "published"
         ? "schedule-live-edit-acquire"
@@ -1144,6 +1160,7 @@ export function SchedulePage({
         query.data.week_start,
         source,
         draftId,
+        editLocationIds,
       );
       if (editAcquireRequestRef.current !== requestId) return;
       if (result.status === "conflict") {
@@ -1152,12 +1169,25 @@ export function SchedulePage({
           holderName: result.holder_name,
           lastHeartbeat: result.last_heartbeat,
           expiresAt: result.expires_at,
+          locks: result.locks.map((lock) => ({
+            locationName: lock.location_name,
+            holderName: lock.holder_name,
+          })),
+          freeLocationIds: result.free_location_ids,
+          source,
+          draftId,
         });
         setSourceOpen(false);
         return;
       }
       setSession(result.session);
-      enterEditModeWithResetFilters(result.session.source_draft_id, preserveFilters);
+      enterEditModeWithResetFilters(
+        result.session.source_draft_id,
+        preserveFilters,
+        result.session.location_ids.length < allLocationIds.length
+          ? result.session.location_ids
+          : null,
+      );
       clearUndoStack();
       setSourceOpen(false);
       setConflict(null);
@@ -2802,10 +2832,18 @@ export function SchedulePage({
           }
           weekLabel={formatPeriod(selectedDate, model.week_start, "week")}
           lastHeartbeat={conflict.lastHeartbeat}
+          locks={conflict.locks}
+          freeLocationNames={model.locations
+            .filter((location) => conflict.freeLocationIds.includes(location.id))
+            .map((location) => location.name)}
           onViewSchedule={() => setConflict(null)}
           onTryAgain={() => {
             setConflict(null);
-            void acquire("published");
+            void acquire(conflict.source, conflict.draftId);
+          }}
+          onEditFreeLocations={() => {
+            setConflict(null);
+            void acquire(conflict.source, conflict.draftId, false, conflict.freeLocationIds);
           }}
         />
       ) : null}

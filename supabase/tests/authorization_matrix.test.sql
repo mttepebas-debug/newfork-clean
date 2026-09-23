@@ -466,8 +466,6 @@ insert into known_gap values
    'the owner record setup creates has no primary location or job, so saving it as it is fails with 23502 (stage 6, employees)'),
   ('admin-own-record', '{zeynep}', '{employee.save}', '{self,zeynep}',
    'an admin cannot save their own employee record, P0002 (stage 6, employees)'),
-  ('empty-scope-edits', '{nur}', '{schedule.edit}', null,
-   'a manager with no location can open schedule editing; an empty scope must reach nowhere, E2 (stage 3 and 4)'),
   ('admin-cannot-edit-roles', '{admin}', '{settings.roles.write}', null,
    'admins cannot edit roles, D2 (stage 6, settings)'),
   ('transfer-validates-first', '{zeynep}', '{workspace.transfer_ownership}', null,

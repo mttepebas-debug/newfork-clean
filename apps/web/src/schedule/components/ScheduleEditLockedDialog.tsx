@@ -8,8 +8,13 @@ export interface ScheduleEditLockedDialogProps {
   readonly draftName?: string | null;
   readonly weekLabel: string;
   readonly lastHeartbeat?: string | null;
+  /** Who holds each location that could not be opened. */
+  readonly locks?: readonly { readonly locationName: string; readonly holderName: string }[];
+  /** Locations nobody else is editing; they can be opened on their own. */
+  readonly freeLocationNames?: readonly string[];
   readonly onViewSchedule: () => void;
   readonly onTryAgain: () => void;
+  readonly onEditFreeLocations?: () => void;
 }
 
 function lastActivityLabel(value: string | null | undefined): string | null {
@@ -48,10 +53,14 @@ export function ScheduleEditLockedDialog({
   draftName,
   weekLabel,
   lastHeartbeat,
+  locks = [],
+  freeLocationNames = [],
   onViewSchedule,
   onTryAgain,
+  onEditFreeLocations,
 }: ScheduleEditLockedDialogProps): JSX.Element | null {
   const lastActivity = lastActivityLabel(lastHeartbeat);
+  const canEditFree = freeLocationNames.length > 0 && onEditFreeLocations;
 
   if (!open) return null;
 
@@ -80,16 +89,34 @@ export function ScheduleEditLockedDialog({
         </header>
         <div className="schedule-edit-locked-body">
           <p>{bodyText({ holderName, scope, draftName, weekLabel })}</p>
+          {locks.length > 1 ? (
+            <ul aria-label="Locations being edited">
+              {locks.map((lock) => (
+                <li key={lock.locationName}>
+                  {lock.locationName}: {lock.holderName}
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {lastActivity ? <small>{lastActivity}</small> : null}
         </div>
         <footer>
           <button type="button" onClick={onViewSchedule}>
             View schedule
           </button>
-          <button type="button" className="primary" onClick={onTryAgain}>
+          <button
+            type="button"
+            className={canEditFree ? undefined : "primary"}
+            onClick={onTryAgain}
+          >
             <RefreshCw aria-hidden className="schedule-edit-locked-refresh" />
             Try again
           </button>
+          {canEditFree ? (
+            <button type="button" className="primary" onClick={onEditFreeLocations}>
+              Edit {freeLocationNames.join(", ")}
+            </button>
+          ) : null}
         </footer>
       </section>
     </div>

@@ -59,6 +59,53 @@ describe("ScheduleEditLockedDialog", () => {
     expect(screen.queryByText(/Last activity/)).toBeNull();
   });
 
+  it("names who holds each location and opens the free ones", () => {
+    const onEditFreeLocations = vi.fn();
+    render(
+      <ScheduleEditLockedDialog
+        open
+        holderName="Ayse Person"
+        scope="published"
+        weekLabel="Aug 17 - Aug 23, 2026"
+        lastHeartbeat={null}
+        locks={[
+          { locationName: "Kadikoy", holderName: "Ayse Person" },
+          { locationName: "Moda", holderName: "Can Person" },
+        ]}
+        freeLocationNames={["Besiktas"]}
+        onViewSchedule={vi.fn()}
+        onTryAgain={vi.fn()}
+        onEditFreeLocations={onEditFreeLocations}
+      />,
+    );
+
+    const holders = screen.getByRole("list", { name: "Locations being edited" });
+    expect(holders.textContent).toContain("Kadikoy: Ayse Person");
+    expect(holders.textContent).toContain("Moda: Can Person");
+    fireEvent.click(screen.getByRole("button", { name: "Edit Besiktas" }));
+    expect(onEditFreeLocations).toHaveBeenCalledOnce();
+  });
+
+  it("offers no free-location edit when every location is held", () => {
+    render(
+      <ScheduleEditLockedDialog
+        open
+        holderName="Ayse Person"
+        scope="published"
+        weekLabel="Aug 17 - Aug 23, 2026"
+        lastHeartbeat={null}
+        locks={[{ locationName: "Kadikoy", holderName: "Ayse Person" }]}
+        freeLocationNames={[]}
+        onViewSchedule={vi.fn()}
+        onTryAgain={vi.fn()}
+        onEditFreeLocations={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /^Edit / })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Locations being edited" })).toBeNull();
+  });
+
   it("does not render while closed", () => {
     render(
       <ScheduleEditLockedDialog

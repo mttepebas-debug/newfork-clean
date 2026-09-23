@@ -74,8 +74,9 @@ export function useScheduleViewerPresence({
       return undefined;
     }
 
+    // Private: only people who can read this location's schedule may join.
     const channel = client.channel(channelName, {
-      config: { presence: { key: authUserId } },
+      config: { private: true, presence: { key: authUserId } },
     });
 
     const syncPresence = () => {

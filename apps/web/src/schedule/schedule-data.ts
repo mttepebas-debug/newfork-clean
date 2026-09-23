@@ -311,6 +311,8 @@ export async function acquireScheduleEditSession(
   weekStart: string,
   sourceKind: ScheduleEditSource,
   sourceDraftId: string | null = null,
+  // The locations to edit; null asks for every location the person may edit.
+  locationIds: readonly string[] | null = null,
 ): Promise<ScheduleEditAcquireResult> {
   return scheduleEditAcquireResultSchema.parse(
     await activeScheduleRequest("/schedule/edit-lock/acquire", {
@@ -319,6 +321,7 @@ export async function acquireScheduleEditSession(
         week_start: weekStart,
         source_kind: sourceKind,
         source_draft_id: sourceDraftId,
+        location_ids: locationIds?.length ? locationIds : null,
       }),
     }),
   );

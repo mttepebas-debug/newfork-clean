@@ -51,6 +51,7 @@ const session: ScheduleEditSession = {
   source_draft_id: draft.id,
   source_revision: 2,
   holder_user_id: "66666666-6666-4666-8666-666666666666",
+  location_ids: ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"],
   holder_name: "Manager",
   revision: 4,
   dirty: true,

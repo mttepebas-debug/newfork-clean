@@ -1472,9 +1472,21 @@ export const scheduleEditSessionSchema = z.object({
   dirty: z.boolean(),
   last_heartbeat: z.string().datetime({ offset: true }),
   expires_at: z.string().datetime({ offset: true }),
+  // The locations this edit holds; nobody else edits them this week meanwhile.
+  location_ids: z.array(z.string().uuid()).min(1),
   shifts: z.array(scheduleEditableShiftSchema),
 });
 export type ScheduleEditSession = z.infer<typeof scheduleEditSessionSchema>;
+
+export const scheduleEditLockSchema = z.object({
+  location_id: z.string().uuid(),
+  location_name: z.string(),
+  session_id: z.string().uuid(),
+  holder_name: z.string().trim().min(1).max(161),
+  last_heartbeat: z.string().datetime({ offset: true }),
+  expires_at: z.string().datetime({ offset: true }),
+});
+export type ScheduleEditLock = z.infer<typeof scheduleEditLockSchema>;
 
 export const scheduleEditAcquireResultSchema = z.discriminatedUnion("status", [
   z.object({
@@ -1488,6 +1500,9 @@ export const scheduleEditAcquireResultSchema = z.discriminatedUnion("status", [
     holder_name: z.string().trim().min(1).max(161),
     last_heartbeat: z.string().datetime({ offset: true }),
     expires_at: z.string().datetime({ offset: true }),
+    // Who holds each requested location, and which of them are free to edit.
+    locks: z.array(scheduleEditLockSchema),
+    free_location_ids: z.array(z.string().uuid()),
   }),
 ]);
 export type ScheduleEditAcquireResult = z.infer<

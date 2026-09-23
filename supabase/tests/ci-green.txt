@@ -61,8 +61,10 @@ supabase/tests/own_employment_record.test.sql
 supabase/tests/owner_employee_record.test.sql
 supabase/tests/preferred_name_approval.test.sql
 supabase/tests/public_roles_reach_no_table_directly.test.sql
+supabase/tests/schedule_edit_locks.test.sql
 supabase/tests/schedule_publish_notifications.test.sql
 supabase/tests/schedule_read_model_rls.test.sql
+supabase/tests/schedule_realtime_channels.test.sql
 supabase/tests/schedule_resume_lease.test.sql
 supabase/tests/security_audit_events.test.sql
 supabase/tests/shift_exchange_availability_adapter.test.sql

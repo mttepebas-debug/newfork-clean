@@ -97,6 +97,7 @@ function editSession(model: ScheduleReadModel): ScheduleEditSession {
     source_draft_id: null,
     source_revision: 1,
     holder_user_id: "88888888-8888-4888-8888-888888888888",
+    location_ids: ["11111111-1111-4111-8111-111111111111"],
     holder_name: "Development Owner",
     revision: 1,
     dirty: false,

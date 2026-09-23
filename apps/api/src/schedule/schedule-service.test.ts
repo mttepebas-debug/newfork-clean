@@ -722,6 +722,7 @@ function scheduleSessionModel() {
     source_draft_id: draftId,
     source_revision: 1,
     holder_user_id: actorUserId,
+    location_ids: ["11000000-0000-4000-8000-000000000001"],
     holder_name: "Local Owner",
     revision: 3,
     dirty: true,

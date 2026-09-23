@@ -336,6 +336,40 @@ begin
 end;
 $$;
 
+-- One shift added to an open edit the way the Schedule screen adds it: assess,
+-- then create with the assessment's fingerprint. shift is {"person", "loc",
+-- "job", "day" (0 = Monday), "start", "end"}; n is the week. Returns the shift id.
+create or replace function tests.add_shift(actor uuid, w text, session uuid, n integer, shift jsonb)
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  payload jsonb := jsonb_build_object(
+    'location_id', tests.id(w || ':' || (shift ->> 'loc')),
+    'employee_id', tests.id(w || ':' || (shift ->> 'person')),
+    'job_id', tests.id(w || ':job:' || (shift ->> 'job')),
+    'scheduled_date', tests.week(n) + (shift ->> 'day')::integer,
+    'time_basis', 'explicit',
+    'start_time', shift ->> 'start',
+    'end_time', shift ->> 'end',
+    'time_timezone', 'Europe/Istanbul',
+    'note', ''
+  );
+  shift_id uuid := gen_random_uuid();
+begin
+  perform public.mutate_schedule_edit_shift_service(
+    actor, tests.id(w), session,
+    (select e.revision from public.schedule_edit_sessions e where e.id = session),
+    'create', shift_id, null,
+    payload || jsonb_build_object('availability_assessment_fingerprint',
+      public.assess_schedule_shift_service(actor, tests.id(w), payload, null, session) ->> 'fingerprint'),
+    gen_random_uuid()
+  );
+  return shift_id;
+end;
+$$;
+
 -- A week somebody writes and publishes on the Schedule screen: open editing,
 -- check each shift, add it, save the draft, preview, publish. shifts is a JSON
 -- list of {"label", "person", "loc", "job", "day" (0 = Monday), "start", "end"}.
@@ -352,31 +386,11 @@ declare
   draft uuid;
   preview jsonb;
   shift jsonb;
-  payload jsonb;
-  assessment jsonb;
   location_ids uuid[];
 begin
   session := (public.acquire_schedule_edit_session_service(owner_id, workspace, tests.week(n), 'blank', null) -> 'session' ->> 'id')::uuid;
   for shift in select value from jsonb_array_elements(shifts) loop
-    payload := jsonb_build_object(
-      'location_id', tests.id(w || ':' || (shift ->> 'loc')),
-      'employee_id', tests.id(w || ':' || (shift ->> 'person')),
-      'job_id', tests.id(w || ':job:' || (shift ->> 'job')),
-      'scheduled_date', tests.week(n) + (shift ->> 'day')::integer,
-      'time_basis', 'explicit',
-      'start_time', shift ->> 'start',
-      'end_time', shift ->> 'end',
-      'time_timezone', 'Europe/Istanbul',
-      'note', ''
-    );
-    assessment := public.assess_schedule_shift_service(owner_id, workspace, payload, null, session);
-    perform public.mutate_schedule_edit_shift_service(
-      owner_id, workspace, session,
-      (select e.revision from public.schedule_edit_sessions e where e.id = session),
-      'create', gen_random_uuid(), null,
-      payload || jsonb_build_object('availability_assessment_fingerprint', assessment ->> 'fingerprint'),
-      gen_random_uuid()
-    );
+    perform tests.add_shift(owner_id, w, session, n, shift);
   end loop;
   draft := (public.save_schedule_edit_session_service(
     owner_id, workspace, session,

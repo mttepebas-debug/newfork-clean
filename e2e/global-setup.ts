@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 // A fresh world for every run, built through the product's own entry points
 // (supabase/test-support/builder.sql) and committed, because the browser signs
 // in through the auth server in its own connection. Kadikoy has manager Ayse
-// and employee Emre; Besiktas has manager Mehmet. Everyone shares one password.
+// and employee Emre; Besiktas has manager Mehmet; Zeynep is an admin.
+// Everyone shares one password.
 
 export const password = "world-pass-2026";
 export const worldFile = fileURLToPath(new URL("./.world.json", import.meta.url));
@@ -14,6 +15,7 @@ const people = [
   ["ayse", "manager", "K", "cook"],
   ["emre", "employee", "K", "cook"],
   ["mehmet", "manager", "B", "cook"],
+  ["zeynep", "admin", "K", "server"],
 ] as const;
 
 export default function globalSetup() {

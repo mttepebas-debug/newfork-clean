@@ -5029,6 +5029,8 @@ function scheduleServiceMock(
       holder_name: "Another manager",
       last_heartbeat: "2026-08-17T12:00:00.000Z",
       expires_at: "2026-08-17T12:04:00.000Z",
+      locks: [],
+      free_location_ids: [],
     }),
     heartbeat: async () => scheduleSessionMockModel(),
     takeover: async () => ({
@@ -5367,6 +5369,7 @@ function scheduleSessionMockModel() {
     source_draft_id: null,
     source_revision: 0,
     holder_user_id: resolvedContext.userId,
+    location_ids: ["11000000-0000-4000-8000-000000000001"],
     holder_name: "Local Owner",
     revision: 1,
     dirty: false,

@@ -110,6 +110,8 @@ insert into public.locations(short_name, id,workspace_id,name,street_address,cit
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
  select w,emp,'b1640000-0000-4000-8000-000000000021',actor from f;
 update public.schedule_draft_shifts set location_id='b1640000-0000-4000-8000-000000000021' where id=(select shift from f) and draft_id=(select draft from pub);
+-- A draft publishes only the locations its edits held; this one now holds both.
+update public.schedule_drafts set location_ids=location_ids||'{b1640000-0000-4000-8000-000000000021}'::uuid[] where id=(select draft from pub);
 select is((select public.preview_schedule_publication_service(actor,w,draft,array['b1640000-0000-4000-8000-000000000021'::uuid],null,true)->>'status' from f,pub),'hard_blocked','publishing only the moved-to location detects retained original-location overlap');
 select is((select public.preview_schedule_publication_service(actor,w,draft,array[loc,'b1640000-0000-4000-8000-000000000021'::uuid],null,true)->>'status' from f,pub),'publish_ready','publishing both locations replaces the old assignment instead of self-overlapping');
 select * from finish();

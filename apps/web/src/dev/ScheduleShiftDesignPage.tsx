@@ -189,6 +189,7 @@ function createEditSession(model: ScheduleReadModel): ScheduleEditSession {
     source_draft_id: null,
     source_revision: 1,
     holder_user_id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    location_ids: [mainLocationId, patioLocationId],
     holder_name: "Design Review",
     revision: 1,
     dirty: false,

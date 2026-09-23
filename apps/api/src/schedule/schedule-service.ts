@@ -145,6 +145,7 @@ export interface ScheduleReadService {
     weekStart: string;
     sourceKind: ScheduleEditSource;
     sourceDraftId: string | null;
+    locationIds?: readonly string[] | null;
   }): Promise<ScheduleEditAcquireResult>;
   heartbeat(
     actorUserId: string,
@@ -568,6 +569,7 @@ export function createScheduleReadService(options: {
           target_week_start: input.weekStart,
           requested_source: input.sourceKind,
           requested_draft_id: input.sourceDraftId,
+          target_location_ids: input.locationIds ?? null,
         },
       );
       if (error) throw new Error(error.message);
@@ -1391,8 +1393,10 @@ async function broadcastScheduleInvalidation(
   client: SupabaseClient,
   payload: ScheduleInvalidationPayload,
 ): Promise<void> {
+  // Private: only readers of this workspace's schedule receive it.
   const channel = client.channel(
     `schedule:invalidation:${payload.workspace_id}`,
+    { config: { private: true } },
   );
   try {
     await channel.send({
@@ -1412,9 +1416,8 @@ async function broadcastScheduleInvalidation(
 
 function scheduleSessionLocationIds(
   session: ScheduleEditSession,
-): readonly string[] | undefined {
-  const ids = [...new Set(session.shifts.map((shift) => shift.location_id))];
-  return ids.length ? ids : undefined;
+): readonly string[] {
+  return session.location_ids;
 }
 
 function pendingOpLocationIds(

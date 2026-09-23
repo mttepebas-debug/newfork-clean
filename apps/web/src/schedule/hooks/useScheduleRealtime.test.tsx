@@ -71,11 +71,12 @@ beforeEach(() => {
 });
 
 describe("useScheduleRealtime", () => {
-  it("subscribes to schedule invalidation broadcasts for the workspace", () => {
+  it("subscribes to the workspace's private schedule invalidation channel", () => {
     const { unmount } = renderRealtimeHook();
 
     expect(supabaseClient?.channel).toHaveBeenCalledWith(
       "schedule:invalidation:workspace",
+      { config: { private: true } },
     );
     expect(mocks.channel.on).toHaveBeenCalledWith(
       "broadcast",

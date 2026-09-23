@@ -23,8 +23,9 @@ reset role;
 select is((select count(distinct (r.system_key, p.permission_key))::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key in('owner','admin','manager') and p.permission_key in('schedule.templates.manage','schedule.export')),6,'manager roles receive Phase 5D capabilities');
 select is((select count(*)::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key='employee' and p.permission_key in('schedule.templates.manage','schedule.export')),0,'employee receives no Phase 5D capability');
 
-insert into public.schedule_drafts(id,workspace_id,week_start,name,revision,created_by,updated_by) values
-('94200000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'Phase 5D source',1,'d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
+-- A draft covers the locations its edits held; this one holds Main Dining.
+insert into public.schedule_drafts(id,workspace_id,week_start,name,revision,created_by,updated_by,location_ids) values
+('94200000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'Phase 5D source',1,'d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','{11000000-0000-4000-8000-000000000001}');
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,note,revision) values
 ('94300000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','94200000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000001','15000000-0000-4000-8000-000000000001','13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1),'09:00','17:00','Opening',1),
 ('94300000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','94200000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000001',null,'13000000-0000-4000-8000-000000000001',null,current_date-(extract(isodow from current_date)::integer-1)+1,'10:00','14:00','Open slot',1);
