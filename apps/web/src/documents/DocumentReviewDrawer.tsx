@@ -7,6 +7,7 @@ import { Button } from "@newfork/ui";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { CatalogDrawer } from "../settings/CatalogDrawer";
+import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { errorText } from "../settings/GeneralSettingsPage";
 import { DocumentExemptionAction } from "./DocumentExemptionAction";
 import { TimezoneSelect } from "../settings/TimezoneSelect";
@@ -107,6 +108,8 @@ function DocumentDetailContent({
   const [extensionDays, setExtensionDays] = useState(1);
   const [extensionReason, setExtensionReason] = useState("");
   const [reason, setReason] = useState("");
+  // Where the reviewer was going when unsaved changes stopped them.
+  const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
   const [correction, setCorrection] = useState<"full" | "remaining">("full");
   const [files, setFiles] = useState<DocumentReviewCommand["files"]>(
     (current?.files ?? []).map((f) => ({
@@ -276,11 +279,9 @@ function DocumentDetailContent({
         })),
       );
   const navigate = (action: () => void) => {
-    if (
-      !busy &&
-      (!dirty || window.confirm("Discard unsaved document changes?"))
-    )
-      action();
+    if (busy) return;
+    if (dirty) setPendingLeave(() => action);
+    else action();
   };
   const canDecide =
     props.canReview &&
@@ -823,6 +824,20 @@ function DocumentDetailContent({
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={pendingLeave !== null}
+        title="Discard unsaved changes?"
+        description={`Your changes to ${obligation.title} have not been saved and will be lost.`}
+        cancelLabel="Keep editing"
+        confirmLabel="Discard"
+        destructive
+        onCancel={() => setPendingLeave(null)}
+        onConfirm={() => {
+          const leave = pendingLeave;
+          setPendingLeave(null);
+          leave?.();
+        }}
+      />
     </CatalogDrawer>
   );
 }

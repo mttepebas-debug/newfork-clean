@@ -1819,7 +1819,7 @@ describe("App", () => {
     vi.mocked(listScheduleDrafts).mockResolvedValue({
       drafts: [conflictingDraft],
     });
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const confirmSpy = vi.spyOn(window, "confirm");
     const saveMock = vi.mocked(saveScheduleDraft);
     saveMock.mockRejectedValueOnce(
       new ScheduleRequestError("Name owned by another manager", 409, {
@@ -1848,10 +1848,15 @@ describe("App", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save As" }));
 
-    await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(2));
-    expect(confirmSpy).toHaveBeenCalledWith(
-      '"Shared schedule" is owned by Sam Manager. Overwrite it?',
+    const overwrite = await screen.findByRole("alertdialog", {
+      name: 'Overwrite "Shared schedule"?',
+    });
+    expect(overwrite.textContent).toContain(
+      "This draft belongs to Sam Manager.",
     );
+    fireEvent.click(within(overwrite).getByRole("button", { name: "Overwrite" }));
+    await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(2));
+    expect(confirmSpy).not.toHaveBeenCalled();
     expect(saveMock.mock.calls[1]?.[3]).toEqual(conflictingDraft);
     expect(
       screen.queryByRole("dialog", { name: "Schedule save failed" }),

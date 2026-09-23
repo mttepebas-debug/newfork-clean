@@ -16,6 +16,7 @@ import {
   type WorkspaceRole,
 } from "@newfork/shared";
 import { Button, ConfirmButton } from "@newfork/ui";
+import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -1744,6 +1745,12 @@ function OnboardingReviewPanel({
             ? "employees.private.manage"
             : "employee_onboarding.review",
         );
+  // The requirement whose correction note is being written.
+  const [changesFor, setChangesFor] = useState<{
+    readonly id: string;
+    readonly title: string;
+  } | null>(null);
+  const [changesNote, setChangesNote] = useState("");
   if (loading)
     return <p className="employee-panel-state">Loading onboarding...</p>;
   if (!onboarding)
@@ -1812,15 +1819,11 @@ function OnboardingReviewPanel({
                   aria-label={`Request changes for ${requirement.title}`}
                   disabled={reviewing || !canReview(requirement.kind)}
                   onClick={() => {
-                    const reason = window.prompt(
-                      "What should the employee correct?",
-                    );
-                    if (reason?.trim())
-                      onReview(
-                        "reject_requirement",
-                        requirement.id,
-                        reason.trim(),
-                      );
+                    setChangesNote("");
+                    setChangesFor({
+                      id: requirement.id,
+                      title: requirement.title,
+                    });
                   }}
                 >
                   Request changes
@@ -1851,6 +1854,29 @@ function OnboardingReviewPanel({
           Activate employee access
         </Button>
       ) : null}
+      <ConfirmDialog
+        open={changesFor !== null}
+        title={`Request changes to ${changesFor?.title ?? ""}?`}
+        description="The employee sees this note and sends a corrected version."
+        confirmLabel="Request changes"
+        confirmDisabled={!changesNote.trim()}
+        onCancel={() => setChangesFor(null)}
+        onConfirm={() => {
+          if (changesFor)
+            onReview("reject_requirement", changesFor.id, changesNote.trim());
+          setChangesFor(null);
+        }}
+      >
+        <label className="app-confirm-field">
+          <span>What should the employee correct?</span>
+          <textarea
+            rows={3}
+            autoFocus
+            value={changesNote}
+            onChange={(event) => setChangesNote(event.target.value)}
+          />
+        </label>
+      </ConfirmDialog>
     </div>
   );
 }

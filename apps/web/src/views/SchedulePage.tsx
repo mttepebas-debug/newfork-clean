@@ -186,6 +186,7 @@ import {
   clearFocusedShiftSearchFilters,
   dismissNextScheduleSearchLayer,
 } from "../schedule/lib/scheduleDismissal";
+import { useConfirmDialog } from "../shell/ConfirmDialog";
 
 interface ScheduleLockConflict {
   readonly sessionId?: string;
@@ -291,6 +292,7 @@ export function SchedulePage({
   const [saveBusy, setSaveBusy] = useState(false);
   const [conflict, setConflict] = useState<ScheduleLockConflict | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [focusedShiftId, setFocusedShiftId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
   const selectedIdsRef = useRef<readonly string[]>([]);
@@ -1255,9 +1257,12 @@ export function SchedulePage({
           : null;
         if (
           conflictTarget &&
-          window.confirm(
-            `"${name}" is owned by ${nameConflict.ownerName}. Overwrite it?`,
-          )
+          (await confirm({
+            title: `Overwrite "${name}"?`,
+            description: `This draft belongs to ${nameConflict.ownerName}. Saving replaces their version with yours.`,
+            confirmLabel: "Overwrite",
+            destructive: true,
+          }))
         ) {
           return saveDraftFromMenu(name, true, conflictTarget.id, recoveryKind);
         }
@@ -2975,6 +2980,7 @@ export function SchedulePage({
         }}
         onConfirm={() => void removeSelected()}
       />
+      {confirmDialog}
       <ScheduleDiscardEditDialog
         open={discardConfirmOpen && Boolean(session)}
         isDiscarding={isDiscardingEditSession}

@@ -7546,6 +7546,99 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: #b84a3c;
   color: #fff;
 }
+/* ConfirmDialog (shell/ConfirmDialog.tsx): the app's own confirm box. */
+.app-confirm-layer {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+.app-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.42);
+  cursor: default;
+}
+.app-confirm {
+  position: relative;
+  display: grid;
+  width: min(440px, calc(100vw - 28px));
+  overflow: hidden;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.2);
+}
+.app-confirm > header {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  padding: 20px 22px;
+}
+.app-confirm > header > span {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--theme-border);
+  border-radius: 7px;
+  background: var(--theme-surface-soft);
+  color: var(--theme-accent-strong);
+}
+.app-confirm > header > span[data-tone="danger"] {
+  border-color: var(--theme-danger-soft);
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger);
+}
+.app-confirm h2 {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 16px;
+  font-weight: 850;
+}
+.app-confirm p {
+  margin: 6px 0 0;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.app-confirm-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+.app-confirm-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font: inherit;
+  font-weight: 500;
+  resize: vertical;
+}
+.app-confirm > footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding: 14px 18px;
+  background: var(--theme-surface-soft);
+}
+.app-confirm > footer .nf-button {
+  min-height: 38px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
 .schedule-discard-layer {
   position: fixed;
   z-index: 170;

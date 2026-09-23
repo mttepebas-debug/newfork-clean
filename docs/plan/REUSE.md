@@ -16,6 +16,7 @@ Yeni UI ya da akış yazmadan önce buradaki girdiye bak. Ölçü ve CSS değerl
 | UI-10 | Toast | `@newfork/ui` toast facade (dedupeKey, süreler, en fazla 3 görünür) | Notification center ile karıştırma. |
 | UI-11 | Business öncesi ekranların çerçevesi ve satırı (sign-in sonrası, business'a bağlanana kadar) | `apps/web/src/shell/prebiz/PreBiz.tsx` + `prebiz.css`: iki panelli çerçeve, hesap bloğu + Sign out, `BusinessRow` (rol · durum, duruma göre sabit eylem seti), durum rozeti, bölüm listesi, `.pb-btn` | Yeni ekran bu kit'le yazılır; `.sign-in-panel` ailesi yalnız sign-in, suspended ve ProtectedRoute'ta kalır. Yıkıcı eylem `ConfirmButton` (`@newfork/ui`), `window.confirm` yok. Kullanıcı metninde "business"/"team"; "workspace"/"organization" yok. |
 | UI-12 | İki tık onay (yıkıcı eylem) | `packages/ui` `ConfirmButton` / `useConfirmClick`: ilk tık silahlar, 3,2 sn / blur / Escape söndürür, `role="status"` ile duyurulur, çift tıklamanın ikinci tıkı yutulur. Silahlı yazı her yerde "Confirm <fiil>" (Confirm delete, Confirm remove, Confirm decline…). Kendi görünümü olan buton `unstyled`, yalnız ikonlu buton `confirmName` alır; tıklanabilir satırın içinde `onClick={(e) => e.stopPropagation()}`; başka yerden silahlı açılan akış `useConfirmClick(fn, true)` | Ad hoc kopya yazma; kalan tek eski kopya Roles (bağımlılık uyarısı silahlı halde kalıyor). Etki listesi ya da parola adımı gereken onaylarda kullanma; oralarda diyalog kalır. |
+| UI-13 | Onay ya da kısa not isteyen pencere (tarayıcının `confirm`/`prompt` kutusu yerine) | `apps/web/src/shell/ConfirmDialog.tsx`: `ConfirmDialog` (kontrollü, `children` ile not alanı, `.app-confirm-field`) ve `useConfirmDialog()` (`await confirm({...})` true/false). Uyarı ikonu + başlık + açıklama; Cancel beyaz, yıkıcı cevap kırmızı, diğeri yeşil; Escape ve dışarı tıklama Cancel, Tab içeride döner, kapanınca odak geri gelir | `window.confirm`/`prompt`/`alert` yazma (kullanıcı kararı 2026-09-23). Bare onay tek butonsa önce UI-12 iki tık düşün; açıklama ya da not gerekiyorsa bu pencere. |
 | DATA-01 | Notification kataloğu sürümleri | `settings/NotificationSettingsPage.tsx` | `type_key` başına en yüksek `schema_version` kullanılır. React key'e version ekleyerek duplicate'i gizleme. |
 | DATA-02 | Schedule RPC review hatası | migration `20260915075033_bl064_schedule_conflict_result.sql`, `api/src/schedule/schedule-routes.ts` | İş kuralı reddi PT409 döner; 40001 kullanma (PostgREST 40001'i yeniden dener). |
 | DATA-03 | Schedule export ve async save | `schedule/export-v2/*` (rescue), `SchedulePage` içindeki mutationContext | Badge metni için ShiftCard'daki `formatShiftLabelDisplay` kullanılır; ikinci bir label motoru ya da save motoru yazma. |
@@ -127,8 +128,10 @@ yeşil. Access'te "Remove access", "Revoke" ve "Remove photo" kırmızı iki tı
 reminder, Retry, Reset PIN, Copy, "Save emergency contact", "Open document"
 yeşil; "Keep editing", "Leave it", "Request changes" beyaz.
 
-**Bilinen tuhaflıklar.** "Request changes" sebebi tarayıcının `prompt`
-kutusuyla soruyor (backlog).
+**Kendine özgü kurallar (devam).** "Request changes" notu UI-13 penceresinde
+yazılır; not boşken buton kapalı. Documents'ta açılan belge çekmecesi
+kaydedilmemiş değişiklikle kapatılınca "Discard unsaved changes?" (UI-13)
+sorar.
 
 ### SchedulePage (kısmi: taslak ve şablon menüleri)
 
@@ -138,8 +141,8 @@ draft menüsünde taslağın üstüne yazma: ikonlu iki tık (UI-12, `unstyled` 
 penceresinde "Delete" iki tık ("Confirm delete"). Yayınlanmış taslağın
 satırında üstüne yazma düğmesi yok.
 
-**Bilinen tuhaflıklar.** Başka yöneticinin taslak adıyla kaydederken hâlâ
-tarayıcının onay kutusu çıkıyor (backlog, kullanıcı kararıyla kalıyor).
+Başka yöneticinin taslak adıyla kaydedince UI-13 penceresi sorar:
+"Overwrite "<ad>"?"; Cancel derse hata satırı başka ad seçmesini söyler.
 
 ### ScheduleTemplatesPage (kısmi: butonlar)
 
