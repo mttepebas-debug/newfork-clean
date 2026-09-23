@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(116);
+select plan(118);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -68,10 +68,11 @@ set local role postgres;
 select is((select employee_code from public.employee_profiles where id = (select id from employee_ids where label = 'downtown')), 'E-0001', 'employee code is server generated');
 -- Still dropped here, for a better reason than before. It used to be a check
 -- constraint holding the column at the empty string because nothing had decided
--- who may set one. Now save_employee_service passes an empty string on purpose:
--- a preferred name belongs to the person whose name it is, and reaches the
--- record through request_employee_preferred_name_service and whatever answer
--- the workspace has chosen to give it.
+-- who may set one. Now save_employee_service never writes it: a new record starts
+-- empty and a later save keeps what is stored. A preferred name belongs to the
+-- person whose name it is, and reaches the record through
+-- request_employee_preferred_name_service and whatever answer the workspace has
+-- chosen to give it.
 select is(
   (select preferred_name from public.employee_profiles
    where id = (select id from employee_ids where label = 'downtown')),
@@ -952,6 +953,32 @@ select throws_ok(
 );
 set local role postgres;
 select is((select count(*)::integer from public.employee_events where employee_id = (select id from employee_ids where label = 'downtown') and action in ('employee.created', 'employee.updated', 'employee.invited', 'employee.invitation_revoked')), 5, 'employee lifecycle changes are audited without private payloads');
+
+-- BL-098: saving the rest of the record keeps the preferred name the person was given.
+update public.employee_profiles set preferred_name = 'Addie'
+where id = (select id from employee_ids where label = 'downtown');
+create temporary table bl098_revision as
+  select revision from public.employee_profiles where id = (select id from employee_ids where label = 'downtown');
+grant select on bl098_revision to service_role;
+set local role service_role;
+select lives_ok(
+  $$select public.save_employee_service(
+    '16000000-0000-4000-8000-000000000001',
+    '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'),
+    'Ada', '', 'Lovelace', '', 'ada@example.test', '2026-08-20', 'Opening team',
+    array['46000000-0000-4000-8000-000000000001']::uuid[], '46000000-0000-4000-8000-000000000001',
+    array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001',
+    false, false,
+    (select revision from bl098_revision)
+  )$$,
+  'owner saves the employee record again'
+);
+set local role postgres;
+select is(
+  (select preferred_name from public.employee_profiles where id = (select id from employee_ids where label = 'downtown')),
+  'Addie',
+  'saving the employee record keeps the approved preferred name'
+);
 
 select * from finish();
 rollback;

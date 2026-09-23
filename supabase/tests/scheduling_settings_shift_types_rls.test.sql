@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(28);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -30,12 +30,25 @@ select is(
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '12000000-0000-4000-8000-000000000001', true);
 select is((select week_start_day::text from public.workspace_scheduling_settings), 'monday', 'owner sees default scheduling settings');
-select lives_ok(
+-- Scheduling rules change only through the API service; the browser reads them.
+select throws_ok(
   $$update public.workspace_scheduling_settings
     set week_start_day = 'sunday', conflict_policy = 'block', updated_at = now()
     where workspace_id = '22000000-0000-4000-8000-000000000001'$$,
-  'owner can update scheduling rules'
+  '42501',
+  null,
+  'owner cannot update scheduling rules from the browser'
 );
+set local role service_role;
+select lives_ok(
+  $$select public.update_scheduling_settings_service(
+    '12000000-0000-4000-8000-000000000001',
+    '22000000-0000-4000-8000-000000000001',
+    '{"week_start_day": "sunday", "conflict_policy": "block"}'::jsonb
+  )$$,
+  'owner updates scheduling rules through the API service'
+);
+set local role authenticated;
 select is((select count(*)::integer from public.audit_events where action = 'scheduling.settings_updated'), 1, 'scheduling update is audited');
 select lives_ok(
   $$insert into public.shift_types (id, workspace_id, name, color, default_start_time, default_end_time, sort_order)
@@ -104,15 +117,35 @@ select throws_ok(
 );
 
 select set_config('request.jwt.claim.sub', '12000000-0000-4000-8000-000000000002', true);
-select lives_ok(
+select throws_ok(
   $$update public.workspace_scheduling_settings set availability_enforcement = 'hard'
     where workspace_id = '22000000-0000-4000-8000-000000000001'$$,
-  'admin can update scheduling rules'
+  '42501',
+  null,
+  'admin cannot update scheduling rules from the browser'
 );
+set local role service_role;
+select lives_ok(
+  $$select public.update_scheduling_settings_service(
+    '12000000-0000-4000-8000-000000000002',
+    '22000000-0000-4000-8000-000000000001',
+    '{"availability_enforcement": "hard"}'::jsonb
+  )$$,
+  'admin updates scheduling rules through the API service'
+);
+select throws_ok(
+  $$select public.update_scheduling_settings_service(
+    '12000000-0000-4000-8000-000000000003',
+    '22000000-0000-4000-8000-000000000001',
+    '{"conflict_policy": "warn"}'::jsonb
+  )$$,
+  '42501',
+  null,
+  'manager cannot update scheduling rules through the API service'
+);
+set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '12000000-0000-4000-8000-000000000003', true);
-update public.workspace_scheduling_settings set conflict_policy = 'warn'
-where workspace_id = '22000000-0000-4000-8000-000000000001';
 select is(
   (select conflict_policy::text from public.workspace_scheduling_settings where workspace_id = '22000000-0000-4000-8000-000000000001'),
   'block',

@@ -808,7 +808,7 @@ describe("workspace account routes", () => {
     expect(requestClosure).not.toHaveBeenCalled();
   });
 
-  it("allows development bearer reauthentication bypass outside production only", async () => {
+  it("never counts a development bearer as recent reauthentication", async () => {
     const requestClosure = vi.fn(async () => ({ status: "deleted" }));
     const app = buildApp({
       workspaceAccountService: {
@@ -816,7 +816,7 @@ describe("workspace account routes", () => {
       } as unknown as WorkspaceAccountService,
     });
 
-    const developmentResponse = await app.inject({
+    const response = await app.inject({
       method: "POST",
       url: `/v1/account/workspaces/${workspaceId}/closure`,
       headers: { authorization: "Bearer development-owner-token" },
@@ -827,32 +827,12 @@ describe("workspace account routes", () => {
       },
     });
 
-    expect(developmentResponse.statusCode, developmentResponse.body).toBe(200);
-    expect(requestClosure).toHaveBeenCalledOnce();
-
-    const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
-    try {
-      const productionResponse = await app.inject({
-        method: "POST",
-        url: `/v1/account/workspaces/${workspaceId}/closure`,
-        headers: { authorization: "Bearer development-owner-token" },
-        payload: {
-          mode: "immediate",
-          typedWorkspaceName: "Meyhouse",
-          acknowledged: true,
-        },
-      });
-
-      expect(productionResponse.statusCode).toBe(403);
-      expect(productionResponse.json()).toEqual({
-        error: "Recent reauthentication required",
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: "Recent reauthentication required",
       reason: "session.reauthentication_required",
-      });
-    } finally {
-      process.env.NODE_ENV = originalNodeEnv;
-    }
-    expect(requestClosure).toHaveBeenCalledOnce();
+    });
+    expect(requestClosure).not.toHaveBeenCalled();
   });
 
   it("cancels scheduled workspace closure from the path workspace", async () => {

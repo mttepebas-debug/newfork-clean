@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(120);
+select plan(121);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -242,9 +242,8 @@ select is((select count(*)::integer from public.departments where workspace_id =
 select is((select count(*)::integer from public.jobs where workspace_id = (select id from test_owner_draft_results limit 1)), 0, 'owner onboarding reset clears draft jobs');
 select is((select count(*)::integer from public.employee_profiles where workspace_id = (select id from test_owner_draft_results limit 1)), 0, 'owner onboarding reset clears draft employees');
 select is((select count(*)::integer from public.audit_events where workspace_id = (select id from test_owner_draft_results limit 1) and action = 'workspace.onboarding_reset'), 1, 'owner onboarding reset is audited');
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
 
+-- Audit rows are written by the server; the browser only reads them.
 insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id)
 values (
   '20000000-0000-4000-8000-000000000001',
@@ -253,7 +252,18 @@ values (
   'workspace',
   '20000000-0000-4000-8000-000000000001'
 );
-select is((select count(*)::integer from public.audit_events), 1, 'owner can append and read audit events');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
+select throws_ok(
+  $$insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id)
+    values ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001',
+            'workspace.forged', 'workspace', '20000000-0000-4000-8000-000000000001')$$,
+  '42501',
+  null,
+  'the browser cannot write audit events'
+);
+select is((select count(*)::integer from public.audit_events), 1, 'owner reads own workspace audit events');
+reset role;
 insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id)
 values (
   '20000000-0000-4000-8000-000000000002',
@@ -262,6 +272,8 @@ values (
   'workspace',
   '20000000-0000-4000-8000-000000000002'
 );
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
 select is(
   (select count(*)::integer from public.audit_events),
   1,
@@ -795,7 +807,8 @@ select throws_ok(
   'workspace management required',
   'owner setup checklist requires owner or admin workspace management access'
 );
-set local role authenticated;
+-- Memberships change only through the server; the owner invariant holds there too.
+reset role;
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
 
 select throws_ok(
@@ -833,12 +846,13 @@ select throws_ok(
   'last owner cannot be unlinked because membership user is required'
 );
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000003', true);
 select throws_ok(
   $$update public.workspace_memberships set role = 'owner' where id = '30000000-0000-4000-8000-000000000002'$$,
   '42501',
-  'membership role change is not permitted',
-  'admin cannot promote itself to owner'
+  null,
+  'admin cannot promote itself to owner from the browser'
 );
 
 set local role service_role;

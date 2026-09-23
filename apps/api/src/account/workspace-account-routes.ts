@@ -74,8 +74,6 @@ const ownerOnboardingInvitationIntentBody = z.object({
   email: z.string().trim().email(),
 });
 const recentReauthenticationWindowMs = 10 * 60 * 1000;
-const developmentBearerPattern =
-  /^development-(owner|admin|manager|employee)-token$/;
 
 export function registerWorkspaceAccountRoutes(
   app: FastifyInstance,
@@ -651,13 +649,6 @@ function requestError(reply: FastifyReply, error: unknown) {
 }
 
 function hasRecentReauthentication(accessToken: string): boolean {
-  if (
-    process.env.NODE_ENV !== "production" &&
-    developmentBearerPattern.test(accessToken)
-  ) {
-    return true;
-  }
-
   const issuedAtSeconds = parseJwtIssuedAt(accessToken);
   if (!issuedAtSeconds) return false;
   const issuedAtMs = issuedAtSeconds * 1000;

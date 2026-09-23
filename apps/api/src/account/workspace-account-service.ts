@@ -129,8 +129,6 @@ interface AccountLifecycleAuthAdmin {
 }
 
 const deletedAccountBanDuration = "876000h";
-const developmentBearerPattern =
-  /^development-(owner|admin|manager|employee)-token$/;
 
 export function createWorkspaceAccountService(options: {
   url: string;
@@ -148,10 +146,6 @@ export function createWorkspaceAccountService(options: {
     rpcClient,
     authAdminClient: rpcClient,
     resolveActorUserId: async (accessToken) => {
-      const developmentMatch = developmentBearerPattern.exec(accessToken);
-      if (process.env.NODE_ENV !== "production" && developmentMatch) {
-        return "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
-      }
       const { data, error } = await authClient.auth.getUser(accessToken);
       if (error || !data.user) throw new Error("Valid bearer session required");
       return data.user.id;
@@ -179,12 +173,6 @@ export function createWorkspaceAccountServiceWithClients(options: {
     accessToken: string,
   ) {
     if (!options.authAdminClient) return;
-    if (
-      process.env.NODE_ENV !== "production" &&
-      developmentBearerPattern.test(accessToken)
-    ) {
-      return;
-    }
     const ban = await options.authAdminClient.auth.admin.updateUserById(
       actorUserId,
       { ban_duration: deletedAccountBanDuration },
