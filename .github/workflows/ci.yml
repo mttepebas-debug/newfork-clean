@@ -56,6 +56,6 @@ jobs:
           done
           exit $status
       - name: Start Supabase (database, auth, storage, realtime)
-        run: supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,kong,meta,rest,studio,vector
+        run: supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector
       - name: pgTAP (green list)
         run: supabase test db $(tr -d '\r' < supabase/tests/ci-green.txt)
