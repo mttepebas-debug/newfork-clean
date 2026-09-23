@@ -310,6 +310,32 @@ begin
 end;
 $$;
 
+-- A time-off request the person files from Employee Hub, for the Wednesday of
+-- tests.week(n), at their primary location. Label: <w>:<label>:time_off.
+create or replace function tests.time_off(w text, person_label text, n integer default 0)
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  employee uuid := tests.id(w || ':' || person_label);
+  location uuid := (
+    select l.location_id from public.employee_location_assignments l
+    where l.employee_id = employee and l.ended_at is null
+    order by l.is_primary desc, l.assigned_at limit 1
+  );
+  request uuid;
+begin
+  perform public.submit_employee_time_off_service(
+    tests.user(w || ':' || person_label), tests.id(w), location, 'test world', array[tests.week(n) + 2]
+  );
+  select r.id into request from public.schedule_time_off_requests r
+  where r.employee_id = employee order by r.created_at desc limit 1;
+  perform tests.settle();
+  return tests.remember(w || ':' || person_label || ':time_off', request);
+end;
+$$;
+
 revoke all on all functions in schema tests from public;
 grant execute on all functions in schema tests to service_role;
 grant select, insert, update on tests.ids to service_role;

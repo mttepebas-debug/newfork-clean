@@ -46,6 +46,11 @@ select tests.person('m', 'pelin', 'employee', array['K'], array['cook'], 'pendin
 select tests.person('m', 'remzi', 'employee', array['B'], array['cook'], 'removed');
 select tests.person('m', 'aydan', 'manager', array['K'], array['cook'], 'onboarding');
 select tests.person('x', 'xena', 'employee', array['K'], array['cook']);
+select tests.time_off('m', 'emre');
+select tests.time_off('m', 'veli');
+select tests.time_off('m', 'ali');
+select tests.time_off('m', 'ayse');
+select tests.time_off('m', 'zeynep');
 
 -- 2. Who they are, written down independently of the app ------------------------
 -- class: owner | admin | manager | employee. status: active | suspended |
@@ -88,24 +93,33 @@ from persona p;
 
 create temporary table target (
   label text primary key,
-  kind text not null,          -- person | location | workspace
+  kind text not null,          -- person | location | workspace | time_off
   tenant text not null,
-  locs text[],                 -- person: where they work; location: itself; null for none
-  class text                   -- person: their rank
+  locs text[],                 -- person: where they work; location: itself (null: none);
+                               -- time_off: the requester's primary location
+  class text,                  -- person, time_off: the rank of the person it belongs to
+  holder text                  -- person, time_off: whose it is
 );
 insert into target values
-  ('emre',       'person',    'm', '{K}',   'employee'),
-  ('veli',       'person',    'm', '{B}',   'employee'),
-  ('ali',        'person',    'm', '{K,B}', 'employee'),
-  ('ayse',       'person',    'm', '{K}',   'manager'),
-  ('zeynep',     'person',    'm', '{K}',   'admin'),
-  ('olcay',      'person',    'm', '{K,B}', 'owner'),
-  ('xena',       'person',    'x', '{K}',   'employee'),
-  ('K',          'location',  'm', '{K}',   null),
-  ('B',          'location',  'm', '{B}',   null),
-  ('x:K',        'location',  'x', '{K}',   null),
-  ('none',       'location',  'm', null,    null),
-  ('workspace',  'workspace', 'm', null,    null);
+  ('emre',       'person',    'm', '{K}',   'employee', 'emre'),
+  ('veli',       'person',    'm', '{B}',   'employee', 'veli'),
+  ('ali',        'person',    'm', '{K,B}', 'employee', 'ali'),
+  ('ayse',       'person',    'm', '{K}',   'manager',  'ayse'),
+  ('zeynep',     'person',    'm', '{K}',   'admin',    'zeynep'),
+  ('olcay',      'person',    'm', '{K,B}', 'owner',    'olcay'),
+  ('xena',       'person',    'x', '{K}',   'employee', 'xena'),
+  ('K',          'location',  'm', '{K}',   null,       null),
+  ('B',          'location',  'm', '{B}',   null,       null),
+  ('x:K',        'location',  'x', '{K}',   null,       null),
+  ('none',       'location',  'm', null,    null,       null),
+  ('workspace',  'workspace', 'm', null,    null,       null),
+  -- Nobody has a published shift on the day, so each request is decided at
+  -- the requester's primary location.
+  ('to:emre',    'time_off',  'm', '{K}',   'employee', 'emre'),
+  ('to:veli',    'time_off',  'm', '{B}',   'employee', 'veli'),
+  ('to:ali',     'time_off',  'm', '{K}',   'employee', 'ali'),
+  ('to:ayse',    'time_off',  'm', '{K}',   'manager',  'ayse'),
+  ('to:zeynep',  'time_off',  'm', '{K}',   'admin',    'zeynep');
 
 create temporary table target_id as
 select t.label,
@@ -116,6 +130,7 @@ select t.label,
     when t.label in ('K', 'B') then tests.id('m:' || t.label)
     when t.label = 'x:K' then tests.id('x:K')
     when t.label = 'workspace' then tests.id('m')
+    when t.kind = 'time_off' then tests.id('m:' || t.holder || ':time_off')
   end as id
 from target t;
 
@@ -130,9 +145,11 @@ create temporary table action (
   permission text,             -- the permission key the action needs
   owner_only boolean not null default false,
   empty_is_no boolean not null default false,
-  template text not null
+  template text not null,
+  member boolean not null default false,        -- any active member's own action, not management
+  restricted_ok boolean not null default false  -- still open to somebody who has not finished onboarding
 );
-insert into action values
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
   ('employee.read', 'person', 'employees.read', false, true,
    $$select public.get_employee_detail_service($1, $2, $3) is not null$$),
   ('employee.list', 'person', 'employees.read', false, true,
@@ -188,7 +205,26 @@ insert into action values
   ('workspace.close', 'workspace', null, true, false,
    $$select public.request_workspace_closure_service($1, $2, 'immediate', (select w.name from public.workspaces w where w.id = $2), true, null) is not null$$),
   ('workspace.transfer_ownership', 'workspace', null, true, false,
-   $$select public.initiate_workspace_ownership_transfer_service($1, $2, tests.user('m:zeynep')) is not null$$);
+   $$select public.initiate_workspace_ownership_transfer_service($1, $2, tests.user('m:zeynep')) is not null$$),
+  ('time_off.decide', 'time_off', 'schedule.time_off_requests.manage', false, false,
+   $$select public.resolve_schedule_time_off_request_service($1, $2, $3,
+       (select r.revision from public.schedule_time_off_requests r where r.id = $3), 'approve', '') is not null$$),
+  ('announcement.write', 'location', 'announcements.manage', false, false,
+   $$select public.save_announcement_audience_service($1, $2, null, null, 'Probe', 'Body', 'general', array['employee'],
+       coalesce(array_remove(array[$3], null), '{}'), null, null, null, '{}', '{}') is not null$$),
+  ('important_date.write', 'location', 'important_dates.manage', false, true,
+   $$select tests.as_browser($1, format(
+       'insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note, affects_scheduling, location_ids, location_id) values (%L, ''Probe'', ''event'', %L, %L, ''none'', '''', false, %L::uuid[], %L)',
+       $2, tests.week(0), tests.week(0), coalesce(array_remove(array[$3], null), '{}'), $3)) > 0$$);
+
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template, member, restricted_ok) values
+  ('notifications.read_own', 'workspace', null, false, false,
+   $$select public.get_notification_inbox_v2_service($1, $2) is not null$$, true, true),
+  ('time_off.request_own', 'workspace', null, false, false,
+   $$select public.submit_employee_time_off_service($1, $2,
+       (select l.location_id from public.employee_location_assignments l join public.employee_profiles e on e.id = l.employee_id
+        where e.user_id = $1 and e.workspace_id = $2 and l.ended_at is null order by l.is_primary desc limit 1),
+       'probe', array[tests.week(1) + 3]) is not null$$, true, false);
 
 -- 5. The rules ---------------------------------------------------------------------
 
@@ -204,21 +240,25 @@ declare
   p persona;
   a action;
   t target;
-  is_self boolean := target_label in ('self', actor_label);
+  is_self boolean;
   shares boolean;
   covers boolean;
 begin
   select * into p from persona where label = actor_label;
   select * into a from action where key = action_key;
-  if is_self then
-    t := row('self', 'person', p.tenant, p.locs, p.class)::target;
+  if target_label = 'self' then
+    t := row('self', 'person', p.tenant, p.locs, p.class, actor_label)::target;
   else
     select * into t from target where label = target_label;
   end if;
+  is_self := t.holder = actor_label;
 
-  -- Nobody reaches into another workspace, and only active members act at all.
+  -- Nobody reaches into another workspace, and only active members act at all;
+  -- somebody who has not finished onboarding only finishes it.
   if p.tenant <> 'm' or t.tenant <> 'm' then return 'deny'; end if;
+  if p.status = 'restricted' and a.restricted_ok then return 'allow'; end if;
   if p.status <> 'active' then return 'deny'; end if;
+  if a.member then return 'allow'; end if;
   if a.permission is not null and a.permission = any (p.permissions_removed) then return 'deny'; end if;
   if a.owner_only and p.class <> 'owner' then return 'deny'; end if;
   if p.class = 'employee' then return 'deny'; end if;
@@ -295,6 +335,21 @@ begin
   when 'workspace.close', 'workspace.transfer_ownership' then
     return 'allow';  -- owner only, checked above
 
+  when 'time_off.decide' then
+    -- Requests go one rank up and nobody decides their own. With no published
+    -- shift on the day, the manager of the primary location decides; admin and
+    -- owner can always decide alone.
+    if is_self then return 'deny'; end if;
+    if p.class = 'owner' then return 'allow'; end if;
+    if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
+    return case when t.class = 'employee' and covers then 'allow' else 'deny' end;
+
+  when 'announcement.write', 'important_date.write' then
+    -- Managers write for their own locations; the whole organization is admin
+    -- and owner.
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when covers then 'allow' else 'deny' end;
+
   else
     raise exception 'expected(): no rule for action %', action_key;
   end case;
@@ -328,7 +383,15 @@ insert into known_gap values
   ('admin-cannot-edit-roles', '{admin}', '{settings.roles.write}', null,
    'admins cannot edit roles, D2 (stage 6, settings)'),
   ('transfer-validates-first', '{zeynep}', '{workspace.transfer_ownership}', null,
-   'a non-owner naming themselves gets the target check (23514) before the owner-only refusal; the no must come first (stage 4)');
+   'a non-owner naming themselves gets the target check (23514) before the owner-only refusal; the no must come first (stage 4)'),
+  ('important-date-no-as-validation', null, '{important_date.write}', '{K,B,x:K}',
+   'an important date at a location out of reach or in another workspace is refused as 23514 "Choose a location in this workspace", not as a permission no (stage 4, stage 6 announcements)'),
+  ('time-off-rank', '{manager}', '{time_off.decide}', '{to:ayse,to:zeynep}',
+   'a manager can decide a manager or admin time-off request at their location; requests go one rank up (stage 6, time off)'),
+  ('restricted-no-notifications', '{aydan}', '{notifications.read_own}', null,
+   'somebody who has not finished onboarding cannot open their own notifications (stage 6, onboarding)'),
+  ('time-off-needs-location', '{nur}', '{time_off.request_own}', null,
+   'asking for time off still needs a location, so a person with none cannot ask; time off belongs to the person (stage 6, time off)');
 
 create temporary table known_hit (id text primary key);
 
