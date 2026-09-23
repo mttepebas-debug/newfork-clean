@@ -31,3 +31,31 @@ jobs:
       - run: pnpm run typecheck --concurrency=1
       - run: pnpm run test --concurrency=1
       - run: pnpm run build --concurrency=1
+
+  # Database tests (pgTAP) run against a fresh local Supabase: migrations + seed.sql only
+  # (the gitignored local fixture is absent in CI). Only files listed in
+  # supabase/tests/ci-green.txt run; the list may grow, never shrink (FOUNDATION-B stage 1a).
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the grow-only guard compares against the previous commit
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.0 # pinned: image versions and privilege defaults follow the CLI
+      - name: Green list only grows
+        run: |
+          base="${{ github.event.pull_request.base.sha || github.event.before }}"
+          case "$base" in ""|0000000000000000000000000000000000000000) base=$(git merge-base HEAD origin/main) ;; esac
+          removed=$(git diff -U0 "$base" HEAD -- supabase/tests/ci-green.txt | sed -n 's/^-\(supabase\/tests\/.*\)$/\1/p')
+          status=0
+          for file in $removed; do
+            if [ -e "$file" ]; then echo "::error::$file was removed from ci-green.txt but still exists"; status=1; fi
+          done
+          exit $status
+      - name: Start Supabase (database, auth, storage, realtime)
+        run: supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,kong,meta,rest,studio,vector
+      - name: pgTAP (green list)
+        run: supabase test db $(tr -d '\r' < supabase/tests/ci-green.txt)
