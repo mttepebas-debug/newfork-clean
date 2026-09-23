@@ -41,3 +41,8 @@ __pycache__/
 # Local working data: real names, contact details and a throwaway password.
 # Regenerate with `node scripts/export-local-fixture.mjs`.
 /supabase/local-fixture/
+
+# Browser tests (e2e/): the world file global-setup writes, and Playwright output.
+e2e/.world.json
+test-results/
+playwright-report/

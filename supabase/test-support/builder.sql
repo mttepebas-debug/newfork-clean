@@ -454,6 +454,25 @@ begin
 end;
 $$;
 
+-- A password on a builder account, so a browser test can sign in through the
+-- real sign-in screen. The builder only ever loads locally and in CI (db
+-- reset seeds it; db push to the hosted project never does), so these
+-- passwords never exist on the hosted project. The token columns are blanked
+-- because the auth server cannot read NULL there.
+create or replace function tests.password(person_label text, secret text)
+returns text
+language sql
+set search_path = ''
+as $$
+  update auth.users
+  set encrypted_password = extensions.crypt(secret, extensions.gen_salt('bf')),
+      confirmation_token = '', recovery_token = '', email_change_token_new = '',
+      email_change_token_current = '', email_change = '', phone_change = '',
+      phone_change_token = '', reauthentication_token = ''
+  where id = tests.user(person_label)
+  returning email;
+$$;
+
 revoke all on all functions in schema tests from public;
 grant execute on all functions in schema tests to service_role;
 grant select, insert, update on tests.ids to service_role;

@@ -9,6 +9,7 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "test:db": "supabase test db",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
     "lint": "turbo lint",
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset --local"
@@ -20,6 +21,7 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@typescript-eslint/parser": "^8.40.0",
     "eslint": "^9.33.0",

@@ -1,0 +1,77 @@
+import { execSync } from "node:child_process";
+import { defineConfig } from "@playwright/test";
+
+// Browser tests (FOUNDATION-B stage 2d): the real sign-in screen, the real API
+// and the web app, against the local Supabase that `supabase start` runs.
+// People come from the test world builder with a password
+// (supabase/test-support/builder.sql), made fresh by global-setup on every run.
+
+const webPort = 5565;
+const apiPort = 5566;
+const webUrl = `http://127.0.0.1:${webPort}`;
+const apiUrl = `http://127.0.0.1:${apiPort}`;
+
+// The local project's URL and keys, as `supabase status` prints them.
+function localSupabase(): Record<string, string> {
+  // CI installs the pinned CLI on PATH; locally it runs through npx.
+  const cli = process.env.CI ? "supabase" : "npx supabase";
+  const printed = execSync(`${cli} status -o env`, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  return Object.fromEntries(
+    printed
+      .split(/\r?\n/)
+      .map((line) => /^([A-Z0-9_]+)="?(.*?)"?$/.exec(line))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .map((match) => [match[1], match[2]]),
+  );
+}
+
+const supabase = localSupabase();
+
+export default defineConfig({
+  testDir: "./flows",
+  globalSetup: "./global-setup.ts",
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
+  fullyParallel: false,
+  workers: 1,
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
+  use: {
+    baseURL: webUrl,
+    // CI installs Playwright's own Chromium; locally the installed Chrome is used
+    // so a run needs no browser download.
+    channel: process.env.CI ? undefined : "chrome",
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+  },
+  webServer: [
+    {
+      command: "pnpm --filter @newfork/api exec tsx src/server.ts",
+      url: `${apiUrl}/health`,
+      timeout: 120_000,
+      reuseExistingServer: false,
+      env: {
+        HOST: "127.0.0.1",
+        PORT: String(apiPort),
+        APP_URL: webUrl,
+        SUPABASE_URL: supabase.API_URL,
+        SUPABASE_ANON_KEY: supabase.ANON_KEY,
+        SUPABASE_SERVICE_ROLE_KEY: supabase.SERVICE_ROLE_KEY,
+      },
+    },
+    {
+      command: `pnpm --filter @newfork/web exec vite --host 127.0.0.1 --port ${webPort} --strictPort`,
+      url: webUrl,
+      timeout: 120_000,
+      reuseExistingServer: false,
+      env: {
+        VITE_API_URL: apiUrl,
+        VITE_SUPABASE_URL: supabase.API_URL,
+        VITE_SUPABASE_ANON_KEY: supabase.ANON_KEY,
+        VITE_ALLOW_DEVELOPMENT_IDENTITY: "false",
+      },
+    },
+  ],
+});
