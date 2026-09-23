@@ -79,6 +79,8 @@ describe("ScheduleEditLockedDialog", () => {
       />,
     );
 
+    expect(screen.getByText("Other managers are editing locations in this week.")).toBeTruthy();
+    expect(screen.queryByText(/Ayse Person is editing/)).toBeNull();
     const holders = screen.getByRole("list", { name: "Locations being edited" });
     expect(holders.textContent).toContain("Kadikoy: Ayse Person");
     expect(holders.textContent).toContain("Moda: Can Person");

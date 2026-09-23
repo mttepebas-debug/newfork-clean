@@ -61,6 +61,8 @@ export function ScheduleEditLockedDialog({
 }: ScheduleEditLockedDialogProps): JSX.Element | null {
   const lastActivity = lastActivityLabel(lastHeartbeat);
   const canEditFree = freeLocationNames.length > 0 && onEditFreeLocations;
+  // Several people can hold different locations of the same week.
+  const severalHolders = new Set(locks.map((lock) => lock.holderName)).size > 1;
 
   if (!open) return null;
 
@@ -84,11 +86,19 @@ export function ScheduleEditLockedDialog({
           </span>
           <div>
             <h2 id="schedule-edit-locked-title">Schedule is being edited</h2>
-            <p>Another manager currently holds the edit lock.</p>
+            <p>
+              {severalHolders
+                ? "Other managers are editing locations in this week."
+                : "Another manager currently holds the edit lock."}
+            </p>
           </div>
         </header>
         <div className="schedule-edit-locked-body">
-          <p>{bodyText({ holderName, scope, draftName, weekLabel })}</p>
+          <p>
+            {severalHolders
+              ? `You can view ${weekLabel}, but these locations are locked until their editors leave edit mode or their sessions time out.`
+              : bodyText({ holderName, scope, draftName, weekLabel })}
+          </p>
           {locks.length > 1 ? (
             <ul aria-label="Locations being edited">
               {locks.map((lock) => (

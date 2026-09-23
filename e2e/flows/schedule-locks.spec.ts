@@ -36,5 +36,9 @@ test("two managers edit two locations of the same week, and the admin is told wh
   const holders = dialog.getByRole("list", { name: "Locations being edited" });
   await expect(holders).toContainText("Kadikoy: Ayse Person");
   await expect(holders).toContainText("Besiktas: Mehmet Person");
+  // E2E_SHOTS=<folder> keeps a picture of the dialog for a screen review.
+  if (process.env.E2E_SHOTS) {
+    await zeynep.screenshot({ path: `${process.env.E2E_SHOTS}/schedule-lock-dialog.png` });
+  }
   await expect(zeynep).not.toHaveURL(/mode=edit/);
 });
