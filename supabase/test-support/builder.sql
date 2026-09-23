@@ -336,6 +336,124 @@ begin
 end;
 $$;
 
+-- A week somebody writes and publishes on the Schedule screen: open editing,
+-- check each shift, add it, save the draft, preview, publish. shifts is a JSON
+-- list of {"label", "person", "loc", "job", "day" (0 = Monday), "start", "end"}.
+-- Labels: <w>:shift:<label> (the published shift id). Returns the draft id.
+-- tests.publish_week(w, n, shifts) publishes as the owner.
+create or replace function tests.publish_week_as(owner_id uuid, w text, n integer, shifts jsonb)
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  workspace uuid := tests.id(w);
+  session uuid;
+  draft uuid;
+  preview jsonb;
+  shift jsonb;
+  payload jsonb;
+  assessment jsonb;
+  location_ids uuid[];
+begin
+  session := (public.acquire_schedule_edit_session_service(owner_id, workspace, tests.week(n), 'blank', null) -> 'session' ->> 'id')::uuid;
+  for shift in select value from jsonb_array_elements(shifts) loop
+    payload := jsonb_build_object(
+      'location_id', tests.id(w || ':' || (shift ->> 'loc')),
+      'employee_id', tests.id(w || ':' || (shift ->> 'person')),
+      'job_id', tests.id(w || ':job:' || (shift ->> 'job')),
+      'scheduled_date', tests.week(n) + (shift ->> 'day')::integer,
+      'time_basis', 'explicit',
+      'start_time', shift ->> 'start',
+      'end_time', shift ->> 'end',
+      'time_timezone', 'Europe/Istanbul',
+      'note', ''
+    );
+    assessment := public.assess_schedule_shift_service(owner_id, workspace, payload, null, session);
+    perform public.mutate_schedule_edit_shift_service(
+      owner_id, workspace, session,
+      (select e.revision from public.schedule_edit_sessions e where e.id = session),
+      'create', gen_random_uuid(), null,
+      payload || jsonb_build_object('availability_assessment_fingerprint', assessment ->> 'fingerprint'),
+      gen_random_uuid()
+    );
+  end loop;
+  draft := (public.save_schedule_edit_session_service(
+    owner_id, workspace, session,
+    (select e.revision from public.schedule_edit_sessions e where e.id = session),
+    'test world', null, null
+  ) ->> 'id')::uuid;
+  location_ids := array(
+    select distinct tests.id(w || ':' || (value ->> 'loc')) from jsonb_array_elements(shifts)
+  );
+  preview := public.preview_schedule_publication_service(owner_id, workspace, draft, location_ids, null, true);
+  perform public.publish_schedule_draft_service(
+    owner_id, workspace, draft, location_ids, null, true,
+    (select d.revision from public.schedule_drafts d where d.id = draft),
+    preview ->> 'fingerprint', '[]'::jsonb
+  );
+  for shift in select value from jsonb_array_elements(shifts) loop
+    perform tests.remember(w || ':shift:' || (shift ->> 'label'), (
+      select p.id from public.schedule_published_shifts p
+      where p.workspace_id = workspace
+        and p.employee_id = tests.id(w || ':' || (shift ->> 'person'))
+        and p.location_id = tests.id(w || ':' || (shift ->> 'loc'))
+        and p.scheduled_date = tests.week(n) + (shift ->> 'day')::integer
+        and p.start_time = (shift ->> 'start')::time
+    ));
+  end loop;
+  perform tests.settle();
+  return draft;
+end;
+$$;
+
+create or replace function tests.publish_week(w text, n integer, shifts jsonb)
+returns uuid
+language sql
+set search_path = ''
+as $$ select tests.publish_week_as(tests.user(w || ':owner'), w, n, shifts) $$;
+
+-- ponytail: no screen or API route turns Shift Hub on today; the flag goes in
+-- stage 5.1 (Shift Hub always on), and this helper with it.
+create or replace function tests.enable_shift_hub(w text)
+returns void
+language sql
+set search_path = ''
+as $$ update public.workspaces set shift_exchanges_enabled = true where id = tests.id(w) $$;
+
+-- The holder of a published shift asks for cover in Shift Hub and somebody
+-- applies. Labels: <w>:case:<shift label>, <w>:application:<shift label>.
+create or replace function tests.cover_case(w text, shift_label text, holder text, applicant text)
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  workspace uuid := tests.id(w);
+  created jsonb;
+  opened uuid;
+begin
+  created := public.shift_exchanges_command_service(
+    tests.user(w || ':' || holder), workspace,
+    jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id(w || ':shift:' || shift_label)),
+    gen_random_uuid()
+  );
+  opened := tests.remember(w || ':case:' || shift_label, (created ->> 'case_id')::uuid);
+  perform tests.settle();
+  perform public.shift_exchanges_command_service(
+    tests.user(w || ':' || applicant), workspace,
+    jsonb_build_object('action', 'apply', 'shift_id', tests.id(w || ':shift:' || shift_label), 'case_id', opened),
+    gen_random_uuid()
+  );
+  perform tests.remember(w || ':application:' || shift_label, (
+    select a.id from public.shift_exchange_applications a
+    where a.case_id = opened and a.employee_id = tests.id(w || ':' || applicant)
+  ));
+  perform tests.settle();
+  return opened;
+end;
+$$;
+
 revoke all on all functions in schema tests from public;
 grant execute on all functions in schema tests to service_role;
 grant select, insert, update on tests.ids to service_role;

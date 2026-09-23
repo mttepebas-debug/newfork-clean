@@ -51,6 +51,17 @@ select tests.time_off('m', 'veli');
 select tests.time_off('m', 'ali');
 select tests.time_off('m', 'ayse');
 select tests.time_off('m', 'zeynep');
+-- A published week (no shift on Wednesday, the day of the time-off requests)
+-- and two cover requests Ali has applied to.
+select tests.enable_shift_hub('m');
+select tests.publish_week('m', 0, '[
+  {"label": "emre-k", "person": "emre", "loc": "K", "job": "cook",   "day": 1, "start": "09:00", "end": "15:00"},
+  {"label": "veli-b", "person": "veli", "loc": "B", "job": "server", "day": 1, "start": "09:00", "end": "15:00"},
+  {"label": "ali-k",  "person": "ali",  "loc": "K", "job": "cook",   "day": 4, "start": "09:00", "end": "15:00"},
+  {"label": "ayse-k", "person": "ayse", "loc": "K", "job": "cook",   "day": 3, "start": "09:00", "end": "15:00"}
+]');
+select tests.cover_case('m', 'emre-k', 'emre', 'ali');
+select tests.cover_case('m', 'veli-b', 'veli', 'ali');
 
 -- 2. Who they are, written down independently of the app ------------------------
 -- class: owner | admin | manager | employee. status: active | suspended |
@@ -119,7 +130,13 @@ insert into target values
   ('to:veli',    'time_off',  'm', '{B}',   'employee', 'veli'),
   ('to:ali',     'time_off',  'm', '{K}',   'employee', 'ali'),
   ('to:ayse',    'time_off',  'm', '{K}',   'manager',  'ayse'),
-  ('to:zeynep',  'time_off',  'm', '{K}',   'admin',    'zeynep');
+  ('to:zeynep',  'time_off',  'm', '{K}',   'admin',    'zeynep'),
+  ('site:K',     'site',      'm', '{K}',   null,       null),
+  ('site:B',     'site',      'm', '{B}',   null,       null),
+  ('sh:ali-k',   'shift',     'm', '{K}',   'employee', 'ali'),
+  ('sh:ayse-k',  'shift',     'm', '{K}',   'manager',  'ayse'),
+  ('case:emre-k', 'case',     'm', '{K}',   'employee', 'emre'),
+  ('case:veli-b', 'case',     'm', '{B}',   'employee', 'veli');
 
 create temporary table target_id as
 select t.label,
@@ -131,6 +148,9 @@ select t.label,
     when t.label = 'x:K' then tests.id('x:K')
     when t.label = 'workspace' then tests.id('m')
     when t.kind = 'time_off' then tests.id('m:' || t.holder || ':time_off')
+    when t.kind = 'site' then tests.id('m:' || substr(t.label, 6))
+    when t.kind = 'shift' then tests.id('m:shift:' || substr(t.label, 4))
+    when t.kind = 'case' then tests.id('m:case:' || substr(t.label, 6))
   end as id
 from target t;
 
@@ -188,7 +208,21 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select exists (select 1 from jsonb_array_elements(public.get_schedule_read_model_service($1, $2, tests.week(0)) -> 'locations') l
      where (l ->> 'id')::uuid = $3)$$),
   ('schedule.edit', 'workspace', 'schedule.manage', false, false,
-   $$select public.acquire_schedule_edit_session_service($1, $2, tests.week(0), 'blank') is not null$$),
+   $$select public.acquire_schedule_edit_session_service($1, $2, tests.week(5), 'blank') is not null$$),
+  ('schedule.publish', 'site', 'schedule.publish', false, false,
+   $$select tests.publish_week_as($1, 'm', 3, jsonb_build_array(jsonb_build_object(
+       'label', 'probe', 'day', 0, 'start', '09:00', 'end', '15:00',
+       'person', case when $3 = tests.id('m:K') then 'emre' else 'veli' end,
+       'loc', case when $3 = tests.id('m:K') then 'K' else 'B' end,
+       'job', case when $3 = tests.id('m:K') then 'cook' else 'server' end))) is not null$$),
+  ('exchange.approve', 'case', 'schedule.shift_change_requests.manage', false, false,
+   $$select public.shift_exchanges_command_service($1, $2, jsonb_build_object(
+       'action', 'approve', 'case_id', $3,
+       'application_id', (select a.id from public.shift_exchange_applications a where a.case_id = $3 limit 1),
+       'expected_revision', (select c.revision from public.shift_exchange_cases c where c.id = $3),
+       'fingerprint', public.shift_exchange_preview($1, $2, $3,
+         (select a.id from public.shift_exchange_applications a where a.case_id = $3 limit 1)) ->> 'fingerprint'),
+     gen_random_uuid()) is not null$$),
   ('settings.organization.write', 'workspace', null, false, true,
    $$select tests.as_browser($1, format('update public.workspaces set name = name where id = %L', $2)) > 0$$),
   ('settings.locations.write', 'workspace', null, false, true,
@@ -233,6 +267,9 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template, member, restricted_ok) values
   ('notifications.read_own', 'workspace', null, false, false,
    $$select public.get_notification_inbox_v2_service($1, $2) is not null$$, true, true),
+  ('exchange.offer_own', 'shift', null, false, false,
+   $$select public.shift_exchanges_command_service($1, $2,
+       jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', $3), gen_random_uuid()) is not null$$, true, false),
   ('time_off.request_own', 'workspace', null, false, false,
    $$select public.submit_employee_time_off_service($1, $2,
        (select l.location_id from public.employee_location_assignments l join public.employee_profiles e on e.id = l.employee_id
@@ -271,6 +308,7 @@ begin
   if p.tenant <> 'm' or t.tenant <> 'm' then return 'deny'; end if;
   if p.status = 'restricted' and a.restricted_ok then return 'allow'; end if;
   if p.status <> 'active' then return 'deny'; end if;
+  if a.member and t.holder is not null and not is_self then return 'deny'; end if;
   if a.member then return 'allow'; end if;
   if a.permission is not null and a.permission = any (p.permissions_removed) then return 'deny'; end if;
   if a.owner_only and p.class <> 'owner' then return 'deny'; end if;
@@ -362,6 +400,16 @@ begin
     -- Manage reach at one location: admin and owner anywhere in the
     -- workspace, a manager where they work, nobody at a blank location.
     if t.locs is null then return 'deny'; end if;
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when covers then 'allow' else 'deny' end;
+
+  when 'schedule.publish' then
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when covers then 'allow' else 'deny' end;
+
+  when 'exchange.approve' then
+    -- A pickup or cover is approved at the shift's location only.
+    if is_self then return 'deny'; end if;
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;
 
