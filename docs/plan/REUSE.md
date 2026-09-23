@@ -23,6 +23,47 @@ Yeni UI ya da akış yazmadan önce buradaki girdiye bak. Ölçü ve CSS değerl
 | DATA-04 | Edit-session lease | migration `20260915112516_bl069_resume_edit_session_lease.sql` | Aynı sahip session'ı yeniden alırsa lease yenilenir, revision korunur. |
 | DATA-05 | Haftalık müsaitliği bir giriş modundan ötekine çevirmek | `public.weekly_preference_convert(w, preference, target_mode)`, migration `20260922180000_changing_the_entry_mode_converts_every_saved_week.sql`; çağıran yer `weekly_preference_settings_save_service` | Kural tek yerde: saatten tipe en az 1 dakika çakışan aktif tip (sınıra değmek çakışma değil), tipten saate en erken başlangıç–en geç bitiş, gece yarısını aşan tip 24:00'e kadar, boş ve tüm-gün gün olduğu gibi. İkinci bir dönüştürücü yazma. Dönüşüm kayıplı; eski hafta `weekly_preference_events`'e yazılmadan değiştirilmez. |
 
+## Ürün kuralları — rol, kapsam, uygunluk
+
+Kullanıcı kararları, 2026-09-23 (FOUNDATION-B Aşama 0). Her kural yetki matrisinin `expected()` fonksiyonunda (`supabase/tests/authorization_matrix.test.sql`) ya da uygunluk matrisinde (`supabase/tests/eligibility_matrix.test.sql`) bir satıra karşılık gelir; kural değişirse önce burası, sonra o satır değişir. Uygulandığı yer yetki çekirdeği `app_private.authorize()` / `scope_set()` (FOUNDATION-B Aşama 4) ve uygunluk motoru `app_private.eligibility()` (Aşama 6).
+
+**Roller ve kapsam**
+- Hiyerarşi owner > admin > manager > employee. Owner, admin ve manager yönetim arayüzüne girer; herkesin (kendi çalışan kaydı olan owner/admin/manager dahil) çalışan arayüzü vardır — yönetim arayüzünde "Çalışan görünümüne geç".
+- Owner'a özel: billing, sahiplik devri, workspace kapatma, admin atama/kaldırma. Admin: bütün lokasyonlar ve çalışanlar (kendi lokasyon atamasından bağımsız), Settings'in geri kalanı okuma+yazma, Settings→Roles'u düzenler ama kendi izninden fazlasını veremez.
+- **Kapsam modeli M2 "kişi ortak, vardiya yerel":** manager kendi lokasyonlarında çalışan herkesi bütün olarak görür (profil, müsaitlik, izin, belgeler); başka lokasyonda çalışmayanı görmez. Vardiya işlemleri (yazma, yayın, devir onayı, dışa aktarma) yalnız vardiyanın lokasyonunda. Başka lokasyonu etkileyen karar o lokasyonun onayını ya da admin/owner'ı ister.
+- Manager'ın lokasyonları = çalıştığı atamalar + admin'in eklediği "yalnız yönetir" lokasyonları (vardiyaya girmeyen şube müdürü için). Başka lokasyonda ara sıra çalışmak orayı yönetmek demek değildir (admin ayırır).
+- Başka lokasyondaki vardiya manager'ın planında ghost olarak (lokasyon adı + saat, salt okunur) görünür; manager yazarken o vardiyayla çakışma uyarısı alır. Bileşen: `schedule/components/ShiftCard.tsx` `GhostShiftCard`.
+- Rütbe: talepler hep bir üst kademeye gider (employee → lokasyonun manager'ı → admin → owner). Kimse kendi talebini onaylayamaz. Owner'ın talebi onay gerekmeden kaydolur, etkilenen manager'lara bildirim gider.
+- Manager lokasyonunda çalışan herkesi (başka manager, admin, owner) vardiyaya yazabilir; onların müsaitlik/izin çakışma onayları ve talepleri üst kademeye gider.
+- İşten çıkarma: manager yalnız "kendi lokasyonundan çıkar" yapar (o lokasyondaki atama ve gelecek vardiyalar biter). Tamamen işten çıkarma ve arşiv yalnız admin/owner. Açık karar: çıkarılan lokasyon çalışanın tek lokasyonuysa ne olacağı.
+- Manager Settings'te katalogu salt okunur görür (job, departman, vardiya tipi/etiketi, çakışma ve takas kuralları, belge tanımları); Locations'ta yalnız kendi lokasyonları; Roles, sahiplik, billing, hesap görünmez. Manager tipi rollere organizasyon ayarı yazma izni verilemez. Duyuru ve önemli tarih yazmak kendi lokasyonları için serbest.
+- Kısıtlı kişi (eksik zorunlu belge ya da tamamlanmamış onboarding) yalnız kendi eksiğini tamamlar: belge yükleme, onboarding adımları, kendi profili, bildirimleri, çıkış. Program, talep ve yönetim işleri kapalı.
+
+**İzin (time off)**
+- İzin kişiye aittir; talep formunda lokasyon seçilmez.
+- Onay: o gün yayınlı vardiyası olan her lokasyonun manager'ı oy verir (hepsi onaylayınca kesinleşir, biri reddederse red). Hiç yayınlı vardiya yoksa (yayınlanmamış hafta ya da boş gün) birincil lokasyonun (`employee_location_assignments.is_primary`) manager'ı karar verir. Admin/owner her durumda tek başına karar verebilir; birincil lokasyonun manager'ı yoksa talep onlara düşer. Oy verenler karar anında hesaplanır.
+- Onaylanan izin bütün lokasyonlarda kesin engeldir (manager bunun üstüne vardiya yazamaz; ayarı yoktur). Diğer manager'lara bildirim gider, taslaklarda çakışma görünür.
+
+**Müsaitlik**
+- Çalışan müsait olmadığı günleri/saatleri işaretler (onboarding'de opsiyonel adım, sonra Employee Hub). Kaydettiği an geçerli, onay yok. Manager ayrıca çalışana görünmeyen bir hatırlatma notu tutabilir.
+- Settings'teki müsaitlik ayarı iki seçenek: Yumuşak (uyarı + manager'ın kayıtlı "yine de koy" onayı) / Sert (engel). Bu ayar yalnız manager'ın plan yazmasına uygulanır. Sert'e geçmek, daha önce kabul edilip yayınlanmış vardiyaları etkilemez.
+
+**Takas, bırakılan vardiya (pickup), cover — uygunluk**
+- Zorunlu: çalışanın lokasyon ve job ataması vardiyaya uygun; aynı anda iki vardiya olmaz (takasta bırakılan vardiya hariç); sonunda manager/admin onayı.
+- Çalışan kendi müsaitliğini ve kendi onaylı iznini kendi rızasıyla ezebilir; yalnız bilgilendirme onayı istenir. Settings'teki Yumuşak/Sert müsaitlik ayarı bu süreçleri etkilemez. İzinli günde vardiya alınırsa izin o saatler için kısalır, izni onaylayana bildirim gider.
+- Cover talebinin aday listesi: onaylı izinli kişi hiç görünmez; müsait olmayan "müsait değil" etiketiyle görünür.
+- Yol ve dinlenme süresi: Settings'te takas/pickup/cover için ayrı ayarlar; kurala uymayan değişim manager onay ekranında açıkça işaretlenir.
+- Onay: pickup/cover'ı yalnız vardiyanın lokasyonu onaylar; iki lokasyonun vardiyaları birlikte el değiştirirse (takas) iki lokasyon da onaylar.
+- Onay beklerken manager saat/tarih/lokasyonu değiştirirse: yeni saatler kabul edenin başka bir vardiyasıyla kesişiyorsa kabul düşer; kesişmiyorsa değişiklik bildirimi gider, kabul korunur.
+- Manager'ın gizli hatırlatma notu uygunluğu etkilemez; onay ekranında manager'a gösterilir.
+
+**Bildirimler**
+- Karar gerektiren bildirim karar verecek kişiye gider. Bildirim sistemi ayrı bir projede baştan tasarlanacak.
+
+**Teknik sözleşmeler (FOUNDATION-B)**
+- "Hayır" tek biçim: `42501` + HINT'te makine anahtarı (`authz.*`), doğrulamadan önce. API: üyeye 403 + neden, üye olmayana 404. Bilinmeyen ve kapsam dışı hedef aynı cevap (`authz.out_of_scope`). Boş lokasyon asla "her yer" demek değildir.
+- Kapsam dışı bırakılanlar (sonra sıfırdan tasarlanacak): Line Up, bildirim platformu. Silinenler: kiosk, zaman takibi, eski availability sistemi, eski Requests → Shift changes takas akışı.
+
 ## Sayfa envanteri
 
 Repodaki her ekranın kendi bölümü olacak: ne yaptığı, hangi ortak parçaları
