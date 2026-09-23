@@ -217,6 +217,19 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
        'insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note, affects_scheduling, location_ids, location_id) values (%L, ''Probe'', ''event'', %L, %L, ''none'', '''', false, %L::uuid[], %L)',
        $2, tests.week(0), tests.week(0), coalesce(array_remove(array[$3], null), '{}'), $3)) > 0$$);
 
+-- The consistency layer: the older helpers that each answer "may this person
+-- manage this location?" on their own. They must all give the same answer as
+-- the rule, a blank location included. Stage 4 replaces them with the core.
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
+  ('legacy.schedule_can_manage', 'location', 'schedule.manage', false, true,
+   $$select public.schedule_actor_can_manage_service($1, $2, $3)$$),
+  ('legacy.schedule_capability', 'location', 'schedule.manage', false, true,
+   $$select public.schedule_actor_has_capability_service($1, $2, 'schedule.manage', $3)$$),
+  ('legacy.schedule_can_publish', 'location', 'schedule.publish', false, true,
+   $$select public.schedule_actor_can_publish_service($1, $2, $3)$$),
+  ('legacy.communication_capability', 'location', 'announcements.manage', false, true,
+   $$select public.communication_actor_has_capability_service($1, $2, 'announcements.manage', $3)$$);
+
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template, member, restricted_ok) values
   ('notifications.read_own', 'workspace', null, false, false,
    $$select public.get_notification_inbox_v2_service($1, $2) is not null$$, true, true),
@@ -344,6 +357,14 @@ begin
     if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
     return case when t.class = 'employee' and covers then 'allow' else 'deny' end;
 
+  when 'legacy.schedule_can_manage', 'legacy.schedule_capability', 'legacy.schedule_can_publish',
+       'legacy.communication_capability' then
+    -- Manage reach at one location: admin and owner anywhere in the
+    -- workspace, a manager where they work, nobody at a blank location.
+    if t.locs is null then return 'deny'; end if;
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when covers then 'allow' else 'deny' end;
+
   when 'announcement.write', 'important_date.write' then
     -- Managers write for their own locations; the whole organization is admin
     -- and owner.
@@ -390,6 +411,12 @@ insert into known_gap values
    'a manager can decide a manager or admin time-off request at their location; requests go one rank up (stage 6, time off)'),
   ('restricted-no-notifications', '{aydan}', '{notifications.read_own}', null,
    'somebody who has not finished onboarding cannot open their own notifications (stage 6, onboarding)'),
+  ('legacy-blank-location', null,
+   '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish,legacy.communication_capability}', '{none}',
+   'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2 (stage 4)'),
+  ('legacy-foreign-location', '{owner,admin}',
+   '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish,legacy.communication_capability}', '{x:K}',
+   'the old location helpers answer yes to an owner or admin for a location in another workspace (stage 4)'),
   ('time-off-needs-location', '{nur}', '{time_off.request_own}', null,
    'asking for time off still needs a location, so a person with none cannot ask; time off belongs to the person (stage 6, time off)');
 
