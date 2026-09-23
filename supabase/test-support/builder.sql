@@ -57,10 +57,13 @@ stable
 set search_path = ''
 as $$ select tests.id(target_label || ':user') $$;
 
--- Runs the checks and syncs the product defers to commit (manager scope rows,
--- document assignment, role dependencies), then defers again, so the next call
--- starts the way an API request does. A test transaction never commits, so
--- without this those rows would never exist.
+-- Ends a builder step the way an API request ends, so the next call starts
+-- like a new one: runs the checks and syncs the product defers to commit
+-- (manager scope rows, document assignment, role dependencies) and defers
+-- again, and forgets the caller identity that service functions stamp on the
+-- transaction (request.jwt.claim.sub, set local by the JWT bridges). A test
+-- transaction never commits, so without this the deferred rows would never
+-- exist and the last builder call's identity would leak into the test.
 create or replace function tests.settle()
 returns void
 language plpgsql
@@ -77,6 +80,8 @@ begin
   end if;
   set constraints all immediate;
   set constraints all deferred;
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claims', '', true);
 end;
 $$;
 
@@ -101,11 +106,11 @@ declare
   email text := replace(target_label, ':', '.') || '.' || left(user_id::text, 8) || '@world.test';
 begin
   insert into auth.users (
-    id, instance_id, aud, role, email, encrypted_password,
+    id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
     raw_app_meta_data, raw_user_meta_data, created_at, updated_at
   ) values (
     user_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-    email, '', '{}', jsonb_build_object('display_name', display_name), now(), now()
+    email, '', now(), '{}', jsonb_build_object('display_name', display_name), now(), now()
   );
   insert into public.user_profiles (user_id, display_name) values (user_id, display_name);
   perform tests.remember(target_label || ':user', user_id);
@@ -114,24 +119,30 @@ end;
 $$;
 
 -- Runs one statement the way the web app does it: as authenticated, with the
--- actor's JWT subject, under RLS. Used only where the web writes directly
--- (Settings > Organization), because there is no server entry point to call.
-create or replace function tests.as_browser(actor uuid, statement text)
-returns void
+-- actor's JWT subject, under RLS, and returns how many rows it touched (RLS
+-- hides rows rather than refusing, so 0 is how a browser write says no). Used
+-- where the web reads or writes directly, because there is no server entry
+-- point to call.
+drop function if exists tests.as_browser(uuid, text);
+create function tests.as_browser(actor uuid, statement text)
+returns integer
 language plpgsql
 set search_path = ''
 as $$
 declare
   previous_role text := current_user;
   previous_sub text := current_setting('request.jwt.claim.sub', true);
+  touched integer;
 begin
   perform set_config('request.jwt.claim.sub', actor::text, true);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', actor, 'role', 'authenticated')::text, true);
   set local role authenticated;
   execute statement;
+  get diagnostics touched = row_count;
   execute format('set local role %I', previous_role);
   perform set_config('request.jwt.claim.sub', coalesce(previous_sub, ''), true);
   perform set_config('request.jwt.claims', '', true);
+  return touched;
 end;
 $$;
 
