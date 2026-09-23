@@ -386,10 +386,9 @@ describe("Phase 8 communication pages", () => {
       screen.queryByRole("group", { name: "Confirm deletion" }),
     ).toBeNull();
     const confirm = within(editor).getByRole("button", {
-      name: "Confirm delete announcement",
+      name: "Confirm delete",
     });
     expect(confirm.getAttribute("data-confirming")).toBe("true");
-    expect(confirm.textContent).toContain("Click again to delete");
 
     fireEvent.click(confirm);
     await waitFor(() =>

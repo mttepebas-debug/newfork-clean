@@ -4,7 +4,7 @@ import {
   type AnnouncementList,
   type AnnouncementRecord,
 } from "@newfork/shared";
-import { Button } from "@newfork/ui";
+import { Button, useConfirmClick } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
@@ -514,9 +514,6 @@ function AnnouncementEditor({
   const [initialItem] = useState(item);
   const [baseline] = useState(() => draftFrom(item));
   const [draft, setDraft] = useState(baseline);
-  const [confirmDelete, setConfirmDelete] = useState(() =>
-    new URLSearchParams(window.location.search).has("delete"),
-  );
   const editable = item ? item.can_edit : model.can_manage;
   const changed = comparable(draft) !== comparable(baseline);
   const parsed = announcementInputSchema.safeParse(draft);
@@ -563,6 +560,12 @@ function AnnouncementEditor({
     },
   });
   const busy = save.isPending || transition.isPending;
+  // The row menu's Delete opens this editor with its delete already armed.
+  const deleteConfirm = useConfirmClick(
+    () => transition.mutate("cancel"),
+    new URLSearchParams(window.location.search).has("delete"),
+  );
+  const confirmDelete = deleteConfirm.armed;
   const canSave = editable && parsed.success && (!item || changed) && !busy;
   const canDelete = item && item.can_cancel && !isArchived(item);
   const actionUrl = safeAppActionUrl(item?.action_url ?? null);
@@ -785,26 +788,16 @@ function AnnouncementEditor({
               <button
                 className="catalog-delete-trigger"
                 type="button"
-                aria-label={
-                  confirmDelete ? "Confirm delete announcement" : "Delete"
-                }
-                title={confirmDelete ? "Click again to delete" : undefined}
                 data-confirming={confirmDelete}
                 disabled={busy}
-                onClick={() => {
-                  if (confirmDelete) {
-                    transition.mutate("cancel");
-                    return;
-                  }
-                  setConfirmDelete(true);
-                }}
+                {...deleteConfirm.confirmProps}
               >
                 {transition.isPending ? (
                   "Deleting..."
                 ) : confirmDelete ? (
                   <>
                     <CheckCircle2 size={14} aria-hidden />
-                    Click again to delete
+                    Confirm delete
                   </>
                 ) : (
                   <>

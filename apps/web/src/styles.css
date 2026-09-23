@@ -3095,14 +3095,6 @@ p {
 .development-access .onboarding-field {
   width: 100%;
 }
-.secondary-button {
-  border: 1px solid #bdc8c3;
-  background: var(--theme-surface);
-  color: #315048;
-}
-.secondary-button:hover {
-  background: #f0f4f2;
-}
 .form-error {
   margin: 0 0 14px;
   color: #a23725;
@@ -3132,6 +3124,16 @@ p {
 .nf-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+/* After .nf-button on purpose: <Button className="secondary-button"> is a
+   dismiss button (Cancel, Discard, Back) and must not come out green. */
+.secondary-button {
+  border: 1px solid #bdc8c3;
+  background: var(--theme-surface);
+  color: #315048;
+}
+.secondary-button:hover {
+  background: #f0f4f2;
 }
 .sr-only {
   position: absolute;

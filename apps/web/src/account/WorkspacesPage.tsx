@@ -601,7 +601,6 @@ export default function WorkspacesPage() {
               current={isCurrent}
               badge={
                 <>
-                  {isCurrent ? <StatusBadge tone="success">Current</StatusBadge> : null}
                   {onboarding ? <StatusBadge tone="progress">Onboarding in progress</StatusBadge> : null}
                   {draft ? <StatusBadge tone="progress">Setup in progress</StatusBadge> : null}
                   {workspace.isActive ? <StatusBadge>Default</StatusBadge> : null}

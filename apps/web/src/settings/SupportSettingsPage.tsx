@@ -85,7 +85,7 @@ export default function SupportSettingsPage() {
               </p>
             </div>
             <Button
-              className="secondary-button"
+             
               type="button"
               onClick={() => void copyDiagnostics()}
             >

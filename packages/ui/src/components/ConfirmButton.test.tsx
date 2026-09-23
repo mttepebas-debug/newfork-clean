@@ -12,7 +12,7 @@ describe("ConfirmButton", () => {
     render(
       <ConfirmButton
         aria-label="Remove photo for Ada"
-        confirmLabel="Click again to remove"
+        confirmLabel="Confirm remove"
         onConfirm={onConfirm}
       >
         Remove photo
@@ -22,7 +22,7 @@ describe("ConfirmButton", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove photo for Ada" }));
     expect(onConfirm).not.toHaveBeenCalled();
 
-    const armed = screen.getByRole("button", { name: "Click again to remove" });
+    const armed = screen.getByRole("button", { name: "Confirm remove" });
     expect(armed.className).toContain("is-armed");
 
     fireEvent.click(armed);
@@ -34,7 +34,7 @@ describe("ConfirmButton", () => {
 
   it("announces the armed state through a live region", () => {
     render(
-      <ConfirmButton confirmLabel="Click again to decline" onConfirm={vi.fn()}>
+      <ConfirmButton confirmLabel="Confirm decline" onConfirm={vi.fn()}>
         Decline
       </ConfirmButton>,
     );
@@ -42,7 +42,7 @@ describe("ConfirmButton", () => {
     expect(status.textContent).toBe("");
 
     fireEvent.click(screen.getByRole("button"));
-    expect(status.textContent).toBe("Click again to decline");
+    expect(status.textContent).toBe("Confirm decline");
 
     fireEvent.keyDown(screen.getByRole("button"), { key: "Escape" });
     expect(status.textContent).toBe("");
@@ -51,7 +51,7 @@ describe("ConfirmButton", () => {
   it("does not confirm on the second click of a double-click", () => {
     const onConfirm = vi.fn();
     render(
-      <ConfirmButton confirmLabel="Click again to delete" onConfirm={onConfirm}>
+      <ConfirmButton confirmLabel="Confirm delete" onConfirm={onConfirm}>
         Discard
       </ConfirmButton>,
     );
@@ -61,14 +61,14 @@ describe("ConfirmButton", () => {
     fireEvent.click(button, { detail: 2 });
 
     expect(onConfirm).not.toHaveBeenCalled();
-    expect(button.textContent).toBe("Click again to delete");
+    expect(button.textContent).toBe("Confirm delete");
   });
 
   it("disarms on Escape, on blur and after the timeout", () => {
     vi.useFakeTimers();
     const onConfirm = vi.fn();
     render(
-      <ConfirmButton confirmLabel="Click again to revoke" onConfirm={onConfirm}>
+      <ConfirmButton confirmLabel="Confirm revoke" onConfirm={onConfirm}>
         Revoke
       </ConfirmButton>,
     );
@@ -88,5 +88,27 @@ describe("ConfirmButton", () => {
     });
     expect(button.textContent).toBe("Revoke");
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("gives an icon-only button its armed name and keeps its own classes", () => {
+    render(
+      <ConfirmButton
+        unstyled
+        className="icon-button"
+        aria-label="Delete template Lunch"
+        confirmLabel={<svg />}
+        confirmName="Confirm delete template Lunch"
+        onConfirm={vi.fn()}
+      >
+        <svg />
+      </ConfirmButton>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete template Lunch" }));
+
+    const armed = screen.getByRole("button", { name: "Confirm delete template Lunch" });
+    expect(armed.className).toBe("icon-button is-armed");
+    expect(armed.getAttribute("title")).toBe("Confirm delete template Lunch");
+    expect(armed.getAttribute("data-confirming")).toBe("true");
+    expect(screen.getByRole("status").textContent).toBe("Confirm delete template Lunch");
   });
 });

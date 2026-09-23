@@ -127,10 +127,10 @@ export default function SecurityPage() {
               <strong>Verify {security.pendingEmail}</strong>
               <p>Both your current and new email must confirm. Your current email stays active until then.</p>
               <div className="account-button-row">
-                <Button className="secondary-button" type="button" disabled={busy !== null} onClick={() => void run("resend-email", async () => {
+                <Button type="button" disabled={busy !== null} onClick={() => void run("resend-email", async () => {
                   if (!development) await resendAccountEmailChange(supabaseClient!);
                 }, "Verification links sent again")}>Resend</Button>
-                <Button className="secondary-button danger-button" type="button" disabled={busy !== null} onClick={() => void run("cancel-email", async () => {
+                <Button className="danger-button" type="button" disabled={busy !== null} onClick={() => void run("cancel-email", async () => {
                   if (!development) await cancelAccountEmailChange(supabaseClient!);
                   setSecurity((current) => current ? { ...current, pendingEmail: null, emailChangeSentAt: null } : current);
                 }, "Email change cancelled")}>Cancel change</Button>
@@ -164,7 +164,7 @@ export default function SecurityPage() {
             setSessionPassword("");
           }, "Other sessions signed out"); }}>
             <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={sessionPassword} onChange={(event) => setSessionPassword(event.target.value)} required /></label>
-            <Button className="secondary-button" type="submit" disabled={busy !== null || !sessionPassword}><LogOut size={15} aria-hidden /> Sign out other sessions</Button>
+            <Button type="submit" disabled={busy !== null || !sessionPassword}><LogOut size={15} aria-hidden /> Sign out other sessions</Button>
           </form>
         </div>
       </section>

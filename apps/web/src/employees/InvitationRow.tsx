@@ -59,7 +59,7 @@ export function InvitationRow({
       <ConfirmButton
         className="pb-btn pb-btn-danger"
         aria-label={`Decline invitation to ${invitation.workspaceName}`}
-        confirmLabel="Click again to decline"
+        confirmLabel="Confirm decline"
         disabled={busy}
         onConfirm={() => decline.mutate(invitation.id)}
       >

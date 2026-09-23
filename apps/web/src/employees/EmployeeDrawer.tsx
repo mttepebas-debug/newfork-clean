@@ -1291,7 +1291,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 canManageAccess &&
                 draft.invitation_email ? (
                   <Button
-                    className="secondary-button"
                     type="button"
                     disabled={
                       busy ||
@@ -1797,7 +1796,6 @@ function OnboardingReviewPanel({
             ) ? (
               <Button
                 type="button"
-                className="secondary-button"
                 aria-label={`Open ${requirement.title}`}
                 disabled={openingDocument}
                 onClick={() => onOpenDocument(requirement.id)}
@@ -2392,10 +2390,10 @@ function AccessSection({
             </label>
             {!readOnly && detail?.role_name !== "Owner" ? (
               <ConfirmButton
-                className="secondary-button employee-remove-access danger-button"
+                className="employee-remove-access danger-button"
                 type="button"
                 disabled={removingAccess}
-                confirmLabel="Click again to remove access"
+                confirmLabel="Confirm remove access"
                 title="The employee record, shifts, time history and kiosk access are kept."
                 onConfirm={onRemoveAccess}
               >
@@ -2446,7 +2444,6 @@ function AccessSection({
         {invitation?.status === "pending" && !invitationExpired && !readOnly ? (
           <div className="employee-pending-invite-actions">
             <Button
-              className="secondary-button"
               type="button"
               disabled={retryingInvitation}
               onClick={onRetryInvitation}
@@ -2459,10 +2456,10 @@ function AccessSection({
               employeeId={detail?.id ?? ""}
             />
             <ConfirmButton
-              className="secondary-button employee-revoke-invite danger-button"
+              className="employee-revoke-invite danger-button"
               type="button"
               disabled={revokingInvitation}
-              confirmLabel="Click again to revoke"
+              confirmLabel="Confirm revoke"
               onConfirm={onRevokeInvitation}
             >
               Revoke invitation
@@ -2503,7 +2500,7 @@ function AccessSection({
           </header>
           <div className="employee-access-empty">
             <strong>Kiosk access is not configured</strong>
-            <Button className="secondary-button" type="button" disabled>
+            <Button type="button" disabled>
               <RotateCcw size={15} aria-hidden />
               Reset PIN
             </Button>
@@ -2550,7 +2547,6 @@ function EmployeeAvatarControl({
       <div className="employee-access-empty">
         <strong>Profile photo unavailable</strong>
         <Button
-          className="secondary-button"
           type="button"
           onClick={() => void avatar.refetch()}
         >
@@ -2578,10 +2574,10 @@ function EmployeeAvatarControl({
       </div>
       {!readOnly ? (
         <ConfirmButton
-          className="secondary-button danger-button"
+          className="danger-button"
           type="button"
           disabled={!hasAvatar || remove.isPending}
-          confirmLabel="Click again to remove"
+          confirmLabel="Confirm remove"
           onConfirm={() => remove.mutate()}
         >
           <ImageOff size={15} aria-hidden />
@@ -2977,7 +2973,6 @@ function CopyInvitationLinkButton({
 
   return (
     <Button
-      className="secondary-button"
       type="button"
       disabled={copy.isPending || !workspaceId || !employeeId}
       onClick={() => {
@@ -3074,7 +3069,6 @@ function OwnEmergencyContact({
       <div className="employee-field">
         <span />
         <Button
-          className="secondary-button"
           type="button"
           disabled={!ready || save.isPending}
           onClick={() => save.mutate()}

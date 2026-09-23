@@ -1,4 +1,5 @@
 import type { ScheduleDraftSummary } from "@newfork/shared/schedule";
+import { ConfirmButton } from "@newfork/ui";
 import { Check, CheckCircle2, FilePlus2, Save, Send } from "lucide-react";
 import {
   type JSX,
@@ -120,9 +121,6 @@ export function SaveDraftMenu({
 }: SaveDraftMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const [draftName, setDraftName] = useState("");
-  const [confirmingDraftId, setConfirmingDraftId] = useState<string | null>(
-    null,
-  );
   const [runningAction, setRunningAction] = useState<RunningAction>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const trimmedName = draftName.trim();
@@ -186,7 +184,6 @@ export function SaveDraftMenu({
 
   useEffect(() => {
     setOpen(false);
-    setConfirmingDraftId(null);
     setRunningAction(null);
   }, [dismissSignal]);
 
@@ -205,7 +202,6 @@ export function SaveDraftMenu({
         ])
       : baseName;
     setDraftName(initialName);
-    setConfirmingDraftId(null);
     setRunningAction(null);
     setOpen(true);
   };
@@ -259,7 +255,6 @@ export function SaveDraftMenu({
               event.preventDefault();
               event.stopPropagation();
               setOpen(false);
-              setConfirmingDraftId(null);
               setRunningAction(null);
               return;
             }
@@ -277,7 +272,6 @@ export function SaveDraftMenu({
               placeholder="Draft name"
               onChange={(event) => {
                 setDraftName(event.target.value);
-                setConfirmingDraftId(null);
               }}
               onKeyDown={(event) => {
                 if (event.key !== "Enter") return;
@@ -340,14 +334,8 @@ export function SaveDraftMenu({
                 id={publishedDraftId}
                 name={publishedTitle(publishedSchedule)}
                 meta={publishedMeta(publishedSchedule)}
-                confirming={confirmingDraftId === publishedDraftId}
                 isSaving={isBusy}
                 published
-                onOverwrite={(target) => {
-                  if (confirmingDraftId !== target.id) {
-                    setConfirmingDraftId(target.id);
-                  }
-                }}
               />
               <div className="schedule-save-menu-divider" />
             </>
@@ -360,17 +348,12 @@ export function SaveDraftMenu({
                 id={draft.id}
                 name={draft.name}
                 meta={savedMeta(draft)}
-                confirming={confirmingDraftId === draft.id}
                 isSaving={isBusy}
-                onOverwrite={(target) => {
-                  if (confirmingDraftId !== target.id) {
-                    setConfirmingDraftId(target.id);
-                    return;
-                  }
+                onOverwrite={(target) =>
                   void run("save-current", () =>
                     onSaveDraft(target.name, true, target.id),
-                  );
-                }}
+                  )
+                }
               />
             ))
           ) : (
@@ -397,7 +380,6 @@ function OverwriteRow({
   id,
   name,
   meta,
-  confirming,
   isSaving,
   published = false,
   onOverwrite,
@@ -405,10 +387,9 @@ function OverwriteRow({
   readonly id: string;
   readonly name: string;
   readonly meta: string;
-  readonly confirming: boolean;
   readonly isSaving: boolean;
   readonly published?: boolean;
-  readonly onOverwrite: (target: OverwriteTarget) => void;
+  readonly onOverwrite?: (target: OverwriteTarget) => void;
 }): JSX.Element {
   return (
     <div
@@ -426,19 +407,18 @@ function OverwriteRow({
         <strong>{name}</strong>
         <small>{meta}</small>
       </span>
-      {!published ? (
-        <button
-          type="button"
-          aria-label={
-            confirming ? `Confirm overwrite ${name}` : `Overwrite ${name}`
-          }
-          title={confirming ? "Click again to overwrite" : "Overwrite draft"}
+      {onOverwrite ? (
+        <ConfirmButton
+          unstyled
+          aria-label={`Overwrite ${name}`}
+          confirmName={`Confirm overwrite ${name}`}
+          title="Overwrite draft"
           disabled={isSaving}
-          data-confirming={confirming}
-          onClick={() => onOverwrite({ id, name })}
+          confirmLabel={<Check size={14} />}
+          onConfirm={() => onOverwrite({ id, name })}
         >
-          {confirming ? <Check size={14} /> : <Save size={14} />}
-        </button>
+          <Save size={14} />
+        </ConfirmButton>
       ) : null}
     </div>
   );

@@ -236,7 +236,7 @@ describe("RolesSettingsPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Delete role" }));
     expect(deleteWorkspaceRole).not.toHaveBeenCalled();
     fireEvent.click(
-      screen.getByRole("button", { name: "Click again to delete" }),
+      screen.getByRole("button", { name: "Confirm delete" }),
     );
 
     await waitFor(() =>
@@ -245,7 +245,6 @@ describe("RolesSettingsPage", () => {
         custom.id,
       ),
     );
-    expect(screen.queryByRole("button", { name: "Confirm delete" })).toBeNull();
   });
   it("groups custom roles after the third custom role and selects from the menu", async () => {
     const customRoles = Array.from({ length: 4 }, (_, index) => ({

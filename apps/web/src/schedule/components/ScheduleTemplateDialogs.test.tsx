@@ -99,6 +99,19 @@ function renderDialog(
 }
 
 describe("ScheduleTemplatesDialog", () => {
+  it("deletes a template on the second click, without the browser's confirm box", async () => {
+    const confirm = vi.spyOn(window, "confirm");
+    const props = renderDialog();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(props.onDelete).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
+
+    await waitFor(() => expect(props.onDelete).toHaveBeenCalledWith(template));
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
   it("applies every department as an unfiltered template merge", async () => {
     const props = renderDialog();
 

@@ -49,7 +49,7 @@ function renderRow() {
 function discard() {
   fireEvent.click(screen.getByRole("button", { name: /discard setup/i }));
   fireEvent.click(
-    screen.getByRole("button", { name: /click again to delete/i }),
+    screen.getByRole("button", { name: /confirm delete/i }),
   );
 }
 

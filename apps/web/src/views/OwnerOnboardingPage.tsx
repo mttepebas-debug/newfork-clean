@@ -645,7 +645,7 @@ export default function OwnerOnboardingPage() {
             type="button"
             disabled={submitting}
             aria-label={"Remove " + job.name}
-            confirmLabel="Click again to remove"
+            confirmLabel="Confirm remove"
             onConfirm={() => void removeEntity("job", job.id)}
           >
             Remove
@@ -882,7 +882,7 @@ export default function OwnerOnboardingPage() {
             className="pb-btn pb-btn-danger"
             type="button"
             disabled={submitting || resetting}
-            confirmLabel="Click again to start over"
+            confirmLabel="Confirm start over"
             onConfirm={() => void startOver()}
           >
             {resetting ? "Resetting" : "Start over"}
@@ -1039,7 +1039,7 @@ export default function OwnerOnboardingPage() {
                       type="button"
                       disabled={submitting}
                       aria-label={"Remove " + location.name}
-                      confirmLabel="Click again to remove"
+                      confirmLabel="Confirm remove"
                       onConfirm={() => void removeEntity("location", location.id)}
                     >
                       Remove
@@ -1226,8 +1226,8 @@ export default function OwnerOnboardingPage() {
                               aria-label={"Remove " + department.name}
                               confirmLabel={
                                 jobsIn(department.id).length === 0
-                                  ? "Click again to remove"
-                                  : "Click again, takes " +
+                                  ? "Confirm remove"
+                                  : "Confirm remove, takes " +
                                     countLabel(
                                       jobsIn(department.id).length,
                                       "job",
@@ -1461,7 +1461,7 @@ export default function OwnerOnboardingPage() {
                   className="pb-btn pb-btn-danger"
                   type="button"
                   disabled={submitting || !employeeDraftHasInput(employeeDraft)}
-                  confirmLabel="Click again to clear"
+                  confirmLabel="Confirm clear"
                   onConfirm={() => {
                     setEmployeeDraft(defaultEmployee);
                     setSuccess("Draft cleared");

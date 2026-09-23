@@ -13,6 +13,7 @@ import {
   Trash2,
   Undo2,
 } from "lucide-react";
+import { ConfirmButton } from "@newfork/ui";
 import { type JSX, useEffect, useRef, useState } from "react";
 
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../lib/scheduleActionButton";
@@ -94,12 +95,6 @@ export function DraftDropdownMenu({
   isStartingDraft = false,
 }: DraftDropdownMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
-  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
-    null,
-  );
-  const [confirmingDeleteTemplateId, setConfirmingDeleteTemplateId] = useState<
-    string | null
-  >(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const label = triggerLabel.trim() || "New Schedule";
   const editDisabled = !canStartDraft || isStartingDraft;
@@ -117,8 +112,6 @@ export function DraftDropdownMenu({
 
   useEffect(() => {
     setOpen(false);
-    setConfirmingDeleteId(null);
-    setConfirmingDeleteTemplateId(null);
   }, [dismissSignal]);
 
   useEffect(() => {
@@ -130,15 +123,11 @@ export function DraftDropdownMenu({
         !rootRef.current.contains(event.target)
       ) {
         setOpen(false);
-        setConfirmingDeleteId(null);
-        setConfirmingDeleteTemplateId(null);
       }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setOpen(false);
-      setConfirmingDeleteId(null);
-      setConfirmingDeleteTemplateId(null);
     };
     document.addEventListener("pointerdown", close);
     document.addEventListener("keydown", closeOnEscape);
@@ -151,8 +140,6 @@ export function DraftDropdownMenu({
   const closeAfter = (action: () => void) => {
     action();
     setOpen(false);
-    setConfirmingDeleteId(null);
-    setConfirmingDeleteTemplateId(null);
   };
 
   const openMenu = () => {
@@ -162,8 +149,6 @@ export function DraftDropdownMenu({
       void onOpen?.();
       drafts.forEach((draft) => onPrefetchDraft?.(draft.id));
     }
-    setConfirmingDeleteId(null);
-    setConfirmingDeleteTemplateId(null);
   };
 
   const unpublishButton =
@@ -233,7 +218,6 @@ export function DraftDropdownMenu({
               <>
                 {drafts.map((draft) => {
                   const active = activeDraftId === draft.id;
-                  const confirming = confirmingDeleteId === draft.id;
                   const isPublishedDraft = publishedDraftId === draft.id;
                   const deleteDisabled =
                     disableDeleteDraftId === draft.id || isPublishedDraft;
@@ -312,41 +296,24 @@ export function DraftDropdownMenu({
                       ) : null}
                       {isPublishedDraft ? unpublishButton : null}
                       {onDeleteDraft && canManageDrafts ? (
-                        <button
-                          type="button"
-                          aria-label={
-                            confirming
-                              ? `Confirm delete ${draft.name}`
-                              : `Delete ${draft.name}`
-                          }
+                        <ConfirmButton
+                          unstyled
+                          aria-label={`Delete ${draft.name}`}
+                          confirmName={`Confirm delete ${draft.name}`}
                           disabled={deleteDisabled}
                           title={
                             isPublishedDraft
                               ? "Published source draft"
                               : disableDeleteDraftId === draft.id
                                 ? "Currently being edited"
-                                : confirming
-                                  ? "Click again to delete"
-                                  : undefined
+                                : undefined
                           }
-                          data-confirming={confirming}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (deleteDisabled) return;
-                            if (confirming) {
-                              onDeleteDraft(draft);
-                              setConfirmingDeleteId(null);
-                              return;
-                            }
-                            setConfirmingDeleteId(draft.id);
-                          }}
+                          confirmLabel={<CheckCircle2 size={14} />}
+                          onClick={(event) => event.stopPropagation()}
+                          onConfirm={() => onDeleteDraft(draft)}
                         >
-                          {confirming ? (
-                            <CheckCircle2 size={14} />
-                          ) : (
-                            <Trash2 size={14} />
-                          )}
-                        </button>
+                          <Trash2 size={14} />
+                        </ConfirmButton>
                       ) : null}
                     </div>
                   );
@@ -398,8 +365,6 @@ export function DraftDropdownMenu({
               {templates.length ? (
                 <div className="schedule-draft-menu-template-list">
                   {templates.map((template) => {
-                    const confirming =
-                      confirmingDeleteTemplateId === template.id;
                     return (
                       <div
                         key={template.id}
@@ -452,33 +417,16 @@ export function DraftDropdownMenu({
                           </button>
                         ) : null}
                         {canManageDrafts && onDeleteTemplate ? (
-                          <button
-                            type="button"
-                            aria-label={
-                              confirming
-                                ? `Confirm delete template ${template.name}`
-                                : `Delete template ${template.name}`
-                            }
-                            title={
-                              confirming ? "Click again to delete" : undefined
-                            }
-                            data-confirming={confirming}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              if (confirming) {
-                                onDeleteTemplate(template);
-                                setConfirmingDeleteTemplateId(null);
-                                return;
-                              }
-                              setConfirmingDeleteTemplateId(template.id);
-                            }}
+                          <ConfirmButton
+                            unstyled
+                            aria-label={`Delete template ${template.name}`}
+                            confirmName={`Confirm delete template ${template.name}`}
+                            confirmLabel={<CheckCircle2 size={14} />}
+                            onClick={(event) => event.stopPropagation()}
+                            onConfirm={() => onDeleteTemplate(template)}
                           >
-                            {confirming ? (
-                              <CheckCircle2 size={14} />
-                            ) : (
-                              <Trash2 size={14} />
-                            )}
-                          </button>
+                            <Trash2 size={14} />
+                          </ConfirmButton>
                         ) : null}
                       </div>
                     );

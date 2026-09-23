@@ -7,8 +7,10 @@ const disarmAfterMs = 3200;
 
 // Two-click confirm for actions that only need a bare "are you sure?":
 // the first click arms, the second one confirms. Disarms after a pause, on blur and on Escape.
-export function useConfirmClick(onConfirm: () => void) {
-  const [armed, setArmed] = useState(false);
+// `initiallyArmed` is for a flow whose first click happened elsewhere, such as a row
+// menu's Delete that opens the editor with its delete already armed.
+export function useConfirmClick(onConfirm: () => void, initiallyArmed = false) {
+  const [armed, setArmed] = useState(initiallyArmed);
 
   useEffect(() => {
     if (!armed) return undefined;
@@ -42,12 +44,16 @@ export function useConfirmClick(onConfirm: () => void) {
   };
 }
 
-export type ConfirmButtonProps = Omit<
-  ButtonProps,
-  "onClick" | "onBlur" | "onKeyDown"
-> & {
-  /** Shown while armed, e.g. "Click again to remove". Becomes the accessible name. */
+export type ConfirmButtonProps = Omit<ButtonProps, "onBlur" | "onKeyDown"> & {
+  /** Shown while armed, e.g. "Confirm delete". Becomes the accessible name. */
   confirmLabel: ReactNode;
+  /**
+   * The armed name when `confirmLabel` is not text (an icon-only button):
+   * used as its accessible name, tooltip and announcement while armed.
+   */
+  confirmName?: string;
+  /** A plain <button> carrying only the caller's classes, for buttons with their own look. */
+  unstyled?: boolean;
   onConfirm: () => void;
 };
 
@@ -55,28 +61,42 @@ export function ConfirmButton({
   children,
   className,
   confirmLabel,
+  confirmName,
+  unstyled = false,
   onConfirm,
+  onClick,
   "aria-label": ariaLabel,
+  title,
+  type = "button",
   ...props
 }: ConfirmButtonProps) {
   const { armed, confirmProps } = useConfirmClick(onConfirm);
+  const Tag = unstyled ? "button" : Button;
 
   return (
     <>
-      <Button
+      <Tag
         {...props}
         {...confirmProps}
-        // While armed the visible label is the name.
-        aria-label={armed ? undefined : ariaLabel}
-        className={`${className ?? ""}${armed ? " is-armed" : ""}`.trim()}
+        // Runs first, e.g. to keep the click from reaching a clickable row.
+        onClick={(event) => {
+          onClick?.(event);
+          confirmProps.onClick(event);
+        }}
+        type={type}
+        // While armed the visible label is the name, unless it is only an icon.
+        aria-label={armed ? confirmName : ariaLabel}
+        title={armed ? (confirmName ?? title) : title}
+        data-confirming={armed}
+        className={`${className ?? ""}${armed ? " is-armed" : ""}`.trim() || undefined}
       >
         {armed ? confirmLabel : children}
-      </Button>
+      </Tag>
       {/* A name change on the focused button is not reliably spoken, so the
           armed state is also announced. Always mounted: a live region must
           exist before its text changes. `sr-only` comes from the app's CSS. */}
       <span className="sr-only" role="status">
-        {armed ? confirmLabel : ""}
+        {armed ? (confirmName ?? confirmLabel) : ""}
       </span>
     </>
   );

@@ -93,7 +93,7 @@ export function UnfinishedSetupRow({
           }
           // Discarding deletes the draft business, so the armed label says so.
           confirmLabel={
-            employer ? "Click again to delete" : "Click again to decline"
+            employer ? "Confirm delete" : "Confirm decline"
           }
           disabled={discard.isPending}
           onConfirm={() => discard.mutate()}

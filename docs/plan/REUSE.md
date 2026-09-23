@@ -12,10 +12,10 @@ Yeni UI ya da akış yazmadan önce buradaki girdiye bak. Ölçü ve CSS değerl
 | UI-06 | Schedule haftalık lokasyon genişliği | `schedule/lib/scheduleGridLayout.ts`, `hooks/useScheduleBadgeMeasurements.tsx` | Günlük görünümde minimum genişlik korunur. |
 | UI-07 | Gruplu checkbox filtre menüsü | `schedule/components/ScheduleTopBarFilter.tsx` + `schedule-topbar-filter.css` (rescue) | Diğer dropdown'ları kullanıcı kararı olmadan bu tasarıma geçirme. Documents hedeflemesinde gruplar AND ile birleşir. |
 | UI-08 | Documents yönlendirmeli editör | `settings/DocumentSettingsEditor.tsx`, `documents/DocumentLifecycleFields.tsx` (rescue) | Yalnızca final Save kalıcı yazar. Legacy OR/named kayıtları sessizce dönüştürülmez. |
-| UI-09 | Silme onayı | Templates ve Announcements'taki iki tık deseni ("Click again to delete") | Ayrı onay paneli açma. |
+| UI-09 | Buton rolü (renk) | `@newfork/ui` `Button` = yeşil aksiyon (sınıf yok); `className="secondary-button"` = beyaz vazgeçme (Cancel, Discard, Back, Keep editing); `danger-button` = kırmızı yıkıcı. Kural sırası `styles.css`te `.secondary-button` bloğu `.nf-button`tan sonra | `secondary-button`ı aksiyon butonuna (Upload, Resend, Send reminder, Copy, Save…) verme; `danger-button` ile birlikte hiç verme: vazgeçme rengi kırmızının yazı rengini ezer. |
 | UI-10 | Toast | `@newfork/ui` toast facade (dedupeKey, süreler, en fazla 3 görünür) | Notification center ile karıştırma. |
 | UI-11 | Business öncesi ekranların çerçevesi ve satırı (sign-in sonrası, business'a bağlanana kadar) | `apps/web/src/shell/prebiz/PreBiz.tsx` + `prebiz.css`: iki panelli çerçeve, hesap bloğu + Sign out, `BusinessRow` (rol · durum, duruma göre sabit eylem seti), durum rozeti, bölüm listesi, `.pb-btn` | Yeni ekran bu kit'le yazılır; `.sign-in-panel` ailesi yalnız sign-in, suspended ve ProtectedRoute'ta kalır. Yıkıcı eylem `ConfirmButton` (`@newfork/ui`), `window.confirm` yok. Kullanıcı metninde "business"/"team"; "workspace"/"organization" yok. |
-| UI-12 | İki tık onay (yıkıcı eylem) | `packages/ui` `ConfirmButton` / `useConfirmClick`: ilk tık silahlar, 3,2 sn / blur / Escape söndürür, `role="status"` ile duyurulur, çift tıklamanın ikinci tıkı yutulur | Ad hoc `deleteArmed` kopyası yazma (Roles, Announcements, Templates'teki eskiler taşınacak). Etki listesi ya da parola adımı gereken onaylarda kullanma; oralarda diyalog kalır. |
+| UI-12 | İki tık onay (yıkıcı eylem) | `packages/ui` `ConfirmButton` / `useConfirmClick`: ilk tık silahlar, 3,2 sn / blur / Escape söndürür, `role="status"` ile duyurulur, çift tıklamanın ikinci tıkı yutulur. Silahlı yazı her yerde "Confirm <fiil>" (Confirm delete, Confirm remove, Confirm decline…). Kendi görünümü olan buton `unstyled`, yalnız ikonlu buton `confirmName` alır; tıklanabilir satırın içinde `onClick={(e) => e.stopPropagation()}`; başka yerden silahlı açılan akış `useConfirmClick(fn, true)` | Ad hoc kopya yazma; kalan tek eski kopya Roles (bağımlılık uyarısı silahlı halde kalıyor). Etki listesi ya da parola adımı gereken onaylarda kullanma; oralarda diyalog kalır. |
 | DATA-01 | Notification kataloğu sürümleri | `settings/NotificationSettingsPage.tsx` | `type_key` başına en yüksek `schema_version` kullanılır. React key'e version ekleyerek duplicate'i gizleme. |
 | DATA-02 | Schedule RPC review hatası | migration `20260915075033_bl064_schedule_conflict_result.sql`, `api/src/schedule/schedule-routes.ts` | İş kuralı reddi PT409 döner; 40001 kullanma (PostgREST 40001'i yeniden dener). |
 | DATA-03 | Schedule export ve async save | `schedule/export-v2/*` (rescue), `SchedulePage` içindeki mutationContext | Badge metni için ShiftCard'daki `formatShiftLabelDisplay` kullanılır; ikinci bir label motoru ya da save motoru yazma. |
@@ -37,11 +37,11 @@ gelince çözülür.
 |---|---|---|---|---|
 | hesap | AccountDocumentsPage | `documents` | `account/AccountDocumentsPage.tsx` | belgelenmedi |
 | hesap | AccountRecoveryPage | `/account-recovery` | `account/AccountRecoveryPage.tsx` | belgelenmedi |
-| hesap | NotificationPreferencesPage | `preferences/notifications` | `account/NotificationPreferencesPage.tsx` | belgelenmedi |
-| hesap | PreferencesPage | `preferences` | `account/PreferencesPage.tsx` | belgelenmedi |
-| hesap | ProfilePage | `profile` | `account/ProfilePage.tsx` | belgelenmedi |
-| hesap | SecurityPage | `security` | `account/SecurityPage.tsx` | belgelenmedi |
-| hesap | WorkspacesPage | `workspaces` | `account/WorkspacesPage.tsx` | belgelenmedi |
+| hesap | NotificationPreferencesPage | `preferences/notifications` | `account/NotificationPreferencesPage.tsx` | kısmi 2026-09-22 (butonlar) |
+| hesap | PreferencesPage | `preferences` | `account/PreferencesPage.tsx` | kısmi 2026-09-22 (butonlar) |
+| hesap | ProfilePage | `profile` | `account/ProfilePage.tsx` | kısmi 2026-09-22 (butonlar) |
+| hesap | SecurityPage | `security` | `account/SecurityPage.tsx` | kısmi 2026-09-22 (butonlar) |
+| hesap | WorkspacesPage | `workspaces` | `account/WorkspacesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | kabuk | WorkspaceHubPage | | `shell/WorkspaceHubPage.tsx` | belgelenmedi |
 | kabuk | WorkspaceStatusPage | `/workspaces/status/:workspaceId` | `shell/WorkspaceStatusPage.tsx` | belgelenmedi |
 | giris | SignInPage | `/sign-in` | `views/SignInPage.tsx` | belgelenmedi |
@@ -49,21 +49,21 @@ gelince çözülür.
 | kamuya acik | PrivacyPage / TermsPage / ContactPage / AccessibilityPage / PrivacyChoicesPage | `/privacy`, `/terms`, `/contact`, `/accessibility`, `/your-privacy-choices` | `public/PublicTrustPages.tsx` | belgelenmedi |
 | kurulum | OwnerOnboardingPage | `/welcome/:workspaceId/*` | `views/OwnerOnboardingPage.tsx` | belgelenmedi |
 | kurulum | EmployeeOnboardingPage | `/onboarding` | `employees/EmployeeOnboardingPage.tsx` | belgelenmedi |
-| calisanlar | EmployeesPage | `employees` | `employees/EmployeesPage.tsx` | belgelenmedi |
+| calisanlar | EmployeesPage | `employees` | `employees/EmployeesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | calisanlar | EmployeeHubPage | `employee-hub/*` | `views/EmployeeHubPage.tsx` | belgelenmedi |
 | calisanlar | EmployeeDocumentsPage | `employees/documents` | `documents/EmployeeDocumentsPage.tsx` | belgelenmedi |
-| plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | belgelenmedi |
+| plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | kısmi 2026-09-22 (butonlar) |
 | plan | ScheduleRequestsPage | `schedule/requests` | `views/ScheduleRequestsPage.tsx` | belgelenmedi |
-| plan | ScheduleTemplatesPage | `schedule/templates` | `views/ScheduleTemplatesPage.tsx` | belgelenmedi |
+| plan | ScheduleTemplatesPage | `schedule/templates` | `views/ScheduleTemplatesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | plan | LineupPage | `schedule/lineup` | `views/LineupPage.tsx` | belgelenmedi |
 | plan | AvailabilityPage | `availability` | `views/AvailabilityPage.tsx` | belgelenmedi |
 | plan | TimeEntriesPage | `time-entries` | `views/TimeEntriesPage.tsx` | belgelenmedi |
 | isyeri | WorkspacePage | `workspace` | `views/WorkspacePage.tsx` | belgelenmedi |
-| iletisim | AnnouncementsPage | `announcements` | `views/AnnouncementsPage.tsx` | belgelenmedi |
+| iletisim | AnnouncementsPage | `announcements` | `views/AnnouncementsPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | iletisim | NotificationsPage | `inbox`, `notifications` | `views/NotificationsPage.tsx` | belgelenmedi |
 | kiosk | KioskPage | `/kiosk` | `kiosk/KioskPage.tsx` | belgelenmedi |
 | ayarlar | GeneralSettingsPage | `general` | `settings/GeneralSettingsPage.tsx` | belgelenmedi |
-| ayarlar | LocationsSettingsPage | `locations` | `settings/LocationsSettingsPage.tsx` | belgelenmedi |
+| ayarlar | LocationsSettingsPage | `locations` | `settings/LocationsSettingsPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | ayarlar | JobsSettingsPage | `jobs` | `settings/JobsSettingsPage.tsx` | belgelenmedi |
 | ayarlar | RolesSettingsPage | `roles`, `roles/:roleId` | `settings/RolesSettingsPage.tsx` | belgelenmedi |
 | ayarlar | SchedulingSettingsPage | `scheduling` | `settings/SchedulingSettingsPage.tsx` | belgelendi 2026-09-22 |
@@ -76,7 +76,7 @@ gelince çözülür.
 | ayarlar | SignatureTemplatesSettingsPage | | `settings/SignatureTemplatesSettingsPage.tsx` | belgelenmedi |
 | ayarlar | NotificationSettingsPage | `notifications` | `settings/NotificationSettingsPage.tsx` | belgelenmedi |
 | ayarlar | KioskSettingsPage | `kiosk` | `settings/KioskSettingsPage.tsx` | belgelenmedi |
-| ayarlar | SupportSettingsPage | `support` | `settings/SupportSettingsPage.tsx` | belgelenmedi |
+| ayarlar | SupportSettingsPage | `support` | `settings/SupportSettingsPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | gelistirme | ScheduleShiftDesignPage | `/dev/schedule-shift-design` | `dev/ScheduleShiftDesignPage.tsx` | belgelenmedi |
 | gelistirme | ScheduleShiftBadgeLabPage | `schedule-badge-lab` | `dev/ScheduleShiftBadgeLabPage.tsx` | belgelenmedi |
 
@@ -84,6 +84,84 @@ Bir sayfanın bölümü yazılırken başlık `### <Sayfa adı>` olur, tablodaki
 durumu `belgelendi <tarih>` yapılır, ve bölüm şunları söyler: sayfa ne işe
 yarar, yukarıdaki reuse girdilerinden hangilerini kullanır, kendine özgü
 kuralları neler, bilinen tuhaflıkları var mı.
+
+### ProfilePage, PreferencesPage, NotificationPreferencesPage (kısmi: butonlar)
+
+**Ne işe yarar.** Account → Profile / Preferences / Notifications: hesabın
+her workspace'te geçen ayarları. Her sayfa kendi "Save" ve "Discard"
+düğmesiyle; Discard kaydedilmemiş değişikliği geri alır.
+
+**Kendine özgü kurallar.** Discard beyaz (UI-09). Profile'da fotoğraf
+"Upload/Replace" yeşil; "Remove" kırmızı iki tık (UI-12, "Confirm remove")
+ama yalnız taslağı temizler: fotoğraf "Save changes"e basılana kadar
+silinmez, Discard geri getirir.
+
+### SecurityPage (kısmi: butonlar)
+
+**Ne işe yarar.** Account → Security: e-posta, parola, diğer oturumları
+kapatma, hesabı silme.
+
+**Kendine özgü kurallar.** "Resend" ve "Sign out other sessions" yeşil.
+Bekleyen e-posta değişikliğini geri çeken "Cancel change" kırmızı ve adı
+bilerek "Cancel change" (yalnız "Cancel", pencereyi kapat gibi okunur;
+kullanıcı kararı 2026-09-22).
+
+### WorkspacesPage (kısmi: butonlar)
+
+**Ne işe yarar.** Account → Workspaces: hesabın bağlı olduğu workspace'ler,
+açma, oluşturma, sahiplik devri, kapatma.
+
+**Kendine özgü kurallar.** Şu an çalışılan workspace'in satırı tonlu ve
+`aria-current`; ayrı "Current" rozeti yok (kullanıcı kararı). "Open" her
+satırda yeşil ve tıklanabilir. Formlardaki Cancel, "Keep this workspace",
+"Reject owner transfer" beyaz.
+
+### EmployeesPage (kısmi: çalışan çekmecesi butonları)
+
+**Ne işe yarar.** Employees listesi; satıra tıklayınca çalışan çekmecesi
+(Profile, Employment, Availability, Documents, Access, History).
+
+**Kendine özgü kurallar.** Çekmece altı: Cancel beyaz, Invite ve Save
+yeşil. Access'te "Remove access", "Revoke" ve "Remove photo" kırmızı iki tık
+("Confirm remove access", "Confirm revoke", "Confirm remove"). Send
+reminder, Retry, Reset PIN, Copy, "Save emergency contact", "Open document"
+yeşil; "Keep editing", "Leave it", "Request changes" beyaz.
+
+**Bilinen tuhaflıklar.** "Request changes" sebebi tarayıcının `prompt`
+kutusuyla soruyor (backlog).
+
+### SchedulePage (kısmi: taslak ve şablon menüleri)
+
+**Kendine özgü kurallar.** Taslak menüsünde taslak ve şablon silme, Save
+draft menüsünde taslağın üstüne yazma: ikonlu iki tık (UI-12, `unstyled` +
+`confirmName`; satır tıklanabilir olduğu için `stopPropagation`). Şablon
+penceresinde "Delete" iki tık ("Confirm delete"). Yayınlanmış taslağın
+satırında üstüne yazma düğmesi yok.
+
+**Bilinen tuhaflıklar.** Başka yöneticinin taslak adıyla kaydederken hâlâ
+tarayıcının onay kutusu çıkıyor (backlog, kullanıcı kararıyla kalıyor).
+
+### ScheduleTemplatesPage (kısmi: butonlar)
+
+**Kendine özgü kurallar.** Satırdaki çöp kutusu ikonlu iki tık; silahlıyken
+onay ikonu ve "Confirm delete template <ad>" adı/ipucu.
+
+### AnnouncementsPage (kısmi: butonlar)
+
+**Kendine özgü kurallar.** Düzenleyicide "Delete" iki tık ("Confirm
+delete"). Listede satır menüsünün "Delete"i düzenleyiciyi silahlı açar
+(`?delete=1`, `useConfirmClick(fn, true)`); 3,2 sn içinde basılmazsa söner.
+Silahlıyken Publish gizlenir, Save kapanır.
+
+### LocationsSettingsPage (kısmi: butonlar)
+
+**Kendine özgü kurallar.** Lokasyon çekmecesinde "Delete location" iki tık
+("Confirm delete"), ayrı panel yok. Jobs, Shift types ve Shift labels'ta
+silme uyarı paneli açar (etki listesi); o panel bilerek kalıyor.
+
+### SupportSettingsPage (kısmi: butonlar)
+
+**Kendine özgü kurallar.** "Email support" ve "Copy diagnostics" yeşil.
 
 ### SchedulingSettingsPage
 

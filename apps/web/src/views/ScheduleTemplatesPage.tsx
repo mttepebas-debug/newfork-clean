@@ -1,5 +1,5 @@
 import type { ScheduleTemplateSummary } from "@newfork/shared/schedule";
-import { useToast } from "@newfork/ui";
+import { ConfirmButton, useToast } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -41,9 +41,6 @@ export default function ScheduleTemplatesPage() {
   const [renameValue, setRenameValue] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
-  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
-    null,
-  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const workspaceId = context?.workspace.id ?? null;
   const templatesQuery = useQuery({
@@ -109,7 +106,6 @@ export default function ScheduleTemplatesPage() {
       });
     } finally {
       setDeletingId(null);
-      setConfirmingDeleteId(null);
     }
   }
 
@@ -168,7 +164,6 @@ export default function ScheduleTemplatesPage() {
             </thead>
             <tbody>
               {templates.map((template) => {
-                const confirming = confirmingDeleteId === template.id;
                 const deleting = deletingId === template.id;
                 return (
                   <tr key={template.id} data-template-row>
@@ -191,33 +186,21 @@ export default function ScheduleTemplatesPage() {
                           >
                             <Pencil size={15} aria-hidden />
                           </button>
-                          <button
-                            type="button"
+                          <ConfirmButton
+                            unstyled
                             className="icon-button danger"
-                            aria-label={
-                              confirming
-                                ? `Confirm delete template ${template.name}`
-                                : `Delete template ${template.name}`
-                            }
+                            aria-label={`Delete template ${template.name}`}
+                            confirmName={`Confirm delete template ${template.name}`}
                             disabled={deleting}
-                            title={confirming ? "Click again to delete" : undefined}
-                            data-confirming={confirming}
-                            onClick={() => {
-                              if (confirming) {
-                                void confirmDelete(template);
-                                return;
-                              }
-                              setConfirmingDeleteId(template.id);
-                            }}
+                            confirmLabel={<CheckCircle2 size={15} aria-hidden />}
+                            onConfirm={() => void confirmDelete(template)}
                           >
                             {deleting ? (
                               <Loader2 size={15} aria-hidden />
-                            ) : confirming ? (
-                              <CheckCircle2 size={15} aria-hidden />
                             ) : (
                               <Trash2 size={15} aria-hidden />
                             )}
-                          </button>
+                          </ConfirmButton>
                         </div>
                       </td>
                     ) : null}

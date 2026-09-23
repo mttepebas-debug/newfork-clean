@@ -589,7 +589,7 @@ describe("OwnerOnboardingPage", () => {
     );
     expect(setDepartmentArchived).not.toHaveBeenCalled();
     fireEvent.click(
-      screen.getByRole("button", { name: "Click again, takes 1 job with it" }),
+      screen.getByRole("button", { name: "Confirm remove, takes 1 job with it" }),
     );
 
     await waitFor(() =>
@@ -842,7 +842,7 @@ describe("OwnerOnboardingPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Clear draft" }));
     fireEvent.click(
-      screen.getByRole("button", { name: "Click again to clear" }),
+      screen.getByRole("button", { name: "Confirm clear" }),
     );
     fireEvent.click(screen.getByRole("button", { name: /finish setup/i }));
 
@@ -868,7 +868,7 @@ describe("OwnerOnboardingPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start over" }));
     expect(resetOwnerOnboarding).not.toHaveBeenCalled();
     fireEvent.click(
-      screen.getByRole("button", { name: "Click again to start over" }),
+      screen.getByRole("button", { name: "Confirm start over" }),
     );
 
     await waitFor(() =>

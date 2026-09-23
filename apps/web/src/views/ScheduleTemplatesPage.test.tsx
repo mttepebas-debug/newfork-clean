@@ -20,7 +20,8 @@ vi.mock("../auth/AuthContext", () => ({
   }),
 }));
 
-vi.mock("@newfork/ui", () => ({
+vi.mock("@newfork/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@newfork/ui")>()),
   useToast: () => ({
     success: vi.fn(),
     error: vi.fn(),

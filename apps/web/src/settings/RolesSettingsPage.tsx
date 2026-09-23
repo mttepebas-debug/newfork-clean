@@ -620,7 +620,7 @@ function RoleEditor({
                     : deleteArmed
                       ? deleteBlocked
                         ? "Role has dependencies"
-                        : "Click again to delete"
+                        : "Confirm delete"
                       : "Delete role"}
                 </Button>
                 {deleteHint ? (

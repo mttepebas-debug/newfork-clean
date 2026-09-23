@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
+import { useConfirmClick } from "@newfork/ui";
 import { deleteJob } from "./jobs-management-data";
 import { organizationRequest } from "./organization-data";
 
@@ -88,6 +89,10 @@ export function CatalogDeleteAction({
     window.addEventListener("keydown", escape, true);
     return () => window.removeEventListener("keydown", escape, true);
   }, [confirming, deletion.isPending, onLockChange]);
+  const inlineConfirm = useConfirmClick(() => {
+    onLockChange(true);
+    deletion.mutate(undefined, { onError: () => onLockChange(false) });
+  });
   function dismiss() {
     setConfirming(false);
     onLockChange(false);
@@ -96,23 +101,15 @@ export function CatalogDeleteAction({
   }
   if (inline) {
     return (
-      <div className="catalog-delete-action" data-confirming={confirming}>
+      <div className="catalog-delete-action" data-confirming={inlineConfirm.armed}>
         <button
-          ref={trigger}
           type="button"
-          className={confirming ? "catalog-delete-confirm-button" : "catalog-delete-trigger"}
+          className={inlineConfirm.armed ? "catalog-delete-confirm-button" : "catalog-delete-trigger"}
           disabled={disabled || deletion.isPending}
-          onBlur={() => {
-            if (!deletion.isPending) setConfirming(false);
-          }}
-          onClick={() => {
-            if (!confirming) return setConfirming(true);
-            onLockChange(true);
-            deletion.mutate(undefined, { onError: () => onLockChange(false) });
-          }}
+          {...inlineConfirm.confirmProps}
         >
           <Trash2 size={14} aria-hidden />{" "}
-          {deletion.isPending ? "Deleting…" : confirming ? "Confirm delete" : `Delete ${nouns[kind]}`}
+          {deletion.isPending ? "Deleting…" : inlineConfirm.armed ? "Confirm delete" : `Delete ${nouns[kind]}`}
         </button>
         {deletion.isError && <span role="alert">{deletion.error.message}</span>}
       </div>

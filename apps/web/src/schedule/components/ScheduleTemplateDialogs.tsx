@@ -4,6 +4,7 @@ import type {
   ScheduleReadModel,
   ScheduleTemplateSummary,
 } from "@newfork/shared/schedule";
+import { ConfirmButton } from "@newfork/ui";
 import { Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -162,17 +163,19 @@ export function ScheduleTemplatesDialog({
                 >
                   Rename
                 </button>
-                <button
-                  type="button"
+                <ConfirmButton
+                  unstyled
                   className="danger-text"
                   disabled={pending}
-                  onClick={() =>
-                    window.confirm(`Delete ${selected.name}?`) &&
-                    void run(() => onDelete(selected))
+                  confirmLabel={
+                    <>
+                      <Trash2 size={14} /> Confirm delete
+                    </>
                   }
+                  onConfirm={() => void run(() => onDelete(selected))}
                 >
                   <Trash2 size={14} /> Delete
-                </button>
+                </ConfirmButton>
               </div>
               {session ? (
                 <>

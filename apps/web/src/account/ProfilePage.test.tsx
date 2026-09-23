@@ -128,6 +128,7 @@ describe("ProfilePage", () => {
     );
     expect(uploadAccountAvatar).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
     expect(removeAccountAvatar).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", null,

@@ -367,7 +367,6 @@ describe("WorkspacesPage", () => {
     await waitFor(() => expect(listAccountWorkspaces).toHaveBeenCalledTimes(1));
     expect(screen.getByText("Meyhouse")).toBeTruthy();
     expect(screen.getByText("West Room")).toBeTruthy();
-    expect(screen.getByText("Current")).toBeTruthy();
     expect(screen.getByLabelText("Current path").textContent).toBe(
       "/account/workspaces",
     );
@@ -379,8 +378,8 @@ describe("WorkspacesPage", () => {
     const row = open.closest<HTMLElement>("[role='listitem']")!;
     expect(row.getAttribute("aria-current")).toBe("true");
     expect(screen.getByRole("button", { name: "Open West Room" }).closest("[role='listitem']")?.getAttribute("aria-current")).toBeNull();
-    // The marker is a badge beside the role, not a control that takes Open's place.
-    expect(within(row).getByText("Current")).toBeTruthy();
+    // The tint and aria-current mark it; there is no separate "Current" badge.
+    expect(within(row).queryByText("Current")).toBeNull();
     expect(within(row).getByText("Default")).toBeTruthy();
     await openWorkspaceActions();
     expect(screen.getByRole("menuitem", { name: "Default workspace" })).toHaveProperty("disabled", true);

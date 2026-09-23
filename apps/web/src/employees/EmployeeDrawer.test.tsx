@@ -880,7 +880,7 @@ describe("EmployeeDrawer", () => {
     );
     expect(revokeEmployeeInvitation).not.toHaveBeenCalled();
     fireEvent.click(
-      await screen.findByRole("button", { name: /Click again to revoke/ }),
+      await screen.findByRole("button", { name: /Confirm revoke/ }),
     );
 
     await waitFor(() =>
@@ -955,7 +955,7 @@ describe("EmployeeDrawer", () => {
     fireEvent.click(removePhoto);
     expect(removeEmployeeAvatar).not.toHaveBeenCalled();
     fireEvent.click(
-      await screen.findByRole("button", { name: /Click again to remove/ }),
+      await screen.findByRole("button", { name: /Confirm remove/ }),
     );
 
     await waitFor(() =>

@@ -2,7 +2,7 @@ import {
   normalizeAccountPhone,
   type EmploymentContactRecord,
 } from "@newfork/shared";
-import { Button } from "@newfork/ui";
+import { Button, ConfirmButton } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -167,14 +167,14 @@ export default function ProfilePage() {
               <AccountAvatar globalUrl={avatarUrl} className="account-avatar-large" name={displayName} />
               <div>
                 <div className="account-button-row">
-                  <Button id="profile-photo-upload-trigger" type="button" className="secondary-button" disabled={saving} onClick={() => fileInput.current?.click()}>
+                  <Button id="profile-photo-upload-trigger" type="button" disabled={saving} onClick={() => fileInput.current?.click()}>
                     <Camera size={15} aria-hidden /> {avatarUrl ? "Replace" : "Upload"}
                   </Button>
-                  <Button
-                    type="button"
-                    className="secondary-button danger-button"
+                  <ConfirmButton
+                    className="danger-button"
                     disabled={saving || (!avatarObjectPath && !draftFile)}
-                    onClick={() => {
+                    confirmLabel="Confirm remove"
+                    onConfirm={() => {
                       setDraftFile(null);
                       setAvatarObjectPath(null);
                       setAvatarUrl(null);
@@ -182,7 +182,7 @@ export default function ProfilePage() {
                     }}
                   >
                     <Trash2 size={15} aria-hidden /> Remove
-                  </Button>
+                  </ConfirmButton>
                 </div>
                 <span className="field-help">JPG, PNG or WebP · up to 5 MB</span>
               </div>
