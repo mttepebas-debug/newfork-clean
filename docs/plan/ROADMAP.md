@@ -4,7 +4,8 @@
 
 Faz planı ve gerekçe: [MVP-PLAN](MVP-PLAN.md). Durum her task'ın kendi dosyasındadır (`tasks/`). Bu dosya yalnızca sıra ve hedef değişince güncellenir.
 
-## Sıradaki (F0 kalanı → FJ → F1)
+## Sıradaki (FOUNDATION-B → sonra F0 kalanı → FJ → F1)
+0. **FOUNDATION-B — Yol B′ (kullanıcı kararı 2026-09-23; hedefe kadar durmadan):** yetki çekirdeği tek yerde, kararlar tek yerde, ikiz sistemsiz, her gönderimde otomatik kanıtlanan bir temel. Plan, hedef ve aşamalar: [FOUNDATION-B](tasks/FOUNDATION-B.md). Program boyunca MVP özellik işi durur; aşağıdaki maddeler programın dilimlerinde ele alınır ya da program bitince sürer. Başka oturumlar yetki, RLS, izin, `*_service` giriş noktası ya da test fixture'ına dokunan iş yapmaz.
 1. **FJ Katılım zinciri — ilk sıra (kullanıcı kararı 2026-09-19).** Bir kullanıcının bir business'a bağlanma yolunun tamamı tek kapıda kapanır: giriş, davet (kabul/ret/çoklu davet/revoke), employee ve owner onboarding, yarıda kalma, çakışma durumları (pending davet varken business kurma, kurulumu bitmemiş business varken davet, aktif business varken davet), belge adımı, business kapatma/devir/suspend, hesap silme. Durum matrisi ve dilimler: [JOIN-001](tasks/JOIN-001.md). Sıra: J1 salt okunur durum turu → J2/J3/J4 → J5/J6/J7; UI-PRE-001 D2-D5 paralel yürür.
 2. **F0 kalanı (FJ ile paralel, kullanıcı kapısı):** OPS-015 hosted push, hosted smoke (OPS-010) + Vercel Authentication'ı geri açma — ikisi de FJ işi bittikten sonra anlamlı. Beklemede: THEME-005 (buton rolleri), UI-LAB-001 (kapatıldı).
 3. **F1 ilk grup (FJ kapandıktan sonra):** UI-DOC-001, BL-038, BL-048, REQ-AUDIT.
