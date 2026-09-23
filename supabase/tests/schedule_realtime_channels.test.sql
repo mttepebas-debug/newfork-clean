@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(10);
 
 -- The Schedule's live-update channels are private (FOUNDATION-B stage 3).
 -- Realtime lets a browser join a private channel only if it could read a
@@ -67,6 +67,16 @@ select ok(
 select ok(
   pg_temp.sends('rt:ayse', 'schedule:presence:' || tests.id('rt') || ':' || tests.id('rt:K') || ':' || tests.week(0), 'presence'),
   'and can say she is looking'
+);
+-- Realtime lets a browser join only if it could read a broadcast on the topic,
+-- even on a channel used for presence alone.
+select ok(
+  pg_temp.receives('rt:ayse', 'schedule:presence:' || tests.id('rt') || ':' || tests.id('rt:K') || ':' || tests.week(0), 'broadcast'),
+  'so she can join the channel at all'
+);
+select ok(
+  not pg_temp.receives('rt:mehmet', 'schedule:presence:' || tests.id('rt') || ':' || tests.id('rt:K') || ':' || tests.week(0), 'broadcast'),
+  'a manager of another location cannot join it'
 );
 select ok(
   not pg_temp.receives('rt:mehmet', 'schedule:presence:' || tests.id('rt') || ':' || tests.id('rt:K') || ':' || tests.week(0), 'presence'),
