@@ -251,6 +251,14 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
        'insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note, affects_scheduling, location_ids, location_id) values (%L, ''Probe'', ''event'', %L, %L, ''none'', '''', false, %L::uuid[], %L)',
        $2, tests.week(0), tests.week(0), coalesce(array_remove(array[$3], null), '{}'), $3)) > 0$$);
 
+-- Direct browser reads of the two sensitive tables the browser can still read.
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
+  ('read.membership', 'person', null, false, true,
+   $$select tests.as_browser($1, format('select 1 from public.workspace_memberships where workspace_id = %L and user_id = %L',
+       $2, (select e.user_id from public.employee_profiles e where e.id = $3))) > 0$$),
+  ('read.audit', 'workspace', null, false, true,
+   $$select tests.as_browser($1, format('select 1 from public.audit_events where workspace_id = %L', $2)) > 0$$);
+
 -- The consistency layer: the older helpers that each answer "may this person
 -- manage this location?" on their own. They must all give the same answer as
 -- the rule, a blank location included. Stage 4 replaces them with the core.
@@ -306,6 +314,10 @@ begin
   -- Nobody reaches into another workspace, and only active members act at all;
   -- somebody who has not finished onboarding only finishes it.
   if p.tenant <> 'm' or t.tenant <> 'm' then return 'deny'; end if;
+  -- Whoever has a membership, in whatever state, can read their own row.
+  if action_key = 'read.membership' and is_self then
+    return case when p.status = 'invited' then 'deny' else 'allow' end;
+  end if;
   if p.status = 'restricted' and a.restricted_ok then return 'allow'; end if;
   if p.status <> 'active' then return 'deny'; end if;
   if a.member and t.holder is not null and not is_self then return 'deny'; end if;
@@ -413,6 +425,13 @@ begin
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;
 
+  when 'read.membership' then
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when shares then 'allow' else 'deny' end;
+
+  when 'read.audit' then
+    return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
+
   when 'announcement.write', 'important_date.write' then
     -- Managers write for their own locations; the whole organization is admin
     -- and owner.
@@ -459,6 +478,8 @@ insert into known_gap values
    'a manager can decide a manager or admin time-off request at their location; requests go one rank up (stage 6, time off)'),
   ('restricted-no-notifications', '{aydan}', '{notifications.read_own}', null,
    'somebody who has not finished onboarding cannot open their own notifications (stage 6, onboarding)'),
+  ('membership-rows-open', '{manager,employee}', '{read.membership}', null,
+   'any member can read every membership row in the workspace from the browser: every role and status, across locations (stage 6, employees)'),
   ('legacy-blank-location', null,
    '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish,legacy.communication_capability}', '{none}',
    'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2 (stage 4)'),

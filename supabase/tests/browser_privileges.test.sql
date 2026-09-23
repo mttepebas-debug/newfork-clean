@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(9);
 
 -- What a browser session (anon or authenticated) may do directly, read from the
 -- live catalog. Every other call goes through the API as service_role. A new
@@ -84,6 +84,27 @@ select set_eq(
     'schedule_logo_scale', 'schedule_logo_offset_x', 'schedule_logo_offset_y', 'updated_at'
   ],
   'the browser updates only the workspace name and logo columns'
+);
+
+-- ponytail: the web reads only the catalog tables, the account's own rows and
+-- roles directly; the rest of this list is either needed by RLS policies and
+-- realtime or unused. Stage 6 trims it; until then it cannot grow.
+select set_eq(
+  $$
+    select table_name
+    from information_schema.role_table_grants
+    where table_schema = 'public' and grantee in ('anon', 'authenticated', 'PUBLIC') and privilege_type = 'SELECT'
+  $$,
+  array[
+    'account_notification_items', 'account_organization_history', 'audit_events', 'departments', 'document_types',
+    'employee_onboarding_settings', 'important_dates', 'jobs', 'locations', 'membership_location_scopes',
+    'permissions', 'shift_labels', 'shift_types', 'signature_retention_policies', 'signature_template_versions',
+    'signature_templates', 'user_preferences', 'user_profiles', 'user_workspace_preferences',
+    'workspace_closure_requests', 'workspace_entitlements', 'workspace_memberships', 'workspace_onboarding',
+    'workspace_ownership_transfers', 'workspace_role_permissions', 'workspace_roles',
+    'workspace_scheduling_settings', 'workspaces'
+  ],
+  'the browser reads only the allowed tables'
 );
 
 select ok(
