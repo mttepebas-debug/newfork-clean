@@ -3,9 +3,11 @@ create extension if not exists pgtap with schema extensions;
 select no_plan();
 
 -- All fixtures roll back, independent of seed data and the user's Schedule.
+-- The edit is of a draft: only a draft is locked (FOUNDATION-B 3b), so only
+-- another person opening the same draft meets the lease.
 create temp table lease_fixture as select
   gen_random_uuid() w, gen_random_uuid() actor, gen_random_uuid() other_actor,
-  gen_random_uuid() outsider, gen_random_uuid() loc, gen_random_uuid() job,
+  gen_random_uuid() outsider, gen_random_uuid() loc, gen_random_uuid() job, gen_random_uuid() draft,
   current_date - extract(isodow from current_date)::integer + 1 + 700 week,
   null::uuid session, null::jsonb result, null::jsonb snapshot;
 insert into auth.users(id,email)
@@ -21,9 +23,11 @@ select w from lease_fixture on conflict do nothing;
 insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
 select 'T00037', loc,w,'Lease location','1 Test Street','Test City','CA','90001','America/Los_Angeles' from lease_fixture;
 insert into public.jobs(id,workspace_id,name) select job,w,'Lease job' from lease_fixture;
+insert into public.schedule_drafts(id,workspace_id,week_start,name,created_by,updated_by,location_ids)
+select draft,w,week,'Lease draft',actor,actor,array[loc] from lease_fixture;
 grant all on lease_fixture to service_role;
 set local role service_role;
-update lease_fixture set result=public.acquire_schedule_edit_session_service(actor,w,week,'blank',null);
+update lease_fixture set result=public.acquire_schedule_edit_session_service(actor,w,week,'draft',draft);
 update lease_fixture set session=(result->'session'->>'id')::uuid;
 select is(result->>'status','acquired','initial acquire succeeds') from lease_fixture;
 set local role postgres;
@@ -48,14 +52,14 @@ select is((result->'session'->>'revision')::integer,7,'resume preserves revision
 select ok((result->'session'->>'dirty')::boolean,'resume preserves unsaved state') from lease_fixture;
 select is((select to_jsonb(s) from public.schedule_edit_session_shifts s where s.session_id=f.session),snapshot,'resume preserves complete working shift') from lease_fixture f;
 select lives_ok($$select public.heartbeat_schedule_edit_session_service(actor,w,session) from lease_fixture$$,'heartbeat works immediately after expired resume');
-select is(public.acquire_schedule_edit_session_service(other_actor,w,week,'blank',null)->>'status','conflict','another manager cannot steal renewed lease') from lease_fixture;
+select is(public.acquire_schedule_edit_session_service(other_actor,w,week,'draft',draft)->>'status','conflict','another manager cannot open the draft while the renewed lease holds it') from lease_fixture;
 select throws_ok($$select public.acquire_schedule_edit_session_service(outsider,w,week,'blank',null) from lease_fixture$$,'42501','schedule manage access denied','unauthorized actor cannot resume');
 set local role postgres;
 update public.schedule_edit_sessions set expires_at=now()-interval '1 minute' where id=(select session from lease_fixture);
 set local role service_role;
-update lease_fixture set result=public.acquire_schedule_edit_session_service(other_actor,w,week,'blank',null);
-select is(result->>'status','acquired_after_recovery','another holder still recovers an expired dirty session') from lease_fixture;
+update lease_fixture set result=public.acquire_schedule_edit_session_service(other_actor,w,week,'draft',draft);
+select is(result->>'status','acquired_after_recovery','another manager opening the draft recovers an expired dirty edit of it') from lease_fixture;
 select is((select count(*)::integer from public.schedule_draft_shifts s where s.draft_id=(result->>'recovered_draft_id')::uuid),1,'recovery preserves unsaved shift') from lease_fixture;
-select is(public.acquire_schedule_edit_session_service(actor,w,week,'blank',null)->>'status','conflict','former holder cannot resume after recovery by another manager') from lease_fixture;
+select is(public.acquire_schedule_edit_session_service(actor,w,week,'draft',draft)->>'status','conflict','former holder cannot take the draft back while another manager edits it') from lease_fixture;
 select * from finish();
 rollback;
