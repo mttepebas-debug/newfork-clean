@@ -45,6 +45,10 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.109.0 # pinned: image versions and privilege defaults follow the CLI
+      # setup-cli points the CLI at ghcr.io, which has been refusing pulls
+      # (toomanyrequests, signed in or not); Amazon's public registry carries the
+      # same Supabase images. Every later step pulls from there, pg_prove included.
+      - run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=public.ecr.aws" >> "$GITHUB_ENV"
       - name: Green list only grows
         run: |
           base="${{ github.event.pull_request.base.sha || github.event.before }}"
@@ -76,6 +80,10 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.109.0
+      # setup-cli points the CLI at ghcr.io, which has been refusing pulls
+      # (toomanyrequests, signed in or not); Amazon's public registry carries the
+      # same Supabase images. Every later step pulls from there, pg_prove included.
+      - run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=public.ecr.aws" >> "$GITHUB_ENV"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @newfork/shared --filter @newfork/ui build
       - name: Start Supabase (database, auth, gateway)
