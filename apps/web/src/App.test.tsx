@@ -5318,27 +5318,6 @@ describe("App", () => {
     expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
   });
 
-  it.each(["/kiosk", "/app/time-entries", "/app/settings/kiosk"])(
-    "keeps post-MVP route %s closed while postMvpSurfaces is false",
-    async (path) => {
-      window.history.pushState({}, "", path);
-      render(<App />);
-
-      expect(
-        await screen.findByRole("heading", {
-          name: "Sign in",
-        }),
-      ).toBeTruthy();
-      await signInAs("owner");
-
-      await waitFor(() =>
-        expect(window.location.pathname).not.toBe(path),
-      );
-      expect(window.location.pathname.startsWith("/app")).toBe(true);
-      expect(screen.queryByRole("link", { name: "Kiosk" })).toBeNull();
-    },
-  );
-
   it("redirects employee-only users away from the manager Schedule route", async () => {
     window.history.pushState({}, "", "/app/schedule");
     render(<App />);

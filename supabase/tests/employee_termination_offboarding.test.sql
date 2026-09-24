@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(21);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -96,36 +96,17 @@ insert into public.schedule_published_shifts (
   ('9a000000-0000-4000-8000-000000000001', '2a000000-0000-4000-8000-000000000001', '4a000000-0000-4000-8000-000000000001', '8a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001', '6a000000-0000-4000-8000-000000000001', '2026-09-01', '10:00', '11:00', '91000000-0000-4000-8000-000000000001'),
   ('9a000000-0000-4000-8000-000000000002', '2a000000-0000-4000-8000-000000000001', '4a000000-0000-4000-8000-000000000001', '8a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001', '6a000000-0000-4000-8000-000000000001', '2026-09-01', '14:00', '15:00', '91000000-0000-4000-8000-000000000002');
 
-insert into public.time_sessions (
-  id, workspace_id, employee_id, location_id, capture_state, started_at,
-  effective_started_at, last_event_at, created_by
-) values (
-  'aa000000-0000-4000-8000-000000000001', '2a000000-0000-4000-8000-000000000001',
-  '7a000000-0000-4000-8000-000000000001', '4a000000-0000-4000-8000-000000000001',
-  'on_break', '2026-09-01 17:00:00+00', '2026-09-01 17:00:00+00',
-  '2026-09-01 18:00:00+00', '1a000000-0000-4000-8000-000000000001'
-);
-insert into public.time_sessions (
-  id, workspace_id, employee_id, location_id, capture_state, started_at,
-  effective_started_at, last_event_at, created_by
-) values (
-  'aa000000-0000-4000-8000-000000000002', '2a000000-0000-4000-8000-000000000001',
-  '7a000000-0000-4000-8000-000000000002', '4a000000-0000-4000-8000-000000000001',
-  'open', '2026-09-01 17:00:00+00', '2026-09-01 17:00:00+00',
-  '2026-09-01 17:00:00+00', '1a000000-0000-4000-8000-000000000001'
-);
-
 set local role service_role;
 
 select throws_ok(
   $$select public.terminate_employee_service(
     '1a000000-0000-4000-8000-000000000001',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001',
-    '2026-09-01 12:00', 'America/Los_Angeles', 'block', 'Employment ended',
+    '2026-09-01 12:00', 'Mars/Olympus_Mons', 'Employment ended',
     'ba000000-0000-4000-8000-000000000001'
   )$$,
-  '23514', 'active time session requires close_at or keep_open decision',
-  'block fails closed when an active time session exists'
+  '22023', 'invalid worksite timezone',
+  'a termination that cannot complete changes nothing'
 );
 set local role postgres;
 select is((select archived_at from public.employee_profiles where id = '7a000000-0000-4000-8000-000000000001'), null, 'failed termination leaves employee active');
@@ -136,7 +117,7 @@ select lives_ok(
   $$select public.terminate_employee_service(
     '1a000000-0000-4000-8000-000000000001',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001',
-    '2026-09-01 12:00', 'America/Los_Angeles', 'close_at', 'Employment ended',
+    '2026-09-01 12:00', 'America/Los_Angeles', 'Employment ended',
     'ba000000-0000-4000-8000-000000000002'
   )$$,
   'owner terminates the employee atomically'
@@ -145,8 +126,6 @@ set local role postgres;
 select is((select archived_at from public.employee_profiles where id = '7a000000-0000-4000-8000-000000000001'), '2026-09-01 19:00:00+00'::timestamptz, 'worksite-local effective time is stored as an instant');
 select is((select status::text from public.workspace_memberships where id = '3a000000-0000-4000-8000-000000000002'), 'suspended', 'linked workspace access is suspended');
 select is((select count(*)::integer from public.employee_access_snapshots where employee_id = '7a000000-0000-4000-8000-000000000001'), 1, 'access restoration snapshot is retained');
-select is((select capture_state::text from public.time_sessions where id = 'aa000000-0000-4000-8000-000000000001'), 'complete', 'on-break session is closed');
-select is((select count(*)::integer from public.time_events where session_id = 'aa000000-0000-4000-8000-000000000001' and event_type in ('break_end', 'clock_out')), 2, 'closing an on-break session records both transitions');
 select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000001'), '7a000000-0000-4000-8000-000000000001'::uuid, 'same-day shift before effective instant stays assigned');
 select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000002'), null, 'same-day shift after effective instant becomes open');
 select is((select count(*)::integer from public.employee_offboarding_shift_actions), 1, 'released shift has durable audit detail');
@@ -160,7 +139,7 @@ select lives_ok(
   $$select public.terminate_employee_service(
     '1a000000-0000-4000-8000-000000000001',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001',
-    '2026-09-01 12:00', 'America/Los_Angeles', 'close_at', 'Employment ended',
+    '2026-09-01 12:00', 'America/Los_Angeles', 'Employment ended',
     'ba000000-0000-4000-8000-000000000002'
   )$$,
   'same idempotency key replays safely'
@@ -174,7 +153,7 @@ select throws_ok(
   $$select public.terminate_employee_service(
     '1a000000-0000-4000-8000-000000000001',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001',
-    '2026-09-01 12:01', 'America/Los_Angeles', 'close_at', 'Employment ended',
+    '2026-09-01 12:01', 'America/Los_Angeles', 'Employment ended',
     'ba000000-0000-4000-8000-000000000002'
   )$$,
   '23505', 'idempotency key payload conflict', 'idempotency key cannot be reused for another payload'
@@ -184,21 +163,20 @@ select lives_ok(
   $$select public.terminate_employee_service(
     '1a000000-0000-4000-8000-000000000001',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000002',
-    '2026-09-01 12:00', 'America/Los_Angeles', 'keep_open', 'Manager will review time',
+    '2026-09-01 12:00', 'America/Los_Angeles', 'Position ended',
     'ba000000-0000-4000-8000-000000000003'
   )$$,
-  'owner can explicitly keep an active time session open'
+  'owner terminates a second employee'
 );
 set local role postgres;
-select isnt((select archived_at from public.employee_profiles where id = '7a000000-0000-4000-8000-000000000002'), null, 'keep-open termination still archives the employee');
-select is((select capture_state::text from public.time_sessions where id = 'aa000000-0000-4000-8000-000000000002'), 'open', 'keep-open decision preserves the active session for review');
+select isnt((select archived_at from public.employee_profiles where id = '7a000000-0000-4000-8000-000000000002'), null, 'the second termination archives that employee');
 
 set local role service_role;
 select throws_ok(
   $$select public.terminate_employee_service(
     '1a000000-0000-4000-8000-000000000003',
     '2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000002',
-    '2026-09-01 12:00', 'America/Los_Angeles', 'keep_open', 'Cross tenant attempt',
+    '2026-09-01 12:00', 'America/Los_Angeles', 'Cross tenant attempt',
     'ba000000-0000-4000-8000-000000000004'
   )$$,
   '42501', 'employee archive access required', 'cross-tenant termination is denied'

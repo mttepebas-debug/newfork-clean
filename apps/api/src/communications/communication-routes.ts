@@ -43,7 +43,6 @@ export const inboxQuery = z.object({
       "schedule",
       "security",
       "requests",
-      "time_tracking",
       "payroll",
       "people",
       "communications",

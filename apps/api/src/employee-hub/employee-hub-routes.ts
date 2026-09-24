@@ -2,8 +2,6 @@ import {
   employeePersonalTaskInputSchema,
   employeeRequestActionInputSchema,
   employeeShiftRequestInputSchema,
-  employeeTimeCaptureInputSchema,
-  employeeTimeCorrectionInputSchema,
   employeeTimeOffInputSchema,
 } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
@@ -18,7 +16,6 @@ import { legacyAvailabilityGone } from "../availability/availability-retirement"
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 const rangeQuery = z.object({ from: z.string().date(), to: z.string().date() });
 const scheduleBoardQuery = z.object({ date: z.string().date() });
-const idempotencyKeySchema = z.string().uuid();
 
 export function registerEmployeeHubRoutes(
   app: FastifyInstance,
@@ -249,117 +246,6 @@ export function registerEmployeeHubRoutes(
             actorUserId: context.userId,
             workspaceId: params.data.workspaceId,
             action: body.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
-    },
-  );
-  app.get(
-    "/v1/workspaces/:workspaceId/employee-hub/time-tracking",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      if (!params.success)
-        return reply.status(400).send({ error: "Valid workspace required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
-      if (!context.permissions.includes("time.read.own"))
-        return reply.status(403).send({ error: "Own time access required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Employee Hub service is not configured" });
-      try {
-        return reply.send(
-          await options.service.getTimeTracking({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
-    },
-  );
-  app.post(
-    "/v1/workspaces/:workspaceId/employee-hub/time-tracking/events",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      const body = employeeTimeCaptureInputSchema.safeParse(request.body);
-      const idempotencyKey = idempotencyKeySchema.safeParse(
-        request.headers["idempotency-key"],
-      );
-      if (!params.success || !body.success || !idempotencyKey.success)
-        return reply.status(400).send({
-          error: "Valid time event and Idempotency-Key required",
-        });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
-      if (!context.permissions.includes("time.capture.own"))
-        return reply.status(403).send({ error: "Own time capture required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Employee Hub service is not configured" });
-      try {
-        return reply.send(
-          await options.service.captureTimeEvent({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            event: body.data,
-            idempotencyKey: idempotencyKey.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
-    },
-  );
-  app.post(
-    "/v1/workspaces/:workspaceId/employee-hub/time-tracking/corrections",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      const body = employeeTimeCorrectionInputSchema.safeParse(request.body);
-      const idempotencyKey = idempotencyKeySchema.safeParse(
-        request.headers["idempotency-key"],
-      );
-      if (!params.success || !body.success || !idempotencyKey.success)
-        return reply.status(400).send({
-          error: "Valid time correction and Idempotency-Key required",
-        });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
-      if (!context.permissions.includes("time.correction.request.own"))
-        return reply
-          .status(403)
-          .send({ error: "Own time correction permission required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Employee Hub service is not configured" });
-      try {
-        return reply.status(201).send(
-          await options.service.requestTimeCorrection({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            correction: body.data,
-            idempotencyKey: idempotencyKey.data,
           }),
         );
       } catch (error) {

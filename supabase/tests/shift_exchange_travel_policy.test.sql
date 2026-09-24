@@ -4,14 +4,6 @@ create extension if not exists pgtap with schema extensions;
 
 select no_plan();
 
-create function pg_temp.clock_digest() returns jsonb language sql as $$
-select jsonb_build_object(
- 'sessions',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id),'[]'::jsonb)::text) from public.time_sessions t),
- 'events',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id),'[]'::jsonb)::text) from public.time_events t),
- 'manual',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id),'[]'::jsonb)::text) from public.time_manual_entries t),
- 'amendments',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id),'[]'::jsonb)::text) from public.time_amendments t));
-$$;
-create temp table lu_clock_before as select pg_temp.clock_digest() digest;
 
 
 create function pg_temp.run(action text,payload jsonb) returns jsonb language sql as $$
@@ -117,7 +109,6 @@ select is((select string_agg(start_time::text||'-'||end_time::text,',' order by 
 select is((select count(*)::int from public.schedule_published_shifts where scheduled_date='2030-01-07' and location_id='ada10000-0000-4000-8000-000000000001' and employee_id is null and (start_time,end_time) in (('09:30'::time,'10:00'::time),('12:00'::time,'12:30'::time))),2,'travel gaps remain open in Schedule');
 select pg_temp.settings('{"minimum_travel_minutes":60}');
 select is(pg_temp.run('apply',jsonb_build_object('operation',op,'fingerprint',preview->>'fingerprint','idempotency_key','ada00000-0000-4000-8000-000000000002'))->>'event_id',result->>'event_id','successful retry remains idempotent after policy changes') from lu_test;
-select is(pg_temp.clock_digest()::text,(select digest::text from lu_clock_before),'policy and staffing preserve actual time records');
 
 -- Apply the shared minimum to both sides of a real partial swap, not just preview.
 create function pg_temp.apply_op(op jsonb) returns jsonb language plpgsql as $$
@@ -143,6 +134,5 @@ select is((select employee_id from public.schedule_published_shifts where id=a),
 select is((select employee_id from public.schedule_published_shifts where id=b),'ada50000-0000-4000-8000-000000000001'::uuid,day||': second selected interval changes owner atomically') from travel_swap;
 select is((select count(*)::integer from public.schedule_published_shifts where scheduled_date=day and location_id in('ada10000-0000-4000-8000-000000000001','ada10000-0000-4000-8000-000000000002') and employee_id is null and ((start_time=('12:00'::time-make_interval(mins=>effective)) and end_time='12:00') or (start_time='15:00' and end_time=('15:00'::time+make_interval(mins=>effective))))),4,day||': both locations contain four exact open travel gaps') from travel_swap;
 select is((select count(*)::integer from public.schedule_published_shifts where scheduled_date=day and ((location_id='ada10000-0000-4000-8000-000000000001' and employee_id='ada50000-0000-4000-8000-000000000001') or (location_id='ada10000-0000-4000-8000-000000000002' and employee_id='ada50000-0000-4000-8000-000000000002')) and ((start_time='09:00' and end_time=('12:00'::time-make_interval(mins=>effective))) or (start_time=('15:00'::time+make_interval(mins=>effective)) and end_time='17:00'))),4,day||': four residual working intervals retain original owners') from travel_swap;
-select is(pg_temp.clock_digest()::text,(select digest::text from lu_clock_before),'all shared travel swaps preserve time records');
 select * from finish();
 rollback;

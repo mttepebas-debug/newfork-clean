@@ -6,9 +6,7 @@ import {
   accountPendingInvitationSchema,
   announcementListSchema,
   appActionUrlSchema,
-  applyTimeAmendmentInputSchema,
   canAccessWorkspace,
-  captureTimeEventInputSchema,
   departmentInputSchema,
   documentTypeInputSchema,
   employeeAvailabilityInputSchema,
@@ -42,7 +40,6 @@ import {
   shiftTypeInputSchema,
   signatureRetentionPolicyInputSchema,
   signatureTemplateDraftInputSchema,
-  timeSessionSchema,
 } from "./index";
 
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
@@ -825,53 +822,6 @@ describe("shared contracts", () => {
   it("keeps legacy payroll and compliance domains outside the clean rebuild baseline", () => {
     expect(productBoundary.forbiddenLegacyDomains).toContain("payroll");
     expect(productBoundary.forbiddenLegacyDomains).toContain("compliance");
-  });
-
-  it("validates exact time capture without payroll or surveillance fields", () => {
-    const input = captureTimeEventInputSchema.parse({
-      employee_id: "15000000-0000-4000-8000-000000000001",
-      location_id: "11000000-0000-4000-8000-000000000001",
-      session_id: null,
-      event_type: "clock_in",
-      occurred_at: "2026-08-17T16:00:00.000Z",
-      idempotency_key: "a1000000-0000-4000-8000-000000000001",
-      source: "mobile_web",
-    });
-    expect(input).not.toHaveProperty("scheduled_at");
-    expect(input).not.toHaveProperty("latitude");
-    expect(input).not.toHaveProperty("payroll");
-  });
-
-  it("keeps session capture and review states independent", () => {
-    expect(
-      timeSessionSchema.parse({
-        id: "a2000000-0000-4000-8000-000000000001",
-        workspace_id: workspaceId,
-        employee_id: "15000000-0000-4000-8000-000000000001",
-        location_id: "11000000-0000-4000-8000-000000000001",
-        capture_state: "complete",
-        review_state: "reopened",
-        started_at: "2026-08-17T16:00:00.000Z",
-        ended_at: "2026-08-17T20:00:00.000Z",
-        effective_started_at: "2026-08-17T16:00:00.000Z",
-        effective_ended_at: "2026-08-17T20:00:00.000Z",
-        last_event_at: "2026-08-17T20:00:00.000Z",
-        revision: 3,
-      }).review_state,
-    ).toBe("reopened");
-  });
-
-  it("requires bounded amendments with an increasing interval", () => {
-    expect(() =>
-      applyTimeAmendmentInputSchema.parse({
-        session_id: "a2000000-0000-4000-8000-000000000001",
-        expected_revision: 3,
-        effective_started_at: "2026-08-17T20:00:00.000Z",
-        effective_ended_at: "2026-08-17T16:00:00.000Z",
-        reason: "Corrected from employee report",
-        idempotency_key: "a3000000-0000-4000-8000-000000000001",
-      }),
-    ).toThrow("Amended end must be after its start");
   });
 
   it("grants workspace access only inside the active tenant", () => {
@@ -1689,25 +1639,6 @@ describe("roles and permissions schemas", () => {
         ],
       }),
     ).toThrow("employee_access.manage requires its read access");
-  });
-
-  it("requires time read permissions before capture or location management", () => {
-    expect(() =>
-      workspaceRoleInputSchema.parse({
-        name: "Clock only",
-        description: "",
-        access_class: "employee",
-        permission_keys: ["workspace.read", "time.capture.own"],
-      }),
-    ).toThrow("time.capture.own requires its read access");
-    expect(() =>
-      workspaceRoleInputSchema.parse({
-        name: "Time editor",
-        description: "",
-        access_class: "manager",
-        permission_keys: ["workspace.read", "time.amend.location"],
-      }),
-    ).toThrow("time.amend.location requires its read access");
   });
 });
 

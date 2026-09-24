@@ -38,12 +38,11 @@ describe("notification catalog governance", () => {
     }
   });
 
-  it("locks the eight approved event classes", () => {
+  it("locks the seven approved event classes", () => {
     expect(notificationEventClassSchema.options).toEqual([
       "security",
       "schedule",
       "requests",
-      "time_tracking",
       "payroll",
       "people",
       "communications",
@@ -80,12 +79,20 @@ describe("notification catalog governance", () => {
         ].map((match) => match[0]);
       })
       .join("\n");
+    // Deleted in 20260924145822; the older seed migrations above still insert them.
+    const retiredTypeKeys = [
+      "time_tracking.correction.submitted",
+      "time_tracking.correction.decided",
+    ];
     const sqlSeedKeys = [
       ...catalogSeedSection.matchAll(
         /^\s*'([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+)', 1,/gm,
       ),
     ]
-      .map((match) => match[1]);
+      .map((match) => match[1])
+      .filter(
+        (typeKey) => !retiredTypeKeys.some((retired) => retired === typeKey),
+      );
 
     // Availability types are seeded by INSERT ... SELECT rows; each marker
     // pins the key and schema version the catalog mirrors.
@@ -122,7 +129,6 @@ describe("notification catalog governance", () => {
 
     const expectedInsertCounts = new Map<string, number>([
       ["20260823100000_communication_operations.sql", 4],
-      ["20260827100000_time_corrections_review.sql", 2],
       [
         "20260908105000_restore_schedule_publish_notification_actor_binding.sql",
         1,
@@ -130,7 +136,6 @@ describe("notification catalog governance", () => {
       ["20260908112000_notification_outbox_relay.sql", 0],
       ["20260908121000_notification_request_producers_v1.sql", 0],
       ["20260908122000_notification_announcement_producer_v1.sql", 0],
-      ["20260908123000_notification_time_correction_producers_v1.sql", 0],
       ["20260908175000_document_expiry_schedule_conflict_preview.sql", 0],
     ]);
 

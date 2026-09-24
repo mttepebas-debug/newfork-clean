@@ -8,7 +8,6 @@ import {
   ChevronRight,
   CircleCheck,
   Clock3,
-  Coffee,
   MapPin,
   Plus,
   ShieldCheck,
@@ -22,8 +21,6 @@ import {
   formatTime,
   formatTimeRange,
 } from "../schedule/lib/scheduleDateTime";
-import { getEmployeeTimeTracking } from "./employee-hub-data";
-import { postMvpSurfaces } from "../lib/post-mvp";
 import {
   dateInZone,
   greeting,
@@ -92,16 +89,6 @@ export function EmployeeDashboard({
     )
     .sort((a, b) => shiftInstant(a, model) - shiftInstant(b, model));
   const selected = model.shifts.find((item) => item.id === search.get("shift"));
-  const canTime =
-    postMvpSurfaces &&
-    (context?.permissions.includes("time.read.own") ?? false);
-  const time = useQuery({
-    queryKey: ["employee-time-tracking", model.workspace_id, context?.userId],
-    queryFn: () => getEmployeeTimeTracking(model.workspace_id),
-    enabled: canTime,
-    refetchInterval: 60_000,
-  });
-  const current = !time.isError ? time.data?.current_session : null;
   const firstName = model.employee.display_name.trim().split(/\s+/)[0];
   const scheduledToday = model.shifts.filter(
     (item) => item.scheduled_date === dateInZone(now, shiftZone(model, item)),
@@ -143,11 +130,9 @@ export function EmployeeDashboard({
         title={`${greeting(now)}, ${firstName}.`}
         titleId="employee-hub-title"
         description={
-          current
-            ? "Your workday, all in one place."
-            : scheduledToday.length
-              ? `You have ${scheduledToday.length === 1 ? "a shift" : `${scheduledToday.length} shifts`} today. Let’s get you ready.`
-              : "A clear view of what’s next. Make the day yours."
+          scheduledToday.length
+            ? `You have ${scheduledToday.length === 1 ? "a shift" : `${scheduledToday.length} shifts`} today. Let’s get you ready.`
+            : "A clear view of what’s next. Make the day yours."
         }
         action={
           <div className="eh-date">
@@ -182,63 +167,19 @@ export function EmployeeDashboard({
           <div className="eh-hero-top">
             <span className="eh-eyebrow">
               <span className="eh-status-dot" />
-              {current
-                ? current.capture_state === "on_break"
-                  ? "ON A BREAK"
-                  : "CLOCKED IN"
-                : shift
-                  ? shiftState(shift, now, zone).state === "scheduled_now"
-                    ? "SCHEDULED NOW"
-                    : shift.scheduled_date === today
-                      ? "TODAY’S SHIFT"
-                      : "YOUR NEXT SHIFT"
-                  : "LOOKING AHEAD"}
+              {shift
+                ? shiftState(shift, now, zone).state === "scheduled_now"
+                  ? "SCHEDULED NOW"
+                  : shift.scheduled_date === today
+                    ? "TODAY’S SHIFT"
+                    : "YOUR NEXT SHIFT"
+                : "LOOKING AHEAD"}
             </span>
             <span className="eh-hero-icon">
-              {current?.capture_state === "on_break" ? (
-                <Coffee size={25} />
-              ) : (
-                <Clock3 size={25} />
-              )}
+              <Clock3 size={25} />
             </span>
           </div>
-          {current ? (
-            <>
-              <h2>
-                {current.capture_state === "on_break"
-                  ? "Take a breather."
-                  : "You’re on the clock."}
-              </h2>
-              <p className="eh-hero-sub">
-                {current.location_name} · Since{" "}
-                {new Date(
-                  current.capture_state === "on_break"
-                    ? current.last_event_at
-                    : current.effective_started_at,
-                ).toLocaleTimeString("en-US", {
-                  timeZone: validZone(
-                    time.data?.locations.find(
-                      (item) => item.id === current.location_id,
-                    )?.timezone,
-                  ),
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: model.settings.time_format !== "24h",
-                })}
-              </p>
-              <p className="eh-hero-note">
-                {current.capture_state === "on_break"
-                  ? "Manage your break and return when you’re ready."
-                  : "Manage your breaks, clock out, or review your time."}
-              </p>
-              <Link className="eh-hero-button" to={`${base}/time-tracking`}>
-                {current.capture_state === "on_break"
-                  ? "Manage break"
-                  : "Open time clock"}
-                <ArrowUpRight size={18} />
-              </Link>
-            </>
-          ) : shift ? (
+          {shift ? (
             <>
               <p className="eh-hero-date">
                 {shift.scheduled_date === today
@@ -259,7 +200,7 @@ export function EmployeeDashboard({
               </div>
               <p className="eh-hero-note">
                 {shiftState(shift, now, zone).state === "scheduled_now"
-                  ? "Scheduled shift · check your time clock for attendance."
+                  ? "Scheduled shift in progress"
                   : shift.scheduled_date === today
                     ? startsIn(shiftInstant(shift, model) - now.getTime())
                     : "Your next published shift"}
@@ -279,15 +220,6 @@ export function EmployeeDashboard({
                   View shift
                   <ArrowUpRight size={18} />
                 </Link>
-                {canTime && (
-                  <Link
-                    className="eh-hero-secondary"
-                    to={`${base}/time-tracking`}
-                  >
-                    Time clock
-                    <Clock3 size={16} />
-                  </Link>
-                )}
               </div>
             </>
           ) : (
@@ -308,20 +240,6 @@ export function EmployeeDashboard({
                 <ArrowUpRight size={18} />
               </Link>
             </>
-          )}
-          {canTime && time.isError && (
-            <p className="eh-hero-note" role="status">
-              Time clock status is unavailable.{" "}
-              <button
-                className="eh-inline-light"
-                onClick={() => void time.refetch()}
-              >
-                Retry
-              </button>
-            </p>
-          )}
-          {canTime && time.isLoading && (
-            <p className="eh-hero-note">Checking time clock status…</p>
           )}
         </section>
         <section

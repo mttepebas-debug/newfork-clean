@@ -407,7 +407,8 @@ begin
 end
 $$;
 
--- Reproducible active employee for Phase 11B time-capture browser verification.
+-- Reproducible active employee with a sign-in (Alex Kim), for browser checks
+-- and the schedule tests that use membership a6000000-...-0003.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at, is_sso_user, is_anonymous

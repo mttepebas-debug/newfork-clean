@@ -40,18 +40,13 @@ supabase/tests/employee_onboarding_workspace_selection.test.sql
 supabase/tests/employee_personal_tasks.test.sql
 supabase/tests/employee_private_storage_contract.test.sql
 supabase/tests/employee_termination_offboarding.test.sql
-supabase/tests/employee_time_capture.test.sql
 supabase/tests/explicit_workspace_context.test.sql
 supabase/tests/jobs_department_bulk_assignments.test.sql
 supabase/tests/joining_from_two_workspaces.test.sql
-supabase/tests/kiosk_manager_controls.test.sql
-supabase/tests/kiosk_online_capture.test.sql
-supabase/tests/kiosk_security_foundation.test.sql
 supabase/tests/lifecycle_refusals_carry_keys.test.sql
 supabase/tests/lineup_staffing_immediate_inbox.test.sql
 supabase/tests/lineup_staffing_notification_inbox.test.sql
 supabase/tests/location_short_names.test.sql
-supabase/tests/manager_time_entries.test.sql
 supabase/tests/net_access_stays_out_of_reach.test.sql
 supabase/tests/notification_outbox_relay.test.sql
 supabase/tests/notification_schedule_publish_atomic.test.sql
@@ -62,6 +57,7 @@ supabase/tests/own_employment_record.test.sql
 supabase/tests/owner_employee_record.test.sql
 supabase/tests/preferred_name_approval.test.sql
 supabase/tests/public_roles_reach_no_table_directly.test.sql
+supabase/tests/retired_objects_stay_gone.test.sql
 supabase/tests/schedule_edit_locks.test.sql
 supabase/tests/schedule_publish_notifications.test.sql
 supabase/tests/schedule_read_model_rls.test.sql
@@ -78,8 +74,6 @@ supabase/tests/signature_templates_rls.test.sql
 supabase/tests/tenant_owned_composite_foreign_keys.test.sql
 supabase/tests/test_world.test.sql
 supabase/tests/the_schedule_uses_the_preferred_name.test.sql
-supabase/tests/time_capture_foundation.test.sql
-supabase/tests/time_corrections_review.test.sql
 supabase/tests/time_off_cancellation_requests.test.sql
 supabase/tests/time_off_decision_identity_guard.test.sql
 supabase/tests/time_off_physical_request_counts.test.sql

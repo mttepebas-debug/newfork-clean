@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(8);
 
 -- Every server entry point (public.*_service) is tied to an action the
 -- authorization matrix speaks for, or to a stated reason it has none. A new
@@ -13,8 +13,9 @@ select plan(10);
 --   exempt:token      a link token identifies the caller, not a session
 --   exempt:predicate  a permission helper the API asks before acting; goes when
 --                     authorize() replaces it (stages 4 and 6)
---   exempt:retiring-* part of a system stage 5 deletes (kiosk, time tracking,
---                     Line Up, the old availability, the old shift-change requests)
+--   exempt:retiring-* part of a system stage 5 deletes (Line Up, the old
+--                     availability, the old shift-change requests; kiosk and
+--                     time tracking went in 5.2)
 -- The exemption counts below only go down.
 
 create temporary table service_class (name text primary key, class text not null);
@@ -36,9 +37,7 @@ insert into service_class values
   ('apply_schedule_auto_fill_service', 'schedule.edit'),
   ('apply_schedule_default_hours_service', 'schedule.edit'),
   ('apply_schedule_template_service', 'schedule.edit'),
-  ('apply_time_amendment_service', 'exempt:retiring-time'),
   ('approve_signature_retention_policy_service', 'settings.documents.write'),
-  ('approve_time_review_window_service', 'exempt:retiring-time'),
   ('archive_schedule_lineup_section_service', 'exempt:retiring-lineup'),
   ('assess_schedule_shift_service', 'schedule.edit'),
   ('assess_weekly_schedule_assignment_service', 'schedule.edit'),
@@ -48,16 +47,11 @@ insert into service_class values
   ('availability_read_before_calendar_service', 'exempt:retiring-availability'),
   ('availability_read_service', 'exempt:retiring-availability'),
   ('availability_requests_read_service', 'exempt:retiring-availability'),
-  ('begin_kiosk_pin_verification_service', 'exempt:retiring-kiosk'),
   ('bulk_delete_schedule_edit_shifts_service', 'schedule.edit'),
   ('cancel_account_email_change_service', 'account.self'),
   ('cancel_announcement_service', 'announcement.write'),
-  ('cancel_kiosk_action_service', 'exempt:retiring-kiosk'),
   ('cancel_workspace_closure_service', 'workspace.close'),
   ('cancel_workspace_ownership_transfer_service', 'workspace.transfer_ownership'),
-  ('capture_kiosk_time_action_service', 'exempt:retiring-kiosk'),
-  ('capture_own_time_event_service', 'exempt:retiring-time'),
-  ('capture_time_event_service', 'exempt:retiring-time'),
   ('claim_account_deletion_work_service', 'exempt:worker'),
   ('communication_actor_can_control_announcement_service', 'exempt:predicate'),
   ('communication_actor_has_all_locations_service', 'exempt:predicate'),
@@ -69,19 +63,14 @@ insert into service_class values
   ('create_department_with_jobs_service', 'settings.jobs.write'),
   ('create_employee_command_service', 'employee.create'),
   ('create_job_with_assignments_service', 'settings.jobs.write'),
-  ('create_kiosk_enrollment_service', 'exempt:retiring-kiosk'),
-  ('create_kiosk_reenrollment_service', 'exempt:retiring-kiosk'),
-  ('create_manual_time_session_service', 'exempt:retiring-time'),
   ('create_owner_workspace_service', 'workspace.create'),
   ('create_schedule_export_preset_service', 'schedule.export'),
   ('create_schedule_export_schedule_service', 'schedule.export'),
   ('create_schedule_publish_notifications_service', 'schedule.publish'),
   ('create_schedule_shifts_batch_service', 'schedule.edit'),
   ('create_schedule_template_service', 'schedule.templates'),
-  ('create_time_export_snapshot_service', 'exempt:retiring-time'),
   ('create_workspace_todo_service', 'workspace.todos'),
   ('decide_employee_preferred_name_service', 'employee.decide_preferred_name'),
-  ('decide_time_correction_service', 'exempt:retiring-time'),
   ('decide_time_off_with_assignments_service', 'time_off.decide'),
   ('decline_employee_invitation_service', 'account.self'),
   ('defer_initial_employee_document_service', 'documents.self'),
@@ -103,12 +92,10 @@ insert into service_class values
   ('employee_personal_tasks_service', 'employee_hub.self'),
   ('employee_request_action_service', 'employee_hub.self'),
   ('enqueue_notification_outbox_service', 'exempt:worker'),
-  ('exchange_kiosk_enrollment_service', 'exempt:retiring-kiosk'),
   ('extend_employee_document_deadline_service', 'documents.review'),
   ('fail_notification_outbox_service', 'exempt:worker'),
   ('finalize_account_deletion_service', 'exempt:worker'),
   ('finalize_claimed_account_deletion_service', 'exempt:worker'),
-  ('finish_kiosk_pin_verification_service', 'exempt:retiring-kiosk'),
   ('flush_lineup_staffing_notifications_service', 'exempt:retiring-lineup'),
   ('flush_shift_exchange_notifications_service', 'exempt:worker'),
   ('get_account_deletion_blockers_service', 'account.self'),
@@ -125,11 +112,6 @@ insert into service_class values
   ('get_employee_onboarding_review_service', 'onboarding.review'),
   ('get_employee_onboarding_service', 'onboarding.self'),
   ('get_employee_schedule_board_service', 'employee_hub.read'),
-  ('get_employee_time_tracking_service', 'exempt:retiring-time'),
-  ('get_kiosk_action_state_service', 'exempt:retiring-kiosk'),
-  ('get_kiosk_directory_service', 'exempt:retiring-kiosk'),
-  ('get_kiosk_management_service', 'exempt:retiring-kiosk'),
-  ('get_manager_time_entries_service', 'exempt:retiring-time'),
   ('get_notification_inbox_v2_service', 'notifications.read_own'),
   ('get_notification_settings_service', 'settings.notifications.read'),
   ('get_notification_user_preferences_service', 'notifications.read_own'),
@@ -207,7 +189,6 @@ insert into service_class values
   ('preview_schedule_publication_before_availability_review_service', 'schedule.publish'),
   ('preview_schedule_publication_service', 'schedule.publish'),
   ('preview_schedule_unpublication_service', 'schedule.publish'),
-  ('preview_time_export_snapshot_service', 'exempt:retiring-time'),
   ('preview_time_off_assignment_decision_service', 'time_off.decide'),
   ('process_notification_outbox_service', 'exempt:worker'),
   ('project_notification_event_service', 'exempt:worker'),
@@ -238,7 +219,6 @@ insert into service_class values
   ('request_account_deletion_service', 'account.self'),
   ('request_account_deletion_v2_service', 'account.self'),
   ('request_employee_preferred_name_service', 'employee.request_preferred_name'),
-  ('request_own_time_correction_service', 'exempt:retiring-time'),
   ('request_workspace_closure_service', 'workspace.close'),
   ('reset_employee_onboarding_service', 'onboarding.self'),
   ('reset_notification_policies_service', 'settings.notifications.write'),
@@ -257,9 +237,7 @@ insert into service_class values
   ('review_employee_onboarding_before_availability_service', 'onboarding.review'),
   ('review_employee_onboarding_service', 'onboarding.review'),
   ('revoke_employee_invitation_service', 'employee.invite'),
-  ('revoke_kiosk_device_service', 'exempt:retiring-kiosk'),
   ('rotate_account_deletion_recovery_token_service', 'account.self'),
-  ('rotate_kiosk_device_credential_service', 'exempt:retiring-kiosk'),
   ('save_announcement_audience_service', 'announcement.write'),
   ('save_announcement_service', 'announcement.write'),
   ('save_document_type_draft_service', 'settings.documents.write'),
@@ -298,7 +276,6 @@ insert into service_class values
   ('set_employee_archived_service', 'employee.archive'),
   ('set_employee_document_exemption_service', 'documents.review'),
   ('set_employee_document_timezone_service', 'documents.review'),
-  ('set_employee_kiosk_pin_service', 'exempt:retiring-kiosk'),
   ('set_employee_name_settings_service', 'settings.people'),
   ('set_owner_setup_checklist_closed_service', 'workspace.setup'),
   ('set_signature_retention_policy_archived_service', 'settings.documents.write'),
@@ -330,7 +307,6 @@ insert into service_class values
   ('update_employee_membership_role_service', 'employee.change_role'),
   ('update_job_assignments_service', 'settings.jobs.write'),
   ('update_job_details_and_assignments_service', 'settings.jobs.write'),
-  ('update_kiosk_device_label_service', 'exempt:retiring-kiosk'),
   ('update_owner_onboarding_service', 'workspace.setup'),
   ('update_schedule_export_preset_service', 'schedule.export'),
   ('update_schedule_export_schedule_service', 'schedule.export'),
@@ -383,13 +359,11 @@ select is(
 );
 select ok(
   not exists (select 1 from service_class where class like 'exempt:%' and class not in (
-    'exempt:worker', 'exempt:token', 'exempt:predicate', 'exempt:retiring-kiosk', 'exempt:retiring-time',
+    'exempt:worker', 'exempt:token', 'exempt:predicate',
     'exempt:retiring-lineup', 'exempt:retiring-availability', 'exempt:retiring-shift-change')),
   'every exemption is one of the stated reasons'
 );
 select cmp_ok((select count(*)::integer from service_class where class = 'exempt:predicate'), '<=', 18, 'permission helpers only go down');
-select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-kiosk'), '<=', 14, 'kiosk entry points only go down');
-select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-time'), '<=', 11, 'time tracking entry points only go down');
 select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-lineup'), '<=', 16, 'Line Up entry points only go down');
 select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-availability'), '<=', 15, 'old availability entry points only go down');
 select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-shift-change'), '<=', 3, 'old shift-change entry points only go down');

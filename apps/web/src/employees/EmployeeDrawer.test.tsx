@@ -932,8 +932,6 @@ describe("EmployeeDrawer", () => {
       "disabled",
       true,
     );
-    // Kiosk section is post-MVP and hidden while postMvpSurfaces is false.
-    expect(screen.queryByText("Reset PIN")).toBeNull();
   });
 
   it("removes the workspace profile photo when one exists, on the second click", async () => {
@@ -1301,12 +1299,6 @@ describe("EmployeeDrawer", () => {
     fireEvent.change(within(dialog).getByLabelText("Effective date and time"), {
       target: { value: "2026-09-01T12:00" },
     });
-    fireEvent.change(
-      within(dialog).getByLabelText("Open time entry handling"),
-      {
-        target: { value: "close_at" },
-      },
-    );
     fireEvent.change(within(dialog).getByLabelText("Reason"), {
       target: { value: "Employment ended" },
     });
@@ -1321,7 +1313,6 @@ describe("EmployeeDrawer", () => {
         expect.objectContaining({
           effectiveLocal: "2026-09-01T12:00",
           worksiteTimezone: "America/Los_Angeles",
-          timeEntryAction: "close_at",
           reason: "Employment ended",
           idempotencyKey: expect.any(String),
         }),

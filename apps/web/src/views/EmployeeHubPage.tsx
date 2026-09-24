@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { AvailabilityDraftScope, requestAvailabilityNavigation, timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { loadWeeklyPreferences } from "../availability/availability-data";
@@ -23,7 +23,6 @@ import {
   getEmployeeHub,
   submitEmployeeTimeOff,
 } from "../employee-hub/employee-hub-data";
-import { EmployeeTimeTrackingView } from "./EmployeeTimeTrackingView";
 import { EmployeeLineup } from "../schedule/lineup/EmployeeLineup";
 import { lineupDateWindow } from "../schedule/lineup/lineup-time";
 
@@ -34,7 +33,6 @@ import { EmployeeMorePage } from "../employee-hub/EmployeeMobileNav";
 import { EarlierShiftRequests } from "../employee-hub/shift-exchanges/EarlierShiftRequests";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { CatalogPageHeader } from "./CatalogPageHeader";
-import { postMvpSurfaces } from "../lib/post-mvp";
 
 // Navigation between these pages lives in the app sidebar. This map supplies
 // the shared catalog header copy, written for the employee reading it.
@@ -47,11 +45,6 @@ const pageCopy: Record<
     eyebrow: "YOUR WEEK, WITHOUT SURPRISES.",
     description:
       "Your published shifts, with the hours, location and position for each one.",
-  },
-  "time-tracking": {
-    title: "Time Tracking",
-    eyebrow: "YOUR HOURS, YOUR RECORD.",
-    description: "Clock in and out, take breaks, and correct a mistake.",
   },
   "shift-hub": {
     title: "Shift Hub",
@@ -87,7 +80,7 @@ export function EmployeeHubPage() {
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
   const path = location.pathname.split("/employee-hub/")[1] ?? "";
-  const independentPage = path === "more" || path === "time-tracking";
+  const independentPage = path === "more";
   const now = useHubClock();
   const today = now.toISOString().slice(0, 10);
   const selectedScheduleDate = path === "schedule"
@@ -114,8 +107,6 @@ export function EmployeeHubPage() {
     });
     return () => cancelAnimationFrame(frame);
   }, [location.key, location.hash, hasHubData]);
-  if (!postMvpSurfaces && path === "time-tracking")
-    return <Navigate to="/app/employee-hub" replace />;
   if (independentPage)
     return (
       <section
@@ -126,14 +117,7 @@ export function EmployeeHubPage() {
           {...(pageCopy[path] ?? fallbackCopy)}
           titleId="employee-hub-title"
         />
-        {path === "more" ? (
-          <EmployeeMorePage />
-        ) : (
-          <EmployeeTimeTrackingView
-            key={`${workspaceId}:${context?.userId}`}
-            workspaceId={workspaceId}
-          />
-        )}
+        <EmployeeMorePage />
       </section>
     );
   if (query.isLoading)
@@ -194,8 +178,6 @@ export function EmployeeHubPage() {
           employeeId={model.employee.id}
           organizationName={context?.workspace.name ?? ""}
         />
-      ) : path === "time-tracking" ? (
-        <EmployeeTimeTrackingView workspaceId={workspaceId} />
       ) : path.startsWith("shift-hub") ? (
         <><ShiftExchangeHub key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} timeFormat={model.settings.time_format} /><EarlierShiftRequests model={model} refresh={refresh} /></>
 

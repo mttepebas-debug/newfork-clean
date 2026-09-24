@@ -196,8 +196,7 @@ export interface PastEditFinding {
   readonly scheduled_date: string;
   readonly location_name: string;
   readonly employee_name: string | null;
-  readonly reason:
-    "pay_period_locked" | "time_entry_exists" | "shift_started" | "past_week";
+  readonly reason: "shift_started" | "past_week";
   readonly severity: "blocked" | "warning";
 }
 

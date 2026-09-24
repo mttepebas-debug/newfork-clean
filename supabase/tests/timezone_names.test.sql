@@ -22,13 +22,13 @@ delete from app_private.timezone_names where name = 'Europe/Istanbul';
 select ok(app_private.timezone_name_valid('Europe/Istanbul'), 'a zone missing from the snapshot still passes');
 
 -- Only these functions may scan pg_timezone_names: the helper's own fallback,
--- and two FOUNDATION-B entry points that change with that work. Anything else
--- calls the helper; a function rewritten from its pre-BL-102 text fails here.
+-- and one FOUNDATION-B entry point that changes with that work (terminate_employee
+-- moved to the helper in stage 5.2). Anything else calls the helper; a function
+-- rewritten from its pre-BL-102 text fails here.
 create temporary table allowed_scanner (name text primary key);
 insert into allowed_scanner values
   ('app_private.timezone_name_valid'),
-  ('public.set_employee_document_timezone_service'),
-  ('public.terminate_employee');
+  ('public.set_employee_document_timezone_service');
 create temporary table scanner as
 select n.nspname || '.' || p.proname as name
 from pg_proc p

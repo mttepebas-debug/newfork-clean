@@ -6,7 +6,7 @@ select plan(7);
 -- 2c). Each count is a pattern stage 4 and 6 remove; a ceiling only comes
 -- down. Lower it in the same commit that removes the pattern, so nobody adds
 -- a new copy of a rule while the old copies are being folded into
--- app_private.authorize(). Measured 2026-09-24 after 20260924132206.
+-- app_private.authorize(). Measured 2026-09-24 after 20260924145822.
 
 create temporary table core_function as
 select p.proname::text as name, p.prosrc as body
@@ -32,13 +32,13 @@ select cmp_ok(
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 69, 'functions with their own scope or rank logic only go down'
+  '<=', 65, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function where name ~ '(_base|_v[0-9]+|_legacy)(_|$)'),
-  '<=', 53, '_base, _vN and _legacy functions only go down'
+  '<=', 51, '_base, _vN and _legacy functions only go down'
 );
 
 -- Policies that read the JWT themselves rather than through the core.

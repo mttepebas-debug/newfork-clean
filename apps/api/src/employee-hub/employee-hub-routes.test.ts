@@ -10,11 +10,6 @@ const locationId = "11000000-0000-4000-8000-000000000001";
 const shiftId = "40000000-0000-4000-8000-000000000001";
 const requestedShiftId = "40000000-0000-4000-8000-000000000002";
 const requestId = "98200000-0000-4000-8000-000000000001";
-const sessionId = "b6200000-0000-4000-8000-000000000001";
-const eventId = "d6200000-0000-4000-8000-000000000001";
-const correctionId = "e6200000-0000-4000-8000-000000000001";
-const timeIdempotencyKey = "a6200000-0000-4000-8000-000000000001";
-const correctionIdempotencyKey = "a6200000-0000-4000-8000-000000000002";
 
 const mismatchedContext: ActiveWorkspaceContext = {
   userId,
@@ -34,12 +29,7 @@ const mismatchedContext: ActiveWorkspaceContext = {
     status: "active",
     allLocations: true,
   },
-  permissions: [
-    "workspace.read",
-    "time.capture.own",
-    "time.read.own",
-    "time.correction.request.own",
-  ],
+  permissions: ["workspace.read"],
   actions: [],
   onboarding: { status: "complete", currentStep: 2, revision: 1 },
   locationScope: { allLocations: true, locationIds: [] },
@@ -66,9 +56,6 @@ function employeeHubServiceMock(): EmployeeHubService {
     submitTimeOff: vi.fn(),
     submitShiftRequest: vi.fn(),
     actOnRequest: vi.fn(),
-    getTimeTracking: vi.fn(),
-    captureTimeEvent: vi.fn(),
-    requestTimeCorrection: vi.fn(),
   };
 }
 
@@ -233,46 +220,13 @@ describe("employee hub routes", () => {
         },
         serviceMethod: "actOnRequest",
       },
-      {
-        method: "GET",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/time-tracking`,
-        serviceMethod: "getTimeTracking",
-      },
-      {
-        method: "POST",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/time-tracking/events`,
-        headers: { "idempotency-key": "a6200000-0000-4000-8000-000000000001" },
-        payload: {
-          location_id: locationId,
-          session_id: null,
-          event_type: "clock_in",
-          occurred_at: "2026-08-17T16:00:00.000Z",
-        },
-        serviceMethod: "captureTimeEvent",
-      },
-      {
-        method: "POST",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/time-tracking/corrections`,
-        headers: { "idempotency-key": "a6200000-0000-4000-8000-000000000002" },
-        payload: {
-          session_id: sessionId,
-          expected_revision: 2,
-          requested_started_at: "2026-08-17T16:30:00.000Z",
-          requested_ended_at: "2026-08-18T00:00:00.000Z",
-          reason: "Clock-in was later",
-        },
-        serviceMethod: "requestTimeCorrection",
-      },
     ] as const;
 
     for (const route of routes) {
       const response = await app.inject({
         method: route.method,
         url: route.url,
-        headers: {
-          authorization: "Bearer valid-token",
-          ...("headers" in route ? route.headers : {}),
-        },
+        headers: { authorization: "Bearer valid-token" },
         payload: "payload" in route ? route.payload : undefined,
       });
 
@@ -285,20 +239,6 @@ describe("employee hub routes", () => {
   it("ignores spoofed actor and workspace fields in write bodies", async () => {
     const service = employeeHubServiceMock();
     const mutationResult = { status: "saved", revision: 1 };
-    const timeSession = {
-      id: sessionId,
-      workspace_id: workspaceId,
-      employee_id: "72000000-0000-4000-8000-000000000001",
-      location_id: locationId,
-      capture_state: "open" as const,
-      review_state: "unreviewed" as const,
-      started_at: "2026-08-17T16:00:00.000Z",
-      ended_at: null,
-      effective_started_at: "2026-08-17T16:00:00.000Z",
-      effective_ended_at: null,
-      last_event_at: "2026-08-17T16:00:00.000Z",
-      revision: 1,
-    };
     vi.mocked(service.submitTimeOff).mockResolvedValue({
       ...mutationResult,
       request_id: requestId,
@@ -308,48 +248,6 @@ describe("employee hub routes", () => {
       request_id: requestId,
     });
     vi.mocked(service.actOnRequest).mockResolvedValue(mutationResult);
-    vi.mocked(service.captureTimeEvent).mockResolvedValue({
-      session: timeSession,
-      event: {
-        id: eventId,
-        workspace_id: workspaceId,
-        session_id: sessionId,
-        employee_id: timeSession.employee_id,
-        location_id: locationId,
-        event_type: "clock_in",
-        occurred_at: "2026-08-17T16:00:00.000Z",
-        received_at: "2026-08-17T16:00:01.000Z",
-        actor_user_id: userId,
-        actor_employee_id: timeSession.employee_id,
-        kiosk_device_id: null,
-        kiosk_action_session_id: null,
-        source: "web",
-        idempotency_key: timeIdempotencyKey,
-      },
-      idempotent_replay: false,
-    });
-    vi.mocked(service.requestTimeCorrection).mockResolvedValue({
-      correction: {
-        id: correctionId,
-        workspace_id: workspaceId,
-        session_id: sessionId,
-        employee_id: timeSession.employee_id,
-        location_id: locationId,
-        requested_started_at: "2026-08-17T16:30:00.000Z",
-        requested_ended_at: "2026-08-18T00:00:00.000Z",
-        reason: "Clock-in was later",
-        base_revision: 2,
-        status: "pending",
-        submitted_at: "2026-08-17T18:00:00.000Z",
-        decided_by: null,
-        decision_reason: null,
-        decided_at: null,
-        result_amendment_id: null,
-      },
-      amendment: null,
-      session: { ...timeSession, revision: 2 },
-      idempotent_replay: false,
-    });
     const app = buildApp({
       contextResolver: { resolve: async () => activeContext },
       employeeHubService: service,
@@ -390,23 +288,6 @@ describe("employee hub routes", () => {
       action: "accept",
       expected_revision: 1,
     };
-    const timeEvent = {
-      ...spoofedIdentity,
-      location_id: locationId,
-      session_id: null,
-      event_type: "clock_in",
-      occurred_at: "2026-08-17T16:00:00.000Z",
-      idempotency_key: "11111111-1111-4111-8111-111111111111",
-    };
-    const correction = {
-      ...spoofedIdentity,
-      session_id: sessionId,
-      expected_revision: 2,
-      requested_started_at: "2026-08-17T16:30:00.000Z",
-      requested_ended_at: "2026-08-18T00:00:00.000Z",
-      reason: "Clock-in was later",
-      idempotency_key: "11111111-1111-4111-8111-111111111111",
-    };
 
     const requests = [
       {
@@ -433,30 +314,13 @@ describe("employee hub routes", () => {
         payload: requestAction,
         expectedStatus: 200,
       },
-      {
-        method: "POST",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/time-tracking/events`,
-        headers: { "idempotency-key": timeIdempotencyKey },
-        payload: timeEvent,
-        expectedStatus: 200,
-      },
-      {
-        method: "POST",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/time-tracking/corrections`,
-        headers: { "idempotency-key": correctionIdempotencyKey },
-        payload: correction,
-        expectedStatus: 201,
-      },
     ] as const;
 
     for (const request of requests) {
       const response = await app.inject({
         method: request.method,
         url: request.url,
-        headers: {
-          authorization: "Bearer valid-token",
-          ...("headers" in request ? request.headers : {}),
-        },
+        headers: { authorization: "Bearer valid-token" },
         payload: request.payload,
       });
       expect(response.statusCode).toBe(request.expectedStatus);
@@ -491,29 +355,6 @@ describe("employee hub routes", () => {
         action: requestAction.action,
         expected_revision: requestAction.expected_revision,
       },
-    });
-    expect(service.captureTimeEvent).toHaveBeenCalledWith({
-      actorUserId: userId,
-      workspaceId,
-      event: {
-        location_id: timeEvent.location_id,
-        session_id: timeEvent.session_id,
-        event_type: timeEvent.event_type,
-        occurred_at: timeEvent.occurred_at,
-      },
-      idempotencyKey: timeIdempotencyKey,
-    });
-    expect(service.requestTimeCorrection).toHaveBeenCalledWith({
-      actorUserId: userId,
-      workspaceId,
-      correction: {
-        session_id: correction.session_id,
-        expected_revision: correction.expected_revision,
-        requested_started_at: correction.requested_started_at,
-        requested_ended_at: correction.requested_ended_at,
-        reason: correction.reason,
-      },
-      idempotencyKey: correctionIdempotencyKey,
     });
   });
 });

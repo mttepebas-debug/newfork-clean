@@ -5,20 +5,12 @@ import {
   employeeHubMutationResultSchema,
   employeeHubReadModelSchema,
   scheduleReadModelSchema,
-  employeeTimeTrackingReadModelSchema,
-  captureTimeEventResultSchema,
-  timeCorrectionMutationResultSchema,
-  type CaptureTimeEventResult,
   type EmployeeHubMutationResult,
   type EmployeeHubReadModel,
   type ScheduleReadModel,
   type EmployeeRequestActionInput,
   type EmployeeShiftRequestInput,
   type EmployeeTimeOffInput,
-  type EmployeeTimeCaptureInput,
-  type EmployeeTimeTrackingReadModel,
-  type EmployeeTimeCorrectionInput,
-  type TimeCorrectionMutationResult,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 
@@ -58,22 +50,6 @@ export interface EmployeeHubService {
     workspaceId: string;
     action: EmployeeRequestActionInput;
   }): Promise<EmployeeHubMutationResult>;
-  getTimeTracking(input: {
-    actorUserId: string;
-    workspaceId: string;
-  }): Promise<EmployeeTimeTrackingReadModel>;
-  captureTimeEvent(input: {
-    actorUserId: string;
-    workspaceId: string;
-    event: EmployeeTimeCaptureInput;
-    idempotencyKey: string;
-  }): Promise<CaptureTimeEventResult>;
-  requestTimeCorrection(input: {
-    actorUserId: string;
-    workspaceId: string;
-    correction: EmployeeTimeCorrectionInput;
-    idempotencyKey: string;
-  }): Promise<TimeCorrectionMutationResult>;
 }
 
 export function createEmployeeHubService(options: {
@@ -216,41 +192,6 @@ export function createEmployeeHubService(options: {
           target_kind: input.action.kind,
           target_action: input.action.action,
           target_expected_revision: input.action.expected_revision,
-        }),
-      );
-    },
-    async getTimeTracking(input) {
-      return employeeTimeTrackingReadModelSchema.parse(
-        await rpc("get_employee_time_tracking_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-        }),
-      );
-    },
-    async captureTimeEvent(input) {
-      return captureTimeEventResultSchema.parse(
-        await rpc("capture_own_time_event_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-          target_location_id: input.event.location_id,
-          target_session_id: input.event.session_id,
-          target_event_type: input.event.event_type,
-          target_occurred_at: input.event.occurred_at,
-          target_idempotency_key: input.idempotencyKey,
-        }),
-      );
-    },
-    async requestTimeCorrection(input) {
-      return timeCorrectionMutationResultSchema.parse(
-        await rpc("request_own_time_correction_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-          target_session_id: input.correction.session_id,
-          target_expected_revision: input.correction.expected_revision,
-          target_requested_started_at: input.correction.requested_started_at,
-          target_requested_ended_at: input.correction.requested_ended_at,
-          target_reason: input.correction.reason,
-          target_idempotency_key: input.idempotencyKey,
         }),
       );
     },

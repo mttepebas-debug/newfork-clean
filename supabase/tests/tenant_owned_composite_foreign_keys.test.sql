@@ -44,14 +44,10 @@ select is(
         'notifications_id_workspace_id_key',
         'schedule_edit_sessions_id_workspace_id_key',
         'schedule_location_publications_id_workspace_id_key',
-        'schedule_published_shifts_id_workspace_id_key',
-        'time_amendments_id_workspace_id_key',
-        'time_export_snapshots_id_workspace_id_key',
-        'time_review_windows_id_workspace_id_key',
-        'time_sessions_id_workspace_id_key'
+        'schedule_published_shifts_id_workspace_id_key'
       )
   ),
-  8,
+  4,
   'parent tables expose explicit id/workspace_id keys for tenant-owned composite references'
 );
 

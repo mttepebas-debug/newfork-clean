@@ -60,7 +60,7 @@ describe("RetroactiveEditDialog", () => {
         findings={[
           {
             ...finding,
-            reason: "pay_period_locked",
+            reason: "past_week",
             severity: "blocked",
             employee_name: null,
           },
@@ -74,7 +74,7 @@ describe("RetroactiveEditDialog", () => {
     expect(
       screen.getByRole("dialog", { name: "These changes cannot be saved" }),
     ).toBeTruthy();
-    expect(screen.getByText("Closed pay period")).toBeTruthy();
+    expect(screen.getByText("Past week")).toBeTruthy();
     expect(
       screen.getByText("An open shift — Main Room on 2026-08-17"),
     ).toBeTruthy();

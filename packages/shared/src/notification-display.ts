@@ -44,11 +44,6 @@ export const notificationCategoryDisplay = {
     description: "Time off, availability, and shift change updates.",
     sortOrder: 20,
   },
-  time_tracking: {
-    label: "Time tracking",
-    description: "Time entry corrections and review outcomes.",
-    sortOrder: 30,
-  },
   payroll: {
     label: "Payroll",
     description: "Payroll readiness, export, and deadline updates.",
@@ -210,34 +205,6 @@ export const notificationTypeDisplay = {
       "Controls alerts sent to managers when an employee updates weekly availability.",
     preferenceDescription:
       "Get notified when an employee updates their weekly availability.",
-  },
-  "time_tracking.correction.submitted": {
-    label: "Time correction requests to review",
-    shortLabel: "Time corrections",
-    description:
-      "Alerts reviewers when an employee submits a time entry correction.",
-    categoryLabel: notificationCategoryDisplay.time_tracking.label,
-    categoryDescription: notificationCategoryDisplay.time_tracking.description,
-    audienceLabel: "Managers and reviewers for time corrections",
-    actionLabel: "Review correction",
-    adminDescription:
-      "Controls review alerts for newly submitted time entry corrections.",
-    preferenceDescription:
-      "Get notified when a time entry correction needs your review.",
-  },
-  "time_tracking.correction.decided": {
-    label: "Time correction decisions",
-    shortLabel: "Time correction decisions",
-    description:
-      "Alerts employees when their requested time correction is approved or denied.",
-    categoryLabel: notificationCategoryDisplay.time_tracking.label,
-    categoryDescription: notificationCategoryDisplay.time_tracking.description,
-    audienceLabel: "Employees who requested the correction",
-    actionLabel: "View time entries",
-    adminDescription:
-      "Controls decision updates sent back to employees after a time correction is reviewed.",
-    preferenceDescription:
-      "Get notified when your time entry correction is approved or denied.",
   },
   "schedule.published": {
     label: "Published schedules",

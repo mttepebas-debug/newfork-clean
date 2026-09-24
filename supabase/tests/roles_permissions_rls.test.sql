@@ -109,7 +109,7 @@ select throws_ok($$insert into public.important_dates(workspace_id,title,type,st
 select lives_ok($$insert into public.important_dates(workspace_id,title,type,starts_on,ends_on,location_id,location_ids) values('b1051002-0000-4000-8000-000000000001','Shared date','event','2026-09-15','2026-09-15','b1051006-0000-4000-8000-000000000001',array['b1051006-0000-4000-8000-000000000001']::uuid[])$$,'Manager can create Important Date in assigned location');
 select throws_ok($$insert into public.jobs(workspace_id,name) values('b1051002-0000-4000-8000-000000000001','Unauthorized job')$$,'42501',null,'Manager defaults cannot edit organization catalog');
 set local role service_role;
-select lives_ok($$select public.terminate_employee_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003',(now() at time zone 'America/Los_Angeles'),'America/Los_Angeles','block','Local test termination','b1051008-0000-4000-8000-000000000001')$$,'Operational Edit can terminate common record across locations');
+select lives_ok($$select public.terminate_employee_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003',(now() at time zone 'America/Los_Angeles'),'America/Los_Angeles','Local test termination','b1051008-0000-4000-8000-000000000001')$$,'Operational Edit can terminate common record across locations');
 set local role postgres;
 -- Granular settings grants are independent from global scope and other settings.
 insert into public.workspace_role_permissions(workspace_id,role_id,permission_key)

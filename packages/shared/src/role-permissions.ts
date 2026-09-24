@@ -218,14 +218,6 @@ export const rolePermissionGroups: readonly {
 export const rolePermissionDependencies: Readonly<
   Partial<Record<Permission, readonly Permission[]>>
 > = {
-  "time.capture.own": ["time.read.own"],
-  "time.correction.request.own": ["time.read.own"],
-  "time.amend.location": ["time.read.location"],
-  "time.correction.review.location": ["time.read.location"],
-  "time.review.approve.location": ["time.read.location"],
-  "time.export.preview.location": ["time.read.location"],
-  "time.export.create.location": ["time.read.location"],
-  "time.export.read.location": ["time.read.location"],
   "schedule.manage": ["schedule.read"],
   "schedule.publish": ["schedule.manage"],
   "schedule.availability.override": ["schedule.manage"],
@@ -276,9 +268,6 @@ export const employeeEligiblePermissions: readonly Permission[] = [
   ...personalRolePermissions,
   "schedule.read",
   "announcements.read",
-  "time.capture.own",
-  "time.read.own",
-  "time.correction.request.own",
 ];
 
 export function permissionGroupsForRole(accessClass: WorkspaceRole) {

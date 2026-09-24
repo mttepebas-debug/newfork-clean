@@ -2,8 +2,6 @@ import type { JSX } from "react";
 import type { PastEditFinding } from "../schedule-data";
 
 const REASON_LABEL: Record<PastEditFinding["reason"], string> = {
-  pay_period_locked: "Closed pay period",
-  time_entry_exists: "Time entry recorded",
   shift_started: "Already started",
   past_week: "Past week",
 };
@@ -53,8 +51,8 @@ export function RetroactiveEditDialog({
             </h2>
             <p>
               {blocked
-                ? "Payroll has already used part of what this draft touches. Correct the record in Time Entries instead of rewriting the schedule."
-                : "The schedule is the plan, not the record of what happened. Saving keeps the time entries as they were recorded."}
+                ? "Past weeks are read-only. Undo the changes listed below, then save the rest."
+                : "These shifts have already started. Saving changes the plan for them, not a record of what happened."}
             </p>
           </div>
         </header>

@@ -4,7 +4,6 @@ export const notificationEventClassSchema = z.enum([
   "security",
   "schedule",
   "requests",
-  "time_tracking",
   "payroll",
   "people",
   "communications",
@@ -37,8 +36,6 @@ export const notificationCatalogEntrySchema = z.object({
     "schedule_request_reviewers",
     "time_off_requester",
     "shift_change_participants",
-    "time_correction_reviewers",
-    "time_correction_requester",
     "published_shift_assignees",
     "employee_document_expiry_reviewers",
     "lineup_staffing_participants",
@@ -280,48 +277,6 @@ export const notificationCatalog = {
     template_key: "requests.shift_change.status_changed.v1",
     mandatory_in_app: false,
   }),
-  "time_tracking.correction.submitted": activeEntry({
-    type_key: "time_tracking.correction.submitted",
-    category: "time_tracking",
-    severity: "action_required",
-    sensitivity: "restricted",
-    supported_channels: [...inAppOnly],
-    default_cadence: "immediate",
-    audience_contract: "time_correction_reviewers",
-    action_route_contract: {
-      route: "/app/time-entries",
-      allowed_query_keys: [],
-    },
-    dedupe_policy: {
-      strategy: "keep_first",
-      scope: "subject_recipient",
-      key_fields: ["correction_id", "recipient_user_id", "submitted"],
-    },
-    retention_class: "regulated_1y",
-    template_key: "time_tracking.correction.submitted.v1",
-    mandatory_in_app: false,
-  }),
-  "time_tracking.correction.decided": activeEntry({
-    type_key: "time_tracking.correction.decided",
-    category: "time_tracking",
-    severity: "info",
-    sensitivity: "restricted",
-    supported_channels: [...inAppOnly],
-    default_cadence: "immediate",
-    audience_contract: "time_correction_requester",
-    action_route_contract: {
-      route: "/app/employee-hub",
-      allowed_query_keys: ["tab"],
-    },
-    dedupe_policy: {
-      strategy: "keep_first",
-      scope: "subject_recipient",
-      key_fields: ["correction_id", "recipient_user_id", "decision"],
-    },
-    retention_class: "regulated_1y",
-    template_key: "time_tracking.correction.decided.v1",
-    mandatory_in_app: false,
-  }),
   "schedule.staffing.offer_updated": activeEntry({
     type_key: "schedule.staffing.offer_updated",
     category: "schedule",
@@ -446,8 +401,6 @@ export const notificationCatalogSeed = [
   ["schedule.staffing.offer_closed", 1, "active"],
   ["schedule.staffing.offer_updated", 1, "active"],
   ["security.account_invitation_cancelled", 1, "active"],
-  ["time_tracking.correction.decided", 1, "active"],
-  ["time_tracking.correction.submitted", 1, "active"],
 ] as const;
 
 export const notificationTemplateManifest = [
@@ -465,8 +418,6 @@ export const notificationTemplateManifest = [
   "schedule.staffing.assignment_changed.v1",
   "schedule.staffing.offer_closed.v1",
   "schedule.staffing.offer_updated.v1",
-  "time_tracking.correction.decided.v1",
-  "time_tracking.correction.submitted.v1",
 ] as const;
 
 export type NotificationProducerInventoryEntry = {
@@ -584,24 +535,6 @@ export const notificationProducerInventory: readonly NotificationProducerInvento
       source_migration: "20260908121000_notification_request_producers_v1.sql",
       source_function: "notify_schedule_request_event_service",
       source_statement: "shift-change-status-insert",
-      integration_status: "outbox_v1",
-    },
-    {
-      producer_id: "time-correction-submit",
-      type_key: "time_tracking.correction.submitted",
-      source_migration:
-        "20260908123000_notification_time_correction_producers_v1.sql",
-      source_function: "request_own_time_correction_service",
-      source_statement: "time-correction-submitted-insert",
-      integration_status: "outbox_v1",
-    },
-    {
-      producer_id: "time-correction-decision",
-      type_key: "time_tracking.correction.decided",
-      source_migration:
-        "20260908123000_notification_time_correction_producers_v1.sql",
-      source_function: "decide_time_correction_service",
-      source_statement: "time-correction-decided-insert",
       integration_status: "outbox_v1",
     },
     {

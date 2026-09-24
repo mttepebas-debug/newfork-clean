@@ -38,12 +38,6 @@ select is((select count(*)::integer from public.locations where workspace_id='25
 select ok(not app_private.can_access_location('25200000-0000-4000-8000-000000000001','85200000-0000-4000-8000-000000000001'),'normal RLS location helper denies restricted organization');
 reset role;
 select set_config('request.jwt.claim.sub','',true);
-insert into public.kiosk_devices(id,workspace_id,location_id,label,credential_hash,created_by) values('b5200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','85200000-0000-4000-8000-000000000001','Document restriction kiosk',repeat('a',64),'15200000-0000-4000-8000-000000000001');
-select ok(exists(select 1 from jsonb_array_elements(public.get_kiosk_directory_service(repeat('a',64))->'employees') item where item->>'id'='45200000-0000-4000-8000-000000000001'),'document restriction preserves device-bound kiosk employee access');
-insert into public.kiosk_action_sessions(workspace_id,location_id,device_id,employee_id,token_hash,expires_at)
-values('25200000-0000-4000-8000-000000000001','85200000-0000-4000-8000-000000000001','b5200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000001',repeat('b',64),now()+interval '60 seconds');
-select is(public.capture_kiosk_time_action_service(repeat('a',64),repeat('b',64),'clock_in',0,now(),'b5200000-0000-4000-8000-000000000002')->>'status','accepted','restricted employee can still clock in through device-bound kiosk authority');
-select is((select count(*)::integer from public.time_events where actor_employee_id='45200000-0000-4000-8000-000000000001' and kiosk_device_id='b5200000-0000-4000-8000-000000000001' and event_type='clock_in'),1,'restricted kiosk action persists the actual time event');
 select lives_ok($$select public.get_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',true)$$,'restricted employee retains own document completion access');
 insert into public.workspaces(id,name,created_by) values('25200000-0000-4000-8000-000000000002','Other organization','15200000-0000-4000-8000-000000000001');
 insert into public.workspace_memberships(workspace_id,user_id,role,status) values('25200000-0000-4000-8000-000000000002','15200000-0000-4000-8000-000000000002','employee','active');

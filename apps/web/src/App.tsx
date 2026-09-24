@@ -14,7 +14,6 @@ import { AppShell } from "./shell/AppShell";
 import { DocumentNotificationRedirect } from "./documents/DocumentNotificationRedirect";
 import { DocumentAccessRoute } from "./documents/DocumentAccessRoute";
 import { SignInPage } from "./views/SignInPage";
-import { postMvpSurfaces } from "./lib/post-mvp";
 import "./styles.css";
 
 const AccountLayout = lazy(() => import("./account/AccountLayout"));
@@ -61,7 +60,6 @@ const AccountDocumentsPage = lazy(
 const WorkspaceHubPage = lazy(() => import("./shell/WorkspaceHubPage"));
 const WorkspaceStatusPage = lazy(() => import("./shell/WorkspaceStatusPage"));
 const EmployeeHubPage = lazy(() => import("./views/EmployeeHubPage"));
-const KioskPage = lazy(() => import("./kiosk/KioskPage"));
 const WorkspacePage = lazy(() => import("./views/WorkspacePage"));
 const AnnouncementsPage = lazy(() => import("./views/AnnouncementsPage"));
 const NotificationsPage = lazy(() => import("./views/NotificationsPage"));
@@ -90,7 +88,6 @@ const AvailabilityPage = lazy(() =>
     default: module.AvailabilityPage,
   })),
 );
-const TimeEntriesPage = lazy(() => import("./views/TimeEntriesPage"));
 const LineupPage = lazy(() => import("./views/LineupPage"));
 const ScheduleRequestsPage = lazy(() => import("./views/ScheduleRequestsPage"));
 const SettingsLayout = lazy(() => import("./settings/SettingsLayout"));
@@ -124,7 +121,6 @@ const SignatureTemplatesSettingsPage = lazy(
 const SupportSettingsPage = lazy(
   () => import("./settings/SupportSettingsPage"),
 );
-const KioskSettingsPage = lazy(() => import("./settings/KioskSettingsPage"));
 const SettingsHomeRedirect = lazy(
   () => import("./settings/SettingsHomeRedirect"),
 );
@@ -177,9 +173,6 @@ export function App() {
                     element={<Navigate to="/app/schedule-badge-lab" replace />}
                   />
                 </>
-              ) : null}
-              {postMvpSurfaces ? (
-                <Route path="/kiosk" element={<KioskPage />} />
               ) : null}
               <Route path="/accept-invite" element={<AcceptInvitationPage />} />
               <Route path="/invite/accept" element={<AcceptInvitationPage />} />
@@ -369,19 +362,6 @@ export function App() {
                       }
                     />
                   </>
-                ) : null}
-                {postMvpSurfaces ? (
-                  <Route
-                    path="time-entries"
-                    element={
-                      <PermissionRoute
-                        anyOf={["time.read.location"]}
-                        roles={["owner", "admin", "manager"]}
-                      >
-                        <TimeEntriesPage />
-                      </PermissionRoute>
-                    }
-                  />
                 ) : null}
                 <Route
                   path="schedule/lineup"
@@ -591,24 +571,6 @@ export function App() {
                       </PermissionRoute>
                     }
                   />
-                  {postMvpSurfaces ? (
-                    <Route
-                      path="kiosk"
-                      element={
-                        <PermissionRoute
-                          anyOf={[
-                            "kiosk.device.enroll.location",
-                            "kiosk.device.read.location",
-                            "kiosk.device.revoke.location",
-                            "kiosk.pin.reset.location",
-                            "kiosk.audit.read.location",
-                          ]}
-                        >
-                          <KioskSettingsPage />
-                        </PermissionRoute>
-                      }
-                    />
-                  ) : null}
                   <Route
                     path="support"
                     element={

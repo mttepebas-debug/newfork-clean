@@ -233,7 +233,6 @@ describe("employee directory routes", () => {
       payload: {
         effectiveLocal: "2026-09-02T09:00",
         worksiteTimezone: "America/Los_Angeles",
-        timeEntryAction: "block",
         reason: "Seasonal role ended",
         idempotencyKey: "a6200000-0000-4000-8000-000000000001",
       },
@@ -295,7 +294,6 @@ describe("employee directory routes", () => {
       ...spoofedIdentity,
       effectiveLocal: "2026-09-02T09:00",
       worksiteTimezone: "America/Los_Angeles",
-      timeEntryAction: "block",
       reason: "Seasonal role ended",
       idempotencyKey: "a6200000-0000-4000-8000-000000000001",
     } as const;
@@ -342,7 +340,6 @@ describe("employee directory routes", () => {
       termination: {
         effectiveLocal: termination.effectiveLocal,
         worksiteTimezone: termination.worksiteTimezone,
-        timeEntryAction: termination.timeEntryAction,
         reason: termination.reason,
         idempotencyKey: termination.idempotencyKey,
       },
@@ -424,7 +421,6 @@ describe("employee directory routes", () => {
         payload: {
           effectiveLocal: "2026-09-02T09:00",
           worksiteTimezone: "America/Los_Angeles",
-          timeEntryAction: "block",
           reason: "Seasonal role ended",
           idempotencyKey: "a6200000-0000-4000-8000-000000000001",
         },

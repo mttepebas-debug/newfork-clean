@@ -23,12 +23,9 @@ import {
   getNotifications,
 } from "../communications/communications-data";
 import {
-  captureEmployeeTimeEvent,
   actOnEmployeeRequest,
   getEmployeeHub,
   getEmployeeScheduleBoard,
-  getEmployeeTimeTracking,
-  requestEmployeeTimeCorrection,
   getEmployeePersonalTasks,
   changeEmployeePersonalTask,
   submitEmployeeTimeOff,
@@ -220,8 +217,6 @@ const scheduleBoard = {
 } satisfies ScheduleReadModel;
 
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
-// Time Tracking is post-MVP; these tests cover the surface with the flag on.
-vi.mock("../lib/post-mvp", () => ({ postMvpSurfaces: true }));
 vi.mock("../communications/communications-data", () => ({
   getAnnouncements: vi.fn(),
   getNotifications: vi.fn(),
@@ -242,9 +237,6 @@ vi.mock("../employee-hub/employee-hub-data", () => ({
     revision: 1,
   }),
   actOnEmployeeRequest: vi.fn(),
-  getEmployeeTimeTracking: vi.fn(),
-  captureEmployeeTimeEvent: vi.fn().mockResolvedValue({}),
-  requestEmployeeTimeCorrection: vi.fn().mockResolvedValue({}),
 }));
 
 function renderPage(path = "/app/employee-hub") {
@@ -344,47 +336,6 @@ describe("EmployeeHubPage", () => {
     expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
     expect(screen.getByLabelText("New personal reminder")).toBeTruthy();
   });
-  it("uses the actual open attendance session even with no published shifts", async () => {
-    context.permissions = [...context.permissions, "time.read.own"];
-    vi.mocked(getEmployeeTimeTracking).mockResolvedValue({
-      workspace_id: workspaceId,
-      employee: fixture.employee,
-      locations: [
-        { ...fixture.locations[0]!, timezone: "America/Los_Angeles" },
-      ],
-      sessions: [],
-      current_session: {
-        id: "a6300000-0000-4000-8000-000000000001",
-        workspace_id: workspaceId,
-        employee_id: fixture.employee.id,
-        location_id: ownShift.location_id,
-        location_name: "Main Dining",
-        capture_state: "open",
-        review_state: "unreviewed",
-        started_at: "2026-09-06T18:00:00Z",
-        effective_started_at: "2026-09-06T18:00:00Z",
-        ended_at: null,
-        effective_ended_at: null,
-        last_event_at: "2026-09-06T18:00:00Z",
-        revision: 1,
-        events: [],
-        amendments: [],
-        correction_requests: [],
-      },
-    });
-    renderPageWithFixture({ ...fixture, shifts: [] });
-    expect(
-      await screen.findByRole("heading", { name: "You’re on the clock." }),
-    ).toBeTruthy();
-    expect(
-      screen
-        .getByRole("link", { name: "Open time clock" })
-        .getAttribute("href"),
-    ).toBe("/app/employee-hub/time-tracking");
-    expect(
-      screen.queryByText("No upcoming shifts published in this range."),
-    ).toBeNull();
-  });
   it("deep links to the request that actually needs the employee's response", async () => {
     renderPageWithFixture({
       ...fixture,
@@ -468,7 +419,6 @@ describe("EmployeeHubPage", () => {
       await screen.findByText("This section couldn’t be loaded."),
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
-    expect(getEmployeeTimeTracking).not.toHaveBeenCalled();
   });
   it("shows the published team board and narrows it to My Schedule", async () => {
     vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
@@ -851,131 +801,6 @@ describe("EmployeeHubPage", () => {
         action: "cancel",
         expected_revision: 3,
       }),
-    );
-  });
-
-  it("records clock in from the Time Tracking view", async () => {
-    vi.mocked(getEmployeeTimeTracking).mockResolvedValue({
-      workspace_id: workspaceId,
-      employee: fixture.employee,
-      locations: [
-        {
-          id: "11000000-0000-4000-8000-000000000001",
-          name: "Main Dining",
-          timezone: "America/Los_Angeles",
-        },
-      ],
-      current_session: null,
-      sessions: [],
-    });
-    renderPage("/app/employee-hub/time-tracking");
-    fireEvent.click(await screen.findByRole("button", { name: "Clock in" }));
-    await waitFor(() =>
-      expect(captureEmployeeTimeEvent).toHaveBeenCalledWith(
-        workspaceId,
-        expect.objectContaining({
-          location_id: "11000000-0000-4000-8000-000000000001",
-          session_id: null,
-          event_type: "clock_in",
-        }),
-        expect.any(String),
-      ),
-    );
-  });
-
-  it("shows only End break while a break is active", async () => {
-    vi.mocked(getEmployeeTimeTracking).mockResolvedValue({
-      workspace_id: workspaceId,
-      employee: fixture.employee,
-      locations: [
-        {
-          id: "11000000-0000-4000-8000-000000000001",
-          name: "Main Dining",
-          timezone: "America/Los_Angeles",
-        },
-      ],
-      current_session: {
-        id: "a6300000-0000-4000-8000-000000000001",
-        workspace_id: workspaceId,
-        employee_id: fixture.employee.id,
-        location_id: "11000000-0000-4000-8000-000000000001",
-        location_name: "Main Dining",
-        capture_state: "on_break",
-        review_state: "unreviewed",
-        started_at: "2026-08-17T16:00:00.000Z",
-        ended_at: null,
-        effective_started_at: "2026-08-17T16:00:00.000Z",
-        effective_ended_at: null,
-        last_event_at: "2026-08-17T18:00:00.000Z",
-        revision: 2,
-        events: [],
-        amendments: [],
-        correction_requests: [],
-      },
-      sessions: [],
-    });
-    renderPage("/app/employee-hub/time-tracking");
-    expect(
-      await screen.findByRole("button", { name: "End break" }),
-    ).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Clock out" })).toBeNull();
-  });
-
-  it("submits a revision-guarded correction from completed history", async () => {
-    vi.mocked(getEmployeeTimeTracking).mockResolvedValue({
-      workspace_id: workspaceId,
-      employee: fixture.employee,
-      locations: [
-        {
-          id: "11000000-0000-4000-8000-000000000001",
-          name: "Main Dining",
-          timezone: "America/Los_Angeles",
-        },
-      ],
-      current_session: null,
-      sessions: [
-        {
-          id: "a6300000-0000-4000-8000-000000000002",
-          workspace_id: workspaceId,
-          employee_id: fixture.employee.id,
-          location_id: "11000000-0000-4000-8000-000000000001",
-          location_name: "Main Dining",
-          capture_state: "complete",
-          review_state: "unreviewed",
-          started_at: "2026-08-17T16:00:00.000Z",
-          ended_at: "2026-08-18T00:00:00.000Z",
-          effective_started_at: "2026-08-17T16:00:00.000Z",
-          effective_ended_at: "2026-08-18T00:00:00.000Z",
-          last_event_at: "2026-08-18T00:00:00.000Z",
-          revision: 1,
-          events: [],
-          amendments: [],
-          correction_requests: [],
-        },
-      ],
-    });
-    renderPage("/app/employee-hub/time-tracking");
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Request correction" }),
-    );
-    fireEvent.input(screen.getByLabelText("Requested start"), {
-      target: { value: "2026-08-17T09:15" },
-    });
-    fireEvent.change(screen.getByLabelText("What should be corrected?"), {
-      target: { value: "Clock-in was fifteen minutes later" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
-    await waitFor(() =>
-      expect(requestEmployeeTimeCorrection).toHaveBeenCalledWith(
-        workspaceId,
-        expect.objectContaining({
-          session_id: "a6300000-0000-4000-8000-000000000002",
-          expected_revision: 1,
-          requested_started_at: "2026-08-17T16:15:00.000Z",
-          reason: "Clock-in was fifteen minutes later",
-        }),
-        expect.any(String),
-      ),
     );
   });
 });

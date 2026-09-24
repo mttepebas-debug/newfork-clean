@@ -84,13 +84,6 @@ import {
   createCommunicationService,
   type CommunicationService,
 } from "./communications/communication-service";
-import { registerTimeEntriesRoutes } from "./time-entries/time-entries-routes";
-import {
-  createTimeEntriesService,
-  type TimeEntriesService,
-} from "./time-entries/time-entries-service";
-import { registerKioskRoutes } from "./kiosk/kiosk-routes";
-import { createKioskService, type KioskService } from "./kiosk/kiosk-service";
 import { registerNotificationOutboxRoutes } from "./notifications/notification-outbox-routes";
 import {
   createNotificationOutboxWorker,
@@ -173,8 +166,6 @@ interface BuildAppOptions {
   readonly scheduleRequestsService?: ScheduleRequestsService | null;
   readonly employeeHubService?: EmployeeHubService | null;
   readonly communicationService?: CommunicationService | null;
-  readonly timeEntriesService?: TimeEntriesService | null;
-  readonly kioskService?: KioskService | null;
   readonly notificationOutboxWorker?: NotificationOutboxWorker | null;
   readonly notificationSettingsService?: NotificationSettingsService | null;
   readonly documentTypesService?: DocumentTypesService | null;
@@ -327,10 +318,6 @@ export function buildApp(options: BuildAppOptions = {}) {
     options.employeeHubService ?? createEmployeeHubServiceFromEnvironment();
   const communicationService =
     options.communicationService ?? createCommunicationServiceFromEnvironment();
-  const timeEntriesService =
-    options.timeEntriesService ?? createTimeEntriesServiceFromEnvironment();
-  const kioskService =
-    options.kioskService ?? createKioskServiceFromEnvironment();
   const notificationOutboxWorker =
     options.notificationOutboxWorker === undefined
       ? createNotificationOutboxWorkerFromEnvironment()
@@ -363,7 +350,6 @@ export function buildApp(options: BuildAppOptions = {}) {
       (request.url.startsWith("/v1/me/onboarding") ||
         request.url.startsWith("/v1/invitations") ||
         request.url.includes("/employee-hub") ||
-        request.url.includes("/time-entries") ||
         request.url.includes("/schedule/") ||
         request.url.includes("/communications/") ||
         request.url.includes("/notification-settings") ||
@@ -376,8 +362,7 @@ export function buildApp(options: BuildAppOptions = {}) {
         request.url.includes("/signature-") ||
         request.url.includes("/shift-types/") ||
         request.url.includes("/owner-onboarding") ||
-        request.url.endsWith("/workspace/layout") ||
-        request.url.includes("/kiosk/")) &&
+        request.url.endsWith("/workspace/layout")) &&
       request.method !== "GET" &&
       request.method !== "OPTIONS"
     ) {
@@ -393,7 +378,6 @@ export function buildApp(options: BuildAppOptions = {}) {
       request.url.startsWith("/v1/me/onboarding") ||
       request.url.startsWith("/v1/invitations") ||
       request.url.includes("/employee-hub") ||
-      request.url.includes("/time-entries") ||
       request.url.includes("/schedule") ||
       request.url.includes("/communications/") ||
       request.url.includes("/notification-settings") ||
@@ -406,7 +390,6 @@ export function buildApp(options: BuildAppOptions = {}) {
       request.url.includes("/signature-") ||
       request.url.includes("/shift-types/") ||
       request.url.includes("/owner-onboarding") ||
-      request.url.includes("/kiosk/") ||
       request.url.endsWith("/workspace") ||
       request.url.endsWith("/workspace/layout")
     ) {
@@ -931,15 +914,6 @@ export function buildApp(options: BuildAppOptions = {}) {
     service: signatureSettingsService,
     contextResolver,
   });
-  registerTimeEntriesRoutes(app, {
-    service: timeEntriesService,
-    contextResolver,
-  });
-  registerKioskRoutes(app, {
-    service: kioskService,
-    contextResolver,
-    secureCookies: process.env.NODE_ENV === "production",
-  });
 
   return app;
 }
@@ -1132,22 +1106,6 @@ function createSignatureSettingsServiceFromEnvironment(): SignatureSettingsServi
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return url && serviceRoleKey
     ? createSignatureSettingsService({ url, serviceRoleKey })
-    : null;
-}
-
-function createTimeEntriesServiceFromEnvironment(): TimeEntriesService | null {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && serviceRoleKey
-    ? createTimeEntriesService({ url, serviceRoleKey })
-    : null;
-}
-
-function createKioskServiceFromEnvironment(): KioskService | null {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && serviceRoleKey
-    ? createKioskService({ url, serviceRoleKey })
     : null;
 }
 

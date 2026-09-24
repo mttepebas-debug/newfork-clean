@@ -302,7 +302,7 @@ begin
     perform public.remove_employee_access_service(owner_id, workspace, employee);
   elsif status = 'removed' then
     perform public.terminate_employee_service(
-      owner_id, workspace, employee, localtimestamp, 'Europe/Istanbul', 'block', 'test world', gen_random_uuid()
+      owner_id, workspace, employee, localtimestamp, 'Europe/Istanbul', 'test world', gen_random_uuid()
     );
   end if;
   perform tests.settle();

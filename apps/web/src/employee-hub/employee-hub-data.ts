@@ -4,14 +4,9 @@ import {
   employeeHubMutationResultSchema,
   employeeHubReadModelSchema,
   scheduleReadModelSchema,
-  employeeTimeTrackingReadModelSchema,
-  captureTimeEventResultSchema,
-  timeCorrectionMutationResultSchema,
   type EmployeeRequestActionInput,
   type EmployeeShiftRequestInput,
   type EmployeeTimeOffInput,
-  type EmployeeTimeCaptureInput,
-  type EmployeeTimeCorrectionInput,
 } from "@newfork/shared";
 import {
   getApiAccessToken,
@@ -114,40 +109,6 @@ export async function actOnEmployeeRequest(
   return employeeHubMutationResultSchema.parse(
     await request(workspaceId, "/request-action", {
       method: "POST",
-      body: JSON.stringify(input),
-    }),
-  );
-}
-
-export async function getEmployeeTimeTracking(workspaceId: string) {
-  return employeeTimeTrackingReadModelSchema.parse(
-    await request(workspaceId, "/time-tracking"),
-  );
-}
-
-export async function captureEmployeeTimeEvent(
-  workspaceId: string,
-  input: EmployeeTimeCaptureInput,
-  idempotencyKey: string,
-) {
-  return captureTimeEventResultSchema.parse(
-    await request(workspaceId, "/time-tracking/events", {
-      method: "POST",
-      headers: { "Idempotency-Key": idempotencyKey },
-      body: JSON.stringify(input),
-    }),
-  );
-}
-
-export async function requestEmployeeTimeCorrection(
-  workspaceId: string,
-  input: EmployeeTimeCorrectionInput,
-  idempotencyKey: string,
-) {
-  return timeCorrectionMutationResultSchema.parse(
-    await request(workspaceId, "/time-tracking/corrections", {
-      method: "POST",
-      headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify(input),
     }),
   );

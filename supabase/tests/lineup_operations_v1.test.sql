@@ -4,14 +4,6 @@ create extension if not exists pgtap with schema extensions;
 
 select no_plan();
 
-create function pg_temp.clock_digest() returns jsonb language sql as $$
-select jsonb_build_object(
- 'sessions',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id),'[]'::jsonb)::text) from public.time_sessions t),
- 'events',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id),'[]'::jsonb)::text) from public.time_events t),
- 'manual',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id),'[]'::jsonb)::text) from public.time_manual_entries t),
- 'amendments',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id),'[]'::jsonb)::text) from public.time_amendments t));
-$$;
-create temp table lu_clock_before as select pg_temp.clock_digest() digest;
 
 
 create function pg_temp.run(action text,payload jsonb) returns jsonb language sql as $$
@@ -649,7 +641,6 @@ select throws_ok($$select public.lineup_operations_service('d9f43e62-e099-48e1-b
 
 reset role;
 
-select is(pg_temp.clock_digest()::text,(select digest::text from lu_clock_before),'all staffing and share operations preserve clock sessions, events, manual entries and amendments');
 
 select * from finish();
 

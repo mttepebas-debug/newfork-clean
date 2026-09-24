@@ -15,7 +15,7 @@ describe("retroactiveEditRecovery", () => {
         scheduled_date: "2026-08-17",
         location_name: "Main Dining",
         employee_name: "Alex Rivera",
-        reason: "time_entry_exists",
+        reason: "shift_started",
         severity: "warning",
       }),
     ).toEqual({
@@ -24,7 +24,7 @@ describe("retroactiveEditRecovery", () => {
       scheduled_date: "2026-08-17",
       location_name: "Main Dining",
       employee_name: "Alex Rivera",
-      reason: "time_entry_exists",
+      reason: "shift_started",
       severity: "warning",
     });
   });

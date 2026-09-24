@@ -17,11 +17,6 @@ export const settingsEntryPermissions = [
   "signature_templates.read",
   "notifications.settings.read",
   "notifications.settings.write",
-  "kiosk.device.enroll.location",
-  "kiosk.device.read.location",
-  "kiosk.device.revoke.location",
-  "kiosk.pin.reset.location",
-  "kiosk.audit.read.location",
 ] as const satisfies readonly Permission[];
 
 export function PermissionRoute({

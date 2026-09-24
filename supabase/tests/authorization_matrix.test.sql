@@ -189,7 +189,7 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
        e.is_remote, e.is_excluded_from_schedule, e.revision) is not null
      from public.employee_profiles e where e.id = $3$$),
   ('employee.terminate', 'person', 'employees.archive', false, false,
-   $$select public.terminate_employee_service($1, $2, $3, localtimestamp, 'Europe/Istanbul', 'block', 'matrix probe', gen_random_uuid()) is not null$$),
+   $$select public.terminate_employee_service($1, $2, $3, localtimestamp, 'Europe/Istanbul', 'matrix probe', gen_random_uuid()) is not null$$),
   ('employee.archive', 'person', 'employees.archive', false, false,
    $$select public.set_employee_archived_service($1, $2, $3, true) is not null$$),
   ('employee.remove_access', 'person', 'employees.manage', false, false,

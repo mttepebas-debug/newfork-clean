@@ -11,10 +11,7 @@ import {
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
-import type {
-  EmployeeDirectoryService,
-  TerminationTimeEntryAction,
-} from "./employee-directory-service";
+import type { EmployeeDirectoryService } from "./employee-directory-service";
 import type { EmployeeCreateService } from "./employee-create-service";
 
 const ownEmploymentContactBody = z.object({
@@ -46,11 +43,6 @@ const archiveBody = z.object({
 const terminationBody = z.object({
   effectiveLocal: z.string().min(1),
   worksiteTimezone: z.string().min(1),
-  timeEntryAction: z.enum([
-    "block",
-    "close_at",
-    "keep_open",
-  ] satisfies TerminationTimeEntryAction[]),
   reason: z.string().default(""),
   idempotencyKey: z.string().uuid(),
 });

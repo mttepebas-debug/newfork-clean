@@ -40,7 +40,6 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { postMvpSurfaces } from "../lib/post-mvp";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import {
   getEmployeeDetail,
@@ -1437,8 +1436,6 @@ function EmployeeTerminationDialog({
   const [effectiveLocal, setEffectiveLocal] = useState(() =>
     localDateTimeValue(new Date(), primaryTimezone || undefined),
   );
-  const [timeEntryAction, setTimeEntryAction] =
-    useState<EmployeeTerminationInput["timeEntryAction"]>("block");
   const [reason, setReason] = useState("");
   const idempotencyKey = useRef(crypto.randomUUID());
 
@@ -1476,7 +1473,6 @@ function EmployeeTerminationDialog({
             onSubmit({
               effectiveLocal,
               worksiteTimezone: timezone,
-              timeEntryAction,
               reason,
               idempotencyKey: idempotencyKey.current,
             });
@@ -1508,22 +1504,6 @@ function EmployeeTerminationDialog({
                   {option}
                 </option>
               ))}
-            </select>
-          </label>
-          <label>
-            Open time entry handling
-            <select
-              value={timeEntryAction}
-              onChange={(event) =>
-                setTimeEntryAction(
-                  event.target
-                    .value as EmployeeTerminationInput["timeEntryAction"],
-                )
-              }
-            >
-              <option value="block">Block if a time entry is open</option>
-              <option value="close_at">Close at the effective time</option>
-              <option value="keep_open">Keep open for manager review</option>
             </select>
           </label>
           <label>
@@ -2420,7 +2400,7 @@ function AccessSection({
                 type="button"
                 disabled={removingAccess}
                 confirmLabel="Confirm remove access"
-                title="The employee record, shifts, time history and kiosk access are kept."
+                title="The employee record and shifts are kept."
                 onConfirm={onRemoveAccess}
               >
                 <KeyRound size={15} aria-hidden />
@@ -2511,28 +2491,6 @@ function AccessSection({
           readOnly={readOnly}
         />
       </section>
-
-      {postMvpSurfaces ? (
-        <section className="employee-access-group">
-          <header>
-            <div>
-              <h3>Kiosk</h3>
-              <p>
-                Reset the employee PIN used to clock in or out from shared kiosk
-                devices.
-              </p>
-            </div>
-            <KeyRound size={18} aria-hidden />
-          </header>
-          <div className="employee-access-empty">
-            <strong>Kiosk access is not configured</strong>
-            <Button type="button" disabled>
-              <RotateCcw size={15} aria-hidden />
-              Reset PIN
-            </Button>
-          </div>
-        </section>
-      ) : null}
     </div>
   );
 }

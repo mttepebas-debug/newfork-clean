@@ -46,8 +46,6 @@ export * from "./communications";
 export * from "./notification-catalog";
 export * from "./notification-display";
 export * from "./notification-settings";
-export * from "./time-capture";
-export * from "./kiosk";
 export * from "./storage-access";
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
@@ -158,23 +156,6 @@ export const permissionSchema = z.enum([
   "notifications.delivery_audit.read",
   "notifications.dlq.replay",
   "notifications.broadcast.approve",
-  "time.capture.own",
-  "time.read.own",
-  "time.correction.request.own",
-  "time.read.location",
-  "time.amend.location",
-  "time.correction.review.location",
-  "time.review.approve.location",
-  "time.audit.read",
-  "time.export.preview.location",
-  "time.export.create.location",
-  "time.export.read.location",
-  "time.export.audit.read",
-  "kiosk.device.enroll.location",
-  "kiosk.device.read.location",
-  "kiosk.device.revoke.location",
-  "kiosk.pin.reset.location",
-  "kiosk.audit.read.location",
 ]);
 export type Permission = z.infer<typeof permissionSchema>;
 
@@ -211,31 +192,12 @@ const rolePermissions = {
     "announcements.read",
     "announcements.manage",
     "notifications.read",
-    "time.capture.own",
-    "time.read.own",
-    "time.correction.request.own",
-    "time.read.location",
-    "time.amend.location",
-    "time.correction.review.location",
-    "time.review.approve.location",
-    "time.export.preview.location",
-    "time.export.create.location",
-    "time.export.read.location",
-    "time.export.audit.read",
-    "kiosk.device.enroll.location",
-    "kiosk.device.read.location",
-    "kiosk.device.revoke.location",
-    "kiosk.pin.reset.location",
-    "kiosk.audit.read.location",
   ],
   employee: [
     "workspace.read",
     "schedule.read",
     "announcements.read",
     "notifications.read",
-    "time.capture.own",
-    "time.read.own",
-    "time.correction.request.own",
   ],
 } as const satisfies Record<WorkspaceRole, readonly Permission[]>;
 

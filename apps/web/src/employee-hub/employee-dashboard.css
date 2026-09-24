@@ -292,21 +292,6 @@
 .eh-hero .eh-hero-button:hover {
   background: #f0f5e4;
 }
-.eh-hero .eh-hero-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #edf4eb;
-  font-size: 12px;
-  min-height: 44px;
-  margin-top: 20px;
-}
-.eh-inline-light {
-  color: inherit;
-  background: transparent;
-  border: 0;
-  text-decoration: underline;
-}
 .eh-card {
   padding: 24px;
   border: 1px solid var(--eh-line);
@@ -1080,9 +1065,6 @@
   .eh-hero .eh-hero-button {
     min-height: 46px;
     flex: 1;
-  }
-  .eh-hero .eh-hero-secondary {
-    min-height: 46px;
   }
   .eh-attention {
     padding: 18px;

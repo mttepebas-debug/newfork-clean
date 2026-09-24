@@ -17,12 +17,9 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-export type TerminationTimeEntryAction = "block" | "close_at" | "keep_open";
-
 export interface EmployeeTerminationInput {
   readonly effectiveLocal: string;
   readonly worksiteTimezone: string;
-  readonly timeEntryAction: TerminationTimeEntryAction;
   readonly reason: string;
   readonly idempotencyKey: string;
 }
@@ -266,7 +263,6 @@ export function createEmployeeDirectoryServiceWithClient(
           target_employee_id: input.employeeId,
           effective_local: input.termination.effectiveLocal,
           worksite_timezone: input.termination.worksiteTimezone,
-          time_entry_action: input.termination.timeEntryAction,
           termination_reason: input.termination.reason,
           target_idempotency_key: input.termination.idempotencyKey,
         }),

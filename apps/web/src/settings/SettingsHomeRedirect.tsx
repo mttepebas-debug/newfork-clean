@@ -1,6 +1,5 @@
 import { Navigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { postMvpSurfaces } from "../lib/post-mvp";
 
 export default function SettingsHomeRedirect() {
   const permissions = new Set(useAuth().context?.permissions ?? []);
@@ -25,17 +24,6 @@ export default function SettingsHomeRedirect() {
                   ? "/app/settings/documents"
                   : permissions.has("signature_templates.read")
                     ? "/app/settings/acknowledgements"
-                    : postMvpSurfaces &&
-                        (
-                          [
-                            "kiosk.device.enroll.location",
-                            "kiosk.device.read.location",
-                            "kiosk.device.revoke.location",
-                            "kiosk.pin.reset.location",
-                            "kiosk.audit.read.location",
-                          ] as const
-                        ).some((permission) => permissions.has(permission))
-                      ? "/app/settings/kiosk"
-                      : "/app/schedule";
+                    : "/app/schedule";
   return <Navigate to={destination} replace />;
 }

@@ -33,7 +33,7 @@ select ok((select archived_at is not null from public.schedule_drafts where id='
 select is((select to_jsonb(p) from public.schedule_location_publications p where id='da000000-0000-4000-8000-000000000004'),(select publication from snapshots),'publication and source link remain unchanged');
 select is((select to_jsonb(s) from public.schedule_published_shifts s where id='da000000-0000-4000-8000-000000000005'),(select shift from snapshots),'published snapshot remains unchanged');
 set local role service_role;
-select lives_ok($$select public.terminate_employee_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','da000000-0000-4000-8000-000000000007',(now() at time zone 'America/Los_Angeles')::timestamp - interval '1 minute','America/Los_Angeles','block','Employment ended','da000000-0000-4000-8000-000000000008')$$,'termination accepts assigned archived worksite timezone without reassignment');
+select lives_ok($$select public.terminate_employee_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','da000000-0000-4000-8000-000000000007',(now() at time zone 'America/Los_Angeles')::timestamp - interval '1 minute','America/Los_Angeles','Employment ended','da000000-0000-4000-8000-000000000008')$$,'termination accepts assigned archived worksite timezone without reassignment');
 reset role;
 select ok((select archived_at is not null from public.employee_profiles where id='da000000-0000-4000-8000-000000000007'),'employee archived without saving new assignments');
 select * from finish();

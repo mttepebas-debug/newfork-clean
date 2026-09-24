@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(121);
+select plan(117);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -916,46 +916,6 @@ insert into public.schedule_edit_sessions (
   '10000000-0000-4000-8000-000000000003',
   array['40000000-0000-4000-8000-000000000002']::uuid[]
 );
-insert into public.kiosk_devices (
-  id, workspace_id, location_id, label, credential_hash, created_by
-) values (
-  '45000000-0000-4000-8000-000000000002',
-  '20000000-0000-4000-8000-000000000002',
-  '40000000-0000-4000-8000-000000000002',
-  'Closure Kiosk',
-  repeat('1', 64),
-  '10000000-0000-4000-8000-000000000003'
-);
-insert into public.kiosk_enrollment_codes (
-  id, workspace_id, location_id, label, code_hash, expires_at, created_by
-) values (
-  '45000000-0000-4000-8000-000000000003',
-  '20000000-0000-4000-8000-000000000002',
-  '40000000-0000-4000-8000-000000000002',
-  'Closure Enrollment',
-  repeat('2', 64),
-  now() + interval '5 minutes',
-  '10000000-0000-4000-8000-000000000003'
-);
-insert into public.employee_kiosk_credentials (
-  employee_id, workspace_id, pin_hash, updated_by
-) values (
-  '43000000-0000-4000-8000-000000000002',
-  '20000000-0000-4000-8000-000000000002',
-  repeat('3', 40),
-  '10000000-0000-4000-8000-000000000003'
-);
-insert into public.kiosk_action_sessions (
-  id, workspace_id, location_id, device_id, employee_id, token_hash, expires_at
-) values (
-  '45000000-0000-4000-8000-000000000004',
-  '20000000-0000-4000-8000-000000000002',
-  '40000000-0000-4000-8000-000000000002',
-  '45000000-0000-4000-8000-000000000002',
-  '43000000-0000-4000-8000-000000000002',
-  repeat('4', 64),
-  now() + interval '5 minutes'
-);
 insert into public.notification_outbox (
   id, workspace_id, event_id, type_key, schema_version, actor_user_id,
   subject_type, subject_id, payload, occurred_at
@@ -1125,32 +1085,13 @@ select is(
   'immediate closure expires open schedule edit sessions'
 );
 select is(
-  (select status::text from public.kiosk_devices where id = '45000000-0000-4000-8000-000000000002'),
-  'revoked',
-  'immediate closure revokes active kiosk devices'
-);
-select is(
-  (select status::text from public.kiosk_enrollment_codes where id = '45000000-0000-4000-8000-000000000003'),
-  'expired',
-  'immediate closure expires pending kiosk enrollment codes'
-);
-select ok(
-  (select revoked_at is not null from public.kiosk_action_sessions where id = '45000000-0000-4000-8000-000000000004'),
-  'immediate closure revokes open kiosk action sessions'
-);
-select isnt(
-  (select active from public.employee_kiosk_credentials where employee_id = '43000000-0000-4000-8000-000000000002'),
-  true,
-  'immediate closure deactivates employee kiosk credentials'
-);
-select is(
   (select status from public.notification_outbox where id = '46000000-0000-4000-8000-000000000002'),
   'processed',
   'immediate closure suppresses pending notification jobs'
 );
 select is(
   (
-    select (metadata->'runtime_revocation'->>'kiosk_devices_revoked')::integer
+    select (metadata->'runtime_revocation'->>'schedule_edit_sessions_expired')::integer
     from public.audit_events
     where workspace_id = '20000000-0000-4000-8000-000000000002'
       and action = 'workspace.closure.completed_immediate'

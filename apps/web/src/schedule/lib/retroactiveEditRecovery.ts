@@ -12,12 +12,7 @@ export type RetroactiveEditRecovery =
   | null;
 
 function isPastEditReason(value: unknown): value is PastEditFinding["reason"] {
-  return (
-    value === "pay_period_locked" ||
-    value === "time_entry_exists" ||
-    value === "shift_started" ||
-    value === "past_week"
-  );
+  return value === "shift_started" || value === "past_week";
 }
 
 export function parsePastEditFinding(value: unknown): PastEditFinding | null {

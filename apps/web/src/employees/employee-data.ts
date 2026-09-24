@@ -59,12 +59,9 @@ export interface PreparedInvitation {
   readonly developmentUrl?: string;
 }
 
-export type TerminationTimeEntryAction = "block" | "close_at" | "keep_open";
-
 export interface EmployeeTerminationInput {
   readonly effectiveLocal: string;
   readonly worksiteTimezone: string;
-  readonly timeEntryAction: TerminationTimeEntryAction;
   readonly reason: string;
   readonly idempotencyKey: string;
 }

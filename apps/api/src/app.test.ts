@@ -7,7 +7,6 @@ import type { ScheduleLineupService } from "./schedule/schedule-lineup-service";
 import type { ScheduleRequestsService } from "./schedule/schedule-requests-service";
 import type { EmployeeHubService } from "./employee-hub/employee-hub-service";
 import type { CommunicationService } from "./communications/communication-service";
-import type { TimeEntriesService } from "./time-entries/time-entries-service";
 import type { NotificationSettingsService } from "./notifications/notification-settings-service";
 
 const resolvedContext: ActiveWorkspaceContext = {
@@ -66,19 +65,6 @@ const resolvedContext: ActiveWorkspaceContext = {
     "notifications.settings.read",
     "notifications.settings.write",
     "notifications.test_send",
-    "time.capture.own",
-    "time.read.own",
-    "time.correction.request.own",
-    "time.read.location",
-    "time.amend.location",
-    "time.correction.review.location",
-    "time.review.approve.location",
-    "time.audit.read",
-    "kiosk.device.enroll.location",
-    "kiosk.device.read.location",
-    "kiosk.device.revoke.location",
-    "kiosk.pin.reset.location",
-    "kiosk.audit.read.location",
   ],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
@@ -534,134 +520,6 @@ describe("api app", () => {
         actorUserId: resolvedContext.userId,
         workspaceId: resolvedContext.workspace.id,
         action,
-      },
-    ]);
-  });
-
-  it("derives personal time reads from the authenticated actor", async () => {
-    const calls: unknown[] = [];
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      employeeHubService: {
-        getTimeTracking: async (input: unknown) => {
-          calls.push(input);
-          return {
-            workspace_id: resolvedContext.workspace.id,
-            employee: {
-              id: "15000000-0000-4000-8000-000000000001",
-              display_name: "Alex Kim",
-            },
-            locations: [],
-            current_session: null,
-            sessions: [],
-          };
-        },
-      } as unknown as EmployeeHubService,
-    });
-    const response = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/employee-hub/time-tracking`,
-      headers: { authorization: "Bearer valid-token" },
-    });
-    expect(response.statusCode).toBe(200);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-      },
-    ]);
-  });
-
-  it("requires an idempotency key for employee time capture", async () => {
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      employeeHubService: {} as EmployeeHubService,
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/employee-hub/time-tracking/events`,
-      headers: { authorization: "Bearer valid-token" },
-      payload: {
-        location_id: "11000000-0000-4000-8000-000000000001",
-        session_id: null,
-        event_type: "clock_in",
-        occurred_at: "2026-08-17T16:00:00.000Z",
-      },
-    });
-    expect(response.statusCode).toBe(400);
-  });
-
-  it("forwards employee capture without accepting employee or source fields", async () => {
-    const calls: unknown[] = [];
-    const event = {
-      location_id: "11000000-0000-4000-8000-000000000001",
-      session_id: null,
-      event_type: "clock_in" as const,
-      occurred_at: "2026-08-17T16:00:00.000Z",
-    };
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      employeeHubService: {
-        captureTimeEvent: async (input: unknown) => {
-          calls.push(input);
-          return {};
-        },
-      } as unknown as EmployeeHubService,
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/employee-hub/time-tracking/events`,
-      headers: {
-        authorization: "Bearer valid-token",
-        "idempotency-key": "a6200000-0000-4000-8000-000000000001",
-      },
-      payload: { ...event, employee_id: "spoofed", source: "manager" },
-    });
-    expect(response.statusCode).toBe(200);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        event,
-        idempotencyKey: "a6200000-0000-4000-8000-000000000001",
-      },
-    ]);
-  });
-
-  it("forwards own correction requests from authenticated employee context", async () => {
-    const calls: unknown[] = [];
-    const correction = {
-      session_id: "b6200000-0000-4000-8000-000000000001",
-      expected_revision: 2,
-      requested_started_at: "2026-08-17T16:30:00.000Z",
-      requested_ended_at: "2026-08-18T00:00:00.000Z",
-      reason: "Clock-in was later",
-    };
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      employeeHubService: {
-        requestTimeCorrection: async (input: unknown) => {
-          calls.push(input);
-          return {};
-        },
-      } as unknown as EmployeeHubService,
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/employee-hub/time-tracking/corrections`,
-      headers: {
-        authorization: "Bearer valid-token",
-        "idempotency-key": "a6200000-0000-4000-8000-000000000002",
-      },
-      payload: correction,
-    });
-    expect(response.statusCode, response.body).toBe(201);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        correction,
-        idempotencyKey: "a6200000-0000-4000-8000-000000000002",
       },
     ]);
   });
@@ -3109,13 +2967,11 @@ describe("api app", () => {
                   scheduled_date: "2026-08-17",
                   location_name: "Main Dining",
                   employee_name: "Alex Rivera",
-                  reason: "time_entry_exists",
+                  reason: "past_week",
                   severity: "blocked",
                 },
               ],
-              past_edit_messages: [
-                "Alex Rivera already has a time entry for Main Dining on 2026-08-17.",
-              ],
+              past_edit_messages: ["Past schedule weeks are read-only."],
             }),
           );
         },
@@ -3139,7 +2995,7 @@ describe("api app", () => {
       status: "past_edit_blocked",
       past_edits: [
         {
-          reason: "time_entry_exists",
+          reason: "past_week",
           severity: "blocked",
         },
       ],
@@ -4524,286 +4380,6 @@ describe("api app", () => {
         }),
       },
     ]);
-  });
-
-  it("forwards manager Time Entries reads from authenticated actor context", async () => {
-    const calls: unknown[] = [];
-    const service = {
-      get: async (input: unknown) => {
-        calls.push(input);
-        return { sessions: [] };
-      },
-    } as unknown as TimeEntriesService;
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      timeEntriesService: service,
-    });
-    const response = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries?from=2026-08-17&to=2026-08-23`,
-      headers: { authorization: "Bearer manager-token" },
-    });
-    expect(response.statusCode).toBe(200);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        from: "2026-08-17",
-        to: "2026-08-23",
-      },
-    ]);
-  });
-
-  it("returns a generic not found for manager time workspace mismatches", async () => {
-    const get = vi.fn();
-    const app = buildApp({
-      contextResolver: { resolve: async () => workspaceMismatchContext() },
-      timeEntriesService: { get } as unknown as TimeEntriesService,
-    });
-
-    const response = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries?from=2026-08-17&to=2026-08-23`,
-      headers: { authorization: "Bearer manager-token" },
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({ error: "Workspace not found" });
-    expect(get).not.toHaveBeenCalled();
-  });
-
-  it("derives manager manual-entry provenance outside the client payload", async () => {
-    const calls: unknown[] = [];
-    const service = {
-      createManual: async (input: unknown) => {
-        calls.push(input);
-        return { idempotent_replay: false };
-      },
-    } as unknown as TimeEntriesService;
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      timeEntriesService: service,
-    });
-    const entry = {
-      employee_id: "15000000-0000-4000-8000-000000000001",
-      location_id: "11000000-0000-4000-8000-000000000001",
-      started_at: "2026-08-17T16:00:00.000Z",
-      ended_at: "2026-08-18T00:00:00.000Z",
-      reason: "Employee forgot to clock in",
-    };
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries/manual`,
-      headers: {
-        authorization: "Bearer manager-token",
-        "idempotency-key": "b6100000-0000-4000-8000-000000000001",
-      },
-      payload: entry,
-    });
-    expect(response.statusCode, response.body).toBe(201);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        entry,
-        idempotencyKey: "b6100000-0000-4000-8000-000000000001",
-      },
-    ]);
-  });
-
-  it("forwards revision-guarded manager time amendments", async () => {
-    const calls: unknown[] = [];
-    const service = {
-      amend: async (input: unknown) => {
-        calls.push(input);
-        return { idempotent_replay: false };
-      },
-    } as unknown as TimeEntriesService;
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      timeEntriesService: service,
-    });
-    const amendment = {
-      expected_revision: 2,
-      effective_started_at: "2026-08-17T16:15:00.000Z",
-      effective_ended_at: "2026-08-18T00:00:00.000Z",
-      reason: "Corrected from written log",
-    };
-    const response = await app.inject({
-      method: "PATCH",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries/b6200000-0000-4000-8000-000000000001`,
-      headers: {
-        authorization: "Bearer manager-token",
-        "idempotency-key": "b6100000-0000-4000-8000-000000000002",
-      },
-      payload: amendment,
-    });
-    expect(response.statusCode, response.body).toBe(200);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        sessionId: "b6200000-0000-4000-8000-000000000001",
-        amendment,
-        idempotencyKey: "b6100000-0000-4000-8000-000000000002",
-      },
-    ]);
-  });
-
-  it("forwards revision-guarded correction decisions", async () => {
-    const calls: unknown[] = [];
-    const service = {
-      decideCorrection: async (input: unknown) => {
-        calls.push(input);
-        return {};
-      },
-    } as unknown as TimeEntriesService;
-    const decision = {
-      expected_session_revision: 2,
-      action: "accept",
-      reason: "Verified against signed note",
-    };
-    const correctionId = "b6800000-0000-4000-8000-000000000001";
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      timeEntriesService: service,
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries/corrections/${correctionId}/decision`,
-      headers: {
-        authorization: "Bearer manager-token",
-        "idempotency-key": "b6100000-0000-4000-8000-000000000004",
-      },
-      payload: decision,
-    });
-    expect(response.statusCode, response.body).toBe(200);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        correctionId,
-        decision,
-        idempotencyKey: "b6100000-0000-4000-8000-000000000004",
-      },
-    ]);
-  });
-
-  it("forwards exact session revisions for review-window approval", async () => {
-    const calls: unknown[] = [];
-    const service = {
-      approveReviewWindow: async (input: unknown) => {
-        calls.push(input);
-        return {};
-      },
-    } as unknown as TimeEntriesService;
-    const review = {
-      location_id: "11000000-0000-4000-8000-000000000001",
-      from: "2026-08-17",
-      to: "2026-08-23",
-      sessions: [
-        {
-          session_id: "b6200000-0000-4000-8000-000000000001",
-          expected_revision: 2,
-        },
-      ],
-    };
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      timeEntriesService: service,
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries/review-windows`,
-      headers: {
-        authorization: "Bearer manager-token",
-        "idempotency-key": "b6100000-0000-4000-8000-000000000005",
-      },
-      payload: review,
-    });
-    expect(response.statusCode, response.body).toBe(201);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        review,
-        idempotencyKey: "b6100000-0000-4000-8000-000000000005",
-      },
-    ]);
-  });
-
-  it("requires independent location-time permissions for manager routes", async () => {
-    const app = buildApp({
-      contextResolver: {
-        resolve: async () => ({
-          ...resolvedContext,
-          permissions: resolvedContext.permissions.filter(
-            (permission) =>
-              permission !== "time.read.location" &&
-              permission !== "time.amend.location" &&
-              permission !== "time.correction.review.location" &&
-              permission !== "time.review.approve.location",
-          ),
-        }),
-      },
-      timeEntriesService: {} as TimeEntriesService,
-    });
-    const read = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries?from=2026-08-17&to=2026-08-23`,
-      headers: { authorization: "Bearer manager-token" },
-    });
-    const write = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries/manual`,
-      headers: {
-        authorization: "Bearer manager-token",
-        "idempotency-key": "b6100000-0000-4000-8000-000000000003",
-      },
-      payload: {
-        employee_id: "15000000-0000-4000-8000-000000000001",
-        location_id: "11000000-0000-4000-8000-000000000001",
-        started_at: "2026-08-17T16:00:00.000Z",
-        ended_at: "2026-08-18T00:00:00.000Z",
-        reason: "Employee forgot to clock in",
-      },
-    });
-    const decision = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries/corrections/b6800000-0000-4000-8000-000000000001/decision`,
-      headers: {
-        authorization: "Bearer manager-token",
-        "idempotency-key": "b6100000-0000-4000-8000-000000000006",
-      },
-      payload: {
-        expected_session_revision: 1,
-        action: "reject",
-        reason: "Request cannot be verified",
-      },
-    });
-    const approval = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/time-entries/review-windows`,
-      headers: {
-        authorization: "Bearer manager-token",
-        "idempotency-key": "b6100000-0000-4000-8000-000000000007",
-      },
-      payload: {
-        location_id: "11000000-0000-4000-8000-000000000001",
-        from: "2026-08-17",
-        to: "2026-08-23",
-        sessions: [
-          {
-            session_id: "b6200000-0000-4000-8000-000000000001",
-            expected_revision: 1,
-          },
-        ],
-      },
-    });
-    expect(read.statusCode).toBe(403);
-    expect(write.statusCode, write.body).toBe(403);
-    expect(decision.statusCode).toBe(403);
-    expect(approval.statusCode).toBe(403);
   });
 });
 

@@ -30,6 +30,3 @@ committed.
 
 Current plan, tasks and backlog live in [`docs/plan/`](docs/plan/ROADMAP.md).
 `docs/rebuild/` is historical reference only.
-
-Post-MVP surfaces (Kiosk, Time Entries / Time Tracking) stay in the code but are
-hidden behind `postMvpSurfaces` in `apps/web/src/lib/post-mvp.ts`.

@@ -351,7 +351,6 @@ const notificationCategories: readonly Category[] = [
   "all",
   "schedule",
   "requests",
-  "time_tracking",
   "communications",
   "payroll",
   "people",
