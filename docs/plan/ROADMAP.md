@@ -21,7 +21,7 @@ Fazlar sırayla ilerler: F0 → FJ → F1 → F6 ([MVP-PLAN](MVP-PLAN.md)). Bir 
 | 4 | BL-048 Add Department crash | Hata tekrar üretilir ve düzeltilir, ya da tekrar üretilemediği kaydedilir |
 | 5 | Requests: REQ-AUDIT → REQ-001 manager / REQ-002 exchange / REQ-003 time off (BL-041) | Time off ve release/cover/swap → manager kararı → yayınlı Schedule etkisi uçtan uca çalışır |
 | 5a | Employee Hub nav/tab + polish (BL-056/057), Requests'ten sonra | Tek nav; Time Tracking gizli; "Your team" kartı board'a gider |
-| 5b | Line Up (BL-040), ayrı plan konusu; kapsamı kullanıcıyla ayrıca konuşulacak | Sadeleştirilmiş Line Up; yayınlı Schedule sorumluluğu korunur |
+| 5b | Line Up (BL-040): FOUNDATION-B 5.6'da silindi (2026-09-24); sıfırdan tasarım ayrı proje, kapsamı kullanıcıyla konuşulacak | Yeni Line Up yetki çekirdeği üzerinde; girdi `docs/plan/research/lineup-2026-09-24.md` |
 | 6 | BL-044/045/046 + ANN-001 Announcements, Notifications, belge email'i | Producer, inbox, tercih ve gerçek email teslimatı çalışır (önce BL-027 anahtar yenileme) |
 | 7 | OBS-002 Availability → Schedule | Employee save → manager copy/save → Schedule/preflight akışı ve otomatik bildirim çalışır |
 | 8 | BL-055 date/time tüketimi, OBS-001 invite/access, BL-053 | Global tarih/saat tercihi her yerde uygulanır; invite mutasyonları kabul edilir; Acknowledgements kararı verilir |

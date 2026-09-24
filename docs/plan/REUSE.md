@@ -101,22 +101,19 @@ gelince çözülür.
 | kurulum | OwnerOnboardingPage | `/welcome/:workspaceId/*` | `views/OwnerOnboardingPage.tsx` | belgelenmedi |
 | kurulum | EmployeeOnboardingPage | `/onboarding` | `employees/EmployeeOnboardingPage.tsx` | belgelenmedi |
 | calisanlar | EmployeesPage | `employees` | `employees/EmployeesPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| calisanlar | EmployeeHubPage | `employee-hub/*` | `views/EmployeeHubPage.tsx` | belgelenmedi |
+| calisanlar | EmployeeHubPage | `employee-hub/*` | `views/EmployeeHubPage.tsx` | belgelendi 2026-09-24 |
 | calisanlar | EmployeeDocumentsPage | `employees/documents` | `documents/EmployeeDocumentsPage.tsx` | belgelenmedi |
 | plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | kısmi 2026-09-22 (butonlar) |
 | plan | ScheduleRequestsPage | `schedule/requests` | `views/ScheduleRequestsPage.tsx` | belgelendi 2026-09-24 |
 | plan | ScheduleTemplatesPage | `schedule/templates` | `views/ScheduleTemplatesPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| plan | LineupPage | `schedule/lineup` | `views/LineupPage.tsx` | belgelenmedi |
 | plan | AvailabilityPage | `availability` | `views/AvailabilityPage.tsx` | belgelenmedi |
-| plan | TimeEntriesPage | `time-entries` | `views/TimeEntriesPage.tsx` | belgelenmedi |
 | isyeri | WorkspacePage | `workspace` | `views/WorkspacePage.tsx` | belgelenmedi |
 | iletisim | AnnouncementsPage | `announcements` | `views/AnnouncementsPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | iletisim | NotificationsPage | `inbox`, `notifications` | `views/NotificationsPage.tsx` | belgelenmedi |
-| kiosk | KioskPage | `/kiosk` | `kiosk/KioskPage.tsx` | belgelenmedi |
 | ayarlar | GeneralSettingsPage | `general` | `settings/GeneralSettingsPage.tsx` | belgelenmedi |
 | ayarlar | LocationsSettingsPage | `locations` | `settings/LocationsSettingsPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | ayarlar | JobsSettingsPage | `jobs` | `settings/JobsSettingsPage.tsx` | belgelenmedi |
-| ayarlar | RolesSettingsPage | `roles`, `roles/:roleId` | `settings/RolesSettingsPage.tsx` | belgelenmedi |
+| ayarlar | RolesSettingsPage | `roles`, `roles/:roleId` | `settings/RolesSettingsPage.tsx` | belgelendi 2026-09-24 |
 | ayarlar | SchedulingSettingsPage | `scheduling` | `settings/SchedulingSettingsPage.tsx` | belgelendi 2026-09-22 |
 | ayarlar | ShiftTypesSettingsPage | `scheduling/shift-types` | `settings/ShiftTypesSettingsPage.tsx` | belgelenmedi |
 | ayarlar | ShiftLabelsSettingsPage | `scheduling/shift-labels` | `settings/ShiftLabelsSettingsPage.tsx` | belgelenmedi |
@@ -126,7 +123,6 @@ gelince çözülür.
 | ayarlar | DocumentsSettingsPage | `documents` | `settings/DocumentsSettingsPage.tsx` | belgelenmedi |
 | ayarlar | SignatureTemplatesSettingsPage | | `settings/SignatureTemplatesSettingsPage.tsx` | belgelenmedi |
 | ayarlar | NotificationSettingsPage | `notifications` | `settings/NotificationSettingsPage.tsx` | belgelenmedi |
-| ayarlar | KioskSettingsPage | `kiosk` | `settings/KioskSettingsPage.tsx` | belgelenmedi |
 | ayarlar | SupportSettingsPage | `support` | `settings/SupportSettingsPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | gelistirme | ScheduleShiftDesignPage | `/dev/schedule-shift-design` | `dev/ScheduleShiftDesignPage.tsx` | belgelenmedi |
 | gelistirme | ScheduleShiftBadgeLabPage | `schedule-badge-lab` | `dev/ScheduleShiftBadgeLabPage.tsx` | belgelenmedi |
@@ -183,6 +179,37 @@ yazılır; not boşken buton kapalı. Documents'ta açılan belge çekmecesi
 kaydedilmemiş değişiklikle kapatılınca "Discard unsaved changes?" (UI-13)
 sorar.
 
+### EmployeeHubPage
+
+**Ne işe yarar.** `/app/employee-hub/*`: yalnız `employee` rolündeki üyenin
+arayüzü (`PermissionRoute` `workspace.read`, `roles={["employee"]}`). Alt
+sayfa URL'den okunur: kök "Home" panosu (`EmployeeDashboard`; `?shift=<id>`
+`ShiftSheet`'i açar: "Find cover or swap", "Open in my schedule"), `schedule`
+(`EmployeeScheduleBoard`), `shift-hub` (`ShiftExchangeHub` çalışan görünümü),
+`my-availability` ("Availability" / "Time Off Requests" sekmeleri,
+`?section=time-off`), `more` (`EmployeeMorePage`). Menü AppShell'de: kenar
+çubuğunda Home, Schedule, Shift Hub, My Availability; mobil alt çubukta Home,
+Schedule, Requests, More.
+
+**Kullandığı ortak parçalar.** `CatalogPageHeader` (UI-01; metinler
+`pageCopy`'de), `getEmployeeHub` (`employee-hub-data.ts` →
+`get_employee_hub_service`, shared `employeeHubReadModelSchema`),
+`WeeklyPreferencesPanel` (`audience="employee"`), `AvailabilityDraftScope` +
+`useAvailabilityNavigationGuard` ("Stay here" / "Discard and leave"), shared
+`employeeTimeOffInputSchema`. ConfirmButton / ConfirmDialog kullanmaz.
+
+**Kendine özgü kurallar.** Veri penceresi bugünden 2 gün önce ile 42 gün
+sonrası arası, 60 sn'de bir yenilenir; `schedule?date=` yalnız o günü okur;
+`more` hiç veri yüklemez. İzin formu en fazla 31 gün alır. Form açıkken
+lokasyonun saat dilimi değişirse gönderim durur ("Use current location time
+zone"). Aynı içerik yeniden gönderilirse aynı `request_id` kullanılır.
+
+**Bilinen tuhaflıklar.** Shift Hub mobilde "Requests" adını taşır. Tanınmayan
+alt yol (eski `lineup` bağlantıları dahil) genel "Employee Hub" başlığıyla
+More sayfasını açar. `#<id>` hash'i veri gelince o öğeye kaydırır. Line-up alt
+sayfası ve bağlantıları ("See today's Line-up", "View Line-up", More'daki
+"Line-up") 5.6'da kalktı.
+
 ### SchedulePage (kısmi: taslak ve şablon menüleri)
 
 **Kendine özgü kurallar.** Taslak menüsünde taslak ve şablon silme, Save
@@ -238,6 +265,39 @@ Silahlıyken Publish gizlenir, Save kapanır.
 **Kendine özgü kurallar.** Lokasyon çekmecesinde "Delete location" iki tık
 ("Confirm delete"), ayrı panel yok. Jobs, Shift types ve Shift labels'ta
 silme uyarı paneli açar (etki listesi); o panel bilerek kalıyor.
+
+### RolesSettingsPage
+
+**Ne işe yarar.** Settings → Roles & permissions (`/app/settings/roles`,
+`roles/:roleId`, yeni rol için `roles/new`): her rolün neyi görüp
+değiştirebileceği. Görmek `roles.read` ister; düzenlemek `roles.manage` ile
+owner ya da admin üyeliği ister (`canManage`), yerleşik rolde ayrıca
+`role.editable`. Owner listede görünmez; seçim yoksa Manager açılır. Roller
+"Workspace roles" sekme şeridindedir; 3'ten fazla özel rol "Custom roles +N"
+menüsünde toplanır, mobilde "Role" seçicisi çıkar.
+
+**Kullandığı ortak parçalar.** UI-03 `SettingsHeader` ("New role"), UI-09
+buton rolleri ("Copy role" ve "Cancel" beyaz, "Save changes" yeşil), shared
+`role-permissions.ts` (`permissionGroupsForRole`, `toggleRolePermissions`,
+`personalRolePermissions`, `employeeEligiblePermissions`) ve
+`workspaceRoleInputSchema`, `roles-data.ts` (`loadRoleWorkspace`,
+`saveWorkspaceRole`, `deleteWorkspaceRole`), kaydedilmemiş değişiklik için
+`useAvailabilityNavigationGuard` / `leaveAvailability` ("Discard role
+changes?").
+
+**Kendine özgü kurallar.** İzin tablosu açılıp kapanan gruplardan oluşur; grup
+ve alan başına "Read" / "Edit" kutuları, alan açıklaması Info ikonunda. Bir
+izni açmak bağımlılıklarını da açar (`rolePermissionDependencies`; ör.
+Publishing → Schedule). "Employee experience" rolü yalnız "Personal access"
+alanlarını görür. "Experience" yalnız rol oluşturulurken seçilir; "Starting
+point" boş rol ya da var olan bir rolün kopyası. Kayıt `expected_updated_at`
+ile gider; başarısız kayıtta taslak korunur.
+
+**Bilinen tuhaflıklar.** "Delete role" (yalnız özel rollerde) `ConfirmButton`
+değil, kendi iki tık kopyası: 3,2 sn silahlı "Confirm delete"; üye ya da davet
+referansı varsa "Role has dependencies" der ve sayıları veren ipucu silahlı
+kalır (UI-12'deki "tek eski kopya"). Gezinme koruması availability modülünden
+ödünç. 5.6'dan beri Schedule grubunda "Line Up" satırı yok.
 
 ### SupportSettingsPage (kısmi: butonlar)
 
