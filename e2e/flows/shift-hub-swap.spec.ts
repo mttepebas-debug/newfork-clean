@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { psql } from "../global-setup";
 import { signIn, type Person } from "../fixtures/world";
 
 // FOUNDATION-B 5.1: Shift Hub is the only way shifts change hands. Ali
@@ -13,10 +14,7 @@ const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.met
 // The employees' side (offer and acceptance) is set up through the product's
 // own service, as the world itself is.
 function sql(query: string): string {
-  return execSync(
-    "docker exec -i supabase_db_newfork-clean psql -U postgres -d postgres -At -q -v ON_ERROR_STOP=1",
-    { input: query, encoding: "utf8" },
-  ).trim();
+  return execSync(psql, { input: query, encoding: "utf8" }).trim();
 }
 
 function holder(label: string): string {

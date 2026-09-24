@@ -14,7 +14,10 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # BL-107: every job runs on the self-hosted runner on the user's PC (WSL
+    # Ubuntu, label newfork-local); db and e2e reuse this line. Back to
+    # GitHub's machines: change it to `runs-on: &runner ubuntu-latest`.
+    runs-on: &runner [self-hosted, linux, newfork-local]
     timeout-minutes: 20
     env:
       TZ: America/Los_Angeles # tests assume local dev TZ (ScheduleExportSchedules)
@@ -36,7 +39,7 @@ jobs:
   # (the gitignored local fixture is absent in CI). Only files listed in
   # supabase/tests/ci-green.txt run; the list may grow, never shrink (FOUNDATION-B stage 1a).
   db:
-    runs-on: ubuntu-latest
+    runs-on: *runner
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -59,16 +62,23 @@ jobs:
             if [ -e "$file" ]; then echo "::error::$file was removed from ci-green.txt but still exists"; status=1; fi
           done
           exit $status
+      - name: Keep CI's Supabase apart from the shared local stack
+        id: apart
+        run: bash scripts/ci-supabase-apart.sh
       - name: Start Supabase (database, auth, storage, realtime)
         run: supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector
       - name: pgTAP (green list)
         run: supabase test db $(tr -d '\r' < supabase/tests/ci-green.txt)
+      # Only after the rename took: otherwise this would stop the shared stack.
+      - name: Stop CI's Supabase
+        if: always() && steps.apart.outcome == 'success'
+        run: supabase stop --no-backup
 
   # Browser tests (Playwright): the real sign-in screen, API and web app against a
   # fresh local Supabase; people come from the test world builder with a password
   # (FOUNDATION-B stage 2d).
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: *runner
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -86,10 +96,17 @@ jobs:
       - run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=public.ecr.aws" >> "$GITHUB_ENV"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @newfork/shared --filter @newfork/ui build
+      - name: Keep CI's Supabase apart from the shared local stack
+        id: apart
+        run: bash scripts/ci-supabase-apart.sh
       - name: Start Supabase (database, auth, gateway)
         run: supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test -c e2e/playwright.config.ts
+      # Only after the rename took: otherwise this would stop the shared stack.
+      - name: Stop CI's Supabase
+        if: always() && steps.apart.outcome == 'success'
+        run: supabase stop --no-backup
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
