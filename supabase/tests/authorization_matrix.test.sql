@@ -58,7 +58,6 @@ select tests.time_off('m', 'ayse');
 select tests.time_off('m', 'zeynep');
 -- A published week (no shift on Wednesday, the day of the time-off requests)
 -- and two cover requests Ali has applied to.
-select tests.enable_shift_hub('m');
 select tests.publish_week('m', 0, '[
   {"label": "emre-k", "person": "emre", "loc": "K", "job": "cook",   "day": 1, "start": "09:00", "end": "15:00"},
   {"label": "veli-b", "person": "veli", "loc": "B", "job": "server", "day": 1, "start": "09:00", "end": "15:00"},

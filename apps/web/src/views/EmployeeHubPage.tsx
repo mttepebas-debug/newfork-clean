@@ -30,7 +30,6 @@ import { EmployeeDashboard } from "../employee-hub/EmployeeDashboard";
 import { EmployeeScheduleBoard } from "../employee-hub/EmployeeScheduleBoard";
 import { useHubClock } from "../employee-hub/useHubClock";
 import { EmployeeMorePage } from "../employee-hub/EmployeeMobileNav";
-import { EarlierShiftRequests } from "../employee-hub/shift-exchanges/EarlierShiftRequests";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 
@@ -179,8 +178,7 @@ export function EmployeeHubPage() {
           organizationName={context?.workspace.name ?? ""}
         />
       ) : path.startsWith("shift-hub") ? (
-        <><ShiftExchangeHub key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} timeFormat={model.settings.time_format} /><EarlierShiftRequests model={model} refresh={refresh} /></>
-
+        <ShiftExchangeHub key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} timeFormat={model.settings.time_format} />
       ) : path === "my-availability" ? (
         <AvailabilityView key={`${model.workspace_id}:${model.employee.id}`} model={model} refresh={refresh} />
       ) : path === "lineup" ? (
@@ -312,9 +310,7 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
       actOnEmployeeRequest(model.workspace_id, action),
     onSuccess: refresh,
   });
-  const currentTimeOffRequests = model.requests.filter(
-    (request) => request.kind === "time_off",
-  );
+  const currentTimeOffRequests = model.requests;
   const timeOffRequests = [...currentTimeOffRequests, ...[...cancellationDrafts.values()]
     .filter(request => !currentTimeOffRequests.some(current => current.id === request.id))
     .map(request => ({...request, cancellation:request.cancellation ? {...request.cancellation,can_request:false} : undefined}))];

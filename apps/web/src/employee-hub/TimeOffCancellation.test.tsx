@@ -9,7 +9,7 @@ import { requestAvailabilityNavigation } from "../availability/availability-navi
 vi.mock("./employee-hub-data", () => ({ actOnEmployeeRequest: vi.fn() }));
 const id = "af9c0000-0000-4000-8000-000000000001";
 const request: EmployeeHubReadModel["requests"][number] = {
-  id, kind: "time_off", status: "partially_approved", title: "Time off", detail: "", revision: 2, created_at: "2035-01-01T00:00:00Z", can_cancel: false, can_respond: false, shift_id: null,
+  id, kind: "time_off", status: "partially_approved", title: "Time off", detail: "", revision: 2, created_at: "2035-01-01T00:00:00Z", can_cancel: false,
   cancellation: { parent_request_id: null, parent_revision: null, pending_request_id: null, has_completed_cancellation: false, can_request: true },
   periods: [{ id, segment_date: "2035-01-15", start_time: "09:00", end_time: "17:00", status: "approved", time_timezone: "UTC", time_source: "snapshot",
     effective_intervals: [{ start_at: "2035-01-15T09:00:00Z", end_at: "2035-01-15T12:00:00Z" }, { start_at: "2035-01-15T14:00:00Z", end_at: "2035-01-15T17:00:00Z" }] }],

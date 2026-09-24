@@ -1,7 +1,6 @@
 import {
   scheduleRequestMutationResultSchema,
   scheduleRequestsReadModelSchema,
-  type ShiftChangeDecisionInput,
   type TimeOffDecisionInput,
 } from "@newfork/shared/schedule";
 import { getTabWorkspaceId, supabaseClient } from "../lib/supabase";
@@ -45,22 +44,18 @@ export async function getScheduleRequests(
   workspaceId: string,
   filters: {
     timeOffQueue: "needs_review" | "closed";
-    shiftQueue: "needs_review" | "history";
     locationId: string;
     search: string;
     timeOffCursor?: string;
-    shiftCursor?: string;
   },
 ) {
   const query = new URLSearchParams({
     time_off_queue: filters.timeOffQueue,
-    shift_queue: filters.shiftQueue,
     search: filters.search,
   });
   if (filters.locationId) query.set("location_id", filters.locationId);
   if (filters.timeOffCursor)
     query.set("time_off_cursor", filters.timeOffCursor);
-  if (filters.shiftCursor) query.set("shift_cursor", filters.shiftCursor);
   return scheduleRequestsReadModelSchema.parse(
     await request(workspaceId, `?${query}`),
   );
@@ -94,17 +89,4 @@ export async function previewTimeOffAssignment(workspaceId: string, requestId: s
   return timeOffAssignmentPreviewSchema.parse(await request(workspaceId, `/time-off/${requestId}/assignment-preview`, {
     method: "POST", body: JSON.stringify(decision),
   }));
-}
-
-export async function decideShiftChange(
-  workspaceId: string,
-  requestId: string,
-  decision: ShiftChangeDecisionInput,
-) {
-  return scheduleRequestMutationResultSchema.parse(
-    await request(workspaceId, `/shift-changes/${requestId}/decision`, {
-      method: "POST",
-      body: JSON.stringify(decision),
-    }),
-  );
 }

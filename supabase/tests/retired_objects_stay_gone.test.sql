@@ -10,6 +10,17 @@ create temporary table retired (kind text not null, name text not null, step tex
 insert into retired (kind, name, step) values
   -- 3b the location and week edit lock (20260924152910)
   ('table', 'schedule_edit_locks', '3b'), ('function', 'release_schedule_edit_locks', '3b'),
+  -- 5.1 the old Requests -> Shift changes flow; Shift Hub is always on
+  ('table', 'schedule_shift_change_requests', '5.1'), ('table', 'schedule_shift_change_participants', '5.1'),
+  ('table', 'schedule_shift_change_events', '5.1'),
+  ('type', 'shift_change_request_type', '5.1'), ('type', 'shift_change_request_status', '5.1'),
+  ('type', 'shift_change_participant_role', '5.1'),
+  ('column', 'workspaces.shift_exchanges_enabled', '5.1'),
+  ('function', 'get_shift_change_conflicts_service', '5.1'),
+  ('function', 'resolve_schedule_shift_change_request_service', '5.1'),
+  ('function', 'resolve_schedule_shift_change_request_exchange_legacy', '5.1'),
+  ('function', 'submit_employee_shift_request_service', '5.1'),
+  ('function', 'submit_employee_shift_request_exchange_legacy', '5.1'),
   -- 5.2 kiosk and time tracking (20260924145822)
   ('table', 'employee_kiosk_credentials', '5.2'), ('table', 'kiosk_action_sessions', '5.2'),
   ('table', 'kiosk_devices', '5.2'), ('table', 'kiosk_enrollment_codes', '5.2'),

@@ -94,7 +94,8 @@ export function WorkspacePage() {
     );
   }
   const pendingExchanges = exchanges.isError ? 0 : exchanges.data?.cases.filter((item) => item.status === "open" && ["ready_for_manager", "awaiting_other_manager"].includes(item.stage)).length ?? 0;
-  const model = { ...query.data, metrics: { ...query.data.metrics, pending_shift_change_count: query.data.metrics.pending_shift_change_count + pendingExchanges } };
+  // Shift changes are Shift Hub cases waiting for a manager.
+  const model = { ...query.data, metrics: { ...query.data.metrics, pending_shift_change_count: pendingExchanges } };
   const layout = draft ?? model.layout;
   const hidden = new Set(layout.hidden_widget_ids);
   const updateLayout = (next: WorkspaceLayoutInput) => setDraft(next);
@@ -355,7 +356,9 @@ function Widget({
   workspaceId,
 }: {
   id: WorkspaceWidgetId;
-  model: WorkspaceDashboard;
+  model: WorkspaceDashboard & {
+    metrics: { pending_shift_change_count: number };
+  };
   workspaceId: string;
 }) {
   if (id === "operations") {

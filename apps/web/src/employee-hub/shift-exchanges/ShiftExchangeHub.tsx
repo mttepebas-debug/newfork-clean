@@ -412,7 +412,7 @@ export function ShiftExchangeHub({
         ["requests", "My requests"],
         ["history", "History"],
       ];
-  const canWrite = model.enabled && online && !mutation.isPending;
+  const canWrite = online && !mutation.isPending;
   const matches = (shift: ExchangeShift) =>
     shift.scheduled_date >= from &&
     shift.scheduled_date <= to &&
@@ -485,12 +485,6 @@ export function ShiftExchangeHub({
             </p>
           </div>
         </div>
-      )}
-      {manager && !model.enabled && (
-        <p className="sx-banner" role="status">
-          Shift changes are currently read-only. Your existing schedule and
-          responsibilities remain unchanged.
-        </p>
       )}
       {!online && (
         <p className="sx-banner" role="status">

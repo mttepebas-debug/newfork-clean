@@ -33,7 +33,6 @@ create function pg_temp.shift(n integer) returns uuid language sql as $$select (
 create temp table sx_state(cid uuid, aid uuid, result jsonb, preview jsonb);
 insert into sx_state values(null,null,null,null);
 
-update public.workspaces set shift_exchanges_enabled=true where id=pg_temp.w();
 
 
 create function pg_temp.r(actor uuid, manager_view boolean, d date, focused uuid default null) returns jsonb language sql as $$

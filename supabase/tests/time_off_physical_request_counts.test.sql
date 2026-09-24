@@ -55,7 +55,7 @@ create function pg_temp.cq_request(d date,s text,e text) returns uuid language s
  select (public.submit_employee_time_off_periods_service(actor,w,a,'Counts 24001 request',jsonb_build_array(jsonb_build_object('segment_date',d,'start_time',s,'end_time',e)),gen_random_uuid(),'UTC')->>'request_id')::uuid from cq;
 $$;
 create function pg_temp.cq_row(who uuid,closed boolean default false) returns jsonb language sql as $$
- select r from cq,jsonb_array_elements(public.get_schedule_requests_service(who,w,case when closed then 'closed' else 'needs_review' end,'history',null,'Counts 24001')->'time_off_requests') r where r->>'id'=request::text;
+ select r from cq,jsonb_array_elements(public.get_schedule_requests_service(who,w,case when closed then 'closed' else 'needs_review' end,null,'Counts 24001')->'time_off_requests') r where r->>'id'=request::text;
 $$;
 savepoint overlapping;
 -- Wide enough to reach both: the Lunch shift here, and the one at the far

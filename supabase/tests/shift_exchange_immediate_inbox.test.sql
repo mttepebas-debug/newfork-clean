@@ -29,7 +29,6 @@ create function pg_temp.shift(n integer) returns uuid language sql as $$select (
 create temp table sx_state(cid uuid, aid uuid, result jsonb, preview jsonb);
 insert into sx_state values(null,null,null,null);
 
-update public.workspaces set shift_exchanges_enabled=true where id=pg_temp.w();
 create function pg_temp.cid() returns uuid language sql as $$select cid from sx_state$$;
 create temp table unrelated_before as select to_jsonb(o) row from public.notification_outbox o;
 select ok(not has_function_privilege('anon','public.flush_shift_exchange_notifications_service(uuid,uuid,integer)','execute'),'immediate delivery is not callable by anon');

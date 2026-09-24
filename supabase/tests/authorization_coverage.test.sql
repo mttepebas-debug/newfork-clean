@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(7);
 
 -- Every server entry point (public.*_service) is tied to an action the
 -- authorization matrix speaks for, or to a stated reason it has none. A new
@@ -126,7 +126,6 @@ insert into service_class values
   ('get_schedule_read_model_service', 'schedule.read'),
   ('get_schedule_requests_service', 'requests.read'),
   ('get_schedule_template_service', 'schedule.templates'),
-  ('get_shift_change_conflicts_service', 'exempt:retiring-shift-change'),
   ('get_workspace_dashboard_service', 'workspace.read'),
   ('heartbeat_notification_outbox_service', 'exempt:worker'),
   ('heartbeat_schedule_edit_session_service', 'schedule.edit'),
@@ -225,7 +224,6 @@ insert into service_class values
   ('reset_owner_onboarding_service', 'workspace.setup'),
   ('resolve_notification_in_app_policy_v1_service', 'exempt:predicate'),
   ('resolve_notification_policy_v1_service', 'exempt:predicate'),
-  ('resolve_schedule_shift_change_request_service', 'exempt:retiring-shift-change'),
   ('resolve_schedule_time_off_request_service', 'time_off.decide'),
   ('resolve_time_off_period_decision_service', 'time_off.decide'),
   ('resolve_workspace_context_service', 'account.self'),
@@ -291,7 +289,6 @@ insert into service_class values
   ('store_employee_invitation_delivery_secret_service', 'employee.invite'),
   ('submit_employee_document_lifecycle_service', 'documents.self'),
   ('submit_employee_onboarding_service', 'onboarding.self'),
-  ('submit_employee_shift_request_service', 'exempt:retiring-shift-change'),
   ('submit_employee_time_off_cancellation_service', 'time_off.request_own'),
   ('submit_employee_time_off_periods_service', 'time_off.request_own'),
   ('submit_employee_time_off_service', 'time_off.request_own'),
@@ -360,13 +357,12 @@ select is(
 select ok(
   not exists (select 1 from service_class where class like 'exempt:%' and class not in (
     'exempt:worker', 'exempt:token', 'exempt:predicate',
-    'exempt:retiring-lineup', 'exempt:retiring-availability', 'exempt:retiring-shift-change')),
+    'exempt:retiring-lineup', 'exempt:retiring-availability')),
   'every exemption is one of the stated reasons'
 );
 select cmp_ok((select count(*)::integer from service_class where class = 'exempt:predicate'), '<=', 18, 'permission helpers only go down');
 select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-lineup'), '<=', 16, 'Line Up entry points only go down');
 select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-availability'), '<=', 15, 'old availability entry points only go down');
-select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-shift-change'), '<=', 3, 'old shift-change entry points only go down');
 
 select * from finish();
 rollback;

@@ -2503,54 +2503,6 @@ export const timeOffRequestSchema = z.object({
 });
 export type TimeOffRequest = z.infer<typeof timeOffRequestSchema>;
 
-export const shiftChangeRequestTypeSchema = z.enum([
-  "release_pickup",
-  "direct_coverage",
-  "direct_swap",
-]);
-export const shiftChangeRequestStatusSchema = z.enum([
-  "pending_manager_approval",
-  "approved",
-  "rejected",
-  "cancelled",
-  "expired",
-]);
-export const shiftChangeConflictSchema = z.object({
-  code: z.string().trim().min(1).max(64),
-  severity: z.enum(["hard", "soft"]),
-  message: z.string().trim().min(1).max(240),
-});
-export const shiftChangeShiftSchema = z.object({
-  id: z.string().uuid(),
-  location_id: z.string().uuid(),
-  location_name: z.string().trim().min(1).max(120),
-  scheduled_date: z.string().date(),
-  start_time: z.string(),
-  end_time: z.string(),
-  employee_id: z.string().uuid().nullable(),
-  employee_name: z.string().trim().min(1).max(160).nullable(),
-  job_name: z.string().trim().min(1).max(120),
-});
-export const shiftChangeParticipantSchema = z.object({
-  employee_id: z.string().uuid(),
-  employee_name: z.string().trim().min(1).max(160),
-  role: z.enum(["requester", "giver", "receiver"]),
-});
-export const shiftChangeRequestSchema = z.object({
-  id: z.string().uuid(),
-  request_type: shiftChangeRequestTypeSchema,
-  status: shiftChangeRequestStatusSchema,
-  revision: z.number().int().positive(),
-  note: z.string().max(1000),
-  created_at: z.string().datetime({ offset: true }),
-  offered_shift: shiftChangeShiftSchema,
-  requested_shift: shiftChangeShiftSchema.nullable(),
-  participants: z.array(shiftChangeParticipantSchema),
-  conflicts: z.array(shiftChangeConflictSchema),
-  events: z.array(scheduleRequestEventSchema),
-});
-export type ShiftChangeRequest = z.infer<typeof shiftChangeRequestSchema>;
-
 export const scheduleRequestsReadModelSchema = z.object({
   workspace_id: z.string().uuid(),
   time_format: z.enum(["12h", "24h"]).optional(),
@@ -2561,11 +2513,8 @@ export const scheduleRequestsReadModelSchema = z.object({
     }),
   ),
   time_off_pending_count: z.number().int().nonnegative(),
-  shift_change_pending_count: z.number().int().nonnegative(),
   time_off_next_cursor: z.string().datetime({ offset: true }).nullable(),
-  shift_change_next_cursor: z.string().datetime({ offset: true }).nullable(),
   time_off_requests: z.array(timeOffRequestSchema),
-  shift_change_requests: z.array(shiftChangeRequestSchema),
 });
 export type ScheduleRequestsReadModel = z.infer<
   typeof scheduleRequestsReadModelSchema
@@ -2632,15 +2581,6 @@ export const timeOffDecisionInputSchema = z
       });
   });
 export type TimeOffDecisionInput = z.infer<typeof timeOffDecisionInputSchema>;
-
-export const shiftChangeDecisionInputSchema = z.object({
-  expected_revision: z.number().int().positive(),
-  action: z.enum(["approve", "reject"]),
-  note: z.string().trim().max(1000).default(""),
-});
-export type ShiftChangeDecisionInput = z.infer<
-  typeof shiftChangeDecisionInputSchema
->;
 
 export const scheduleRequestMutationResultSchema = z.object({
   status: z.string().trim().min(1).max(48),

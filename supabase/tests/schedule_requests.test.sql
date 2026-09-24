@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(33);
+select plan(24);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('97000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','phase6b-manager@example.test','','{}','{}',now(),now()),
@@ -16,9 +16,6 @@ set local role authenticated;
 select throws_ok($$select * from public.schedule_time_off_requests$$,'42501',null,'time off requests deny authenticated reads');
 select throws_ok($$select * from public.schedule_time_off_segments$$,'42501',null,'time off segments deny authenticated reads');
 select throws_ok($$select * from public.schedule_time_off_events$$,'42501',null,'time off events deny authenticated reads');
-select throws_ok($$select * from public.schedule_shift_change_requests$$,'42501',null,'shift requests deny authenticated reads');
-select throws_ok($$select * from public.schedule_shift_change_participants$$,'42501',null,'shift participants deny authenticated reads');
-select throws_ok($$select * from public.schedule_shift_change_events$$,'42501',null,'shift events deny authenticated reads');
 reset role;
 
 select is((select count(distinct (r.system_key, p.permission_key))::integer from public.workspace_role_permissions p join public.workspace_roles r on r.id=p.role_id where r.system_key in('owner','admin','manager') and p.permission_key in('schedule.time_off_requests.read','schedule.time_off_requests.manage','schedule.shift_change_requests.read','schedule.shift_change_requests.manage')),12,'manager classes receive four request capabilities');
@@ -63,20 +60,6 @@ select throws_ok($$select public.resolve_schedule_time_off_request_service('9700
 select is((public.resolve_schedule_time_off_request_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001',2,'return_to_pending')->>'status'),'pending','closed request returns to pending');
 select is((select count(*)::integer from public.schedule_time_off_segments where request_id='97200000-0000-4000-8000-000000000001' and status='pending'),2,'return resets segment decisions');
 select is((select employee_id from public.schedule_published_shifts where id='22000000-0000-4000-8000-000000000001'),null::uuid,'reopening a request does not silently restore a released assignment');
-
-insert into public.schedule_shift_change_requests(id,workspace_id,request_type,offered_shift_id,expected_offered_employee_id,note,created_by) values
-('97400000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','direct_coverage','22000000-0000-4000-8000-000000000005',null,'Sam offered coverage','97000000-0000-4000-8000-000000000002');
-insert into public.schedule_shift_change_participants(workspace_id,request_id,employee_id,participant_role) values
-('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97400000-0000-4000-8000-000000000001','15000000-0000-4000-8000-000000000003','requester'),
-('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97400000-0000-4000-8000-000000000001','15000000-0000-4000-8000-000000000003','receiver');
-insert into public.schedule_shift_change_events(workspace_id,request_id,action,actor_user_id) values
-('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97400000-0000-4000-8000-000000000001','submitted','97000000-0000-4000-8000-000000000002');
-select is((select public.get_shift_change_conflicts_service('97400000-0000-4000-8000-000000000001')->0->>'severity'),'soft','missing location assignment is a soft conflict');
-select throws_ok($$select public.resolve_schedule_shift_change_request_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97400000-0000-4000-8000-000000000001',1,'approve','short')$$,'23514','soft conflict override note required','soft conflict requires manager reason');
-select is((public.resolve_schedule_shift_change_request_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97400000-0000-4000-8000-000000000001',1,'approve','Approved for cross-location coverage')->>'status'),'approved','reasoned soft conflict can be approved');
-select is((select employee_id::text from public.schedule_published_shifts where id='22000000-0000-4000-8000-000000000005'),'15000000-0000-4000-8000-000000000003','approval changes published shift owner atomically');
-select is((select count(*)::integer from public.schedule_shift_change_events where request_id='97400000-0000-4000-8000-000000000001' and action='approved'),1,'shift approval records domain event');
-select throws_ok($$select public.resolve_schedule_shift_change_request_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97400000-0000-4000-8000-000000000001',1,'reject')$$,'40001','stale shift change request','resolved shift request cannot transition again');
 
 select * from finish();
 rollback;

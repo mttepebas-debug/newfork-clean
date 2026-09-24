@@ -56,7 +56,6 @@ const dashboard = {
     today_shift_count: 0,
     today_open_shift_count: 0,
     pending_time_off_count: 0,
-    pending_shift_change_count: 0,
     unread_notification_count: 0,
   },
   announcements: [],

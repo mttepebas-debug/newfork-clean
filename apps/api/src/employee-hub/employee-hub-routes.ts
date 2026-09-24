@@ -1,7 +1,6 @@
 import {
   employeePersonalTaskInputSchema,
   employeeRequestActionInputSchema,
-  employeeShiftRequestInputSchema,
   employeeTimeOffInputSchema,
 } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
@@ -177,39 +176,6 @@ export function registerEmployeeHubRoutes(
       try {
         return reply.send(
           await options.service.submitTimeOff({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            request: body.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
-    },
-  );
-  app.post(
-    "/v1/workspaces/:workspaceId/employee-hub/shift-requests",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      const body = employeeShiftRequestInputSchema.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid shift request required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Employee Hub service is not configured" });
-      try {
-        return reply.send(
-          await options.service.submitShiftRequest({
             actorUserId: context.userId,
             workspaceId: params.data.workspaceId,
             request: body.data,

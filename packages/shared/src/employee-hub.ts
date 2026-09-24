@@ -46,15 +46,13 @@ export type EmployeeHubShift = z.infer<typeof employeeHubShiftSchema>;
 
 export const employeeHubRequestSchema = z.object({
   id: z.string().uuid(),
-  shift_id: z.string().uuid().nullable().default(null),
-  kind: z.enum(["time_off", "release", "pickup", "swap"]),
+  kind: z.literal("time_off"),
   status: z.string().min(1),
   title: z.string().min(1),
   detail: z.string(),
   revision: z.number().int().positive(),
   created_at: z.string().datetime({ offset: true }),
   can_cancel: z.boolean(),
-  can_respond: z.boolean().default(false),
   periods: z.array(timeOffPeriodReadSchema).optional(),
   request_type: z.enum(["time_off", "time_off_cancellation"]).optional(),
   cancellation: timeOffCancellationContextSchema.optional(),
@@ -153,35 +151,10 @@ export const employeeTimeOffInputSchema = z.object({
 });
 export type EmployeeTimeOffInput = z.infer<typeof employeeTimeOffInputSchema>;
 
-export const employeeShiftRequestInputSchema = z
-  .object({
-    action: z.enum(["release", "pickup", "swap"]),
-    shift_id: z.string().uuid(),
-    requested_shift_id: z.string().uuid().optional(),
-    note: z.string().trim().max(1000).default(""),
-  })
-  .superRefine((value, issue) => {
-    if (value.action === "swap" && !value.requested_shift_id)
-      issue.addIssue({
-        code: "custom",
-        path: ["requested_shift_id"],
-        message: "A requested shift is required for a swap",
-      });
-    if (value.action !== "swap" && value.requested_shift_id)
-      issue.addIssue({
-        code: "custom",
-        path: ["requested_shift_id"],
-        message: "Only swaps accept a requested shift",
-      });
-  });
-export type EmployeeShiftRequestInput = z.infer<
-  typeof employeeShiftRequestInputSchema
->;
-
 export const employeeRequestActionInputSchema = z.union([z.object({
   request_id: z.string().uuid(),
-  kind: z.enum(["time_off", "shift_change"]),
-  action: z.enum(["cancel", "accept", "decline"]),
+  kind: z.literal("time_off"),
+  action: z.literal("cancel"),
   expected_revision: z.number().int().positive(),
 }), z.object({
   request_id: z.string().uuid(), kind: z.literal("time_off"), action: z.literal("request_cancellation"),

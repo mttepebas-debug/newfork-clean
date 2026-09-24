@@ -99,20 +99,7 @@ const fixture = {
   ],
   requests: [
     {
-      id: "98200000-0000-4000-8000-000000000001",
-      shift_id: "22000000-0000-4000-8000-000000000001",
-      kind: "swap",
-      status: "awaiting teammate",
-      title: "Shift swap",
-      detail: "Aug 24",
-      revision: 1,
-      created_at: "2026-08-17T12:00:00Z",
-      can_cancel: true,
-      can_respond: false,
-    },
-    {
       id: "98200000-0000-4000-8000-000000000003",
-      shift_id: null,
       kind: "time_off",
       status: "pending",
       title: "Time off",
@@ -120,7 +107,6 @@ const fixture = {
       revision: 3,
       created_at: "2026-08-18T12:00:00Z",
       can_cancel: true,
-      can_respond: false,
     },
   ],
   availability: null,
@@ -231,11 +217,6 @@ vi.mock("../employee-hub/employee-hub-data", () => ({
     request_id: "98300000-0000-4000-8000-000000000001",
     revision: 1,
   }),
-  submitEmployeeShiftRequest: vi.fn().mockResolvedValue({
-    status: "pending_manager_approval",
-    request_id: "98300000-0000-4000-8000-000000000002",
-    revision: 1,
-  }),
   actOnEmployeeRequest: vi.fn(),
 }));
 
@@ -291,7 +272,7 @@ describe("EmployeeHubPage", () => {
       vi.mocked(loadWeeklyPreferences).mockResolvedValue(model);
       return { model, finalized: [], kept_count: 0, cancelled_count: 0, resolved_count: 0 };
     });
-    vi.mocked(getExchanges).mockResolvedValue({ enabled: true, employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [] });
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [] });
     context.permissions = ["workspace.read", "schedule.read"];
     vi.mocked(getNotifications).mockResolvedValue({
       workspace_id: workspaceId,
@@ -335,20 +316,6 @@ describe("EmployeeHubPage", () => {
     );
     expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
     expect(screen.getByLabelText("New personal reminder")).toBeTruthy();
-  });
-  it("deep links to the request that actually needs the employee's response", async () => {
-    renderPageWithFixture({
-      ...fixture,
-      requests: [
-        { ...fixture.requests[0]!, can_respond: true, can_cancel: false },
-      ],
-    });
-    const link = await screen.findByRole("link", { name: /Shift swap Aug 24/ });
-    expect(link.getAttribute("href")).toContain(
-      `request=${fixture.requests[0]!.id}`,
-    );
-    expect(screen.getByText("Waiting on you")).toBeTruthy();
-    expect(screen.queryByText("1 request awaiting a response")).toBeNull();
   });
   it("creates a persisted personal reminder and completes it only after server confirmation", async () => {
     const task = {
@@ -525,7 +492,7 @@ describe("EmployeeHubPage", () => {
       ).toBeTruthy();
       expect(screen.getByText("TODAY’S SHIFT")).toBeTruthy();
       expect(screen.getByText("No requests need your response.")).toBeTruthy();
-      expect(screen.getByText("2 requests awaiting a response")).toBeTruthy();
+      expect(screen.getByText("1 request awaiting a response")).toBeTruthy();
       expect(
         screen
           .getByRole("link", { name: /^Request time off/ })
@@ -538,7 +505,7 @@ describe("EmployeeHubPage", () => {
   });
 
   it("submits open shift pickup from Shift Hub", async () => {
-    vi.mocked(getExchanges).mockResolvedValue({ enabled: true, employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [{ case_id: null, eligibility: { status: "eligible", reasons: [] }, shift: {
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [{ case_id: null, eligibility: { status: "eligible", reasons: [] }, shift: {
       ...ownShift, id: "22000000-0000-4000-8000-000000000005", source_id: "22000000-0000-4000-8000-000000000005", employee_id: null, employee_name: null,
       job_id: "13000000-0000-4000-8000-000000000001", scheduled_date: "2030-01-01", timezone: "America/Los_Angeles", starts_at: "2030-01-01T17:00:00Z", ends_at: "2030-01-02T01:00:00Z",
     } }] });

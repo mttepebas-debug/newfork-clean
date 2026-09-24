@@ -427,14 +427,6 @@ language sql
 set search_path = ''
 as $$ select tests.publish_week_as(tests.user(w || ':owner'), w, n, shifts) $$;
 
--- ponytail: no screen or API route turns Shift Hub on today; the flag goes in
--- stage 5.1 (Shift Hub always on), and this helper with it.
-create or replace function tests.enable_shift_hub(w text)
-returns void
-language sql
-set search_path = ''
-as $$ update public.workspaces set shift_exchanges_enabled = true where id = tests.id(w) $$;
-
 -- The holder of a published shift asks for cover in Shift Hub and somebody
 -- applies. Labels: <w>:case:<shift label>, <w>:application:<shift label>.
 create or replace function tests.cover_case(w text, shift_label text, holder text, applicant text)

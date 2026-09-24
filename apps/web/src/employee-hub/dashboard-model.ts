@@ -120,6 +120,3 @@ export function shiftDate(date: string, full = false) {
     day: "numeric",
   });
 }
-export function requestLink(request: EmployeeHubReadModel["requests"][number]) {
-  return `/app/employee-hub/${request.kind === "time_off" ? "my-availability" : "shift-hub"}?request=${request.id}#request-${request.id}`;
-}

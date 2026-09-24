@@ -76,7 +76,6 @@ function model(): ExchangeReadModel {
     employee_name: "Blake QA",
   };
   return {
-    enabled: true,
     employee_id: sid,
     own_shifts: [],
     opportunities: [],

@@ -1,0 +1,65 @@
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { expect, test, type Browser, type Page } from "@playwright/test";
+import { signIn, type Person } from "../fixtures/world";
+
+// FOUNDATION-B 5.1: Shift Hub is the only way shifts change hands. Ali
+// (Kadikoy) and Deniz (Besiktas) swap two shifts at the same time; each
+// location's manager approves their side on Requests -> Shift changes, and
+// only the second approval moves the shifts.
+
+const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
+
+// The employees' side (offer and acceptance) is set up through the product's
+// own service, as the world itself is.
+function sql(query: string): string {
+  return execSync(
+    "docker exec -i supabase_db_newfork-clean psql -U postgres -d postgres -At -q -v ON_ERROR_STOP=1",
+    { input: query, encoding: "utf8" },
+  ).trim();
+}
+
+function holder(label: string): string {
+  return sql(`select coalesce(p.first_name, '') from public.schedule_published_shifts s
+    join public.employee_profiles p on p.id = s.employee_id
+    where s.id = tests.id('${run}:shift:${label}');`);
+}
+
+async function openSchedule(browser: Browser, person: Person, path: string): Promise<Page> {
+  const page = await (await browser.newContext()).newPage();
+  await signIn(page, person);
+  await expect(page).toHaveURL(/\/app\/workspace/);
+  await page.goto(path);
+  return page;
+}
+
+test("a two-location swap completes after both managers approve", async ({ browser }) => {
+  const caseId = sql(`
+    select tests.publish_week('${run}', 1, '[
+      {"label": "ali-k", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
+      {"label": "deniz-b", "person": "deniz", "loc": "B", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
+    ]');
+    select public.shift_exchanges_command_service(tests.user('${run}:ali'), tests.id('${run}'),
+      jsonb_build_object('action', 'create', 'kind', 'swap',
+        'shift_id', tests.id('${run}:shift:ali-k'), 'requested_shift_id', tests.id('${run}:shift:deniz-b')),
+      gen_random_uuid()) ->> 'case_id';`).split(/\r?\n/).at(-1)!;
+  sql(`select public.shift_exchanges_command_service(tests.user('${run}:deniz'), tests.id('${run}'),
+      jsonb_build_object('action', 'accept', 'case_id', c.id, 'application_id', a.id, 'expected_revision', c.revision),
+      gen_random_uuid())
+    from public.shift_exchange_cases c join public.shift_exchange_applications a on a.case_id = c.id
+    where c.id = '${caseId}';`);
+  const day = sql(`select tests.week(1) + 1;`);
+  const casePath = `/app/schedule/requests?tab=shift-changes&case=${caseId}&from=${day}&to=${day}`;
+
+  const ayse = await openSchedule(browser, "ayse", casePath);
+  await ayse.getByRole("button", { name: "Approve my location" }).click();
+  await ayse.getByRole("button", { name: "Record my approval" }).click();
+  await expect(ayse.getByRole("button", { name: "Approve my location" })).toHaveCount(0);
+  expect(holder("ali-k")).toBe("Ali");
+
+  const mehmet = await openSchedule(browser, "mehmet", casePath);
+  await mehmet.getByRole("button", { name: /^Approve transfer to Deniz/ }).click();
+  await mehmet.getByRole("button", { name: /^Confirm transfer to Deniz/ }).click();
+  await expect.poll(() => holder("ali-k")).toBe("Deniz");
+  expect(holder("deniz-b")).toBe("Ali");
+});

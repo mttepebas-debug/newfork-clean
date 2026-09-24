@@ -113,34 +113,5 @@ update wp_command set command=jsonb_set(command,'{preference,days,3,all_day}','t
 select is(jsonb_array_length(public.weekly_preferences_preview_service(actor,w,command)->'items'),0,'unrelated weekly edit does not re-prompt retained requests') from wp_fixture,wp_command;
 select ok(not has_function_privilege('authenticated','public.weekly_preferences_save_service(uuid,uuid,jsonb,uuid)','execute'),'client cannot impersonate save actor');
 select ok(not has_table_privilege('authenticated','public.weekly_preference_events','select'),'private before/after audit unavailable to direct employee reads');
--- Earlier workflow requests are still visible in the employee Hub and must not
--- bypass the same incoming-request review during the transition.
-create temp table wp_legacy as select gen_random_uuid() publication,gen_random_uuid() job,gen_random_uuid() shift,gen_random_uuid() owned_shift,gen_random_uuid() incoming,gen_random_uuid() outgoing;
-insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from,kind)
- select w,emp,1,'UTC',(select jsonb_agg(jsonb_build_object('day',d,'mode','unrestricted','windows','[]'::jsonb)) from generate_series(0,6) d),'employee',actor,'2035-01-15','weekly' from wp_fixture;
-insert into public.jobs(id,workspace_id,name,color) select job,w,'Legacy test job','#256b56' from wp_legacy,wp_fixture;
--- A shift is refused now unless the person holds an active assignment to its
--- job as well as its location. The fixture gave them the location only,
--- because that was the whole of the rule when it was written.
-insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by)
- select w,emp,job,owner_id from wp_legacy,wp_fixture;
-insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
- select publication,w,loc,'2035-01-15',1,owner_id from wp_legacy,wp_fixture;
-insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,job_id,scheduled_date,start_time,end_time,source_shift_id,time_basis,time_timezone,employee_id)
- select shift,w,loc,publication,job,'2035-01-15'::date,'13:00'::time,'15:00'::time,gen_random_uuid(),'explicit','UTC',null from wp_legacy,wp_fixture
- union all select owned_shift,w,loc,publication,job,'2035-01-15','13:00','15:00',gen_random_uuid(),'explicit','UTC',emp from wp_legacy,wp_fixture;
-insert into public.schedule_shift_change_requests(id,workspace_id,request_type,offered_shift_id,created_by)
- select incoming,w,'release_pickup'::public.shift_change_request_type,shift,actor from wp_legacy,wp_fixture
- union all select outgoing,w,'release_pickup',owned_shift,actor from wp_legacy,wp_fixture;
-insert into public.schedule_shift_change_participants(workspace_id,request_id,employee_id,participant_role)
- select w,incoming,emp,'receiver'::public.shift_change_participant_role from wp_legacy,wp_fixture union all select w,outgoing,emp,'giver' from wp_legacy,wp_fixture;
-update wp_command set command=jsonb_set(command,'{preference,days,1,range}','{"start":"13:00","end":"14:00"}'),request_key=gen_random_uuid();
-select is((select count(*) from wp_fixture,wp_command cross join lateral jsonb_array_elements(public.weekly_preferences_preview_service(actor,w,command)->'items') item where item->>'kind'='legacy_request'),1::bigint,'legacy incoming pickup included and outgoing release excluded');
-update wp_command set command=command||jsonb_build_object('decisions',(select jsonb_agg(item||jsonb_build_object('action',case when item->>'kind'='legacy_request' then 'cancel' else 'keep' end))
- from wp_fixture cross join lateral jsonb_array_elements(public.weekly_preferences_preview_service(actor,w,command)->'items') item));
-select lives_ok($$select public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture,wp_command$$,'legacy cancellation participates in atomic save');
-select is((select status::text from public.schedule_shift_change_requests where id=(select incoming from wp_legacy)),'cancelled','legacy incoming request cancelled');
-select is((select status::text from public.schedule_shift_change_requests where id=(select outgoing from wp_legacy)),'pending_manager_approval','legacy giving-away request unchanged');
-select is((select employee_id from public.schedule_published_shifts where id=(select owned_shift from wp_legacy)),(select emp from wp_fixture),'existing assigned shift untouched');
 select * from finish();
 rollback;

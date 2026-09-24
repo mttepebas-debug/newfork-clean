@@ -538,7 +538,6 @@ describe("api app", () => {
               today_shift_count: 0,
               today_open_shift_count: 0,
               pending_time_off_count: 0,
-              pending_shift_change_count: 0,
               unread_notification_count: 0,
             },
             announcements: [],
@@ -1323,11 +1322,8 @@ describe("api app", () => {
             workspace_id: resolvedContext.workspace.id,
             locations: [],
             time_off_pending_count: 0,
-            shift_change_pending_count: 0,
             time_off_next_cursor: null,
-            shift_change_next_cursor: null,
             time_off_requests: [],
-            shift_change_requests: [],
           };
         },
       } as unknown as ScheduleRequestsService,
@@ -1335,7 +1331,7 @@ describe("api app", () => {
     const cursor = "2026-08-17T12:00:00.000Z";
     const response = await app.inject({
       method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests?time_off_queue=closed&shift_queue=history&search=alex&limit=25&time_off_cursor=${encodeURIComponent(cursor)}`,
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests?time_off_queue=closed&search=alex&limit=25&time_off_cursor=${encodeURIComponent(cursor)}`,
       headers: { authorization: "Bearer valid-token" },
     });
     expect(response.statusCode).toBe(200);
@@ -1344,11 +1340,9 @@ describe("api app", () => {
         actorUserId: resolvedContext.userId,
         workspaceId: resolvedContext.workspace.id,
         timeOffQueue: "closed",
-        shiftQueue: "history",
         locationId: null,
         search: "alex",
         timeOffCursor: cursor,
-        shiftCursor: null,
         limit: 25,
       },
     ]);
@@ -1365,11 +1359,8 @@ describe("api app", () => {
             workspace_id: resolvedContext.workspace.id,
             locations: [],
             time_off_pending_count: 0,
-            shift_change_pending_count: 0,
             time_off_next_cursor: null,
-            shift_change_next_cursor: null,
             time_off_requests: [],
-            shift_change_requests: [],
           };
         },
         markTimeOffViewed: async (
@@ -1378,23 +1369,13 @@ describe("api app", () => {
           calls.push({ kind: "viewed", input });
           return { status: "viewed", request_id: input.requestId, revision: 3 };
         },
-        resolveShiftChange: async (
-          input: Parameters<ScheduleRequestsService["resolveShiftChange"]>[0],
-        ) => {
-          calls.push({ kind: "shift-decision", input });
-          return {
-            status: "approved",
-            request_id: input.requestId,
-            revision: 4,
-          };
-        },
       } as unknown as ScheduleRequestsService,
     });
     const requestId = "97200000-0000-4000-8000-000000000001";
 
     const read = await app.inject({
       method: "GET",
-      url: "/schedule/requests?time_off_queue=closed&shift_queue=history&search=alex&limit=25",
+      url: "/schedule/requests?time_off_queue=closed&search=alex&limit=25",
       headers: { authorization: "Bearer valid-token" },
     });
     const viewed = await app.inject({
@@ -1402,20 +1383,9 @@ describe("api app", () => {
       url: `/schedule/requests/time-off/${requestId}/viewed`,
       headers: { authorization: "Bearer valid-token" },
     });
-    const decision = await app.inject({
-      method: "POST",
-      url: `/schedule/requests/shift-changes/${requestId}/decision`,
-      headers: { authorization: "Bearer valid-token" },
-      payload: {
-        expected_revision: 3,
-        action: "approve",
-        note: "Coverage approved.",
-      },
-    });
 
     expect(read.statusCode).toBe(200);
     expect(viewed.statusCode).toBe(200);
-    expect(decision.statusCode).toBe(200);
     expect(calls).toEqual([
       {
         kind: "get",
@@ -1423,11 +1393,9 @@ describe("api app", () => {
           actorUserId: resolvedContext.userId,
           workspaceId: resolvedContext.workspace.id,
           timeOffQueue: "closed",
-          shiftQueue: "history",
           locationId: null,
           search: "alex",
           timeOffCursor: null,
-          shiftCursor: null,
           limit: 25,
         },
       },
@@ -1439,19 +1407,6 @@ describe("api app", () => {
           requestId,
         },
       },
-      {
-        kind: "shift-decision",
-        input: {
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          requestId,
-          decision: {
-            expected_revision: 3,
-            action: "approve",
-            note: "Coverage approved.",
-          },
-        },
-      },
     ]);
   });
 
@@ -1459,14 +1414,12 @@ describe("api app", () => {
     const get = vi.fn();
     const markTimeOffViewed = vi.fn();
     const resolveTimeOff = vi.fn();
-    const resolveShiftChange = vi.fn();
     const app = buildApp({
       contextResolver: { resolve: async () => workspaceMismatchContext() },
       scheduleRequestsService: {
         get,
         markTimeOffViewed,
         resolveTimeOff,
-        resolveShiftChange,
       } as unknown as ScheduleRequestsService,
     });
     const workspaceId = resolvedContext.workspace.id;
@@ -1474,7 +1427,7 @@ describe("api app", () => {
     const requests = [
       {
         method: "GET" as const,
-        url: `/v1/workspaces/${workspaceId}/schedule/requests?time_off_queue=closed&shift_queue=history&search=alex&limit=25`,
+        url: `/v1/workspaces/${workspaceId}/schedule/requests?time_off_queue=closed&search=alex&limit=25`,
       },
       {
         method: "POST" as const,
@@ -1490,15 +1443,6 @@ describe("api app", () => {
           segment_decisions: [],
         },
       },
-      {
-        method: "POST" as const,
-        url: `/v1/workspaces/${workspaceId}/schedule/requests/shift-changes/${requestId}/decision`,
-        payload: {
-          expected_revision: 1,
-          action: "reject",
-          note: "No coverage.",
-        },
-      },
     ];
 
     for (const request of requests) {
@@ -1512,7 +1456,6 @@ describe("api app", () => {
     expect(get).not.toHaveBeenCalled();
     expect(markTimeOffViewed).not.toHaveBeenCalled();
     expect(resolveTimeOff).not.toHaveBeenCalled();
-    expect(resolveShiftChange).not.toHaveBeenCalled();
   });
 
   it("rejects duplicate partial time-off decisions before both service routes", async () => {
@@ -1714,7 +1657,7 @@ describe("api app", () => {
           ...resolvedContext,
           permissions: resolvedContext.permissions.filter(
             (permission) =>
-              permission !== "schedule.shift_change_requests.manage",
+              permission !== "schedule.time_off_requests.manage",
           ),
         }),
       },
@@ -1722,9 +1665,9 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests/shift-changes/97400000-0000-4000-8000-000000000001/decision`,
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests/time-off/97200000-0000-4000-8000-000000000001/decision`,
       headers: { authorization: "Bearer valid-token" },
-      payload: { expected_revision: 1, action: "reject", note: "" },
+      payload: { expected_revision: 1, action: "approve", note: "Approved.", segment_decisions: [] },
     });
     expect(response.statusCode).toBe(403);
   });

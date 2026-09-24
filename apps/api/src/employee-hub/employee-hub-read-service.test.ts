@@ -11,9 +11,9 @@ const actor = "ad418000-0000-4000-8000-000000000001";
 const service = createEmployeeHubService({ url: "http://localhost:55321", serviceRoleKey: "test-only" });
 const input = { actorUserId: actor, workspaceId: workspace, from: "2035-01-01", to: "2035-01-07" };
 const leave = {
-  id: actor, shift_id: null, kind: "time_off", status: "pending", title: "Time off",
+  id: actor, kind: "time_off", status: "pending", title: "Time off",
   detail: "Appointment", revision: 1, created_at: "2035-01-01T00:00:00Z",
-  can_cancel: true, can_respond: false, periods: [], decision_events: [], request_type: "time_off",
+  can_cancel: true, periods: [], decision_events: [], request_type: "time_off",
 };
 const model = {
   workspace_id: workspace, employee: { id: employee, display_name: "QA Employee" },

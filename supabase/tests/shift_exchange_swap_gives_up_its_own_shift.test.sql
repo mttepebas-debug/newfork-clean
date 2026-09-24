@@ -13,7 +13,6 @@ select tests.person('bx', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('bx', 'mehmet', 'manager', array['B'], array['cook']);
 select tests.person('bx', 'ali', 'employee', array['K', 'B'], array['cook']);
 select tests.person('bx', 'deniz', 'employee', array['K', 'B'], array['cook']);
-select tests.enable_shift_hub('bx');
 select tests.publish_week('bx', 1, '[
   {"label": "ali-k", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
   {"label": "deniz-b", "person": "deniz", "loc": "B", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},

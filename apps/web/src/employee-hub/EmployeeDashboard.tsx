@@ -25,7 +25,6 @@ import {
   dateInZone,
   greeting,
   nextShift,
-  requestLink,
   shiftDate,
   shiftInstant,
   shiftState,
@@ -73,13 +72,10 @@ export function EmployeeDashboard({
   const activeExchanges = exchanges.isError ? [] : exchanges.data?.cases.filter((item) => item.status === "open") ?? [];
   const exchangeActions = activeExchanges.filter((item) => item.applications.some((a) => a.employee_id === model.employee.id && a.status === "invited"));
   const needsAction = [
-    ...model.requests.filter((request) => request.can_respond).map((request) => ({ ...request, href: requestLink(request) })),
     ...exchangeActions.map((item) => ({ id: item.id, title: item.kind === "swap" ? "Respond to a shift swap" : "A teammate asked for cover", detail: `${item.shift.scheduled_date} · ${item.shift.location_name} · ${item.shift.job_name}`, href: `${base}/shift-hub?case=${item.id}&hub_view=requests` })),
   ];
   const waiting = model.requests.filter(
-    (request) =>
-      !request.can_respond &&
-      (request.can_cancel || /pending|awaiting/.test(request.status)),
+    (request) => request.can_cancel || /pending|awaiting/.test(request.status),
   );
   const waitingCount = waiting.length + activeExchanges.filter((item) => !exchangeActions.includes(item) && (item.is_owner || item.applications.some((a) => a.employee_id === model.employee.id && a.status === "pending_manager"))).length;
   const upcoming = [...model.shifts]

@@ -8,6 +8,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ScheduleRequestsPage } from "./ScheduleRequestsPage";
 import { PermissionRoute } from "../auth/PermissionRoute";
+import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { decideTimeOff, getScheduleRequests, previewTimeOffAssignment } from "../schedule/requests-data";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -49,9 +50,7 @@ const fixture = {
     { id: "11000000-0000-4000-8000-000000000001", name: "Main Dining" },
   ],
   time_off_pending_count: 1,
-  shift_change_pending_count: 1,
   time_off_next_cursor: null,
-  shift_change_next_cursor: null,
   time_off_requests: [
     {
       id: "97200000-0000-4000-8000-000000000001",
@@ -87,52 +86,14 @@ const fixture = {
       events: [],
     },
   ],
-  shift_change_requests: [
-    {
-      id: "97400000-0000-4000-8000-000000000001",
-      request_type: "direct_coverage",
-      status: "pending_manager_approval",
-      revision: 1,
-      note: "Coverage request",
-      created_at: "2026-08-17T11:00:00.000Z",
-      offered_shift: {
-        id: "22000000-0000-4000-8000-000000000005",
-        location_id: "11000000-0000-4000-8000-000000000001",
-        location_name: "Main Dining",
-        scheduled_date: "2026-08-22",
-        start_time: "18:00:00",
-        end_time: "02:00:00",
-        employee_id: null,
-        employee_name: null,
-        job_name: "Server",
-      },
-      requested_shift: null,
-      participants: [
-        {
-          employee_id: "15000000-0000-4000-8000-000000000002",
-          employee_name: "Jordy Lee",
-          role: "requester",
-        },
-        {
-          employee_id: "15000000-0000-4000-8000-000000000002",
-          employee_name: "Jordy Lee",
-          role: "receiver",
-        },
-      ],
-      conflicts: [
-        {
-          code: "approved_time_off",
-          severity: "hard",
-          message: "The receiving employee has approved time off.",
-        },
-      ],
-      events: [],
-    },
-  ],
 } satisfies ScheduleRequestsReadModel;
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context: activeContext }),
+}));
+vi.mock("../employee-hub/shift-exchanges/exchange-data", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../employee-hub/shift-exchanges/exchange-data")>()),
+  getExchanges: vi.fn(),
 }));
 vi.mock("../schedule/requests-data", () => ({
   previewTimeOffAssignment: vi.fn(),
@@ -147,7 +108,6 @@ vi.mock("../schedule/requests-data", () => ({
     request_id: "97200000-0000-4000-8000-000000000001",
     revision: 2,
   }),
-  decideShiftChange: vi.fn(),
 }));
 
 function LocationProbe() { const location = useLocation(); return <output aria-label="Current URL">{location.pathname + location.search}</output>; }
@@ -193,7 +153,7 @@ describe("ScheduleRequestsPage", () => {
     await act(async()=>finish({status:"partially_approved",request_id:fixture.time_off_requests[0]!.id,revision:2}));
     await screen.findByText("Decision saved");
     fireEvent.click(screen.getByRole("button",{name:"Continue"}));
-    await screen.findByText("Jordy Lee");
+    await screen.findByRole("heading",{name:"Shift changes"});
     expect(decideTimeOff).toHaveBeenCalledOnce();
   });
   it("keeps a manager partial decision and note until closing is explicitly confirmed", async () => {
@@ -213,6 +173,7 @@ describe("ScheduleRequestsPage", () => {
     activeContext = context;
     vi.clearAllMocks();
     vi.mocked(getScheduleRequests).mockResolvedValue(fixture);
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, cases: [], opportunities: [], own_shifts: [] });
     vi.mocked(previewTimeOffAssignment).mockResolvedValue({ request_id: fixture.time_off_requests[0]!.id, revision: 1, fingerprint: "a".repeat(64), restricted_count: 0, affected_shifts: [], approved_intervals: [] });
   });
   it.each(["owner", "admin", "manager"] as const)("redirects an old availability link for %s without loading an approval queue", async role => {
@@ -221,6 +182,7 @@ describe("ScheduleRequestsPage", () => {
     await screen.findByRole("heading", { name: "Team Availability" });
     expect(screen.getByLabelText("Current URL").textContent).toBe("/app/availability");
     expect(getScheduleRequests).not.toHaveBeenCalled();
+    expect(getExchanges).not.toHaveBeenCalled();
   });
   it("preserves team access control for an employee following an old availability link", async () => {
     activeContext = { ...context, membership: { ...context.membership, role: "employee" }, permissions: ["workspace.read"] };
@@ -234,16 +196,25 @@ describe("ScheduleRequestsPage", () => {
     await screen.findByRole("heading", { name: "Workspace" });
     expect(getScheduleRequests).not.toHaveBeenCalled();
   });
-  it("keeps only Time off and Shift changes tabs and opens the manager shift request queue directly", async () => {
+  it("keeps only Time off and Shift changes tabs and opens the manager Shift Hub", async () => {
     activeContext = { ...context, permissions: [...context.permissions, "employees.read"] };
     renderPage();
     await screen.findByText("Alex Kim");
     expect(screen.getAllByRole("tab")).toHaveLength(2);
     expect(screen.queryByRole("tab", { name: "Availability" })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: /Shift changes/ }));
-    await screen.findByText("Jordy Lee");
+    await screen.findByRole("heading", { name: "Shift changes" });
+    expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.anything());
+    expect(screen.getByRole("tab", { name: "Time off 1" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "View earlier requests" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Availability" })).toBeNull();
+  });
+  it("lands a manager notification link on its Shift Hub case", async () => {
+    const caseId = "97500000-0000-4000-8000-000000000001";
+    renderPage(`/app/schedule/requests?tab=shift-changes&case=${caseId}`);
+    await screen.findByRole("heading", { name: "Shift changes" });
+    expect(screen.getByRole("tab", { name: "Shift changes" }).getAttribute("aria-selected")).toBe("true");
+    expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId }));
   });
   it.each(["schedule.time_off_requests.read", "schedule.shift_change_requests.read"] as const)("keeps a request-only reader with %s inside their permitted queue", async permission => {
     activeContext = { ...context, permissions: ["workspace.read", permission] };
@@ -298,7 +269,7 @@ describe("ScheduleRequestsPage", () => {
     renderPage(); await openTimeOffRequest(); await screen.findByText(/Cancellation of approved leave/);
     expect(screen.queryByRole("button", { name: "Revoke" })).toBeNull(); expect(screen.queryByRole("button", { name: "Return to pending" })).toBeNull();
   });
-  it("submits explicit partial decisions and blocks hard-conflict approval", async () => {
+  it("submits explicit partial decisions", async () => {
     renderPage();
     expect(
       await screen.findByRole("heading", { name: "Requests" }),
@@ -336,15 +307,6 @@ describe("ScheduleRequestsPage", () => {
       ),
     );
     await screen.findByText("Decision saved. The queue is current.");
-    fireEvent.click(screen.getByRole("tab", { name: /Shift changes/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /Jordy Lee/ }));
-    expect(
-      await screen.findByText("The receiving employee has approved time off."),
-    ).toBeTruthy();
-    expect(
-      (screen.getByRole("button", { name: "Approve" }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
   });
 
   it("splits a single requested period, retains a failed decision, and retries with the same key", async () => {

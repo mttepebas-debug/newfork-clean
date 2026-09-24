@@ -33,7 +33,6 @@ create function pg_temp.shift(n integer) returns uuid language sql as $$select (
 create temp table sx_state(cid uuid, aid uuid, result jsonb, preview jsonb);
 insert into sx_state values(null,null,null,null);
 
-update public.workspaces set shift_exchanges_enabled=true where id=pg_temp.w();
 
 create function pg_temp.read_case(actor uuid) returns jsonb language sql as $$
  select value from jsonb_array_elements(public.shift_exchanges_read_service(actor,pg_temp.w(),false,'2030-01-07','2030-01-20',(select cid from sx_state))->'cases') where value->>'id'=(select cid::text from sx_state);

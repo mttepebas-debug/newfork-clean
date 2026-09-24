@@ -5,7 +5,6 @@ import {
   employeeHubReadModelSchema,
   scheduleReadModelSchema,
   type EmployeeRequestActionInput,
-  type EmployeeShiftRequestInput,
   type EmployeeTimeOffInput,
 } from "@newfork/shared";
 import {
@@ -86,17 +85,6 @@ export async function submitEmployeeTimeOff(
 ) {
   return employeeHubMutationResultSchema.parse(
     await request(workspaceId, "/time-off", {
-      method: "POST",
-      body: JSON.stringify(input),
-    }),
-  );
-}
-export async function submitEmployeeShiftRequest(
-  workspaceId: string,
-  input: EmployeeShiftRequestInput,
-) {
-  return employeeHubMutationResultSchema.parse(
-    await request(workspaceId, "/shift-requests", {
       method: "POST",
       body: JSON.stringify(input),
     }),

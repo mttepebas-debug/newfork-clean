@@ -3,7 +3,6 @@ import { CatalogSortButton } from "./CatalogSortButton";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import "./requests-catalog.css";
 import type {
-  ShiftChangeRequest,
   TimeOffRequest,
   TimeOffSegmentDecision,
   TimeOffAssignmentDisposition,
@@ -26,6 +25,7 @@ import { TimeOffPartialDecision } from "../employee-hub/TimeOffPartialDecision";
 import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import { formatTimeOffInstant } from "../employee-hub/time-off-split";
+import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { Navigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { PermissionRoute } from "../auth/PermissionRoute";
@@ -38,7 +38,6 @@ import {
   type AvailabilityNavigationRef,
 } from "../availability/availability-navigation";
 import {
-  decideShiftChange,
   decideTimeOff,
   getScheduleRequests,
   markTimeOffViewed,
@@ -47,18 +46,11 @@ import {
 
 type Tab = "time-off" | "shift-changes";
 type RequestSortKey = "employee" | "date" | "location" | "status" | "review";
-type Decision =
-  | {
-      kind: "time-off";
-      request: TimeOffRequest;
-      action:
-        "approve" | "deny" | "partial_approve" | "return_to_pending" | "revoke";
-    }
-  | {
-      kind: "shift-change";
-      request: ShiftChangeRequest;
-      action: "approve" | "reject";
-    };
+type Decision = {
+  request: TimeOffRequest;
+  action:
+    "approve" | "deny" | "partial_approve" | "return_to_pending" | "revoke";
+};
 
 export function ScheduleRequestsPage() {
   const [params] = useSearchParams();
@@ -105,9 +97,6 @@ function ScheduleRequestsPageContent() {
   const [timeOffQueue, setTimeOffQueue] = useState<"needs_review" | "closed">(
     "needs_review",
   );
-  const [shiftQueue, setShiftQueue] = useState<"needs_review" | "history">(
-    "needs_review",
-  );
   const [locationId, setLocationId] = useState("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{
@@ -115,36 +104,29 @@ function ScheduleRequestsPageContent() {
     descending: boolean;
   }>({ key: "date", descending: false });
   const [timeOffCursor, setTimeOffCursor] = useState("");
-  const [shiftCursor, setShiftCursor] = useState("");
   const [selectedId, setSelectedId] = useState(params.get("request") ?? "");
   const [decision, setDecision] = useState<Decision | null>(null);
   const [notice, setNotice] = useState("");
+  // Also loaded under Shift changes, so the Time off tab keeps its count.
   const query = useQuery({
     queryKey: [
       "schedule-requests",
       context?.workspace.id,
       timeOffQueue,
-      shiftQueue,
       locationId,
       search,
       timeOffCursor,
-      shiftCursor,
     ],
     queryFn: () =>
       getScheduleRequests(context!.workspace.id, {
         timeOffQueue,
-        shiftQueue,
         locationId,
         search,
         timeOffCursor,
-        shiftCursor,
       }),
-    enabled: Boolean(context) && (canReadTimeOff || canReadShift),
+    enabled: Boolean(context) && canReadTimeOff,
   });
-  const rows =
-    tab === "time-off"
-      ? query.data?.time_off_requests
-      : query.data?.shift_change_requests;
+  const rows = query.data?.time_off_requests;
   const sortedRows = useMemo(
     () =>
       [...(rows ?? [])].sort(
@@ -161,13 +143,7 @@ function ScheduleRequestsPageContent() {
     [rows, selectedId],
   );
   useEffect(() => {
-    if (
-      tab === "time-off" &&
-      selected &&
-      "segments" in selected &&
-      !selected.viewed_at &&
-      context
-    ) {
+    if (tab === "time-off" && selected && !selected.viewed_at && context) {
       void markTimeOffViewed(context.workspace.id, selected.id).then(() =>
         client.invalidateQueries({ queryKey: ["schedule-requests"] }),
       );
@@ -179,7 +155,6 @@ function ScheduleRequestsPageContent() {
       const nextParams = new URLSearchParams(params);
       nextParams.set("tab", next);
       nextParams.delete("request");
-      nextParams.delete("legacy");
       nextParams.delete("case");
       nextParams.delete("offer");
       setParams(nextParams);
@@ -189,7 +164,6 @@ function ScheduleRequestsPageContent() {
   }
   function resetPaging() {
     setTimeOffCursor("");
-    setShiftCursor("");
     setSelectedId("");
   }
   function selectRequest(id: string) {
@@ -221,28 +195,20 @@ function ScheduleRequestsPageContent() {
     },
   ) {
     try {
-      if (current.kind === "time-off") {
-        await decideTimeOff(context!.workspace.id, current.request.id, {
-          operation_id: operationId,
-          ...(assignment
-            ? {
-                assignment_fingerprint: assignment.fingerprint,
-                assignment_decisions: assignment.decisions,
-              }
-            : {}),
-          expected_revision: current.request.revision,
-          action: current.action,
-          note,
-          segment_decisions:
-            current.action === "partial_approve" ? segmentDecisions : [],
-        });
-      } else {
-        await decideShiftChange(context!.workspace.id, current.request.id, {
-          expected_revision: current.request.revision,
-          action: current.action,
-          note,
-        });
-      }
+      await decideTimeOff(context!.workspace.id, current.request.id, {
+        operation_id: operationId,
+        ...(assignment
+          ? {
+              assignment_fingerprint: assignment.fingerprint,
+              assignment_decisions: assignment.decisions,
+            }
+          : {}),
+        expected_revision: current.request.revision,
+        action: current.action,
+        note,
+        segment_decisions:
+          current.action === "partial_approve" ? segmentDecisions : [],
+      });
       await refreshed("Decision saved. The queue is current.");
       await Promise.all([
         client.invalidateQueries({
@@ -266,6 +232,56 @@ function ScheduleRequestsPageContent() {
       return message;
     }
   }
+  const header = (
+    <CatalogPageHeader
+      eyebrow="TEAM CHANGES. REVIEWED WITH CONTROL."
+      title="Requests"
+      titleId="requests-title"
+      description="Review time off and shift change requests in one place."
+      action={
+        <div className="requests-tabs" role="tablist" aria-label="Request type">
+          {canReadTimeOff ? (
+            <button
+              role="tab"
+              aria-selected={tab === "time-off"}
+              className={tab === "time-off" ? "active" : ""}
+              onClick={() => changeTab("time-off")}
+            >
+              Time off{" "}
+              {query.data ? (
+                <strong>{query.data.time_off_pending_count}</strong>
+              ) : null}
+            </button>
+          ) : null}
+          {canReadShift ? (
+            <button
+              role="tab"
+              aria-selected={tab === "shift-changes"}
+              className={tab === "shift-changes" ? "active" : ""}
+              onClick={() => changeTab("shift-changes")}
+            >
+              Shift changes
+            </button>
+          ) : null}
+        </div>
+      }
+    />
+  );
+  // Shift Hub reads ?case= itself, so manager notification links land here.
+  if (tab === "shift-changes" && canReadShift && context)
+    return (
+      <section
+        className="settings-page jobs-settings-page requests-catalog-page requests-page requests-shift-hub"
+        aria-labelledby="requests-title"
+      >
+        {header}
+        <ShiftExchangeHub
+          key={`${context.workspace.id}:${context.userId}`}
+          workspaceId={context.workspace.id}
+          manager
+        />
+      </section>
+    );
   if (query.isLoading) return <RequestState text="Loading requests..." />;
   if (query.isError || !query.data)
     return (
@@ -284,88 +300,29 @@ function ScheduleRequestsPageContent() {
       className="settings-page jobs-settings-page requests-catalog-page requests-page"
       aria-labelledby="requests-title"
     >
-      <CatalogPageHeader
-        eyebrow="TEAM CHANGES. REVIEWED WITH CONTROL."
-        title="Requests"
-        titleId="requests-title"
-        description="Review time off and shift change requests in one place."
-        action={
-          <div
-            className="requests-tabs"
-            role="tablist"
-            aria-label="Request type"
-          >
-            {canReadTimeOff ? (
-              <button
-                role="tab"
-                aria-selected={tab === "time-off"}
-                className={tab === "time-off" ? "active" : ""}
-                onClick={() => changeTab("time-off")}
-              >
-                Time off <strong>{query.data.time_off_pending_count}</strong>
-              </button>
-            ) : null}
-            {canReadShift ? (
-              <button
-                role="tab"
-                aria-selected={tab === "shift-changes"}
-                className={tab === "shift-changes" ? "active" : ""}
-                onClick={() => changeTab("shift-changes")}
-              >
-                Shift changes{" "}
-                <strong>{query.data.shift_change_pending_count}</strong>
-              </button>
-            ) : null}
-          </div>
-        }
-      />
+      {header}
 
       <div className="requests-toolbar catalog-toolbar">
         <div className="catalog-toolbar-status-row">
           <div className="catalog-status-tabs" role="group" aria-label="Queue">
-            {tab === "time-off" ? (
-              <>
-                <button
-                  className={timeOffQueue === "needs_review" ? "active" : ""}
-                  onClick={() => {
-                    setTimeOffQueue("needs_review");
-                    resetPaging();
-                  }}
-                >
-                  Needs review
-                </button>
-                <button
-                  className={timeOffQueue === "closed" ? "active" : ""}
-                  onClick={() => {
-                    setTimeOffQueue("closed");
-                    resetPaging();
-                  }}
-                >
-                  <History size={15} /> Closed
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  className={shiftQueue === "needs_review" ? "active" : ""}
-                  onClick={() => {
-                    setShiftQueue("needs_review");
-                    resetPaging();
-                  }}
-                >
-                  Needs review
-                </button>
-                <button
-                  className={shiftQueue === "history" ? "active" : ""}
-                  onClick={() => {
-                    setShiftQueue("history");
-                    resetPaging();
-                  }}
-                >
-                  <History size={15} /> History
-                </button>
-              </>
-            )}
+            <button
+              className={timeOffQueue === "needs_review" ? "active" : ""}
+              onClick={() => {
+                setTimeOffQueue("needs_review");
+                resetPaging();
+              }}
+            >
+              Needs review
+            </button>
+            <button
+              className={timeOffQueue === "closed" ? "active" : ""}
+              onClick={() => {
+                setTimeOffQueue("closed");
+                resetPaging();
+              }}
+            >
+              <History size={15} /> Closed
+            </button>
           </div>
         </div>
         <div className="catalog-toolbar-filter-row">
@@ -422,7 +379,7 @@ function ScheduleRequestsPageContent() {
             {(
               [
                 ["employee", "Employee", undefined],
-                ["date", "Dates / shift", undefined],
+                ["date", "Dates", undefined],
                 ["location", "Location", "request-location-column"],
                 ["status", "Status", undefined],
                 ["review", "Review", "request-impact-column"],
@@ -462,39 +419,27 @@ function ScheduleRequestsPageContent() {
                   onSelect={() => selectRequest(row.id)}
                 />
               ))}
-              {(
-                tab === "time-off"
-                  ? timeOffCursor || query.data.time_off_next_cursor
-                  : shiftCursor || query.data.shift_change_next_cursor
-              ) ? (
+              {timeOffCursor || query.data.time_off_next_cursor ? (
                 <div
                   className="request-pagination"
                   aria-label="Request history pages"
                 >
-                  {(tab === "time-off" ? timeOffCursor : shiftCursor) ? (
+                  {timeOffCursor ? (
                     <button
                       className="nf-button secondary"
                       onClick={() => {
-                        if (tab === "time-off") setTimeOffCursor("");
-                        else setShiftCursor("");
+                        setTimeOffCursor("");
                         setSelectedId("");
                       }}
                     >
                       Newest
                     </button>
                   ) : null}
-                  {(
-                    tab === "time-off"
-                      ? query.data.time_off_next_cursor
-                      : query.data.shift_change_next_cursor
-                  ) ? (
+                  {query.data.time_off_next_cursor ? (
                     <button
                       className="nf-button secondary"
                       onClick={() => {
-                        if (tab === "time-off")
-                          setTimeOffCursor(query.data.time_off_next_cursor!);
-                        else
-                          setShiftCursor(query.data.shift_change_next_cursor!);
+                        setTimeOffCursor(query.data.time_off_next_cursor!);
                         setSelectedId("");
                       }}
                     >
@@ -519,38 +464,19 @@ function ScheduleRequestsPageContent() {
             onClose={() => selectRequest("")}
           >
             {selected ? (
-              "segments" in selected ? (
-                <TimeOffDetail
-                  request={selected}
-                  timeFormat={query.data.time_format ?? "12h"}
-                  canManage={
-                    context?.permissions.includes(
-                      "schedule.time_off_requests.manage",
-                    ) ?? false
-                  }
-                  onClose={() => selectRequest("")}
-                  onDecision={(action) =>
-                    setDecision({ kind: "time-off", request: selected, action })
-                  }
-                />
-              ) : (
-                <ShiftDetail
-                  request={selected}
-                  canManage={
-                    context?.permissions.includes(
-                      "schedule.shift_change_requests.manage",
-                    ) ?? false
-                  }
-                  onClose={() => selectRequest("")}
-                  onDecision={(action) =>
-                    setDecision({
-                      kind: "shift-change",
-                      request: selected,
-                      action,
-                    })
-                  }
-                />
-              )
+              <TimeOffDetail
+                request={selected}
+                timeFormat={query.data.time_format ?? "12h"}
+                canManage={
+                  context?.permissions.includes(
+                    "schedule.time_off_requests.manage",
+                  ) ?? false
+                }
+                onClose={() => selectRequest("")}
+                onDecision={(action) =>
+                  setDecision({ request: selected, action })
+                }
+              />
             ) : (
               <div className="requests-empty detail-empty">
                 <ChevronRight size={22} />
@@ -579,17 +505,9 @@ function RequestRow({
   row,
   onSelect,
 }: {
-  row: TimeOffRequest | ShiftChangeRequest;
+  row: TimeOffRequest;
   onSelect: () => void;
 }) {
-  const timeOff = "segments" in row;
-  const title = timeOff
-    ? row.employee_name
-    : (row.participants.find((participant) => participant.role === "requester")
-        ?.employee_name ?? "Shift request");
-  const detail = timeOff
-    ? `${formatDate(row.start_date)} - ${formatDate(row.end_date)}`
-    : `${formatDate(row.offered_shift.scheduled_date)} · ${formatTime(row.offered_shift.start_time)}-${formatTime(row.offered_shift.end_time)}`;
   return (
     <button
       type="button"
@@ -598,23 +516,25 @@ function RequestRow({
     >
       <span className="job-row-identity">
         <span className="request-catalog-marker">
-          {timeOff ? <CalendarOff size={16} /> : <RotateCcw size={16} />}
+          <CalendarOff size={16} />
         </span>
         <span className="job-name-stack">
-          <span className="job-row-name" title={title}>
-            {title}
+          <span className="job-row-name" title={row.employee_name}>
+            {row.employee_name}
           </span>
-          {timeOff && row.request_type === "time_off_cancellation" && (
+          {row.request_type === "time_off_cancellation" && (
             <small>Leave cancellation</small>
           )}
         </span>
       </span>
-      <span className="request-catalog-meta">{detail}</span>
+      <span className="request-catalog-meta">
+        {`${formatDate(row.start_date)} - ${formatDate(row.end_date)}`}
+      </span>
       <span
         className="request-catalog-meta request-location-column"
-        title={timeOff ? row.location_name : row.offered_shift.location_name}
+        title={row.location_name}
       >
-        {timeOff ? row.location_name : row.offered_shift.location_name}
+        {row.location_name}
       </span>
       <span
         className={`request-status status-${row.status.replaceAll("_", "-")}`}
@@ -622,9 +542,7 @@ function RequestRow({
         {statusLabel(row.status)}
       </span>
       <span className="request-impact-column request-catalog-meta">
-        {timeOff &&
-        row.request_type !== "time_off_cancellation" &&
-        row.conflict_count ? (
+        {row.request_type !== "time_off_cancellation" && row.conflict_count ? (
           <span
             className="request-conflict-count"
             title="Published assignments to review"
@@ -641,28 +559,13 @@ function RequestRow({
 }
 
 function requestSortValue(
-  row: TimeOffRequest | ShiftChangeRequest,
+  row: TimeOffRequest,
   key: RequestSortKey,
 ): string | number {
-  const timeOff = "segments" in row;
-  if (key === "employee") {
-    return timeOff
-      ? row.employee_name
-      : (row.participants.find(
-          (participant) => participant.role === "requester",
-        )?.employee_name ?? "Shift request");
-  }
-  if (key === "date") {
-    return timeOff
-      ? row.start_date
-      : `${row.offered_shift.scheduled_date} ${row.offered_shift.start_time}`;
-  }
-  if (key === "location") {
-    return timeOff ? row.location_name : row.offered_shift.location_name;
-  }
-  if (key === "review") {
-    return timeOff ? row.conflict_count : row.conflicts.length;
-  }
+  if (key === "employee") return row.employee_name;
+  if (key === "date") return row.start_date;
+  if (key === "location") return row.location_name;
+  if (key === "review") return row.conflict_count;
   return row.status;
 }
 
@@ -820,96 +723,6 @@ function TimeOffDetail({
   );
 }
 
-function ShiftDetail({
-  request,
-  canManage,
-  onClose,
-  onDecision,
-}: {
-  request: ShiftChangeRequest;
-  canManage: boolean;
-  onClose: () => void;
-  onDecision: (action: "approve" | "reject") => void;
-}) {
-  const requester = request.participants.find(
-    (participant) => participant.role === "requester",
-  );
-  return (
-    <div className="request-detail-inner">
-      <DetailHeader
-        title={requester?.employee_name ?? "Shift change"}
-        status={request.status}
-        onClose={onClose}
-      />
-      <div className="shift-change-diagram">
-        <ShiftBlock label="Current" shift={request.offered_shift} />
-        <ChevronRight size={20} />
-        {request.requested_shift ? (
-          <ShiftBlock label="Requested" shift={request.requested_shift} />
-        ) : (
-          <div className="shift-target">
-            <small>Requested outcome</small>
-            <strong>
-              {request.participants.find(
-                (participant) => participant.role === "receiver",
-              )?.employee_name ?? "Open shift"}
-            </strong>
-            <span>takes this shift</span>
-          </div>
-        )}
-      </div>
-      {request.note ? (
-        <section>
-          <h2>Request note</h2>
-          <p>{request.note}</p>
-        </section>
-      ) : null}
-      <section>
-        <h2>Conflict check</h2>
-        {request.conflicts.length ? (
-          <div className="request-conflicts">
-            {request.conflicts.map((conflict) => (
-              <div key={conflict.code} className={conflict.severity}>
-                <AlertTriangle size={16} />
-                <span>
-                  <strong>
-                    {conflict.severity === "hard" ? "Blocked" : "Review"}
-                  </strong>
-                  {conflict.message}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="conflict-clear">
-            <Check size={16} /> No current conflicts
-          </p>
-        )}
-      </section>
-      <Timeline events={request.events} />
-      {canManage && request.status === "pending_manager_approval" ? (
-        <div className="request-decisions">
-          <button
-            className="nf-button"
-            disabled={request.conflicts.some(
-              (conflict) => conflict.severity === "hard",
-            )}
-            onClick={() => onDecision("approve")}
-          >
-            <Check size={16} /> Approve
-          </button>
-          <button
-            className="nf-button danger"
-            onClick={() => onDecision("reject")}
-          >
-            <X size={16} /> Reject
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function DetailHeader({
   title,
   status,
@@ -939,34 +752,12 @@ function DetailHeader({
   );
 }
 
-function ShiftBlock({
-  label,
-  shift,
-}: {
-  label: string;
-  shift: ShiftChangeRequest["offered_shift"];
-}) {
-  return (
-    <div className="shift-target">
-      <small>{label}</small>
-      <strong>{shift.employee_name ?? "Open shift"}</strong>
-      <span>
-        {formatDate(shift.scheduled_date)} · {formatTime(shift.start_time)}-
-        {formatTime(shift.end_time)}
-      </span>
-      <span>
-        {shift.location_name} · {shift.job_name}
-      </span>
-    </div>
-  );
-}
-
 function Timeline({
   events,
-  timeFormat = "12h",
+  timeFormat,
 }: {
   events: TimeOffRequest["events"];
-  timeFormat?: "12h" | "24h";
+  timeFormat: "12h" | "24h";
 }) {
   return (
     <section>
@@ -1022,7 +813,7 @@ function DecisionDialog({
   );
   const retry = useRef({ signature: "", key: crypto.randomUUID() });
   const [segments, setSegments] = useState<TimeOffSegmentDecision[]>(
-    decision.kind === "time-off" && decision.action === "partial_approve"
+    decision.action === "partial_approve"
       ? decision.request.segments.map((segment) => ({
           segment_id: segment.id,
           status: "approved",
@@ -1032,10 +823,8 @@ function DecisionDialog({
   const initialSegments = useRef(JSON.stringify(segments));
   const decisionNavigation: AvailabilityNavigationRef = useRef(null);
   const cancellation =
-    decision.kind === "time-off" &&
     decision.request.request_type === "time_off_cancellation";
   const approval =
-    decision.kind === "time-off" &&
     !cancellation &&
     (decision.action === "approve" || decision.action === "partial_approve");
   const decisionLabel = cancellation
@@ -1079,22 +868,15 @@ function DecisionDialog({
       !impact.data.restricted_count &&
       impact.data.affected_shifts.every((s) => releaseIds.includes(s.id)),
     );
-  const softOverride =
-    decision.kind === "shift-change" &&
-    decision.action === "approve" &&
-    decision.request.conflicts.some((conflict) => conflict.severity === "soft");
-  const noteRequired = softOverride;
   const navigationDialog = useAvailabilityNavigationGuard({
-    dirty:
-      decision.kind === "time-off" &&
-      Boolean(
-        note ||
-        hasUnfinishedSplit ||
-        releases.ids.length ||
-        error ||
-        JSON.stringify(segments) !== initialSegments.current,
-      ),
-    busy: decision.kind === "time-off" && busy,
+    dirty: Boolean(
+      note ||
+      hasUnfinishedSplit ||
+      releases.ids.length ||
+      error ||
+      JSON.stringify(segments) !== initialSegments.current,
+    ),
+    busy,
     navigationRef: decisionNavigation,
     labels: timeOffNavigationLabels,
     onDiscard: onCancel,
@@ -1152,8 +934,7 @@ function DecisionDialog({
               reassign any previously released shift.
             </p>
           ) : null}
-          {decision.kind === "time-off" &&
-          decision.action === "partial_approve" ? (
+          {decision.action === "partial_approve" ? (
             <div className="partial-decisions">
               <p>
                 {cancellation
@@ -1280,12 +1061,7 @@ function DecisionDialog({
             </section>
           ) : null}
           <label className="decision-note">
-            Manager note{" "}
-            {noteRequired ? (
-              <span>Required for conflict override</span>
-            ) : (
-              <span>Optional</span>
-            )}
+            Manager note <span>Optional</span>
             <textarea
               rows={4}
               maxLength={1000}
@@ -1295,7 +1071,7 @@ function DecisionDialog({
             />
           </label>
           {error ? <p role="alert">{error}</p> : null}
-          {decision.kind === "time-off" && decision.action === "revoke" ? (
+          {decision.action === "revoke" ? (
             <p>
               Revoking leave does not reassign previously released shifts.
               Review the Schedule separately if the employee will work.
@@ -1314,13 +1090,8 @@ function DecisionDialog({
             Cancel
           </button>
           <button
-            className={`nf-button ${decision.action === "deny" || decision.action === "reject" || decision.action === "revoke" ? "danger" : ""}`}
-            disabled={
-              busy ||
-              hasUnfinishedSplit ||
-              !assignmentReady ||
-              (noteRequired && note.trim().length < 10)
-            }
+            className={`nf-button ${decision.action === "deny" || decision.action === "revoke" ? "danger" : ""}`}
+            disabled={busy || hasUnfinishedSplit || !assignmentReady}
             onClick={() => void confirm()}
           >
             {busy ? "Saving..." : decisionLabel}
@@ -1351,13 +1122,6 @@ function formatDate(value: string) {
     day: "numeric",
     year: value.length > 10 ? undefined : "numeric",
   }).format(new Date(value.length === 10 ? `${value}T12:00:00` : value));
-}
-function formatTime(value: string) {
-  const [hours, minutes] = value.split(":").map(Number);
-  return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 function statusLabel(value: string) {
   return value

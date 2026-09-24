@@ -264,7 +264,6 @@ export const workspaceDashboardSchema = z.object({
     today_shift_count: z.coerce.number().int().nonnegative(),
     today_open_shift_count: z.coerce.number().int().nonnegative(),
     pending_time_off_count: z.coerce.number().int().nonnegative(),
-    pending_shift_change_count: z.coerce.number().int().nonnegative(),
     unread_notification_count: z.coerce.number().int().nonnegative(),
   }),
   announcements: z.array(announcementRecordSchema).max(5),

@@ -9,7 +9,6 @@ import {
   type EmployeeHubReadModel,
   type ScheduleReadModel,
   type EmployeeRequestActionInput,
-  type EmployeeShiftRequestInput,
   type EmployeeTimeOffInput,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
@@ -39,11 +38,6 @@ export interface EmployeeHubService {
     actorUserId: string;
     workspaceId: string;
     request: EmployeeTimeOffInput;
-  }): Promise<EmployeeHubMutationResult>;
-  submitShiftRequest(input: {
-    actorUserId: string;
-    workspaceId: string;
-    request: EmployeeShiftRequestInput;
   }): Promise<EmployeeHubMutationResult>;
   actOnRequest(input: {
     actorUserId: string;
@@ -161,18 +155,6 @@ export function createEmployeeHubService(options: {
           target_location_id: input.request.location_id,
           target_reason: input.request.reason,
           target_dates: input.request.dates,
-        }),
-      );
-    },
-    async submitShiftRequest(input) {
-      return employeeHubMutationResultSchema.parse(
-        await rpc("submit_employee_shift_request_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-          target_action: input.request.action,
-          target_shift_id: input.request.shift_id,
-          target_requested_shift_id: input.request.requested_shift_id ?? null,
-          target_note: input.request.note,
         }),
       );
     },

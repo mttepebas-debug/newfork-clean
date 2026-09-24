@@ -93,7 +93,6 @@ export const exchangeCaseSchema = z.object({
   ),
 });
 export const exchangeReadModelSchema = z.object({
-  enabled: z.boolean(),
   employee_id: z.string().uuid().nullable(),
   cases: z.array(exchangeCaseSchema),
   opportunities: z.array(

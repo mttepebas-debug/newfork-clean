@@ -28,8 +28,6 @@ select ('98020000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,pg_temp.w(),'110
 create function pg_temp.shift(n integer) returns uuid language sql as $$select ('98020000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
 create temp table sx_state(cid uuid, aid uuid, result jsonb, preview jsonb);
 insert into sx_state values(null,null,null,null);
-select throws_ok($$select public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(1)),gen_random_uuid())$$,'55000',null,'rollout flag blocks writes');
-update public.workspaces set shift_exchanges_enabled=true where id=pg_temp.w();
 set local role authenticated;
 select throws_ok($$select * from public.shift_exchange_cases$$,'42501',null,'case tables are private');
 select throws_ok($$select public.shift_exchanges_command_service(null,null,'{}',gen_random_uuid())$$,'42501',null,'authenticated clients cannot spoof service actor');
@@ -103,7 +101,6 @@ update public.schedule_draft_shifts set employee_id=pg_temp.emp(1) where draft_i
 update public.schedule_edit_session_shifts set employee_id=pg_temp.emp(1) where session_id='98040000-0000-4000-8000-000000000002';
 select throws_ok($$select public.shift_exchange_assert_draft(pg_temp.w(),'98040000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid])$$,'PT409',null,'AT27 stale owner cannot be published');
 select throws_ok($$select public.shift_exchange_assert_session(pg_temp.w(),'98040000-0000-4000-8000-000000000002')$$,'PT409',null,'AT27 stale session cannot overwrite approved transfer');
-select throws_ok($$select public.submit_employee_shift_request_service(pg_temp.actor(3),pg_temp.w(),'release',pg_temp.shift(1))$$,'PT409',null,'legacy release cannot unassign in the new flow');
 -- Direct invitation, consent withdrawal and a full two-direction swap.
 -- Recovery is explicit, preview-bound and preserves notes / unrelated edits.
 select throws_ok($$select public.shift_exchange_schedule_recovery_service(pg_temp.actor(1),pg_temp.w(),'98040000-0000-4000-8000-000000000002')$$,'42501',null,'AT27 another employee cannot read the manager edit session');

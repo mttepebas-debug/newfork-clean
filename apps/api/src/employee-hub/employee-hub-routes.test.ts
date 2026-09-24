@@ -7,8 +7,6 @@ const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const otherWorkspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fe";
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const locationId = "11000000-0000-4000-8000-000000000001";
-const shiftId = "40000000-0000-4000-8000-000000000001";
-const requestedShiftId = "40000000-0000-4000-8000-000000000002";
 const requestId = "98200000-0000-4000-8000-000000000001";
 
 const mismatchedContext: ActiveWorkspaceContext = {
@@ -54,7 +52,6 @@ function employeeHubServiceMock(): EmployeeHubService {
     get: vi.fn(),
     getScheduleBoard: vi.fn(),
     submitTimeOff: vi.fn(),
-    submitShiftRequest: vi.fn(),
     actOnRequest: vi.fn(),
   };
 }
@@ -201,16 +198,6 @@ describe("employee hub routes", () => {
       },
       {
         method: "POST",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/shift-requests`,
-        payload: {
-          action: "pickup",
-          shift_id: shiftId,
-          note: "",
-        },
-        serviceMethod: "submitShiftRequest",
-      },
-      {
-        method: "POST",
         url: `/v1/workspaces/${workspaceId}/employee-hub/request-action`,
         payload: {
           request_id: requestId,
@@ -243,10 +230,6 @@ describe("employee hub routes", () => {
       ...mutationResult,
       request_id: requestId,
     });
-    vi.mocked(service.submitShiftRequest).mockResolvedValue({
-      ...mutationResult,
-      request_id: requestId,
-    });
     vi.mocked(service.actOnRequest).mockResolvedValue(mutationResult);
     const app = buildApp({
       contextResolver: { resolve: async () => activeContext },
@@ -274,18 +257,11 @@ describe("employee hub routes", () => {
       reason: "Family event",
       dates: ["2026-08-20"],
     };
-    const shiftRequest = {
-      ...spoofedIdentity,
-      action: "swap",
-      shift_id: shiftId,
-      requested_shift_id: requestedShiftId,
-      note: "Can trade dinner",
-    };
     const requestAction = {
       ...spoofedIdentity,
       request_id: requestId,
-      kind: "shift_change",
-      action: "accept",
+      kind: "time_off",
+      action: "cancel",
       expected_revision: 1,
     };
 
@@ -300,12 +276,6 @@ describe("employee hub routes", () => {
         method: "POST",
         url: `/v1/workspaces/${workspaceId}/employee-hub/time-off`,
         payload: timeOff,
-        expectedStatus: 200,
-      },
-      {
-        method: "POST",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/shift-requests`,
-        payload: shiftRequest,
         expectedStatus: 200,
       },
       {
@@ -334,16 +304,6 @@ describe("employee hub routes", () => {
         location_id: timeOff.location_id,
         reason: timeOff.reason,
         dates: timeOff.dates,
-      },
-    });
-    expect(service.submitShiftRequest).toHaveBeenCalledWith({
-      actorUserId: userId,
-      workspaceId,
-      request: {
-        action: shiftRequest.action,
-        shift_id: shiftRequest.shift_id,
-        requested_shift_id: shiftRequest.requested_shift_id,
-        note: shiftRequest.note,
       },
     });
     expect(service.actOnRequest).toHaveBeenCalledWith({

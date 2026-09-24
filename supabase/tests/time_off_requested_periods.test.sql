@@ -64,7 +64,7 @@ select is(jsonb_array_length(public.assess_shift_availability(w,emp,jsonb_build_
 select is(public.time_off_request_periods(request,w)->0->>'time_timezone','America/New_York','read projection retains the original time zone') from tp_state;
 select is(public.time_off_request_periods(request,w)->0->>'time_source','snapshot','read projection distinguishes proven snapshots from legacy location assumptions') from tp_state;
 select is((select item->'periods'->0->>'time_timezone' from tp_state t cross join lateral jsonb_array_elements(public.get_employee_hub_service(t.actor,t.w,'2035-01-01','2035-01-31')->'requests') item where item->>'id'=t.request::text),'America/New_York','employee reads the same original period');
-select is((select item->'segments'->0->>'time_timezone' from tp_state t cross join lateral jsonb_array_elements(public.get_schedule_requests_service(t.manager,t.w,'closed','history')->'time_off_requests') item where item->>'id'=t.request::text),'America/New_York','manager reads the same original period');
+select is((select item->'segments'->0->>'time_timezone' from tp_state t cross join lateral jsonb_array_elements(public.get_schedule_requests_service(t.manager,t.w,'closed')->'time_off_requests') item where item->>'id'=t.request::text),'America/New_York','manager reads the same original period');
 
 select lives_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-18','23:00','02:00',true)))$$,'explicit overnight request is supported');
 select lives_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-20','10:00','10:00',true)))$$,'equal clocks are valid only with an explicit next-day end');

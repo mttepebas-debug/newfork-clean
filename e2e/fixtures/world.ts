@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 
 // The people global-setup made for this run (e2e/.world.json).
-export type Person = "ayse" | "emre" | "mehmet" | "zeynep";
+export type Person = "ali" | "ayse" | "deniz" | "emre" | "mehmet" | "zeynep";
 
 const world: { readonly password: string; readonly emails: Record<Person, string> } =
   JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8"));

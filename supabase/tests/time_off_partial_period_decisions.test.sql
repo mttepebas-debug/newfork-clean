@@ -57,7 +57,7 @@ select is(jsonb_array_length(public.assess_shift_availability(w,emp,jsonb_build_
 select is((select end_time::text from public.schedule_time_off_segments where id=(select segment from tpd)),'17:00:00','original requested end remains immutable');
 select is(jsonb_array_length(public.time_off_request_periods(request,w)->0->'decision_pieces'),2,'read model retains both approved and denied pieces') from tpd;
 select is((select item->'decision_events'->0->>'note' from tpd t cross join lateral jsonb_array_elements(public.get_employee_hub_service(t.actor,t.w,'2035-01-01','2035-01-31')->'requests') item where item->>'id'=t.request::text),'Appointment hours approved; afternoon declined.','employee sees the manager decision note');
-select is((select item->'segments'->0->'decision_pieces' from tpd t cross join lateral jsonb_array_elements(public.get_schedule_requests_service(t.manager,t.w,'closed','history')->'time_off_requests') item where item->>'id'=t.request::text),public.time_off_request_periods(request,w)->0->'decision_pieces','manager sees the same decision pieces') from tpd;
+select is((select item->'segments'->0->'decision_pieces' from tpd t cross join lateral jsonb_array_elements(public.get_schedule_requests_service(t.manager,t.w,'closed')->'time_off_requests') item where item->>'id'=t.request::text),public.time_off_request_periods(request,w)->0->'decision_pieces','manager sees the same decision pieces') from tpd;
 select is(pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T12:00:00Z'),pg_temp.p('2035-01-15T12:00:00Z','2035-01-15T17:00:00Z','denied')),1,op),result,'retry returns the original decision result') from tpd;
 select is((select count(*)::int from public.time_off_decision_pieces),2,'retry does not duplicate decision pieces');
 select throws_ok($$select pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T17:00:00Z')),1,op) from tpd$$,'40001',null,'changed decision cannot reuse a key');
@@ -77,22 +77,6 @@ select lives_ok($$select public.resolve_schedule_time_off_request_service(manage
 select is(public.time_off_effective_ranges(segment),tstzmultirange(tstzrange('2035-01-15 10:00Z','2035-01-15 17:00Z','[)')),'latest full approval replaces the old partial capacity') from tpd;
 select is(jsonb_array_length(public.time_off_request_periods(request,w)->0->'decision_pieces'),1,'current projection excludes earlier decision pieces') from tpd;
 select is((select count(*)::int from public.time_off_decision_pieces where request_id=(select request from tpd)),3,'earlier pieces remain in immutable history');
--- The older shift-request UI must not treat a denied/non-overlapping hour as a
--- full-day block merely because an original segment contains an approved piece.
-create temp table legacy_test as select gen_random_uuid() shift_request,gen_random_uuid() leave_request,gen_random_uuid() leave_segment,
- (select id from public.schedule_published_shifts where id='22000000-0000-4000-8000-000000000005') offered;
-insert into public.schedule_shift_change_requests(id,workspace_id,request_type,offered_shift_id,status,created_by)
-select lt.shift_request,t.w,'release_pickup',lt.offered,'pending_manager_approval',t.actor from legacy_test lt cross join tpd t;
-insert into public.schedule_shift_change_participants(workspace_id,request_id,employee_id,participant_role)
-select t.w,lt.shift_request,t.emp,'receiver' from legacy_test lt cross join tpd t;
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,created_by,status)
-select lt.leave_request,t.w,t.emp,t.loc,t.actor,'approved' from legacy_test lt cross join tpd t;
-insert into public.schedule_time_off_segments(id,workspace_id,request_id,segment_date,start_time,end_time,status)
-select lt.leave_segment,t.w,lt.leave_request,ps.scheduled_date,'00:00'::time,'00:01'::time,'approved'
- from legacy_test lt cross join tpd t join public.schedule_published_shifts ps on ps.id=(select offered from legacy_test);
-select ok(not exists(select 1 from jsonb_array_elements(public.get_shift_change_conflicts_service(shift_request)) c where c->>'code'='approved_time_off'),'earlier shift requests do not block unrelated approved hours on the same date') from legacy_test;
-update public.schedule_time_off_segments set segment_date=segment_date+1,start_time=null,end_time=null where id=(select leave_segment from legacy_test);
-select ok(exists(select 1 from jsonb_array_elements(public.get_shift_change_conflicts_service(shift_request)) c where c->>'code'='approved_time_off'),'earlier shift requests block physical overlap even when the leave has the next calendar date') from legacy_test;
 set local role authenticated;
 select throws_ok($$select * from public.time_off_decision_pieces$$,'42501',null,'decision rows are private');
 select throws_ok($$select public.resolve_time_off_period_decision_service(null,null,null,1,'approve','','[]',gen_random_uuid())$$,'42501',null,'client cannot impersonate the decision actor');

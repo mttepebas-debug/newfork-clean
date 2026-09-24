@@ -105,7 +105,6 @@ function mount(route = "/app/employee-hub/shift-hub", manager = false) {
 beforeEach(() => {
   vi.clearAllMocks();
   model = {
-    enabled: true,
     employee_id: "alex",
     cases: [structuredClone(item)],
     opportunities: [],
@@ -1195,19 +1194,6 @@ describe("Shift Hub outcome contracts", () => {
       (screen.getByRole("textbox", { hidden: true }) as HTMLTextAreaElement)
         .value,
     ).toBe("Please arrange cover");
-  });
-  it("leaves history and responsibility visible when writes are disabled", async () => {
-    model.enabled = false;
-    mount("/app/employee-hub/shift-hub?hub_view=requests&case=case");
-    await screen.findByText("Still your shift");
-    expect(
-      (
-        screen.getByRole("button", {
-          name: "Close cover search",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
-    expect(screen.getByText("Request history")).toBeTruthy();
   });
   it("explains shared Line Up reconciliation and prevents approval even for an eligible employee", async () => {
     model.employee_id = null;

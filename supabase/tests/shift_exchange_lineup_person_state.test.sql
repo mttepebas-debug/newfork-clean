@@ -31,7 +31,6 @@ insert into public.schedule_published_shifts(id,workspace_id,location_id,publica
 select ('ae820000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,pg_temp.w(),'ae8a0000-0000-4000-8000-000000000001','ae810000-0000-4000-8000-000000000001',case n when 4 then null when 3 then pg_temp.emp(2) else pg_temp.emp(1) end,'ae8b0000-0000-4000-8000-000000000001','ae8c0000-0000-4000-8000-000000000001','2030-01-07'::date+n-1,'09:00','17:00',gen_random_uuid() from generate_series(1,4)n;
 create function pg_temp.shift(n integer) returns uuid language sql as $$select ('ae820000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
 
-update public.workspaces set shift_exchanges_enabled=true where id=pg_temp.w();
 update public.locations set lineup_operations_enabled=true where id in('ae8a0000-0000-4000-8000-000000000001','ae8a0000-0000-4000-8000-000000000002');
 insert into public.schedule_lineup_sections(id,workspace_id,name,color) values('ae850000-0000-4000-8000-000000000001',pg_temp.w(),'Person-state QA','#537663');
 insert into public.schedule_lineups(id,workspace_id,location_id,lineup_date,created_by,updated_by)

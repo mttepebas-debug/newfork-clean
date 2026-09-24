@@ -103,7 +103,7 @@ gelince çözülür.
 | calisanlar | EmployeeHubPage | `employee-hub/*` | `views/EmployeeHubPage.tsx` | belgelenmedi |
 | calisanlar | EmployeeDocumentsPage | `employees/documents` | `documents/EmployeeDocumentsPage.tsx` | belgelenmedi |
 | plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | kısmi 2026-09-22 (butonlar) |
-| plan | ScheduleRequestsPage | `schedule/requests` | `views/ScheduleRequestsPage.tsx` | belgelenmedi |
+| plan | ScheduleRequestsPage | `schedule/requests` | `views/ScheduleRequestsPage.tsx` | belgelendi 2026-09-24 |
 | plan | ScheduleTemplatesPage | `schedule/templates` | `views/ScheduleTemplatesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | plan | LineupPage | `schedule/lineup` | `views/LineupPage.tsx` | belgelenmedi |
 | plan | AvailabilityPage | `availability` | `views/AvailabilityPage.tsx` | belgelenmedi |
@@ -198,6 +198,27 @@ düzenliyorsa "Draft is being edited" penceresi kimin düzenlediğini söyler;
 "View schedule" beyaz, "Try again" yeşil. Yayın penceresinin ilk adımında,
 taslak başladıktan sonra yayını değişen lokasyonun altında uyarı satırı
 (kim, ne zaman; engel değil, yayınlayan karar verir).
+
+### ScheduleRequestsPage
+
+**Ne işe yarar.** Schedule → Requests (`/app/schedule/requests`): yöneticinin
+izin talepleri kuyruğu ("Time off") ve takas/cover onayları ("Shift changes").
+İzin tarafı `get_schedule_requests_service`'ten gelir; "Shift changes"
+sekmesi Shift Hub'ın yönetici görünümüdür (`ShiftExchangeHub manager`).
+
+**Kullandığı ortak parçalar.** `CatalogPageHeader` (iki görünümde aynı başlık
+ve sekmeler), `CatalogDrawer` (izin inceleme çekmecesi), `ShiftExchangeHub`.
+
+**Kendine özgü kurallar.** Sekme URL'de (`?tab=time-off|shift-changes`);
+yalnız izin okuyabilen izin görünümünü, yalnız takas okuyabilen Shift Hub'ı
+görür. `?case=<id>` Shift Hub'da o vakayı açar (yönetici bildirimleri buraya
+bağlanır). İzin verisi izin okuyabilen herkese iki sekmede de yüklenir, "Time
+off" sekmesindeki sayı kaybolmasın diye. Eski takas kuyruğu ve
+"View earlier requests" 5.1b'de kalktı.
+
+**Bilinen tuhaflıklar.** İnceleme çekmecesindeki "Select a request" yer
+tutucusu hiç görünmez (çekmece yalnız bir talep seçilince açılır). "Shift
+changes" sekmesinde sayı rozeti yok; Shift Hub kendi başlığında sayıyı söyler.
 
 ### ScheduleTemplatesPage (kısmi: butonlar)
 

@@ -1,7 +1,4 @@
-import {
-  shiftChangeDecisionInputSchema,
-  timeOffDecisionInputSchema,
-} from "@newfork/shared/schedule";
+import { timeOffDecisionInputSchema } from "@newfork/shared/schedule";
 import type { Permission } from "@newfork/shared";
 import { timeOffAssignmentPreviewInputSchema } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -15,11 +12,9 @@ const activeRequestParams = z.object({ requestId: z.string().uuid() });
 const explicitWorkspaceHeaderSchema = z.string().uuid();
 const querySchema = z.object({
   time_off_queue: z.enum(["needs_review", "closed"]).default("needs_review"),
-  shift_queue: z.enum(["needs_review", "history"]).default("needs_review"),
   location_id: z.string().uuid().optional(),
   search: z.string().trim().max(120).default(""),
   time_off_cursor: z.string().datetime({ offset: true }).optional(),
-  shift_cursor: z.string().datetime({ offset: true }).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
@@ -81,11 +76,9 @@ export function registerScheduleRequestsRoutes(
             actorUserId: context.userId,
             workspaceId: params.data.workspaceId,
             timeOffQueue: query.data.time_off_queue,
-            shiftQueue: query.data.shift_queue,
             locationId: query.data.location_id ?? null,
             search: query.data.search,
             timeOffCursor: query.data.time_off_cursor ?? null,
-            shiftCursor: query.data.shift_cursor ?? null,
             limit: query.data.limit,
           }),
         );
@@ -171,46 +164,6 @@ export function registerScheduleRequestsRoutes(
     },
   );
 
-  app.post(
-    "/v1/workspaces/:workspaceId/schedule/requests/shift-changes/:requestId/decision",
-    async (request, reply) => {
-      const params = requestParams.safeParse(request.params);
-      const body = shiftChangeDecisionInputSchema.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid shift change decision required" });
-      const context = await authorizeAny(
-        request.headers.authorization,
-        params.data.workspaceId,
-        ["schedule.shift_change_requests.manage"],
-        options,
-      );
-      if (context === "workspace_mismatch")
-        return reply.status(404).send({ error: "Workspace not found" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Shift change management access required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Schedule request service is not configured" });
-      try {
-        return reply.send(
-          await options.service.resolveShiftChange({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            requestId: params.data.requestId,
-            decision: body.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
-    },
-  );
-
   app.get("/schedule/requests", async (request, reply) => {
     const query = querySchema.safeParse(request.query);
     if (!query.success)
@@ -239,11 +192,9 @@ export function registerScheduleRequestsRoutes(
           actorUserId: context.userId,
           workspaceId: context.workspace.id,
           timeOffQueue: query.data.time_off_queue,
-          shiftQueue: query.data.shift_queue,
           locationId: query.data.location_id ?? null,
           search: query.data.search,
           timeOffCursor: query.data.time_off_cursor ?? null,
-          shiftCursor: query.data.shift_cursor ?? null,
           limit: query.data.limit,
         }),
       );
@@ -305,43 +256,6 @@ export function registerScheduleRequestsRoutes(
       try {
         return reply.send(
           await options.service.resolveTimeOff({
-            actorUserId: context.userId,
-            workspaceId: context.workspace.id,
-            requestId: params.data.requestId,
-            decision: body.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
-    },
-  );
-
-  app.post(
-    "/schedule/requests/shift-changes/:requestId/decision",
-    async (request, reply) => {
-      const params = activeRequestParams.safeParse(request.params);
-      const body = shiftChangeDecisionInputSchema.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid shift change decision required" });
-      const context = await authorizeAnyActive(
-      request,
-        ["schedule.shift_change_requests.manage"],
-        options,
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Shift change management access required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Schedule request service is not configured" });
-      try {
-        return reply.send(
-          await options.service.resolveShiftChange({
             actorUserId: context.userId,
             workspaceId: context.workspace.id,
             requestId: params.data.requestId,

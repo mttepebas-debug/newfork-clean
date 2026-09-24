@@ -17,7 +17,7 @@ create temp table ws as select
 insert into auth.users(id,email) select owner_id,'terms-owner@example.test' from ws
  union all select first_user,'terms-first@example.test' from ws union all select second_user,'terms-second@example.test' from ws
  union all select manager_a,'terms-manager-a@example.test' from ws union all select manager_b,'terms-manager-b@example.test' from ws;
-insert into public.workspaces(id,name,created_by,shift_exchanges_enabled) select w,'Changed terms',owner_id,true from ws;
+insert into public.workspaces(id,name,created_by) select w,'Changed terms',owner_id from ws;
 insert into public.workspace_memberships(workspace_id,user_id,role,all_locations)
  select w,owner_id,'owner'::public.workspace_role,true from ws
  union all select w,first_user,'employee'::public.workspace_role,true from ws
