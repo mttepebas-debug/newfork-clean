@@ -15,7 +15,6 @@ insert into public.workspace_role_permissions(workspace_id,role_id,permission_ke
 select w,'af9f0000-0000-4000-8000-000000000005',p from aq,unnest(array['workspace.read','employees.read','employees.manage']) p;
 insert into public.workspace_memberships(id,workspace_id,user_id,role,role_id,status,all_locations)
 select 'af9f0000-0000-4000-8000-000000000006',w,manager,'manager','af9f0000-0000-4000-8000-000000000005','active',false from aq;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id) select w,'af9f0000-0000-4000-8000-000000000006',a from aq;
 insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,employee,'employee','active',true from aq;
 create temp table aq_employees as select n,('af9f1000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid id from generate_series(1,5) n;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)

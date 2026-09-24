@@ -92,7 +92,7 @@ insert into public.workspace_role_permissions(workspace_id,role_id,permission_ke
 select w,'af9e0000-0000-4000-8000-000000000011',p from sc,unnest(array['workspace.read','schedule.read','schedule.manage']) p;
 insert into public.workspace_memberships(id,workspace_id,user_id,role,role_id,status,all_locations)
 select 'af9e0000-0000-4000-8000-000000000012',w,'af9e0000-0000-4000-8000-000000000010','manager','af9e0000-0000-4000-8000-000000000011','active',false from sc;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id) select w,'af9e0000-0000-4000-8000-000000000012',loc from sc;
+select tests.works_at('af9e0000-0000-4000-8000-000000000012', loc) from sc;
 select is(public.assess_schedule_shift_service('af9e0000-0000-4000-8000-000000000010',w,payload||'{"service_classification_note":"Inventory training independent of lunch service."}')->>'operation','allowed','scoped Schedule manager can review independent custom work') from sc;
 select is(public.assess_schedule_shift_service('af9e0000-0000-4000-8000-000000000010',w,payload||'{"service_classification_note":"Inventory training independent of lunch service."}')->>'can_override','false','classification does not grant availability override permission') from sc;
 select throws_ok($$select public.assess_schedule_shift_service('af9e0000-0000-4000-8000-000000000010',w,payload||'{"location_id":"11000000-0000-4000-8000-000000000002","service_classification_note":"Inventory training independent of lunch service."}') from sc$$,'42501',null,'custom preview respects manager location scope');

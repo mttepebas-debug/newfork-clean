@@ -89,8 +89,7 @@ insert into public.workspace_role_permissions(workspace_id,role_id,permission_ke
 select w,'ae960000-0000-4000-8000-000000000002',permission from ar_state,unnest(array['workspace.read','schedule.read','schedule.manage']) permission;
 insert into public.workspace_memberships(id,workspace_id,user_id,role,role_id,status,all_locations)
 select 'ae960000-0000-4000-8000-000000000003',w,'ae960000-0000-4000-8000-000000000001','manager','ae960000-0000-4000-8000-000000000002','active',false from ar_state;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
-select w,'ae960000-0000-4000-8000-000000000003',loc from ar_state;
+select tests.works_at('ae960000-0000-4000-8000-000000000003', loc) from ar_state;
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,time_basis)
 select 'ae920000-0000-4000-8000-000000000003',w,draft,'11000000-0000-4000-8000-000000000002',emp,job,typ,week+2,'unresolved' from ar_state;
 select is(jsonb_array_length(pg_temp.ar_conflicts()->'conflicts'),1,'owner sees the unresolved assignment in the second location');

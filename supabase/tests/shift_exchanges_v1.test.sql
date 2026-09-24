@@ -133,9 +133,7 @@ select is((select employee_id from public.schedule_published_shifts where id=pg_
 -- Cross-location approval: each scoped manager votes; only the second commits.
 insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations)
 select pg_temp.w(),pg_temp.actor(n),'manager', 'active',false from generate_series(5,6)n;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
-select pg_temp.w(),id,case when user_id=pg_temp.actor(5) then '11000000-0000-4000-8000-000000000001'::uuid else '11000000-0000-4000-8000-000000000002'::uuid end
-from public.workspace_memberships where workspace_id=pg_temp.w() and user_id in(pg_temp.actor(5),pg_temp.actor(6));
+select tests.works_at(id, case when user_id=pg_temp.actor(5) then '11000000-0000-4000-8000-000000000001'::uuid else '11000000-0000-4000-8000-000000000002'::uuid end) from public.workspace_memberships where workspace_id=pg_temp.w() and user_id in(pg_temp.actor(5),pg_temp.actor(6));
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
 values('98010000-0000-4000-8000-000000000002',pg_temp.w(),'11000000-0000-4000-8000-000000000002','2030-01-07',1,pg_temp.manager());
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
@@ -309,7 +307,7 @@ select throws_ok($$select public.shift_exchanges_command_service(pg_temp.manager
 update public.employee_profiles set is_excluded_from_schedule=false where id=pg_temp.emp(2);
 update sx_state set preview=public.shift_exchange_preview(pg_temp.actor(5),pg_temp.w(),cid,aid);
 select public.shift_exchanges_command_service(pg_temp.actor(5),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',2,'fingerprint',preview->>'fingerprint'),gen_random_uuid()) from sx_state;
-delete from public.membership_location_scopes where membership_id=(select id from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5));
+select tests.stops_working_at((select id from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5)));
 update sx_state set preview=public.shift_exchange_preview(pg_temp.actor(6),pg_temp.w(),cid,aid);
 select is(preview->>'requires_other_manager','true','AT41 revoked first manager scope makes the old vote insufficient') from sx_state;
 select public.shift_exchanges_command_service(pg_temp.actor(6),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',3,'fingerprint',preview->>'fingerprint'),gen_random_uuid()) from sx_state;
@@ -340,18 +338,15 @@ update public.workspace_memberships set role='manager',role_id=(select role_id f
 -- else is looked at, so these two would never reach the rule this block is
 -- about: that nobody approves their own exchange. They are given the
 -- workspace's locations first, so the refusal they get is that one.
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
-select pg_temp.w(),m.id,l from public.workspace_memberships m
+select tests.works_at(m.id, l) from public.workspace_memberships m
  cross join unnest(array['11000000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000002']::uuid[]) l
- where m.workspace_id=pg_temp.w() and m.user_id in(pg_temp.actor(1),pg_temp.actor(2))
-on conflict do nothing;
+ where m.workspace_id=pg_temp.w() and m.user_id in(pg_temp.actor(1),pg_temp.actor(2));
 select is(public.shift_exchange_preview(pg_temp.actor(1),pg_temp.w(),cid,aid)->>'allowed','false','AT41 owner with manager role cannot approve their own release') from sx_state;
 select is(public.shift_exchange_preview(pg_temp.actor(2),pg_temp.w(),cid,aid)->>'allowed','false','AT41 recipient with manager role cannot approve their own pickup') from sx_state;
 select ok(public.shift_exchange_preview(pg_temp.actor(1),pg_temp.w(),cid,aid)->'reasons' @> '["A separate manager must approve your own exchange"]'::jsonb,'AT41 self-approval rejection explains the independent reviewer requirement') from sx_state;
 select throws_ok($$select public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',2,'fingerprint',public.shift_exchange_preview(pg_temp.actor(2),pg_temp.w(),cid,aid)->>'fingerprint'),gen_random_uuid()) from sx_state$$,'PT409',null,'AT41 recipient manager cannot bypass preview using the final command');
 -- A material change after the first scoped approval requires fresh consent and votes.
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
-select pg_temp.w(),id,'11000000-0000-4000-8000-000000000001' from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5);
+select tests.works_at(id, '11000000-0000-4000-8000-000000000001') from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5);
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.shift(10),'requested_shift_id',pg_temp.shift(15)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid);
@@ -409,7 +404,7 @@ join public.shift_exchange_events e on e.id::text=o.payload->>'request_event_id'
 where o.payload->>'audience_contract'='schedule_request_reviewers' order by e.notification_sequence desc limit 1;
 select public.project_notification_event_service(latest_oid) from sx_notice_state;
 select public.project_notification_recipients_service(latest_oid) from sx_notice_state;
-delete from public.membership_location_scopes where membership_id=(select id from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5));
+select tests.stops_working_at((select id from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5)));
 update public.notification_outbox set status='leased',lease_owner='exchange-pgtap',lease_expires_at=now()+interval '1 minute',attempt_count=attempt_count+1 where workspace_id=pg_temp.w() and subject_id=(select cid::text from sx_state);
 do $$ declare row record; begin for row in
  select o.id from public.notification_outbox o join public.shift_exchange_events e on e.id::text=o.payload->>'request_event_id'
@@ -462,8 +457,7 @@ select is((select status from public.schedule_location_publications where id='98
 select is((select employee_id from public.schedule_published_shifts where publication_id='98010000-0000-4000-8000-000000000005' and scheduled_date='2030-01-18'),pg_temp.emp(3),'AT24 historical assignment retains the approved recipient after intentional unpublish');
 -- Changing the swap candidate requires a new case and fresh consent from all
 -- participants. An earlier location vote must not authorize the replacement.
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
-select pg_temp.w(),id,'11000000-0000-4000-8000-000000000001' from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5);
+select tests.works_at(id, '11000000-0000-4000-8000-000000000001') from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5);
 insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from,effective_until)
 select pg_temp.w(),pg_temp.emp(n),coalesce((select max(version_number) from public.employee_schedule_availability_versions where employee_id=pg_temp.emp(n)),0)+1,'America/Los_Angeles',
 (select jsonb_agg(jsonb_build_object('day',d,'mode','unrestricted','windows','[]'::jsonb)) from generate_series(0,6)d),'manager',pg_temp.manager(),'2030-01-21','2030-01-27' from generate_series(1,3)n;

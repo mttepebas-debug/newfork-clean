@@ -27,13 +27,17 @@ insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first
  select emp,w,employee_user,'E-993425','Weekly','Read',owner_id from ws;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
  select w,emp,loc,owner_id from ws union all select w,emp,other_loc,owner_id from ws;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
- select f.w,m.id,f.loc from ws f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id in(f.employee_user,f.manager);
+select tests.works_at(m.id, f.loc) from ws f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id in(f.employee_user,f.manager);
 insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,is_primary,created_by)
  select w,emp,job,true,owner_id from ws;
 create function pg_temp.read_model(actor uuid default null) returns jsonb language sql as $$
  select public.get_schedule_read_model_availability_v2_service(coalesce(actor,manager),w,'2035-01-15') from ws;
+$$;
+-- The employee under test, found by id: the manager works at West too, so they
+-- are on the schedule as well.
+create function pg_temp.the_employee(model jsonb) returns jsonb language sql as $$
+ select e from jsonb_array_elements(model->'employees') e, ws where e->>'id'=ws.emp::text;
 $$;
 create function pg_temp.project(first_date date default '2035-01-15',location uuid default null) returns jsonb language sql as $$
  select public.weekly_schedule_location_projection(w,emp,coalesce(location,loc),first_date) from ws;
@@ -42,17 +46,17 @@ select is(pg_temp.project()->>'status','ready','no preference is a verified empt
 select is(pg_temp.project()->'unavailable_intervals','[]'::jsonb,'unmarked hours are available');
 select is(jsonb_array_length(pg_temp.project()->'days'),7,'projection summarizes exactly seven days');
 select is((pg_temp.project()->'clock_segments'->0->>'offset_seconds')::integer,-28800,'clock offset comes from the database timezone');
-select ok(not ((pg_temp.read_model()->'employees'->0) ? 'availability_versions'),'canonical read no longer returns dated preference versions');
-select is(pg_temp.read_model()->'employees'->0->'availability','null'::jsonb,'old day field is not populated');
-select is(jsonb_array_length(pg_temp.read_model()->'employees'->0->'weekly_availability'),1,'manager receives only their authorized location projection');
+select ok(not ((pg_temp.the_employee(pg_temp.read_model())) ? 'availability_versions'),'canonical read no longer returns dated preference versions');
+select is(pg_temp.the_employee(pg_temp.read_model())->'availability','null'::jsonb,'old day field is not populated');
+select is(jsonb_array_length(pg_temp.the_employee(pg_temp.read_model())->'weekly_availability'),1,'manager receives only their authorized location projection');
 select throws_ok($$select pg_temp.read_model(employee_user) from ws$$,'42501',null,'employee cannot read shared manager preference projections');
-select is(jsonb_array_length(pg_temp.read_model(owner_id)->'employees'->0->'weekly_availability'),2,'owner sees both authorized locations') from ws;
+select is(jsonb_array_length(pg_temp.the_employee(pg_temp.read_model(owner_id))->'weekly_availability'),2,'owner sees both authorized locations') from ws;
 insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,preference,notes,revision,updated_by)
  select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),
   array['private-note','','','','','',''],1,manager from ws;
 select ok((pg_temp.project()->'days'->0->>'has_unavailable')::boolean,'enabled manager interval marks the matching day');
 select ok(not (pg_temp.read_model()::text like '%private-note%'),'Schedule read does not expose manager notes');
-select ok(not ((pg_temp.read_model()->'employees'->0->'weekly_availability'->0) ? 'manager_intervals'),'Schedule projection does not disclose source identity');
+select ok(not ((pg_temp.the_employee(pg_temp.read_model())->'weekly_availability'->0) ? 'manager_intervals'),'Schedule projection does not disclose source identity');
 select is((pg_temp.project()->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-16 02:00Z'::timestamptz,'West rules use West timezone');
 select is((pg_temp.project('2035-01-15',other_loc)->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-15 23:00Z'::timestamptz,'same recurring rule uses target East timezone') from ws;
 update public.manager_weekly_reminders set enabled=false where workspace_id=(select w from ws);
@@ -75,8 +79,8 @@ select is((select count(distinct x->>'offset_seconds') from jsonb_array_elements
 update public.employee_weekly_preferences set preference=public.empty_weekly_preference('time_range') where workspace_id=(select w from ws);
 update public.manager_weekly_reminders set enabled=true,preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true') where workspace_id=(select w from ws);
 select ok((pg_temp.project()->'days'->0->>'all_day')::boolean,'all-day projection is explicit');
-delete from public.membership_location_scopes where workspace_id=(select w from ws) and membership_id=(select id from public.workspace_memberships where workspace_id=(select w from ws) and user_id=(select manager from ws));
-select is(jsonb_array_length(coalesce(pg_temp.read_model()->'employees'->0->'weekly_availability','[]')),0,'revoked location scope removes preference projection');
+select tests.stops_working_at((select id from public.workspace_memberships where workspace_id=(select w from ws) and user_id=(select manager from ws)));
+select is(jsonb_array_length(coalesce(pg_temp.the_employee(pg_temp.read_model())->'weekly_availability','[]')),0,'revoked location scope removes preference projection');
 select ok(not has_function_privilege('authenticated','public.weekly_schedule_location_projection(uuid,uuid,uuid,date)','EXECUTE'),'raw projection helper is private');
 select * from finish();
 rollback;

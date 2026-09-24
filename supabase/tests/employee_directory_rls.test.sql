@@ -34,8 +34,6 @@ values
 insert into public.departments (id, workspace_id, name) values ('56000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', 'Service');
 insert into public.jobs (id, workspace_id, department_id, name)
 values ('66000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', '56000000-0000-4000-8000-000000000001', 'Server');
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values ('36000000-0000-4000-8000-000000000002', '26000000-0000-4000-8000-000000000001', '46000000-0000-4000-8000-000000000001');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '16000000-0000-4000-8000-000000000001', true);
@@ -66,6 +64,38 @@ select lives_ok(
 );
 set local role postgres;
 select is((select employee_code from public.employee_profiles where id = (select id from employee_ids where label = 'downtown')), 'E-0001', 'employee code is server generated');
+-- Mona manages Downtown because she works there: a manager's locations are
+-- their assignments (stage 4b), so her employee record comes before anything
+-- she does as a manager.
+insert into public.employee_profiles (
+  id, workspace_id, user_id, employee_code, first_name, last_name, preferred_name,
+  invitation_email, created_by
+) values (
+  '76000000-0000-4000-8000-000000000001',
+  '26000000-0000-4000-8000-000000000001',
+  '16000000-0000-4000-8000-000000000002',
+  'E-0099', 'Mona', 'Manager', '',
+  'employee-manager@example.test',
+  '16000000-0000-4000-8000-000000000001'
+);
+insert into public.employee_location_assignments (
+  workspace_id, employee_id, location_id, is_primary, created_by
+) values (
+  '26000000-0000-4000-8000-000000000001',
+  '76000000-0000-4000-8000-000000000001',
+  '46000000-0000-4000-8000-000000000001',
+  true,
+  '16000000-0000-4000-8000-000000000001'
+);
+insert into public.employee_job_assignments (
+  workspace_id, employee_id, job_id, is_primary, created_by
+) values (
+  '26000000-0000-4000-8000-000000000001',
+  '76000000-0000-4000-8000-000000000001',
+  '66000000-0000-4000-8000-000000000001',
+  true,
+  '16000000-0000-4000-8000-000000000001'
+);
 -- Still dropped here, for a better reason than before. It used to be a check
 -- constraint holding the column at the empty string because nothing had decided
 -- who may set one. Now save_employee_service never writes it: a new record starts
@@ -239,40 +269,11 @@ select lives_ok(
   ))$$,
   'owner creates an employee outside manager scope'
 );
-select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)), 2, 'owner lists both active employees');
+select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)), 3, 'owner lists every active employee, Mona the manager included');
 select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', false, 'Uptown', 'all', 100, 0)), 1, 'owner can search employees by primary location');
-select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', false, 'Server', 'all', 100, 0)), 2, 'owner can search employees by primary job');
+select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', false, 'Server', 'all', 100, 0)), 3, 'owner can search employees by primary job');
 
 set local role postgres;
-insert into public.employee_profiles (
-  id, workspace_id, user_id, employee_code, first_name, last_name, preferred_name,
-  invitation_email, created_by
-) values (
-  '76000000-0000-4000-8000-000000000001',
-  '26000000-0000-4000-8000-000000000001',
-  '16000000-0000-4000-8000-000000000002',
-  'E-0099', 'Mona', 'Manager', '',
-  'employee-manager@example.test',
-  '16000000-0000-4000-8000-000000000001'
-);
-insert into public.employee_location_assignments (
-  workspace_id, employee_id, location_id, is_primary, created_by
-) values (
-  '26000000-0000-4000-8000-000000000001',
-  '76000000-0000-4000-8000-000000000001',
-  '46000000-0000-4000-8000-000000000001',
-  true,
-  '16000000-0000-4000-8000-000000000001'
-);
-insert into public.employee_job_assignments (
-  workspace_id, employee_id, job_id, is_primary, created_by
-) values (
-  '26000000-0000-4000-8000-000000000001',
-  '76000000-0000-4000-8000-000000000001',
-  '66000000-0000-4000-8000-000000000001',
-  true,
-  '16000000-0000-4000-8000-000000000001'
-);
 create temporary table directory_role_ids (label text primary key, id uuid not null);
 insert into directory_role_ids (label, id)
 select system_key::text, id

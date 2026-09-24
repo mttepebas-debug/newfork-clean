@@ -28,7 +28,7 @@ insert into public.workspace_role_permissions(workspace_id,role_id,permission_ke
 select w,'afa10000-0000-4000-8000-000000000001',p from cq,unnest(array['workspace.read','schedule.time_off_requests.read','schedule.time_off_requests.manage','schedule.publish'])p;
 insert into public.workspace_memberships(id,workspace_id,user_id,role,role_id,status,all_locations)
 select 'afa10000-0000-4000-8000-000000000002',w,reviewer,'manager','afa10000-0000-4000-8000-000000000001','active',false from cq;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id) select w,'afa10000-0000-4000-8000-000000000002',a from cq;
+select tests.works_at('afa10000-0000-4000-8000-000000000002', a) from cq;
 create temp table cq_publications as select n,('afa20000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid id,
  case when n=2 then b else a end location,case when n=3 then '2035-01-08'::date else '2035-01-15'::date end week from cq,generate_series(1,3)n;
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)

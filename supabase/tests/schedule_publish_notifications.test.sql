@@ -23,8 +23,7 @@ insert into public.workspace_memberships (
   ('56000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '55000000-0000-4000-8000-000000000001', 'admin', 'active', true),
   ('56000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '55000000-0000-4000-8000-000000000002', 'manager', 'active', false);
 
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values ('56000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001');
+select tests.works_at('56000000-0000-4000-8000-000000000002', '11000000-0000-4000-8000-000000000001');
 
 update public.employee_profiles
 set user_id = '55000000-0000-4000-8000-000000000003'

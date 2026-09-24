@@ -41,8 +41,7 @@ select w,hr,'manager','afa41000-0000-4000-8000-000000000001','active',true from 
 -- reaches every location this person works at, which is what approving
 -- their request requires. What stays hidden from HR is the schedule itself,
 -- because the role has no schedule permission, not the LA location.
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
-select di.w,m.id,l from di join public.workspace_memberships m on m.workspace_id=di.w and m.user_id=di.hr cross join lateral (values (di.loc),(di.hidden_loc)) v(l);
+select tests.works_at(m.id, l) from di join public.workspace_memberships m on m.workspace_id=di.w and m.user_id=di.hr cross join lateral (values (di.loc),(di.hidden_loc)) v(l);
 insert into public.schedule_drafts(id,workspace_id,week_start,name,created_by,updated_by,location_ids) select draft,w,'2035-01-15','Impact saved draft',manager,manager,array[loc,hidden_loc] from di;
 insert into public.schedule_edit_sessions(id,workspace_id,week_start,source_kind,holder_user_id,location_ids) select session,w,'2035-01-15','blank',manager,array[loc,hidden_loc] from di;
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,time_basis,time_snapshot,time_timezone)

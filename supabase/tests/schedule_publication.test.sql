@@ -12,8 +12,7 @@ insert into public.user_profiles (user_id, display_name) values
 insert into public.workspace_memberships (id, workspace_id, user_id, role, status, all_locations) values
 ('54000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','53000000-0000-4000-8000-000000000001','manager','active',false),
 ('54000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','53000000-0000-4000-8000-000000000002','employee','active',true);
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values ('54000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','11000000-0000-4000-8000-000000000001');
+select tests.works_at('54000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001');
 
 insert into public.schedule_drafts (id, workspace_id, week_start, name, revision, created_by, updated_by)
 values ('85000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',

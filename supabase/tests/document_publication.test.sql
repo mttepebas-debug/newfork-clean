@@ -148,7 +148,7 @@ insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all
 -- documents.manage cannot be held without documents.read; the roles model
 -- refuses the pair split, so the manager gets both.
 insert into public.workspace_role_permissions(workspace_id,role_id,permission_key) select workspace_id,role_id,k from public.workspace_memberships, unnest(array['documents.read','documents.manage']) k where id='35200000-0000-4000-8000-000000000004' on conflict do nothing;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id) values('25200000-0000-4000-8000-000000000001','35200000-0000-4000-8000-000000000004','85200000-0000-4000-8000-000000000003');
+select tests.works_at('35200000-0000-4000-8000-000000000004', '85200000-0000-4000-8000-000000000003');
 select throws_ok($$select public.preview_document_publication_service('15200000-0000-4000-8000-000000000004','25200000-0000-4000-8000-000000000001',(select id from publication_test))$$,'42501','Complete document target access required','partial location visibility cannot publish broader effects');
 insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations) values('35200000-0000-4000-8000-000000000005','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000005','employee','pending_activation',true);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,preferred_name,invitation_email,created_by) values('45200000-0000-4000-8000-000000000005','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000005','E-0005','Future','Employee','','bl052-5@example.test','15200000-0000-4000-8000-000000000001');

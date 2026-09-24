@@ -67,11 +67,7 @@ insert into public.employee_job_assignments (
    '6a000000-0000-4000-8000-000000000001', true, '1a000000-0000-4000-8000-000000000001'),
   ('2a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000002',
    '6a000000-0000-4000-8000-000000000001', true, '1a000000-0000-4000-8000-000000000001');
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values (
-  '3a000000-0000-4000-8000-000000000002', '2a000000-0000-4000-8000-000000000001',
-  '4a000000-0000-4000-8000-000000000001'
-);
+select tests.works_at('3a000000-0000-4000-8000-000000000002', '4a000000-0000-4000-8000-000000000001');
 
 -- Establish the capacity used to publish these assignments before publication.
 -- Termination then tests the explicit release decision, without bypassing the

@@ -90,8 +90,7 @@ select is(preview->>'allowed','true','fresh manager preview reuses the original 
 insert into auth.users(id,email) values(pg_temp.id(150),'weekly-terms-source-manager@example.test'),(pg_temp.id(151),'weekly-terms-target-manager@example.test');
 insert into public.workspace_memberships(workspace_id,user_id,role,all_locations)
  select w,pg_temp.id(n),'manager'::public.workspace_role,false from ws,generate_series(150,151) n;
-insert into public.membership_location_scopes(membership_id,workspace_id,location_id)
- select m.id,w,case when m.user_id=pg_temp.id(150) then loc else other_loc end from ws
+select tests.works_at(m.id, case when m.user_id=pg_temp.id(150) then loc else other_loc end) from ws
  join public.workspace_memberships m on m.workspace_id=w and m.user_id in(pg_temp.id(150),pg_temp.id(151));
 update public.schedule_published_shifts set scheduled_date=(select start_day+1 from ws),location_id=(select other_loc from ws),publication_id=pg_temp.id(2)
  where id=pg_temp.id(11);

@@ -28,8 +28,7 @@ insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first
  select emp,w,employee_user,'E-993424','Weekly','Batch',owner_id from ws;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
  select w,emp,loc,owner_id from ws;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
- select f.w,m.id,f.loc from ws f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id in(f.employee_user,f.manager);
+select tests.works_at(m.id, f.loc) from ws f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id in(f.employee_user,f.manager);
 insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,is_primary,created_by)
  select w,emp,job,true,owner_id from ws;
@@ -80,7 +79,7 @@ update ws set payload=payload||jsonb_build_object('availability_assessment_finge
 update ws set batch=jsonb_build_array(payload);
 select lives_ok($$select pg_temp.create_batch()$$,'fresh confirmed assignment needs no written reason');
 select is((select reason from public.schedule_availability_overrides where workspace_id=(select w from ws) and assessment->>'warning_policy'='confirm' limit 1),'Availability conflict confirmed by manager.','batch retains the canonical acceptance audit');
-delete from public.membership_location_scopes where workspace_id=(select w from ws) and membership_id=(select id from public.workspace_memberships where workspace_id=(select w from ws) and user_id=(select manager from ws));
+select tests.stops_working_at((select id from public.workspace_memberships where workspace_id=(select w from ws) and user_id=(select manager from ws)));
 select throws_ok($$select pg_temp.create_batch()$$,'42501',null,'retry rechecks current location scope');
 select ok(not has_function_privilege('authenticated','public.create_schedule_shifts_batch_service(uuid,uuid,uuid,integer,jsonb,uuid)','EXECUTE'),'browser role cannot execute privileged batch directly');
 select ok(not has_table_privilege('authenticated','public.schedule_shift_batch_commands','SELECT'),'receipt is private');

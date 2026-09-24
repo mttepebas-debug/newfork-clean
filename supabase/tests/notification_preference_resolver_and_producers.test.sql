@@ -35,8 +35,7 @@ values
   ('T00021','e1730000-0000-4000-8000-000000000002', 'e1710000-0000-4000-8000-000000000001', 'Not Scoped', '2 Main St', 'Los Angeles', 'CA', '90002', 'US', 'America/Los_Angeles'),
   ('T00022','e1730000-0000-4000-8000-000000000003', 'e1710000-0000-4000-8000-000000000002', 'Other', '3 Main St', 'Los Angeles', 'CA', '90003', 'US', 'America/Los_Angeles');
 
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values ('e1720000-0000-4000-8000-000000000002', 'e1710000-0000-4000-8000-000000000001', 'e1730000-0000-4000-8000-000000000001');
+select tests.works_at('e1720000-0000-4000-8000-000000000002', 'e1730000-0000-4000-8000-000000000001');
 
 insert into public.employee_profiles (
   id, workspace_id, user_id, employee_code, first_name, last_name, created_by

@@ -10,8 +10,7 @@ insert into public.user_profiles(user_id,display_name) values
 insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations) values
 ('97100000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97000000-0000-4000-8000-000000000001','manager','active',false),
 ('97100000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97000000-0000-4000-8000-000000000002','employee','active',true);
-insert into public.membership_location_scopes(membership_id,workspace_id,location_id) values
-('97100000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','11000000-0000-4000-8000-000000000001');
+select tests.works_at('97100000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001');
 
 set local role authenticated;
 select throws_ok($$select * from public.schedule_time_off_requests$$,'42501',null,'time off requests deny authenticated reads');

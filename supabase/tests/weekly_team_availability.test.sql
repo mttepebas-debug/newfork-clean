@@ -34,8 +34,7 @@ insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
  select w,emp,loc,owner_id from wt_fixture union all select w,emp,other_loc,owner_id from wt_fixture
  union all select w,hidden_emp,other_loc,owner_id from wt_fixture union all select w,undeclared,loc,owner_id from wt_fixture;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
- select f.w,m.id,f.loc from wt_fixture f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id=f.manager;
+select tests.works_at(m.id, f.loc) from wt_fixture f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id=f.manager;
 insert into public.shift_types(id,workspace_id,name,color,default_start_time,default_end_time)
  select dinner,w,'Dinner','#256b56','17:00'::time,'23:00'::time from wt_fixture
  union all select hidden_type,w,'Private fallback','#256b56','09:00'::time,'12:00'::time from wt_fixture;

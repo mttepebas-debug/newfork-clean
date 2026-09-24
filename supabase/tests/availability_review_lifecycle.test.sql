@@ -107,8 +107,7 @@ select throws_ok($$select public.save_employee_availability_service(employee_act
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
 select w,emp,'11000000-0000-4000-8000-000000000002',owner_actor from av_state;
 update public.workspace_memberships set all_locations=false where user_id=(select manager_actor from av_state);
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
-select s.w,m.id,s.loc from av_state s join public.workspace_memberships m on m.workspace_id=s.w and m.user_id=s.manager_actor;
+select tests.works_at(m.id, s.loc) from av_state s join public.workspace_memberships m on m.workspace_id=s.w and m.user_id=s.manager_actor;
 select ok(not public.availability_actor_scope(manager_actor,w,emp,true),'partial location scope cannot edit global availability') from av_state;
 select ok(public.availability_actor_scope(manager_actor,w,emp,false),'shared location can inspect employee availability') from av_state;
 select throws_ok($$select pg_temp.av_cmd(manager_actor,'submit') from av_state$$,'42501',null,'command enforces all affected locations');

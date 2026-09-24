@@ -18,12 +18,7 @@ insert into public.workspace_memberships (
   'b6000000-0000-4000-8000-000000000001',
   'manager', 'active', false
 );
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values (
-  'b6000000-0000-4000-8000-000000000002',
-  '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
-  '11000000-0000-4000-8000-000000000001'
-);
+select tests.works_at('b6000000-0000-4000-8000-000000000002', '11000000-0000-4000-8000-000000000001');
 
 set local role authenticated;
 select throws_ok(
@@ -58,7 +53,7 @@ set result = public.get_manager_time_entries_service(
 );
 select is(jsonb_array_length(result->'locations'), 1, 'manager read exposes only scoped locations') from manager_time_state;
 select is(result->'locations'->0->>'name', 'Main Dining', 'manager read resolves the scoped location') from manager_time_state;
-select is(jsonb_array_length(result->'employees'), 2, 'manager read exposes employees assigned to scoped locations') from manager_time_state;
+select is(jsonb_array_length(result->'employees'), 3, 'manager read exposes employees assigned to scoped locations, the manager included') from manager_time_state;
 
 select throws_ok(
   $$select public.create_manual_time_session_service(

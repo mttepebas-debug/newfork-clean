@@ -126,8 +126,7 @@ insert into public.workspace_role_permissions(workspace_id,role_id,permission_ke
 select w,'ad960000-0000-4000-8000-000000000002',permission from sa_state,unnest(array['workspace.read','schedule.read','schedule.manage']) permission;
 insert into public.workspace_memberships(id,workspace_id,user_id,role,role_id,status,all_locations)
 select 'ad960000-0000-4000-8000-000000000003',w,'ad960000-0000-4000-8000-000000000001','manager','ad960000-0000-4000-8000-000000000002','active',false from sa_state;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
-select w,'ad960000-0000-4000-8000-000000000003',loc from sa_state;
+select tests.works_at('ad960000-0000-4000-8000-000000000003', loc) from sa_state;
 update public.workspace_scheduling_settings set availability_enforcement='soft' where workspace_id=(select w from sa_state);
 select is(public.assess_schedule_shift_service('ad960000-0000-4000-8000-000000000001',w,payload)->>'can_override','false','schedule management alone does not grant availability override') from sa_state;
 select throws_ok($$select public.assess_schedule_shift_service('ad960000-0000-4000-8000-000000000001',w,payload||'{"location_id":"11000000-0000-4000-8000-000000000002"}') from sa_state$$,'42501','Schedule location access denied','scoped manager cannot inspect a location outside their scope');

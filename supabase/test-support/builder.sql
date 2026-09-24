@@ -59,7 +59,7 @@ as $$ select tests.id(target_label || ':user') $$;
 
 -- Ends a builder step the way an API request ends, so the next call starts
 -- like a new one: runs the checks and syncs the product defers to commit
--- (manager scope rows, document assignment, role dependencies) and defers
+-- (document assignment, role dependencies) and defers
 -- again, and forgets the caller identity that service functions stamp on the
 -- transaction (request.jwt.claim.sub, set local by the JWT bridges). A test
 -- transaction never commits, so without this the deferred rows would never
@@ -485,6 +485,79 @@ as $$
       phone_change_token = '', reauthentication_token = ''
   where id = tests.user(person_label)
   returning email;
+$$;
+
+-- A member of a hand-built fixture working at a location, in today's shape:
+-- their employee record (made if the fixture has none) with an active
+-- assignment there. Where somebody works and what a manager manages both come
+-- from assignments; membership_location_scopes is a view of them (stage 4b).
+-- ponytail: for the older test files that insert memberships by hand; people
+-- the builder makes get their assignments through the product (tests.person).
+create or replace function tests.works_at(membership uuid, location uuid)
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  member public.workspace_memberships;
+  profile public.employee_profiles;
+  maker uuid;
+begin
+  select * into member from public.workspace_memberships m where m.id = membership;
+  if member.id is null then
+    raise exception 'tests.works_at: no membership %', membership;
+  end if;
+  maker := coalesce((
+    select m.user_id from public.workspace_memberships m
+    where m.workspace_id = member.workspace_id and m.role = 'owner' limit 1
+  ), member.user_id);
+  select * into profile from public.employee_profiles e
+  where e.workspace_id = member.workspace_id and e.user_id = member.user_id;
+  if profile.id is not null and profile.archived_at is not null then
+    raise exception 'tests.works_at: the employee record of membership % is archived', membership;
+  end if;
+  if profile.id is null then
+    insert into public.employee_profiles (workspace_id, user_id, employee_code, first_name, last_name, created_by)
+    values (
+      member.workspace_id, member.user_id,
+      'E-' || lpad((coalesce((
+        select max(substring(e.employee_code from 3)::bigint)
+        from public.employee_profiles e where e.workspace_id = member.workspace_id
+      ), 0) + 1)::text, 6, '0'),
+      'Fixture', 'Member', maker
+    )
+    returning * into profile;
+  end if;
+  insert into public.employee_location_assignments (workspace_id, employee_id, location_id, is_primary, created_by)
+  select member.workspace_id, profile.id, location,
+    not exists (
+      select 1 from public.employee_location_assignments a
+      where a.employee_id = profile.id and a.ended_at is null and a.is_primary
+    ),
+    maker
+  where not exists (
+    select 1 from public.employee_location_assignments a
+    where a.employee_id = profile.id and a.location_id = location and a.ended_at is null
+  );
+  return profile.id;
+end;
+$$;
+
+-- The opposite: the member no longer works at the location (every location
+-- when location is null). Their active assignments there end now.
+create or replace function tests.stops_working_at(membership uuid, location uuid default null)
+returns void
+language sql
+set search_path = ''
+as $$
+  update public.employee_location_assignments a
+  set ended_at = clock_timestamp()
+  from public.workspace_memberships m
+  join public.employee_profiles e on e.workspace_id = m.workspace_id and e.user_id = m.user_id
+  where m.id = membership
+    and a.employee_id = e.id
+    and a.ended_at is null
+    and (location is null or a.location_id = location);
 $$;
 
 revoke all on all functions in schema tests from public;

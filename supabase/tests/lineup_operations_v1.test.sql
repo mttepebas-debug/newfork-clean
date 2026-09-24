@@ -180,9 +180,8 @@ insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_
 insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations) values
 ('aaa00000-0000-4000-8000-000000000111','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','aaa00000-0000-4000-8000-000000000101','manager','active',false),
 ('aaa00000-0000-4000-8000-000000000112','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','aaa00000-0000-4000-8000-000000000102','manager','active',false);
-insert into public.membership_location_scopes(membership_id,workspace_id,location_id) values
-('aaa00000-0000-4000-8000-000000000111','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','11000000-0000-4000-8000-000000000001'),
-('aaa00000-0000-4000-8000-000000000112','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','11000000-0000-4000-8000-000000000002');
+select tests.works_at('aaa00000-0000-4000-8000-000000000111', '11000000-0000-4000-8000-000000000001');
+select tests.works_at('aaa00000-0000-4000-8000-000000000112', '11000000-0000-4000-8000-000000000002');
 update lu_test set op=jsonb_build_object('kind','move','source_entry_id',(select id from public.schedule_lineup_entries where source_shift_id=lu_test.source_id),'target_entry_id',null,'employee_id','15000000-0000-4000-8000-000000000002','target',target||'{"location_id":"11000000-0000-4000-8000-000000000002"}','reason','Two-location manager approval','travel_minutes',0);
 update lu_test set preview=public.lineup_operation_preview('aaa00000-0000-4000-8000-000000000101','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',op);
 select is(preview->>'requires_approval','true','source-only manager needs destination approval') from lu_test;
@@ -200,7 +199,7 @@ update lu_test set op=jsonb_set(op,'{target,location_id}','"11000000-0000-4000-8
 update lu_test set preview=public.lineup_operation_preview('aaa00000-0000-4000-8000-000000000102','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',op);
 update lu_test set result=public.lineup_proposals_service('aaa00000-0000-4000-8000-000000000102','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','propose',jsonb_build_object('kind','transfer','operation',op,'fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid()));
 update lu_test set slot_id=(result->>'id')::uuid;
-delete from public.membership_location_scopes where membership_id='aaa00000-0000-4000-8000-000000000111';
+select tests.stops_working_at('aaa00000-0000-4000-8000-000000000111');
 select throws_ok($$select public.lineup_proposals_service('aaa00000-0000-4000-8000-000000000101','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','proposal_action',jsonb_build_object('id',slot_id,'response','confirm')) from lu_test$$,'P0001',null,'revoked location scope prevents pending approval');
 select is((select location_id::text from public.schedule_published_shifts where id=source_id),'11000000-0000-4000-8000-000000000002','revoked approval does not move the employee') from lu_test;
 -- AT-16: fresh actor/location checks across the manager command boundary.
@@ -220,7 +219,7 @@ select throws_ok($$select public.upsert_schedule_lineup_brief_service('aaa00000-
 select throws_ok($$select public.preview_schedule_lineup_scoped_share_service('aaa00000-0000-4000-8000-000000000101','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','2030-01-07',array['11000000-0000-4000-8000-000000000001'::uuid],null)$$,'P0001',null,'revoked scope denies share preview');
 select throws_ok($$select public.share_schedule_lineup_scoped_service('aaa00000-0000-4000-8000-000000000101','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','2030-01-07',array['11000000-0000-4000-8000-000000000001'::uuid],repeat('0',64),null)$$,'P0001',null,'revoked scope denies share commit');
 select throws_ok($$select public.lineup_proposals_service('aaa00000-0000-4000-8000-000000000101','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','proposals','{"date":"2030-01-07","location_id":"11000000-0000-4000-8000-000000000001"}')$$,'P0001',null,'revoked scope denies proposal list');
-insert into public.membership_location_scopes(membership_id,workspace_id,location_id) values('aaa00000-0000-4000-8000-000000000111','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','11000000-0000-4000-8000-000000000001');
+select tests.works_at('aaa00000-0000-4000-8000-000000000111', '11000000-0000-4000-8000-000000000001');
 update public.schedule_lineup_entries set revision=revision+1,station='Changed while approval was pending' where source_shift_id=(select source_id from lu_test);
 select throws_ok($$select public.lineup_proposals_service('aaa00000-0000-4000-8000-000000000101','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','proposal_action',jsonb_build_object('id',slot_id,'response','confirm')) from lu_test$$,'P0001',null,'source changes invalidate the pending approval');
 

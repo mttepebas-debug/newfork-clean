@@ -448,12 +448,6 @@ insert into public.workspace_memberships (
   'a6000000-0000-4000-8000-000000000001',
   'employee', 'active', false
 );
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values (
-  'a6000000-0000-4000-8000-000000000003',
-  '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
-  '11000000-0000-4000-8000-000000000001'
-);
 update public.employee_profiles
 set user_id = 'a6000000-0000-4000-8000-000000000001'
 where id = '15000000-0000-4000-8000-000000000001';

@@ -28,8 +28,7 @@ insert into public.locations (short_name,
   ('T00035','34000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', 'Visible Room', '1 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles', 0),
   ('T00036','34000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', 'Hidden Room', '2 Main St', 'Los Angeles', 'CA', '90001', 'US', 'America/Los_Angeles', 10);
 
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values ('33000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001');
+select tests.works_at('33000000-0000-4000-8000-000000000002', '34000000-0000-4000-8000-000000000001');
 
 insert into public.departments (id, workspace_id, name, color, sort_order)
 values ('35000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', 'Dining', '#3C7A68', 0);
@@ -94,7 +93,7 @@ select lives_ok(
 );
 select is((public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->>'week_start'), '2026-08-17', 'target date resolves workspace week start');
 select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'locations'), 2, 'owner receives both locations');
-select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'employees'), 2, 'owner receives both assigned employees');
+select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'employees'), 3, 'owner receives every assigned employee, the Visible Room manager included');
 select is((
   select employee->>'is_excluded_from_schedule'
   from jsonb_array_elements(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'employees') employee

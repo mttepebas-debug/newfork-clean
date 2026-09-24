@@ -28,8 +28,7 @@ insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first
  select emp,w,employee_user,'E-993423','Weekly','Integration',owner_id from ws;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
  select w,emp,loc,owner_id from ws;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
- select f.w,m.id,f.loc from ws f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id in(f.employee_user,f.manager);
+select tests.works_at(m.id, f.loc) from ws f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id in(f.employee_user,f.manager);
 insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,is_primary,created_by)
  select w,emp,job,true,owner_id from ws;

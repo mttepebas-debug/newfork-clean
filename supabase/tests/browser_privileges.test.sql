@@ -97,7 +97,7 @@ select set_eq(
   $$,
   array[
     'account_notification_items', 'account_organization_history', 'audit_events', 'departments', 'document_types',
-    'employee_onboarding_settings', 'important_dates', 'jobs', 'locations', 'membership_location_scopes',
+    'employee_onboarding_settings', 'important_dates', 'jobs', 'locations',
     'permissions', 'shift_labels', 'shift_types', 'signature_retention_policies', 'signature_template_versions',
     'signature_templates', 'user_preferences', 'user_profiles', 'user_workspace_preferences',
     'workspace_closure_requests', 'workspace_entitlements', 'workspace_memberships', 'workspace_onboarding',

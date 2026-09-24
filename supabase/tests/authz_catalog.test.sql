@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(6);
+select plan(7);
 
 -- How far the database is from one authorization core (FOUNDATION-B stage
 -- 2c). Each count is a pattern stage 4 and 6 remove; a ceiling only comes
@@ -46,6 +46,14 @@ select cmp_ok(
   (select count(*)::integer from pg_policies
    where schemaname = 'public' and (qual ~ 'auth\.uid' or with_check ~ 'auth\.uid')),
   '<=', 12, 'policies that call auth.uid() only go down'
+);
+
+-- Work the product defers to commit. Stage 4b removed the three triggers that
+-- copied assignments into manager scope rows (17 -> 14); what remains is
+-- document assignment and role dependencies.
+select cmp_ok(
+  (select count(*)::integer from pg_trigger where not tgisinternal and tgdeferrable),
+  '<=', 14, 'deferred triggers only go down'
 );
 
 -- The one way to say no: 42501 with an authz.* hint from this list.

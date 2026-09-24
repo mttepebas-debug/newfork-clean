@@ -17,12 +17,7 @@ insert into public.workspace_memberships (
   'a9000000-0000-4000-8000-000000000001',
   'manager', 'active', false
 );
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values (
-  'a9100000-0000-4000-8000-000000000001',
-  '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
-  '11000000-0000-4000-8000-000000000001'
-);
+select tests.works_at('a9100000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001');
 
 insert into public.workspaces (id, name, created_by)
 values (

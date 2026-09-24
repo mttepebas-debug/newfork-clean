@@ -16,8 +16,7 @@ insert into public.workspace_memberships (
 ) values
   ('52000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '51000000-0000-4000-8000-000000000001', 'manager', 'active', false),
   ('52000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '51000000-0000-4000-8000-000000000002', 'employee', 'active', true);
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values ('52000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '11000000-0000-4000-8000-000000000001');
+select tests.works_at('52000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', true);

@@ -15,10 +15,8 @@ insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all
  ('a8100000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000001','manager','active',false),
  ('a8100000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000002','employee','active',false),
  ('a8100000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000003','employee','active',false);
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id) values
- ('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8100000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000001'),
- ('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8100000-0000-4000-8000-000000000002','11000000-0000-4000-8000-000000000001'),
- ('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8100000-0000-4000-8000-000000000003','11000000-0000-4000-8000-000000000002');
+select tests.works_at('a8100000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001');
+select tests.works_at('a8100000-0000-4000-8000-000000000003', '11000000-0000-4000-8000-000000000002');
 update public.employee_profiles set user_id='a8000000-0000-4000-8000-000000000002' where id='15000000-0000-4000-8000-000000000001';
 update public.employee_location_assignments set ended_at=now() where employee_id='15000000-0000-4000-8000-000000000001' and ended_at is null;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,is_primary,created_by)

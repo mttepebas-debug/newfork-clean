@@ -38,8 +38,7 @@ values
 insert into public.jobs (id, workspace_id, department_id, name)
 values ('61000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '51000000-0000-4000-8000-000000000001', 'Line Cook');
 
-insert into public.membership_location_scopes (membership_id, workspace_id, location_id)
-values ('31000000-0000-4000-8000-000000000004', '21000000-0000-4000-8000-000000000001', '41000000-0000-4000-8000-000000000001');
+select tests.works_at('31000000-0000-4000-8000-000000000004', '41000000-0000-4000-8000-000000000001');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '11000000-0000-4000-8000-000000000001', true);

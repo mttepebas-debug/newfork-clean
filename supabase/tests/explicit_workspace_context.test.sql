@@ -25,18 +25,9 @@ values
   ('20000000-0000-4000-8000-000000000091', 'complete', 2, now(), '10000000-0000-4000-8000-000000000092'),
   ('20000000-0000-4000-8000-000000000092', 'complete', 2, now(), '10000000-0000-4000-8000-000000000093');
 
-select is(
-  (
-    select count(*)::integer
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'membership_location_scopes'
-      and cmd = 'SELECT'
-      and permissive = 'PERMISSIVE'
-      and 'authenticated' = any(roles)
-  ),
-  1,
-  'membership location scopes keeps a single authenticated permissive select policy'
+select ok(
+  not has_table_privilege('authenticated', 'public.membership_location_scopes', 'select'),
+  'the browser does not read where members work; the server derives it'
 );
 
 set local role service_role;

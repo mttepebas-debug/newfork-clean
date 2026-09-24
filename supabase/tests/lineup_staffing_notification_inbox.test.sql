@@ -57,8 +57,7 @@ from (values ('bbb00000-0000-4000-8000-000000000201','staffing-employee'),('bbb0
 insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations)
 select id::uuid,pg_temp.w(),id::uuid,(case when id like '%203' then 'manager' else 'employee' end)::public.workspace_role,'active',id not like '%203'
 from unnest(array['bbb00000-0000-4000-8000-000000000201','bbb00000-0000-4000-8000-000000000202','bbb00000-0000-4000-8000-000000000203']) id;
-insert into public.membership_location_scopes(membership_id,workspace_id,location_id)
-values(pg_temp.manager_id(),pg_temp.w(),'11000000-0000-4000-8000-000000000001');
+select tests.works_at(pg_temp.manager_id(), '11000000-0000-4000-8000-000000000001');
 update public.employee_profiles set user_id=pg_temp.employee_id() where id='15000000-0000-4000-8000-000000000002';
 update public.employee_profiles set user_id='bbb00000-0000-4000-8000-000000000202' where id='15000000-0000-4000-8000-000000000001';
 create temp table staffing_test(shift_id uuid,op jsonb,preview jsonb,proposal uuid,competitor uuid,notification_id uuid,oid uuid,event_id uuid);
@@ -102,10 +101,10 @@ select is((select count(*)::integer from realtime.messages where id not in(selec
 select is(jsonb_array_length(pg_temp.inbox(pg_temp.employee_id())->'notifications'),0,'accepted invitation no longer appears actionable');
 select is(pg_temp.deliver(pg_temp.outbox(proposal,'accepted',pg_temp.manager_id())),1,'scoped manager receives accepted offer decision') from staffing_test;
 select is(pg_temp.inbox(pg_temp.manager_id())->'notifications'->0->>'action_url','/app/schedule/lineup?date=2030-01-07&location=11000000-0000-4000-8000-000000000001','manager link retains date and scope');
-delete from public.membership_location_scopes where membership_id=pg_temp.manager_id();
+select tests.stops_working_at(pg_temp.manager_id());
 select is(jsonb_array_length(pg_temp.inbox(pg_temp.manager_id())->'notifications'),0,'scope removal hides delivered manager decision');
 select is(pg_temp.inbox(pg_temp.manager_id())->>'unread_count','0','scope removal removes manager unread badge');
-insert into public.membership_location_scopes(membership_id,workspace_id,location_id) values(pg_temp.manager_id(),pg_temp.w(),'11000000-0000-4000-8000-000000000001');
+select tests.works_at(pg_temp.manager_id(), '11000000-0000-4000-8000-000000000001');
 -- Preference changes between recipient projection and delivery are re-evaluated.
 update staffing_test set oid=pg_temp.outbox(proposal,'accepted',pg_temp.owner_id());
 select public.project_notification_event_service(oid) from staffing_test;

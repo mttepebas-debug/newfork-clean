@@ -21,8 +21,7 @@ insert into public.workspace_scheduling_settings(workspace_id) select w from ws 
 insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
  select 'T00055', loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles',true from ws
  union all select 'T00056', other_loc,w,'Private East name','2 Test Street','Test City','NY','10001','America/New_York',true from ws;
-insert into public.membership_location_scopes(membership_id,workspace_id,location_id)
- select m.id,w,loc from ws join public.workspace_memberships m on m.workspace_id=w and m.user_id=limited_manager;
+select tests.works_at(m.id, loc) from ws join public.workspace_memberships m on m.workspace_id=w and m.user_id=limited_manager;
 insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time)
  select service,w,'Dinner','18:00','22:00' from ws;
@@ -68,7 +67,7 @@ select is(public.weekly_lineup_candidate_option(manager,w,emp,pg_temp.target('{"
 -- candidate list labels somebody working in two places at once. Nobody can
 -- hold two shifts at the same time any more, so the three checks that
 -- described that person are gone with the shift that made them.
-select is(jsonb_array_length(pg_temp.candidates('{"start_time":"10:00","end_time":"11:00"}',true)),1,'location-scoped search does not gain employees outside its scope');
+select is(jsonb_array_length(pg_temp.candidates('{"start_time":"10:00","end_time":"11:00"}',true)),2,'location-scoped search does not gain employees outside its scope: the employee and the manager who works at West');
 select ok(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}',true)::text not like '%Private East name%','foreign location name is not disclosed');
 
 update public.employee_job_assignments set ended_at='2035-01-15 18:30Z' where workspace_id=(select w from ws) and employee_id=(select emp from ws);

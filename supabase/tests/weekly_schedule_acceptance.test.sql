@@ -27,8 +27,7 @@ insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first
  select emp,w,actor,'E-993421','Weekly','Tester',owner_id from wp_fixture;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
  select w,emp,loc,owner_id from wp_fixture union all select w,emp,other_loc,owner_id from wp_fixture;
-insert into public.membership_location_scopes(workspace_id,membership_id,location_id)
- select f.w,m.id,f.loc from wp_fixture f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id in(f.actor,f.manager);
+select tests.works_at(m.id, f.loc) from wp_fixture f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id in(f.actor,f.manager);
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
  select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),1,actor from wp_fixture;
 -- A normal scheduling manager no longer needs the legacy override capability.
