@@ -67,7 +67,6 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Hosted'a location_phone migration'ı → tasks/LOC-002 (publication migration'ı UI-DOC-001 sonrası).
 - THEME-003 ek: sayfa yerel paletleri (--lu-*, --wt-*, --eh-*, --filter-*) token'lara bağlansın; employee sayfaları dolu veriyle AA tekrar ölçülsün.
 - Supabase CLI v2.109 → v2.117 güncellemesi (db push sırasında pg-delta sertifika ENOENT gürültüsü).
-- Hosted: Supabase panelinden leaked password protection açılacak (kullanıcı).
 - `/v1/invitations/pending|accept|decline` auth hatasını 409 ile döndürüyor (app.ts:655,686,716); 401 olmalı. Web S6 ile artık bu yola düşülmüyor; düşük öncelik.
 - T2 madde 6 (davet token'ını sessionStorage'da saklama) YAGNI ile düşürüldü; hosted'da e-posta onayı açılırsa yeniden değerlendir.
 - Vercel Authentication (newfork-clean-api, Production) smoke bitince yeniden açılacak (memory `vercel-prod-protection-disabled`).
