@@ -22,6 +22,7 @@ Yeni UI ya da akış yazmadan önce buradaki girdiye bak. Ölçü ve CSS değerl
 | DATA-03 | Schedule export ve async save | `schedule/export-v2/*` (rescue), `SchedulePage` içindeki mutationContext | Badge metni için ShiftCard'daki `formatShiftLabelDisplay` kullanılır; ikinci bir label motoru ya da save motoru yazma. |
 | DATA-04 | Edit-session lease | migration `20260915112516_bl069_resume_edit_session_lease.sql` | Aynı sahip session'ı yeniden alırsa lease yenilenir, revision korunur. |
 | DATA-05 | Haftalık müsaitliği bir giriş modundan ötekine çevirmek | `public.weekly_preference_convert(w, preference, target_mode)`, migration `20260922180000_changing_the_entry_mode_converts_every_saved_week.sql`; çağıran yer `weekly_preference_settings_save_service` | Kural tek yerde: saatten tipe en az 1 dakika çakışan aktif tip (sınıra değmek çakışma değil), tipten saate en erken başlangıç–en geç bitiş, gece yarısını aşan tip 24:00'e kadar, boş ve tüm-gün gün olduğu gibi. İkinci bir dönüştürücü yazma. Dönüşüm kayıplı; eski hafta `weekly_preference_events`'e yazılmadan değiştirilmez. |
+| DATA-06 | Saat dilimi adını doğrulamak | `app_private.timezone_name_valid(zone)`, migration `20260924142706_timezone_names_are_looked_up_not_scanned.sql` | `pg_timezone_names`'i doğrudan sorgulama: her çağrı ~1.200 dilimi diskten okur (~33 ms). Yardımcı aynı adları kabul eder, NULL için false döner. `supabase/tests/timezone_names.test.sql` yeni bir tarayanı kırmızıya düşürür; izinli liste o dosyada. |
 
 ## Ürün kuralları — rol, kapsam, uygunluk
 
