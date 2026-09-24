@@ -37,6 +37,23 @@ project_id="newfork-ci-pc${index}"
 # future exclusion lands here too, move this number, not the design.
 prefix=$((589 + index))
 
+# Fail fast, with a clear message, instead of `supabase start` retrying for
+# minutes against a port Windows has carved out for Hyper-V/WSL's own NAT
+# (see the prefix comment above). Only meaningful under WSL; a real Linux
+# runner (this workflow's `ubuntu-latest` fallback) has no such thing, so a
+# missing netsh.exe skips the check rather than failing the build.
+netsh=/mnt/c/Windows/System32/netsh.exe
+if [[ -x "$netsh" ]]; then
+  for port in "${prefix}21" "${prefix}22" "${prefix}20" "${prefix}29" "${prefix}23" "${prefix}24" "${prefix}27"; do
+    excluded=$("$netsh" int ipv4 show excludedportrange protocol=tcp 2>/dev/null | tr -d '\r' \
+      | awk -v p="$port" 'NF==2 && $1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && p>=$1 && p<=$2 {print $1"-"$2; exit}')
+    if [[ -n "$excluded" ]]; then
+      echo "::error::port $port (runner index $index) falls inside Windows's excluded range $excluded -- change the prefix in scripts/ci-supabase-apart.sh" >&2
+      exit 1
+    fi
+  done
+fi
+
 config=supabase/config.toml
 sed -i -E \
   -e "s/^project_id = .*/project_id = \"$project_id\"/" \
