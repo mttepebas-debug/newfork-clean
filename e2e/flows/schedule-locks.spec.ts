@@ -21,7 +21,8 @@ async function startBlankEdit(page: Page) {
 
 async function editDraft(page: Page, name: string) {
   await page.getByRole("button", { name: /^Draft selector:/ }).click();
-  await page.getByRole("button", { name: `Edit ${name}` }).click();
+  // exact: the draft row's own name also contains "Edit <name>".
+  await page.getByRole("button", { name: `Edit ${name}`, exact: true }).click();
 }
 
 test("one person edits a draft at a time, and the admin is told who has it", async ({ browser }) => {
