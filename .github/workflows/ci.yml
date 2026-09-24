@@ -67,8 +67,19 @@ jobs:
       - name: Keep CI's Supabase apart from the shared local stack
         id: apart
         run: bash scripts/ci-supabase-apart.sh
+      # BL-112: two jobs' `supabase start` landing in the same second has hit
+      # Docker Desktop's WSL2 port-forwarding proxy failing one of them with
+      # "forwards/expose returned unexpected status: 500" -- transient, gone
+      # on retry, seen only when starts overlap.
       - name: Start Supabase (database, auth, storage, realtime)
-        run: supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector
+        run: |
+          for attempt in 1 2 3; do
+            supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector && break
+            [ "$attempt" = 3 ] && exit 1
+            echo "::warning::supabase start failed (attempt $attempt), retrying"
+            supabase stop --no-backup || true
+            sleep $((attempt * 5))
+          done
       - name: pgTAP (green list)
         run: supabase test db $(tr -d '\r' < supabase/tests/ci-green.txt)
       # Only after the rename took: otherwise this would stop the shared stack.
@@ -103,8 +114,19 @@ jobs:
       - name: Keep CI's Supabase apart from the shared local stack
         id: apart
         run: bash scripts/ci-supabase-apart.sh
+      # BL-112: two jobs' `supabase start` landing in the same second has hit
+      # Docker Desktop's WSL2 port-forwarding proxy failing one of them with
+      # "forwards/expose returned unexpected status: 500" -- transient, gone
+      # on retry, seen only when starts overlap.
       - name: Start Supabase (database, auth, gateway)
-        run: supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector
+        run: |
+          for attempt in 1 2 3; do
+            supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector && break
+            [ "$attempt" = 3 ] && exit 1
+            echo "::warning::supabase start failed (attempt $attempt), retrying"
+            supabase stop --no-backup || true
+            sleep $((attempt * 5))
+          done
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test -c e2e/playwright.config.ts
       # BL-112: playwright's webServer teardown is supposed to stop the api/web
