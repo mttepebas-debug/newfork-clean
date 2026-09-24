@@ -387,6 +387,9 @@ export function evaluateScheduleShiftConflicts(
   const weeklyStatus = weeklyTargetAvailability(employee, input);
   if (weeklyStatus === "time_off") {
     reasons.push({ ...context, type: "time_off", message: "Approved time off overlaps this assignment." });
+  } else if (weeklyStatus === "reminder") {
+    reasons.push({ ...context, type: "availability", rule_kind: "weekly", severity: "confirm",
+      message: "The assignment overlaps hours a manager noted as unavailable." });
   } else if (weeklyStatus === "unavailable" || weeklyStatus === "unknown") {
     reasons.push({ ...context, type: "availability", rule_kind: "weekly", ...(weeklyStatus === "unknown" ? { severity: "confirm" } : {}),
       message: weeklyStatus === "unknown" ? "Availability needs checking before assignment." : "The assignment overlaps unavailable hours." });

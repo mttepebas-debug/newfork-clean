@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(15);
 
 -- FOUNDATION-B 5.3a: one week of availability for many employees at once,
 -- from their weekly marks and the manager's private reminders, in the shape the
@@ -71,6 +71,9 @@ select is(pg_temp.one('2030-03-04', 'ali', 'K') -> 'days' -> 2 ->> 'all_day', 't
 select is(pg_temp.one('2030-03-04', 'ali', 'K') -> 'days' -> 4 ->> 'has_unavailable', 'true', 'the manager''s reminder counts for managers');
 select is(pg_temp.one('2030-03-04', 'ali', 'K', false) -> 'days' -> 4 ->> 'has_unavailable', 'false',
   'the employee''s own view leaves the manager''s reminder out');
+select ok(pg_temp.one('2030-03-04', 'ali', 'K') -> 'unavailable_intervals' @> '[{"start_at": "2030-03-08T06:00:00.000000Z", "end_at": "2030-03-08T09:00:00.000000Z"}]'
+  and not (pg_temp.one('2030-03-04', 'ali', 'K') -> 'employee_intervals' @> '[{"start_at": "2030-03-08T06:00:00.000000Z", "end_at": "2030-03-08T09:00:00.000000Z"}]'),
+  'the employee''s own intervals leave the reminder out, so the browser can tell a soft reminder from a mark');
 select ok(pg_temp.one('2030-03-04', 'ali', 'B') -> 'unavailable_intervals'
   @> '[{"start_at": "2030-03-10T09:30:00.000000Z", "end_at": "2030-03-10T10:30:00.000000Z"}]',
   'Sunday 01:30-03:30 across the spring-forward gap is one real hour');

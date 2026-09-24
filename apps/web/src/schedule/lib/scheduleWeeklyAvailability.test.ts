@@ -42,6 +42,15 @@ describe("weekly Schedule advisory projection", () => {
     expect(evaluateScheduleShiftConflicts(model, [], input)).toEqual([expect.objectContaining({ type: "time_off" })]);
     expect(evaluateScheduleShiftConflicts({ ...model, employees: [employee] }, [], input)).toEqual([expect.objectContaining({ type: "availability", rule_kind: "weekly" })]);
   });
+  it("asks for confirmation, never blocks, when only a manager's reminder overlaps", () => {
+    const reminderOnly = { ...employee, weekly_availability: [{ ...projection, employee_intervals: [] }] };
+    expect(weeklyTargetAvailability(reminderOnly, input)).toBe("reminder");
+    expect(weeklyTargetAvailability({ ...employee, weekly_availability: [{ ...projection, employee_intervals: projection.unavailable_intervals }] }, input))
+      .toBe("unavailable");
+    const model = { settings: { time_format: "12h", conflict_rules: { availability: "block" } }, employees: [reminderOnly],
+      locations: [{ id: loc, name: "West" }], jobs: [{ id: job, name: "Server" }], shift_types: [], closures: [] } as unknown as ScheduleReadModel;
+    expect(evaluateScheduleShiftConflicts(model, [], input)).toEqual([expect.objectContaining({ type: "availability", severity: "confirm" })]);
+  });
   it("uses actual hours rather than the selected shift type identity", () => {
     expect(weeklyTargetAvailability(employee, { ...input, shift_type_id: job, start_time: "10:00", end_time: "12:00" })).toBe("available");
   });

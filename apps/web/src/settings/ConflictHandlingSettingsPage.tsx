@@ -25,7 +25,7 @@ const conflictRuleChoices: readonly {
     key: "availability",
     label: "Employee availability",
     description: "Assignments during unavailable hours.",
-    actions: ["allow", "warn", "confirm", "block"],
+    actions: ["warn", "confirm", "block"],
   },
   {
     key: "approved_time_off",

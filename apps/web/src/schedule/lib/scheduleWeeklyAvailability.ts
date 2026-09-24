@@ -3,7 +3,8 @@ import { getShiftTimeBasis } from "@newfork/shared";
 
 type Projection = NonNullable<ScheduleEmployee["weekly_availability"]>[number];
 type Interval = Projection["unavailable_intervals"][number];
-export type WeeklyTargetStatus = "available" | "unavailable" | "time_off" | "unknown";
+// "reminder": the only conflict is a manager's private reminder, which is always soft.
+export type WeeklyTargetStatus = "available" | "unavailable" | "reminder" | "time_off" | "unknown";
 
 // Server-provided offset segments avoid a second timezone engine in the browser.
 // The latest matching instant agrees with PostgreSQL's repeated-clock choice.
@@ -23,7 +24,9 @@ export function weeklyTargetAvailability(employee: ScheduleEmployee, input: Sche
   if (!interval) return "unknown";
   const projection = employee.weekly_availability.find(item => item.location_id === input.location_id)!;
   if (overlaps(projection.leave_intervals, interval.start, interval.end)) return "time_off";
-  return overlaps(projection.unavailable_intervals, interval.start, interval.end) ? "unavailable" : "available";
+  if (!overlaps(projection.unavailable_intervals, interval.start, interval.end)) return "available";
+  return projection.employee_intervals === undefined || overlaps(projection.employee_intervals, interval.start, interval.end)
+    ? "unavailable" : "reminder";
 }
 
 export function weeklyTargetInterval(employee: ScheduleEmployee, input: ScheduleShiftMutationInput): { start: number; end: number } | null {

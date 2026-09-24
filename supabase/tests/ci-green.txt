@@ -13,6 +13,7 @@ supabase/tests/availability_complement_ranges.test.sql
 supabase/tests/availability_date_overrides.test.sql
 supabase/tests/availability_manager_request_queue.test.sql
 supabase/tests/availability_publication_lock.test.sql
+supabase/tests/availability_three_levels.test.sql
 supabase/tests/bl052_document_account_inbox.test.sql
 supabase/tests/bl052_document_apply.test.sql
 supabase/tests/bl052_document_conflicts.test.sql

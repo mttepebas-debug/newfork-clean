@@ -1242,6 +1242,8 @@ export const scheduleWeeklyLocationSchema = z
     week_start: z.string().date(),
     status: z.enum(["ready", "unknown"]),
     unavailable_intervals: z.array(scheduleWeeklyIntervalSchema),
+    // The employee's own marks; the rest of unavailable_intervals is a manager's reminder.
+    employee_intervals: z.array(scheduleWeeklyIntervalSchema).optional(),
     leave_intervals: z.array(scheduleWeeklyIntervalSchema),
     clock_segments: z.array(
       scheduleWeeklyIntervalSchema.extend({ offset_seconds: z.number().int() }),

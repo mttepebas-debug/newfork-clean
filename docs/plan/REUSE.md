@@ -118,7 +118,7 @@ gelince çözülür.
 | ayarlar | ShiftTypesSettingsPage | `scheduling/shift-types` | `settings/ShiftTypesSettingsPage.tsx` | belgelenmedi |
 | ayarlar | ShiftLabelsSettingsPage | `scheduling/shift-labels` | `settings/ShiftLabelsSettingsPage.tsx` | belgelenmedi |
 | ayarlar | ShiftCatalogSettingsPage | | `settings/ShiftCatalogSettingsPage.tsx` | belgelenmedi |
-| ayarlar | ConflictHandlingSettingsPage | `scheduling/conflicts` | `settings/ConflictHandlingSettingsPage.tsx` | belgelenmedi |
+| ayarlar | ConflictHandlingSettingsPage | `scheduling/conflicts` | `settings/ConflictHandlingSettingsPage.tsx` | belgelendi 2026-09-24 |
 | ayarlar | ImportantDatesSettingsPage | `important-dates` | `settings/ImportantDatesSettingsPage.tsx` | belgelenmedi |
 | ayarlar | DocumentsSettingsPage | `documents` | `settings/DocumentsSettingsPage.tsx` | belgelenmedi |
 | ayarlar | SignatureTemplatesSettingsPage | | `settings/SignatureTemplatesSettingsPage.tsx` | belgelenmedi |
@@ -302,6 +302,35 @@ kalır (UI-12'deki "tek eski kopya"). Gezinme koruması availability modülünde
 ### SupportSettingsPage (kısmi: butonlar)
 
 **Kendine özgü kurallar.** "Email support" ve "Copy diagnostics" yeşil.
+
+### ConflictHandlingSettingsPage
+
+**Ne işe yarar.** Settings → Conflict handling
+(`/app/settings/scheduling/conflicts`): vardiya yazarken çıkan çakışmaların
+bütün işletmede nasıl ele alınacağı. Her kural için bir seçim: Required
+documents, Conditional documents during grace / after grace, Employee
+availability, Approved time off, Closed location or shift type, Minimum travel
+ve Minimum rest (ikisinin dakikası da burada). Kaydetmek
+`schedule.conflict_rules.manage` ister (`PUT
+/v1/workspaces/:id/scheduling-settings/conflicts`).
+
+**Kullandığı ortak parçalar.** UI-03 `SettingsHeader`, `SettingsChoiceRow`,
+shared `scheduleConflictSettingsSchema` ve `DEFAULT_SCHEDULE_CONFLICT_RULES`,
+UI-09 buton rolleri ("Save conflict rules" yeşil).
+
+**Kendine özgü kurallar.** Kademeler: Warn (uyarı gösterir, vardiya yazılır),
+Require confirmation (yönetici "vazgeç" ya da "yine de koy" seçer, kayıtlı),
+Block. Employee availability 5.3b'den beri üç kademe, "Allow" yok; yöneticinin
+gizli hatırlatması bu seçimden bağımsız her zaman Require confirmation.
+Approved time off yalnız Require confirmation / Block (Aşama 6'da yalnız Block
+kalacak). Conditional after grace, grace kuralından yumuşak olamaz (şema
+reddeder). Kayıt `conflict_rules_revision` ile gider; arada başkası
+kaydettiyse Save kapanır, "Reload rules" güncelini getirir. Kayıttan sonra
+Schedule ızgarası ve haftalık tercih ayarları tazelenir.
+
+**Bilinen tuhaflıklar.** "Reload rules" de yeşil aksiyon düğmesi. Seçim
+etiketleri İngilizce "Warn / Require confirmation / Block"; kullanıcı
+kararındaki "Uyar / Yumuşak / Sert" bunlara karşılık gelir.
 
 ### SchedulingSettingsPage
 

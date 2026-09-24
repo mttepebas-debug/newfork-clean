@@ -4,7 +4,9 @@ import { shiftTimeBasisSchema } from "./availability";
 export const scheduleConflictSeveritySchema = z.enum(["allow", "warn", "confirm", "block"]);
 export type ScheduleConflictSeverity = z.infer<typeof scheduleConflictSeveritySchema>;
 export const scheduleConflictRulesSchema = z.object({
-  availability: scheduleConflictSeveritySchema,
+  // Warn, Require confirmation (soft) or Block (hard); a manager's private
+  // reminder is always soft whatever this says.
+  availability: z.enum(["warn", "confirm", "block"]),
   approved_time_off: z.enum(["confirm", "block"]),
   closed_location: z.enum(["warn", "confirm", "block"]),
   minimum_travel: z.enum(["warn", "confirm", "block"]),
