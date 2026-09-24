@@ -28,7 +28,14 @@ else
   exit 1
 fi
 project_id="newfork-ci-pc${index}"
-prefix=$((563 + index))
+# Windows carves temporary TCP port-exclusion ranges out of the dynamic pool
+# for Hyper-V/WSL's own NAT, and they drift over time (`netsh interface ipv4
+# show excludedportrange protocol=tcp` from PowerShell lists today's). 566xx
+# landed inside one (56530-56629) and every start on that block failed with
+# "forwards/expose returned unexpected status: 500" -- not a Docker flake, a
+# host-level block. 589+index sits in today's open gap (58442-63288); if a
+# future exclusion lands here too, move this number, not the design.
+prefix=$((589 + index))
 
 config=supabase/config.toml
 sed -i -E \
