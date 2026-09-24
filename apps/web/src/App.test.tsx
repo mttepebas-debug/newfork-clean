@@ -1724,7 +1724,7 @@ describe("App", () => {
     const saveMock = vi.mocked(saveScheduleDraft);
     saveMock.mockRejectedValueOnce(new Error("Network dropped"));
     saveMock.mockResolvedValueOnce(savedDraft);
-    vi.mocked(previewSchedulePublication).mockResolvedValueOnce({
+    vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "publish_ready",
       workspace_id: scheduleFixture.workspace_id,
       week_start: scheduleFixture.week_start,
@@ -4237,7 +4237,7 @@ describe("App", () => {
       employees: publishEmployees,
     });
     vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
-    vi.mocked(previewSchedulePublication).mockResolvedValueOnce({
+    vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "override_required",
       workspace_id: scheduleFixture.workspace_id,
       week_start: scheduleFixture.week_start,
@@ -4437,7 +4437,7 @@ describe("App", () => {
       ],
     });
     vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
-    vi.mocked(previewSchedulePublication).mockResolvedValueOnce({
+    vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "publish_ready",
       workspace_id: scheduleFixture.workspace_id,
       week_start: draft.week_start,
@@ -4640,7 +4640,7 @@ describe("App", () => {
     const readModelMock = vi.mocked(getScheduleReadModel);
     readModelMock.mockResolvedValue(scheduleFixtureForWeek("2026-10-26"));
     vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
-    vi.mocked(previewSchedulePublication).mockResolvedValueOnce({
+    vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "publish_ready",
       workspace_id: scheduleFixture.workspace_id,
       week_start: scheduleFixture.week_start,
@@ -4757,7 +4757,7 @@ describe("App", () => {
     const readModelMock = vi.mocked(getScheduleReadModel);
     readModelMock.mockResolvedValue(scheduleFixtureForWeek("2026-11-02"));
     vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
-    vi.mocked(previewSchedulePublication).mockResolvedValueOnce({
+    vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "publish_ready",
       workspace_id: scheduleFixture.workspace_id,
       week_start: scheduleFixture.week_start,
@@ -4902,7 +4902,7 @@ describe("App", () => {
     const readModelMock = vi.mocked(getScheduleReadModel);
     readModelMock.mockResolvedValue(scheduleFixtureForWeek("2026-11-09"));
     vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
-    vi.mocked(previewSchedulePublication).mockResolvedValueOnce({
+    vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "publish_ready",
       workspace_id: scheduleFixture.workspace_id,
       week_start: scheduleFixture.week_start,
