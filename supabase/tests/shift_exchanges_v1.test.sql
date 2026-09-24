@@ -18,6 +18,8 @@ and not exists(select 1 from public.employee_location_assignments a where a.empl
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by)
 select pg_temp.w(),pg_temp.emp(n),'13000000-0000-4000-8000-000000000001',pg_temp.manager() from generate_series(1,4)n
 where not exists(select 1 from public.employee_job_assignments where employee_id=pg_temp.emp(n) and job_id='13000000-0000-4000-8000-000000000001' and ended_at is null);
+-- The seed's Alex Kim cannot work Fridays; this suite needs its four people free every day.
+delete from public.employee_weekly_preferences where workspace_id=pg_temp.w() and employee_id in(select pg_temp.emp(n) from generate_series(1,4)n);
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
 values('98010000-0000-4000-8000-000000000001',pg_temp.w(),'11000000-0000-4000-8000-000000000001','2030-01-07',1,pg_temp.manager());
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
