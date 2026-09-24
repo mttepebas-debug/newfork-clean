@@ -180,9 +180,8 @@ export type Permission = z.infer<typeof permissionSchema>;
 
 const rolePermissions = {
   owner: permissionSchema.options,
-  admin: permissionSchema.options.filter(
-    (permission) => permission !== "roles.manage",
-  ),
+  // Admins edit roles by default (D2), as app_private.role_default_permissions.
+  admin: permissionSchema.options,
   manager: [
     "employees.archive",
     "availability.read",

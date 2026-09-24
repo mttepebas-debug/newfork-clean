@@ -3,6 +3,7 @@ supabase/tests/account_organization_history.test.sql
 supabase/tests/account_profile_storage_rls.test.sql
 supabase/tests/account_security_deletion_lifecycle.test.sql
 supabase/tests/account_workspace_controls.test.sql
+supabase/tests/authorization_core.test.sql
 supabase/tests/authorization_coverage.test.sql
 supabase/tests/authorization_matrix.test.sql
 supabase/tests/authz_catalog.test.sql

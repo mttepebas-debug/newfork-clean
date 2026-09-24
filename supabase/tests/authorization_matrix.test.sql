@@ -20,6 +20,11 @@ select * from no_plan();
 --
 -- Stage 'legacy': today's ways of saying no all count as no (42501, P0002, a
 -- NULL or empty answer). Stage 4 narrows this to 42501 with an authz.* hint.
+--
+-- Every cell is asked twice: once of the entry point the API calls today, and
+-- once of the authorization core (app_private.authz_reason, stage 4). The
+-- core has no known gaps: it answers as expected() in every cell that is not
+-- an open product question.
 
 -- 1. The world ------------------------------------------------------------------
 
@@ -252,10 +257,12 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
        $2, tests.week(0), tests.week(0), coalesce(array_remove(array[$3], null), '{}'), $3)) > 0$$);
 
 -- Direct browser reads of the two sensitive tables the browser can still read.
+-- Removing someone's access unlinks their employee record from their account;
+-- the only unlinked record the matrix targets is the actor's own (Sami, self).
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
   ('read.membership', 'person', null, false, true,
    $$select tests.as_browser($1, format('select 1 from public.workspace_memberships where workspace_id = %L and user_id = %L',
-       $2, (select e.user_id from public.employee_profiles e where e.id = $3))) > 0$$),
+       $2, coalesce((select e.user_id from public.employee_profiles e where e.id = $3), $1))) > 0$$),
   ('read.audit', 'workspace', null, false, true,
    $$select tests.as_browser($1, format('select 1 from public.audit_events where workspace_id = %L', $2)) > 0$$);
 
@@ -283,6 +290,63 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
        (select l.location_id from public.employee_location_assignments l join public.employee_profiles e on e.id = l.employee_id
         where e.user_id = $1 and e.workspace_id = $2 and l.ended_at is null order by l.is_primary desc limit 1),
        'probe', array[tests.week(1) + 3]) is not null$$, true, false);
+
+-- The same actions as the core names them. blank: how a blank location reaches
+-- the core, as the entry point receives it: 'null' ({NULL}, no location) or
+-- 'org' ('{}', the whole organization). by_account: the target row is keyed by
+-- the person's account (a membership), not their employee record.
+create temporary table core_action (
+  key text primary key references action (key),
+  core_key text not null,
+  blank text not null default 'null' check (blank in ('null', 'org')),
+  by_account boolean not null default false
+);
+insert into core_action (key, core_key, blank) values
+  ('employee.read', 'employee.read', 'null'),
+  ('employee.list', 'employee.list', 'null'),
+  ('employee.save', 'employee.save', 'null'),
+  ('employee.terminate', 'employee.terminate', 'null'),
+  ('employee.archive', 'employee.archive', 'null'),
+  ('employee.remove_access', 'employee.remove_access', 'null'),
+  ('employee.make_admin', 'employee.make_admin', 'null'),
+  ('employee.make_employee', 'employee.change_role', 'null'),
+  ('employee.create', 'employee.create', 'org'),
+  ('schedule.read', 'schedule.read', 'null'),
+  ('schedule.edit', 'schedule.edit', 'null'),
+  ('schedule.publish', 'schedule.publish', 'null'),
+  ('exchange.approve', 'exchange.approve', 'null'),
+  ('settings.organization.write', 'settings.organization.write', 'null'),
+  ('settings.locations.write', 'settings.locations.write', 'null'),
+  ('settings.jobs.write', 'settings.jobs.write', 'null'),
+  ('settings.roles.write', 'settings.roles.write', 'null'),
+  ('settings.scheduling.write', 'settings.scheduling.write', 'null'),
+  ('workspace.close', 'workspace.close', 'null'),
+  ('workspace.transfer_ownership', 'workspace.transfer_ownership', 'null'),
+  ('time_off.decide', 'time_off.decide', 'null'),
+  ('announcement.write', 'announcement.write', 'org'),
+  ('important_date.write', 'important_date.write', 'org'),
+  ('read.membership', 'membership.read', 'null'),
+  ('read.audit', 'audit.read', 'null'),
+  ('legacy.schedule_can_manage', 'schedule.edit', 'null'),
+  ('legacy.schedule_capability', 'schedule.edit', 'null'),
+  ('legacy.schedule_can_publish', 'schedule.publish', 'null'),
+  ('legacy.communication_capability', 'announcement.write', 'null'),
+  ('notifications.read_own', 'notifications.read_own', 'null'),
+  ('exchange.offer_own', 'exchange.offer_own', 'null'),
+  ('time_off.request_own', 'time_off.request_own', 'null');
+update core_action set by_account = true where key = 'read.membership';
+
+select is(
+  array(select a.key from action a where not exists (select 1 from core_action c where c.key = a.key) order by 1),
+  '{}'::text[],
+  'every matrix action is asked of the core too'
+);
+select is(
+  array(select c.core_key from core_action c
+        where not exists (select 1 from app_private.authz_actions a where a.key = c.core_key) order by 1),
+  '{}'::text[],
+  'the core knows every action the matrix asks it'
+);
 
 -- 5. The rules ---------------------------------------------------------------------
 
@@ -466,12 +530,8 @@ insert into known_gap values
    'the owner record setup creates has no primary location or job, so saving it as it is fails with 23502 (stage 6, employees)'),
   ('admin-own-record', '{zeynep}', '{employee.save}', '{self,zeynep}',
    'an admin cannot save their own employee record, P0002 (stage 6, employees)'),
-  ('admin-cannot-edit-roles', '{admin}', '{settings.roles.write}', null,
-   'admins cannot edit roles, D2 (stage 6, settings)'),
-  ('transfer-validates-first', '{zeynep}', '{workspace.transfer_ownership}', null,
-   'a non-owner naming themselves gets the target check (23514) before the owner-only refusal; the no must come first (stage 4)'),
   ('important-date-no-as-validation', null, '{important_date.write}', '{K,B,x:K}',
-   'an important date at a location out of reach or in another workspace is refused as 23514 "Choose a location in this workspace", not as a permission no (stage 4, stage 6 announcements)'),
+   'an important date at a location out of reach or in another workspace is refused as 23514 "Choose a location in this workspace", not as a permission no: the browser insert runs its trigger before row security (stage 6, announcements)'),
   ('time-off-rank', '{manager}', '{time_off.decide}', '{to:ayse,to:zeynep}',
    'a manager can decide a manager or admin time-off request at their location; requests go one rank up (stage 6, time off)'),
   ('restricted-no-notifications', '{aydan}', '{notifications.read_own}', null,
@@ -480,10 +540,7 @@ insert into known_gap values
    'any member can read every membership row in the workspace from the browser: every role and status, across locations (stage 6, employees)'),
   ('legacy-blank-location', null,
    '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish,legacy.communication_capability}', '{none}',
-   'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2 (stage 4)'),
-  ('legacy-foreign-location', '{owner,admin}',
-   '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish,legacy.communication_capability}', '{x:K}',
-   'the old location helpers answer yes to an owner or admin for a location in another workspace (stage 4)'),
+   'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2. 56 callers pass null for "anywhere"; each moves to scope_set() with its domain and the helpers go (stage 6)'),
   ('time-off-needs-location', '{nur}', '{time_off.request_own}', null,
    'asking for time off still needs a location, so a person with none cannot ask; time off belongs to the person (stage 6, time off)');
 
@@ -533,6 +590,53 @@ begin
 end;
 $$;
 
+create function pg_temp.core_answer(user_id uuid, own_employee uuid, action_key text, target_label text, target_uuid uuid)
+returns text
+language plpgsql
+as $$
+declare
+  m core_action;
+  t target;
+  person uuid;
+  account uuid;
+  places uuid[];
+  reason text;
+begin
+  select * into m from core_action where key = action_key;
+  if target_label = 'self' and m.by_account then
+    account := user_id;
+  elsif target_label = 'self' then
+    person := own_employee;
+  else
+    select * into t from target where label = target_label;
+    case t.kind
+    when 'person' then
+      if m.by_account then
+        account := (select e.user_id from public.employee_profiles e where e.id = target_uuid);
+      else
+        person := target_uuid;
+      end if;
+    when 'location', 'site' then
+      if target_label = 'none' then
+        places := case m.blank when 'org' then '{}'::uuid[] else array[null]::uuid[] end;
+      else
+        places := array[target_uuid];
+      end if;
+    when 'time_off', 'shift', 'case' then
+      person := case t.holder when 'olcay' then tests.id('m:owner') else tests.id('m:' || t.holder) end;
+      places := array(select tests.id('m:' || l) from unnest(t.locs) l);
+    when 'workspace' then
+      -- Opening the editor asks for the locations the person may edit.
+      if (select a.scope_class from app_private.authz_actions a where a.key = m.core_key) = 'set' then
+        places := app_private.scope_set(user_id, tests.id('m'), m.core_key);
+      end if;
+    end case;
+  end if;
+  reason := app_private.authz_reason(user_id, tests.id('m'), m.core_key, places, person, account);
+  return case when reason is null then 'allow' else 'deny:' || reason end;
+end;
+$$;
+
 create function pg_temp.run()
 returns setof text
 language plpgsql
@@ -544,9 +648,10 @@ declare
   wanted text;
   gap text;
   cell_label text;
+  core text;
 begin
   for c in
-    select p.label as actor, ac.user_id, a.key, a.template, a.empty_is_no,
+    select p.label as actor, ac.user_id, ac.employee_id as own_employee, a.key, a.template, a.empty_is_no,
       t.label as target,
       case when t.label = 'self' then ac.employee_id else ti.id end as target_id
     from persona p
@@ -573,6 +678,13 @@ begin
     else
       return next is(verdict, wanted, cell_label || ' (today: ' || actual || ')');
     end if;
+
+    core := pg_temp.core_answer(c.user_id, c.own_employee, c.key, c.target, c.target_id);
+    if wanted like 'decide:%' then
+      perform todo(wanted, 1);
+    end if;
+    return next is(case when core = 'allow' then 'allow' else 'deny' end, wanted,
+      'core | ' || cell_label || ' (core: ' || core || ')');
   end loop;
 
   for gap in select k.id from known_gap k where not exists (select 1 from known_hit h where h.id = k.id) order by 1 loop

@@ -1062,6 +1062,8 @@ const lifecycleReasons: Readonly<Record<string, string>> = {
     "An ownership transfer is still waiting on this workspace. Cancel it from the actions menu, then close the workspace.",
   "workspace.owner_required":
     "Only the owner of this workspace can do that, and you are not the owner any more. Reload the page to see where you stand.",
+  "authz.owner_only":
+    "Only the owner of this workspace can do that, and you are not the owner any more. Reload the page to see where you stand.",
   "workspace.not_found":
     "This workspace is already closed. Reload the page to see the ones you still have.",
   "workspace.closure.not_scheduled":

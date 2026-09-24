@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(10);
 
 -- Every server entry point (public.*_service) is tied to an action the
 -- authorization matrix speaks for, or to a stated reason it has none. A new
@@ -368,6 +368,19 @@ select is(
   ),
   '{}'::text[],
   'no classification row names an entry point that is gone'
+);
+-- The core answers for every action an entry point is tied to.
+-- shift_exchanges_command_service is one entry point for several actions
+-- (exchange.offer_own, exchange.apply_own, exchange.approve).
+select is(
+  array(
+    select distinct c.class from service_class c
+    where c.class not like 'exempt:%' and c.class <> 'exchange.command'
+      and not exists (select 1 from app_private.authz_actions a where a.key = c.class)
+    order by 1
+  ),
+  '{}'::text[],
+  'the authorization core knows every action an entry point is tied to'
 );
 select ok(
   not exists (select 1 from service_class where class like 'exempt:%' and class not in (

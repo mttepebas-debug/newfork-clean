@@ -62,6 +62,7 @@ Kullanıcı kararları, 2026-09-23 (FOUNDATION-B Aşama 0). Her kural yetki matr
 
 **Teknik sözleşmeler (FOUNDATION-B)**
 - "Hayır" tek biçim: `42501` + HINT'te makine anahtarı (`authz.*`), doğrulamadan önce. API: üyeye 403 + neden, üye olmayana 404. Bilinmeyen ve kapsam dışı hedef aynı cevap (`authz.out_of_scope`). Boş lokasyon asla "her yer" demek değildir.
+- Yetki çekirdeği (Aşama 4a, migration `20260924123013_authorization_core.sql`): bir giriş noktasının ilk ifadesi `perform app_private.authorize(actor, w, '<işlem>', target_locations => ..., target_person => ...)`; okuma modeli `location_id = any (app_private.scope_set(actor, w, '<işlem>'))`; RLS `app_private.rls_can(w, '<işlem>', ...)`. Kural `app_private.authz_actions` satırında (izin, owner'a özel, rütbe, kapsam sınıfı), manager'ın erişimi `authz_scope_rules`'ta (model M2). Yeni işlem: önce `authz_actions` satırı ve matriste hücresi (`authorization_matrix.test.sql`), sonra giriş noktası. Kural TypeScript'te yeniden yazılmaz.
 - Kapsam dışı bırakılanlar (sonra sıfırdan tasarlanacak): Line Up, bildirim platformu. Silinenler: kiosk, zaman takibi, eski availability sistemi, eski Requests → Shift changes takas akışı.
 
 ## Sayfa envanteri

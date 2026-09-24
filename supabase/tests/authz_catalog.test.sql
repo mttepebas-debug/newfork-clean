@@ -13,9 +13,10 @@ select p.proname::text as name, p.prosrc as body
 from pg_proc p
 where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace);
 
--- Reads the signed-in user from the JWT; at the end only app_private.rls_can().
+-- Reads the signed-in user from the JWT; at the end only app_private.rls_can()
+-- (stage 4a), which this count leaves out.
 select cmp_ok(
-  (select count(*)::integer from core_function where body ~ 'auth\.uid\(\)'),
+  (select count(*)::integer from core_function where body ~ 'auth\.uid\(\)' and name <> 'rls_can'),
   '<=', 39, 'functions that call auth.uid() only go down'
 );
 
