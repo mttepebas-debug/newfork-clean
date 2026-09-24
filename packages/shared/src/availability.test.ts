@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   assessWeeklyAvailability,
   availabilityPeriodIsPublished,
-  resolveShiftAssessmentTime,
   weeklyAvailabilityInputSchema,
   type AvailabilityDay,
   availabilityForDate,
@@ -205,48 +204,6 @@ describe("availability input and interval contract", () => {
         end: "16:00",
       }).coverage,
     ).toBe("unknown");
-  });
-});
-
-describe("shift assessment source", () => {
-  const snapshot = {
-    shift_type_id: "11111111-1111-4111-8111-111111111111",
-    default_revision: 1,
-    start_time: "12:00",
-    end_time: "16:00",
-    timezone: "America/Los_Angeles",
-  };
-  it("explicit times take precedence over the type snapshot", () => {
-    expect(
-      resolveShiftAssessmentTime({
-        time_basis: "explicit",
-        start_time: "17:00",
-        end_time: "20:00",
-        snapshot,
-      }),
-    ).toEqual({ basis: "explicit", start: "17:00", end: "20:00" });
-  });
-  it("named shifts use the saved snapshot rather than a new current default", () => {
-    expect(
-      resolveShiftAssessmentTime({
-        time_basis: "type_default",
-        start_time: "11:00",
-        end_time: "17:00",
-        snapshot,
-      }),
-    ).toEqual({ basis: "type_default", start: "12:00", end: "16:00" });
-  });
-  it("does not interpret fallback minutes or invent missing default hours", () => {
-    expect(
-      resolveShiftAssessmentTime({
-        time_basis: "legacy_unverified",
-        start_time: "00:00",
-        end_time: "00:01",
-      }).start,
-    ).toBeNull();
-    expect(
-      resolveShiftAssessmentTime({ time_basis: "type_default" }).basis,
-    ).toBe("unresolved");
   });
 });
 

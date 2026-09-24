@@ -40,6 +40,7 @@ supabase/tests/employee_onboarding_workspace_selection.test.sql
 supabase/tests/employee_personal_tasks.test.sql
 supabase/tests/employee_private_storage_contract.test.sql
 supabase/tests/employee_termination_offboarding.test.sql
+supabase/tests/every_shift_has_hours.test.sql
 supabase/tests/explicit_workspace_context.test.sql
 supabase/tests/jobs_department_bulk_assignments.test.sql
 supabase/tests/joining_from_two_workspaces.test.sql
@@ -63,6 +64,7 @@ supabase/tests/schedule_publish_notifications.test.sql
 supabase/tests/schedule_read_model_rls.test.sql
 supabase/tests/schedule_realtime_channels.test.sql
 supabase/tests/schedule_resume_lease.test.sql
+supabase/tests/schedule_time_source.test.sql
 supabase/tests/security_audit_events.test.sql
 supabase/tests/shift_exchange_availability_adapter.test.sql
 supabase/tests/shift_exchange_immediate_inbox.test.sql
@@ -89,5 +91,6 @@ supabase/tests/weekly_preferences_commands.test.sql
 supabase/tests/weekly_schedule_acceptance.test.sql
 supabase/tests/weekly_schedule_integration.test.sql
 supabase/tests/weekly_schedule_read.test.sql
+supabase/tests/weekly_shift_availability_assessment.test.sql
 supabase/tests/workspace_lifecycle.test.sql
 supabase/tests/workspace_rls.test.sql

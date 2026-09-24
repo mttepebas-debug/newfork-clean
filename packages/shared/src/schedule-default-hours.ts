@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { shiftTimeBasisSchema } from "./availability";
 import { shiftAvailabilityAssessmentSchema } from "./availability-assessment";
 
 export const scheduleDefaultHoursInputSchema = z.object({
@@ -11,7 +12,7 @@ export const scheduleDefaultHoursApplySchema = scheduleDefaultHoursInputSchema.e
   confirm_availability: z.boolean().default(false),
 });
 const reference = z.object({ start_time: z.string().nullable(), end_time: z.string().nullable(), time_timezone: z.string().nullable(),
-  time_basis: z.enum(["explicit", "type_default", "unresolved", "legacy_unverified"]),
+  time_basis: shiftTimeBasisSchema,
   time_snapshot: z.object({ default_revision: z.number().int().positive() }).passthrough().nullable(),
 });
 export const scheduleDefaultHoursPreviewSchema = z.object({
@@ -21,7 +22,7 @@ export const scheduleDefaultHoursPreviewSchema = z.object({
     location_id: z.string().uuid(), location_name: z.string(), shift_type_name: z.string(), employee_name: z.string(),
     before: reference, after: reference.nullable(), before_assessment: shiftAvailabilityAssessmentSchema.nullable(), after_assessment: shiftAvailabilityAssessmentSchema.nullable(),
     reason: z.string().nullable(), will_change: z.boolean(), can_apply: z.boolean(), current_default_revision: z.number().int().positive().nullable(),
-    before_overlap_count: z.number().int().nonnegative(), after_overlap_count: z.number().int().nonnegative(), unconfirmed_peer_count: z.number().int().nonnegative(),
+    before_overlap_count: z.number().int().nonnegative(), after_overlap_count: z.number().int().nonnegative(),
   })).max(200),
 });
 export type ScheduleDefaultHoursInput = z.infer<typeof scheduleDefaultHoursInputSchema>;

@@ -12,7 +12,7 @@ export type ScheduleConflictReason =
 export function scheduleConflictSeverity(reason: ScheduleConflictReason): ScheduleConflictSeverity {
   if (typeof reason === "string") return "block";
   if (["allow", "warn", "confirm", "block"].includes(String(reason.severity))) return reason.severity as ScheduleConflictSeverity;
-  return ["availability", "closed_day", "time_source_unresolved", "assessment_unknown"].includes(String(reason.type)) ? "confirm" : "block";
+  return ["availability", "closed_day", "assessment_unknown"].includes(String(reason.type)) ? "confirm" : "block";
 }
 
 function applyConflictPolicy(reasons: ScheduleConflictReason[], model: ScheduleReadModel): ScheduleConflictReason[] {
@@ -295,8 +295,10 @@ export function evaluateScheduleShiftConflicts(
   excludeShiftId: string | null = null,
 ): ScheduleConflictReason[] {
   const timeBasis = getShiftTimeBasis(input);
-  const hasAssessmentHours = timeBasis === "explicit" || timeBasis === "type_default";
-  if (timeBasis !== "unresolved" && input.start_time === input.end_time) {
+  // Hours not entered yet (a shift type without default hours) are the
+  // editor's to ask for; everything else can still be checked.
+  const hasAssessmentHours = Boolean(input.start_time && input.end_time);
+  if (hasAssessmentHours && input.start_time === input.end_time) {
     return ["Start and end time cannot be the same."];
   }
   const context = {
@@ -317,7 +319,6 @@ export function evaluateScheduleShiftConflicts(
   const reasons: ScheduleConflictReason[] = [];
   if (!model.locations.some(location => location.id === input.location_id) || !model.jobs.some(job => job.id === input.job_id) ||
     (input.shift_type_id && !model.shift_types.some(type => type.id === input.shift_type_id))) return ["The location, job or shift type is no longer available."];
-  if (!hasAssessmentHours) reasons.push({ type: "time_source_unresolved", severity: "confirm", message: "Shift hours are unresolved. Confirm this assignment." });
 
   const matchingClosures = model.closures.filter(
     (candidate) =>
@@ -428,7 +429,6 @@ export function evaluateScheduleShiftConflicts(
       shift.id !== excludeShiftId &&
       shift.employee_id === input.employee_id &&
       hasAssessmentHours &&
-      ["explicit", "type_default"].includes(getShiftTimeBasis(shift)) &&
       intervalsOverlap(shift),
   );
   if (overlapping.length > 0) {

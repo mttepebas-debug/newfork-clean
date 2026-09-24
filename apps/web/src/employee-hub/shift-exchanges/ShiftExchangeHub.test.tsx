@@ -1402,22 +1402,6 @@ describe("Shift Hub outcome contracts", () => {
     );
     expect(changeExchange).not.toHaveBeenCalled();
   });
-  it("keeps changed requests readable when their published hours are unresolved", async () => {
-    model.cases[0]!.status = "invalidated";
-    model.cases[0]!.stage = "closed";
-    model.cases[0]!.shift = {
-      ...shift,
-      time_basis: "unresolved",
-      start_time: null,
-      end_time: null,
-      starts_at: null,
-      ends_at: null,
-    };
-    mount("/app/employee-hub/shift-hub?case=case&hub_view=history");
-    await screen.findAllByText("Hours need confirmation");
-    expect(screen.queryByText(/0 scheduled hours/)).toBeNull();
-    expect(screen.queryByRole("button", { name: "Accept request" })).toBeNull();
-  });
   it("shows both current owners of a pending swap, including the recipient's own responsibility", async () => {
     model.employee_id = "blake";
     model.cases[0] = {

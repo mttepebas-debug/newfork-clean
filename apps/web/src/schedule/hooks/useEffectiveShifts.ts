@@ -64,8 +64,7 @@ function syntheticCreatedShift(
     undefined,
   );
 
-  const basis = payloadValue<ScheduleShift["time_basis"]>(payload, "time_basis", undefined);
-  if (!jobId || (basis !== "unresolved" && (!startTime || !endTime))) return null;
+  if (!jobId || !startTime || !endTime) return null;
 
   return {
     id: `pending:${op.id}`,
@@ -74,9 +73,9 @@ function syntheticCreatedShift(
     job_id: jobId,
     shift_type_id: payloadValue<string | null>(payload, "shift_type_id", null),
     scheduled_date: scheduledDate,
-    start_time: startTime ?? "",
-    end_time: endTime ?? "",
-    time_basis: basis,
+    start_time: startTime,
+    end_time: endTime,
+    time_basis: payloadValue<ScheduleShift["time_basis"]>(payload, "time_basis", undefined),
     time_snapshot: payloadValue<ScheduleShift["time_snapshot"]>(payload, "time_snapshot", null),
     time_timezone: payloadValue<ScheduleShift["time_timezone"]>(payload, "time_timezone", null),
     crosses_midnight: payloadValue(payload, "crosses_midnight", false) ?? false,

@@ -41,13 +41,13 @@ create function pg_temp.weekly_assess(changes jsonb default '{}') returns jsonb 
 $$;
 select is(pg_temp.weekly_assess()->>'operation','allowed','no saved week is available');
 select is(pg_temp.weekly_assess()->>'coverage','full','missing record is not unknown');
-select is(pg_temp.weekly_assess('{"time_basis":"unresolved"}')->>'operation','verification_required','unknown shift hours never become available');
-select is(pg_temp.weekly_assess('{"start_time":"18:00","end_time":"18:00"}')->>'operation','verification_required','zero-length shift requires hours');
+select is(pg_temp.weekly_assess('{"start_time":null,"end_time":null}')->>'operation','warning_requires_override','a proposal without hours is never simply allowed');
+select is(pg_temp.weekly_assess('{"start_time":"18:00","end_time":"18:00"}')->>'operation','blocked','a shift that starts when it ends is refused');
 select throws_ok($$select pg_temp.weekly_assess('{"location_id":"ad419000-0000-4000-8000-000000000099"}')$$,'22023',null,'unknown location is a technical error');
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
  select w,emp,jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array(dinner)),1,actor from wp_fixture;
 select is(pg_temp.weekly_assess()->>'operation','warning_requires_override','custom hours overlapping a selected type produce a soft conflict');
-select is(pg_temp.weekly_assess()->>'warning_policy','warn','default action is warn without confirmation');
+select is(pg_temp.weekly_assess()->>'warning_policy','confirm','the default action asks for confirmation');
 select is(pg_temp.weekly_assess()->'type_restrictions','[]'::jsonb,'no type identity restriction or service classification requirement');
 select is(pg_temp.weekly_assess(jsonb_build_object('shift_type_id',(select dinner from wp_fixture),'start_time','12:00','end_time','17:00'))->>'operation',
  'allowed','actual hours trump matching type identity; touching endpoint is clear');
@@ -68,9 +68,9 @@ update public.employee_weekly_preferences set revision=revision+1,preference=jso
 update public.workspace_scheduling_settings set availability_preferences_revision=availability_preferences_revision+1,availability_onboarding_required=true
  where workspace_id=(select w from wp_fixture);
 select is(pg_temp.weekly_assess()->>'fingerprint',(select fp from weekly_fingerprint),'unrelated weekday, revision and onboarding setting do not re-prompt');
-update public.workspace_scheduling_settings set availability_warning_policy='confirm' where workspace_id=(select w from wp_fixture);
-select is(pg_temp.weekly_assess()->>'warning_policy','confirm','confirmation policy is explicit');
-select isnt(pg_temp.weekly_assess()->>'fingerprint',(select fp from weekly_fingerprint),'warn to confirm changes acceptance context');
+update public.workspace_scheduling_settings set availability_warning_policy='warn' where workspace_id=(select w from wp_fixture);
+select is(pg_temp.weekly_assess()->>'warning_policy','warn','the warning policy is explicit');
+select isnt(pg_temp.weekly_assess()->>'fingerprint',(select fp from weekly_fingerprint),'confirm to warn changes acceptance context');
 update public.shift_types set default_start_time='21:00',default_end_time='02:00' where id=(select dinner from wp_fixture);
 select is(pg_temp.weekly_assess()->>'operation','allowed','current defaults replace previous restriction hours');
 select is(pg_temp.weekly_assess('{"scheduled_date":"2035-01-16","start_time":"01:00","end_time":"03:00"}')->>'coverage','none',

@@ -10,17 +10,6 @@ const shiftDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
-export function hasConfirmedHours(shift: ExchangeShift) {
-  return Boolean(
-    shift.starts_at &&
-    shift.ends_at &&
-    shift.start_time &&
-    shift.end_time &&
-    !["unresolved", "legacy_unverified"].includes(
-      shift.time_basis ?? "explicit",
-    ),
-  );
-}
 export function shiftHours(shift: ExchangeShift) {
   if (!shift.starts_at || !shift.ends_at) return 0;
   return Math.max(
@@ -42,7 +31,7 @@ export function ExchangeShiftCard({
     employeeId?: string | null;
   };
 }) {
-  const time = hasConfirmedHours(shift) ? exchangeTimeDetails(shift) : null;
+  const time = exchangeTimeDetails(shift);
   return (
     <div className="sx-shift">
       {label && <p className="sx-eyebrow">{label}</p>}
@@ -52,19 +41,15 @@ export function ExchangeShiftCard({
         )}
       </p>
       <strong className="sx-time">
-        {hasConfirmedHours(shift)
-          ? formatTimeRange(shift.start_time!, shift.end_time!, "12h", " – ")
-          : "Hours need confirmation"}
+        {formatTimeRange(shift.start_time!, shift.end_time!, "12h", " – ")}
       </strong>
-      {hasConfirmedHours(shift) && (
-        <p className="sx-help">
-          <Clock3 size={14} aria-hidden />{" "}
-          {Number(shiftHours(shift).toFixed(2))} scheduled{" "}
-          {Number(shiftHours(shift).toFixed(2)) === 1 ? "hour" : "hours"}
-          {Boolean(shift.unpaid_break_minutes) &&
-            ` · ${shift.unpaid_break_minutes}m unpaid break`}
-        </p>
-      )}
+      <p className="sx-help">
+        <Clock3 size={14} aria-hidden />{" "}
+        {Number(shiftHours(shift).toFixed(2))} scheduled{" "}
+        {Number(shiftHours(shift).toFixed(2)) === 1 ? "hour" : "hours"}
+        {Boolean(shift.unpaid_break_minutes) &&
+          ` · ${shift.unpaid_break_minutes}m unpaid break`}
+      </p>
       <p className="sx-meta">
         <MapPin size={15} aria-hidden /> {shift.location_name} ·{" "}
         {shift.job_name}

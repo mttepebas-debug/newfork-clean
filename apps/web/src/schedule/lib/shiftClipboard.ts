@@ -28,7 +28,7 @@ export function createShiftClipboardSnapshot(
     end_time: shift.end_time,
     unpaid_break_minutes: shift.unpaid_break_minutes,
     hide_time_on_badge: shift.hide_time_on_badge,
-    time_basis: shift.time_basis ?? (shift.hide_time_on_badge ? "legacy_unverified" : "explicit"),
+    time_basis: shift.time_basis ?? "explicit",
     time_snapshot: shift.time_snapshot ? { ...shift.time_snapshot } : null,
     time_timezone: shift.time_timezone ?? null,
     label_ids: shift.label_ids ?? [],

@@ -81,8 +81,8 @@ export function ScheduleTotalValue({
 }: {
   readonly total: ScheduleHourTotalValue;
 }) {
-  if (total.containsEstimates || total.unknownShiftCount) {
-    return <span className="schedule-total-value" title="Includes reference estimates; shifts needing hours are excluded from the total.">{formatHourTotalValue(total)}</span>;
+  if (total.containsEstimates) {
+    return <span className="schedule-total-value" title="Includes reference estimates.">{formatHourTotalValue(total)}</span>;
   }
   if (total.totalMinutes !== total.visibleMinutes) {
     return (

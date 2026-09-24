@@ -57,7 +57,7 @@ describe("weekly Schedule advisory projection", () => {
   });
   it.each([
     { ...input, time_timezone: "America/New_York" }, { ...input, location_id: job },
-    { ...input, scheduled_date: "2035-01-22" }, { ...input, time_basis: "unresolved" as const },
+    { ...input, scheduled_date: "2035-01-22" },
     { ...input, start_time: "" }, { ...input, start_time: "20:00" },
   ])("does not label unmatched or unverified shift clocks available", value => {
     expect(weeklyTargetAvailability(employee, value)).toBe("unknown");

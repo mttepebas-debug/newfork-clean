@@ -466,17 +466,11 @@ function formatTime(value: string, format: "12h" | "24h"): string {
   return `${hour! % 12 || 12}:${String(minute).padStart(2, "0")} ${hour! >= 12 ? "PM" : "AM"}`;
 }
 
-function hasUnknownHours(row: ScheduleExportRow): boolean {
-  return row.time_basis === "unresolved" || row.time_basis === "legacy_unverified";
-}
-
 function formatRowTime(row: ScheduleExportRow, time: string, format: "12h" | "24h"): string {
-  if (hasUnknownHours(row)) return "—";
   return `${row.time_basis === "type_default" ? "~" : ""}${formatTime(time, format)}`;
 }
 
 function formatRowHours(row: ScheduleExportRow): string {
-  if (hasUnknownHours(row)) return "—";
   return `${row.time_basis === "type_default" ? "~" : ""}${(row.scheduled_minutes / 60).toFixed(2)}`;
 }
 

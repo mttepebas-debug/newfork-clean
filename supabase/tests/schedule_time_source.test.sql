@@ -71,27 +71,19 @@ select is((select time_timezone from public.schedule_published_shifts where sour
 update time_source_state set session=(public.acquire_schedule_edit_session_service(actor,w,week,'published',null)->'session'->>'id')::uuid;
 select is((public.get_schedule_edit_session_service(actor,w,session)->'shifts'->0->'time_snapshot'->>'default_revision'),'1','reopening publication preserves original defaults') from time_source_state;
 
--- Unresolved intervals have no invented midnight range and cannot be assigned at publish.
-select lives_ok($$select public.add_schedule_pending_op_service(s.actor,s.w,s.session,'create',null,
-  jsonb_build_object('location_id',s.loc,'job_id',s.job,'employee_id',s.employee,'shift_type_id',s.typ,'scheduled_date',s.week+1,
-  'time_basis','unresolved','start_time','','end_time','','hide_time_on_badge',true)) from time_source_state s$$,'unresolved assignment can be kept as draft');
-select ok((select start_time is null and end_time is null from public.schedule_edit_session_shifts where session_id=s.session and time_basis='unresolved'),'unknown hours remain null') from time_source_state s;
-update time_source_state s set draft=(public.save_schedule_edit_session_service(actor,w,session,e.revision,'Unresolved source test',null,null)->>'id')::uuid
+-- Every shift has hours (FOUNDATION-B 5.4). The reopened publication is saved
+-- as a draft for the export and conflict checks below.
+update time_source_state s set draft=(public.save_schedule_edit_session_service(actor,w,session,e.revision,'Reference hours test',null,null)->>'id')::uuid
 from public.schedule_edit_sessions e where e.id=s.session;
-update time_source_state set result=public.preview_schedule_publication_service(actor,w,draft,array[loc]);
-select ok(exists(select 1 from jsonb_array_elements(result->'findings') f where f->>'code'='time_source_unresolved' and f->>'severity'='hard'),'preview blocks unknown assignment hours') from time_source_state;
-select throws_ok($$select public.publish_schedule_draft_service(s.actor,s.w,s.draft,array[s.loc],d.revision,s.result->>'fingerprint','[]') from time_source_state s join public.schedule_drafts d on d.id=s.draft$$,'23514',null,'publish cannot bypass unresolved blocker');
 
-select is((public.preview_schedule_export_service(actor,w,week,'draft',draft,array[loc])->'summary'->>'scheduled_minutes')::integer,240,'export excludes unknown hours and retains reference minutes') from time_source_state;
+select is((public.preview_schedule_export_service(actor,w,week,'draft',draft,array[loc])->'summary'->>'scheduled_minutes')::integer,240,'export counts reference minutes') from time_source_state;
 select is((public.preview_schedule_export_service(actor,w,week,'draft',draft,array[loc])->'rows'->0->>'time_basis'),'type_default','export carries assessment evidence') from time_source_state;
 select is(public.shift_exchange_shift(w,shift)->>'timezone',(select time_timezone from public.schedule_published_shifts p where p.source_shift_id=s.shift limit 1),'exchange uses saved timezone, not a later location setting') from time_source_state s;
 
 update time_source_state set session=(public.acquire_schedule_edit_session_service(actor,w,week+7,'blank',null)->'session'->>'id')::uuid;
-select lives_ok($$select public.mutate_schedule_edit_shift_service(s.actor,s.w,s.session,e.revision,'create',gen_random_uuid(),null,
- jsonb_build_object('employee_id',null,'location_id',s.loc,'job_id',s.job,'shift_type_id',s.typ,'scheduled_date',s.week+7,'time_basis','unresolved','start_time','','end_time',''),gen_random_uuid())
- from time_source_state s join public.schedule_edit_sessions e on e.id=s.session$$,'regular edit RPC stores an unresolved open draft');
-select is(jsonb_array_length(public.preview_schedule_auto_fill_service(actor,w,session)->'proposals'),0,'auto-fill never assigns unknown hours') from time_source_state;
-select ok(exists(select 1 from jsonb_array_elements(public.preview_schedule_auto_fill_service(actor,w,session)->'unfilled') u where u->>'reason'='Confirm shift hours before auto-fill'),'auto-fill explains unknown source') from time_source_state;
+select throws_ok($$select public.mutate_schedule_edit_shift_service(s.actor,s.w,s.session,e.revision,'create',gen_random_uuid(),null,
+ jsonb_build_object('employee_id',null,'location_id',s.loc,'job_id',s.job,'shift_type_id',s.typ,'scheduled_date',s.week+7,'time_basis','explicit','start_time','','end_time',''),gen_random_uuid())
+ from time_source_state s join public.schedule_edit_sessions e on e.id=s.session$$,'22023','Enter start and end time.','an open shift without hours is refused where it is written');
 
 -- This used to build two overlapping draft shifts for one person and check
 -- that publication called the overlap soft while the hours came from a shift
@@ -113,7 +105,7 @@ select throws_ok($$insert into public.schedule_draft_shifts(id,workspace_id,draf
  '23514',null,'nor when both badges hide the hours');
 
 select throws_ok($$insert into public.schedule_published_shifts(workspace_id,publication_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,time_basis,source_shift_id)
- select s.w,p.id,s.loc,s.employee,s.job,s.typ,s.week+3,null,null,'unresolved',gen_random_uuid() from time_source_state s join public.schedule_location_publications p on p.workspace_id=s.w and p.location_id=s.loc and p.week_start=s.week and p.status='current'$$,'23514',null,'direct published inserts cannot bypass the source guard');
+ select s.w,p.id,s.loc,s.employee,s.job,s.typ,s.week+3,null,null,'unresolved',gen_random_uuid() from time_source_state s join public.schedule_location_publications p on p.workspace_id=s.w and p.location_id=s.loc and p.week_start=s.week and p.status='current'$$,'22023',null,'direct published inserts cannot bypass the source guard');
 
 set local role authenticated;
 select throws_ok($$select * from public.shift_type_time_versions$$,'42501',null,'historical time data is service-only');

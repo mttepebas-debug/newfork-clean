@@ -2690,7 +2690,7 @@ describe("App", () => {
     fireEvent.change(endTimeInput, { target: { value: "630p" } });
     fireEvent.blur(endTimeInput);
     expect(
-      await screen.findByText("Start and end times cannot be the same."),
+      await screen.findByText("Start and end time cannot be the same."),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save" })).toHaveProperty(
       "disabled",
@@ -3088,21 +3088,31 @@ describe("App", () => {
         ).checked,
       ).toBe(false);
       expect(createScheduleShift).not.toHaveBeenCalled();
+      // A shift type without default hours leaves them to the manager.
+      expect(within(presetDialog).getByRole("alert").textContent).toBe(
+        "Enter start and end time.",
+      );
+      expect(
+        within(presetDialog).getByRole("button", { name: "Add shift" }),
+      ).toHaveProperty("disabled", true);
+      fireEvent.change(
+        within(presetDialog).getByRole("textbox", { name: "Start time" }),
+        { target: { value: "13:00" } },
+      );
+      fireEvent.change(
+        within(presetDialog).getByRole("textbox", { name: "End time" }),
+        { target: { value: "17:00" } },
+      );
       fireEvent.click(
         within(presetDialog).getByRole("button", { name: "Add shift" }),
-      );
-      // Unresolved clock-off hours require explicit confirmation.
-      fireEvent.click(
-        await screen.findByRole("button", { name: "Add anyway" }),
       );
       await waitFor(() => expect(createScheduleShift).toHaveBeenCalledTimes(1));
       expect(vi.mocked(createScheduleShift).mock.calls[0]?.[2]).toEqual(
         expect.objectContaining({
           shift_type_id: standbyType.id,
-          start_time: "",
-          end_time: "",
-          hide_time_on_badge: true,
-          time_basis: "unresolved",
+          start_time: "13:00",
+          end_time: "17:00",
+          time_basis: "explicit",
         }),
       );
     } finally {

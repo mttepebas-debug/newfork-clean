@@ -41,11 +41,7 @@ import {
   refreshExchangeSurfaces,
 } from "./exchange-data";
 import "./shift-exchanges.css";
-import {
-  ExchangeShiftCard,
-  hasConfirmedHours,
-  shiftHours,
-} from "./ExchangeShiftCard";
+import { ExchangeShiftCard, shiftHours } from "./ExchangeShiftCard";
 export { ExchangeShiftCard } from "./ExchangeShiftCard";
 
 const stageLabels: Record<ExchangeCase["stage"], string> = {
@@ -1118,37 +1114,35 @@ function CaseDetail({
           />
         )}
       </div>
-      {item.requested_shift &&
-        hasConfirmedHours(item.shift) &&
-        hasConfirmedHours(item.requested_shift) && (
-          <p className="sx-help">
-            {item.status !== "open"
-              ? "First / second"
-              : manager
-                ? "Offered / returned"
-                : "Give / receive"}
-            :{" "}
-            {shiftHours(
-              item.status !== "open" ||
-                item.owner_id === model.employee_id ||
-                manager
-                ? item.shift
-                : item.requested_shift,
-            ).toFixed(1)}
-            h /{" "}
-            {shiftHours(
-              item.status !== "open" ||
-                item.owner_id === model.employee_id ||
-                manager
-                ? item.requested_shift
-                : item.shift,
-            ).toFixed(1)}
-            h.{" "}
-            {item.status === "open"
-              ? "Both shifts change together after final approval."
-              : "These details may include later schedule changes."}
-          </p>
-        )}
+      {item.requested_shift && (
+        <p className="sx-help">
+          {item.status !== "open"
+            ? "First / second"
+            : manager
+              ? "Offered / returned"
+              : "Give / receive"}
+          :{" "}
+          {shiftHours(
+            item.status !== "open" ||
+              item.owner_id === model.employee_id ||
+              manager
+              ? item.shift
+              : item.requested_shift,
+          ).toFixed(1)}
+          h /{" "}
+          {shiftHours(
+            item.status !== "open" ||
+              item.owner_id === model.employee_id ||
+              manager
+              ? item.requested_shift
+              : item.shift,
+          ).toFixed(1)}
+          h.{" "}
+          {item.status === "open"
+            ? "Both shifts change together after final approval."
+            : "These details may include later schedule changes."}
+        </p>
+      )}
       {item.status === "open" && (
         <p className="sx-help">
           <Clock3 size={14} /> Decision needed before{" "}
@@ -1667,8 +1661,7 @@ function CreateExchange({
   const candidates = useQuery({
     queryKey: ["shift-exchanges", workspace, "candidates", shift?.id],
     queryFn: () => getExchangeCandidates(workspace, shift!.id),
-    enabled:
-      Boolean(shift && hasConfirmedHours(shift)) && !active && needsCandidate,
+    enabled: Boolean(shift) && !active && needsCandidate,
   });
   const targetShift = candidates.data?.shifts.find((s) => s.id === target);
   const hasCurrentMatch = Boolean(
@@ -1688,7 +1681,6 @@ function CreateExchange({
   const canSubmit = Boolean(
     canWrite &&
     shift &&
-    hasConfirmedHours(shift) &&
     !active &&
     (!needsCandidate ||
       (hasCurrentMatch && !candidates.isFetching && !candidates.isError)),
@@ -1849,10 +1841,7 @@ function CreateExchange({
                       value={hasCurrentMatch ? target : ""}
                       onChange={(e) => setTarget(e.target.value)}
                       disabled={
-                        !shift ||
-                        !hasConfirmedHours(shift) ||
-                        candidates.isFetching ||
-                        candidates.isError
+                        !shift || candidates.isFetching || candidates.isError
                       }
                       aria-describedby={matchStatusId}
                       required
@@ -1888,11 +1877,6 @@ function CreateExchange({
                     {!shift ? (
                       <p className="sx-help">
                         Choose your shift to see eligible matches.
-                      </p>
-                    ) : !hasConfirmedHours(shift) ? (
-                      <p className="sx-help">
-                        A manager needs to confirm your shift hours before we
-                        can check matches.
                       </p>
                     ) : candidates.isFetching ? (
                       <p className="sx-help">

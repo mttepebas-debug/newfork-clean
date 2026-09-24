@@ -3,7 +3,6 @@ import type {
   ScheduleShift,
 } from "@newfork/shared/schedule";
 import { describe, expect, it } from "vitest";
-import { schedulePendingOpPayloadSchema } from "@newfork/shared/schedule";
 
 import { buildEffectiveShifts } from "./useEffectiveShifts";
 
@@ -47,14 +46,6 @@ function op(
 }
 
 describe("buildEffectiveShifts", () => {
-  it("keeps unresolved pending drafts visible without inventing clock hours", () => {
-    const result = buildEffectiveShifts([], [op({ id: "unknown", op_type: "create", payload: schedulePendingOpPayloadSchema.parse({
-      job_id: "55555555-5555-4555-8555-555555555555", shift_type_id: "44444444-4444-4444-8444-444444444444",
-      time_basis: "unresolved", start_time: null, end_time: null, time_snapshot: null,
-    }) })]);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ time_basis: "unresolved", start_time: "", end_time: "" });
-  });
   it("adds create ops as synthetic pending shifts", () => {
     const result = buildEffectiveShifts(
       [],

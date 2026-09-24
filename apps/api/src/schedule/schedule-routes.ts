@@ -3429,9 +3429,10 @@ function scheduleError(reply: FastifyReply, error: unknown) {
   const message =
     error instanceof Error ? error.message : "Schedule operation failed";
   const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
-  // Only this explicit rejection may enter the client's assessment/retry path.
+  // Only this explicit rejection may enter the client's assessment/retry path
+  // (the database raises it as PT409; PostgREST retries 40001 on its own).
   // Other serialization failures still require a fresh edit session.
-  if (["40001", "PT409"].includes(code) && message === "Review the current availability assessment before saving") {
+  if (code === "PT409" && message === "Review the current availability assessment before saving") {
     return reply.status(409).send({ error: message, code, status: "availability_review_required" });
   }
   if (["42501", "40001", "PT409", "23514", "22023"].includes(code)) {

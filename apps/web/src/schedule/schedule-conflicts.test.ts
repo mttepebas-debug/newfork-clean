@@ -148,10 +148,10 @@ describe("schedule conflict port", () => {
     expect(evaluateScheduleShiftConflicts(model, model.shifts, input({ time_basis: "type_default", hide_time_on_badge: true })))
       .toEqual(expect.arrayContaining([expect.objectContaining({ type: "reference_time_overlap", severity: "block" })]));
   });
-  it("does not invent an interval conflict for unresolved draft hours", () => {
-    const reasons = evaluateScheduleShiftConflicts(model, [], input({ time_basis: "unresolved", shift_type_id: shiftTypeId,
+  it("does not invent an interval conflict before hours are entered", () => {
+    const reasons = evaluateScheduleShiftConflicts(model, [], input({ shift_type_id: shiftTypeId,
       scheduled_date: "2026-08-16", start_time: "", end_time: "" }));
-    expect(reasons).toEqual([expect.objectContaining({ type: "time_source_unresolved", severity: "confirm" })]);
+    expect(reasons).toEqual([]);
   });
   it("formats named duplicate summaries returned by the local evaluator", () => {
     expect(

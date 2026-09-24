@@ -65,8 +65,7 @@ select is(pg_temp.aa_assessment('{"note":"Display-only edit"}')->>'fingerprint',
 select is(pg_temp.aa_assessment('{"time_basis":"type_default","time_snapshot":{"shift_type_id":"14000000-0000-4000-8000-000000000001","default_revision":1,"start_time":"12:00","end_time":"16:00","timezone":"America/Los_Angeles"}}')->>'coverage','none','name-only assignment evaluates the saved default reference interval');
 select is(pg_temp.aa_assessment('{"start_time":"18:00","end_time":"20:00","time_snapshot":{"start_time":"12:00","end_time":"16:00","timezone":"America/Los_Angeles"}}')->>'operation','allowed','explicit hours win over a retained type label and default snapshot');
 select throws_ok($$select pg_temp.aa_assessment('{"time_basis":"type_default","time_snapshot":{"start_time":"10:00","end_time":"16:00"}}')$$,'22023',null,'inconsistent saved reference hours cannot fake a clean assessment');
-select is(pg_temp.aa_assessment('{"time_basis":"unresolved","start_time":null,"end_time":null}')->>'operation','verification_required','missing named hours cannot be called available');
-select is(pg_temp.aa_assessment('{"time_basis":"legacy_unverified"}')->>'operation','verification_required','unverified legacy clocks are not treated as certified hours');
+select is(pg_temp.aa_assessment('{"start_time":null,"end_time":null}')->>'operation','verification_required','a proposal without hours cannot be called available');
 select is(pg_temp.aa_assessment('{"scheduled_date":"2028-01-11"}')->>'coverage','unknown','unreported availability remains unknown');
 create temp table aa_soft_fingerprint as select pg_temp.aa_assessment()->>'fingerprint' fingerprint;
 update public.workspace_scheduling_settings set availability_enforcement='hard' where workspace_id=(select w from aa_state);
@@ -74,7 +73,7 @@ select is(pg_temp.aa_assessment()->>'operation','blocked','hard availability can
 select isnt(pg_temp.aa_assessment()->>'fingerprint',(select fingerprint from aa_soft_fingerprint),'policy change invalidates the prior override context');
 insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from,effective_until)
 select w,emp,5,'America/Los_Angeles',pg_temp.aa_proposal('[]')->'days','employee',actor,'2030-01-12','2030-01-12' from aa_state;
-select is(pg_temp.aa_assessment('{"scheduled_date":"2030-01-12","time_basis":"unresolved","start_time":null,"end_time":null}')->>'operation','blocked','definite all-day hard unavailability is enforced even without shift hours');
+select is(pg_temp.aa_assessment('{"scheduled_date":"2030-01-12","start_time":null,"end_time":null}')->>'operation','blocked','definite all-day hard unavailability is enforced even without shift hours');
 update public.workspace_scheduling_settings set availability_enforcement='soft' where workspace_id=(select w from aa_state);
 update public.locations set timezone='America/New_York' where workspace_id=(select w from aa_state) and id='11000000-0000-4000-8000-000000000002';
 insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)

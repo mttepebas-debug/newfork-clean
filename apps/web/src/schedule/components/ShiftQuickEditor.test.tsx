@@ -945,18 +945,12 @@ describe("ShiftQuickEditor", () => {
 
     const addButton = screen.getByRole("button", { name: "Add shift" });
     expect((addButton as HTMLButtonElement).disabled).toBe(true);
-    expect(
-      screen.getByText("Start and end times are required in HH:MM format."),
-    ).toBeTruthy();
+    expect(screen.getByText("Enter start and end time.")).toBeTruthy();
     fireEvent.click(addButton);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("confirms unresolved hours without inventing a range", async () => {
-    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability,
-      conflict_severity: "confirm", operation: "warning_requires_override", warning_policy: "confirm",
-      time_basis: "unresolved", reasons: [{ code: "time_source_unresolved", severity: "confirm", message: "Shift hours are unresolved. Confirm this assignment.", definite: false }],
-    });
+  it("asks for hours when the shift type has no default hours", async () => {
     const onSubmit = vi.fn().mockResolvedValue("saved" as const);
     const clockOffShiftType = {
       ...model.shift_types[0]!,
@@ -996,25 +990,30 @@ describe("ShiftQuickEditor", () => {
       />,
     );
 
-    expect(
-      (screen.getByLabelText("Show times on badge") as HTMLInputElement)
-        .checked,
-    ).toBe(false);
-    expect(screen.getByRole("status").textContent).toContain(
-      "Hours need confirmation",
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Enter start and end time.",
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
-    const confirm = await screen.findByRole("button", { name: "Place shift" });
+    const addButton = screen.getByRole("button", { name: "Add shift" });
+    expect((addButton as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(addButton);
     expect(onSubmit).not.toHaveBeenCalled();
-    fireEvent.click(confirm);
+
+    fireEvent.change(screen.getByLabelText("Start time"), {
+      target: { value: "13:00" },
+    });
+    fireEvent.change(screen.getByLabelText("End time"), {
+      target: { value: "17:00" },
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          time_basis: "unresolved",
-          start_time: "",
-          end_time: "",
+          shift_type_id: clockOffShiftType.id,
+          time_basis: "explicit",
+          start_time: "13:00",
+          end_time: "17:00",
           time_snapshot: null,
         }),
         1,
@@ -1198,7 +1197,7 @@ describe("ShiftQuickEditor", () => {
     });
 
     expect(
-      screen.getByText("Start and end times cannot be the same."),
+      screen.getByText("Start and end time cannot be the same."),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add shift" })).toHaveProperty(
       "disabled",
@@ -1207,7 +1206,7 @@ describe("ShiftQuickEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
     expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
     expect(
-      screen.getByText("Start and end times cannot be the same."),
+      screen.getByText("Start and end time cannot be the same."),
     ).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
   });

@@ -92,11 +92,9 @@ describe("shiftEditorState", () => {
     expect(result.time_basis).toBe("type_default");
     expect(result.start_time).toBe("17:00");
   });
-  it("does not certify legacy hours merely by changing the type label", () => {
+  it("keeps a hidden badge time a display choice", () => {
     const value = buildScheduleShiftEditorInitialValue({ state: { mode: "edit", shift: { ...editShift, hide_time_on_badge: true } }, model });
-    const result = applyScheduleShiftTypeDefaults({ value, shiftType: model.shift_types[1], shiftTypeId: model.shift_types[1]!.id,
-      preserveTimes: true, clockOffFallbackStartTime: "", clockOffFallbackEndTime: "" });
-    expect(result.time_basis).toBe("legacy_unverified");
+    expect(value.time_basis).toBe("explicit");
   });
   it("builds edit initial values from the existing shift", () => {
     expect(
@@ -253,6 +251,7 @@ describe("shiftEditorState", () => {
         start_time: "",
         end_time: "",
         hide_time_on_badge: true,
+        time_basis: "explicit",
       }),
     );
   });

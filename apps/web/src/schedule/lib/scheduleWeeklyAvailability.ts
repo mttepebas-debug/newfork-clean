@@ -32,7 +32,7 @@ export function weeklyTargetInterval(employee: ScheduleEmployee, input: Schedule
   const weekEnd = new Date(Date.parse(`${projection.week_start}T00:00:00Z`) + 7 * 86_400_000).toISOString().slice(0, 10);
   if (input.scheduled_date < projection.week_start || input.scheduled_date >= weekEnd) return null;
   const zone = input.time_timezone || input.time_snapshot?.timezone || projection.timezone;
-  if (zone !== projection.timezone || !["explicit", "type_default"].includes(getShiftTimeBasis(input))) return null;
+  if (zone !== projection.timezone) return null;
   if (input.time_snapshot && getShiftTimeBasis(input) === "type_default" &&
     (input.time_snapshot.start_time.slice(0, 5) !== input.start_time.slice(0, 5) || input.time_snapshot.end_time.slice(0, 5) !== input.end_time.slice(0, 5))) return null;
   const validClock = (clock: string) => /^(?:[01]\d|2[0-3]):[0-5]\d(?::00)?$/.test(clock);

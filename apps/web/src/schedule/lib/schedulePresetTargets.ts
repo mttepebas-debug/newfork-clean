@@ -60,7 +60,7 @@ export function validatePresetCreateTarget(
     shift_type_id: target.preset.shiftTypeId, scheduled_date: target.date,
     start_time: target.preset.startTime ?? "", end_time: target.preset.endTime ?? "",
     unpaid_break_minutes: 30, hide_time_on_badge: !useDefaultTimesForScheduling,
-    time_basis: hasHours ? "type_default" : "unresolved", label_ids: [], note: "",
+    time_basis: hasHours ? "type_default" : "explicit", label_ids: [], note: "",
   });
   const blockers = conflicts.filter(reason => scheduleConflictSeverity(reason) === "block");
   if (blockers.length) return { allowed: false, reason: formatScheduleConflictMessages(blockers).join(" ") };

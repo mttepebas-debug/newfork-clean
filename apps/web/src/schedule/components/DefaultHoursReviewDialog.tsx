@@ -30,7 +30,7 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
   const signature = JSON.stringify(command);
   const currentSignature = useRef(signature); currentSignature.current = signature;
   const fresh = Boolean(review && reviewedSignature === signature);
-  const overlaps = Boolean(review?.shifts.some(s => s.will_change && (s.after_overlap_count > 0 || s.unconfirmed_peer_count > 0)));
+  const overlaps = Boolean(review?.shifts.some(s => s.will_change && s.after_overlap_count > 0));
   const needsAvailabilityConfirmation = Boolean(review?.shifts.some(s => s.can_apply
     && s.after_assessment?.operation === "warning_requires_override"
     && s.after_assessment.warning_policy === "confirm" && !s.after_assessment.override_recorded));
@@ -86,7 +86,7 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
     }}>
       <header><h2 id="default-hours-title">Review current default hours</h2><button ref={closeButton} type="button" disabled={Boolean(pending)} onClick={onClose}>Close</button></header>
       <div className="schedule-tool-dialog">
-        <p>Update future name-only shifts in this edit week. Explicit and unconfirmed hours stay unchanged. Applied changes remain in the edit session; save and publish the schedule to change employees' published shifts.</p>
+        <p>Update future name-only shifts in this edit week. Explicit hours stay unchanged. Applied changes remain in the edit session; save and publish the schedule to change employees' published shifts.</p>
         <fieldset disabled={Boolean(pending)}><legend>Choose dates and shifts</legend>
           <div className="default-hours-filters">
             <label>From<input type="date" min={session.week_start} max={lastDay.toISOString().slice(0, 10)} value={start} onChange={e => setStart(e.target.value)} /></label>
@@ -109,11 +109,10 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
               {s.before_assessment ? <><dt>Availability before</dt><dd>{s.before_assessment.coverage}</dd><dt>Availability after</dt><dd>{s.after_assessment?.coverage}</dd></> : null}
               <dt>Overlapping assignments</dt><dd>{s.before_overlap_count} before → {s.after_overlap_count} after</dd></dl>
             {s.reason ? <p>{s.reason}</p> : null}
-            {s.unconfirmed_peer_count ? <p>{s.unconfirmed_peer_count} nearby assignments have unconfirmed hours. Their overlap cannot be verified.</p> : null}
             {s.after_assessment?.reasons.map((r, i) => <p key={i}>{r.message}</p>)}
             {s.after_assessment?.operation === "warning_requires_override" && !s.after_assessment.warning_policy && s.after_assessment.can_override ? <label>Override reason for {s.employee_name}<textarea disabled={Boolean(pending)} maxLength={500} value={notes[s.shift_id] ?? ""} onChange={e => setNotes(current => ({ ...current, [s.shift_id]: e.target.value }))} /></label> : null}
           </article>)}
-          {overlaps ? <label><input type="checkbox" disabled={!fresh || Boolean(pending)} checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />I reviewed reference overlaps and unconfirmed neighboring hours. Publication checks still apply.</label> : null}
+          {overlaps ? <label><input type="checkbox" disabled={!fresh || Boolean(pending)} checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />I reviewed reference overlaps. Publication checks still apply.</label> : null}
           <button type="button" disabled={!fresh || Boolean(pending) || !review.changed_count || Boolean(review.blocked_count) || (overlaps && !acknowledged)} onClick={() => void apply()}>{pending === "apply" ? "Applying…" : `${needsAvailabilityConfirmation ? "Confirm availability and apply" : "Apply"} ${review.changed_count} change${review.changed_count === 1 ? "" : "s"} to edit session`}</button>
         </section> : null}
       </div>

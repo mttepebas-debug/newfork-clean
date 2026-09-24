@@ -151,9 +151,9 @@ describe("createScheduleReadService realtime invalidation", () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(2); expect(mocks.send).not.toHaveBeenCalled();
   });
   it("preserves the database stale-assessment code and does not broadcast a failed mutation", async () => {
-    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "40001", message: "Review the current availability assessment before overriding" } });
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "Review the current availability assessment before saving" } });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
-    await expect(service.mutateShift({ actorUserId, workspaceId, sessionId: draftId, shiftId: departmentId, expectedSessionRevision: 1, operation: "create" })).rejects.toMatchObject({ code: "40001" });
+    await expect(service.mutateShift({ actorUserId, workspaceId, sessionId: draftId, shiftId: departmentId, expectedSessionRevision: 1, operation: "create" })).rejects.toMatchObject({ code: "PT409" });
     expect(mocks.send).not.toHaveBeenCalled();
   });
   it("broadcasts schedule invalidation after publishing a draft", async () => {

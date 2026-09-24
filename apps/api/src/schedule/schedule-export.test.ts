@@ -67,16 +67,15 @@ const preview: ScheduleExportPreview = {
 };
 
 describe("schedule export rendering", () => {
-  it("marks reference estimates and never exports invented hours for unknown shifts", () => {
+  it("marks reference estimates from a shift type's default hours", () => {
     const source: ScheduleExportPreview = { ...preview, rows: [
       { ...preview.rows[0]!, time_basis: "type_default", scheduled_minutes: 240 },
-      { ...preview.rows[1]!, time_basis: "unresolved", start_time: "", end_time: "", scheduled_minutes: 0 },
+      preview.rows[1]!,
     ] };
     const prepared = prepareScheduleExport(source, settings);
     const csv = renderScheduleCsv(prepared, settings);
     expect(csv).toContain("~5:05 PM");
     expect(csv).toContain("~4.00");
-    expect(csv).toContain("—,—");
     expect(csv).not.toContain("NaN");
     expect(renderSchedulePrintHtml(prepared, settings)).toContain("~4.00");
   });

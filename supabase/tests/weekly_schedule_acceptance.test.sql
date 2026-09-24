@@ -84,7 +84,6 @@ select is((select reason from public.schedule_availability_overrides where works
 select lives_ok($$select pg_temp.accept('{"start_time":"12:00","end_time":"14:00"}',pg_temp.assignment())$$,'moving to available hours needs no decision');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),0::bigint,'moving away revokes prior acceptance');
 select throws_ok($$select pg_temp.accept('{}',pg_temp.assignment('{"start_time":"12:00","end_time":"14:00"}'))$$,'PT409',null,'moving back cannot revive revoked acceptance');
-select throws_ok($$select pg_temp.accept('{"time_basis":"unresolved","start_time":null,"end_time":null}')$$,'PT409',null,'unresolved hours require the current confirmation');
 insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
  select 'ad421000-0000-4000-8000-000000000010',w,emp,loc,'approved',actor from wp_fixture;
 insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)

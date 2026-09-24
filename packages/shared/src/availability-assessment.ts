@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { shiftTimeBasisSchema } from "./availability";
 
 export const scheduleConflictSeveritySchema = z.enum(["allow", "warn", "confirm", "block"]);
 export type ScheduleConflictSeverity = z.infer<typeof scheduleConflictSeveritySchema>;
@@ -58,12 +59,7 @@ export const shiftAvailabilityAssessmentSchema = z.object({
     "blocked",
     "verification_required",
   ]),
-  time_basis: z.enum([
-    "explicit",
-    "type_default",
-    "unresolved",
-    "legacy_unverified",
-  ]),
+  time_basis: shiftTimeBasisSchema,
   timezone: z.string(),
   assessment_scope: z.enum(["calendar_day", "shift_interval"]),
   intervals: z.array(interval),

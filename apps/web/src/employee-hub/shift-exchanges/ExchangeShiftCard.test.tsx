@@ -116,14 +116,7 @@ describe("Exchange shift physical time", () => {
     expect(screen.getByText(/4 scheduled hours/)).toBeTruthy();
     expect(screen.queryByLabelText("Clock change details")).toBeNull();
   });
-  it("does not invent clock details for unconfirmed or invalid saved times", () => {
-    render(
-      <ExchangeShiftCard
-        shift={{ ...shift, time_basis: "legacy_unverified" }}
-      />,
-    );
-    expect(screen.getByText("Hours need confirmation")).toBeTruthy();
-    expect(screen.queryByLabelText("Clock change details")).toBeNull();
+  it("does not invent clock details for invalid saved times", () => {
     expect(exchangeTimeDetails({ ...shift, starts_at: "invalid" })).toBeNull();
     expect(
       exchangeTimeDetails({ ...shift, time_timezone: "Unknown/Zone" }),

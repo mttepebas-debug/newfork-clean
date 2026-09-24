@@ -14,7 +14,7 @@ function preview(): ScheduleDefaultHoursPreview {
   return { session_id: id, session_revision: 3, starts_on: "2035-01-15", ends_on: "2035-01-21", fingerprint: "a".repeat(64), changed_count: 1, blocked_count: 0,
     shifts: [{ shift_id: id, shift_revision: 1, scheduled_date: "2035-01-15", location_id: id, location_name: "Main", shift_type_name: "Lunch", employee_name: "Open shift",
       before: reference, after: { ...reference, start_time: "11:00", end_time: "17:00", time_snapshot: { default_revision: 2 } }, before_assessment: null, after_assessment: null,
-      reason: null, will_change: true, can_apply: true, current_default_revision: 2, before_overlap_count: 0, after_overlap_count: 0, unconfirmed_peer_count: 0 }] };
+      reason: null, will_change: true, can_apply: true, current_default_revision: 2, before_overlap_count: 0, after_overlap_count: 0 }] };
 }
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(previewScheduleDefaultHours).mockResolvedValue(preview()); vi.mocked(applyScheduleDefaultHours).mockResolvedValue({ ...session, revision: 4 }); });
 afterEach(cleanup);
@@ -76,11 +76,10 @@ describe("default-hours batch review", () => {
     expect(screen.getByText(/This review is out of date/)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Apply 1 change/ }).hasAttribute("disabled")).toBe(true);
   });
-  it("requires acknowledgment for reference overlaps and uncertain neighboring hours", async () => {
-    const value = preview(); value.shifts[0]!.after_overlap_count = 1; value.shifts[0]!.unconfirmed_peer_count = 1;
+  it("requires acknowledgment for reference overlaps", async () => {
+    const value = preview(); value.shifts[0]!.after_overlap_count = 1;
     vi.mocked(previewScheduleDefaultHours).mockResolvedValue(value);
     setup(); await review();
-    expect(screen.getByText(/1 nearby assignments have unconfirmed hours/)).toBeTruthy();
     const apply = screen.getByRole("button", { name: /Apply 1 change/ });
     expect(apply.hasAttribute("disabled")).toBe(true);
     fireEvent.click(screen.getByLabelText(/I reviewed reference overlaps/));

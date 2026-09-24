@@ -2702,7 +2702,6 @@ describe("api app", () => {
   });
 
   it.each([
-    ["Review the current availability assessment before saving", "40001", 409, "availability_review_required"],
     ["Review the current availability assessment before saving", "PT409", 409, "availability_review_required"],
     ["Edit session revision is stale", "40001", 409, undefined],
     ["Employee already has an overlapping shift", "23514", 422, undefined],

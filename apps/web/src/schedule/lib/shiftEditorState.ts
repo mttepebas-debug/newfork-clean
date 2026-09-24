@@ -73,8 +73,8 @@ export function buildScheduleShiftEditorInitialValue({
   const timezone = model.locations.find((location) => location.id === locationId)?.timezone ?? "UTC";
   const presetStart = createPreset?.startTime ?? presetType?.default_start_time;
   const presetEnd = createPreset?.endTime ?? presetType?.default_end_time;
-  const timeBasis = base ? base.time_basis ?? (base.hide_time_on_badge ? "legacy_unverified" : "explicit")
-    : createPreset ? (presetStart && presetEnd ? "type_default" : "unresolved") : "explicit";
+  const timeBasis = base ? base.time_basis ?? "explicit"
+    : createPreset && presetStart && presetEnd ? "type_default" : "explicit";
 
   return {
     location_id:
@@ -125,9 +125,6 @@ export function applyScheduleShiftTypeDefaults({
   readonly clockOffFallbackEndTime: string;
   readonly preserveTimes?: boolean;
 }): ScheduleShiftMutationInput {
-  if (!shiftTypeId && value.time_basis === "unresolved") {
-    return { ...value, shift_type_id: null, time_basis: "explicit", time_snapshot: null, hide_time_on_badge: false };
-  }
   if (preserveTimes) return { ...value, shift_type_id: shiftTypeId };
   const hasDefaultTimes = Boolean(
     shiftType?.default_start_time && shiftType.default_end_time,
@@ -144,6 +141,7 @@ export function applyScheduleShiftTypeDefaults({
         start_time: shiftType!.default_start_time!, end_time: shiftType!.default_end_time!, timezone: value.time_timezone ?? "UTC" },
     };
   }
+  // No default hours: the manager enters them before the shift can be saved.
   if (shiftTypeId) {
     return {
       ...value,
@@ -151,7 +149,7 @@ export function applyScheduleShiftTypeDefaults({
       start_time: clockOffFallbackStartTime,
       end_time: clockOffFallbackEndTime,
       hide_time_on_badge: true,
-      time_basis: "unresolved",
+      time_basis: "explicit",
       time_snapshot: null,
     };
   }

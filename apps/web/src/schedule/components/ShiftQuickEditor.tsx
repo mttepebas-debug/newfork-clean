@@ -438,7 +438,6 @@ export function ShiftQuickEditor({
   const timeValidationMessage = getShiftTimeValidationMessage(
     value.start_time,
     value.end_time,
-    value.time_basis !== "unresolved",
   );
   const saveButtonLabel =
     state.mode === "edit"
@@ -984,28 +983,6 @@ export function ShiftQuickEditor({
                 {timeValidationMessage}
               </p>
             ) : null}
-            {value.time_basis === "unresolved" ||
-            value.time_basis === "legacy_unverified" ? (
-              <p role="status">
-                Hours need confirmation. You can save this draft; confirm hours
-                before publishing a new assignment.
-              </p>
-            ) : null}
-            {value.time_basis === "legacy_unverified" &&
-            !timeValidationMessage ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setValue({
-                    ...value,
-                    time_basis: "explicit",
-                    time_snapshot: null,
-                  })
-                }
-              >
-                Confirm displayed hours
-              </button>
-            ) : null}
             <fieldset className="schedule-break-options">
               <legend>Unpaid break</legend>
               <div>
@@ -1162,18 +1139,17 @@ function summarizeEditorConflictToast(
   };
 }
 
+// The same two sentences the database refuses a shift with.
 function getShiftTimeValidationMessage(
   startTime: string,
   endTime: string,
-  useTimesForScheduling: boolean,
 ): string | null {
-  if (!useTimesForScheduling) return null;
   const canonicalTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
   if (!canonicalTime.test(startTime) || !canonicalTime.test(endTime)) {
-    return "Start and end times are required in HH:MM format.";
+    return "Enter start and end time.";
   }
   if (startTime === endTime) {
-    return "Start and end times cannot be the same.";
+    return "Start and end time cannot be the same.";
   }
   return null;
 }

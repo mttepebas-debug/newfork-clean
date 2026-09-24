@@ -31,7 +31,7 @@ $$;
 select is((select conflict_rules->>'availability' from public.workspace_scheduling_settings where workspace_id=(select w from f)),'confirm','new workspace defaults to confirmation');
 select is(pg_temp.assess()->>'conflict_severity','allow','clear assignment is allowed');
 select is(pg_temp.assess('{"start_time":"09:00","end_time":"09:00"}')->>'conflict_severity','block','equal hours are immutable block');
-select is(pg_temp.assess('{"time_basis":"unresolved","start_time":null,"end_time":null}')->>'conflict_severity','confirm','unresolved hours need confirmation');
+select is(pg_temp.assess('{"start_time":null,"end_time":null}')->>'conflict_severity','confirm','a proposal without hours needs confirmation');
 select lives_ok($$select public.prepare_weekly_schedule_assignment(actor,w,pg_temp.shift(),null) from f$$,'normal assignment needs no confirmation request');
 insert into public.schedule_edit_session_shifts(id,workspace_id,session_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
  select shift,w,(select id from editor),loc,emp,job,typ,'2035-01-15','09:00','17:00','explicit','America/Los_Angeles' from f;

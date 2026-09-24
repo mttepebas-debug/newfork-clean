@@ -1671,7 +1671,6 @@ export const schedulePublishFindingCodeSchema = z.enum([
   "schedule_conflict",
   "availability_unknown",
   "availability_review_pending",
-  "time_source_unresolved",
   "overlap",
   "availability",
   "closed_location",

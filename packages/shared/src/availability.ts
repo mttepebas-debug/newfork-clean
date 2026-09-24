@@ -17,15 +17,11 @@ export function availabilityDateOverrideBounds(changes: readonly AvailabilityDat
   return { effective_from: starts[0] ?? "", effective_until: ends.at(-1) ?? "" };
 }
 
-/** Compatibility classification applies only when stored source metadata is absent. */
+/** Every shift has hours; without stored source metadata they are its own. */
 export function getShiftTimeBasis(shift: {
-  time_basis?: "explicit" | "type_default" | "unresolved" | "legacy_unverified";
-  hide_time_on_badge?: boolean;
-}): "explicit" | "type_default" | "unresolved" | "legacy_unverified" {
-  return (
-    shift.time_basis ??
-    (shift.hide_time_on_badge ? "legacy_unverified" : "explicit")
-  );
+  time_basis?: ShiftTimeBasis;
+}): ShiftTimeBasis {
+  return shift.time_basis ?? "explicit";
 }
 
 export const availabilityTimezoneSchema = z
@@ -347,12 +343,7 @@ export function assessEmployeeAvailability(
   });
 }
 
-export const shiftTimeBasisSchema = z.enum([
-  "explicit",
-  "type_default",
-  "unresolved",
-  "legacy_unverified",
-]);
+export const shiftTimeBasisSchema = z.enum(["explicit", "type_default"]);
 export type ShiftTimeBasis = z.infer<typeof shiftTimeBasisSchema>;
 export const shiftTimeSnapshotSchema = z.object({
   shift_type_id: z.string().uuid(),
@@ -362,39 +353,6 @@ export const shiftTimeSnapshotSchema = z.object({
   timezone: availabilityTimezoneSchema,
 });
 export type ShiftTimeSnapshot = z.infer<typeof shiftTimeSnapshotSchema>;
-
-export function resolveShiftAssessmentTime(input: {
-  time_basis: ShiftTimeBasis;
-  start_time?: string | null;
-  end_time?: string | null;
-  snapshot?: ShiftTimeSnapshot | null;
-}): { basis: ShiftTimeBasis; start: string | null; end: string | null } {
-  if (
-    input.time_basis === "explicit" &&
-    input.start_time &&
-    input.end_time &&
-    input.start_time !== input.end_time
-  )
-    return { basis: "explicit", start: input.start_time, end: input.end_time };
-  if (
-    input.time_basis === "type_default" &&
-    input.snapshot &&
-    input.snapshot.start_time !== input.snapshot.end_time
-  )
-    return {
-      basis: "type_default",
-      start: input.snapshot.start_time,
-      end: input.snapshot.end_time,
-    };
-  return {
-    basis:
-      input.time_basis === "legacy_unverified"
-        ? "legacy_unverified"
-        : "unresolved",
-    start: null,
-    end: null,
-  };
-}
 
 export const availabilityPublicationLockSchema = z.object({
   location_id: z.string().uuid(),
