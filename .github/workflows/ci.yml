@@ -67,18 +67,21 @@ jobs:
       - name: Keep CI's Supabase apart from the shared local stack
         id: apart
         run: bash scripts/ci-supabase-apart.sh
-      # BL-112: two jobs' `supabase start` landing in the same second has hit
-      # Docker Desktop's WSL2 port-forwarding proxy failing one of them with
-      # "forwards/expose returned unexpected status: 500" -- transient, gone
-      # on retry, seen only when starts overlap.
+      # BL-112: three jobs' `supabase start` landing in the same second --
+      # ~25 containers registering ports with Docker Desktop's WSL2 proxy at
+      # once -- has failed one of them with "forwards/expose returned
+      # unexpected status: 500", repeatedly enough that 3 quick retries
+      # weren't always enough. A per-runner stagger spreads the registration
+      # load; the retries stay as a second line of defence.
       - name: Start Supabase (database, auth, storage, realtime)
         run: |
-          for attempt in 1 2 3; do
+          sleep $(( (CI_RUNNER_INDEX - 1) * 8 ))
+          for attempt in 1 2 3 4 5; do
             supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector && break
-            [ "$attempt" = 3 ] && exit 1
+            [ "$attempt" = 5 ] && exit 1
             echo "::warning::supabase start failed (attempt $attempt), retrying"
             supabase stop --no-backup || true
-            sleep $((attempt * 5))
+            sleep $((attempt * 8))
           done
       - name: pgTAP (green list)
         run: supabase test db $(tr -d '\r' < supabase/tests/ci-green.txt)
@@ -114,18 +117,21 @@ jobs:
       - name: Keep CI's Supabase apart from the shared local stack
         id: apart
         run: bash scripts/ci-supabase-apart.sh
-      # BL-112: two jobs' `supabase start` landing in the same second has hit
-      # Docker Desktop's WSL2 port-forwarding proxy failing one of them with
-      # "forwards/expose returned unexpected status: 500" -- transient, gone
-      # on retry, seen only when starts overlap.
+      # BL-112: three jobs' `supabase start` landing in the same second --
+      # ~25 containers registering ports with Docker Desktop's WSL2 proxy at
+      # once -- has failed one of them with "forwards/expose returned
+      # unexpected status: 500", repeatedly enough that 3 quick retries
+      # weren't always enough. A per-runner stagger spreads the registration
+      # load; the retries stay as a second line of defence.
       - name: Start Supabase (database, auth, gateway)
         run: |
-          for attempt in 1 2 3; do
+          sleep $(( (CI_RUNNER_INDEX - 1) * 8 ))
+          for attempt in 1 2 3 4 5; do
             supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector && break
-            [ "$attempt" = 3 ] && exit 1
+            [ "$attempt" = 5 ] && exit 1
             echo "::warning::supabase start failed (attempt $attempt), retrying"
             supabase stop --no-backup || true
-            sleep $((attempt * 5))
+            sleep $((attempt * 8))
           done
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test -c e2e/playwright.config.ts
