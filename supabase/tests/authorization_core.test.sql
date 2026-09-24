@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(37);
+select plan(43);
 
 -- The authorization core (FOUNDATION-B stage 4a): how it says no, what a
 -- blank, unknown or foreign target gets, what scope_set() returns, and what
@@ -153,6 +153,35 @@ select is(pg_temp.reason('ayse', 'settings.jobs.write'), 'missing_permission', '
 
 update app_private.authz_settings set scope_model = 'M2';
 select is(pg_temp.reason('ayse', 'employee.save', null, tests.id('ac:ali')), 'allowed', 'M2: a manager edits a person who also works elsewhere');
+
+-- 7. The one call that tells the API who is asking (stage 4c) ------------------------
+
+create temporary table context_of as
+select person, c.*
+from (values ('owner'), ('ayse'), ('emre')) who (person)
+cross join lateral public.resolve_workspace_context_service(tests.user('ac:' || who.person), tests.id('ac')) c;
+
+select ok(
+  (select 'settings.jobs.write' = any (actions) and 'workspace.close' = any (actions) from context_of where person = 'owner'),
+  'the owner may write settings and close the workspace'
+);
+select ok(
+  (select 'schedule.edit' = any (actions) and not 'settings.jobs.write' = any (actions) from context_of where person = 'ayse'),
+  'a manager may edit schedules and may not write organization settings'
+);
+select is(
+  (select array(select a from unnest(actions) a where a not in (
+     select key from app_private.authz_actions where scope_class in ('account', 'own'))) from context_of where person = 'emre'),
+  '{}'::text[],
+  'an employee may take their own actions and nothing else'
+);
+select is((select location_ids from context_of where person = 'ayse'), array[tests.id('ac:K')], 'a manager''s locations are where they work');
+select is((select location_ids from context_of where person = 'owner'), '{}'::uuid[], 'the owner is not limited to locations');
+select is(
+  (select count(*)::integer from public.resolve_workspace_context_service(tests.user('ac:sami'), tests.id('ac'))),
+  0,
+  'a suspended member gets no context'
+);
 
 select * from finish();
 rollback;

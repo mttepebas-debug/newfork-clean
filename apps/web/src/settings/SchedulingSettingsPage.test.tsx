@@ -43,6 +43,7 @@ const context: ActiveWorkspaceContext = {
     "settings.schedule_rules.read",
     "settings.schedule_rules.manage",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 4 },
   locationScope: { allLocations: true, locationIds: [] },
 };

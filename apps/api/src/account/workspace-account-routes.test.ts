@@ -45,6 +45,7 @@ const context = {
     allLocations: true,
   },
   permissions: ["workspace.manage"],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2, revision: 1 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;

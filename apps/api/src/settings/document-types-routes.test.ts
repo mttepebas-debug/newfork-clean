@@ -36,6 +36,7 @@ const context: ActiveWorkspaceContext = {
     allLocations: true,
   },
   permissions: ["documents.read", "documents.manage"],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 };

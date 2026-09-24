@@ -14,6 +14,7 @@ import {
 } from "@newfork/shared";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { createUserVerifier } from "../auth/verify-user.js";
 import { rpcFailure } from "../http-error.js";
 import { z } from "zod";
 
@@ -338,10 +339,9 @@ const leaveResultSchema = z
   }));
 
 async function authenticatedUser(client: SupabaseClient, accessToken: string) {
-  const { data, error } = await client.auth.getUser(accessToken);
-  if (error || !data.user)
-    throw new Error("Valid authenticated account required");
-  return data.user;
+  const user = await createUserVerifier(client)(accessToken);
+  if (!user) throw new Error("Valid authenticated account required");
+  return user;
 }
 
 async function numericRpc(

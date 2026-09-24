@@ -17,6 +17,7 @@ import {
 } from "@newfork/shared";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { createUserVerifier } from "../auth/verify-user.js";
 
 export class DocumentLifecycleError extends Error {
   constructor(
@@ -171,14 +172,18 @@ export function createDocumentLifecycleService(options: {
 export function createDocumentLifecycleServiceWithClient(
   client: SupabaseClient,
 ): DocumentLifecycleService {
-  async function actor(token: string) {
-    const { data, error } = await client.auth.getUser(token);
-    if (error || !data.user)
+  const verifyUser = createUserVerifier(client);
+  async function currentUser(token: string) {
+    const user = await verifyUser(token);
+    if (!user)
       throw new DocumentLifecycleError(
         "A current authenticated account is required",
         "401",
       );
-    return data.user.id;
+    return user;
+  }
+  async function actor(token: string) {
+    return (await currentUser(token)).id;
   }
   async function rpc(
     name: string,
@@ -258,13 +263,8 @@ export function createDocumentLifecycleServiceWithClient(
       );
     },
     async acknowledge(token, workspaceId, requirementId, value) {
-      const { data, error } = await client.auth.getUser(token);
-      if (error || !data.user)
-        throw new DocumentLifecycleError(
-          "A current authenticated account is required",
-          "401",
-        );
-      const authenticatedAt = Date.parse(data.user.last_sign_in_at ?? "");
+      const user = await currentUser(token);
+      const authenticatedAt = Date.parse(user.last_sign_in_at ?? "");
       if (
         !Number.isFinite(authenticatedAt) ||
         Date.now() - authenticatedAt > 30 * 60 * 1000
@@ -274,14 +274,14 @@ export function createDocumentLifecycleServiceWithClient(
           "22023",
         );
       await detailFor(
-        data.user.id,
+        user.id,
         { workspaceId, selfOnly: true },
         requirementId,
       );
       const input = documentAcknowledgeCommandSchema.parse(value);
       return numeric(
         await rpc("acknowledge_document_lifecycle_service", {
-          actor_user_id: data.user.id,
+          actor_user_id: user.id,
           target_workspace_id: workspaceId,
           target_requirement_id: requirementId,
           expected_revision: input.revision,

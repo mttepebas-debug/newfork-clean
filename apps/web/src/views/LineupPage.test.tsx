@@ -50,6 +50,7 @@ const context = {
     "schedule.lineup.manage",
     "schedule.lineup.share",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;

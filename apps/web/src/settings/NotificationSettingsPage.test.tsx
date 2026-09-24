@@ -38,6 +38,7 @@ const context = {
   get permissions() {
     return permissions;
   },
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;

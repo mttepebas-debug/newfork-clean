@@ -40,6 +40,7 @@ const mismatchedContext: ActiveWorkspaceContext = {
     "time.read.own",
     "time.correction.request.own",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2, revision: 1 },
   locationScope: { allLocations: true, locationIds: [] },
 };

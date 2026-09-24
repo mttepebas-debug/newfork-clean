@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { createUserVerifier } from "../auth/verify-user.js";
 import {
   shiftAvailabilityAssessmentSchema,
   type ScheduleShiftMutationInput,
@@ -19,6 +20,7 @@ export function createAvailabilityService(options: {
   const client = createClient(options.url, options.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const verifyUser = createUserVerifier(client);
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
     if (error)
@@ -26,8 +28,8 @@ export function createAvailabilityService(options: {
     return data;
   }
   async function onboardingIdentity(token: string, workspaceId?: string) {
-    const { data, error } = await client.auth.getUser(token);
-    if (error || !data.user)
+    const user = await verifyUser(token);
+    if (!user)
       throw Object.assign(
         new Error("Sign in to review onboarding availability"),
         { code: "42501" },
@@ -40,11 +42,11 @@ export function createAvailabilityService(options: {
       })
       .parse(
         await rpc("get_employee_onboarding_service", {
-          target_user_id: data.user.id,
+          target_user_id: user.id,
           ...(workspaceId ? { target_workspace_id: workspaceId } : {}),
         }),
       );
-    return { actor: data.user.id, ...context };
+    return { actor: user.id, ...context };
   }
   async function weeklyOnboardingIdentity(token: string, command?: WeeklyPreferenceSave, workspaceId?: string) {
     const identity = await onboardingIdentity(token, workspaceId);

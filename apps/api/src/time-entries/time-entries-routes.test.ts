@@ -43,6 +43,7 @@ const mismatchedContext: ActiveWorkspaceContext = {
     "time.correction.review.location",
     "time.review.approve.location",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2, revision: 1 },
   locationScope: { allLocations: true, locationIds: [] },
 };

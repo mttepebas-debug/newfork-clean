@@ -46,6 +46,7 @@ const context: ActiveWorkspaceContext = {
     "settings.shift_catalog.read",
     "settings.shift_catalog.manage",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 };

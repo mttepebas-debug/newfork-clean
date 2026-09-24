@@ -243,7 +243,6 @@ insert into service_class values
   ('reset_employee_onboarding_service', 'onboarding.self'),
   ('reset_notification_policies_service', 'settings.notifications.write'),
   ('reset_owner_onboarding_service', 'workspace.setup'),
-  ('resolve_active_workspace_service', 'account.self'),
   ('resolve_notification_in_app_policy_v1_service', 'exempt:predicate'),
   ('resolve_notification_policy_v1_service', 'exempt:predicate'),
   ('resolve_schedule_shift_change_request_service', 'exempt:retiring-shift-change'),

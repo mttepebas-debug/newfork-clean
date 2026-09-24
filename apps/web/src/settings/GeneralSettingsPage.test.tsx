@@ -36,6 +36,7 @@ const context = {
     "settings.general.read",
     "settings.general.manage",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 4 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;

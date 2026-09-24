@@ -77,9 +77,15 @@ export function rpcFailure(
   },
   fallbackStatus = 400,
 ): HttpError {
+  // The authorization core says no with 42501 and its reason in the hint; to
+  // somebody who is not a member the workspace is simply not there.
+  const status =
+    error.hint === "authz.not_member"
+      ? 404
+      : (statusForPostgresCode(error.code) ?? fallbackStatus);
   return new HttpError(
     error.message,
-    statusForPostgresCode(error.code) ?? fallbackStatus,
+    status,
     {
       pgCode: error.code,
       reason: error.hint ?? undefined,

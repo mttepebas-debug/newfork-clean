@@ -41,6 +41,7 @@ const context = {
     "announcements.read",
     "notifications.read",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;

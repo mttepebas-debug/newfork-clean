@@ -42,7 +42,7 @@ select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001
 select is((select count(*)::integer from public.workspaces), 2, 'member sees own workspaces');
 select is((select public.workspace_role_for('20000000-0000-4000-8000-000000000001')), 'owner'::public.workspace_role, 'member role resolves');
 set local role service_role;
-select is((select count(*)::integer from public.resolve_active_workspace_service('10000000-0000-4000-8000-000000000001')), 0, 'multiple active workspaces without a default do not resolve randomly');
+select is((select count(*)::integer from public.resolve_workspace_context_service('10000000-0000-4000-8000-000000000001')), 0, 'multiple active workspaces without a default do not resolve randomly');
 select is((select count(*)::integer from public.list_my_workspaces_service('10000000-0000-4000-8000-000000000001')), 3, 'same account can belong to active and non-active workspaces');
 select is(
   (
@@ -68,7 +68,7 @@ select lives_ok(
     values ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000002')$$,
   'direct active workspace preference accepts an active membership'
 );
-select is((select count(*)::integer from public.resolve_active_workspace_service('10000000-0000-4000-8000-000000000001')), 1, 'active workspace resolves after explicit default selection');
+select is((select count(*)::integer from public.resolve_workspace_context_service('10000000-0000-4000-8000-000000000001')), 1, 'active workspace resolves after explicit default selection');
 select throws_ok(
   $$update public.user_workspace_preferences
     set active_workspace_id = '20000000-0000-4000-8000-000000000003'

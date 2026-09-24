@@ -42,6 +42,7 @@ const context = {
     "kiosk.pin.reset.location",
     "kiosk.audit.read.location",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: false, locationIds: [locationId] },
 } satisfies ActiveWorkspaceContext;

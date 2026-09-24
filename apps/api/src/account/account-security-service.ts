@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 import { rpcFailure } from "../http-error.js";
+import { createUserVerifier } from "../auth/verify-user.js";
 
 export interface AccountSecurityState {
   readonly email: string;
@@ -130,11 +131,12 @@ export function createAccountSecurityService(options: {
     return payload;
   }
 
+  const verifyUser = createUserVerifier(authClient);
   const authGateway: AccountAuthGateway = {
     async getUser(accessToken) {
-      const { data, error } = await authClient.auth.getUser(accessToken);
-      if (error || !data.user) throw new Error("Valid bearer session required");
-      return data.user;
+      const user = await verifyUser(accessToken);
+      if (!user) throw new Error("Valid bearer session required");
+      return user;
     },
     updateEmail(accessToken, email) {
       return authRequest(

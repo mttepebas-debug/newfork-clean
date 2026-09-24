@@ -28,6 +28,7 @@ const resolvedContext: ActiveWorkspaceContext = {
     status: "active",
     allLocations: true,
   },
+  actions: [],
   permissions: [
     "workspace.read",
     "workspace.manage",

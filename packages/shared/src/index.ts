@@ -671,6 +671,9 @@ export const activeWorkspaceContextSchema = z
     membership: workspaceMembershipSchema,
     documentAccess: z.object({ restricted: z.boolean() }).optional(),
     permissions: z.array(permissionSchema),
+    // What the authorization core lets this person do somewhere in the
+    // workspace (app_private.actor_actions); gates read this, not permissions.
+    actions: z.array(z.string()).default([]),
     onboarding: workspaceOnboardingSchema.default({
       status: "complete",
       currentStep: 2,
@@ -734,16 +737,20 @@ export const activeWorkspaceRowSchema = z.object({
   onboarding_status: onboardingStatusSchema.default("complete"),
   onboarding_current_step: z.coerce.number().int().min(1).max(4).default(2),
   onboarding_revision: z.coerce.number().int().positive().default(1),
+  actions: z.array(z.string()),
+  location_ids: z.array(z.string().uuid()),
+  document_restricted: z.boolean(),
 });
 export type ActiveWorkspaceRow = z.infer<typeof activeWorkspaceRowSchema>;
 
 export function activeWorkspaceContextFromRow(
   input: unknown,
-  locationIds: readonly string[] = [],
 ): ActiveWorkspaceContext {
   const row = activeWorkspaceRowSchema.parse(input);
   return activeWorkspaceContextSchema.parse({
     userId: row.user_id,
+    actions: row.actions,
+    documentAccess: { restricted: row.document_restricted },
     workspace: {
       id: row.workspace_id,
       name: row.workspace_name,
@@ -785,7 +792,7 @@ export function activeWorkspaceContextFromRow(
     },
     locationScope: {
       allLocations: row.all_locations,
-      locationIds: row.all_locations ? [] : [...locationIds],
+      locationIds: row.all_locations ? [] : row.location_ids,
     },
   });
 }

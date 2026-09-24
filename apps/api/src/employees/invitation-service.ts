@@ -6,6 +6,7 @@ import {
 } from "@newfork/shared";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { createUserVerifier } from "../auth/verify-user.js";
 import { HttpError, rpcFailure } from "../http-error.js";
 
 export interface PrepareEmployeeInvitationInput {
@@ -292,10 +293,9 @@ export function createEmployeeInvitationService(
 }
 
 async function resolveActor(client: SupabaseClient, accessToken: string) {
-  const user = await client.auth.getUser(accessToken);
-  if (user.error || !user.data.user)
-    throw new Error("Valid authenticated account required");
-  return user.data.user;
+  const user = await createUserVerifier(client)(accessToken);
+  if (!user) throw new Error("Valid authenticated account required");
+  return user;
 }
 
 async function initializeEmployeeOnboarding(

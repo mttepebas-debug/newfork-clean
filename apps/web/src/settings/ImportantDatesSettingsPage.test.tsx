@@ -48,6 +48,7 @@ const context = {
     "important_dates.read",
     "important_dates.manage",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;

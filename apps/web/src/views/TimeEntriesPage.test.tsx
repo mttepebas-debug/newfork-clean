@@ -47,6 +47,7 @@ const context = {
     "time.correction.review.location",
     "time.review.approve.location",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;

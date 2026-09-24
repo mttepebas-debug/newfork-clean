@@ -37,6 +37,7 @@ const context = {
     "schedule.shift_change_requests.read",
     "schedule.shift_change_requests.manage",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;

@@ -130,6 +130,7 @@ const context = {
     "employees.private.manage",
     "employee_access.read",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;

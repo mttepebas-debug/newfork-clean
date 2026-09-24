@@ -55,6 +55,7 @@ const { context } = vi.hoisted(() => ({
       allLocations: true,
     },
     permissions: ["workspace.read", "schedule.read"],
+    actions: [],
     onboarding: { status: "complete", currentStep: 2 },
     locationScope: { allLocations: true, locationIds: [] },
   } as ActiveWorkspaceContext,

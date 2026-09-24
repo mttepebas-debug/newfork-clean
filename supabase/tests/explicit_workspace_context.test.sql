@@ -26,16 +26,12 @@ values
   ('20000000-0000-4000-8000-000000000092', 'complete', 2, now(), '10000000-0000-4000-8000-000000000093');
 
 select ok(
-  not has_table_privilege('authenticated', 'public.membership_location_scopes', 'select'),
-  'the browser does not read where members work; the server derives it'
+  not has_table_privilege('authenticated', 'public.membership_location_scopes', 'select')
+    and not has_table_privilege('service_role', 'public.membership_location_scopes', 'select'),
+  'nobody outside the database reads where members work; the context call returns it'
 );
 
 set local role service_role;
-
-select ok(
-  has_table_privilege('service_role', 'public.membership_location_scopes', 'select'),
-  'service role can read membership location scopes for active workspace context projection'
-);
 
 select is(
   (select count(*)::integer from public.resolve_workspace_context_service('10000000-0000-4000-8000-000000000091', null)),

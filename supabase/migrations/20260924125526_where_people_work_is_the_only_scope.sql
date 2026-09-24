@@ -7,7 +7,8 @@
 -- database). It is now a view of the assignments themselves: a member's
 -- locations are where they work, the rule app_private.actor() uses. Its
 -- readers keep reading it until their domain moves to the authorization core
--- (stage 6). Only the server reads it.
+-- (stage 6). Only database functions read it: the API asks
+-- resolve_workspace_context_service (stage 4c).
 
 drop trigger bl051_sync_assignment_scope on public.employee_location_assignments;
 drop trigger bl051_sync_employee_scope on public.employee_profiles;
@@ -338,5 +339,4 @@ group by membership.id, membership.workspace_id, assignment.location_id;
 comment on view public.membership_location_scopes is
   'Where each member works: their active location assignments. Derived, never written; readers move to app_private.scope_set() in stage 6.';
 
-revoke all on public.membership_location_scopes from public, anon, authenticated;
-grant select on public.membership_location_scopes to service_role;
+revoke all on public.membership_location_scopes from public, anon, authenticated, service_role;

@@ -41,6 +41,7 @@ const context: ActiveWorkspaceContext = {
     allLocations: true,
   },
   permissions: ["signature_templates.read", "signature_templates.manage"],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 };

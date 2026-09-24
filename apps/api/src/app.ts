@@ -948,12 +948,8 @@ function createResolverFromEnvironment(): WorkspaceContextResolver | null {
   const url = process.env.SUPABASE_URL;
   const anonKey = process.env.SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !anonKey) return null;
-  return createSupabaseWorkspaceContextResolver({
-    url,
-    anonKey,
-    ...(serviceRoleKey ? { serviceRoleKey } : {}),
-  });
+  if (!url || !anonKey || !serviceRoleKey) return null;
+  return createSupabaseWorkspaceContextResolver({ url, anonKey, serviceRoleKey });
 }
 
 function createWorkspaceAccountServiceFromEnvironment(): WorkspaceAccountService | null {

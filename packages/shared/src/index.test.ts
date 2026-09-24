@@ -951,11 +951,15 @@ describe("shared contracts", () => {
         all_locations: false,
         onboarding_status: "complete",
         onboarding_current_step: 2,
+        actions: ["workspace.read", "employee_hub.read"],
+        location_ids: ["f034b748-2dbc-4f2a-b581-cb24f91d6499"],
+        document_restricted: true,
       },
-      ["f034b748-2dbc-4f2a-b581-cb24f91d6499"],
     );
 
     expect(context.membership.role).toBe("employee");
+    expect(context.actions).toEqual(["workspace.read", "employee_hub.read"]);
+    expect(context.documentAccess).toEqual({ restricted: true });
     expect(context.membership.roleName).toBe("Host");
     expect(context.permissions).toEqual([
       "workspace.read",
@@ -974,21 +978,21 @@ describe("shared contracts", () => {
     });
   });
 
-  it("drops stale scoped location IDs from all-location workspace contexts", () => {
-    const context = activeWorkspaceContextFromRow(
-      {
-        user_id: userId,
-        workspace_id: workspaceId,
-        workspace_name: "Northstar",
-        membership_id: membershipId,
-        workspace_role: "admin",
-        all_locations: true,
-        onboarding_status: "complete",
-        onboarding_current_step: 4,
-        onboarding_revision: 3,
-      },
-      ["f034b748-2dbc-4f2a-b581-cb24f91d6499"],
-    );
+  it("keeps an all-location context unlimited whatever locations come with it", () => {
+    const context = activeWorkspaceContextFromRow({
+      user_id: userId,
+      workspace_id: workspaceId,
+      workspace_name: "Northstar",
+      membership_id: membershipId,
+      workspace_role: "admin",
+      all_locations: true,
+      onboarding_status: "complete",
+      onboarding_current_step: 4,
+      onboarding_revision: 3,
+      actions: [],
+      location_ids: ["f034b748-2dbc-4f2a-b581-cb24f91d6499"],
+      document_restricted: false,
+    });
 
     expect(context.membership.allLocations).toBe(true);
     expect(context.onboarding.revision).toBe(3);
@@ -1010,6 +1014,9 @@ describe("shared contracts", () => {
         all_locations: true,
         onboarding_status: "complete",
         onboarding_current_step: 4,
+        actions: [],
+        location_ids: [],
+        document_restricted: false,
       }),
     ).toThrow();
 
@@ -1023,6 +1030,9 @@ describe("shared contracts", () => {
         all_locations: true,
         onboarding_status: "complete",
         onboarding_current_step: 5,
+        actions: [],
+        location_ids: [],
+        document_restricted: false,
       }),
     ).toThrow();
   });

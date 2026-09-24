@@ -26,6 +26,7 @@ const context: ActiveWorkspaceContext = {
     allLocations: true,
   },
   permissions: ["schedule.conflict_rules.manage"],
+  actions: [],
   onboarding: { status: "complete", currentStep: 4 },
   locationScope: { allLocations: true, locationIds: [] },
 };

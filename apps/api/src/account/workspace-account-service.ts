@@ -11,6 +11,7 @@ import {
 import { createClient } from "@supabase/supabase-js";
 
 import { rpcFailure } from "../http-error.js";
+import { createUserVerifier } from "../auth/verify-user.js";
 
 export interface WorkspaceAccountService {
   listWorkspaces(accessToken: string): Promise<WorkspaceSummary[]>;
@@ -142,13 +143,14 @@ export function createWorkspaceAccountService(options: {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
+  const verifyUser = createUserVerifier(authClient);
   return createWorkspaceAccountServiceWithClients({
     rpcClient,
     authAdminClient: rpcClient,
     resolveActorUserId: async (accessToken) => {
-      const { data, error } = await authClient.auth.getUser(accessToken);
-      if (error || !data.user) throw new Error("Valid bearer session required");
-      return data.user.id;
+      const user = await verifyUser(accessToken);
+      if (!user) throw new Error("Valid bearer session required");
+      return user.id;
     },
   });
 }

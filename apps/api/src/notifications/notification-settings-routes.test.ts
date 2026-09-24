@@ -32,6 +32,7 @@ const context = {
     "notifications.settings.write",
     "notifications.test_send",
   ],
+  actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;

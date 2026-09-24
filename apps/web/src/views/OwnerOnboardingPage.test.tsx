@@ -147,6 +147,7 @@ function contextForStep(currentStep: 1 | 2 | 3 | 4): ActiveWorkspaceContext {
       allLocations: true,
     },
     permissions: ["workspace.read", "workspace.manage", "employees.manage"],
+    actions: [],
     onboarding: { status: "incomplete", currentStep, revision: 1 },
     locationScope: { allLocations: true, locationIds: [] },
   };

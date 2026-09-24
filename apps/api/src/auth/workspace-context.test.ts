@@ -78,12 +78,43 @@ beforeEach(() => {
   mocks.createClient.mockClear();
 });
 
+// A row as resolve_workspace_context_service returns it.
+function contextRow(overrides: Record<string, unknown> = {}) {
+  return {
+    user_id: userId,
+    workspace_id: workspaceId,
+    workspace_name: "Scoped Bistro",
+    membership_id: membershipId,
+    workspace_role: "employee",
+    permission_keys: ["workspace.read"],
+    all_locations: true,
+    onboarding_status: "complete",
+    onboarding_current_step: 4,
+    onboarding_revision: 1,
+    actions: [],
+    location_ids: [],
+    document_restricted: false,
+    ...overrides,
+  };
+}
+
+function createResolver() {
+  return createSupabaseWorkspaceContextResolver({
+    url: "https://example.supabase.co",
+    anonKey: "anon",
+    serviceRoleKey: "service-role",
+  });
+}
+
 describe("createSupabaseWorkspaceContextResolver", () => {
-  it("records a restricted security audit when explicit workspace context is denied", async () => {
+  beforeEach(() => {
     mocks.authGetUser.mockResolvedValue({
       data: { user: { id: userId } },
       error: null,
     });
+  });
+
+  it("records a restricted security audit when explicit workspace context is denied", async () => {
     mocks.serviceRpc
       .mockResolvedValueOnce({ data: [], error: null })
       .mockResolvedValueOnce({
@@ -91,285 +122,100 @@ describe("createSupabaseWorkspaceContextResolver", () => {
         error: null,
       });
 
-    const resolver = createSupabaseWorkspaceContextResolver({
-      url: "https://example.supabase.co",
-      anonKey: "anon",
-      serviceRoleKey: "service-role",
+    await expect(createResolver().resolve("valid-token", workspaceId)).resolves.toBe(null);
+
+    expect(mocks.serviceRpc).toHaveBeenNthCalledWith(1, "resolve_workspace_context_service", {
+      actor_user_id: userId,
+      target_workspace_id: workspaceId,
     });
-
-    await expect(resolver.resolve("valid-token", workspaceId)).resolves.toBe(
-      null,
-    );
-
-    expect(mocks.serviceRpc).toHaveBeenNthCalledWith(
-      1,
-      "resolve_workspace_context_service",
-      {
-        actor_user_id: userId,
-        target_workspace_id: workspaceId,
-      },
-    );
-    expect(mocks.serviceRpc).toHaveBeenNthCalledWith(
-      2,
-      "record_security_audit_event_service",
-      {
-        actor_user_id: userId,
-        target_workspace_id: null,
-        event_type: "tenant.workspace_context_denied",
-        surface: "workspace_context.resolve",
-        resource_type: "workspace",
-        raw_resource_id: workspaceId,
-        metadata: { reason: "workspace_context_not_resolved" },
-      },
-    );
+    expect(mocks.serviceRpc).toHaveBeenNthCalledWith(2, "record_security_audit_event_service", {
+      actor_user_id: userId,
+      target_workspace_id: null,
+      event_type: "tenant.workspace_context_denied",
+      surface: "workspace_context.resolve",
+      resource_type: "workspace",
+      raw_resource_id: workspaceId,
+      metadata: { reason: "workspace_context_not_resolved" },
+    });
   });
 
-  it("does not write a security audit when default active context is absent", async () => {
-    mocks.authGetUser.mockResolvedValue({
-      data: { user: { id: userId } },
-      error: null,
-    });
+  it("asks for the default workspace with the same call and writes no audit when there is none", async () => {
     mocks.serviceRpc.mockResolvedValueOnce({ data: [], error: null });
 
-    const resolver = createSupabaseWorkspaceContextResolver({
-      url: "https://example.supabase.co",
-      anonKey: "anon",
-      serviceRoleKey: "service-role",
-    });
-
-    await expect(resolver.resolve("valid-token")).resolves.toBe(null);
+    await expect(createResolver().resolve("valid-token")).resolves.toBe(null);
 
     expect(mocks.serviceRpc).toHaveBeenCalledTimes(1);
-    expect(mocks.serviceRpc).toHaveBeenCalledWith(
-      "resolve_active_workspace_service",
-      { actor_user_id: userId },
-    );
+    expect(mocks.serviceRpc).toHaveBeenCalledWith("resolve_workspace_context_service", {
+      actor_user_id: userId,
+      target_workspace_id: null,
+    });
   });
 
   it("rejects an explicit workspace row that belongs to another account and records a restricted audit", async () => {
-    mocks.authGetUser.mockResolvedValue({
-      data: { user: { id: userId } },
-      error: null,
-    });
     mocks.serviceRpc
       .mockResolvedValueOnce({
-        data: [
-          {
-            user_id: "10000000-0000-4000-8000-000000000099",
-            workspace_id: workspaceId,
-            workspace_name: "Scoped Bistro",
-            membership_id: membershipId,
-            workspace_role: "employee",
-            permission_keys: ["workspace.read"],
-            all_locations: true,
-            onboarding_status: "complete",
-            onboarding_current_step: 4,
-            onboarding_revision: 1,
-          },
-        ],
+        data: [contextRow({ user_id: "10000000-0000-4000-8000-000000000099" })],
         error: null,
       })
-      .mockResolvedValueOnce({
-        data: "90000000-0000-4000-8000-000000000001",
-        error: null,
-      });
+      .mockResolvedValueOnce({ data: "90000000-0000-4000-8000-000000000001", error: null });
 
-    const resolver = createSupabaseWorkspaceContextResolver({
-      url: "https://example.supabase.co",
-      anonKey: "anon",
-      serviceRoleKey: "service-role",
-    });
-
-    await expect(resolver.resolve("valid-token", workspaceId)).resolves.toBe(
-      null,
-    );
+    await expect(createResolver().resolve("valid-token", workspaceId)).resolves.toBe(null);
 
     expect(mocks.serviceRpc).toHaveBeenNthCalledWith(
       2,
       "record_security_audit_event_service",
-      {
-        actor_user_id: userId,
-        target_workspace_id: null,
-        event_type: "tenant.workspace_context_denied",
-        surface: "workspace_context.resolve",
-        resource_type: "workspace",
-        raw_resource_id: workspaceId,
-        metadata: { reason: "workspace_context_not_resolved" },
-      },
+      expect.objectContaining({ raw_resource_id: workspaceId }),
     );
   });
 
-  it("rejects a default workspace row that belongs to another account without writing explicit-context audit", async () => {
-    mocks.authGetUser.mockResolvedValue({
-      data: { user: { id: userId } },
-      error: null,
-    });
+  it("rejects a default workspace row that belongs to another account without an audit", async () => {
     mocks.serviceRpc.mockResolvedValueOnce({
-      data: [
-        {
-          user_id: "10000000-0000-4000-8000-000000000099",
-          workspace_id: workspaceId,
-          workspace_name: "Scoped Bistro",
-          membership_id: membershipId,
-          workspace_role: "employee",
-          permission_keys: ["workspace.read"],
-          all_locations: true,
-          onboarding_status: "complete",
-          onboarding_current_step: 4,
-          onboarding_revision: 1,
-        },
-      ],
+      data: [contextRow({ user_id: "10000000-0000-4000-8000-000000000099" })],
       error: null,
     });
 
-    const resolver = createSupabaseWorkspaceContextResolver({
-      url: "https://example.supabase.co",
-      anonKey: "anon",
-      serviceRoleKey: "service-role",
-    });
-
-    await expect(resolver.resolve("valid-token")).resolves.toBe(null);
+    await expect(createResolver().resolve("valid-token")).resolves.toBe(null);
 
     expect(mocks.serviceRpc).toHaveBeenCalledTimes(1);
-    expect(mocks.serviceRpc).toHaveBeenCalledWith(
-      "resolve_active_workspace_service",
-      { actor_user_id: userId },
-    );
   });
 
-  it("loads explicit scoped location IDs through the service client", async () => {
+  it("takes a manager's locations, the core's actions and document access from the one call", async () => {
     const locationIdA = "40000000-0000-4000-8000-000000000001";
     const locationIdB = "40000000-0000-4000-8000-000000000002";
-    mocks.authGetUser.mockResolvedValue({
-      data: { user: { id: userId } },
-      error: null,
-    });
     mocks.serviceRpc.mockResolvedValueOnce({
       data: [
-        {
-          user_id: userId,
-          workspace_id: workspaceId,
-          workspace_name: "Scoped Bistro",
-          membership_id: membershipId,
+        contextRow({
           workspace_role: "manager",
           permission_keys: ["workspace.read", "employees.read"],
           all_locations: false,
-          onboarding_status: "complete",
-          onboarding_current_step: 4,
-          onboarding_revision: 1,
-        },
+          location_ids: [locationIdA, locationIdB],
+          actions: ["employee.read", "schedule.read"],
+          document_restricted: true,
+        }),
       ],
       error: null,
     });
-    mocks.serviceEq.mockResolvedValueOnce({
-      data: [{ location_id: locationIdA }, { location_id: locationIdB }],
-      error: null,
-    });
 
-    const resolver = createSupabaseWorkspaceContextResolver({
-      url: "https://example.supabase.co",
-      anonKey: "anon",
-      serviceRoleKey: "service-role",
-    });
-
-    const context = await resolver.resolve("valid-token", workspaceId);
+    const context = await createResolver().resolve("valid-token", workspaceId);
 
     expect(context?.locationScope).toEqual({
       allLocations: false,
       locationIds: [locationIdA, locationIdB],
     });
-    expect(mocks.serviceRpc).toHaveBeenCalledWith(
-      "resolve_workspace_context_service",
-      {
-        actor_user_id: userId,
-        target_workspace_id: workspaceId,
-      },
-    );
-    expect(mocks.serviceFrom).toHaveBeenCalledWith(
-      "membership_location_scopes",
-    );
-    expect(mocks.serviceSelect).toHaveBeenCalledWith("location_id");
-    expect(mocks.serviceEq).toHaveBeenCalledWith("membership_id", membershipId);
+    expect(context?.actions).toEqual(["employee.read", "schedule.read"]);
+    expect(context?.documentAccess).toEqual({ restricted: true });
+    expect(mocks.serviceRpc).toHaveBeenCalledTimes(1);
+    expect(mocks.serviceFrom).not.toHaveBeenCalled();
   });
 
-  it.each([
-    { label: "pre-migration schema", rpcCode: "PGRST202", columnCode: "42703", allowed: true },
-    { label: "stale RPC cache with lifecycle schema", rpcCode: "PGRST202", columnCode: null, allowed: false },
-    { label: "access service failure", rpcCode: "XX000", columnCode: "42703", allowed: false },
-    { label: "missing dependency inside an installed function", rpcCode: "42883", columnCode: "42703", allowed: false },
-    { label: "schema probe failure", rpcCode: "PGRST202", columnCode: "42501", allowed: false },
-  ])("handles $label without bypassing installed document restrictions", async ({ rpcCode, columnCode, allowed }) => {
-    mocks.authGetUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    mocks.serviceRpc.mockResolvedValueOnce({ data: [{ user_id: userId, workspace_id: workspaceId, workspace_name: "Bistro", membership_id: membershipId, workspace_role: "employee", permission_keys: ["workspace.read"], all_locations: true, onboarding_status: "complete", onboarding_current_step: 4, onboarding_revision: 1 }], error: null })
-      .mockResolvedValueOnce({ data: null, error: { code: rpcCode, message: "Could not find the function public.get_employee_document_access_service(actor_user_id, target_workspace_id) in the schema cache" } });
-    const limit = vi.fn().mockResolvedValue({ data: [], error: columnCode ? { code: columnCode, message: "column lifecycle_revision does not exist" } : null });
-    mocks.serviceSelect.mockReturnValueOnce({ limit });
-    const resolver = createSupabaseWorkspaceContextResolver({ url: "https://example.supabase.co", anonKey: "anon", serviceRoleKey: "service-role" });
-    if (allowed) {
-      const result = await resolver.resolve("valid-token", workspaceId);
-      expect(result?.workspace.id).toBe(workspaceId);
-      expect(result?.documentAccess).toBeUndefined();
-      expect(mocks.serviceFrom).toHaveBeenCalledWith("employee_onboarding_requirements");
-      expect(limit).toHaveBeenCalledWith(0);
-    } else await expect(resolver.resolve("valid-token", workspaceId)).rejects.toThrow("Document access could not be checked");
-  });
-
-  it("skips document access for a workspace whose onboarding is incomplete", async () => {
-    mocks.authGetUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    mocks.serviceRpc.mockResolvedValueOnce({ data: [{ user_id: userId, workspace_id: workspaceId, workspace_name: "Bistro", membership_id: membershipId, workspace_role: "owner", permission_keys: ["workspace.read"], all_locations: true, onboarding_status: "incomplete", onboarding_current_step: 1, onboarding_revision: 1 }], error: null })
-      .mockResolvedValueOnce({ data: null, error: { code: "P0002", message: "workspace unavailable" } });
-    const resolver = createSupabaseWorkspaceContextResolver({ url: "https://example.supabase.co", anonKey: "anon", serviceRoleKey: "service-role" });
-    const result = await resolver.resolve("valid-token", workspaceId);
-    expect(result?.onboarding.status).toBe("incomplete");
-    expect(result?.documentAccess).toBeUndefined();
-    expect(mocks.serviceRpc).not.toHaveBeenCalledWith("get_employee_document_access_service", expect.anything());
-  });
-
-  it("still fails closed when document access errors for a complete workspace", async () => {
-    mocks.authGetUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
-    mocks.serviceRpc.mockResolvedValueOnce({ data: [{ user_id: userId, workspace_id: workspaceId, workspace_name: "Bistro", membership_id: membershipId, workspace_role: "owner", permission_keys: ["workspace.read"], all_locations: true, onboarding_status: "complete", onboarding_current_step: 4, onboarding_revision: 1 }], error: null })
-      .mockResolvedValueOnce({ data: null, error: { code: "P0002", message: "workspace unavailable" } });
-    const resolver = createSupabaseWorkspaceContextResolver({ url: "https://example.supabase.co", anonKey: "anon", serviceRoleKey: "service-role" });
-    await expect(resolver.resolve("valid-token", workspaceId)).rejects.toThrow("Document access could not be checked");
-  });
-
-  it("fails closed instead of widening access when scoped locations cannot be resolved", async () => {
-    mocks.authGetUser.mockResolvedValue({
-      data: { user: { id: userId } },
-      error: null,
-    });
+  it("fails closed when the context call fails", async () => {
     mocks.serviceRpc.mockResolvedValueOnce({
-      data: [
-        {
-          user_id: userId,
-          workspace_id: workspaceId,
-          workspace_name: "Scoped Bistro",
-          membership_id: membershipId,
-          workspace_role: "manager",
-          permission_keys: ["workspace.read", "employees.read"],
-          all_locations: false,
-          onboarding_status: "complete",
-          onboarding_current_step: 4,
-          onboarding_revision: 1,
-        },
-      ],
-      error: null,
-    });
-    mocks.serviceEq.mockResolvedValueOnce({
       data: null,
-      error: {
-        message: "permission denied for table membership_location_scopes",
-      },
+      error: { message: "permission denied for function resolve_workspace_context_service" },
     });
 
-    const resolver = createSupabaseWorkspaceContextResolver({
-      url: "https://example.supabase.co",
-      anonKey: "anon",
-      serviceRoleKey: "service-role",
-    });
-
-    await expect(resolver.resolve("valid-token", workspaceId)).rejects.toThrow(
-      "Location scope resolution failed: permission denied for table membership_location_scopes",
+    await expect(createResolver().resolve("valid-token", workspaceId)).rejects.toThrow(
+      "Workspace context resolution failed: permission denied for function resolve_workspace_context_service",
     );
   });
 });
@@ -394,6 +240,7 @@ describe("resolveWorkspaceAuthorization", () => {
       allLocations: true,
     },
     permissions: ["workspace.manage"],
+    actions: [],
     onboarding: { status: "incomplete", currentStep: 2, revision: 1 },
     locationScope: { allLocations: true, locationIds: [] },
   };
@@ -426,6 +273,7 @@ describe("resolveWorkspaceAuthorization", () => {
       ...context,
       workspace: { ...context.workspace, id: otherWorkspaceId },
       membership: { ...context.membership, workspaceId: otherWorkspaceId },
+      actions: [],
       onboarding: { status: "complete", currentStep: 4, revision: 1 },
     };
     const resolver = { resolve: vi.fn(async () => completeContext) };
@@ -445,6 +293,7 @@ describe("resolveWorkspaceAuthorization", () => {
       ...context,
       workspace: { ...context.workspace, id: otherWorkspaceId },
       membership: { ...context.membership, workspaceId: otherWorkspaceId },
+      actions: [],
       onboarding: { status: "complete", currentStep: 4, revision: 1 },
     };
     const resolver = { resolve: vi.fn(async () => completeContext) };
@@ -475,6 +324,7 @@ describe("resolveWorkspaceAuthorization", () => {
             ({
               ...context,
               membership: { ...context.membership, status },
+              actions: [],
               onboarding: { status: "complete", currentStep: 4, revision: 1 },
             }) as unknown as ActiveWorkspaceContext,
         ),
