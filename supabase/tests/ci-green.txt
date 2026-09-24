@@ -69,6 +69,7 @@ supabase/tests/shift_exchange_immediate_inbox.test.sql
 supabase/tests/shift_exchange_lineup_person_state.test.sql
 supabase/tests/shift_exchange_range_read.test.sql
 supabase/tests/shift_exchange_requested_publication.test.sql
+supabase/tests/shift_exchange_swap_gives_up_its_own_shift.test.sql
 supabase/tests/shift_exchanges_v1.test.sql
 supabase/tests/signature_templates_rls.test.sql
 supabase/tests/tenant_owned_composite_foreign_keys.test.sql
