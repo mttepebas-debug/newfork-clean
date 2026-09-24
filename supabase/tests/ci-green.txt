@@ -84,6 +84,7 @@ supabase/tests/time_off_cancellation_requests.test.sql
 supabase/tests/time_off_decision_identity_guard.test.sql
 supabase/tests/time_off_physical_request_counts.test.sql
 supabase/tests/time_off_requested_periods.test.sql
+supabase/tests/timezone_names.test.sql
 supabase/tests/weekly_availability_preferences.test.sql
 supabase/tests/weekly_lineup_candidate_groups.test.sql
 supabase/tests/weekly_lineup_offer_response.test.sql
