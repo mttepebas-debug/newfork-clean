@@ -37,6 +37,7 @@ select set_eq(
     'app_private.can_manage_important_date',
     'app_private.can_manage_workspace',
     'app_private.is_workspace_member',
+    'app_private.rls_can',
     'app_private.workspace_allows_interactive_access',
     'app_private.workspace_has_permission',
     'app_private.workspace_role_for',

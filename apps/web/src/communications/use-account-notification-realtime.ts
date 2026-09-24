@@ -7,7 +7,7 @@ export function useAccountNotificationRealtime(userId?: string) {
   useEffect(() => {
     if (!userId || !supabaseClient) return;
     const client = supabaseClient;
-    const channel = client.channel(`account-notifications:${userId}`)
+    const channel = client.channel(`account-notifications:${userId}`, { config: { private: true } })
       .on("postgres_changes", {
         event: "*", schema: "public", table: "account_notification_items",
         filter: `user_id=eq.${userId}`,

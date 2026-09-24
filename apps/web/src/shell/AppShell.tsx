@@ -242,30 +242,6 @@ export function AppShell() {
       window.removeEventListener("storage", handleStorage);
     };
   }, [queryClient, workspaceId]);
-  useEffect(() => {
-    if (!workspaceId || !supabaseClient) return;
-    const client = supabaseClient;
-    const invalidateNotifications = () => {
-      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      void queryClient.invalidateQueries({ queryKey: ["workspace-dashboard"] });
-    };
-    const channel = client
-      .channel(`notification-inbox:${workspaceId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notification_inbox_items",
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        invalidateNotifications,
-      )
-      .subscribe();
-    return () => {
-      void client.removeChannel(channel);
-    };
-  }, [queryClient, workspaceId]);
   if (!context) return null;
   const visibleNavItems = navItems.filter(
     (item) =>

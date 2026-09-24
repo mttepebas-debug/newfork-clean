@@ -101,7 +101,6 @@ import {
 } from "../schedule/components/ScheduleLogoUploadDialog";
 import { ScheduleTemplatesDialog } from "../schedule/components/ScheduleTemplateDialogs";
 import { RetroactiveEditDialog } from "../schedule/components/RetroactiveEditDialog";
-import { useCascadeNotice } from "../schedule/hooks/useCascadeNotice";
 import { useEditIdleTimer } from "../schedule/hooks/useEditIdleTimer";
 import { useEffectiveShifts } from "../schedule/hooks/useEffectiveShifts";
 import { createOptimisticPendingOp } from "../schedule/hooks/optimisticScheduleCache";
@@ -262,15 +261,6 @@ export function SchedulePage({
     view,
   );
   const canExportSchedules = canExportSchedule(context?.permissions);
-  const resolveCascadeActorName = useCallback(
-    (userId: string) =>
-      userId === context?.userId ? account?.displayName : null,
-    [account?.displayName, context?.userId],
-  );
-  useCascadeNotice({
-    workspaceId: context?.workspace.id,
-    actorNameByUserId: resolveCascadeActorName,
-  });
   const [session, setSession] = useState<ScheduleEditSession | null>(null);
   // A context transition must invalidate old saves even if the same session is later resumed.
   const mutationContext = useMemo(() => ({

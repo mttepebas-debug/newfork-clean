@@ -40,6 +40,7 @@ supabase/tests/explicit_workspace_context.test.sql
 supabase/tests/jobs_department_bulk_assignments.test.sql
 supabase/tests/joining_from_two_workspaces.test.sql
 supabase/tests/lifecycle_refusals_carry_keys.test.sql
+supabase/tests/live_updates_are_private.test.sql
 supabase/tests/location_short_names.test.sql
 supabase/tests/net_access_stays_out_of_reach.test.sql
 supabase/tests/notification_outbox_relay.test.sql

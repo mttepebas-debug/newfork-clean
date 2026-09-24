@@ -41,7 +41,7 @@ export function useExchangeRealtime(workspace: string | undefined) {
       queued = window.setTimeout(() => void flush(), 250);
     };
     const channel = supabase
-      .channel(`shift-exchanges:${workspace}`)
+      .channel(`shift-exchanges:${workspace}`, { config: { private: true } })
       .on("broadcast", { event: "changed" }, (event) => {
         if (event.payload?.workspace_id === workspace) refresh();
       })
