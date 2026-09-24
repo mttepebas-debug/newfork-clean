@@ -40,12 +40,6 @@ export const supabaseClient: SupabaseClient | null =
       })
     : null;
 
-export const developmentIdentityAllowed =
-  import.meta.env.DEV &&
-  import.meta.env.VITE_ALLOW_DEVELOPMENT_IDENTITY !== "false";
-
-export const developmentIdentityRoleStorageKey =
-  "newfork.development.workspaceRole";
 export const tabWorkspaceIdStorageKey = "newfork.tabWorkspaceId";
 export const sessionExpiredStorageKey = "newfork.sessionExpired";
 const uuidPattern =
@@ -70,21 +64,7 @@ export function clearTabWorkspaceId(): void {
   window.sessionStorage.removeItem(tabWorkspaceIdStorageKey);
 }
 
-export function developmentBearerToken(): string | null {
-  if (!developmentIdentityAllowed || typeof window === "undefined") return null;
-  const role = window.localStorage.getItem(developmentIdentityRoleStorageKey);
-  return role === "owner" ||
-    role === "admin" ||
-    role === "manager" ||
-    role === "employee"
-    ? `development-${role}-token`
-    : null;
-}
-
 async function accessToken(client: SupabaseClient): Promise<string> {
-  const developmentToken = developmentBearerToken();
-  if (developmentToken) return developmentToken;
-
   const token = (await client.auth.getSession()).data.session?.access_token;
   if (!token) throw new Error("A current session is required");
   return token;
@@ -103,7 +83,6 @@ export async function getApiAccessToken(
 export async function ensureSessionAlive(
   client: SupabaseClient,
 ): Promise<boolean> {
-  if (developmentBearerToken()) return true;
   // Already signed out (a parallel check got here first): nothing to report.
   if (!(await client.auth.getSession()).data.session) return false;
   const { error } = await client.auth.getUser();

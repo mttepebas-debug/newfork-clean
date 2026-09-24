@@ -35,7 +35,7 @@ if (!mode) {
       return new Response(JSON.stringify({ places: [{ latitude: String(coordinates[0]), longitude: String(coordinates[1]) }] }));
     };
     const { buildApp } = require(path.join(apiRoot, "dist/vercel-app.cjs"));
-    const app = buildApp({ allowDevelopmentIdentity: false, contextResolver: { resolve: async () => ({}) } });
+    const app = buildApp({ contextResolver: { resolve: async () => ({}) } });
     let proof;
     // Arizona/Nevada boundary cells require the binary polygons, not just the embedded index.
     for (let latitude = 35; latitude <= 37 && !proof; latitude += 0.1) {

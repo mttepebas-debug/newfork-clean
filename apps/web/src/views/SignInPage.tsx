@@ -1,4 +1,3 @@
-import type { WorkspaceRole } from "@newfork/shared";
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -10,14 +9,11 @@ export function SignInPage() {
   const {
     authenticated,
     context,
-    developmentIdentityAllowed,
     error,
     signIn,
     signUp,
-    signInForDevelopment,
     supabaseConfigured,
   } = useAuth();
-  const [role, setRole] = useState<WorkspaceRole>("manager");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -49,11 +45,6 @@ export function SignInPage() {
       : await signIn(email, password);
     setSubmitting(false);
     if (signedIn) navigate(destination, { replace: true });
-  };
-
-  const handleSignIn = (): void => {
-    signInForDevelopment(role);
-    navigate(destination, { replace: true });
   };
 
   return (
@@ -141,31 +132,6 @@ export function SignInPage() {
             </button>
           </div>
         </form>
-      ) : null}
-      {developmentIdentityAllowed ? (
-        <div className="development-access">
-          <p>Development fallback</p>
-          <div className="onboarding-field">
-            <label htmlFor="development-role">Workspace role</label>
-            <select
-              id="development-role"
-              value={role}
-              onChange={(event) => setRole(event.target.value as WorkspaceRole)}
-            >
-              <option value="owner">Owner</option>
-              <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
-              <option value="employee">Employee</option>
-            </select>
-          </div>
-          <button
-            type="button"
-            className="pb-btn pb-btn-secondary"
-            onClick={handleSignIn}
-          >
-            Use development identity
-          </button>
-        </div>
       ) : null}
       <nav className="sign-in-trust-links" aria-label="Trust and legal">
         <Link to="/privacy">Privacy</Link>

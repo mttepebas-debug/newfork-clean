@@ -5,7 +5,6 @@ import { AuthProvider, useAuth } from "./AuthContext";
 
 const supabaseMock = vi.hoisted(() => ({
   clearTabWorkspaceId: vi.fn(),
-  developmentBearerToken: vi.fn(() => "development-owner-token"),
   ensureSessionAlive: vi.fn(async () => true),
   getSession: vi.fn(async () => ({ data: { session: null }, error: null })),
   getTabWorkspaceId: vi.fn(() => null as string | null),
@@ -23,9 +22,6 @@ vi.mock("../lib/supabase", () => ({
   accountProfileSchema: undefined,
   activeWorkspaceContextSchema: undefined,
   clearTabWorkspaceId: supabaseMock.clearTabWorkspaceId,
-  developmentBearerToken: supabaseMock.developmentBearerToken,
-  developmentIdentityAllowed: true,
-  developmentIdentityRoleStorageKey: "newfork.development.workspaceRole",
   ensureSessionAlive: supabaseMock.ensureSessionAlive,
   invitationsCheckedStorageKey: "newfork.invitationsChecked",
   sessionExpiredStorageKey: "newfork.sessionExpired",
@@ -41,35 +37,6 @@ vi.mock("../lib/supabase", () => ({
     },
   },
 }));
-
-function AccountProbe() {
-  const { account, updateAccount } = useAuth();
-  if (!account) return <p>Loading</p>;
-  return (
-    <button
-      type="button"
-      onClick={() => void updateAccount("Local Dev", "dark", "5551234567")}
-    >
-      {account.displayName} / {account.theme}
-    </button>
-  );
-}
-
-function RefreshProbe() {
-  const { context, refresh } = useAuth();
-  if (!context) return <p>Loading</p>;
-  return (
-    <button
-      type="button"
-      onClick={async () => {
-        const refreshed = await refresh();
-        if (!refreshed) throw new Error("Expected development context");
-      }}
-    >
-      {context.workspace.id}
-    </button>
-  );
-}
 
 function AuthStateProbe() {
   const { authenticated, context, error, ready } = useAuth();
@@ -87,12 +54,10 @@ function AuthStateProbe() {
   );
 }
 
-describe("AuthProvider development identity", () => {
+describe("AuthProvider", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
     supabaseMock.clearTabWorkspaceId.mockClear();
-    supabaseMock.developmentBearerToken.mockClear();
     supabaseMock.ensureSessionAlive.mockReset();
     supabaseMock.ensureSessionAlive.mockResolvedValue(true);
     supabaseMock.getSession.mockReset();
@@ -120,66 +85,7 @@ describe("AuthProvider development identity", () => {
     supabaseMock.unsubscribe.mockClear();
   });
 
-  it("keeps development account updates local instead of hitting Supabase RLS", async () => {
-    render(
-      <AuthProvider>
-        <AccountProbe />
-      </AuthProvider>,
-    );
-
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Development user / system" }),
-    );
-
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Local Dev / dark" })).toBeTruthy(),
-    );
-    expect(supabaseMock.saveAccountProfile).not.toHaveBeenCalled();
-  });
-
-  it("keeps local development preferences across focus-triggered refresh", async () => {
-    render(
-      <AuthProvider>
-        <AccountProbe />
-      </AuthProvider>,
-    );
-
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Development user / system" }),
-    );
-
-    await screen.findByRole("button", { name: "Local Dev / dark" });
-    await act(async () => {
-      window.dispatchEvent(new Event("focus"));
-    });
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Local Dev / dark" }),
-      ).toBeTruthy(),
-    );
-    expect(screen.queryByLabelText("Loading workspace")).toBeNull();
-  });
-
-  it("refreshes development context from the tab-local workspace without a real session", async () => {
-    const selectedWorkspaceId = "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
-    supabaseMock.getTabWorkspaceId.mockReturnValue(selectedWorkspaceId);
-
-    render(
-      <AuthProvider>
-        <RefreshProbe />
-      </AuthProvider>,
-    );
-
-    expect(await screen.findByRole("button", { name: selectedWorkspaceId })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: selectedWorkspaceId }));
-
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: selectedWorkspaceId })).toBeTruthy(),
-    );
-  });
-
-  it("keeps a real signed-in account without falling back to development identity when no workspace resolves", async () => {
+  it("keeps a signed-in account without a workspace when no workspace resolves", async () => {
     window.localStorage.clear();
     supabaseMock.getSession.mockResolvedValue({
       data: {

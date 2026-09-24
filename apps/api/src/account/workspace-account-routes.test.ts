@@ -808,7 +808,7 @@ describe("workspace account routes", () => {
     expect(requestClosure).not.toHaveBeenCalled();
   });
 
-  it("never counts a development bearer as recent reauthentication", async () => {
+  it("does not count a token without an issue time as recent reauthentication", async () => {
     const requestClosure = vi.fn(async () => ({ status: "deleted" }));
     const app = buildApp({
       workspaceAccountService: {
@@ -819,7 +819,7 @@ describe("workspace account routes", () => {
     const response = await app.inject({
       method: "POST",
       url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: "Bearer development-owner-token" },
+      headers: { authorization: "Bearer not-a-jwt" },
       payload: {
         mode: "immediate",
         typedWorkspaceName: "Meyhouse",

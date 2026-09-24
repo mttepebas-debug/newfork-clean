@@ -1,10 +1,6 @@
 import {
-  type ActiveWorkspaceContext,
   activeWorkspaceContextSchema,
   healthResponseSchema,
-  permissionsForRole,
-  type WorkspaceRole,
-  workspaceRoleSchema,
 } from "@newfork/shared";
 import Fastify, { type FastifyError } from "fastify";
 import { createDocumentLifecycleService } from "./employees/document-lifecycle-service";
@@ -126,36 +122,9 @@ import {
   type SignatureSettingsService,
 } from "./settings/signature-settings-service";
 
-const requestContextHeadersSchema = z.object({
-  "x-user-id": z.string().uuid(),
-  "x-workspace-id": z.string().uuid(),
-  "x-workspace-role": workspaceRoleSchema,
-});
 const explicitWorkspaceContextHeadersSchema = z.object({
   "x-newfork-workspace-id": z.string().uuid().optional(),
 });
-const developmentInvitationQuerySchema = z.object({
-  workspaceId: z.string().uuid().optional(),
-  employeeId: z.string().uuid().optional(),
-  email: z.string().trim().email().optional(),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-});
-const developmentBearerPattern =
-  /^Bearer development-(owner|admin|manager)-token$/;
-
-interface DevelopmentInvitationMailboxEntry {
-  readonly id: string;
-  readonly workspaceId: string;
-  readonly employeeId: string;
-  readonly email: string;
-  readonly emailHint: string;
-  readonly developmentUrl: string;
-  readonly expiresAt: string;
-  readonly createdAt: string;
-}
-
-const developmentInvitationMailbox: DevelopmentInvitationMailboxEntry[] = [];
-
 function isLocalDevelopmentOrigin(origin: string | undefined): boolean {
   return (
     process.env.NODE_ENV !== "production" &&
@@ -183,7 +152,6 @@ function isAllowedOrigin(
 }
 
 interface BuildAppOptions {
-  readonly allowDevelopmentIdentity?: boolean;
   readonly contextResolver?: WorkspaceContextResolver | null;
   readonly accountSecurityService?: AccountSecurityService | null;
   readonly accountDeletionWorker?: AccountDeletionWorker | null;
@@ -323,14 +291,8 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.setNotFoundHandler((_request, reply) =>
     reply.status(404).send({ error: "Not found" }),
   );
-  const allowDevelopmentIdentity =
-    options.allowDevelopmentIdentity ?? process.env.NODE_ENV !== "production";
-  const environmentContextResolver =
-    options.contextResolver ?? createResolverFromEnvironment();
   const contextResolver =
-    allowDevelopmentIdentity && process.env.NODE_ENV !== "production"
-      ? createDevelopmentWorkspaceContextResolver(environmentContextResolver)
-      : environmentContextResolver;
+    options.contextResolver ?? createResolverFromEnvironment();
   const accountSecurityService =
     options.accountSecurityService === undefined
       ? createAccountSecurityServiceFromEnvironment()
@@ -351,12 +313,6 @@ export function buildApp(options: BuildAppOptions = {}) {
     createEmployeeDirectoryServiceFromEnvironment();
   const invitationService =
     options.invitationService ?? createInvitationServiceFromEnvironment();
-  const activeInvitationService =
-    invitationService &&
-    allowDevelopmentIdentity &&
-    process.env.NODE_ENV !== "production"
-      ? withDevelopmentInvitationMailbox(invitationService)
-      : invitationService;
   const onboardingService =
     options.onboardingService ?? createOnboardingServiceFromEnvironment();
   const scheduleService =
@@ -548,7 +504,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   registerWorkspaceAccountRoutes(app, {
     service: workspaceAccountService,
     contextResolver,
-    invitationService: activeInvitationService,
+    invitationService: invitationService,
   });
   registerWorkspaceRetentionRoutes(app, {
     worker: workspaceRetentionWorker,
@@ -566,7 +522,7 @@ export function buildApp(options: BuildAppOptions = {}) {
           .status(400)
           .send({ error: "Valid employee invitation details required" });
       }
-      if (!contextResolver || !activeInvitationService) {
+      if (!contextResolver || !invitationService) {
         return reply
           .status(503)
           .send({ error: "Employee invitation service is not configured" });
@@ -589,7 +545,7 @@ export function buildApp(options: BuildAppOptions = {}) {
       }
       try {
         return reply.send(
-          await activeInvitationService.prepare({
+          await invitationService.prepare({
             actorUserId: authorization.context.userId,
             workspaceId: params.data.workspaceId,
             employeeId: params.data.employeeId,
@@ -615,7 +571,7 @@ export function buildApp(options: BuildAppOptions = {}) {
       const params = invitationParamsSchema.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid employee required" });
-      if (!contextResolver || !activeInvitationService) {
+      if (!contextResolver || !invitationService) {
         return reply
           .status(503)
           .send({ error: "Employee invitation service is not configured" });
@@ -637,7 +593,7 @@ export function buildApp(options: BuildAppOptions = {}) {
           });
       try {
         return reply.send(
-          await activeInvitationService.retry({
+          await invitationService.retry({
             actorUserId: authorization.context.userId,
             workspaceId: params.data.workspaceId,
             employeeId: params.data.employeeId,
@@ -661,7 +617,7 @@ export function buildApp(options: BuildAppOptions = {}) {
       const params = invitationParamsSchema.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid employee required" });
-      if (!contextResolver || !activeInvitationService) {
+      if (!contextResolver || !invitationService) {
         return reply
           .status(503)
           .send({ error: "Employee invitation service is not configured" });
@@ -682,7 +638,7 @@ export function buildApp(options: BuildAppOptions = {}) {
                 : "Employee access management required",
           });
       try {
-        await activeInvitationService.revoke({
+        await invitationService.revoke({
           actorUserId: authorization.context.userId,
           workspaceId: params.data.workspaceId,
           employeeId: params.data.employeeId,
@@ -708,7 +664,7 @@ export function buildApp(options: BuildAppOptions = {}) {
       const params = invitationParamsSchema.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid employee required" });
-      if (!contextResolver || !activeInvitationService) {
+      if (!contextResolver || !invitationService) {
         return reply
           .status(503)
           .send({ error: "Employee invitation service is not configured" });
@@ -738,7 +694,7 @@ export function buildApp(options: BuildAppOptions = {}) {
           });
       try {
         return reply.send(
-          await activeInvitationService.link({
+          await invitationService.link({
             actorUserId: authorization.context.userId,
             workspaceId: params.data.workspaceId,
             employeeId: params.data.employeeId,
@@ -758,7 +714,7 @@ export function buildApp(options: BuildAppOptions = {}) {
       return reply
         .status(400)
         .send({ error: "Valid invitation token required" });
-    if (!activeInvitationService)
+    if (!invitationService)
       return reply
         .status(503)
         .send({ error: "Employee invitation service is not configured" });
@@ -769,7 +725,7 @@ export function buildApp(options: BuildAppOptions = {}) {
         .send({ error: "Authenticated account required" });
     try {
       return reply.send(
-        await activeInvitationService.accept(accessToken, body.data.token),
+        await invitationService.accept(accessToken, body.data.token),
       );
     } catch (error) {
       request.log.warn({ err: error }, "invitation not accepted");
@@ -779,7 +735,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
 
   app.get("/v1/invitations/pending", async (request, reply) => {
-    if (!activeInvitationService)
+    if (!invitationService)
       return reply
         .status(503)
         .send({ error: "Employee invitation service is not configured" });
@@ -789,7 +745,7 @@ export function buildApp(options: BuildAppOptions = {}) {
         .status(401)
         .send({ error: "Authenticated account required" });
     try {
-      return reply.send(await activeInvitationService.listPending(accessToken));
+      return reply.send(await invitationService.listPending(accessToken));
     } catch (error) {
       request.log.warn({ err: error }, "pending invitations not listed");
       const failure = invitationFailure(error);
@@ -801,7 +757,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     const params = invitationActionParamsSchema.safeParse(request.params);
     if (!params.success)
       return reply.status(400).send({ error: "Valid invitation required" });
-    if (!activeInvitationService)
+    if (!invitationService)
       return reply
         .status(503)
         .send({ error: "Employee invitation service is not configured" });
@@ -812,7 +768,7 @@ export function buildApp(options: BuildAppOptions = {}) {
         .send({ error: "Authenticated account required" });
     try {
       return reply.send(
-        await activeInvitationService.acceptPending(
+        await invitationService.acceptPending(
           accessToken,
           params.data.invitationId,
         ),
@@ -828,7 +784,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     const params = invitationActionParamsSchema.safeParse(request.params);
     if (!params.success)
       return reply.status(400).send({ error: "Valid invitation required" });
-    if (!activeInvitationService)
+    if (!invitationService)
       return reply
         .status(503)
         .send({ error: "Employee invitation service is not configured" });
@@ -838,7 +794,7 @@ export function buildApp(options: BuildAppOptions = {}) {
         .status(401)
         .send({ error: "Authenticated account required" });
     try {
-      await activeInvitationService.declinePending(
+      await invitationService.declinePending(
         accessToken,
         params.data.invitationId,
       );
@@ -856,14 +812,14 @@ export function buildApp(options: BuildAppOptions = {}) {
       return reply
         .status(400)
         .send({ error: "Valid invitation token required" });
-    if (!activeInvitationService)
+    if (!invitationService)
       return reply
         .status(503)
         .send({ error: "Employee invitation service is not configured" });
     // Every state but "no such token" is a found invitation the screen has to
     // render its own way, so it answers 200 and says which state it is.
     try {
-      const preview = await activeInvitationService.preview(query.data.token);
+      const preview = await invitationService.preview(query.data.token);
       if (!preview)
         return reply.status(404).send({
           error: "This invitation is no longer open",
@@ -985,100 +941,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     secureCookies: process.env.NODE_ENV === "production",
   });
 
-  if (allowDevelopmentIdentity && process.env.NODE_ENV !== "production") {
-    app.get("/v1/development/context", async (request, reply) => {
-      const headers = requestContextHeadersSchema.safeParse(request.headers);
-      if (!headers.success) {
-        return reply
-          .status(401)
-          .send({ error: "A valid workspace context is required" });
-      }
-
-      const context = activeWorkspaceContextSchema.parse({
-        userId: headers.data["x-user-id"],
-        workspace: {
-          id: headers.data["x-workspace-id"],
-          name: "Development workspace",
-        },
-        membership: {
-          id: crypto.randomUUID(),
-          userId: headers.data["x-user-id"],
-          workspaceId: headers.data["x-workspace-id"],
-          role: headers.data["x-workspace-role"],
-          status: "active",
-        },
-        permissions: permissionsForRole(headers.data["x-workspace-role"]),
-      });
-
-      return reply.send(context);
-    });
-
-    app.get("/v1/development/invitations", async (request, reply) => {
-      if (!developmentBearerPattern.test(request.headers.authorization ?? "")) {
-        return reply.status(401).send({
-          error: "Development owner, admin or manager token required",
-        });
-      }
-      const query = developmentInvitationQuerySchema.safeParse(request.query);
-      if (!query.success) {
-        return reply
-          .status(400)
-          .send({ error: "Valid development invitation query required" });
-      }
-      const email = query.data.email?.trim().toLowerCase();
-      const entries = developmentInvitationMailbox
-        .filter(
-          (entry) =>
-            (!query.data.workspaceId ||
-              entry.workspaceId === query.data.workspaceId) &&
-            (!query.data.employeeId ||
-              entry.employeeId === query.data.employeeId) &&
-            (!email || entry.email === email),
-        )
-        .slice(-query.data.limit)
-        .reverse()
-        .map(({ email: _email, ...entry }) => entry);
-      return reply.send(entries);
-    });
-  }
-
   return app;
-}
-
-function withDevelopmentInvitationMailbox(
-  service: EmployeeInvitationService,
-): EmployeeInvitationService {
-  return {
-    ...service,
-    async prepare(input) {
-      const result = await service.prepare(input);
-      if (result.developmentUrl && process.env.NODE_ENV !== "production") {
-        developmentInvitationMailbox.push({
-          id: result.id,
-          workspaceId: input.workspaceId,
-          employeeId: input.employeeId,
-          email: input.email.trim().toLowerCase(),
-          emailHint: maskEmail(input.email),
-          developmentUrl: result.developmentUrl,
-          expiresAt: result.expiresAt,
-          createdAt: new Date().toISOString(),
-        });
-        if (developmentInvitationMailbox.length > 100) {
-          developmentInvitationMailbox.splice(
-            0,
-            developmentInvitationMailbox.length - 100,
-          );
-        }
-      }
-      return result;
-    },
-  };
-}
-
-function maskEmail(value: string): string {
-  const [local = "", domain = ""] = value.trim().toLowerCase().split("@");
-  const visible = local.slice(0, Math.min(2, local.length));
-  return `${visible}${"*".repeat(Math.max(3, local.length - visible.length))}@${domain}`;
 }
 
 function createResolverFromEnvironment(): WorkspaceContextResolver | null {
@@ -1145,55 +1008,6 @@ function createWorkspaceRetentionWorkerFromEnvironment(): WorkspaceRetentionWork
       process.env.WORKSPACE_RETENTION_BATCH_SIZE,
     ),
   });
-}
-
-function developmentWorkspaceContext(
-  role: WorkspaceRole,
-  workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
-): ActiveWorkspaceContext {
-  const isDefaultWorkspace =
-    workspaceId === "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
-  return activeWorkspaceContextSchema.parse({
-    userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
-    workspace: {
-      id: workspaceId,
-      name: isDefaultWorkspace ? "Meyhouse" : "Development workspace",
-      logo_url: null,
-      logo_file_name: null,
-      logo_updated_at: null,
-      schedule_logo_placement: { scale: 1, offset_x: 0, offset_y: 0 },
-    },
-    membership: {
-      id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
-      userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
-      workspaceId,
-      role,
-      status: "active",
-      allLocations: true,
-    },
-    permissions: permissionsForRole(role),
-    onboarding: { status: "complete", currentStep: 2 },
-    locationScope: { allLocations: true, locationIds: [] },
-  });
-}
-
-function createDevelopmentWorkspaceContextResolver(
-  fallback: WorkspaceContextResolver | null,
-): WorkspaceContextResolver {
-  return {
-    async resolve(accessToken, workspaceId = null) {
-      const match = /^development-(owner|admin|manager|employee)-token$/.exec(
-        accessToken,
-      );
-      if (match) {
-        return developmentWorkspaceContext(
-          match[1] as WorkspaceRole,
-          workspaceId ?? undefined,
-        );
-      }
-      return fallback?.resolve(accessToken, workspaceId) ?? null;
-    },
-  };
 }
 
 function createEmployeeDirectoryServiceFromEnvironment(): EmployeeDirectoryService | null {

@@ -30,7 +30,6 @@ vi.mock("../auth/AuthContext", () => ({
 
 vi.mock("../lib/supabase", () => ({
   supabaseClient: {},
-  developmentBearerToken: () => null,
   loadAccountSecurityState: vi.fn(),
   loadAccountDeletionBlockers: vi.fn(),
   requestAccountEmailChange: vi.fn(),

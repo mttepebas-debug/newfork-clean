@@ -1,12 +1,9 @@
 import {
   accountProfileSchema,
-  activeWorkspaceContextSchema,
   normalizeAccountPhone,
-  permissionsForRole,
   type AccountProfile,
   type ActiveWorkspaceContext,
   type ThemePreference,
-  type WorkspaceRole,
 } from "@newfork/shared";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
@@ -22,11 +19,7 @@ import {
 } from "react";
 import {
   clearTabWorkspaceId,
-  developmentBearerToken,
-  developmentIdentityRoleStorageKey,
-  developmentIdentityAllowed,
   ensureSessionAlive,
-  getTabWorkspaceId,
   loadAccountProfile,
   sessionExpiredStorageKey,
   resolveWorkspaceContext,
@@ -34,79 +27,6 @@ import {
   supabaseClient,
 } from "../lib/supabase";
 import { clearTenantQueriesForOrganizationSwitch } from "./tenant-query-cache";
-
-const developmentIds = {
-  userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
-  workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
-  membershipId: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
-} as const;
-const developmentAccountStorageKey = "newfork.development.account";
-
-function storedDevelopmentRole(): WorkspaceRole | null {
-  if (!developmentIdentityAllowed || typeof window === "undefined") return null;
-  const role = window.localStorage.getItem(developmentIdentityRoleStorageKey);
-  return role === "owner" ||
-    role === "admin" ||
-    role === "manager" ||
-    role === "employee"
-    ? role
-    : null;
-}
-
-function persistDevelopmentRole(role: WorkspaceRole): void {
-  if (!developmentIdentityAllowed || typeof window === "undefined") return;
-  window.localStorage.setItem(developmentIdentityRoleStorageKey, role);
-}
-
-function defaultDevelopmentAccount(): AccountProfile {
-  return accountProfileSchema.parse({
-    userId: developmentIds.userId,
-    email: "developer@newfork.test",
-    displayName: "Development user",
-    phone: null,
-    theme: "system",
-  });
-}
-
-function loadDevelopmentAccount(): AccountProfile {
-  if (!developmentIdentityAllowed || typeof window === "undefined") {
-    return defaultDevelopmentAccount();
-  }
-  const raw = window.localStorage.getItem(developmentAccountStorageKey);
-  if (!raw) return defaultDevelopmentAccount();
-  try {
-    const stored = JSON.parse(raw) as Partial<AccountProfile>;
-    return accountProfileSchema.parse({
-      ...defaultDevelopmentAccount(),
-      displayName: stored.displayName,
-      phone: stored.phone,
-      theme: stored.theme,
-      timeFormat: stored.timeFormat,
-      dateFormat: stored.dateFormat,
-      avatarObjectPath: stored.avatarObjectPath,
-      avatarUrl: stored.avatarUrl,
-    });
-  } catch {
-    window.localStorage.removeItem(developmentAccountStorageKey);
-    return defaultDevelopmentAccount();
-  }
-}
-
-function persistDevelopmentAccount(account: AccountProfile): void {
-  if (!developmentIdentityAllowed || typeof window === "undefined") return;
-  window.localStorage.setItem(
-    developmentAccountStorageKey,
-    JSON.stringify({
-      displayName: account.displayName,
-      phone: account.phone,
-      theme: account.theme,
-      timeFormat: account.timeFormat,
-      dateFormat: account.dateFormat,
-      avatarObjectPath: account.avatarObjectPath,
-      avatarUrl: account.avatarUrl,
-    }),
-  );
-}
 
 interface AuthContextValue {
   readonly account: AccountProfile | null;
@@ -121,8 +41,6 @@ interface AuthContextValue {
     password: string,
     displayName?: string,
   ) => Promise<boolean>;
-  readonly signInForDevelopment: (role: WorkspaceRole) => void;
-  readonly developmentIdentityAllowed: boolean;
   readonly refresh: () => Promise<ActiveWorkspaceContext | null>;
   readonly signOut: () => Promise<void>;
   readonly updateAccount: (
@@ -171,48 +89,10 @@ export function AuthProvider({
   const [account, setAccount] = useState<AccountProfile | null>(null);
   const [context, setContext] = useState<ActiveWorkspaceContext | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(
-    supabaseClient === null && storedDevelopmentRole() === null,
-  );
+  const [ready, setReady] = useState(supabaseClient === null);
   const [error, setError] = useState<string | null>(null);
   const contextFingerprintRef = useRef("none");
   const resolvedUserIdRef = useRef<string | null>(null);
-
-  const applyDevelopmentIdentity = useCallback(
-    (role: WorkspaceRole): ActiveWorkspaceContext => {
-      const workspaceId = getTabWorkspaceId() ?? developmentIds.workspaceId;
-      const isDefaultWorkspace = workspaceId === developmentIds.workspaceId;
-      const developmentContext = activeWorkspaceContextSchema.parse({
-        userId: developmentIds.userId,
-        workspace: {
-          id: workspaceId,
-          name: isDefaultWorkspace ? "Meyhouse" : "Development workspace",
-          logo_url: null,
-          logo_file_name: null,
-          logo_updated_at: null,
-          schedule_logo_placement: { scale: 1, offset_x: 0, offset_y: 0 },
-        },
-        membership: {
-          id: developmentIds.membershipId,
-          userId: developmentIds.userId,
-          workspaceId,
-          role,
-          status: "active",
-          allLocations: true,
-        },
-        permissions: permissionsForRole(role),
-        onboarding: { status: "complete", currentStep: 2 },
-        locationScope: { allLocations: true, locationIds: [] },
-      });
-      setContext(developmentContext);
-      contextFingerprintRef.current = contextFingerprint(developmentContext);
-      setAccount(loadDevelopmentAccount());
-      setError(null);
-      setReady(true);
-      return developmentContext;
-    },
-    [],
-  );
 
   // A new login must not see the previous account's cached invitations or
   // workspaces.
@@ -228,8 +108,6 @@ export function AuthProvider({
       options: { readonly silent?: boolean } = {},
     ): Promise<ActiveWorkspaceContext | null> => {
       if (!supabaseClient) return null;
-      const developmentRole = storedDevelopmentRole();
-      if (developmentRole) return applyDevelopmentIdentity(developmentRole);
       if (!options.silent) setReady(false);
       try {
         const [resolvedContext, resolvedAccount] = await Promise.all([
@@ -274,13 +152,6 @@ export function AuthProvider({
             // Fall through to the ordinary error path if the session itself is invalid.
           }
         }
-        const role = storedDevelopmentRole();
-        if (developmentIdentityAllowed && role) {
-          persistDevelopmentRole(role);
-          void supabaseClient.auth.signOut({ scope: "local" });
-          setSession(null);
-          return applyDevelopmentIdentity(role);
-        }
         resolvedUserIdRef.current = null;
         setError(
           resolutionError instanceof Error
@@ -294,15 +165,11 @@ export function AuthProvider({
         setReady(true);
       }
     },
-    [applyDevelopmentIdentity, queryClient],
+    [queryClient],
   );
 
   useEffect(() => {
-    if (!supabaseClient) {
-      const role = storedDevelopmentRole();
-      if (role) applyDevelopmentIdentity(role);
-      return;
-    }
+    if (!supabaseClient) return;
 
     let active = true;
     void supabaseClient.auth
@@ -314,12 +181,7 @@ export function AuthProvider({
         if (data.session) {
           void resolveAuthenticatedSession(data.session);
         } else {
-          const role = storedDevelopmentRole();
-          if (role) {
-            applyDevelopmentIdentity(role);
-          } else {
-            setReady(true);
-          }
+          setReady(true);
         }
       });
 
@@ -334,15 +196,10 @@ export function AuthProvider({
           void resolveAuthenticatedSession(nextSession, { silent });
         } else {
           resolvedUserIdRef.current = null;
-          const role = storedDevelopmentRole();
-          if (role) {
-            applyDevelopmentIdentity(role);
-          } else {
-            setAccount(null);
-            setContext(null);
-            contextFingerprintRef.current = "none";
-            setReady(true);
-          }
+          setAccount(null);
+          setContext(null);
+          contextFingerprintRef.current = "none";
+          setReady(true);
         }
       },
     );
@@ -351,13 +208,11 @@ export function AuthProvider({
       active = false;
       subscription.subscription.unsubscribe();
     };
-  }, [applyDevelopmentIdentity, resolveAuthenticatedSession]);
+  }, [resolveAuthenticatedSession]);
 
   const refresh =
     useCallback(async (): Promise<ActiveWorkspaceContext | null> => {
       if (!supabaseClient) return null;
-      const developmentRole = storedDevelopmentRole();
-      if (developmentRole) return applyDevelopmentIdentity(developmentRole);
       const activeSession =
         session ?? (await supabaseClient.auth.getSession()).data.session;
       if (!activeSession) {
@@ -365,7 +220,7 @@ export function AuthProvider({
         return null;
       }
       return resolveAuthenticatedSession(activeSession, { silent: true });
-    }, [applyDevelopmentIdentity, resolveAuthenticatedSession, session]);
+    }, [resolveAuthenticatedSession, session]);
 
   useEffect(() => {
     if (!supabaseClient) return;
@@ -390,8 +245,6 @@ export function AuthProvider({
       setError(null);
       clearTabWorkspaceId();
       resetAccountScope();
-      if (developmentIdentityAllowed)
-        window.localStorage.removeItem(developmentIdentityRoleStorageKey);
       const { data, error: signInError } =
         await supabaseClient.auth.signInWithPassword({ email, password });
       if (signInError) {
@@ -418,8 +271,6 @@ export function AuthProvider({
       setError(null);
       clearTabWorkspaceId();
       resetAccountScope();
-      if (developmentIdentityAllowed)
-        window.localStorage.removeItem(developmentIdentityRoleStorageKey);
       const trimmedDisplayName = displayName?.trim();
       const { data, error: signUpError } = await supabaseClient.auth.signUp({
         email,
@@ -453,20 +304,11 @@ export function AuthProvider({
     [resetAccountScope, resolveAuthenticatedSession],
   );
 
-  const signInForDevelopment = useCallback((role: WorkspaceRole): void => {
-    if (!developmentIdentityAllowed) return;
-    clearTabWorkspaceId();
-    persistDevelopmentRole(role);
-    applyDevelopmentIdentity(role);
-  }, [applyDevelopmentIdentity]);
-
   const signOut = useCallback(async (): Promise<void> => {
     if (supabaseClient && session)
       await supabaseClient.auth.signOut({ scope: "local" });
     clearTabWorkspaceId();
     resetAccountScope();
-    window.localStorage.removeItem(developmentIdentityRoleStorageKey);
-    window.localStorage.removeItem(developmentAccountStorageKey);
     resolvedUserIdRef.current = null;
     setSession(null);
     setContext(null);
@@ -496,13 +338,8 @@ export function AuthProvider({
         theme,
         ...changes,
       });
-      if (supabaseClient && !developmentBearerToken()) {
-        await saveAccountProfile(supabaseClient, updated);
-      } else if (!developmentIdentityAllowed) {
-        throw new Error("Account storage is not configured");
-      } else {
-        persistDevelopmentAccount(updated);
-      }
+      if (!supabaseClient) throw new Error("Account storage is not configured");
+      await saveAccountProfile(supabaseClient, updated);
       setAccount(updated);
     },
     [account],
@@ -511,16 +348,13 @@ export function AuthProvider({
   const value = useMemo<AuthContextValue>(
     () => ({
       account,
-      authenticated:
-        session !== null || (developmentIdentityAllowed && account !== null),
+      authenticated: session !== null,
       context,
-      developmentIdentityAllowed,
       error,
       ready,
       refresh,
       signIn,
       signUp,
-      signInForDevelopment,
       signOut,
       supabaseConfigured: supabaseClient !== null,
       updateAccount,
@@ -534,7 +368,6 @@ export function AuthProvider({
       session,
       signIn,
       signUp,
-      signInForDevelopment,
       signOut,
       updateAccount,
     ],

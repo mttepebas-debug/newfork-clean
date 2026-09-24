@@ -10,7 +10,7 @@ import {
   type NotificationPolicyResetInput,
   type NotificationPolicyTestInput,
 } from "@newfork/shared";
-import { developmentBearerToken, supabaseClient } from "../lib/supabase";
+import { supabaseClient } from "../lib/supabase";
 
 async function request(
   workspaceId: string,
@@ -20,8 +20,7 @@ async function request(
   if (!supabaseClient)
     throw new Error("Notification settings storage is not configured");
   const token =
-    (await supabaseClient.auth.getSession()).data.session?.access_token ??
-    developmentBearerToken();
+    (await supabaseClient.auth.getSession()).data.session?.access_token;
   if (!token) throw new Error("A current session is required");
   const response = await fetch(
     `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/v1/workspaces/${workspaceId}${path}`,

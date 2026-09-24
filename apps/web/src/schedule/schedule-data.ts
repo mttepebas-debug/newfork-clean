@@ -70,7 +70,6 @@ import {
   type UpdateScheduleExportScheduleInput,
 } from "@newfork/shared/schedule";
 import {
-  developmentBearerToken,
   getTabWorkspaceId,
   supabaseClient,
 } from "../lib/supabase";
@@ -875,7 +874,7 @@ async function activeScheduleDownload(
 ): Promise<Blob> {
   if (!supabaseClient) throw new Error("Schedule storage is not configured");
   const session = await supabaseClient.auth.getSession();
-  const token = session.data.session?.access_token ?? developmentBearerToken();
+  const token = session.data.session?.access_token;
   if (!token) throw new Error("A current session is required for Schedule");
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
@@ -906,7 +905,7 @@ async function activeScheduleRequest(
 ): Promise<unknown> {
   if (!supabaseClient) throw new Error("Schedule storage is not configured");
   const session = await supabaseClient.auth.getSession();
-  const token = session.data.session?.access_token ?? developmentBearerToken();
+  const token = session.data.session?.access_token;
   if (!token) throw new Error("A current session is required for Schedule");
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);

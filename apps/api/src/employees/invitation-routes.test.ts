@@ -26,7 +26,11 @@ function serviceThrowing(error: unknown): EmployeeInvitationService {
 }
 
 function appWith(service: EmployeeInvitationService) {
-  return buildApp({ contextResolver: null, invitationService: service });
+  // Sign-in is configured, and recognizes nobody.
+  return buildApp({
+    contextResolver: { resolve: async () => null },
+    invitationService: service,
+  });
 }
 
 const token = "a".repeat(64);

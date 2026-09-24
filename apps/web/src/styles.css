@@ -3077,24 +3077,6 @@ p {
   margin-top: 26px;
   max-width: 420px;
 }
-.development-access {
-  display: grid;
-  gap: 12px;
-  justify-items: start;
-  max-width: 420px;
-  margin-top: 32px;
-  padding-top: 20px;
-  border-top: 1px solid #e2e5e3;
-}
-.development-access > p {
-  margin: 0;
-  color: #79837f;
-  font-size: 12px;
-  font-weight: 750;
-}
-.development-access .onboarding-field {
-  width: 100%;
-}
 .form-error {
   margin: 0 0 14px;
   color: #a23725;

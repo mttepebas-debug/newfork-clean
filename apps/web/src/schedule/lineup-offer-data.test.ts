@@ -6,9 +6,12 @@ import {
 } from "./lineup-data";
 
 vi.mock("../lib/supabase", () => ({
-  developmentBearerToken: () => "test-token",
   getTabWorkspaceId: () => null,
-  supabaseClient: null,
+  supabaseClient: {
+    auth: {
+      getSession: async () => ({ data: { session: { access_token: "test-token" } } }),
+    },
+  },
 }));
 afterEach(() => vi.unstubAllGlobals());
 

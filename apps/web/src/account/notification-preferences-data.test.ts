@@ -14,7 +14,6 @@ vi.mock("../lib/supabase", () => ({
       }),
     },
   },
-  developmentBearerToken: () => null,
 }));
 
 afterEach(() => vi.unstubAllGlobals());

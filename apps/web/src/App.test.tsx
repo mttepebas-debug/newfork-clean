@@ -47,6 +47,82 @@ import {
 } from "./schedule/schedule-data";
 import { loadShiftAvailability } from "./availability/availability-data";
 
+// The person signed in for a test. The real sign-in (auth/AuthContext.tsx) has
+// its own tests; here a stand-in hands the app a member of Meyhouse with the
+// role in testAuth.role (set it before rendering to start signed in), and the
+// sign-in screen's "Sign in" signs in as testAuth.nextRole (see signInAs).
+type TestRole = "owner" | "admin" | "manager" | "employee";
+const testAuth = vi.hoisted(() => ({
+  role: null as TestRole | null,
+  nextRole: "owner" as TestRole,
+}));
+
+vi.mock("./auth/AuthContext", async () => {
+  const React = await import("react");
+  const shared = await import("@newfork/shared");
+  const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
+  const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+  const contextFor = (role: TestRole) => shared.activeWorkspaceContextSchema.parse({
+    userId,
+    workspace: {
+      id: workspaceId,
+      name: "Meyhouse",
+      logo_url: null,
+      logo_file_name: null,
+      logo_updated_at: null,
+      schedule_logo_placement: { scale: 1, offset_x: 0, offset_y: 0 },
+    },
+    membership: {
+      id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
+      userId,
+      workspaceId,
+      role,
+      status: "active",
+      allLocations: true,
+    },
+    permissions: shared.permissionsForRole(role),
+    onboarding: { status: "complete", currentStep: 2 },
+    locationScope: { allLocations: true, locationIds: [] },
+  });
+  const account = shared.accountProfileSchema.parse({
+    userId,
+    email: "owner@newfork.test",
+    displayName: "Local Owner",
+    phone: null,
+    theme: "system",
+  });
+  const AuthContext = React.createContext<unknown>(null);
+  function AuthProvider({ children }: { readonly children: React.ReactNode }) {
+    const [role, setRole] = React.useState<TestRole | null>(testAuth.role);
+    const context = React.useMemo(() => (role ? contextFor(role) : null), [role]);
+    const value = React.useMemo(
+      () => ({
+        account: role ? account : null,
+        authenticated: role !== null,
+        context,
+        error: null,
+        ready: true,
+        supabaseConfigured: true,
+        signIn: async () => {
+          testAuth.role = testAuth.nextRole;
+          setRole(testAuth.nextRole);
+          return true;
+        },
+        signUp: async () => false,
+        refresh: async () => context,
+        signOut: async () => {
+          testAuth.role = null;
+          setRole(null);
+        },
+        updateAccount: async () => undefined,
+      }),
+      [context, role],
+    );
+    return React.createElement(AuthContext.Provider, { value }, children);
+  }
+  return { AuthProvider, useAuth: () => React.useContext(AuthContext) };
+});
+
 vi.mock("./schedule/export-v2/files", async importOriginal => ({
   ...await importOriginal<typeof import("./schedule/export-v2/files")>(),
   renderExportFiles: vi.fn(), downloadExportFile: vi.fn(),
@@ -161,6 +237,8 @@ beforeEach(() => {
   appQueryClient.clear();
   window.history.pushState({}, "", "/");
   window.localStorage.clear();
+  testAuth.role = null;
+  testAuth.nextRole = "owner";
   resetScheduleApiMocks();
   vi.mocked(authorizeScheduleExportV2).mockReset().mockResolvedValue(undefined);
   vi.mocked(renderExportFiles).mockReset().mockResolvedValue([{ name: "schedule.pdf", blob: new Blob(["pdf"]) }]);
@@ -176,6 +254,23 @@ afterEach(async () => {
   appQueryClient.clear();
   vi.useRealTimers();
 });
+
+// Signs in through the real sign-in screen as a member with this role.
+async function signInAs(
+  role: TestRole,
+  app: Pick<typeof screen, "findByLabelText" | "getByLabelText" | "getByRole"> = screen,
+) {
+  testAuth.nextRole = role;
+  fireEvent.change(await app.findByLabelText("Email"), {
+    target: { value: `${role}@newfork.test` },
+  });
+  fireEvent.change(app.getByLabelText("Password"), {
+    target: { value: "test-password" },
+  });
+  await act(async () => {
+    fireEvent.click(app.getByRole("button", { name: "Sign in" }));
+  });
+}
 
 function scheduleFixtureForWeek(weekStart: string): ScheduleReadModel {
   return {
@@ -728,14 +823,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
-    fireEvent.change(screen.getByRole("combobox", { name: "Workspace role" }), {
-      target: { value: "owner" },
-    });
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "Use development identity" }),
-      );
-    });
+    await signInAs("owner");
 
     expect(
       await screen.findByRole(
@@ -894,7 +982,7 @@ describe("App", () => {
       "",
       `/app/schedule?date=2026-09-02&shiftTypes=${scheduleFixture.shift_types[0]!.id}`,
     );
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     render(<App />);
     await screen.findByRole("heading", { name: "Schedule" });
     fireEvent.click(await screen.findByRole("button", { name: /Settings/ }));
@@ -953,7 +1041,7 @@ describe("App", () => {
     });
 
     window.history.pushState({}, "", `/app/schedule?date=${pastWeekStart}`);
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     render(<App />);
 
     const draftSelector = await screen.findByRole(
@@ -1008,15 +1096,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "Use development identity" }),
-      );
-    });
+    await signInAs("owner");
 
     await screen.findByRole("button", {
       name: "Draft selector: New Schedule",
@@ -1051,15 +1131,7 @@ describe("App", () => {
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-09-03");
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "Use development identity" }),
-      );
-    });
+    await signInAs("owner");
 
     expect(
       await screen.findByRole("button", { name: "Dinner-Server" }),
@@ -1083,13 +1155,7 @@ describe("App", () => {
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-09-11");
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
 
     expect(
       await screen.findByRole("button", {
@@ -1182,15 +1248,7 @@ describe("App", () => {
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-09-12");
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "Use development identity" }),
-      );
-    });
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     const shiftBadge = await waitFor(() => {
       const badge = container.querySelector<HTMLElement>(
@@ -1220,8 +1278,7 @@ describe("App", () => {
   it("opens Export v2 nonmodally in the application sidebar and keeps grid Settings interactive", async () => {
     window.history.pushState({}, "", "/app/schedule/export?date=2026-08-17");
     render(<App />);
-    fireEvent.change(await screen.findByRole("combobox", { name: "Workspace role" }), { target: { value: "owner" } });
-    fireEvent.click(screen.getByRole("button", { name: "Use development identity" }));
+    await signInAs("owner");
     const panel = await screen.findByRole("region", { name: "Export settings" });
     expect(panel.closest("aside")?.getAttribute("aria-label")).toBe("Application sidebar");
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -1239,7 +1296,7 @@ describe("App", () => {
   it("opens the standalone schedule templates page from the reference templates route", async () => {
     const draftCallCount = vi.mocked(listScheduleDrafts).mock.calls.length;
     window.history.pushState({}, "", "/app/schedule/templates?date=2026-08-24");
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     render(<App />);
 
     expect(
@@ -1270,7 +1327,7 @@ describe("App", () => {
       },
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-09-07");
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     render(<App />);
     await openPublishedScheduleEditor();
     expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
@@ -1319,7 +1376,7 @@ describe("App", () => {
       "",
       `/app/schedule?date=2026-09-07&locations=${workingFixture.locations[0]!.id}&shiftTypes=${workingFixture.shift_types[0]!.id}&jobs=${workingFixture.jobs[0]!.id}&employees=${workingFixture.employees[0]!.id}&hideUnscheduled=true&layout=unified`,
     );
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     render(<App />);
 
     await openPublishedScheduleEditor();
@@ -1361,7 +1418,7 @@ describe("App", () => {
       },
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-09-07");
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     const { container } = render(<App />);
 
     await openPublishedScheduleEditor();
@@ -1428,7 +1485,7 @@ describe("App", () => {
       },
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-09-07");
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     render(<App />);
 
     await openPublishedScheduleEditor();
@@ -1476,7 +1533,7 @@ describe("App", () => {
       },
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-09-07&view=day");
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     render(<App />);
 
     await openPublishedScheduleEditor();
@@ -1518,7 +1575,7 @@ describe("App", () => {
       "",
       `/app/schedule?date=2026-08-17&draft=${missingDraftId}`,
     );
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     render(<App />);
 
     expect(
@@ -1553,15 +1610,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-09-07");
     render(<App />);
 
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "Use development identity" }),
-      );
-    });
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
 
@@ -1636,15 +1685,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     fireEvent.click(
       await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
@@ -1710,13 +1751,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     fireEvent.click(
       await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
@@ -1763,13 +1798,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     fireEvent.click(
       await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
@@ -1837,13 +1866,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     fireEvent.click(
       await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
@@ -1892,13 +1915,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     fireEvent.click(
       await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
@@ -2000,7 +2017,7 @@ describe("App", () => {
       async (_workspaceId, date) =>
         date === "2026-09-04" ? sortedFixture : scheduleFixture,
     );
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     window.localStorage.setItem(
       "organizer-schedule-ui",
       JSON.stringify({
@@ -2348,17 +2365,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-09-05");
     const { container } = render(<App />);
     const app = within(container);
-    fireEvent.change(
-      await app.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    await act(async () => {
-      fireEvent.click(
-        app.getByRole("button", { name: "Use development identity" }),
-      );
-    });
+    await signInAs("owner", app);
     await app.findByRole("heading", { name: "Schedule" }, { timeout: 5000 });
 
     const employeeOrder = () =>
@@ -2391,15 +2398,7 @@ describe("App", () => {
     try {
       window.history.pushState({}, "", "/app/schedule?date=2026-08-24");
       render(<App />);
-      fireEvent.change(
-        await screen.findByRole("combobox", { name: "Workspace role" }),
-        {
-          target: { value: "owner" },
-        },
-      );
-      fireEvent.click(
-        screen.getByRole("button", { name: "Use development identity" }),
-      );
+      await signInAs("owner");
 
       const grid = await screen.findByRole("grid", {
         name: "Weekly published schedule",
@@ -2456,7 +2455,7 @@ describe("App", () => {
     });
     vi.mocked(createScheduleShift).mockClear();
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     const { container } = render(<App />);
     const app = within(container);
     await app.findByRole("heading", { name: "Schedule" }, { timeout: 5000 });
@@ -2487,15 +2486,7 @@ describe("App", () => {
       "/app/schedule?date=2026-08-24&layout=unified",
     );
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
 
     expect(
       await screen.findByRole("grid", { name: "Weekly published schedule" }),
@@ -2530,15 +2521,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
     const { container } = render(<App />);
     const app = within(container);
-    fireEvent.change(
-      await app.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      app.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner", app);
     await app.findByRole("heading", { name: "Schedule" }, { timeout: 5000 });
 
     fireEvent.click(
@@ -2577,15 +2560,7 @@ describe("App", () => {
     });
     window.history.pushState({}, "", "/app/schedule");
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
 
     await waitFor(() => expect(acquireMock).toHaveBeenCalled());
@@ -2655,17 +2630,7 @@ describe("App", () => {
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-09-07");
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "Use development identity" }),
-      );
-    });
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
 
@@ -2924,15 +2889,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-29");
     const { container } = render(<App />);
     const app = within(container);
-    fireEvent.change(
-      await app.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      app.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner", app);
     await openPublishedScheduleEditor(app);
     fireEvent.click(
       app.getByRole("button", {
@@ -2961,15 +2918,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-29");
     const { container } = render(<App />);
     const app = within(container);
-    fireEvent.change(
-      await app.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      app.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner", app);
     await openPublishedScheduleEditor(app);
     const scheduleAddButton = app.getByRole("button", {
       name: "Add shift for unassigned at Main Dining on 2026-08-17",
@@ -3000,15 +2949,7 @@ describe("App", () => {
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
 
     const shiftBadge = await waitFor(() => {
@@ -3075,7 +3016,7 @@ describe("App", () => {
     });
     try {
       window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
-      window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+      testAuth.role = "owner";
       render(<App />);
       await openPublishedScheduleEditor();
       fireEvent.click(screen.getByRole("button", { name: /Settings/ }));
@@ -3223,13 +3164,7 @@ describe("App", () => {
     try {
       window.history.pushState({}, "", "/app/schedule?date=2026-09-18");
       const { container } = render(<App />);
-      fireEvent.change(
-        await screen.findByRole("combobox", { name: "Workspace role" }),
-        { target: { value: "owner" } },
-      );
-      fireEvent.click(
-        screen.getByRole("button", { name: "Use development identity" }),
-      );
+      await signInAs("owner");
       await openPublishedScheduleEditor();
       const shiftBadge = await waitFor(() => {
         const badge = container.querySelector<HTMLElement>(
@@ -3339,7 +3274,7 @@ describe("App", () => {
     });
 
     window.history.pushState({}, "", `/app/schedule?date=${liveWeekStart}`);
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     const { container } = render(<App />);
     await openPublishedScheduleEditor();
     expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
@@ -3392,15 +3327,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-31");
     const { container } = render(<App />);
     const app = within(container);
-    fireEvent.change(
-      await app.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      app.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner", app);
     await openPublishedScheduleEditor(app);
     expect(await app.findByRole("button", { name: "Discard" })).toBeTruthy();
 
@@ -3420,7 +3347,7 @@ describe("App", () => {
       "",
       `/app/schedule?date=2026-08-17&view=day&hideUnscheduled=true&locations=${scheduleFixture.locations[0]!.id}&shiftTypes=${scheduleFixture.shift_types[0]!.id}&jobs=${scheduleFixture.jobs[0]!.id}&employees=${scheduleFixture.employees[0]!.id}`,
     );
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     const { container } = render(<App />);
     const app = within(container);
     await app.findByRole(
@@ -3481,7 +3408,7 @@ describe("App", () => {
       },
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-09-07&view=day");
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     const { container } = render(<App />);
     const app = within(container);
 
@@ -3563,15 +3490,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", "/app/schedule?date=2026-08-25");
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
 
     const shiftBadge = await waitFor(() => {
@@ -3611,15 +3530,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-30");
     const { container } = render(<App />);
     const app = within(container);
-    fireEvent.change(
-      await app.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      app.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner", app);
     await openPublishedScheduleEditor(app);
     expect(await app.findByRole("button", { name: "Discard" })).toBeTruthy();
 
@@ -3723,15 +3634,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-29");
     const { container } = render(<App />);
     const app = within(container);
-    fireEvent.change(
-      await app.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      app.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner", app);
     await openPublishedScheduleEditor(app);
     expect(await app.findByRole("button", { name: "Discard" })).toBeTruthy();
     fireEvent.click(
@@ -3828,15 +3731,7 @@ describe("App", () => {
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-08-25");
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
 
@@ -3967,15 +3862,7 @@ describe("App", () => {
     );
     window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
 
@@ -4193,7 +4080,7 @@ describe("App", () => {
       ),
     );
     window.history.pushState({}, "", "/app/schedule?date=2026-08-27");
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     const { container } = render(<App />);
 
     expect(await screen.findByText("Unassigned")).toBeTruthy();
@@ -4269,7 +4156,7 @@ describe("App", () => {
       layout: "unified",
     });
     window.history.pushState({}, "", `/app/schedule?${query.toString()}`);
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     const { container } = render(<App />);
 
     const trigger = await waitFor(() => {
@@ -4310,15 +4197,7 @@ describe("App", () => {
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-08-28");
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      {
-        target: { value: "owner" },
-      },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
 
     expect(await screen.findByText("Unassigned")).toBeTruthy();
     const unassignedRow = container.querySelector(
@@ -4414,13 +4293,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", "/app/schedule?date=2026-10-19");
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     fireEvent.click(
       await screen.findByRole("link", { name: "Schedule" }, { timeout: 5000 }),
     );
@@ -4607,15 +4480,7 @@ describe("App", () => {
       `/app/schedule?date=2026-10-26&draft=${draft.id}`,
     );
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "Use development identity" }),
-      );
-    });
+    await signInAs("owner");
     expect(
       await screen.findByRole(
         "button",
@@ -4707,7 +4572,7 @@ describe("App", () => {
     });
 
     window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
-    window.localStorage.setItem("newfork.development.workspaceRole", "owner");
+    testAuth.role = "owner";
     const { container } = render(<App />);
 
     fireEvent.click(
@@ -4828,13 +4693,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", "/app/schedule?date=2026-10-26");
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     fireEvent.click(await screen.findByRole("button", { name: "Published" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Publish another draft" }),
@@ -4980,13 +4839,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", "/app/schedule?date=2026-11-02");
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     fireEvent.click(await screen.findByRole("button", { name: "Published" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Publish another draft" }),
@@ -5104,13 +4957,7 @@ describe("App", () => {
 
     window.history.pushState({}, "", "/app/schedule?date=2026-11-09");
     const { container } = render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     fireEvent.click(await screen.findByRole("button", { name: "Published" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Publish another draft" }),
@@ -5155,8 +5002,7 @@ describe("App", () => {
   it("downloads the active Export v2 preview after server authorization without the legacy engine", async () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
     render(<App />);
-    fireEvent.change(await screen.findByRole("combobox", { name: "Workspace role" }), { target: { value: "owner" } });
-    fireEvent.click(screen.getByRole("button", { name: "Use development identity" }));
+    await signInAs("owner");
     fireEvent.click(await screen.findByRole("button", { name: "Export" }));
     const panel = await screen.findByRole("region", { name: "Export settings" });
     await clickReadyButton(within(panel), "Download PDF");
@@ -5174,8 +5020,7 @@ describe("App", () => {
   it("prompts Save draft for edit-mode Export, and cancellation keeps the working copy", async () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
     render(<App />);
-    fireEvent.change(await screen.findByRole("combobox", { name: "Workspace role" }), { target: { value: "owner" } });
-    fireEvent.click(screen.getByRole("button", { name: "Use development identity" }));
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     fireEvent.click(await screen.findByRole("button", { name: "Export" }));
     const dialog = await screen.findByRole("dialog", { name: "Save draft" });
@@ -5197,8 +5042,7 @@ describe("App", () => {
     });
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
     render(<App />);
-    fireEvent.change(await screen.findByRole("combobox", { name: "Workspace role" }), { target: { value: "owner" } });
-    fireEvent.click(screen.getByRole("button", { name: "Use development identity" }));
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     fireEvent.click(await screen.findByRole("button", { name: "Export" }));
     const dialog = await screen.findByRole("dialog", { name: "Save draft" });
@@ -5218,8 +5062,7 @@ describe("App", () => {
       created_at: "2026-08-17T12:00:00Z", updated_at: "2026-08-17T12:00:00Z" };
     vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
-    fireEvent.change(await screen.findByRole("combobox", { name: "Workspace role" }), { target: { value: "owner" } });
-    fireEvent.click(screen.getByRole("button", { name: "Use development identity" }));
+    await signInAs("owner");
     fireEvent.click(await screen.findByRole("button", { name: "Export" }));
     const panel = await screen.findByRole("region", { name: "Export settings" });
     fireEvent.click(within(panel).getByRole("radio", { name: /^Excel/ }));
@@ -5235,8 +5078,7 @@ describe("App", () => {
   it("does not open Export v2 or emit output after Save draft fails", async () => {
     vi.mocked(saveScheduleDraft).mockRejectedValueOnce(new Error("Network dropped"));
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
-    fireEvent.change(await screen.findByRole("combobox", { name: "Workspace role" }), { target: { value: "owner" } });
-    fireEvent.click(screen.getByRole("button", { name: "Use development identity" }));
+    await signInAs("owner");
     await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
     const dialog = await screen.findByRole("dialog", { name: "Save draft" });
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Failed draft" } });
@@ -5252,8 +5094,7 @@ describe("App", () => {
     let rejectSave!: (error: Error) => void;
     vi.mocked(saveScheduleDraft).mockImplementationOnce(() => new Promise((_, reject) => { rejectSave = reject; }));
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
-    fireEvent.change(await screen.findByRole("combobox", { name: "Workspace role" }), { target: { value: "owner" } });
-    fireEvent.click(screen.getByRole("button", { name: "Use development identity" }));
+    await signInAs("owner");
     await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
     const dialog = await screen.findByRole("dialog", { name: "Save draft" });
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Expired export draft" } });
@@ -5282,8 +5123,7 @@ describe("App", () => {
       .mockImplementationOnce(() => new Promise((_, reject) => { rejectOld = reject; }))
       .mockImplementationOnce(() => new Promise((_, reject) => { rejectNew = reject; }));
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
-    fireEvent.change(await screen.findByRole("combobox", { name: "Workspace role" }), { target: { value: "owner" } });
-    fireEvent.click(screen.getByRole("button", { name: "Use development identity" }));
+    await signInAs("owner");
     for (const name of ["Expired draft", "Current draft"]) {
       // The fixture deliberately resumes the same session id/revision: an old
       // operation must still be stale after the intervening preview state.
@@ -5309,9 +5149,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/sign-in");
     render(<App />);
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("manager");
 
     await waitFor(() =>
       expect(window.location.pathname).toBe("/app/workspace"),
@@ -5327,11 +5165,7 @@ describe("App", () => {
       window.history.pushState({}, "", "/account/workspaces");
       render(<App />);
 
-      fireEvent.click(
-        await screen.findByRole("button", {
-          name: "Use development identity",
-        }),
-      );
+      await signInAs("manager");
 
       await waitFor(() =>
         expect(window.location.pathname).toBe("/account/workspaces"),
@@ -5416,13 +5250,7 @@ describe("App", () => {
     });
     window.history.pushState({}, "", "/app/schedule");
     render(<App />);
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Workspace role" }),
-      { target: { value: "owner" } },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("owner");
     await openPublishedScheduleEditor();
     expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: /Auto-fill/ }));
@@ -5478,9 +5306,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("manager");
 
     await waitFor(() =>
       expect(window.location.pathname).toBe("/app/workspace"),
@@ -5503,13 +5329,7 @@ describe("App", () => {
           name: "Sign in",
         }),
       ).toBeTruthy();
-      fireEvent.change(
-        screen.getByRole("combobox", { name: "Workspace role" }),
-        { target: { value: "owner" } },
-      );
-      fireEvent.click(
-        screen.getByRole("button", { name: "Use development identity" }),
-      );
+      await signInAs("owner");
 
       await waitFor(() =>
         expect(window.location.pathname).not.toBe(path),
@@ -5526,12 +5346,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
-    fireEvent.change(screen.getByRole("combobox", { name: "Workspace role" }), {
-      target: { value: "employee" },
-    });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("employee");
 
     await waitFor(() =>
       expect(window.location.pathname).toBe("/app/employee-hub"),
@@ -5546,12 +5361,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Sign in" }),
     ).toBeTruthy();
-    fireEvent.change(screen.getByRole("combobox", { name: "Workspace role" }), {
-      target: { value: "employee" },
-    });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use development identity" }),
-    );
+    await signInAs("employee");
 
     await waitFor(() =>
       expect(window.location.pathname).toBe("/app/employee-hub"),

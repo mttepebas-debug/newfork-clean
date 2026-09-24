@@ -12,11 +12,9 @@ import { SignInPage } from "./SignInPage";
 const auth = vi.hoisted(() => ({
   authenticated: false,
   context: null,
-  developmentIdentityAllowed: false,
   error: null,
   signIn: vi.fn(),
   signUp: vi.fn(),
-  signInForDevelopment: vi.fn(),
   supabaseConfigured: true,
 }));
 
@@ -57,14 +55,12 @@ describe("SignInPage", () => {
   beforeEach(() => {
     auth.authenticated = false;
     auth.context = null;
-    auth.developmentIdentityAllowed = false;
     auth.error = null;
     auth.supabaseConfigured = true;
     auth.signIn.mockReset();
     auth.signIn.mockResolvedValue(true);
     auth.signUp.mockReset();
     auth.signUp.mockResolvedValue(true);
-    auth.signInForDevelopment.mockReset();
   });
 
   it("lets a potential customer switch from sign-in to workspace account creation", async () => {

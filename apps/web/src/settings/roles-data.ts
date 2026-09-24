@@ -6,7 +6,7 @@ import {
   type WorkspaceRoleInput,
   type WorkspaceRoleRecord,
 } from "@newfork/shared";
-import { developmentBearerToken, supabaseClient } from "../lib/supabase";
+import { supabaseClient } from "../lib/supabase";
 
 function client() {
   if (!supabaseClient) throw new Error("Role storage is not configured");
@@ -24,8 +24,7 @@ async function request(
 ) {
   const storage = client();
   const token =
-    (await storage.auth.getSession()).data.session?.access_token ??
-    developmentBearerToken();
+    (await storage.auth.getSession()).data.session?.access_token;
   if (!token) throw new Error("A current session is required");
   const response = await fetch(
     `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/v1/workspaces/${workspaceId}/roles${path}`,

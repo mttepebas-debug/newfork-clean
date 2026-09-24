@@ -5,8 +5,6 @@ import {
   accountProfileAvatarBucket,
   apiRequest,
   clearTabWorkspaceId,
-  developmentIdentityAllowed,
-  developmentIdentityRoleStorageKey,
   ensureSessionAlive,
   getTabWorkspaceId,
   loadAccountProfile,
@@ -84,7 +82,6 @@ describe("tab workspace context", () => {
 
   afterEach(() => {
     window.sessionStorage.clear();
-    window.localStorage.removeItem(developmentIdentityRoleStorageKey);
     vi.restoreAllMocks();
   });
 
@@ -115,8 +112,7 @@ describe("tab workspace context", () => {
     expect(getTabWorkspaceId()).toBe(workspaceId);
   });
 
-  it("uses the available bearer identity and tab workspace context for API requests", async () => {
-    window.localStorage.setItem(developmentIdentityRoleStorageKey, "owner");
+  it("sends the session's bearer token and the tab workspace with API requests", async () => {
     setTabWorkspaceId(workspaceId);
     vi.stubGlobal(
       "fetch",
@@ -129,11 +125,7 @@ describe("tab workspace context", () => {
 
     const [, init] = vi.mocked(fetch).mock.calls[0]!;
     const headers = new Headers((init as RequestInit).headers);
-    expect(headers.get("Authorization")).toBe(
-      developmentIdentityAllowed
-        ? "Bearer development-owner-token"
-        : "Bearer session-token",
-    );
+    expect(headers.get("Authorization")).toBe("Bearer session-token");
     expect(headers.get("X-Newfork-Workspace-Id")).toBe(workspaceId);
   });
 

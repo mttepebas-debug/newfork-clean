@@ -256,104 +256,6 @@ describe("api app", () => {
     expect(runBatch).toHaveBeenCalledTimes(1);
   });
 
-  it("requires a valid active workspace context", async () => {
-    const app = buildApp();
-    const unauthorized = await app.inject({
-      method: "GET",
-      url: "/v1/development/context",
-    });
-    expect(unauthorized.statusCode).toBe(401);
-
-    const response = await app.inject({
-      method: "GET",
-      url: "/v1/development/context",
-      headers: {
-        "x-user-id": "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
-        "x-workspace-id": "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
-        "x-workspace-role": "manager",
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({
-      workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" },
-      membership: { role: "manager" },
-      permissions: expect.arrayContaining(["schedule.manage"]),
-    });
-  });
-
-  it("does not expose development identity in production mode", async () => {
-    const app = buildApp({ allowDevelopmentIdentity: false });
-    const response = await app.inject({
-      method: "GET",
-      url: "/v1/development/context",
-    });
-
-    expect(response.statusCode).toBe(404);
-  });
-
-  it("does not register development routes in production even when explicitly enabled", async () => {
-    const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
-    try {
-      const app = buildApp({ allowDevelopmentIdentity: true });
-      const contextResponse = await app.inject({
-        method: "GET" as const,
-        url: "/v1/development/context",
-      });
-      const invitationResponse = await app.inject({
-        method: "GET",
-        url: "/v1/development/invitations",
-        headers: { authorization: "Bearer development-owner-token" },
-      });
-
-      expect(contextResponse.statusCode).toBe(404);
-      expect(invitationResponse.statusCode).toBe(404);
-    } finally {
-      process.env.NODE_ENV = originalNodeEnv;
-    }
-  });
-
-  it("resolves development bearer sessions only when development identity is enabled", async () => {
-    const enabled = buildApp();
-    const developmentResponse = await enabled.inject({
-      method: "GET",
-      url: "/v1/context",
-      headers: { authorization: "Bearer development-owner-token" },
-    });
-    expect(developmentResponse.statusCode).toBe(200);
-    expect(developmentResponse.json()).toMatchObject({
-      workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" },
-      membership: { role: "owner" },
-      permissions: expect.arrayContaining(["schedule.manage"]),
-    });
-    const requestedWorkspaceId = "7ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
-    const explicitDevelopmentResponse = await enabled.inject({
-      method: "GET",
-      url: "/v1/context",
-      headers: {
-        authorization: "Bearer development-owner-token",
-        "x-newfork-workspace-id": requestedWorkspaceId,
-      },
-    });
-    expect(explicitDevelopmentResponse.statusCode).toBe(200);
-    expect(explicitDevelopmentResponse.json()).toMatchObject({
-      workspace: { id: requestedWorkspaceId },
-      membership: { workspaceId: requestedWorkspaceId, role: "owner" },
-    });
-
-    const disabled = buildApp({
-      allowDevelopmentIdentity: false,
-      contextResolver: { resolve: async () => null },
-    });
-    const productionLikeResponse = await disabled.inject({
-      method: "GET",
-      url: "/v1/context",
-      headers: { authorization: "Bearer development-owner-token" },
-    });
-    expect(productionLikeResponse.statusCode).toBe(401);
-  });
-
   it("resolves authenticated bearer sessions through the injected auth boundary", async () => {
     const app = buildApp({
       contextResolver: {
@@ -2095,86 +1997,7 @@ describe("api app", () => {
     expect(revoke).toHaveBeenCalledTimes(1);
   });
 
-  it("captures development invitation links without exposing person names or full emails", async () => {
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      invitationService: {
-        link: async () => {
-          throw new Error("not used");
-        },
-        preview: async () => {
-          throw new Error("not used");
-        },
-        prepare: async () => ({
-          id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
-          expiresAt: "2026-08-24T12:00:00.000Z",
-          developmentUrl:
-            "http://127.0.0.1:5555/invite/accept?token=dev-mailbox-token",
-        }),
-        retry: async () => {
-          throw new Error("not used");
-        },
-        revoke: async () => undefined,
-        accept: async () => ({
-          workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
-        }),
-        listPending: async () => [],
-        acceptPending: async () => ({
-          workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
-        }),
-        declinePending: async () => undefined,
-      },
-    });
-
-    const prepared = await app.inject({
-      method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/invitations",
-      headers: { authorization: "Bearer valid-token" },
-      payload: {
-        email: "dev-mailbox@example.test",
-        roleId: "cb8b3ca2-bdaa-460b-9ae8-ef6b8c049226",
-      },
-    });
-    expect(prepared.statusCode).toBe(200);
-
-    const unauthorized = await app.inject({
-      method: "GET",
-      url: "/v1/development/invitations?email=dev-mailbox@example.test",
-    });
-    expect(unauthorized.statusCode).toBe(401);
-    const employeeRole = await app.inject({
-      method: "GET",
-      url: "/v1/development/invitations?email=dev-mailbox@example.test",
-      headers: { authorization: "Bearer development-employee-token" },
-    });
-    expect(employeeRole.statusCode).toBe(401);
-
-    const response = await app.inject({
-      method: "GET",
-      url: "/v1/development/invitations?email=dev-mailbox@example.test",
-      headers: { authorization: "Bearer development-owner-token" },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.body).not.toContain("employeeName");
-    expect(response.body).not.toContain("firstName");
-    expect(response.body).not.toContain("lastName");
-    expect(response.body).not.toContain("dev-mailbox@example.test");
-    expect(response.json()).toEqual([
-      expect.objectContaining({
-        id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
-        workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
-        employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
-        emailHint: "de*********@example.test",
-        developmentUrl:
-          "http://127.0.0.1:5555/invite/accept?token=dev-mailbox-token",
-        expiresAt: "2026-08-24T12:00:00.000Z",
-      }),
-    ]);
-    expect(response.json()[0]).not.toHaveProperty("email");
-  });
-
-  it("captures owner-onboarding dispatched invite links in the development mailbox", async () => {
+  it("dispatches the invitations queued during owner onboarding when setup completes", async () => {
     const saveOwnerOnboarding = vi.fn(async () => undefined);
     const listOwnerOnboardingInvitationIntents = vi.fn(async () => [
       {
@@ -2217,23 +2040,6 @@ describe("api app", () => {
     });
     expect(completed.statusCode, completed.body).toBe(204);
 
-    const mailbox = await app.inject({
-      method: "GET",
-      url: "/v1/development/invitations?email=owner-flow@example.test",
-      headers: { authorization: "Bearer development-admin-token" },
-    });
-
-    expect(mailbox.statusCode).toBe(200);
-    expect(mailbox.body).not.toContain("owner-flow@example.test");
-    expect(mailbox.json()).toEqual([
-      expect.objectContaining({
-        id: "8ce12c4a-216e-4e52-bca4-66c32c996542",
-        employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
-        emailHint: "ow********@example.test",
-        developmentUrl:
-          "http://127.0.0.1:5555/invite/accept?token=owner-flow-token",
-      }),
-    ]);
     expect(markOwnerOnboardingInvitationIntentDispatched).toHaveBeenCalledWith(
       "valid-token",
       {

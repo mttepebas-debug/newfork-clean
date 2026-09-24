@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { saveShiftType } from "./organization-data";
 const storage = vi.hoisted(() => ({ from: vi.fn() }));
-vi.mock("../lib/supabase", () => ({ supabaseClient: storage, developmentBearerToken: () => null }));
+vi.mock("../lib/supabase", () => ({ supabaseClient: storage }));
 const values = { name: "Lunch", color: "#123456", default_start_time: "12:00", default_end_time: "16:00" };
 const chain = { update: vi.fn(), eq: vi.fn(), select: vi.fn(), maybeSingle: vi.fn(), insert: vi.fn() };
 beforeEach(() => {

@@ -4,7 +4,7 @@ import { buildApp } from "./app.js";
 
 describe("api error handling", () => {
   it("answers an unknown route with a json body", async () => {
-    const app = buildApp({ allowDevelopmentIdentity: false });
+    const app = buildApp();
 
     const response = await app.inject({ method: "GET", url: "/v1/nope" });
 
@@ -13,7 +13,7 @@ describe("api error handling", () => {
   });
 
   it("keeps internals out of a failed request and returns its id", async () => {
-    const app = buildApp({ allowDevelopmentIdentity: false });
+    const app = buildApp();
     app.get("/__boom", async () => {
       throw new Error("service role key rejected by upstream");
     });
@@ -28,7 +28,7 @@ describe("api error handling", () => {
   });
 
   it("passes a thrown status code and message through", async () => {
-    const app = buildApp({ allowDevelopmentIdentity: false });
+    const app = buildApp();
     app.get("/__teapot", async () => {
       throw Object.assign(new Error("Short and safe"), { statusCode: 418 });
     });

@@ -7,9 +7,7 @@ async function getApp() {
     appPromise = Promise.resolve()
       .then(() => require("../apps/api/dist/vercel-app.cjs"))
       .then(async ({ buildApp }) => {
-        const app = buildApp({
-          allowDevelopmentIdentity: false,
-        });
+        const app = buildApp();
         await app.ready();
         return app;
       });

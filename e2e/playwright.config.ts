@@ -70,7 +70,6 @@ export default defineConfig({
         VITE_API_URL: apiUrl,
         VITE_SUPABASE_URL: supabase.API_URL,
         VITE_SUPABASE_ANON_KEY: supabase.ANON_KEY,
-        VITE_ALLOW_DEVELOPMENT_IDENTITY: "false",
       },
     },
   ],

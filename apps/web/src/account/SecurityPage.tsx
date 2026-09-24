@@ -5,7 +5,6 @@ import { useAuth } from "../auth/AuthContext";
 import {
   cancelAccountEmailChange,
   changeAccountPassword,
-  developmentBearerToken,
   loadAccountDeletionBlockers,
   loadAccountSecurityState,
   requestAccountEmailChange,
@@ -33,7 +32,6 @@ export default function SecurityPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const development = Boolean(developmentBearerToken());
   useEffect(() => {
     if (confirmDeletion) deletionDialog.current?.showModal();
     else deletionDialog.current?.close();
@@ -41,7 +39,7 @@ export default function SecurityPage() {
 
   useEffect(() => {
     if (!account) return;
-    if (!supabaseClient || development) {
+    if (!supabaseClient) {
       setSecurity({ email: account.email, pendingEmail: null, emailChangeSentAt: null, emailVerified: false });
       setBlockers(
         context
@@ -70,7 +68,7 @@ export default function SecurityPage() {
         if (active) setError(errorMessage(loadError, "Security details could not be loaded"));
       });
     return () => { active = false; };
-  }, [account, context, development]);
+  }, [account, context]);
 
   if (!account) return null;
 
@@ -91,9 +89,7 @@ export default function SecurityPage() {
   const submitEmail = async (event: FormEvent) => {
     event.preventDefault();
     await run("email", async () => {
-      const next = development
-        ? { email: account.email, pendingEmail: newEmail.trim().toLowerCase(), emailChangeSentAt: new Date().toISOString(), emailVerified: security?.emailVerified ?? false }
-        : await requestAccountEmailChange(supabaseClient!, newEmail);
+      const next = await requestAccountEmailChange(supabaseClient!, newEmail);
       setSecurity(next);
       setNewEmail("");
     }, "Verification links sent to both email addresses");
@@ -102,9 +98,7 @@ export default function SecurityPage() {
   const submitPassword = async (event: FormEvent) => {
     event.preventDefault();
     await run("password", async () => {
-      if (!development) {
-        await changeAccountPassword(supabaseClient!, { currentPassword, newPassword, confirmPassword });
-      }
+      await changeAccountPassword(supabaseClient!, { currentPassword, newPassword, confirmPassword });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -128,10 +122,10 @@ export default function SecurityPage() {
               <p>Both your current and new email must confirm. Your current email stays active until then.</p>
               <div className="account-button-row">
                 <Button type="button" disabled={busy !== null} onClick={() => void run("resend-email", async () => {
-                  if (!development) await resendAccountEmailChange(supabaseClient!);
+                  await resendAccountEmailChange(supabaseClient!);
                 }, "Verification links sent again")}>Resend</Button>
                 <Button className="danger-button" type="button" disabled={busy !== null} onClick={() => void run("cancel-email", async () => {
-                  if (!development) await cancelAccountEmailChange(supabaseClient!);
+                  await cancelAccountEmailChange(supabaseClient!);
                   setSecurity((current) => current ? { ...current, pendingEmail: null, emailChangeSentAt: null } : current);
                 }, "Email change cancelled")}>Cancel change</Button>
               </div>
@@ -160,7 +154,7 @@ export default function SecurityPage() {
         <div className="account-section-body">
           <div className="account-info-row"><div><strong>This device</strong><span>Current browser session</span></div><span className="account-pill">Current</span></div>
           <form className="account-inline-form" onSubmit={(event) => { event.preventDefault(); void run("sessions", async () => {
-            if (!development) await signOutOtherAccountSessions(supabaseClient!, sessionPassword);
+            await signOutOtherAccountSessions(supabaseClient!, sessionPassword);
             setSessionPassword("");
           }, "Other sessions signed out"); }}>
             <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={sessionPassword} onChange={(event) => setSessionPassword(event.target.value)} required /></label>
@@ -186,7 +180,6 @@ export default function SecurityPage() {
             <p>You will be signed out of every session. Pending invitations will be cancelled and their workspace managers notified.</p>
             <p>Your profile and personal preferences are kept for 14 days. Use the recovery email link during that time to restore your account. After 14 days, your personal account data is permanently removed.</p>
           <form className="account-section-body" onSubmit={(event) => { event.preventDefault(); void run("delete", async () => {
-            if (development) throw new Error("Deletion is disabled for the development identity");
             await requestSecureAccountDeletion(supabaseClient!, deletionPassword);
             await signOut();
           }, "Account deletion requested"); }}>

@@ -25,7 +25,6 @@ import {
 import {
   getTabWorkspaceId,
   supabaseClient,
-  developmentBearerToken,
 } from "../lib/supabase";
 import {
   lineupCandidateSchema,
@@ -43,7 +42,6 @@ async function request(
   init: RequestInit = {},
 ) {
   const token =
-    developmentBearerToken() ??
     (await supabaseClient?.auth.getSession())?.data.session?.access_token;
   if (!token) throw new Error("A current session is required for Line-up");
   const headers = new Headers(init.headers);
