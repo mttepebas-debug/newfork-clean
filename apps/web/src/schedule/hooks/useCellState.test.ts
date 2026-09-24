@@ -67,7 +67,6 @@ function model(shifts: readonly ScheduleShift[]): ScheduleReadModel {
         location_ids: [mainLocationId, patioLocationId],
         job_ids: ["33333333-3333-4333-8333-333333333333"],
         primary_job_id: "33333333-3333-4333-8333-333333333333",
-        availability: null,
       },
     ],
     shifts: [...shifts],
@@ -77,10 +76,9 @@ function model(shifts: readonly ScheduleShift[]): ScheduleReadModel {
 }
 
 describe("buildScheduleCellState", () => {
-  it("uses weekly location/day projections and ignores the old recurring baseline", () => {
+  it("marks unavailable days from the weekly location/day projection", () => {
     const base = model([]);
     const changed: ScheduleReadModel = { ...base, employees: [{ ...base.employees[0]!,
-      availability: [{ day: 1, mode: "unavailable", windows: [] }],
       weekly_availability: [{ location_id: mainLocationId, location_name: "Main", timezone: "America/Los_Angeles", week_start: base.week_start,
         status: "ready", unavailable_intervals: [], leave_intervals: [], clock_segments: [], days: [{ date: "2026-08-18", has_unavailable: true, all_day: true }],
       }],
@@ -142,68 +140,6 @@ describe("buildScheduleCellState", () => {
     expect(cell?.closedShiftTypeIds).toEqual([
       "44444444-4444-4444-8444-444444444444",
     ]);
-  });
-
-  it("marks employee cells with all-day unavailable availability rules", () => {
-    const unavailableModel = {
-      ...model([]),
-      employees: [
-        {
-          ...model([]).employees[0]!,
-          availability: [
-            { day: 0, mode: "unrestricted", windows: [] },
-            { day: 1, mode: "unavailable", windows: [] },
-            { day: 2, mode: "unrestricted", windows: [] },
-            { day: 3, mode: "unrestricted", windows: [] },
-            { day: 4, mode: "unrestricted", windows: [] },
-            { day: 5, mode: "unrestricted", windows: [] },
-            { day: 6, mode: "unrestricted", windows: [] },
-          ],
-        },
-      ],
-    } satisfies ScheduleReadModel;
-    const state = buildScheduleCellState(unavailableModel);
-
-    expect(
-      state.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId))
-        ?.hasUnavailability,
-    ).toBe(true);
-    expect(
-      state.get(scheduleCellStateKey(patioLocationId, "2026-08-17", employeeId))
-        ?.hasUnavailability,
-    ).toBe(true);
-    expect(
-      state.get(scheduleCellStateKey(mainLocationId, "2026-08-18", employeeId)),
-    ).toBeUndefined();
-  });
-
-  it("marks employee cells with restricted availability windows", () => {
-    const restrictedModel = {
-      ...model([]),
-      employees: [
-        {
-          ...model([]).employees[0]!,
-          availability: [
-            { day: 0, mode: "unrestricted", windows: [] },
-            { day: 1, mode: "unrestricted", windows: [] },
-            { day: 2, mode: "windows", windows: [{ start: "09:00", end: "15:00" }] },
-            { day: 3, mode: "unrestricted", windows: [] },
-            { day: 4, mode: "unrestricted", windows: [] },
-            { day: 5, mode: "unrestricted", windows: [] },
-            { day: 6, mode: "unrestricted", windows: [] },
-          ],
-        },
-      ],
-    } satisfies ScheduleReadModel;
-    const state = buildScheduleCellState(restrictedModel);
-
-    expect(
-      state.get(scheduleCellStateKey(mainLocationId, "2026-08-18", employeeId))
-        ?.hasUnavailability,
-    ).toBe(true);
-    expect(
-      state.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId)),
-    ).toBeUndefined();
   });
 
   it("adds same-day other-location employee shifts as ghost badges", () => {

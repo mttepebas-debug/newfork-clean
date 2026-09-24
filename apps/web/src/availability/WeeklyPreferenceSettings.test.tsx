@@ -19,7 +19,6 @@ function model(): WeeklyPreferenceSettingsRead {
   return {
     settings: {
       input_mode: "time_range",
-      warning_policy: "warn",
       onboarding_required: false,
       revision: 3,
     },

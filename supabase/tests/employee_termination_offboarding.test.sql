@@ -69,19 +69,6 @@ insert into public.employee_job_assignments (
    '6a000000-0000-4000-8000-000000000001', true, '1a000000-0000-4000-8000-000000000001');
 select tests.works_at('3a000000-0000-4000-8000-000000000002', '4a000000-0000-4000-8000-000000000001');
 
--- Establish the capacity used to publish these assignments before publication.
--- Termination then tests the explicit release decision, without bypassing the
--- same availability guard used for every published assignment.
-insert into public.employee_schedule_availability_versions (
-  workspace_id, employee_id, version_number, timezone, recurring_rules,
-  source, recorded_by, effective_from
-)
-select '2a000000-0000-4000-8000-000000000001',
-  '7a000000-0000-4000-8000-000000000001', 1, 'America/Los_Angeles',
-  jsonb_agg(jsonb_build_object('day', day, 'mode', 'unrestricted', 'windows', '[]'::jsonb)),
-  'employee', '1a000000-0000-4000-8000-000000000002', '2026-08-31'::date
-from generate_series(0, 6) day;
-
 insert into public.schedule_location_publications (
   id, workspace_id, location_id, week_start, version_number, published_by
 ) values (

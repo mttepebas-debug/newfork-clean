@@ -87,7 +87,6 @@ const onboarding = {
   first_actionable_path: "/welcome/profile",
   ssn_status: { present: false, last_four: null },
   profile: null,
-  availability: null,
   assignments: { locations: ["Downtown"], jobs: ["Server"] },
   requirements: [
     {
@@ -121,7 +120,6 @@ function weeklyModel(): WeeklyPreferenceRead {
     shift_types: [],
     settings: {
       input_mode: "time_range",
-      warning_policy: "warn",
       onboarding_required: true,
       revision: 0,
     },

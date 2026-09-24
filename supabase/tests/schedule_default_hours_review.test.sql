@@ -15,9 +15,10 @@ insert into public.workspace_memberships(workspace_id,user_id,role,status,all_lo
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by) select emp,w,employee_actor,'E-995701','Default review','Employee',actor from dhr;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by) select w,emp,loc,actor from dhr;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by) select w,emp,job,actor from dhr;
-insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from)
-select w,emp,1,'UTC',(select jsonb_agg(jsonb_build_object('day',d,'mode','windows','windows','[{"start":"10:00","end":"20:00"}]'::jsonb)) from generate_series(0,6)d),'employee',employee_actor,current_date from dhr;
-update public.workspace_scheduling_settings set availability_enforcement='hard' where workspace_id=(select w from dhr);
+insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
+select w,emp,(select jsonb_set(p,'{days}',(select jsonb_agg(d||'{"range":{"start":"00:00","end":"10:00"}}') from jsonb_array_elements(p->'days') d))
+ from (select public.empty_weekly_preference('time_range') p) x),1,employee_actor from dhr;
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"block"') where workspace_id=(select w from dhr);
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) select typ,w,'Default hours review','12:00','16:00' from dhr;
 update dhr set session=(public.acquire_schedule_edit_session_service(actor,w,week,'blank',null)->'session'->>'id')::uuid;
 select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'create',d.named,null,jsonb_build_object('employee_id',null,'location_id',d.loc,'job_id',d.job,'shift_type_id',d.typ,'scheduled_date',d.week,'time_basis','type_default','hide_time_on_badge',true),gen_random_uuid())
@@ -81,7 +82,7 @@ update dhr d set command=command||jsonb_build_object('expected_session_revision'
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is((preview->>'blocked_count')::integer,1,'new hours outside hard availability are blocked') from dhr;
 select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid(),'acknowledge_reference_overlaps',true)) from dhr$$,'23514',null,'overlap acknowledgment cannot bypass hard availability');
-update public.workspace_scheduling_settings set availability_enforcement='soft' where workspace_id=(select w from dhr);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from dhr);
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is(preview->'shifts'->0->'after_assessment'->>'operation','warning_requires_override','soft policy requires a fresh override') from dhr;
 update dhr set command=command||jsonb_build_object('overrides',jsonb_build_array(jsonb_build_object('shift_id',named,'note','Reviewed the new service reference hours')));

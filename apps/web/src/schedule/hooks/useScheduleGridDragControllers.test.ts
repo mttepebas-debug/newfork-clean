@@ -80,31 +80,29 @@ const model: ScheduleReadModel = {
       location_ids: [locationId],
       job_ids: [jobId],
       primary_job_id: jobId,
-      availability: Array.from({ length: 7 }, (_, day) => ({
-        day,
-        mode: "unrestricted" as const,
-        windows: [],
-      })),
     },
   ],
   shifts: [shift],
   closures: [],
   important_dates: [],
 };
+// The employee is unavailable all of Tuesday 2026-08-18 at Main Dining.
+const unavailable: ScheduleReadModel = { ...model, employees: model.employees.map(employee => ({ ...employee,
+  weekly_availability: [{
+    location_id: locationId, location_name: "Main Dining", timezone: "America/Los_Angeles", week_start: model.week_start, status: "ready",
+    unavailable_intervals: [{ start_at: "2026-08-18T07:00:00Z", end_at: "2026-08-19T07:00:00Z" }], leave_intervals: [],
+    clock_segments: [{ start_at: "2026-08-17T07:00:00Z", end_at: "2026-08-24T07:00:00Z", offset_seconds: -25200 }],
+    days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-08-${17 + index}`, has_unavailable: index === 1, all_day: index === 1 })),
+  }],
+})) };
 
 describe("useScheduleGridDragControllers helpers", () => {
   it("keeps an unavailable preset selectable and colors its drop orange", () => {
-    const unavailable = { ...model, employees: model.employees.map(employee => ({ ...employee,
-      availability: [{ day: 2, mode: "unavailable" as const, windows: [] }],
-    })) };
     expect(evaluateSchedulePresetDropTarget({ model: unavailable, useDefaultTimesForScheduling: true,
       target: { locationId, employeeId, jobId, shiftTypeId, label: "Dinner", color: "#2563eb", date: "2026-08-18", startTime: "16:00", endTime: "22:00" },
     })).toMatchObject({ allowed: true, targetStatus: "warning" });
   });
   it("marks unavailable hours as an allowed orange drop, not a hard blocker", () => {
-    const unavailable = { ...model, employees: model.employees.map(employee => ({ ...employee,
-      availability: [{ day: 2, mode: "unavailable" as const, windows: [] }],
-    })) };
     const target = { shiftId, locationId, employeeId, date: "2026-08-18", copy: false };
     expect(evaluateScheduleShiftDropTarget({ model: unavailable, shift, target })).toMatchObject({ allowed: true, targetStatus: "warning" });
     const excluded = { ...unavailable, employees: unavailable.employees.map(employee => ({ ...employee, is_excluded_from_schedule: true })) };

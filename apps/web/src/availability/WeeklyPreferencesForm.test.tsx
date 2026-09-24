@@ -37,7 +37,6 @@ function model(
     time_format: "24h",
     settings: {
       input_mode: mode,
-      warning_policy: "warn",
       onboarding_required: false,
       revision: 3,
     },

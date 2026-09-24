@@ -11,9 +11,6 @@ export function ScheduleConflictSheet({
   messages,
   description = "This assignment cannot be saved.",
   tone = "blocker",
-  requiresOverrideReason = false,
-  overrideReason,
-  onOverrideReasonChange,
   errorMessage,
   submitLabel,
   submitDisabled = false,
@@ -27,9 +24,6 @@ export function ScheduleConflictSheet({
   readonly contextLabel?: string;
   readonly description?: string | null;
   readonly tone?: "blocker" | "warning";
-  readonly requiresOverrideReason?: boolean;
-  readonly overrideReason?: string;
-  readonly onOverrideReasonChange?: (value: string) => void;
   readonly errorMessage?: string | null;
   readonly submitLabel?: string;
   readonly submitDisabled?: boolean;
@@ -37,7 +31,7 @@ export function ScheduleConflictSheet({
   readonly onSubmit?: () => void;
   readonly onDismiss: () => void;
 }) {
-  const isDecision = requiresOverrideReason || Boolean(submitLabel || onSubmit);
+  const isDecision = Boolean(submitLabel || onSubmit);
 
   useEffect(() => {
     if (!open || isDecision) return undefined;
@@ -71,30 +65,6 @@ export function ScheduleConflictSheet({
               <p key={`${message}-${index}`}>{message}</p>
             ))}
           </div>
-          {requiresOverrideReason ? (
-            <p className="schedule-conflict-sheet-helper">
-              Add a manager reason to override.
-            </p>
-          ) : null}
-          {requiresOverrideReason ? (
-            <label htmlFor="schedule-conflict-sheet-override-reason">
-              Override reason
-              <textarea
-                id="schedule-conflict-sheet-override-reason"
-                aria-label="Override reason"
-                value={overrideReason ?? ""}
-                maxLength={1000}
-                placeholder="Emergency staffing need, employee volunteered, or schedule correction"
-                onChange={(event) =>
-                  onOverrideReasonChange?.(event.currentTarget.value)
-                }
-              />
-              <span>
-                Required for a soft availability override. Minimum 10
-                characters.
-              </span>
-            </label>
-          ) : null}
           {errorMessage ? (
             <p className="schedule-conflict-sheet-error">{errorMessage}</p>
           ) : null}

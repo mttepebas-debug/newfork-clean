@@ -76,7 +76,6 @@ function weeklyModel(): WeeklyPreferenceRead {
     can_edit_employee: false,
     settings: {
       input_mode: "time_range",
-      warning_policy: "confirm",
       onboarding_required: false,
       revision: 1,
     },

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(17);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -51,14 +51,6 @@ values
   ('40000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '38000000-0000-4000-8000-000000000001', '36000000-0000-4000-8000-000000000001', true, '31000000-0000-4000-8000-000000000001'),
   ('40000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '38000000-0000-4000-8000-000000000002', '36000000-0000-4000-8000-000000000001', true, '31000000-0000-4000-8000-000000000001');
 
-insert into public.employee_schedule_availability_versions (
-  id, workspace_id, employee_id, version_number, timezone, recurring_rules, source, recorded_by
-) values (
-  '41000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001',
-  '38000000-0000-4000-8000-000000000001', 1, 'America/Los_Angeles',
-  '[{"day":0,"mode":"unrestricted","windows":[]},{"day":1,"mode":"unrestricted","windows":[]},{"day":2,"mode":"unavailable","windows":[]},{"day":3,"mode":"unrestricted","windows":[]},{"day":4,"mode":"unrestricted","windows":[]},{"day":5,"mode":"unrestricted","windows":[]},{"day":6,"mode":"unrestricted","windows":[]}]',
-  'manager', '31000000-0000-4000-8000-000000000001'
-);
 insert into public.schedule_closures (id, workspace_id, location_id, closed_date, title, is_all_day, created_by)
 values ('42000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', '2026-08-18', 'Closed fixture', true, '31000000-0000-4000-8000-000000000001');
 
@@ -83,7 +75,8 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '31000000-0000-4000-8000-000000000002', true);
 select throws_ok($$select * from public.schedule_location_publications$$, '42501', null, 'authenticated clients cannot read publication history directly');
 select throws_ok($$select * from public.schedule_published_shifts$$, '42501', null, 'authenticated clients cannot read published shifts directly');
-select throws_ok($$select * from public.employee_schedule_availability_versions$$, '42501', null, 'authenticated clients cannot read availability versions directly');
+select throws_ok($$select * from public.employee_weekly_preferences$$, '42501', null, 'authenticated clients cannot read availability marks directly');
+select throws_ok($$select * from public.manager_weekly_reminders$$, '42501', null, 'nor a manager''s private availability notes');
 select throws_ok($$select * from public.schedule_closures$$, '42501', null, 'authenticated clients cannot read closures directly');
 
 set local role service_role;

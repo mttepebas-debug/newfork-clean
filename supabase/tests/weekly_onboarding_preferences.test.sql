@@ -19,7 +19,7 @@ select lives_ok($$select public.initialize_employee_onboarding_service(actor) fr
 create temp table wo_case as select c.id,c.revision from public.employee_onboarding_cases c,wo_fixture f where c.employee_id=f.emp;
 select ok((select not required and not blocks_activation and not requires_review from public.employee_onboarding_requirements r,wo_case c where r.case_id=c.id and kind='availability'),'availability starts optional under default settings');
 select is((select count(*) from public.employee_weekly_preferences p,wo_fixture f where p.employee_id=f.emp),0::bigint,'initialization does not invent a declaration');
-select is(public.get_employee_onboarding_service(actor)->>'availability',null::text,'getter no longer returns a legacy week') from wo_fixture;
+select ok(not (public.get_employee_onboarding_service(actor) ? 'availability'),'getter no longer carries the old availability field') from wo_fixture;
 select lives_ok($$update public.workspace_scheduling_settings set availability_onboarding_required=true where workspace_id=(select w from wo_fixture)$$,'required setting updates existing pending cases');
 select ok((select required and blocks_activation and not requires_review and status='not_started' from public.employee_onboarding_requirements r,wo_case c where r.case_id=c.id and kind='availability'),'required declaration blocks activation without manager review');
 select is((select c.revision from public.employee_onboarding_cases c,wo_case f where c.id=f.id),2,'policy change advances onboarding revision');
@@ -36,7 +36,6 @@ create temp table wo_save as select gen_random_uuid() key,jsonb_build_object(
 select lives_ok($$select public.weekly_preferences_save_service(actor,w,command,key) from wo_fixture,wo_save$$,'pending employee confirms fully available week');
 select ok((select status='completed' and completed_at is not null and not requires_review from public.employee_onboarding_requirements where case_id=(select id from wo_case) and kind='availability'),'weekly save completes onboarding requirement immediately');
 select is((select status::text from public.employee_onboarding_requirements where case_id=(select id from wo_case) and kind='profile'),'completed','unrelated profile status stays intact');
-select is((select count(*) from public.availability_requests where workspace_id=(select w from wo_fixture)),0::bigint,'weekly onboarding never creates approval requests');
 select lives_ok($$select public.weekly_preferences_save_service(actor,w,command,key) from wo_fixture,wo_save$$,'onboarding save is retryable');
 select is((select revision from public.employee_onboarding_cases where id=(select id from wo_case)),3,'retry does not advance onboarding twice');
 select is(public.get_employee_onboarding_service(actor)->>'first_actionable_path','/welcome/review','confirmed week advances to final onboarding review') from wo_fixture;

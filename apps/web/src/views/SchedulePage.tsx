@@ -2953,12 +2953,9 @@ export function SchedulePage({
         messages={[...new Set(dropReview.review.assessments.flatMap(assessment => assessment?.reasons.map(reason => reason.message) ?? []))]}
         description={dropReview.review.blocked ? "Resolve this conflict before changing the shift." : "Review these scheduling conflicts before placing the shift."}
         tone={dropReview.review.blocked ? "blocker" : "warning"}
-        requiresOverrideReason={!dropReview.review.blocked && dropReview.review.requiresReason}
-        overrideReason={dropReview.reason}
-        onOverrideReasonChange={dropReview.setReason}
         submitLabel={dropReview.review.blocked ? undefined : "Place shift"}
         onSubmit={dropReview.review.blocked ? undefined : dropReview.confirm}
-        submitDisabled={dropReview.pending || (dropReview.review.requiresReason && dropReview.reason.trim().length < 10)}
+        submitDisabled={dropReview.pending}
         onDismiss={dropReview.dismiss}
       /> : null}
       <ScheduleSaveRecoverySheet

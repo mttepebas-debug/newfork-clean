@@ -14,14 +14,6 @@ insert into public.shift_types(id,workspace_id,name,default_start_time,default_e
 insert into public.employee_profiles(id,workspace_id,employee_code,first_name,last_name,created_by)
 select ('ada50000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','E-99320'||n,'Travel',n::text,'d9f43e62-e099-48e1-bc6f-a5aabe8e87d5' from generate_series(1,2)n;
 
--- Planning availability is declared before the first publication.
-insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from,effective_until)
-
-select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',e.id,coalesce((select max(version_number) from public.employee_schedule_availability_versions where employee_id=e.id),0)+1,'America/Los_Angeles',
-
-  (select jsonb_agg(jsonb_build_object('day',n,'mode',case when e.id='ada50000-0000-4000-8000-000000000001' and n=5 then 'windows' else 'unrestricted' end,'windows',case when e.id='ada50000-0000-4000-8000-000000000001' and n=5 then '[{"start":"00:00","end":"06:00"},{"start":"12:00","end":"15:00"}]'::jsonb else '[]'::jsonb end)) from generate_series(0,6) n),'manager','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','2030-01-07',null
-
-from public.employee_profiles e where e.id in('ada50000-0000-4000-8000-000000000001','ada50000-0000-4000-8000-000000000002');
 
 insert into public.schedule_location_publications(workspace_id,location_id,week_start,version_number,published_by)
 

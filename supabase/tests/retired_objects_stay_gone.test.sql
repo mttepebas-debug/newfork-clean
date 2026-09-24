@@ -39,6 +39,23 @@ insert into retired (kind, name, step) values
   ('permission', 'kiosk.%', '5.2'), ('permission', 'time.%', '5.2'),
   ('notification', 'time_tracking.%', '5.2'),
   ('checklist', 'kiosk', '5.2'),
+  -- 5.3 the old availability system (20260924204854)
+  ('table', 'availability_commands', '5.3'), ('table', 'availability_draft_impact_reviews', '5.3'),
+  ('table', 'availability_events', '5.3'), ('table', 'availability_publication_locks', '5.3'),
+  ('table', 'availability_requests', '5.3'), ('table', 'employee_availability_versions', '5.3'),
+  ('table', 'employee_schedule_availability_versions', '5.3'), ('table', 'schedule_service_classifications', '5.3'),
+  ('type', 'availability_capacity_result', '5.3'), ('type', 'availability_enforcement', '5.3'),
+  ('type', 'schedule_conflict_policy', '5.3'),
+  ('column', 'workspace_scheduling_settings.conflict_policy', '5.3'),
+  ('column', 'workspace_scheduling_settings.availability_enforcement', '5.3'),
+  ('column', 'workspace_scheduling_settings.availability_ownership', '5.3'),
+  ('column', 'workspace_scheduling_settings.availability_approval', '5.3'),
+  ('column', 'workspace_scheduling_settings.availability_initial_review', '5.3'),
+  ('column', 'workspace_scheduling_settings.availability_notice_days', '5.3'),
+  ('column', 'workspace_scheduling_settings.availability_policy_revision', '5.3'),
+  ('column', 'workspace_scheduling_settings.availability_warning_policy', '5.3'),
+  ('permission', 'schedule.availability.override', '5.3'),
+  ('notification', 'availability.review_required', '5.3'),
   -- 5.6 Line Up (20260924180901)
   ('table', 'lineup_notes', '5.6'), ('table', 'lineup_notification_outbox', '5.6'),
   ('table', 'lineup_operation_events', '5.6'), ('table', 'lineup_proposals', '5.6'),
@@ -68,6 +85,32 @@ select 'function', name, '5.2' from unnest(array[
   'service_actor_can_time_location', 'set_employee_kiosk_pin_service', 'time_employee_has_location',
   'time_export_normalize_location_ids', 'time_export_preview_rows', 'time_session_detail_json',
   'update_kiosk_device_label_service'
+]) name;
+insert into retired (kind, name, step)
+select 'function', name, '5.3' from unnest(array[
+  'assess_shift_availability', 'assess_shift_availability_context', 'assess_shift_availability_core',
+  'audit_scheduling_settings_change', 'availability_activate', 'availability_actor_scope',
+  'availability_calendar_comparison_service', 'availability_calendar_context',
+  'availability_calendar_read_service', 'availability_capacity_for_span', 'availability_change_narrows',
+  'availability_command_service', 'availability_date_override_ranges', 'availability_date_overrides_locked',
+  'availability_emit', 'availability_impact_comparison', 'availability_notify',
+  'availability_overlapping_temporary_versions', 'availability_pattern_capacity_for_span',
+  'availability_pending_publication', 'availability_period_locked', 'availability_proposal_applies',
+  'availability_proposals_overlap', 'availability_publication_preflight',
+  'availability_read_before_calendar_service', 'availability_read_service',
+  'availability_requests_read_service', 'availability_resolve_date_overrides', 'availability_rules_for_date',
+  'availability_shift_type_rules', 'availability_validate_date_override_replacements',
+  'availability_version_at_instant', 'availability_version_for_calendar', 'availability_week_capacity',
+  'capture_availability_publication_lock', 'employee_availability_context_service',
+  'get_employee_hub_availability_v2_service', 'get_schedule_read_model_availability_v2_service',
+  'guard_availability_draft_impact_review', 'guard_availability_request', 'guard_availability_write',
+  'guard_schedule_service_classification_history', 'preview_availability_draft_impact_service',
+  'save_employee_availability_service', 'save_employee_availability_v2_service',
+  'save_employee_hub_availability_service', 'save_onboarding_availability_v2_service',
+  'save_onboarding_availability_v3_service', 'schedule_assess_availability_preview',
+  'schedule_availability_publication_preflight', 'schedule_prepare_service_classification',
+  'schedule_service_classification', 'sync_onboarding_availability', 'validate_availability_shift_types',
+  'validate_availability_week', 'version_availability_policy', 'weekly_schedule_location_projection'
 ]) name;
 insert into retired (kind, name, step)
 select 'function', name, '5.6' from unnest(array[

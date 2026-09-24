@@ -41,7 +41,6 @@ function employee(overrides: Partial<ScheduleEmployee>): ScheduleEmployee {
     shift_type_ids: [],
     is_excluded_from_schedule: false,
     primary_job_id: jobs[0]!.id,
-    availability: null,
     ...overrides,
   };
 }
@@ -109,15 +108,13 @@ const model: ScheduleReadModel = {
       location_ids: [locationId],
       job_ids: [jobs[1]!.id],
       primary_job_id: jobs[1]!.id,
-      availability: [
-        { day: 0, mode: "unrestricted", windows: [] },
-        { day: 1, mode: "windows", windows: [{ start: "16:00", end: "23:00" }] },
-        { day: 2, mode: "unrestricted", windows: [] },
-        { day: 3, mode: "unrestricted", windows: [] },
-        { day: 4, mode: "unrestricted", windows: [] },
-        { day: 5, mode: "unrestricted", windows: [] },
-        { day: 6, mode: "unrestricted", windows: [] },
-      ],
+      // Unavailable before 16:00 on Monday 2026-08-17.
+      weekly_availability: [{
+        location_id: locationId, location_name: "Main Dining", timezone: "America/Los_Angeles", week_start: "2026-08-17", status: "ready",
+        unavailable_intervals: [{ start_at: "2026-08-17T07:00:00Z", end_at: "2026-08-17T23:00:00Z" }], leave_intervals: [],
+        clock_segments: [{ start_at: "2026-08-17T07:00:00Z", end_at: "2026-08-24T07:00:00Z", offset_seconds: -25200 }],
+        days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-08-${17 + index}`, has_unavailable: index === 0, all_day: false })),
+      }],
     }),
   ],
   shifts: [],

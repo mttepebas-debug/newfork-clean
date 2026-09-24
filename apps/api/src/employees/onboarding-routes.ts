@@ -4,7 +4,6 @@ import { HttpError } from "../http-error.js";
 import { z } from "zod";
 import type { WorkspaceContextResolver } from "../auth/workspace-context";
 import type { EmployeeOnboardingService } from "./onboarding-service";
-import { legacyAvailabilityGone } from "../availability/availability-retirement";
 
 const revisionSchema = z.number().int().positive();
 const profileBodySchema = z.object({
@@ -91,13 +90,6 @@ export function registerEmployeeOnboardingRoutes(
     if (!token)
       return reply.status(401).send({ error: "Valid bearer session required" });
     return reply.status(410).send({ error: "SSN is deferred from V1" });
-  });
-
-  app.put("/v1/me/onboarding/availability", async (request, reply) => {
-    const token = bearerToken(request.headers.authorization);
-    if (!token)
-      return reply.status(401).send({ error: "Valid bearer session required" });
-    return reply.status(410).send(legacyAvailabilityGone);
   });
 
   app.post(

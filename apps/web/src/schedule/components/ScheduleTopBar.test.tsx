@@ -33,7 +33,6 @@ const employee = {
   location_ids: [location.id],
   job_ids: [job.id],
   primary_job_id: job.id,
-  availability: null,
 } satisfies ScheduleEmployee;
 
 function buildTopBarProps(

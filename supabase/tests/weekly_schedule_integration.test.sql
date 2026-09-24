@@ -32,8 +32,7 @@ select tests.works_at(m.id, f.loc) from ws f join public.workspace_memberships m
 insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,is_primary,created_by)
  select w,emp,job,true,owner_id from ws;
-delete from public.workspace_role_permissions where workspace_id=(select w from ws) and permission_key='schedule.availability.override';
-update public.workspace_scheduling_settings set availability_enforcement='hard', availability_warning_policy='warn' where workspace_id=(select w from ws);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"warn"') where workspace_id=(select w from ws);
 update ws set session=(public.acquire_schedule_edit_session_service(manager,w,'2035-01-15','blank',null)->'session'->>'id')::uuid;
 update ws set payload=jsonb_build_object('location_id',loc,'employee_id',emp,'job_id',job,'scheduled_date','2035-01-15',
  'time_basis','explicit','start_time','18:00','end_time','20:00','time_timezone','America/Los_Angeles','note','');
@@ -48,9 +47,9 @@ $$;
 select is(pg_temp.assess()->>'operation','allowed','canonical Schedule defaults to fully available without an old baseline');
 insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,preference,revision,updated_by)
  select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),1,manager from ws;
-select is(pg_temp.assess()->>'operation','warning_requires_override','canonical assessment reads the new manager table despite legacy hard policy');
+select is(pg_temp.assess()->>'operation','warning_requires_override','canonical assessment reads the manager''s reminders');
 select is(pg_temp.assess()->>'warning_policy','confirm','a manager''s reminder asks for confirmation even under Warn');
-select is(pg_temp.assess()->>'can_override','true','no separate legacy override capability is required');
+select is(pg_temp.assess()->>'can_override','true','the manager can place anyway');
 select throws_ok($$select public.assess_schedule_shift_service(employee_user,w,payload) from ws$$,'42501',null,'employee cannot inspect manager assessment');
 select throws_ok($$select public.assess_schedule_shift_service(manager,w,payload||jsonb_build_object('location_id',other_loc)) from ws$$,'42501',null,'location scope remains enforced');
 select throws_ok($$select pg_temp.mutate(payload) from ws$$,'PT409',null,'canonical mutation requires fresh assessment');
@@ -97,7 +96,7 @@ update public.manager_weekly_reminders set preference=jsonb_set(preference,'{day
 update ws set preview=pg_temp.preflight();
 select is(preview->>'status','override_required','a changed reminder conflict asks for a decision even under Warn') from ws;
 select is(preview->'findings'->0->>'availability_state','new','changed conflict is marked new') from ws;
-update public.workspace_scheduling_settings set availability_warning_policy='confirm' where workspace_id=(select w from ws);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from ws);
 select throws_ok($$select pg_temp.publish()$$,'PT409',null,'final publish rejects changed assessment since preview');
 update ws set preview=pg_temp.preflight();
 select is(preview->>'status','override_required','new confirm finding requires one explicit decision') from ws;
@@ -122,7 +121,7 @@ insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,em
  select 'ad423000-0000-4000-8000-000000000012',w,draft,loc,emp,job,'2035-01-16','18:00','20:00','explicit','America/Los_Angeles' from ws;
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
  select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,2,range}','{"start":"18:00","end":"20:00"}'),1,employee_user from ws;
-update public.workspace_scheduling_settings set availability_warning_policy='warn' where workspace_id=(select w from ws);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"warn"') where workspace_id=(select w from ws);
 update ws set preview=pg_temp.preflight();
 select is(preview->'findings'->0->>'availability_state','new','a different shift has its own new conflict') from ws;
 select lives_ok($$select pg_temp.publish()$$,'new warn conflicts publish without any explicit decision or written reason');
@@ -152,7 +151,7 @@ create function pg_temp.apply_defaults(confirmed boolean default false) returns 
 $$;
 select lives_ok($$select pg_temp.apply_defaults()$$,'actual default-hour batch applies warn conflict without reason');
 select is((select end_time::text from public.schedule_edit_session_shifts where id='ad423000-0000-4000-8000-000000000016'),'18:00:00','batch stores the reviewed current hours');
-update public.workspace_scheduling_settings set availability_warning_policy='confirm' where workspace_id=(select w from ws);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from ws);
 update public.shift_types set default_start_time='11:00' where id='ad423000-0000-4000-8000-000000000015';
 update wd d set command=command||jsonb_build_object('expected_session_revision',e.revision) from public.schedule_edit_sessions e where e.id=d.session;
 update wd set review=public.preview_schedule_default_hours_service(s.manager,s.w,wd.session,command) from ws s;

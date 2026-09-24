@@ -59,7 +59,6 @@ const employee: ScheduleEmployee = {
   job_ids: ["66666666-6666-4666-8666-666666666666"],
   primary_job_id: "66666666-6666-4666-8666-666666666666",
   is_excluded_from_schedule: false,
-  availability: null,
 };
 
 const department: ScheduleReadModel["departments"][number] = {

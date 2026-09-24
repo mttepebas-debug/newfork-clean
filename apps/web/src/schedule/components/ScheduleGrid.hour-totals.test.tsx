@@ -89,7 +89,6 @@ function model(overrides: Partial<ScheduleReadModel> = {}): ScheduleReadModel {
         location_ids: [locationA, locationB],
         job_ids: [jobId],
         primary_job_id: jobId,
-        availability: null,
       },
     ],
     shifts: [shift()],

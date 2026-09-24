@@ -18,21 +18,10 @@ import {
 } from "./time-off";
 export * from "./time-off";
 import { shiftAvailabilityAssessmentSchema, scheduleConflictRulesSchema } from "./availability-assessment";
-import {
-  availabilityDayInputSchema,
-  availabilityDateOverrideSchema,
-  shiftTimeBasisSchema,
-  shiftTimeSnapshotSchema,
-} from "./availability";
-import {
-  employeeAvailabilityContextSchema,
-  employeeHubAvailabilityInputSchema,
-} from "./employee-hub";
+import { shiftTimeBasisSchema, shiftTimeSnapshotSchema } from "./availability";
 
 export * from "./availability";
-export * from "./availability-lifecycle";
 export * from "./availability-assessment";
-export * from "./availability-calendar";
 export * from "./weekly-preferences";
 
 export const healthResponseSchema = z.object({
@@ -122,7 +111,6 @@ export const permissionSchema = z.enum([
   "schedule.read",
   "schedule.manage",
   "schedule.conflict_rules.manage",
-  "schedule.availability.override",
   "schedule.publish",
   "schedule.templates.manage",
   "schedule.export",
@@ -172,7 +160,6 @@ const rolePermissions = {
     "workspace.read",
     "schedule.read",
     "schedule.manage",
-    "schedule.availability.override",
     "schedule.publish",
     "schedule.templates.manage",
     "schedule.export",
@@ -1030,23 +1017,12 @@ export const scheduleDeadlineDaySchema = z.enum([
   "saturday",
   "sunday",
 ]);
-export const conflictPolicySchema = z.enum(["warn", "block"]);
-export const availabilityEnforcementSchema = z.enum(["soft", "hard"]);
 export const scheduleTimeFormatSchema = z.enum(["12h", "24h"]);
 
 export const schedulingSettingsSchema = z.object({
   workspace_id: z.string().uuid(),
   week_start_day: weekStartDaySchema,
   schedule_deadline_day: scheduleDeadlineDaySchema,
-  conflict_policy: conflictPolicySchema,
-  availability_enforcement: availabilityEnforcementSchema,
-  availability_ownership: z
-    .enum(["hybrid", "employee_only", "manager_only"])
-    .optional(),
-  availability_approval: z.enum(["none", "narrowing", "all"]).optional(),
-  availability_initial_review: z.boolean().optional(),
-  availability_notice_days: z.number().int().min(0).max(90).optional(),
-  availability_policy_revision: z.number().int().positive().optional(),
   minimum_travel_minutes: z.number().int().min(0).max(240).optional(),
   minimum_rest_minutes: z.number().int().min(0).max(1440).optional(),
   conflict_rules: scheduleConflictRulesSchema.optional(),
@@ -1056,7 +1032,6 @@ export const schedulingSettingsSchema = z.object({
 export type SchedulingSettings = z.infer<typeof schedulingSettingsSchema>;
 export const schedulingSettingsInputSchema = schedulingSettingsSchema.omit({
   workspace_id: true,
-  availability_policy_revision: true,
 });
 export type SchedulingSettingsInput = z.infer<
   typeof schedulingSettingsInputSchema
@@ -1222,14 +1197,6 @@ export const scheduleShiftTypeSchema = scheduleReferenceSchema.extend({
 export const scheduleShiftLabelSchema = scheduleReferenceSchema;
 export type ScheduleShiftLabel = z.infer<typeof scheduleShiftLabelSchema>;
 
-export const scheduleAvailabilityDaySchema = z.object({
-  day: z.number().int().min(0).max(6),
-  mode: z.enum(["unavailable", "unrestricted", "windows"]),
-  windows: z.array(availabilityDayInputSchema.shape.windows.element),
-  blocked_shift_type_ids:
-    availabilityDayInputSchema.shape.blocked_shift_type_ids,
-});
-
 const scheduleWeeklyIntervalSchema = z.object({
   start_at: z.string().datetime({ offset: true }),
   end_at: z.string().datetime({ offset: true }),
@@ -1293,23 +1260,7 @@ export const scheduleEmployeeSchema = z.object({
   shift_type_ids: z.array(z.string().uuid()).optional(),
   is_excluded_from_schedule: z.boolean().optional(),
   primary_job_id: z.string().uuid().nullable().optional(),
-  availability: z.array(scheduleAvailabilityDaySchema).length(7).nullable(),
   weekly_availability: z.array(scheduleWeeklyLocationSchema).optional(),
-  availability_versions: z
-    .array(
-      z.object({
-        id: z.string().uuid().optional(),
-        kind: z.enum(["weekly", "temporary"]).optional(),
-        replace_version_ids: z.array(z.string().uuid()).optional(),
-        date_overrides: z.array(availabilityDateOverrideSchema).optional(),
-        revision: z.number().int().positive(),
-        timezone: z.string(),
-        days: z.array(scheduleAvailabilityDaySchema).length(7),
-        effective_from: z.string().date(),
-        effective_until: z.string().date().nullable(),
-      }),
-    )
-    .optional(),
 });
 export type ScheduleEmployee = z.infer<typeof scheduleEmployeeSchema>;
 
@@ -1592,11 +1543,6 @@ export const scheduleShiftMutationInputSchema = scheduleShiftSchema
     idempotency_key: z.string().uuid().optional(),
     conflict_override_note: z.string().trim().min(10).max(1000).optional(),
     availability_assessment_fingerprint: z
-      .string()
-      .regex(/^[a-f0-9]{64}$/)
-      .optional(),
-    service_classification_note: z.string().trim().min(10).max(500).optional(),
-    service_classification_fingerprint: z
       .string()
       .regex(/^[a-f0-9]{64}$/)
       .optional(),
@@ -2762,13 +2708,6 @@ export type EmployeeOnboardingProfile = z.infer<
   typeof employeeOnboardingProfileSchema
 >;
 
-export const employeeAvailabilityDaySchema = availabilityDayInputSchema;
-export const employeeAvailabilityInputSchema =
-  employeeHubAvailabilityInputSchema;
-export type EmployeeAvailabilityInput = z.infer<
-  typeof employeeAvailabilityInputSchema
->;
-
 function isPathWithinRoot(path: string, root: string) {
   return (
     path === root ||
@@ -2808,8 +2747,6 @@ export const employeeOnboardingSchema = z.object({
       .nullable(),
   }),
   profile: employeeOnboardingProfileReadSchema.nullable(),
-  availability: employeeAvailabilityInputSchema.nullable(),
-  availability_context: employeeAvailabilityContextSchema.optional(),
   assignments: z.object({
     locations: z.array(z.string()),
     jobs: z.array(z.string()),

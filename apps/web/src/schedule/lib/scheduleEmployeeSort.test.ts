@@ -36,7 +36,6 @@ function employee(overrides: Partial<ScheduleEmployee>): ScheduleEmployee {
     shift_type_ids: [],
     is_excluded_from_schedule: false,
     primary_job_id: null,
-    availability: null,
     ...overrides,
   };
 }

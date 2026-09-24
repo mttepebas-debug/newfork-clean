@@ -96,7 +96,6 @@ describe("notification catalog governance", () => {
     // Availability types are seeded by INSERT ... SELECT rows; each marker
     // pins the key and schema version the catalog mirrors.
     const derivedCatalogSeeds = [
-      ["availability.review_required", "20260909023001_availability_manager_request_queue.sql", "'availability.review_required.v2'"],
       ["availability.status_changed", "20260909005001_availability_review_lifecycle.sql", "('status_changed','/app/employee-hub/my-availability')"],
       ["availability.weekly_updated", "20260909042000_weekly_preference_settings.sql", "select 'availability.weekly_updated',1,"],
     ] as const;

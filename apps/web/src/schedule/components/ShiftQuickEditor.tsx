@@ -335,37 +335,22 @@ export function ShiftQuickEditor({
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const checkingRef = useRef(false);
   const valueKey = JSON.stringify(value);
-  const [customWork, setCustomWork] = useState<{ key: string; reason: string } | null>(null);
-  const activeCustomWork = customWork?.key === valueKey ? customWork : null;
-  const submissionValue = activeCustomWork
-    ? { ...value, service_classification_note: activeCustomWork.reason.trim() }
-    : value;
-  const submissionKey = JSON.stringify(submissionValue);
-  const valueRef = useRef(submissionValue);
-  valueRef.current = submissionValue;
+  const valueRef = useRef(value);
+  valueRef.current = value;
   const [assessmentState, setAssessmentState] = useState<{
     key: string;
     value: ShiftAvailabilityAssessment;
   } | null>(null);
-  const [overrideReason, setOverrideReason] = useState("");
   const assessment =
-    assessmentState?.key === submissionKey ? assessmentState.value : null;
-  useEffect(() => {
-    setConflictSheetOpen(false);
-    setOverrideReason("");
-  }, [submissionKey]);
-  useEffect(() => { setCustomWork(null); }, [valueKey]);
+    assessmentState?.key === valueKey ? assessmentState.value : null;
+  useEffect(() => { setConflictSheetOpen(false); }, [valueKey]);
   const selectedEmployee = getShiftEditorSelectedEmployee(
     model.employees,
     value.employee_id,
   );
   const initialValue = initialValueRef.current;
-  const recordedCustomWork = assessment?.service_classification ??
-    (state.mode === "edit" && valueKey === JSON.stringify(initialValue)
-      ? state.shift.availability_assessment?.service_classification
-      : undefined);
   const editorHasUserChanges = initialValue
-    ? JSON.stringify(value) !== JSON.stringify(initialValue) || count !== 1 || activeCustomWork !== null
+    ? JSON.stringify(value) !== JSON.stringify(initialValue) || count !== 1
     : false;
   const headerPrimary = selectedEmployee?.display_name ?? "Unassigned";
   const headerSecondary =
@@ -409,19 +394,7 @@ export function ShiftQuickEditor({
       return (blockers.length ? blockers : [{ message: "This assignment could not be verified. Reload and try again." }])
         .map((reason) => ({ type: "availability_assessment", severity: "hard", message: reason.message }));
     }
-    return result?.reasons.map((reason) => ({
-      type: "availability_assessment",
-      severity:
-        result.operation === "blocked" ||
-        (result.operation === "warning_requires_override" &&
-          !result.can_override)
-          ? "hard"
-          : "soft",
-      message:
-        result.operation === "warning_requires_override" && !result.can_override
-          ? "A manager with availability override permission must review this assignment."
-          : reason.message,
-    })) ?? [];
+    return [];
   };
   const rawConflictReasons = [
     ...(assessment?.conflict_severity ? [] : localConflictReasons),
@@ -452,12 +425,9 @@ export function ShiftQuickEditor({
     const trimmedReason = reason?.trim();
     // Badge visibility cannot change the interval checked above.
     const basePayload = {
-      ...submissionValue,
+      ...value,
       ...(checked?.warning_policy && checked.operation === "warning_requires_override"
         ? { availability_assessment_fingerprint: checked.fingerprint }
-        : {}),
-      ...(activeCustomWork && checked?.service_classification_fingerprint
-        ? { service_classification_fingerprint: checked.service_classification_fingerprint }
         : {}),
     };
     const payload =
@@ -476,13 +446,6 @@ export function ShiftQuickEditor({
   };
   const attemptSubmit = async (confirmed = false) => {
     if (checkingRef.current) return;
-    if (activeCustomWork && (activeCustomWork.reason.trim().length < 10 || activeCustomWork.reason.trim().length > 500)) {
-      toast.error("Explain the custom work", {
-        dedupeKey: "schedule-quick-editor-custom-work-reason",
-        description: "Use 10 to 500 characters to explain why this work is independent of a service.",
-      });
-      return;
-    }
     if (timeValidationMessage) {
       toast.error("Enter a valid shift time", {
         dedupeKey: "schedule-quick-editor-invalid-time",
@@ -490,7 +453,7 @@ export function ShiftQuickEditor({
       });
       return;
     }
-    const submittedKey = submissionKey;
+    const submittedKey = valueKey;
     let checked: ShiftAvailabilityAssessment | null = null;
     if (model.settings.conflict_rules || value.employee_id) {
       checkingRef.current = true;
@@ -498,19 +461,12 @@ export function ShiftQuickEditor({
       try {
         checked = await loadShiftAvailability(
           model.workspace_id,
-          submissionValue,
+          value,
           state.mode === "edit" ? state.shift.id : undefined,
           sessionId,
         );
         if (JSON.stringify(valueRef.current) !== submittedKey) return;
         setAssessmentState({ key: submittedKey, value: checked });
-        if (activeCustomWork && !checked.service_classification_fingerprint) {
-          toast.error("Custom work could not be verified", {
-            dedupeKey: "schedule-quick-editor-custom-work-unverified",
-            description: "Reload the current shift and try again.",
-          });
-          return;
-        }
       } catch (error) {
         toast.error("Availability could not be checked", {
           dedupeKey: "schedule-quick-editor-availability-check-failed",
@@ -527,15 +483,10 @@ export function ShiftQuickEditor({
     const messages = formatScheduleConflictMessages(reasons);
     const weeklyWarning = !!checked?.warning_policy && checked.operation === "warning_requires_override" &&
       !checked.override_recorded && !checked.responsibility_retained;
-    const requiresReason = !checked?.warning_policy && checked?.operation === "warning_requires_override";
     const canConfirm =
       confirmed &&
       !reasons.some(isHardScheduleConflictReason) &&
-      (!weeklyWarning || checked?.warning_policy === "warn" || checked?.fingerprint === assessment?.fingerprint) &&
-      (!requiresReason ||
-        (checked?.fingerprint === assessment?.fingerprint &&
-          overrideReason.trim().length >= 10 &&
-          overrideReason.trim().length <= 500));
+      (!weeklyWarning || checked?.warning_policy === "warn" || checked?.fingerprint === assessment?.fingerprint);
     const warnOnly = weeklyWarning && checked?.warning_policy === "warn" && effectiveLocalReasons.length === 0;
     if (messages.length > 0 && !canConfirm && !warnOnly) {
       setConflictValidationArmed(true);
@@ -560,11 +511,9 @@ export function ShiftQuickEditor({
       });
     }
     submitPayload(
-      requiresReason
-        ? overrideReason
-        : confirmed && localConflictReasons.length
-          ? softConflictOverrideNote
-          : undefined,
+      confirmed && localConflictReasons.length
+        ? softConflictOverrideNote
+        : undefined,
       checked,
     );
   };
@@ -825,25 +774,6 @@ export function ShiftQuickEditor({
                 )}
               </div>
             </div>
-            {!value.shift_type_id && value.employee_id ? (
-              <div className="schedule-shift-field schedule-service-classification">
-                <span>Service classification</span>
-                <label className="schedule-custom-work-choice">
-                  <input type="checkbox" checked={activeCustomWork !== null}
-                    onChange={(event) => setCustomWork(event.target.checked ? { key: valueKey, reason: "" } : null)} />
-                  This shift is independent custom work
-                </label>
-                {activeCustomWork ? (
-                  <label>Custom work explanation
-                    <textarea aria-label="Custom work explanation" value={activeCustomWork.reason} maxLength={500}
-                      onChange={(event) => setCustomWork({ key: valueKey, reason: event.target.value })} />
-                    <small>Changing the employee, date, hours or other shift details requires a new classification.</small>
-                  </label>
-                ) : recordedCustomWork?.status === "recorded" ? (
-                  <small>Recorded custom work: {recordedCustomWork.reason}</small>
-                ) : null}
-              </div>
-            ) : null}
             <div className="schedule-shift-field">
               <span>Job</span>
               <QuickEditorSelect
@@ -1056,30 +986,14 @@ export function ShiftQuickEditor({
         description={
           assessment?.warning_policy
             ? conflictCanContinue ? "Do you want to assign this shift anyway?" : "Resolve this conflict before saving."
-            : assessment?.operation === "verification_required"
-            ? "You can keep this draft. Resolve the availability or hours before publishing."
             : undefined
         }
-        requiresOverrideReason={
-          !assessment?.warning_policy &&
-          assessment?.operation === "warning_requires_override" &&
-          assessment.can_override
-        }
-        overrideReason={overrideReason}
-        onOverrideReasonChange={setOverrideReason}
         submitLabel={
           conflictCanContinue
-            ? assessment?.conflict_severity ? "Place shift" : assessment?.operation === "verification_required"
-              ? "Keep draft"
-              : `${state.mode === "edit" ? "Save" : "Add"} anyway`
+            ? assessment?.conflict_severity ? "Place shift" : `${state.mode === "edit" ? "Save" : "Add"} anyway`
             : undefined
         }
-        submitDisabled={
-          checkingAvailability ||
-          (!assessment?.warning_policy && assessment?.operation === "warning_requires_override" &&
-            (overrideReason.trim().length < 10 ||
-              overrideReason.trim().length > 500))
-        }
+        submitDisabled={checkingAvailability}
         onSubmit={
           conflictCanContinue
             ? () => {

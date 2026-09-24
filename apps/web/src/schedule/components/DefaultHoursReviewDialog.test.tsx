@@ -43,7 +43,7 @@ describe("default-hours batch review", () => {
     fireEvent.click(screen.getByRole("button", { name: policy === "confirm" ? /^Confirm availability and apply/ : /^Apply 1 change/ }));
     await waitFor(() => expect(ui.onApplied).toHaveBeenCalled());
     expect(applyScheduleDefaultHours).toHaveBeenCalledWith(id, id, expect.objectContaining({
-      overrides: [], confirm_availability: policy === "confirm", fingerprint: "a".repeat(64),
+      confirm_availability: policy === "confirm", fingerprint: "a".repeat(64),
     }));
   });
   it("does not ask again for a retained weekly acceptance", async () => {
@@ -65,7 +65,7 @@ describe("default-hours batch review", () => {
     const ui = setup();
     expect(screen.queryByRole("button", { name: /Apply .*changes/ })).toBeNull();
     await review();
-    expect(previewScheduleDefaultHours).toHaveBeenCalledWith(id, id, { expected_session_revision: 3, starts_on: "2035-01-15", ends_on: "2035-01-21", shift_ids: [id], overrides: [] });
+    expect(previewScheduleDefaultHours).toHaveBeenCalledWith(id, id, { expected_session_revision: 3, starts_on: "2035-01-15", ends_on: "2035-01-21", shift_ids: [id] });
     fireEvent.click(screen.getByRole("button", { name: "Apply 1 change to edit session" }));
     await waitFor(() => expect(ui.onApplied).toHaveBeenCalledWith({ ...session, revision: 4 }));
     expect(ui.onClose).toHaveBeenCalledOnce();

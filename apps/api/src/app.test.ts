@@ -377,7 +377,6 @@ describe("api app", () => {
           open_shifts: [],
           team_shifts: [],
           requests: [],
-          availability: null,
           team: [],
         };
       },
@@ -1763,14 +1762,6 @@ describe("api app", () => {
       share_phone_with_teammates: true,
       share_email_with_teammates: false,
     };
-    const availability = {
-      timezone: "America/Los_Angeles",
-      days: Array.from({ length: 7 }, (_, day) => ({
-        day,
-        mode: "unrestricted",
-        windows: [],
-      })),
-    };
 
     const requests = [
       {
@@ -1778,12 +1769,6 @@ describe("api app", () => {
         url: "/v1/me/onboarding/profile",
         payload: { ...spoofedIdentity, profile, revision: 1 },
         expectedStatus: 200,
-      },
-      {
-        method: "PUT",
-        url: "/v1/me/onboarding/availability",
-        payload: { ...spoofedIdentity, availability, revision: 2 },
-        expectedStatus: 410,
       },
       {
         method: "POST",
@@ -4361,7 +4346,6 @@ function onboardingServiceMock(
       first_actionable_path: "/welcome/profile",
       ssn_status: { present: false, last_four: null },
       profile: null,
-      availability: null,
       assignments: { locations: [], jobs: [] },
       requirements: [],
     }),

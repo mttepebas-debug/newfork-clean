@@ -7,12 +7,6 @@ supabase/tests/authorization_core.test.sql
 supabase/tests/authorization_coverage.test.sql
 supabase/tests/authorization_matrix.test.sql
 supabase/tests/authz_catalog.test.sql
-supabase/tests/availability_authoritative_assessment.test.sql
-supabase/tests/availability_calendar_comparison.test.sql
-supabase/tests/availability_complement_ranges.test.sql
-supabase/tests/availability_date_overrides.test.sql
-supabase/tests/availability_manager_request_queue.test.sql
-supabase/tests/availability_publication_lock.test.sql
 supabase/tests/availability_three_levels.test.sql
 supabase/tests/bl052_document_account_inbox.test.sql
 supabase/tests/bl052_document_apply.test.sql
@@ -58,6 +52,7 @@ supabase/tests/owner_employee_record.test.sql
 supabase/tests/preferred_name_approval.test.sql
 supabase/tests/public_roles_reach_no_table_directly.test.sql
 supabase/tests/retired_objects_stay_gone.test.sql
+supabase/tests/schedule_draft_availability_reads.test.sql
 supabase/tests/schedule_edit_locks.test.sql
 supabase/tests/schedule_grid_read_budget.test.sql
 supabase/tests/schedule_publish_notifications.test.sql
@@ -68,7 +63,6 @@ supabase/tests/schedule_resume_lease.test.sql
 supabase/tests/schedule_time_source.test.sql
 supabase/tests/schedule_week_availability.test.sql
 supabase/tests/security_audit_events.test.sql
-supabase/tests/shift_exchange_availability_adapter.test.sql
 supabase/tests/shift_exchange_immediate_inbox.test.sql
 supabase/tests/shift_exchange_range_read.test.sql
 supabase/tests/shift_exchange_requested_publication.test.sql

@@ -24,7 +24,6 @@ export type NotificationTypeDisplay = {
 
 type DisplayedNotificationTypeKey =
   | NotificationTypeKey
-  | "availability.review_required"
   | "availability.status_changed"
   | "availability.weekly_updated";
 
@@ -167,23 +166,10 @@ export const notificationTypeDisplay = {
     preferenceDescription:
       "Get notified when a shift change involving you is approved, denied, cancelled, or updated.",
   },
-  "availability.review_required": {
-    label: "Availability requests to review",
-    shortLabel: "Availability review",
-    description: "An employee availability request needs a decision.",
-    categoryLabel: notificationCategoryDisplay.requests.label,
-    categoryDescription: notificationCategoryDisplay.requests.description,
-    audienceLabel: "Managers who review employee availability",
-    actionLabel: "Review availability",
-    adminDescription:
-      "Controls alerts sent when an employee availability request needs review.",
-    preferenceDescription:
-      "Get notified when an employee availability request needs your review.",
-  },
   "availability.status_changed": {
     label: "Your availability updates",
     shortLabel: "Availability updates",
-    description: "Changes and decisions about your availability.",
+    description: "Changes to your availability.",
     categoryLabel: notificationCategoryDisplay.requests.label,
     categoryDescription: notificationCategoryDisplay.requests.description,
     audienceLabel: "Employees whose availability changed",
@@ -191,7 +177,7 @@ export const notificationTypeDisplay = {
     adminDescription:
       "Controls updates sent to employees when their availability changes or needs confirmation.",
     preferenceDescription:
-      "Get notified when your availability is approved, changed, or needs your confirmation.",
+      "Get notified when your availability changes or needs your confirmation.",
   },
   "availability.weekly_updated": {
     label: "Employee availability changes",

@@ -213,7 +213,6 @@ export const rolePermissionDependencies: Readonly<
 > = {
   "schedule.manage": ["schedule.read"],
   "schedule.publish": ["schedule.manage"],
-  "schedule.availability.override": ["schedule.manage"],
   "schedule.conflict_rules.manage": ["settings.schedule_rules.read"],
   "schedule.templates.read": ["schedule.read"],
   "schedule.templates.manage": ["schedule.templates.read", "schedule.manage"],

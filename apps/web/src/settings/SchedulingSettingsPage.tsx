@@ -19,13 +19,7 @@ import "./scheduling-settings.css";
 const defaults: SchedulingSettingsInput = {
   week_start_day: "monday",
   schedule_deadline_day: "sunday",
-  conflict_policy: "warn",
-  availability_enforcement: "soft",
   time_format: "12h",
-  availability_ownership: "hybrid",
-  availability_approval: "narrowing",
-  availability_initial_review: false,
-  availability_notice_days: 0,
 };
 
 type SchedulingSettingsDraft = Omit<

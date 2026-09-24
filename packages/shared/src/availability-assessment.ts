@@ -44,16 +44,6 @@ const interval = z.object({
 });
 export const shiftAvailabilityAssessmentSchema = z.object({
   conflict_severity: scheduleConflictSeveritySchema.optional(),
-  service_classification: z.object({
-    kind: z.literal("custom"),
-    status: z.enum(["preview", "recorded"]),
-    reason: z.string(),
-    actor_user_id: z.string().uuid().optional(),
-    recorded_at: z.string().datetime({ offset: true }).optional(),
-  }).optional(),
-  service_classification_fingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(),
-  type_restrictions: z.array(z.object({ shift_type_id: z.string().uuid(), version_id: z.string().uuid(), revision: z.number().int(), timezone: z.string(),
-    start_at: z.string().datetime({ offset: true }), end_at: z.string().datetime({ offset: true }) })).optional(),
   coverage: z.enum(["full", "partial", "none", "unknown"]),
   operation: z.enum([
     "allowed",

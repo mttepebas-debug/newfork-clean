@@ -38,11 +38,6 @@ function employee(
     job_ids: ["11111111-1111-4111-8111-111111111111"],
     primary_job_id: "11111111-1111-4111-8111-111111111111",
     is_excluded_from_schedule: false,
-    availability: Array.from({ length: 7 }, (_, day) => ({
-      day,
-      mode: "unrestricted" as const,
-      windows: [],
-    })),
     ...overrides,
   };
 }

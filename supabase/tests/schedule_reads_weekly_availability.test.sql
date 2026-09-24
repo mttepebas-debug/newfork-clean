@@ -39,7 +39,7 @@ create function pg_temp.grid() returns jsonb language sql as $$
   select public.get_schedule_read_model_service(tests.user('wr:ayse'), tests.id('wr'), tests.week(1))
 $$;
 
-select is(pg_temp.ali(pg_temp.grid()) -> 'availability', 'null'::jsonb, 'the old availability field is empty');
+select ok(not (pg_temp.ali(pg_temp.grid()) ?| array['availability', 'availability_versions']), 'the old availability fields are gone');
 select is((select jsonb_agg(p ->> 'location_id') from jsonb_array_elements(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability') p),
   jsonb_build_array(tests.id('wr:K')::text), 'a Kadikoy manager sees Ali''s Kadikoy week only');
 select is(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability' -> 0 -> 'days' -> 4 ->> 'has_unavailable', 'true',

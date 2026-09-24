@@ -43,7 +43,6 @@ select is(public.weekly_preference_settings_read_service(manager,w)->>'can_edit'
 select is(public.weekly_preference_settings_read_service(actor,w)->>'can_edit','false','employee has read-only public settings') from wp_fixture;
 select throws_ok($$select public.weekly_preference_settings_read_service(gen_random_uuid(),w) from wp_fixture$$,'42501',null,'nonmember cannot read another organization');
 select throws_ok($$select pg_temp.settings_save('{}',1,(select manager from wp_fixture))$$,'42501',null,'manager save rejected in database');
-select throws_ok($$select pg_temp.settings_save('{"warning_policy":"hard"}')$$,'22023',null,'hard policy not accepted');
 select throws_ok($$select pg_temp.settings_save('{"onboarding_required":null}')$$,'22023',null,'null required flag rejected');
 -- Represent an old catalog row that predates required defaults.
 alter table public.shift_types disable trigger weekly_preference_type_hours;
@@ -67,18 +66,18 @@ select is((select count(*) from public.notification_outbox where workspace_id=(s
 select is((select payload->'recipient_user_ids' from public.notification_outbox where workspace_id=(select w from wp_fixture) and subject_type='availability_settings'),
  jsonb_build_array((select actor from wp_fixture)),'only employees whose saved week was converted are notified');
 select ok((select bool_and(position('Private manager note' in payload::text)=0) from public.notification_outbox where workspace_id=(select w from wp_fixture)),'mode notice contains no private reminders');
-select throws_ok($$select pg_temp.settings_save('{"warning_policy":"confirm"}')$$,'22023',null,'key cannot be reused for another payload');
-select throws_ok($$select pg_temp.settings_save('{"warning_policy":"confirm"}',2)$$,'40001',null,'stale revision cannot overwrite settings');
-select is(pg_temp.settings_save('{"warning_policy":"confirm","onboarding_required":true,"expected_revision":1}',2)->'settings'->>'revision','2','warning and onboarding fields save together');
-select is((select count(*) from public.notification_outbox where workspace_id=(select w from wp_fixture) and subject_type='availability_settings'),1::bigint,'warning/onboarding changes do not send renewal spam');
-select is(pg_temp.settings_save('{"warning_policy":"confirm","onboarding_required":true,"expected_revision":2}',3)->'settings'->>'revision','2','no-op save does not change revision');
+select throws_ok($$select pg_temp.settings_save('{"onboarding_required":true}')$$,'22023',null,'key cannot be reused for another payload');
+select throws_ok($$select pg_temp.settings_save('{"onboarding_required":true}',2)$$,'40001',null,'stale revision cannot overwrite settings');
+select is(pg_temp.settings_save('{"onboarding_required":true,"expected_revision":1}',2)->'settings'->>'revision','2','the onboarding setting saves');
+select is((select count(*) from public.notification_outbox where workspace_id=(select w from wp_fixture) and subject_type='availability_settings'),1::bigint,'onboarding changes do not send renewal spam');
+select is(pg_temp.settings_save('{"onboarding_required":true,"expected_revision":2}',3)->'settings'->>'revision','2','no-op save does not change revision');
 select is((select count(*) from public.audit_events where workspace_id=(select w from wp_fixture) and action='availability.settings_updated'),2::bigint,'only effective setting changes have audit events');
 select throws_ok($$update public.shift_types set default_start_time=null,default_end_time=null where id=(select dinner from wp_fixture)$$,'22023',null,'active defaults cannot be cleared');
 update public.shift_types set archived_at=now() where id=(select dinner from wp_fixture);
 update public.shift_types set default_start_time=null,default_end_time=null where id=(select dinner from wp_fixture);
 select throws_ok($$update public.shift_types set archived_at=null where id=(select dinner from wp_fixture)$$,'22023',null,'restoring a type requires valid defaults');
 select is(public.weekly_preference_settings_read_service(owner_id,w)->'missing_shift_types','[]'::jsonb,'archived missing type does not block settings') from wp_fixture;
-select is(pg_temp.settings_save('{"input_mode":"time_range","warning_policy":"confirm","onboarding_required":true,"expected_revision":2}',4)->'settings'->>'revision','3','switching back to time entry works');
+select is(pg_temp.settings_save('{"input_mode":"time_range","onboarding_required":true,"expected_revision":2}',4)->'settings'->>'revision','3','switching back to time entry works');
 select is((select count(*) from public.employee_weekly_preferences where workspace_id=(select w from wp_fixture)),1::bigint,'mode saves do not invent employee records');
 select ok(not has_function_privilege('authenticated','public.weekly_preference_settings_save_service(uuid,uuid,jsonb,uuid)','execute'),'clients cannot impersonate settings actor');
 select ok(not has_function_privilege('authenticated','public.weekly_preference_settings_read_service(uuid,uuid)','execute'),'read actor must come from API');

@@ -85,19 +85,6 @@ const model = {
       display_name: "Ada Lovelace",
       location_ids: [locationId],
       job_ids: [jobId],
-      availability: [
-        { day: 0, mode: "unrestricted", windows: [] },
-        { day: 1, mode: "unavailable", windows: [] },
-        {
-          day: 2,
-          mode: "windows",
-          windows: [{ start: "09:00", end: "17:00" }],
-        },
-        { day: 3, mode: "unrestricted", windows: [] },
-        { day: 4, mode: "unrestricted", windows: [] },
-        { day: 5, mode: "unrestricted", windows: [] },
-        { day: 6, mode: "unrestricted", windows: [] },
-      ],
     },
   ],
   shifts: [
@@ -172,35 +159,6 @@ describe("schedule conflict port", () => {
     );
     expect(messages).toContain(
       "Ada Lovelace already has a shift 09:00-17:00 at Dining Room on 2026-08-19. Requested: Server at Dining Room.",
-    );
-  });
-
-  it("pinpoints all-day and window availability blocks", () => {
-    expect(
-      formatScheduleConflictMessages(
-        evaluateScheduleShiftConflicts(
-          model,
-          [],
-          input({ scheduled_date: "2026-08-17" }),
-        ),
-      ),
-    ).toContain(
-      "Ada Lovelace is unavailable all day on 2026-08-17. Requested: Server at Dining Room.",
-    );
-    expect(
-      formatScheduleConflictMessages(
-        evaluateScheduleShiftConflicts(
-          model,
-          [],
-          input({
-            scheduled_date: "2026-08-18",
-            start_time: "16:00",
-            end_time: "20:00",
-          }),
-        ),
-      ),
-    ).toContain(
-      "Ada Lovelace is unavailable 16:00-20:00 on 2026-08-18. Requested: Server at Dining Room.",
     );
   });
 

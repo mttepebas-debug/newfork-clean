@@ -24,8 +24,7 @@ select is(
        'list_schedule_draft_document_conflicts_service',
        'list_schedule_draft_availability_conflicts_service',
        'preview_schedule_default_hours_service',
-       'weekly_schedule_publication_preflight',
-       'availability_requests_read_service'
+       'weekly_schedule_publication_preflight'
      )
      and p.prosrc !~ 'preferred_name'),
   null,

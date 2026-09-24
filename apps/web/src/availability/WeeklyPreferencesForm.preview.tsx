@@ -78,7 +78,6 @@ function Preview() {
   const [settingsModel, setSettingsModel] = useState<WeeklyPreferenceSettingsRead>({
     settings: {
       input_mode: mode,
-      warning_policy: "warn" as "warn" | "confirm",
       onboarding_required: false,
       revision: 0,
     },
@@ -95,7 +94,6 @@ function Preview() {
     time_format: "24h",
     settings: {
       input_mode: mode,
-      warning_policy: "warn",
       onboarding_required: false,
       revision: 1,
     },
@@ -157,7 +155,6 @@ function Preview() {
                 ...settingsModel,
                 settings: {
                   input_mode: command.input_mode,
-                  warning_policy: settingsModel.settings.warning_policy,
                   onboarding_required: command.onboarding_required,
                   revision: settingsModel.settings.revision + 1,
                 },

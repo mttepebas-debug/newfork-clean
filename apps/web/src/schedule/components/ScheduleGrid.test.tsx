@@ -60,7 +60,6 @@ function scheduleModel(
         location_ids: [locationId],
         job_ids: [jobId],
         primary_job_id: jobId,
-        availability: null,
       },
     ],
     shifts: [
@@ -252,7 +251,6 @@ describe("ScheduleGrid", () => {
           location_ids: [secondLocationId],
           job_ids: [],
           primary_job_id: null,
-          availability: null,
         },
       ],
     });
@@ -394,7 +392,6 @@ describe("ScheduleGrid", () => {
           location_ids: [locationId],
           job_ids: [jobId],
           primary_job_id: jobId,
-          availability: null,
         },
         {
           id: wrongLocationEmployeeId,
@@ -403,7 +400,6 @@ describe("ScheduleGrid", () => {
           location_ids: ["99999999-9999-4999-8999-999999999999"],
           job_ids: [jobId],
           primary_job_id: jobId,
-          availability: null,
         },
       ],
       shifts: [

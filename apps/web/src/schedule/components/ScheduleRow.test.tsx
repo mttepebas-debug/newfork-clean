@@ -26,7 +26,6 @@ const employee: ScheduleEmployee = {
   location_ids: ["loc-1"],
   job_ids: ["job-1"],
   primary_job_id: "job-1",
-  availability: null,
 };
 
 const job: ScheduleReadModel["jobs"][number] = {

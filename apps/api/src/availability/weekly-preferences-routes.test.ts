@@ -95,7 +95,6 @@ describe("weekly preference routes", () => {
     const { app, service } = setup();
     const settings = {
       input_mode: "shift_type",
-      warning_policy: "confirm",
       onboarding_required: true,
       expected_revision: 2,
     };
@@ -151,7 +150,6 @@ describe("weekly preference routes", () => {
           headers: { authorization: "Bearer test", "idempotency-key": key },
           payload: {
             input_mode: "time_range",
-            warning_policy: "warn",
             onboarding_required: false,
             expected_revision: 0,
           },
@@ -162,7 +160,7 @@ describe("weekly preference routes", () => {
       }
     },
   );
-  it("rejects missing keys and hard settings policy before invoking the service", async () => {
+  it("rejects a settings save without a key before invoking the service", async () => {
     const { app, service } = setup();
     try {
       const result = await app.inject({
@@ -171,7 +169,6 @@ describe("weekly preference routes", () => {
         headers: { authorization: "Bearer test" },
         payload: {
           input_mode: "time_range",
-          warning_policy: "hard",
           onboarding_required: false,
           expected_revision: 0,
         },

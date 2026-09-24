@@ -71,7 +71,7 @@ select throws_ok($$select pg_temp.create_batch(null,gen_random_uuid())$$,'40001'
 select public.mutate_schedule_edit_shift_service(s.manager,s.w,s.session,e.revision,'create',gen_random_uuid(),null,s.payload||'{"scheduled_date":"2035-01-17"}',gen_random_uuid())->>'revision'
  from ws s join public.schedule_edit_sessions e on e.id=s.session;
 select is((pg_temp.create_batch()->>'revision')::integer,(select revision from public.schedule_edit_sessions where id=(select session from ws)),'retry returns current state instead of overwriting later edits');
-update public.workspace_scheduling_settings set availability_warning_policy='confirm' where workspace_id=(select w from ws);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from ws);
 update public.manager_weekly_reminders set preference=jsonb_set(preference,'{days,4,all_day}','true') where workspace_id=(select w from ws);
 update ws s set original_revision=e.revision,request_key=gen_random_uuid(),payload=payload||'{"scheduled_date":"2035-01-18"}' from public.schedule_edit_sessions e where e.id=s.session;
 select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload)) from ws$$,'40001',null,'confirm policy cannot use an earlier conflict fingerprint');

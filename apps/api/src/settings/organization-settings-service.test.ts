@@ -6,7 +6,7 @@ const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const actorUserId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const settings = {
   week_start_day: "monday", schedule_deadline_day: "sunday",
-  conflict_policy: "warn", availability_enforcement: "soft", time_format: "12h",
+  time_format: "12h",
 } as const;
 
 describe("shared scheduling travel policy", () => {

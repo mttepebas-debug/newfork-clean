@@ -49,24 +49,9 @@ export function orderScheduleCellShifts(
 export function buildScheduleCellState(model: ScheduleReadModel): ScheduleCellStateMap {
   const cells = new Map<string, MutableScheduleCellState>();
   for (const employee of model.employees) {
-    if (employee.weekly_availability !== undefined) {
-      for (const location of employee.weekly_availability) {
-        for (const day of location.days) {
-          if (day.has_unavailable) ensureCell(cells, scheduleCellStateKey(location.location_id, day.date, employee.id)).hasUnavailability = true;
-        }
-      }
-      continue;
-    }
-    for (const availability of employee.availability ?? []) {
-      if (availability.mode === "unrestricted") continue;
-      for (const date of weekDatesForDay(model.week_start, availability.day)) {
-        for (const locationId of employee.location_ids) {
-          const cell = ensureCell(
-            cells,
-            scheduleCellStateKey(locationId, date, employee.id),
-          );
-          cell.hasUnavailability = true;
-        }
+    for (const location of employee.weekly_availability ?? []) {
+      for (const day of location.days) {
+        if (day.has_unavailable) ensureCell(cells, scheduleCellStateKey(location.location_id, day.date, employee.id)).hasUnavailability = true;
       }
     }
   }
@@ -170,17 +155,7 @@ export function useScheduleCellState(model: ScheduleReadModel): ScheduleCellStat
         `${shift.id}:${shift.employee_id ?? ""}:${shift.location_id}:${shift.scheduled_date}:${shift.start_time}:${shift.end_time}`,
     )
     .join("|")}|${model.employees
-    .map(
-      (employee) =>
-        `${employee.id}:${employee.location_ids.join(",")}:${(employee.availability ?? [])
-          .map(
-            (availability) =>
-              `${availability.day}:${availability.mode}:${availability.windows
-                .map((window) => `${window.start}-${window.end}`)
-                .join(",")}`,
-          )
-          .join(";")}`,
-    )
+    .map((employee) => `${employee.id}:${employee.location_ids.join(",")}`)
     .join("|")}`;
   return useMemo(() => buildScheduleCellState(model), [model, version]);
 }
@@ -285,15 +260,6 @@ function datesInRange(start: string, end: string | null): string[] {
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
   return dates;
-}
-
-function weekDatesForDay(weekStart: string, day: number): string[] {
-  const weekStartDate = new Date(`${weekStart}T12:00:00.000Z`);
-  const weekStartDay = weekStartDate.getUTCDay();
-  const offset = (day - weekStartDay + 7) % 7;
-  const date = new Date(weekStartDate);
-  date.setUTCDate(weekStartDate.getUTCDate() + offset);
-  return [date.toISOString().slice(0, 10)];
 }
 
 function shiftsOverlap(left: ScheduleShift, right: ScheduleShift): boolean {

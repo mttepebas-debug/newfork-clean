@@ -93,9 +93,6 @@ insert into public.locations(short_name, id,workspace_id,name,street_address,cit
 values('T00016','48000000-0000-4000-8000-000000000081','28000000-0000-4000-8000-000000000081','Dining','1 Main','City','CA','90001','US','America/Los_Angeles');
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,is_primary,created_by)
 values('28000000-0000-4000-8000-000000000081','78000000-0000-4000-8000-000000000001','48000000-0000-4000-8000-000000000081',true,'18000000-0000-4000-8000-000000000081');
-insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from)
-select '28000000-0000-4000-8000-000000000081','78000000-0000-4000-8000-000000000001',1,'America/Los_Angeles',
-jsonb_agg(jsonb_build_object('day',d,'mode','unrestricted','windows','[]'::jsonb)),'manager','18000000-0000-4000-8000-000000000081','2026-01-01' from generate_series(0,6)d;
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,status,published_by)
 values('88000000-0000-4000-8000-000000000081','28000000-0000-4000-8000-000000000081','48000000-0000-4000-8000-000000000081','2026-09-07',1,'current','18000000-0000-4000-8000-000000000081');
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,scheduled_date,start_time,end_time,source_shift_id)

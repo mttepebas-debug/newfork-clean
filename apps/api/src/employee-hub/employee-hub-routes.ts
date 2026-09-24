@@ -10,7 +10,6 @@ import {
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
 import type { EmployeeHubService } from "./employee-hub-service";
-import { legacyAvailabilityGone } from "../availability/availability-retirement";
 
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 const rangeQuery = z.object({ from: z.string().date(), to: z.string().date() });
@@ -129,28 +128,6 @@ export function registerEmployeeHubRoutes(
       } catch (error) {
         return requestError(reply, error);
       }
-    },
-  );
-  app.put(
-    "/v1/workspaces/:workspaceId/employee-hub/availability",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      if (!params.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid workspace required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Employee Hub service is not configured" });
-      return reply.status(410).send(legacyAvailabilityGone);
     },
   );
   app.post(

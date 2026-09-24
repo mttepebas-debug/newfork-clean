@@ -52,8 +52,6 @@ const settings = {
   workspace_id: workspaceId,
   week_start_day: "monday",
   schedule_deadline_day: "sunday",
-  conflict_policy: "warn",
-  availability_enforcement: "soft",
   time_format: "12h",
 } satisfies SchedulingSettings;
 
@@ -72,7 +70,6 @@ vi.mock("../availability/availability-data", () => ({
 const weeklySettings: WeeklyPreferenceSettingsRead = {
   settings: {
     input_mode: "time_range",
-    warning_policy: "warn",
     onboarding_required: false,
     revision: 3,
   },
@@ -95,7 +92,6 @@ describe("SchedulingSettingsPage checklist mode", () => {
         ...weeklySettings,
         settings: {
           input_mode: command.input_mode,
-          warning_policy: weeklySettings.settings.warning_policy,
           onboarding_required: command.onboarding_required,
           revision: 4,
         },
@@ -177,7 +173,7 @@ describe("SchedulingSettingsPage checklist mode", () => {
     ).toBe(true);
   });
 
-  it("saves weekly policy independently and removes obsolete review controls", async () => {
+  it("saves weekly policy independently", async () => {
     renderPage("/app/settings/scheduling");
     fireEvent.click(await screen.findByRole("radio", { name: "Sunday" }));
     fireEvent.click(await screen.findByRole("radio", { name: "Shift type" }));
@@ -205,12 +201,6 @@ describe("SchedulingSettingsPage checklist mode", () => {
       "checked",
       true,
     );
-    expect(screen.queryByLabelText("Availability ownership")).toBeNull();
-    expect(screen.queryByLabelText("Availability approval")).toBeNull();
-    expect(
-      screen.queryByLabelText("Availability advance notice days"),
-    ).toBeNull();
-    expect(screen.queryByRole("radio", { name: "Hard" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save rules" }));
     await waitFor(() => expect(saveSchedulingSettings).toHaveBeenCalledOnce());
     expect(saveWeeklyPreferenceSettings).toHaveBeenCalledOnce();

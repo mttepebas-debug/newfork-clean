@@ -167,12 +167,12 @@ describe("NotificationSettingsPage", () => {
   });
 
   it.each([[1, 2], [2, 1]])("renders one rule and saves the latest schema for catalog order %j", async (first, second) => {
-    const entry = { ...fixture.catalog[0]!, type_key: "availability.review_required" };
+    const entry = { ...fixture.catalog[0]!, type_key: "availability.status_changed" };
     renderPage({ ...fixture, catalog: [
       { ...entry, schema_version: first },
       { ...entry, schema_version: second },
     ] });
-    const title = "Availability requests to review";
+    const title = "Your availability updates";
     expect(await screen.findAllByRole("heading", { name: title })).toHaveLength(1);
     fireEvent.change(screen.getByLabelText(`Reason for ${title}`), {
       target: { value: "Update availability alerts" },

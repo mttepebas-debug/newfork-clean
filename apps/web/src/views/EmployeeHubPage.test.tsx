@@ -109,7 +109,6 @@ const fixture = {
       can_cancel: true,
     },
   ],
-  availability: null,
   team: [
     {
       id: "15000000-0000-4000-8000-000000000002",
@@ -154,7 +153,6 @@ const scheduleBoard = {
       display_name: "Alex Kim",
       location_ids: ["11000000-0000-4000-8000-000000000001"],
       job_ids: ["13000000-0000-4000-8000-000000000001"],
-      availability: null,
     },
     {
       id: "15000000-0000-4000-8000-000000000002",
@@ -162,7 +160,6 @@ const scheduleBoard = {
       display_name: "Jordy Lee",
       location_ids: ["11000000-0000-4000-8000-000000000001"],
       job_ids: ["13000000-0000-4000-8000-000000000001"],
-      availability: null,
     },
   ],
   shifts: [
@@ -255,7 +252,7 @@ function weeklyModel(): WeeklyPreferenceRead {
   return {
     employee_id: fixture.employee.id, employee_name: fixture.employee.display_name,
     can_edit_employee: true, can_manage: false, manager: null, shift_types: [], time_format: "12h",
-    settings: { input_mode: "time_range", warning_policy: "warn", onboarding_required: false, revision: 0 },
+    settings: { input_mode: "time_range", onboarding_required: false, revision: 0 },
     employee: { revision: 0, submitted: false, updated_at: null, preference: emptyWeeklyPreference("time_range") },
   };
 }

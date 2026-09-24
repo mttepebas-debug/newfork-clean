@@ -1,31 +1,9 @@
 import { z } from "zod";
 import { timeOffCancellationContextSchema, timeOffCancellationPeriodSchema, timeOffDecisionEventSchema, timeOffPeriodInputSchema, timeOffPeriodReadSchema } from "./time-off";
-import { availabilityPublicationLockSchema, weeklyAvailabilityInputSchema, shiftTimeBasisSchema, shiftTimeSnapshotSchema } from "./availability";
+import { shiftTimeBasisSchema, shiftTimeSnapshotSchema } from "./availability";
 
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/);
 const employeeHubTimeFormatSchema = z.enum(["12h", "24h"]);
-export const employeeHubAvailabilityInputSchema = weeklyAvailabilityInputSchema.safeExtend({
-  effective_from: z.string().date().optional(),
-  effective_until: z.string().date().nullable().optional(),
-  expected_revision: z.number().int().nonnegative().optional(),
-}).superRefine((value, ctx) => {
-  if (value.effective_until && (!value.effective_from || value.effective_until < value.effective_from))
-    ctx.addIssue({ code: "custom", path: ["effective_until"], message: "End date must follow the start date" });
-  if (value.effective_from && value.expected_revision === undefined)
-    ctx.addIssue({ code: "custom", path: ["expected_revision"], message: "Refresh availability before saving" });
-});
-export const employeeAvailabilityContextSchema = z.object({
-  latest: weeklyAvailabilityInputSchema.safeExtend({
-    effective_from: z.string().date(), effective_until: z.string().date().nullable(),
-    revision: z.number().int().positive(), source: z.enum(["employee", "manager", "onboarding"]),
-  }).nullable(),
-  revision: z.number().int().nonnegative(),
-  suggested_start: z.string().date(),
-  published_periods: z.array(availabilityPublicationLockSchema),
-});
-export type EmployeeHubAvailabilityInput = z.infer<
-  typeof employeeHubAvailabilityInputSchema
->;
 
 export const employeeHubShiftSchema = z.object({
   id: z.string().uuid(),
@@ -88,8 +66,6 @@ export const employeeHubReadModelSchema = z.object({
   open_shifts: z.array(employeeHubShiftSchema),
   team_shifts: z.array(employeeHubShiftSchema),
   requests: z.array(employeeHubRequestSchema),
-  availability: employeeHubAvailabilityInputSchema.nullable(),
-  availability_context: employeeAvailabilityContextSchema.optional(),
   team: z.array(employeeHubTeamMemberSchema),
 });
 export type EmployeeHubReadModel = z.infer<typeof employeeHubReadModelSchema>;

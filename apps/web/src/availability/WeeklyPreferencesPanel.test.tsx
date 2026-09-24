@@ -35,7 +35,6 @@ function model(): WeeklyPreferenceRead {
     can_manage: false,
     settings: {
       input_mode: "time_range",
-      warning_policy: "warn",
       onboarding_required: false,
       revision: 0,
     },

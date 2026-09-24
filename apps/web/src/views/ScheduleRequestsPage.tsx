@@ -215,7 +215,6 @@ function ScheduleRequestsPageContent() {
           queryKey: ["employee-hub", context!.workspace.id],
         }),
         client.invalidateQueries({ queryKey: ["schedule"] }),
-        client.invalidateQueries({ queryKey: ["availability"] }),
       ]);
       return null;
     } catch (error) {

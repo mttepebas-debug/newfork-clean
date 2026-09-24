@@ -110,7 +110,6 @@ const baseModel: ScheduleReadModel = {
       job_ids: [serverJobId, bartenderJobId],
       primary_job_id: serverJobId,
       is_excluded_from_schedule: false,
-      availability: null,
     },
     {
       id: mayaEmployeeId,
@@ -120,7 +119,6 @@ const baseModel: ScheduleReadModel = {
       job_ids: [serverJobId],
       primary_job_id: serverJobId,
       is_excluded_from_schedule: false,
-      availability: null,
     },
   ],
   shifts: [

@@ -58,8 +58,8 @@ select is(pg_temp.candidate('{"scheduled_date":"2035-01-16"}')->'availability'->
 select is(pg_temp.candidate('{"start_time":"20:00"}')->'availability'->>'operation','allowed','touching endpoints have no conflict');
 select is(pg_temp.candidate('{"time_timezone":"America/New_York"}')->'availability'->>'coverage','partial','actual saved timezone is compared with current target location rules');
 update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true') where workspace_id=(select w from ws);
-update public.workspace_scheduling_settings set availability_enforcement='hard',availability_warning_policy='confirm' where workspace_id=(select w from ws);
-select is(pg_temp.candidate()->>'status','eligible','all-day preference stays selectable even under obsolete hard policy');
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from ws);
+select is(pg_temp.candidate()->>'status','eligible','an all-day mark keeps the person selectable');
 select is(pg_temp.candidate()->'availability'->>'coverage','none','full preference conflict is retained as warning evidence');
 select is(pg_temp.candidate()->'availability'->>'warning_policy','confirm','current manager warning policy is returned separately');
 select is((pg_temp.candidate()->>'available_end')::timestamptz,'2035-01-16 06:00Z'::timestamptz,'all-day conflict never shortens responsibility');

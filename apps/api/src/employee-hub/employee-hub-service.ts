@@ -110,8 +110,7 @@ export function createEmployeeHubService(options: {
       ]);
       const parsed = employeeHubReadModelSchema.parse(
         typeof model === "object" && model !== null
-          // Weekly preferences have their own authorized read; never expose old dated rules.
-          ? { ...model, settings: { time_format: timeFormat }, availability: null, availability_context: undefined }
+          ? { ...model, settings: { time_format: timeFormat } }
           : model,
       );
       if (!parsed.locations.length) return parsed;

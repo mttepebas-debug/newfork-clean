@@ -103,7 +103,7 @@ gelince çözülür.
 | calisanlar | EmployeesPage | `employees` | `employees/EmployeesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | calisanlar | EmployeeHubPage | `employee-hub/*` | `views/EmployeeHubPage.tsx` | belgelendi 2026-09-24 |
 | calisanlar | EmployeeDocumentsPage | `employees/documents` | `documents/EmployeeDocumentsPage.tsx` | belgelenmedi |
-| plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | kısmi 2026-09-22 (butonlar) |
+| plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | kısmi 2026-09-24 (butonlar, müsaitlik) |
 | plan | ScheduleRequestsPage | `schedule/requests` | `views/ScheduleRequestsPage.tsx` | belgelendi 2026-09-24 |
 | plan | ScheduleTemplatesPage | `schedule/templates` | `views/ScheduleTemplatesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | plan | AvailabilityPage | `availability` | `views/AvailabilityPage.tsx` | belgelenmedi |
@@ -122,7 +122,7 @@ gelince çözülür.
 | ayarlar | ImportantDatesSettingsPage | `important-dates` | `settings/ImportantDatesSettingsPage.tsx` | belgelenmedi |
 | ayarlar | DocumentsSettingsPage | `documents` | `settings/DocumentsSettingsPage.tsx` | belgelenmedi |
 | ayarlar | SignatureTemplatesSettingsPage | | `settings/SignatureTemplatesSettingsPage.tsx` | belgelenmedi |
-| ayarlar | NotificationSettingsPage | `notifications` | `settings/NotificationSettingsPage.tsx` | belgelenmedi |
+| ayarlar | NotificationSettingsPage | `notifications` | `settings/NotificationSettingsPage.tsx` | belgelendi 2026-09-24 |
 | ayarlar | SupportSettingsPage | `support` | `settings/SupportSettingsPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | gelistirme | ScheduleShiftDesignPage | `/dev/schedule-shift-design` | `dev/ScheduleShiftDesignPage.tsx` | belgelenmedi |
 | gelistirme | ScheduleShiftBadgeLabPage | `schedule-badge-lab` | `dev/ScheduleShiftBadgeLabPage.tsx` | belgelenmedi |
@@ -210,7 +210,7 @@ More sayfasını açar. `#<id>` hash'i veri gelince o öğeye kaydırır. Line-u
 sayfası ve bağlantıları ("See today's Line-up", "View Line-up", More'daki
 "Line-up") 5.6'da kalktı.
 
-### SchedulePage (kısmi: taslak ve şablon menüleri)
+### SchedulePage (kısmi: taslak ve şablon menüleri, müsaitlik)
 
 **Kendine özgü kurallar.** Taslak menüsünde taslak ve şablon silme, Save
 draft menüsünde taslağın üstüne yazma: ikonlu iki tık (UI-12, `unstyled` +
@@ -226,6 +226,22 @@ düzenliyorsa "Draft is being edited" penceresi kimin düzenlediğini söyler;
 "View schedule" beyaz, "Try again" yeşil. Yayın penceresinin ilk adımında,
 taslak başladıktan sonra yayını değişen lokasyonun altında uyarı satırı
 (kim, ne zaman; engel değil, yayınlayan karar verir).
+
+Müsaitlik (FOUNDATION-B 5.3, 2026-09-24): tek kaynak çalışanın haftalık
+işaretleri (`employee_weekly_preferences`) ve yöneticinin gizli
+hatırlatmaları (`manager_weekly_reminders`). Izgaradaki taralı hücreler
+okuma modelindeki `employees[].weekly_availability`'den çizilir; yayınlanmış
+vardiyanın uyarısı yayın anındaki kayıttan gelir, sonradan girilen işaret
+yayınlanmış işi geriye dönük uyarıya çevirmez. Add/Edit shift kaydederken
+"Checking availability…" ile sunucudaki ortak kontrolü sorar; ayar
+(Settings → Conflict handling → Employee availability) Warn ise vardiya
+uyarıyla yazılır, Require confirmation ise çakışma penceresi "Place shift" /
+"Add anyway" kararını ister, Block ise yazılmaz; yöneticinin hatırlatmasına
+çarpan vardiya ayardan bağımsız hep onay ister. Onay gerekçe yazdırmaz,
+kararın parmak iziyle kaydedilir (eski "Override reason" kutusu, "custom
+work" sınıflandırması ve "Keep draft" yok). Sürükle-bırak/yapıştırma
+incelemesi ve "Review current default hours" aynı kuralla çalışır. Çalışan
+kartında yalnız "Weekly availability preferences" simgesi var.
 
 ### ScheduleRequestsPage
 
@@ -298,6 +314,28 @@ değil, kendi iki tık kopyası: 3,2 sn silahlı "Confirm delete"; üye ya da da
 referansı varsa "Role has dependencies" der ve sayıları veren ipucu silahlı
 kalır (UI-12'deki "tek eski kopya"). Gezinme koruması availability modülünden
 ödünç. 5.6'dan beri Schedule grubunda "Line Up" satırı yok.
+
+### NotificationSettingsPage
+
+**Ne işe yarar.** Settings → Notifications (`/app/settings/notifications`):
+workspace'in bildirim politikası. Her bildirim türü bir kart: açık/kapalı,
+izinli kanallar, sıklık. Politika kapsamı seçilebilir (Organization, bir rol
+ya da bir lokasyon); kişisel tercihler (Account → Notifications) bu kuralları
+yalnız daraltabilir.
+
+**Kullandığı ortak parçalar.** UI-03 (`SettingsHeader`). Kart başlığı ve
+açıklaması shared `notification-display.ts`'ten (`adminDescription`), tür
+listesi sunucudaki bildirim kataloğundan gelir; katalogdan silinen tür
+listeden de kalkar (5.3c'de "Availability requests to review").
+
+**Kendine özgü kurallar.** Düzenleme `notifications.settings.write` ister;
+her kayıt ve sıfırlama gerekçe ister (en az 3 karakter, denetim geçmişi
+için). "Safe test" `notifications.test_send` ister. Zorunlu türün
+(`mandatory_in_app`) açık/kapalı kutusu kilitli.
+
+**Bilinen tuhaflıklar.** Bildirim platformu ayrı bir proje olarak baştan
+tasarlanacak (FOUNDATION-B kapsam dışı); bu sayfa o zamana kadar olduğu
+gibi kalıyor.
 
 ### SupportSettingsPage (kısmi: butonlar)
 

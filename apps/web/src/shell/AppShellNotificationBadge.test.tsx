@@ -76,8 +76,6 @@ vi.mock("../settings/organization-data", () => ({
     workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
     week_start_day: "monday",
     schedule_deadline_day: "sunday",
-    conflict_policy: "warn",
-    availability_enforcement: "soft",
     time_format: "12h",
   }),
 }));

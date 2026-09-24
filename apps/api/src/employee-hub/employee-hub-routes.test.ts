@@ -156,14 +156,6 @@ describe("employee hub routes", () => {
       contextResolver: { resolve: async () => mismatchedContext },
       employeeHubService: service,
     });
-    const availability = {
-      timezone: "America/Los_Angeles",
-      days: Array.from({ length: 7 }, (_, day) => ({
-        day,
-        mode: "unrestricted",
-        windows: [],
-      })),
-    };
     const routes = [
       {
         method: "GET",
@@ -180,11 +172,6 @@ describe("employee hub routes", () => {
         method: "GET",
         url: `/v1/workspaces/${workspaceId}/employee-hub?from=2026-08-17&to=2026-09-28`,
         serviceMethod: "get",
-      },
-      {
-        method: "PUT",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/availability`,
-        payload: availability,
       },
       {
         method: "POST",
@@ -242,15 +229,6 @@ describe("employee hub routes", () => {
       workspaceId: otherWorkspaceId,
       workspace_id: otherWorkspaceId,
     };
-    const availability = {
-      ...spoofedIdentity,
-      timezone: "America/Los_Angeles",
-      days: Array.from({ length: 7 }, (_, day) => ({
-        day,
-        mode: "unrestricted",
-        windows: [],
-      })),
-    };
     const timeOff = {
       ...spoofedIdentity,
       location_id: locationId,
@@ -266,12 +244,6 @@ describe("employee hub routes", () => {
     };
 
     const requests = [
-      {
-        method: "PUT",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/availability`,
-        payload: availability,
-        expectedStatus: 410,
-      },
       {
         method: "POST",
         url: `/v1/workspaces/${workspaceId}/employee-hub/time-off`,

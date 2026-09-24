@@ -3,7 +3,7 @@ import type {
   ScheduleShift,
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
-import { assessEmployeeAvailability, availabilityForDate, getShiftTimeBasis, type ScheduleConflictSeverity, type ScheduleConflictRules } from "@newfork/shared";
+import { getShiftTimeBasis, type ScheduleConflictSeverity, type ScheduleConflictRules } from "@newfork/shared";
 import { weeklyTargetAvailability, weeklyTargetInterval } from "./lib/scheduleWeeklyAvailability";
 
 export type ScheduleConflictReason =
@@ -55,13 +55,6 @@ function formatValidationConflictMessage(message: string): string {
   if (INTERNAL_DETAIL_PATTERN.test(trimmed))
     return "Scheduling policy blocks this assignment.";
 
-  const unavailableDuringMatch = /^Employee unavailable during (.+)\.?$/i.exec(
-    trimmed,
-  );
-  if (unavailableDuringMatch?.[1]) {
-    return `Employee is unavailable for ${unavailableDuringMatch[1].trim().replace(/[.!?]+$/, "")}.`;
-  }
-
   switch (trimmed) {
     case "Shift type needs default times before it can be used":
       return "This preset needs default times before scheduling.";
@@ -81,12 +74,6 @@ function formatValidationConflictMessage(message: string): string {
       return "Location is closed all day.";
     case "Location is closed for this shift type":
       return "Location is closed for this shift type.";
-    case "Employee is unavailable for this shift type":
-      return "Employee is unavailable for this shift type.";
-    case "Employee is unavailable at this time":
-      return "Employee is unavailable at this time.";
-    case "Employee is unavailable all day":
-      return "Employee is unavailable all day.";
     case "This employee is excluded from schedule":
       return "This employee is excluded from schedule";
     case "Preset shift is unavailable":
@@ -219,31 +206,8 @@ export function formatScheduleConflictMessage(
   }
 
   if (reason.type === "availability") {
-    if (reason.rule_kind === "shift_type") {
-      return `${employeeSubject(reason)} is unavailable for ${
-        safeCustomerText(reason.shift_type_label) || "this shift type"
-      }${dateEvidence(reason)}.${targetEvidence(reason)}`.trim();
-    }
-    if (reason.rule_kind === "all_day") {
-      return `${employeeSubject(reason)} is unavailable all day${dateEvidence(reason)}.${targetEvidence(reason)}`.trim();
-    }
-    if (reason.rule_kind === "bucket") {
-      return `${employeeSubject(reason)} is unavailable for ${
-        safeCustomerText(reason.bucket) || "this period"
-      }${dateEvidence(reason)}.${targetEvidence(reason)}`.trim();
-    }
-    if (reason.rule_kind !== "time_range" && looseMessage) return looseMessage;
-    if (reason.rule_kind !== "time_range") {
-      return `${employeeSubject(reason)} is unavailable for this shift${dateEvidence(reason)}.${targetEvidence(reason)}`.trim();
-    }
-    const startTime = safeCustomerText(reason.start_time);
-    const endTime = safeCustomerText(reason.end_time);
-    if (!startTime || !endTime) {
-      return `${employeeSubject(reason)} is unavailable for this shift${dateEvidence(reason)}.${targetEvidence(reason)}`.trim();
-    }
-    return `${withPeriod(
-      `${employeeSubject(reason)} is unavailable ${startTime}-${endTime}${dateEvidence(reason)}`,
-    )}${targetEvidence(reason)}`.trim();
+    return looseMessage ??
+      `${employeeSubject(reason)} is unavailable for this shift${dateEvidence(reason)}.${targetEvidence(reason)}`.trim();
   }
 
   if (reason.type === "time_off") {
@@ -394,27 +358,6 @@ export function evaluateScheduleShiftConflicts(
     reasons.push({ ...context, type: "availability", rule_kind: "weekly", ...(weeklyStatus === "unknown" ? { severity: "confirm" } : {}),
       message: weeklyStatus === "unknown" ? "Availability needs checking before assignment." : "The assignment overlaps unavailable hours." });
   }
-  const effectiveDays = weeklyStatus === null ? availabilityForDate(employee, input.scheduled_date) : null;
-  const availability = effectiveDays?.find(
-    (day) => day.day === dayOfWeek(input.scheduled_date),
-  );
-  if (availability?.mode === "unavailable") {
-    reasons.push({
-      ...context,
-      type: "availability",
-      rule_kind: "all_day",
-    });
-  } else if (
-    weeklyStatus === null && hasAssessmentHours && ["partial", "none"].includes(assessEmployeeAvailability(employee, input.scheduled_date, input.start_time, input.end_time).coverage)
-  ) {
-    reasons.push({
-      ...context,
-      type: "availability",
-      rule_kind: "time_range",
-      start_time: input.start_time,
-      end_time: input.end_time,
-    });
-  }
 
   const targetInterval = weeklyTargetInterval(employee, input);
   const intervalsOverlap = (shift: ScheduleShift) => {
@@ -477,10 +420,6 @@ function scheduleClosureCoversDate(
 ): boolean {
   const endDate = closure.end_date ?? closure.closed_date;
   return closure.closed_date <= date && date <= endDate;
-}
-
-function dayOfWeek(date: string): number {
-  return new Date(`${date}T12:00:00Z`).getUTCDay();
 }
 
 function absoluteIntervalsOverlap(

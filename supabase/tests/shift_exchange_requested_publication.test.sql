@@ -22,9 +22,6 @@ and not exists(select 1 from public.employee_location_assignments a where a.empl
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by)
 select pg_temp.w(),pg_temp.emp(n),'980b0000-0000-4000-8000-000000000001',pg_temp.manager() from generate_series(1,4)n
 where not exists(select 1 from public.employee_job_assignments where employee_id=pg_temp.emp(n) and job_id='980b0000-0000-4000-8000-000000000001' and ended_at is null);
-insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from,effective_until)
-select pg_temp.w(),pg_temp.emp(n),coalesce((select max(version_number) from public.employee_schedule_availability_versions where employee_id=pg_temp.emp(n)),0)+1,'America/Los_Angeles',
-(select jsonb_agg(jsonb_build_object('day',d,'mode','unrestricted','windows','[]'::jsonb)) from generate_series(0,6)d),'manager',pg_temp.manager(),'2030-01-07','2030-01-20' from generate_series(1,4)n;
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
 values('98010000-0000-4000-8000-000000000001',pg_temp.w(),'980a0000-0000-4000-8000-000000000001','2030-01-07',1,pg_temp.manager());
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)

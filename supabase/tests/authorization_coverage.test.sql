@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(6);
+select plan(5);
 
 -- Every server entry point (public.*_service) is tied to an action the
 -- authorization matrix speaks for, or to a stated reason it has none. A new
@@ -13,9 +13,6 @@ select plan(6);
 --   exempt:token      a link token identifies the caller, not a session
 --   exempt:predicate  a permission helper the API asks before acting; goes when
 --                     authorize() replaces it (stages 4 and 6)
---   exempt:retiring-* part of a system stage 5 deletes (the old availability;
---                     the old shift-change requests went in 5.1, kiosk and
---                     time tracking in 5.2, Line Up in 5.6)
 -- The exemption counts below only go down.
 
 create temporary table service_class (name text primary key, class text not null);
@@ -40,12 +37,6 @@ insert into service_class values
   ('approve_signature_retention_policy_service', 'settings.documents.write'),
   ('assess_schedule_shift_service', 'schedule.edit'),
   ('assess_weekly_schedule_assignment_service', 'schedule.edit'),
-  ('availability_calendar_comparison_service', 'exempt:retiring-availability'),
-  ('availability_calendar_read_service', 'exempt:retiring-availability'),
-  ('availability_command_service', 'exempt:retiring-availability'),
-  ('availability_read_before_calendar_service', 'exempt:retiring-availability'),
-  ('availability_read_service', 'exempt:retiring-availability'),
-  ('availability_requests_read_service', 'exempt:retiring-availability'),
   ('bulk_delete_schedule_edit_shifts_service', 'schedule.edit'),
   ('cancel_account_email_change_service', 'account.self'),
   ('cancel_announcement_service', 'announcement.write'),
@@ -83,7 +74,6 @@ insert into service_class values
   ('discard_schedule_edit_session_service', 'schedule.edit'),
   ('document_definition_target_options_service', 'settings.documents.write'),
   ('documents_maintain_service', 'exempt:worker'),
-  ('employee_availability_context_service', 'exempt:retiring-availability'),
   ('employee_has_hard_document_schedule_conflict_service', 'exempt:predicate'),
   ('employee_hub_actor_service', 'employee_hub.read'),
   ('employee_personal_tasks_service', 'employee_hub.self'),
@@ -102,7 +92,6 @@ insert into service_class values
   ('get_employee_document_lifecycle_path_service', 'documents.read'),
   ('get_employee_document_lifecycle_service', 'documents.read'),
   ('get_employee_document_path_service', 'documents.read'),
-  ('get_employee_hub_availability_v2_service', 'exempt:retiring-availability'),
   ('get_employee_hub_service', 'employee_hub.read'),
   ('get_employee_name_settings_service', 'settings.people'),
   ('get_employee_onboarding_review_service', 'onboarding.review'),
@@ -117,7 +106,6 @@ insert into service_class values
   ('get_schedule_edit_session_service', 'schedule.edit'),
   ('get_schedule_publication_history_service', 'schedule.read'),
   ('get_schedule_publication_status_service', 'schedule.read'),
-  ('get_schedule_read_model_availability_v2_service', 'exempt:retiring-availability'),
   ('get_schedule_read_model_service', 'schedule.read'),
   ('get_schedule_requests_service', 'requests.read'),
   ('get_schedule_template_service', 'schedule.templates'),
@@ -164,7 +152,6 @@ insert into service_class values
   ('prepare_account_deletion_delivery_service', 'exempt:worker'),
   ('prepare_account_deletion_recovery_resend_service', 'account.self'),
   ('prepare_employee_invitation_service', 'employee.invite'),
-  ('preview_availability_draft_impact_service', 'exempt:retiring-availability'),
   ('preview_document_definition_apply_service', 'settings.documents.write'),
   ('preview_document_publication_service', 'settings.documents.write'),
   ('preview_employee_document_assignments_service', 'settings.documents.write'),
@@ -230,18 +217,13 @@ insert into service_class values
   ('save_document_type_draft_service', 'settings.documents.write'),
   ('save_document_type_lifecycle_service', 'settings.documents.write'),
   ('save_document_type_service', 'settings.documents.write'),
-  ('save_employee_availability_service', 'exempt:retiring-availability'),
-  ('save_employee_availability_v2_service', 'exempt:retiring-availability'),
   ('save_employee_document_draft_file_service', 'documents.self'),
-  ('save_employee_hub_availability_service', 'exempt:retiring-availability'),
   ('save_employee_onboarding_profile_service', 'onboarding.self'),
   ('save_employee_service', 'employee.save'),
   ('save_employee_ssn_envelope_service', 'onboarding.self'),
   ('save_notification_policy_service', 'settings.notifications.write'),
   ('save_notification_user_preference_service', 'notifications.read_own'),
   ('save_notification_user_preferences_service', 'notifications.read_own'),
-  ('save_onboarding_availability_v2_service', 'exempt:retiring-availability'),
-  ('save_onboarding_availability_v3_service', 'exempt:retiring-availability'),
   ('save_own_employment_contact_service', 'account.self'),
   ('save_policy_lifecycle_service', 'settings.documents.write'),
   ('save_schedule_edit_session_service', 'schedule.edit'),
@@ -340,12 +322,10 @@ select is(
 );
 select ok(
   not exists (select 1 from service_class where class like 'exempt:%' and class not in (
-    'exempt:worker', 'exempt:token', 'exempt:predicate',
-    'exempt:retiring-availability')),
+    'exempt:worker', 'exempt:token', 'exempt:predicate')),
   'every exemption is one of the stated reasons'
 );
 select cmp_ok((select count(*)::integer from service_class where class = 'exempt:predicate'), '<=', 18, 'permission helpers only go down');
-select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-availability'), '<=', 15, 'old availability entry points only go down');
 
 select * from finish();
 rollback;

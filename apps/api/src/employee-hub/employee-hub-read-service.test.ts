@@ -19,8 +19,6 @@ const model = {
   workspace_id: workspace, employee: { id: employee, display_name: "QA Employee" },
   locations: [{ id: workspace, name: "Dining" }], shifts: [], open_shifts: [], team_shifts: [],
   requests: [leave], team: [],
-  availability: { obsolete: "Do not parse or expose dated rules" },
-  availability_context: { obsolete: "Do not expose approval context" },
 };
 beforeEach(() => {
   vi.resetAllMocks();
@@ -30,7 +28,7 @@ beforeEach(() => {
   from.mockReturnValue({ select: () => ({ eq: () => ({ maybeSingle, in: locationRead }) }) });
 });
 describe("employee hub weekly read boundary", () => {
-  it("keeps requests and local clock settings without loading or returning legacy availability", async () => {
+  it("keeps requests and local clock settings", async () => {
     const result = await service.get(input);
     expect(rpc).toHaveBeenCalledExactlyOnceWith("get_employee_hub_service", {
       actor_user_id: actor, target_workspace_id: workspace,
@@ -39,15 +37,12 @@ describe("employee hub weekly read boundary", () => {
     expect(result.requests).toEqual([leave]);
     expect(result.settings.time_format).toBe("24h");
     expect(result.locations[0]?.timezone).toBe("America/Los_Angeles");
-    expect(result.availability).toBeNull();
-    expect(result.availability_context).toBeUndefined();
-    expect(JSON.stringify(result)).not.toContain("obsolete");
   });
   it("does not hide errors in the canonical employee read", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "Employee access denied" } });
     await expect(service.get(input)).rejects.toThrow("Employee access denied");
   });
-  it("still rejects malformed non-availability data", async () => {
+  it("rejects malformed data", async () => {
     rpc.mockResolvedValue({ data: { ...model, requests: [{ ...leave, revision: -1 }] }, error: null });
     await expect(service.get(input)).rejects.toThrow();
   });

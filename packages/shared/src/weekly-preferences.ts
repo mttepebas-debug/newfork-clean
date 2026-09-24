@@ -56,7 +56,6 @@ export const weeklyPreferenceSchema = z
   });
 export const weeklyPreferenceSettingsSchema = z.object({
   input_mode: preferenceInputModeSchema,
-  warning_policy: z.enum(["warn", "confirm"]),
   onboarding_required: z.boolean(),
   revision: z.number().int().nonnegative(),
 });
@@ -69,7 +68,7 @@ export const weeklyPreferenceSettingsReadSchema = z.object({
 });
 export const weeklyPreferenceSettingsSaveSchema = weeklyPreferenceSettingsSchema
   .omit({ revision: true })
-  .extend({ expected_revision: z.number().int().nonnegative(), warning_policy: z.enum(["warn", "confirm"]).optional() });
+  .extend({ expected_revision: z.number().int().nonnegative() });
 export type WeeklyPreferenceSettingsRead = z.infer<
   typeof weeklyPreferenceSettingsReadSchema
 >;

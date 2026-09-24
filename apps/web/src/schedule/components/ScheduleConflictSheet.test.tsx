@@ -49,44 +49,32 @@ describe("ScheduleConflictSheet", () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
-  it("supports a decision variant with a controlled override reason", () => {
-    const onChange = vi.fn();
+  it("supports a decision variant that waits for a choice", () => {
+    vi.useFakeTimers();
     const onSubmit = vi.fn();
+    const onDismiss = vi.fn();
 
     render(
       <ScheduleConflictSheet
         open
         messages={["Employee is unavailable for Dinner."]}
         tone="warning"
-        requiresOverrideReason
-        overrideReason=""
-        onOverrideReasonChange={onChange}
-        submitLabel="Override and save"
+        submitLabel="Place shift"
         submitDisabled
         onSubmit={onSubmit}
-        onDismiss={vi.fn()}
+        onDismiss={onDismiss}
       />,
     );
 
     expect(screen.getByText("Scheduling rule")).toBeTruthy();
-    expect(screen.getByText("Add a manager reason to override.")).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Required for a soft availability override. Minimum 10 characters.",
-      ),
-    ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Override and save" })).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Place shift" })).toHaveProperty(
       "disabled",
       true,
     );
-    const reason = screen.getByLabelText("Override reason");
-    expect(reason.getAttribute("id")).toBe(
-      "schedule-conflict-sheet-override-reason",
-    );
-    fireEvent.change(reason, {
-      target: { value: "Emergency staffing coverage." },
+    act(() => {
+      vi.advanceTimersByTime(3000);
     });
-    expect(onChange).toHaveBeenCalledWith("Emergency staffing coverage.");
+    expect(onDismiss).not.toHaveBeenCalled();
 
     fireEvent.submit(screen.getByRole("dialog", { name: "Shift conflict" }));
     expect(onSubmit).toHaveBeenCalledTimes(1);

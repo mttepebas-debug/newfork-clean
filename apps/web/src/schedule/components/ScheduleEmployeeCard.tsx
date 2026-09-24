@@ -3,11 +3,6 @@ import { CalendarOff } from "lucide-react";
 import type { CSSProperties, RefObject } from "react";
 import { weeklyEmployeeSummary } from "../lib/scheduleWeeklyAvailability";
 
-import {
-  formatEmployeeAvailabilitySummary,
-  scheduleEmployeeAvailabilityRules,
-} from "../availabilityIndicators";
-
 export function ScheduleEmployeeCard({
   editing,
   employee,
@@ -28,11 +23,7 @@ export function ScheduleEmployeeCard({
   readonly onOpenEmployeeCard: (employeeId: string) => void;
 }) {
   const isUnassignedRow = !employee;
-  const availabilityRules = employee
-    ? scheduleEmployeeAvailabilityRules(employee)
-    : [];
-  const weeklySummary = employee ? weeklyEmployeeSummary(employee) : null;
-  const availabilitySummary = weeklySummary ?? formatEmployeeAvailabilitySummary(availabilityRules);
+  const availabilitySummary = employee ? weeklyEmployeeSummary(employee) : null;
 
   return (
     <div
@@ -82,7 +73,7 @@ export function ScheduleEmployeeCard({
           {availabilitySummary ? (
             <span
               className="schedule-employee-availability"
-              aria-label={weeklySummary !== null ? "Weekly availability preferences" : `Has ${availabilityRules.length} availability rule(s)`}
+              aria-label="Weekly availability preferences"
               title={availabilitySummary}
             >
               <CalendarOff size={13} aria-hidden />

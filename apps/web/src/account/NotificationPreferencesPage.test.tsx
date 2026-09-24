@@ -222,7 +222,6 @@ describe("notification preferences page", () => {
   it("shows plain-language names for availability and unknown notification types", async () => {
     const fixture = preferencesFixture();
     fixture.catalog = [
-      { ...fixture.catalog[0]!, type_key: "availability.review_required" },
       { ...fixture.catalog[0]!, type_key: "availability.status_changed" },
       { ...fixture.catalog[0]!, type_key: "availability.weekly_updated" },
       { ...fixture.catalog[0]!, type_key: "future.shift_note.added" },
@@ -232,11 +231,10 @@ describe("notification preferences page", () => {
 
     await screen.findByRole("checkbox", { name: "Schedule In-app" });
     expandGroup();
-    expect(screen.getByRole("heading", { name: "Availability requests to review" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Your availability updates" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Employee availability changes" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Shift note added" })).toBeTruthy();
-    expect(screen.queryByText("availability.review_required")).toBeNull();
+    expect(screen.queryByText("availability.status_changed")).toBeNull();
     expect(screen.queryByText("future.shift_note.added")).toBeNull();
   });
   it("renders managed channel reasons and saves the final rapid-toggle intent", async () => {

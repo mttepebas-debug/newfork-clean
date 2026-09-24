@@ -32,7 +32,7 @@ insert into public.jobs(id,workspace_id,name) select job,w,'Server' from ws;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,is_primary,created_by)
  select w,emp,job,true,owner_id from ws;
 create function pg_temp.read_model(actor uuid default null) returns jsonb language sql as $$
- select public.get_schedule_read_model_availability_v2_service(coalesce(actor,manager),w,'2035-01-15') from ws;
+ select public.get_schedule_read_model_service(coalesce(actor,manager),w,'2035-01-15') from ws;
 $$;
 -- The employee under test, found by id: the manager works at West too, so they
 -- are on the schedule as well.
@@ -40,14 +40,14 @@ create function pg_temp.the_employee(model jsonb) returns jsonb language sql as 
  select e from jsonb_array_elements(model->'employees') e, ws where e->>'id'=ws.emp::text;
 $$;
 create function pg_temp.project(first_date date default '2035-01-15',location uuid default null) returns jsonb language sql as $$
- select public.weekly_schedule_location_projection(w,emp,coalesce(location,loc),first_date) from ws;
+ select s.projection from ws, app_private.schedule_week_availability(w,first_date,array[emp],array[coalesce(location,loc)]) s;
 $$;
 select is(pg_temp.project()->>'status','ready','no preference is a verified empty week');
 select is(pg_temp.project()->'unavailable_intervals','[]'::jsonb,'unmarked hours are available');
 select is(jsonb_array_length(pg_temp.project()->'days'),7,'projection summarizes exactly seven days');
 select is((pg_temp.project()->'clock_segments'->0->>'offset_seconds')::integer,-28800,'clock offset comes from the database timezone');
 select ok(not ((pg_temp.the_employee(pg_temp.read_model())) ? 'availability_versions'),'canonical read no longer returns dated preference versions');
-select is(pg_temp.the_employee(pg_temp.read_model())->'availability','null'::jsonb,'old day field is not populated');
+select ok(not ((pg_temp.the_employee(pg_temp.read_model())) ? 'availability'),'the old day field is gone');
 select is(jsonb_array_length(pg_temp.the_employee(pg_temp.read_model())->'weekly_availability'),1,'manager receives only their authorized location projection');
 select throws_ok($$select pg_temp.read_model(employee_user) from ws$$,'42501',null,'employee cannot read shared manager preference projections');
 select is(jsonb_array_length(pg_temp.the_employee(pg_temp.read_model(owner_id))->'weekly_availability'),2,'owner sees both authorized locations') from ws;
@@ -81,6 +81,6 @@ update public.manager_weekly_reminders set enabled=true,preference=jsonb_set(pub
 select ok((pg_temp.project()->'days'->0->>'all_day')::boolean,'all-day projection is explicit');
 select tests.stops_working_at((select id from public.workspace_memberships where workspace_id=(select w from ws) and user_id=(select manager from ws)));
 select is(jsonb_array_length(coalesce(pg_temp.the_employee(pg_temp.read_model())->'weekly_availability','[]')),0,'revoked location scope removes preference projection');
-select ok(not has_function_privilege('authenticated','public.weekly_schedule_location_projection(uuid,uuid,uuid,date)','EXECUTE'),'raw projection helper is private');
+select ok(not has_function_privilege('authenticated','app_private.schedule_week_availability(uuid,date,uuid[],uuid[],boolean)','EXECUTE'),'raw projection helper is private');
 select * from finish();
 rollback;

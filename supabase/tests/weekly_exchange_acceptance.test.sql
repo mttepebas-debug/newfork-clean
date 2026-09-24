@@ -76,7 +76,7 @@ update state set aid=(select id from public.shift_exchange_applications where ca
 select is(pg_temp.command(second_user,jsonb_build_object('action','apply','shift_id',pg_temp.shift_id(1),'case_id',cid,'availability_fingerprint',token),key)->>'case_id',cid::text,'retry reuses the successful acceptance') from ws,state;
 select is((select count(*) from public.shift_exchange_applications where case_id=cid),1::bigint,'retry does not duplicate acceptance') from state;
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(1)),(select first_emp from ws),'employee acceptance does not transfer before manager decision');
-update public.workspace_scheduling_settings set availability_warning_policy='confirm',availability_enforcement='hard' where workspace_id=(select w from ws);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from ws);
 update state set preview=(select public.shift_exchange_preview(manager,w,cid,aid) from ws);
 select is(preview->>'allowed','true','manager finalization needs no second employee or reminder decision') from state;
 select ok(not (preview::text like '%manager_intervals%' or preview::text like '%employee_intervals%'),'manager exchange preview has no raw preference payload') from state;

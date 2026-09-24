@@ -12,7 +12,6 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
   const [end, setEnd] = useState(lastDay.toISOString().slice(0, 10));
   const [typeId, setTypeId] = useState("");
   const [chosen, setChosen] = useState(() => new Set(initialSelectedIds.length ? initialSelectedIds : session.shifts.filter(s => s.time_basis === "type_default").map(s => s.id)));
-  const [notes, setNotes] = useState<Record<string, string>>({});
   const [review, setReview] = useState<ScheduleDefaultHoursPreview | null>(null);
   const [reviewedSignature, setReviewedSignature] = useState("");
   const [pending, setPending] = useState<"review" | "apply" | null>(null);
@@ -24,8 +23,7 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
   const retry = useRef<{ signature: string; key: string } | null>(null);
   const candidates = session.shifts.filter(s => s.time_basis === "type_default" && s.pending_op_type !== "delete" && s.scheduled_date >= start && s.scheduled_date <= end && (!typeId || s.shift_type_id === typeId));
   const ids = candidates.filter(s => chosen.has(s.id)).map(s => s.id).sort();
-  const parsed = scheduleDefaultHoursInputSchema.safeParse({ expected_session_revision: session.revision, starts_on: start, ends_on: end, shift_ids: ids,
-    overrides: ids.filter(id => notes[id]?.trim()).map(id => ({ shift_id: id, note: notes[id] })) });
+  const parsed = scheduleDefaultHoursInputSchema.safeParse({ expected_session_revision: session.revision, starts_on: start, ends_on: end, shift_ids: ids });
   const command = parsed.success ? parsed.data : null;
   const signature = JSON.stringify(command);
   const currentSignature = useRef(signature); currentSignature.current = signature;
@@ -110,7 +108,6 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
               <dt>Overlapping assignments</dt><dd>{s.before_overlap_count} before → {s.after_overlap_count} after</dd></dl>
             {s.reason ? <p>{s.reason}</p> : null}
             {s.after_assessment?.reasons.map((r, i) => <p key={i}>{r.message}</p>)}
-            {s.after_assessment?.operation === "warning_requires_override" && !s.after_assessment.warning_policy && s.after_assessment.can_override ? <label>Override reason for {s.employee_name}<textarea disabled={Boolean(pending)} maxLength={500} value={notes[s.shift_id] ?? ""} onChange={e => setNotes(current => ({ ...current, [s.shift_id]: e.target.value }))} /></label> : null}
           </article>)}
           {overlaps ? <label><input type="checkbox" disabled={!fresh || Boolean(pending)} checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />I reviewed reference overlaps. Publication checks still apply.</label> : null}
           <button type="button" disabled={!fresh || Boolean(pending) || !review.changed_count || Boolean(review.blocked_count) || (overlaps && !acknowledged)} onClick={() => void apply()}>{pending === "apply" ? "Applying…" : `${needsAvailabilityConfirmation ? "Confirm availability and apply" : "Apply"} ${review.changed_count} change${review.changed_count === 1 ? "" : "s"} to edit session`}</button>

@@ -19,7 +19,7 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  union all select w,actor,'employee'::public.workspace_role,false from wp_fixture
  union all select w,manager,'manager'::public.workspace_role,false from wp_fixture;
 insert into public.workspace_scheduling_settings(workspace_id) select w from wp_fixture on conflict do nothing;
-update public.workspace_scheduling_settings set availability_warning_policy='warn' where workspace_id=(select w from wp_fixture);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"warn"') where workspace_id=(select w from wp_fixture);
 insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
  select 'T00068', loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles' from wp_fixture
  union all select 'T00069', other_loc,w,'East','2 Test Street','Test City','NY','10001','America/New_York' from wp_fixture;
@@ -30,8 +30,6 @@ insert into public.employee_location_assignments(workspace_id,employee_id,locati
 select tests.works_at(m.id, f.loc) from wp_fixture f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id in(f.actor,f.manager);
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
  select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),1,actor from wp_fixture;
--- A normal scheduling manager no longer needs the legacy override capability.
-delete from public.workspace_role_permissions where workspace_id=(select w from wp_fixture) and permission_key='schedule.availability.override';
 create function pg_temp.assignment(changes jsonb default '{}') returns jsonb language sql stable as $$
  select jsonb_build_object('id',shift_id,'employee_id',emp,'location_id',loc,'scheduled_date','2035-01-15',
   'time_basis','explicit','start_time','18:00','end_time','20:00','time_timezone','America/Los_Angeles')||changes from wp_fixture;
@@ -43,7 +41,7 @@ create function pg_temp.accept(changes jsonb default '{}',previous jsonb default
  select public.prepare_weekly_schedule_assignment(manager,w,pg_temp.assignment(changes),previous) from wp_fixture;
 $$;
 select is(pg_temp.preview()->>'warning_policy','warn','preview reads current warning policy');
-select is(pg_temp.preview()->>'can_override','true','scheduling manager does not need obsolete override permission');
+select is(pg_temp.preview()->>'can_override','true','a scheduling manager can place anyway');
 select throws_ok($$select public.assess_weekly_schedule_assignment_service(actor,w,pg_temp.assignment()) from wp_fixture$$,'42501',null,'employee cannot inspect manager assessment');
 select throws_ok($$select pg_temp.preview(jsonb_build_object('location_id',other_loc)) from wp_fixture$$,'42501',null,'manager assessment enforces target location scope');
 select throws_ok($$select public.assess_weekly_schedule_assignment_service(manager,w,pg_temp.assignment(),shift_id,gen_random_uuid()) from wp_fixture$$,'42501',null,'expired or foreign edit session is rejected');
@@ -77,7 +75,7 @@ select throws_ok($$select pg_temp.accept((select s from checked),pg_temp.assignm
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),1::bigint,'failed decision does not revoke prior history');
 select lives_ok($$select pg_temp.accept(jsonb_build_object('availability_assessment_fingerprint',pg_temp.preview()->>'fingerprint'),pg_temp.assignment())$$,'fresh conflict assessment can be accepted');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is not null),1::bigint,'superseded acceptance remains as revoked history');
-update public.workspace_scheduling_settings set availability_warning_policy='confirm' where workspace_id=(select w from wp_fixture);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from wp_fixture);
 select throws_ok($$select pg_temp.accept('{}',pg_temp.assignment())$$,'PT409',null,'warn to confirm invalidates previous acceptance');
 select lives_ok($$select pg_temp.accept(jsonb_build_object('availability_assessment_fingerprint',pg_temp.preview()->>'fingerprint'),pg_temp.assignment())$$,'confirmation does not need a written reason');
 select is((select reason from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),'Schedule conflict confirmed by manager.','confirmation is distinguished from warn acknowledgement');
@@ -110,7 +108,7 @@ select is(jsonb_array_length(pg_temp.publication('{}','{}',false)->'findings'),0
 select lives_ok($$select pg_temp.accept(jsonb_build_object('availability_assessment_fingerprint',pg_temp.preview()->>'fingerprint'),pg_temp.assignment())$$,'acceptance can be recorded for the unchanged draft');
 select is(pg_temp.publication()->'findings'->0->>'availability_state','accepted','preflight keeps previously accepted conflicts in their own group');
 select is(pg_temp.publication()->>'status','publish_ready','previously accepted conflict needs no new decision');
-update public.workspace_scheduling_settings set availability_warning_policy='warn' where workspace_id=(select w from wp_fixture);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"warn"') where workspace_id=(select w from wp_fixture);
 select is(pg_temp.publication()->'findings'->0->>'availability_state','new','changed warning policy invalidates the prior context');
 select is(pg_temp.publication()->>'status','publish_ready','warn mode has no additional confirmation gate');
 select is(pg_temp.publication()->'findings'->0->>'tier','note','warn-only conflict is informational');

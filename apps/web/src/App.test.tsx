@@ -200,7 +200,6 @@ const scheduleFixture = vi.hoisted(() => ({
       location_ids: ["11111111-1111-4111-8111-111111111111"],
       job_ids: ["33333333-3333-4333-8333-333333333333"],
       primary_job_id: "33333333-3333-4333-8333-333333333333",
-      availability: null,
     },
   ],
   shifts: [
@@ -3478,14 +3477,27 @@ describe("App", () => {
       employees: [
         {
           ...scheduleFixture.employees[0]!,
-          availability: [
-            { day: 0, mode: "unrestricted" as const, windows: [] },
-            { day: 1, mode: "unrestricted" as const, windows: [] },
-            { day: 2, mode: "unavailable" as const, windows: [] },
-            { day: 3, mode: "unrestricted" as const, windows: [] },
-            { day: 4, mode: "unrestricted" as const, windows: [] },
-            { day: 5, mode: "unrestricted" as const, windows: [] },
-            { day: 6, mode: "unrestricted" as const, windows: [] },
+          // Unavailable all of Tuesday 2026-08-18 in Main Dining's time zone.
+          weekly_availability: [
+            {
+              location_id: scheduleFixture.locations[0]!.id,
+              location_name: "Main Dining",
+              timezone: "America/Los_Angeles",
+              week_start: scheduleFixture.week_start,
+              status: "ready" as const,
+              unavailable_intervals: [
+                { start_at: "2026-08-18T07:00:00Z", end_at: "2026-08-19T07:00:00Z" },
+              ],
+              leave_intervals: [],
+              clock_segments: [
+                { start_at: "2026-08-17T07:00:00Z", end_at: "2026-08-24T07:00:00Z", offset_seconds: -25200 },
+              ],
+              days: Array.from({ length: 7 }, (_, index) => ({
+                date: `2026-08-${17 + index}`,
+                has_unavailable: index === 1,
+                all_day: index === 1,
+              })),
+            },
           ],
         },
       ],
@@ -3540,12 +3552,12 @@ describe("App", () => {
       await screen.findByRole("dialog", { name: "Shift conflict" }),
     ).toBeTruthy();
     expect(
-      screen.getAllByText(/Alex Rivera is unavailable all day on 2026-08-18/),
+      screen.getAllByText("The assignment overlaps unavailable hours."),
     ).toHaveLength(2);
     expect(screen.queryByRole("dialog", { name: "Paste shift" })).toBeNull();
     expect(screen.getByRole("status", { name: "Paste status" })).toHaveProperty(
       "textContent",
-      "Alex Rivera is unavailable all day on 2026-08-18. Requested: Dinner / Server at Main Dining.",
+      "The assignment overlaps unavailable hours.",
     );
   });
 

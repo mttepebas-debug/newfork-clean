@@ -28,7 +28,7 @@ create function pg_temp.decide(pieces jsonb,revision integer default 1,operation
   jsonb_build_array(jsonb_build_object('segment_id',segment,'pieces',pieces)),operation) from tpd;
 $$;
 select is(public.time_off_effective_ranges(segment),tstzmultirange(tstzrange('2035-01-15 10:00Z','2035-01-15 17:00Z','[)')),'pending request prevents duplicate requested hours') from tpd;
-select is(jsonb_array_length(public.assess_shift_availability(w,emp,jsonb_build_object('location_id',loc,'scheduled_date','2035-01-15','time_basis','explicit','time_timezone','UTC','start_time','10:00','end_time','11:00'))->'leave'),0,'a pending request supplies no approved leave') from tpd;
+select is(jsonb_array_length(public.assess_weekly_shift_availability(w,emp,jsonb_build_object('location_id',loc,'scheduled_date','2035-01-15','time_basis','explicit','time_timezone','UTC','start_time','10:00','end_time','11:00'))->'leave'),0,'a pending request supplies no approved leave') from tpd;
 select throws_ok($$select pg_temp.decide('[]')$$,'22023',null,'empty pieces rejected');
 select throws_ok($$select pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T12:00:00Z')))$$,'22023',null,'omitted remainder rejected');
 select throws_ok($$select pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T12:00:00Z'),pg_temp.p('2035-01-15T13:00:00Z','2035-01-15T17:00:00Z','denied')))$$,'22023',null,'gap rejected');
@@ -52,8 +52,8 @@ update public.workspace_memberships set role='employee',role_id=(select id from 
 update tpd set result=pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T12:00:00Z'),pg_temp.p('2035-01-15T12:00:00Z','2035-01-15T17:00:00Z','denied')),1,op);
 select is(result->>'status','partially_approved','a single requested period can receive a mixed decision') from tpd;
 select is(public.time_off_effective_ranges(segment),tstzmultirange(tstzrange('2035-01-15 10:00Z','2035-01-15 12:00Z','[)')),'only approved pieces supply effective leave') from tpd;
-select is(public.assess_shift_availability(w,emp,jsonb_build_object('location_id',loc,'scheduled_date','2035-01-15','time_basis','explicit','time_timezone','UTC','start_time','11:00','end_time','12:00'))->>'operation','blocked','approved piece blocks scheduling') from tpd;
-select is(jsonb_array_length(public.assess_shift_availability(w,emp,jsonb_build_object('location_id',loc,'scheduled_date','2035-01-15','time_basis','explicit','time_timezone','UTC','start_time','12:00','end_time','17:00'))->'leave'),0,'denied piece does not block scheduling') from tpd;
+select is(public.assess_weekly_shift_availability(w,emp,jsonb_build_object('location_id',loc,'scheduled_date','2035-01-15','time_basis','explicit','time_timezone','UTC','start_time','11:00','end_time','12:00'))->>'operation','blocked','approved piece blocks scheduling') from tpd;
+select is(jsonb_array_length(public.assess_weekly_shift_availability(w,emp,jsonb_build_object('location_id',loc,'scheduled_date','2035-01-15','time_basis','explicit','time_timezone','UTC','start_time','12:00','end_time','17:00'))->'leave'),0,'denied piece does not block scheduling') from tpd;
 select is((select end_time::text from public.schedule_time_off_segments where id=(select segment from tpd)),'17:00:00','original requested end remains immutable');
 select is(jsonb_array_length(public.time_off_request_periods(request,w)->0->'decision_pieces'),2,'read model retains both approved and denied pieces') from tpd;
 select is((select item->'decision_events'->0->>'note' from tpd t cross join lateral jsonb_array_elements(public.get_employee_hub_service(t.actor,t.w,'2035-01-01','2035-01-31')->'requests') item where item->>'id'=t.request::text),'Appointment hours approved; afternoon declined.','employee sees the manager decision note');

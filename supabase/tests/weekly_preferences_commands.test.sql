@@ -39,7 +39,6 @@ insert into wp_command(command) select jsonb_build_object('employee_id',emp,'sou
 select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture$$,'explicit all-available declaration saves immediately');
 select is(result->'model'->'employee'->>'submitted','true','submission recorded without approval') from wp_command;
 select is(result->'model'->'employee'->>'revision','1','initial revision advanced') from wp_command;
-select is((select count(*) from public.availability_requests where workspace_id=(select w from wp_fixture)),0::bigint,'old review requests not created');
 select lives_ok($$select public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture,wp_command$$,'same-key retry succeeds');
 select is((select count(*) from public.weekly_preference_events where workspace_id=(select w from wp_fixture)),1::bigint,'retry does not duplicate audit');
 select is((select count(*) from public.notification_outbox where workspace_id=(select w from wp_fixture) and subject_type='weekly_availability'),1::bigint,'retry does not duplicate notification');

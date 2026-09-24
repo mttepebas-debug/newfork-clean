@@ -10,7 +10,7 @@ export function PublishReturnPreview({ preview }: { preview: SchedulePublication
   usePreflightShiftFocus(target, !open, setTarget);
   const first = preview.findings[0]!;
   const locations = [{ id: first.location_id, name: first.location_name!, timezone: "America/Los_Angeles", sort_order: 0, publication_status: "unpublished" as const, published_at: null }];
-  const employees = preview.findings.map((finding) => ({ id: finding.employee_id!, display_name: finding.employee_name!, employee_code: "E-100", location_ids: [first.location_id], job_ids: [], primary_job_id: null, is_excluded_from_schedule: false, availability: null }));
+  const employees = preview.findings.map((finding) => ({ id: finding.employee_id!, display_name: finding.employee_name!, employee_code: "E-100", location_ids: [first.location_id], job_ids: [], primary_job_id: null, is_excluded_from_schedule: false }));
   const draft = { id: preview.draft_id, workspace_id: preview.workspace_id, week_start: preview.week_start, name: "Service week", revision: 1, created_by: first.employee_id!, updated_by: first.employee_id!, created_at: "2026-09-08T12:00:00Z", updated_at: "2026-09-08T12:00:00Z" };
   return <main style={{ margin: 16 }}>
     <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><h1>Schedule</h1><button onClick={() => { window.scrollTo(0, 0); setOpen(true); }}>Publish</button></header>

@@ -290,7 +290,6 @@ describe("RolesSettingsPage", () => {
                   "schedule.manage",
                   "schedule.publish",
                   "schedule.templates.manage",
-                  "schedule.availability.override",
                 ].includes(key),
             ),
           },

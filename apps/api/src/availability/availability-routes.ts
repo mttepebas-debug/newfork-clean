@@ -2,12 +2,10 @@ import { scheduleShiftMutationInputSchema } from "@newfork/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
-  bearerToken,
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
 import type { AvailabilityService } from "./availability-service";
-import { legacyAvailabilityGone } from "./availability-retirement";
 import { registerWeeklyPreferenceRoutes } from "./weekly-preferences-routes";
 
 export function registerAvailabilityRoutes(
@@ -18,41 +16,6 @@ export function registerAvailabilityRoutes(
   },
 ) {
   registerWeeklyPreferenceRoutes(app, options);
-  // Keep stale clients explicit and side-effect free; do not translate dated rules.
-  for (const route of [
-    { method: ["GET", "POST"], path: "" },
-    { method: ["GET"], path: "/requests" },
-    { method: ["POST"], path: "/impact" },
-    { method: ["POST"], path: "/calendar" },
-    { method: ["POST"], path: "/calendar-comparison" },
-  ] as const) {
-    app.route({
-      method: [...route.method],
-      url: `/v1/workspaces/:workspaceId/availability${route.path}`,
-      handler: async (request, reply) => {
-        const params = z.object({ workspaceId: z.string().uuid() }).safeParse(request.params);
-        if (!params.success) return reply.status(400).send({ error: "Valid workspace required" });
-        const auth = await resolveWorkspaceMembership({
-          authorization: request.headers.authorization,
-          workspaceId: params.data.workspaceId,
-          resolver: options.contextResolver,
-        });
-        if (!auth.context) return reply.status(403).send({ error: "Workspace access required" });
-        return reply.status(410).send(legacyAvailabilityGone);
-      },
-    });
-  }
-  for (const path of ["", "/calendar", "/calendar-comparison"]) {
-    app.route({
-      method: path ? ["POST"] : ["GET", "POST"],
-      url: `/v1/me/onboarding/availability-lifecycle${path}`,
-      handler: async (request, reply) => {
-        if (!bearerToken(request.headers.authorization))
-          return reply.status(401).send({ error: "Sign in to continue onboarding" });
-        return reply.status(410).send(legacyAvailabilityGone);
-      },
-    });
-  }
   app.post(
     "/v1/workspaces/:workspaceId/availability/shift-assessment",
     async (request, reply) => {

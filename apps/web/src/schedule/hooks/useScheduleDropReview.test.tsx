@@ -146,14 +146,6 @@ describe("Schedule drop assessment", () => {
     expect(loadShiftAvailability).toHaveBeenCalledOnce();
     act(() => h.result.current.dismiss()); expect(h.result.current.review).toBeNull(); expect(h.save).not.toHaveBeenCalled();
   });
-  it("preserves the legacy server's reason requirement until the schema switch", async () => {
-    vi.mocked(loadShiftAvailability).mockResolvedValue(assessment({ warning_policy: undefined }));
-    const h = setup(); h.start(); await waitFor(() => expect(h.result.current.review).not.toBeNull());
-    await act(async () => h.result.current.confirm()); expect(h.save).not.toHaveBeenCalled();
-    act(() => h.result.current.setReason("Employee confirmed this assignment."));
-    await act(async () => h.result.current.confirm()); await waitFor(() => expect(h.save).toHaveBeenCalledOnce());
-    expect(h.save.mock.calls[0]![0]).toHaveProperty("conflict_override_note", "Employee confirmed this assignment.");
-  });
 });
 
 describe("Schedule optimistic fast path", () => {

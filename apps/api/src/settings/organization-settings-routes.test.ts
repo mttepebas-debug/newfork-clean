@@ -65,7 +65,7 @@ describe("organization settings routes", () => {
   const conflicts = { conflict_rules: { availability: "confirm", approved_time_off: "block", closed_location: "confirm", minimum_travel: "confirm", minimum_rest: "confirm" }, conflict_rules_revision: 3, minimum_travel_minutes: 30, minimum_rest_minutes: 0 } as const;
   it("guards conflict read and write with the single permission and binds the actor", async () => {
     const service = organizationSettingsServiceMock();
-    vi.mocked(service.readSchedulingSettings).mockResolvedValue({ workspace_id: workspaceId, week_start_day: "monday", schedule_deadline_day: "sunday", conflict_policy: "warn", availability_enforcement: "soft", time_format: "12h", ...conflicts });
+    vi.mocked(service.readSchedulingSettings).mockResolvedValue({ workspace_id: workspaceId, week_start_day: "monday", schedule_deadline_day: "sunday", time_format: "12h", ...conflicts });
     vi.mocked(service.updateSchedulingSettings).mockImplementation(async () => service.readSchedulingSettings({ workspaceId }));
     for (const allowed of [false, true]) {
       const app = buildApp({ organizationSettingsService: service, contextResolver: { resolve: async () => ({ ...context, permissions: allowed ? ["schedule.conflict_rules.manage", "settings.schedule_rules.read"] : context.permissions }) } });
@@ -80,7 +80,7 @@ describe("organization settings routes", () => {
   });
   it("keeps conflict fields out of general settings reads and writes", async () => {
     const service = organizationSettingsServiceMock();
-    const general = { workspace_id: workspaceId, week_start_day: "monday", schedule_deadline_day: "sunday", conflict_policy: "warn", availability_enforcement: "soft", time_format: "12h" } as const;
+    const general = { workspace_id: workspaceId, week_start_day: "monday", schedule_deadline_day: "sunday", time_format: "12h" } as const;
     vi.mocked(service.readSchedulingSettings).mockResolvedValue({ ...general, ...conflicts });
     vi.mocked(service.updateSchedulingSettings).mockResolvedValue({ ...general, ...conflicts });
     const app = buildApp({ organizationSettingsService: service, contextResolver: { resolve: async () => context } });
@@ -119,8 +119,6 @@ describe("organization settings routes", () => {
       payload: {
         week_start_day: "monday",
         schedule_deadline_day: "sunday",
-        conflict_policy: "warn",
-        availability_enforcement: "soft",
         time_format: "12h",
       },
     });
@@ -133,8 +131,6 @@ describe("organization settings routes", () => {
       workspace_id: workspaceId,
       week_start_day: "monday" as const,
       schedule_deadline_day: "sunday" as const,
-      conflict_policy: "warn" as const,
-      availability_enforcement: "soft" as const,
       time_format: "12h" as const,
     }));
     const app = buildApp({
@@ -173,8 +169,6 @@ describe("organization settings routes", () => {
       payload: {
         week_start_day: "monday",
         schedule_deadline_day: "sunday",
-        conflict_policy: "warn",
-        availability_enforcement: "soft",
         time_format: "12h",
       },
     });
@@ -187,8 +181,6 @@ describe("organization settings routes", () => {
     const schedulingSettings = {
       week_start_day: "monday" as const,
       schedule_deadline_day: "sunday" as const,
-      conflict_policy: "warn" as const,
-      availability_enforcement: "soft" as const,
       time_format: "12h" as const,
     };
     const updateSchedulingSettings = vi.fn(async () => ({
@@ -381,8 +373,6 @@ describe("organization settings routes", () => {
     const settings = {
       week_start_day: "monday",
       schedule_deadline_day: "sunday",
-      conflict_policy: "warn",
-      availability_enforcement: "soft",
       time_format: "12h",
     };
     const routes = [

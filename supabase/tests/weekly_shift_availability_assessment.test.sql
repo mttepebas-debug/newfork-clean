@@ -48,13 +48,11 @@ insert into public.employee_weekly_preferences(workspace_id,employee_id,preferen
  select w,emp,jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array(dinner)),1,actor from wp_fixture;
 select is(pg_temp.weekly_assess()->>'operation','warning_requires_override','custom hours overlapping a selected type produce a soft conflict');
 select is(pg_temp.weekly_assess()->>'warning_policy','confirm','the default action asks for confirmation');
-select is(pg_temp.weekly_assess()->'type_restrictions','[]'::jsonb,'no type identity restriction or service classification requirement');
+select ok(not (pg_temp.weekly_assess() ?| array['type_restrictions','service_classification']),'no shift type restriction or custom work classification');
 select is(pg_temp.weekly_assess(jsonb_build_object('shift_type_id',(select dinner from wp_fixture),'start_time','12:00','end_time','17:00'))->>'operation',
  'allowed','actual hours trump matching type identity; touching endpoint is clear');
 select is(pg_temp.weekly_assess(jsonb_build_object('shift_type_id',(select hidden_type from wp_fixture)))->>'operation',
  'warning_requires_override','different type still conflicts when actual hours overlap');
-update public.workspace_scheduling_settings set availability_enforcement='hard' where workspace_id=(select w from wp_fixture);
-select is(pg_temp.weekly_assess()->>'operation','warning_requires_override','obsolete hard policy cannot hard-block preferences');
 create temp table weekly_fingerprint as select pg_temp.weekly_assess()->>'fingerprint' fp;
 select is(pg_temp.weekly_assess('{"time_snapshot":{"captured_at":"2035-01-01T00:00:00Z"}}')->>'fingerprint',(select fp from weekly_fingerprint),
  'snapshot metadata without physical time changes does not re-prompt');
@@ -68,7 +66,7 @@ update public.employee_weekly_preferences set revision=revision+1,preference=jso
 update public.workspace_scheduling_settings set availability_preferences_revision=availability_preferences_revision+1,availability_onboarding_required=true
  where workspace_id=(select w from wp_fixture);
 select is(pg_temp.weekly_assess()->>'fingerprint',(select fp from weekly_fingerprint),'unrelated weekday, revision and onboarding setting do not re-prompt');
-update public.workspace_scheduling_settings set availability_warning_policy='warn' where workspace_id=(select w from wp_fixture);
+update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"warn"') where workspace_id=(select w from wp_fixture);
 select is(pg_temp.weekly_assess()->>'warning_policy','warn','the warning policy is explicit');
 select isnt(pg_temp.weekly_assess()->>'fingerprint',(select fp from weekly_fingerprint),'confirm to warn changes acceptance context');
 update public.shift_types set default_start_time='21:00',default_end_time='02:00' where id=(select dinner from wp_fixture);

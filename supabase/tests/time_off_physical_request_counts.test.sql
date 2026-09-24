@@ -21,8 +21,6 @@ insert into public.employee_location_assignments(workspace_id,employee_id,locati
 select w,emp,a,owner from cq union all select w,emp,b,owner from cq;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by) select w,emp,job,owner from cq;
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) select typ,w,'Counts 24001 Lunch','12:00','16:00' from cq;
-insert into public.employee_schedule_availability_versions(workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from)
-select w,emp,1,'UTC',(select jsonb_agg(jsonb_build_object('day',d,'mode','unrestricted','windows','[]'::jsonb)) from generate_series(0,6)d),'employee',owner,'2034-01-01' from cq;
 insert into public.workspace_roles(id,workspace_id,name,access_class) select 'afa10000-0000-4000-8000-000000000001',w,'Counts 24001 scoped reviewer','manager' from cq;
 insert into public.workspace_role_permissions(workspace_id,role_id,permission_key)
 select w,'afa10000-0000-4000-8000-000000000001',p from cq,unnest(array['workspace.read','schedule.time_off_requests.read','schedule.time_off_requests.manage','schedule.publish'])p;

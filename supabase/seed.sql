@@ -275,7 +275,6 @@ declare
   schedule_week date := current_date - (extract(isodow from current_date)::integer - 1);
   friday_detail text;
   demo record;
-  availability_seed_shift jsonb;
 begin
   insert into public.locations (
     id, workspace_id, name, street_address, city, region, postal_code,
@@ -322,11 +321,11 @@ begin
     ('17000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '15000000-0000-4000-8000-000000000002', '13000000-0000-4000-8000-000000000002', true, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'),
     ('17000000-0000-4000-8000-000000000003', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '15000000-0000-4000-8000-000000000003', '13000000-0000-4000-8000-000000000003', true, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
 
-  insert into public.employee_schedule_availability_versions (
-    id, workspace_id, employee_id, version_number, timezone, recurring_rules, source, recorded_by, effective_from
-  ) values
-    ('18000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '15000000-0000-4000-8000-000000000001', 1, 'America/Los_Angeles',
-      '[{"day":0,"mode":"unrestricted","windows":[]},{"day":1,"mode":"unrestricted","windows":[]},{"day":2,"mode":"unrestricted","windows":[]},{"day":3,"mode":"unrestricted","windows":[]},{"day":4,"mode":"unrestricted","windows":[]},{"day":5,"mode":"unavailable","windows":[]},{"day":6,"mode":"unrestricted","windows":[]}]', 'manager', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', schedule_week);
+  -- Alex Kim marked every Friday as a day they cannot work.
+  insert into public.employee_weekly_preferences (workspace_id, employee_id, preference, revision, updated_by)
+  values ('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '15000000-0000-4000-8000-000000000001',
+    jsonb_set(public.empty_weekly_preference('time_range'), '{days,5,all_day}', 'true'),
+    1, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
 
   insert into public.schedule_closures (
     id, workspace_id, location_id, closed_date, title, is_all_day, created_by
@@ -336,24 +335,11 @@ begin
     'Private event setup', true, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
   );
 
-  -- Demo assignments have an explicit capacity baseline before publication.
-  insert into public.employee_schedule_availability_versions (
-    workspace_id,employee_id,version_number,timezone,recurring_rules,source,recorded_by,effective_from
-  ) select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', employee,1,'America/Los_Angeles',
-    (select jsonb_agg(jsonb_build_object('day',day,'mode','unrestricted','windows','[]'::jsonb)) from generate_series(0,6) day),
-    'manager','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5',schedule_week
-  from unnest(array['15000000-0000-4000-8000-000000000002'::uuid,'15000000-0000-4000-8000-000000000003'::uuid]) employee;
   -- The demo week. Removed on 2026-09-22 because it no longer loaded under the
   -- schedule's rules, and put back the same day, rewritten to satisfy them:
   -- seven test suites build on these exact rows, and one week kept here beats
   -- seven copies kept in seven files. The owner's own Meyhouse workspace, loaded
   -- from supabase/local-fixture, has no shifts; this one is the test fixture.
-  -- Keep the intentional Friday availability example with a real, scoped
-  -- synthetic decision, rather than bypassing the assignment guard in seeds.
-  availability_seed_shift:=public.normalize_schedule_time_source('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',jsonb_build_object(
-    'id','23000000-0000-4000-8000-000000000004','location_id','11000000-0000-4000-8000-000000000001',
-    'employee_id','15000000-0000-4000-8000-000000000001','job_id','13000000-0000-4000-8000-000000000001',
-    'shift_type_id','14000000-0000-4000-8000-000000000002','scheduled_date',schedule_week+4,'start_time','15:00','end_time','23:00','time_basis','explicit'));
 
 
   insert into public.schedule_location_publications (

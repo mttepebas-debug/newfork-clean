@@ -9,7 +9,6 @@ import {
   canAccessWorkspace,
   departmentInputSchema,
   documentTypeInputSchema,
-  employeeAvailabilityInputSchema,
   employeeOnboardingSchema,
   employeeOnboardingProfileSchema,
   healthResponseSchema,
@@ -296,31 +295,6 @@ describe("shared contracts", () => {
       scheduleShiftMutationInputSchema.parse({
         ...parsed,
         conflict_override_note: "too short",
-      }),
-    ).toThrow();
-    const custom = scheduleShiftMutationInputSchema.parse({
-      ...parsed,
-      shift_type_id: null,
-      service_classification_note:
-        "  Inventory work independent of any service.  ",
-      service_classification_fingerprint: "b".repeat(64),
-      service_independent: true,
-    });
-    expect(custom.service_classification_note).toBe(
-      "Inventory work independent of any service.",
-    );
-    expect(custom.service_classification_fingerprint).toBe("b".repeat(64));
-    expect(custom).not.toHaveProperty("service_independent");
-    expect(() =>
-      scheduleShiftMutationInputSchema.parse({
-        ...custom,
-        service_classification_note: "short",
-      }),
-    ).toThrow();
-    expect(() =>
-      scheduleShiftMutationInputSchema.parse({
-        ...custom,
-        service_classification_fingerprint: "stale",
       }),
     ).toThrow();
   });
@@ -690,7 +664,6 @@ describe("shared contracts", () => {
           display_name: "Alex Kim",
           location_ids: [locationId],
           job_ids: [jobId],
-          availability: null,
         },
       ],
       shifts: [
@@ -1205,7 +1178,6 @@ describe("employee onboarding schemas", () => {
       first_actionable_path: "/app/employee-hub",
       ssn_status: { present: false, last_four: null },
       profile: null,
-      availability: null,
       assignments: { locations: ["Main"], jobs: ["Cook"] },
       requirements: [],
     });
@@ -1245,7 +1217,6 @@ describe("employee onboarding schemas", () => {
         share_phone_with_teammates: false,
         share_email_with_teammates: false,
       },
-      availability: null,
       assignments: { locations: ["Main"], jobs: ["Cook"] },
       requirements: [],
     });
@@ -1268,7 +1239,6 @@ describe("employee onboarding schemas", () => {
       progress_total: 1,
       ssn_status: { present: false, last_four: null },
       profile: null,
-      availability: null,
       assignments: { locations: ["Main"], jobs: ["Cook"] },
       requirements: [],
     };
@@ -1387,25 +1357,6 @@ describe("employee onboarding schemas", () => {
     ).toThrow();
   });
 
-  it("requires one explicit state for each weekday", () => {
-    const days = Array.from({ length: 7 }, (_, day) => ({
-      day,
-      mode: "unrestricted" as const,
-      windows: [],
-    }));
-    expect(
-      employeeAvailabilityInputSchema.parse({
-        timezone: "America/Los_Angeles",
-        days,
-      }).days,
-    ).toHaveLength(7);
-    expect(() =>
-      employeeAvailabilityInputSchema.parse({
-        timezone: "America/Los_Angeles",
-        days: [...days.slice(0, 6), days[0]],
-      }),
-    ).toThrow("Each weekday must be provided once");
-  });
 });
 
 describe("organization basics schemas", () => {
@@ -1466,13 +1417,11 @@ describe("scheduling settings schemas", () => {
       schedulingSettingsInputSchema.parse({
         week_start_day: "sunday",
         schedule_deadline_day: "friday",
-        conflict_policy: "block",
-        availability_enforcement: "hard",
         time_format: "24h",
       }),
-    ).toMatchObject({
+    ).toEqual({
       week_start_day: "sunday",
-      conflict_policy: "block",
+      schedule_deadline_day: "friday",
       time_format: "24h",
     });
   });

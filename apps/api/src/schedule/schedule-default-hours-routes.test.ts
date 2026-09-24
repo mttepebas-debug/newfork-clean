@@ -20,7 +20,7 @@ describe("default-hours review routes", () => {
     const { app, previewDefaultHours } = setup();
     const response = await app.inject({ method: "POST", url: url("preview"), headers: { authorization: "Bearer test" }, payload: { ...body, actor: "spoof" } });
     expect(response.statusCode).toBe(200);
-    expect(previewDefaultHours).toHaveBeenCalledWith({ actorUserId: actor, workspaceId: id, sessionId: id, command: { ...body, overrides: [] } });
+    expect(previewDefaultHours).toHaveBeenCalledWith({ actorUserId: actor, workspaceId: id, sessionId: id, command: body });
     expect((await app.inject({ method: "POST", url: url("preview"), payload: { ...body, shift_ids: [id, id] } })).statusCode).toBe(400);
     await app.close();
   });
@@ -38,7 +38,7 @@ describe("default-hours review routes", () => {
     const command = { ...body, fingerprint: "a".repeat(64), idempotency_key: actor, acknowledge_reference_overlaps: true, confirm_availability: true };
     const response = await app.inject({ method: "POST", url: url("apply"), headers: { authorization: "Bearer test" }, payload: command });
     expect(response.statusCode).toBe(409);
-    expect(applyDefaultHours).toHaveBeenCalledWith({ actorUserId: actor, workspaceId: id, sessionId: id, command: { ...command, overrides: [] } });
+    expect(applyDefaultHours).toHaveBeenCalledWith({ actorUserId: actor, workspaceId: id, sessionId: id, command });
     await app.close();
   });
 });

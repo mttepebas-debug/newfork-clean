@@ -13,7 +13,7 @@ const projection: NonNullable<ScheduleEmployee["weekly_availability"]>[number] =
   leave_intervals: [], clock_segments: [{ start_at: "2035-01-15T08:00:00Z", end_at: "2035-01-23T08:00:00Z", offset_seconds: -28800 }],
   days: Array.from({ length: 7 }, (_, i) => ({ date: `2035-01-${15 + i}`, has_unavailable: i === 0, all_day: false })),
 };
-const employee: ScheduleEmployee = { id: emp, employee_code: "E-1", display_name: "Weekly Read", location_ids: [loc], job_ids: [job], availability: null, weekly_availability: [projection] };
+const employee: ScheduleEmployee = { id: emp, employee_code: "E-1", display_name: "Weekly Read", location_ids: [loc], job_ids: [job], weekly_availability: [projection] };
 const input = { employee_id: emp, location_id: loc, job_id: job, shift_type_id: null, scheduled_date: "2035-01-15", start_time: "18:00", end_time: "20:00", time_basis: "explicit" } as ScheduleShiftMutationInput;
 describe("weekly Schedule advisory projection", () => {
   it("preserves the projection through the actual employee response schema", () => {
@@ -25,13 +25,12 @@ describe("weekly Schedule advisory projection", () => {
       expect(scheduleEmployeeSchema.safeParse({ ...employee, weekly_availability: [invalid] }).success).toBe(false);
     }
   });
-  it("uses half-open physical intervals, not the old available-hours week", () => {
-    const oldUnavailable = { ...employee, availability: [{ day: 1, mode: "unavailable" as const, windows: [] }] };
-    expect(weeklyTargetAvailability(oldUnavailable, input)).toBe("unavailable");
-    expect(weeklyTargetAvailability(oldUnavailable, { ...input, start_time: "16:00", end_time: "18:00" })).toBe("available");
-    expect(weeklyTargetAvailability(oldUnavailable, { ...input, start_time: "20:00", end_time: "22:00" })).toBe("available");
+  it("uses half-open physical intervals", () => {
+    expect(weeklyTargetAvailability(employee, input)).toBe("unavailable");
+    expect(weeklyTargetAvailability(employee, { ...input, start_time: "16:00", end_time: "18:00" })).toBe("available");
+    expect(weeklyTargetAvailability(employee, { ...input, start_time: "20:00", end_time: "22:00" })).toBe("available");
   });
-  it("makes an explicitly empty new projection available without falling back to legacy restrictions", () => {
+  it("treats an empty projection as available and a missing one as no data", () => {
     expect(weeklyTargetAvailability({ ...employee, weekly_availability: [{ ...projection, unavailable_intervals: [] }] }, input)).toBe("available");
     expect(weeklyTargetAvailability({ ...employee, weekly_availability: undefined }, input)).toBeNull();
   });

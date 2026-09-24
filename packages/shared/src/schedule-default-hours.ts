@@ -5,7 +5,6 @@ import { shiftAvailabilityAssessmentSchema } from "./availability-assessment";
 export const scheduleDefaultHoursInputSchema = z.object({
   expected_session_revision: z.number().int().nonnegative(), starts_on: z.string().date(), ends_on: z.string().date(),
   shift_ids: z.array(z.string().uuid()).min(1).max(200).refine(ids => new Set(ids).size === ids.length, "Choose each shift once"),
-  overrides: z.array(z.object({ shift_id: z.string().uuid(), note: z.string().trim().min(10).max(500) })).max(200).default([]),
 });
 export const scheduleDefaultHoursApplySchema = scheduleDefaultHoursInputSchema.extend({
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/), idempotency_key: z.string().uuid(), acknowledge_reference_overlaps: z.boolean().default(false),
