@@ -1440,21 +1440,11 @@ export const scheduleEditSessionSchema = z.object({
   dirty: z.boolean(),
   last_heartbeat: z.string().datetime({ offset: true }),
   expires_at: z.string().datetime({ offset: true }),
-  // The locations this edit holds; nobody else edits them this week meanwhile.
+  // The locations this edit covers; saving replaces its draft only there.
   location_ids: z.array(z.string().uuid()).min(1),
   shifts: z.array(scheduleEditableShiftSchema),
 });
 export type ScheduleEditSession = z.infer<typeof scheduleEditSessionSchema>;
-
-export const scheduleEditLockSchema = z.object({
-  location_id: z.string().uuid(),
-  location_name: z.string(),
-  session_id: z.string().uuid(),
-  holder_name: z.string().trim().min(1).max(161),
-  last_heartbeat: z.string().datetime({ offset: true }),
-  expires_at: z.string().datetime({ offset: true }),
-});
-export type ScheduleEditLock = z.infer<typeof scheduleEditLockSchema>;
 
 export const scheduleEditAcquireResultSchema = z.discriminatedUnion("status", [
   z.object({
@@ -1462,15 +1452,13 @@ export const scheduleEditAcquireResultSchema = z.discriminatedUnion("status", [
     session: scheduleEditSessionSchema,
     recovered_draft_id: z.string().uuid().nullable().optional(),
   }),
+  // Somebody else is editing the draft that was asked for.
   z.object({
     status: z.literal("conflict"),
     session_id: z.string().uuid().optional(),
     holder_name: z.string().trim().min(1).max(161),
     last_heartbeat: z.string().datetime({ offset: true }),
     expires_at: z.string().datetime({ offset: true }),
-    // Who holds each requested location, and which of them are free to edit.
-    locks: z.array(scheduleEditLockSchema),
-    free_location_ids: z.array(z.string().uuid()),
   }),
 ]);
 export type ScheduleEditAcquireResult = z.infer<
@@ -1731,6 +1719,15 @@ export const schedulePublicationLocationPreviewSchema = z.object({
   removed: z.coerce.number().int().nonnegative(),
   unchanged: z.coerce.number().int().nonnegative(),
   affected_employee_ids: z.array(z.string().uuid()).default([]),
+  // Somebody published or unpublished this location after the draft's work
+  // there started; publishing replaces what they did.
+  changed_since_start: z
+    .object({
+      kind: z.enum(["published", "unpublished"]),
+      by_name: z.string().trim().min(1).max(161),
+      at: z.string().datetime({ offset: true }),
+    })
+    .nullable(),
 });
 export type SchedulePublicationLocationPreview = z.infer<
   typeof schedulePublicationLocationPreviewSchema

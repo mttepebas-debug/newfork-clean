@@ -2,12 +2,14 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(8);
 
--- What FOUNDATION-B stage 5 deleted stays deleted. Each step adds its objects
--- here in the commit that drops them, so a migration, a restored dump or a
--- copied function cannot bring one back unnoticed.
+-- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
+-- the commit that drops them, so a migration, a restored dump or a copied
+-- function cannot bring one back unnoticed.
 
 create temporary table retired (kind text not null, name text not null, step text not null);
 insert into retired (kind, name, step) values
+  -- 3b the location and week edit lock (20260924152910)
+  ('table', 'schedule_edit_locks', '3b'), ('function', 'release_schedule_edit_locks', '3b'),
   -- 5.2 kiosk and time tracking (20260924145822)
   ('table', 'employee_kiosk_credentials', '5.2'), ('table', 'kiosk_action_sessions', '5.2'),
   ('table', 'kiosk_devices', '5.2'), ('table', 'kiosk_enrollment_codes', '5.2'),

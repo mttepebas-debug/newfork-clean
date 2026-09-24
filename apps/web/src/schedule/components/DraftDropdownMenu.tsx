@@ -17,6 +17,7 @@ import { ConfirmButton } from "@newfork/ui";
 import { type JSX, useEffect, useRef, useState } from "react";
 
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../lib/scheduleActionButton";
+import { formatShortDateTime } from "../lib/scheduleDateTime";
 
 interface PublishedScheduleSummary {
   readonly source_draft_id?: string | null;
@@ -453,15 +454,6 @@ export function DraftDropdownMenu({
   );
 }
 
-function formatDraftDate(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
 type DraftWithActorNames = ScheduleDraftSummary & {
   readonly created_by_name?: string | null;
   readonly updated_by_name?: string | null;
@@ -473,7 +465,7 @@ function updatedByLabel(draft: DraftWithActorNames): string {
 
 function formatDraftMeta(draft: ScheduleDraftSummary): string {
   const actorLabel = updatedByLabel(draft);
-  const updatedAt = formatDraftDate(draft.updated_at);
+  const updatedAt = formatShortDateTime(draft.updated_at);
   if (actorLabel !== "Unknown") return `Saved by ${actorLabel} • ${updatedAt}`;
   return `Revision ${draft.revision} • ${updatedAt}`;
 }
@@ -489,7 +481,7 @@ function publishedByLabel(summary?: PublishedScheduleSummary | null): string {
 }
 
 function publishedMeta(summary: PublishedScheduleSummary): string {
-  return `Published by ${publishedByLabel(summary)} • ${formatDraftDate(
+  return `Published by ${publishedByLabel(summary)} • ${formatShortDateTime(
     summary.published_at,
   )}`;
 }

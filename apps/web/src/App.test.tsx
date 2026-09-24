@@ -1743,6 +1743,7 @@ describe("App", () => {
           updated: 0,
           removed: 0,
           unchanged: 0,
+          changed_since_start: null,
           affected_employee_ids: [scheduleFixture.employees[0]!.id],
         },
       ],
@@ -2536,50 +2537,66 @@ describe("App", () => {
     });
   });
 
-  it("shows the reference-style edit lock dialog on schedule lock conflicts", async () => {
+  it("says who is editing a draft somebody else has open", async () => {
     const acquireMock = vi.mocked(acquireScheduleEditSession);
     const takeoverMock = vi.mocked(takeoverScheduleEditSession);
     takeoverMock.mockClear();
+    const kitchenPlan = {
+      id: "99999999-9999-4999-8999-999999999995",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: scheduleFixture.week_start,
+      name: "Kitchen plan",
+      revision: 3,
+      created_by: "77777777-7777-4777-8777-777777777777",
+      updated_by: "77777777-7777-4777-8777-777777777777",
+      created_at: "2026-08-17T12:00:00Z",
+      updated_at: "2026-08-17T12:00:00Z",
+    };
+    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [kitchenPlan] });
     acquireMock.mockResolvedValueOnce({
       status: "conflict",
       session_id: "77777777-7777-4777-8777-777777777777",
       holder_name: "Morgan Lee",
       last_heartbeat: new Date().toISOString(),
       expires_at: "2026-08-17T12:04:00Z",
-      locks: [
-        {
-          location_id: "11111111-1111-4111-8111-111111111111",
-          location_name: "Main",
-          session_id: "77777777-7777-4777-8777-777777777777",
-          holder_name: "Morgan Lee",
-          last_heartbeat: new Date().toISOString(),
-          expires_at: "2026-08-17T12:04:00Z",
-        },
-      ],
-      free_location_ids: [],
     });
     window.history.pushState({}, "", "/app/schedule");
     render(<App />);
     await signInAs("owner");
-    await openPublishedScheduleEditor();
+    fireEvent.click(
+      await screen.findByRole(
+        "button",
+        { name: "Draft selector: New Schedule" },
+        { timeout: 5000 },
+      ),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Edit Kitchen plan" }),
+    );
 
-    await waitFor(() => expect(acquireMock).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(acquireMock).toHaveBeenCalledWith(
+        scheduleFixture.workspace_id,
+        scheduleFixture.week_start,
+        "draft",
+        kitchenPlan.id,
+        null,
+      ),
+    );
     expect(
-      await screen.findByRole("dialog", { name: "Schedule is being edited" }),
+      await screen.findByRole("dialog", { name: "Draft is being edited" }),
     ).toBeTruthy();
-    expect(
-      screen.getByText(/Morgan Lee is editing the published schedule/),
-    ).toBeTruthy();
+    expect(screen.getByText(/Morgan Lee is editing "Kitchen plan"/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "View schedule" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Take over" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     acquireMock.mockResolvedValueOnce(makeDefaultEditAcquireResult());
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(acquireMock).toHaveBeenCalledTimes(2));
+    expect(acquireMock.mock.calls[1]?.[3]).toBe(kitchenPlan.id);
     expect(takeoverMock).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(
-        screen.queryByRole("dialog", { name: "Schedule is being edited" }),
+        screen.queryByRole("dialog", { name: "Draft is being edited" }),
       ).toBeNull(),
     );
   });
@@ -4256,6 +4273,7 @@ describe("App", () => {
           updated: 1,
           removed: 0,
           unchanged: 0,
+          changed_since_start: null,
           affected_employee_ids: affectedEmployeeIds,
         },
       ],
@@ -4456,6 +4474,7 @@ describe("App", () => {
           updated: 0,
           removed: 0,
           unchanged: 0,
+          changed_since_start: null,
           affected_employee_ids: [],
         },
       ],
@@ -4659,6 +4678,7 @@ describe("App", () => {
           updated: 0,
           removed: 0,
           unchanged: 0,
+          changed_since_start: null,
           affected_employee_ids: [scheduleFixture.employees[0]!.id],
         },
       ],
@@ -4776,6 +4796,7 @@ describe("App", () => {
           updated: 0,
           removed: 0,
           unchanged: 0,
+          changed_since_start: null,
           affected_employee_ids: [scheduleFixture.employees[0]!.id],
         },
       ],
@@ -4800,6 +4821,7 @@ describe("App", () => {
           updated: 0,
           removed: 0,
           unchanged: 0,
+          changed_since_start: null,
           affected_employee_ids: [scheduleFixture.employees[0]!.id],
         },
       ],
@@ -4921,6 +4943,7 @@ describe("App", () => {
           updated: 0,
           removed: 0,
           unchanged: 0,
+          changed_since_start: null,
           affected_employee_ids: [scheduleFixture.employees[0]!.id],
         },
       ],

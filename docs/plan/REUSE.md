@@ -43,6 +43,7 @@ Kullanıcı kararları, 2026-09-23 (FOUNDATION-B Aşama 0). Her kural yetki matr
 **Plan kilidi (kullanıcı kararı, 2026-09-24, seçenek A)**
 - Kilit yalnız aynı taslaktadır: iki kişi aynı taslağı aynı anda düzenleyemez; farklı taslaklar ve farklı lokasyonlar birbirini kilitlemez.
 - Yayında, taslak açıldıktan sonra o lokasyonun yayını değiştiyse uyarı çıkar ("bu lokasyonun yayını sen başladıktan sonra değişti"); yayınlayan görerek karar verir.
+- Nerede yaşıyor (3b, migration `20260924152910`): taslak kilidi `schedule_edit_sessions_active_draft_idx`; başlangıç noktası düzenleme ve taslakta `base_publication_ids` (`app_private.schedule_edit_starting_point`), yayınlanınca tetikleyiciyle ilerler; uyarı yayın önizlemesinde lokasyon başına `changed_since_start` (`app_private.schedule_publication_changes_since_start`).
 
 **İzin (time off)**
 - İzin kişiye aittir; talep formunda lokasyon seçilmez.
@@ -190,6 +191,12 @@ satırında üstüne yazma düğmesi yok.
 
 Başka yöneticinin taslak adıyla kaydedince UI-13 penceresi sorar:
 "Overwrite "<ad>"?"; Cancel derse hata satırı başka ad seçmesini söyler.
+
+Düzenleme kilidi (3b): yalnız taslak kilitlenir. Başkası taslağı
+düzenliyorsa "Draft is being edited" penceresi kimin düzenlediğini söyler;
+"View schedule" beyaz, "Try again" yeşil. Yayın penceresinin ilk adımında,
+taslak başladıktan sonra yayını değişen lokasyonun altında uyarı satırı
+(kim, ne zaman; engel değil, yayınlayan karar verir).
 
 ### ScheduleTemplatesPage (kısmi: butonlar)
 

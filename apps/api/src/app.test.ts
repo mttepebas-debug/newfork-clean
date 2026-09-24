@@ -4412,8 +4412,6 @@ function scheduleServiceMock(
       holder_name: "Another manager",
       last_heartbeat: "2026-08-17T12:00:00.000Z",
       expires_at: "2026-08-17T12:04:00.000Z",
-      locks: [],
-      free_location_ids: [],
     }),
     heartbeat: async () => scheduleSessionMockModel(),
     takeover: async () => ({
@@ -4736,6 +4734,7 @@ function schedulePublicationPreviewMock() {
         updated: 0,
         removed: 0,
         unchanged: 0,
+        changed_since_start: null,
         affected_employee_ids: [],
       },
     ],

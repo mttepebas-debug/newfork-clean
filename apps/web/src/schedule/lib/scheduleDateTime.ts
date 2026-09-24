@@ -34,6 +34,16 @@ export function formatDateNumber(iso: string): string {
   });
 }
 
+// "Sep 24, 2:05 PM": when somebody saved or published something.
+export function formatShortDateTime(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 export function formatDayNumber(iso: string): string {
   return String(new Date(`${iso}T12:00:00Z`).getUTCDate());
 }

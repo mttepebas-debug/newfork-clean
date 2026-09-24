@@ -470,6 +470,7 @@ describe("shared contracts", () => {
           updated: 0,
           removed: 0,
           unchanged: 0,
+          changed_since_start: null,
         },
       ],
       findings: [

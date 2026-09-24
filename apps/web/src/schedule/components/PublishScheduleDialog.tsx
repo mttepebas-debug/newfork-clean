@@ -37,6 +37,7 @@ import {
   publishNewAvailabilityFindings,
   isWeeklyAvailabilityFinding,
 } from "./PublishPreflightPanel";
+import { formatShortDateTime } from "../lib/scheduleDateTime";
 
 export interface SchedulePublicationDepartmentScope {
   readonly departmentIds?: readonly string[];
@@ -66,6 +67,17 @@ type LocationPreviewSummary = SchedulePublicationPreview["locations"][number] & 
 
 function shiftCountLabel(count: number): string {
   return count === 1 ? "shift" : "shifts";
+}
+
+// Somebody published or unpublished the location after this draft's work
+// there started; the publisher decides knowing it (user decision 2026-09-24).
+function changedSinceStartText(
+  change: NonNullable<LocationPreviewSummary["changed_since_start"]>,
+): string {
+  const when = formatShortDateTime(change.at);
+  return change.kind === "published"
+    ? `${change.by_name} published this location on ${when}, after this draft was started. Publishing replaces that version.`
+    : `${change.by_name} unpublished this location on ${when}, after this draft was started. Publishing makes it live again.`;
 }
 
 function keptWorkedCount(summary: LocationPreviewSummary | undefined): number {
@@ -709,6 +721,12 @@ export function PublishScheduleDialog({
                           <AlertTriangle size={13} aria-hidden />
                           All {liveShiftCount} live shifts at this location will be
                           removed.
+                        </span>
+                      ) : null}
+                      {selected && summary?.changed_since_start ? (
+                        <span className="schedule-publication-location-warning">
+                          <AlertTriangle size={13} aria-hidden />
+                          {changedSinceStartText(summary.changed_since_start)}
                         </span>
                       ) : null}
                     </span>

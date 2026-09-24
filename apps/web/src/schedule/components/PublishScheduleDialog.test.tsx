@@ -95,6 +95,7 @@ const preview: SchedulePublicationPreview = {
       updated: 1,
       removed: 1,
       unchanged: 1,
+      changed_since_start: null,
       affected_employee_ids: [employee.id],
     },
   ],
@@ -414,6 +415,55 @@ describe("PublishScheduleDialog", () => {
       },
       {},
     );
+  });
+
+  it("says who published or unpublished a location after the draft was started", async () => {
+    const at = "2026-08-18T14:05:00Z";
+    const when = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(at));
+    const changed: SchedulePublicationPreview = {
+      ...preview,
+      locations: [
+        {
+          ...preview.locations[0]!,
+          changed_since_start: { kind: "published", by_name: "Mehmet B", at },
+        },
+        {
+          ...preview.locations[0]!,
+          location_id: patioLocation.id,
+          location_name: patioLocation.name,
+          changed_since_start: { kind: "unpublished", by_name: "Zeynep A", at },
+        },
+      ],
+    };
+
+    render(
+      <PublishScheduleDialog
+        drafts={[draft]}
+        locations={[location, patioLocation]}
+        employees={[employee]}
+        onClose={vi.fn()}
+        onPreview={vi.fn().mockResolvedValue(changed)}
+        onPublish={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByText(
+        `Mehmet B published this location on ${when}, after this draft was started. Publishing replaces that version.`,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        `Zeynep A unpublished this location on ${when}, after this draft was started. Publishing makes it live again.`,
+      ),
+    ).toBeTruthy();
+    // A warning, not a blocker: the publisher decides.
+    await clickReadyNext();
   });
 
   it("refreshes the location preview when publish reports a stale baseline", async () => {
@@ -823,6 +873,7 @@ describe("PublishScheduleDialog", () => {
           updated: 0,
           removed: 3,
           unchanged: 0,
+          changed_since_start: null,
           affected_employee_ids: [],
         },
       ],
