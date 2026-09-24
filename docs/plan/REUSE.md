@@ -36,8 +36,13 @@ Kullanıcı kararları, 2026-09-23 (FOUNDATION-B Aşama 0). Her kural yetki matr
 - Rütbe: talepler hep bir üst kademeye gider (employee → lokasyonun manager'ı → admin → owner). Kimse kendi talebini onaylayamaz. Owner'ın talebi onay gerekmeden kaydolur, etkilenen manager'lara bildirim gider.
 - Manager lokasyonunda çalışan herkesi (başka manager, admin, owner) vardiyaya yazabilir; onların müsaitlik/izin çakışma onayları ve talepleri üst kademeye gider.
 - İşten çıkarma: manager yalnız "kendi lokasyonundan çıkar" yapar (o lokasyondaki atama ve gelecek vardiyalar biter). Tamamen işten çıkarma ve arşiv yalnız admin/owner. Açık karar: çıkarılan lokasyon çalışanın tek lokasyonuysa ne olacağı.
+- Çalışan kaydı (kullanıcı kararları, 2026-09-24): admin owner'ın kaydını düzenlemez. Manager kendi kaydını düzenlemez (talep bir üst kademeye gider), başka manager'ın, admin'in ya da owner'ın kaydını da düzenlemez. Manager, lokasyonlarından birinde çalışan birinin bütün kaydını düzenler; kişi başka lokasyonda da çalışıyor olabilir. Uygulama erişimini yalnız admin ya da owner kaldırır. Manager kendi lokasyonlarında çalışan birini employee rolleri arasında taşıyabilir. Owner ve admin kendi kayıtlarını düzenler.
 - Manager Settings'te katalogu salt okunur görür (job, departman, vardiya tipi/etiketi, çakışma ve takas kuralları, belge tanımları); Locations'ta yalnız kendi lokasyonları; Roles, sahiplik, billing, hesap görünmez. Manager tipi rollere organizasyon ayarı yazma izni verilemez. Duyuru ve önemli tarih yazmak kendi lokasyonları için serbest.
 - Kısıtlı kişi (eksik zorunlu belge ya da tamamlanmamış onboarding) yalnız kendi eksiğini tamamlar: belge yükleme, onboarding adımları, kendi profili, bildirimleri, çıkış. Program, talep ve yönetim işleri kapalı.
+
+**Plan kilidi (kullanıcı kararı, 2026-09-24, seçenek A)**
+- Kilit yalnız aynı taslaktadır: iki kişi aynı taslağı aynı anda düzenleyemez; farklı taslaklar ve farklı lokasyonlar birbirini kilitlemez.
+- Yayında, taslak açıldıktan sonra o lokasyonun yayını değiştiyse uyarı çıkar ("bu lokasyonun yayını sen başladıktan sonra değişti"); yayınlayan görerek karar verir.
 
 **İzin (time off)**
 - İzin kişiye aittir; talep formunda lokasyon seçilmez.

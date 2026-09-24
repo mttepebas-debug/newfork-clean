@@ -400,15 +400,16 @@ begin
     return case when shares then 'allow' else 'deny' end;
 
   when 'employee.save' then
+    -- User decisions 2026-09-24 (1A-4A): an admin does not edit the owner's
+    -- record; a manager edits neither their own record (it goes one level up)
+    -- nor a peer's or a senior's, and edits the whole record of somebody who
+    -- also works at another location.
     if p.class = 'owner' then return 'allow'; end if;
     if p.class = 'admin' then
-      if t.class = 'owner' then return 'decide:admin-edits-owner-record'; end if;
-      return 'allow';
+      return case when t.class = 'owner' then 'deny' else 'allow' end;
     end if;
-    if not shares then return 'deny'; end if;
-    if is_self then return 'decide:manager-edits-own-record'; end if;
-    if pg_temp.rank(t.class) >= pg_temp.rank('manager') then return 'decide:manager-edits-peer-or-senior-record'; end if;
-    if not covers then return 'decide:manager-edits-person-shared-with-other-location'; end if;
+    if not shares or is_self then return 'deny'; end if;
+    if pg_temp.rank(t.class) >= pg_temp.rank('manager') then return 'deny'; end if;
     return 'allow';
 
   when 'employee.terminate', 'employee.archive' then
@@ -423,9 +424,8 @@ begin
     if is_self then return 'deny'; end if;
     if p.class = 'owner' then return 'allow'; end if;
     if p.class = 'admin' and pg_temp.rank(t.class) < pg_temp.rank('admin') then return 'allow'; end if;
-    if p.class = 'admin' then return 'deny'; end if;
-    if not shares or pg_temp.rank(t.class) >= pg_temp.rank('manager') then return 'deny'; end if;
-    return 'decide:manager-removes-access';
+    -- Only admin and owner take access away (user decision 2026-09-24, 5A).
+    return 'deny';
 
   when 'employee.make_admin' then
     -- Owner only (checked above); nobody changes their own role.
@@ -435,8 +435,9 @@ begin
     if is_self or t.class = 'owner' then return 'deny'; end if;
     if p.class = 'owner' then return 'allow'; end if;
     if p.class = 'admin' then return case when t.class = 'admin' then 'deny' else 'allow' end; end if;
-    if not shares or t.class <> 'employee' then return 'deny'; end if;
-    return 'decide:manager-changes-employee-role';
+    -- A manager moves somebody between employee roles at their own locations
+    -- (user decision 2026-09-24, 6A).
+    return case when shares and t.class = 'employee' then 'allow' else 'deny' end;
 
   when 'employee.create' then
     if t.locs is null then
@@ -524,6 +525,8 @@ create temporary table known_gap (
 insert into known_gap values
   ('manager-hidden-peers', '{manager}', '{employee.read,employee.list}', '{self,ayse,zeynep,olcay}',
    'M2: a manager sees everyone who works at their locations; today their own record and managers, admins and the owner are hidden (stage 6, employees)'),
+  ('manager-cannot-change-employee-role', '{manager}', '{employee.make_employee}', null,
+   'a manager cannot move somebody between employee roles at their own location; decided allowed on 2026-09-24, 6A (stage 6, employees)'),
   ('manager-cannot-invite', '{manager}', '{employee.create}', '{K,B}',
    'a manager cannot add and invite an employee at their own location; employee_access.manage is required (stage 6, employees)'),
   ('owner-record-no-primary', '{olcay}', '{employee.save}', '{self,olcay}',
