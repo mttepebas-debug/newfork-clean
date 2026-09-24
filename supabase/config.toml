@@ -392,7 +392,10 @@ deno_version = 2
 # secret_key = "env(SECRET_VALUE)"
 
 [analytics]
-enabled = true
+# BL-111: off locally. Its log shipper (vector) cannot list containers on this
+# Windows Docker Desktop and restarts forever; nothing here reads the logs. CI
+# already starts without analytics and vector.
+enabled = false
 port = 55327
 # Configure one of the supported backends: `postgres`, `bigquery`.
 backend = "postgres"
