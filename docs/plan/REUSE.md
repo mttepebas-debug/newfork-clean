@@ -53,12 +53,12 @@ Kullanıcı kararları, 2026-09-23 (FOUNDATION-B Aşama 0). Her kural yetki matr
 - Onaylanan izin bütün lokasyonlarda kesin engeldir (manager bunun üstüne vardiya yazamaz; ayarı yoktur). Diğer manager'lara bildirim gider, taslaklarda çakışma görünür.
 
 **Müsaitlik**
-- Çalışan müsait olmadığı günleri/saatleri işaretler (onboarding'de opsiyonel adım, sonra Employee Hub). Kaydettiği an geçerli, onay yok. Manager ayrıca çalışana görünmeyen bir hatırlatma notu tutabilir.
-- Settings'teki müsaitlik ayarı iki seçenek: Yumuşak (uyarı + manager'ın kayıtlı "yine de koy" onayı) / Sert (engel). Bu ayar yalnız manager'ın plan yazmasına uygulanır. Sert'e geçmek, daha önce kabul edilip yayınlanmış vardiyaları etkilemez.
+- Çalışan müsait olmadığı günleri/saatleri işaretler (onboarding'de opsiyonel adım, sonra Employee Hub). Kaydettiği an geçerli, onay yok. Manager ayrıca çalışana görünmeyen bir hatırlatma notu tutabilir. Çalışan Employee Hub → Schedule'da yalnız kendi işaretlediği günleri taralı görür; manager'ın notu ona hiç görünmez.
+- Settings'teki müsaitlik ayarı üç kademe (kullanıcı kararı 2026-09-24, önceki "iki seçenek" kararının yerine): Uyar (uyarı gösterir, vardiya yazılır) / Yumuşak (uyarı + manager "vazgeç" ya da "yine de koy" seçer, onay kayıtlı) / Sert (engel). Uyarısız "Allow" yok. Manager'ın gizli hatırlatması ayardan bağımsız her zaman Yumuşak. Bu ayar yalnız manager'ın plan yazmasına uygulanır. Sert'e geçmek, daha önce kabul edilip yayınlanmış vardiyaları etkilemez.
 
 **Takas, bırakılan vardiya (pickup), cover — uygunluk**
 - Zorunlu: çalışanın lokasyon ve job ataması vardiyaya uygun; aynı anda iki vardiya olmaz (takasta bırakılan vardiya hariç); sonunda manager/admin onayı.
-- Çalışan kendi müsaitliğini ve kendi onaylı iznini kendi rızasıyla ezebilir; yalnız bilgilendirme onayı istenir. Settings'teki Yumuşak/Sert müsaitlik ayarı bu süreçleri etkilemez. İzinli günde vardiya alınırsa izin o saatler için kısalır, izni onaylayana bildirim gider.
+- Çalışan kendi müsaitliğini ve kendi onaylı iznini kendi rızasıyla ezebilir; yalnız bilgilendirme onayı istenir. Settings'teki müsaitlik ayarı (Uyar/Yumuşak/Sert) bu süreçleri etkilemez. İzinli günde vardiya alınırsa izin o saatler için kısalır, izni onaylayana bildirim gider.
 - Cover talebinin aday listesi: onaylı izinli kişi hiç görünmez; müsait olmayan "müsait değil" etiketiyle görünür.
 - Yol ve dinlenme süresi: Settings'te takas/pickup/cover için ayrı ayarlar; kurala uymayan değişim manager onay ekranında açıkça işaretlenir.
 - Onay: pickup/cover'ı yalnız vardiyanın lokasyonu onaylar; iki lokasyonun vardiyaları birlikte el değiştirirse (takas) iki lokasyon da onaylar.
