@@ -56,11 +56,6 @@ import {
   registerScheduleExportCronRoutes,
   type ScheduleExportCronRouteOptions,
 } from "./schedule/schedule-export-cron-routes";
-import { registerScheduleLineupRoutes } from "./schedule/schedule-lineup-routes";
-import {
-  createScheduleLineupService,
-  type ScheduleLineupService,
-} from "./schedule/schedule-lineup-service";
 import { registerScheduleRequestsRoutes } from "./schedule/schedule-requests-routes";
 import {
   createScheduleRequestsService,
@@ -162,7 +157,6 @@ interface BuildAppOptions {
   readonly onboardingService?: EmployeeOnboardingService | null;
   readonly scheduleService?: ScheduleReadService | null;
   readonly scheduleExportCron?: Partial<ScheduleExportCronRouteOptions>;
-  readonly scheduleLineupService?: ScheduleLineupService | null;
   readonly scheduleRequestsService?: ScheduleRequestsService | null;
   readonly employeeHubService?: EmployeeHubService | null;
   readonly communicationService?: CommunicationService | null;
@@ -308,9 +302,6 @@ export function buildApp(options: BuildAppOptions = {}) {
     options.onboardingService ?? createOnboardingServiceFromEnvironment();
   const scheduleService =
     options.scheduleService ?? createScheduleServiceFromEnvironment();
-  const scheduleLineupService =
-    options.scheduleLineupService ??
-    createScheduleLineupServiceFromEnvironment();
   const scheduleRequestsService =
     options.scheduleRequestsService ??
     createScheduleRequestsServiceFromEnvironment();
@@ -858,10 +849,6 @@ export function buildApp(options: BuildAppOptions = {}) {
     cronSecret:
       options.notificationOutboxCron?.cronSecret ?? process.env.CRON_SECRET,
   });
-  registerScheduleLineupRoutes(app, {
-    service: scheduleLineupService,
-    contextResolver,
-  });
   registerScheduleRequestsRoutes(app, {
     service: scheduleRequestsService,
     contextResolver,
@@ -1035,14 +1022,6 @@ function createScheduleServiceFromEnvironment(): ScheduleReadService | null {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceRoleKey) return null;
   return createScheduleReadService({ url, serviceRoleKey });
-}
-
-function createScheduleLineupServiceFromEnvironment(): ScheduleLineupService | null {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && serviceRoleKey
-    ? createScheduleLineupService({ url, serviceRoleKey })
-    : null;
 }
 
 function createScheduleRequestsServiceFromEnvironment(): ScheduleRequestsService | null {

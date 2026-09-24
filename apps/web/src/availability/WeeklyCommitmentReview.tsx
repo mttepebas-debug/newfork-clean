@@ -11,7 +11,6 @@ const names = {
   cover: "Cover request",
   open_pickup: "Shift pickup",
   swap: "Shift swap",
-  lineup_offer: "Accepted shift offer",
 };
 
 export function WeeklyCommitmentReview({

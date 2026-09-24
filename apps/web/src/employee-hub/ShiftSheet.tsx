@@ -2,7 +2,7 @@ import type { EmployeeHubReadModel, EmployeeHubShift } from "@newfork/shared";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
-import { X, MapPin, ArrowUpRight, Users } from "lucide-react";
+import { X, MapPin, ArrowUpRight } from "lucide-react";
 import { formatTimeRange } from "../schedule/lib/scheduleDateTime";
 import { shiftDate, shiftZone } from "./dashboard-model";
 const base = "/app/employee-hub";
@@ -116,13 +116,6 @@ export function ShiftSheet({
       >
         Open in my schedule
         <ArrowUpRight size={17} />
-      </Link>
-      <Link
-        className="eh-sheet-link"
-        to={`${base}/lineup?date=${shift.scheduled_date}&location=${shift.location_id}`}
-      >
-        View Line-up
-        <Users size={16} />
       </Link>
     </Sheet>
   );

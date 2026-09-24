@@ -445,11 +445,6 @@ export function EmployeeDashboard({
               Your team will appear here once you share a location.
             </p>
           )}
-          <Link className="eh-waiting" to={`${base}/lineup`}>
-            <Users size={16} />
-            <span>See today’s Line-up</span>
-            <ChevronRight size={15} />
-          </Link>
         </section>
       </div>
       <footer className="eh-footer">

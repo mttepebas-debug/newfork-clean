@@ -88,7 +88,6 @@ const AvailabilityPage = lazy(() =>
     default: module.AvailabilityPage,
   })),
 );
-const LineupPage = lazy(() => import("./views/LineupPage"));
 const ScheduleRequestsPage = lazy(() => import("./views/ScheduleRequestsPage"));
 const SettingsLayout = lazy(() => import("./settings/SettingsLayout"));
 const GeneralSettingsPage = lazy(
@@ -363,14 +362,6 @@ export function App() {
                     />
                   </>
                 ) : null}
-                <Route
-                  path="schedule/lineup"
-                  element={
-                    <PermissionRoute anyOf={["schedule.lineup.read"]}>
-                      <LineupPage />
-                    </PermissionRoute>
-                  }
-                />
                 <Route
                   path="schedule/requests"
                   element={<ScheduleRequestsPage />}

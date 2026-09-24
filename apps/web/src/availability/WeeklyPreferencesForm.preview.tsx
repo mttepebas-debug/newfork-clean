@@ -47,21 +47,6 @@ const review: WeeklyCommitmentPreview = {
         { start_at: "2026-09-19T00:00:00Z", end_at: "2026-09-19T05:00:00Z" },
       ],
     },
-    {
-      kind: "lineup_offer",
-      id: "ad420000-0000-4000-8000-000000000072",
-      fingerprint: "b".repeat(64),
-      request_revision: "1",
-      request_type: "lineup_offer",
-      location_name: "Palo Alto extended dining room",
-      date: "2026-09-20",
-      start_time: "11:00",
-      end_time: "16:00",
-      timezone: "America/Los_Angeles",
-      intervals: [
-        { start_at: "2026-09-20T18:00:00Z", end_at: "2026-09-20T23:00:00Z" },
-      ],
-    },
   ],
 };
 const employee = emptyWeeklyPreference(mode);

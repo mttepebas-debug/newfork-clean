@@ -30,7 +30,6 @@ import {
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
-import { EmployeeLineupOffers } from "../../schedule/lineup/LineupQueue";
 import { addDays } from "../../schedule/lib/scheduleDateTime";
 import {
   changeExchange,
@@ -262,11 +261,9 @@ function useExchangeAction(workspace: string) {
 export function ShiftExchangeHub({
   workspaceId,
   manager = false,
-  timeFormat = "12h",
 }: {
   workspaceId: string;
   manager?: boolean;
-  timeFormat?: "12h" | "24h";
 }) {
   const { context } = useAuth();
   const [params, setParams] = useSearchParams();
@@ -662,13 +659,6 @@ export function ShiftExchangeHub({
             </>
           ) : (
             <>
-              {!manager && view === "requests" && (
-                <EmployeeLineupOffers
-                  workspaceId={workspaceId}
-                  showLineupLink
-                  timeFormat={timeFormat}
-                />
-              )}
               {manager && (
                 <div className="job-column-headings request-catalog-row">
                   <span>Employee / request</span>
@@ -1344,22 +1334,6 @@ function CaseDetail({
               “Another teammate selected”.
             </p>
           )}
-          <details>
-            <summary>Line Up impact</summary>
-            <p>
-              Section and station placement stay with the shift. Personal notes
-              and call-off status are cleared. A section lead who leaves the
-              service needs to be reassigned by a manager.
-            </p>
-            <p>
-              Any existing shared Line Up receives the complete assignment
-              change. Unshared briefing edits stay in your draft. Staffing
-              proposals tied to the changed assignment close automatically. If a
-              shift is missing from the shared Line Up, review and share its
-              assignment before approving. Employee consent stays valid while
-              shift details remain unchanged.
-            </p>
-          </details>
           {preview.isFetching && <p role="status">Rechecking eligibility…</p>}
           {preview.error && (
             <p className="sx-error" role="alert">

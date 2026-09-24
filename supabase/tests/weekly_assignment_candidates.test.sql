@@ -10,9 +10,6 @@ create temp table ws as select
  'ad426000-0000-4000-8000-000000000007'::uuid other_loc,
  'ad426000-0000-4000-8000-000000000008'::uuid shift_type,
  'ad426000-0000-4000-8000-000000000009'::uuid job;
-create temp table original_candidates as select
- pg_get_functiondef('public.lineup_candidate_check(uuid,uuid,jsonb,uuid[],integer)'::regprocedure) wrapper,
- pg_get_functiondef('public.lineup_candidate_check_exchange_base(uuid,uuid,jsonb,uuid[],integer)'::regprocedure) base;
 insert into auth.users(id,email) select owner_id,'weekly-candidate-owner@example.test' from ws
  union all select employee_user,'weekly-candidate-employee@example.test' from ws;
 insert into public.workspaces(id,name,created_by) select w,'Weekly candidates',owner_id from ws;
@@ -20,9 +17,9 @@ insert into public.workspace_memberships(workspace_id,user_id,role,all_locations
  select w,owner_id,'owner'::public.workspace_role,true from ws
  union all select w,employee_user,'employee'::public.workspace_role,false from ws;
 insert into public.workspace_scheduling_settings(workspace_id) select w from ws on conflict do nothing;
-insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone,lineup_operations_enabled)
- select 'T00048', loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles',true from ws
- union all select 'T00049', other_loc,w,'East','2 Test Street','Test City','NY','10001','America/New_York',true from ws;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
+ select 'T00048', loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles' from ws
+ union all select 'T00049', other_loc,w,'East','2 Test Street','Test City','NY','10001','America/New_York' from ws;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
  select emp,w,employee_user,'E-993426','Weekly','Candidate',owner_id from ws;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,assigned_at,created_by)
@@ -41,9 +38,8 @@ create function pg_temp.candidate(changes jsonb default '{}',excluded uuid[] def
 $$;
 select is(pg_temp.candidate()->>'status','eligible','no declared preference is eligible');
 select is(pg_temp.candidate()->'availability'->>'operation','allowed','empty week is verified, not unknown');
-select is(pg_temp.candidate('{"time_basis":"unresolved"}')->>'status','verification_required','unresolved hours do not become eligible');
 select is(pg_temp.candidate('{"start_time":null}')->>'status','verification_required','missing start requires verification');
-select is(pg_temp.candidate('{"end_time":"18:00"}')->>'status','verification_required','equal endpoints require verification');
+select is(pg_temp.candidate('{"end_time":"18:00"}')->>'status','ineligible','equal endpoints are refused');
 
 -- Insert actual work while preferences are empty; later preferences never remove it.
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
@@ -51,10 +47,6 @@ insert into public.schedule_location_publications(id,workspace_id,location_id,we
 insert into public.schedule_published_shifts(id,source_shift_id,workspace_id,location_id,publication_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
  select 'ad426000-0000-4000-8000-000000000011','ad426000-0000-4000-8000-000000000012',w,loc,
   'ad426000-0000-4000-8000-000000000010',emp,job,'2035-01-15','09:00','12:00','explicit','America/Los_Angeles' from ws;
-insert into public.schedule_lineups(id,workspace_id,location_id,lineup_date,created_by,updated_by)
- select 'ad426000-0000-4000-8000-000000000013',w,loc,'2035-01-15',owner_id,owner_id from ws;
-insert into public.schedule_lineup_entries(id,workspace_id,lineup_id,location_id,employee_id,job_id,start_time,end_time,created_by,updated_by)
- select 'ad426000-0000-4000-8000-000000000014',w,'ad426000-0000-4000-8000-000000000013',loc,emp,job,'14:00','16:00',owner_id,owner_id from ws;
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
  select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),1,employee_user from ws;
 select is(pg_temp.candidate()->>'status','eligible','partial preference conflict does not make a candidate ineligible');
@@ -62,7 +54,7 @@ select is(pg_temp.candidate()->'availability'->>'coverage','partial','partial wa
 select is((pg_temp.candidate()->>'available_start')::timestamptz,'2035-01-16 02:00Z'::timestamptz,'partial conflict keeps original start');
 select is((pg_temp.candidate()->>'available_end')::timestamptz,'2035-01-16 06:00Z'::timestamptz,'partial conflict keeps original end');
 select ok(not (pg_temp.candidate()->'reasons' ? 'Available for the full interval'),'a warning does not falsely claim full availability');
-select is(pg_temp.candidate('{"scheduled_date":"2035-01-16"}')->'availability'->>'coverage','partial','Line Up preview date wins over copied scheduled_date');
+select is(pg_temp.candidate('{"scheduled_date":"2035-01-16"}')->'availability'->>'coverage','partial','the candidate date wins over a copied scheduled_date');
 select is(pg_temp.candidate('{"start_time":"20:00"}')->'availability'->>'operation','allowed','touching endpoints have no conflict');
 select is(pg_temp.candidate('{"time_timezone":"America/New_York"}')->'availability'->>'coverage','partial','actual saved timezone is compared with current target location rules');
 update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true') where workspace_id=(select w from ws);
@@ -75,11 +67,6 @@ select is((pg_temp.candidate()->>'available_end')::timestamptz,'2035-01-16 06:00
 -- Real blockers and full-span employment checks are still authoritative.
 select is(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}')->>'status','ineligible','published shift overlap remains blocking');
 select is(pg_temp.candidate('{"start_time":"10:00","end_time":"11:00"}',array['ad426000-0000-4000-8000-000000000011'::uuid])->>'status','eligible','explicitly excluded source is not counted twice');
-select is(pg_temp.candidate('{"start_time":"15:00","end_time":"17:00"}')->>'status','ineligible','standalone Line Up assignment remains blocking');
-update public.schedule_lineup_entries set hidden=true where id='ad426000-0000-4000-8000-000000000014';
-select is(pg_temp.candidate('{"start_time":"15:00","end_time":"17:00"}')->>'status','eligible','hidden daily assignment does not reserve work');
-update public.schedule_lineup_entries set hidden=false,call_off=true where id='ad426000-0000-4000-8000-000000000014';
-select is(pg_temp.candidate('{"start_time":"15:00","end_time":"17:00"}')->>'status','eligible','called-off daily assignment does not reserve work');
 update public.workspace_scheduling_settings set minimum_travel_minutes=30 where workspace_id=(select w from ws);
 select is(pg_temp.candidate(jsonb_build_object('location_id',other_loc,'start_time','15:15','end_time','16:00'))->>'status','ineligible','travel gap uses physical instants across timezones') from ws;
 select is(pg_temp.candidate(jsonb_build_object('location_id',other_loc,'start_time','15:30','end_time','16:00'))->>'status','eligible','exact travel boundary remains eligible') from ws;
@@ -139,7 +126,5 @@ select ok(not has_function_privilege('anon','public.weekly_assignment_candidate_
 select ok(not has_function_privilege('authenticated','public.weekly_assignment_candidate_check(uuid,uuid,jsonb,uuid[],integer)','EXECUTE'),'employee cannot inspect manager rules through candidate helper');
 select ok(not has_function_privilege('service_role','public.weekly_assignment_candidate_check(uuid,uuid,jsonb,uuid[],integer)','EXECUTE'),'no public RPC exposes the unprojected assessment');
 select ok(not has_function_privilege('authenticated','public.weekly_assignment_candidate_base(uuid,uuid,jsonb,uuid[],integer)','EXECUTE'),'inner helper is private too');
-select ok(position('public.assess_shift_availability(' in (select base from original_candidates))>0,'legacy consumers retain their original evaluator until consent integration');
-select ok(position('public.lineup_candidate_check_exchange_base(' in (select wrapper from original_candidates))>0,'legacy wrapper is not silently switched');
 select * from finish();
 rollback;

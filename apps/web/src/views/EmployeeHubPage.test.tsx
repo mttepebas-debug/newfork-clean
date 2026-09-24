@@ -118,7 +118,6 @@ const fixture = {
       location_names: ["Main Dining"],
     },
   ],
-  lineup: [],
 } satisfies EmployeeHubReadModel;
 
 const scheduleBoard = {

@@ -18,7 +18,7 @@ const leave = {
 const model = {
   workspace_id: workspace, employee: { id: employee, display_name: "QA Employee" },
   locations: [{ id: workspace, name: "Dining" }], shifts: [], open_shifts: [], team_shifts: [],
-  requests: [leave], team: [], lineup: [],
+  requests: [leave], team: [],
   availability: { obsolete: "Do not parse or expose dated rules" },
   availability_context: { obsolete: "Do not expose approval context" },
 };

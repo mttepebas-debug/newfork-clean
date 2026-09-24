@@ -251,7 +251,6 @@ describe("ScheduleTopBar", () => {
     expect(settingsMenu.queryByText(/Job color dot in badges/)).toBeNull();
     expect(settingsMenu.queryByText("Schedule")).toBeNull();
     expect(settingsMenu.queryByRole("button", { name: "Today" })).toBeNull();
-    expect(settingsMenu.queryByRole("link", { name: "Line-up" })).toBeNull();
     expect(settingsMenu.queryByRole("link", { name: "Requests" })).toBeNull();
 
     const alphabetical = screen.getByRole("menuitemradio", { name: /A-Z/ });

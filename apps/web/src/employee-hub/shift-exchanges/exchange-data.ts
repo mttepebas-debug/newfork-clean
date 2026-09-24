@@ -138,12 +138,6 @@ export const exchangeInvalidationPrefixes = [
   "schedule-requests",
   "schedule-read",
   "workspace-dashboard",
-  "lineup",
-  "lineup-operations",
-  "lineup-candidates",
-  "lineup-proposals",
-  "lineup-offers",
-  "employee-lineup",
   "notifications",
   "inbox",
 ] as const;

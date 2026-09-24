@@ -107,7 +107,6 @@ type ScheduleInvalidationTarget =
   | "pending_ops"
   | "drafts"
   | "edit_lock"
-  | "lineups"
   | "employee_my_schedule";
 
 interface ScheduleInvalidationPayload {
@@ -933,7 +932,6 @@ export function createScheduleReadService(options: {
           "published_shifts",
           "drafts",
           "pending_ops",
-          "lineups",
           "employee_my_schedule",
         ],
       });
@@ -967,7 +965,7 @@ export function createScheduleReadService(options: {
         actor_user_id: input.actorUserId,
         week_start: result.week_start,
         location_ids: result.location_ids,
-        targets: ["published_shifts", "lineups", "employee_my_schedule"],
+        targets: ["published_shifts", "employee_my_schedule"],
       });
       return result;
     },

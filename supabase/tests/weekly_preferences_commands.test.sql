@@ -76,34 +76,26 @@ select r.cid,f.w,case when r.i=4 then 'swap' when r.i=5 then 'cover' else 'open_
  'test-consent','2035-01-15 09:00Z',f.actor from wp_requests r,wp_fixture f;
 insert into public.shift_exchange_applications(id,workspace_id,case_id,employee_id,status,consent_fingerprint)
  select r.aid,f.w,r.cid,f.emp,'pending_manager','test-consent' from wp_requests r,wp_fixture f where r.i in(1,2,3);
-create temp table wp_offer(id uuid primary key default gen_random_uuid());
-insert into wp_offer default values;
-insert into public.lineup_proposals(id,workspace_id,kind,status,created_by,source_location_id,target_location_id,employee_id,operation,fingerprint,source_date,idempotency_key,expires_at)
- select o.id,f.w,'offer','accepted',f.manager,f.loc,f.loc,f.emp,
- jsonb_build_object('kind','assign','target',jsonb_build_object('date','2035-01-15','start_time','09:00','end_time','17:00')),
- 'test-offer','2035-01-15',gen_random_uuid(),'2035-01-15 09:00Z' from wp_fixture f,wp_offer o;
 update wp_fixture set p=jsonb_set(jsonb_set(p,'{days,1,range}','{"start":"10:00","end":"12:00"}'),'{days,2,range}','{"start":"10:00","end":"12:00"}');
 update wp_command set command=jsonb_build_object('employee_id',emp,'source','employee','expected_revision',1,'settings_revision',2,'preference',p),request_key=gen_random_uuid() from wp_fixture;
-select is(jsonb_array_length(public.weekly_preferences_preview_service(actor,w,command)->'items'),5,'three incoming applications, swap receiver and accepted Line Up offer need decisions; outgoing cover excluded') from wp_fixture,wp_command;
+select is(jsonb_array_length(public.weekly_preferences_preview_service(actor,w,command)->'items'),4,'three incoming applications and the swap receiver need decisions; outgoing cover excluded') from wp_fixture,wp_command;
 select throws_ok($$select public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture,wp_command$$,'PT409',null,'missing decisions abort save');
 select is(public.weekly_preferences_read_service(actor,w)->'employee'->>'revision','1','failed save did not alter preferences') from wp_fixture;
-create temp table wp_choices as select jsonb_agg(item||jsonb_build_object('action',case when item->>'kind'='lineup_offer' or item->>'id'=(select aid::text from wp_requests where i=2) then 'cancel' else 'keep' end) order by item->>'id') decisions
+create temp table wp_choices as select jsonb_agg(item||jsonb_build_object('action',case when item->>'id'=(select aid::text from wp_requests where i=2) then 'cancel' else 'keep' end) order by item->>'id') decisions
  from wp_fixture,wp_command cross join lateral jsonb_array_elements(public.weekly_preferences_preview_service(actor,w,command)->'items') item;
 update wp_command set command=command||jsonb_build_object('decisions',decisions) from wp_choices;
 select throws_ok($$select public.weekly_preferences_save_service(actor,w,jsonb_set(command,'{preference,days,1,range,end}','"13:00"'),gen_random_uuid()) from wp_fixture,wp_command$$,'PT409',null,'changed conflict requires fresh decisions');
 select throws_ok($$select public.weekly_preferences_save_service(actor,w,jsonb_set(command,'{decisions}',command->'decisions'||jsonb_build_array(jsonb_build_object('kind','exchange_application','id',gen_random_uuid(),'action','cancel','fingerprint',repeat('0',64)))),gen_random_uuid()) from wp_fixture,wp_command$$,'42501',null,'foreign request choice aborts the whole transaction');
 select is((select status from public.shift_exchange_applications where id=(select aid from wp_requests where i=2)),'pending_manager','earlier cancellation rolled back on later error');
-select is((select status from public.lineup_proposals where id=(select id from wp_offer)),'accepted','Line Up cancellation rolled back on later error');
 -- A manager won approval after preview. Saving must not revoke their assignment.
 update public.shift_exchange_applications set status='approved' where id=(select aid from wp_requests where i=3);
 update public.shift_exchange_cases set status='completed' where id=(select cid from wp_requests where i=3);
 select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture$$,'mixed keep/cancel and finalized race save atomically');
 select is(result->>'kept_count','2','incoming pickup and swap kept') from wp_command;
-select is(result->>'cancelled_count','2','incoming application and accepted Line Up offer withdrawn') from wp_command;
+select is(result->>'cancelled_count','1','incoming application withdrawn') from wp_command;
 select is(jsonb_array_length(result->'finalized'),1,'finalized race separately reported') from wp_command;
 select is((select status from public.shift_exchange_applications where id=(select aid from wp_requests where i=3)),'approved','finalized assignment consent preserved');
 select is((select status from public.shift_exchange_applications where id=(select aid from wp_requests where i=2)),'withdrawn','requested application withdrawn');
-select is((select status from public.lineup_proposals where id=(select id from wp_offer)),'declined','accepted offer withdrawn using existing declined lifecycle');
 select is((select status from public.shift_exchange_cases where id=(select cid from wp_requests where i=5)),'open','giving away own shift remains untouched');
 select is(result->'model'->'employee'->>'revision','2','employee changes apply immediately despite finalized race') from wp_command;
 select lives_ok($$select public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture,wp_command$$,'atomic mutation retry succeeds');

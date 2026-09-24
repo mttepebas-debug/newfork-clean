@@ -11,7 +11,6 @@ type ScheduleInvalidationTarget =
   | "pending_ops"
   | "drafts"
   | "edit_lock"
-  | "lineups"
   | "employee_my_schedule";
 
 export interface ScheduleInvalidationPayload {
@@ -80,10 +79,6 @@ export function useScheduleRealtime({
           });
         }
 
-        if (payload.targets.includes("lineups")) {
-          void queryClient.invalidateQueries({ queryKey: ["lineup"] });
-        }
-
         if (payload.targets.includes("employee_my_schedule")) {
           void queryClient.invalidateQueries({
             queryKey: ["employee-hub", workspaceId],
@@ -140,7 +135,6 @@ function isScheduleInvalidationTarget(
     value === "pending_ops" ||
     value === "drafts" ||
     value === "edit_lock" ||
-    value === "lineups" ||
     value === "employee_my_schedule"
   );
 }

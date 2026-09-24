@@ -90,7 +90,7 @@ describe("useScheduleRealtime", () => {
     expect(mocks.removeChannelMock).toHaveBeenCalledWith(mocks.channel);
   });
 
-  it("invalidates matching schedule, pending op, draft, and lineup caches", () => {
+  it("invalidates matching schedule, pending op, and draft caches", () => {
     const queryClient = new QueryClient();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     renderRealtimeHook(queryClient);
@@ -107,7 +107,6 @@ describe("useScheduleRealtime", () => {
           "draft_shifts",
           "pending_ops",
           "drafts",
-          "lineups",
         ],
       },
     });
@@ -121,7 +120,6 @@ describe("useScheduleRealtime", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["schedule-drafts", "workspace", "2026-05-04"],
     });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["lineup"] });
   });
 
   it("ignores invalidations for a different workspace, week, or location", () => {

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(6);
 
 -- Every server entry point (public.*_service) is tied to an action the
 -- authorization matrix speaks for, or to a stated reason it has none. A new
@@ -13,9 +13,9 @@ select plan(7);
 --   exempt:token      a link token identifies the caller, not a session
 --   exempt:predicate  a permission helper the API asks before acting; goes when
 --                     authorize() replaces it (stages 4 and 6)
---   exempt:retiring-* part of a system stage 5 deletes (Line Up, the old
---                     availability, the old shift-change requests; kiosk and
---                     time tracking went in 5.2)
+--   exempt:retiring-* part of a system stage 5 deletes (the old availability;
+--                     the old shift-change requests went in 5.1, kiosk and
+--                     time tracking in 5.2, Line Up in 5.6)
 -- The exemption counts below only go down.
 
 create temporary table service_class (name text primary key, class text not null);
@@ -38,7 +38,6 @@ insert into service_class values
   ('apply_schedule_default_hours_service', 'schedule.edit'),
   ('apply_schedule_template_service', 'schedule.edit'),
   ('approve_signature_retention_policy_service', 'settings.documents.write'),
-  ('archive_schedule_lineup_section_service', 'exempt:retiring-lineup'),
   ('assess_schedule_shift_service', 'schedule.edit'),
   ('assess_weekly_schedule_assignment_service', 'schedule.edit'),
   ('availability_calendar_comparison_service', 'exempt:retiring-availability'),
@@ -79,10 +78,8 @@ insert into service_class values
   ('delete_schedule_draft_service', 'schedule.edit'),
   ('delete_schedule_export_preset_service', 'schedule.export'),
   ('delete_schedule_export_schedule_service', 'schedule.export'),
-  ('delete_schedule_lineup_entry_service', 'exempt:retiring-lineup'),
   ('delete_schedule_template_service', 'schedule.templates'),
   ('delete_workspace_role_service', 'settings.roles.write'),
-  ('deliver_lineup_notifications_service', 'exempt:retiring-lineup'),
   ('discard_schedule_edit_session_service', 'schedule.edit'),
   ('document_definition_target_options_service', 'settings.documents.write'),
   ('documents_maintain_service', 'exempt:worker'),
@@ -96,7 +93,6 @@ insert into service_class values
   ('fail_notification_outbox_service', 'exempt:worker'),
   ('finalize_account_deletion_service', 'exempt:worker'),
   ('finalize_claimed_account_deletion_service', 'exempt:worker'),
-  ('flush_lineup_staffing_notifications_service', 'exempt:retiring-lineup'),
   ('flush_shift_exchange_notifications_service', 'exempt:worker'),
   ('get_account_deletion_blockers_service', 'account.self'),
   ('get_announcements_service', 'announcement.read'),
@@ -119,7 +115,6 @@ insert into service_class values
   ('get_own_employee_avatar_path_service', 'account.self'),
   ('get_owner_setup_checklist_progress_service', 'workspace.setup'),
   ('get_schedule_edit_session_service', 'schedule.edit'),
-  ('get_schedule_lineup_service', 'exempt:retiring-lineup'),
   ('get_schedule_publication_history_service', 'schedule.read'),
   ('get_schedule_publication_status_service', 'schedule.read'),
   ('get_schedule_read_model_availability_v2_service', 'exempt:retiring-availability'),
@@ -133,9 +128,6 @@ insert into service_class values
   ('initiate_workspace_ownership_transfer_service', 'workspace.transfer_ownership'),
   ('lease_notification_outbox_service', 'exempt:worker'),
   ('leave_employee_onboarding_service', 'onboarding.self'),
-  ('lineup_operations_service', 'exempt:retiring-lineup'),
-  ('lineup_placements_service', 'exempt:retiring-lineup'),
-  ('lineup_proposals_service', 'exempt:retiring-lineup'),
   ('list_account_deletion_work_service', 'exempt:worker'),
   ('list_employee_document_lifecycle_service', 'documents.read'),
   ('list_employees_service', 'employee.list'),
@@ -163,7 +155,6 @@ insert into service_class values
   ('mark_owner_setup_checklist_item_service', 'workspace.setup'),
   ('mark_schedule_time_off_viewed_service', 'time_off.decide'),
   ('mark_workspace_retention_purge_completed_service', 'exempt:worker'),
-  ('move_schedule_lineup_entry_service', 'exempt:retiring-lineup'),
   ('mutate_schedule_edit_shift_service', 'schedule.edit'),
   ('notification_actor_is_active_member_service', 'exempt:predicate'),
   ('notification_default_channels_service', 'exempt:predicate'),
@@ -183,8 +174,6 @@ insert into service_class values
   ('preview_schedule_auto_fill_service', 'schedule.edit'),
   ('preview_schedule_default_hours_service', 'schedule.edit'),
   ('preview_schedule_export_service', 'schedule.export'),
-  ('preview_schedule_lineup_scoped_share_service', 'exempt:retiring-lineup'),
-  ('preview_schedule_lineup_share_service', 'exempt:retiring-lineup'),
   ('preview_schedule_publication_before_availability_review_service', 'schedule.publish'),
   ('preview_schedule_publication_service', 'schedule.publish'),
   ('preview_schedule_unpublication_service', 'schedule.publish'),
@@ -278,8 +267,6 @@ insert into service_class values
   ('set_owner_setup_checklist_closed_service', 'workspace.setup'),
   ('set_signature_retention_policy_archived_service', 'settings.documents.write'),
   ('set_signature_template_archived_service', 'settings.documents.write'),
-  ('share_schedule_lineup_scoped_service', 'exempt:retiring-lineup'),
-  ('share_schedule_lineup_service', 'exempt:retiring-lineup'),
   ('shift_exchange_notification_policy_service', 'exempt:predicate'),
   ('shift_exchange_schedule_recovery_service', 'schedule.edit'),
   ('shift_exchanges_candidates_service', 'exchange.read'),
@@ -309,9 +296,6 @@ insert into service_class values
   ('update_schedule_export_schedule_service', 'schedule.export'),
   ('update_schedule_pending_op_service', 'schedule.edit'),
   ('update_scheduling_settings_service', 'settings.scheduling.write'),
-  ('upsert_schedule_lineup_brief_service', 'exempt:retiring-lineup'),
-  ('upsert_schedule_lineup_entry_service', 'exempt:retiring-lineup'),
-  ('upsert_schedule_lineup_section_service', 'exempt:retiring-lineup'),
   ('weekly_preference_settings_read_service', 'settings.availability.read'),
   ('weekly_preference_settings_save_service', 'settings.availability.write'),
   ('weekly_preferences_preview_service', 'availability.own'),
@@ -357,11 +341,10 @@ select is(
 select ok(
   not exists (select 1 from service_class where class like 'exempt:%' and class not in (
     'exempt:worker', 'exempt:token', 'exempt:predicate',
-    'exempt:retiring-lineup', 'exempt:retiring-availability')),
+    'exempt:retiring-availability')),
   'every exemption is one of the stated reasons'
 );
 select cmp_ok((select count(*)::integer from service_class where class = 'exempt:predicate'), '<=', 18, 'permission helpers only go down');
-select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-lineup'), '<=', 16, 'Line Up entry points only go down');
 select cmp_ok((select count(*)::integer from service_class where class = 'exempt:retiring-availability'), '<=', 15, 'old availability entry points only go down');
 
 select * from finish();

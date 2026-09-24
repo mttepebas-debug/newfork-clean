@@ -128,6 +128,5 @@ select is(result->>'status','completed','real open pickup completes with private
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(2)),(select second_emp from ws),'open shift is assigned directly to the volunteer');
 select ok(not has_function_privilege('service_role','public.record_weekly_exchange_acceptance(uuid,uuid,uuid)','execute'),'raw acceptance writer is not an exposed RPC');
 select ok(not has_function_privilege('authenticated','public.weekly_exchange_employee_warning(uuid,uuid,jsonb)','execute'),'employee cannot read another employee token directly');
-select ok(position('public.lineup_candidate_check(' in pg_get_functiondef('public.lineup_operation_preview(uuid,uuid,jsonb)'::regprocedure))>0,'Line Up write adapter is not silently switched');
 select * from finish();
 rollback;

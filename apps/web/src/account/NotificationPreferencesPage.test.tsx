@@ -175,24 +175,24 @@ describe("notification preferences page", () => {
   });
   it("shows mixed master state and preserves mandatory and unsupported channels", async () => {
     const fixture = preferencesFixture();
-    fixture.catalog.push({ ...fixture.catalog[0]!, type_key: "schedule.staffing.assignment_changed" });
-    fixture.catalog.push({ ...fixture.catalog[0]!, type_key: "schedule.staffing.offer_closed", mandatory_in_app: true });
-    fixture.preferences.push({ ...fixture.preferences[0]!, scope_key: "schedule.staffing.assignment_changed", channel_preferences: { in_app: "disabled" } });
+    fixture.catalog.push({ ...fixture.catalog[0]!, type_key: "requests.time_off.status_changed", category: "requests" });
+    fixture.catalog.push({ ...fixture.catalog[0]!, type_key: "requests.shift_change.status_changed", category: "requests", mandatory_in_app: true });
+    fixture.preferences.push({ ...fixture.preferences[0]!, scope_key: "requests.time_off.status_changed", channel_preferences: { in_app: "disabled" } });
     vi.mocked(getNotificationPreferences).mockResolvedValue(fixture);
     vi.mocked(saveNotificationPreferences).mockResolvedValue({ status: "saved", preferences: fixture.preferences });
     renderPage();
-    const master = await screen.findByRole("checkbox", { name: "Schedule In-app" });
+    const master = await screen.findByRole("checkbox", { name: "Requests In-app" });
     await waitFor(() => expect(master).toHaveProperty("indeterminate", true));
-    expect(screen.getByRole("checkbox", { name: "Schedule Email" })).toHaveProperty("disabled", true);
-    expandGroup();
-    expect(screen.getByRole("checkbox", { name: "In-app for Closed staffing offers" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("checkbox", { name: "Requests Email" })).toHaveProperty("disabled", true);
+    expandGroup("Requests");
+    expect(screen.getByRole("checkbox", { name: "In-app for Shift change request updates" })).toHaveProperty("disabled", true);
     fireEvent.click(master);
     expect(master).toHaveProperty("indeterminate", false);
-    expect(screen.getByRole("checkbox", { name: "In-app for Assignment changes" })).toHaveProperty("checked", true);
+    expect(screen.getByRole("checkbox", { name: "In-app for Time-off request updates" })).toHaveProperty("checked", true);
     expect(screen.getAllByRole("button", { name: /Save/ })).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(saveNotificationPreferences).toHaveBeenLastCalledWith(workspaceId, {
-      updates: [expect.objectContaining({ scope_key: "schedule.staffing.assignment_changed", channel_preferences: { in_app: "enabled" } })],
+      updates: [expect.objectContaining({ scope_key: "requests.time_off.status_changed", channel_preferences: { in_app: "enabled" } })],
     }));
     expect(screen.queryByRole("heading", { name: "Account security messages" })).toBeNull();
   });

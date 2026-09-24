@@ -46,12 +46,7 @@ function setup() {
   const keys = [
     ["schedule-read", "workspace", "2030-01-07", "week"],
     ["schedule-read", "workspace", "2030-01-14", "week"],
-    ["lineup", "workspace", "location-a"],
-    ["lineup", "workspace", "location-b"],
-    ["lineup-proposals", "workspace", "location-a"],
-    ["lineup-offers", "workspace"],
     ["employee-hub", "workspace", "schedule"],
-    ["employee-lineup", "workspace"],
     ["notifications", "workspace", "sidebar"],
     ["schedule-read", "another-workspace", "2030-01-07", "week"],
     ["unrelated-form", "workspace"],
@@ -201,7 +196,7 @@ describe("workspace staffing and exchange invalidation", () => {
     unmount();
   });
 
-  it("invalidates both cached weeks, locations, offers and inbox without replacing their data", async () => {
+  it("invalidates both cached weeks, the hub and inbox without replacing their data", async () => {
     const { client, keys, unmount } = setup();
     act(() =>
       realtime.channels[0]?.broadcast?.({
@@ -209,11 +204,11 @@ describe("workspace staffing and exchange invalidation", () => {
       }),
     );
     await tick(250);
-    for (const key of keys.slice(0, 9)) {
+    for (const key of keys.slice(0, 4)) {
       expect(client.getQueryState(key)?.isInvalidated).toBe(true);
       expect(client.getQueryData(key)).toEqual({ saved: true });
     }
-    for (const key of keys.slice(9))
+    for (const key of keys.slice(4))
       expect(client.getQueryState(key)?.isInvalidated).toBe(false);
     unmount();
   });

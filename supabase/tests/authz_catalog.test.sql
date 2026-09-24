@@ -6,7 +6,7 @@ select plan(7);
 -- 2c). Each count is a pattern stage 4 and 6 remove; a ceiling only comes
 -- down. Lower it in the same commit that removes the pattern, so nobody adds
 -- a new copy of a rule while the old copies are being folded into
--- app_private.authorize(). Measured 2026-09-24 after 20260924145822.
+-- app_private.authorize(). Measured 2026-09-24 after 20260924180901.
 
 create temporary table core_function as
 select p.proname::text as name, p.prosrc as body
@@ -38,7 +38,7 @@ select cmp_ok(
 -- Wrapper chains and versioned copies of one entry point. Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function where name ~ '(_base|_v[0-9]+|_legacy)(_|$)'),
-  '<=', 51, '_base, _vN and _legacy functions only go down'
+  '<=', 43, '_base, _vN and _legacy functions only go down'
 );
 
 -- Policies that read the JWT themselves rather than through the core.
@@ -49,11 +49,12 @@ select cmp_ok(
 );
 
 -- Work the product defers to commit. Stage 4b removed the three triggers that
--- copied assignments into manager scope rows (17 -> 14); what remains is
--- document assignment and role dependencies.
+-- copied assignments into manager scope rows (17 -> 14), 5.6 took Line Up's
+-- four (14 -> 10); what remains is document assignment, role dependencies and
+-- Shift Hub's terms and deadline checks.
 select cmp_ok(
   (select count(*)::integer from pg_trigger where not tgisinternal and tgdeferrable),
-  '<=', 14, 'deferred triggers only go down'
+  '<=', 10, 'deferred triggers only go down'
 );
 
 -- The one way to say no: 42501 with an authz.* hint from this list.

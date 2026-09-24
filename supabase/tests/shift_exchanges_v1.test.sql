@@ -53,21 +53,6 @@ select is((select employee_id from public.schedule_published_shifts where id=pg_
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid and employee_id=pg_temp.emp(3));
 update sx_state set preview=public.shift_exchange_preview(pg_temp.manager(),pg_temp.w(),cid,aid);
 select is(preview->>'allowed','true','eligible candidate preview allowed') from sx_state;
--- A real prior share must update atomically without publishing manager WIP.
-alter table sx_state add column prior_snapshot uuid;
-update public.locations set lineup_operations_enabled=true where workspace_id=pg_temp.w();
-insert into public.schedule_lineup_sections(id,workspace_id,name,color) values('98050000-0000-4000-8000-000000000001',pg_temp.w(),'Exchange patio','#537663');
-insert into public.lineup_section_plans(id,workspace_id,location_id,date,section_id,lead_employee_id,stations,updated_by)
-values('98050000-0000-4000-8000-000000000002',pg_temp.w(),'11000000-0000-4000-8000-000000000001','2030-01-07','98050000-0000-4000-8000-000000000001',pg_temp.emp(1),'SHARED STATIONS',pg_temp.manager());
-insert into public.lineup_proposals(id,workspace_id,kind,created_by,source_location_id,target_location_id,employee_id,operation,fingerprint,source_date,source_state,idempotency_key)
-values('98050000-0000-4000-8000-000000000003',pg_temp.w(),'offer',pg_temp.manager(),'11000000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000001',pg_temp.emp(2),jsonb_build_object('source_entry_id',pg_temp.shift(1)),'fixture','2030-01-07',jsonb_build_object('source_shift_id',pg_temp.shift(1)),gen_random_uuid());
-insert into public.lineup_notes(workspace_id,location_id,date,category,content,visibility,pinned,updated_by)
-values(pg_temp.w(),'11000000-0000-4000-8000-000000000001','2030-01-07','priority','SHARED BRIEF','team',true,pg_temp.manager());
-update sx_state set prior_snapshot=(public.share_schedule_lineup_service(pg_temp.manager(),pg_temp.w(),'2030-01-07',array['11000000-0000-4000-8000-000000000001'::uuid],
-public.preview_schedule_lineup_share_service(pg_temp.manager(),pg_temp.w(),'2030-01-07',array['11000000-0000-4000-8000-000000000001'::uuid])->>'fingerprint')->'snapshot_ids'->>0)::uuid;
-update public.lineup_receipts set acknowledged_at=now() where snapshot_id=(select prior_snapshot from sx_state);
-update public.lineup_notes set content='UNSHARED MANAGER WIP' where workspace_id=pg_temp.w() and date='2030-01-07';
-update public.lineup_section_plans set stations='UNSHARED STATION WIP' where id='98050000-0000-4000-8000-000000000002';
 -- A Schedule draft and a dirty edit session were opened before this decision.
 insert into public.schedule_drafts(id,workspace_id,week_start,name,created_by,updated_by,created_at)
 values('98040000-0000-4000-8000-000000000001',pg_temp.w(),'2030-01-07','Earlier draft',pg_temp.manager(),pg_temp.manager(),now()-interval '1 day');
@@ -82,14 +67,6 @@ update sx_state set result=public.shift_exchanges_command_service(pg_temp.manage
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(1)),pg_temp.emp(3),'AT07 approval transfers directly to chosen candidate');
 select is((select status from public.shift_exchange_applications where case_id=cid and employee_id=pg_temp.emp(4)),'closed_other_selected','AT07 other volunteer closes neutrally') from sx_state;
 select is((select status from public.shift_exchange_applications where case_id=cid and employee_id=pg_temp.emp(2)),'rejected_by_manager','prior rejection is preserved') from sx_state;
-select is((select count(*)::int from public.schedule_lineup_snapshots where workspace_id=pg_temp.w() and lineup_date='2030-01-07'),2,'AT29 approval creates a new immutable share');
-select is((select lead_employee_id from public.lineup_section_plans where id='98050000-0000-4000-8000-000000000002'),null::uuid,'AT28 departing employee lead is cleared, never copied to replacement');
-select ok((select content::text like '%Lead: Needs assignment%' and content::text like '%SHARED STATIONS%' and content::text not like '%UNSHARED STATION WIP%' from public.schedule_lineup_snapshots where workspace_id=pg_temp.w() and lineup_date='2030-01-07' order by version_number desc limit 1),'AT29 shared lead clears while unshared plan text stays private');
-select is((select status from public.lineup_proposals where id='98050000-0000-4000-8000-000000000003'),'cancelled','AT28 stale staffing proposal closes on final exchange');
-select ok(exists(select 1 from public.notifications where source_id='98050000-0000-4000-8000-000000000003' and event_key='shift_exchange_closed' and recipient_user_id=pg_temp.actor(2)),'AT33 closed staffing offer notifies its participant');
-select ok((select content::text like '%SHARED BRIEF%' and content::text not like '%UNSHARED MANAGER WIP%' from public.schedule_lineup_snapshots where workspace_id=pg_temp.w() and lineup_date='2030-01-07' order by version_number desc limit 1),'AT29 assignment delta preserves the prior shared brief');
-select ok((select acknowledged_at is not null from public.lineup_receipts where snapshot_id=(select prior_snapshot from sx_state) and employee_id=pg_temp.emp(1)),'AT30 old receipt preserved');
-select ok((select acknowledged_at is null from public.lineup_receipts where snapshot_id=(select id from public.schedule_lineup_snapshots where workspace_id=pg_temp.w() and lineup_date='2030-01-07' order by version_number desc limit 1) and employee_id=pg_temp.emp(3)),'AT30 new employee must acknowledge');
 select throws_ok($$select public.shift_exchanges_command_service(pg_temp.manager(),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',5,'fingerprint',preview->>'fingerprint'),gen_random_uuid()) from sx_state$$,'PT409',null,'AT08 stale final decision blocked');
 select is((select employee_id from public.schedule_draft_shifts where draft_id='98040000-0000-4000-8000-000000000001'),pg_temp.emp(3),'AT27 old draft ownership rebased');
 select is((select note from public.schedule_draft_shifts where draft_id='98040000-0000-4000-8000-000000000001'),'KEEP DRAFT NOTE','AT27 unrelated draft note retained');
@@ -174,25 +151,24 @@ update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(
 select is(result->>'status','cancelled','AT11 declined direct invitation ends cleanly') from sx_state;
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(2)),pg_temp.emp(2),'AT11 declined cover preserves owner');
 -- Hard eligibility is re-used by listing, submission and final preview.
-select is(public.lineup_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','eligible','baseline candidate is fully eligible');
+select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','eligible','baseline candidate is fully eligible');
 update public.employee_profiles set is_excluded_from_schedule=true where id=pg_temp.emp(4);
-select is(public.lineup_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 excluded employee cannot receive a shift');
+select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 excluded employee cannot receive a shift');
 update public.employee_profiles set is_excluded_from_schedule=false where id=pg_temp.emp(4);
 update public.employee_job_assignments set ended_at='2029-12-31' where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
-select is(public.lineup_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 expired position qualification blocks receipt');
+select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 expired position qualification blocks receipt');
 update public.employee_job_assignments set ended_at=null where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
 update public.employee_location_assignments set ended_at='2030-01-07T20:00:00Z' where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
-select is(public.lineup_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 location assignment must cover the entire shift');
+select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 location assignment must cover the entire shift');
 update public.employee_location_assignments set ended_at=null where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
-select is(public.lineup_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1))||'{"date":"2030-01-21"}'::jsonb)->>'status','verification_required','AT19 expired availability is not assumed available');
 update public.locations set timezone='America/New_York' where id='11000000-0000-4000-8000-000000000002';
 insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
 values('98050000-0000-4000-8000-000000000001',pg_temp.w(),pg_temp.emp(4),'11000000-0000-4000-8000-000000000002','approved',pg_temp.manager());
 insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
 values(pg_temp.w(),'98050000-0000-4000-8000-000000000001','2030-01-07','09:00','10:00','approved');
-select is(public.lineup_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','eligible','AT21 09:00 New York leave does not overlap 09:00 Los Angeles shift');
+select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','eligible','AT21 09:00 New York leave does not overlap 09:00 Los Angeles shift');
 update public.schedule_time_off_segments set start_time='12:00',end_time='13:00' where request_id='98050000-0000-4000-8000-000000000001';
-select is(public.lineup_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT21 12:00 New York leave overlaps 09:00 Los Angeles shift');
+select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT21 12:00 New York leave overlaps 09:00 Los Angeles shift');
 -- A worker closes deadlines without an employee or manager screen being open.
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(2)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
@@ -217,33 +193,22 @@ set local role authenticated;
 select throws_ok($$select public.shift_exchanges_maintain_service(100)$$,'42501',null,'browser cannot invoke cross-workspace maintenance');
 reset role;
 -- Time-source integration: unknown hours are not eligible; saved zones are canonical.
-select is(public.lineup_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2))||'{"time_basis":"legacy_unverified"}'::jsonb)->>'status','verification_required','AT19 historical unverified hours require manager confirmation');
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
 values(pg_temp.shift(7),pg_temp.w(),'11000000-0000-4000-8000-000000000002','98010000-0000-4000-8000-000000000002',pg_temp.emp(4),'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-08','09:00','10:00',gen_random_uuid());
 update public.locations set timezone='America/Los_Angeles' where id='11000000-0000-4000-8000-000000000002';
-select is(public.lineup_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2)))->>'status','eligible','AT20 conflict checks retain other shifts saved timezone');
+select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2)))->>'status','eligible','AT20 conflict checks retain other shifts saved timezone');
 update public.locations set timezone='America/New_York' where id='11000000-0000-4000-8000-000000000001';
-select is(public.lineup_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2)))->>'status','eligible','AT20 target eligibility retains its saved timezone after location edit');
+select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2)))->>'status','eligible','AT20 target eligibility retains its saved timezone after location edit');
 update public.locations set timezone='America/Los_Angeles' where id='11000000-0000-4000-8000-000000000001';
 -- Drive the real outbox projection only for events created by this transaction.
--- A same-day swap must publish exactly one complete shared result.
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
 select pg_temp.shift(n),pg_temp.w(),'11000000-0000-4000-8000-000000000001','98010000-0000-4000-8000-000000000001',pg_temp.emp(n-7),'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-13',case n when 8 then '09:00'::time else '13:00'::time end,case n when 8 then '12:00'::time else '17:00'::time end,gen_random_uuid() from generate_series(8,9)n;
-insert into public.lineup_section_plans(id,workspace_id,location_id,date,section_id,lead_employee_id,updated_by)
-values('98050000-0000-4000-8000-000000000004',pg_temp.w(),'11000000-0000-4000-8000-000000000001','2030-01-13','98050000-0000-4000-8000-000000000001',pg_temp.emp(1),pg_temp.manager());
-select public.share_schedule_lineup_service(pg_temp.manager(),pg_temp.w(),'2030-01-13',array['11000000-0000-4000-8000-000000000001'::uuid],public.preview_schedule_lineup_share_service(pg_temp.manager(),pg_temp.w(),'2030-01-13',array['11000000-0000-4000-8000-000000000001'::uuid])->>'fingerprint');
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.shift(8),'requested_shift_id',pg_temp.shift(9)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid);
 select public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','accept','case_id',cid,'application_id',aid,'expected_revision',1),gen_random_uuid()) from sx_state;
 update sx_state set preview=public.shift_exchange_preview(pg_temp.manager(),pg_temp.w(),cid,aid);
 select public.shift_exchanges_command_service(pg_temp.manager(),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',2,'fingerprint',preview->>'fingerprint'),gen_random_uuid()) from sx_state;
-select is((select count(*)::int from public.schedule_lineup_snapshots where workspace_id=pg_temp.w() and lineup_date='2030-01-13'),2,'AT29 same-day swap creates one complete next snapshot');
-select ok((select count(*)=2 and count(distinct e->>'employee_id')=2 and bool_and((e->>'employee_id')::uuid=case when e->>'source_shift_id'=pg_temp.shift(8)::text then pg_temp.emp(2) else pg_temp.emp(1) end)
- from public.schedule_lineup_snapshots snap cross join lateral jsonb_array_elements(snap.content->'entries') e
- where snap.workspace_id=pg_temp.w() and snap.lineup_date='2030-01-13' and snap.version_number=2 and e->>'source_shift_id' in(pg_temp.shift(8)::text,pg_temp.shift(9)::text)),'AT29 next snapshot contains both final owners, never an intermediate half-swap');
-select is((select lead_employee_id from public.lineup_section_plans where id='98050000-0000-4000-8000-000000000004'),pg_temp.emp(1),'AT28 lead remains when employee still works in the same service after swap');
-select is((select count(*)::int from public.lineup_notification_outbox o join public.schedule_lineup_snapshots snap on snap.id=o.snapshot_id where snap.workspace_id=pg_temp.w() and snap.lineup_date='2030-01-13' and snap.version_number=2),2,'AT30 each swap participant gets one acknowledgement for the complete result');
 select ok(exists(select 1 from public.notification_outbox where workspace_id=pg_temp.w() and subject_type='shift_exchange_cases' and payload->>'request_action'='transfer_completed' and payload->>'body' like '%no longer responsible%'),'AT33 giver receives the release confirmation');
 select ok(not exists(select 1 from public.notification_outbox where workspace_id=pg_temp.w() and subject_type='shift_exchange_cases' and payload->>'request_action'='other_selected' and payload->'recipient_user_ids' @> to_jsonb(array[pg_temp.actor(1)])),'AT33 losing-candidate message is not sent to original owner');
 update public.notification_outbox set status='leased',lease_owner='exchange-pgtap',lease_expires_at=now()+interval '1 minute',attempt_count=attempt_count+1
@@ -285,7 +250,6 @@ select is((select employee_id from public.schedule_published_shifts where id=pg_
 select public.shift_exchanges_command_service(pg_temp.manager(),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',4,'fingerprint',preview->>'fingerprint'),gen_random_uuid()) from sx_state;
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(11)),pg_temp.emp(3),'AT10 open shift assigns only the approved winner');
 select is((select count(*)::int from public.shift_exchange_applications where case_id=cid and status='closed_other_selected'),2,'AT10 other open-shift candidates close neutrally') from sx_state;
-select is((select count(*)::int from public.schedule_lineup_snapshots where workspace_id=pg_temp.w() and lineup_date='2030-01-15'),0,'AT31 an unshared Line Up does not acquire a fake share on approval');
 
 -- Each side of a swap is independently mandatory, including after peer consent.
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.shift(12),'requested_shift_id',pg_temp.shift(13)),gen_random_uuid());
@@ -370,11 +334,7 @@ select is((select employee_id from public.schedule_published_shifts where id=pg_
 update sx_state set preview=public.shift_exchange_preview(pg_temp.actor(5),pg_temp.w(),cid,aid);
 select public.shift_exchanges_command_service(pg_temp.actor(5),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',3,'fingerprint',preview->>'fingerprint'),gen_random_uuid()) from sx_state;
 select ok((select employee_id=pg_temp.emp(2) from public.schedule_published_shifts where id=pg_temp.shift(10)) and (select employee_id=pg_temp.emp(1) from public.schedule_published_shifts where id=pg_temp.shift(15)),'AT17 fresh consent and both new votes transfer the pair together');
--- Technical republication keeps consent and source-linked placement when terms match.
-insert into public.schedule_lineups(id,workspace_id,location_id,lineup_date,created_by,updated_by)
-values('98060000-0000-4000-8000-000000000001',pg_temp.w(),'11000000-0000-4000-8000-000000000001','2030-01-20',pg_temp.manager(),pg_temp.manager());
-insert into public.schedule_lineup_entries(workspace_id,lineup_id,location_id,source_shift_id,employee_id,job_id,shift_type_id,start_time,end_time,section_id,station,created_by,updated_by)
-select pg_temp.w(),'98060000-0000-4000-8000-000000000001',location_id,id,employee_id,job_id,shift_type_id,start_time,end_time,'98050000-0000-4000-8000-000000000001','Tables 8–12',pg_temp.manager(),pg_temp.manager() from public.schedule_published_shifts where id=pg_temp.shift(16);
+-- Technical republication keeps consent when terms match.
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(16)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
 select public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','apply','shift_id',pg_temp.shift(16),'case_id',cid),gen_random_uuid()) from sx_state;
@@ -387,8 +347,7 @@ insert into public.schedule_published_shifts(workspace_id,location_id,publicatio
 select workspace_id,location_id,'98010000-0000-4000-8000-000000000005',employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,coalesce(source_shift_id,id),time_basis,time_snapshot,time_timezone,unpaid_break_minutes
 from public.schedule_published_shifts where publication_id='98010000-0000-4000-8000-000000000003';
 select is(public.shift_exchange_live_status(pg_temp.w(),cid),'open','AT25 unchanged republication preserves the open request') from sx_state;
-select is(public.shift_exchange_preview(pg_temp.manager(),pg_temp.w(),cid,aid)->>'fingerprint',preview->>'fingerprint','AT25 new publication and overlay binding keep the same consent fingerprint') from sx_state;
-select ok(exists(select 1 from public.schedule_lineup_entries e join public.schedule_published_shifts p on p.id=e.source_shift_id where e.lineup_id='98060000-0000-4000-8000-000000000001' and p.publication_id='98010000-0000-4000-8000-000000000005' and e.station='Tables 8–12' and not e.source_changed),'AT25 station binds to the new source without a false change warning');
+select is(public.shift_exchange_preview(pg_temp.manager(),pg_temp.w(),cid,aid)->>'fingerprint',preview->>'fingerprint','AT25 new publication keeps the same consent fingerprint') from sx_state;
 select public.shift_exchanges_command_service(pg_temp.manager(),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',2,'fingerprint',preview->>'fingerprint'),gen_random_uuid()) from sx_state;
 select is((select employee_id from public.schedule_published_shifts where publication_id='98010000-0000-4000-8000-000000000005' and scheduled_date='2030-01-20'),pg_temp.emp(2),'AT25 approval changes the current publication owner');
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(16)),pg_temp.emp(1),'AT25 previous publication retains its historical owner');

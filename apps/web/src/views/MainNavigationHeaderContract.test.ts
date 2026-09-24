@@ -42,22 +42,12 @@ const topLevelPages = [
 describe("main navigation header contract", () => {
   it("uses one shared top-level page container contract", () => {
     const styles = readFileSync("src/styles.css", "utf8").replace(/\s+/g, " ");
-    const lineupStyles = readFileSync(
-      "src/schedule/lineup/lineup.css",
-      "utf8",
-    ).replace(/\s+/g, " ");
 
     expect(styles).toContain(
       ".workspace-page, .availability-page, .important-dates-page, .employees-page, .announcements-page, .notifications-page, .requests-page {",
     );
     expect(styles).toContain("width: min(100% - 64px, 1320px);");
     expect(styles).toContain("padding: 30px 0 44px;");
-    expect(lineupStyles).toContain(
-      ".lu-workspace { --lu-ink: #22352d; --lu-muted: var(--theme-muted); --lu-border: #e1e6e0; --lu-surface: #fff; --lu-bg: #f6f7f4; --lu-green: #386b53; color: var(--lu-ink); background: var(--lu-bg); box-sizing: border-box; width: min(100% - 64px, 1320px); padding: 30px 0 44px;",
-    );
-    expect(lineupStyles).toContain(
-      ".lu-header { display: flex; align-items: center; justify-content: space-between; min-height: 118px; gap: 24px; margin: 0 0 18px; padding: 32px 0 20px; border-bottom: 1px solid #d9dfdb;",
-    );
   });
 
   it("uses the shared catalog header on catalog-style top-level pages", () => {

@@ -66,19 +66,6 @@ export const employeeHubTeamMemberSchema = z.object({
   location_names: z.array(z.string()),
 });
 
-export const employeeHubLineupEntrySchema = z.object({
-  id: z.string().uuid(),
-  lineup_date: z.string().date(),
-  location_name: z.string().min(1),
-  employee_name: z.string().min(1),
-  job_name: z.string().nullable(),
-  start_time: timeSchema.nullable(),
-  end_time: timeSchema.nullable(),
-  station: z.string(),
-  section_name: z.string().nullable(),
-  call_off: z.boolean(),
-});
-
 export const employeeHubLocationSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
@@ -104,7 +91,6 @@ export const employeeHubReadModelSchema = z.object({
   availability: employeeHubAvailabilityInputSchema.nullable(),
   availability_context: employeeAvailabilityContextSchema.optional(),
   team: z.array(employeeHubTeamMemberSchema),
-  lineup: z.array(employeeHubLineupEntrySchema),
 });
 export type EmployeeHubReadModel = z.infer<typeof employeeHubReadModelSchema>;
 

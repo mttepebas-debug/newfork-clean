@@ -201,7 +201,6 @@ describe("createScheduleReadService realtime invalidation", () => {
           "published_shifts",
           "drafts",
           "pending_ops",
-          "lineups",
           "employee_my_schedule",
         ],
       },

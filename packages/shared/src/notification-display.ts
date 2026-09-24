@@ -36,7 +36,7 @@ export const notificationCategoryDisplay = {
   },
   schedule: {
     label: "Schedule",
-    description: "Published schedules, shift offers, and assignment changes.",
+    description: "Published schedules.",
     sortOrder: 10,
   },
   requests: {
@@ -218,48 +218,6 @@ export const notificationTypeDisplay = {
       "Controls in-app alerts sent to employees when a schedule is published.",
     preferenceDescription:
       "Get notified when a new schedule containing your shifts is published.",
-  },
-  "schedule.staffing.offer_updated": {
-    label: "Staffing offers",
-    shortLabel: "Staffing offers",
-    description:
-      "Offers and responses that need employee or manager attention.",
-    categoryLabel: notificationCategoryDisplay.schedule.label,
-    categoryDescription: notificationCategoryDisplay.schedule.description,
-    audienceLabel: "Invited employees and authorized staffing managers",
-    actionLabel: "View offer",
-    adminDescription:
-      "Controls in-app updates when a staffing offer is sent or accepted.",
-    preferenceDescription:
-      "Get notified when a shift is offered to you or someone responds to an offer you manage.",
-  },
-  "schedule.staffing.offer_closed": {
-    label: "Closed staffing offers",
-    shortLabel: "Closed staffing offers",
-    description:
-      "Offers that were declined, cancelled or filled by someone else.",
-    categoryLabel: notificationCategoryDisplay.schedule.label,
-    categoryDescription: notificationCategoryDisplay.schedule.description,
-    audienceLabel: "Invited employees and authorized staffing managers",
-    actionLabel: "View offer",
-    adminDescription:
-      "Controls in-app updates when a staffing offer is declined, cancelled or filled.",
-    preferenceDescription:
-      "Get notified when a shift offer is declined, cancelled, or filled.",
-  },
-  "schedule.staffing.assignment_changed": {
-    label: "Assignment changes",
-    shortLabel: "Assignment changes",
-    description:
-      "Confirmed staffing changes to your published work assignments.",
-    categoryLabel: notificationCategoryDisplay.schedule.label,
-    categoryDescription: notificationCategoryDisplay.schedule.description,
-    audienceLabel: "Affected employees and authorized staffing managers",
-    actionLabel: "View assignment",
-    adminDescription:
-      "Controls in-app updates after a manager changes a staffing assignment.",
-    preferenceDescription:
-      "Get notified when a published shift assignment changes.",
   },
 } as const satisfies Record<DisplayedNotificationTypeKey, NotificationTypeDisplay>;
 

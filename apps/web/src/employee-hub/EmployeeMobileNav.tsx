@@ -60,13 +60,6 @@ export function EmployeeMorePage() {
       enabled: true,
     },
     {
-      label: "Line-up",
-      detail: "The plan for your shift",
-      to: "/app/employee-hub/lineup",
-      icon: LayoutGrid,
-      enabled: true,
-    },
-    {
       label: "Announcements",
       detail: "Updates from your team",
       to: "/app/announcements",

@@ -33,7 +33,6 @@ const context = {
     "workspace.read",
     "workspace.manage",
     "schedule.read",
-    "schedule.lineup.read",
     "schedule.time_off_requests.read",
     "employees.read",
     "availability.read",
@@ -108,7 +107,6 @@ describe("AppShell notification badge", () => {
             <Route path="/app" element={<AppShell />}>
               <Route path="workspace" element={<p>Workspace route</p>} />
               <Route path="schedule" element={<p>Schedule route</p>} />
-              <Route path="schedule/lineup" element={<p>Lineup route</p>} />
               <Route
                 path="schedule/requests"
                 element={<p>Schedule Requests route</p>}
@@ -233,9 +231,6 @@ describe("AppShell notification badge", () => {
     );
 
     expect(
-      screen.getByRole("link", { name: "Line up" }).getAttribute("href"),
-    ).toBe("/app/schedule/lineup");
-    expect(
       screen.getByRole("link", { name: "Requests" }).getAttribute("href"),
     ).toBe("/app/schedule/requests");
 
@@ -300,20 +295,20 @@ describe("AppShell notification badge", () => {
       notifications: [],
     });
 
-    renderShell("/app/schedule/lineup");
+    renderShell("/app/schedule/requests");
 
-    expect(await screen.findByText("Lineup route")).toBeTruthy();
+    expect(await screen.findByText("Schedule Requests route")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Collapse menu" }));
 
     const scheduleLink = screen.getByRole("link", { name: "Schedule" });
-    const lineupLink = screen.getByRole("link", { name: "Line up" });
+    const requestsLink = screen.getByRole("link", { name: "Requests" });
 
     expect(scheduleLink.className).not.toContain("active");
     expect(scheduleLink.getAttribute("aria-current")).toBeNull();
     expect(scheduleLink.getAttribute("data-rail-active")).toBeNull();
-    expect(lineupLink.className).toContain("active");
-    expect(lineupLink.getAttribute("aria-current")).toBe("page");
-    expect(lineupLink.getAttribute("data-rail-active")).toBe("true");
+    expect(requestsLink.className).toContain("active");
+    expect(requestsLink.getAttribute("aria-current")).toBe("page");
+    expect(requestsLink.getAttribute("data-rail-active")).toBe("true");
   });
 
   it("shows Schedule child pages only while the Schedule group is expanded", async () => {
@@ -332,7 +327,6 @@ describe("AppShell notification badge", () => {
         .getByRole("button", { name: "Collapse Schedule" })
         .getAttribute("aria-expanded"),
     ).toBe("true");
-    expect(screen.getByRole("link", { name: "Line up" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Requests" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Collapse Schedule" }));
@@ -342,7 +336,6 @@ describe("AppShell notification badge", () => {
         .getByRole("button", { name: "Expand Schedule" })
         .getAttribute("aria-expanded"),
     ).toBe("false");
-    expect(screen.queryByRole("link", { name: "Line up" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Requests" })).toBeNull();
   });
 
@@ -369,7 +362,6 @@ describe("AppShell notification badge", () => {
     expect(labels).toEqual([
       "Workspace",
       "Schedule",
-      "Line up",
       "Requests",
       "Employees",
       "Availability",
@@ -385,7 +377,6 @@ describe("AppShell notification badge", () => {
     expect(await screen.findByText("Workspace route")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Requests" })).toBeNull();
     expect(document.querySelector('a[href="/app/schedule"]')).toBeNull();
-    expect(screen.queryByRole("link", { name: "Line up" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Availability" })).toBeNull();
   });
 
@@ -443,7 +434,6 @@ describe("AppShell notification badge", () => {
     expect(labels).toEqual([
       "Home",
       "Schedule",
-      "Line-up",
       "Shift Hub",
       "My Availability",
       "Announcements",

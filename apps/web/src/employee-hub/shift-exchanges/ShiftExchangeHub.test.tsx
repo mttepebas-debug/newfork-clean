@@ -25,9 +25,6 @@ import {
 vi.mock("../../auth/AuthContext", () => ({
   useAuth: () => ({ context: { userId: "user" } }),
 }));
-vi.mock("../../schedule/lineup/LineupQueue", () => ({
-  EmployeeLineupOffers: () => null,
-}));
 vi.mock("./exchange-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./exchange-data")>()),
   getExchanges: vi.fn(),
@@ -1194,36 +1191,6 @@ describe("Shift Hub outcome contracts", () => {
       (screen.getByRole("textbox", { hidden: true }) as HTMLTextAreaElement)
         .value,
     ).toBe("Please arrange cover");
-  });
-  it("explains shared Line Up reconciliation and prevents approval even for an eligible employee", async () => {
-    model.employee_id = null;
-    model.cases[0]!.is_owner = false;
-    const reason =
-      "This shift is missing from the shared Line Up. Review and share its assignment before approving.";
-    vi.mocked(getExchangePreview).mockResolvedValue({
-      allowed: false,
-      fingerprint: "unchanged-consent",
-      reasons: [reason],
-      receiver: { status: "eligible", reasons: [] },
-      giver: null,
-      requires_other_manager: false,
-      other_applications: 2,
-    });
-    mount("/app/schedule/requests?case=case", true);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Review Casey" }),
-    );
-    await screen.findByText(reason);
-    const approve = screen.getByRole("button", {
-      name: "Approve transfer to Casey",
-    }) as HTMLButtonElement;
-    expect(approve.disabled).toBe(true);
-    fireEvent.click(approve);
-    expect(changeExchange).not.toHaveBeenCalled();
-    expect(
-      screen.queryByRole("region", { name: "Casey eligibility" }),
-    ).toBeNull();
-    expect(screen.getByText(/Employee consent stays valid/)).toBeTruthy();
   });
   it("blocks approval when the final server preview detects ineligibility", async () => {
     model.employee_id = null;

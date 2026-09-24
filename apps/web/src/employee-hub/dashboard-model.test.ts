@@ -32,7 +32,6 @@ const model: EmployeeHubReadModel = {
   team: [],
   requests: [],
   availability: null,
-  lineup: [],
 };
 describe("employee dashboard time model", () => {
   it("keeps an overnight shift visible after midnight until its local end", () => {

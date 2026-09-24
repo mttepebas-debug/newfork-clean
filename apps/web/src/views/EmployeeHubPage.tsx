@@ -23,8 +23,6 @@ import {
   getEmployeeHub,
   submitEmployeeTimeOff,
 } from "../employee-hub/employee-hub-data";
-import { EmployeeLineup } from "../schedule/lineup/EmployeeLineup";
-import { lineupDateWindow } from "../schedule/lineup/lineup-time";
 
 import { EmployeeDashboard } from "../employee-hub/EmployeeDashboard";
 import { EmployeeScheduleBoard } from "../employee-hub/EmployeeScheduleBoard";
@@ -55,12 +53,6 @@ const pageCopy: Record<
     title: "My Availability",
     eyebrow: "WHEN YOU CAN WORK.",
     description: "Set your weekly preferences and request time off.",
-  },
-  lineup: {
-    title: "Line-up",
-    eyebrow: "READY FOR YOUR DAY.",
-    description:
-      "Your assignment and the details that matter for service.",
   },
   more: {
     title: "More",
@@ -147,7 +139,6 @@ export function EmployeeHubPage() {
       </section>
     );
   const model = query.data;
-  const lineupDates = lineupDateWindow(now, model.locations.map((item) => item.timezone));
   if (!path)
     return (
       <section
@@ -178,15 +169,9 @@ export function EmployeeHubPage() {
           organizationName={context?.workspace.name ?? ""}
         />
       ) : path.startsWith("shift-hub") ? (
-        <ShiftExchangeHub key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} timeFormat={model.settings.time_format} />
+        <ShiftExchangeHub key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} />
       ) : path === "my-availability" ? (
         <AvailabilityView key={`${model.workspace_id}:${model.employee.id}`} model={model} refresh={refresh} />
-      ) : path === "lineup" ? (
-        <EmployeeLineup
-          workspaceId={workspaceId}
-          today={lineupDates.from}
-          timeFormat={model.settings.time_format}
-        />
       ) : (
         <EmployeeMorePage />
       )}

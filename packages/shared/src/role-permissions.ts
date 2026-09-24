@@ -39,13 +39,6 @@ export const rolePermissionGroups: readonly {
         edit: ["schedule.conflict_rules.manage"],
       },
       {
-        id: "lineup",
-        label: "Line Up",
-        description: "Daily assignments and shared lineups.",
-        read: ["schedule.lineup.read"],
-        edit: ["schedule.lineup.manage", "schedule.lineup.share"],
-      },
-      {
         id: "availability",
         label: "Availability",
         description: "Review and manage employee availability.",
@@ -222,9 +215,6 @@ export const rolePermissionDependencies: Readonly<
   "schedule.publish": ["schedule.manage"],
   "schedule.availability.override": ["schedule.manage"],
   "schedule.conflict_rules.manage": ["settings.schedule_rules.read"],
-  "schedule.lineup.read": ["schedule.read"],
-  "schedule.lineup.manage": ["schedule.lineup.read"],
-  "schedule.lineup.share": ["schedule.lineup.read"],
   "schedule.templates.read": ["schedule.read"],
   "schedule.templates.manage": ["schedule.templates.read", "schedule.manage"],
   "schedule.export": ["schedule.read"],

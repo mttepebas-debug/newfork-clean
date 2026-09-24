@@ -109,7 +109,6 @@ export const weeklyPreferenceReadSchema = z.object({
 export const weeklyCommitmentKindSchema = z.enum([
   "exchange_application",
   "exchange_swap",
-  "lineup_offer",
   "legacy_request",
 ]);
 export const weeklyTeamReadSchema = z.object({
@@ -142,7 +141,7 @@ export const weeklyCommitmentPreviewSchema = z.object({
       id: z.string().uuid(),
       fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
       request_revision: z.string(),
-      request_type: z.enum(["cover", "open_pickup", "swap", "lineup_offer"]),
+      request_type: z.enum(["cover", "open_pickup", "swap"]),
       location_name: z.string(),
       date: z.string().date(),
       start_time: z.string(),

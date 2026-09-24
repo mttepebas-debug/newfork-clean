@@ -45,8 +45,6 @@ supabase/tests/explicit_workspace_context.test.sql
 supabase/tests/jobs_department_bulk_assignments.test.sql
 supabase/tests/joining_from_two_workspaces.test.sql
 supabase/tests/lifecycle_refusals_carry_keys.test.sql
-supabase/tests/lineup_staffing_immediate_inbox.test.sql
-supabase/tests/lineup_staffing_notification_inbox.test.sql
 supabase/tests/location_short_names.test.sql
 supabase/tests/net_access_stays_out_of_reach.test.sql
 supabase/tests/notification_outbox_relay.test.sql
@@ -68,10 +66,10 @@ supabase/tests/schedule_time_source.test.sql
 supabase/tests/security_audit_events.test.sql
 supabase/tests/shift_exchange_availability_adapter.test.sql
 supabase/tests/shift_exchange_immediate_inbox.test.sql
-supabase/tests/shift_exchange_lineup_person_state.test.sql
 supabase/tests/shift_exchange_range_read.test.sql
 supabase/tests/shift_exchange_requested_publication.test.sql
 supabase/tests/shift_exchange_swap_gives_up_its_own_shift.test.sql
+supabase/tests/shift_exchange_travel_policy.test.sql
 supabase/tests/shift_exchanges_v1.test.sql
 supabase/tests/signature_templates_rls.test.sql
 supabase/tests/tenant_owned_composite_foreign_keys.test.sql
@@ -82,9 +80,9 @@ supabase/tests/time_off_decision_identity_guard.test.sql
 supabase/tests/time_off_physical_request_counts.test.sql
 supabase/tests/time_off_requested_periods.test.sql
 supabase/tests/timezone_names.test.sql
+supabase/tests/weekly_assignment_candidates.test.sql
 supabase/tests/weekly_availability_preferences.test.sql
-supabase/tests/weekly_lineup_candidate_groups.test.sql
-supabase/tests/weekly_lineup_offer_response.test.sql
+supabase/tests/weekly_exchange_acceptance.test.sql
 supabase/tests/weekly_preference_mode_conversion.test.sql
 supabase/tests/weekly_preference_settings.test.sql
 supabase/tests/weekly_preferences_commands.test.sql
