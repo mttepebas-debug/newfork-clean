@@ -6,8 +6,17 @@ import { defineConfig } from "@playwright/test";
 // People come from the test world builder with a password
 // (supabase/test-support/builder.sql), made fresh by global-setup on every run.
 
-const webPort = 5565;
-const apiPort = 5566;
+// BL-112: three self-hosted runners can each run an e2e job at once. Every
+// runner needs its own web/api ports, or two concurrent e2e jobs would try to
+// bind the same port; scripts/ci-supabase-apart.sh already worked out which
+// runner this is (its Supabase project and ports are keyed the same way) and
+// left it in CI_RUNNER_INDEX. Locally (no CI_RUNNER_INDEX) nothing changes.
+const runnerIndex = process.env.CI ? Number(process.env.CI_RUNNER_INDEX) : 0;
+if (process.env.CI && !Number.isInteger(runnerIndex)) {
+  throw new Error("CI_RUNNER_INDEX is not set; run scripts/ci-supabase-apart.sh first");
+}
+const webPort = process.env.CI ? 5580 + runnerIndex * 10 : 5565;
+const apiPort = process.env.CI ? 5581 + runnerIndex * 10 : 5566;
 const webUrl = `http://127.0.0.1:${webPort}`;
 const apiUrl = `http://127.0.0.1:${apiPort}`;
 
