@@ -58,11 +58,14 @@ supabase/tests/preferred_name_approval.test.sql
 supabase/tests/public_roles_reach_no_table_directly.test.sql
 supabase/tests/retired_objects_stay_gone.test.sql
 supabase/tests/schedule_edit_locks.test.sql
+supabase/tests/schedule_grid_read_budget.test.sql
 supabase/tests/schedule_publish_notifications.test.sql
 supabase/tests/schedule_read_model_rls.test.sql
+supabase/tests/schedule_reads_weekly_availability.test.sql
 supabase/tests/schedule_realtime_channels.test.sql
 supabase/tests/schedule_resume_lease.test.sql
 supabase/tests/schedule_time_source.test.sql
+supabase/tests/schedule_week_availability.test.sql
 supabase/tests/security_audit_events.test.sql
 supabase/tests/shift_exchange_availability_adapter.test.sql
 supabase/tests/shift_exchange_immediate_inbox.test.sql
