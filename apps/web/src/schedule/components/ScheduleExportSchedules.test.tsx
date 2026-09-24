@@ -172,7 +172,10 @@ describe("ScheduleExportSchedules", () => {
         timezone: "America/Los_Angeles",
       }),
     );
-    expect(screen.getByLabelText("Schedule name")).toHaveProperty("value", "");
+    // The form clears once the create call resolves, a tick after it is made.
+    await waitFor(() =>
+      expect(screen.getByLabelText("Schedule name")).toHaveProperty("value", ""),
+    );
     expect(screen.getByLabelText("Recipients")).toHaveProperty("value", "");
   });
 
