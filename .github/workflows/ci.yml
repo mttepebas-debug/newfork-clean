@@ -17,7 +17,7 @@ jobs:
     # BL-107: every job runs on the self-hosted runner on the user's PC (WSL
     # Ubuntu, label newfork-local); db and e2e reuse this line. Back to
     # GitHub's machines: change it to `runs-on: &runner ubuntu-latest`.
-    runs-on: &runner [self-hosted, linux, newfork-local-next]
+    runs-on: &runner [self-hosted, linux, newfork-local]
     timeout-minutes: 20
     env:
       TZ: America/Los_Angeles # tests assume local dev TZ (ScheduleExportSchedules)
