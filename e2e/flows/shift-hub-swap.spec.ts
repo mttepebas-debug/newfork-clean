@@ -52,12 +52,18 @@ test("a two-location swap completes after both managers approve", async ({ brows
   const casePath = `/app/schedule/requests?tab=shift-changes&case=${caseId}&from=${day}&to=${day}`;
 
   const ayse = await openSchedule(browser, "ayse", casePath);
+  // The case opens from the link; the decision buttons belong to a candidate.
+  await ayse.getByRole("button", { name: "Review Deniz Person" }).click();
   await ayse.getByRole("button", { name: "Approve my location" }).click();
   await ayse.getByRole("button", { name: "Record my approval" }).click();
-  await expect(ayse.getByRole("button", { name: "Approve my location" })).toHaveCount(0);
+  // Kadikoy's vote is recorded; nobody's shift has moved yet.
+  await expect
+    .poll(() => sql(`select count(*) from public.shift_exchange_votes where case_id = '${caseId}';`))
+    .toBe("1");
   expect(holder("ali-k")).toBe("Ali");
 
   const mehmet = await openSchedule(browser, "mehmet", casePath);
+  await mehmet.getByRole("button", { name: "Review Deniz Person" }).click();
   await mehmet.getByRole("button", { name: /^Approve transfer to Deniz/ }).click();
   await mehmet.getByRole("button", { name: /^Confirm transfer to Deniz/ }).click();
   await expect.poll(() => holder("ali-k")).toBe("Deniz");
