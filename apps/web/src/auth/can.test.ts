@@ -64,6 +64,18 @@ describe("can", () => {
     expect(can(blocked, "schedule.publish", { locations: [K] })).toBe(false);
   });
 
+  it("says no to a person action asked without its person", () => {
+    const admin = context({
+      membership: { ...context().membership, role: "admin" },
+      permissions: ["employees.manage"],
+    });
+    // @ts-expect-error a person action must name its person
+    expect(can(admin, "employee.save", { locations: [K] })).toBe(false);
+    expect(
+      can(admin, "employee.save", { locations: [K], person: { role: "employee", isSelf: false } }),
+    ).toBe(true);
+  });
+
   it("refuses a permission the role lacks", () => {
     const lead = context({ permissions: ["schedule.read", "schedule.manage"] });
     expect(can(lead, "schedule.publish", { locations: [K] })).toBe(false);

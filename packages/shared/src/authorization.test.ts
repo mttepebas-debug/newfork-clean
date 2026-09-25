@@ -29,6 +29,14 @@ const personas = new Map(dump.personas.map((p) => [p.label, p]));
 const targets = new Map(dump.targets.map((t) => [t.label, t]));
 const actions = new Map(dump.actions.map((a) => [a.key, a]));
 
+// The matrix walks every action with whatever target the cell has; the types
+// that stop a screen from leaving out a person are not the point here.
+const ask = expected as (
+  actor: AuthzActor,
+  action: TargetedAuthzAction,
+  target?: AuthzTarget,
+) => boolean;
+
 const everyPermission = [
   ...new Set(
     Object.values(targetedAuthzActions).flatMap((rule) =>
@@ -115,7 +123,7 @@ describe("authorization matrix twin", () => {
       const p = personas.get(actorLabel as string) as Persona;
       const a = actions.get(actionKey as string);
       if (!a) return [`${actionKey}: not in the dump's actions`];
-      const got = expected(
+      const got = ask(
         actorOf(p),
         a.coreKey as TargetedAuthzAction,
         targetOf(p, targetLabel as string, a.blank),
@@ -143,5 +151,43 @@ describe("expected() outside the matrix", () => {
 
   it("refuses a target in another workspace", () => {
     expect(expected(manager, "schedule.edit", { workspaceId: "other", locations: ["K"] })).toBe(false);
+  });
+
+  const owner: AuthzActor = { ...manager, role: "owner", locationIds: ["K", "B"], permissions: everyPermission };
+  const admin: AuthzActor = { ...owner, role: "admin" };
+  const boss: AuthzActor = { ...manager, permissions: everyPermission };
+  const employee: AuthzActor = { ...boss, role: "employee" };
+
+  it.each([
+    ["manager", boss, "employee.save"],
+    ["admin", admin, "employee.save"],
+    ["admin", admin, "employee.terminate"],
+    ["admin", admin, "employee.archive"],
+    ["admin", admin, "employee.remove_access"],
+    ["owner", owner, "employee.make_admin"],
+    ["admin", admin, "employee.change_role"],
+    ["admin", admin, "time_off.decide"],
+    ["manager", boss, "exchange.approve"],
+    ["employee", employee, "exchange.offer_own"],
+    ["admin", admin, "employee.read"],
+    ["admin", admin, "membership.read"],
+  ] as const)("says no to %s asking %s with nobody named", (_label, actor, action) => {
+    expect(ask(actor, action, { locations: ["K"] })).toBe(false);
+    expect(ask(actor, action)).toBe(false);
+  });
+
+  it("says no to an action it does not know", () => {
+    expect(ask(owner, "account.self" as TargetedAuthzAction)).toBe(false);
+    expect(ask(owner, "toString" as TargetedAuthzAction)).toBe(false);
+  });
+
+  it("gives the whole organization to admin and owner only", () => {
+    const org = { locations: "organization" } as const;
+    expect(expected(owner, "announcement.write", org)).toBe(true);
+    expect(expected(admin, "important_date.write", org)).toBe(true);
+    expect(expected(admin, "employee.create", org)).toBe(true);
+    expect(expected(boss, "announcement.write", org)).toBe(false);
+    expect(expected(boss, "employee.create", org)).toBe(false);
+    expect(expected(boss, "important_date.write", org)).toBe(false);
   });
 });

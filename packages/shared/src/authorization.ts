@@ -78,6 +78,8 @@ interface TargetedRule {
   readonly own?: boolean;
   /** Still open to somebody who has not finished onboarding. */
   readonly restrictedOk?: boolean;
+  /** Asked of one person's record, request or shift: without the person, no. */
+  readonly person?: boolean;
 }
 
 /**
@@ -89,19 +91,19 @@ interface TargetedRule {
 export const targetedAuthzActions = {
   "announcement.write": { permission: "announcements.manage" },
   "audit.read": { permission: "workspace.manage" },
-  "employee.archive": { permission: "employees.archive" },
-  "employee.change_role": { permission: "employees.manage" },
+  "employee.archive": { person: true, permission: "employees.archive" },
+  "employee.change_role": { person: true, permission: "employees.manage" },
   "employee.create": { permission: "employees.manage" },
-  "employee.list": { permission: "employees.read" },
-  "employee.make_admin": { permission: null, ownerOnly: true },
-  "employee.read": { permission: "employees.read" },
-  "employee.remove_access": { permission: "employees.manage" },
-  "employee.save": { permission: "employees.manage" },
-  "employee.terminate": { permission: "employees.archive" },
-  "exchange.approve": { permission: "schedule.shift_change_requests.manage" },
-  "exchange.offer_own": { permission: null, own: true },
+  "employee.list": { person: true, permission: "employees.read" },
+  "employee.make_admin": { person: true, permission: null, ownerOnly: true },
+  "employee.read": { person: true, permission: "employees.read" },
+  "employee.remove_access": { person: true, permission: "employees.manage" },
+  "employee.save": { person: true, permission: "employees.manage" },
+  "employee.terminate": { person: true, permission: "employees.archive" },
+  "exchange.approve": { person: true, permission: "schedule.shift_change_requests.manage" },
+  "exchange.offer_own": { person: true, permission: null, own: true },
   "important_date.write": { permission: "important_dates.manage" },
-  "membership.read": { permission: null },
+  "membership.read": { person: true, permission: null },
   "notifications.read_own": { permission: null, own: true, restrictedOk: true },
   "schedule.edit": { permission: "schedule.manage" },
   "schedule.publish": { permission: "schedule.publish" },
@@ -111,12 +113,22 @@ export const targetedAuthzActions = {
   "settings.organization.write": { permission: "settings.general.manage" },
   "settings.roles.write": { permission: "roles.manage" },
   "settings.scheduling.write": { permission: "settings.schedule_rules.manage" },
-  "time_off.decide": { permission: "schedule.time_off_requests.manage" },
+  "time_off.decide": { person: true, permission: "schedule.time_off_requests.manage" },
   "time_off.request_own": { permission: null, own: true },
   "workspace.close": { permission: null, ownerOnly: true },
   "workspace.transfer_ownership": { permission: null, ownerOnly: true },
 } as const satisfies Partial<Record<AuthzAction, TargetedRule>>;
 export type TargetedAuthzAction = keyof typeof targetedAuthzActions;
+
+/** The actions asked of one person's record, request or shift. */
+export type PersonAuthzAction = {
+  [K in TargetedAuthzAction]: (typeof targetedAuthzActions)[K] extends { person: true } ? K : never;
+}[TargetedAuthzAction];
+
+/** The target an action takes: a person action cannot be asked without its person. */
+export type AuthzTargetArgs<A extends TargetedAuthzAction> = A extends PersonAuthzAction
+  ? [target: AuthzTarget & { readonly person: NonNullable<AuthzTarget["person"]> }]
+  : [target?: AuthzTarget];
 
 /** Who is asking. */
 export interface AuthzActor {
@@ -153,13 +165,17 @@ const rankOf: Record<WorkspaceRole, number> = { owner: 4, admin: 3, manager: 2, 
  * cell by cell by authorization.test.ts. The SQL is the source; change a rule
  * there first.
  */
-export function expected(
+export function expected<A extends TargetedAuthzAction>(
   actor: AuthzActor,
-  action: TargetedAuthzAction,
-  target?: AuthzTarget,
+  action: A,
+  ...[target]: AuthzTargetArgs<A>
 ): boolean {
+  // Unknown action: no (a cast or a stale key must not open anything).
+  if (!Object.hasOwn(targetedAuthzActions, action)) return false;
   const rule: TargetedRule = targetedAuthzActions[action];
   const person = target?.person;
+  // A person action with nobody named: no. Never "whoever it may be".
+  if (rule.person && person === undefined) return false;
   const isSelf = person?.isSelf === true;
 
   // Nobody reaches into another workspace, and only active members act at all;

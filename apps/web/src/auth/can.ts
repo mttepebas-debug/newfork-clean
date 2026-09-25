@@ -3,6 +3,7 @@ import {
   type ActiveWorkspaceContext,
   type AuthzAction,
   type AuthzTarget,
+  type AuthzTargetArgs,
   type TargetedAuthzAction,
 } from "@newfork/shared";
 
@@ -21,10 +22,11 @@ export function can(
   context: ActiveWorkspaceContext | null | undefined,
   action: AuthzAction,
 ): boolean;
-export function can(
+export function can<A extends TargetedAuthzAction>(
   context: ActiveWorkspaceContext | null | undefined,
-  action: TargetedAuthzAction,
-  target: AuthzTarget,
+  action: A,
+  // A person action names its person (AuthzTargetArgs); others take any target.
+  target: NonNullable<AuthzTargetArgs<A>[0]>,
 ): boolean;
 export function can(
   context: ActiveWorkspaceContext | null | undefined,
@@ -33,7 +35,12 @@ export function can(
 ): boolean {
   if (!context) return false;
   if (target === undefined) return context.actions.includes(action);
-  return expected(
+  const ask = expected as (
+    actor: Parameters<typeof expected>[0],
+    action: TargetedAuthzAction,
+    target: AuthzTarget,
+  ) => boolean;
+  return ask(
     {
       workspaceId: context.workspace.id,
       role: context.membership.role,
