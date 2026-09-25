@@ -343,6 +343,16 @@ insert into public.employee_profiles (
   true,
   '10000000-0000-4000-8000-000000000001'
 );
+-- Setup's first step gave the owner a legal name (BL-080); no step after it
+-- passes without one.
+insert into public.employee_private_profiles (
+  employee_id, workspace_id, legal_first_name, legal_last_name
+) values (
+  '43000000-0000-4000-8000-000000000011',
+  '20000000-0000-4000-8000-000000000001',
+  'Test',
+  'Owner'
+);
 insert into public.employee_location_assignments (
   workspace_id, employee_id, location_id, is_primary, created_by
 ) values (
@@ -529,7 +539,9 @@ select
   '#4478A8'
 from metadata_owner_workspace;
 set local role service_role;
-select lives_ok(
+-- A name in the account is not a legal name (BL-080): setup that never asked
+-- for one cannot finish, and nothing is filed under the account's name.
+select throws_ok(
   $$select public.update_owner_onboarding_service(
     '10000000-0000-4000-8000-000000000004',
     (select workspace_id from metadata_owner_workspace),
@@ -537,18 +549,20 @@ select lives_ok(
     4::smallint,
     true
   )$$,
-  'owner onboarding can complete when the account name only exists in auth metadata'
+  '23514',
+  'the owner''s legal name is required',
+  'owner onboarding cannot complete without the owner''s legal name'
 );
 reset role;
 select is(
   (
-    select concat_ws(' ', first_name, last_name)
+    select count(*)::integer
     from public.employee_profiles
     where workspace_id = (select workspace_id from metadata_owner_workspace)
       and user_id = '10000000-0000-4000-8000-000000000004'
   ),
-  'Metadata Owner',
-  'owner employee record falls back to signup display metadata'
+  0,
+  'nobody is filed under the name the account happens to carry'
 );
 select ok(
   (

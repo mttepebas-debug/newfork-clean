@@ -1,3 +1,4 @@
 - [Rollback trial runner](rollback-trial-runner.md) — pgTAP with an unapplied migration in one rolled-back transaction; pgtap prelude; guard-safe scripts; dump with migration
 - [Core call cost](core-call-cost.md) — authz_reason/scope_set ~0.33 ms each vs 0.04 ms helper; compute scope once; draft shifts read slowed by per-shift projection
 - [SQL traps moving onto the core](sql-traps-core-translation.md) — any((select..))::uuid[], plpgsql IF+CASE, somewhere shape, location delete needs archived_at, document-blocked test recipe
+- [Rolled-back trial runner, BL-080 notes](rolled-back-trial-runner.md) — db.lock wait; `own` actions skip owner_only

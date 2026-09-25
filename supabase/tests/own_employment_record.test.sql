@@ -44,13 +44,16 @@ select
   'active'::public.membership_status,
   '1b000000-0000-4000-8000-000000000001';
 
--- Until they write one there is nothing to read, and nothing is invented for
--- them either.
-select is(
-  (select count(*)::integer from public.employee_private_profiles
-   where employee_id = '1b000000-0000-4000-8000-000000000001'),
-  0,
-  'an employee starts with no private record of their own'
+-- What onboarding left: the legal name the employee gave and the contact they
+-- named then. The account area corrects the contact; the legal name is
+-- onboarding's and its review's (BL-080).
+insert into public.employee_private_profiles (
+  employee_id, workspace_id, legal_first_name, legal_last_name,
+  emergency_contact_name, emergency_contact_relationship, emergency_contact_phone
+) values (
+  '1b000000-0000-4000-8000-000000000001',
+  (select workspace_id from own_record_target),
+  'Samuel', 'Okafor', 'Old Contact', 'Friend', '4155550100'
 );
 
 select public.save_own_employment_contact_service(
@@ -58,6 +61,14 @@ select public.save_own_employment_contact_service(
   (select workspace_id from own_record_target),
   '1b000000-0000-4000-8000-000000000001',
   'Ada Okafor', 'Sister', '4155550144', '', '4155550143'
+);
+
+select is(
+  (select legal_first_name || ' ' || legal_last_name
+   from public.employee_private_profiles
+   where employee_id = '1b000000-0000-4000-8000-000000000001'),
+  'Samuel Okafor',
+  'correcting a contact leaves the legal name onboarding filed, not the record''s name'
 );
 
 select is(

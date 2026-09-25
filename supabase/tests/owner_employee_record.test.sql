@@ -29,7 +29,7 @@ select public.update_owner_onboarding_service(
   'Owner Record Co', 2::smallint, false,
   (select revision from public.workspace_onboarding
    where workspace_id = (select workspace_id from owner_record_target)),
-  null, null
+  'Mert', 'Ali', 'Tepebas'
 );
 
 select is(
@@ -39,12 +39,12 @@ select is(
   'the first saved step files the owner'
 );
 
--- The last word is the family name; everything before it is the given name.
+-- The first step asks for the three parts; the record takes them as typed.
 select is(
-  (select first_name || ' / ' || last_name from public.employee_profiles
+  (select first_name || ' / ' || middle_name || ' / ' || last_name from public.employee_profiles
    where workspace_id = (select workspace_id from owner_record_target)),
-  'Mert Ali / Tepebas',
-  'a middle name stays with the given name instead of moving to the family name'
+  'Mert / Ali / Tepebas',
+  'the record is filed under the three parts the first step asked for'
 );
 select is(
   (select internal_note from public.employee_profiles
@@ -59,11 +59,15 @@ select ok(
        where workspace_id = (select workspace_id from owner_record_target)),
   'the owner arrives on the schedule like any other employee'
 );
+-- The same answers are the owner's legal name (BL-080).
 select is(
-  (select first_name || ' ' || last_name from public.employee_profiles
-   where workspace_id = (select workspace_id from owner_record_target)),
-  'Mert Ali Tepebas',
-  'the name typed at sign-up is the name the workspace files them under'
+  (select private_profile.legal_first_name || ' / ' || private_profile.legal_middle_name
+     || ' / ' || private_profile.legal_last_name
+   from public.employee_private_profiles private_profile
+   join public.employee_profiles employee on employee.id = private_profile.employee_id
+   where employee.workspace_id = (select workspace_id from owner_record_target)),
+  'Mert / Ali / Tepebas',
+  'the same answers are the owner''s legal name'
 );
 
 -- What the employees tab says is what the workspace decided to call this
@@ -162,10 +166,10 @@ select id from public.employee_profiles
 where workspace_id = (select workspace_id from owner_record_target)
   and user_id = '14000000-0000-4000-8000-000000000001';
 
-select is(
-  (select count(*)::integer from public.employee_private_profiles
+select ok(
+  (select emergency_contact_name is null and phone is null
+   from public.employee_private_profiles
    where employee_id = (select id from owner_employee limit 1)),
-  0,
   'nothing is invented for the owner before they enter anything'
 );
 
