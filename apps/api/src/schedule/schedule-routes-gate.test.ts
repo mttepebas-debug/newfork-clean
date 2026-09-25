@@ -1,6 +1,9 @@
+import Fastify from "fastify";
 import { describe, expect, it } from "vitest";
 import type { ActiveWorkspaceContext, AuthzAction } from "@newfork/shared";
 import { buildApp } from "../app";
+import { rpcFailure } from "../http-error";
+import { registerScheduleRoutes } from "./schedule-routes";
 import type { ScheduleReadService } from "./schedule-service";
 
 // Every Schedule route asks the one gate (resolveActor + authorize) for one
@@ -65,7 +68,6 @@ const routes: readonly Row[] = [
   ["POST", "/schedule/edit-lock/acquire", "schedule.edit"],
   ["POST", "/schedule/edit-session/materialize-live-draft", "schedule.edit"],
   ["PATCH", "/schedule/edit-lock/heartbeat", "schedule.edit"],
-  ["POST", "/schedule/edit-lock/takeover", "schedule.edit"],
   ["DELETE", "/schedule/edit-lock/release", "schedule.edit"],
   ["POST", "/schedule/drafts/save", "schedule.edit"],
   ["POST", "/schedule/edit-session/discard", "schedule.edit"],
@@ -191,4 +193,77 @@ describe("Schedule routes ask one authorization gate", () => {
       expect(response.statusCode).toBe(400);
     },
   );
+});
+
+describe("Schedule route table is complete", () => {
+  it("lists every route Schedule registers, so a new route cannot skip the gate", async () => {
+    const app = Fastify();
+    const registered: string[] = [];
+    app.addHook("onRoute", (route) => {
+      for (const method of [route.method].flat()) {
+        if (method === "HEAD") continue;
+        // ponytail: export-v2 keeps its own gate until its slice moves it.
+        if (route.url.includes("/export-v2/")) continue;
+        registered.push(`${method} ${route.url.replace(":workspaceId", W).replace(/:\w+/g, ":id")}`);
+      }
+    });
+    registerScheduleRoutes(app, { service: null, contextResolver: null });
+    await app.ready();
+    expect(registered.sort()).toEqual(routes.map(([method, url]) => `${method} ${url}`).sort());
+    await app.close();
+  });
+});
+
+describe("Schedule refusals from the database", () => {
+  const owner = context(scheduleActions);
+  const draftsFailing = (error: unknown) =>
+    buildApp({
+      contextResolver: { resolve: async () => owner },
+      scheduleService: {
+        listDrafts: async () => {
+          throw error;
+        },
+      } as unknown as ScheduleReadService,
+    }).inject({
+      method: "GET",
+      url: "/schedule/drafts?week_start=2026-08-17",
+      headers: { authorization: "Bearer token", "x-newfork-workspace-id": W },
+    });
+
+  it("keeps the core's no as 403 with its reason, and not_member as 404", async () => {
+    const outOfScope = await draftsFailing(
+      rpcFailure({ code: "42501", message: "Not allowed", hint: "authz.out_of_scope", details: "schedule.edit" }),
+    );
+    expect(outOfScope.statusCode).toBe(403);
+    expect(outOfScope.json()).toMatchObject({ reason: "authz.out_of_scope", detail: "schedule.edit" });
+    const notMember = await draftsFailing(
+      rpcFailure({ code: "42501", message: "Not allowed", hint: "authz.not_member" }),
+    );
+    expect(notMember.statusCode).toBe(404);
+    expect(notMember.json()).toMatchObject({ reason: "authz.not_member" });
+  });
+
+  it("does not pass on a JSON RAISE whose status is not a past-edit refusal", async () => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => owner },
+      scheduleService: {
+        saveSession: async () => {
+          throw rpcFailure({
+            code: "P0001",
+            message: JSON.stringify({ status: "something_else", internal: "relation schedule_drafts" }),
+          });
+        },
+      } as unknown as ScheduleReadService,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/schedule/drafts/save",
+      headers: { authorization: "Bearer token", "x-newfork-workspace-id": W },
+      payload: { session_id: ID, expected_session_revision: 2, name: "Opening plan", draft_id: null, expected_draft_revision: null },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: "Request could not be completed" });
+    expect(response.body).not.toContain("something_else");
+    expect(response.body).not.toContain("schedule_drafts");
+  });
 });

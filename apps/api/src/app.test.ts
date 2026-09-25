@@ -1925,43 +1925,6 @@ describe("api app", () => {
     );
   });
 
-  it("serves manager Schedule reads through the authenticated service boundary", async () => {
-    const calls: string[] = [];
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      scheduleService: scheduleServiceMock({
-        getReadModel: async (_actor, _workspace, date) => {
-          calls.push(date);
-          return scheduleServiceMockModel();
-        },
-      }),
-    });
-    const response = await app.inject({
-      method: "GET",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule?date=2026-08-19&view=week",
-      headers: { authorization: "Bearer owner-token" },
-    });
-    expect(response.statusCode).toBe(200);
-    expect(response.json().week_start).toBe("2026-08-17");
-    expect(calls).toEqual(["2026-08-19"]);
-  });
-
-  it("returns a generic not found for foreign-tenant Schedule paths", async () => {
-    const getReadModel = vi.fn(async () => scheduleServiceMockModel());
-    const app = buildApp({
-      contextResolver: { resolve: async () => workspaceMismatchContext() },
-      scheduleService: scheduleServiceMock({ getReadModel }),
-    });
-    const response = await app.inject({
-      method: "GET",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule?date=2026-08-19&view=week",
-      headers: { authorization: "Bearer owner-token" },
-    });
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({ error: "Workspace not found" });
-    expect(getReadModel).not.toHaveBeenCalled();
-  });
-
   it("serves reference-style Schedule reads from active workspace context", async () => {
     const calls: unknown[] = [];
     const app = buildApp({
@@ -2050,24 +2013,6 @@ describe("api app", () => {
     });
     expect(resolve).toHaveBeenCalledWith("owner-token", requestedWorkspaceId);
     expect(getReadModel).not.toHaveBeenCalled();
-  });
-
-  it("does not expose manager Schedule reads to employee access class", async () => {
-    const app = buildApp({
-      contextResolver: {
-        resolve: async () => ({
-          ...resolvedContext,
-          membership: { ...resolvedContext.membership, role: "employee" },
-        }),
-      },
-      scheduleService: scheduleServiceMock(),
-    });
-    const response = await app.inject({
-      method: "GET",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule?date=2026-08-19&view=day",
-      headers: { authorization: "Bearer employee-token" },
-    });
-    expect(response.statusCode).toBe(403);
   });
 
   it("acquires a revisioned Schedule editing session", async () => {
@@ -3005,10 +2950,6 @@ describe("api app", () => {
           calls.push({ kind: "remove-pending-op", input });
           return { status: "ok", op_id: input.opId };
         },
-        takeover: async (actorUserId, workspaceId, sessionId) => {
-          calls.push({ kind: "takeover", actorUserId, workspaceId, sessionId });
-          return { status: "acquired", session: scheduleSessionMockModel() };
-        },
         acquireSession: async (input) => {
           calls.push({
             kind:
@@ -3217,12 +3158,6 @@ describe("api app", () => {
       url: "/schedule/pending-ops/81000000-0000-4000-8000-000000000001",
       headers: { authorization: "Bearer owner-token" },
     });
-    const takeover = await app.inject({
-      method: "POST",
-      url: "/schedule/edit-lock/takeover",
-      headers: { authorization: "Bearer owner-token" },
-      payload: { session_id: "87000000-0000-4000-8000-000000000001" },
-    });
     const materializeLiveDraft = await app.inject({
       method: "POST",
       url: "/schedule/edit-session/materialize-live-draft",
@@ -3417,7 +3352,6 @@ describe("api app", () => {
     expect(addPendingOp.statusCode).toBe(201);
     expect(updatePendingOp.statusCode).toBe(200);
     expect(removePendingOp.statusCode).toBe(200);
-    expect(takeover.statusCode).toBe(200);
     expect(materializeLiveDraft.statusCode).toBe(200);
     expect(template.statusCode).toBe(200);
     expect(unpublishPreview.statusCode).toBe(200);
@@ -3539,12 +3473,6 @@ describe("api app", () => {
           workspaceId: resolvedContext.workspace.id,
           opId: "81000000-0000-4000-8000-000000000001",
         },
-      },
-      {
-        kind: "takeover",
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        sessionId: "87000000-0000-4000-8000-000000000001",
       },
       {
         kind: "materialize-live-draft",
@@ -3808,10 +3736,6 @@ function scheduleServiceMock(
       expires_at: "2026-08-17T12:04:00.000Z",
     }),
     heartbeat: async () => scheduleSessionMockModel(),
-    takeover: async () => ({
-      status: "resumed",
-      session: scheduleSessionMockModel(),
-    }),
     mutateShift: async () => scheduleSessionMockModel(),
     bulkDeleteShifts: async (_input) => ({
       deleted_count: 1,

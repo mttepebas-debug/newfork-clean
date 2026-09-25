@@ -337,18 +337,6 @@ export async function heartbeatScheduleEditSession(
   );
 }
 
-export async function takeoverScheduleEditSession(
-  workspaceId: string,
-  sessionId: string,
-): Promise<ScheduleEditAcquireResult> {
-  return scheduleEditAcquireResultSchema.parse(
-    await activeScheduleRequest("/schedule/edit-lock/takeover", {
-      method: "POST",
-      body: JSON.stringify({ session_id: sessionId }),
-    }),
-  );
-}
-
 export async function materializeLiveScheduleDraft(
   workspaceId: string,
   weekStart: string,

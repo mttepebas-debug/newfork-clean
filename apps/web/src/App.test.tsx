@@ -41,7 +41,6 @@ import {
   restoreScheduleShift,
   ScheduleRequestError,
   saveScheduleDraft,
-  takeoverScheduleEditSession,
   updateScheduleExportSchedule,
   unpublishSchedule,
 } from "./schedule/schedule-data";
@@ -403,10 +402,6 @@ function resetScheduleApiMocks() {
   vi.mocked(acquireScheduleEditSession).mockResolvedValue(
     makeDefaultEditAcquireResult(),
   );
-  vi.mocked(takeoverScheduleEditSession).mockReset();
-  vi.mocked(takeoverScheduleEditSession).mockResolvedValue(
-    makeDefaultEditAcquireResult(),
-  );
   vi.mocked(createScheduleShift).mockReset();
   vi.mocked(createScheduleShifts).mockReset();
   vi.mocked(createScheduleShifts).mockResolvedValue({
@@ -623,31 +618,6 @@ vi.mock("./schedule/schedule-data", () => ({
     }),
   ),
   heartbeatScheduleEditSession: vi.fn(),
-  takeoverScheduleEditSession: vi.fn().mockImplementation(() =>
-    Promise.resolve({
-      status: "acquired",
-      session: {
-        id: "77777777-7777-4777-8777-777777777777",
-        workspace_id: scheduleFixture.workspace_id,
-        week_start: scheduleFixture.week_start,
-        source_kind: "published",
-        source_draft_id: null,
-        source_revision: 1,
-        holder_user_id: "88888888-8888-4888-8888-888888888888",
-        location_ids: ["11111111-1111-4111-8111-111111111111"],
-        holder_name: "Development Owner",
-        revision: 1,
-        dirty: false,
-        last_heartbeat: "2026-08-17T12:00:00Z",
-        expires_at: "2026-08-17T12:04:00Z",
-        shifts: scheduleFixture.shifts.map((shift) => ({
-          ...shift,
-          unpaid_break_minutes: 30,
-          revision: 1,
-        })),
-      },
-    }),
-  ),
   createScheduleShift: vi.fn(),
   createScheduleShifts: vi.fn(),
   bulkDeleteShifts: vi.fn(),
@@ -2542,8 +2512,6 @@ describe("App", () => {
 
   it("says who is editing a draft somebody else has open", async () => {
     const acquireMock = vi.mocked(acquireScheduleEditSession);
-    const takeoverMock = vi.mocked(takeoverScheduleEditSession);
-    takeoverMock.mockClear();
     const kitchenPlan = {
       id: "99999999-9999-4999-8999-999999999995",
       workspace_id: scheduleFixture.workspace_id,
@@ -2596,7 +2564,6 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(acquireMock).toHaveBeenCalledTimes(2));
     expect(acquireMock.mock.calls[1]?.[3]).toBe(kitchenPlan.id);
-    expect(takeoverMock).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(
         screen.queryByRole("dialog", { name: "Draft is being edited" }),

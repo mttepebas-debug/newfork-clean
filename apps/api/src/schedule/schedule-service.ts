@@ -152,11 +152,6 @@ export interface ScheduleReadService {
     workspaceId: string,
     sessionId: string,
   ): Promise<ScheduleEditSession>;
-  takeover(
-    actorUserId: string,
-    workspaceId: string,
-    sessionId: string,
-  ): Promise<ScheduleEditAcquireResult>;
   mutateShift(input: {
     actorUserId: string;
     workspaceId: string;
@@ -586,18 +581,6 @@ export function createScheduleReadService(options: {
       );
       if (error) throw rpcFailure(error);
       return scheduleEditSessionSchema.parse(data);
-    },
-    async takeover(actorUserId, workspaceId, sessionId) {
-      const { data, error } = await client.rpc(
-        "takeover_schedule_edit_session_service",
-        {
-          actor_user_id: actorUserId,
-          target_workspace_id: workspaceId,
-          target_session_id: sessionId,
-        },
-      );
-      if (error) throw rpcFailure(error);
-      return scheduleEditAcquireResultSchema.parse(data);
     },
     async mutateShift(input) {
       const { data, error } = await client.rpc(

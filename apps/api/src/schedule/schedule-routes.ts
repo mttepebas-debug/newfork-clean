@@ -41,10 +41,6 @@ const activeScheduleQuerySchema = z.object({
   week_start: z.string().date().optional(),
   view: scheduleViewSchema.default("week"),
 });
-const querySchema = z.object({
-  date: z.string().date(),
-  view: scheduleViewSchema.default("week"),
-});
 const weekQuerySchema = z.object({ week_start: z.string().date() });
 const pendingOpsQuerySchema = weekQuerySchema.extend({
   location_id: z.string().uuid().optional(),
@@ -129,12 +125,6 @@ const acquireBodySchema = z.object({
 const activeSessionBodySchema = z.object({
   session_id: z.string().uuid(),
 });
-const activeTakeoverBodySchema = z
-  .object({
-    session_id: z.string().uuid().optional(),
-    lock_id: z.string().uuid().optional(),
-  })
-  .refine((value) => value.session_id || value.lock_id);
 const materializeLiveDraftBodySchema = z.object({
   week_start: z.string().date(),
   location_ids: z.array(z.string().uuid()).min(1),
@@ -286,50 +276,6 @@ export function registerScheduleRoutes(
         context.membership.status !== "active")
     ) {
       return reply.status(404).send({ error: "Workspace not found" });
-    }
-  });
-
-  app.get("/v1/workspaces/:workspaceId/schedule", async (request, reply) => {
-    const params = paramsSchema.safeParse(request.params);
-    const query = querySchema.safeParse(request.query);
-    if (!params.success || !query.success)
-      return reply
-        .status(400)
-        .send({ error: "Valid schedule period required" });
-
-    const token = bearerToken(request.headers.authorization);
-    const context =
-      token && options.contextResolver
-        ? await options.contextResolver.resolve(token, params.data.workspaceId)
-        : null;
-    if (!context)
-      return reply.status(401).send({ error: "Valid bearer session required" });
-    if (
-      context.workspace.id !== params.data.workspaceId ||
-      context.membership.role === "employee" ||
-      !context.permissions.includes("schedule.read")
-    )
-      return reply
-        .status(403)
-        .send({ error: "Manager schedule read access required" });
-    if (!options.service)
-      return reply
-        .status(503)
-        .send({ error: "Schedule read service is not configured" });
-
-    try {
-      return reply.send(
-        await options.service.getReadModel(
-          context.userId,
-          params.data.workspaceId,
-          query.data.date,
-        ),
-      );
-    } catch (error) {
-      return reply.status(409).send({
-        error:
-          error instanceof Error ? error.message : "Schedule is unavailable",
-      });
     }
   });
 
@@ -1700,32 +1646,6 @@ export function registerScheduleRoutes(
     }
   });
 
-  app.post("/schedule/edit-lock/takeover", async (request, reply) => {
-    const context = authorize(await activeActor(request, options), "schedule.edit");
-    const body = activeTakeoverBodySchema.safeParse(request.body);
-    if (!body.success)
-      return reply.status(400).send({ error: "Valid edit session required" });
-    // ponytail: owner/admin only until the core has a takeover action.
-    if (context.membership.role !== "owner" && context.membership.role !== "admin")
-      return reply
-        .status(403)
-        .send({ error: "Schedule takeover access required" });
-    if (!options.service)
-      return reply
-        .status(503)
-        .send({ error: "Schedule service is not configured" });
-    try {
-      return reply.send(
-        await options.service.takeover(
-          context.userId,
-          context.workspace.id,
-          body.data.session_id ?? body.data.lock_id!,
-        ),
-      );
-    } catch (error) {
-      return scheduleError(reply, error);
-    }
-  });
 
   app.delete("/schedule/edit-lock/release", async (request, reply) => {
     const context = authorize(await activeActor(request, options), "schedule.edit");
