@@ -65,7 +65,10 @@
   width: min(100% - 48px, 420px);
   text-align: center;
 }
-.pb-stage-narrow .onboarding-field,
+.pb-stage-narrow .onboarding-field {
+  /* A label read over its field, so those stay left even when the page is centred. */
+  text-align: left;
+}
 .pb-stage {
   width: min(100% - 48px, 600px);
   margin: 0 auto;
