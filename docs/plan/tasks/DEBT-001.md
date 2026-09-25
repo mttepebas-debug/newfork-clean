@@ -17,7 +17,7 @@ In scope (P0):
 Out of scope (ayrı task/backlog):
 - P1: OPS-013 (Fastify logger + `setErrorHandler` + hata izleme) ve tipli hata sınıfları + tek handler (15 `requestError` kopyası silinir). İkisi `app.ts`'e iniyor, sıralı yürür.
 - P1: CI'da 119 pgTAP testi için ikinci job; Kiosk ve Time Entries kararı (sil ya da güvenlik yüzeyini sahiplen).
-- P2: `schedule-routes.ts` bölünmesi, migration baseline squash (pencere lansmanda kapanıyor), `shared/index.ts` saf barrel, `/v1` birleştirme, `docs/rebuild` arşivi + ADR'ler, monolit test dosyalarının bölünmesi.
+- P2: `schedule-routes.ts` bölünmesi, migration baseline squash (pencere lansmanda kapanıyor), `shared/index.ts` saf barrel, `/v1` birleştirme, `docs/archive/rebuild` arşivi + ADR'ler, monolit test dosyalarının bölünmesi.
 - Fırsatçı: bağımlılık major'ları tek parti, `SchedulePage.tsx` parça parça çıkarım, E2E smoke akışının öne alınması.
 
 Done when: `pnpm audit --prod` high/moderate 0; CI docs commit'inde tetiklenmiyor ve lint+build adımları yeşil; `scheduling-shared` yok ve web/api testleri PASS; branch push + rapor.

@@ -60,21 +60,6 @@
   outline: none;
   box-shadow: none;
 }
-.job-footer-summary {
-  display: grid !important;
-  justify-items: start;
-  gap: 4px !important;
-}
-.job-delete-button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--job-error);
-  font-size: 12px !important;
-}
-.job-delete-button:hover {
-  text-decoration: underline;
-}
 .catalog-delete-action {
   margin: 0;
   font-size: 12px;
@@ -173,24 +158,6 @@
   margin: 0;
   padding: 0;
   flex: 0 0 14px;
-}
-.job-drawer-footer .catalog-delete-action {
-  margin: 0;
-}
-.job-drawer-footer:has(.catalog-delete-confirm) {
-  flex-wrap: wrap;
-}
-.job-drawer-footer:has(.catalog-delete-confirm) .job-footer-summary {
-  width: 100%;
-}
-.job-danger-button {
-  border: 1px solid #a53936;
-  background: #a53936;
-  color: white;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 12px !important;
-  font-weight: 600 !important;
 }
 .job-primary-button,
 .job-secondary-button,
@@ -914,14 +881,6 @@
   margin: 0;
   font-size: 12px;
 }
-.job-drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 240;
-  background: #14251b50;
-  display: flex;
-  justify-content: flex-end;
-}
 .job-assignment-drawer {
   position: relative;
   width: min(640px, 100%);
@@ -1107,23 +1066,6 @@
   display: flex;
   gap: 4px;
 }
-.job-drawer-footer {
-  padding: 16px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  background: var(--job-subtle);
-  border-top: 1px solid var(--job-border);
-}
-.job-drawer-footer > span {
-  font-size: 11px;
-  color: var(--job-muted);
-}
-.job-drawer-footer > div {
-  display: flex;
-  gap: 8px;
-}
 .job-save-notice {
   padding: 10px 24px;
   font-size: 12px;
@@ -1308,16 +1250,6 @@
   }
   .job-drawer-pagination {
     padding: 6px 16px;
-  }
-  .job-drawer-footer {
-    padding: 12px 16px;
-    flex-wrap: wrap;
-  }
-  .job-drawer-footer > span {
-    flex-basis: 100%;
-  }
-  .job-drawer-footer > div {
-    margin-left: auto;
   }
   .job-drawer-job-icon {
     flex-basis: 38px;
@@ -1663,8 +1595,7 @@
 .document-catalog-settings-page
   .job-catalog-editor
   .document-options:not(.document-formats)
-  legend,
-.acknowledgement-page .job-catalog-editor .acknowledgement-options legend {
+  legend {
   grid-column: 1 / -1;
 }
 .jobs-settings-page .job-catalog-editor .document-options legend {
@@ -1687,8 +1618,7 @@
 .document-catalog-settings-page
   .job-catalog-editor
   .document-options:not(.document-formats)
-  > label,
-.acknowledgement-page .job-catalog-editor .acknowledgement-options > label {
+  > label {
   min-height: 0;
   padding: 7px;
   border: 1px solid color-mix(in srgb, var(--job-border) 74%, transparent);
@@ -1734,10 +1664,6 @@
   border: 0;
   min-height: 30px;
   padding: 4px 0;
-}
-.jobs-settings-page .job-catalog-editor .acknowledgement-options {
-  grid-column: 1 / -1;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .jobs-settings-page .number-suffix-input {
   display: grid;
@@ -1804,8 +1730,7 @@
   .document-catalog-settings-page
     .job-catalog-editor
     .document-options:not(.document-formats),
-  .jobs-settings-page .job-catalog-editor .document-formats,
-  .jobs-settings-page .job-catalog-editor .acknowledgement-options {
+  .jobs-settings-page .job-catalog-editor .document-formats {
     grid-template-columns: minmax(0, 1fr);
   }
   .document-catalog-fields .document-description-field {
@@ -1917,8 +1842,7 @@
 .catalog-drawer .job-catalog-editor .document-options:not(.document-formats) {
   grid-template-columns: minmax(0, 1fr);
 }
-.catalog-drawer .job-editor-footer,
-.catalog-drawer .job-drawer-footer {
+.catalog-drawer .job-editor-footer {
   flex: 0 0 auto;
   padding: 12px 16px max(12px, env(safe-area-inset-bottom));
   margin: 0;

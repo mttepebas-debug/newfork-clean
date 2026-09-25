@@ -770,17 +770,6 @@
   position: static;
   margin-top: 0;
 }
-.onboarding-weekly-step {
-  min-width: 0;
-}
-.onboarding-weekly-step .weekly-preferences-footer {
-  position: static;
-}
-.onboarding-weekly-continue {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 16px;
-}
 .weekly-preferences-footer .weekly-preferences-error {
   color: var(--wp-red);
 }

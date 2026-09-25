@@ -881,27 +881,11 @@
   line-height: 1.7;
   margin: 0;
 }
-.hub-shift-row:target,
 .hub-action-list > div:target,
 .hub-panel:target {
   outline: 2px solid #749a76;
   outline-offset: 5px;
   scroll-margin: 25px;
-}
-.eh-subpage-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.eh-home-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  font-size: 12px;
-  color: #597561;
-  text-decoration: none;
 }
 .eh-loading {
   padding: 36px;
@@ -1145,9 +1129,6 @@
   }
   .eh-sheet-time {
     font-size: 30px;
-  }
-  .employee-hub-page .hub-tabs {
-    display: none;
   }
   .employee-hub-page .hub-panel input,
   .employee-hub-page .hub-panel select,

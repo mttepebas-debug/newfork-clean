@@ -753,14 +753,6 @@
   }
 }
 @media (max-width: 600px) {
-  .employee-hub-page:has(.sx-root) .eh-subpage-header {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 12px;
-  }
-  .employee-hub-page:has(.sx-root) .eh-subpage-header > div:first-child {
-    grid-column: 1 / -1;
-  }
   .sx-root .sx-heading {
     flex-direction: column;
     gap: 16px;

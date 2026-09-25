@@ -7,7 +7,7 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - BL-008 Workspace avatar upload/crop.
 - BL-027 Resend anahtarını yenile (provider smoke testinden önce). Değer belgelere yazılmaz.
 - BL-034 Landing page kapsam kararı: public ziyaretçiyi doğru auth/onboarding yoluna yönlendirme.
-- BL-038 Schedule Templates: 6 ürün kararı ve UAT (ARGE: docs/rebuild/bl-038-schedule-templates-arge-2026-09-11.md).
+- BL-038 Schedule Templates: 6 ürün kararı ve UAT (ARGE: docs/archive/rebuild/bl-038-schedule-templates-arge-2026-09-11.md).
 - ~~BL-040 Line Up sadeleştirme.~~ KAPANDI 2026-09-24: Line Up FOUNDATION-B 5.6'da silindi; sıfırdan tasarımı ayrı proje (girdi: `docs/plan/research/lineup-2026-09-24.md`).
 - BL-041 Requests > Shift Changes baştan sona elden geçirme.
 - BL-042 Employee drawer UI polish.
@@ -88,7 +88,7 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
   - P1: tipli hata sınıfları + tek Fastify `setErrorHandler`; 15 `requestError` kopyası HTTP status'u İngilizce metin eşleşmesinden türetiyor (139 `throw new Error`, 93 `message.includes`). Sessiz status regresyonu, substring çakışması ve i18n duvarı. OPS-013 ile aynı dosyaya iner, sıralı yürür.
   - P1: CI'da 119 pgTAP testi için ikinci job (RLS/tenant izolasyonu şu an CI'da hiç koşmuyor).
   - P1: Kiosk (4.106 satır, 7 canlı `/v1/kiosk` route) ve Time Entries (1.569 satır) kararı: sil ya da güvenlik yüzeyini sahiplen. Menüde gizli olmak erişilemez değil.
-  - P2: `schedule-routes.ts` 3.458 satır / 47 route bölünmesi; migration baseline squash (pencere lansmanda kapanıyor, production verisi yok); `shared/index.ts` saf barrel + subpath import; `/v1` birleştirme ve vercel.json sadeleştirme; `docs/rebuild` (199 bayat belge) arşivi + ADR'ler; `App.test.tsx`/`app.test.ts` monolitlerinin bölünmesi.
+  - P2: `schedule-routes.ts` 3.458 satır / 47 route bölünmesi; migration baseline squash (pencere lansmanda kapanıyor, production verisi yok); `shared/index.ts` saf barrel + subpath import; `/v1` birleştirme ve vercel.json sadeleştirme; `docs/archive/rebuild` (199 bayat belge) arşivi + ADR'ler; `App.test.tsx`/`app.test.ts` monolitlerinin bölünmesi.
   - Fırsatçı: bağımlılık major'ları tek parti (vitest 3→5, vite 7→8, react-router 7→8, TypeScript 5.9→7 …); `SchedulePage.tsx` (55 useState + 26 useEffect) parça parça çıkarım; E2E smoke akışını BL-058'in önüne çekme.
 - Documents: migration öncesi published kayıtların `published_at`'i null; listede "-" görünüyor. Backfill istenirse ayrı task (UI-DOC-002 bulgusu).
 - Documents: DB trigger'ı published tanımın düzenlenmesini reddediyor; drawer bu yüzden salt okunur. Published dokümanı doğrudan düzenlemek istenirse ayrı DB task'ı gerekir (UI-DOC-002 bulgusu, kullanıcı mevcut davranışı onayladı).

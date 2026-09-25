@@ -8,7 +8,7 @@ Goal: Bekleyen daveti olan ve owner üyeliği olmayan hesap workspace yaratamas�
 
 Kullanıcı kararları (2026-09-16; ayrıntı planda):
 - Create workspace kuralı (UI ve DB aynı): active owner üyeliği varsa yaratabilir; üyeliği yoksa ve bekleyen davet de yoksa yaratabilir; bekleyen davet var + owner üyeliği yok → yaratamaz; owner olmayan üyelik → yaratamaz (mevcut guard).
-- KİLİTLİ KARAR DEĞİŞİKLİĞİ: docs/rebuild `onboarding-master-implementation-plan-2026-09-05.md:283-293` "Start my own daveti bekler bırakır" → sert engel. Gerekçe: davetli kişi employee'dir; yanlışlıkla işveren hesabı ve hatalı kurulum döngüsü önlenir.
+- KİLİTLİ KARAR DEĞİŞİKLİĞİ: docs/archive/rebuild `onboarding-master-implementation-plan-2026-09-05.md:283-293` "Start my own daveti bekler bırakır" → sert engel. Gerekçe: davetli kişi employee'dir; yanlışlıkla işveren hesabı ve hatalı kurulum döngüsü önlenir.
 - Onboarding workspace'e aittir; çoklu üyelikte doğru workspace'in case'i açılır.
 - Süresi dolmuş davet pending sayılmaz (`expires_at > now()`); guard ve liste aynı filtreyi kullanır.
 

@@ -29,4 +29,4 @@ committed.
 ## Plan
 
 Current plan, tasks and backlog live in [`docs/plan/`](docs/plan/ROADMAP.md).
-`docs/rebuild/` is historical reference only.
+`docs/archive/rebuild/` is historical reference only.

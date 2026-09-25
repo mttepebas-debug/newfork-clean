@@ -24,20 +24,6 @@
   flex: 1 1 auto;
   max-width: none;
 }
-.announcement-header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.announcement-header-actions > .job-primary-button {
-  flex-shrink: 0;
-  width: auto;
-}
-.announcement-header-actions .requests-tabs {
-  margin: 0;
-}
 .announcements-catalog-page .requests-tabs button {
   font-size: 13px;
   font-weight: 700;
@@ -78,18 +64,6 @@
   display: block;
   max-width: 100%;
   margin-top: 2px;
-}
-.announcement-column-sort {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0;
-  border: 0;
-  color: inherit;
-  background: transparent;
-  font-size: inherit !important;
-  font-weight: inherit !important;
-  text-align: left;
 }
 .announcement-status {
   display: inline-flex;
@@ -287,17 +261,6 @@
 .announcement-all-option {
   font-weight: 600;
   border-bottom: 1px solid var(--job-border);
-}
-.announcements-catalog-page
-  :is(
-    .job-primary-button,
-    .job-row-identity,
-    .job-row-menu summary,
-    .announcement-column-sort,
-    .announcement-audience-picker summary
-  ):is(:focus, :focus-visible) {
-  outline: none;
-  box-shadow: none;
 }
 .announcements-catalog-page .form-error {
   color: var(--job-error);

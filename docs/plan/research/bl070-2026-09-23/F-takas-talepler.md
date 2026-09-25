@@ -30,7 +30,7 @@ Deneylerde kullanılan kurgu (hepsi geri alındı): lokasyonlar **Kadıköy** ve
 2. Test kimliği yerinde değiştirir: bekçi yalnız müsaitlik ve izne bakar, yazış geçer, talep "invalidated" olur.
 3. Vardiyanın sahibi değişir (Ali yerine Mehmet): talep geçersizleşir.
 
-**Ne değişti:** 15 Eylül BL-064 (`20260915081826_bl064_conflict_severity.sql`, satır 60 ve 170–186). Değerlendiriciye gerçek zaman çakışması, yol süresi ve dinlenme eklendi. Değerlendirici yalnız kontrol ettiği vardiyanın **mantıksal** kimliğini dışarıda bırakıyor. Yazılı gerekçe `docs/rebuild/bl-064-schedule-conflict-plan-2026-09-15.md` §5'te, "Değiştirilemeyen Sistem Blokları" başlığı altında: "Gerçek zaman overlap'i: aynı employee'ye saatleri kesişen iki shift". Kural için gerekçe var; tek kimlikle dışlama için yazılı gerekçe yok.
+**Ne değişti:** 15 Eylül BL-064 (`20260915081826_bl064_conflict_severity.sql`, satır 60 ve 170–186). Değerlendiriciye gerçek zaman çakışması, yol süresi ve dinlenme eklendi. Değerlendirici yalnız kontrol ettiği vardiyanın **mantıksal** kimliğini dışarıda bırakıyor. Yazılı gerekçe `docs/archive/rebuild/bl-064-schedule-conflict-plan-2026-09-15.md` §5'te, "Değiştirilemeyen Sistem Blokları" başlığı altında: "Gerçek zaman overlap'i: aynı employee'ye saatleri kesişen iki shift". Kural için gerekçe var; tek kimlikle dışlama için yazılı gerekçe yok.
 
 **Yeni davranış:**
 - Senaryo 1 ve 3 aynen çalışıyor. Deneyle doğrulandı: 155. satır "vardiyayı sil, yeni kimlikle yeniden yayınla" olarak yazılınca dosya **43/43 geçiyor** (`F_wect_variant.sql`).
@@ -46,7 +46,7 @@ Deneylerde kullanılan kurgu (hepsi geri alındı): lokasyonlar **Kadıköy** ve
   - Beşiktaş yöneticisi Berk onayladı. Önizlemede müsaitlik çakışması **görünmedi**; önizleme "Position and location match, No assignment blockers" dedi.
   - Sistem kaydı: "Employee voluntarily accepted this shift through Shift Hub." Ayşe bu çakışmayı hiç görmedi.
   - Hedefe göre cover'da bütün kriterler sağlanmalı. Tek istisna: release pickup'ta çalışanın **kendi** override'ı. Bu davranış hedefle çelişiyor.
-- Bu davranışın yazılı bir dayanağı var. `docs/rebuild/availability-redesign-spec-2026-09-08.md` §6: "…tarih/saat/lokasyonu değişirse kullanıcı kararına göre kabul korunur, çalışana değişiklik bildirilir… yeniden kabul istemez". Bir gün önceki Shift Hub planı ise tersini söylüyordu (`shift-hub-implementation-plan-2026-09-07.md` §5): "Maddi koşul değişir | Rıza geçersiz; güncel sürüme yeniden başvuru/kabul". 8 Eylül kararı yeni hedefle yeniden sınanmalı.
+- Bu davranışın yazılı bir dayanağı var. `docs/archive/rebuild/availability-redesign-spec-2026-09-08.md` §6: "…tarih/saat/lokasyonu değişirse kullanıcı kararına göre kabul korunur, çalışana değişiklik bildirilir… yeniden kabul istemez". Bir gün önceki Shift Hub planı ise tersini söylüyordu (`shift-hub-implementation-plan-2026-09-07.md` §5): "Maddi koşul değişir | Rıza geçersiz; güncel sürüme yeniden başvuru/kabul". 8 Eylül kararı yeni hedefle yeniden sınanmalı.
 - Hedefle uyumlu olanlar:
   - swap iki lokasyonun oyunu bekler;
   - vardiya taşınınca eski lokasyonun yöneticisi onaylayamaz, yenisi onaylar;

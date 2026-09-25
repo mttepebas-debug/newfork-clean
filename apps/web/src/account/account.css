@@ -395,25 +395,19 @@
 }
 
 .account-main .workspace-list,
-.account-main .create-workspace-form,
 .account-main .workspace-closure-panel,
 .account-main .workspace-transfer-panel {
   border-radius: 8px;
   box-shadow: none;
 }
 
-.account-main .workspace-list,
-.account-main .create-workspace-form {
+.account-main .workspace-list {
   border: 0;
   background: #f8faf8;
 }
 
 .account-main .workspace-list {
   padding: 4px 18px;
-}
-
-.account-main .create-workspace-form {
-  margin-top: 12px;
 }
 
 .account-main .notification-preference-card {
@@ -555,7 +549,6 @@
 .account-main .workspace-row > div:first-child { min-width: 0; }
 .account-main .workspace-row > div:first-child strong,
 .account-main .workspace-row > div:first-child span { overflow-wrap: anywhere; }
-.active-workspace { gap: 5px; }
 .workspace-row-actions { flex: 0 0 auto; }
 /* The kit row brings its own side padding; this panel already has one. */
 .account-main .workspace-list .pb-row { padding-inline: 0; }

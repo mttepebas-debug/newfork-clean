@@ -65,7 +65,7 @@ Kısa sözlük (raporda tekrar tekrar geçenler):
 | `time_off_cancellation_periods.request_id` | izin iptal talebinin dönemleri | `20260909020001` (09-09) |
 | `employee_onboarding_requirements.submitted_document_id`, `.approved_document_id` | onboarding belgesinin gönderilen/onaylanan sürümü | `20260915235543_bl052` (09-15) |
 
-**Eski davranış:** 2026-09-08 `20260908170000_tenant_owned_composite_foreign_keys.sql` bütün bağlantıları "(id, workspace_id)" çiftine çevirdi; `docs/rebuild/onboarding-master-implementation-plan-2026-09-05.md:210,734` testin o gün geçtiğini yazıyor. Senaryolar:
+**Eski davranış:** 2026-09-08 `20260908170000_tenant_owned_composite_foreign_keys.sql` bütün bağlantıları "(id, workspace_id)" çiftine çevirdi; `docs/archive/rebuild/onboarding-master-implementation-plan-2026-09-05.md:210,734` testin o gün geçtiğini yazıyor. Senaryolar:
 - Bir servis hatası Meyhouse üyeliğini Employee Demo'daki bir kayda bağlamaya çalışır → veritabanı reddeder.
 - Bir izin iptal dönemi başka işletmenin iptal talebine bağlanmaya çalışır → reddedilir.
 
@@ -140,7 +140,7 @@ Kısa sözlük (raporda tekrar tekrar geçenler):
 - #35 "Operational Edit can terminate common record across locations" — aynı manager bu kişiyi işten çıkarabilmeli.
 - #46 "Operational archive suspends linked employee …" — işten çıkarılan kişinin uygulama hesabı askıya alınmalı (#35'e bağlı).
 
-**Eski davranış:** 2026-09-14 BL-051 (rol/izin sistemi, `fc2c4da`), tasarım belgesi `docs/rebuild/bl-051-roles-permissions-design-2026-09-14.md`. O günkü yazılı kararlar:
+**Eski davranış:** 2026-09-14 BL-051 (rol/izin sistemi, `fc2c4da`), tasarım belgesi `docs/archive/rebuild/bl-051-roles-permissions-design-2026-09-14.md`. O günkü yazılı kararlar:
 - "Bir ortak lokasyon yeterlidir: ilgili Edit yetkisi varsa başka lokasyonlarda da çalışan kişinin ortak kaydı üzerinde işlem yapabilir … arşivleme Edit'e dahildir."
 - "Owner yetkilendirirse Admin alt rolleri yönetebilir."
 - "General, Locations, … Manager'da varsayılan kapalı. Açıkça yetki verilirse organizasyon genelini etkileyen ayarlar açılabilir; etki kapsamı belirtilir."
@@ -199,7 +199,7 @@ Bu kararlarla `20260914102120_bl051_employee_membership_transitions.sql` üyelik
 - #12 "active shift type names are unique ignoring case" — "breakfast" ikinci kez eklenemesin; test saatsiz ekliyor, saat kuralı önce reddediyor.
 - #20 "manager cannot create a shift type" — manager eklemeye çalışınca "yetki yok" beklenir; test saatsiz ekliyor, saat kuralı önce reddediyor.
 
-**Eski davranış:** 2026-08/09-07 arası vardiya tipi saatsiz olabiliyordu (`docs/rebuild/availability-e2e-audit…-2026-09-07.md:253,416`: "saatsiz türlerde … doğrulama gerektiği görünür"). Eşit saat tablo kuralıyla (23514) reddediliyordu.
+**Eski davranış:** 2026-08/09-07 arası vardiya tipi saatsiz olabiliyordu (`docs/archive/rebuild/availability-e2e-audit…-2026-09-07.md:253,416`: "saatsiz türlerde … doğrulama gerektiği görünür"). Eşit saat tablo kuralıyla (23514) reddediliyordu.
 - Owner "Brunch" tipini saatsiz ekler → kabul; o tipten vardiya "saat doğrulanmalı" olarak görünür.
 - Owner "Invalid" 09:00-09:00 ekler → 23514.
 - Ali (manager) tip eklemeye çalışır → RLS reddeder.

@@ -1163,7 +1163,7 @@
    {
     "claim": "This repo is a rebuild whose brief already prescribed the missing controls",
     "verdict": "confirmed",
-    "evidence": "The first commit, 90f0fad (2026-08-18), is titled 'Initial clean rebuild foundation'. docs/rebuild/handoff-reference.md lists kiosk and time entries as 'Forbidden Legacy Domains'. C:/Users/TheWe/newfork/docs/clean-rebuild-ai-handoff/06-technology-and-architecture.md:78 requires permission checks to include tenant and location scope; :102 says avoid SECURITY DEFINER as a shortcut; :123-124 requires owner/admin/manager/employee test users and allowed/denied location tests. Today the schema has 6 kiosk and 8 time tables, 639 SECURITY DEFINER functions and no matrix test. The previous generation had 569 migrations (77,757 lines) and 3,094 commits from April 21 to August 16.",
+    "evidence": "The first commit, 90f0fad (2026-08-18), is titled 'Initial clean rebuild foundation'. docs/archive/rebuild/handoff-reference.md lists kiosk and time entries as 'Forbidden Legacy Domains'. C:/Users/TheWe/newfork/docs/clean-rebuild-ai-handoff/06-technology-and-architecture.md:78 requires permission checks to include tenant and location scope; :102 says avoid SECURITY DEFINER as a shortcut; :123-124 requires owner/admin/manager/employee test users and allowed/denied location tests. Today the schema has 6 kiosk and 8 time tables, 639 SECURITY DEFINER functions and no matrix test. The previous generation had 569 migrations (77,757 lines) and 3,094 commits from April 21 to August 16.",
     "how_verified": "both"
    },
    {
@@ -1313,7 +1313,7 @@
    },
    {
     "metric": "Decided behaviours a full rebuild must re-derive",
-    "value": "4,275 pgTAP assertions + 2,062 unit tests + 48 plan tasks + 63 backlog items + 142 docs/rebuild files + 24 memory decision files",
+    "value": "4,275 pgTAP assertions + 2,062 unit tests + 48 plan tasks + 63 backlog items + 142 docs/archive/rebuild files + 24 memory decision files",
     "source": "repo counts"
    },
    {

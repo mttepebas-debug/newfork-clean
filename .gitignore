@@ -26,12 +26,12 @@ __pycache__/
 !.env.*.example
 
 # Generated browser/API proof payloads stay local; keep README and source scripts
-/docs/rebuild/*proof*/**/*.png
-/docs/rebuild/*proof*/**/*.jpg
-/docs/rebuild/*proof*/**/*.jpeg
-/docs/rebuild/*proof*/**/*.json
-/docs/rebuild/*proof*/**/*.log
-/docs/rebuild/*proof*/**/*.txt
+/docs/archive/rebuild/*proof*/**/*.png
+/docs/archive/rebuild/*proof*/**/*.jpg
+/docs/archive/rebuild/*proof*/**/*.jpeg
+/docs/archive/rebuild/*proof*/**/*.json
+/docs/archive/rebuild/*proof*/**/*.log
+/docs/archive/rebuild/*proof*/**/*.txt
 
 # Claude Code local state
 .claude/worktrees/

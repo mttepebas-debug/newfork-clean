@@ -133,7 +133,7 @@ Hepsi NULL, çünkü tanım taslak kaldığı için ne önizleme ne eşitleyici 
 - Önizleme, gönderilen lokasyon listesindeki **her** lokasyonun yöneticinin kapsamında olmasını istiyor.
 - Kaydetme servisi (`save_employee`) ise yalnız **yeni eklenen** lokasyonlara bakıyor. Kapsam dışındaki mevcut lokasyonun listede kalmasını zaten şart koşuyor.
 - Sonuç: Kadıköy manager'ı Ali, Kadıköy + Beşiktaş'ta çalışan ve daveti kabul etmiş Ayşe'nin job'ını değiştirince önizleme 42501 "valid scoped assignments required" hatası veriyor. Drawer bu yüzden Save'i kilitliyor. Kaydetme servisi aynı değişikliği kabul ediyor.
-- Bu, 14 Eylül BL-051 kararına aykırı: *"Bir ortak lokasyon yeterlidir: ilgili Edit yetkisi varsa başka lokasyonlarda da çalışan kişinin ortak kaydı üzerinde işlem yapabilir"* (`docs/rebuild/bl-051-roles-permissions-design-2026-09-14.md`).
+- Bu, 14 Eylül BL-051 kararına aykırı: *"Bir ortak lokasyon yeterlidir: ilgili Edit yetkisi varsa başka lokasyonlarda da çalışan kişinin ortak kaydı üzerinde işlem yapabilir"* (`docs/archive/rebuild/bl-051-roles-permissions-design-2026-09-14.md`).
 - → **KAPSAM MODELİ SORUSU (K3)**, aşağıda.
 
 **Kanıt:**
@@ -176,7 +176,7 @@ Senaryolar:
 3. Taylor Photo ID yükler → eski onay çağrısı kabul eder, belge hemen tamamlanır.
 
 **Ne değişti:**
-- (a) 14 Eylül, commit `fc2c4da` (BL-051 roller; commit mesajı yalnız "checkpoint"). Yazılı gerekçe `docs/rebuild/bl-051-roles-permissions-design-2026-09-14.md`: *"Manager kapsamı çalışan kaydında kendisine atanmış çalışma lokasyonlarından gelir"*, *"Manager için private information ve employee documents başlangıçta kapalı"*. Uygulama iki parça:
+- (a) 14 Eylül, commit `fc2c4da` (BL-051 roller; commit mesajı yalnız "checkpoint"). Yazılı gerekçe `docs/archive/rebuild/bl-051-roles-permissions-design-2026-09-14.md`: *"Manager kapsamı çalışan kaydında kendisine atanmış çalışma lokasyonlarından gelir"*, *"Manager için private information ve employee documents başlangıçta kapalı"*. Uygulama iki parça:
   - `enforce_role_location_scope` tetikleyicisi manager'ın `all_locations` değerini **sessizce false yapıyor**.
   - Yasal ad onayı "employees.private.manage" iznine bağlandı, mesaj "private information edit access required".
 - (b) 16 Eylül (`20260916052509`): yeni belgeler Draft başlıyor. Testteki Photo ID doğrudan eklenip varsayılan olarak Draft kalıyor.
