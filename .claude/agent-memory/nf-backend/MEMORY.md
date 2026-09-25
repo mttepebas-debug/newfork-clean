@@ -1,1 +1,1 @@
-- [Authz matrix twin](authz-matrix-twin.md) — dump command, hash guard, uncovered-branch trap, can() no-target source, API drops reason
+- [Authz matrix twin](authz-matrix-twin.md) — dump command, hash guard, uncovered-branch trap, can() no-target source, global handler carries reason (BL-128)

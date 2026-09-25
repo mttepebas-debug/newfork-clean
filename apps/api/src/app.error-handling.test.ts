@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildApp } from "./app.js";
+import { rpcFailure } from "./http-error.js";
 
 describe("api error handling", () => {
   it("answers an unknown route with a json body", async () => {
@@ -37,5 +38,50 @@ describe("api error handling", () => {
 
     expect(response.statusCode).toBe(418);
     expect((response.json() as { error: string }).error).toBe("Short and safe");
+  });
+
+  // BL-128: a no from the authorization core reaches the screen with its key,
+  // in the same shape the route helpers send: { error, reason, detail }.
+  it("carries the authz reason of a refusal thrown past the route", async () => {
+    const app = buildApp();
+    app.get("/__out_of_scope", async () => {
+      throw rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.out_of_scope" });
+    });
+
+    const response = await app.inject({ method: "GET", url: "/__out_of_scope" });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ error: "Not allowed", reason: "authz.out_of_scope" });
+  });
+
+  it("answers a non-member with 404 and authz.not_member", async () => {
+    const app = buildApp();
+    app.get("/__not_member", async () => {
+      throw rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.not_member" });
+    });
+
+    const response = await app.inject({ method: "GET", url: "/__not_member" });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ reason: "authz.not_member" });
+  });
+
+  it("gives a server failure no reason and no internals", async () => {
+    const app = buildApp();
+    app.get("/__db_down", async () => {
+      throw rpcFailure(
+        { message: "relation app_private.x does not exist", code: "XX000", hint: "check pg_stat", details: "select * from x" },
+        500,
+      );
+    });
+
+    const response = await app.inject({ method: "GET", url: "/__db_down" });
+
+    expect(response.statusCode).toBe(500);
+    const body = response.json() as Record<string, unknown>;
+    expect(body.error).toBe("Internal server error");
+    expect(body).not.toHaveProperty("reason");
+    expect(body).not.toHaveProperty("detail");
+    expect(response.payload).not.toMatch(/app_private|pg_stat|select \*/);
   });
 });

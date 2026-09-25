@@ -17,6 +17,14 @@ describe("isNoAccess", () => {
     expect(isNoAccess(new ScheduleRequestError("Forbidden", 403, { error: "Forbidden" }))).toBe(false);
   });
 
+  it("reads the API's shared error handler body (BL-128)", () => {
+    // { error, reason, requestId }: what the global handler sends for a no thrown past a route.
+    const body = { error: "Not allowed", reason: "authz.out_of_scope", requestId: "req-1" };
+    expect(isNoAccess(new ScheduleRequestError("Not allowed", 403, body))).toBe(true);
+    expect(isNoAccess(new ScheduleRequestError("Not allowed", 404, { ...body, reason: "authz.not_member" }))).toBe(true);
+    expect(isNoAccess(new ScheduleRequestError("Internal server error", 500, { error: "Internal server error", requestId: "req-1" }))).toBe(false);
+  });
+
   it("does not take other refusals for no access", () => {
     // A business rule, not a permission.
     expect(isNoAccess(new RequestError("Conflict", "schedule.past_week", undefined, 409))).toBe(false);

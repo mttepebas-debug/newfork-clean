@@ -267,8 +267,18 @@ export function buildApp(options: BuildAppOptions = {}) {
     const statusCode = error.statusCode ?? 500;
     if (statusCode >= 500) request.log.error({ err: error }, "request failed");
     else request.log.warn({ err: error, statusCode }, "request rejected");
+    if (statusCode >= 500)
+      return reply
+        .status(statusCode)
+        .send({ error: "Internal server error", requestId: request.id });
+    // Same shape as the route helpers' requestError: a refusal keeps its
+    // machine key (authz.* for the authorization core's no), so isNoAccess on
+    // the web reads it whichever path the error took.
+    const typed = error instanceof HttpError ? error : undefined;
     return reply.status(statusCode).send({
-      error: statusCode >= 500 ? "Internal server error" : error.message,
+      error: error.message,
+      ...(typed?.reason ? { reason: typed.reason } : {}),
+      ...(typed?.detail ? { detail: typed.detail } : {}),
       requestId: request.id,
     });
   });
