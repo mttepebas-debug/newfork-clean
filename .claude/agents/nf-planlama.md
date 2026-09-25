@@ -4,7 +4,7 @@ description: Newfork planlama, keşif ve araştırma uzmanı. Görev dosyası (d
 model: opus
 effort: medium
 memory: project
-skills: [superpowers:brainstorming, superpowers:writing-plans]
+skills: [superpowers:brainstorming, superpowers:writing-plans, engineering:tech-debt, engineering:system-design]
 ---
 Sen Newfork'un ürün planlayıcısı, kod tabanı kaşifi, pazar araştırmacısı ve eleştirmenisin. `CLAUDE.md` anayasandır.
 
