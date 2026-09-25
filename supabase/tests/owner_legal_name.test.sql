@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(31);
 
 -- BL-080. An owner gives their legal name at the first step of setup: the
 -- three name fields there are the legal name as well as the account's and the
@@ -213,6 +213,44 @@ select is(
    where employee_id in (tests.id('ln:owner'), tests.id('lx:owner'), tests.id('ln:ali'))),
   'Owner,Ownerson,Person',
   'and every refused change left the legal names where they were'
+);
+
+-- 5. The owner reads it back ------------------------------------------------------------
+
+create function pg_temp.read(actor_label text, workspace_label text)
+returns text language plpgsql as $$
+declare
+  result text;
+begin
+  select coalesce(legal_first_name, '<null>') || '|' || coalesce(legal_middle_name, '<null>')
+         || '|' || coalesce(legal_last_name, '<null>')
+  into result
+  from public.get_own_legal_name_service(tests.user(actor_label), tests.id(workspace_label));
+  return result;
+exception when others then
+  return pg_temp.refusal(format(
+    'select * from public.get_own_legal_name_service(%L, %L)',
+    tests.user(actor_label), tests.id(workspace_label)
+  ));
+end;
+$$;
+
+select is(pg_temp.read('ln:owner', 'ln'), 'Olcay|Deniz|Ownerson', 'the owner reads their own legal name back');
+
+-- An owner who has not passed the first step has none yet.
+select tests.new_user('blank:owner', 'Blank Owner');
+select tests.remember('blank', public.create_owner_workspace_service(tests.user('blank:owner'), 'Blank Co'));
+select is(pg_temp.read('blank:owner', 'blank'), '<null>|<null>|<null>', 'with no legal name on file every part reads as nothing');
+
+select is(
+  array[pg_temp.read('ln:ali', 'ln'), pg_temp.read('ln:ayse', 'ln'), pg_temp.read('ln:ada', 'ln')],
+  array['42501 authz.owner_only', '42501 authz.owner_only', '42501 authz.owner_only'],
+  'an employee, a manager and an admin cannot read it this way'
+);
+select is(
+  array[pg_temp.read('lx:owner', 'ln'), pg_temp.read('ln:owner', 'lx')],
+  array['42501 authz.not_member', '42501 authz.not_member'],
+  'and nobody reads it from another workspace'
 );
 
 select * from finish();

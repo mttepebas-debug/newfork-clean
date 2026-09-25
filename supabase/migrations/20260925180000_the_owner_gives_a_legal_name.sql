@@ -438,3 +438,43 @@ begin
   where employee_id = employee_row.id;
 end;
 $$;
+
+-- 6. The owner reads it back ------------------------------------------------------------
+--
+-- Account > Profile shows the legal name before it can be changed. Same rule as
+-- the change: owner only, the caller's own record in the workspace named. One
+-- row always; every part is null when no legal name is on file yet.
+create function public.get_own_legal_name_service(
+  actor_user_id uuid,
+  target_workspace_id uuid
+)
+returns table (
+  legal_first_name text,
+  legal_middle_name text,
+  legal_last_name text
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'workspace.setup');
+
+  return query
+  select private_profile.legal_first_name, private_profile.legal_middle_name,
+    private_profile.legal_last_name
+  from (select 1) always_one_row
+  left join public.employee_profiles employee
+    on employee.workspace_id = target_workspace_id
+   and employee.user_id = actor_user_id
+   and employee.archived_at is null
+  left join public.employee_private_profiles private_profile
+    on private_profile.employee_id = employee.id;
+end;
+$$;
+
+revoke all on function public.get_own_legal_name_service(uuid, uuid)
+  from public, anon, authenticated;
+grant execute on function public.get_own_legal_name_service(uuid, uuid)
+  to service_role;
