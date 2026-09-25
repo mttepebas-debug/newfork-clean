@@ -80,6 +80,10 @@ const ScheduleShiftDesignPage = lazy(
 const ScheduleShiftBadgeLabPage = lazy(
   () => import("./dev/ScheduleShiftBadgeLabPage"),
 );
+// Gated at the import, not only the route, so production builds drop the chunk.
+const FeedbackGalleryPage = import.meta.env.DEV
+  ? lazy(() => import("./dev/FeedbackGalleryPage"))
+  : () => null;
 const ScheduleTemplatesPage = lazy(
   () => import("./views/ScheduleTemplatesPage"),
 );
@@ -162,6 +166,10 @@ export function App() {
                   <Route
                     path="/dev/schedule-shift-design"
                     element={<ScheduleShiftDesignPage />}
+                  />
+                  <Route
+                    path="/dev/feedback"
+                    element={<FeedbackGalleryPage />}
                   />
                   <Route
                     path="/dev/employee-onboarding"
