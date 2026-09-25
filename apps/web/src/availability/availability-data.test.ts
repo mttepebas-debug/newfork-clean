@@ -30,7 +30,7 @@ describe("availability request paths", () => {
 
   it("names the workspace on onboarding availability calls", async () => {
     expect(await requestedUrl(true)).toBe(
-      `http://api.test/v1/me/onboarding/availability-lifecycle/weekly?workspaceId=${workspaceId}`,
+      `http://api.test/v1/me/onboarding/availability/weekly?workspaceId=${workspaceId}`,
     );
   });
 

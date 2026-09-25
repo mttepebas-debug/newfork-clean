@@ -35,7 +35,7 @@ async function request(
   if (init.body) headers.set("Content-Type", "application/json");
   // Onboarding belongs to one workspace; its paths carry no other query.
   const url = onboarding
-    ? `/v1/me/onboarding/availability-lifecycle${path}?workspaceId=${encodeURIComponent(workspace)}`
+    ? `/v1/me/onboarding/availability${path}?workspaceId=${encodeURIComponent(workspace)}`
     : `/v1/workspaces/${workspace}/availability${path}`;
   const response = await fetch(`${newforkApiUrl}${url}`, {
     ...init,

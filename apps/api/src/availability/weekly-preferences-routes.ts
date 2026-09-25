@@ -159,7 +159,7 @@ export function registerWeeklyPreferenceRoutes(
   }
   for (const onboarding of [false, true]) {
     const base = onboarding
-      ? "/v1/me/onboarding/availability-lifecycle/weekly"
+      ? "/v1/me/onboarding/availability/weekly"
       : "/v1/workspaces/:workspaceId/availability/weekly";
     for (const operation of ["read", "preview", "save"] as const) {
       app.route({

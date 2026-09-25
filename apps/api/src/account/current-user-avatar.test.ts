@@ -17,7 +17,7 @@ describe("current user avatar", () => {
     const userId = "75000000-0000-4000-8000-000000000001";
     const workspaceId = "75000000-0000-4000-8000-000000000102";
     const context = activeWorkspaceContextSchema.parse({ userId,
-      workspace: {id:workspaceId,name:"Self avatar"}, permissions:[],
+      workspace: {id:workspaceId,name:"Self avatar"}, permissions:[], locationScope:{allLocations:false,locationIds:[]},
       membership:{id:"75000000-0000-4000-8000-000000000201",userId,workspaceId,role:"employee",status:"active"},
     });
     const rpc = vi.fn(async () => ({data:null,error:null}));

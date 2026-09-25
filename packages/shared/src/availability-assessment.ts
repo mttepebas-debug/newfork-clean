@@ -43,7 +43,7 @@ const interval = z.object({
   end_at: z.string().datetime({ offset: true }),
 });
 export const shiftAvailabilityAssessmentSchema = z.object({
-  conflict_severity: scheduleConflictSeveritySchema.optional(),
+  conflict_severity: scheduleConflictSeveritySchema,
   coverage: z.enum(["full", "partial", "none", "unknown"]),
   operation: z.enum([
     "allowed",

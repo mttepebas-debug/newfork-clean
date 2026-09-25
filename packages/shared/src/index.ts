@@ -621,12 +621,10 @@ export const activeWorkspaceContextSchema = z
       status: "complete",
       currentStep: 2,
     }),
-    locationScope: z
-      .object({
-        allLocations: z.boolean(),
-        locationIds: z.array(z.string().uuid()),
-      })
-      .default({ allLocations: true, locationIds: [] }),
+    locationScope: z.object({
+      allLocations: z.boolean(),
+      locationIds: z.array(z.string().uuid()),
+    }),
   })
   .superRefine((context, issue) => {
     if (context.userId !== context.membership.userId) {

@@ -163,16 +163,16 @@ it("composes exclusive status, requirement and search filters and keeps publishe
   expect(screen.queryByTitle("Safety certificate")).toBeNull();
 });
 
-it("shows unavailable state and disables creation when publication storage is unavailable", async () => {
+it("shows the load error and disables creation when document types cannot be read", async () => {
   vi.mocked(listDocumentTypes).mockRejectedValue(
     new Error(
-      "Document publishing is temporarily unavailable. A workspace update is required.",
+      "Document types could not be loaded.",
     ),
   );
   mount();
   expect(await screen.findByRole("alert")).toHaveProperty(
     "textContent",
-    "Document publishing is temporarily unavailable. A workspace update is required.",
+    "Document types could not be loaded.",
   );
   expect(
     screen.getByRole("button", { name: "Add document type" }),

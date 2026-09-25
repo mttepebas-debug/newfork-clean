@@ -380,24 +380,11 @@ export function ShiftQuickEditor({
       !["availability", "time_off"].includes(String(reason.type)),
   );
   const assessmentReasons = (result: ShiftAvailabilityAssessment | null) => {
-    if (result?.conflict_severity) {
-      if (result.operation === "allowed" || result.override_recorded || result.responsibility_retained) return [];
-      return result.reasons.map(reason => ({ type: "availability_assessment", severity: reason.severity === "block" ? "hard" : "soft", message: reason.message }));
-    }
-    if (result?.warning_policy) {
-      if (result.operation === "allowed") return [];
-      if (result.operation === "warning_requires_override") {
-        if (result.override_recorded || result.responsibility_retained || localConflictReasons.some(isHardScheduleConflictReason)) return [];
-        return [{ type: "availability_assessment", severity: "soft", message: "This shift overlaps unavailable hours." }];
-      }
-      const blockers = result.reasons.filter((reason) => reason.code !== "availability");
-      return (blockers.length ? blockers : [{ message: "This assignment could not be verified. Reload and try again." }])
-        .map((reason) => ({ type: "availability_assessment", severity: "hard", message: reason.message }));
-    }
-    return [];
+    if (!result || result.operation === "allowed" || result.override_recorded || result.responsibility_retained) return [];
+    return result.reasons.map(reason => ({ type: "availability_assessment", severity: reason.severity === "block" ? "hard" : "soft", message: reason.message }));
   };
   const rawConflictReasons = [
-    ...(assessment?.conflict_severity ? [] : localConflictReasons),
+    ...(assessment ? [] : localConflictReasons),
     ...assessmentReasons(assessment),
   ];
   const conflictReasons =
@@ -478,7 +465,7 @@ export function ShiftQuickEditor({
         setCheckingAvailability(false);
       }
     }
-    const effectiveLocalReasons = checked?.conflict_severity ? [] : localConflictReasons.filter(reason => typeof reason === "string" || reason.type !== "assessment_unknown");
+    const effectiveLocalReasons = checked ? [] : localConflictReasons.filter(reason => typeof reason === "string" || reason.type !== "assessment_unknown");
     const reasons = [...effectiveLocalReasons, ...assessmentReasons(checked)];
     const messages = formatScheduleConflictMessages(reasons);
     const weeklyWarning = !!checked?.warning_policy && checked.operation === "warning_requires_override" &&
@@ -990,7 +977,7 @@ export function ShiftQuickEditor({
         }
         submitLabel={
           conflictCanContinue
-            ? assessment?.conflict_severity ? "Place shift" : `${state.mode === "edit" ? "Save" : "Add"} anyway`
+            ? assessment ? "Place shift" : `${state.mode === "edit" ? "Save" : "Add"} anyway`
             : undefined
         }
         submitDisabled={checkingAvailability}

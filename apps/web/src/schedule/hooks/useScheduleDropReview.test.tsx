@@ -14,7 +14,7 @@ vi.mock("@newfork/ui", () => ({ useToast: () => toast }));
 vi.mock("../../availability/availability-data", () => ({ loadShiftAvailability: vi.fn() }));
 const input = { employee_id: "employee", location_id: "location", scheduled_date: "2035-01-15", start_time: "18:00", end_time: "20:00" } as ScheduleShiftMutationInput;
 function assessment(changes: Partial<ShiftAvailabilityAssessment> = {}): ShiftAvailabilityAssessment {
-  return { coverage: "partial", operation: "warning_requires_override", time_basis: "explicit", timezone: "UTC", assessment_scope: "shift_interval",
+  return { conflict_severity: "warn", coverage: "partial", operation: "warning_requires_override", time_basis: "explicit", timezone: "UTC", assessment_scope: "shift_interval",
     intervals: [], available_intervals: [], unavailable_intervals: [], unknown_intervals: [],
     reasons: [{ code: "availability", message: "Unavailable hours", definite: true }], fingerprint: "a".repeat(64),
     policy_revision: 1, fold_resolution: null, assessment_minutes: 120, can_override: true, warning_policy: "warn", ...changes };

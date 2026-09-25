@@ -345,6 +345,7 @@ function makeDefaultEditAcquireResult() {
 function resetScheduleApiMocks() {
   vi.mocked(loadShiftAvailability).mockReset();
   vi.mocked(loadShiftAvailability).mockResolvedValue({
+    conflict_severity: "warn",
     coverage: "full",
     operation: "allowed",
     time_basis: "type_default",

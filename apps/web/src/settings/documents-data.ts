@@ -59,15 +59,6 @@ export async function listDocumentTypes(
     .eq("workspace_id", workspaceId)
     .order("sort_order")
     .order("title");
-  if (
-    error &&
-    ["42703", "PGRST204"].includes(error.code) &&
-    /publication_status|publication_revision|published_at/.test(error.message)
-  ) {
-    throw new Error(
-      "Document publishing is temporarily unavailable. A workspace update is required.",
-    );
-  }
   check(error);
   return documentTypeSchema.array().parse(data ?? []);
 }

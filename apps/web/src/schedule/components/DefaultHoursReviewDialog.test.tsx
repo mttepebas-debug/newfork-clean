@@ -27,7 +27,7 @@ async function review() { fireEvent.click(screen.getByRole("button", { name: "Re
 function weeklyPreview(policy: "warn" | "confirm", accepted = false): ScheduleDefaultHoursPreview {
   const value = preview();
   value.shifts[0]!.after_assessment = {
-    coverage: "partial", operation: "warning_requires_override", time_basis: "type_default", timezone: "UTC",
+    conflict_severity: policy, coverage: "partial", operation: "warning_requires_override", time_basis: "type_default", timezone: "UTC",
     assessment_scope: "shift_interval", intervals: [], available_intervals: [], unavailable_intervals: [], unknown_intervals: [],
     reasons: [{ code: "availability", message: "The assignment overlaps unavailable hours.", definite: true }],
     fingerprint: "b".repeat(64), policy_revision: 1, fold_resolution: null, assessment_minutes: 360, can_override: true,

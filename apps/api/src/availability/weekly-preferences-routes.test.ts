@@ -309,7 +309,7 @@ describe("weekly preference routes", () => {
         (
           await app.inject({
             method: "GET",
-            url: "/v1/me/onboarding/availability-lifecycle/weekly",
+            url: "/v1/me/onboarding/availability/weekly",
             headers,
           })
         ).statusCode,
@@ -318,7 +318,7 @@ describe("weekly preference routes", () => {
         (
           await app.inject({
             method: "POST",
-            url: "/v1/me/onboarding/availability-lifecycle/weekly/preview",
+            url: "/v1/me/onboarding/availability/weekly/preview",
             headers,
             payload: command,
           })
@@ -328,7 +328,7 @@ describe("weekly preference routes", () => {
         (
           await app.inject({
             method: "POST",
-            url: "/v1/me/onboarding/availability-lifecycle/weekly",
+            url: "/v1/me/onboarding/availability/weekly",
             headers,
             payload: command,
           })
@@ -364,7 +364,7 @@ describe("weekly preference routes", () => {
         (
           await app.inject({
             method: "GET",
-            url: `/v1/me/onboarding/availability-lifecycle/weekly?workspaceId=${workspaceId}`,
+            url: `/v1/me/onboarding/availability/weekly?workspaceId=${workspaceId}`,
             headers,
           })
         ).statusCode,
@@ -377,7 +377,7 @@ describe("weekly preference routes", () => {
         (
           await app.inject({
             method: "GET",
-            url: "/v1/me/onboarding/availability-lifecycle/weekly?workspaceId=nope",
+            url: "/v1/me/onboarding/availability/weekly?workspaceId=nope",
             headers,
           })
         ).statusCode,

@@ -810,6 +810,7 @@ describe("shared contracts", () => {
         status: "active",
       },
       permissions: permissionsForRole("manager"),
+      locationScope: { allLocations: false, locationIds: [] },
     });
 
     expect(canAccessWorkspace(context, workspaceId, "schedule.manage")).toBe(
@@ -840,6 +841,7 @@ describe("shared contracts", () => {
           status: "active",
         },
         permissions: permissionsForRole("employee"),
+        locationScope: { allLocations: false, locationIds: [] },
       }),
     ).toThrow("Membership workspace does not match context");
   });
@@ -857,6 +859,7 @@ describe("shared contracts", () => {
           status: "active",
         },
         permissions: permissionsForRole("employee"),
+        locationScope: { allLocations: false, locationIds: [] },
       }),
     ).toThrow("Membership user does not match context user");
   });
