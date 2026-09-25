@@ -5,6 +5,8 @@ Kaynaklar: `docs/plan/tasks/FOUNDATION-B.md` (Aşama 6 → "1. Schedule", satır
 `docs/plan/handoffs/FOUNDATION-B-asama6-devir.md` bölüm 2, 3, 7, 8.
 Ölçümler `origin/main` b6f484b üzerinde, 2026-09-25'te alındı. Kod yazılmadı, dosya değiştirilmedi.
 
+> **Doğrulama (koordinatör, 2026-09-25, `27e2062`):** "34 kapı çağrısı" ve "56 çağıran" ölçümle aşıldı (80 ve 43 çağrı / 38 fonksiyon). "Schedule'da 0 `permissions.includes`" yalnız `apps/web/src/schedule/` için doğru; Schedule ekranlarında 10 tane var (SchedulePage 5, Requests 3, Templates 1, SchedulingSettings 1). `schedule/` 224 değil 229 dosya. Diğer olgular doğru. FB-6.1.md'de bugün hâlâ açık itirazlar: 2 (ghost'lar dışa aktarmaya akıyor), 3 (katlamadan önce ölç), 4 (yöneticiye izin kısaltma; kullanıcı kararı), 6 (duvar saati / `db.lock` bekleme). 1, 5, 7 kısmen; F1–F3 BL-121/122/123 oldu.
+
 **Senaryo:** Bugün 2026-12-25. Schedule dilimi "başarısız" sayıldı. Aşağıdakiler sebepleri.
 Cevabı zaten planda olan itirazlar yazılmadı.
 

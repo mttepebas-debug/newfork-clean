@@ -1,10 +1,12 @@
 # FB-6.0-can Yetki sözleşmesinin web tarafı doğuyor (`can()` + `isNoAccess()`)
-Status: taslak (kullanıcı başlama onayı BEKLİYOR)
-Takım: Mühendislik   Branch: task/muhendislik/FB-6.0-can   DB: gerekmiyor
-Reviewer: guvenlik (Mühendislik) · Strateji inceleme (main öncesi)
+Status: draft (kullanıcı başlama onayı bekliyor)
+Rol: nf-backend   Branch: task/FB-6.0-can   DB: gerekmiyor
+Reviewer: nf-guvenlik
 
-Numara neden 6.0: FB-6.1a/b/c/d ve kalan 7 dilim bu dosyada doğan yardımcıları
+Numara neden 6.0: FB-6.1 (adım `.9`) ve kalan 7 dilim bu dosyada doğan yardımcıları
 kullanacak. Önce bu girer, sonra dilimler.
+
+> **Doğrulama (koordinatör, 2026-09-25, `27e2062`):** `can.ts` ve `isNoAccess` yok, `packages/shared/src/authorization.ts` yok, web'de 54 `permissions.includes`, `SchedulePage.tsx` satırları doğru. Sayım düzeltmesi: Schedule ekranlarında 5 değil **10** satır (SchedulePage 5 + Requests 3 + Templates 1 + SchedulingSettings 1); kalan 44 kendi dilimlerinde. "FB-6.1a" adları yok; FB-6.1 adımları `.0`–`.14`.
 
 Goal:
 Yetki kararının tek bir yerden okunduğu web sözleşmesi doğsun: paylaşılan eylem

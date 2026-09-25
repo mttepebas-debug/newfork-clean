@@ -5,6 +5,8 @@ Karşılaştırılan belge: `docs/plan/handoffs/FOUNDATION-B-asama6-devir.md` (2
 Bugünkü ölçüm zemini: `origin/main` **8cff17e** (fetch 2026-09-25) + yerel DB `supabase_db_newfork-clean`,
 migration `20260925014408`.
 
+> **Doğrulama (koordinatör, 2026-09-25, `27e2062`):** 80 kapı çağrısı, `ci-green.txt` 92/23, `_base` 37 (Schedule 24), `known_gap` 11, katalog tavanları ve `exempt:predicate` 16 yeniden ölçüldü, doğru. Bir sapma: listede olmayan Schedule pgTAP dosyası 3 değil **6** (`weekly_schedule_batch` ile 7); FB-6.1.md bunu düzeltti. "Kırmızı" burada "yeşil listede değil" demek; koşturulmadı.
+
 Salt okunur çalışıldı: pgTAP koşulmadı, migration uygulanmadı, fixture üretilmedi. Yerel DB'de yalnız
 `SELECT` ve bir adet `begin … rollback` içinde geçici tablo sayımı yapıldı. `db.lock` çalışma boyunca
 `nf-muhendislik/test` (FB-BASELINE pgTAP measurement) elindeydi; ona dokunulmadı.
