@@ -3,9 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { registerScheduleRoutes } from "./schedule-routes";
 import type { ScheduleReadService } from "./schedule-service";
+import { rpcFailure } from "../http-error";
 const id = "afa80000-0000-4000-8000-000000000001";
 const actor = "afa80000-0000-4000-8000-000000000002";
-const context = { userId: actor, workspace: { id }, membership: { role: "owner", status: "active" }, permissions: ["schedule.manage"] } as ActiveWorkspaceContext;
+const context = { userId: actor, workspace: { id }, membership: { role: "owner", status: "active" }, permissions: ["schedule.manage"], actions: ["schedule.edit"] } as ActiveWorkspaceContext;
 const shift = { location_id: id, employee_id: null, job_id: id, shift_type_id: null, scheduled_date: "2035-01-15", start_time: "18:00", end_time: "20:00", unpaid_break_minutes: 30, hide_time_on_badge: false, label_ids: [], note: "" };
 const body = { session_id: id, expected_session_revision: 3, shifts: [shift, shift] };
 const headers = { authorization: "Bearer test", "idempotency-key": actor };
@@ -27,19 +28,19 @@ describe("atomic Schedule paste route", () => {
     for (const shifts of [[], Array.from({ length: 201 }, () => shift)]) {
       expect((await app.inject({ method: "POST", url: "/shifts/batch", headers, payload: { ...body, shifts } })).statusCode).toBe(400);
     }
-    expect((await app.inject({ method: "POST", url: "/shifts/batch", payload: body })).statusCode).toBe(400);
+    expect((await app.inject({ method: "POST", url: "/shifts/batch", headers: { authorization: headers.authorization }, payload: body })).statusCode).toBe(400);
     expect(createShiftsBatch).not.toHaveBeenCalled(); await app.close();
   });
-  it("rejects employee, inactive and unauthenticated contexts", async () => {
-    for (const value of [null, { ...context, membership: { ...context.membership, role: "employee" } }, { ...context, membership: { ...context.membership, status: "pending_activation" } }]) {
+  it("refuses a non-member (404) and anyone the core does not let edit (403)", async () => {
+    for (const [value, status] of [[null, 404], [{ ...context, actions: ["schedule.read"] }, 403]] as const) {
       const { app, createShiftsBatch } = setup(value as ActiveWorkspaceContext | null);
-      expect((await app.inject({ method: "POST", url: "/shifts/batch", headers, payload: body })).statusCode).toBe(403);
+      expect((await app.inject({ method: "POST", url: "/shifts/batch", headers, payload: body })).statusCode).toBe(status);
       expect(createShiftsBatch).not.toHaveBeenCalled(); await app.close();
     }
   });
   it("preserves stale-assessment errors as conflicts", async () => {
     const { app, createShiftsBatch } = setup();
-    createShiftsBatch.mockRejectedValueOnce(Object.assign(new Error("Review changed"), { code: "40001" }));
+    createShiftsBatch.mockRejectedValueOnce(rpcFailure({ message: "Review changed", code: "40001" }));
     expect((await app.inject({ method: "POST", url: "/shifts/batch", headers, payload: body })).statusCode).toBe(409);
     await app.close();
   });

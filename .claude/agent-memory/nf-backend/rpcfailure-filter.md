@@ -9,4 +9,6 @@ Since BL-131 (2026-09-25) `rpcFailure` passes `hint` only if it matches the key 
 
 **Why:** route helpers (`account-security`, `workspace-account`, `onboarding`, `roles` routes) send an HttpError's status + message as-is, so filtering at the source is the only single place.
 
-**How to apply:** before moving a service onto `rpcFailure`, census the errcodes its RPCs raise: `grep -rhoiE "errcode *= *'[A-Z0-9]{5}'" supabase/migrations | sort | uniq -c`. Anything not in the map (e.g. 54000, 0A000 today) becomes a 500. Many services still `throw new Error(error.message)` and bypass the filter entirely.
+**How to apply:** before moving a service onto `rpcFailure`, census the errcodes its RPCs raise: `grep -rhoiE "errcode *= *'[A-Z0-9]{5}'" supabase/migrations | sort | uniq -c`. Anything not in the map (e.g. 54000, 0A000 today) becomes a 500. Many services still `throw new Error(error.message)` and bypass the filter entirely (BL-134; Schedule moved in FB-6.1 .3).
+
+Trap: a RAISE whose message is JSON (Schedule past-edit) gets swapped to a plain sentence; read the payload from `error.cause.message` at the route (`schedule-routes.ts` `pastEditPayload`), never widen the filter. Moving a service onto rpcFailure breaks tests that mock `Object.assign(new Error(m), {code})` or read `.code`: the thrown error has `pgCode`/`statusCode`; mock with `rpcFailure({ message, code })`. 23514/22023 become 400 (Schedule used 422).

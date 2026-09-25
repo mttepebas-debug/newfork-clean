@@ -140,21 +140,32 @@ describe("createScheduleReadService realtime invalidation", () => {
   it("does not retry publication or convert unrelated failures to preflight", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "Approved exchange changed" } });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
-    await expect(service.publish(publishInput)).rejects.toMatchObject({ code: "PT409", message: "Approved exchange changed" });
+    await expect(service.publish(publishInput)).rejects.toMatchObject({ statusCode: 409, pgCode: "PT409", message: "Approved exchange changed" });
     expect(mocks.rpc).toHaveBeenCalledOnce(); expect(mocks.send).not.toHaveBeenCalled();
   });
   it("does not return stale preview when the refreshed read loses access", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "stale publication preview" } })
       .mockResolvedValueOnce({ data: null, error: { code: "42501", message: "Publish access denied" } });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
-    await expect(service.publish(publishInput)).rejects.toMatchObject({ code: "42501" });
+    await expect(service.publish(publishInput)).rejects.toMatchObject({ statusCode: 403, pgCode: "42501" });
     expect(mocks.rpc).toHaveBeenCalledTimes(2); expect(mocks.send).not.toHaveBeenCalled();
   });
   it("preserves the database stale-assessment code and does not broadcast a failed mutation", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "Review the current availability assessment before saving" } });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
-    await expect(service.mutateShift({ actorUserId, workspaceId, sessionId: draftId, shiftId: departmentId, expectedSessionRevision: 1, operation: "create" })).rejects.toMatchObject({ code: "PT409" });
+    await expect(service.mutateShift({ actorUserId, workspaceId, sessionId: draftId, shiftId: departmentId, expectedSessionRevision: 1, operation: "create" })).rejects.toMatchObject({ statusCode: 409, pgCode: "PT409" });
     expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it("carries the authorization core's refusal and hides database internals", async () => {
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "Not allowed", hint: "authz.out_of_scope", details: "schedule.edit" } });
+    await expect(service.listDrafts(actorUserId, workspaceId, "2026-08-17")).rejects.toMatchObject({
+      statusCode: 403, reason: "authz.out_of_scope", detail: "schedule.edit",
+    });
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "permission denied for table schedule_drafts" } });
+    await expect(service.listDrafts(actorUserId, workspaceId, "2026-08-17")).rejects.toMatchObject({
+      statusCode: 403, message: "Not allowed",
+    });
   });
   it("broadcasts schedule invalidation after publishing a draft", async () => {
     mocks.rpc.mockResolvedValueOnce({
@@ -323,7 +334,7 @@ describe("createScheduleReadService realtime invalidation", () => {
     mocks.rpc
       .mockResolvedValueOnce({
         data: null,
-        error: { message: "schedule has hard document blockers" },
+        error: { code: "23514", message: "schedule has hard document blockers" },
       })
       .mockResolvedValueOnce({
         data: {
@@ -374,7 +385,7 @@ describe("createScheduleReadService realtime invalidation", () => {
   it("does not recover hard document blockers without the publish week scope", async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: null,
-      error: { message: "schedule has hard document blockers" },
+      error: { code: "23514", message: "schedule has hard document blockers" },
     });
 
     const service = createScheduleReadService({
@@ -409,7 +420,7 @@ describe("createScheduleReadService realtime invalidation", () => {
     mocks.rpc
       .mockResolvedValueOnce({
         data: null,
-        error: { message: "schedule has hard document blockers" },
+        error: { code: "23514", message: "schedule has hard document blockers" },
       })
       .mockResolvedValueOnce({
         data: {
@@ -559,7 +570,8 @@ describe("createScheduleReadService realtime invalidation", () => {
         notifyEmployeeIds: ["15000000-0000-4000-8000-000000000001"],
         overrides: [],
       }),
-    ).rejects.toThrow("atomic publish unavailable");
+    // An error nobody raises on purpose is a bug: 500, the database sentence kept for the log only.
+    ).rejects.toMatchObject({ statusCode: 500, message: "Internal server error" });
   });
 
   it("passes department publish scope to the Supabase RPC", async () => {

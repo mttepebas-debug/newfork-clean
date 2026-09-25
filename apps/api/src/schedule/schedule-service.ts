@@ -71,6 +71,7 @@ import {
 } from "@newfork/shared/schedule";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { rpcFailure } from "../http-error.js";
 
 export const scheduledExportCronCandidateSchema = z.object({
   id: z.string().uuid(),
@@ -440,7 +441,7 @@ export function createScheduleReadService(options: {
           target_date: targetDate,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const readModelPayload =
         typeof data === "object" && data !== null
           ? (data as Record<string, unknown>)
@@ -501,9 +502,9 @@ export function createScheduleReadService(options: {
       const { data: settings } = settingsResult;
       const { data: closures, error: closuresError } = closuresResult;
       const { data: importantDates, error: importantDatesError } = importantDatesResult;
-      if (closuresError) throw new Error(closuresError.message);
-      if (importantDatesError) throw new Error(importantDatesError.message);
-      if (shortNamesResult.error) throw new Error(shortNamesResult.error.message);
+      if (closuresError) throw rpcFailure(closuresError);
+      if (importantDatesError) throw rpcFailure(importantDatesError);
+      if (shortNamesResult.error) throw rpcFailure(shortNamesResult.error);
       const shortNames = new Map((shortNamesResult.data ?? []).map((location) => [location.id, location.short_name]));
       return scheduleReadModelSchema.parse({
         ...readModelPayload,
@@ -541,7 +542,7 @@ export function createScheduleReadService(options: {
         target_workspace_id: workspaceId,
         target_week_start: weekStart,
       });
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleDraftListSchema.parse(data);
     },
     async listWeeklyShifts(input) {
@@ -556,7 +557,7 @@ export function createScheduleReadService(options: {
           include_live_context: input.includeLive ?? false,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return legacyScheduleShiftListSchema.parse(data);
     },
     async acquireSession(input) {
@@ -571,7 +572,7 @@ export function createScheduleReadService(options: {
           target_location_ids: input.locationIds ?? null,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleEditAcquireResultSchema.parse(data);
     },
     async heartbeat(actorUserId, workspaceId, sessionId) {
@@ -583,7 +584,7 @@ export function createScheduleReadService(options: {
           target_session_id: sessionId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleEditSessionSchema.parse(data);
     },
     async takeover(actorUserId, workspaceId, sessionId) {
@@ -595,7 +596,7 @@ export function createScheduleReadService(options: {
           target_session_id: sessionId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleEditAcquireResultSchema.parse(data);
     },
     async mutateShift(input) {
@@ -614,7 +615,7 @@ export function createScheduleReadService(options: {
         },
       );
       if (error)
-        throw Object.assign(new Error(error.message), { code: error.code });
+        throw rpcFailure(error);
       const session = scheduleEditSessionSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -633,7 +634,7 @@ export function createScheduleReadService(options: {
         expected_revision: input.expectedSessionRevision, shifts: input.shifts,
         request_key: input.idempotencyKey,
       });
-      if (error) throw Object.assign(new Error(error.message), { code: error.code });
+      if (error) throw rpcFailure(error);
       const session = scheduleEditSessionSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId, actor_user_id: input.actorUserId,
@@ -651,7 +652,7 @@ export function createScheduleReadService(options: {
           target_shift_ids: input.shiftIds,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const result = scheduleBulkDeleteResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -677,7 +678,7 @@ export function createScheduleReadService(options: {
         },
       );
       if (error)
-        throw Object.assign(new Error(error.message), { code: error.code });
+        throw rpcFailure(error);
       return scheduleDefaultHoursPreviewSchema.parse(data);
     },
     async applyDefaultHours(input) {
@@ -691,7 +692,7 @@ export function createScheduleReadService(options: {
         },
       );
       if (error)
-        throw Object.assign(new Error(error.message), { code: error.code });
+        throw rpcFailure(error);
       const session = scheduleEditSessionSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -718,7 +719,7 @@ export function createScheduleReadService(options: {
           acknowledge_past_edits: input.acknowledgePastEdits ?? false,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const draft = scheduleDraftSummarySchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -738,7 +739,7 @@ export function createScheduleReadService(options: {
           target_session_id: sessionId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
     },
     async deleteDraft(actorUserId, workspaceId, draftId) {
       const { data, error } = await client.rpc(
@@ -749,7 +750,7 @@ export function createScheduleReadService(options: {
           target_draft_id: draftId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const result = scheduleDraftDeleteResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: workspaceId,
@@ -774,7 +775,7 @@ export function createScheduleReadService(options: {
           target_week_start: weekStart,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleAvailabilityConflictResultSchema.parse(data);
     },
     async listPendingOps(input) {
@@ -788,7 +789,7 @@ export function createScheduleReadService(options: {
           target_draft_id: input.draftId ?? null,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return schedulePendingOpListSchema.parse(data);
     },
     async addPendingOp(input) {
@@ -803,7 +804,7 @@ export function createScheduleReadService(options: {
           target_payload: input.pendingOp.payload,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const result = schedulePendingOpMutationResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -826,7 +827,7 @@ export function createScheduleReadService(options: {
           target_payload: input.pendingOp.payload,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const result = schedulePendingOpMutationResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -846,7 +847,7 @@ export function createScheduleReadService(options: {
           target_op_id: input.opId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const result = schedulePendingOpMutationResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -865,7 +866,7 @@ export function createScheduleReadService(options: {
           target_week_start: weekStart,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return schedulePublicationStatusSchema.parse(data);
     },
     async previewPublication(input) {
@@ -880,7 +881,7 @@ export function createScheduleReadService(options: {
           include_no_department: input.includeNoDepartment ?? true,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return schedulePublicationPreviewSchema.parse(data);
     },
     async publish(input) {
@@ -915,10 +916,10 @@ export function createScheduleReadService(options: {
             target_department_ids: input.departmentIds ?? null,
             include_no_department: input.includeNoDepartment ?? true,
           });
-          if (refreshed.error) throw Object.assign(new Error(refreshed.error.message), { code: refreshed.error.code });
+          if (refreshed.error) throw rpcFailure(refreshed.error);
           return { status: "preflight", preflight: schedulePublicationPreviewSchema.parse(refreshed.data), preflight_block_reason: "stale_fingerprint" };
         }
-        throw Object.assign(new Error(error.message), { code: error.code });
+        throw rpcFailure(error);
       }
       const result = schedulePublishResultSchema.parse(data);
       if (result.status !== "published") return result;
@@ -947,7 +948,7 @@ export function createScheduleReadService(options: {
           target_location_ids: input.locationIds,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleUnpublishPreviewSchema.parse(data);
     },
     async unpublish(input) {
@@ -958,7 +959,7 @@ export function createScheduleReadService(options: {
         target_location_ids: input.locationIds,
         expected_fingerprint: input.fingerprint,
       });
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const result = scheduleUnpublishResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -978,7 +979,7 @@ export function createScheduleReadService(options: {
           target_week_start: weekStart,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return schedulePublicationHistorySchema.parse(data);
     },
     async listTemplates(actorUserId, workspaceId) {
@@ -986,7 +987,7 @@ export function createScheduleReadService(options: {
         "list_schedule_templates_service",
         { actor_user_id: actorUserId, target_workspace_id: workspaceId },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleTemplateListSchema.parse(data);
     },
     async getTemplate(actorUserId, workspaceId, templateId) {
@@ -998,7 +999,7 @@ export function createScheduleReadService(options: {
           target_template_id: templateId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleTemplateDetailSchema.parse(data);
     },
     async createTemplate(input) {
@@ -1012,7 +1013,7 @@ export function createScheduleReadService(options: {
           strip_assignments: input.stripAssignments,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleTemplateDetailSchema.parse(data);
     },
     async renameTemplate(input) {
@@ -1026,7 +1027,7 @@ export function createScheduleReadService(options: {
           expected_revision: input.expectedRevision,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleTemplateDetailSchema.parse(data);
     },
     async deleteTemplate(input) {
@@ -1036,7 +1037,7 @@ export function createScheduleReadService(options: {
         target_template_id: input.templateId,
         expected_revision: input.expectedRevision,
       });
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
     },
     async applyTemplate(input) {
       const { data, error } = await client.rpc(
@@ -1051,7 +1052,7 @@ export function createScheduleReadService(options: {
           department_keys: input.departmentKeys,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const result = scheduleTemplateApplyResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -1072,7 +1073,7 @@ export function createScheduleReadService(options: {
           target_session_id: sessionId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleAutoFillPreviewSchema.parse(data);
     },
     async applyAutoFill(input) {
@@ -1087,7 +1088,7 @@ export function createScheduleReadService(options: {
           assignments: input.assignments,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const result = scheduleAutoFillApplyResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
@@ -1114,7 +1115,7 @@ export function createScheduleReadService(options: {
           target_location_ids: input.locationIds,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleExportPreviewSchema.parse(data);
     },
     async listExportPresets(actorUserId, workspaceId) {
@@ -1122,7 +1123,7 @@ export function createScheduleReadService(options: {
         "list_schedule_export_presets_service",
         { actor_user_id: actorUserId, target_workspace_id: workspaceId },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleExportPresetListSchema.parse(data);
     },
     async createExportPreset(input) {
@@ -1135,7 +1136,7 @@ export function createScheduleReadService(options: {
           target_settings: input.settings,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleExportPresetSchema.parse(data);
     },
     async updateExportPreset(input) {
@@ -1149,7 +1150,7 @@ export function createScheduleReadService(options: {
           target_settings: input.settings,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleExportPresetSchema.parse(data);
     },
     async deleteExportPreset(actorUserId, workspaceId, presetId) {
@@ -1161,14 +1162,14 @@ export function createScheduleReadService(options: {
           target_preset_id: presetId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
     },
     async listExportSchedules(actorUserId, workspaceId) {
       const { data, error } = await client.rpc(
         "list_schedule_export_schedules_service",
         { actor_user_id: actorUserId, target_workspace_id: workspaceId },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleExportScheduleListSchema.parse(data);
     },
     async createExportSchedule(input) {
@@ -1180,7 +1181,7 @@ export function createScheduleReadService(options: {
           target_payload: input.schedule,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleExportScheduleSchema.parse(data);
     },
     async updateExportSchedule(input) {
@@ -1193,7 +1194,7 @@ export function createScheduleReadService(options: {
           target_payload: input.schedule,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleExportScheduleSchema.parse(data);
     },
     async deleteExportSchedule(actorUserId, workspaceId, scheduleId) {
@@ -1205,14 +1206,14 @@ export function createScheduleReadService(options: {
           target_schedule_id: scheduleId,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
     },
     async listRecentExports(actorUserId, workspaceId) {
       const { data, error } = await client.rpc(
         "list_schedule_export_events_service",
         { actor_user_id: actorUserId, target_workspace_id: workspaceId },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleRecentExportEventListSchema.parse(data);
     },
     async recordExport(input) {
@@ -1226,7 +1227,7 @@ export function createScheduleReadService(options: {
           target_params: input.params,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleRecentExportEventSchema.parse(data);
     },
     async listScheduledExportCronCandidates(now) {
@@ -1234,7 +1235,7 @@ export function createScheduleReadService(options: {
         "list_schedule_export_cron_candidates_service",
         { target_now: now.toISOString() },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       const result = scheduledExportCronCandidateListSchema.parse(data);
       const workspaceIds = [
         ...new Set(result.schedules.map((schedule) => schedule.workspace_id)),
@@ -1244,7 +1245,7 @@ export function createScheduleReadService(options: {
         .from("workspace_scheduling_settings")
         .select("workspace_id,week_start_day")
         .in("workspace_id", workspaceIds);
-      if (settingsError) throw new Error(settingsError.message);
+      if (settingsError) throw rpcFailure(settingsError);
       const weekStartByWorkspace = new Map<string, "sunday" | "monday">(
         (settings ?? []).map((row) => [
           row.workspace_id,
@@ -1266,7 +1267,7 @@ export function createScheduleReadService(options: {
         .select("id,lifecycle_status,closure_effective_at")
         .eq("id", input.workspaceId)
         .maybeSingle();
-      if (workspaceError) throw new Error(workspaceError.message);
+      if (workspaceError) throw rpcFailure(workspaceError);
       if (!workspace) return false;
       if (
         workspace.lifecycle_status === "deleted" ||
@@ -1283,7 +1284,7 @@ export function createScheduleReadService(options: {
         .select("status")
         .eq("workspace_id", input.workspaceId)
         .maybeSingle();
-      if (onboardingError) throw new Error(onboardingError.message);
+      if (onboardingError) throw rpcFailure(onboardingError);
       if (onboarding && onboarding.status !== "complete") return false;
 
       const { data: membership, error: membershipError } = await client
@@ -1292,7 +1293,7 @@ export function createScheduleReadService(options: {
         .eq("workspace_id", input.workspaceId)
         .eq("user_id", input.requesterUserId)
         .maybeSingle();
-      if (membershipError) throw new Error(membershipError.message);
+      if (membershipError) throw rpcFailure(membershipError);
       if (!membership || membership.status !== "active") return false;
 
       const { data: canExport, error: permissionError } = await client.rpc(
@@ -1303,7 +1304,7 @@ export function createScheduleReadService(options: {
           permission_key: "schedule.export",
         },
       );
-      if (permissionError) throw new Error(permissionError.message);
+      if (permissionError) throw rpcFailure(permissionError);
       if (canExport !== true) return false;
 
       if (membership.all_locations) return true;
@@ -1315,7 +1316,7 @@ export function createScheduleReadService(options: {
         .eq("workspace_id", input.workspaceId)
         .eq("membership_id", membership.id)
         .in("location_id", locationIds);
-      if (scopeError) throw new Error(scopeError.message);
+      if (scopeError) throw rpcFailure(scopeError);
       return (
         new Set((scopes ?? []).map((scope) => scope.location_id)).size ===
         locationIds.length
@@ -1332,7 +1333,7 @@ export function createScheduleReadService(options: {
           target_params: input.params,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleExportScheduleSchema.parse(data);
     },
     async recordScheduledExportFailure(input) {
@@ -1345,7 +1346,7 @@ export function createScheduleReadService(options: {
           auto_disable_after: input.autoDisableAfter,
         },
       );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return scheduleExportScheduleSchema.parse(data);
     },
   };
@@ -1372,7 +1373,7 @@ async function recoverDocumentPublicationConflicts(
       include_no_department: input.includeNoDepartment ?? true,
     },
   );
-  if (conflictError) throw new Error(error.message);
+  if (conflictError) throw rpcFailure(conflictError);
   const preview = scheduleDraftDocumentConflictPreviewSchema.parse(data);
   if (!preview.conflicts.length) return null;
   return schedulePublishResultSchema.parse({

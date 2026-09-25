@@ -17,7 +17,13 @@ import {
 } from "@newfork/shared/schedule";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import type { WorkspaceContextResolver } from "../auth/workspace-context";
+import type { ActiveWorkspaceContext } from "@newfork/shared";
+import {
+  authorize,
+  resolveActor,
+  type WorkspaceContextResolver,
+} from "../auth/workspace-context";
+import { HttpError } from "../http-error";
 import type { ScheduleReadService } from "./schedule-service";
 import { registerScheduleExportV2Routes } from "./schedule-export-v2-routes";
 import {
@@ -234,17 +240,8 @@ const updateExportScheduleBodySchema =
 const createPendingOpBodySchema = createSchedulePendingOpInputSchema;
 const updatePendingOpBodySchema = updateSchedulePendingOpInputSchema;
 const activePendingOpParamsSchema = z.object({ opId: z.string().uuid() });
-type WorkspaceContextRequestSource = FastifyRequest | string | undefined;
-
-function authorizationFromSource(source: WorkspaceContextRequestSource) {
-  return typeof source === "string" || source === undefined
-    ? source
-    : source.headers.authorization;
-}
-
-function workspaceIdFromSource(source: WorkspaceContextRequestSource) {
-  if (typeof source === "string" || source === undefined) return null;
-  const value = source.headers["x-newfork-workspace-id"];
+function workspaceIdFromSource(request: FastifyRequest) {
+  const value = request.headers["x-newfork-workspace-id"];
   const parsed = explicitWorkspaceHeaderSchema.safeParse(
     Array.isArray(value) ? value[0] : value,
   );
@@ -261,11 +258,10 @@ export function registerScheduleRoutes(
   registerScheduleExportV2Routes(app, options);
   for (const action of ["preview", "apply"] as const) {
     app.post(`/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/default-hours-${action}`, async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = sessionParamsSchema.safeParse(request.params);
       const body = (action === "preview" ? scheduleDefaultHoursInputSchema : scheduleDefaultHoursApplySchema).safeParse(request.body);
       if (!params.success || !body.success) return reply.status(400).send({ error: "Valid default-hours review required" });
-      const context = await managerContext(request.headers.authorization, params.data.workspaceId, options);
-      if (!context || context.membership.status !== "active") return reply.status(403).send({ error: "Schedule manage access required" });
       if (!options.service?.previewDefaultHours || !options.service?.applyDefaultHours) return reply.status(503).send({ error: "Default-hours review is unavailable" });
       try {
         const input = { actorUserId: context.userId, workspaceId: params.data.workspaceId, sessionId: params.data.sessionId };
@@ -340,21 +336,11 @@ export function registerScheduleRoutes(
   app.get(
     "/v1/workspaces/:workspaceId/schedule/drafts",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = paramsSchema.safeParse(request.params);
       const query = weekQuerySchema.safeParse(request.query);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-          )
-        : null;
       if (!params.success || !query.success)
         return reply.status(400).send({ error: "Valid draft week required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -376,17 +362,15 @@ export function registerScheduleRoutes(
   app.get(
     "/v1/workspaces/:workspaceId/schedule/shifts",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.read");
       const params = paramsSchema.safeParse(request.params);
       const query = weeklyShiftsQuerySchema.safeParse(request.query);
       if (!params.success || !query.success)
         return reply
           .status(400)
           .send({ error: "Valid schedule week required" });
-      return weeklyShifts(
-        reply,
-        request.headers.authorization,
+      return weeklyShifts(reply, context,
         options,
-        params.data.workspaceId,
         query.data,
       );
     },
@@ -395,19 +379,11 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = paramsSchema.safeParse(request.params);
       const body = acquireBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply.status(400).send({ error: "Valid edit source required" });
-      const context = await managerContext(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options,
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -432,22 +408,13 @@ export function registerScheduleRoutes(
   app.get(
     "/v1/workspaces/:workspaceId/schedule/publication-history",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.publish");
       const params = paramsSchema.safeParse(request.params);
       const query = weekQuerySchema.safeParse(request.query);
       if (!params.success || !query.success)
         return reply
           .status(400)
           .send({ error: "Valid publication week required" });
-      const context = await managerContext(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options,
-        "schedule.publish",
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule publish access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -469,18 +436,10 @@ export function registerScheduleRoutes(
   app.patch(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/heartbeat",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = sessionParamsSchema.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid edit session required" });
-      const context = await managerContext(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options,
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -502,6 +461,7 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/shifts",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = sessionParamsSchema.safeParse(request.params);
       const body = createShiftBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
@@ -514,11 +474,9 @@ export function registerScheduleRoutes(
         return reply
           .status(400)
           .send({ error: "Idempotency-Key header required" });
-      return mutate(
-        reply,
-        request.headers.authorization,
+      return mutate(reply, context,
         options,
-        params.data,
+        params.data.sessionId,
         body.data,
         "create",
         crypto.randomUUID(),
@@ -530,17 +488,16 @@ export function registerScheduleRoutes(
   app.patch(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/shifts/:shiftId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = shiftParamsSchema.safeParse(request.params);
       const body = updateShiftBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid shift revision required" });
-      return mutate(
-        reply,
-        request.headers.authorization,
+      return mutate(reply, context,
         options,
-        params.data,
+        params.data.sessionId,
         body.data,
         "update",
         params.data.shiftId,
@@ -551,17 +508,16 @@ export function registerScheduleRoutes(
   app.delete(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/shifts/:shiftId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = shiftParamsSchema.safeParse(request.params);
       const body = deleteShiftBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid shift revision required" });
-      return mutate(
-        reply,
-        request.headers.authorization,
+      return mutate(reply, context,
         options,
-        params.data,
+        params.data.sessionId,
         body.data,
         "delete",
         params.data.shiftId,
@@ -572,17 +528,16 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/shifts/:shiftId/restore",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = shiftParamsSchema.safeParse(request.params);
       const body = deleteShiftBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid shift revision required" });
-      return mutate(
-        reply,
-        request.headers.authorization,
+      return mutate(reply, context,
         options,
-        params.data,
+        params.data.sessionId,
         body.data,
         "restore",
         params.data.shiftId,
@@ -593,19 +548,11 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/save",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = sessionParamsSchema.safeParse(request.params);
       const body = saveBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply.status(400).send({ error: "Valid draft save required" });
-      const context = await managerContext(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options,
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -632,18 +579,10 @@ export function registerScheduleRoutes(
   app.delete(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = sessionParamsSchema.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid edit session required" });
-      const context = await managerContext(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options,
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -663,22 +602,12 @@ export function registerScheduleRoutes(
   app.delete(
     "/v1/workspaces/:workspaceId/schedule/drafts/:draftId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = paramsSchema
         .extend({ draftId: z.string().uuid() })
         .safeParse(request.params);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-          )
-        : null;
       if (!params.success)
         return reply.status(400).send({ error: "Valid draft required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -700,22 +629,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/publication-preview",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.publish");
       const params = paramsSchema.safeParse(request.params);
       const body = publicationPreviewBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid publication scope required" });
-      const context = await managerContext(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options,
-        "schedule.publish",
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule publish access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -740,22 +660,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/publications",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.publish");
       const params = paramsSchema.safeParse(request.params);
       const body = publishBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid publication review required" });
-      const context = await managerContext(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options,
-        "schedule.publish",
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule publish access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -787,22 +698,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/unpublish-preview",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.publish");
       const params = paramsSchema.safeParse(request.params);
       const body = unpublishPreviewBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid unpublish scope required" });
-      const context = await managerContext(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options,
-        "schedule.publish",
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule publish access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -825,22 +727,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/unpublications",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.publish");
       const params = paramsSchema.safeParse(request.params);
       const body = unpublishBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid unpublish review required" });
-      const context = await managerContext(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options,
-        "schedule.publish",
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule publish access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -864,21 +757,10 @@ export function registerScheduleRoutes(
   app.get(
     "/v1/workspaces/:workspaceId/schedule/templates",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.read");
       const params = paramsSchema.safeParse(request.params);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.templates.read",
-          )
-        : null;
       if (!params.success)
         return reply.status(400).send({ error: "Valid workspace required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule template access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -898,21 +780,10 @@ export function registerScheduleRoutes(
   app.get(
     "/v1/workspaces/:workspaceId/schedule/templates/:templateId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.read");
       const params = templateParamsSchema.safeParse(request.params);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.templates.read",
-          )
-        : null;
       if (!params.success)
         return reply.status(400).send({ error: "Valid template required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule template access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -933,24 +804,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/templates",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.templates");
       const params = paramsSchema.safeParse(request.params);
       const body = createTemplateBodySchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.templates.manage",
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid template source required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule template access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -973,24 +833,13 @@ export function registerScheduleRoutes(
   app.patch(
     "/v1/workspaces/:workspaceId/schedule/templates/:templateId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.templates");
       const params = templateParamsSchema.safeParse(request.params);
       const body = renameTemplateBodySchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.templates.manage",
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid template revision required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule template access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1013,24 +862,13 @@ export function registerScheduleRoutes(
   app.delete(
     "/v1/workspaces/:workspaceId/schedule/templates/:templateId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.templates");
       const params = templateParamsSchema.safeParse(request.params);
       const body = deleteTemplateBodySchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.templates.manage",
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid template revision required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule template access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1051,24 +889,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/apply-template",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.templates");
       const params = sessionParamsSchema.safeParse(request.params);
       const body = applyTemplateBodySchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.templates.manage",
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid template application required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule template access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1093,20 +920,10 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/auto-fill-preview",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = sessionParamsSchema.safeParse(request.params);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-          )
-        : null;
       if (!params.success)
         return reply.status(400).send({ error: "Valid edit session required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1127,23 +944,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/edit-sessions/:sessionId/auto-fill-apply",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.edit");
       const params = sessionParamsSchema.safeParse(request.params);
       const body = applyAutoFillBodySchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid auto-fill review required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1167,24 +974,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/export-preview",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = paramsSchema.safeParse(request.params);
       const body = scheduleExportRequestSchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid schedule export required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1208,24 +1004,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/exports",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = paramsSchema.safeParse(request.params);
       const body = scheduleExportRequestSchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid schedule export required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1279,21 +1064,10 @@ export function registerScheduleRoutes(
   app.get(
     "/v1/workspaces/:workspaceId/schedule/export-presets",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = paramsSchema.safeParse(request.params);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success)
         return reply.status(400).send({ error: "Valid workspace required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1313,21 +1087,10 @@ export function registerScheduleRoutes(
   app.get(
     "/v1/workspaces/:workspaceId/schedule/exports/recent",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = paramsSchema.safeParse(request.params);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success)
         return reply.status(400).send({ error: "Valid workspace required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1347,24 +1110,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/export-presets",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = paramsSchema.safeParse(request.params);
       const body = createPresetBodySchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid export preset required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1386,22 +1138,13 @@ export function registerScheduleRoutes(
   app.patch(
     "/v1/workspaces/:workspaceId/schedule/export-presets/:presetId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = presetParamsSchema.safeParse(request.params);
       const body = updatePresetBodySchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid export preset required" });
-      if (!context)
-        return reply.status(403).send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1424,23 +1167,12 @@ export function registerScheduleRoutes(
   app.delete(
     "/v1/workspaces/:workspaceId/schedule/export-presets/:presetId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = presetParamsSchema.safeParse(request.params);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success)
         return reply
           .status(400)
           .send({ error: "Valid export preset required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1460,21 +1192,10 @@ export function registerScheduleRoutes(
   app.get(
     "/v1/workspaces/:workspaceId/schedule/export-schedules",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = paramsSchema.safeParse(request.params);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success)
         return reply.status(400).send({ error: "Valid workspace required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1494,24 +1215,13 @@ export function registerScheduleRoutes(
   app.post(
     "/v1/workspaces/:workspaceId/schedule/export-schedules",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = paramsSchema.safeParse(request.params);
       const body = createExportScheduleBodySchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid scheduled export required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1532,24 +1242,13 @@ export function registerScheduleRoutes(
   app.patch(
     "/v1/workspaces/:workspaceId/schedule/export-schedules/:scheduleId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = exportScheduleParamsSchema.safeParse(request.params);
       const body = updateExportScheduleBodySchema.safeParse(request.body);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid scheduled export required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1571,23 +1270,12 @@ export function registerScheduleRoutes(
   app.delete(
     "/v1/workspaces/:workspaceId/schedule/export-schedules/:scheduleId",
     async (request, reply) => {
+      const context = authorize(await workspaceActor(request, options), "schedule.export");
       const params = exportScheduleParamsSchema.safeParse(request.params);
-      const context = params.success
-        ? await managerContext(
-            request.headers.authorization,
-            params.data.workspaceId,
-            options,
-            "schedule.export",
-          )
-        : null;
       if (!params.success)
         return reply
           .status(400)
           .send({ error: "Valid scheduled export required" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1606,21 +1294,13 @@ export function registerScheduleRoutes(
   );
 
   app.get("/schedule/reference", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.read");
     const query = activeScheduleQuerySchema.safeParse(request.query);
     const targetDate = query.success
       ? (query.data.date ?? query.data.week_start)
       : null;
     if (!query.success || !targetDate)
       return reply.status(400).send({ error: "Valid schedule period required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.read",
-    );
-    if (!context)
-      return reply
-        .status(403)
-        .send({ error: "Manager schedule read access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -1639,27 +1319,20 @@ export function registerScheduleRoutes(
   });
 
   app.get("/schedule/shifts", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.read");
     const query = weeklyShiftsQuerySchema.safeParse(request.query);
     if (!query.success)
       return reply.status(400).send({ error: "Valid schedule week required" });
-    return activeWeeklyShifts(
-      reply,
-      request,
-      options,
+    return weeklyShifts(reply, context, options,
       query.data,
     );
   });
 
   app.get("/schedule/drafts", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const query = weekQuerySchema.safeParse(request.query);
     if (!query.success)
       return reply.status(400).send({ error: "Valid draft week required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -1678,20 +1351,12 @@ export function registerScheduleRoutes(
   });
 
   app.get("/schedule/publication-status", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.read");
     const query = weekQuerySchema.safeParse(request.query);
     if (!query.success)
       return reply
         .status(400)
         .send({ error: "Valid publication week required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.read",
-    );
-    if (!context)
-      return reply
-        .status(403)
-        .send({ error: "Manager schedule read access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -1710,12 +1375,10 @@ export function registerScheduleRoutes(
   });
 
   app.get("/schedule/pending-ops", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const query = pendingOpsQuerySchema.safeParse(request.query);
     if (!query.success)
       return reply.status(400).send({ error: "Valid pending-op scope required" });
-    const context = await activeManagerContext(request, options);
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -1742,12 +1405,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/pending-ops", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = createPendingOpBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid pending-op payload required" });
-    const context = await activeManagerContext(request, options);
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -1766,13 +1427,11 @@ export function registerScheduleRoutes(
   });
 
   app.patch("/schedule/pending-ops/:opId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const params = activePendingOpParamsSchema.safeParse(request.params);
     const body = updatePendingOpBodySchema.safeParse(request.body);
     if (!params.success || !body.success)
       return reply.status(400).send({ error: "Valid pending-op payload required" });
-    const context = await activeManagerContext(request, options);
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -1792,12 +1451,10 @@ export function registerScheduleRoutes(
   });
 
   app.delete("/schedule/pending-ops/:opId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const params = activePendingOpParamsSchema.safeParse(request.params);
     if (!params.success)
       return reply.status(400).send({ error: "Valid pending-op id required" });
-    const context = await activeManagerContext(request, options);
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -1818,20 +1475,13 @@ export function registerScheduleRoutes(
   app.get(
     "/schedule/drafts/:draftId/availability-conflicts",
     async (request, reply) => {
+      const context = authorize(await activeActor(request, options), "schedule.edit");
       const params = activeDraftParamsSchema.safeParse(request.params);
       const query = weekQuerySchema.safeParse(request.query);
       if (!params.success || !query.success)
         return reply
           .status(400)
           .send({ error: "Valid draft week required" });
-      const context = await activeManagerContext(
-      request,
-        options,
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1854,20 +1504,13 @@ export function registerScheduleRoutes(
   app.post(
     "/schedule/drafts/:draftId/auto-fill/preview",
     async (request, reply) => {
+      const context = authorize(await activeActor(request, options), "schedule.edit");
       const params = activeDraftParamsSchema.safeParse(request.params);
       const body = draftAutoFillPreviewBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid auto-fill draft required" });
-      const context = await activeManagerContext(
-      request,
-        options,
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1914,20 +1557,13 @@ export function registerScheduleRoutes(
   app.post(
     "/schedule/drafts/:draftId/auto-fill/apply",
     async (request, reply) => {
+      const context = authorize(await activeActor(request, options), "schedule.edit");
       const params = activeDraftParamsSchema.safeParse(request.params);
       const body = draftAutoFillApplyBodySchema.safeParse(request.body);
       if (!params.success || !body.success)
         return reply
           .status(400)
           .send({ error: "Valid auto-fill draft required" });
-      const context = await activeManagerContext(
-      request,
-        options,
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -1992,15 +1628,10 @@ export function registerScheduleRoutes(
   );
 
   app.post("/schedule/edit-lock/acquire", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = acquireBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid edit source required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2024,17 +1655,10 @@ export function registerScheduleRoutes(
   app.post(
     "/schedule/edit-session/materialize-live-draft",
     async (request, reply) => {
+      const context = authorize(await activeActor(request, options), "schedule.edit");
       const body = materializeLiveDraftBodySchema.safeParse(request.body);
       if (!body.success)
         return reply.status(400).send({ error: "Valid live schedule scope required" });
-      const context = await activeManagerContext(
-      request,
-        options,
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule manage access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -2055,15 +1679,10 @@ export function registerScheduleRoutes(
   );
 
   app.patch("/schedule/edit-lock/heartbeat", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = activeSessionBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid edit session required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2082,17 +1701,12 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/edit-lock/takeover", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = activeTakeoverBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid edit session required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (
-      !context ||
-      (context.membership.role !== "owner" && context.membership.role !== "admin")
-    )
+    // ponytail: owner/admin only until the core has a takeover action.
+    if (context.membership.role !== "owner" && context.membership.role !== "admin")
       return reply
         .status(403)
         .send({ error: "Schedule takeover access required" });
@@ -2114,15 +1728,10 @@ export function registerScheduleRoutes(
   });
 
   app.delete("/schedule/edit-lock/release", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = activeSessionBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid edit session required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2140,15 +1749,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/drafts/save", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = activeSaveBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid draft save required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2172,15 +1776,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/edit-session/discard", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = activeSessionBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid edit session required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2198,17 +1797,12 @@ export function registerScheduleRoutes(
   });
 
   app.delete("/schedule/drafts/:draftId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const params = z
       .object({ draftId: z.string().uuid() })
       .safeParse(request.params);
     if (!params.success)
       return reply.status(400).send({ error: "Valid draft required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2227,16 +1821,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/publish-preview", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.publish");
     const body = publicationPreviewBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid publication scope required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.publish",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule publish access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2258,16 +1846,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/publish", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.publish");
     const body = publishBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid publication review required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.publish",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule publish access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2296,16 +1878,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/unpublish", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.publish");
     const body = unpublishBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid unpublish review required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.publish",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule publish access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2326,16 +1902,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/unpublish-preview", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.publish");
     const body = unpublishPreviewBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid unpublish scope required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.publish",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule publish access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2355,16 +1925,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/export/preview", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.export");
     const body = scheduleExportRequestSchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid schedule export required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2386,16 +1950,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/export/preview-html", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.export");
     const body = scheduleExportRequestSchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid schedule export required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2425,16 +1983,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/export", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.export");
     const body = scheduleExportRequestSchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid schedule export required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2495,15 +2047,7 @@ export function registerScheduleRoutes(
   });
 
   app.get("/schedule/templates", async (request, reply) => {
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.templates.read",
-    );
-    if (!context)
-      return reply
-        .status(403)
-        .send({ error: "Schedule template access required" });
+    const context = authorize(await activeActor(request, options), "schedule.read");
     if (!options.service)
       return reply
         .status(503)
@@ -2518,18 +2062,10 @@ export function registerScheduleRoutes(
   });
 
   app.get("/schedule/templates/:templateId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.read");
     const params = activeTemplateParamsSchema.safeParse(request.params);
     if (!params.success)
       return reply.status(400).send({ error: "Valid template required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.templates.read",
-    );
-    if (!context)
-      return reply
-        .status(403)
-        .send({ error: "Schedule template access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2548,18 +2084,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/templates", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.templates");
     const body = createTemplateBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid template source required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.templates.manage",
-    );
-    if (!context)
-      return reply
-        .status(403)
-        .send({ error: "Schedule template access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2580,19 +2108,11 @@ export function registerScheduleRoutes(
   });
 
   app.patch("/schedule/templates/:templateId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.templates");
     const params = activeTemplateParamsSchema.safeParse(request.params);
     const body = renameTemplateBodySchema.safeParse(request.body);
     if (!params.success || !body.success)
       return reply.status(400).send({ error: "Valid template revision required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.templates.manage",
-    );
-    if (!context)
-      return reply
-        .status(403)
-        .send({ error: "Schedule template access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2613,19 +2133,11 @@ export function registerScheduleRoutes(
   });
 
   app.delete("/schedule/templates/:templateId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.templates");
     const params = activeTemplateParamsSchema.safeParse(request.params);
     const body = deleteTemplateBodySchema.safeParse(request.body);
     if (!params.success || !body.success)
       return reply.status(400).send({ error: "Valid template revision required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.templates.manage",
-    );
-    if (!context)
-      return reply
-        .status(403)
-        .send({ error: "Schedule template access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2644,21 +2156,13 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/edit-sessions/:sessionId/apply-template", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.templates");
     const params = activeSessionParamsSchema.safeParse(request.params);
     const body = applyTemplateBodySchema.safeParse(request.body);
     if (!params.success || !body.success)
       return reply
         .status(400)
         .send({ error: "Valid template application required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.templates.manage",
-    );
-    if (!context)
-      return reply
-        .status(403)
-        .send({ error: "Schedule template access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2681,15 +2185,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/edit-sessions/:sessionId/auto-fill-preview", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const params = activeSessionParamsSchema.safeParse(request.params);
     if (!params.success)
       return reply.status(400).send({ error: "Valid edit session required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2708,18 +2207,13 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/edit-sessions/:sessionId/auto-fill-apply", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const params = activeSessionParamsSchema.safeParse(request.params);
     const body = applyAutoFillBodySchema.safeParse(request.body);
     if (!params.success || !body.success)
       return reply
         .status(400)
         .send({ error: "Valid auto-fill review required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2741,13 +2235,7 @@ export function registerScheduleRoutes(
   });
 
   app.get("/schedule/export-presets", async (request, reply) => {
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
+    const context = authorize(await activeActor(request, options), "schedule.export");
     if (!options.service)
       return reply
         .status(503)
@@ -2765,16 +2253,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/export-presets", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.export");
     const body = createPresetBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid export preset required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2794,17 +2276,11 @@ export function registerScheduleRoutes(
   });
 
   app.patch("/schedule/export-presets/:presetId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.export");
     const params = activePresetParamsSchema.safeParse(request.params);
     const body = updatePresetBodySchema.safeParse(request.body);
     if (!params.success || !body.success)
       return reply.status(400).send({ error: "Valid export preset required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2825,16 +2301,10 @@ export function registerScheduleRoutes(
   });
 
   app.delete("/schedule/export-presets/:presetId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.export");
     const params = activePresetParamsSchema.safeParse(request.params);
     if (!params.success)
       return reply.status(400).send({ error: "Valid export preset required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2852,13 +2322,7 @@ export function registerScheduleRoutes(
   });
 
   app.get("/schedule/export-schedules", async (request, reply) => {
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
+    const context = authorize(await activeActor(request, options), "schedule.export");
     if (!options.service)
       return reply
         .status(503)
@@ -2876,13 +2340,7 @@ export function registerScheduleRoutes(
   });
 
   app.get("/schedule/exports/recent", async (request, reply) => {
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
+    const context = authorize(await activeActor(request, options), "schedule.export");
     if (!options.service)
       return reply
         .status(503)
@@ -2900,16 +2358,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/schedule/export-schedules", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.export");
     const body = createExportScheduleBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid scheduled export required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2928,17 +2380,11 @@ export function registerScheduleRoutes(
   });
 
   app.patch("/schedule/export-schedules/:scheduleId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.export");
     const params = activeExportScheduleParamsSchema.safeParse(request.params);
     const body = updateExportScheduleBodySchema.safeParse(request.body);
     if (!params.success || !body.success)
       return reply.status(400).send({ error: "Valid scheduled export required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.export",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule export access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -2960,20 +2406,12 @@ export function registerScheduleRoutes(
   app.delete(
     "/schedule/export-schedules/:scheduleId",
     async (request, reply) => {
+      const context = authorize(await activeActor(request, options), "schedule.export");
       const params = activeExportScheduleParamsSchema.safeParse(request.params);
       if (!params.success)
         return reply
           .status(400)
           .send({ error: "Valid scheduled export required" });
-      const context = await activeManagerContext(
-      request,
-        options,
-        "schedule.export",
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Schedule export access required" });
       if (!options.service)
         return reply
           .status(503)
@@ -2992,6 +2430,7 @@ export function registerScheduleRoutes(
   );
 
   app.post("/shifts", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = activeCreateShiftBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid shift required" });
@@ -3001,9 +2440,7 @@ export function registerScheduleRoutes(
       .safeParse(request.headers["idempotency-key"]);
     if (!idempotencyKey.success)
       return reply.status(400).send({ error: "Idempotency-Key header required" });
-    return activeMutate(
-      reply,
-      request,
+    return mutate(reply, context,
       options,
       body.data.session_id,
       body.data,
@@ -3014,18 +2451,17 @@ export function registerScheduleRoutes(
   });
 
   app.get("/shifts", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.read");
     const query = weeklyShiftsQuerySchema.safeParse(request.query);
     if (!query.success)
       return reply.status(400).send({ error: "Valid schedule week required" });
-    return activeWeeklyShifts(
-      reply,
-      request,
-      options,
+    return weeklyShifts(reply, context, options,
       query.data,
     );
   });
 
   app.post("/shifts/batch", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = z.object({
       session_id: z.string().uuid(),
       expected_session_revision: z.number().int().min(1),
@@ -3033,8 +2469,6 @@ export function registerScheduleRoutes(
     }).safeParse(request.body);
     const key = z.string().uuid().safeParse(request.headers["idempotency-key"]);
     if (!body.success || !key.success) return reply.status(400).send({ error: "Valid shift batch and Idempotency-Key required" });
-    const context = await activeManagerContext(request, options);
-    if (!context || context.membership.status !== "active") return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service?.createShiftsBatch) return reply.status(503).send({ error: "Schedule service is not configured" });
     try {
       return reply.send(await options.service.createShiftsBatch({
@@ -3046,15 +2480,10 @@ export function registerScheduleRoutes(
   });
 
   app.post("/shifts/bulk-delete", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = bulkDeleteShiftsBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid shift ids required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule manage access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -3073,16 +2502,10 @@ export function registerScheduleRoutes(
   });
 
   app.patch("/shifts/publish", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.publish");
     const body = legacyPublishBodySchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Valid publication scope required" });
-    const context = await activeManagerContext(
-      request,
-      options,
-      "schedule.publish",
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Schedule publish access required" });
     if (!options.service)
       return reply
         .status(503)
@@ -3144,13 +2567,12 @@ export function registerScheduleRoutes(
   });
 
   app.patch("/shifts/:shiftId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const params = activeShiftParamsSchema.safeParse(request.params);
     const body = activeUpdateShiftBodySchema.safeParse(request.body);
     if (!params.success || !body.success)
       return reply.status(400).send({ error: "Valid shift revision required" });
-    return activeMutate(
-      reply,
-      request,
+    return mutate(reply, context,
       options,
       body.data.session_id,
       body.data,
@@ -3160,13 +2582,12 @@ export function registerScheduleRoutes(
   });
 
   app.delete("/shifts/:shiftId", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const params = activeShiftParamsSchema.safeParse(request.params);
     const body = activeDeleteShiftBodySchema.safeParse(request.body);
     if (!params.success || !body.success)
       return reply.status(400).send({ error: "Valid shift revision required" });
-    return activeMutate(
-      reply,
-      request,
+    return mutate(reply, context,
       options,
       body.data.session_id,
       body.data,
@@ -3176,13 +2597,12 @@ export function registerScheduleRoutes(
   });
 
   app.patch("/shifts/:shiftId/restore", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
     const params = activeShiftParamsSchema.safeParse(request.params);
     const body = activeRestoreShiftBodySchema.safeParse(request.body);
     if (!params.success || !body.success)
       return reply.status(400).send({ error: "Valid shift revision required" });
-    return activeMutate(
-      reply,
-      request,
+    return mutate(reply, context,
       options,
       body.data.session_id,
       body.data,
@@ -3192,109 +2612,32 @@ export function registerScheduleRoutes(
   });
 }
 
-async function managerContext(
-  authorization: string | undefined,
-  workspaceId: string,
-  options: {
-    readonly service: ScheduleReadService | null;
-    readonly contextResolver: WorkspaceContextResolver | null;
-  },
-  permission:
-    | "schedule.read"
-    | "schedule.manage"
-    | "schedule.publish"
-    | "schedule.templates.read"
-    | "schedule.templates.manage"
-    | "schedule.export" = "schedule.manage",
-) {
-  const token = bearerToken(authorization);
-  const context =
-    token && options.contextResolver
-      ? await options.contextResolver.resolve(token, workspaceId)
-      : null;
-  return context &&
-    context.workspace.id === workspaceId &&
-    context.membership.role !== "employee" &&
-    context.permissions.includes(permission)
-    ? context
-    : null;
+type RouteOptions = {
+  readonly service: ScheduleReadService | null;
+  readonly contextResolver: WorkspaceContextResolver | null;
+};
+
+/** Who is asking, in the workspace the URL names. */
+function workspaceActor(request: FastifyRequest, options: RouteOptions) {
+  const { workspaceId } = request.params as { workspaceId: string };
+  return resolveActor(request.headers.authorization, workspaceId, options.contextResolver);
 }
 
-async function activeManagerContext(
-  source: WorkspaceContextRequestSource,
-  options: {
-    readonly service: ScheduleReadService | null;
-    readonly contextResolver: WorkspaceContextResolver | null;
-  },
-  permission:
-    | "schedule.read"
-    | "schedule.manage"
-    | "schedule.publish"
-    | "schedule.templates.read"
-    | "schedule.templates.manage"
-    | "schedule.export" = "schedule.manage",
-) {
-  const token = bearerToken(authorizationFromSource(source));
-  const workspaceId = workspaceIdFromSource(source);
-  const context =
-    token && options.contextResolver
-      ? await options.contextResolver.resolve(token, workspaceId)
-      : null;
-  return context &&
-    (!workspaceId || context.workspace.id === workspaceId) &&
-    context.membership.role !== "employee" &&
-    context.permissions.includes(permission)
-    ? context
-    : null;
-}
-
-async function activeWeeklyShifts(
-  reply: FastifyReply,
-  source: WorkspaceContextRequestSource,
-  options: {
-    readonly service: ScheduleReadService | null;
-    readonly contextResolver: WorkspaceContextResolver | null;
-  },
-  query: z.infer<typeof weeklyShiftsQuerySchema>,
-) {
-  const context = await activeManagerContext(
-    source,
-    options,
-    "schedule.read",
-  );
-  if (!context)
-    return reply
-      .status(403)
-      .send({ error: "Manager schedule read access required" });
-  return weeklyShifts(
-    reply,
-    authorizationFromSource(source),
-    options,
-    context.workspace.id,
-    query,
+/** Who is asking, in the workspace the tab chose (or the one they last chose). */
+function activeActor(request: FastifyRequest, options: RouteOptions) {
+  return resolveActor(
+    request.headers.authorization,
+    workspaceIdFromSource(request),
+    options.contextResolver,
   );
 }
 
 async function weeklyShifts(
   reply: FastifyReply,
-  authorization: string | undefined,
-  options: {
-    readonly service: ScheduleReadService | null;
-    readonly contextResolver: WorkspaceContextResolver | null;
-  },
-  workspaceId: string,
+  context: ActiveWorkspaceContext,
+  options: RouteOptions,
   query: z.infer<typeof weeklyShiftsQuerySchema>,
 ) {
-  const context = await managerContext(
-    authorization,
-    workspaceId,
-    options,
-    "schedule.read",
-  );
-  if (!context)
-    return reply
-      .status(403)
-      .send({ error: "Manager schedule read access required" });
   if (!options.service)
     return reply
       .status(503)
@@ -3303,7 +2646,7 @@ async function weeklyShifts(
     return reply.send(
       await options.service.listWeeklyShifts({
         actorUserId: context.userId,
-        workspaceId,
+        workspaceId: context.workspace.id,
         weekStart: query.week_start,
         locationIds: query.location_ids,
         draftId: query.draft_id ?? null,
@@ -3315,13 +2658,10 @@ async function weeklyShifts(
   }
 }
 
-async function activeMutate(
+async function mutate(
   reply: FastifyReply,
-  source: WorkspaceContextRequestSource,
-  options: {
-    readonly service: ScheduleReadService | null;
-    readonly contextResolver: WorkspaceContextResolver | null;
-  },
+  context: ActiveWorkspaceContext,
+  options: RouteOptions,
   sessionId: string,
   body: {
     expected_session_revision: number;
@@ -3332,9 +2672,6 @@ async function activeMutate(
   shiftId: string,
   idempotencyKey?: string,
 ) {
-  const context = await activeManagerContext(source, options);
-  if (!context)
-    return reply.status(403).send({ error: "Schedule manage access required" });
   if (!options.service)
     return reply
       .status(503)
@@ -3358,59 +2695,21 @@ async function activeMutate(
   }
 }
 
-async function mutate(
-  reply: FastifyReply,
-  authorization: string | undefined,
-  options: {
-    readonly service: ScheduleReadService | null;
-    readonly contextResolver: WorkspaceContextResolver | null;
-  },
-  params: { workspaceId: string; sessionId: string; shiftId?: string },
-  body: {
-    expected_session_revision: number;
-    expected_shift_revision?: number;
-    shift?: z.infer<typeof scheduleShiftMutationInputSchema>;
-  },
-  operation: "create" | "update" | "delete" | "restore",
-  shiftId: string,
-  idempotencyKey?: string,
-) {
-  const context = await managerContext(
-    authorization,
-    params.workspaceId,
-    options,
-  );
-  if (!context)
-    return reply.status(403).send({ error: "Schedule manage access required" });
-  if (!options.service)
-    return reply
-      .status(503)
-      .send({ error: "Schedule service is not configured" });
+/**
+ * The past-edit refusals are a RAISE whose message is a JSON payload, which the
+ * Retroactive edit window reads (apps/web/src/schedule/lib/retroactiveEditRecovery.ts).
+ * rpcFailure swaps a message with double quotes for a plain sentence, so the
+ * payload is read from the database error it keeps on `cause`, for these two
+ * statuses only.
+ */
+function pastEditPayload(error: unknown): Record<string, unknown> | null {
+  if (!(error instanceof HttpError) || error.pgCode !== "P0001") return null;
+  const raw = (error.cause as { message?: unknown } | undefined)?.message;
+  if (typeof raw !== "string" || !raw.startsWith("{")) return null;
   try {
-    return reply.send(
-      await options.service.mutateShift({
-        actorUserId: context.userId,
-        workspaceId: params.workspaceId,
-        sessionId: params.sessionId,
-        expectedSessionRevision: body.expected_session_revision,
-        operation,
-        shiftId,
-        expectedShiftRevision: body.expected_shift_revision,
-        shift: body.shift,
-        idempotencyKey,
-      }),
-    );
-  } catch (error) {
-    return scheduleError(reply, error);
-  }
-}
-
-function parseStructuredScheduleError(error: unknown): Record<string, unknown> | null {
-  const message = error instanceof Error ? error.message : "";
-  if (!message.trim().startsWith("{")) return null;
-  try {
-    const parsed = JSON.parse(message) as unknown;
-    return parsed && typeof parsed === "object"
+    const parsed = JSON.parse(raw) as { status?: unknown } | null;
+    return parsed?.status === "past_edit_blocked" ||
+      parsed?.status === "past_shift_edit_requires_ack"
       ? (parsed as Record<string, unknown>)
       : null;
   } catch {
@@ -3418,42 +2717,27 @@ function parseStructuredScheduleError(error: unknown): Record<string, unknown> |
   }
 }
 
+/** The two refusals the screen reads a body for; everything else goes to the global handler. */
 function scheduleError(reply: FastifyReply, error: unknown) {
-  const structured = parseStructuredScheduleError(error);
-  if (structured?.status === "past_shift_edit_requires_ack") {
-    return reply.status(409).send(structured);
-  }
-  if (structured?.status === "past_edit_blocked") {
-    return reply.status(403).send(structured);
-  }
-  const message =
-    error instanceof Error ? error.message : "Schedule operation failed";
-  const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+  const pastEdit = pastEditPayload(error);
+  if (pastEdit)
+    return reply
+      .status(pastEdit.status === "past_edit_blocked" ? 403 : 409)
+      .send(pastEdit);
   // Only this explicit rejection may enter the client's assessment/retry path
   // (the database raises it as PT409; PostgREST retries 40001 on its own).
   // Other serialization failures still require a fresh edit session.
-  if (code === "PT409" && message === "Review the current availability assessment before saving") {
-    return reply.status(409).send({ error: message, code, status: "availability_review_required" });
-  }
-  if (["42501", "40001", "PT409", "23514", "22023"].includes(code)) {
-    const status = code === "42501" ? 403 : ["40001", "PT409"].includes(code) ? 409 : 422;
-    return reply.status(status).send({ error: message, code });
-  }
-  const status =
-    message.includes("access required") || message.includes("scope denied")
-      ? 403
-      : message.includes("not found")
-        ? 404
-        : message.includes("hard document blockers") ||
-            message.includes("hard publication blockers")
-          ? 422
-        : message.includes("stale") ||
-            message.includes("expired") ||
-            message.includes("conflict") ||
-            message.includes("in use")
-          ? 409
-          : 400;
-  return reply.status(status).send({ error: message });
+  if (
+    error instanceof HttpError &&
+    error.pgCode === "PT409" &&
+    error.message === "Review the current availability assessment before saving"
+  )
+    return reply.status(409).send({
+      error: error.message,
+      code: error.pgCode,
+      status: "availability_review_required",
+    });
+  throw error;
 }
 
 function bearerToken(authorization: string | undefined): string {

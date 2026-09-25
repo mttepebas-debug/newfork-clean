@@ -1,4 +1,5 @@
 import {
+  type AuthzAction,
   type Permission,
   activeWorkspaceContextFromRow,
   activeWorkspaceRowSchema,
@@ -6,6 +7,7 @@ import {
 } from "@newfork/shared";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createUserVerifier } from "./verify-user.js";
+import { HttpError } from "../http-error.js";
 
 export interface WorkspaceContextResolver {
   resolve(
@@ -28,6 +30,46 @@ export function bearerToken(authorization: string | undefined): string {
   return authorization?.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length).trim()
     : "";
+}
+
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function notMember(): HttpError {
+  return new HttpError("Workspace not found", 404, { reason: "authz.not_member" });
+}
+
+/**
+ * Who is asking, in the workspace they named (null: the one they last chose).
+ * One call for the membership and the actions the authorization core allows.
+ * An unknown workspace and somebody else's get the same answer: not a member.
+ */
+export async function resolveActor(
+  authorization: string | undefined,
+  workspaceId: string | null,
+  resolver: WorkspaceContextResolver | null,
+): Promise<ActiveWorkspaceContext> {
+  const accessToken = bearerToken(authorization);
+  if (!resolver || !accessToken) throw notMember();
+  if (workspaceId !== null && !uuid.test(workspaceId)) throw notMember();
+  const context = await resolver.resolve(accessToken, workspaceId);
+  if (!context || (workspaceId !== null && context.workspace.id !== workspaceId))
+    throw notMember();
+  return context;
+}
+
+/**
+ * May they do this somewhere in the workspace? Reads the core's list
+ * (app_private.actor_actions); no rule is worked out here. Where exactly is
+ * the database's to answer when the work is done.
+ */
+export function authorize(
+  context: ActiveWorkspaceContext,
+  action: AuthzAction,
+): ActiveWorkspaceContext {
+  if (context.actions.includes(action)) return context;
+  // ponytail: one reason for "nowhere here"; the core's finer reason (rank,
+  // missing permission) needs a database call, add it when a screen tells them apart.
+  throw new HttpError("Not allowed", 403, { reason: "authz.out_of_scope", detail: action });
 }
 
 export async function resolveAuthorizedWorkspaceContext(input: {

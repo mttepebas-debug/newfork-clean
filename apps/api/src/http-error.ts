@@ -75,7 +75,10 @@ const reasonKey = /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // ponytail: Postgres's own sentences name the relation, column or constraint in
 // double quotes, or say "permission denied for <object>". A deliberate RAISE
-// does neither. Widen this if another built-in message shape shows up in a 4xx.
+// does neither, with one known exception: Schedule's past-edit refusals raise a
+// JSON payload as the message. It is swapped here like the rest; the Schedule
+// routes read the payload back from `cause` (schedule-routes.ts pastEditPayload).
+// Widen this if another built-in message shape shows up in a 4xx.
 const postgresSentence = /"|^permission denied for /;
 const plainSentence: Record<number, string> = {
   400: "Request could not be completed",

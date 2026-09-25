@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 
 import {
+  authorize,
   createSupabaseWorkspaceContextResolver,
+  resolveActor,
   resolveWorkspaceAnyPermissionAuthorization,
   resolveWorkspaceAuthorization,
   resolveWorkspaceMembership,
@@ -340,6 +342,79 @@ describe("resolveWorkspaceAuthorization", () => {
         }),
       ).resolves.toEqual({ context: null, denied: "workspace_not_found" });
     }
+  });
+});
+
+describe("resolveActor and authorize", () => {
+  const context: ActiveWorkspaceContext = {
+    userId,
+    workspace: {
+      id: workspaceId,
+      name: "Scoped Bistro",
+      logo_url: null,
+      logo_file_name: null,
+      logo_updated_at: null,
+      schedule_logo_placement: { scale: 1, offset_x: 0, offset_y: 0 },
+    },
+    membership: {
+      id: membershipId,
+      userId,
+      workspaceId,
+      role: "manager",
+      status: "active",
+      allLocations: false,
+    },
+    permissions: ["schedule.read", "schedule.manage"],
+    actions: ["schedule.read"],
+    onboarding: { status: "complete", currentStep: 4, revision: 1 },
+    documentAccess: { restricted: false },
+    locationScope: { allLocations: false, locationIds: [] },
+  };
+  const notMember = { statusCode: 404, reason: "authz.not_member" };
+
+  it("returns the person asking in the workspace they named", async () => {
+    const resolver = { resolve: vi.fn(async () => context) };
+    await expect(resolveActor("Bearer token", workspaceId, resolver)).resolves.toBe(context);
+    expect(resolver.resolve).toHaveBeenCalledWith("token", workspaceId);
+  });
+
+  it("asks for the workspace they last chose when they named none", async () => {
+    const resolver = { resolve: vi.fn(async () => context) };
+    await expect(resolveActor("Bearer token", null, resolver)).resolves.toBe(context);
+    expect(resolver.resolve).toHaveBeenCalledWith("token", null);
+  });
+
+  it("answers an unknown and a foreign workspace the same: not a member", async () => {
+    const foreign = {
+      ...context,
+      workspace: { ...context.workspace, id: otherWorkspaceId },
+      membership: { ...context.membership, workspaceId: otherWorkspaceId },
+    };
+    for (const resolved of [null, foreign]) {
+      await expect(
+        resolveActor("Bearer token", workspaceId, { resolve: async () => resolved }),
+      ).rejects.toMatchObject(notMember);
+    }
+  });
+
+  it("refuses without a session, a resolver or a real workspace id, asking nobody", async () => {
+    const resolver = { resolve: vi.fn(async () => context) };
+    await expect(resolveActor(undefined, workspaceId, resolver)).rejects.toMatchObject(notMember);
+    await expect(resolveActor("Bearer token", "not-a-uuid", resolver)).rejects.toMatchObject(notMember);
+    await expect(resolveActor("Bearer token", workspaceId, null)).rejects.toMatchObject(notMember);
+    expect(resolver.resolve).not.toHaveBeenCalled();
+  });
+
+  it("lets through an action the core lists and refuses the rest, whatever the permissions", () => {
+    expect(authorize(context, "schedule.read")).toBe(context);
+    // schedule.manage is held, but the core does not list schedule.edit for them.
+    expect(() => authorize(context, "schedule.edit")).toThrow(
+      expect.objectContaining({
+        statusCode: 403,
+        reason: "authz.out_of_scope",
+        detail: "schedule.edit",
+      }),
+    );
   });
 });
 

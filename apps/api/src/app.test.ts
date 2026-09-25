@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "./app";
-import type { ActiveWorkspaceContext } from "@newfork/shared";
+import { rpcFailure } from "./http-error";
+import { authzActionKeys, type ActiveWorkspaceContext } from "@newfork/shared";
 import type { EmployeeOnboardingService } from "./employees/onboarding-service";
 import type { ScheduleReadService } from "./schedule/schedule-service";
 import type { ScheduleRequestsService } from "./schedule/schedule-requests-service";
@@ -26,7 +27,8 @@ const resolvedContext: ActiveWorkspaceContext = {
     status: "active",
     allLocations: true,
   },
-  actions: [],
+  // An owner: the core lists every action for them.
+  actions: [...authzActionKeys],
   permissions: [
     "workspace.read",
     "workspace.manage",
@@ -2040,9 +2042,11 @@ describe("api app", () => {
       },
     });
 
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({
-      error: "Manager schedule read access required",
+    // Another tenant's workspace answers like an unknown one: not a member.
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({
+      error: "Workspace not found",
+      reason: "authz.not_member",
     });
     expect(resolve).toHaveBeenCalledWith("owner-token", requestedWorkspaceId);
     expect(getReadModel).not.toHaveBeenCalled();
@@ -2141,12 +2145,12 @@ describe("api app", () => {
   it.each([
     ["Review the current availability assessment before saving", "PT409", 409, "availability_review_required"],
     ["Edit session revision is stale", "40001", 409, undefined],
-    ["Employee already has an overlapping shift", "23514", 422, undefined],
+    ["Employee already has an overlapping shift", "23514", 400, undefined],
     ["Schedule location access denied", "42501", 403, undefined],
   ])("classifies fast-save rejection: %s", async (message, code, statusCode, status) => {
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
-      scheduleService: scheduleServiceMock({ mutateShift: async () => { throw Object.assign(new Error(message), { code }); } }),
+      scheduleService: scheduleServiceMock({ mutateShift: async () => { throw rpcFailure({ message, code }); } }),
     });
     const response = await app.inject({
       method: "POST",
@@ -2254,7 +2258,7 @@ describe("api app", () => {
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
         saveSession: async () => {
-          throw new Error("session revision stale");
+          throw rpcFailure({ message: "session revision stale", code: "40001" });
         },
       }),
     });
@@ -2280,8 +2284,9 @@ describe("api app", () => {
       scheduleService: scheduleServiceMock({
         saveSession: async (input) => {
           calls.push(input.acknowledgePastEdits);
-          throw new Error(
-            JSON.stringify({
+          throw rpcFailure({
+            code: "P0001",
+            message: JSON.stringify({
               status: "past_shift_edit_requires_ack",
               past_edits: [
                 {
@@ -2298,7 +2303,7 @@ describe("api app", () => {
                 "Alex Rivera already worked Main Dining on 2026-08-17.",
               ],
             }),
-          );
+          });
         },
       }),
     });
@@ -2336,8 +2341,9 @@ describe("api app", () => {
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
         saveSession: async () => {
-          throw new Error(
-            JSON.stringify({
+          throw rpcFailure({
+            code: "P0001",
+            message: JSON.stringify({
               status: "past_edit_blocked",
               past_edits: [
                 {
@@ -2352,7 +2358,7 @@ describe("api app", () => {
               ],
               past_edit_messages: ["Past schedule weeks are read-only."],
             }),
-          );
+          });
         },
       }),
     });
@@ -2378,7 +2384,12 @@ describe("api app", () => {
           severity: "blocked",
         },
       ],
+      past_edit_messages: ["Past schedule weeks are read-only."],
     });
+    // The web opens the Retroactive edit window on this body
+    // (apps/web/src/schedule/lib/retroactiveEditRecovery.ts), not the no-access
+    // state, which an authz.* reason would trigger.
+    expect(response.json()).not.toHaveProperty("reason");
   });
 
   it("forwards canonical Schedule publication preview scope", async () => {
@@ -2464,13 +2475,13 @@ describe("api app", () => {
     expect(weeks).toEqual(["2026-08-17"]);
   });
 
-  it("requires the independent Schedule publish capability", async () => {
+  it("requires the core's independent schedule.publish action", async () => {
     const app = buildApp({
       contextResolver: {
         resolve: async () => ({
           ...resolvedContext,
-          permissions: resolvedContext.permissions.filter(
-            (permission) => permission !== "schedule.publish",
+          actions: resolvedContext.actions.filter(
+            (action) => action !== "schedule.publish",
           ),
         }),
       },
@@ -2621,7 +2632,7 @@ describe("api app", () => {
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
         publish: async () => {
-          throw new Error("schedule has hard publication blockers");
+          throw rpcFailure({ message: "schedule has hard publication blockers", code: "23514" });
         },
       }),
     });
@@ -2631,13 +2642,15 @@ describe("api app", () => {
       headers: { authorization: "Bearer owner-token" },
       payload: basePayload,
     });
-    expect(hard.statusCode).toBe(422);
+    // A check_violation is a 400 everywhere (rpcFailure); the message tells them apart.
+    expect(hard.statusCode).toBe(400);
+    expect(hard.json().error).toBe("schedule has hard publication blockers");
 
     const hardDocumentApp = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
         publish: async () => {
-          throw new Error("schedule has hard document blockers");
+          throw rpcFailure({ message: "schedule has hard document blockers", code: "23514" });
         },
       }),
     });
@@ -2647,13 +2660,13 @@ describe("api app", () => {
       headers: { authorization: "Bearer owner-token" },
       payload: basePayload,
     });
-    expect(hardDocument.statusCode).toBe(422);
+    expect(hardDocument.statusCode).toBe(400);
 
     const staleApp = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
         publish: async () => {
-          throw new Error("stale publication preview");
+          throw rpcFailure({ message: "stale publication preview", code: "40001" });
         },
       }),
     });
@@ -2748,13 +2761,15 @@ describe("api app", () => {
     });
   });
 
-  it("requires the independent Schedule template Read capability", async () => {
+  // The core has no template read action (FB-6.1 N4): the gate asks schedule.read
+  // and the database still asks schedule.templates.read.
+  it("asks schedule.read before listing Schedule templates", async () => {
     const app = buildApp({
       contextResolver: {
         resolve: async () => ({
           ...resolvedContext,
-          permissions: resolvedContext.permissions.filter(
-            (permission) => permission !== "schedule.templates.read",
+          actions: resolvedContext.actions.filter(
+            (action) => action !== "schedule.read",
           ),
         }),
       },

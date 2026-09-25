@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { isNoAccess } from "../../lib/no-access";
 import { ScheduleRequestError } from "../schedule-data";
 import {
   parsePastEditFinding,
@@ -87,6 +88,36 @@ describe("retroactiveEditRecovery", () => {
         }),
       )?.mode,
     ).toBe("blocked");
+  });
+
+  it("opens the blocked window, not no-access, on the API's 403 past-week body", () => {
+    // The body apps/api sends for a past_edit_blocked RAISE (schedule-routes.ts
+    // pastEditPayload; app.test.ts "maps blocked Schedule retroactive saves").
+    const error = new ScheduleRequestError(
+      "Request could not be completed",
+      403,
+      {
+        status: "past_edit_blocked",
+        past_edits: [
+          {
+            op_type: "delete",
+            shift_id: "66000000-0000-4000-8000-000000000001",
+            scheduled_date: "2026-08-17",
+            location_name: "Main Dining",
+            employee_name: "Alex Rivera",
+            reason: "past_week",
+            severity: "blocked",
+          },
+        ],
+        past_edit_messages: ["Past schedule weeks are read-only."],
+      },
+    );
+    expect(parseRetroactiveEditError(error)).toMatchObject({
+      mode: "blocked",
+      findings: [{ location_name: "Main Dining", reason: "past_week" }],
+      messages: ["Past schedule weeks are read-only."],
+    });
+    expect(isNoAccess(error)).toBe(false);
   });
 
   it("ignores unrelated errors", () => {
