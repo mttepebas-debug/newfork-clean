@@ -37,6 +37,8 @@ lead'idir; diğer lead'ler görev verirken ve raporlarken aynı kurallara uyar.
   - `security-review`, `superpowers:verification-before-completion`: main'e almadan önce;
   - `design:design-critique`, `design:ux-copy`: ekran turu, metinler;
   - `run` ve dahili tarayıcı: değişikliği gerçek uygulamada ekran görüntüsüyle göstermek.
+- Skill listesi oturuma göre değişir (kurulu eklentiler farklı olabilir). Görevdeki bir skill alıcının
+  listesinde yoksa alıcı onu atlar, yerine aynı işi gören bir yol kullanır ve raporda belirtir.
 - Görev mesajının iskeleti: amaç; kapsam (içi / dışı, farkları işaretli); kullanıcının onayladığı
   eylemlerin açık listesi (indirme adı ve boyutu, kalıcı kurulumlar); görevi verenin önceden ölçtüğü
   ortam bilgisi (tarih ve commit ile); sıra; bitiş kriterleri; tuzaklar; rapor biçimi ve adresi.
