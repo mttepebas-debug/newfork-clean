@@ -11,7 +11,7 @@ metadata:
 
 **How to apply:**
 - Gate is the handler's FIRST statement (before zod), so a non-member learns nothing about the schema and the per-route test needs no valid bodies. Pattern: `const context = authorize(await workspaceActor(request, options), "schedule.edit");`.
-- Permission → action is not 1:1: `schedule.manage` → `schedule.edit`, `schedule.templates.manage` → `schedule.templates`; there is no read action for templates or for takeover (open decisions, FB-6.1 N4).
-- Pin every route with a table like `apps/api/src/schedule/schedule-routes-gate.test.ts` (non-member 404 / all-but-its-action 403 / only-its-action → 400 on bad ids). Changing one route's action makes 2 rows fail.
+- Permission → action is not 1:1: `schedule.manage` → `schedule.edit`, `schedule.templates.manage` → `schedule.templates`; there is no read action for templates (FB-6.1 N4). Lock takeover was removed (user decision 2026-09-25).
+- Pin every route with a table like `apps/api/src/schedule/schedule-routes-gate.test.ts` (non-member 404 / all-but-its-action 403 / only-its-action → 400 on bad ids) plus an onRoute completeness check against what the area registers. Changing one route's action makes 2 rows fail.
 - Test fixtures that build `ActiveWorkspaceContext` by hand need `actions`; `app.test.ts` owner uses `[...authzActionKeys]`.
 - Codemod over multi-line handlers: restrict arg matches to `[^;]*?`, a lazy `[\s\S]*?` swallowed whole neighbouring handlers.
