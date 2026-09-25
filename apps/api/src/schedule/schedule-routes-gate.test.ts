@@ -33,10 +33,8 @@ const routes: readonly Row[] = [
   ["POST", `${v1}/publications`, "schedule.publish"],
   ["POST", `${v1}/unpublish-preview`, "schedule.publish"],
   ["POST", `${v1}/unpublications`, "schedule.publish"],
-  // Template reads: the core has no read action for templates (FB-6.1 N4);
-  // the database still asks schedule.templates.read.
-  ["GET", `${v1}/templates`, "schedule.read", "none"],
-  ["GET", `${v1}/templates/:id`, "schedule.read"],
+  ["GET", `${v1}/templates`, "schedule.templates.read", "none"],
+  ["GET", `${v1}/templates/:id`, "schedule.templates.read"],
   ["POST", `${v1}/templates`, "schedule.templates"],
   ["PATCH", `${v1}/templates/:id`, "schedule.templates"],
   ["DELETE", `${v1}/templates/:id`, "schedule.templates"],
@@ -79,8 +77,8 @@ const routes: readonly Row[] = [
   ["POST", "/schedule/export/preview", "schedule.export"],
   ["POST", "/schedule/export/preview-html", "schedule.export"],
   ["POST", "/schedule/export", "schedule.export"],
-  ["GET", "/schedule/templates", "schedule.read", "none"],
-  ["GET", "/schedule/templates/:id", "schedule.read"],
+  ["GET", "/schedule/templates", "schedule.templates.read", "none"],
+  ["GET", "/schedule/templates/:id", "schedule.templates.read"],
   ["POST", "/schedule/templates", "schedule.templates"],
   ["PATCH", "/schedule/templates/:id", "schedule.templates"],
   ["DELETE", "/schedule/templates/:id", "schedule.templates"],
@@ -110,6 +108,7 @@ const cases = routes.map(([method, url, action, input]) => ({ method, url, actio
 
 const scheduleActions: AuthzAction[] = [
   "schedule.read",
+  "schedule.templates.read",
   "schedule.edit",
   "schedule.publish",
   "schedule.templates",

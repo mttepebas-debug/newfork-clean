@@ -703,7 +703,7 @@ export function registerScheduleRoutes(
   app.get(
     "/v1/workspaces/:workspaceId/schedule/templates",
     async (request, reply) => {
-      const context = authorize(await workspaceActor(request, options), "schedule.read");
+      const context = authorize(await workspaceActor(request, options), "schedule.templates.read");
       const params = paramsSchema.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid workspace required" });
@@ -726,7 +726,7 @@ export function registerScheduleRoutes(
   app.get(
     "/v1/workspaces/:workspaceId/schedule/templates/:templateId",
     async (request, reply) => {
-      const context = authorize(await workspaceActor(request, options), "schedule.read");
+      const context = authorize(await workspaceActor(request, options), "schedule.templates.read");
       const params = templateParamsSchema.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid template required" });
@@ -1967,7 +1967,7 @@ export function registerScheduleRoutes(
   });
 
   app.get("/schedule/templates", async (request, reply) => {
-    const context = authorize(await activeActor(request, options), "schedule.read");
+    const context = authorize(await activeActor(request, options), "schedule.templates.read");
     if (!options.service)
       return reply
         .status(503)
@@ -1982,7 +1982,7 @@ export function registerScheduleRoutes(
   });
 
   app.get("/schedule/templates/:templateId", async (request, reply) => {
-    const context = authorize(await activeActor(request, options), "schedule.read");
+    const context = authorize(await activeActor(request, options), "schedule.templates.read");
     const params = activeTemplateParamsSchema.safeParse(request.params);
     if (!params.success)
       return reply.status(400).send({ error: "Valid template required" });

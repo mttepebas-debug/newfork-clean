@@ -2706,15 +2706,13 @@ describe("api app", () => {
     });
   });
 
-  // The core has no template read action (FB-6.1 N4): the gate asks schedule.read
-  // and the database still asks schedule.templates.read.
-  it("asks schedule.read before listing Schedule templates", async () => {
+  it("asks schedule.templates.read before listing Schedule templates", async () => {
     const app = buildApp({
       contextResolver: {
         resolve: async () => ({
           ...resolvedContext,
           actions: resolvedContext.actions.filter(
-            (action) => action !== "schedule.read",
+            (action) => action !== "schedule.templates.read",
           ),
         }),
       },
