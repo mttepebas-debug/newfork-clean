@@ -1,6 +1,6 @@
 # FEEDBACK-001 Bildirim, yükleme, hata ve bağlantı durumlarının yenilenmesi
 Status: paused — Aşama 1 bitti, Aşama 2 bekliyor (BL-117)
-Session: tekil (kullanıcı)   Branch: task/tasarim/FEEDBACK-001   Worktree: newfork-wt/FEEDBACK-001   DB: -
+Session: tekil (kullanıcı)   Branch: - (Aşama 1 main'de, 2d8ba8a)   Worktree: -   DB: -
 
 Goal: Uygulamadaki toast, yükleme, hata, boş ekran, banner ve bağlantı durumlarını metin, görünüm ve hareket olarak tek, profesyonel bir dile getirmek; hepsini tetiklemeden izlenebilen bir DEV vitrini sunmak.
 In scope: `/dev/feedback` vitrini; toast / inline / banner / sayfa hiyerarşisi (kullanıcıyla istişare); toast, yükleme, hata ekranı ve bağlantı varyantları (kullanıcı seçer); çökme, 404 ve erişim yok ekranları; ortak `userMessage(err)`; realtime ve çevrimdışı durumu; ekranlara yayma.
