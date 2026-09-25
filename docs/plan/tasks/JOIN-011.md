@@ -1,5 +1,5 @@
 # JOIN-011 Hesap alaninin kalani: belgeler, kendi istihdam kaydin, rozetler
-Status: draft
+Status: done (`c3e4af2`, `02a7850`); owner resmî adı eksik kaldı → BL-080
 Session: -   Branch: task/join-011   Worktree: yok   DB: KILIT
 
 Plan ID'leri: E3 (hesap ici), M1, M5 + kullanici kapsami 2026-09-21

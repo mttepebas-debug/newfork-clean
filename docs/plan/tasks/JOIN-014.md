@@ -1,5 +1,5 @@
 # JOIN-014 İsim mimarisi: bir kez sor, açıkça etiketle, tercih edilen adı yönet
-Status: kısmen done (2026-09-21); tercih edilen ad onay modeli kaldı
+Status: done (tercih edilen ad `d79b9dd`); karar 2 (owner resmî adı) → BL-080
 Session: -   Branch: task/join-014   Worktree: yok   DB: KİLİT
 
 Plan ID'leri: M1, M5, E1, E4 + kullanıcı kararları 2026-09-21
