@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(24);
 
 -- A schedule edit locks its draft, not its locations (FOUNDATION-B 3b, user
 -- decision 2026-09-24, option A); publishing says when a location was
@@ -115,23 +115,14 @@ select ok(
   'a refused edit takes nothing'
 );
 
--- Mehmet may not take over a Kadikoy edit; the admin may, and saving it keeps Besiktas.
-select throws_ok(
-  format($$select public.takeover_schedule_edit_session_service(tests.user('lk:mehmet'), tests.id('lk'), %L)$$,
-    pg_temp.session(pg_temp.got('ayse2'))),
-  '42501', null,
-  'somebody who cannot edit Kadikoy cannot take over its edit'
-);
-select lives_ok(
-  format($$select public.takeover_schedule_edit_session_service(tests.user('lk:zeynep'), tests.id('lk'), %L)$$,
-    pg_temp.session(pg_temp.got('ayse2'))),
-  'the admin takes over the Kadikoy edit'
-);
-select pg_temp.save('zeynep', pg_temp.session(pg_temp.got('ayse2')), 'Both locations', pg_temp.draft('draft_kb'));
+-- Nobody takes over somebody else's open edit, the owner and admins included;
+-- the lock lapses after four minutes (user decision 2026-09-25). Saving the
+-- Kadikoy edit keeps Besiktas.
+select pg_temp.save('ayse', pg_temp.session(pg_temp.got('ayse2')), 'Both locations', pg_temp.draft('draft_kb'));
 select is(
   pg_temp.draft_locations(pg_temp.draft('draft_kb')),
   array['BJK', 'KDK'],
-  'BL-097: saving a taken-over Kadikoy edit keeps the draft''s Besiktas shifts'
+  'BL-097: saving a Kadikoy edit keeps the draft''s Besiktas shifts'
 );
 
 -- A Kadikoy-only draft cannot be published for Besiktas.

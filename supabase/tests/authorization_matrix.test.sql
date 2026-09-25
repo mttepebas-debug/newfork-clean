@@ -240,6 +240,10 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
        where r.workspace_id = $2 and r.system_key = 'employee')) is not null$$),
   ('settings.scheduling.write', 'workspace', null, false, false,
    $$select public.update_scheduling_settings_service($1, $2, '{"week_start_day": "monday"}') is not null$$),
+  ('settings.conflict_rules.write', 'workspace', null, false, false,
+   $$select public.update_scheduling_settings_service($1, $2, (
+       select jsonb_build_object('minimum_rest_minutes', s.minimum_rest_minutes, 'conflict_rules_revision', s.conflict_rules_revision)
+       from public.workspace_scheduling_settings s where s.workspace_id = $2)) is not null$$),
   ('workspace.close', 'workspace', null, true, false,
    $$select public.request_workspace_closure_service($1, $2, 'immediate', (select w.name from public.workspaces w where w.id = $2), true, null) is not null$$),
   ('workspace.transfer_ownership', 'workspace', null, true, false,
@@ -319,6 +323,7 @@ insert into core_action (key, core_key, blank) values
   ('settings.jobs.write', 'settings.jobs.write', 'null'),
   ('settings.roles.write', 'settings.roles.write', 'null'),
   ('settings.scheduling.write', 'settings.scheduling.write', 'null'),
+  ('settings.conflict_rules.write', 'settings.conflict_rules.write', 'null'),
   ('workspace.close', 'workspace.close', 'null'),
   ('workspace.transfer_ownership', 'workspace.transfer_ownership', 'null'),
   ('time_off.decide', 'time_off.decide', 'null'),
@@ -455,7 +460,7 @@ begin
     return case when cardinality(p.locs) > 0 then 'allow' else 'deny' end;
 
   when 'settings.organization.write', 'settings.locations.write', 'settings.jobs.write',
-       'settings.roles.write', 'settings.scheduling.write' then
+       'settings.roles.write', 'settings.scheduling.write', 'settings.conflict_rules.write' then
     -- Managers read the catalog; they never write organization settings (D1).
     return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
 

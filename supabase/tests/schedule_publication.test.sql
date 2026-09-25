@@ -82,7 +82,7 @@ values('b9500000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de0
 insert into public.employee_documents(id,workspace_id,employee_id,requirement_id,version_number,object_path,original_filename,media_type,size_bytes,review_status,expiry_date,uploaded_by)
 values('b9500000-0000-4000-8000-000000000004','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','15000000-0000-4000-8000-000000000001','b9500000-0000-4000-8000-000000000003',1,'6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/15000000-0000-4000-8000-000000000001/b9500000-0000-4000-8000-000000000003/b9500000-0000-4000-8000-000000000004.pdf','schedule-cert.pdf','application/pdf',1024,'accepted',current_date-(extract(isodow from current_date)::integer-1)-1,'d9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
 set local role service_role;
-select is(jsonb_array_length(public.list_schedule_draft_document_conflicts_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1))->'conflicts'),0,'tracking-only document expiry does not create Schedule conflicts');
+select is(jsonb_array_length(public.list_schedule_draft_document_conflicts_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1),array(select distinct d.location_id from public.schedule_draft_shifts d where d.draft_id='85000000-0000-4000-8000-000000000001'))->'conflicts'),0,'tracking-only document expiry does not create Schedule conflicts');
 set local role postgres;
 update public.document_types set expiry_schedule_impact='warn' where id='b9500000-0000-4000-8000-000000000001';
 insert into public.employee_documents(id,workspace_id,employee_id,requirement_id,version_number,object_path,original_filename,media_type,size_bytes,review_status,expiry_date,uploaded_by)
@@ -91,17 +91,17 @@ create temp table document_conflict_state (soft jsonb, hard jsonb);
 grant select, insert, update on document_conflict_state to service_role;
 set local role service_role;
 insert into document_conflict_state(soft)
-values(public.list_schedule_draft_document_conflicts_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1)));
+values(public.list_schedule_draft_document_conflicts_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1),array(select distinct d.location_id from public.schedule_draft_shifts d where d.draft_id='85000000-0000-4000-8000-000000000001')));
 select ok(jsonb_array_length(soft->'conflicts') > 0,'warn document expiry creates Schedule preview conflicts') from document_conflict_state;
 select is(soft->'conflicts'->0->>'severity','soft','warn document expiry is a soft conflict') from document_conflict_state;
 select is(soft->'conflicts'->0->>'review_action','review_document','pending replacement document exposes review action') from document_conflict_state;
-select throws_ok($$select public.list_schedule_draft_document_conflicts_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','7ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1))$$,'42501','schedule manage access denied','same account employee role in another tenant cannot preview Schedule document conflict signals');
+select throws_ok($$select public.list_schedule_draft_document_conflicts_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','7ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1),array(select distinct d.location_id from public.schedule_draft_shifts d where d.draft_id='85000000-0000-4000-8000-000000000001'))$$,'42501','Not allowed','same account employee role in another tenant cannot preview Schedule document conflict signals');
 set local role postgres;
 update public.document_types set expiry_schedule_impact='block' where id='b9500000-0000-4000-8000-000000000001';
 select is((select expiry_policy_version from public.document_types where id='b9500000-0000-4000-8000-000000000001'),3,'expiry policy version increments with impact changes');
 set local role service_role;
 update document_conflict_state
-set hard=public.list_schedule_draft_document_conflicts_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1));
+set hard=public.list_schedule_draft_document_conflicts_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1),array(select distinct d.location_id from public.schedule_draft_shifts d where d.draft_id='85000000-0000-4000-8000-000000000001'));
 select is(hard->'conflicts'->0->>'severity','hard','block document expiry is a hard conflict') from document_conflict_state;
 select is(hard->'conflicts'->0->>'overrideable','false','block document expiry is not overrideable') from document_conflict_state;
 
@@ -170,7 +170,7 @@ select throws_ok(
     true
   )$$,
   '42501',
-  'schedule publication scope denied',
+  'Not allowed',
   'scoped document conflict preview rejects inaccessible locations'
 );
 insert into document_publish_hard_state(preview)

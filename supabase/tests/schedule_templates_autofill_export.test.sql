@@ -72,7 +72,7 @@ select is(exported->>'status','export_ready','published schedule export previews
 select is(jsonb_array_length(exported->'rows'),5,'published export is location scoped') from phase5d_state;
 select ok(not exists(select 1 from phase5d_state,jsonb_array_elements(exported->'rows') x where x->>'location_name'<>'Main Dining'),'export rows do not leak another location');
 select is(jsonb_array_length(public.preview_schedule_export_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'draft','94200000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid])->'rows'),2,'named draft export preserves source rows');
-select throws_ok($$select public.preview_schedule_export_service('94000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'published',null,array['11000000-0000-4000-8000-000000000002'::uuid])$$,'42501','schedule export scope denied','manager cannot export another location');
+select throws_ok($$select public.preview_schedule_export_service('94000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'published',null,array['11000000-0000-4000-8000-000000000002'::uuid])$$,'42501','Not allowed','manager cannot export another location');
 
 update phase5d_state set preset=public.create_schedule_export_preset_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Wall chart','{"format":"print","layout":"weekly","time_format":"12h","include_unassigned":true,"include_notes":false,"include_scheduled_hours":true,"csv_delimiter":","}');
 select is(preset->>'name','Wall chart','export preset creates') from phase5d_state;
@@ -80,7 +80,7 @@ select is(jsonb_array_length(public.list_schedule_export_presets_service('d9f43e
 select is(public.delete_schedule_export_preset_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(preset->>'id')::uuid)->>'status','deleted','export preset deletes') from phase5d_state;
 select is(jsonb_array_length(public.list_schedule_export_presets_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'presets'),0,'deleted preset disappears') from phase5d_state;
 select throws_ok($$select public.create_schedule_template_service('94000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','94200000-0000-4000-8000-000000000001','Denied',true)$$,'42501','schedule template access denied','employee cannot create template');
-select throws_ok($$select public.preview_schedule_export_service('94000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'published',null,array['11000000-0000-4000-8000-000000000001'::uuid])$$,'42501','schedule export scope denied','employee cannot export manager schedule');
+select throws_ok($$select public.preview_schedule_export_service('94000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'published',null,array['11000000-0000-4000-8000-000000000001'::uuid])$$,'42501','Not allowed','employee cannot export manager schedule');
 
 select * from finish();
 rollback;

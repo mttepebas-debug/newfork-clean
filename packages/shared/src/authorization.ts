@@ -14,6 +14,7 @@ export const authzActionKeys = [
   "audit.read",
   "availability.own",
   "availability.team_read",
+  "availability.team_write",
   "documents.read",
   "documents.review",
   "documents.self",
@@ -46,9 +47,11 @@ export const authzActionKeys = [
   "schedule.publish",
   "schedule.read",
   "schedule.templates",
+  "schedule.templates.read",
   "settings.availability.read",
   "settings.availability.write",
   "settings.catalog.read",
+  "settings.conflict_rules.write",
   "settings.documents.write",
   "settings.jobs.write",
   "settings.locations.write",
@@ -113,6 +116,7 @@ export const targetedAuthzActions = {
   "settings.organization.write": { permission: "settings.general.manage" },
   "settings.roles.write": { permission: "roles.manage" },
   "settings.scheduling.write": { permission: "settings.schedule_rules.manage" },
+  "settings.conflict_rules.write": { permission: "schedule.conflict_rules.manage" },
   "time_off.decide": { person: true, permission: "schedule.time_off_requests.manage" },
   "time_off.request_own": { permission: null, own: true },
   "workspace.close": { permission: null, ownerOnly: true },
@@ -254,6 +258,7 @@ export function expected<A extends TargetedAuthzAction>(
     case "settings.jobs.write":
     case "settings.roles.write":
     case "settings.scheduling.write":
+    case "settings.conflict_rules.write":
     case "audit.read":
       // Managers read the catalog; they never write organization settings.
       return high;

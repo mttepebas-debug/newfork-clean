@@ -38,8 +38,8 @@ select is((model->>'time_off_pending_count')::integer,1,'pending count honors lo
 select is(jsonb_array_length(model->'time_off_requests'),1,'queue excludes inaccessible location') from phase6b_state;
 select is(model->'time_off_requests'->0->>'employee_name','Alex Kim','queue returns employee identity') from phase6b_state;
 select is(jsonb_array_length(model->'time_off_requests'->0->'segments'),2,'queue returns immutable request segments') from phase6b_state;
-select throws_ok($$select public.get_schedule_requests_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','needs_review','needs_review','11000000-0000-4000-8000-000000000002')$$,'42501','schedule request scope denied','manager cannot query another location');
-select throws_ok($$select public.get_schedule_requests_service('97000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$,'42501','schedule request read access denied','employee cannot read manager queues');
+select throws_ok($$select public.get_schedule_requests_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','needs_review','needs_review','11000000-0000-4000-8000-000000000002')$$,'42501','Not allowed','manager cannot query another location');
+select throws_ok($$select public.get_schedule_requests_service('97000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$,'42501','Not allowed','employee cannot read manager queues');
 
 select is((public.mark_schedule_time_off_viewed_service('97000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001')->>'status'),'viewed','opening request records viewed state');
 select is((select count(*)::integer from public.schedule_time_off_events where request_id='97200000-0000-4000-8000-000000000001' and action='viewed'),1,'viewed audit is recorded once');

@@ -247,7 +247,6 @@ insert into service_class values
   ('submit_employee_time_off_service', 'time_off.request_own'),
   ('sync_expiring_document_todos_service', 'exempt:worker'),
   ('synchronize_announcement_notification_lifecycle_service', 'exempt:worker'),
-  ('takeover_schedule_edit_session_service', 'schedule.edit'),
   ('terminate_employee_service', 'employee.terminate'),
   ('touch_workspace_membership_service', 'account.self'),
   ('unapprove_signature_retention_policy_service', 'settings.documents.write'),
@@ -261,6 +260,7 @@ insert into service_class values
   ('update_schedule_export_preset_service', 'schedule.export'),
   ('update_schedule_export_schedule_service', 'schedule.export'),
   ('update_schedule_pending_op_service', 'schedule.edit'),
+  -- also settings.conflict_rules.write when the payload touches conflict handling (FB-6.1 N3)
   ('update_scheduling_settings_service', 'settings.scheduling.write'),
   ('weekly_preference_settings_read_service', 'settings.availability.read'),
   ('weekly_preference_settings_save_service', 'settings.availability.write'),

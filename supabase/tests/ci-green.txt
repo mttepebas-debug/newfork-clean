@@ -52,6 +52,7 @@ supabase/tests/owner_employee_record.test.sql
 supabase/tests/preferred_name_approval.test.sql
 supabase/tests/public_roles_reach_no_table_directly.test.sql
 supabase/tests/retired_objects_stay_gone.test.sql
+supabase/tests/schedule_asks_the_core.test.sql
 supabase/tests/schedule_draft_availability_reads.test.sql
 supabase/tests/schedule_edit_locks.test.sql
 supabase/tests/schedule_grid_read_budget.test.sql

@@ -1,5 +1,5 @@
 {
- "sourceSha256": "fb9f4846dbc3dc8634e2efab93914137dcf68a2a01f013a9fb5bd2a3e4a6cede",
+ "sourceSha256": "974c4ac517ed27186b8bab5a95577dfe6002877b75e4671675a35e5a4ce40e3c",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -8,6 +8,7 @@
   "audit.read",
   "availability.own",
   "availability.team_read",
+  "availability.team_write",
   "documents.read",
   "documents.review",
   "documents.self",
@@ -40,9 +41,11 @@
   "schedule.publish",
   "schedule.read",
   "schedule.templates",
+  "schedule.templates.read",
   "settings.availability.read",
   "settings.availability.write",
   "settings.catalog.read",
+  "settings.conflict_rules.write",
   "settings.documents.write",
   "settings.jobs.write",
   "settings.locations.write",
@@ -609,6 +612,13 @@
    "targetKind": "location",
    "permission": "schedule.read",
    "coreKey": "schedule.read",
+   "blank": "null"
+  },
+  {
+   "key": "settings.conflict_rules.write",
+   "targetKind": "workspace",
+   "permission": null,
+   "coreKey": "settings.conflict_rules.write",
    "blank": "null"
   },
   {
@@ -10845,6 +10855,96 @@
    "zeynep",
    "x:K",
    "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "ayse",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "can",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "mehmet",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "nil",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.conflict_rules.write",
+   "zeynep",
+   "workspace",
+   "allow"
   ],
   [
    "settings.jobs.write",

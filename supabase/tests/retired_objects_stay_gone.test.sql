@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(12);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -164,6 +164,12 @@ insert into retired (kind, name, step) values
   ('policy', 'employee_offboarding_shift_actions.employee_offboarding_shift_actions_select', '5.5'),
   ('policy', 'employee_profiles.employee_profiles_select', '5.5'),
   ('policy', 'employee_terminations.employee_terminations_select', '5.5');
+-- FB-6.1 .2: one overload of a name that lives on (20260925173926); the API
+-- asks the seven-argument list with the locations it publishes.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.list_schedule_draft_document_conflicts_service(uuid, uuid, uuid, date)', 'FB-6.1.2'),
+  -- nobody takes over somebody else's open edit (user decision 2026-09-25)
+  ('function', 'takeover_schedule_edit_session_service', 'FB-6.1.2');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -194,6 +200,10 @@ select is(
     order by 1
   ),
   '{}'::text[], 'retired functions stay gone'
+);
+select is(
+  array(select r.name from retired r where r.kind = 'function_signature' and to_regprocedure(r.name) is not null order by 1),
+  '{}'::text[], 'retired overloads stay gone'
 );
 select is(
   array(

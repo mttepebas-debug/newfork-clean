@@ -1,0 +1,361 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(55);
+
+-- FB-6.1 step .2: Schedule's entry points ask the authorization core
+-- (app_private.authorize() / scope_set()) instead of the three old Schedule
+-- helpers, and a no is 42501 with an authz.* hint. The helpers stay until the
+-- time off and shift exchange slices move their last callers (FB-6.1 K-1).
+--
+-- "Somewhere" (K-bir-yerde): an object with no location of its own (an export
+-- preset, the drafts list) is asked of the locations the person reaches:
+--   app_private.authorize(actor, w, '<action>',
+--     target_locations => app_private.scope_set(actor, w, '<action>'))
+-- Owners and admins pass ('{}' is the whole organization), a manager passes
+-- with one location in reach, a manager with none is out_of_scope. Only set
+-- actions read '{}' that way, so the shape is only used with them (section 2).
+-- An action on one place or one person asks the same question as
+--   if cardinality(scope_set(...)) = 0 then perform authorize(actor, w, act)
+-- which raises the reason (a blank location is never everywhere).
+
+select tests.world('sc');
+select tests.world('sx');
+select tests.person('sc', 'zeynep', 'admin', array['K'], array['server']);
+select tests.person('sc', 'ayse', 'manager', array['K'], array['cook']);
+select tests.person('sc', 'mehmet', 'manager', array['B'], array['cook']);
+select tests.person('sc', 'can', 'manager', array['K', 'B'], array['cook', 'server']);
+select tests.person('sc', 'nur', 'manager', null, null);
+select tests.person('sc', 'aydan', 'manager', array['K'], array['cook']);
+select tests.person('sc', 'emre', 'employee', array['K'], array['cook']);
+select tests.person('sc', 'veli', 'employee', array['B'], array['server']);
+select tests.role('sc', 'rules lead', 'manager', array(
+  select rp.permission_key
+  from public.workspace_role_permissions rp
+  join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('sc') and r.system_key = 'manager'
+  union select 'schedule.conflict_rules.manage' union select 'settings.schedule_rules.read'
+));
+select tests.person('sc', 'rita', 'rules lead', array['K'], array['cook']);
+
+-- Aydan misses a required document: a document everybody must hand in, and
+-- her deadline has passed.
+-- ponytail: the deadline is moved into the past by hand; nothing in the
+-- product moves the clock.
+create temporary table required_document (id uuid, preview jsonb);
+insert into required_document (id)
+select public.save_document_type_lifecycle_service(tests.user('sc:owner'), tests.id('sc'), null, null, jsonb_build_object(
+  'title', 'Food handler card', 'description', 'Card', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+update required_document set preview = public.preview_document_publication_service(tests.user('sc:owner'), tests.id('sc'), id);
+select public.set_document_publication_service(tests.user('sc:owner'), tests.id('sc'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from required_document;
+select tests.settle();
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('sc:aydan');
+
+-- The owner works nowhere: owning the workspace is not working somewhere.
+select tests.stops_working_at((
+  select m.id from public.workspace_memberships m
+  where m.workspace_id = tests.id('sc') and m.user_id = tests.user('sc:owner')
+));
+
+create function pg_temp.said(statement text) returns text
+language plpgsql
+as $$
+declare
+  code text;
+  reason text;
+  what text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint, what = pg_exception_detail;
+  return concat_ws(' ', code, nullif(reason, ''), nullif(what, ''));
+end;
+$$;
+
+select is((app_private.actor(tests.user('sc:aydan'), tests.id('sc'))).document_blocked, true, 'Aydan misses a required document');
+select is(app_private.scope_set(tests.user('sc:nur'), tests.id('sc'), 'schedule.edit'), '{}'::uuid[], 'Nur manages no location');
+
+-- 1. Who still asks the old helpers ---------------------------------------------------
+-- The three Schedule helpers go when their last caller moves (FB-6.1 K-1). This
+-- list only shrinks: a function that starts asking them fails here, and a
+-- function that moves to the core takes its name off.
+
+create temporary table helper_caller (name text primary key, moves_in text not null);
+insert into helper_caller values
+  -- FB-6.1 .4: folded into one function per Schedule job
+  ('acquire_schedule_edit_session_service_past_week_base', 'FB-6.1 .4'),
+  ('apply_schedule_template_service_label_base', 'FB-6.1 .4'),
+  ('create_schedule_export_schedule_service', 'FB-6.1 .4'),
+  ('create_schedule_template_service_label_base', 'FB-6.1 .4'),
+  ('delete_schedule_draft_service', 'FB-6.1 .4'),
+  ('delete_schedule_template_service', 'FB-6.1 .4'),
+  ('mutate_schedule_edit_shift_service_base', 'FB-6.1 .4'),
+  ('mutate_schedule_edit_shift_service_label_base', 'FB-6.1 .4'),
+  ('preview_schedule_publication_before_availability_review_service', 'FB-6.1 .4'),
+  ('preview_schedule_unpublication_exchange_base', 'FB-6.1 .4'),
+  ('record_schedule_export_event_service', 'FB-6.1 .4'),
+  ('rename_schedule_template_service', 'FB-6.1 .4'),
+  ('save_schedule_edit_session_service_exchange_base', 'FB-6.1 .4'),
+  ('update_schedule_export_schedule_service', 'FB-6.1 .4'),
+  -- FB-6.3: time off
+  ('apply_time_off_period_decision', 'FB-6.3'),
+  ('decide_time_off_with_assignments_service', 'FB-6.3'),
+  ('mark_schedule_time_off_viewed_service', 'FB-6.3'),
+  ('preview_time_off_assignment_decision_service', 'FB-6.3'),
+  ('time_off_event_released_assignments', 'FB-6.3'),
+  -- FB-6.4: shift exchanges
+  ('shift_exchange_emit_notification_base', 'FB-6.4'),
+  ('shift_exchange_notification_allowed', 'FB-6.4'),
+  ('shift_exchange_preview', 'FB-6.4'),
+  ('shift_exchange_schedule_recovery_service', 'FB-6.4'),
+  ('shift_exchanges_command_service', 'FB-6.4');
+
+create temporary table asks_helpers as
+select distinct p.proname::text as name
+from pg_proc p
+where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
+  and p.prosrc ~ 'schedule_actor_(can_manage|can_publish|has_capability)_service\s*\('
+  and p.proname not in ('schedule_actor_can_manage_service', 'schedule_actor_can_publish_service',
+                        'schedule_actor_has_capability_service');
+
+select is(
+  array(select name from asks_helpers where name not in (select name from helper_caller) order by 1),
+  '{}'::text[],
+  'nobody new asks the old Schedule helpers'
+);
+select is(
+  array(select name from helper_caller where name not in (select name from asks_helpers) order by 1),
+  '{}'::text[],
+  'every name on the list still asks them: a function that moved to the core comes off the list'
+);
+select is((select count(*)::integer from asks_helpers), 24, 'twenty-four functions still ask the old helpers (58 before FB-6.1 .2)');
+
+-- 2. The "somewhere" shape ----------------------------------------------------------------
+-- Every target_locations => app_private.scope_set( call is the whole shape, asks
+-- for the same person, workspace and action twice, and the action is a set
+-- action, the only kind where an empty reach ('{}') means the organization.
+
+create temporary table somewhere_call as
+select p.oid, p.proname::text as name, m[1] as actor_asked, m[2] as workspace_asked, m[3] as action_asked,
+  m[4] as actor_reached, m[5] as workspace_reached, m[6] as action_reached
+from pg_proc p,
+  regexp_matches(p.prosrc,
+    'app_private\.authorize\(\s*([a-z_]+)\s*,\s*([a-z_]+)\s*,\s*''([a-z_.]+)''\s*,\s*target_locations\s*=>\s*app_private\.scope_set\(\s*([a-z_]+)\s*,\s*([a-z_]+)\s*,\s*''([a-z_.]+)''\s*\)\s*\)',
+    'g') m
+where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace);
+
+select is(
+  array(
+    select p.proname::text from pg_proc p
+    where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
+      and p.proname <> 'scope_set'
+      and (select count(*) from regexp_matches(p.prosrc, 'target_locations\s*=>\s*app_private\.scope_set\(', 'g'))
+        <> (select count(*) from somewhere_call c where c.oid = p.oid)
+    order by 1
+  ),
+  '{}'::text[],
+  'every scope_set() target is the whole "somewhere" shape'
+);
+select is(
+  array(
+    select distinct c.name || ': ' || c.action_asked from somewhere_call c
+    left join app_private.authz_actions a on a.key = c.action_asked
+    where c.action_asked <> c.action_reached or c.actor_asked <> c.actor_reached
+       or c.workspace_asked <> c.workspace_reached or a.scope_class is distinct from 'set'
+    order by 1
+  ),
+  '{}'::text[],
+  '"somewhere" asks for one person, one workspace and one set action'
+);
+select cmp_ok((select count(distinct name)::integer from somewhere_call), '>=', 12, 'the Schedule entry points without a location of their own ask "somewhere"');
+
+-- 3. How each "somewhere" gate says no ------------------------------------------------------
+-- A manager with no location, a manager missing a required document and an
+-- employee are refused with the reason; the owner, who works nowhere, passes.
+
+create temporary table gate (action text primary key, statement text not null);
+insert into gate values
+  ('schedule.export', $$select public.list_schedule_export_presets_service(%L, %L)$$),
+  ('schedule.edit', $$select public.list_schedule_drafts_service(%L, %L, tests.week(0))$$),
+  ('schedule.templates', $$select public.apply_schedule_template_service(%L, %L, gen_random_uuid(), 1, gen_random_uuid(), 'merge', array['__no_department__'])$$),
+  ('schedule.templates.read', $$select public.list_schedule_templates_service(%L, %L)$$),
+  ('requests.read', $$select public.get_schedule_requests_service(%L, %L)$$),
+  ('exchange.read', $$select public.shift_exchanges_read_service(%L, %L, true)$$),
+  ('availability.team_read', $$select public.weekly_team_read_service(%L, %L)$$);
+
+create function pg_temp.at_gate(person text, gate_action text) returns text
+language sql
+as $$
+  select pg_temp.said(format(g.statement, tests.user('sc:' || person), tests.id('sc')))
+  from gate g where g.action = gate_action
+$$;
+
+select is(pg_temp.at_gate('nur', g.action), '42501 authz.out_of_scope ' || g.action,
+  g.action || ': a manager with no location is out of scope')
+from gate g order by g.action;
+select is(pg_temp.at_gate('aydan', g.action), '42501 authz.document_blocked ' || g.action,
+  g.action || ': a manager missing a required document is blocked')
+from gate g order by g.action;
+select is(pg_temp.at_gate('emre', g.action), '42501 authz.missing_permission ' || g.action,
+  g.action || ': an employee does not hold the permission')
+from gate g order by g.action;
+select ok(pg_temp.at_gate('owner', g.action) not like '42501%',
+  g.action || ': the owner passes without working anywhere (' || pg_temp.at_gate('owner', g.action) || ')')
+from gate g order by g.action;
+
+-- 4. Scheduled exports and recent exports (Q-A, user decision 2026-09-25) ---------------
+-- A manager sees a record only when every one of its locations is theirs; a
+-- closed, unknown or foreign location, or none at all, leaves it to the owner
+-- and admins.
+
+-- ponytail: a third location closed by hand; there is no delete-location
+-- entry point yet.
+insert into public.locations (workspace_id, name, short_name, street_address, city, region, postal_code, timezone)
+values (tests.id('sc'), 'Moda', 'MDA', '1 St', 'Istanbul', 'Istanbul', '34710', 'Europe/Istanbul');
+select tests.remember('sc:M', (select l.id from public.locations l where l.workspace_id = tests.id('sc') and l.short_name = 'MDA'));
+
+create temporary table export_case (name text primary key, location_ids uuid[]);
+insert into export_case values
+  ('k-only', array[tests.id('sc:K')]),
+  ('k-and-b', array[tests.id('sc:K'), tests.id('sc:B')]),
+  ('b-only', array[tests.id('sc:B')]),
+  ('k-and-closed', array[tests.id('sc:K'), tests.id('sc:M')]),
+  ('closed-only', array[tests.id('sc:M')]),
+  ('unknown', array[gen_random_uuid()]),
+  ('foreign', array[tests.id('sx:K')]);
+
+select public.create_schedule_export_preset_service(tests.user('sc:owner'), tests.id('sc'), 'Weekly', '{}'::jsonb);
+-- ponytail: stored as they are; the create entry point checks their locations
+-- only from FB-6.1 .4 (Q3), and a closed location closes after the record.
+insert into public.scheduled_schedule_exports
+  (workspace_id, preset_id, name, recipients, location_ids, day_of_week, send_hour, created_by, updated_by)
+select tests.id('sc'), (select p.id from public.schedule_export_presets p where p.workspace_id = tests.id('sc')),
+  c.name, '["books@example.test"]'::jsonb, c.location_ids, 1, 9, tests.user('sc:owner'), tests.user('sc:owner')
+from export_case c;
+insert into public.schedule_export_events (workspace_id, actor_user_id, surface, format, params)
+select tests.id('sc'), tests.user('sc:owner'), c.name, 'pdf', jsonb_build_object('location_ids', to_jsonb(c.location_ids))
+from export_case c
+union all select tests.id('sc'), tests.user('sc:owner'), 'empty', 'pdf', '{"location_ids": []}'
+union all select tests.id('sc'), tests.user('sc:owner'), 'missing', 'pdf', '{}'
+union all select tests.id('sc'), tests.user('sc:owner'), 'garbage', 'pdf', '{"location_ids": ["not-a-location"]}';
+update public.locations set archived_at = now(), deleted_at = now() where id = tests.id('sc:M');
+
+create function pg_temp.scheduled_exports(person text) returns text[]
+language sql
+as $$
+  select array(select s ->> 'name' from jsonb_array_elements(
+    public.list_schedule_export_schedules_service(tests.user('sc:' || person), tests.id('sc')) -> 'schedules') s order by 1)
+$$;
+create function pg_temp.recent_exports(person text) returns text[]
+language sql
+as $$
+  select array(select e ->> 'surface' from jsonb_array_elements(
+    public.list_schedule_export_events_service(tests.user('sc:' || person), tests.id('sc')) -> 'events') e order by 1)
+$$;
+
+select is(pg_temp.scheduled_exports('ayse'), array['k-only'], 'Ayşe (Kadıköy) sees only the scheduled exports all at Kadıköy');
+select is(pg_temp.scheduled_exports('can'), array['b-only', 'k-and-b', 'k-only'],
+  'a manager of both sees every scheduled export all at their locations, no closed, unknown or foreign one');
+select is(pg_temp.scheduled_exports('owner'),
+  array['b-only', 'closed-only', 'foreign', 'k-and-b', 'k-and-closed', 'k-only', 'unknown'],
+  'the owner sees every scheduled export');
+select is(pg_temp.scheduled_exports('zeynep'),
+  array['b-only', 'closed-only', 'foreign', 'k-and-b', 'k-and-closed', 'k-only', 'unknown'],
+  'an admin sees every scheduled export');
+select is(pg_temp.said(format($$select public.list_schedule_export_schedules_service(%L, %L)$$, tests.user('sc:nur'), tests.id('sc'))),
+  '42501 authz.out_of_scope schedule.export', 'a manager with no location is refused the scheduled exports');
+
+select is(pg_temp.recent_exports('ayse'), array['k-only'], 'Ayşe sees only the recent exports all at Kadıköy');
+select is(pg_temp.recent_exports('can'), array['b-only', 'k-and-b', 'k-only'],
+  'a manager of both sees no recent export with a closed, unknown, foreign, blank or malformed location');
+select is(pg_temp.recent_exports('owner'),
+  array['b-only', 'closed-only', 'empty', 'foreign', 'garbage', 'k-and-b', 'k-and-closed', 'k-only', 'missing', 'unknown'],
+  'the owner sees the ten recent exports');
+select is(pg_temp.said(format($$select public.list_schedule_export_events_service(%L, %L)$$, tests.user('sc:emre'), tests.id('sc'))),
+  '42501 authz.missing_permission schedule.export', 'an employee is refused the recent exports');
+
+-- 5. Drafts in the Schedule's draft list (B1) ---------------------------------------------
+-- ponytail: drafts stored as they are; a draft is written by saving an edit,
+-- which needs a whole week of shifts per location.
+insert into public.schedule_drafts (workspace_id, week_start, name, created_by, updated_by, location_ids)
+values
+  (tests.id('sc'), tests.week(0), 'T', tests.user('sc:owner'), tests.user('sc:owner'), array[tests.id('sc:K'), tests.id('sc:B')]),
+  (tests.id('sc'), tests.week(0), 'Kadikoy', tests.user('sc:owner'), tests.user('sc:owner'), array[tests.id('sc:K')]),
+  (tests.id('sc'), tests.week(0), 'Besiktas', tests.user('sc:owner'), tests.user('sc:owner'), array[tests.id('sc:B')]),
+  (tests.id('sc'), tests.week(0), 'Moda', tests.user('sc:owner'), tests.user('sc:owner'), array[tests.id('sc:M')]);
+
+create function pg_temp.drafts(person text) returns text[]
+language sql
+as $$
+  select array(select d ->> 'name' from jsonb_array_elements(
+    public.list_schedule_drafts_service(tests.user('sc:' || person), tests.id('sc'), tests.week(0)) -> 'drafts') d order by 1)
+$$;
+
+select is(pg_temp.drafts('ayse'), array['Kadikoy', 'T'], 'Ayşe lists the drafts that include Kadıköy');
+select is(pg_temp.drafts('mehmet'), array['Besiktas', 'T'], 'Mehmet lists the drafts that include Beşiktaş');
+select is(pg_temp.drafts('owner'), array['Besiktas', 'Kadikoy', 'Moda', 'T'], 'the owner lists every draft, one at a closed location too');
+
+-- 6. Scheduling settings (N3; the question comes first) -----------------------------------
+create function pg_temp.settings_as(person text, settings jsonb) returns text
+language sql
+as $$
+  select pg_temp.said(format($f$select public.update_scheduling_settings_service(%L, %L, %L::jsonb)$f$,
+    tests.user(person), tests.id('sc'), settings))
+$$;
+create function pg_temp.conflict_rules() returns jsonb
+language sql
+as $$
+  select jsonb_build_object('minimum_rest_minutes', s.minimum_rest_minutes, 'conflict_rules_revision', s.conflict_rules_revision)
+  from public.workspace_scheduling_settings s where s.workspace_id = tests.id('sc')
+$$;
+
+select is(pg_temp.settings_as('sx:owner', '"not settings"'), '42501 authz.not_member settings.scheduling.write',
+  'somebody from another workspace is refused before their settings are read');
+select is(pg_temp.settings_as('sc:ayse', pg_temp.conflict_rules()), '42501 authz.missing_permission settings.conflict_rules.write',
+  'a manager does not change conflict handling');
+select is(pg_temp.settings_as('sc:rita', pg_temp.conflict_rules()), '42501 authz.out_of_scope settings.conflict_rules.write',
+  'a manager-type role holding the conflict rules permission still does not write organization settings');
+select is(pg_temp.settings_as('sc:owner', pg_temp.conflict_rules()), 'allowed', 'the owner changes conflict handling');
+select is(pg_temp.settings_as('sc:owner', pg_temp.conflict_rules() || '{"week_start_day": "monday"}'), 'allowed',
+  'the owner changes conflict handling and the other settings together');
+
+-- 7. Moving a shift asks at both locations (N5) --------------------------------------------
+-- Can opens next week at Kadıköy and Beşiktaş and adds Veli's Beşiktaş shift;
+-- then Can stops working at Beşiktaş. Moving the shift to Kadıköy would take it
+-- out of a location Can no longer reaches.
+create temporary table moving (session uuid, shift uuid);
+insert into moving (session)
+select (public.acquire_schedule_edit_session_service(tests.user('sc:can'), tests.id('sc'), tests.week(1), 'blank', null) -> 'session' ->> 'id')::uuid;
+update moving set shift = tests.add_shift(tests.user('sc:can'), 'sc', session, 1,
+  '{"person": "veli", "loc": "B", "job": "server", "day": 2, "start": "09:00", "end": "15:00"}');
+select tests.settle();
+select tests.stops_working_at((
+  select m.id from public.workspace_memberships m where m.workspace_id = tests.id('sc') and m.user_id = tests.user('sc:can')
+), tests.id('sc:B'));
+
+select is(
+  pg_temp.said(format($$select public.add_schedule_pending_op_service(%L, %L, %L, 'update', %L, %L::jsonb)$$,
+    tests.user('sc:can'), tests.id('sc'), (select session from moving), (select shift from moving),
+    jsonb_build_object('location_id', tests.id('sc:K')))),
+  '42501 authz.out_of_scope schedule.edit',
+  'moving a shift is asked at the location it leaves too'
+);
+
+-- 8. A shift without a location is not everywhere (E2) -------------------------------------
+select is(
+  pg_temp.said(format($$select public.assess_weekly_schedule_assignment_service(%L, %L, '{}'::jsonb)$$,
+    tests.user('sc:owner'), tests.id('sc'))),
+  '42501 authz.out_of_scope schedule.edit',
+  'checking a shift with no location is refused, the owner too'
+);
+
+select * from finish();
+rollback;
