@@ -18,9 +18,11 @@ import "./styles.css";
 
 const AccountLayout = lazy(() => import("./account/AccountLayout"));
 const AccountRecoveryPage = lazy(() => import("./account/AccountRecoveryPage"));
-const EmployeeOnboardingPreview = lazy(
-  () => import("./dev/EmployeeOnboardingPreview"),
-);
+// DEV pages are gated at the import, not only the route: a lazy() import that
+// exists in production code still ships its chunk.
+const EmployeeOnboardingPreview = import.meta.env.DEV
+  ? lazy(() => import("./dev/EmployeeOnboardingPreview"))
+  : () => null;
 const PublicTrustLayout = lazy(() => import("./public/PublicTrustLayout"));
 const PrivacyPage = lazy(() =>
   import("./public/PublicTrustPages").then((module) => ({
@@ -74,13 +76,12 @@ const EmployeeOnboardingPage = lazy(
 const WelcomeRedirect = lazy(() => import("./employees/WelcomeRedirect"));
 const OwnerOnboardingPage = lazy(() => import("./views/OwnerOnboardingPage"));
 const SchedulePage = lazy(() => import("./views/SchedulePage"));
-const ScheduleShiftDesignPage = lazy(
-  () => import("./dev/ScheduleShiftDesignPage"),
-);
-const ScheduleShiftBadgeLabPage = lazy(
-  () => import("./dev/ScheduleShiftBadgeLabPage"),
-);
-// Gated at the import, not only the route, so production builds drop the chunk.
+const ScheduleShiftDesignPage = import.meta.env.DEV
+  ? lazy(() => import("./dev/ScheduleShiftDesignPage"))
+  : () => null;
+const ScheduleShiftBadgeLabPage = import.meta.env.DEV
+  ? lazy(() => import("./dev/ScheduleShiftBadgeLabPage"))
+  : () => null;
 const FeedbackGalleryPage = import.meta.env.DEV
   ? lazy(() => import("./dev/FeedbackGalleryPage"))
   : () => null;

@@ -1,10 +1,10 @@
 # FEEDBACK-001 Bildirim, yükleme, hata ve bağlantı durumlarının yenilenmesi
-Status: in progress (Aşama 1 bitti)
+Status: paused — Aşama 1 bitti, Aşama 2 bekliyor (BL-117)
 Session: tekil (kullanıcı)   Branch: task/tasarim/FEEDBACK-001   Worktree: newfork-wt/FEEDBACK-001   DB: -
 
 Goal: Uygulamadaki toast, yükleme, hata, boş ekran, banner ve bağlantı durumlarını metin, görünüm ve hareket olarak tek, profesyonel bir dile getirmek; hepsini tetiklemeden izlenebilen bir DEV vitrini sunmak.
 In scope: `/dev/feedback` vitrini; toast / inline / banner / sayfa hiyerarşisi (kullanıcıyla istişare); toast, yükleme, hata ekranı ve bağlantı varyantları (kullanıcı seçer); çökme, 404 ve erişim yok ekranları; ortak `userMessage(err)`; realtime ve çevrimdışı durumu; ekranlara yayma.
-Out of scope: DEV sayfalarının genel sızıntısı (BL-116); API hata sınıfı göçü (BACKLOG tipli hata maddesi).
+Out of scope: API hata sınıfı göçü (BACKLOG tipli hata maddesi).
 Done when:
 - Aşama 1: `/dev/feedback` 39 toast'u gerçek metinle tetikliyor, bugünkü durumları gösteriyor; katalog testi yeşil; `dist` içinde vitrin yok.
 - Aşama 2: hiyerarşi kuralı `docs/design-canvas.md` ve REUSE UI-10'da yazılı.
@@ -17,3 +17,5 @@ Reviewer: kullanıcı (görsel kararlar)
 
 ## Notes / Result
 - 2026-09-24 Aşama 1: vitrin yazıldı. Canlı sahne, `/dev/feedback?frame=1` iframe'i ve postMessage ile çalışıyor; masaüstü / 768 / 375 genişlik ve 1× / 0.5× / 0.25× hız seçenekleri var. 3 inceleme ajanından yüksek güvenli hata çıkmadı. İki eksik kart (Schedule operasyon hatasının kapatma düğmesi, hesap uyarısının düğmeleri) düzeltildi.
+- 2026-09-24: Diğer üç DEV sayfası (`EmployeeOnboardingPreview`, `ScheduleShiftDesignPage`, `ScheduleShiftBadgeLabPage`) üretim derlemesine chunk olarak sızıyordu; kullanıcı isteğiyle bu işte kapatıldı. Artık importları da `import.meta.env.DEV`'e bağlı, `dist` içinde hiçbiri yok.
+- 2026-09-24: Kullanıcı işi durdurdu, BL-117 olarak backlog'da. Devam ederken önce vitrin açılır, sonra kullanıcıyla birlikte gezilir.
