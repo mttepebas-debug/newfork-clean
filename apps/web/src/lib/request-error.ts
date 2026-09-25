@@ -14,11 +14,14 @@ export class RequestError extends Error {
   readonly reason?: string;
   /** Which one, when the refusal is about one thing in particular. */
   readonly detail?: string;
+  /** The HTTP status, when the refusal came from the API. */
+  readonly status?: number;
 
-  constructor(message: string, reason?: string, detail?: string) {
+  constructor(message: string, reason?: string, detail?: string, status?: number) {
     super(message);
     this.name = "RequestError";
     this.reason = reason;
     this.detail = detail;
+    this.status = status;
   }
 }

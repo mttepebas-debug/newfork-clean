@@ -129,6 +129,23 @@ describe("tab workspace context", () => {
     expect(headers.get("X-Newfork-Workspace-Id")).toBe(workspaceId);
   });
 
+  it("keeps the status and reason of a refusal", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "Forbidden", reason: "authz.out_of_scope" }), {
+            status: 403,
+          }),
+      ),
+    );
+
+    await expect(apiRequest(client(), "/v1/workspaces/test")).rejects.toMatchObject({
+      status: 403,
+      reason: "authz.out_of_scope",
+    });
+  });
+
   it("clears stale tab context and retries the account default context", async () => {
     setTabWorkspaceId(workspaceId);
     vi.stubGlobal(

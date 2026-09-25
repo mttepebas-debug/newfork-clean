@@ -12,7 +12,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "dump:authz-matrix": "node --experimental-strip-types scripts/dump-authorization-matrix.ts"
   },
   "dependencies": {
     "zod": "^4.0.17"

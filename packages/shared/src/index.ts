@@ -2953,3 +2953,5 @@ export const productBoundary = {
 } as const;
 export * from "./shift-exchanges";
 export * from "./schedule-default-hours";
+
+export * from "./authorization";
