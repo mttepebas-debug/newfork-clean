@@ -32,7 +32,7 @@ In scope:
 Out of scope:
 - Hiçbir ekranın bu yardımcılara taşınması. Web'de bugün 54 satır
   `permissions.includes` var; beşi Schedule'da (`apps/web/src/views/SchedulePage.tsx`
-  satır 1946, 2219, 2229, 2583, 3312). Schedule'ınkiler FB-6.1a'da, kalan 49'u
+  satır 1946, 2219, 2229, 2583, 3312). Schedule'ınkiler FB-6.1 adım `.9`'da, kalan 44'ü
   kendi dilimlerinde taşınır. Bu dosya hiçbirine dokunmaz.
 - ESLint `no-restricted-syntax` yasağı. Bugün konursa henüz taşınmamış 7 dilimi
   kırar; yasak son dilim taşındıktan sonra konur.
