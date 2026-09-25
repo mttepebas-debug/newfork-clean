@@ -201,7 +201,7 @@ describe("workspace account service", () => {
   it("does not disable the auth user when the account deletion request fails", async () => {
     const rpc = vi.fn(async () => ({
       data: null,
-      error: { message: "account has active organization access" },
+      error: { message: "account has active organization access", code: "P0001" },
     }));
     const updateUserById = vi.fn(async () => ({ error: null }));
     const signOut = vi.fn(async () => ({ error: null }));

@@ -84,4 +84,39 @@ describe("api error handling", () => {
     expect(body).not.toHaveProperty("detail");
     expect(response.payload).not.toMatch(/app_private|pg_stat|select \*/);
   });
+
+  // BL-131: a constraint violation's key and value never reach the caller.
+  it("sends a unique violation as 409 without the key or the value", async () => {
+    const app = buildApp();
+    app.get("/__duplicate", async () => {
+      throw rpcFailure({
+        message: 'duplicate key value violates unique constraint "employees_email_key"',
+        code: "23505",
+        details: "Key (email)=(a@b.test) already exists.",
+      });
+    });
+
+    const response = await app.inject({ method: "GET", url: "/__duplicate" });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).not.toHaveProperty("detail");
+    expect(response.payload).not.toMatch(/Key \(|a@b\.test|employees_email_key/);
+  });
+
+  it("answers a code nobody raises on purpose with a plain 500", async () => {
+    const app = buildApp();
+    app.get("/__missing_function", async () => {
+      throw rpcFailure({
+        message: "Could not find the function public.x_service(a) in the schema cache",
+        code: "PGRST202",
+        hint: "Perhaps you meant to call the function public.y_service",
+      });
+    });
+
+    const response = await app.inject({ method: "GET", url: "/__missing_function" });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toMatchObject({ error: "Internal server error" });
+    expect(response.payload).not.toMatch(/x_service|y_service|schema cache/);
+  });
 });

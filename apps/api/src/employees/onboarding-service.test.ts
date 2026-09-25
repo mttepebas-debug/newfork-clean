@@ -69,15 +69,21 @@ describe("employee onboarding review availability", () => {
 
   it.each([
     { code: "42501", message: "employee onboarding review required" },
-    {
-      code: "PGRST003",
-      message: "Timed out acquiring connection from connection pool",
-    },
     { code: "P0002", message: "Unexpected record missing" },
   ])("preserves other failures: $code", async (error) => {
     mocks.rpc.mockResolvedValue({ data: null, error });
     await expect(
       service().getReview(actorUserId, workspaceId, employeeId),
     ).rejects.toThrow(error.message);
+  });
+
+  it("turns an infrastructure failure into a plain 500", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { code: "PGRST003", message: "Timed out acquiring connection from connection pool" },
+    });
+    await expect(
+      service().getReview(actorUserId, workspaceId, employeeId),
+    ).rejects.toMatchObject({ statusCode: 500, message: "Internal server error" });
   });
 });

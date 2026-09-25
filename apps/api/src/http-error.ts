@@ -58,16 +58,40 @@ export function statusForPostgresCode(code: string | undefined): number | null {
     case "40001": // serialization_failure, used for revision conflicts
     case "PT409": // PostgREST passthrough for business-rule conflicts
       return 409;
+    case "P0001": // raise_exception: a plain RAISE, always on purpose
     case "22023": // invalid_parameter_value
     case "23502": // not_null_violation
     case "23514": // check_violation
+    case "23503": // foreign_key_violation: "role is assigned to members"
+    case "55000": // object_not_in_prerequisite_state: onboarding readiness
       return 400;
     default:
       return null;
   }
 }
 
-/** Turns a PostgREST/Supabase error into a typed error, status included when known. */
+/** A machine key such as "authz.out_of_scope" or "schedule.locked". */
+const reasonKey = /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/;
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// ponytail: Postgres's own sentences name the relation, column or constraint in
+// double quotes, or say "permission denied for <object>". A deliberate RAISE
+// does neither. Widen this if another built-in message shape shows up in a 4xx.
+const postgresSentence = /"|^permission denied for /;
+const plainSentence: Record<number, string> = {
+  400: "Request could not be completed",
+  403: "Not allowed",
+  404: "Not found",
+  409: "Request conflicts with the current state",
+};
+
+/**
+ * Turns a PostgREST/Supabase error into a typed error, status included when known.
+ *
+ * Nothing the database said by itself reaches a 4xx body (BL-131): the hint
+ * travels only as a machine key, `details` only beside one and only as an
+ * action key or an id, and Postgres's own sentence is swapped for a plain one.
+ * A code nobody raises on purpose is a bug, so it answers 500.
+ */
 export function rpcFailure(
   error: {
     readonly message: string;
@@ -75,22 +99,31 @@ export function rpcFailure(
     readonly hint?: string | null;
     readonly details?: string | null;
   },
-  fallbackStatus = 400,
+  fallbackStatus = 500,
 ): HttpError {
+  const reason = error.hint && reasonKey.test(error.hint) ? error.hint : undefined;
+  const detail =
+    reason && error.details && (reasonKey.test(error.details) || uuid.test(error.details))
+      ? error.details
+      : undefined;
   // The authorization core says no with 42501 and its reason in the hint; to
   // somebody who is not a member the workspace is simply not there.
   const status =
-    error.hint === "authz.not_member"
+    reason === "authz.not_member"
       ? 404
       : (statusForPostgresCode(error.code) ?? fallbackStatus);
-  return new HttpError(
-    error.message,
-    status,
-    {
-      pgCode: error.code,
-      reason: error.hint ?? undefined,
-      detail: error.details ?? undefined,
-      cause: error,
-    },
-  );
+  // Route helpers send an HttpError's message whatever its status; the
+  // original stays on `cause` for the log.
+  if (status >= 500)
+    return new HttpError("Internal server error", status, { pgCode: error.code, cause: error });
+  const message =
+    !reason && postgresSentence.test(error.message)
+      ? (plainSentence[status] ?? "Request could not be completed")
+      : error.message;
+  return new HttpError(message, status, {
+    pgCode: error.code,
+    reason,
+    detail,
+    cause: error,
+  });
 }
