@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(8);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -62,6 +62,19 @@ select is(
   (select workspace_id from public.resolve_workspace_context_service('10000000-0000-4000-8000-000000000091', null)),
   '20000000-0000-4000-8000-000000000092'::uuid,
   'null context still preserves the account default behavior'
+);
+
+reset role;
+-- Every workspace gets its setup state when it is created (create_owner_workspace);
+-- one without it is not read as set up (BL-116).
+delete from public.workspace_onboarding where workspace_id = '20000000-0000-4000-8000-000000000092';
+
+set local role service_role;
+
+select is(
+  (select count(*)::integer from public.resolve_workspace_context_service('10000000-0000-4000-8000-000000000091', '20000000-0000-4000-8000-000000000092')),
+  0,
+  'a workspace without its setup state resolves no context'
 );
 
 reset role;

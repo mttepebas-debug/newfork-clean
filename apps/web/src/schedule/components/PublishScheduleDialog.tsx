@@ -59,9 +59,7 @@ const STEP_TITLES: Record<1 | 2 | 3, string> = {
   3: "Notify employees",
 };
 
-type LocationPreviewSummary = SchedulePublicationPreview["locations"][number] & {
-  readonly live_shift_count?: number;
-};
+type LocationPreviewSummary = SchedulePublicationPreview["locations"][number];
 
 function shiftCountLabel(count: number): string {
   return count === 1 ? "shift" : "shifts";
@@ -641,8 +639,7 @@ export function PublishScheduleDialog({
               {locations.map((location) => {
                 const summary = previewSummaryByLocationId.get(location.id);
                 const selected = locationIds.includes(location.id);
-                const liveShiftCount =
-                  summary?.live_shift_count ?? summary?.current_shift_count ?? 0;
+                const liveShiftCount = summary?.current_shift_count ?? 0;
                 const added = summary?.added ?? 0;
                 const updated = summary?.updated ?? 0;
                 const removed = summary?.removed ?? 0;

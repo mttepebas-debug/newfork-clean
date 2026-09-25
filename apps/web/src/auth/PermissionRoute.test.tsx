@@ -25,6 +25,7 @@ const baseContext = {
   permissions: ["workspace.read"],
   actions: [],
   onboarding: { status: "complete", currentStep: 4 },
+  documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;
 

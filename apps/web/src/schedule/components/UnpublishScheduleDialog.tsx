@@ -1,15 +1,8 @@
 import type { ScheduleLocation } from "@newfork/shared/schedule";
-import {
-  CalendarDays,
-  CheckCircle2,
-  EyeOff,
-  FileText,
-  Loader2,
-  X,
-} from "lucide-react";
+import { CalendarDays, CheckCircle2, EyeOff, Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import type { LocationPublicationChipStatus } from "./LocationPublicationChips";
+import type { LocationPublicationChipStatus } from "../lib/scheduleFilterModel";
 
 export function UnpublishScheduleDialog({
   open,
@@ -34,10 +27,7 @@ export function UnpublishScheduleDialog({
   const [error, setError] = useState<string | null>(null);
   const statusByLocation = new Map(statuses.map((status) => [status.id, status]));
   const liveLocations = locations.filter(
-    (location) => {
-      const status = statusByLocation.get(location.id);
-      return status?.status === "published" && status.reason !== "worked_shifts_kept";
-    },
+    (location) => statusByLocation.get(location.id)?.status === "published",
   );
   const hasLocationPicker = liveLocations.length > 0;
 
@@ -121,8 +111,7 @@ export function UnpublishScheduleDialog({
               const selected = selectedLocationIds.includes(location.id);
               const removedCount = status?.published_shift_count;
               const locationColor =
-                (status as { readonly color?: string | null } | undefined)
-                  ?.color ??
+                status?.color ??
                 (location as ScheduleLocation & { readonly color?: string | null })
                   .color ??
                 "#64748b";
@@ -158,10 +147,6 @@ export function UnpublishScheduleDialog({
               icon={<EyeOff size={15} aria-hidden />}
               text="Employee visibility for unworked shifts stops immediately."
               destructive
-            />
-            <UnpublishEffect
-              icon={<FileText size={15} aria-hidden />}
-              text="Worked shifts are kept as a historical record."
             />
             <UnpublishEffect
               icon={<CheckCircle2 size={15} aria-hidden />}

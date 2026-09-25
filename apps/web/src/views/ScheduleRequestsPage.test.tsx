@@ -40,6 +40,7 @@ const context = {
   ],
   actions: [],
   onboarding: { status: "complete", currentStep: 2 },
+  documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;
 let activeContext: ActiveWorkspaceContext = context;

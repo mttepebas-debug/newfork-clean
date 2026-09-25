@@ -20,6 +20,7 @@ function setup(workspaceId = workspace) {
     workspace: { id: workspaceId },
     membership: { status: "active" },
     onboarding: { status: "complete" },
+    documentAccess: { restricted: false },
   } as ActiveWorkspaceContext;
   registerAvailabilityRoutes(app, {
     service,

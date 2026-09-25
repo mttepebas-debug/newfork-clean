@@ -489,10 +489,7 @@ function publishedMeta(summary: PublishedScheduleSummary): string {
 function publishedLocationBadges(
   statuses: readonly PublicationLocationStatus[] | undefined,
 ): PublicationLocationStatus[] {
-  return (statuses ?? []).filter(
-    (status) =>
-      status.status === "published" && status.reason !== "worked_shifts_kept",
-  );
+  return (statuses ?? []).filter((status) => status.status === "published");
 }
 
 function PublishedLocationBadges({

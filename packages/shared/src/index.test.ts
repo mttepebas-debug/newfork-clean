@@ -799,6 +799,8 @@ describe("shared contracts", () => {
         status: "active",
       },
       permissions: permissionsForRole("manager"),
+      onboarding: { status: "complete", currentStep: 2 },
+      documentAccess: { restricted: false },
       locationScope: { allLocations: false, locationIds: [] },
     });
 
@@ -830,6 +832,8 @@ describe("shared contracts", () => {
           status: "active",
         },
         permissions: permissionsForRole("employee"),
+        onboarding: { status: "complete", currentStep: 2 },
+        documentAccess: { restricted: false },
         locationScope: { allLocations: false, locationIds: [] },
       }),
     ).toThrow("Membership workspace does not match context");
@@ -848,9 +852,90 @@ describe("shared contracts", () => {
           status: "active",
         },
         permissions: permissionsForRole("employee"),
+        onboarding: { status: "complete", currentStep: 2 },
+        documentAccess: { restricted: false },
         locationScope: { allLocations: false, locationIds: [] },
       }),
     ).toThrow("Membership user does not match context user");
+  });
+
+  it("rejects a context without onboarding, document access or location scope", () => {
+    const context = {
+      userId,
+      workspace: { id: workspaceId, name: "Northstar" },
+      membership: {
+        id: membershipId,
+        userId,
+        workspaceId,
+        role: "manager",
+        status: "active",
+      },
+      permissions: permissionsForRole("manager"),
+      onboarding: { status: "complete", currentStep: 2 },
+      documentAccess: { restricted: false },
+      locationScope: { allLocations: false, locationIds: [] },
+    };
+    expect(activeWorkspaceContextSchema.safeParse(context).success).toBe(true);
+
+    for (const field of ["onboarding", "documentAccess", "locationScope"]) {
+      const incomplete = Object.fromEntries(
+        Object.entries(context).filter(([key]) => key !== field),
+      );
+      expect(
+        () => activeWorkspaceContextSchema.parse(incomplete),
+        field,
+      ).toThrow();
+    }
+  });
+
+  // The resolver's row, as resolve_workspace_context_service returns it.
+  const resolverRow = {
+    user_id: userId,
+    workspace_id: workspaceId,
+    workspace_name: "Northstar",
+    membership_id: membershipId,
+    workspace_role: "owner",
+    permission_keys: [],
+    all_locations: true,
+    onboarding_status: "incomplete",
+    onboarding_current_step: 3,
+    onboarding_revision: 2,
+    actions: [],
+    location_ids: [],
+    document_restricted: false,
+  } as const;
+
+  it("rejects a resolver row without its setup state or permission keys", () => {
+    for (const field of [
+      "onboarding_status",
+      "onboarding_current_step",
+      "onboarding_revision",
+      "permission_keys",
+    ]) {
+      const incomplete = Object.fromEntries(
+        Object.entries(resolverRow).filter(([key]) => key !== field),
+      );
+      expect(() => activeWorkspaceContextFromRow(incomplete), field).toThrow();
+    }
+  });
+
+  it("always gives the RPC row's context onboarding, document access and location scope", () => {
+    const context = activeWorkspaceContextFromRow(resolverRow);
+
+    expect(context.onboarding).toEqual({
+      status: "incomplete",
+      currentStep: 3,
+      revision: 2,
+    });
+    expect(context.documentAccess).toEqual({ restricted: false });
+    expect(context.locationScope).toEqual({
+      allLocations: true,
+      locationIds: [],
+    });
+    // What the API sends is what the web parses: it survives the JSON trip.
+    expect(
+      activeWorkspaceContextSchema.parse(JSON.parse(JSON.stringify(context))),
+    ).toEqual(context);
   });
 
   it("maps an active workspace RPC row into the shared authorization context", () => {
@@ -867,6 +952,7 @@ describe("shared contracts", () => {
         all_locations: false,
         onboarding_status: "complete",
         onboarding_current_step: 2,
+        onboarding_revision: 1,
         actions: ["workspace.read", "employee_hub.read"],
         location_ids: ["f034b748-2dbc-4f2a-b581-cb24f91d6499"],
         document_restricted: true,
@@ -901,6 +987,7 @@ describe("shared contracts", () => {
       workspace_name: "Northstar",
       membership_id: membershipId,
       workspace_role: "admin",
+      permission_keys: [],
       all_locations: true,
       onboarding_status: "complete",
       onboarding_current_step: 4,

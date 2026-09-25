@@ -28,6 +28,7 @@ const context: ActiveWorkspaceContext = {
   permissions: ["schedule.conflict_rules.manage"],
   actions: [],
   onboarding: { status: "complete", currentStep: 4 },
+  documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
 };
 const conflictSettings = {

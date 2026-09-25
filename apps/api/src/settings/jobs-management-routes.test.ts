@@ -13,6 +13,7 @@ const context = {
   workspace: { id: workspaceId },
   membership: { status: "active" },
   onboarding: { status: "complete" },
+  documentAccess: { restricted: false },
   permissions: [
     "employees.read",
     "employees.manage",

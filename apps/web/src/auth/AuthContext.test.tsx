@@ -200,6 +200,7 @@ describe("AuthProvider", () => {
         },
         permissions: ["workspace.read"],
         onboarding: { status: "complete", currentStep: 2, revision: 1 },
+        documentAccess: { restricted: false },
         locationScope: { allLocations: true, locationIds: [] },
       })
       .mockRejectedValueOnce(new Error("Workspace not found"));
@@ -228,7 +229,7 @@ describe("AuthProvider", () => {
   it("preserves a dirty decision form during same-account SIGNED_IN revalidation", async () => {
     window.localStorage.clear();
     const session = { user: { id: "same-user", email: "same@example.test", user_metadata: {} } };
-    const context = { userId: "same-user", workspace: { id: "org", name: "Team" }, membership: { role: "manager", status: "active", allLocations: true }, permissions: ["workspace.read"], onboarding: { status: "complete" }, locationScope: { allLocations: true, locationIds: [] } };
+    const context = { userId: "same-user", workspace: { id: "org", name: "Team" }, membership: { role: "manager", status: "active", allLocations: true }, permissions: ["workspace.read"], onboarding: { status: "complete", currentStep: 2, revision: 1 }, documentAccess: { restricted: false }, locationScope: { allLocations: true, locationIds: [] } };
     supabaseMock.getSession.mockResolvedValue({ data: { session }, error: null } as never);
     supabaseMock.resolveWorkspaceContext.mockResolvedValue(context);
     let listener: (event: string, session: unknown) => void = () => {};

@@ -612,15 +612,12 @@ export const activeWorkspaceContextSchema = z
     userId: z.string().uuid(),
     workspace: workspaceSchema,
     membership: workspaceMembershipSchema,
-    documentAccess: z.object({ restricted: z.boolean() }).optional(),
+    documentAccess: z.object({ restricted: z.boolean() }),
     permissions: z.array(permissionSchema),
     // What the authorization core lets this person do somewhere in the
     // workspace (app_private.actor_actions); gates read this, not permissions.
     actions: z.array(z.string()).default([]),
-    onboarding: workspaceOnboardingSchema.default({
-      status: "complete",
-      currentStep: 2,
-    }),
+    onboarding: workspaceOnboardingSchema,
     locationScope: z.object({
       allLocations: z.boolean(),
       locationIds: z.array(z.string().uuid()),
@@ -673,11 +670,11 @@ export const activeWorkspaceRowSchema = z.object({
   workspace_role: workspaceRoleSchema,
   membership_role_id: z.string().uuid().optional(),
   membership_role_name: z.string().trim().min(1).max(64).optional(),
-  permission_keys: z.array(permissionSchema).optional(),
+  permission_keys: z.array(permissionSchema),
   all_locations: z.boolean(),
-  onboarding_status: onboardingStatusSchema.default("complete"),
-  onboarding_current_step: z.coerce.number().int().min(1).max(4).default(2),
-  onboarding_revision: z.coerce.number().int().positive().default(1),
+  onboarding_status: onboardingStatusSchema,
+  onboarding_current_step: z.coerce.number().int().min(1).max(4),
+  onboarding_revision: z.coerce.number().int().positive(),
   actions: z.array(z.string()),
   location_ids: z.array(z.string().uuid()),
   document_restricted: z.boolean(),
@@ -716,9 +713,7 @@ export function activeWorkspaceContextFromRow(
     },
     permissions: [
       ...new Set([
-        ...(
-          row.permission_keys ?? permissionsForRole(row.workspace_role)
-        ).filter(
+        ...row.permission_keys.filter(
           (permission) =>
             row.workspace_role !== "employee" ||
             employeeEligiblePermissions.includes(permission),
@@ -1492,10 +1487,8 @@ export const schedulePublicationLocationStatusSchema = z.object({
   status: z.enum(["published", "unpublished"]),
   reason: z.enum([
     "active_publication_and_shifts",
-    "worked_shifts_kept",
     "missing_publication",
     "no_published_shifts",
-    "unpublished_draft",
   ]),
   publication_includes_location: z.boolean(),
   published_shift_count: z.coerce.number().int().nonnegative(),

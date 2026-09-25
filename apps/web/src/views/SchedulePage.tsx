@@ -147,7 +147,6 @@ import {
   createScheduleFilterChips,
   filterScheduleModel,
   getSchedulePublicationActionTone,
-  hasUnpublishablePublishedSchedule,
   validDate,
   validIds,
 } from "../schedule/lib/scheduleFilterModel";
@@ -1940,9 +1939,6 @@ export function SchedulePage({
     gridEditSession?.shifts ?? model.shifts,
     publicationStatus,
   );
-  const canUnpublishPublishedSchedule = hasUnpublishablePublishedSchedule(
-    publicationChipStatuses,
-  );
   const hasPublishedSchedule = publicationChipStatuses.some(
     (item) => item.status === "published",
   );
@@ -2275,14 +2271,14 @@ export function SchedulePage({
             onEditPublishedSchedule={() => void editDraftFromMenu(null)}
             onDeleteDraft={(draft) => void deleteDraftFromMenu(draft)}
             onUnpublishSchedule={
-              canUnpublishPublishedSchedule
+              hasPublishedSchedule
                 ? () => {
                     setUnpublishOpen(true);
                   }
                 : undefined
             }
             unpublishDisabledReason={
-              canUnpublishPublishedSchedule
+              hasPublishedSchedule
                 ? null
                 : "No published schedule can be unpublished."
             }
@@ -2334,7 +2330,7 @@ export function SchedulePage({
         />
       ) : null}
       {!gridEditSession && !isDiscardingEditSession && canPublishSchedule ? (
-        canUnpublishPublishedSchedule ? (
+        hasPublishedSchedule ? (
           <div className="schedule-action-menu">
             <button
               className={`schedule-published-indicator ${SCHEDULE_ACTION_BUTTON_CLASS}`}

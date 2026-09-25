@@ -7,8 +7,7 @@ import { getDocumentAccess } from "./document-data";
 export function DocumentAccessRoute({ children }: { children: ReactNode }) {
   const { account, context } = useAuth();
   const workspaceId = context?.workspace.id ?? "";
-  // Development-only contexts predate a verified document access response.
-  const enabled = Boolean(context?.documentAccess && account && workspaceId);
+  const enabled = Boolean(context && account && workspaceId);
   const access = useQuery({
     queryKey: ["document-lifecycle", account?.userId, workspaceId, "access"],
     queryFn: () => getDocumentAccess(workspaceId),

@@ -45,7 +45,7 @@ export async function resolveAuthorizedWorkspaceContext(input: {
     !context ||
     context.workspace.id !== input.workspaceId ||
     context.membership.status !== "active" ||
-    context.documentAccess?.restricted ||
+    context.documentAccess.restricted ||
     (!input.allowIncompleteOnboarding &&
       context.onboarding.status !== "complete") ||
     !context.permissions.includes(input.permission)
@@ -72,7 +72,7 @@ export async function resolveWorkspaceAuthorization(input: {
     !context ||
     context.workspace.id !== input.workspaceId ||
     context.membership.status !== "active" ||
-    context.documentAccess?.restricted ||
+    context.documentAccess.restricted ||
     (!input.allowIncompleteOnboarding &&
       context.onboarding.status !== "complete")
   ) {
@@ -119,7 +119,7 @@ export async function resolveWorkspaceMembership(input: {
     !context ||
     context.workspace.id !== input.workspaceId ||
     context.membership.status !== "active" ||
-    context.documentAccess?.restricted ||
+    context.documentAccess.restricted ||
     (!input.allowIncompleteOnboarding &&
       context.onboarding.status !== "complete")
   ) {

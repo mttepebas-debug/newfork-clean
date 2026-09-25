@@ -242,6 +242,7 @@ describe("resolveWorkspaceAuthorization", () => {
     permissions: ["workspace.manage"],
     actions: [],
     onboarding: { status: "incomplete", currentStep: 2, revision: 1 },
+    documentAccess: { restricted: false },
     locationScope: { allLocations: true, locationIds: [] },
   };
 

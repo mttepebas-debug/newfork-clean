@@ -5015,65 +5015,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
     0 3px 8px rgba(var(--schedule-location-status-rgb), 0.44);
   transform: scale(1.08);
 }
-.schedule-location-publication-chips {
-  display: flex;
-  min-height: 36px;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  border-bottom: 1px solid #dce4e0;
-  background: var(--theme-surface);
-  padding: 6px 16px;
-}
-.schedule-location-publication-chips button {
-  display: inline-flex;
-  height: 24px;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #d6dfda;
-  border-radius: 6px;
-  padding: 0 8px;
-  background: var(--theme-surface-soft);
-  color: #5d6863;
-  cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  transition:
-    background 0.12s ease,
-    border-color 0.12s ease,
-    color 0.12s ease,
-    opacity 0.12s ease;
-}
-.schedule-location-publication-chips button[data-live="true"] {
-  border-color: #b6dfd1;
-  background: #e9f7f2;
-  color: var(--theme-accent);
-}
-.schedule-location-publication-chips button[data-historical="true"] {
-  border-color: #b9d1ec;
-  background: #eef6ff;
-  color: #245d95;
-}
-.schedule-location-publication-chips button[data-active="false"] {
-  opacity: 0.45;
-}
-.schedule-location-publication-chips button:hover,
-.schedule-location-publication-chips button:focus-visible {
-  border-color: #88b9a7;
-  background: #e2f0eb;
-  color: #155f4d;
-  outline: none;
-}
-.schedule-location-publication-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-}
-.schedule-location-publication-chips strong {
-  font-variant-numeric: tabular-nums;
-}
 .schedule-viewer-presence {
   display: inline-flex;
   width: fit-content;

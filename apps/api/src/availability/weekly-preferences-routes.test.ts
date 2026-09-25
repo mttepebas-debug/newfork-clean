@@ -40,6 +40,7 @@ function setup() {
           workspace: { id: workspace },
           membership: { status: "active" },
           onboarding: { status: "complete" },
+          documentAccess: { restricted: false },
         }) as ActiveWorkspaceContext,
     },
   });

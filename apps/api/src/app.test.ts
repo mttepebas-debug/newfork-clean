@@ -63,6 +63,7 @@ const resolvedContext: ActiveWorkspaceContext = {
     "notifications.test_send",
   ],
   onboarding: { status: "complete", currentStep: 2 },
+  documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
 };
 

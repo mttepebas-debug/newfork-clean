@@ -6,7 +6,7 @@ import type { ScheduleReadService } from "./schedule-service";
 
 const id = (n: number) => `afa70000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const context = { userId: id(1), workspace: { id: id(2) }, membership: { role: "owner", status: "active" },
-  onboarding: { status: "complete" }, permissions: ["schedule.export"] } as ActiveWorkspaceContext;
+  onboarding: { status: "complete" }, documentAccess: { restricted: false }, permissions: ["schedule.export"] } as ActiveWorkspaceContext;
 const scope: ScheduleExportV2Scope = { week_start: "2026-09-14", dates: ["2026-09-14"], location_ids: [id(3)],
   employee_ids: [id(4)], shift_ids: [id(5)], source: { kind: "published" } };
 const model = { workspace_id: id(2), week_start: scope.week_start, locations: [{ id: id(3), short_name: "MRK" }],

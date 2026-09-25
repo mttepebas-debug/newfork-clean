@@ -11,7 +11,6 @@ import {
   type EmployeeCreateCommand,
   type EmployeeCreateResult,
   type EmployeeOnboardingManager,
-  type EmployeeOnboardingRequirement,
   type EmployeeSection,
   type WorkspaceRole,
 } from "@newfork/shared";
@@ -125,8 +124,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     queryFn: () => loadEmployeeReferenceData(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  const canReviewDocuments =
-    context?.permissions.includes("employee_documents.review") ?? false;
   const onboardingReview = useQuery({
     queryKey: ["employee-onboarding-review", workspaceId, props.employeeId],
     queryFn: () =>
@@ -209,7 +206,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     draftEditedRef.current &&
     !props.creating &&
     Boolean(detail.data?.user_id) &&
-    context?.documentAccess !== undefined &&
+    Boolean(context) &&
     assignmentKey(draft) !== assignmentKey(baseline);
   const documentPreview = useEmployeeDocumentAssignmentPreview({
     enabled: needsDocumentPreview,
@@ -985,7 +982,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       canManageAccess,
                       onboardingReview.data,
                       onboardingReview.isLoading,
-                      canReviewDocuments,
                       (action, requirementId, reason) =>
                         reviewMutation.mutate({
                           action,
@@ -1578,7 +1574,6 @@ function renderSection(
   canManageAccess: boolean,
   onboarding: EmployeeOnboardingManager | null | undefined,
   onboardingLoading: boolean,
-  canReviewDocuments: boolean,
   onReview: (
     action: "accept_requirement" | "reject_requirement" | "activate",
     requirementId: string | null,
@@ -1621,7 +1616,6 @@ function renderSection(
         emailInputRef={emailInputRef}
         onboarding={onboarding}
         onboardingLoading={onboardingLoading}
-        canReviewDocuments={canReviewDocuments}
         onReview={onReview}
         reviewing={reviewing}
       />
@@ -1678,15 +1672,11 @@ function renderSection(
 function OnboardingReviewPanel({
   onboarding,
   loading,
-  kinds,
-  canReviewDocuments,
   onReview,
   reviewing,
 }: {
   readonly onboarding: EmployeeOnboardingManager | null | undefined;
   readonly loading: boolean;
-  readonly kinds: readonly EmployeeOnboardingRequirement["kind"][];
-  readonly canReviewDocuments: boolean;
   readonly onReview: (
     action: "accept_requirement" | "reject_requirement" | "activate",
     requirementId: string | null,
@@ -1695,14 +1685,8 @@ function OnboardingReviewPanel({
   readonly reviewing: boolean;
 }) {
   const permissions = useAuth().context?.permissions ?? [];
-  const canReview = (kind: EmployeeOnboardingRequirement["kind"]) =>
-    kind === "document"
-      ? canReviewDocuments
-      : permissions.includes(
-          kind === "profile"
-            ? "employees.private.manage"
-            : "employee_onboarding.review",
-        );
+  // The panel reviews the legal name (profile) requirement only.
+  const canReview = permissions.includes("employees.private.manage");
   // The requirement whose correction note is being written.
   const [changesFor, setChangesFor] = useState<{
     readonly id: string;
@@ -1719,8 +1703,8 @@ function OnboardingReviewPanel({
         copy="An accepted invitation starts the employee onboarding case."
       />
     );
-  const requirements = onboarding.requirements.filter((requirement) =>
-    kinds.includes(requirement.kind),
+  const requirements = onboarding.requirements.filter(
+    (requirement) => requirement.kind === "profile",
   );
   const activationReady =
     onboarding.case_status === "submitted" &&
@@ -1761,7 +1745,7 @@ function OnboardingReviewPanel({
                   type="button"
                   className="secondary-button"
                   aria-label={`Request changes for ${requirement.title}`}
-                  disabled={reviewing || !canReview(requirement.kind)}
+                  disabled={reviewing || !canReview}
                   onClick={() => {
                     setChangesNote("");
                     setChangesFor({
@@ -1775,7 +1759,7 @@ function OnboardingReviewPanel({
                 <Button
                   type="button"
                   aria-label={`Accept ${requirement.title}`}
-                  disabled={reviewing || !canReview(requirement.kind)}
+                  disabled={reviewing || !canReview}
                   onClick={() =>
                     onReview("accept_requirement", requirement.id, "")
                   }
@@ -1840,7 +1824,6 @@ function ProfileSection({
   emailInputRef,
   onboarding,
   onboardingLoading,
-  canReviewDocuments,
   onReview,
   reviewing,
 }: {
@@ -1860,7 +1843,6 @@ function ProfileSection({
   emailInputRef: React.RefObject<HTMLInputElement | null>;
   onboarding: EmployeeOnboardingManager | null | undefined;
   onboardingLoading: boolean;
-  canReviewDocuments: boolean;
   onReview: (
     action: "accept_requirement" | "reject_requirement" | "activate",
     requirementId: string | null,
@@ -2036,8 +2018,6 @@ function ProfileSection({
           <OnboardingReviewPanel
             onboarding={onboarding}
             loading={onboardingLoading}
-            kinds={["profile"]}
-            canReviewDocuments={canReviewDocuments}
             onReview={onReview}
             reviewing={reviewing}
           />

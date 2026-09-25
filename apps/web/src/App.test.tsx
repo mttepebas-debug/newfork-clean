@@ -82,6 +82,7 @@ vi.mock("./auth/AuthContext", async () => {
     },
     permissions: shared.permissionsForRole(role),
     onboarding: { status: "complete", currentStep: 2 },
+    documentAccess: { restricted: false },
     locationScope: { allLocations: true, locationIds: [] },
   });
   const account = shared.accountProfileSchema.parse({
@@ -535,6 +536,12 @@ function resetScheduleApiMocks() {
 vi.mock("./availability/availability-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./availability/availability-data")>()),
   loadShiftAvailability: vi.fn(),
+}));
+
+// Every /app page first asks whether documents restrict the member.
+vi.mock("./documents/document-data", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./documents/document-data")>()),
+  getDocumentAccess: vi.fn(async () => ({ restricted: false })),
 }));
 
 vi.mock("./schedule/schedule-data", () => ({

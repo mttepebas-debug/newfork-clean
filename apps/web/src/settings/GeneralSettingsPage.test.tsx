@@ -38,6 +38,7 @@ const context = {
   ],
   actions: [],
   onboarding: { status: "complete", currentStep: 4 },
+  documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;
 

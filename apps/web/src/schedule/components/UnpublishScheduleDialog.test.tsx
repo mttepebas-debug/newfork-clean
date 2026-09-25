@@ -39,16 +39,12 @@ const locations = [
 const statuses = [
   {
     id: locations[0]!.id,
-    name: locations[0]!.name,
     status: "published" as const,
-    reason: "live" as const,
     published_shift_count: 3,
   },
   {
     id: locations[2]!.id,
-    name: locations[2]!.name,
-    status: "published" as const,
-    reason: "worked_shifts_kept" as const,
+    status: "unpublished" as const,
     published_shift_count: 0,
   },
 ];
@@ -83,9 +79,6 @@ describe("UnpublishScheduleDialog", () => {
     expect(screen.queryByText("Private Dining")).toBeNull();
     expect(
       screen.getByText("Employee visibility for unworked shifts stops immediately."),
-    ).toBeTruthy();
-    expect(
-      screen.getByText("Worked shifts are kept as a historical record."),
     ).toBeTruthy();
     expect(
       screen.getByText(

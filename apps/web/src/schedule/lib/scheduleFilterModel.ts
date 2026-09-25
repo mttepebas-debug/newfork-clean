@@ -5,7 +5,6 @@ import type {
   ScheduleShift,
 } from "@newfork/shared/schedule";
 
-import type { LocationPublicationChipStatus } from "../components/LocationPublicationChips";
 import type { CalendarMarker } from "../components/MiniCalendar";
 import type { ScheduleFilterChipView } from "../components/ScheduleFilterCommandStrip";
 import { matchesScheduleEmployeeFilters } from "./employeeEligibility";
@@ -143,6 +142,13 @@ export function createScheduleFilterChips({
   return chips;
 }
 
+export interface LocationPublicationChipStatus {
+  readonly id: string;
+  readonly color?: string | null;
+  readonly status: "published" | "unpublished";
+  readonly published_shift_count: number;
+}
+
 export function createLocationPublicationChipStatuses(
   locations: readonly ScheduleLocation[],
   shifts: readonly ScheduleShift[],
@@ -157,10 +163,7 @@ export function createLocationPublicationChipStatuses(
       if (!status) {
         return {
           id: location.id,
-          name: location.name,
           status: location.publication_status,
-          reason:
-            location.publication_status === "published" ? "live" : "not_live",
           published_shift_count: shifts.filter(
             (shift) => shift.location_id === location.id,
           ).length,
@@ -168,37 +171,19 @@ export function createLocationPublicationChipStatuses(
       }
       return {
         id: status.id,
-        name: status.name,
         color: status.color,
         status: status.status,
-        reason:
-          status.reason === "worked_shifts_kept"
-            ? "worked_shifts_kept"
-            : status.status === "published"
-              ? "live"
-              : "not_live",
         published_shift_count: status.published_shift_count,
       };
     });
   }
   return locations.map((location) => ({
     id: location.id,
-    name: location.name,
     status: location.publication_status,
-    reason: location.publication_status === "published" ? "live" : "not_live",
     published_shift_count: shifts.filter(
       (shift) => shift.location_id === location.id,
     ).length,
   }));
-}
-
-export function hasUnpublishablePublishedSchedule(
-  statuses: readonly LocationPublicationChipStatus[],
-): boolean {
-  return statuses.some(
-    (status) =>
-      status.status === "published" && status.reason !== "worked_shifts_kept",
-  );
 }
 
 export type SchedulePublicationActionTone = "none" | "partial" | "complete";

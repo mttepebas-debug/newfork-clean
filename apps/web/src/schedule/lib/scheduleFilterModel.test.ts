@@ -10,7 +10,6 @@ import {
   createScheduleFilterChips,
   filterScheduleModel,
   getSchedulePublicationActionTone,
-  hasUnpublishablePublishedSchedule,
   parseIds,
   validDate,
   validIds,
@@ -255,13 +254,11 @@ describe("scheduleFilterModel", () => {
       {
         id: "loc-1",
         status: "published",
-        reason: "live",
         published_shift_count: 1,
       },
       {
         id: "loc-2",
         status: "unpublished",
-        reason: "not_live",
         published_shift_count: 1,
       },
     ]);
@@ -272,13 +269,11 @@ describe("scheduleFilterModel", () => {
       getSchedulePublicationActionTone([
         {
           id: "loc-1",
-          name: "Main",
           status: "unpublished",
           published_shift_count: 0,
         },
         {
           id: "loc-2",
-          name: "Patio",
           status: "unpublished",
           published_shift_count: 0,
         },
@@ -289,13 +284,11 @@ describe("scheduleFilterModel", () => {
       getSchedulePublicationActionTone([
         {
           id: "loc-1",
-          name: "Main",
           status: "published",
           published_shift_count: 1,
         },
         {
           id: "loc-2",
-          name: "Patio",
           status: "unpublished",
           published_shift_count: 0,
         },
@@ -306,13 +299,11 @@ describe("scheduleFilterModel", () => {
       getSchedulePublicationActionTone([
         {
           id: "loc-1",
-          name: "Main",
           status: "published",
           published_shift_count: 1,
         },
         {
           id: "loc-2",
-          name: "Patio",
           status: "published",
           published_shift_count: 1,
         },
@@ -320,7 +311,7 @@ describe("scheduleFilterModel", () => {
     ).toBe("complete");
   });
 
-  it("normalizes publication status reasons from server status", () => {
+  it("prefers the server publication status over the local fallback", () => {
     const publicationStatus = {
       locations: [
         {
@@ -328,7 +319,6 @@ describe("scheduleFilterModel", () => {
           name: "Patio",
           color: "#22c55e",
           status: "published",
-          reason: "worked_shifts_kept",
           published_shift_count: 4,
         },
       ],
@@ -343,41 +333,16 @@ describe("scheduleFilterModel", () => {
     ).toMatchObject([
       {
         id: "loc-1",
-        reason: "live",
+        status: "published",
         published_shift_count: 1,
       },
       {
         id: "loc-2",
-        reason: "worked_shifts_kept",
+        color: "#22c55e",
+        status: "published",
         published_shift_count: 4,
       },
     ]);
-  });
-
-  it("treats worked-kept publication status as historical, not unpublishable live schedule", () => {
-    expect(
-      hasUnpublishablePublishedSchedule([
-        {
-          id: "loc-1",
-          name: "Main Dining",
-          status: "published",
-          reason: "worked_shifts_kept",
-          published_shift_count: 0,
-        },
-      ]),
-    ).toBe(false);
-
-    expect(
-      hasUnpublishablePublishedSchedule([
-        {
-          id: "loc-1",
-          name: "Main Dining",
-          status: "published",
-          reason: "live",
-          published_shift_count: 3,
-        },
-      ]),
-    ).toBe(true);
   });
 
   it("parses and validates query primitives", () => {

@@ -131,6 +131,7 @@ const context = {
   ],
   actions: [],
   onboarding: { status: "complete", currentStep: 2 },
+  documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;
 
@@ -453,7 +454,6 @@ describe("EmployeeDrawer", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    delete (context as ActiveWorkspaceContext).documentAccess;
     vi.mocked(listDocuments).mockResolvedValue([]);
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
     vi.mocked(previewWeeklyPreferences).mockResolvedValue({ items: [] });
@@ -1326,7 +1326,6 @@ describe("EmployeeDrawer", () => {
 
 describe("employee assignment document impact", () => {
   it("blocks changed assignments for the current preview and ignores a late older result", async () => {
-    (context as ActiveWorkspaceContext).documentAccess = { restricted: false };
     let resolveA!: (value: []) => void;
     let resolveB!: (value: []) => void;
     vi.mocked(previewEmployeeDocumentAssignments)
@@ -1399,6 +1398,5 @@ describe("employee assignment document impact", () => {
         employeeId,
       ),
     );
-    delete (context as ActiveWorkspaceContext).documentAccess;
   });
 });
