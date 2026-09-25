@@ -1,0 +1,1 @@
+- [Backlog işaretsiz maddeler](backlog-unmarked-entries.md) — BL-071..079 leave/do işaretsiz; critical sayımı grep'le eksik kalır
