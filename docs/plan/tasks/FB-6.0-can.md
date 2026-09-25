@@ -1,5 +1,5 @@
 # FB-6.0-can Yetki sözleşmesinin web tarafı doğuyor (`can()` + `isNoAccess()`)
-Status: draft (kullanıcı başlama onayı bekliyor)
+Status: done (2026-09-25)
 Rol: nf-backend   Branch: task/FB-6.0-can   DB: gerekmiyor
 Reviewer: nf-guvenlik
 
@@ -66,3 +66,9 @@ Risk:
   uyuşmayı kanıtlayan vitest bu dosyada doğuyor, sonradan eklenmiyor.
 
 ## Notes / Result
+- 2026-09-25 **bitti** (`16deff0`, `f7c6772`). Rol: `nf-backend`; inceleme `nf-guvenlik` (ilk tur DEĞİŞİKLİK İSTE: kişiye bağlı 12 eylemde kişi verilmezse `expected()` "evet" dönüyordu — fail-open; düzeltildi, tipte de kişi zorunlu; ikinci tur `ONAY @995277e`, rebase sonrası `f7c6772`).
+- Ne doğdu: `packages/shared/src/authorization.ts` (60 eylem, 28 matris eylemi için `expected()`), `authorization-matrix.expected.json` (1890 hücre, `pnpm.cmd --filter @newfork/shared dump:authz-matrix`, matris dosyasına sha256 ile bağlı), `apps/web/src/auth/can.ts`, `apps/web/src/lib/no-access.ts`; `RequestError` durum kodunu taşıyor.
+- Kanıt: 1890 hücre SQL = TS; uyuşmazlıkta kırmızı (`1 failed`) ve kişi kontrolü silinince `12 failed` kanıtlandı. shared 154 test, web auth+lib 56 test, typecheck 6/6, lint 0 hata. `permissions.includes` 54 (dokunulmadı), `supabase/` ve `apps/api/` değişmedi.
+- Kullanım (FB-6.1 `.9` için): `can(context, "schedule.templates")` (sunucu listesi), `can(context, "schedule.publish", { locations: [id] })` (matris kuralı; `[]` asla "her yer" değil), kişiye bağlı eylemlerde `person` zorunlu; `isNoAccess(error)` yalnız 403/404 + `authz.*`.
+- Açık: BL-128 (FB-6.1 `.9` ön koşulu), BL-129, BL-130.
+

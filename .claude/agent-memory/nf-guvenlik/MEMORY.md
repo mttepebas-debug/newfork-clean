@@ -1,0 +1,1 @@
+- [Atlanan alan yoklaması](checklist-omitted-input-probe.md) — TS yetki ikizinde opsiyonel hedef alanı atlanınca izin çıkıyor mu; matris kapsamaz
