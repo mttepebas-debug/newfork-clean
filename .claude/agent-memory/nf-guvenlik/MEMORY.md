@@ -1,2 +1,3 @@
 - [Atlanan alan yoklaması](checklist-omitted-input-probe.md) — TS yetki ikizinde opsiyonel hedef alanı atlanınca izin çıkıyor mu; matris kapsamaz
 - [rpcFailure ham detail](checklist-rpcfailure-raw-detail.md) — 4xx HttpError hint/details filtresiz istemciye gider; rpcFailure'a geçen her yolda sor
+- [Boş dizi tuzakları](checklist-empty-array-traps.md) — array(select..) bilinmeyeni '{}' yapar (owner geçer); '{}' <@ x true; silinmiş lokasyon owner'ı da kilitler
