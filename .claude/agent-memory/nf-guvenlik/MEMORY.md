@@ -1,3 +1,3 @@
 - [Atlanan alan yoklaması](checklist-omitted-input-probe.md) — TS yetki ikizinde opsiyonel hedef alanı atlanınca izin çıkıyor mu; matris kapsamaz
-- [rpcFailure ham detail](checklist-rpcfailure-raw-detail.md) — 4xx HttpError hint/details filtresiz istemciye gider; rpcFailure'a geçen her yolda sor
+- [rpcFailure filtresi](checklist-rpcfailure-raw-detail.md) — BL-131 sonrasi; servis rpcFailure'a gecerken JSON mesajli RAISE yutulur mu, detail uuid kimin
 - [Boş dizi tuzakları](checklist-empty-array-traps.md) — array(select..) bilinmeyeni '{}' yapar (owner geçer); '{}' <@ x true; silinmiş lokasyon owner'ı da kilitler

@@ -45,3 +45,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-25 | TEAM-001 | Agent Teams AI bırakıldı; koordinatör + 7 sabit rol ajanı (`.claude/agents/nf-*`) ve işçi oturumu düzeni kuruldu, deneme turu geçti | 27e2062
 2026-09-25 | FB-6.0-can | web yetki sözleşmesi doğdu: can(), isNoAccess(), ortak eylem kataloğu; SQL matrisiyle 1890 hücre uyuşuyor, ekran değişmedi | f7c6772
 2026-09-25 | BL-128 | API'nin genel hata yakalayıcısı yetki reddini gerekçesiyle gönderiyor; web isNoAccess() onu tanıyor | 8802229
+2026-09-25 | BL-131 | API 4xx cevaplarında veritabanının ham ayrıntısı (tablo/kısıt adı, satır değeri) artık gitmiyor; tanınmayan hata 500 | 787ff8f
