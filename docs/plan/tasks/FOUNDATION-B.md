@@ -364,3 +364,9 @@ Aşama 0: tamamlandı (bir açık madde) · 1: 0,5–1 · 2: 1,5–2,5 · 3: 0,7
   - Ekranda: Schedule → Unpublish penceresi artık "Worked shifts are kept as a historical record." demiyor; başka görünür değişiklik yok.
   - Aşama 6'ya (bulgu): `schedule-routes.ts`'teki `managerContext`/`activeManagerContext` rol ve izne bakıyor, belge engeline ve kurulum durumuna bakmıyor; bu planın E1 maddesi (belge engelli yönetici), Schedule dilimi çekirdeğe taşınırken kapanır.
   - Backlog: BL-116 kapandı; BL-120 (bir App testi yük altında 20 sn sınırına takılabiliyor).
+- 2026-09-25 **Aşama 5 bitti** (main `fa72173`; son migration `20260925014408`, local + hosted aynı; hosted security advisors hata 0). Bitiş kriterleri, ölçüldüğü gibi:
+  - `retired_objects_stay_gone` 37 tablo + 2 app_private tablosu + 195 fonksiyon + 15 tip + 12 sütun + 8 politika listeliyor, yeşil (planın tahmini ~36 tablo + ~220 fonksiyondu).
+  - Uygulama ve paketlerde kiosk, zaman takibi ve Line Up özelliği yok; kalan üç geçiş bilerek duruyor (herkese açık güven sayfasındaki "sunulmuyor" metni, `productBoundary.forbiddenLegacyDomains` koruması, emekli bildirim türlerini süzen bir test).
+  - Schedule ızgarası okuması CI'da `schedule_grid_read_budget` ile her gönderimde <50 ms ölçülüyor; Shift Hub takası 5.1'de tarayıcıda tamamlandı; ızgara, kaydetme ve yayın tek availability sistemini okuyor (5.3).
+  - Sıfırdan kurulum: CI `db` işi her gönderimde migration + seed'den kuruyor, yeşil. Yerel Meyhouse fixture'ı bugünkü şemayla sütun kontrolünde uyumlu; paylaşılan yerel veritabanında `db reset` kullanıcı onayı istediği için koşulmadı.
+  - Yeşil liste 92 dosya / 5971 ok / 0 not ok (yerel, iki son migration'la).
