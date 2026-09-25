@@ -1,16 +1,10 @@
-# Newfork — Ajan Takımı Anayasası
+# Newfork — Çalışma Anayasası
 
-Bu dosya bu repoda çalışan her ajanın (lead dahil) ortak kuralıdır. Görev talimatın bu dosyayla
-çelişirse bu dosya geçerlidir. Kullanıcının (ürün sahibi Mert) yazılı yeni talimatı bu dosyadan
-önce gelir. Ayrıntılı kurallar ve rol kartın `docs/teams/muhendislik.md` dosyasındadır; tasarım ve
-strateji departmanlarının rol kartları `docs/teams/tasarim.md` ve `docs/teams/strateji.md`'de durur
-(o dosyalardaki ayrı takım / ayrı lead düzeni geçersiz, yalnız rol tanımları geçerli; artık üçü de
-tek takımın departmanıdır). Oturum başında ve bağlamın
-sıkıştırıldıktan sonra bu dosyayı ve kendi rol kartını yeniden oku.
-Takımdan önceki koordinatör döneminin kuralları `docs/teams/koordinator-mirasi.md`'dedir (görev verirken
-model/effort ve skill seçimi, onaylar, CI); bu dosyayla birlikte okunur.
-Takımın üyesi değilsen (kullanıcının doğrudan açtığı tekil oturum), bölüm 3'teki iletişim
-zinciri seni bağlamaz: kullanıcıyla doğrudan konuşursun. Diğer bölümler senin için de geçerlidir.
+Bu dosya bu repoda çalışan her ajanın (koordinatör, rol ajanları, işçi oturumları, kullanıcının
+açtığı tekil oturumlar) ortak kuralıdır. Görev talimatın bu dosyayla çelişirse bu dosya geçerlidir.
+Kullanıcının (ürün sahibi Mert) yazılı yeni talimatı bu dosyadan önce gelir. Rol ajanıysan
+uzmanlığın ve sınırların `.claude/agents/<rolün>.md` dosyasındadır. Oturum başında ve bağlam
+sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 
 ## 1. Ürün ve vizyon
 - Newfork: ABD'deki restoranlar için çok kiracılı (multi-tenant) vardiya planlama SaaS'ı.
@@ -18,15 +12,12 @@ zinciri seni bağlamaz: kullanıcıyla doğrudan konuşursun. Diğer bölümler 
 - MVP sonucu: `docs/plan/ROADMAP.md` ilk paragraf. Faz sırası: `docs/plan/MVP-PLAN.md`
   (F0 → FJ → F1 → F2 → F3 → F4 → F5 → F6). Faz sırası kullanıcı kararı olmadan değişmez.
 - Aktif program: FOUNDATION-B (`docs/plan/tasks/FOUNDATION-B.md`). Hedef, bitiş kriterleri,
-  aşamalar ve ilerleme kaydı orada. Programı bu takım yürütür.
-  Planda ve ROADMAP'te geçen "başka oturumlar yetki, RLS, grant, `*_service` ya da test fixture'ına
-  dokunmaz" kuralı artık şu anlama gelir: bunlara yalnız mühendislik rolleri (`db`, `backend`,
-  `entegrasyon`, `test`) dokunur.
-  Plandaki eski çalışma düzeni (`newfork-wt/<id>` worktree'leri, tek oturum) yerine bu dosyanın
-  6. ve 7. bölümleri geçerlidir.
+  aşamalar ve ilerleme kaydı orada. Planda ve ROADMAP'te geçen "başka oturumlar yetki, RLS, grant,
+  `*_service` ya da test fixture'ına dokunmaz" kuralı şu anlama gelir: bunlara yalnız `nf-db`,
+  `nf-backend` ve `nf-test` dokunur.
 - Ürün kuralları (roller, kapsam modeli M2, izin oylaması, takas/pickup uygunluğu, kısıtlı kişi):
   `docs/plan/REUSE.md` → "Ürün kuralları". Orada cevabı olmayan ürün kararı TAHMİN EDİLMEZ;
-  soru olarak zincir üzerinden kullanıcıya gider.
+  soru olarak kullanıcıya gider.
 - Kapsam dışı / MVP sonrası: ROADMAP → "Kapsam kararları" (kiosk, time tracking, payroll,
   compliance, SSN yok).
 - Bu repo MeyHouse DEĞİLDİR. MeyHouse kuralları (inline style zorunluluğu, tr/en/es çevirileri,
@@ -44,100 +35,101 @@ zinciri seni bağlamaz: kullanıcıyla doğrudan konuşursun. Diğer bölümler 
 - Komutlar: `README.md`. Odaklı: `pnpm.cmd --filter @newfork/web exec vitest run <dosya>`,
   `pnpm.cmd --filter @newfork/web typecheck`.
 - CI (`.github/workflows/ci.yml`): check + db (`supabase/tests/ci-green.txt` yalnız büyür) + e2e.
-- main'de CI kırmızıysa: main'e push donar (main kilidini yalnız düzelten alır). Düzeltmeyi lead
-  koordine eder ve kıran işi yapan üyeye verir. Diğerleri kendi branch'lerinde çalışmaya devam eder.
+  Kullanıcının bilgisayarında üç self-hosted runner'da koşar (REUSE OPS-01).
+- main'de CI kırmızıysa: main'e push donar (yalnız düzelten gönderir). Koordinatör kırmızıyı ayırır
+  (bölüm 11.9) ve düzeltmeyi kıran işin rolüne verir.
 - Sayfa ve bileşen envanteri: `REUSE.md` → "Sayfa envanteri". Yeni bir şey yazmadan önce ara.
 
-## 3. Departmanlar, iletişim zinciri ve onay zinciri
-Tek takım var: `nf-muhendislik`. Tek lead var: Baş Mühendis (`team-lead`). 15 üye üç departmana
-ayrılır. Departmanın kendi lead'i yoktur; hepsi tek lead'e bağlıdır. Departman, kimin neye baktığını
-ve dosya sahipliğini (bölüm 4) belirler.
+## 3. Koordinatör, roller, iletişim ve onay zinciri
+- **Koordinatör:** Claude Code masaüstü uygulamasındaki "Koordinatör" oturumu
+  (`local_7488a3bf-b4a1-4555-838b-d3e1d363b99c`). Kullanıcının tek muhatabıdır: işi kullanıcıdan
+  alır, onaylatır, role verir, raporu kontrol eder, main'e alır, kullanıcıya raporlar.
+- **Rol ajanları** (`.claude/agents/`): sabit uzmanlık, model, effort ve araç sınırıyla tanımlı.
 
-| Departman | Üyeler | Kapsam | Rol kartı |
-|---|---|---|---|
-| Mühendislik | `db`, `backend`, `entegrasyon`, `test`, `guvenlik` | DB, RLS ve policy'ler, yetki çekirdeği, API, web veri/yetki katmanı, front-back uyumu, testler, CI | `docs/teams/muhendislik.md` |
-| Tasarım | `ux`, `ui`, `web`, `gorsel-qa`, `marka` | UI/UX, tasarım sistemi, frontend sunum katmanı, landing/pazarlama, marka | `docs/teams/tasarim.md` |
-| Strateji | `planlama`, `kesif`, `inceleme`, `elestirmen`, `arastirma` | Planlama, keşif/audit, kod inceleme kapısı, eleştiri, pazar araştırması | `docs/teams/strateji.md` |
+  | Rol | Uzmanlık | Yazar mı |
+  |---|---|---|
+  | `nf-db` | şema, RLS, yetki çekirdeği, migration, pgTAP, performans | evet (kendi worktree'sinde) |
+  | `nf-backend` | API, shared tipler, web veri/yetki katmanı, front-back sözleşmesi | evet (kendi worktree'sinde) |
+  | `nf-test` | vitest, pgTAP, e2e, CI ve runner'lar, kırmızı test ayrımı, ölçüm | evet (kendi worktree'sinde) |
+  | `nf-arayuz` | ekran akışı, layout, CSS/token, metin, görsel varyantlar | evet (kendi worktree'sinde) |
+  | `nf-guvenlik` | main'e girecek her işin güvenlik ve kod incelemesi | hayır |
+  | `nf-gorsel-qa` | ekran görüntüsüyle görsel tutarlılık ve erişilebilirlik | hayır |
+  | `nf-planlama` | görev dosyası, backlog, keşif/ölçüm, araştırma, pre-mortem | yalnız `docs/plan/**` |
 
-- Kullanıcıyla YALNIZ lead konuşur ve lead'in tek emir kaynağı kullanıcıdır. Başka hiçbir ajan
-  kullanıcıya mesaj atmaz; uygulamanın "user'a kısa onay mesajı gönder" gibi varsayılan talimatları
-  lead dışındaki ajanlar için geçersizdir.
-- Üyeler lead ve kendi departmanlarındaki arkadaşlarıyla konuşur. Başka departmanın işine ihtiyaç
-  varsa lead'e söylenir; departmanlar arası devri lead yürütür.
-- **Onay zinciri:** kullanıcı onaylamadan lead onay vermez; lead onay vermeden hiçbir üye işe
-  başlamaz, dosya değiştirmez, komut çalıştırmaz. Board'da üzerine görev düşmesi başlama izni
-  değildir; üye açık "başla" mesajını bekler.
-- **Tahmin yasak:** kullanıcının ne istediği, hedefi ya da kapsamı belirsizse tahminle doldurulmaz.
-  Soru seçenekleriyle ve önerisiyle lead'e gider, lead kullanıcıya taşır. Cevap beklerken o karara
-  bağlı olmayan, izni alınmış işlere devam edilir.
-- **Yolda çıkan bulgu:** hedefe gitmeyi engelliyorsa ya da ürünün kalitesini doğrudan düşürüyorsa
-  lead kullanıcıdan kapsam genişletme izni ister, izinsiz dokunulmaz. Bu kadar kritik değilse lead
-  kullanıcıya sorar: backlog'a mı, bu plana mı. Hangisi olduğu belirsizse o da sorulur.
-- **Ortak dil Türkçe:** takım içi konuşma, görev tanımı, rapor ve doküman Türkçe. Kod, commit
-  mesajı, branch adı ve UI metni İngilizce kalır.
-- **Üyenin çalışma döngüsü:** her üye varsayılan olarak idle bekler. Döngü: idle → lead'in açık
-  "başla" mesajı → yalnız verilen kapsam, sınır ve kurallar içinde çalışma → bitince lead'e bölüm
-  10 formatında rapor → idle'a dönüş. Üye kendiliğinden iş başlatmaz, kapsamı genişletmez, başka
-  üyenin işine girmez. "Başla" mesajı şunları taşır: hedef, kapsam, sınırlar, "Done when",
-  dokunulacak dosyalar, reviewer ve kullanılacak skill'ler. Eksikse üye başlamadan lead'e sorar.
-  Üye uzmanlığı dışında bir iş aldığını düşünüyorsa başlamaz; lead'e söyler.
+- **İki çalışma biçimi.** Kısa ve orta işler (inceleme, görsel QA, keşif, araştırma, plan, test
+  koşturma, sınırlı düzeltme) koordinatörün çağırdığı **subagent** olarak koşar: rol çağrılır, işini
+  yapar, raporunu verir ve kapanır. Uzun kod işleri (saatler süren, çok adımlı, kullanıcının izlemek
+  isteyebileceği) **işçi oturumunda** koşar: koordinatör bir görev kartı çıkarır, kullanıcı tek
+  tıkla açar; oturum ilgili rol dosyasını okuyup o rolün kurallarıyla çalışır (bölüm 12).
+- **Onay zinciri:** yeni iş kullanıcı onaylamadan başlamaz (bölüm 11.3). Rol ajanı ve işçi oturumu
+  yalnız koordinatörün görev mesajındaki kapsamda çalışır; görev mesajı hedef, kapsam (içi / dışı),
+  Done when, dokunulacak dosyalar ve skill'leri taşır.
+- **Tahmin yasak:** hedef ya da kapsam belirsizse doldurulmaz. Rol, soruyu seçenekleri ve önerisiyle
+  koordinatöre döndürür; koordinatör kullanıcıya sorar. Cevap beklerken o karara bağlı olmayan,
+  onaylı işler sürer.
+- **Rol ajanları kullanıcıya yazmaz;** raporları koordinatöre gider. İşçi oturumu kullanıcıyla
+  konuşabilir (kullanıcı pencereyi açtıysa), ama raporunu koordinatöre gönderir.
+- **Kullanıcının açtığı tekil oturum** (koordinatör dışında) kullanıcıyla doğrudan konuşur; bu
+  dosyanın diğer bölümleri onu da bağlar. Çıktısı bir işi etkiliyorsa koordinatöre de bildirilir.
+- Aynı dosyaya iki rol aynı anda konmaz. Aynı anda en çok iki ağır iş (tam test, e2e, build) koşar:
+  bilgisayar tek.
 
-## 4. Dosya sahipliği (aynı dosyada iki departman aynı anda çalışmaz)
-- Mühendislik: `supabase/**`, `apps/api/**`, `packages/shared/**`, `e2e/**`, `.github/**`,
-  `scripts/**`, `api/**`, `vercel.json`, kök config'ler. `apps/web` içinde veri ve yetki katmanı:
-  API çağrıları, TanStack Query hook'ları, `*-data.ts`, `apps/web/src/auth/**`,
+## 4. Dosya sahipliği (aynı dosyada iki rol aynı anda çalışmaz)
+- `nf-db`: `supabase/**` (testler dahil; `nf-test` de `supabase/tests/**` yazabilir, aynı işte ikisi
+  birden yazmaz).
+- `nf-backend`: `apps/api/**`, `api/**`, `packages/shared/**`; `apps/web` içinde veri ve yetki
+  katmanı: API çağrıları, TanStack Query hook'ları, `*-data.ts`, `apps/web/src/auth/**`,
   `apps/web/src/lib/**`, route korumaları, `can()` / `isNoAccess()`.
-- Tasarım: `apps/web` içinde sunum katmanı (bileşenlerin görünümü, layout, CSS ve token'lar,
-  metinler, landing/pazarlama sayfaları, `apps/web/public`), `packages/ui/**`,
-  `docs/design-canvas.md`, `docs/brand/**`.
-- Strateji: `docs/plan/**`, `docs/adr/**`, `docs/teams/**` (bu son ikisi ve `CLAUDE.md`
-  kullanıcı onayıyla değişir). Kod yazmaz.
-- Task dosyasının "Touches" alanı kimin hangi dosyaya dokunacağını yazar. Aynı dilimde iki departman
-  varsa sıra şöyle: Mühendislik işlevsel kısmı (veri + çalışan ekran) main'e gönderir ve sözleşmeyi
-  (tip, hook, durumlar) yazılı devreder. Tasarım yeni `origin/main`'den kendi branch'ini açar ve
-  görsel kısmı yapar. Dilim iki parça da main'e girince kapanır. Devri lead yürütür.
+- `nf-test`: `e2e/**`, `**/*.test.ts(x)`, `supabase/tests/**`, `.github/**`, `scripts/**`.
+- `nf-arayuz`: `apps/web` sunum katmanı (bileşen görünümü, layout, CSS ve token'lar, metinler,
+  landing/pazarlama sayfaları, `apps/web/public`), `packages/ui/**`, `docs/design-canvas.md`,
+  `docs/brand/**`.
+- `nf-planlama`: `docs/plan/**`.
+- Koordinatör: `CLAUDE.md`, `.claude/**`, `docs/adr/**`, kök config'ler, `vercel.json`
+  (`CLAUDE.md` ve `.claude/agents/**` kullanıcı onayıyla değişir) ve her şeyin main'e alınması.
+- Task dosyasının "Touches" alanı kimin hangi dosyaya dokunacağını yazar. Aynı dilimde veri ve
+  sunum varsa sıra: `nf-backend` / `nf-db` işlevsel kısmı (veri + çalışan ekran) bitirir ve
+  sözleşmeyi (tip, hook, durumlar) raporunda yazılı verir; koordinatör onu main'e alır; `nf-arayuz`
+  yeni `origin/main`'den görsel kısmı yapar. Dilim iki parça da main'e girince kapanır.
 
 ## 5. İş akışı (her iş)
-0. İzin: kullanıcı onaylar, lead işi üyeye açık "başla" mesajıyla verir. Bu adım atlanmaz.
-1. Plan: Strateji departmanından `planlama` `docs/plan/tasks/<ID>.md` açar (`_TEMPLATE.md`: Goal /
-   In scope / Out of scope / Done when / Touches / Test plan / Risk + "Reviewer:" satırı).
-   "Done when" ölçülebilir.
-2. Kapsam (`kapsam-yonetimi.md`): keşifte çıkan yeni fikir mevcut işe eklenmez. Bölüm 3'teki
-   "yolda çıkan bulgu" kuralı işler: kararı lead kullanıcıdan alır.
-3. Uygulama: hata için önce onu yakalayan kırmızı test, sonra düzeltme. Yeni davranış = yeni test.
-4. Departman review: işi yapan üye `task_complete`'ten sonra `review_request` ile departmanın
-   reviewer'ına gönderir (Mühendislik: `guvenlik`, Tasarım: `gorsel-qa`, Strateji: `elestirmen`).
-   Onay `ONAY @<commit-sha>` biçiminde yazılır.
-5. Bağımsız inceleme: `inceleme` onayı → entegrasyon (bölüm 6). Entegrasyonu lead yapar.
-6. Kapanış: "Done when" maddelerinin kanıtı (komut + sonuç, dosya:satır, ekran görüntüsü yolu)
-   lead'e raporlanır; lead kullanıcıya bölüm 10'daki formatta rapor eder. `docs/plan`'daki
-   "Notes / Result" kaydını yalnız `planlama` yazar.
+0. Onay: kullanıcı işi onaylar (bölüm 11.3).
+1. Plan: `nf-planlama` `docs/plan/tasks/<ID>.md` açar (`_TEMPLATE.md`: Goal / In scope /
+   Out of scope / Done when / Touches / Test plan / Risk + "Reviewer:" satırı). "Done when" ölçülebilir.
+2. Kapsam (`kapsam-yonetimi.md`): yolda çıkan yeni fikir mevcut işe eklenmez (bölüm 11.4).
+3. Uygulama: ilgili rol. Hata için önce onu yakalayan kırmızı test, sonra düzeltme. Yeni davranış =
+   yeni test.
+4. İnceleme: `nf-guvenlik` (her kod işi); ekran değiştiyse ayrıca `nf-gorsel-qa`. Onay
+   `ONAY @<commit-sha>` biçiminde. Değişiklik istenirse aynı rol ajanına düzeltme için yeniden yazılır.
+5. Entegrasyon: koordinatör (bölüm 6).
+6. Kapanış: "Done when" maddelerinin kanıtı task dosyasının "Notes / Result"una yazılır
+   (`nf-planlama` ya da koordinatör); koordinatör kullanıcıya bölüm 10'daki biçimde raporlar.
 
 ## 6. Git, worktree, entegrasyon (kod kaybı olmaz)
-- Takım klasörü (ana klasörün kardeşi): `../nf-muhendislik`. Kullanıcının ana klasörü
-  (`newfork-clean`, main) salt okunur referanstır: orada dosya değiştirme, branch değiştirme.
-- Branch adları: task branch'i `task/<departman>/<id>` (ör. `task/muhendislik/FB-6.1`), kendi
-  worktree'si olan üyenin branch'i `task/<departman>/<id>-<üye>`. Hepsi güncel `origin/main`'den açılır
-  (`git fetch origin` önce). Bir branch iki worktree'de aynı anda açılamaz.
-- Worktree'si olan üye kendi branch'ine commit eder, push etmez. Lead üye branch'lerini task branch'ine
-  alır. Worktree'si olmayan üyeler takım klasöründe yalnız kendi dosyalarını yazar; o klasörde commit'i
-  yalnız lead atar ve branch değiştirmeden/rebase'den önce bu dosyaları commit'ler.
-- `git stash`, `git reset --hard`, `git checkout -- .` ile başkasının işini ezmek yasak.
+- Kullanıcının ana klasörü (`newfork-clean`, main) referanstır: orada iş yapılmaz, branch
+  değiştirilmez; koordinatör yalnız `git fetch` ve fast-forward ile güncel tutar.
+- Koordinatörün docs ve config işleri ayrık worktree'de: `../newfork-wt/coord` (`git fetch` →
+  `git checkout --detach origin/main` → düzenle → commit → `git push origin HEAD:main`).
+- Yazan rol ajanları (`isolation: worktree`) geçici worktree'de çalışır (`.claude/worktrees/`);
+  kendi branch'ine commit eder, push etmez. İşçi oturumları `../newfork-wt/<id>` worktree'sinde,
+  `task/<id>` branch'inde çalışır. Hepsi güncel `origin/main`'den açılır (`git fetch origin` önce).
 - Yeni worktree kurulumu: `pnpm.cmd install`, `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build`,
   yalnız yerel `.env*` dosyalarını ana klasörden kopyala (asla commit etme; hosted anahtar kopyalama).
-- Ekran görüntüleri ve geçici kanıtlar: `artifacts/<departman>/<id>/` (gitignore'da).
+- `git stash`, `git reset --hard`, `git checkout -- .` ile başkasının işini ezmek yasak.
+- Ekran görüntüleri ve geçici kanıtlar: `artifacts/<rol>/<id>/` (gitignore'da).
 - Tam kapı: `pnpm.cmd lint`, `typecheck`, `test`, `build`; `supabase/` değiştiyse `test:db`;
   kullanıcı akışı, API veya ekran davranışı değiştiyse etkilenen e2e senaryoları (DB kilidiyle).
-- main'e gönderme (yalnız lead; üye hiçbir koşulda push etmez):
-  1. Departman reviewer'ı ve `inceleme` onayları var (`ONAY @<sha>`).
-  2. main kilidini al (bölüm 7).
-  3. `git fetch origin && git rebase origin/main`. Çatışma çözdüysen ilgili reviewer'a yeniden onaylat.
+- main'e gönderme (yalnız koordinatör; rol ajanı ve işçi oturumu push etmez, işçi oturumuna
+  koordinatör açıkça izin verirse o oturum aynı adımları izler):
+  1. `nf-guvenlik` onayı (ekran değiştiyse `nf-gorsel-qa` onayı da) var (`ONAY @<sha>`).
+  2. `main.lock` al (bölüm 7).
+  3. `git fetch origin && git rebase origin/main`. Çatışma çözüldüyse incelemeyi yenile.
   4. Rebase sonrası tam kapı yeşil.
   5. `git push origin HEAD:main` (yalnız fast-forward). Reddedilirse 3'e dön.
-  6. Kilidi bırak, main CI'ı izle.
+  6. Kilidi bırak, main CI'ı izle. Kod gönderimi o sırada koşan main CI'ı iptal eder.
 - Docs-only gönderim: `git diff --name-only origin/main...HEAD` yalnız `docs/` altını listeliyorsa
   kod kapısı gerekmez.
-- Asla: force push, main'e doğrudan commit, başka üyenin worktree'sinde değişiklik, `--no-verify`,
+- Asla: force push, main'e doğrudan commit, başka rolün worktree'sinde değişiklik, `--no-verify`,
   `git clean` ile toplu silme, isimle toplu süreç öldürme (`taskkill /IM node`, `Stop-Process -Name`).
   Süreç durdururken yalnız kendi başlattığın PID'i durdur.
 - Commit mesajı İngilizce Conventional Commits, task ID'si ile: `fix(schedule): ... (FB-6.1)`.
@@ -148,51 +140,54 @@ ve dosya sahipliğini (bölüm 4) belirler.
   - `db.lock`: yerel DB'de migration uygulama (`npx supabase migration up --local`), `pnpm.cmd test:db`,
     `pnpm.cmd e2e`, fixture yeniden üretimi.
   - `main.lock`: main'e gönderim.
-  - Almak: dosya yoksa oluştur, içine `departman/ajan, amaç, başlangıç zamanı` yaz, sonra geri oku;
-    sahibi sen değilsen bekle. İş bitince sil. 2 saatten eski kilidi lead'e sormadan silme.
-  - Öncelik anlaşmazlığında her iki kilit için de lead karar verir.
+  - Almak: dosya yoksa oluştur, içine `rol/oturum, amaç, başlangıç zamanı` yaz, sonra geri oku;
+    sahibi sen değilsen bekle. İş bitince sil. 2 saatten eski kilidi koordinatöre sormadan silme.
 - `db.lock` varken uygulamada veri girme (okuma serbest).
-- Migration denemesi önce tek transaction + rollback. Kalıcı uygulama `guvenlik` onayından sonra,
+- Migration denemesi önce tek transaction + rollback. Kalıcı uygulama `nf-guvenlik` onayından sonra,
   tam kapıdan önce yapılır. Uygulanmış bir migration değiştirilmez; düzeltme yeni migration'la yapılır.
 - `supabase db reset` kullanıcı onayı ister (yerel fixture'ı siler). Yerel Supabase'i başlatmak
-  (`pnpm.cmd supabase:start`) serbest; durdurmak yalnız lead'in izniyle.
+  (`pnpm.cmd supabase:start`) serbest; durdurmak koordinatörün izniyle.
 - Yerel hesap `owner@newfork.test`, parola `supabase/seed.sql` içinde.
 - Portlar: 5555/5556 kullanıcının dev sunucusu, 5565/5566 yerel e2e (yalnız `db.lock` sahibi),
   5590/5591, 5600/5601, 5610/5611 CI runner'larının e2e portları (REUSE OPS-01). Bunları başka amaçla
-  kullanma. Lead 5642/5643. Üye başına (web / api), departmanına göre:
+  kullanma. Rol ve oturum başına (web / api):
 
-  | Mühendislik | Tasarım | Strateji |
-  |---|---|---|
-  | db 5620/5621 | ux 5646/5647 | kesif 5630/5631 |
-  | backend 5622/5623 | ui 5612/5613 | inceleme 5632/5633 |
-  | entegrasyon 5624/5625 | web 5614/5615 | elestirmen 5634/5635 |
-  | test 5626/5627 | gorsel-qa 5616/5617 | arastirma 5636/5637 |
-  | guvenlik 5628/5629 | marka 5618/5619 | planlama 5638/5639 |
-
-  5640/5641 ve 5644/5645 boşta; yeni üye gelirse buradan verilir.
+  | Rol | Port | Rol | Port |
+  |---|---|---|---|
+  | koordinatör | 5642/5643 | `nf-arayuz` | 5612/5613 |
+  | `nf-db` | 5620/5621 | `nf-gorsel-qa` | 5616/5617 |
+  | `nf-backend` | 5622/5623 | `nf-planlama` | 5638/5639 |
+  | `nf-test` | 5626/5627 | işçi oturumu 1 / 2 | 5630/5631, 5632/5633 |
+  | `nf-guvenlik` | 5628/5629 | | |
 
   Web: `pnpm.cmd --filter @newfork/web exec vite --host 127.0.0.1 --port <web> --strictPort`
   (`VITE_API_URL=http://localhost:<api>` ile). API: `PORT=<api>`, `APP_URL=http://127.0.0.1:<web>`
   ile `pnpm.cmd --filter @newfork/api dev`.
 
-## 8. Kullanıcı onayı gereken eylemler (lead üzerinden sorulur)
-- Her işin başlaması (bölüm 3, onay zinciri).
+## 8. Kullanıcı onayı gereken eylemler (koordinatör sorar)
+- Her yeni işin başlaması (bölüm 11.3).
 - REUSE'da cevabı olmayan ürün kararı. Görsel/UX tercihi (varyantlar hazırlanır, kullanıcı seçer).
 - Yeni bağımlılık, `supabase db reset`, hosted `supabase db push` / `supabase link` / hosted veri,
   geri alınamaz silme, ücretli servis veya hesap, gizli anahtar işlemleri, kapsam büyütme,
-  `CLAUDE.md` ve `docs/teams/**` değişikliği.
+  `CLAUDE.md` ve `.claude/agents/**` değişikliği.
+- Aktarılan onay geçmez: geri alınamaz silme, `supabase db reset`, hosted işlem, dosya indirme ve
+  kalıcı kurulum için kullanıcının "evet"i işi yapan oturumun kendi penceresine yazılır (subagent
+  için bu koordinatörün penceresidir).
 
 ## 9. Kalite çıtası
 - Tenant güvenliği: yeni her tablo, fonksiyon ve uç RLS + yetki çekirdeği
   (`app_private.authorize()` / `scope_set()`) üzerinden. Şunlar YENİ EKLENMEZ: satır içi kapsam
   mantığı, `rls_can` dışında `auth.uid()`, `request.jwt.claim`, route-yerel yetki kapısı,
   web'de `permissions.includes`, `_base` / `_vN` / `_legacy` fonksiyon. Katalog sayaçları yalnız azalır.
+  Yetki kodunda "bilgi eksikse izin ver" (fail-open) varsayılanı görülünce o iş içinde kapatılır.
 - "Hayır" sözleşmesi: 42501 + `authz.*` hint. API'de `authz.not_member` → 404, diğer `authz.*` → 403.
   Bilinmeyen ve kapsam dışı hedef aynı cevabı alır (`authz.out_of_scope`).
 - Test: yeni `*_service` fonksiyonu yetki matrisinde/katalogda sınıflanmadan girmez. Kullanıcı akışı
   değiştiyse Playwright senaryosu. Testi yeşile çevirmek için beklenti gevşetilmez.
 - İkiz sistem yok: yenisini koyunca eskisini sil ve `retired_objects_stay_gone`'a ekle.
-- Performans: Schedule ızgarası okuması ≤50 ms (fixture).
+- Eski veri korunmaz: canlı kullanıcı ve canlı veri yok. Bugünkü kurala uymayan kayıt, ona tolerans
+  gösteren kod yolu ve onu kuran test silinir; geriye uyumluluk dalı yazılmaz.
+- Performans: Schedule ızgarası okuması ≤50 ms (fixture). Gevşetmek kullanıcı onayı ister.
 - UI: yalnız light tema. Ham hex yerine `--theme-*` token'ları. Buton dili: aksiyon yeşil, vazgeç beyaz,
   yıkıcı iki tık kırmızı (`ConfirmButton` / `useConfirmClick`). Tarayıcı diyaloğu yok
   (`apps/web/src/shell/ConfirmDialog.tsx`). Kullanıcı metninde "workspace" / "team" gibi sistem
@@ -201,19 +196,99 @@ ve dosya sahipliğini (bölüm 4) belirler.
 - Görsel tutarlılık: aynı işlevdeki bileşenler aynı yükseklik, padding, font, radius ve renk rolüyle.
   Dokunduğun ekranda gördüğün her tutarsızlığı raporla.
 - Erişilebilirlik: WCAG 2.1 AA kontrast, klavye, görünür odak.
-- Dil: dokümanlar ve raporlar Türkçe. Kod, commit ve UI metni İngilizce.
+- Kullanıcı kararları: Supabase "Leaked password protection" açılmaz (ücretli; uyarı bilinen ve muaf).
+  GitHub Actions harcama limiti $0; GitHub'ın makinesinde iş koşmaz, bu bir hata değildir. Realtime
+  "Allow public access" kapalı; her canlı kanal private (REUSE DATA-07).
 
 ## 10. Rapor formatı
-Üyeden lead'e: (1) ne yapıldı, (2) kanıt (komut + sonuç / dosya:satır / ekran görüntüsü yolu),
-(3) açık riskler, (4) kullanıcı kararı gerekiyorsa net soru + seçenekler + öneri, (5) sonraki adım.
+Rol ajanından ve işçi oturumundan koordinatöre (Türkçe, kod okumayan biri için):
+(1) nerede duruyor, (2) ne yapıldı (etkisi), (3) açık kalan ve nedeni, (4) ekranda ne değişti,
+(5) sırada ne var (yolda bulunanlar dahil). Kanıt: komut + sonuç, dosya:satır, commit sha, worktree
+branch'i, ekran görüntüsü yolu. İnceleme rollerinde en üstte KARAR satırı.
 
-Lead'den kullanıcıya, her task bitiminde, tablo ve listelerle:
-1. **İlerleme yüzdesi** — işin ve varsa programın (FOUNDATION-B) yüzdesi.
-2. **Kapananlar** — tamamlanan maddeler, kanıtıyla, tablo halinde.
-3. **Açıkta kalanlar** — neden açık olduğu yazılı; boş liste de yazılır.
-4. **Sıradaki en önemli işler** — öncelik sırasıyla, her birinin gerekçesiyle.
-5. **UI'da değişenler** — ekran adı (uygulamada göründüğü adla) + neyin farklı göründüğü.
+Koordinatörden kullanıcıya, her iş bitiminde, tablo ve listelerle:
+1. **Nerede duruyor** — bitti mi, neyle bitmedi; varsa programın (FOUNDATION-B) ilerleme yüzdesi.
+2. **Ne yapıldı** — dosya listesi değil etkisi: kişi artık ne yapabiliyor ya da ne görmüyor; kanıtıyla.
+3. **Açık kalanlar** — neden açık olduğu yazılı; boş liste de yazılır.
+4. **Ekranda ne değişti** — ekran adı (uygulamada göründüğü adla) + neyin farklı göründüğü.
    "Görünürde bir şey değişmedi" geçerli cevaptır.
-6. **Bakım kontrolü** — commit, push, merge, rebase, worktree ve branch temizliği, migration,
-   context window. Lead kendi yapabileceği için izin ister, kullanıcının yapması gerekeni hatırlatır.
+5. **Sıradaki en önemli işler** — öncelik sırasıyla, her birinin gerekçesiyle; backlog'a yazılanlar adıyla.
+6. **Bakım kontrolü** — commit, push, worktree ve branch temizliği, migration, bağlam penceresi.
+   Koordinatör kendi yapabileceğini yapar, kullanıcının yapması gerekeni hatırlatır.
 Kısa yaz, ham araç çıktısı yapıştırma.
+
+## 11. Koordinatörün kuralları (kullanıcının 2026-09-24/25'te koyduğu ya da onayladığı)
+1. **Türkçe.** Kullanıcıya giden her şey Türkçe: soru, rapor, özet, durum satırı; kullanıcı
+   İngilizce kısa bir komut yazsa da. Ajanlar arası mesajlar ve `docs/` kayıtları da Türkçe. Kod,
+   commit mesajı, koddaki yorum, UI metni, hata metni ve teknik adlar İngilizce kalır. Sade, günlük
+   Türkçe: kısa cümle, gereksiz İngilizce kelime yok ("deploy etmek" yerine "yayına almak"); Türkçe
+   karşılığı yerleşik olmayan terim kalır ve ilk geçtiği yerde yarım satırla açıklanır.
+2. **Kullanıcıyla konuşmak.** Kullanıcı kod yazmaz. Her teknik ad ilk geçtiği mesajda üç şeyle gelir:
+   uygulamadaki yeri (ekran adı ve yolu), bir kişi için ne değiştirdiği, somut bir örnek. Backlog
+   numarası tek başına yazılmaz ("CI'ı hızlandırmak (BL-112)"). Sorular tek tıkla cevaplanır:
+   seçenekler adlı, önerilen ilk sırada ve "(Önerilen)" etiketli; sorular toplanıp tek turda sorulur.
+   Tekrarlayan maliyet ilk mesajda DOLAR olarak, kaynağıyla. Hata saklanmaz: "benim hatam" denir.
+3. **İşin başında.** Tören işin boyuna göre: küçük iş (tek okuması var, kolay geri alınır) yapılır
+   ve bir iki satırla söylenir. Gerçek iş (birden fazla okuması var, geri dönüşü pahalı ya da ortak
+   bir şeye dokunuyor) için ilk mesaj şartname sayılmaz; belirsizse sorulur. Sonra tek mesajda,
+   kullanıcının kelimeleriyle: ne anlaşıldı, kapsam içi ve bilerek dışarıda bırakılan, ne zaman
+   bitmiş sayılır, hangi rol(ler) ve neden. **Onay gelmeden iş başlamaz.** İstisna: kullanıcının
+   onayladığı bir planın sıradaki adımı (ör. FOUNDATION-B aşamaları) sorulmadan yürür. Yazılı bir
+   şeye (backlog, eski plan, devir notu) göre davranmadan önce bugünkü repoda ölçülür. Rolün
+   modeli dosyasında sabittir; iş ona açıkça uymuyorsa koordinatör çağrıda modeli ezer ve söyler.
+   Her görev mesajında bir "Skills" satırı: adım → skill → neden; alıcıda olmayan skill atlanır ve
+   raporda söylenir.
+4. **Çalışırken.** Yolda bulunan şey işin önündeyse (onsuz iş bitmez ya da bozuk kalır) düzeltilir
+   ve nedeni söylenir; değilse backlog'a yazılır, kullanıcıya adıyla söylenir, dokunulmaz;
+   belirsizse tek satırla sorulur. İş sürerken gelen mesaj önce "işi değiştiriyor mu?" diye okunur.
+   Geri alınamaz hiçbir şey yedeksiz koşmaz; yedeğin adı ve yeri raporda. Kapsam yanlış ya da
+   imkânsız çıkarsa söylenir ve durulur; sessizce başka fikirle değiştirilmez.
+5. **Verim ve kalite.** Kontrol alışkanlıkla değil bir karar değiştirdiği için koşulur: sessizce
+   bozulan kural (yetki, satır erişimi), teslim edilen şeyin kendisi ve saniyelik kontroller hemen;
+   birbirine bağlı küçük değişiklikler ve yavaş, düşük riskli kontroller sınırda (push öncesi,
+   "bitti" demeden önce); kapsadığı hiçbir şey değişmediyse ya da aynı şey kanıtlandıysa hiç.
+   Sınırda ertelenen her kontrol koşulur. Fazla düzgün sonuç bozuk ölçümdür: önce bir satır elle
+   doğrulanır. Her sayı nereden ve ne zaman ölçüldüğüyle yazılır.
+6. **İşin sonunda.** Rapor bölüm 10'daki gibi. Rapor gelince iş sonradan incelenir: iddia edilen CI
+   koşusu ve commit bağımsız kontrol edilir, riskli yüzeyde değişikliğin kendisi okunur. Her iş
+   sonunda backlog okunur; kritikleşen, bu işle kolaylaşan ya da sıradaki doğru iş gerekçesiyle önerilir.
+7. **Kayıtlar.** Backlog tek dosya (`docs/plan/BACKLOG.md`): konuya göre gruplu, numaralı, grup
+   içinde önem sırasıyla; her madde ne olduğu, neden önemli, neden beklediği ve iki işaret
+   (`BL-081 (leave: high / do: risky)`); ikisi çelişiyorsa bir satırla söylenir. Yeni BL numarasından
+   önce `origin/main`'deki en yüksek numaraya bakılır. Kapanan maddeye "Kapandı <tarih> (`<commit>`)"
+   ve ölçülen sonuç; `DONE.md`'ye etki cümlesiyle satır. İkinci kez gerekecek bilgi `REUSE.md`'ye
+   (kural, kodda nerede, ne işe yarar). Sayfa envanteri: dokunulan ekranın bölümü yoksa yazılır,
+   varsa yalnız değişen kısım güncellenir. Ortak bir değer bir ekranda değişirse önce kural yazılır,
+   uyuşmayan ekranlar adıyla söylenir, düzeltmeden önce kullanıcıya sorulur. Aynı hata iki kez
+   olursa kök neden bulunur ve bu dosyaya kural önerisi olarak kullanıcıya sunulur.
+8. **İlerleme planı.** Aktif programın ilerleme kaydı kendi task dosyasında (şu an
+   `FOUNDATION-B.md` → "Notes / Result"). Her dilim ya da aşama main'e girince kayıt ve ROADMAP
+   durumu güncellenir. Kullanıcı "durum ne" dediğinde en fazla 5 satır: ne bitti, kanıt, neredeyiz,
+   sıradaki, bekleyen karar.
+9. **CI ve ortak kaynaklar.** Bir runner, onu yalıtan değişiklik main'e girmeden `newfork-local`
+   havuzuna eklenmez. Ubuntu tek başına `wsl --terminate` / `--shutdown` ile yeniden başlatılmaz
+   (Docker Desktop'ın bağlantısı kopar); çözüm Docker Desktop'ı yeniden başlatmaktır. Kırmızı main
+   kimseye yüklenmeden ayrılır: yalnız düşen işler yeniden koşturulur, hangi runner'da koştuğuna
+   bakılır; altyapıdan gelen kırmızı koda düzeltme yazdırmaz. Ortak yerel DB `seed.sql`
+   değişikliklerini görmez; seed'e dayanan kırılma yalnız CI'da çıkar.
+10. **Temizlik.** Biten iş commit'lenir ve gönderilir; taşıdığı migration onunla gider. Branch ve
+    worktree iş kapanınca kapanır; silme, birleşme doğrulandıktan sonra. Kilitler bırakılır, kendi
+    başlatılan süreçler PID ile durdurulur. Uzun yol yüzünden `git worktree remove` yarım kalırsa
+    PowerShell `Remove-Item -LiteralPath '\\?\C:\...' -Recurse -Force`, ardından `git worktree prune`.
+    Bağlam dolarken iş sınırında durulur: yarım iş bitirilir ya da park edilir, bitmiş commit'lenir,
+    yalnız sohbette yaşayan bilgi task dosyasına yazılır.
+11. **Rol hafızası.** Rollerin öğrendikleri `.claude/agent-memory/<rol>/`'da (git'te). Koordinatör
+    ayda bir farkı okur; yanlış ya da eskimiş kaydı sildirir.
+
+## 12. İşçi oturumu
+- Ne zaman: iş uzun (saatler), çok adımlı ya da kullanıcı canlı izlemek isteyebilir.
+- Açılış: koordinatör görev kartı çıkarır (başlık = görev kimliği ve kısa ad), kullanıcı tek tıkla
+  açar. Kartın metni: "`.claude/agents/<rol>.md` dosyasını oku ve o rolün kurallarıyla çalış; görev
+  dosyası `docs/plan/tasks/<ID>.md`; worktree `../newfork-wt/<id>`, branch `task/<id>`; bitince
+  bölüm 10'daki raporu `SendMessage` ile koordinatöre (`local_7488a3bf-b4a1-4555-838b-d3e1d363b99c`)
+  gönder ve dur."
+- Birden fazla rol gerektiren uzun işte oturum rolleri sırayla üstlenir ya da koordinatör işi
+  rollere göre ayrı oturumlara böler; aynı dosyaya iki oturum aynı anda konmaz.
+- Kapanış: koordinatör doğrular (commit main'de, worktree ve branch silinmiş, arkada iş yok,
+  bildiği her şey kayıtta) ve kullanıcıya "arşivlenebilir" der. Arşiv, telefon bağlantısı (Remote
+  Control) açıkken reddedilir; kapatmak için her seferinde kullanıcıya sorulur.
