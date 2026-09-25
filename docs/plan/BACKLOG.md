@@ -65,7 +65,7 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - ~~THEME-002 açıkları → tasks/THEME-004 (sayfa CSS token'ları, on-accent, employee AA). Yakın tonlar → MVP-PLAN F5 THEME-003.~~ KAPANDI 2026-09-16 (THEME-004); yakın tonlar MVP-PLAN F5 THEME-003'te.
 - ~~Owner onboarding'de lokasyon short name önerisi ve phone alanı yok → tasks/LOC-002.~~ KAPANDI 2026-09-16 (LOC-002).
 - ~~Hosted'a location_phone migration'ı → tasks/LOC-002 (publication migration'ı UI-DOC-001 sonrası).~~ KAPANDI 2026-09-16 (LOC-002); publication migration'ı da 2026-09-18'den beri hosted'da.
-- THEME-003 ek: sayfa yerel paletleri (--lu-*, --wt-*, --eh-*, --filter-*) token'lara bağlansın; employee sayfaları dolu veriyle AA tekrar ölçülsün.
+- THEME-003 ek: sayfa yerel paletleri (--wt-* weekly-team, --eh-* employee-dashboard, --filter-* schedule-topbar-filter; --lu-* Line Up ile silindi, 2026-09-24) token'lara bağlansın; employee sayfaları dolu veriyle AA tekrar ölçülsün.
 - Supabase CLI v2.109 → v2.117 güncellemesi (db push sırasında pg-delta sertifika ENOENT gürültüsü).
 - `/v1/invitations/pending|accept|decline` auth hatasını 409 ile döndürüyor (app.ts:655,686,716); 401 olmalı. Web S6 ile artık bu yola düşülmüyor; düşük öncelik.
 - T2 madde 6 (davet token'ını sessionStorage'da saklama) YAGNI ile düşürüldü; hosted'da e-posta onayı açılırsa yeniden değerlendir.
