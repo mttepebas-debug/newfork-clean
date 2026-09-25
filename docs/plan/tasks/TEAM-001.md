@@ -1,5 +1,5 @@
 # TEAM-001 Agent Teams AI'dan koordinatör + rol ajanları düzenine geçiş
-Status: draft (kullanıcı onayı bekliyor)
+Status: done (2026-09-25)
 Session: Koordinatör (local_7488a3bf)   Branch: yok (docs + ajan tanımları, main'e doğrudan fast-forward)   Worktree: newfork-wt/coord   DB: -
 
 Reviewer: kullanıcı (düzen kararı), koordinatör (uygulama).
@@ -224,3 +224,11 @@ branch kalmaz.
 - [ ] **Adım 4:** Kullanıcıya 5 parçalı rapor + ilk gerçek iş önerisi (FB-6.1a).
 
 ## Notes / Result
+
+Kullanıcı kararları (2026-09-25): karışık düzen; 7 rol; `docs/teams/` kaldırıldı (koordinatör kararı); Agent Teams AI'ı kullanıcı kaldıracak.
+
+- **Kurtarma** (`847fd0e`, `19ba417`, `41c9887`): takımın backlog yeniden doğrulaması, temel ölçüm, FB-6.1 pre-mortem'i, FB-6.0-can ve kullanıcının getirdiği FB-6.1 dış değerlendirmesi main'e alındı; iki bağımsız okuma ajanıyla doğrulandı, hiçbiri atılmadı; eskimiş kanıtlar ve var olmayan alt iş adları düzeltildi. Bilerek dışarıda: pazar/fiyat araştırması (kaynakları denetlenmedi) ve eski düzene göre bölünmüş FB-6.1a–d taslakları (main'deki FB-6.1 onların yerini aldı). Hepsi yedekte.
+- **Temizlik:** 38 takım çalışma kopyası, 40 branch, `nf-muhendislik` / `nf-tasarim` / `nf-strateji` klasörleri ve `~/.claude/teams`, `~/.claude/tasks` altındaki 4 takım silindi. Yedek: `C:\Users\TheWe\Documents\Codex\backups\agent-teams-2026-09-25.zip` (8.9 MB; takım verisi, kaydedilmemiş taslaklar, iki diff, `team/strateji` bundle'ı). Bir klasör kilitli kaldı (BL-125).
+- **Roller** (`19ba417`) ve **CLAUDE.md** (`27e2062`, `7be7502`): 7 rol, koordinatör kuralları (bölüm 11), işçi oturumu (bölüm 12).
+- **Deneme turu:** `nf-db` belirsiz görevde ("İzin tablosunu düzelt") dosyaya dokunmadı, dört seçenekli soru döndürdü. `nf-arayuz` ayrı worktree'de tek satır değiştirip commit attı, push etmedi (`3937899`, sonra silindi). `nf-guvenlik` onu inceledi: `ONAY @3937899`, commit mesajındaki biçim hatasını yakaladı. `nf-planlama` salt okunur backlog kontrolü yaptı, hafızasını yazdı (`.claude/agent-memory/nf-planlama/`, `de6c823`), BL-124'ü buldu. Yeni rol dosyaları, ana klasör güncellenince bu oturumda yeniden başlatmadan yüklendi.
+- **Açık:** BL-124, BL-125; Agent Teams AI'ın kullanıcı tarafından kaldırılması; FB-6.1 düzeltmeleri (FB-6.1.md Notes).
