@@ -48,8 +48,8 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 ## Yeni bulgular (2026-09-16, RESCUE-001)
 - README.md eski içerik taşıyor (payroll/kiosk fazları); rescue'da silinmişti, geri tutuldu. Güncel komutlarla yeniden yaz (OPS-012 ile birlikte).
 - Schedule topbar dar pane'de (~936px) iki satıra sarıyor; taşma yok, polish (F5).
-- Schedule topbar filtre çipleri Settings dropdown'ının üstünde render ediliyor (z-index) → tasks/THEME-002.
-- Light tema token seti → tasks/THEME-002.
+- ~~Schedule topbar filtre çipleri Settings dropdown'ının üstünde render ediliyor (z-index) → tasks/THEME-002.~~ KAPANDI 2026-09-16 (THEME-002).
+- ~~Light tema token seti → tasks/THEME-002.~~ KAPANDI 2026-09-16 (THEME-002).
 - ≤760px'te Schedule Export erişilemiyor → KARAR (2026-09-16): mobilde export yok; mevcut davranış korunur.
 - App.test.tsx schedule-data mock'u scheduleReadKey'i gerçek koddan farklı (view dahil) üretiyor; mock'u gerçek helper'a bağla.
 - Export PNG önizlemesi her sayfayı 2.5x ölçekte render ediyor; çok sayfalı haftalarda yavaş. Düşük ölçek değerlendir (EXP-002).
@@ -62,9 +62,9 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Tam local `pnpm test`'te yük altında flaky testler: api organization-settings-routes, web EmployeeOnboardingPage (3), ScheduleRequestsPage. İzole PASS; CI concurrency=1 ile koşuyor. Kök nedeni (timeout ya da ortak state) araştır.
 - EXP-002: export çıktı görünümünün kalanı (PNG önizleme ölçeği + kullanıcı geri bildirimi); task dosyası kullanıcıyla konuşulunca açılacak.
 - THEME-003: yakın renk tonlarını (ΔE<4) THEME-002 token'larına birleştir; görsel değişiklik içerir, önce kullanıcıyla önce/sonra karşılaştırmasıyla konuşulur.
-- THEME-002 açıkları → tasks/THEME-004 (sayfa CSS token'ları, on-accent, employee AA). Yakın tonlar → MVP-PLAN F5 THEME-003.
-- Owner onboarding'de lokasyon short name önerisi ve phone alanı yok → tasks/LOC-002.
-- Hosted'a location_phone migration'ı → tasks/LOC-002 (publication migration'ı UI-DOC-001 sonrası).
+- ~~THEME-002 açıkları → tasks/THEME-004 (sayfa CSS token'ları, on-accent, employee AA). Yakın tonlar → MVP-PLAN F5 THEME-003.~~ KAPANDI 2026-09-16 (THEME-004); yakın tonlar MVP-PLAN F5 THEME-003'te.
+- ~~Owner onboarding'de lokasyon short name önerisi ve phone alanı yok → tasks/LOC-002.~~ KAPANDI 2026-09-16 (LOC-002).
+- ~~Hosted'a location_phone migration'ı → tasks/LOC-002 (publication migration'ı UI-DOC-001 sonrası).~~ KAPANDI 2026-09-16 (LOC-002); publication migration'ı da 2026-09-18'den beri hosted'da.
 - THEME-003 ek: sayfa yerel paletleri (--lu-*, --wt-*, --eh-*, --filter-*) token'lara bağlansın; employee sayfaları dolu veriyle AA tekrar ölçülsün.
 - Supabase CLI v2.109 → v2.117 güncellemesi (db push sırasında pg-delta sertifika ENOENT gürültüsü).
 - `/v1/invitations/pending|accept|decline` auth hatasını 409 ile döndürüyor (app.ts:655,686,716); 401 olmalı. Web S6 ile artık bu yola düşülmüyor; düşük öncelik.
