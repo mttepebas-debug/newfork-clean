@@ -33,7 +33,10 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
     test dünyası (`supabase/test-support/builder.sql`).
   - `e2e/`: Playwright (gerçek giriş ekranı, builder'dan gelen kişiler).
 - Komutlar: `README.md`. Odaklı: `pnpm.cmd --filter @newfork/web exec vitest run <dosya>`,
-  `pnpm.cmd --filter @newfork/web typecheck`.
+  `pnpm.cmd --filter @newfork/web typecheck`. e2e: `pnpm.cmd e2e` (Playwright,
+  `e2e/playwright.config.ts`; yerelde 5565/5566).
+- Tuzaklar: `pnpm.cmd test` yeşili CI yeşili değildir; `typecheck` ve `lint` ayrı kapı. Yeni
+  worktree'de `pnpm.cmd install` yapılmadan vitest `@vitejs/plugin-react`'i bulamaz.
 - CI (`.github/workflows/ci.yml`): check + db (`supabase/tests/ci-green.txt` yalnız büyür) + e2e.
   Kullanıcının bilgisayarında üç self-hosted runner'da koşar (REUSE OPS-01).
 - main'de CI kırmızıysa: main'e push donar (yalnız düzelten gönderir). Koordinatör kırmızıyı ayırır
@@ -45,6 +48,7 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
   (`local_7488a3bf-b4a1-4555-838b-d3e1d363b99c`). Kullanıcının tek muhatabıdır: işi kullanıcıdan
   alır, onaylatır, role verir, raporu kontrol eder, main'e alır, kullanıcıya raporlar.
 - **Rol ajanları** (`.claude/agents/`): sabit uzmanlık, model, effort ve araç sınırıyla tanımlı.
+  Yeni ya da değişen rol dosyası, oturum yeniden başlatılınca yüklenir.
 
   | Rol | Uzmanlık | Yazar mı |
   |---|---|---|
@@ -96,7 +100,7 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 0. Onay: kullanıcı işi onaylar (bölüm 11.3).
 1. Plan: `nf-planlama` `docs/plan/tasks/<ID>.md` açar (`_TEMPLATE.md`: Goal / In scope /
    Out of scope / Done when / Touches / Test plan / Risk + "Reviewer:" satırı). "Done when" ölçülebilir.
-2. Kapsam (`kapsam-yonetimi.md`): yolda çıkan yeni fikir mevcut işe eklenmez (bölüm 11.4).
+2. Kapsam (kökteki `kapsam-yonetimi.md`): yolda çıkan yeni fikir mevcut işe eklenmez (bölüm 11.4).
 3. Uygulama: ilgili rol. Hata için önce onu yakalayan kırmızı test, sonra düzeltme. Yeni davranış =
    yeni test.
 4. İnceleme: `nf-guvenlik` (her kod işi); ekran değiştiyse ayrıca `nf-gorsel-qa`. Onay
@@ -256,7 +260,7 @@ Kısa yaz, ham araç çıktısı yapıştırma.
    içinde önem sırasıyla; her madde ne olduğu, neden önemli, neden beklediği ve iki işaret
    (`BL-081 (leave: high / do: risky)`); ikisi çelişiyorsa bir satırla söylenir. Yeni BL numarasından
    önce `origin/main`'deki en yüksek numaraya bakılır. Kapanan maddeye "Kapandı <tarih> (`<commit>`)"
-   ve ölçülen sonuç; `DONE.md`'ye etki cümlesiyle satır. İkinci kez gerekecek bilgi `REUSE.md`'ye
+   ve ölçülen sonuç; `docs/plan/DONE.md`'ye etki cümlesiyle satır. İkinci kez gerekecek bilgi `REUSE.md`'ye
    (kural, kodda nerede, ne işe yarar). Sayfa envanteri: dokunulan ekranın bölümü yoksa yazılır,
    varsa yalnız değişen kısım güncellenir. Ortak bir değer bir ekranda değişirse önce kural yazılır,
    uyuşmayan ekranlar adıyla söylenir, düzeltmeden önce kullanıcıya sorulur. Aynı hata iki kez

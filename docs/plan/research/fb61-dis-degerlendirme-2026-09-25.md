@@ -99,3 +99,22 @@ Neden büyük: M2'ye taslak bazlı, süreli bir **yetki istisnası** ekler. `aut
 3. B1–B4'ü REUSE'a yazmak. Q4 teyidini ve B2 açık sorusunu kullanıcıya zincirle götürmek.
 4. B5 / B6 / K6 düzeltmelerini düzeltme listesine eklemek (mevcut 10 maddeye).
 5. C'yi BACKLOG'a yazmak.
+
+---
+
+## E. Bağımsız doğrulama (koordinatör, 2026-09-25, `origin/main` 27e2062, yerel DB yalnız SELECT)
+
+Bu raporun ölçülebilir iddiaları ayrı bir okuma ajanıyla yeniden ölçüldü (prosrc yorum ve metin sabitlerinden arındırılıp iç içe parantezi sayan ayrıştırıcıyla; `create_schedule_shifts_batch_service` elle teyit edildi). Rapor **geçerli**; FB-6.1 düzeltmesinde girdi olarak kullanılır, şu düzeltmelerle:
+
+| Madde | Hüküm | Düzeltme |
+|---|---|---|
+| A1 sayıları (58 ad / 60 oid, 101 çağrı, 30 fonksiyon / 34 çağrı null'lu, 28 yalnız gerçek lokasyonlu) | DOĞRU | "28 → 67 çağrı" yanlış: 28 fonksiyonun çağrısı **42**; 67 bütün gerçek lokasyonlu çağrıların toplamı. "17 + 13" ada göre **16 + 14** (oid'e göre 17 + 14). |
+| A1 sıra sorunu | DOĞRU, daha ağır | Yardımcılar `pg_depend` kaydı olmadan çağrılıyor: silme sessiz geçer, 28 fonksiyon çalışırken kırılır. 28'in yalnız ~6'sı `.4`'ün katlama listesinde; ~22'si izin (5) ve takas (6) fonksiyonları ile katlanmayan Schedule servisleri. **(b) seçeneği yetmez.** Ya (a) 28'in hepsi FB-6.1'de taşınır, ya silme bütün çağıranlar taşınana kadar FB-6.1 dışına ertelenir. `.2`'nin "43 / 38" hedefi Duyurular yardımcısının 9 çağrı / 8 fonksiyonunu da içeriyor. |
+| "112 çağrı / 63 fonksiyon" (FB-6.1.md:68, :133) | KISMEN | 112 = dört yardımcı (101 + 11). 63 yeniden üretilemedi (dört yardımcı: 66 ad / 68 oid). |
+| A2 export | DOĞRU | REUSE.md:37 birebir; `scheduled_schedule_exports.location_ids uuid[]` var. Soru kapanır. |
+| A3 şema | DOĞRU | `schedule_drafts.location_ids`, `schedule_edit_sessions.location_ids` uuid[]; `schedule_templates`'te lokasyon kolonu yok. 2a/Q1 öncülü doğrulanamadı (kaynak dosya artık yok). |
+| B5 | DOĞRU | Dört dosya yok; web'de `can(` / `isNoAccess` 0. FB-6.0-can ön koşul. |
+| B6 | DOĞRU | `schedule-conflicts.ts:20`; bugün `approved_time_off` 5 eşleşme (ayar sayfası, conflicts, 3 test). Kriter ayar sayfasıyla sınırlanmalı. |
+| K6 | DOĞRU | `ci-green.txt:57`, eşik `< 50`. ">40 ms ise kötüleşme yok" kuralının kaynağı yok; ≤50 ms gevşetilmez. |
+| B2 notu | KISMEN | `publish_schedule_draft_service` `target_location_ids` alıyor, `save_schedule_edit_session_service` almıyor: doğru. **`schedule_edit_locks` tablo değil**, test dosyası; kilit `schedule_edit_sessions` üzerinde taslak başına (`schedule_edit_sessions_active_draft_idx`). Açık soru REUSE.md:48 ("iki kişi aynı taslağı aynı anda düzenleyemez") ile yeniden kurulmalı. |
+| B1–B4 (kullanıcı kararları) | — | B1 REUSE:37/:39 ile uyumlu, "başka lokasyon ızgarası gelmez" yeni. B2 kaydetme kısmı yeni. B3 yeni; M2'nin "onay ya da admin/owner" cümlesini silme için daraltır. **B4 REUSE:39 ile çelişir** ("ghost vardiyayla çakışma uyarısı"): REUSE'a iki ayrı mod olarak yazılmalı. |
