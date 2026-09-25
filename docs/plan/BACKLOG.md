@@ -61,11 +61,10 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - Hosted advisor: `public.read_role_workspace(uuid)` SECURITY DEFINER ve authenticated RPC ile çağrılabiliyor; kasıtlı mı kontrol et (güvenlik).
 - Tam local `pnpm test`'te yük altında flaky testler: api organization-settings-routes, web EmployeeOnboardingPage (3), ScheduleRequestsPage. İzole PASS; CI concurrency=1 ile koşuyor. Kök nedeni (timeout ya da ortak state) araştır.
 - EXP-002: export çıktı görünümünün kalanı (PNG önizleme ölçeği + kullanıcı geri bildirimi); task dosyası kullanıcıyla konuşulunca açılacak.
-- THEME-003: yakın renk tonlarını (ΔE<4) THEME-002 token'larına birleştir; görsel değişiklik içerir, önce kullanıcıyla önce/sonra karşılaştırmasıyla konuşulur.
+- (leave: low / do: moderate) THEME-003 (MVP-PLAN F5): (1) yakın renk tonlarını (ΔE<4) THEME-002 token'larına birleştir; (2) sayfa yerel paletlerini token'lara bağla: --wt-* (Availability haftalık ekip görünümü, weekly-team.css), --eh-* (çalışan ana sayfası, employee-dashboard.css), --filter-* (Schedule filtre menüsü, schedule-topbar-filter.css); --lu-* Line Up ile silindi (2026-09-24); (3) employee sayfalarında AA'yı dolu veriyle yeniden ölç (THEME-004 boş veriyle ölçtü). Görsel değişiklik içerir; önce kullanıcıyla önce/sonra karşılaştırmasıyla konuşulur. do: moderate, çünkü üç ekranın görünümünü birlikte değiştirir.
 - ~~THEME-002 açıkları → tasks/THEME-004 (sayfa CSS token'ları, on-accent, employee AA). Yakın tonlar → MVP-PLAN F5 THEME-003.~~ KAPANDI 2026-09-16 (THEME-004); yakın tonlar MVP-PLAN F5 THEME-003'te.
 - ~~Owner onboarding'de lokasyon short name önerisi ve phone alanı yok → tasks/LOC-002.~~ KAPANDI 2026-09-16 (LOC-002).
 - ~~Hosted'a location_phone migration'ı → tasks/LOC-002 (publication migration'ı UI-DOC-001 sonrası).~~ KAPANDI 2026-09-16 (LOC-002); publication migration'ı da 2026-09-18'den beri hosted'da.
-- THEME-003 ek: sayfa yerel paletleri (--wt-* weekly-team, --eh-* employee-dashboard, --filter-* schedule-topbar-filter; --lu-* Line Up ile silindi, 2026-09-24) token'lara bağlansın; employee sayfaları dolu veriyle AA tekrar ölçülsün.
 - Supabase CLI v2.109 → v2.117 güncellemesi (db push sırasında pg-delta sertifika ENOENT gürültüsü).
 - `/v1/invitations/pending|accept|decline` auth hatasını 409 ile döndürüyor (app.ts:655,686,716); 401 olmalı. Web S6 ile artık bu yola düşülmüyor; düşük öncelik.
 - T2 madde 6 (davet token'ını sessionStorage'da saklama) YAGNI ile düşürüldü; hosted'da e-posta onayı açılırsa yeniden değerlendir.
