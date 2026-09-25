@@ -46,6 +46,7 @@ Kullanıcı kararları, 2026-09-23 (FOUNDATION-B Aşama 0). Her kural yetki matr
 
 **Plan kilidi (kullanıcı kararı, 2026-09-24, seçenek A)**
 - Kilit yalnız aynı taslaktadır: iki kişi aynı taslağı aynı anda düzenleyemez; farklı taslaklar ve farklı lokasyonlar birbirini kilitlemez.
+- **Devralma yok (kullanıcı kararı, 2026-09-25).** Başkasının açık düzenlemesini kimse devralamaz (owner/admin dahil); kilit 4 dakika hareketsizlikte düşer, bekleyen kişi "Try again" ile girer. Kullanılmayan devralma işlemi (`POST /schedule/edit-lock/takeover`, `takeover_schedule_edit_session_service`, web `takeoverScheduleEditSession`) FB-6.1'de silinir ve `retired_objects_stay_gone`'a eklenir.
 - Yayında, taslak açıldıktan sonra o lokasyonun yayını değiştiyse uyarı çıkar ("bu lokasyonun yayını sen başladıktan sonra değişti"); yayınlayan görerek karar verir.
 - Nerede yaşıyor (3b, migration `20260924152910`): taslak kilidi `schedule_edit_sessions_active_draft_idx`; başlangıç noktası düzenleme ve taslakta `base_publication_ids` (`app_private.schedule_edit_starting_point`), yayınlanınca tetikleyiciyle ilerler; uyarı yayın önizlemesinde lokasyon başına `changed_since_start` (`app_private.schedule_publication_changes_since_start`).
 
