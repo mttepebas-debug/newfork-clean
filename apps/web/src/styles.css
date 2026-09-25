@@ -8415,11 +8415,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-publication-location-delta small[data-kind="removed"]::before {
   background: #e0445b;
 }
-.schedule-publication-location-delta small[data-kind="kept"],
 .schedule-publication-location-delta small[data-kind="none"] {
   color: #697770;
 }
-.schedule-publication-location-delta small[data-kind="kept"]::before,
 .schedule-publication-location-delta small[data-kind="none"]::before {
   background: #8c9994;
 }

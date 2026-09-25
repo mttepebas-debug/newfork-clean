@@ -7,13 +7,6 @@ export const employeeProfilePhotoSignedUrlTtlSeconds = 5 * 60;
 export const employeeOnboardingDocumentMaxBytes = 10 * 1024 * 1024;
 export const employeeProfilePhotoMaxBytes = 5 * 1024 * 1024;
 
-export const employeeOnboardingDocumentMimeTypes = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
-
 export const employeeProfilePhotoMimeTypes = [
   "image/jpeg",
   "image/png",

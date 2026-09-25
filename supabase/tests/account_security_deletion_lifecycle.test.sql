@@ -262,15 +262,12 @@ select throws_ok(
   'account deletion restore window remains open',
   'finalizer cannot delete before the stored restore deadline'
 );
-select is(
-  (select action from public.list_account_deletion_work_service(
-    now(), 20
-  ) where request_id = '72000000-0000-4000-8000-000000000501'),
-  'last_24h',
-  'worker projection schedules the final 24-hour reminder'
-);
-
 create temporary table claimed_work as select * from public.claim_account_deletion_work_service(100);
+select is(
+  (select action from claimed_work where request_id = '72000000-0000-4000-8000-000000000501'),
+  'last_24h',
+  'the worker claims the final 24-hour reminder'
+);
 select is((select count(*)::integer from public.claim_account_deletion_work_service(100)
   where request_id='72000000-0000-4000-8000-000000000501'), 0,
   'a second worker cannot claim an item with a live lease');

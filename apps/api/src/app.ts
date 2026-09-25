@@ -1013,7 +1013,6 @@ function createOnboardingServiceFromEnvironment(): EmployeeOnboardingService | n
     serviceRoleKey,
     productionReady:
       !production || process.env.ONBOARDING_PRODUCTION_READY === "true",
-    ensureDevelopmentBucket: !production,
   });
 }
 

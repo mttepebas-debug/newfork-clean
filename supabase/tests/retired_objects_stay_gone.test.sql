@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(11);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -142,9 +142,45 @@ select 'function', name, '5.6' from unnest(array[
   'weekly_lineup_offer_candidate', 'weekly_lineup_offer_warning'
 ]) name;
 
+-- 5.5 what nothing reached any more (20260925000517)
+insert into retired (kind, name, step)
+select 'function', name, '5.5' from unnest(array[
+  'acknowledge_employee_requirement_service', 'act_on_notification_service', 'apply_document_definition_service',
+  'confirm_employee_document_service', 'create_schedule_publish_notifications_service', 'delete_workspace_role',
+  'get_employee_document_path_service', 'heartbeat_notification_outbox_service',
+  'list_account_deletion_work_service', 'preview_document_definition_apply_service',
+  'reset_employee_onboarding_service', 'resolve_notification_in_app_policy_v1_service',
+  'rotate_account_deletion_recovery_token_service', 'save_announcement_service',
+  'save_employee_ssn_envelope_service', 'save_notification_user_preference_service', 'save_workspace_role',
+  'schedule_request_shift_payload_service', 'shift_exchange_reconcile', 'update_owner_onboarding'
+]) name;
+insert into retired (kind, name, step) values
+  ('private_table', 'bl051_membership_scope_snapshot', '5.5'), ('private_table', 'bl051_role_grant_snapshot', '5.5'),
+  ('policy', 'employee_events.employee_events_select', '5.5'),
+  ('policy', 'employee_invitations.employee_invitations_select', '5.5'),
+  ('policy', 'employee_job_assignments.employee_jobs_select', '5.5'),
+  ('policy', 'employee_location_assignments.employee_locations_select', '5.5'),
+  ('policy', 'employee_offboarding_followups.employee_offboarding_followups_select', '5.5'),
+  ('policy', 'employee_offboarding_shift_actions.employee_offboarding_shift_actions_select', '5.5'),
+  ('policy', 'employee_profiles.employee_profiles_select', '5.5'),
+  ('policy', 'employee_terminations.employee_terminations_select', '5.5');
+
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
   '{}'::text[], 'retired tables stay gone'
+);
+select is(
+  array(select r.name from retired r where r.kind = 'private_table' and to_regclass('app_private.' || r.name) is not null order by 1),
+  '{}'::text[], 'retired private tables stay gone'
+);
+select is(
+  array(
+    select r.name from retired r
+    join pg_policies p on p.schemaname = 'public' and p.tablename || '.' || p.policyname = r.name
+    where r.kind = 'policy'
+    order by 1
+  ),
+  '{}'::text[], 'retired policies stay gone'
 );
 select is(
   array(select r.name from retired r where r.kind = 'type' and to_regtype('public.' || r.name) is not null order by 1),

@@ -6,7 +6,7 @@ select plan(7);
 -- 2c). Each count is a pattern stage 4 and 6 remove; a ceiling only comes
 -- down. Lower it in the same commit that removes the pattern, so nobody adds
 -- a new copy of a rule while the old copies are being folded into
--- app_private.authorize(). Measured 2026-09-24 after 20260924204854.
+-- app_private.authorize(). Measured 2026-09-24 after 20260925000517.
 
 create temporary table core_function as
 select p.proname::text as name, p.prosrc as body
@@ -17,7 +17,7 @@ where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace);
 -- (stage 4a), which this count leaves out.
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'auth\.uid\(\)' and name <> 'rls_can'),
-  '<=', 36, 'functions that call auth.uid() only go down'
+  '<=', 33, 'functions that call auth.uid() only go down'
 );
 
 -- Pretends to be the caller by writing the JWT subject: the bridges that let a
@@ -32,13 +32,13 @@ select cmp_ok(
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 64, 'functions with their own scope or rank logic only go down'
+  '<=', 63, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function where name ~ '(_base|_v[0-9]+|_legacy)(_|$)'),
-  '<=', 38, '_base, _vN and _legacy functions only go down'
+  '<=', 37, '_base, _vN and _legacy functions only go down'
 );
 
 -- Policies that read the JWT themselves rather than through the core.

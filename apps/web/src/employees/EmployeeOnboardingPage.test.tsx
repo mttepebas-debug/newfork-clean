@@ -54,10 +54,7 @@ vi.mock("./onboarding-data", () => ({
   getMyOnboarding: vi.fn(),
   leaveMyOnboarding: vi.fn(),
   saveMyOnboardingProfile: vi.fn(),
-  resetMyOnboarding: vi.fn(),
   submitMyOnboarding: vi.fn(),
-  uploadMyDocument: vi.fn(),
-  acknowledgeMyRequirement: vi.fn(),
 }));
 
 function OnboardingRoute() {

@@ -788,7 +788,6 @@ export default function SignatureTemplatesSettingsPage() {
                 editingTemplate !== "new" &&
                 publishedFor(editingTemplate.id) && (
                   <DocumentDefinitionApply
-                    kind="acknowledgement"
                     workspaceId={workspaceId}
                     id={publishedFor(editingTemplate.id)!.id}
                     disabled={templateStatusMutationPending || canSaveTemplate}

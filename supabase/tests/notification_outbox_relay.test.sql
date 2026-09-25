@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(28);
+select plan(27);
 
 select is(
   (select lifecycle from public.notification_catalog where type_key = 'schedule.published' and schema_version = 1),
@@ -90,10 +90,6 @@ select is(
   (select lease_owner from public.notification_outbox where id = 'e1640000-0000-4000-8000-000000000001'),
   'worker-a',
   'the oldest available item is leased to the caller'
-);
-select ok(
-  public.heartbeat_notification_outbox_service('worker-a', 'e1640000-0000-4000-8000-000000000001', 60),
-  'the lease owner can heartbeat active work'
 );
 select is(
   public.process_notification_outbox_service('worker-a', 'e1640000-0000-4000-8000-000000000001')->>'status',

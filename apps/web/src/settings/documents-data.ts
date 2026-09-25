@@ -2,7 +2,6 @@ import {
   documentTypeInputSchema,
   documentTypeSchema,
   documentTargetOptionsSchema,
-  documentDefinitionPreviewSchema,
   documentPublicationPreviewSchema,
   type DocumentType,
   type DocumentTypeInput,
@@ -85,24 +84,6 @@ export async function getDocumentTargetOptions(workspaceId: string) {
   return documentTargetOptionsSchema.parse(
     await request(workspaceId, "/target-options"),
   );
-}
-export async function previewDocumentDefinition(
-  workspaceId: string,
-  id: string,
-) {
-  return documentDefinitionPreviewSchema.parse(
-    await request(workspaceId, `/${id}/preview`, { method: "POST" }),
-  );
-}
-export async function applyDocumentDefinition(
-  workspaceId: string,
-  id: string,
-  command: { revision: number; preview_token: string; reason: string },
-) {
-  return request(workspaceId, `/${id}/apply`, {
-    method: "POST",
-    body: JSON.stringify(command),
-  });
 }
 
 export async function setDocumentTypeArchived(

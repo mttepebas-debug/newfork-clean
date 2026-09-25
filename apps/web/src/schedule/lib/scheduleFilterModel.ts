@@ -178,7 +178,6 @@ export function createLocationPublicationChipStatuses(
               ? "live"
               : "not_live",
         published_shift_count: status.published_shift_count,
-        worked_shift_count: status.worked_shift_count,
       };
     });
   }

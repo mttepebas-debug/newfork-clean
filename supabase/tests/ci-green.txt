@@ -9,7 +9,6 @@ supabase/tests/authorization_matrix.test.sql
 supabase/tests/authz_catalog.test.sql
 supabase/tests/availability_three_levels.test.sql
 supabase/tests/bl052_document_account_inbox.test.sql
-supabase/tests/bl052_document_apply.test.sql
 supabase/tests/bl052_document_conflicts.test.sql
 supabase/tests/bl052_document_correction_drafts.test.sql
 supabase/tests/bl052_document_deadline_extension.test.sql
@@ -56,7 +55,6 @@ supabase/tests/retired_objects_stay_gone.test.sql
 supabase/tests/schedule_draft_availability_reads.test.sql
 supabase/tests/schedule_edit_locks.test.sql
 supabase/tests/schedule_grid_read_budget.test.sql
-supabase/tests/schedule_publish_notifications.test.sql
 supabase/tests/schedule_read_model_rls.test.sql
 supabase/tests/schedule_reads_weekly_availability.test.sql
 supabase/tests/schedule_realtime_channels.test.sql
@@ -82,6 +80,7 @@ supabase/tests/timezone_names.test.sql
 supabase/tests/weekly_assignment_candidates.test.sql
 supabase/tests/weekly_availability_preferences.test.sql
 supabase/tests/weekly_exchange_acceptance.test.sql
+supabase/tests/weekly_onboarding_preferences.test.sql
 supabase/tests/weekly_preference_mode_conversion.test.sql
 supabase/tests/weekly_preference_settings.test.sql
 supabase/tests/weekly_preferences_commands.test.sql

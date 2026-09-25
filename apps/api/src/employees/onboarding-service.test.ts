@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createEmployeeOnboardingService } from "./onboarding-service";
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), auth: { getUser: vi.fn() } }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), auth: { getUser: vi.fn() } }));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => mocks),
 }));
@@ -79,18 +79,5 @@ describe("employee onboarding review availability", () => {
     await expect(
       service().getReview(actorUserId, workspaceId, employeeId),
     ).rejects.toThrow(error.message);
-  });
-
-  it("stops document downloads before reading storage when the case is unavailable", async () => {
-    mocks.rpc.mockResolvedValue({ data: null, error: missingCase });
-    await expect(
-      service().getDocumentDownload(
-        actorUserId,
-        workspaceId,
-        employeeId,
-        "40000000-0000-4000-8000-000000000001",
-      ),
-    ).rejects.toThrow("Employee document is unavailable");
-    expect(mocks.from).not.toHaveBeenCalled();
   });
 });

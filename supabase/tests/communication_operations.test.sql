@@ -38,18 +38,18 @@ select throws_ok($$select public.get_announcements_service('a8000000-0000-4000-8
 reset role;
 
 select throws_ok($$select public.get_announcements_service('a8000000-0000-4000-8000-000000000004','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$,'42501','announcement access required','cross-tenant announcement reads fail closed');
-select throws_ok($$select public.save_announcement_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'No access','Body','general',array['employee'],array['11000000-0000-4000-8000-000000000001']::uuid[],null,null,null)$$,'42501','announcement management required','employees cannot manage announcements');
-select throws_ok($$select public.save_announcement_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Other location','Body','operations',array['employee'],array['11000000-0000-4000-8000-000000000002']::uuid[],null,null,null)$$,'42501','announcement location access denied','location-scoped manager cannot target another location');
-select throws_ok($$select public.save_announcement_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Everywhere','Body','general',array['employee'],array[]::uuid[],null,null,null)$$,'42501','all-location announcement access required','location-scoped manager cannot broadcast workspace-wide');
-select is((public.save_announcement_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Owner draft','Private owner draft','general',array['owner'],array[]::uuid[],null,null,null)->>'status'),'draft','owner can create an all-location draft');
+select throws_ok($$select public.save_announcement_audience_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'No access','Body','general',array['employee'],array['11000000-0000-4000-8000-000000000001']::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])$$,'42501','announcement management required','employees cannot manage announcements');
+select throws_ok($$select public.save_announcement_audience_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Other location','Body','operations',array['employee'],array['11000000-0000-4000-8000-000000000002']::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])$$,'42501','announcement location access denied','location-scoped manager cannot target another location');
+select throws_ok($$select public.save_announcement_audience_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Everywhere','Body','general',array['employee'],array[]::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])$$,'42501','all-location announcement access required','location-scoped manager cannot broadcast workspace-wide');
+select is((public.save_announcement_audience_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Owner draft','Private owner draft','general',array['owner'],array[]::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])->>'status'),'draft','owner can create an all-location draft');
 select is((select count(*)::integer from jsonb_array_elements(public.get_announcements_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements') item where item->>'title'='Owner draft'),0,'scoped manager cannot inspect an all-location draft outside control scope');
 
 create temp table communication_state(announcement_id uuid,revision integer,notification_id uuid,manual_todo_id uuid);
 with saved as (
- select public.save_announcement_service(
+ select public.save_announcement_audience_service(
   'a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,
   'Service briefing','Doors open at 4 PM.','operations',array['employee'],array['11000000-0000-4000-8000-000000000001']::uuid[],null,null,'/app/employee-hub/line-up'
- ) result
+ ,'{}'::uuid[],'{}'::uuid[]) result
 ) insert into communication_state(announcement_id,revision) select (result->>'announcement_id')::uuid,(result->>'revision')::integer from saved;
 select is((select status::text from public.announcements announcement join communication_state state on state.announcement_id=announcement.id),'draft','announcement starts as a draft');
 select is((select public.publish_announcement_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',announcement_id,revision)->>'recipient_count' from communication_state),'1','publication resolves only employees assigned to the targeted location');

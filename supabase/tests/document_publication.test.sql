@@ -48,7 +48,6 @@ select is((select lifecycle_settings->>'assignment_scope' from public.document_t
 select is((select publication_status from public.document_types where id=(select id from publication_test)),'draft','new Save is a draft');
 set constraints all immediate;
 select is((select count(*)::int from public.employee_onboarding_requirements where source_id=(select id from publication_test)),0,'draft has no assignments after dynamic reconciliation');
-select throws_ok($$select public.apply_document_definition_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',(select id from publication_test),1,'fake','Bypass')$$,'PT409','Document must be published before applying assignments','old Apply cannot publish a draft');
 update publication_test set preview=public.preview_document_publication_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',id);
 select is((select preview->'employees'->0->>'action' from publication_test),'assign','publish preview uses real employee matching');
 select is((select jsonb_array_length(preview->'locations') from publication_test),2,'preview includes actual employee locations');

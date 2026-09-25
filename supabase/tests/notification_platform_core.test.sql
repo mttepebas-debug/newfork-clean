@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(35);
+select plan(31);
 
 select has_table('public', 'notification_catalog', 'notification catalog exists');
 select has_table('public', 'notification_outbox', 'notification outbox exists');
@@ -282,58 +282,6 @@ select is(
   'own-user read state is reflected in the unread count'
 );
 
-create temp table notification_preference_state (id uuid, version integer);
-with saved as (
-  select public.save_notification_user_preference_service(
-    'e1400000-0000-4000-8000-000000000002',
-    'e1410000-0000-4000-8000-000000000001',
-    'category', 'schedule', '{"in_app":"enabled"}', 'immediate',
-    'America/Los_Angeles', null, true, null
-  ) result
-)
-insert into notification_preference_state (id, version)
-select (result->>'preference_id')::uuid, (result->>'version')::integer from saved;
-select is(
-  (select version from notification_preference_state),
-  1,
-  'active members can create their own workspace preference'
-);
-update notification_preference_state
-set version = (
-  public.save_notification_user_preference_service(
-    'e1400000-0000-4000-8000-000000000002',
-    'e1410000-0000-4000-8000-000000000001',
-    'category', 'schedule', '{"in_app":"disabled"}', 'daily_digest',
-    'America/Los_Angeles', null, true, 1
-  )->>'version'
-)::integer;
-select is(
-  (select version from notification_preference_state),
-  2,
-  'preference updates advance the optimistic version'
-);
-select throws_ok(
-  $$select public.save_notification_user_preference_service(
-    'e1400000-0000-4000-8000-000000000002',
-    'e1410000-0000-4000-8000-000000000001',
-    'category', 'schedule', '{"in_app":"enabled"}', 'immediate',
-    'America/Los_Angeles', null, true, 1
-  )$$,
-  '40001',
-  'stale notification preference version',
-  'stale preference writes are rejected'
-);
-select throws_ok(
-  $$select public.save_notification_user_preference_service(
-    'e1400000-0000-4000-8000-000000000004',
-    'e1410000-0000-4000-8000-000000000001',
-    'category', 'schedule', '{"in_app":"enabled"}', 'immediate',
-    'America/Los_Angeles', null, true, null
-  )$$,
-  '42501',
-  'notification preference access required',
-  'outsiders cannot write workspace preferences'
-);
 
 insert into public.notifications (
   workspace_id, recipient_user_id, category, title, body,

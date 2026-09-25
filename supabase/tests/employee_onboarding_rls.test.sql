@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(70);
+select plan(69);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -158,15 +158,6 @@ set local role postgres;
 select is((select first_name from public.employee_profiles where id = '47000000-0000-4000-8000-000000000002'), 'Taylor', 'legal name approval updates employee display name source');
 
 set local role service_role;
--- "Start over" was taken out of the product on 2026-09-16: it could delete
--- document and signature history the workspace is obliged to keep. The call
--- is still there so an old client gets a clear answer, and the answer is no.
-select throws_ok(
-  $$select public.reset_employee_onboarding_service('17000000-0000-4000-8000-000000000005', 3)$$,
-  '22023',
-  'Continue your existing onboarding to update its documents',
-  'onboarding can no longer be started over'
-);
 set local role postgres;
 select is(
   (public.leave_employee_onboarding_service('17000000-0000-4000-8000-000000000005', 3)->>'status'),

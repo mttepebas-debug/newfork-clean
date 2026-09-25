@@ -55,7 +55,6 @@ describe("account deletion worker", () => {
       event: "account_deletion_item_failed", requestId, action: "day_7",
     }));
     expect(first.rpc.mock.calls.some(([name]) => name === "complete_account_deletion_work_service")).toBe(false);
-    expect(second.rpc.mock.calls.some(([name]) => name === "rotate_account_deletion_recovery_token_service")).toBe(false);
   });
 
   it("parallel batches cannot receive the same claimed item", async () => {

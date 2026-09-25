@@ -1499,7 +1499,6 @@ export const schedulePublicationLocationStatusSchema = z.object({
   ]),
   publication_includes_location: z.boolean(),
   published_shift_count: z.coerce.number().int().nonnegative(),
-  worked_shift_count: z.coerce.number().int().nonnegative(),
   draft_shift_count: z.coerce.number().int().nonnegative(),
   published_at: z.string().datetime({ offset: true }).nullable(),
   published_by_name: z.string().trim().min(1).max(161).nullable(),
@@ -1863,7 +1862,6 @@ export const scheduleUnpublishResultSchema = z.object({
   week_start: z.string().date(),
   location_ids: z.array(z.string().uuid()).min(1),
   publication_ids: z.array(z.string().uuid()).min(1),
-  kept_worked_count: z.coerce.number().int().nonnegative().default(0),
   unpublished_at: z.string().datetime({ offset: true }),
 });
 export type ScheduleUnpublishResult = z.infer<

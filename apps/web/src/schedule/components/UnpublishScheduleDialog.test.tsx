@@ -43,7 +43,6 @@ const statuses = [
     status: "published" as const,
     reason: "live" as const,
     published_shift_count: 3,
-    worked_shift_count: 1,
   },
   {
     id: locations[2]!.id,
@@ -51,7 +50,6 @@ const statuses = [
     status: "published" as const,
     reason: "worked_shifts_kept" as const,
     published_shift_count: 0,
-    worked_shift_count: 2,
   },
 ];
 
@@ -79,9 +77,7 @@ describe("UnpublishScheduleDialog", () => {
       .querySelector(".schedule-unpublish-location-dot") as HTMLElement | null;
     expect(locationDot).toBeTruthy();
     expect(locationDot?.style.backgroundColor).toBe("rgb(100, 116, 139)");
-    expect(
-      screen.getByText("3 live shifts will be removed · 1 worked shifts will be kept"),
-    ).toBeTruthy();
+    expect(screen.getByText("3 live shifts will be removed")).toBeTruthy();
     expect(screen.queryByText("Patio")).toBeNull();
     expect(screen.queryByText("Chef Counter")).toBeNull();
     expect(screen.queryByText("Private Dining")).toBeNull();

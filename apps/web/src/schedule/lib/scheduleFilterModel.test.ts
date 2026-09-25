@@ -330,7 +330,6 @@ describe("scheduleFilterModel", () => {
           status: "published",
           reason: "worked_shifts_kept",
           published_shift_count: 4,
-          worked_shift_count: 2,
         },
       ],
     } as unknown as SchedulePublicationStatus;
@@ -351,7 +350,6 @@ describe("scheduleFilterModel", () => {
         id: "loc-2",
         reason: "worked_shifts_kept",
         published_shift_count: 4,
-        worked_shift_count: 2,
       },
     ]);
   });
@@ -365,7 +363,6 @@ describe("scheduleFilterModel", () => {
           status: "published",
           reason: "worked_shifts_kept",
           published_shift_count: 0,
-          worked_shift_count: 2,
         },
       ]),
     ).toBe(false);

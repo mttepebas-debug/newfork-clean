@@ -3,7 +3,6 @@ import {
   buildEmployeeOnboardingDocumentPrefix,
   employeeOnboardingDocumentBucket,
   employeeOnboardingDocumentMaxBytes,
-  employeeOnboardingDocumentMimeTypes,
   employeeOnboardingDocumentSignedUrlTtlSeconds,
   employeeProfilePhotoBucket,
   employeeProfilePhotoSignedUrlTtlSeconds,
@@ -22,7 +21,6 @@ describe("private employee storage contract", () => {
     expect(employeeOnboardingDocumentSignedUrlTtlSeconds).toBe(300);
     expect(employeeProfilePhotoSignedUrlTtlSeconds).toBe(300);
     expect(employeeOnboardingDocumentMaxBytes).toBe(10 * 1024 * 1024);
-    expect(employeeOnboardingDocumentMimeTypes).toContain("application/pdf");
   });
 
   it("accepts only tenant-scoped onboarding document object paths", () => {

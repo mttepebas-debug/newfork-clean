@@ -10,22 +10,6 @@ const profileBodySchema = z.object({
   profile: employeeOnboardingProfileSchema,
   revision: revisionSchema,
 });
-const requirementParamsSchema = z.object({ requirementId: z.string().uuid() });
-const uploadBodySchema = z.object({
-  filename: z.string().trim().min(1).max(240),
-  sizeBytes: z.number().int().min(1).max(10_485_760),
-});
-const confirmBodySchema = uploadBodySchema.extend({
-  path: z.string().trim().min(1).max(800),
-  expiryDate: z.string().date().nullable(),
-  revision: revisionSchema,
-});
-const acknowledgeBodySchema = z.object({
-  typedName: z.string().trim().min(1).max(161),
-  contentDigest: z.string().regex(/^[0-9a-f]{64}$/),
-  idempotencyKey: z.string().uuid(),
-  revision: revisionSchema,
-});
 const submitBodySchema = z.object({ revision: revisionSchema });
 const workspaceQuerySchema = z.object({
   workspaceId: z.string().uuid().optional(),
@@ -33,9 +17,6 @@ const workspaceQuerySchema = z.object({
 const managerParamsSchema = z.object({
   workspaceId: z.string().uuid(),
   employeeId: z.string().uuid(),
-});
-const managerDocumentParamsSchema = managerParamsSchema.extend({
-  requirementId: z.string().uuid(),
 });
 const reviewBodySchema = z.object({
   action: z.enum(["accept_requirement", "reject_requirement", "activate"]),
@@ -92,79 +73,6 @@ export function registerEmployeeOnboardingRoutes(
     return reply.status(410).send({ error: "SSN is deferred from V1" });
   });
 
-  app.post(
-    "/v1/me/onboarding/documents/:requirementId/upload-url",
-    async (request, reply) => {
-      const token = bearerToken(request.headers.authorization);
-      const params = requirementParamsSchema.safeParse(request.params);
-      const body = uploadBodySchema.safeParse(request.body);
-      const query = workspaceQuerySchema.safeParse(request.query);
-      if (!token)
-        return reply
-          .status(401)
-          .send({ error: "Valid bearer session required" });
-      if (!params.success || !body.success || !query.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid private document required" });
-      return serviceReply(reply, () =>
-        options.service.prepareDocumentUpload(
-          token,
-          params.data.requirementId,
-          body.data.filename,
-          body.data.sizeBytes,
-          query.data.workspaceId,
-        ),
-      );
-    },
-  );
-
-  app.post(
-    "/v1/me/onboarding/documents/:requirementId/confirm",
-    async (request, reply) => {
-      const token = bearerToken(request.headers.authorization);
-      const params = requirementParamsSchema.safeParse(request.params);
-      const body = confirmBodySchema.safeParse(request.body);
-      if (!token)
-        return reply
-          .status(401)
-          .send({ error: "Valid bearer session required" });
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid upload confirmation required" });
-      return serviceReply(reply, async () => ({
-        revision: await options.service.confirmDocument(token, {
-          requirementId: params.data.requirementId,
-          ...body.data,
-        }),
-      }));
-    },
-  );
-
-  app.post(
-    "/v1/me/onboarding/acknowledgements/:requirementId/sign",
-    async (request, reply) => {
-      const token = bearerToken(request.headers.authorization);
-      const params = requirementParamsSchema.safeParse(request.params);
-      const body = acknowledgeBodySchema.safeParse(request.body);
-      if (!token)
-        return reply
-          .status(401)
-          .send({ error: "Valid bearer session required" });
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid acknowledgement required" });
-      return serviceReply(reply, async () => ({
-        revision: await options.service.acknowledge(token, {
-          requirementId: params.data.requirementId,
-          ...body.data,
-        }),
-      }));
-    },
-  );
-
   app.post("/v1/me/onboarding/submit", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
     const body = submitBodySchema.safeParse(request.body);
@@ -181,20 +89,6 @@ export function registerEmployeeOnboardingRoutes(
         body.data.revision,
         query.data.workspaceId,
       ),
-    }));
-  });
-
-  app.post("/v1/me/onboarding/reset", async (request, reply) => {
-    const token = bearerToken(request.headers.authorization);
-    const body = submitBodySchema.safeParse(request.body);
-    if (!token)
-      return reply.status(401).send({ error: "Valid bearer session required" });
-    if (!body.success)
-      return reply
-        .status(400)
-        .send({ error: "Current onboarding revision required" });
-    return serviceReply(reply, async () => ({
-      revision: await options.service.reset(token, body.data.revision),
     }));
   });
 
@@ -284,39 +178,6 @@ export function registerEmployeeOnboardingRoutes(
           body.data,
         ),
       }));
-    },
-  );
-
-  app.get(
-    "/v1/workspaces/:workspaceId/employees/:employeeId/onboarding/documents/:requirementId/download",
-    async (request, reply) => {
-      const params = managerDocumentParamsSchema.safeParse(request.params);
-      const context = await managerContext(
-        request.headers.authorization,
-        options.contextResolver,
-      );
-      if (!params.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid employee document required" });
-      if (!context)
-        return reply
-          .status(401)
-          .send({ error: "Valid bearer session required" });
-      if (context.workspace.id !== params.data.workspaceId)
-        return reply.status(404).send({ error: "Workspace not found" });
-      if (!context.permissions.includes("employee_documents.read"))
-        return reply
-          .status(403)
-          .send({ error: "Employee document review required" });
-      return serviceReply(reply, () =>
-        options.service.getDocumentDownload(
-          context.userId,
-          params.data.workspaceId,
-          params.data.employeeId,
-          params.data.requirementId,
-        ),
-      );
     },
   );
 }

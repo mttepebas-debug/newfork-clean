@@ -1700,25 +1700,9 @@ describe("api app", () => {
         calls.push({ kind: "profile", input });
         return 2;
       },
-      prepareDocumentUpload: async (...input) => {
-        calls.push({ kind: "prepare-document", input });
-        return { path: "private/path.pdf", token: "upload-token" };
-      },
-      confirmDocument: async (...input) => {
-        calls.push({ kind: "confirm-document", input });
-        return 4;
-      },
-      acknowledge: async (...input) => {
-        calls.push({ kind: "acknowledge", input });
-        return 5;
-      },
       submit: async (...input) => {
         calls.push({ kind: "submit", input });
         return 6;
-      },
-      reset: async (...input) => {
-        calls.push({ kind: "reset", input });
-        return 7;
       },
       leave: async (...input) => {
         calls.push({ kind: "leave", input });
@@ -1732,7 +1716,6 @@ describe("api app", () => {
       },
     });
     const app = buildApp({ contextResolver: null, onboardingService: service });
-    const requirementId = "97000000-0000-4000-8000-000000000001";
     const spoofedIdentity = {
       accessToken: "spoofed-token",
       actorUserId: "11111111-1111-4111-8111-111111111111",
@@ -1772,50 +1755,8 @@ describe("api app", () => {
       },
       {
         method: "POST",
-        url: `/v1/me/onboarding/documents/${requirementId}/upload-url`,
-        payload: {
-          ...spoofedIdentity,
-          filename: "food-handler.pdf",
-          sizeBytes: 1024,
-        },
-        expectedStatus: 200,
-      },
-      {
-        method: "POST",
-        url: `/v1/me/onboarding/documents/${requirementId}/confirm`,
-        payload: {
-          ...spoofedIdentity,
-          filename: "food-handler.pdf",
-          sizeBytes: 1024,
-          path: "workspace/employee/document.pdf",
-          expiryDate: "2027-08-20",
-          revision: 3,
-        },
-        expectedStatus: 200,
-      },
-      {
-        method: "POST",
-        url: `/v1/me/onboarding/acknowledgements/${requirementId}/sign`,
-        payload: {
-          ...spoofedIdentity,
-          typedName: "Ada Lovelace",
-          contentDigest:
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          idempotencyKey: "a6200000-0000-4000-8000-000000000001",
-          revision: 4,
-        },
-        expectedStatus: 200,
-      },
-      {
-        method: "POST",
         url: "/v1/me/onboarding/submit",
         payload: { ...spoofedIdentity, revision: 5 },
-        expectedStatus: 200,
-      },
-      {
-        method: "POST",
-        url: "/v1/me/onboarding/reset",
-        payload: { ...spoofedIdentity, revision: 6 },
         expectedStatus: 200,
       },
       {
@@ -1841,69 +1782,9 @@ describe("api app", () => {
     expect(calls).toEqual([
       // Body workspace fields are ignored; only the query selects a workspace.
       { kind: "profile", input: ["pending-member-token", profile, 1, undefined] },
-      {
-        kind: "prepare-document",
-        input: [
-          "pending-member-token",
-          requirementId,
-          "food-handler.pdf",
-          1024,
-          undefined,
-        ],
-      },
-      {
-        kind: "confirm-document",
-        input: [
-          "pending-member-token",
-          {
-            requirementId,
-            filename: "food-handler.pdf",
-            sizeBytes: 1024,
-            path: "workspace/employee/document.pdf",
-            expiryDate: "2027-08-20",
-            revision: 3,
-          },
-        ],
-      },
-      {
-        kind: "acknowledge",
-        input: [
-          "pending-member-token",
-          {
-            requirementId,
-            typedName: "Ada Lovelace",
-            contentDigest:
-              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            idempotencyKey: "a6200000-0000-4000-8000-000000000001",
-            revision: 4,
-          },
-        ],
-      },
       { kind: "submit", input: ["pending-member-token", 5, undefined] },
-      { kind: "reset", input: ["pending-member-token", 6] },
       { kind: "leave", input: ["pending-member-token", 7, undefined] },
     ]);
-  });
-
-  it("resets self-scoped onboarding through the authenticated service boundary", async () => {
-    const calls: string[] = [];
-    const service = onboardingServiceMock({
-      reset: async (accessToken, revision) => {
-        calls.push(`${accessToken}:${revision}`);
-        return 3;
-      },
-    });
-    const app = buildApp({ contextResolver: null, onboardingService: service });
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/me/onboarding/reset",
-      headers: { authorization: "Bearer pending-member-token" },
-      payload: { revision: 2 },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ revision: 3 });
-    expect(calls).toEqual(["pending-member-token:2"]);
   });
 
   it("lets a pending member leave onboarding through the authenticated service boundary", async () => {
@@ -1959,15 +1840,7 @@ describe("api app", () => {
       throw new Error("not used");
     });
     const review = vi.fn(async () => 2);
-    const getDocumentDownload = vi.fn(async () => ({
-      url: "https://storage.example.test/document.pdf",
-      expiresIn: 300,
-    }));
-    const service = onboardingServiceMock({
-      getReview,
-      review,
-      getDocumentDownload,
-    });
+    const service = onboardingServiceMock({ getReview, review });
     const app = buildApp({
       contextResolver: { resolve: async () => workspaceMismatchContext() },
       onboardingService: service,
@@ -1991,10 +1864,6 @@ describe("api app", () => {
           revision: 1,
         },
       },
-      {
-        method: "GET",
-        url: `/v1/workspaces/${pathWorkspaceId}/employees/${employeeId}/onboarding/documents/${requirementId}/download`,
-      },
     ] as const;
 
     for (const request of requests) {
@@ -2009,19 +1878,11 @@ describe("api app", () => {
     }
     expect(getReview).not.toHaveBeenCalled();
     expect(review).not.toHaveBeenCalled();
-    expect(getDocumentDownload).not.toHaveBeenCalled();
   });
 
-  it("forwards manager onboarding review and document download from context and path identity", async () => {
+  it("forwards manager onboarding review from context and path identity", async () => {
     const review = vi.fn(async () => 2);
-    const getDocumentDownload = vi.fn(async () => ({
-      url: "https://storage.example.test/document.pdf",
-      expiresIn: 300,
-    }));
-    const service = onboardingServiceMock({
-      review,
-      getDocumentDownload,
-    });
+    const service = onboardingServiceMock({ review });
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       onboardingService: service,
@@ -2050,26 +1911,14 @@ describe("api app", () => {
         employee_id: "15000000-0000-4000-8000-000000000002",
       },
     });
-    const downloadResponse = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${pathWorkspaceId}/employees/${employeeId}/onboarding/documents/${requirementId}/download`,
-      headers: { authorization: "Bearer valid-token" },
-    });
 
     expect(reviewResponse.statusCode, reviewResponse.body).toBe(200);
     expect(reviewResponse.json()).toEqual({ revision: 2 });
-    expect(downloadResponse.statusCode, downloadResponse.body).toBe(200);
     expect(review).toHaveBeenCalledWith(
       resolvedContext.userId,
       pathWorkspaceId,
       employeeId,
       reviewInput,
-    );
-    expect(getDocumentDownload).toHaveBeenCalledWith(
-      resolvedContext.userId,
-      pathWorkspaceId,
-      employeeId,
-      requirementId,
     );
   });
 
@@ -4022,7 +3871,6 @@ function scheduleServiceMock(
       week_start: "2026-08-17",
       location_ids: ["11000000-0000-4000-8000-000000000001"],
       publication_ids: ["86000000-0000-4000-8000-000000000001"],
-      kept_worked_count: 0,
       unpublished_at: "2026-08-17T12:00:00.000Z",
     }),
     getPublicationHistory: async () => ({
@@ -4203,7 +4051,6 @@ function schedulePublicationStatusMockModel() {
         reason: "active_publication_and_shifts" as const,
         publication_includes_location: true,
         published_shift_count: 1,
-        worked_shift_count: 0,
         draft_shift_count: 1,
         published_at: "2026-08-17T12:00:00.000Z",
         published_by_name: null,
@@ -4350,11 +4197,7 @@ function onboardingServiceMock(
       requirements: [],
     }),
     saveProfile: async () => 2,
-    prepareDocumentUpload: async () => ({ path: "test", token: "test" }),
-    confirmDocument: async () => 2,
-    acknowledge: async () => 2,
     submit: async () => 2,
-    reset: async () => 2,
     leave: async () => ({
       status: "left",
       workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
@@ -4363,9 +4206,6 @@ function onboardingServiceMock(
       revision: 2,
     }),
     getReview: async () => {
-      throw new Error("not used");
-    },
-    getDocumentDownload: async () => {
       throw new Error("not used");
     },
     review: async () => 2,

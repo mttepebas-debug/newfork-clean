@@ -3149,7 +3149,7 @@ export function SchedulePage({
                 "Schedule unpublished",
                 {
                   dedupeKey: "schedule-unpublished",
-                  description: `${result.location_ids.length} locations unpublished. ${result.kept_worked_count ?? 0} worked shifts kept.`,
+                  description: `${result.location_ids.length} locations unpublished.`,
                 },
               );
               setUnpublishOpen(false);

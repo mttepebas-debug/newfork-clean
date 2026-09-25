@@ -57,8 +57,6 @@ function documentTypesServiceMock(): DocumentTypesService {
     publicationPreview: vi.fn(),
     publish: vi.fn(),
     targetOptions: vi.fn(),
-    preview: vi.fn(),
-    apply: vi.fn(),
     save: vi.fn(),
     setArchived: vi.fn(),
     reorder: vi.fn(),

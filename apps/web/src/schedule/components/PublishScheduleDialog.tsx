@@ -60,8 +60,6 @@ const STEP_TITLES: Record<1 | 2 | 3, string> = {
 };
 
 type LocationPreviewSummary = SchedulePublicationPreview["locations"][number] & {
-  readonly kept_worked?: number;
-  readonly kept_worked_count?: number;
   readonly live_shift_count?: number;
 };
 
@@ -78,10 +76,6 @@ function changedSinceStartText(
   return change.kind === "published"
     ? `${change.by_name} published this location on ${when}, after this draft was started. Publishing replaces that version.`
     : `${change.by_name} unpublished this location on ${when}, after this draft was started. Publishing makes it live again.`;
-}
-
-function keptWorkedCount(summary: LocationPreviewSummary | undefined): number {
-  return summary?.kept_worked ?? summary?.kept_worked_count ?? 0;
 }
 
 function locationColor(location: ScheduleLocation): string {
@@ -652,12 +646,7 @@ export function PublishScheduleDialog({
                 const added = summary?.added ?? 0;
                 const updated = summary?.updated ?? 0;
                 const removed = summary?.removed ?? 0;
-                const keptWorked = keptWorkedCount(summary);
-                const hasChanges =
-                  added > 0 ||
-                  updated > 0 ||
-                  removed > 0 ||
-                  keptWorked > 0;
+                const hasChanges = added > 0 || updated > 0 || removed > 0;
 
                 return (
                   <label
@@ -705,11 +694,6 @@ export function PublishScheduleDialog({
                           ) : null}
                           {removed > 0 ? (
                             <small data-kind="removed">{removed} removed</small>
-                          ) : null}
-                          {keptWorked > 0 ? (
-                            <small data-kind="kept">
-                              {keptWorked} worked shifts kept
-                            </small>
                           ) : null}
                           {!hasChanges ? (
                             <small data-kind="none">No changes to publish</small>

@@ -392,7 +392,6 @@ function resetScheduleApiMocks() {
         reason: "active_publication_and_shifts",
         publication_includes_location: true,
         published_shift_count: 1,
-        worked_shift_count: 0,
         draft_shift_count: 0,
         published_at: "2026-08-17T12:00:00Z",
         published_by_name: "Development Owner",
@@ -1032,7 +1031,6 @@ describe("App", () => {
         reason: "missing_publication" as const,
         publication_includes_location: false,
         published_shift_count: 0,
-        worked_shift_count: 0,
         draft_shift_count: 0,
         published_at: null,
         published_by_name: null,
@@ -1086,7 +1084,6 @@ describe("App", () => {
         reason: "missing_publication" as const,
         publication_includes_location: false,
         published_shift_count: 0,
-        worked_shift_count: 0,
         draft_shift_count: 0,
         published_at: null,
         published_by_name: null,
@@ -4469,7 +4466,6 @@ describe("App", () => {
           reason: "missing_publication",
           publication_includes_location: false,
           published_shift_count: 0,
-          worked_shift_count: 0,
           draft_shift_count: 0,
           published_at: null,
           published_by_name: null,
@@ -4608,7 +4604,6 @@ describe("App", () => {
       week_start: weekStart,
       location_ids: [scheduleFixture.locations[0]!.id],
       publication_ids: ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"],
-      kept_worked_count: 0,
       unpublished_at: "2026-08-17T12:05:00Z",
     });
 
@@ -4643,7 +4638,7 @@ describe("App", () => {
       ),
     );
     expect(
-      await screen.findByText("1 locations unpublished. 0 worked shifts kept."),
+      await screen.findByText("1 locations unpublished."),
     ).toBeTruthy();
     await waitFor(() =>
       expect(window.location.search).toContain(`draft=${draft.id}`),

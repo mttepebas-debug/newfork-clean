@@ -18,7 +18,6 @@ const statuses = [
     status: "unpublished" as const,
     reason: "worked_shifts_kept" as const,
     published_shift_count: 0,
-    worked_shift_count: 2,
   },
 ];
 
@@ -39,14 +38,14 @@ describe("LocationPublicationChips", () => {
 
     expect(live.textContent).toContain("5");
     expect(live.getAttribute("data-active")).toBe("true");
-    expect(historical.textContent).toContain("2");
+    expect(historical.textContent).toBe("Patio");
     expect(historical.getAttribute("data-active")).toBe("false");
 
     fireEvent.click(live);
     expect(onLocationClick).toHaveBeenCalledWith("loc-1");
   });
 
-  it("does not invent a zero count when worked count is unavailable", () => {
+  it("shows no count on a location that is not live", () => {
     render(
       <LocationPublicationChips
         statuses={[

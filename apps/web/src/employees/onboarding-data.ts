@@ -29,85 +29,12 @@ export async function saveMyOnboardingProfile(
   return revisionFrom(body);
 }
 
-export async function uploadMyDocument(
-  workspaceId: string,
-  requirementId: string,
-  file: File,
-  expiryDate: string | null,
-  revision: number,
-): Promise<number> {
-  if (!supabaseClient)
-    throw new Error("Private document storage is not configured");
-  const prepared = (await api(
-    mePath(workspaceId, `/documents/${requirementId}/upload-url`),
-    {
-      method: "POST",
-      body: JSON.stringify({ filename: file.name, sizeBytes: file.size }),
-    },
-  )) as { path: string; token: string };
-  const upload = await supabaseClient.storage
-    .from("employee-onboarding")
-    .uploadToSignedUrl(prepared.path, prepared.token, file, {
-      contentType: file.type,
-      upsert: false,
-    });
-  if (upload.error) throw new Error(upload.error.message);
-  const confirmed = await api(
-    mePath(workspaceId, `/documents/${requirementId}/confirm`),
-    {
-      method: "POST",
-      body: JSON.stringify({
-        path: prepared.path,
-        filename: file.name,
-        sizeBytes: file.size,
-        expiryDate,
-        revision,
-      }),
-    },
-  );
-  return revisionFrom(confirmed);
-}
-
-export async function acknowledgeMyRequirement(
-  workspaceId: string,
-  requirementId: string,
-  typedName: string,
-  contentDigest: string,
-  revision: number,
-): Promise<number> {
-  const body = await api(
-    mePath(workspaceId, `/acknowledgements/${requirementId}/sign`),
-    {
-      method: "POST",
-      body: JSON.stringify({
-        typedName,
-        contentDigest,
-        idempotencyKey: crypto.randomUUID(),
-        revision,
-      }),
-    },
-  );
-  return revisionFrom(body);
-}
-
 export async function submitMyOnboarding(
   workspaceId: string,
   revision: number,
 ): Promise<number> {
   return revisionFrom(
     await api(mePath(workspaceId, "/submit"), {
-      method: "POST",
-      body: JSON.stringify({ revision }),
-    }),
-  );
-}
-
-export async function resetMyOnboarding(
-  workspaceId: string,
-  revision: number,
-): Promise<number> {
-  return revisionFrom(
-    await api(mePath(workspaceId, "/reset"), {
       method: "POST",
       body: JSON.stringify({ revision }),
     }),
@@ -151,19 +78,6 @@ export async function reviewEmployeeOnboarding(
       { method: "POST", body: JSON.stringify(input) },
     ),
   );
-}
-
-export async function getEmployeeDocumentDownload(
-  workspaceId: string,
-  employeeId: string,
-  requirementId: string,
-): Promise<string> {
-  const body = (await api(
-    `/v1/workspaces/${workspaceId}/employees/${employeeId}/onboarding/documents/${requirementId}/download`,
-  )) as { url?: unknown };
-  if (typeof body.url !== "string")
-    throw new Error("Document download is unavailable");
-  return body.url;
 }
 
 // Onboarding belongs to one workspace; every "me" call names it.

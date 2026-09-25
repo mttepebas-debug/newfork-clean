@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(11);
 
 select is(
   (select public from storage.buckets where id = 'employee-onboarding'),
@@ -166,17 +166,6 @@ insert into public.employee_documents (
 );
 
 set local role service_role;
-select is(
-  public.get_employee_document_path_service(
-    '27000000-0000-4000-8000-000000000011',
-    '27000000-0000-4000-8000-000000000021',
-    '27000000-0000-4000-8000-000000000041',
-    '27000000-0000-4000-8000-000000000061'
-  ),
-  '27000000-0000-4000-8000-000000000021/27000000-0000-4000-8000-000000000041/27000000-0000-4000-8000-000000000061/27000000-0000-4000-8000-000000000081.pdf',
-  'authorized owner can resolve a private employee document path'
-);
-
 select lives_ok(
   $$select public.request_workspace_closure_service(
     '27000000-0000-4000-8000-000000000011',
@@ -189,17 +178,6 @@ select lives_ok(
   'owner can close the storage test workspace'
 );
 
-select throws_ok(
-  $$select public.get_employee_document_path_service(
-    '27000000-0000-4000-8000-000000000011',
-    '27000000-0000-4000-8000-000000000021',
-    '27000000-0000-4000-8000-000000000041',
-    '27000000-0000-4000-8000-000000000061'
-  )$$,
-  'P0002',
-  'employee document unavailable',
-  'private document path resolution is denied after immediate workspace closure'
-);
 
 select * from finish();
 rollback;

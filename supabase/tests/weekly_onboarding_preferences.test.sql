@@ -39,11 +39,7 @@ select is((select status::text from public.employee_onboarding_requirements wher
 select lives_ok($$select public.weekly_preferences_save_service(actor,w,command,key) from wo_fixture,wo_save$$,'onboarding save is retryable');
 select is((select revision from public.employee_onboarding_cases where id=(select id from wo_case)),3,'retry does not advance onboarding twice');
 select is(public.get_employee_onboarding_service(actor)->>'first_actionable_path','/welcome/review','confirmed week advances to final onboarding review') from wo_fixture;
-select lives_ok($$select public.reset_employee_onboarding_service(actor,3) from wo_fixture$$,'onboarding reset still works');
-select is((select status::text from public.employee_onboarding_requirements where case_id=(select id from wo_case) and kind='availability'),'completed','reset does not erase independent recurring preferences');
-select is((select status::text from public.employee_onboarding_requirements where case_id=(select id from wo_case) and kind='profile'),'not_started','reset continues clearing the profile requirement');
-update public.employee_onboarding_requirements set status='completed' where case_id=(select id from wo_case) and kind='profile';
-select lives_ok($$select public.submit_employee_onboarding_service(actor,4) from wo_fixture$$,'completed required week allows normal auto-activation');
+select lives_ok($$select public.submit_employee_onboarding_service(actor,3) from wo_fixture$$,'completed required week allows normal auto-activation');
 select is((select status::text from public.employee_onboarding_cases where id=(select id from wo_case)),'approved','onboarding activates without availability approval');
 create temp table wo_approved as select c.revision,r.required from public.employee_onboarding_cases c
  join public.employee_onboarding_requirements r on r.case_id=c.id and r.kind='availability' where c.id=(select id from wo_case);

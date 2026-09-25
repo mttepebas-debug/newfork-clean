@@ -64,7 +64,6 @@ import {
   type EmployeeOption,
 } from "./employee-data";
 import {
-  getEmployeeDocumentDownload,
   getEmployeeOnboardingReview,
   reviewEmployeeOnboarding,
 } from "./onboarding-data";
@@ -511,16 +510,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       }
       setError(null);
     },
-    onError: (cause) => setError(errorMessage(cause)),
-  });
-  const downloadMutation = useMutation({
-    mutationFn: (requirementId: string) =>
-      getEmployeeDocumentDownload(
-        workspaceId,
-        props.employeeId ?? "",
-        requirementId,
-      ),
-    onSuccess: (url) => window.open(url, "_blank", "noopener,noreferrer"),
     onError: (cause) => setError(errorMessage(cause)),
   });
 
@@ -1004,8 +993,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                           reason,
                         }),
                       reviewMutation.isPending,
-                      (requirementId) => downloadMutation.mutate(requirementId),
-                      downloadMutation.isPending,
                       () => retryInvitationMutation.mutate(),
                       retryInvitationMutation.isPending,
                       () => revokeMutation.mutate(),
@@ -1598,8 +1585,6 @@ function renderSection(
     reason: string,
   ) => void,
   reviewing: boolean,
-  onOpenDocument: (requirementId: string) => void,
-  openingDocument: boolean,
   onRetryInvitation: () => void,
   retryingInvitation: boolean,
   onRevokeInvitation: () => void,
@@ -1639,8 +1624,6 @@ function renderSection(
         canReviewDocuments={canReviewDocuments}
         onReview={onReview}
         reviewing={reviewing}
-        onOpenDocument={onOpenDocument}
-        openingDocument={openingDocument}
       />
     );
   if (section === "employment")
@@ -1699,8 +1682,6 @@ function OnboardingReviewPanel({
   canReviewDocuments,
   onReview,
   reviewing,
-  onOpenDocument,
-  openingDocument,
 }: {
   readonly onboarding: EmployeeOnboardingManager | null | undefined;
   readonly loading: boolean;
@@ -1712,11 +1693,8 @@ function OnboardingReviewPanel({
     reason: string,
   ) => void;
   readonly reviewing: boolean;
-  readonly onOpenDocument: (requirementId: string) => void;
-  readonly openingDocument: boolean;
 }) {
   const permissions = useAuth().context?.permissions ?? [];
-  const canReadDocuments = permissions.includes("employee_documents.read");
   const canReview = (kind: EmployeeOnboardingRequirement["kind"]) =>
     kind === "document"
       ? canReviewDocuments
@@ -1775,20 +1753,6 @@ function OnboardingReviewPanel({
             </div>
             {requirement.rejection_reason ? (
               <p>{requirement.rejection_reason}</p>
-            ) : null}
-            {requirement.kind === "document" &&
-            canReadDocuments &&
-            ["awaiting_review", "completed", "rejected"].includes(
-              requirement.status,
-            ) ? (
-              <Button
-                type="button"
-                aria-label={`Open ${requirement.title}`}
-                disabled={openingDocument}
-                onClick={() => onOpenDocument(requirement.id)}
-              >
-                Open document
-              </Button>
             ) : null}
             {requirement.requires_review &&
             requirement.status === "awaiting_review" ? (
@@ -1879,8 +1843,6 @@ function ProfileSection({
   canReviewDocuments,
   onReview,
   reviewing,
-  onOpenDocument,
-  openingDocument,
 }: {
   creating?: boolean;
   draft: EmployeeInput;
@@ -1905,8 +1867,6 @@ function ProfileSection({
     reason: string,
   ) => void;
   reviewing: boolean;
-  onOpenDocument: (requirementId: string) => void;
-  openingDocument: boolean;
 }) {
   const canReadPrivate =
     useAuth().context?.permissions.includes("employees.private.read") ?? false;
@@ -2080,8 +2040,6 @@ function ProfileSection({
             canReviewDocuments={canReviewDocuments}
             onReview={onReview}
             reviewing={reviewing}
-            onOpenDocument={onOpenDocument}
-            openingDocument={openingDocument}
           />
         </section>
       ) : null}

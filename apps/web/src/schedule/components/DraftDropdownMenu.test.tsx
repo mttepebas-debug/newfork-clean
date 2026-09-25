@@ -29,7 +29,6 @@ const publishedLocation = {
   reason: "active_publication_and_shifts" as const,
   publication_includes_location: true,
   published_shift_count: 4,
-  worked_shift_count: 0,
   draft_shift_count: 4,
   published_at: "2026-08-17T12:45:00Z",
   published_by_name: "Mina Yilmaz",

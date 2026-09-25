@@ -5,8 +5,6 @@ import {
   type DocumentPublicationPreview,
   documentTargetOptionsSchema,
   type DocumentTargetOptions,
-  documentDefinitionPreviewSchema,
-  type DocumentDefinitionPreview,
   type DocumentTypeInput,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
@@ -26,20 +24,6 @@ export interface DocumentTypesService {
     preview_token: string;
     reason: string;
     targetStatus: "draft" | "published";
-  }): Promise<unknown>;
-
-  preview(input: {
-    actorUserId: string;
-    workspaceId: string;
-    documentTypeId: string;
-  }): Promise<DocumentDefinitionPreview>;
-  apply(input: {
-    actorUserId: string;
-    workspaceId: string;
-    documentTypeId: string;
-    revision: number;
-    preview_token: string;
-    reason: string;
   }): Promise<unknown>;
   targetOptions(input: {
     actorUserId: string;
@@ -110,25 +94,6 @@ export function createDocumentTypesServiceWithClient(
         expected_preview_token: input.preview_token,
         publish_reason: input.reason,
         target_status: input.targetStatus,
-      });
-    },
-    async preview(input) {
-      return documentDefinitionPreviewSchema.parse(
-        await rpc("preview_document_definition_apply_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-          target_document_type_id: input.documentTypeId,
-        }),
-      );
-    },
-    async apply(input) {
-      return rpc("apply_document_definition_service", {
-        actor_user_id: input.actorUserId,
-        target_workspace_id: input.workspaceId,
-        target_document_type_id: input.documentTypeId,
-        expected_revision: input.revision,
-        expected_preview_token: input.preview_token,
-        apply_reason: input.reason,
       });
     },
     async targetOptions(input) {

@@ -20,8 +20,6 @@ import { getPolicyTargetOptions } from "./signature-templates-data";
 
 vi.mock("./documents-data", () => ({
   getDocumentTargetOptions: vi.fn(),
-  previewDocumentDefinition: vi.fn(),
-  applyDocumentDefinition: vi.fn(),
 }));
 vi.mock("./signature-templates-data", () => ({
   getPolicyTargetOptions: vi.fn(),

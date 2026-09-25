@@ -188,7 +188,6 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context, refresh }),
 }));
 vi.mock("./onboarding-data", () => ({
-  getEmployeeDocumentDownload: vi.fn(),
   getEmployeeOnboardingReview: vi.fn(),
   reviewEmployeeOnboarding: vi.fn(),
 }));

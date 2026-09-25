@@ -120,7 +120,6 @@ export function UnpublishScheduleDialog({
               const status = statusByLocation.get(location.id);
               const selected = selectedLocationIds.includes(location.id);
               const removedCount = status?.published_shift_count;
-              const keptWorkedCount = status?.worked_shift_count ?? 0;
               const locationColor =
                 (status as { readonly color?: string | null } | undefined)
                   ?.color ??
@@ -148,9 +147,6 @@ export function UnpublishScheduleDialog({
                       {typeof removedCount === "number"
                         ? `${removedCount} live shifts will be removed`
                         : "Live shifts will be removed"}
-                      {keptWorkedCount > 0
-                        ? ` · ${keptWorkedCount} worked shifts will be kept`
-                        : ""}
                     </small>
                   </span>
                 </label>

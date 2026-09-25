@@ -7,7 +7,6 @@ export interface LocationPublicationChipStatus {
   readonly status: "published" | "unpublished";
   readonly reason?: "worked_shifts_kept" | "not_live" | "live";
   readonly published_shift_count: number;
-  readonly worked_shift_count?: number;
 }
 
 export function LocationPublicationChips({
@@ -29,9 +28,6 @@ export function LocationPublicationChips({
         const isLive =
           status.status === "published" && status.reason !== "worked_shifts_kept";
         const isHistorical = status.reason === "worked_shifts_kept";
-        const count = isLive
-          ? status.published_shift_count
-          : status.worked_shift_count;
 
         return (
           <button
@@ -51,7 +47,7 @@ export function LocationPublicationChips({
             />
             {chipIcon(isLive, isHistorical)}
             <span>{status.name}</span>
-            <strong>{count}</strong>
+            <strong>{isLive ? status.published_shift_count : null}</strong>
           </button>
         );
       })}

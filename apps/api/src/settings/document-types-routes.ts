@@ -1,6 +1,5 @@
 import {
   documentPublishCommandSchema,
-  documentApplyCommandSchema,
   documentTypeInputSchema,
   type Permission,
 } from "@newfork/shared";
@@ -63,41 +62,6 @@ export function registerDocumentTypesRoutes(
             ...command.data,
             targetStatus: action === "publish" ? "published" : "draft",
           });
-        } catch (error) {
-          return requestError(reply, error);
-        }
-      },
-    );
-  for (const action of ["preview", "apply"] as const)
-    app.post(
-      `/v1/workspaces/:workspaceId/document-types/:documentTypeId/${action}`,
-      async (request, reply) => {
-        const params = documentTypeParams.safeParse(request.params);
-        if (!params.success)
-          return reply
-            .status(400)
-            .send({ error: "Valid document type required" });
-        const context = await authorize(
-          request.headers.authorization,
-          params.data.workspaceId,
-          "documents.manage",
-          options.contextResolver,
-          reply,
-        );
-        if (!context) return;
-        if (!options.service)
-          return reply
-            .status(503)
-            .send({ error: "Document type service is not configured" });
-        const input = { actorUserId: context.userId, ...params.data };
-        try {
-          if (action === "preview") return await options.service.preview(input);
-          const command = documentApplyCommandSchema.safeParse(request.body);
-          if (!command.success)
-            return reply
-              .status(400)
-              .send({ error: "A current preview and reason are required" });
-          return await options.service.apply({ ...input, ...command.data });
         } catch (error) {
           return requestError(reply, error);
         }

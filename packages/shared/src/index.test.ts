@@ -603,19 +603,8 @@ describe("shared contracts", () => {
         location_ids: ["11000000-0000-4000-8000-000000000001"],
         publication_ids: ["86000000-0000-4000-8000-000000000001"],
         unpublished_at: "2026-08-17T12:00:00.000Z",
-      }).kept_worked_count,
-    ).toBe(0);
-    expect(
-      scheduleUnpublishResultSchema.parse({
-        status: "unpublished",
-        workspace_id: workspaceId,
-        week_start: "2026-08-17",
-        location_ids: ["11000000-0000-4000-8000-000000000001"],
-        publication_ids: ["86000000-0000-4000-8000-000000000001"],
-        kept_worked_count: 2,
-        unpublished_at: "2026-08-17T12:00:00.000Z",
-      }).kept_worked_count,
-    ).toBe(2);
+      }).status,
+    ).toBe("unpublished");
   });
 
   it("validates a location-scoped published schedule read model", () => {

@@ -53,7 +53,6 @@ select throws_ok($$select pg_temp.defer()$$,'22023',null,'active employee cannot
 update public.workspace_memberships set status='pending_activation' where id='35200000-0000-4000-8000-000000000002';
 update public.employee_onboarding_cases set status='in_progress',approved_at=null,approved_by=null where id='55200000-0000-4000-8000-000000000001';
 update public.employee_onboarding_requirements set required=true,blocks_activation=true,conditional_reason=null,deadline_at=null,lifecycle_settings=jsonb_set(lifecycle_settings,'{mode}','"required"') where id=(pg_temp.req()).id;
-select throws_ok($$select public.confirm_employee_document_service(null,null,null,null,null,null,null,1)$$,'PT409',null,'stale upload API cannot bypass real submission');
 create temp table before_upload as select pg_temp.case_revision() revision;
 select lives_ok($$select pg_temp.upload(1)$$,'new onboarding upload saves only draft');
 select is(pg_temp.case_revision(),(select revision from before_upload),'draft does not alter onboarding completion revision');

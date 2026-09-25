@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  applyDocumentDefinition,
-  previewDocumentDefinition,
-} from "../settings/documents-data";
-import {
   previewPolicyDefinition,
   applyPolicyDefinition,
 } from "../settings/signature-templates-data";
@@ -15,9 +11,7 @@ export function DocumentDefinitionApply({
   id,
   disabled,
   onBusyChange,
-  kind = "document",
 }: {
-  kind?: "document" | "acknowledgement";
   workspaceId: string;
   id: string;
   disabled: boolean;
@@ -26,16 +20,11 @@ export function DocumentDefinitionApply({
   const [reason, setReason] = useState("");
   const cache = useQueryClient();
   const preview = useMutation({
-    mutationFn: () =>
-      (kind === "acknowledgement"
-        ? previewPolicyDefinition
-        : previewDocumentDefinition)(workspaceId, id),
+    mutationFn: () => previewPolicyDefinition(workspaceId, id),
   });
   const apply = useMutation({
     mutationFn: () =>
-      (kind === "acknowledgement"
-        ? applyPolicyDefinition
-        : applyDocumentDefinition)(workspaceId, id, {
+      applyPolicyDefinition(workspaceId, id, {
         revision: preview.data!.revision,
         preview_token: preview.data!.preview_token,
         reason: reason.trim(),
