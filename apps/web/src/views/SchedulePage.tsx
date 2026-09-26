@@ -2547,6 +2547,11 @@ export function SchedulePage({
               <WandSparkles size={15} /> Auto-fill
             </button>
           ) : null}
+          {gates.edit ? (
+            <button type="button" onClick={() => setDefaultHoursOpen(true)}>
+              Review default hours
+            </button>
+          ) : null}
           <button
             type="button"
             disabled={isDiscardingEditSession}
