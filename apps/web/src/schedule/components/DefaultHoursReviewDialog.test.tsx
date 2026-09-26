@@ -68,10 +68,10 @@ describe("default-hours batch review", () => {
     expect(screen.getByRole("button", { name: /Apply 1 change/ }).hasAttribute("disabled")).toBe(true);
   });
   it("blocks an overlap outright: the reason shows, no acknowledgment box, apply stays off", async () => {
-    const value = preview(); value.blocked_count = 1; value.shifts[0]!.can_apply = false; value.shifts[0]!.reason = "Overlaps Close 17:30–19:00"; value.shifts[0]!.after_overlap_count = 1;
+    const value = preview(); value.blocked_count = 1; value.shifts[0]!.can_apply = false; value.shifts[0]!.reason = "Overlaps Close 17:30â€“19:00"; value.shifts[0]!.after_overlap_count = 1;
     vi.mocked(previewScheduleDefaultHours).mockResolvedValue(value);
     setup(); await review();
-    expect(screen.getByText("Overlaps Close 17:30–19:00")).toBeTruthy();
+    expect(screen.getByText("Overlaps Close 17:30â€“19:00")).toBeTruthy();
     expect(screen.queryByRole("checkbox", { name: /overlap/i })).toBeNull();
     expect(screen.getByRole("button", { name: /Apply 1 change/ }).hasAttribute("disabled")).toBe(true);
   });
@@ -95,6 +95,13 @@ describe("default-hours batch review", () => {
     ui.rerender(ui.view({ ...session, revision: 4 })); resolve(preview());
     await waitFor(() => expect(screen.queryByText("Reviewingâ€¦")).toBeNull());
     expect(screen.queryByRole("button", { name: /Apply 1 change/ })).toBeNull();
+  });
+  it("shows only a plain line, never raw validation text, when the range has no shifts", () => {
+    setup(); fireEvent.change(screen.getByLabelText("Shift type"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2035-01-16" } });
+    expect(screen.getByText("No saved reference-hour shifts in this range.")).toBeTruthy();
+    expect(screen.queryByText(/expected array|Too small/i)).toBeNull();
+    expect(screen.getByRole("button", { name: "Review 0 shifts" }).hasAttribute("disabled")).toBe(true);
   });
   it("contains keyboard focus and closes on Escape", () => {
     const ui = setup();
