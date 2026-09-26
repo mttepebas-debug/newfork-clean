@@ -63,3 +63,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | BL-158 | "On call" gibi vardiya etiketleri yayında, yeniden düzenlemede, kurtarılan taslakta ve takastan sonra kaybolmuyor; ghost kartta görünüyor | 52c307e
 2026-09-26 | FB-6.1.6 | onaylı izin müdürün vardiya yazmasında her zaman kesin engel; ayar ekranından seçeneği kalktı | 73eee2d
 2026-09-26 | BL-170, BL-171 | yerel veritabanı testleri güncel test yardımcılarıyla koşuyor; belge testi ortak ortamda yanlış kırmızı vermiyor | efb285d
+2026-09-26 | FB-6.1.7 | müsaitlik ayarı Sert'e çekilince, önceden kabul edilip yayınlanmış değişmemiş vardiyalar haftanın yeniden yayınını engellemiyor | (main)
