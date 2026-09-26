@@ -1,1 +1,2 @@
 - [e2e not in typecheck gate](e2e-not-in-typecheck-gate.md) — turbo lint/typecheck skip e2e/; validate a new spec with `--list` + direct eslint instead
+- [Cross-worktree git block](cross-worktree-git-block.md) — sandbox refuses any `git` command (log/-C/--git-dir) aimed at a worktree other than this agent's own, even the task-assigned one; read `.git/worktrees/<name>/HEAD` + `refs/heads/<branch>` instead
