@@ -8,3 +8,4 @@
 - [TODO altındaki red testi](checklist-todo-refusal-live-lock.md) — todo() başarısızlığı saymaz; bugünkü reddi kod+metinle TODO dışında kilitle, seed'e dayanma
 - Nullable→optional (ya da DB anahtarı hiç göndermemeye başlarsa): `=== null` / `!== null` okuyucuları undefined'da "evet" der; `!= null` ara. Shared şema DB'den önce ya da onunla aynı gönderimde gitmeli (BL-139, 2026-09-26).
 - [Zincir katlama incelemesi](checklist-fold-review.md) — gövde diff -w, koruma yeşil dosyada mı, önce/sonra probe; tests.week gelecekte
+- [Oturumsuz e-posta ucu](checklist-public-auth-email-endpoint.md) — sızıntı sırası, Vercel'de beklenmeyen gönderim donar, recovery token_hash tek başına oturum
