@@ -55,6 +55,7 @@ supabase/tests/public_roles_reach_no_table_directly.test.sql
 supabase/tests/retired_objects_stay_gone.test.sql
 supabase/tests/schedule_asks_the_core.test.sql
 supabase/tests/schedule_draft_archive_preserves_publication.test.sql
+supabase/tests/schedule_default_hours_review.test.sql
 supabase/tests/schedule_draft_availability_reads.test.sql
 supabase/tests/schedule_edit_locks.test.sql
 supabase/tests/schedule_edit_sessions.test.sql

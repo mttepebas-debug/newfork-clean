@@ -39,14 +39,14 @@ select throws_ok($$select public.preview_schedule_default_hours_service(actor,w,
 select throws_ok($$select public.preview_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('shift_ids',jsonb_build_array(named,named))) from dhr$$,'22023',null,'duplicate selections are rejected');
 select throws_ok($$select public.preview_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('starts_on',week-1)) from dhr$$,'22023',null,'selection is bounded by the edit week');
 select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint','stale','idempotency_key',gen_random_uuid())) from dhr$$,'40001',null,'apply requires the exact reviewed fingerprint');
-update dhr set command=command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid(),'acknowledge_reference_overlaps',false);
+update dhr set command=command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid());
 update dhr set result=public.apply_schedule_default_hours_service(actor,w,session,command);
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'11:00:00','apply changes the selected reference hours') from dhr d;
 select is((select time_snapshot->>'default_revision' from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'2','apply records the reviewed current revision') from dhr d;
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.explicit_shift),'09:00:00','explicit clock hours are untouched') from dhr d;
 select ok((result->>'dirty')::boolean,'result remains an unsaved edit session') from dhr;
 select is(public.apply_schedule_default_hours_service(actor,w,session,command),result,'identical retry returns the committed result') from dhr;
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||'{"acknowledge_reference_overlaps":true}') from dhr$$,'40001',null,'retry key cannot authorize different review content');
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||'{"confirm_availability":true}') from dhr$$,'40001',null,'retry key cannot authorize different review content');
 select is((select count(*)::integer from public.schedule_default_hours_reviews where session_id=(select session from dhr)),1,'one immutable review is recorded');
 select throws_ok($$update public.schedule_default_hours_reviews set command='{}' where session_id=(select session from dhr)$$,'23514',null,'review evidence cannot be rewritten');
 select is((select count(*)::integer from public.audit_events where action='schedule.default_hours_applied' and target_id=(select session::text from dhr)),1,'application is audited once');
@@ -65,10 +65,22 @@ update dhr set preview=public.preview_schedule_default_hours_service(actor,w,ses
 select is((preview->'shifts'->0->>'before_overlap_count')::integer,0,'old reference hours have no overlap') from dhr;
 select is((preview->'shifts'->0->>'after_overlap_count')::integer,1,'new reference hours expose the overlapping peer') from dhr;
 select ok(not (preview->'shifts'->0 ? 'unconfirmed_peer_count'),'every saved shift has hours, so no peer is counted as unknown') from dhr;
-select is(preview->'shifts'->0->'after_assessment'->>'operation','allowed','new interval is evaluated against employee hours') from dhr;
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'23514',null,'reference overlap needs explicit acknowledgment');
-update dhr set result=public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid(),'acknowledge_reference_overlaps',true));
-select is((select end_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'18:00:00','acknowledged reference overlap remains a reviewed draft change') from dhr d;
+select is(preview->'shifts'->0->'after_assessment'->>'operation','blocked','the core blocks the new interval against the person''s other shift') from dhr;
+select is((select jsonb_agg(x->>'code') from jsonb_array_elements(preview->'shifts'->0->'after_assessment'->'reasons') x where x->>'severity'='block'),'["time_overlap"]'::jsonb,'the only block is the overlap') from dhr;
+-- User decision 2026-09-26 (FB-6.1.8): new default hours that overlap another shift of the same person are a hard block, never a warning to accept.
+select is((preview->>'blocked_count')::integer,1,'new reference hours that overlap the same person''s other shift are blocked') from dhr;
+select ok(not (preview->'shifts'->0->>'can_apply')::boolean,'an overlapping shift cannot be applied') from dhr;
+select is(preview->'shifts'->0->>'reason','Overlaps Default hours review 5:30 PM–7:00 PM','the block names the shift it overlaps') from dhr;
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'23514',null,'an overlap blocks apply');
+select is((select end_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'17:00:00','a blocked review changes no hours') from dhr d;
+-- Moving the other shift so the two only touch clears the block.
+select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'update',x.id,x.revision,to_jsonb(x)||jsonb_build_object('start_time','18:00'),null)
+ from dhr d join public.schedule_edit_sessions s on s.id=d.session join public.schedule_edit_session_shifts x on x.session_id=d.session and x.id='afa70000-0000-4000-8000-000000000009';
+update dhr d set command=command||jsonb_build_object('expected_session_revision',s.revision) from public.schedule_edit_sessions s where s.id=d.session;
+update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
+select is((preview->'shifts'->0->>'after_overlap_count')::integer,0,'shifts that only touch do not overlap') from dhr;
+update dhr set result=public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid()));
+select is((select end_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'18:00:00','without an overlap the new reference hours are applied') from dhr d;
 select is((public.apply_schedule_default_hours_service(actor,w,session,(select r.command from public.schedule_default_hours_reviews r where r.session_id=d.session and jsonb_array_length(r.command->'shift_ids')=2))->>'revision')::integer,
  (result->>'revision')::integer,'old idempotent retry returns the current session instead of undoing later client state') from dhr d;
 select is((select count(*)::integer from public.schedule_default_hours_reviews where session_id=(select session from dhr)),2,'old retry adds no review and applies no shifts again');
@@ -76,7 +88,7 @@ update public.shift_types set default_start_time='09:00' where id=(select typ fr
 update dhr d set command=command||jsonb_build_object('expected_session_revision',s.revision) from public.schedule_edit_sessions s where s.id=d.session;
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is((preview->>'blocked_count')::integer,1,'new hours outside hard availability are blocked') from dhr;
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid(),'acknowledge_reference_overlaps',true)) from dhr$$,'23514',null,'overlap acknowledgment cannot bypass hard availability');
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'23514',null,'hard availability blocks apply');
 update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from dhr);
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is(preview->'shifts'->0->'after_assessment'->>'operation','warning_requires_override','soft policy requires a fresh override') from dhr;
@@ -85,7 +97,7 @@ update dhr set preview=public.preview_schedule_default_hours_service(actor,w,ses
 select is((preview->>'blocked_count')::integer,0,'authorized reason permits reviewing the soft override') from dhr;
 create temp table dhr_leave as select (public.submit_employee_time_off_periods_service(employee_actor,w,loc,'Default review leave',jsonb_build_array(jsonb_build_object('segment_date',week,'start_time','13:00','end_time','14:00')),gen_random_uuid(),'UTC')->>'request_id')::uuid id from dhr;
 select public.resolve_schedule_time_off_request_service(actor,w,(select id from dhr_leave),1,'approve') from dhr;
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid(),'acknowledge_reference_overlaps',true)) from dhr$$,'40001',null,'approved leave arriving after review makes the fingerprint stale');
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'40001',null,'approved leave arriving after review makes the fingerprint stale');
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is((preview->>'blocked_count')::integer,1,'approved leave remains hard despite an availability override reason') from dhr;
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'10:30:00','rejected attempts preserve the last applied reference hours') from dhr d;
@@ -117,6 +129,23 @@ select is((select start_time::text from public.schedule_edit_session_shifts wher
 select is((select pending_op_type from public.schedule_edit_session_shifts where session_id=d.session and id=d.shift),'update','published source receives a pending update') from dhr_pub d;
 select is((select note from public.schedule_edit_session_shifts where session_id=d.session and id=d.shift),'Keep original note','default application preserves the existing note') from dhr_pub d;
 select is((select unpaid_break_minutes from public.schedule_edit_session_shifts where session_id=d.session and id=d.shift),15,'default application preserves break metadata') from dhr_pub d;
+-- Two selected shifts whose new hours overlap only each other: each is compared with the other at its proposed hours.
+create temp table dhr_pair as select w,actor,loc,job,emp,week+14 week,'afa70000-0000-4000-8000-000000000014'::uuid typ_a,'afa70000-0000-4000-8000-000000000015'::uuid typ_b,
+ 'afa70000-0000-4000-8000-000000000016'::uuid shift_a,'afa70000-0000-4000-8000-000000000017'::uuid shift_b,null::uuid session,null::jsonb command,null::jsonb preview from dhr;
+insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time)
+ select typ_a,w,'Pair opener','11:00'::time,'12:00'::time from dhr_pair union all select typ_b,w,'Pair closer','17:00'::time,'18:00'::time from dhr_pair;
+update dhr_pair set session=(public.acquire_schedule_edit_session_service(actor,w,week,'blank',null)->'session'->>'id')::uuid;
+select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'create',d.shift_a,null,jsonb_build_object('employee_id',d.emp,'location_id',d.loc,'job_id',d.job,'shift_type_id',d.typ_a,'scheduled_date',d.week,'time_basis','type_default'),gen_random_uuid())
+ from dhr_pair d join public.schedule_edit_sessions s on s.id=d.session;
+select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'create',d.shift_b,null,jsonb_build_object('employee_id',d.emp,'location_id',d.loc,'job_id',d.job,'shift_type_id',d.typ_b,'scheduled_date',d.week,'time_basis','type_default'),gen_random_uuid())
+ from dhr_pair d join public.schedule_edit_sessions s on s.id=d.session;
+update public.shift_types set default_start_time='13:00',default_end_time='15:00' where id=(select typ_a from dhr_pair);
+update public.shift_types set default_start_time='14:00',default_end_time='16:00' where id=(select typ_b from dhr_pair);
+update dhr_pair d set command=jsonb_build_object('expected_session_revision',s.revision,'starts_on',week,'ends_on',week+6,'shift_ids',jsonb_build_array(shift_a,shift_b),'overrides','[]'::jsonb) from public.schedule_edit_sessions s where s.id=d.session;
+update dhr_pair set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
+select is((preview->>'blocked_count')::integer,2,'both shifts are blocked when their new hours overlap each other') from dhr_pair;
+select is((select x->>'reason' from jsonb_array_elements(preview->'shifts') x where x->>'shift_id'=shift_a::text),'Overlaps Pair closer 2:00 PM–4:00 PM','the block names the other shift at its new hours') from dhr_pair;
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr_pair$$,'23514',null,'apply refuses the overlapping pair');
 set local role authenticated;
 select throws_ok($$select public.preview_schedule_default_hours_service(null,null,null,'{}')$$,'42501',null,'preview is service-only');
 select throws_ok($$select public.apply_schedule_default_hours_service(null,null,null,'{}')$$,'42501',null,'apply is service-only');

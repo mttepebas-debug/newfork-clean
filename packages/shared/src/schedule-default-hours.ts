@@ -7,7 +7,7 @@ export const scheduleDefaultHoursInputSchema = z.object({
   shift_ids: z.array(z.string().uuid()).min(1).max(200).refine(ids => new Set(ids).size === ids.length, "Choose each shift once"),
 });
 export const scheduleDefaultHoursApplySchema = scheduleDefaultHoursInputSchema.extend({
-  fingerprint: z.string().regex(/^[a-f0-9]{64}$/), idempotency_key: z.string().uuid(), acknowledge_reference_overlaps: z.boolean().default(false),
+  fingerprint: z.string().regex(/^[a-f0-9]{64}$/), idempotency_key: z.string().uuid(),
   confirm_availability: z.boolean().default(false),
 });
 const reference = z.object({ start_time: z.string().nullable(), end_time: z.string().nullable(), time_timezone: z.string().nullable(),
