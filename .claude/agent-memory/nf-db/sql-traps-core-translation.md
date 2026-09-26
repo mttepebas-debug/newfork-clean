@@ -12,5 +12,9 @@ metadata:
 - A location cannot get `deleted_at` alone: `guard_catalog_deletion_state` wants `archived_at` too.
 - A document-blocked person in a test: publish a document type to everybody (`save_document_type_lifecycle_service` with conditional mode, suspend_on_overdue, empty target; preview; `set_document_publication_service` Publish), `tests.settle()`, then move only that person's requirement `deadline_at` into the past. Individual targeting (`employee_ids`) is refused by the service.
 
+- An edit opened from the published week (`acquire ... 'published'`) keys its rows by the draft source id: `row.id = row.source_published_shift_id = published.source_shift_id`, not the published id. Match rows the way the swap review does: `row.id in (p.id, p.source_shift_id) or row.source_published_shift_id = p.id`, or by person + date.
+- In a `pg_temp` plpgsql helper, `tests.id('<w>:case:x')` right after `perform tests.cover_case(...)` in the same function raised "no such label" (2026-09-26). Use the helper's return value, or call the builder at top level.
+- Swap review rule already pinned by a green test: `shift_exchanges_v1` AT27 "recovery preserves manager note" — a shift that is in the edit takes only who/where/when from the swap. Changing that is a product question, not a fix (BL-167).
+
 **Why:** each cost a failed trial run on 2026-09-25.
 **How to apply:** check these before the first trial of any Stage 6 slice migration. See [[rollback-trial-runner]].

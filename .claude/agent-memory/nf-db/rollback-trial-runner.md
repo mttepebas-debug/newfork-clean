@@ -40,6 +40,9 @@ Before a batch: run ONE file first, then prove nothing stayed, e.g. `select key 
 - A trial file that prints nothing counts as "0 not ok": also check every `.out` has a `1..N` plan line and `ok` lines (`grep -L '^ok' *.out` must list nothing).
 - The worktree guard also refuses a command that sets a shell variable and then runs bash/docker with it, and a heredoc that writes a script: write scripts and list files with the Write tool, call them with literal paths.
 
+- The scratchpad directory is shared by every subagent of the same coordinator session: another agent overwrote `trial.sh` and `one.txt` mid-task (2026-09-26). Keep scripts and outputs in a per-task subfolder (`scratchpad/<task>/`).
+- Take db.lock atomically with `( set -o noclobber; echo ... > db.lock )` inside a script, then grep your own name back; two agents were waiting on the same lock that day.
+
 **Why:** 2026-09-25 the unquoted `echo begin;` from this note applied the FB-6.1 .2 migration to the shared DB for 8 minutes during review (undone).
 
 Related: [[core-call-cost]], [[sql-traps-core-translation]].
