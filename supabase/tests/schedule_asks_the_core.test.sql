@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(70);
+select plan(78);
 
 -- FB-6.1 step .2: Schedule's entry points ask the authorization core
 -- (app_private.authorize() / scope_set()) instead of the three old Schedule
@@ -271,6 +271,67 @@ select is(pg_temp.hears('ayse', 'can'), true, 'Ayşe hears when Can, a manager a
 select is(pg_temp.hears('zeynep', 'can'), true, 'the admin hears when Can updates his availability');
 select is(pg_temp.hears('ayse', 'emre'), true, 'Ayşe hears when Emre, who works at Kadıköy, updates his availability');
 select is(pg_temp.hears('mehmet', 'emre'), false, 'Mehmet (Beşiktaş) does not hear about Emre (Kadıköy)');
+
+-- Whoever hears of the update reads it: the person's weekly availability and
+-- the Manager note (user decision 2026-09-26, REUSE "Müsaitlik okuma =
+-- bildirim alıcıları", BL-139). The note stays hidden from the person it is
+-- about unless they may write it (owner and admins).
+create function pg_temp.reads(reader uuid, whose uuid) returns boolean
+language plpgsql
+as $$
+begin
+  return jsonb_typeof(public.weekly_preferences_read_service(reader, tests.id('sc'), whose) -> 'manager') = 'object';
+exception when sqlstate '42501' then
+  return false;
+end;
+$$;
+create function pg_temp.reads(person text, whose text) returns boolean
+language sql
+as $$ select pg_temp.reads(tests.user('sc:' || person), tests.id('sc:' || whose)) $$;
+select is(pg_temp.reads('ayse', 'can'), true, 'Ayşe reads the availability of Can, a manager at Kadıköy');
+-- Here the owner works nowhere, so no manager hears of or reads their update;
+-- Ayşe reads an owner who works at Kadıköy in the authorization matrix.
+select is(pg_temp.reads('ayse', 'owner'), false, 'Ayşe does not read the owner, who works nowhere');
+select is(pg_temp.reads('ayse', 'zeynep'), true, 'Ayşe reads the availability of Zeynep, an admin at Kadıköy');
+select is(pg_temp.reads('mehmet', 'emre'), false, 'Mehmet (Beşiktaş) does not read Emre (Kadıköy)');
+select is(pg_temp.reads('emre', 'can'), false, 'Emre, an employee, does not read Can''s availability');
+select is(pg_temp.reads('ayse', 'ayse'), false, 'Ayşe does not read the Manager note about herself');
+select is(array[pg_temp.reads('ayse', 'can')::text, pg_temp.may_write_note('ayse', 'can')], array['true', 'no'],
+  'Can''s Manager note reaches Ayşe, who cannot write it');
+
+-- The two sets are one: for every person, who hears of their update is who
+-- reads it.
+create function pg_temp.hearers_and_readers_differ() returns text[]
+language plpgsql
+as $$
+declare whose record; heard uuid[]; readers uuid[]; differ text[] := '{}';
+begin
+  for whose in
+    select e.id, e.user_id from public.employee_profiles e
+    join public.workspace_memberships m on m.workspace_id = e.workspace_id and m.user_id = e.user_id and m.status = 'active'
+    where e.workspace_id = tests.id('sc') and e.archived_at is null
+  loop
+    perform public.weekly_preferences_save_service(whose.user_id, tests.id('sc'), jsonb_build_object(
+      'employee_id', whose.id, 'source', 'employee',
+      'expected_revision', coalesce((select p.revision from public.employee_weekly_preferences p where p.employee_id = whose.id), 0),
+      'settings_revision', (select s.availability_preferences_revision from public.workspace_scheduling_settings s where s.workspace_id = tests.id('sc')),
+      'preference', public.empty_weekly_preference('time_range')), gen_random_uuid());
+    select array(select jsonb_array_elements_text(o.payload -> 'recipient_user_ids')::uuid order by 1) into heard
+    from public.notification_outbox o
+    where o.workspace_id = tests.id('sc') and o.subject_type = 'weekly_availability' and o.subject_id = whose.id::text
+    order by o.created_at desc, o.id desc limit 1;
+    select array(select m.user_id from public.workspace_memberships m
+      where m.workspace_id = tests.id('sc') and m.status = 'active' and m.user_id <> whose.user_id
+        and pg_temp.reads(m.user_id, whose.id) order by 1) into readers;
+    if heard is distinct from readers then
+      differ := differ || format('%s: heard %s, read %s', whose.id, heard, readers);
+    end if;
+  end loop;
+  return differ;
+end;
+$$;
+select is(pg_temp.hearers_and_readers_differ(), '{}'::text[],
+  'for every person, whoever hears of an availability update reads it, and nobody else');
 
 -- With no live location in the workspace, the owner reads an empty Shift Hub
 -- manager view and team availability instead of a refusal.

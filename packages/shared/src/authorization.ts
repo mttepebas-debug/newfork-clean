@@ -94,6 +94,7 @@ interface TargetedRule {
 export const targetedAuthzActions = {
   "announcement.write": { permission: "announcements.manage" },
   "audit.read": { permission: "workspace.manage" },
+  "availability.team_read": { person: true, permission: "availability.read" },
   "availability.team_write": { person: true, permission: "availability.manage" },
   "employee.archive": { person: true, permission: "employees.archive" },
   "employee.change_role": { person: true, permission: "employees.manage" },
@@ -224,6 +225,13 @@ export function expected<A extends TargetedAuthzAction>(
       if (actor.role === "admin") return person?.role !== "owner";
       if (!shares || isSelf) return false;
       return targetRank < rankOf.manager;
+
+    case "availability.team_read":
+      // Whoever hears of a person's availability update reads it: owner and
+      // admins everybody, a manager everybody who works at their locations.
+      // Nobody reads the Manager note about themselves this way.
+      if (isSelf) return false;
+      return high || shares;
 
     case "availability.team_write":
       // A private availability note: the record edit rule. Owner and admins
