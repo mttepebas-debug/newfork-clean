@@ -88,9 +88,23 @@ jobs:
       - name: pgTAP (green list)
         run: supabase test db $(tr -d '\r' < supabase/tests/ci-green.txt)
       # Only after the rename took: otherwise this would stop the shared stack.
+      # BL-143: `supabase stop` ends by pruning Docker networks, and Docker's
+      # prune lock is per-daemon, not per-project -- when the db and e2e jobs
+      # (each on its own runner, one shared Docker Desktop) land their stop
+      # step at the same moment, the second one fails with "a prune operation
+      # is already running" even though its own containers were already
+      # removed by then. Retry instead of failing the job over it; a retry is
+      # a no-op once this project is already stopped, so it only waits out
+      # the other job's prune.
       - name: Stop CI's Supabase
         if: always() && steps.apart.outcome == 'success'
-        run: supabase stop --no-backup
+        run: |
+          for attempt in 1 2 3 4 5; do
+            supabase stop --no-backup && exit 0
+            echo "::warning::supabase stop failed (attempt $attempt), retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1
 
   # Browser tests (Playwright): the real sign-in screen, API and web app against a
   # fresh local Supabase; people come from the test world builder with a password
@@ -151,9 +165,23 @@ jobs:
           sleep 1
           fuser -k -KILL "$web"/tcp "$api"/tcp 2>/dev/null || true
       # Only after the rename took: otherwise this would stop the shared stack.
+      # BL-143: `supabase stop` ends by pruning Docker networks, and Docker's
+      # prune lock is per-daemon, not per-project -- when the db and e2e jobs
+      # (each on its own runner, one shared Docker Desktop) land their stop
+      # step at the same moment, the second one fails with "a prune operation
+      # is already running" even though its own containers were already
+      # removed by then. Retry instead of failing the job over it; a retry is
+      # a no-op once this project is already stopped, so it only waits out
+      # the other job's prune.
       - name: Stop CI's Supabase
         if: always() && steps.apart.outcome == 'success'
-        run: supabase stop --no-backup
+        run: |
+          for attempt in 1 2 3 4 5; do
+            supabase stop --no-backup && exit 0
+            echo "::warning::supabase stop failed (attempt $attempt), retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
