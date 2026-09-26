@@ -36,7 +36,7 @@ describe("default-hours review routes", () => {
     const { app, applyDefaultHours } = setup();
     expect((await app.inject({ method: "POST", url: url("apply"), headers: { authorization: "Bearer test" }, payload: body })).statusCode).toBe(400);
     applyDefaultHours.mockRejectedValueOnce(rpcFailure({ message: "Review changed", code: "40001" }));
-    const command = { ...body, fingerprint: "a".repeat(64), idempotency_key: actor, acknowledge_reference_overlaps: true, confirm_availability: true };
+    const command = { ...body, fingerprint: "a".repeat(64), idempotency_key: actor, confirm_availability: true };
     const response = await app.inject({ method: "POST", url: url("apply"), headers: { authorization: "Bearer test" }, payload: command });
     expect(response.statusCode).toBe(409);
     expect(applyDefaultHours).toHaveBeenCalledWith({ actorUserId: actor, workspaceId: id, sessionId: id, command });

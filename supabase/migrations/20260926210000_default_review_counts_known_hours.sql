@@ -4,6 +4,13 @@
 -- as unconfirmed_peer_count, which was always 0. That count, the filters that
 -- produced it and the "unconfirmed hours" wording are gone; the time zone a
 -- shift is saved with is now required too, so no reader needs a fallback.
+--
+-- User decision 2026-09-26 (option A): new default hours that make two shifts
+-- of the same person overlap are a hard block. The review marks that shift
+-- blocked with a reason naming the other shift ("Overlaps Close 5:30 PM–7:00 PM"),
+-- so blocked_count > 0 and apply refuses the whole batch (23514) as it already
+-- does for every other block. The flag that let a manager accept an overlap
+-- is gone from the command, the fingerprint and apply.
 -- Bodies copied from the live definitions; nothing else changes.
 alter table public.schedule_edit_session_shifts alter column time_timezone set not null;
 alter table public.schedule_draft_shifts alter column time_timezone set not null;
@@ -18,7 +25,7 @@ AS $function$
 declare session public.schedule_edit_sessions%rowtype; shift record; proposed jsonb; before_a jsonb; after_a jsonb;
  rows jsonb:='[]'; evidence jsonb:='[]'; row_value jsonb; peers jsonb; before_count integer; after_count integer;
  original_span tstzrange; proposed_span tstzrange; reason text; can_override boolean; fingerprint text;
- ids uuid[]; starts date; ends date; changed integer:=0; blocked integer:=0; edit_scope uuid[];
+ ids uuid[]; starts date; ends date; changed integer:=0; blocked integer:=0; edit_scope uuid[]; fmt text; overlap text;
 begin
  if jsonb_typeof(command) is distinct from 'object' or jsonb_typeof(command->'shift_ids') is distinct from 'array'
   or jsonb_array_length(command->'shift_ids') not between 1 and 200 then raise exception 'Choose 1 to 200 shifts to review' using errcode='22023'; end if;
@@ -86,7 +93,8 @@ begin
    'current_default_revision',shift.default_revision));
  end loop;
  -- Compare the complete proposed selection together, including overnight and
- -- cross-location commitments. Hidden peer identities never leave this helper.
+ -- cross-location commitments. Of another shift only its type and hours leave
+ -- this helper, which the grid already shows as a ghost (FB-6.1 .5).
  select coalesce(jsonb_agg(payload order by source,id),'[]') into peers from (
   select 'edit' source,s.id,to_jsonb(s) payload from public.schedule_edit_session_shifts s
    where s.workspace_id=w and s.session_id=sid and coalesce(s.pending_op_type,'')<>'delete'
@@ -96,20 +104,35 @@ begin
    where p.workspace_id=w and p.scheduled_date between starts-2 and ends+2 and p.employee_id is not null
     and not exists(select 1 from public.schedule_edit_session_shifts s where s.workspace_id=w and s.session_id=sid and s.id=coalesce(p.source_shift_id,p.id))
  ) candidates;
+ fmt:=case when (select time_format from public.workspace_scheduling_settings where workspace_id=w)='24h' then 'HH24:MI' else 'FMHH12:MI AM' end;
  for row_value in select value from jsonb_array_elements(rows) loop
-  before_count:=0; after_count:=0;
+  before_count:=0; after_count:=0; overlap:=null;
   if row_value->'after'<>'null'::jsonb and row_value->'before'->>'employee_id' is not null then
-   select count(*) filter(where app_private.shift_time_range((peer->>'scheduled_date')::date,(peer->>'start_time')::time,(peer->>'end_time')::time,peer->>'time_timezone') &&
-    app_private.shift_time_range((row_value->>'scheduled_date')::date,(row_value->'before'->>'start_time')::time,(row_value->'before'->>'end_time')::time,row_value->'before'->>'time_timezone')),
-    count(*) filter(where app_private.shift_time_range((coalesce(nullif(r->'after','null'),peer)->>'scheduled_date')::date,(coalesce(nullif(r->'after','null'),peer)->>'start_time')::time,(coalesce(nullif(r->'after','null'),peer)->>'end_time')::time,coalesce(nullif(r->'after','null'),peer)->>'time_timezone') &&
-    app_private.shift_time_range((row_value->>'scheduled_date')::date,(row_value->'after'->>'start_time')::time,(row_value->'after'->>'end_time')::time,row_value->'after'->>'time_timezone'))
-    into before_count,after_count
-   from jsonb_array_elements(peers) peer left join lateral(select value r from jsonb_array_elements(rows) where value->>'shift_id'=peer->>'id') replacement on true
+   original_span:=app_private.shift_time_range((row_value->>'scheduled_date')::date,(row_value->'before'->>'start_time')::time,(row_value->'before'->>'end_time')::time,row_value->'before'->>'time_timezone');
+   proposed_span:=app_private.shift_time_range((row_value->>'scheduled_date')::date,(row_value->'after'->>'start_time')::time,(row_value->'after'->>'end_time')::time,row_value->'after'->>'time_timezone');
+   -- A peer in the selection is compared at its proposed hours.
+   select count(*) filter(where spans.before_span&&original_span),count(*) filter(where spans.after_span&&proposed_span),
+    (array_agg(coalesce(t.name,'shift')||' '||to_char((eff.p->>'start_time')::time,fmt)||'–'||to_char((eff.p->>'end_time')::time,fmt) order by lower(spans.after_span))
+     filter(where spans.after_span&&proposed_span))[1]
+    into before_count,after_count,overlap
+   from jsonb_array_elements(peers) peer
+   left join lateral(select value r from jsonb_array_elements(rows) where value->>'shift_id'=peer->>'id') replacement on true
+   cross join lateral(select coalesce(nullif(replacement.r->'after','null'),peer) p) eff
+   cross join lateral(select app_private.shift_time_range((peer->>'scheduled_date')::date,(peer->>'start_time')::time,(peer->>'end_time')::time,peer->>'time_timezone') before_span,
+    app_private.shift_time_range((eff.p->>'scheduled_date')::date,(eff.p->>'start_time')::time,(eff.p->>'end_time')::time,eff.p->>'time_timezone') after_span) spans
+   left join public.shift_types t on t.workspace_id=w and t.id=(eff.p->>'shift_type_id')::uuid
    where peer->>'employee_id'=row_value->'before'->>'employee_id' and peer->>'id'<>row_value->>'shift_id';
+   if overlap is not null and (row_value->>'can_apply')::boolean then
+    row_value:=row_value||jsonb_build_object('reason','Overlaps '||overlap,'can_apply',false); blocked:=blocked+1;
+   elsif overlap is not null and row_value->'after_assessment'->>'operation'='blocked'
+    and not exists(select 1 from jsonb_array_elements(row_value->'after_assessment'->'reasons') x where x->>'severity'='block' and x->>'code'<>'time_overlap') then
+    -- The core already blocked it for this overlap alone: name the shift instead of the generic availability text.
+    row_value:=row_value||jsonb_build_object('reason','Overlaps '||overlap);
+   end if;
   end if;
   evidence:=evidence||jsonb_build_array(row_value||jsonb_build_object('before_overlap_count',before_count,'after_overlap_count',after_count));
  end loop;
- fingerprint:=encode(extensions.digest(convert_to(jsonb_build_object('workspace',w,'actor',actor,'session',sid,'revision',session.revision,'command',command-'fingerprint'-'idempotency_key'-'acknowledge_reference_overlaps'-'confirm_availability','rows',evidence,'peers',peers)::text,'UTF8'),'sha256'),'hex');
+ fingerprint:=encode(extensions.digest(convert_to(jsonb_build_object('workspace',w,'actor',actor,'session',sid,'revision',session.revision,'command',command-'fingerprint'-'idempotency_key'-'confirm_availability','rows',evidence,'peers',peers)::text,'UTF8'),'sha256'),'hex');
  return jsonb_build_object('session_id',sid,'session_revision',session.revision,'starts_on',starts,'ends_on',ends,'fingerprint',fingerprint,'changed_count',changed,'blocked_count',blocked,'shifts',evidence);
 end $function$;
 
@@ -135,8 +158,6 @@ begin
  review:=public.preview_schedule_default_hours_service(actor,w,sid,command);
  if review->>'fingerprint' is distinct from command->>'fingerprint' then raise exception 'Defaults, shifts or conflicts changed; review again' using errcode='40001'; end if;
  if (review->>'blocked_count')::integer>0 or (review->>'changed_count')::integer=0 then raise exception 'Resolve blocked shifts or choose changed defaults before applying' using errcode='23514'; end if;
- if exists(select 1 from jsonb_array_elements(review->'shifts') x where (x->>'will_change')::boolean and (x->>'after_overlap_count')::integer>0)
-  and coalesce((command->>'acknowledge_reference_overlaps')::boolean,false)=false then raise exception 'Review and acknowledge overlapping reference hours' using errcode='23514'; end if;
  if exists(select 1 from jsonb_array_elements(review->'shifts') x where (x->>'can_apply')::boolean
   and x->'after_assessment'->>'operation'='warning_requires_override'
   and x->'after_assessment'->>'warning_policy'='confirm'
