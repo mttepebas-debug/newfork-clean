@@ -788,11 +788,6 @@
   color: var(--theme-text);
   font: inherit;
 }
-/* DEV-only variant B for BL-136 (?bl136=b): a lighter 3.1:1 edge. Delete after the pick. */
-:root[data-bl136="b"] .onboarding-field input:not(:focus),
-:root[data-bl136="b"] .onboarding-field select:not(:focus) {
-  border-color: #8a948f;
-}
 
 .onboarding-field input:focus,
 .onboarding-field select:focus {
