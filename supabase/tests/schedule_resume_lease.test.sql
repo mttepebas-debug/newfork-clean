@@ -54,6 +54,21 @@ select is((select to_jsonb(s) from public.schedule_edit_session_shifts s where s
 select lives_ok($$select public.heartbeat_schedule_edit_session_service(actor,w,session) from lease_fixture$$,'heartbeat works immediately after expired resume');
 select is(public.acquire_schedule_edit_session_service(other_actor,w,week,'draft',draft)->>'status','conflict','another manager cannot open the draft while the renewed lease holds it') from lease_fixture;
 select throws_ok($$select public.acquire_schedule_edit_session_service(outsider,w,week,'blank',null) from lease_fixture$$,'42501','Not allowed','unauthorized actor cannot resume');
+-- BL-160: the message alone is the same for every authz.* reason; check the
+-- reason itself (a true outsider is refused as not a member, not, say, blocked).
+create function pg_temp.said(statement text) returns text
+language plpgsql as $$
+declare code text; reason text; what text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint, what = pg_exception_detail;
+  return concat_ws(' ', code, nullif(reason, ''), nullif(what, ''));
+end;
+$$;
+select is(pg_temp.said($$select public.acquire_schedule_edit_session_service(outsider,w,week,'blank',null) from lease_fixture$$),
+  '42501 authz.not_member schedule.edit', 'unauthorized actor is refused as not a member, not some other reason');
 set local role postgres;
 update public.schedule_edit_sessions set expires_at=now()-interval '1 minute' where id=(select session from lease_fixture);
 set local role service_role;
