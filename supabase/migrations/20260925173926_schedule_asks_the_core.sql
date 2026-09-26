@@ -30,9 +30,13 @@
 --     owner and admin pass ('{}' is the whole organization), a manager passes
 --     with one location in reach, a manager with none is out_of_scope;
 --   * the same question for a one-place or person action:
---       if cardinality(app_private.scope_set(actor, w, act)) = 0 then
+--       if cardinality(app_private.scope_set(actor, w, act)) = 0
+--          and (app_private.authz_reason(actor, w, act) is distinct from 'out_of_scope'
+--               or exists (a live location in w)) then
 --         perform app_private.authorize(actor, w, act);  -- no target: raises the reason
 --       end if;
+--     a workspace with no live location reads as empty to whoever would reach
+--     it, rather than refusing the owner;
 --   * a list filters by scope_set(); a record with several locations shows to a
 --     manager when all of them are in reach, or when one is and the product
 --     says so (the drafts list, B1); owners and admins are asked once with
@@ -1809,8 +1813,12 @@ begin
  if not manager_view and emp.id is null then raise exception 'Employee profile required' using errcode='42501'; end if;
  if manager_view then
   read_scope:=app_private.scope_set(actor,w,'exchange.read');
-  -- Nowhere to read requests: asked with no location, the core says why.
-  if cardinality(read_scope)=0 then perform app_private.authorize(actor,w,'exchange.read'); end if;
+  -- Nowhere to read requests: asked with no location, the core says why; with
+  -- no live location in the workspace there is nothing to read.
+  if cardinality(read_scope)=0 and (app_private.authz_reason(actor,w,'exchange.read') is distinct from 'out_of_scope'
+   or exists(select 1 from public.locations l where l.workspace_id=w and l.deleted_at is null)) then
+   perform app_private.authorize(actor,w,'exchange.read');
+  end if;
   manage_scope:=app_private.scope_set(actor,w,'exchange.approve');
  end if;
  for c in select * from public.shift_exchange_cases x where x.workspace_id=w and (x.status='open' or x.id=focused_case_id
@@ -2063,8 +2071,12 @@ AS $function$
 declare result jsonb; read_scope uuid[]; org_wide boolean;
 begin
  read_scope:=app_private.scope_set(actor,w,'availability.team_read');
- -- Nowhere to read the team's availability: asked with nobody named, the core says why.
- if cardinality(read_scope)=0 then perform app_private.authorize(actor,w,'availability.team_read'); end if;
+ -- Nowhere to read the team's availability: asked with nobody named, the core says
+ -- why; with no live location in the workspace, only the people with none show.
+ if cardinality(read_scope)=0 and (app_private.authz_reason(actor,w,'availability.team_read') is distinct from 'out_of_scope'
+  or exists(select 1 from public.locations l where l.workspace_id=w and l.deleted_at is null)) then
+  perform app_private.authorize(actor,w,'availability.team_read');
+ end if;
  org_wide:=app_private.authz_reason(actor,w,'availability.team_read','{}'::uuid[]) is null;
  with scope as materialized (
   select l.id,l.name,l.sort_order from public.locations l where l.workspace_id=w and l.archived_at is null

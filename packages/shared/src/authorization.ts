@@ -111,6 +111,7 @@ export const targetedAuthzActions = {
   "schedule.edit": { permission: "schedule.manage" },
   "schedule.publish": { permission: "schedule.publish" },
   "schedule.read": { permission: "schedule.read" },
+  "schedule.templates.read": { permission: "schedule.templates.read" },
   "settings.jobs.write": { permission: "settings.jobs.manage" },
   "settings.locations.write": { permission: "settings.locations.manage" },
   "settings.organization.write": { permission: "settings.general.manage" },
@@ -249,6 +250,7 @@ export function expected<A extends TargetedAuthzAction>(
       return atPlace();
 
     case "schedule.edit":
+    case "schedule.templates.read":
       // With no place named: may they edit somewhere at all.
       if (places === undefined) return high || actor.locationIds.length > 0;
       return atPlace();

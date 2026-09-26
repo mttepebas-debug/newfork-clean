@@ -213,6 +213,8 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
      where (l ->> 'id')::uuid = $3)$$),
   ('schedule.edit', 'workspace', 'schedule.manage', false, false,
    $$select public.acquire_schedule_edit_session_service($1, $2, tests.week(5), 'blank') is not null$$),
+  ('schedule.templates.read', 'workspace', 'schedule.templates.read', false, false,
+   $$select public.list_schedule_templates_service($1, $2) is not null$$),
   ('schedule.publish', 'site', 'schedule.publish', false, false,
    $$select tests.publish_week_as($1, 'm', 3, jsonb_build_array(jsonb_build_object(
        'label', 'probe', 'day', 0, 'start', '09:00', 'end', '15:00',
@@ -316,6 +318,7 @@ insert into core_action (key, core_key, blank) values
   ('employee.create', 'employee.create', 'org'),
   ('schedule.read', 'schedule.read', 'null'),
   ('schedule.edit', 'schedule.edit', 'null'),
+  ('schedule.templates.read', 'schedule.templates.read', 'null'),
   ('schedule.publish', 'schedule.publish', 'null'),
   ('exchange.approve', 'exchange.approve', 'null'),
   ('settings.organization.write', 'settings.organization.write', 'null'),
@@ -455,7 +458,8 @@ begin
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;
 
-  when 'schedule.edit' then
+  when 'schedule.edit', 'schedule.templates.read' then
+    -- May they do it somewhere at all: a manager needs a location.
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when cardinality(p.locs) > 0 then 'allow' else 'deny' end;
 

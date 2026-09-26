@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(55);
+select plan(59);
 
 -- FB-6.1 step .2: Schedule's entry points ask the authorization core
 -- (app_private.authorize() / scope_set()) instead of the three old Schedule
@@ -36,6 +36,17 @@ select tests.role('sc', 'rules lead', 'manager', array(
   union select 'schedule.conflict_rules.manage' union select 'settings.schedule_rules.read'
 ));
 select tests.person('sc', 'rita', 'rules lead', array['K'], array['cook']);
+-- A manager-type role without template access.
+select tests.role('sc', 'no templates', 'manager', array(
+  select rp.permission_key
+  from public.workspace_role_permissions rp
+  join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('sc') and r.system_key = 'manager'
+    and rp.permission_key not in ('schedule.templates.read', 'schedule.templates.manage')
+));
+select tests.person('sc', 'tina', 'no templates', array['K'], array['cook']);
+-- A workspace whose every location is closed.
+select tests.world('sn');
 
 -- Aydan misses a required document: a document everybody must hand in, and
 -- her deadline has passed.
@@ -210,6 +221,20 @@ from gate g order by g.action;
 select ok(pg_temp.at_gate('owner', g.action) not like '42501%',
   g.action || ': the owner passes without working anywhere (' || pg_temp.at_gate('owner', g.action) || ')')
 from gate g order by g.action;
+
+select is(pg_temp.said(format($$select public.list_schedule_templates_service(%L, %L)$$, tests.user('sc:tina'), tests.id('sc'))),
+  '42501 authz.missing_permission schedule.templates.read', 'a manager-type role without template access cannot list templates');
+select is(pg_temp.said(format($$select public.get_schedule_template_service(%L, %L, gen_random_uuid())$$, tests.user('sc:tina'), tests.id('sc'))),
+  '42501 authz.missing_permission schedule.templates.read', 'a manager-type role without template access cannot open a template');
+
+-- With no live location in the workspace, the owner reads an empty Shift Hub
+-- manager view and team availability instead of a refusal.
+-- ponytail: closed by hand; there is no delete-location entry point yet.
+update public.locations set archived_at = now(), deleted_at = now() where workspace_id = tests.id('sn');
+select is(pg_temp.said(format($$select public.shift_exchanges_read_service(%L, %L, true)$$, tests.user('sn:owner'), tests.id('sn'))),
+  'allowed', 'the owner of a workspace with no live location reads an empty Shift Hub manager view');
+select is(pg_temp.said(format($$select public.weekly_team_read_service(%L, %L)$$, tests.user('sn:owner'), tests.id('sn'))),
+  'allowed', 'the owner of a workspace with no live location reads team availability');
 
 -- 4. Scheduled exports and recent exports (Q-A, user decision 2026-09-25) ---------------
 -- A manager sees a record only when every one of its locations is theirs; a

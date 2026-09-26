@@ -1,5 +1,5 @@
 {
- "sourceSha256": "974c4ac517ed27186b8bab5a95577dfe6002877b75e4671675a35e5a4ce40e3c",
+ "sourceSha256": "2b2f5112ae49286e834e58f8c35f682c6ae5a331c6c55b16e80aafa418538cd9",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -612,6 +612,13 @@
    "targetKind": "location",
    "permission": "schedule.read",
    "coreKey": "schedule.read",
+   "blank": "null"
+  },
+  {
+   "key": "schedule.templates.read",
+   "targetKind": "workspace",
+   "permission": "schedule.templates.read",
+   "coreKey": "schedule.templates.read",
    "blank": "null"
   },
   {
@@ -10855,6 +10862,96 @@
    "zeynep",
    "x:K",
    "deny"
+  ],
+  [
+   "schedule.templates.read",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "schedule.templates.read",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "schedule.templates.read",
+   "ayse",
+   "workspace",
+   "allow"
+  ],
+  [
+   "schedule.templates.read",
+   "can",
+   "workspace",
+   "allow"
+  ],
+  [
+   "schedule.templates.read",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "schedule.templates.read",
+   "mehmet",
+   "workspace",
+   "allow"
+  ],
+  [
+   "schedule.templates.read",
+   "nil",
+   "workspace",
+   "allow"
+  ],
+  [
+   "schedule.templates.read",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "schedule.templates.read",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "schedule.templates.read",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "schedule.templates.read",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "schedule.templates.read",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "schedule.templates.read",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "schedule.templates.read",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "schedule.templates.read",
+   "zeynep",
+   "workspace",
+   "allow"
   ],
   [
    "settings.conflict_rules.write",
