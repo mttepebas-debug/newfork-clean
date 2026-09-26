@@ -52,15 +52,6 @@ describe("default-hours batch review", () => {
     expect(screen.queryByRole("button", { name: /^Confirm availability/ })).toBeNull();
     expect(screen.getByRole("button", { name: /^Apply 1 change/ }).hasAttribute("disabled")).toBe(false);
   });
-  it("keeps overlap acknowledgment separate from weekly confirmation", async () => {
-    const value = weeklyPreview("confirm"); value.shifts[0]!.after_overlap_count = 1;
-    vi.mocked(previewScheduleDefaultHours).mockResolvedValue(value);
-    setup(); await review();
-    const apply = screen.getByRole("button", { name: /^Confirm availability and apply/ });
-    expect(apply.hasAttribute("disabled")).toBe(true);
-    fireEvent.click(screen.getByLabelText(/I reviewed reference overlaps/));
-    expect(apply.hasAttribute("disabled")).toBe(false);
-  });
   it("reviews only reference shifts and requires review before applying", async () => {
     const ui = setup();
     expect(screen.queryByRole("button", { name: /Apply .*changes/ })).toBeNull();
@@ -76,21 +67,18 @@ describe("default-hours batch review", () => {
     expect(screen.getByText(/This review is out of date/)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Apply 1 change/ }).hasAttribute("disabled")).toBe(true);
   });
-  it("requires acknowledgment for reference overlaps", async () => {
-    const value = preview(); value.shifts[0]!.after_overlap_count = 1;
+  it("blocks an overlap outright: the reason shows, no acknowledgment box, apply stays off", async () => {
+    const value = preview(); value.blocked_count = 1; value.shifts[0]!.can_apply = false; value.shifts[0]!.reason = "Overlaps Close 17:30–19:00"; value.shifts[0]!.after_overlap_count = 1;
     vi.mocked(previewScheduleDefaultHours).mockResolvedValue(value);
     setup(); await review();
-    const apply = screen.getByRole("button", { name: /Apply 1 change/ });
-    expect(apply.hasAttribute("disabled")).toBe(true);
-    fireEvent.click(screen.getByLabelText(/I reviewed reference overlaps/));
-    expect(apply.hasAttribute("disabled")).toBe(false);
-  });
-  it("keeps blocked changes disabled after acknowledging an overlap", async () => {
-    const value = preview(); value.blocked_count = 1; value.shifts[0]!.can_apply = false; value.shifts[0]!.reason = "Approved leave remains in effect"; value.shifts[0]!.after_overlap_count = 1;
-    vi.mocked(previewScheduleDefaultHours).mockResolvedValue(value);
-    setup(); await review(); fireEvent.click(screen.getByLabelText(/I reviewed reference overlaps/));
-    expect(screen.getByText("Approved leave remains in effect")).toBeTruthy();
+    expect(screen.getByText("Overlaps Close 17:30–19:00")).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: /overlap/i })).toBeNull();
     expect(screen.getByRole("button", { name: /Apply 1 change/ }).hasAttribute("disabled")).toBe(true);
+  });
+  it("never sends an overlap acknowledgment with the apply command", async () => {
+    setup(); await review(); fireEvent.click(screen.getByRole("button", { name: /Apply 1 change/ }));
+    await waitFor(() => expect(applyScheduleDefaultHours).toHaveBeenCalledOnce());
+    expect(vi.mocked(applyScheduleDefaultHours).mock.calls[0]![2]).not.toHaveProperty("acknowledge_reference_overlaps");
   });
   it("keeps the same retry key after an uncertain apply response", async () => {
     vi.mocked(applyScheduleDefaultHours).mockRejectedValueOnce(new Error("Connection lost"));

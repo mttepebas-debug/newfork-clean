@@ -5233,6 +5233,19 @@ describe("App", () => {
     15000,
   );
 
+  it("opens the default-hours review from the schedule edit toolbar", async () => {
+    window.history.pushState({}, "", "/app/schedule");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Review default hours" }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: "Review current default hours" }),
+    ).toBeTruthy();
+  });
+
   it("reviews and applies deterministic auto-fill assignments", async () => {
     const preview = {
       status: "review_ready" as const,
