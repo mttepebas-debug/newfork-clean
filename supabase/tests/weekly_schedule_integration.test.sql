@@ -56,6 +56,11 @@ select lives_ok($$select pg_temp.mutate(payload) from ws$$,'the mutation writes 
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),0::bigint,'and records no acceptance');
 select lives_ok($$select pg_temp.mutate(payload||'{"note":"Changed display note"}','update') from ws$$,'a note edit needs no decision');
 select lives_ok($$select pg_temp.mutate(payload||'{"start_time":"19:00"}','update') from ws$$,'changed hours need no decision either');
+-- Require confirmation still guards the other rules: a closed day (closed_location = confirm).
+insert into public.schedule_closures(id,workspace_id,location_id,closed_date,title,created_by)
+ select 'ad423000-0000-4000-8000-000000000020',w,loc,'2035-01-19','Closed',owner_id from ws;
+select throws_ok($$insert into public.schedule_edit_session_shifts(id,workspace_id,session_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
+ select gen_random_uuid(),w,session,loc,emp,job,'2035-01-19','18:00','20:00','explicit','America/Los_Angeles' from ws$$,'23514',null,'raw assignment cannot bypass the closed-day acceptance');
 select throws_ok($$select pg_temp.mutate(payload||'{"time_basis":"unresolved","start_time":null,"end_time":null}','update') from ws$$,'22023',null,'assignment without hours or a named type is invalid');
 select is(public.schedule_availability_read_projection(manager,w,payload||jsonb_build_object('id',shift))->'availability_assessment'->>'has_availability_conflict','true','draft read shows the warning') from ws;
 select is(public.schedule_availability_read_projection(employee_user,w,payload||jsonb_build_object('id',shift))->'availability_assessment','null'::jsonb,'employee projection does not leak manager preferences') from ws;
@@ -141,11 +146,16 @@ create function pg_temp.apply_defaults(confirmed boolean default false) returns 
 $$;
 select lives_ok($$select pg_temp.apply_defaults()$$,'actual default-hour batch applies without an availability decision');
 select is((select end_time::text from public.schedule_edit_session_shifts where id='ad423000-0000-4000-8000-000000000016'),'18:00:00','batch stores the reviewed current hours');
+-- The shift's day closes: new hours on a closed day need the explicit bulk confirmation.
+insert into public.schedule_closures(id,workspace_id,location_id,closed_date,title,created_by)
+ select 'ad423000-0000-4000-8000-000000000021',w,loc,'2035-02-01','Closed',owner_id from ws;
 update public.shift_types set default_start_time='11:00' where id='ad423000-0000-4000-8000-000000000015';
 update wd d set command=command||jsonb_build_object('expected_session_revision',e.revision) from public.schedule_edit_sessions e where e.id=d.session;
 update wd set review=public.preview_schedule_default_hours_service(s.manager,s.w,wd.session,command) from ws s;
-select lives_ok($$select pg_temp.apply_defaults()$$,'a later change applies without any availability confirmation');
-select is((select start_time::text from public.schedule_edit_session_shifts where id='ad423000-0000-4000-8000-000000000016'),'11:00:00','the batch stores the current start time');
+select throws_ok($$select pg_temp.apply_defaults()$$,'22023',null,'confirm-policy batch requires the explicit bulk action');
+select is((select start_time::text from public.schedule_edit_session_shifts where id='ad423000-0000-4000-8000-000000000016'),'12:00:00','missing confirmation changes no shift');
+select lives_ok($$select pg_temp.apply_defaults(true)$$,'one explicit confirmation applies default hours without reason');
+select is((select start_time::text from public.schedule_edit_session_shifts where id='ad423000-0000-4000-8000-000000000016'),'11:00:00','confirmed batch stores current start time');
 
 -- Publication capability remains independent of the edit/default-hours commands.
 insert into public.workspace_roles(id,workspace_id,name,access_class)

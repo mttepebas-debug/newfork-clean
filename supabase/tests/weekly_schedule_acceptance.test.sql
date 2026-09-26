@@ -94,6 +94,36 @@ select is(pg_temp.publication()->'findings'->0->>'conflict_severity','block','ap
 select is(pg_temp.publication()->>'status','hard_blocked','approved leave still blocks publication');
 select ok(pg_temp.publication()->'findings'->0->>'availability_state' is null,'real blocker cannot masquerade as an accepted weekly warning');
 
+-- Require confirmation still guards the other rules (BL-186 keeps the
+-- acceptance for them): a closed day, closed_location = confirm.
+insert into public.schedule_closures(id,workspace_id,location_id,closed_date,title,created_by)
+ select 'ad421000-0000-4000-8000-000000000021',w,loc,'2035-01-17','Closed',owner_id from wp_fixture;
+create function pg_temp.closed(changes jsonb default '{}') returns jsonb language sql stable as $$
+ select jsonb_build_object('id','ad421000-0000-4000-8000-000000000020','scheduled_date','2035-01-17','job_id','ad421000-0000-4000-8000-000000000011')||changes
+$$;
+create function pg_temp.checked(changes jsonb) returns jsonb language sql stable as $$
+ select changes||jsonb_build_object('availability_assessment_fingerprint',pg_temp.preview(changes)->>'fingerprint')
+$$;
+create function pg_temp.accepted_now() returns bigint language sql stable as $$
+ select count(*) from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null
+$$;
+select is(pg_temp.preview(pg_temp.closed())->>'operation','warning_requires_override','a closed day asks for confirmation');
+select throws_ok($$select pg_temp.accept(pg_temp.closed())$$,'PT409',null,'a closed-day assignment requires a fresh checked fingerprint');
+select lives_ok($$select pg_temp.accept(pg_temp.checked(pg_temp.closed()))$$,'confirming it needs no written reason');
+select is(pg_temp.accepted_now(),1::bigint,'one current acceptance is stored');
+select is((select actor_user_id from public.schedule_availability_overrides where workspace_id=(select w from wp_fixture) and revoked_at is null),(select manager from wp_fixture),'acceptance records the actual manager');
+select throws_ok($$select pg_temp.accept(pg_temp.closed('{"id":"ad421000-0000-4000-8000-000000000009"}'),pg_temp.assignment(pg_temp.closed()))$$,'PT409',null,'acceptance cannot transfer to another shift');
+select throws_ok($$select pg_temp.accept(pg_temp.checked(pg_temp.closed())||'{"start_time":"19:00"}',pg_temp.assignment(pg_temp.closed()))$$,'PT409',null,'changed physical conflict requires a fresh decision');
+select is(pg_temp.accepted_now(),1::bigint,'failed decision does not revoke prior history');
+select lives_ok($$select pg_temp.accept(pg_temp.closed('{"scheduled_date":"2035-01-18"}'),pg_temp.assignment(pg_temp.closed()))$$,'moving to an open day needs no decision');
+select is(pg_temp.accepted_now(),0::bigint,'moving away revokes prior acceptance');
+select throws_ok($$select pg_temp.accept(pg_temp.closed(),pg_temp.assignment(pg_temp.closed('{"scheduled_date":"2035-01-18"}')))$$,'PT409',null,'moving back cannot revive revoked acceptance');
+-- Accepted again, the assigned shift goes into the draft; Publish keeps the acceptance.
+select lives_ok($$select pg_temp.accept(pg_temp.checked(pg_temp.closed()))$$,'a fresh confirmation is accepted');
+insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
+ select 'ad421000-0000-4000-8000-000000000020',w,'ad421000-0000-4000-8000-000000000013',loc,emp,'ad421000-0000-4000-8000-000000000011','2035-01-17','18:00','20:00','explicit','America/Los_Angeles' from wp_fixture;
+select is((select f->>'availability_state' from jsonb_array_elements(pg_temp.publication()->'findings') f
+ where f->'shift_ids'->>0='ad421000-0000-4000-8000-000000000020' and f->>'code'='schedule_conflict'),'accepted','preflight keeps the previously accepted conflict of an assigned shift');
 select ok(not has_function_privilege('authenticated','public.weekly_schedule_publication_preflight(jsonb,uuid,uuid[],boolean)','execute'),'raw publication reader is not exposed to employees');
 select * from finish();
 rollback;

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(13);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -198,7 +198,8 @@ insert into retired (kind, name, step) values
 insert into retired (kind, name, step) values
   ('function', 'weekly_published_availability_visible', 'BL-186'),
   ('function', 'stamp_weekly_reminder_disable', 'BL-186'),
-  ('column', 'manager_weekly_reminders.last_disabled_at', 'BL-186');
+  ('column', 'manager_weekly_reminders.last_disabled_at', 'BL-186'),
+  ('trigger', 'manager_weekly_reminders.weekly_reminder_disable_stamp', 'BL-186');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -243,6 +244,16 @@ select is(
     order by 1
   ),
   '{}'::text[], 'retired columns stay gone'
+);
+select is(
+  array(
+    select r.name from retired r
+    join pg_trigger t on not t.tgisinternal
+    join pg_class c on c.oid = t.tgrelid and c.relnamespace = 'public'::regnamespace
+    where r.kind = 'trigger' and c.relname || '.' || t.tgname = r.name
+    order by 1
+  ),
+  '{}'::text[], 'retired triggers stay gone'
 );
 select is(
   array(
