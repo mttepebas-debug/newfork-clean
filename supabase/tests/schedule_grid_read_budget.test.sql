@@ -4,8 +4,10 @@ select plan(13);
 
 -- FOUNDATION-B 5.3: the Schedule grid reads a week with availability from the
 -- weekly marks within 50 ms: 30 people at two locations, most with marks, some
--- with a manager's reminder, a published week of shifts. The best of five warm
--- reads counts, so a busy machine does not fail it by chance.
+-- with a manager's reminder, a published week of shifts. The best of twelve warm
+-- reads counts (after three throwaway warm-up reads): the read measured 17-24 ms
+-- in isolation (BL-150), so noise only ever adds delay and the fastest of many
+-- converges on the true cost while CI's other jobs compete for the same CPU.
 --
 -- FB-6.1 .5 (T3): the people who work at both locations have their Wednesday
 -- shift at Besiktas, so Mina, who manages Kadikoy only, reads them as ghosts.
@@ -47,7 +49,7 @@ do $$
 declare started timestamptz; model jsonb; who text;
 begin
   foreach who in array array['owner', 'mina'] loop
-    for i in 1..7 loop
+    for i in 1..15 loop
       started := clock_timestamp();
       model := public.get_schedule_read_model_service(tests.user('wb:' || who), tests.id('wb'), tests.week(1));
       insert into wb_run values (who, i, extract(epoch from clock_timestamp() - started) * 1000,
@@ -59,9 +61,9 @@ end $$;
 create temp table mina_model as select model from wb_run where who = 'mina' and n = 1;
 
 select cmp_ok((select min(marked) from wb_run where who = 'owner'), '>=', 24, 'the grid draws the marked weeks');
-select cmp_ok((select min(ms) from wb_run where who = 'owner' and n > 2), '<', 50::numeric,
+select cmp_ok((select min(ms) from wb_run where who = 'owner' and n > 3), '<', 50::numeric,
   'the grid reads a week with availability within 50 ms');
-select cmp_ok((select min(ms) from wb_run where who = 'mina' and n > 2), '<', 50::numeric,
+select cmp_ok((select min(ms) from wb_run where who = 'mina' and n > 3), '<', 50::numeric,
   'a manager of one location reads the week with its ghosts within 50 ms');
 
 select is((select array(select l ->> 'id' from jsonb_array_elements(model -> 'locations') l) from mina_model),
