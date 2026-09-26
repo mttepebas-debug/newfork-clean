@@ -38,7 +38,14 @@ const context = {
     "schedule.shift_change_requests.read",
     "schedule.shift_change_requests.manage",
   ],
-  actions: [],
+  actions: [
+    "workspace.read",
+    "schedule.read",
+    "requests.read",
+    "time_off.decide",
+    "exchange.read",
+    "exchange.approve",
+  ],
   onboarding: { status: "complete", currentStep: 2 },
   documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
@@ -217,12 +224,30 @@ describe("ScheduleRequestsPage", () => {
     expect(screen.getByRole("tab", { name: "Shift changes" }).getAttribute("aria-selected")).toBe("true");
     expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId }));
   });
-  it.each(["schedule.time_off_requests.read", "schedule.shift_change_requests.read"] as const)("keeps a request-only reader with %s inside their permitted queue", async permission => {
-    activeContext = { ...context, permissions: ["workspace.read", permission] };
+  it.each([
+    ["schedule.time_off_requests.read", "requests.read"],
+    ["schedule.shift_change_requests.read", "exchange.read"],
+  ] as const)("keeps a request-only reader with %s inside their permitted queue", async (permission, action) => {
+    activeContext = { ...context, permissions: ["workspace.read", permission], actions: ["workspace.read", action] };
     renderPage();
     await screen.findByRole("heading", { name: "Requests" });
     expect(screen.getAllByRole("tab")).toHaveLength(1);
     expect(screen.queryByRole("tab", { name: "Availability" })).toBeNull();
+  });
+  it("shows no decision buttons to a reader the core does not let decide time off", async () => {
+    // The manage permission is still listed; the core's action is not.
+    activeContext = { ...context, actions: context.actions.filter(action => action !== "time_off.decide") };
+    renderPage(); await openTimeOffRequest();
+    expect(screen.getByRole("dialog", { name: "Review request" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Approve/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Deny/ })).toBeNull();
+  });
+  it("hides the time off queue from someone the core does not let read it", async () => {
+    activeContext = { ...context, actions: context.actions.filter(action => action !== "requests.read") };
+    renderPage();
+    await screen.findByRole("heading", { name: "Requests" });
+    expect(screen.getAllByRole("tab")).toHaveLength(1);
+    expect(screen.queryByRole("tab", { name: /Time off/ })).toBeNull();
   });
   it("decides cancellation pieces without assignment-release preview or reassignment", async () => {
     vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_off_requests: [{ ...fixture.time_off_requests[0]!, request_type: "time_off_cancellation" }] });

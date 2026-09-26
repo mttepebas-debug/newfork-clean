@@ -11,13 +11,16 @@ import {
 } from "../schedule/schedule-data";
 import ScheduleTemplatesPage from "./ScheduleTemplatesPage";
 
+const auth = vi.hoisted(() => ({
+  context: {
+    workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" },
+    permissions: ["schedule.read", "schedule.templates.manage"],
+    actions: ["schedule.read", "schedule.templates.read", "schedule.templates"],
+  },
+}));
+
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({
-    context: {
-      workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" },
-      permissions: ["schedule.read", "schedule.templates.manage"],
-    },
-  }),
+  useAuth: () => ({ context: auth.context }),
 }));
 
 vi.mock("@newfork/ui", async (importOriginal) => ({
@@ -153,6 +156,25 @@ describe("ScheduleTemplatesPage", () => {
         3,
       ),
     );
+  });
+
+  it("offers rename and delete only to someone the core lets manage templates", async () => {
+    listTemplatesMock.mockResolvedValue(templateList);
+    const allowed = auth.context.actions;
+    // The permission key alone opens nothing: the answer is the core's action.
+    auth.context.actions = ["schedule.read", "schedule.templates.read"];
+    try {
+      renderPage();
+      expect(await screen.findByText("Standard week")).toBeTruthy();
+      expect(
+        screen.queryByRole("button", { name: "Rename template Standard week" }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "Delete template Standard week" }),
+      ).toBeNull();
+    } finally {
+      auth.context.actions = allowed;
+    }
   });
 
   it("shows an empty state when no templates exist", async () => {

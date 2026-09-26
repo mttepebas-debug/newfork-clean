@@ -28,6 +28,7 @@ import { formatTimeOffInstant } from "../employee-hub/time-off-split";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { Navigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import { PermissionRoute } from "../auth/PermissionRoute";
 import {
   AvailabilityDraftScope,
@@ -82,11 +83,8 @@ function ScheduleRequestsPageContent() {
   const { context } = useAuth();
   const client = useQueryClient();
   const [params, setParams] = useSearchParams();
-  const canReadTimeOff =
-    context?.permissions.includes("schedule.time_off_requests.read") ?? false;
-  const canReadShift =
-    context?.permissions.includes("schedule.shift_change_requests.read") ??
-    false;
+  const canReadTimeOff = can(context, "requests.read");
+  const canReadShift = can(context, "exchange.read");
   const requestedTab = params.get("tab");
   const tab: Tab =
     requestedTab === "shift-changes" && canReadShift
@@ -466,11 +464,9 @@ function ScheduleRequestsPageContent() {
               <TimeOffDetail
                 request={selected}
                 timeFormat={query.data.time_format ?? "12h"}
-                canManage={
-                  context?.permissions.includes(
-                    "schedule.time_off_requests.manage",
-                  ) ?? false
-                }
+                // ponytail: "may they decide somewhere"; the row has no
+                // requester role for the per-person rule, so the API decides.
+                canManage={can(context, "time_off.decide")}
                 onClose={() => selectRequest("")}
                 onDecision={(action) =>
                   setDecision({ request: selected, action })

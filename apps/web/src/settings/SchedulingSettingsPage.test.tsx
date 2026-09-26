@@ -85,6 +85,7 @@ describe("SchedulingSettingsPage checklist mode", () => {
       "settings.schedule_rules.read",
       "settings.schedule_rules.manage",
     ];
+    context.actions = ["workspace.read", "settings.scheduling.write"];
     vi.mocked(loadSchedulingSettings).mockResolvedValue(settings);
     vi.mocked(saveSchedulingSettings).mockResolvedValue(undefined);
     vi.mocked(loadWeeklyPreferenceSettings).mockResolvedValue(weeklySettings);
@@ -172,6 +173,21 @@ describe("SchedulingSettingsPage checklist mode", () => {
       (screen.getByRole("radio", { name: "12-hour" }) as HTMLInputElement)
         .checked,
     ).toBe(true);
+  });
+
+  it("keeps the rules read-only for someone the core does not let write them", async () => {
+    // The permission key is still there; the core's action is not.
+    context.actions = ["workspace.read"];
+    renderPage("/app/settings/scheduling");
+
+    const saveButton = await screen.findByRole("button", {
+      name: /save rules/i,
+    });
+    // The whole rules form sits in a disabled fieldset.
+    expect(saveButton.closest("fieldset")).toHaveProperty("disabled", true);
+    expect(
+      screen.queryByRole("region", { name: "Availability and staffing" }),
+    ).toBeNull();
   });
 
   it("saves weekly policy independently", async () => {

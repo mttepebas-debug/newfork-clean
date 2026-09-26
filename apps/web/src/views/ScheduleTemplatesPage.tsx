@@ -13,6 +13,7 @@ import {
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import {
   deleteScheduleTemplate,
   listScheduleTemplates,
@@ -34,8 +35,7 @@ export default function ScheduleTemplatesPage() {
   const { context } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const canManageTemplates =
-    context?.permissions.includes("schedule.templates.manage") ?? false;
+  const canManageTemplates = can(context, "schedule.templates");
   const [renameTarget, setRenameTarget] =
     useState<ScheduleTemplateSummary | null>(null);
   const [renameValue, setRenameValue] = useState("");

@@ -80,6 +80,21 @@ vi.mock("./auth/AuthContext", async () => {
       allLocations: true,
     },
     permissions: shared.permissionsForRole(role),
+    // What the core would list for this role with every location: the
+    // workspace-wide actions the matrix twin answers yes to.
+    actions: shared.authzActionKeys.filter((action) => {
+      const rule = (shared.targetedAuthzActions as Record<string, { person?: boolean }>)[action];
+      return rule !== undefined && !rule.person && (shared.expected as (...args: unknown[]) => boolean)(
+        {
+          workspaceId,
+          role,
+          status: "active",
+          locationIds: [],
+          permissions: shared.permissionsForRole(role),
+        },
+        action,
+      );
+    }),
     onboarding: { status: "complete", currentStep: 2 },
     documentAccess: { restricted: false },
     locationScope: { allLocations: true, locationIds: [] },

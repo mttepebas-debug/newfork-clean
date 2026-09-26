@@ -150,9 +150,7 @@ import {
   validDate,
   validIds,
 } from "../schedule/lib/scheduleFilterModel";
-import {
-  canExportSchedule,
-} from "../schedule/lib/exportAccess";
+import { scheduleGates } from "../schedule/lib/scheduleGates";
 import {
   addDays,
   currentWeekStart,
@@ -259,7 +257,8 @@ export function SchedulePage({
     selectedDate,
     view,
   );
-  const canExportSchedules = canExportSchedule(context?.permissions);
+  const gates = scheduleGates(context);
+  const canExportSchedules = gates.export;
   const [session, setSession] = useState<ScheduleEditSession | null>(null);
   // A context transition must invalidate old saves even if the same session is later resumed.
   const mutationContext = useMemo(() => ({
@@ -1943,7 +1942,7 @@ export function SchedulePage({
     (item) => item.status === "published",
   );
   const canPublishSchedule =
-    context?.permissions.includes("schedule.publish") && !pastWeek;
+    gates.publish && !pastWeek;
   const publishDisabledInBlankPreview =
     canPublishSchedule &&
     !gridEditSession &&
@@ -2216,7 +2215,7 @@ export function SchedulePage({
           <FileDown size={15} aria-hidden /> Export
         </button>
       ) : null}
-      {context?.permissions.includes("schedule.templates.manage") ? (
+      {gates.templates ? (
         <button
           type="button"
           className={`schedule-template-action ${SCHEDULE_ACTION_BUTTON_CLASS}`}
@@ -2226,7 +2225,7 @@ export function SchedulePage({
           <LayoutTemplate size={15} aria-hidden /> Templates
         </button>
       ) : null}
-      {context?.permissions.includes("schedule.manage") ? (
+      {gates.edit ? (
         <>
           <DraftDropdownMenu
             drafts={drafts}
@@ -2580,7 +2579,7 @@ export function SchedulePage({
           context?.workspace.schedule_logo_placement ?? null
         }
         onManageLogo={
-          context?.permissions.includes("workspace.manage")
+          gates.manageLogo
             ? () => setLogoOpen(true)
             : undefined
         }
@@ -3309,7 +3308,7 @@ export function SchedulePage({
       {exportOpen && canExportSchedules && context && !isEditMode && !gridEditSession ? (
         <ExportController key={`${context.userId}:${context.workspace.id}`} userId={context.userId}
           workspaceId={context.workspace.id} result={exportSnapshot} onClose={closeExport}
-          canManageLocations={context.permissions.includes("settings.locations.manage")} sourceError={previewSource.error} />
+          canManageLocations={gates.manageLocations} sourceError={previewSource.error} />
       ) : null}
     </section>
   );

@@ -8,6 +8,7 @@ import { CalendarClock, Save } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import { WeeklyPreferenceSettingsPanel } from "../availability/WeeklyPreferenceSettings";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
@@ -42,8 +43,7 @@ const weekdays = [
 
 export default function SchedulingSettingsPage() {
   const { context } = useAuth();
-  const canEdit =
-    context?.permissions.includes("settings.schedule_rules.manage") ?? false;
+  const canEdit = can(context, "settings.scheduling.write");
   const location = useLocation();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
