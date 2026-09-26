@@ -157,7 +157,8 @@ export function renderScheduleBadgeWidthMeasurer({
       isPreset: false,
       color: type?.color ?? "#54736a",
       label: formatScheduleShiftBadgeTitle(type, job, showShiftType),
-      location: locationName ?? "",
+      // A ghost shows its place behind the pin, never as a line.
+      location: isGhostScheduleShift(shift) ? "" : (locationName ?? ""),
       meta: showShiftLabels && labelNames.length ? labelNames.join(" ") : "",
       time:
         showClockTimes && !shift.hide_time_on_badge
