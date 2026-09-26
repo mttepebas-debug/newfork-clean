@@ -106,7 +106,7 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
             {s.reason ? <p className={s.can_apply ? undefined : "default-hours-problem"}>{s.can_apply ? null : <CircleAlert size={15} aria-hidden />}{s.reason}</p> : null}
             {s.after_assessment?.reasons.map((r, i) => <p key={i}>{r.message}</p>)}
           </article>)}
-          <button type="button" disabled={!fresh || Boolean(pending) || !review.changed_count || Boolean(review.blocked_count)} onClick={() => void apply()}>{pending === "apply" ? "Applying…" : `${needsAvailabilityConfirmation ? "Confirm availability and apply" : "Apply"} ${review.changed_count} change${review.changed_count === 1 ? "" : "s"} to edit session`}</button>
+          <button type="button" disabled={!fresh || Boolean(pending) || !review.changed_count || Boolean(review.blocked_count)} onClick={() => void apply()}>{pending === "apply" ? "Applying…" : `${needsAvailabilityConfirmation ? "Confirm conflicts and apply" : "Apply"} ${review.changed_count} change${review.changed_count === 1 ? "" : "s"} to edit session`}</button>
         </section> : null}
       </div>
     </section>

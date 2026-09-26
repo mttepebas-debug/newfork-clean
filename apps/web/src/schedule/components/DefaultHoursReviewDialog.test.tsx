@@ -40,7 +40,7 @@ describe("default-hours batch review", () => {
     vi.mocked(previewScheduleDefaultHours).mockResolvedValue(weeklyPreview(policy));
     const ui = setup(); await review();
     expect(screen.queryByRole("textbox")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: policy === "confirm" ? /^Confirm availability and apply/ : /^Apply 1 change/ }));
+    fireEvent.click(screen.getByRole("button", { name: policy === "confirm" ? /^Confirm conflicts and apply/ : /^Apply 1 change/ }));
     await waitFor(() => expect(ui.onApplied).toHaveBeenCalled());
     expect(applyScheduleDefaultHours).toHaveBeenCalledWith(id, id, expect.objectContaining({
       confirm_availability: policy === "confirm", fingerprint: "a".repeat(64),

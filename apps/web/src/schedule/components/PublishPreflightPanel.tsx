@@ -5,14 +5,11 @@ import type {
 import { AlertTriangle, ArrowUpRight, CheckCircle2, Info, ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
-export const publishOverrideReasonMinLength = 10;
-
 type PublishPreflightTier = "blocker" | "risk" | "note";
 export type PublishPreflightBlockReason =
   | "unacknowledged"
   | "stale_fingerprint"
-  | "not_overrideable"
-  | "missing_reason";
+  | "not_overrideable";
 
 const blockReasonText: Readonly<Record<PublishPreflightBlockReason, string>> = {
   unacknowledged: "Review the findings below before publishing.",
@@ -20,7 +17,6 @@ const blockReasonText: Readonly<Record<PublishPreflightBlockReason, string>> = {
     "The schedule changed while this dialog was open. The findings below are refreshed — review them again.",
   not_overrideable:
     "A finding here cannot be overridden. Fix it in the schedule and try again.",
-  missing_reason: "Every blocker you override needs a written reason.",
 };
 
 type SchedulePublishFinding = SchedulePublicationPreview["findings"][number];
@@ -32,6 +28,20 @@ export function isWeeklyAvailabilityFinding(finding: SchedulePublishFinding): bo
 
 export function publishNewAvailabilityFindings(preview: SchedulePublicationPreview) {
   return preview.findings.filter((finding) => isWeeklyAvailabilityFinding(finding) && finding.availability_state === "new");
+}
+
+// "Ali shows as unavailable for this shift." A preference, never a blocker:
+// the publisher confirms each new one once (BL-186).
+export function publishNewAvailabilityWarnings(preview: SchedulePublicationPreview) {
+  return publishNewAvailabilityFindings(preview).filter((finding) => finding.code === "availability");
+}
+
+export function formatAcknowledgedAt(value: string): string {
+  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+export function countLabel(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
 }
 
 type SchedulePublishFindingWithPreflight = SchedulePublishFinding & {
@@ -99,22 +109,24 @@ export function PublishPreflightPanel({
   blockReason = null,
   onReviewShift,
   reviewDisabled = false,
+  availabilityAcknowledged = false,
+  onAvailabilityAcknowledgedChange,
 }: {
   readonly preview: SchedulePublicationPreview;
   readonly locations: readonly ScheduleLocation[];
-  readonly overrideReasons?: Readonly<Record<string, string>>;
-  readonly onOverrideReasonChange?: (findingId: string, value: string) => void;
-  readonly risksAcknowledged?: boolean;
-  readonly onRisksAcknowledgedChange?: (value: boolean) => void;
   readonly blockReason?: PublishPreflightBlockReason | null;
   readonly onReviewShift?: (finding: SchedulePublishFinding) => void;
   readonly reviewDisabled?: boolean;
+  readonly availabilityAcknowledged?: boolean;
+  readonly onAvailabilityAcknowledgedChange?: (value: boolean) => void;
 }) {
   const hard = publishHardBlockers(preview);
   const overrideable = publishOverrideableBlockers(preview);
   const risks = publishGatingRisks(preview);
   const informational = publishInformationalFindings(preview);
   const newAvailability = publishNewAvailabilityFindings(preview);
+  const availabilityWarnings = newAvailability.filter((finding) => finding.code === "availability");
+  const newConflicts = newAvailability.filter((finding) => finding.code !== "availability");
   const acceptedAvailability = preview.findings.filter((finding) => isWeeklyAvailabilityFinding(finding) && finding.availability_state === "accepted");
   const needsAvailabilityConfirmation = newAvailability.some((finding) => finding.warning_policy === "confirm");
   const ready =
@@ -137,13 +149,12 @@ export function PublishPreflightPanel({
             {ready
               ? "Ready to publish"
               : [
-                  blockerCount
-                    ? `${blockerCount} ${blockerCount === 1 ? "blocker" : "blockers"}`
+                  blockerCount ? countLabel(blockerCount, "blocker", "blockers") : null,
+                  risks.length ? countLabel(risks.length, "risk", "risks") : null,
+                  newConflicts.length ? countLabel(newConflicts.length, "schedule conflict", "schedule conflicts") : null,
+                  availabilityWarnings.length
+                    ? countLabel(availabilityWarnings.length, "availability warning", "availability warnings")
                     : null,
-                  risks.length
-                    ? `${risks.length} ${risks.length === 1 ? "risk" : "risks"}`
-                    : null,
-                  newAvailability.length ? `${newAvailability.length} schedule ${newAvailability.length === 1 ? "conflict" : "conflicts"}` : null,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -155,8 +166,10 @@ export function PublishPreflightPanel({
                 ? blockReasonText[blockReason]
               : hard.length
                 ? "Fix hard blockers in the schedule before publishing."
-                : needsAvailabilityConfirmation
+                : newConflicts.length
                   ? "Review the conflicts below, then continue to publish."
+                : availabilityWarnings.length
+                  ? "Some people are scheduled when they said they're unavailable. Confirm below to continue."
                 : risks.length
                   ? "Review these warnings before publishing."
                   : "Every override is recorded with the published audit trail."}
@@ -198,13 +211,30 @@ export function PublishPreflightPanel({
         />
       ) : null}
 
-      {newAvailability.length ? (
-        <WeeklyAvailabilityGroup findings={newAvailability} locations={locations} title="Current schedule conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
+      {newConflicts.length ? (
+        <WeeklyAvailabilityGroup findings={newConflicts} locations={locations} title="Current schedule conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
+      ) : null}
+      {availabilityWarnings.length ? (
+        <WeeklyAvailabilityGroup findings={availabilityWarnings} locations={locations} title="Availability" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled}>
+          <label className="schedule-publish-risk-ack">
+            <input
+              type="checkbox"
+              checked={availabilityAcknowledged}
+              disabled={reviewDisabled || !onAvailabilityAcknowledgedChange}
+              onChange={(event) => onAvailabilityAcknowledgedChange?.(event.target.checked)}
+            />
+            <span>
+              {availabilityWarnings.length === 1
+                ? "I've seen this warning and want to publish anyway"
+                : `I've seen these ${availabilityWarnings.length} warnings and want to publish anyway`}
+            </span>
+          </label>
+        </WeeklyAvailabilityGroup>
       ) : null}
       {acceptedAvailability.length ? (
         <details className="schedule-publish-accepted-availability">
           <summary>Previously accepted ({acceptedAvailability.length})</summary>
-          <WeeklyAvailabilityGroup findings={acceptedAvailability} locations={locations} title="Accepted schedule conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
+          <WeeklyAvailabilityGroup findings={acceptedAvailability} locations={locations} title="Accepted warnings" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
         </details>
       ) : null}
 
@@ -235,12 +265,13 @@ export function PublishPreflightPanel({
   );
 }
 
-function WeeklyAvailabilityGroup({ findings, locations, title, onReviewShift, reviewDisabled }: {
+function WeeklyAvailabilityGroup({ findings, locations, title, onReviewShift, reviewDisabled, children }: {
   readonly findings: readonly SchedulePublishFinding[];
   readonly locations: readonly ScheduleLocation[];
   readonly title: string;
   readonly onReviewShift?: (finding: SchedulePublishFinding) => void;
   readonly reviewDisabled?: boolean;
+  readonly children?: ReactNode;
 }) {
   return <section className="schedule-publish-finding-group risk schedule-publish-weekly-availability">
     <div className="schedule-publish-finding-heading"><AlertTriangle size={16} aria-hidden /><strong>{title}</strong></div>
@@ -248,9 +279,15 @@ function WeeklyAvailabilityGroup({ findings, locations, title, onReviewShift, re
       <div><strong>{finding.employee_name ?? (finding.employee_id ? "Employee" : "Unassigned")}</strong>
         <small>{finding.scheduled_date} · {finding.location_name ?? locations.find((location) => location.id === finding.location_id)?.name ?? finding.location_id}</small>
         <span>{finding.message}</span>
+        {finding.acknowledged_by_name && finding.acknowledged_at ? (
+          <small className="schedule-publish-acknowledged">
+            Acknowledged by {finding.acknowledged_by_name} · {formatAcknowledgedAt(finding.acknowledged_at)}
+          </small>
+        ) : null}
       </div>
       {onReviewShift && finding.shift_ids.length ? <button type="button" disabled={reviewDisabled} aria-label={`Show ${finding.employee_name ?? "employee"}'s shift on ${finding.scheduled_date}`} title="Show shift" onClick={() => onReviewShift(finding)}><ArrowUpRight size={16} aria-hidden /></button> : null}
     </div>)}
+    {children}
   </section>;
 }
 
@@ -259,8 +296,6 @@ function FindingGroup({
   tone,
   findings,
   locations,
-  overrideReasons = {},
-  onOverrideReasonChange,
   children,
 }: {
   readonly title: string;
@@ -276,8 +311,6 @@ function FindingGroup({
     readonly date?: string | null;
   }[];
   readonly locations: readonly ScheduleLocation[];
-  readonly overrideReasons?: Readonly<Record<string, string>>;
-  readonly onOverrideReasonChange?: (findingId: string, value: string) => void;
   readonly children?: ReactNode;
 }) {
   return (
@@ -291,48 +324,22 @@ function FindingGroup({
         <strong>{title}</strong>
       </div>
       {children}
-      {findings.map((finding) => {
-        const reason = overrideReasons[finding.id] ?? "";
-        const reasonTooShort =
-          reason.trim().length > 0 &&
-          reason.trim().length < publishOverrideReasonMinLength;
-        return (
-          <div key={finding.id} className="schedule-publish-finding-row">
-            <strong>
-              {finding.message}
-              {finding.projected ? <em>Projected</em> : null}
-            </strong>
-            <small>
-              {finding.date ?? finding.scheduled_date} ·{" "}
-              {finding.location_name ??
-                locations.find((location) => location.id === finding.location_id)
-                  ?.name ??
-                finding.location_id}
-            </small>
-            {finding.fix_hint ? <p>{finding.fix_hint}</p> : null}
-            {onOverrideReasonChange ? (
-              <label>
-                Reason
-                <textarea
-                  aria-label="Reason"
-                  value={reason}
-                  minLength={publishOverrideReasonMinLength}
-                  maxLength={500}
-                  placeholder="Why is this being published anyway? (recorded in the audit log)"
-                  onChange={(event) =>
-                    onOverrideReasonChange(finding.id, event.target.value)
-                  }
-                />
-                {reasonTooShort ? (
-                  <span>
-                    At least {publishOverrideReasonMinLength} characters.
-                  </span>
-                ) : null}
-              </label>
-            ) : null}
-          </div>
-        );
-      })}
+      {findings.map((finding) => (
+        <div key={finding.id} className="schedule-publish-finding-row">
+          <strong>
+            {finding.message}
+            {finding.projected ? <em>Projected</em> : null}
+          </strong>
+          <small>
+            {finding.date ?? finding.scheduled_date} ·{" "}
+            {finding.location_name ??
+              locations.find((location) => location.id === finding.location_id)
+                ?.name ??
+              finding.location_id}
+          </small>
+          {finding.fix_hint ? <p>{finding.fix_hint}</p> : null}
+        </div>
+      ))}
     </section>
   );
 }

@@ -405,6 +405,7 @@ export function ScheduleRow({
                       (item) => item.id === shift.shift_type_id,
                     )}
                     locationName={shiftLocationName(shift)}
+                    employeeName={employee?.display_name ?? null}
                     showShiftType={showShiftType}
                     showShiftLabels={showShiftLabels}
                     showClockTimes={showClockTimes}
@@ -425,6 +426,7 @@ export function ScheduleRow({
                       (item) => item.id === shift.shift_type_id,
                     )}
                     locationName={shiftLocationName(shift)}
+                    employeeName={employee?.display_name ?? null}
                     editing={editing}
                     showShiftType={showShiftType}
                     showShiftLabels={showShiftLabels}
