@@ -10,3 +10,5 @@
 .default-hours-result dt { font-weight: 600; }
 .default-hours-result dd { margin: 4px 0 10px; }
 .schedule-default-hours-dialog button { min-height: 44px; }
+.default-hours-problem { display: flex; align-items: flex-start; gap: 6px; color: var(--theme-danger); }
+.default-hours-problem svg { flex: none; margin-top: 2px; }

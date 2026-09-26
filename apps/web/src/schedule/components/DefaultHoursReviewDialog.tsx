@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CircleAlert } from "lucide-react";
 import { scheduleDefaultHoursInputSchema, type ScheduleDefaultHoursPreview, type ScheduleEditSession, type ScheduleReadModel } from "@newfork/shared/schedule";
 import { applyScheduleDefaultHours, previewScheduleDefaultHours } from "../schedule-data";
 import "./default-hours-review.css";
@@ -91,9 +92,9 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
             {s.scheduled_date} · {model.shift_types.find(t => t.id === s.shift_type_id)?.name ?? "Saved shift type"} · {model.employees.find(e => e.id === s.employee_id)?.display_name ?? "Open shift"} · {model.locations.find(l => l.id === s.location_id)?.name ?? "Location"}</label>)}</div>
         </fieldset>
         {!candidates.length ? <p>No saved reference-hour shifts in this range.</p> : null}
-        {!parsed.success ? <p>{parsed.error.issues[0]?.message}</p> : null}
+        {candidates.length && !command ? <p>{ids.length ? "Check the dates and shifts selected." : "Choose at least one shift to review."}</p> : null}
         <button type="button" disabled={!command || Boolean(pending)} onClick={() => void load()}>{pending === "review" ? "Reviewing…" : `Review ${ids.length} shift${ids.length === 1 ? "" : "s"}`}</button>
-        {error ? <p role="alert">{error}</p> : null}
+        {error ? <p role="alert" className="default-hours-problem"><CircleAlert size={15} aria-hidden />{error}</p> : null}
         {review ? <section aria-label="Default hours comparison" aria-live="polite">
           <p>Review for {review.starts_on} through {review.ends_on}: {review.changed_count} change{review.changed_count === 1 ? "" : "s"}, {review.blocked_count} blocked.</p>
           {!fresh ? <p role="status">This review is out of date. Review the selected shifts again before applying.</p> : null}
@@ -102,7 +103,7 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
             <dl><dt>Saved reference hours</dt><dd>{hours(s.before)}</dd>{s.after ? <><dt>Current defaults</dt><dd>{hours(s.after)}</dd></> : null}
               {s.before_assessment ? <><dt>Availability before</dt><dd>{s.before_assessment.coverage}</dd><dt>Availability after</dt><dd>{s.after_assessment?.coverage}</dd></> : null}
               <dt>Overlapping assignments</dt><dd>{s.before_overlap_count} before → {s.after_overlap_count} after</dd></dl>
-            {s.reason ? <p>{s.reason}</p> : null}
+            {s.reason ? <p className={s.can_apply ? undefined : "default-hours-problem"}>{s.can_apply ? null : <CircleAlert size={15} aria-hidden />}{s.reason}</p> : null}
             {s.after_assessment?.reasons.map((r, i) => <p key={i}>{r.message}</p>)}
           </article>)}
           <button type="button" disabled={!fresh || Boolean(pending) || !review.changed_count || Boolean(review.blocked_count)} onClick={() => void apply()}>{pending === "apply" ? "Applying…" : `${needsAvailabilityConfirmation ? "Confirm availability and apply" : "Apply"} ${review.changed_count} change${review.changed_count === 1 ? "" : "s"} to edit session`}</button>
