@@ -333,6 +333,17 @@ draft menüsünde taslağın üstüne yazma: ikonlu iki tık (UI-12, `unstyled` 
 penceresinde "Delete" iki tık ("Confirm delete"). Yayınlanmış taslağın
 satırında üstüne yazma düğmesi yok.
 
+Vardiya kartı düzeni (kullanıcı kararı 2026-09-26): Gerçek ve hayalet kart
+aynı bileşen düzenini kullanır (`apps/web/src/schedule/components/ShiftCard.tsx`:
+`ShiftCard` / `GhostShiftCard`). Satır sırası: 1) tip-iş, 2) label düz metin
+(kutucuk yok), 3) saat. Hayalet: bütün hayaletler tek ölü gri
+(`--schedule-ghost-*`), ince seyrek tarama, saydamlık yok (metin ≥5:1);
+lokasyon yalnız köşedeki iğnenin baloncuğunda (`apps/web/src/shell/Tooltip.tsx`).
+Köşe ikonu olan kart başlığa sağdan yer ayırır. Dışa aktarma lokasyonu yazıyla
+gösterir. Gerçek kartta iğne yok. **Açık soru (kullanıcıda):** birleşik
+görünümde gerçek kartta lokasyon satırı olacak mı. Not 2026-09-26 (`aff7ca8`):
+`Tooltip.tsx` ve `--schedule-ghost-*` henüz main'de değil, branch `ghost-11b`.
+
 Başka yöneticinin taslak adıyla kaydedince UI-13 penceresi sorar:
 "Overwrite "<ad>"?"; Cancel derse hata satırı başka ad seçmesini söyler.
 
