@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(43);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('94000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','phase5d-manager@example.test','','{}','{}',now(),now()),
@@ -80,6 +80,22 @@ select is(jsonb_array_length(public.list_schedule_export_presets_service('d9f43e
 select is(public.delete_schedule_export_preset_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(preset->>'id')::uuid)->>'status','deleted','export preset deletes') from phase5d_state;
 select is(jsonb_array_length(public.list_schedule_export_presets_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'presets'),0,'deleted preset disappears') from phase5d_state;
 select throws_ok($$select public.create_schedule_template_service('94000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','94200000-0000-4000-8000-000000000001','Denied',true)$$,'42501','Not allowed','employee cannot create template');
+-- BL-160: the message alone is the same for every authz.* reason; check the
+-- reason itself (an employee is refused for missing permission, not, say,
+-- a document block).
+create function pg_temp.said(statement text) returns text
+language plpgsql as $$
+declare code text; reason text; what text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint, what = pg_exception_detail;
+  return concat_ws(' ', code, nullif(reason, ''), nullif(what, ''));
+end;
+$$;
+select is(pg_temp.said($$select public.create_schedule_template_service('94000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','94200000-0000-4000-8000-000000000001','Denied',true)$$),
+  '42501 authz.missing_permission schedule.templates', 'an employee is refused for missing permission, not some other reason');
 select throws_ok($$select public.preview_schedule_export_service('94000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'published',null,array['11000000-0000-4000-8000-000000000001'::uuid])$$,'42501','Not allowed','employee cannot export manager schedule');
 
 select * from finish();

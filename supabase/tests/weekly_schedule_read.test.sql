@@ -83,6 +83,22 @@ select tests.stops_working_at((select id from public.workspace_memberships where
 -- With no location left the manager reads no week at all (FB-6.1 .4: the core
 -- refuses a manager out of reach instead of returning an empty grid).
 select throws_ok($$select pg_temp.read_model()$$,'42501','Not allowed','revoked location scope removes preference projection');
+-- BL-160: the message alone is the same for every authz.* reason; check the
+-- reason itself (an empty scope is refused as out of scope, not, say, missing
+-- a permission it actually has).
+create function pg_temp.said(statement text) returns text
+language plpgsql as $$
+declare code text; reason text; what text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint, what = pg_exception_detail;
+  return concat_ws(' ', code, nullif(reason, ''), nullif(what, ''));
+end;
+$$;
+select is(pg_temp.said($$select pg_temp.read_model()$$),
+  '42501 authz.out_of_scope schedule.read', 'a revoked location scope is refused as out of scope, not some other reason');
 select ok(not has_function_privilege('authenticated','app_private.schedule_week_availability(uuid,date,uuid[],uuid[],boolean)','EXECUTE'),'raw projection helper is private');
 select * from finish();
 rollback;

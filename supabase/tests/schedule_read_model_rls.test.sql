@@ -1,6 +1,24 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(20);
+
+-- BL-160: a "no" carries its own reason; checking only the message ('Not
+-- allowed' is the same string for every authz.* hint) would still pass if
+-- the wrong reason came back, "another tenant" answering document_blocked.
+create function pg_temp.said(statement text) returns text
+language plpgsql as $$
+declare code text; reason text; what text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint, what = pg_exception_detail;
+  return concat_ws(' ', code, nullif(reason, ''), nullif(what, ''));
+end;
+$$;
+-- The file switches role further down (authenticated, service_role); a temp
+-- function's default execute grant does not reach past the connecting role.
+grant execute on function pg_temp.said(text) to public;
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -100,14 +118,20 @@ select throws_ok(
   $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000003', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$,
   '42501', 'Not allowed', 'employee access class cannot read manager Schedule'
 );
+select is(pg_temp.said($$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000003', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$),
+  '42501 authz.missing_permission schedule.read', 'employee access class is refused for missing permission, not some other reason');
 select throws_ok(
   $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$,
   '42501', 'Not allowed', 'cross-tenant Schedule read is denied'
 );
+select is(pg_temp.said($$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$),
+  '42501 authz.not_member schedule.read', 'a true outsider is refused as not a member, not some other reason');
 select throws_ok(
   $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000002', '2026-08-19')$$,
   '42501', 'Not allowed', 'same account employee role in another tenant cannot read manager Schedule'
 );
+select is(pg_temp.said($$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000002', '2026-08-19')$$),
+  '42501 authz.missing_permission schedule.read', 'the same account is a member there too, just without the permission, not some other reason');
 
 select * from finish();
 rollback;

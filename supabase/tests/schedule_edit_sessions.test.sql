@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(25);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -53,10 +53,15 @@ select is((select count(*)::integer from edit_test_state), 1, 'owner acquires a 
 select is((select jsonb_array_length(public.get_schedule_edit_session_service(
   'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', session_id)->'shifts')
   from edit_test_state), 7, 'published source copies seven shifts');
+-- A schedule edit locks its draft, not its week (user decision 2026-09-24,
+-- FOUNDATION-B 3b): a session opened from the published week or a blank one
+-- never blocks another such session, however busy the owner already is with
+-- theirs. Only opening the very same *named* draft (schedule_resume_lease,
+-- schedule_edit_locks) hands back a lease conflict.
 select is((public.acquire_schedule_edit_session_service(
   '51000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
   current_date - (extract(isodow from current_date)::integer - 1), 'blank', null
-)->>'status'), 'conflict', 'second manager receives a lease conflict');
+)->>'status'), 'acquired', 'second manager opens their own blank session alongside it');
 
 with mutated as (
   select public.mutate_schedule_edit_shift_service(
@@ -225,6 +230,25 @@ select throws_ok(
     current_date - (extract(isodow from current_date)::integer - 1), 'blank', null)$$,
   '42501', 'Not allowed', 'employee cannot acquire an edit session'
 );
+-- BL-160: the message alone ('Not allowed') is the same string for every
+-- authz.* reason; check the reason itself so a wrong one (say, a document
+-- block) could not quietly pass this test too.
+create function pg_temp.said(statement text) returns text
+language plpgsql as $$
+declare code text; reason text; what text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint, what = pg_exception_detail;
+  return concat_ws(' ', code, nullif(reason, ''), nullif(what, ''));
+end;
+$$;
+select is(pg_temp.said(
+  $$select public.acquire_schedule_edit_session_service(
+    '51000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+    current_date - (extract(isodow from current_date)::integer - 1), 'blank', null)$$),
+  '42501 authz.missing_permission schedule.edit', 'an employee is refused for missing permission, not some other reason');
 select throws_ok(
   $$select public.mutate_schedule_edit_shift_service(
     '51000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
