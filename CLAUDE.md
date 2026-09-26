@@ -202,8 +202,8 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 - Performans: Schedule ızgarası okuması ≤50 ms (fixture). Gevşetmek kullanıcı onayı ister.
 - UI: yalnız light tema. Ham hex yerine `--theme-*` token'ları. Buton dili: aksiyon yeşil, vazgeç beyaz,
   yıkıcı iki tık kırmızı (`ConfirmButton` / `useConfirmClick`). Tarayıcı diyaloğu yok
-  (`apps/web/src/shell/ConfirmDialog.tsx`). Kullanıcı metninde "workspace" / "team" gibi sistem
-  kelimeleri yok. Tasarım kararlarının kaynağı `docs/design-canvas.md`. Görsel kararda önce dinle,
+  (`apps/web/src/shell/ConfirmDialog.tsx`). Kullanıcı metninde iş yerine "workspace", ekibe
+  "team" denir (kullanıcı kararı 2026-09-20); kod adları ekranda görünmez. Tasarım kararlarının kaynağı `docs/design-canvas.md`. Görsel kararda önce dinle,
   dayatma: gerçek uygulamada DEV'de query param ile açılan 2–3 varyant hazırla.
 - Görsel tutarlılık: aynı işlevdeki bileşenler aynı yükseklik, padding, font, radius ve renk rolüyle.
   Dokunduğun ekranda gördüğün her tutarsızlığı raporla.
