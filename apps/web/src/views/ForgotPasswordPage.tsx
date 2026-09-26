@@ -41,7 +41,9 @@ export default function ForgotPasswordPage() {
       }
     >
       {sent ? (
-        <p role="status">If an account exists for this email, we sent a reset link.</p>
+        <p className="form-success" role="status">
+          If an account exists for this email, we sent a reset link.
+        </p>
       ) : (
         <form className="sign-in-form" onSubmit={submit}>
           <div className="onboarding-field">
@@ -71,7 +73,9 @@ export default function ForgotPasswordPage() {
           </div>
         </form>
       )}
-      <Link to="/sign-in">Back to sign in</Link>
+      <Link className="pb-link" to="/sign-in">
+        Back to sign in
+      </Link>
     </PreBizFrame>
   );
 }

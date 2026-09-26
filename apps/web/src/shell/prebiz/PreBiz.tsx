@@ -27,6 +27,12 @@ export function AccountBlock() {
   );
 }
 
+// BL-137 link colour, DEV only: `?variant=quiet` on the first load shows the
+// trust-link grey instead of green until reload. Delete once one is chosen.
+const quietLinks =
+  import.meta.env.DEV &&
+  new URLSearchParams(window.location.search).get("variant") === "quiet";
+
 export function PreBizFrame({
   titleId,
   title,
@@ -44,7 +50,7 @@ export function PreBizFrame({
   return (
     // A gate screen has no steps to carry, so the frame is a thin bar instead
     // of the wizard's side panel: nothing is left holding an empty column.
-    <div className="pb-gate">
+    <div className={quietLinks ? "pb-gate pb-links-quiet" : "pb-gate"}>
       <header className="pb-topbar">
         <span className="pb-brand">NEWFORK</span>
         <AccountBlock />
