@@ -28,7 +28,7 @@ $$;
 create function pg_temp.assess(changes jsonb default '{}') returns jsonb language sql stable as $$
  select public.assess_weekly_shift_availability(w,emp,pg_temp.shift(changes)) from f;
 $$;
-select is((select conflict_rules->>'availability' from public.workspace_scheduling_settings where workspace_id=(select w from f)),'confirm','new workspace defaults to confirmation');
+select ok((select not conflict_rules ? 'availability' from public.workspace_scheduling_settings where workspace_id=(select w from f)),'a new workspace has no availability rule: availability is a preference (BL-186)');
 select is(pg_temp.assess()->>'conflict_severity','allow','clear assignment is allowed');
 select is(pg_temp.assess('{"start_time":"09:00","end_time":"09:00"}')->>'conflict_severity','block','equal hours are immutable block');
 select is(pg_temp.assess('{"start_time":null,"end_time":null}')->>'conflict_severity','confirm','a proposal without hours needs confirmation');

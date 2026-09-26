@@ -36,11 +36,12 @@ update ws set session=(public.acquire_schedule_edit_session_service(manager,w,'2
 update ws s set original_revision=e.revision from public.schedule_edit_sessions e where e.id=s.session;
 update ws set payload=jsonb_build_object('location_id',loc,'employee_id',emp,'job_id',job,'scheduled_date','2035-01-15',
  'time_basis','explicit','start_time','18:00','end_time','20:00','time_timezone','America/Los_Angeles','note','');
--- Two conflicting days: Monday (day 15, index 1) for the batch's own valid
--- acceptance below, Friday (2035-01-19, index 5) kept clean until the O1
--- fix needs a second, independent conflict.
-insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,preference,revision,updated_by)
- select w,emp,true,jsonb_set(jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true'),'{days,5,all_day}','true'),1,manager from ws;
+-- Two conflicting days, both closed (Require confirmation): Monday (the 15th)
+-- for the batch's own valid acceptance below, Friday (the 19th) for the O1
+-- fix's second, independent conflict. Availability is only a warning since
+-- BL-186, so a closure carries the acceptance these checks are about.
+insert into public.schedule_closures(id,workspace_id,location_id,closed_date,title,created_by)
+ select gen_random_uuid(),w,loc,d,'Closed',owner_id from ws cross join unnest(array['2035-01-15'::date,'2035-01-19'::date]) d;
 update ws set payload=payload||jsonb_build_object('availability_assessment_fingerprint',public.assess_schedule_shift_service(manager,w,payload,null,session)->>'fingerprint');
 update ws set batch=jsonb_build_array(payload,payload||'{"scheduled_date":"2035-01-16"}');
 create function pg_temp.create_batch(p jsonb default null,k uuid default null) returns jsonb language sql as $$
@@ -49,7 +50,7 @@ $$;
 -- The first item is payload as built above: Monday, a real conflict, and a
 -- fingerprint that actually matches, so it commits on its own merits AND
 -- records a genuine acceptance. The later, second item is a *different*
--- conflicting day (Friday, its own reminder) with a fingerprint that can
+-- conflicting day (Friday, its own closure) with a fingerprint that can
 -- never match, so only ITS staleness is under test, and the whole batch,
 -- including the first item's already-written acceptance, must still roll
 -- back together (nf-guvenlik O1, 2026-09-26).
@@ -73,7 +74,7 @@ select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload,payload
 select is((select count(*) from public.schedule_edit_session_shifts where workspace_id=(select w from ws)),0::bigint,'approved-leave failure also leaves no earlier assignment');
 select lives_ok($$select pg_temp.create_batch()$$,'valid warn batch commits all assignments once');
 select is((select count(*) from public.schedule_edit_session_shifts where workspace_id=(select w from ws)),2::bigint,'both assignments created');
-select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),1::bigint,'only the unavailable shift has acceptance');
+select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),1::bigint,'only the shift on the closed day has acceptance');
 select lives_ok($$select pg_temp.create_batch()$$,'exact retry succeeds despite original stale session revision');
 select is((select count(*) from public.schedule_edit_session_shifts where workspace_id=(select w from ws)),2::bigint,'retry creates no duplicate');
 select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload)) from ws$$,'40001',null,'same key with changed body is rejected');
@@ -81,8 +82,8 @@ select throws_ok($$select pg_temp.create_batch(null,gen_random_uuid())$$,'40001'
 select public.mutate_schedule_edit_shift_service(s.manager,s.w,s.session,e.revision,'create',gen_random_uuid(),null,s.payload||'{"scheduled_date":"2035-01-17"}',gen_random_uuid())->>'revision'
  from ws s join public.schedule_edit_sessions e on e.id=s.session;
 select is((pg_temp.create_batch()->>'revision')::integer,(select revision from public.schedule_edit_sessions where id=(select session from ws)),'retry returns current state instead of overwriting later edits');
-update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from ws);
-update public.manager_weekly_reminders set preference=jsonb_set(preference,'{days,4,all_day}','true') where workspace_id=(select w from ws);
+insert into public.schedule_closures(id,workspace_id,location_id,closed_date,title,created_by)
+ select gen_random_uuid(),w,loc,'2035-01-18','Closed',owner_id from ws;
 update ws s set original_revision=e.revision,request_key=gen_random_uuid(),payload=payload||'{"scheduled_date":"2035-01-18"}' from public.schedule_edit_sessions e where e.id=s.session;
 select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload)) from ws$$,'PT409',null,'confirm policy cannot use an earlier conflict fingerprint');
 update ws set payload=payload||jsonb_build_object('availability_assessment_fingerprint',public.assess_schedule_shift_service(manager,w,payload,null,session)->>'fingerprint');
