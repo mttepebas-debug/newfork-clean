@@ -336,6 +336,39 @@ begin
 end;
 $$;
 
+-- The employee's own "My availability" mark: unavailable on one weekday
+-- (0 = Sunday .. 6 = Saturday, matching extract(dow)) for a clock range
+-- (e.g. '18:00', '22:00'). Every other day is left available. BL-186 (a
+-- preference, never a block).
+create or replace function tests.availability(w text, person_label text, weekday integer, start_time text, end_time text)
+returns void
+language plpgsql
+set search_path = ''
+as $$
+declare
+  actor uuid := tests.user(w || ':' || person_label);
+  workspace uuid := tests.id(w);
+  employee uuid := tests.id(w || ':' || person_label);
+  preference jsonb;
+begin
+  select jsonb_build_object('input_mode', 'time_range', 'days', jsonb_agg(
+    case when day = weekday then jsonb_build_object(
+      'day', day, 'all_day', false, 'shift_type_ids', '[]'::jsonb,
+      'range', jsonb_build_object('start', start_time, 'end', end_time))
+    else jsonb_build_object('day', day, 'all_day', false, 'shift_type_ids', '[]'::jsonb, 'range', null) end
+    order by day
+  )) into preference
+  from generate_series(0, 6) day;
+
+  perform public.weekly_preferences_save_service(
+    actor, workspace,
+    jsonb_build_object('source', 'employee', 'employee_id', employee, 'preference', preference, 'decisions', '[]'::jsonb),
+    gen_random_uuid()
+  );
+  perform tests.settle();
+end;
+$$;
+
 -- A tag the owner made in Settings > Shift labels (found if it is already
 -- there). Label: <w>:label:<lowercase name>.
 create or replace function tests.shift_label(w text, label_name text)
