@@ -32,7 +32,8 @@ async function askForLink(page: Page, email: string) {
 }
 
 async function saveNewPassword(page: Page, tokenHash: string) {
-  await page.goto(`/reset-password?token_hash=${encodeURIComponent(tokenHash)}`);
+  // The API puts the token in the fragment, which never reaches a server log.
+  await page.goto(`/reset-password#token_hash=${encodeURIComponent(tokenHash)}`);
   await page.getByLabel("New password", { exact: true }).fill(newPassword);
   await page.getByLabel("Confirm password").fill(newPassword);
   await page.getByRole("button", { name: "Save password" }).click();

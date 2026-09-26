@@ -1,10 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { openPasswordResetSession, saveNewPassword } from "../lib/supabase";
+import {
+  abandonPasswordResetSession,
+  openPasswordResetSession,
+  saveNewPassword,
+} from "../lib/supabase";
 import ResetPasswordPage from "./ResetPasswordPage";
 
 vi.mock("../lib/supabase", () => ({
+  abandonPasswordResetSession: vi.fn(),
   openPasswordResetSession: vi.fn(),
   saveNewPassword: vi.fn(),
 }));
@@ -13,7 +18,7 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ account: null, authenticated: false, signOut: vi.fn() }),
 }));
 
-function renderPage(entry = "/reset-password?token_hash=hash-1") {
+function renderPage(entry = "/reset-password#token_hash=hash-1") {
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <Routes>
@@ -53,6 +58,32 @@ describe("ResetPasswordPage", () => {
     );
     expect(saveNewPassword).toHaveBeenCalledWith("new-password-1");
     expect(await screen.findByText("Signed in destination")).toBeTruthy();
+    // A saved password keeps the session it was saved with.
+    expect(abandonPasswordResetSession).not.toHaveBeenCalled();
+  });
+
+  it("does not read a token from the query string, which reaches server logs", () => {
+    renderPage("/reset-password?token_hash=hash-1");
+    expect(
+      screen.getByText("This reset link has expired or was already used."),
+    ).toBeTruthy();
+  });
+
+  it("signs out a session the link opened when the person leaves without saving", async () => {
+    vi.mocked(saveNewPassword).mockRejectedValue(new Error("Password is too weak."));
+    const { unmount } = renderPage();
+    fill("new-password-1");
+    await screen.findByRole("alert");
+    expect(abandonPasswordResetSession).not.toHaveBeenCalled();
+
+    unmount();
+    expect(abandonPasswordResetSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("has nothing to sign out when the person leaves before using the link", () => {
+    const { unmount } = renderPage();
+    unmount();
+    expect(abandonPasswordResetSession).not.toHaveBeenCalled();
   });
 
   it("refuses a confirmation that does not match before touching the link", async () => {

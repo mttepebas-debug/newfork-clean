@@ -27,12 +27,13 @@ function fakeAdmin() {
 
 async function appWith(
   send: PasswordResetSender | null,
-  extra: { responseFloorMs?: number; now?: () => number } = {},
+  extra: { responseFloorMs?: number; sendBudgetMs?: number; now?: () => number } = {},
 ) {
   const app = Fastify();
   registerPasswordResetRoutes(app, {
     send,
     responseFloorMs: extra.responseFloorMs ?? 0,
+    sendBudgetMs: extra.sendBudgetMs ?? 0,
     now: extra.now,
   });
   await app.ready();
@@ -76,20 +77,53 @@ describe("password reset request", () => {
     await app.close();
   });
 
-  it("does not answer before the fixed floor, however fast or slow the send is", async () => {
-    const never = vi.fn(() => new Promise<void>(() => undefined));
+  it("waits for the send but cuts it at the budget, so every answer comes at the floor", async () => {
+    let seen: AbortSignal | undefined;
+    const hung = vi.fn((_email: string, signal: AbortSignal) => {
+      seen = signal;
+      return new Promise<void>(() => undefined);
+    });
     const instant = vi.fn(async () => undefined);
+    let delivered = false;
+    const slowButInBudget = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      delivered = true;
+    });
 
-    for (const send of [never, instant]) {
-      const app = await appWith(send, { responseFloorMs: 60 });
+    for (const send of [hung, instant, slowButInBudget]) {
+      const app = await appWith(send, { responseFloorMs: 120, sendBudgetMs: 80 });
       const started = performance.now();
       const response = await post(app, known);
       const elapsed = performance.now() - started;
       expect(response.statusCode).toBe(202);
-      expect(elapsed).toBeGreaterThanOrEqual(55);
+      expect(elapsed).toBeGreaterThanOrEqual(115);
       expect(elapsed).toBeLessThan(1_000);
       await app.close();
     }
+    // The hung send was told to stop; the slow one finished before the answer.
+    expect(seen?.aborted).toBe(true);
+    expect(delivered).toBe(true);
+  });
+
+  it("takes the same time for an email with an account and one without", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
+    const send = createPasswordResetSender({
+      admin: fakeAdmin(),
+      appUrl: "http://app.test",
+      resendApiKey: "re_test",
+    });
+    const app = await appWith(send, { responseFloorMs: 120, sendBudgetMs: 80 });
+    const timed = async (email: string) => {
+      const started = performance.now();
+      const response = await post(app, email, `192.0.2.${email.length}`);
+      return { response, elapsed: performance.now() - started };
+    };
+    for (const { response, elapsed } of [await timed(known), await timed(unknown)]) {
+      expect(response.statusCode).toBe(202);
+      expect(elapsed).toBeGreaterThanOrEqual(115);
+      expect(elapsed).toBeLessThan(400);
+    }
+    await app.close();
   });
 
   it("hides a failed send behind the same answer", async () => {
@@ -165,17 +199,21 @@ describe("password reset sender", () => {
       emailFrom: "Newfork <security@newfork.test>",
     });
 
-    await send(known);
+    const signal = new AbortController().signal;
+    await send(known, signal);
 
     expect(admin.generateLink).toHaveBeenCalledWith({ type: "recovery", email: known });
     expect(fetch).toHaveBeenCalledTimes(1);
     const [target, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(target).toBe("https://api.resend.com/emails");
+    // Resend is told to stop when the route's budget runs out.
+    expect(init.signal).toBe(signal);
     const body = JSON.parse(String(init.body)) as { to: string[]; html: string; from: string };
     expect(body.to).toEqual([known]);
     expect(body.from).toBe("Newfork <security@newfork.test>");
     expect(body.html).toContain(
-      "http://app.test/reset-password?token_hash=hashed-token-1",
+      // In the fragment, so the token never reaches a server log.
+      "http://app.test/reset-password#token_hash=hashed-token-1",
     );
     expect(body.html).toContain("1 hour");
   });
@@ -188,7 +226,7 @@ describe("password reset sender", () => {
       appUrl: "http://app.test",
       resendApiKey: "re_test",
     });
-    await expect(send(unknown)).resolves.toBeUndefined();
+    await expect(send(unknown, new AbortController().signal)).resolves.toBeUndefined();
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -196,14 +234,17 @@ describe("password reset sender", () => {
     const fetch = vi.fn(async () => new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetch);
     await expect(
-      createPasswordResetSender({ admin: fakeAdmin(), appUrl: "http://app.test" })(known),
+      createPasswordResetSender({ admin: fakeAdmin(), appUrl: "http://app.test" })(
+        known,
+        new AbortController().signal,
+      ),
     ).resolves.toBeUndefined();
     await expect(
       createPasswordResetSender({
         admin: fakeAdmin(),
         appUrl: "http://app.test",
         production: true,
-      })(known),
+      })(known, new AbortController().signal),
     ).rejects.toThrow("not configured");
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -215,6 +256,6 @@ describe("password reset sender", () => {
       appUrl: "http://app.test",
       resendApiKey: "re_test",
     });
-    await expect(send(known)).rejects.toThrow("(500)");
+    await expect(send(known, new AbortController().signal)).rejects.toThrow("(500)");
   });
 });

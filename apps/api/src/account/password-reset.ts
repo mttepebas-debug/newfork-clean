@@ -6,7 +6,7 @@ import { z } from "zod";
 // Resend (the same road as invitations). The answer never says which case it
 // was: same status, same body, same time.
 
-export type PasswordResetSender = (email: string) => Promise<void>;
+export type PasswordResetSender = (email: string, signal: AbortSignal) => Promise<void>;
 
 interface RecoveryLinkAdmin {
   generateLink(params: { type: "recovery"; email: string }): PromiseLike<{
@@ -20,19 +20,23 @@ const requestBody = z.object({ email: z.string().trim().email().max(320) });
 const hour = 60 * 60 * 1000;
 const perEmailLimit = 3;
 const perAddressLimit = 10;
-// Every answer waits this long. generateLink plus a Resend call normally
-// finishes well inside it, so an account's existence does not show as time.
+// Every answer leaves at the floor. The send (generateLink + Resend) gets the
+// budget, which is under the floor, so an account's existence never shows as
+// time; a send still running at the budget is aborted and logged.
 const defaultResponseFloorMs = 1_500;
+const defaultSendBudgetMs = 1_200;
 
 export function registerPasswordResetRoutes(
   app: FastifyInstance,
   options: {
     readonly send: PasswordResetSender | null;
     readonly responseFloorMs?: number;
+    readonly sendBudgetMs?: number;
     readonly now?: () => number;
   },
 ) {
   const floorMs = options.responseFloorMs ?? defaultResponseFloorMs;
+  const budgetMs = options.sendBudgetMs ?? defaultSendBudgetMs;
   const now = options.now ?? Date.now;
   // ponytail: per-instance memory. On Vercel each warm instance keeps its own
   // counts, so the real ceiling is limit x instances; move to a DB-backed
@@ -71,11 +75,22 @@ export function registerPasswordResetRoutes(
         .header("retry-after", "3600")
         .send({ error: "Too many reset requests. Try again later." });
 
-    // Not awaited: the answer waits for the floor, not for the send.
-    void options.send(email).catch((error: unknown) => {
-      request.log.error({ err: error }, "password reset delivery failed");
-    });
-    await new Promise((resolve) => setTimeout(resolve, floorMs));
+    // The send is awaited (Vercel may freeze the function once the answer is
+    // out), but only for sendBudgetMs, which sits under the floor: every answer
+    // then leaves at the floor, account or not. Logs never carry the email.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), budgetMs);
+    const cutOff = new Promise<never>((_resolve, reject) =>
+      controller.signal.addEventListener("abort", () =>
+        reject(new Error("Password reset delivery timed out")),
+      ),
+    );
+    const delivery = Promise.race([options.send(email, controller.signal), cutOff])
+      .catch((error: unknown) => {
+        request.log.error({ err: error }, "password reset delivery failed");
+      })
+      .finally(() => clearTimeout(timer));
+    await Promise.all([delivery, new Promise((resolve) => setTimeout(resolve, floorMs))]);
     return reply.status(202).send({ status: "accepted" });
   });
 }
@@ -87,7 +102,7 @@ export function createPasswordResetSender(options: {
   readonly emailFrom?: string;
   readonly production?: boolean;
 }): PasswordResetSender {
-  return async (email) => {
+  return async (email, signal) => {
     const { data, error } = await options.admin.generateLink({ type: "recovery", email });
     const tokenHash = data?.properties?.hashed_token;
     // No account for this email: nothing to send, and nothing to say.
@@ -97,9 +112,11 @@ export function createPasswordResetSender(options: {
       if (options.production) throw new Error("Password reset delivery is not configured");
       return;
     }
-    const link = `${options.appUrl.replace(/\/$/, "")}/reset-password?token_hash=${encodeURIComponent(tokenHash)}`;
+    // The token rides in the fragment: a browser never sends it to a server,
+    // so it cannot land in an access log.
+    const link = `${options.appUrl.replace(/\/$/, "")}/reset-password#token_hash=${encodeURIComponent(tokenHash)}`;
     const response = await fetch("https://api.resend.com/emails", {
-      signal: AbortSignal.timeout(30_000),
+      signal,
       method: "POST",
       headers: {
         Authorization: `Bearer ${options.resendApiKey}`,
