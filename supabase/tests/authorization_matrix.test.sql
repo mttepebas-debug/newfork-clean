@@ -623,8 +623,6 @@ insert into known_gap values
    'an admin cannot save their own employee record, P0002 (stage 6, employees)'),
   ('important-date-no-as-validation', null, '{important_date.write}', '{K,B,x:K}',
    'an important date at a location out of reach or in another workspace is refused as 23514 "Choose a location in this workspace", not as a permission no: the browser insert runs its trigger before row security (stage 6, announcements)'),
-  ('time-off-rank', '{manager}', '{time_off.decide}', '{to:ayse,to:zeynep}',
-   'a manager can decide a manager or admin time-off request at their location; requests go one rank up (stage 6, time off)'),
   ('restricted-no-notifications', '{aydan}', '{notifications.read_own}', null,
    'somebody who has not finished onboarding cannot open their own notifications (stage 6, onboarding)'),
   ('membership-rows-open', '{manager,employee}', '{read.membership}', null,

@@ -47,7 +47,7 @@ select throws_ok($$select public.resolve_time_off_period_decision_service(manage
 select throws_ok($$select public.resolve_schedule_time_off_request_service(manager,w,request,null,'approve') from tpd$$,'40001','stale time off request','null revision cannot bypass optimistic concurrency');
 -- A manager whose employee profile owns the request also needs another reviewer.
 update public.workspace_memberships set role='admin',role_id=(select id from public.workspace_roles where workspace_id=(select w from tpd) and access_class='admin' limit 1) where user_id=(select actor from tpd) and workspace_id=(select w from tpd);
-select throws_ok($$select public.resolve_schedule_time_off_request_service(actor,w,request,1,'approve') from tpd$$,'42501','Own time-off decision access denied; another manager must review this request','manager cannot approve their own employee request');
+select throws_ok($$select public.resolve_schedule_time_off_request_service(actor,w,request,1,'approve') from tpd$$,'42501','Not allowed','manager cannot approve their own employee request');
 update public.workspace_memberships set role='employee',role_id=(select id from public.workspace_roles where workspace_id=(select w from tpd) and access_class='employee' limit 1) where user_id=(select actor from tpd) and workspace_id=(select w from tpd);
 update tpd set result=pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T12:00:00Z'),pg_temp.p('2035-01-15T12:00:00Z','2035-01-15T17:00:00Z','denied')),1,op);
 select is(result->>'status','partially_approved','a single requested period can receive a mixed decision') from tpd;

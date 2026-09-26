@@ -103,9 +103,7 @@ select is(app_private.scope_set(tests.user('sc:nur'), tests.id('sc'), 'schedule.
 create temporary table helper_caller (name text primary key, moves_in text not null);
 insert into helper_caller values
   -- FB-6.1 .4 moved the last fourteen Schedule callers (one function per job).
-  -- FB-6.3: time off
-  ('apply_time_off_period_decision', 'FB-6.3'),
-  ('decide_time_off_with_assignments_service', 'FB-6.3'),
+  -- FB-6.3: time off (BL-177 moved the two decision functions)
   ('mark_schedule_time_off_viewed_service', 'FB-6.3'),
   ('preview_time_off_assignment_decision_service', 'FB-6.3'),
   ('time_off_event_released_assignments', 'FB-6.3'),
@@ -134,7 +132,7 @@ select is(
   '{}'::text[],
   'every name on the list still asks them: a function that moved to the core comes off the list'
 );
-select is((select count(*)::integer from asks_helpers), 10, 'ten functions still ask the old helpers, all time off or shift exchanges (58 before FB-6.1 .2, 24 before .4)');
+select is((select count(*)::integer from asks_helpers), 8, 'eight functions still ask the old helpers, all time off or shift exchanges (58 before FB-6.1 .2, 24 before .4, 10 before BL-177)');
 
 -- 2. The "somewhere" shape ----------------------------------------------------------------
 -- Every target_locations => app_private.scope_set( call is the whole shape, asks
