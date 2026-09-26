@@ -9,5 +9,8 @@ metadata:
   (git mixed with `&&` chains, `(...) &`, `cd` + relative `../../..`, heredoc python + git). Split
   into single plain commands; run pnpm via the PowerShell tool; copy `.env.local` with absolute
   paths (`/c/Users/TheWe/Documents/Codex/newfork-clean/apps/{web,api}/.env.local`; root has none).
+- Never put the db.lock acquire, the e2e run and the lock release in ONE parallel tool batch: a
+  failed acquire does not stop the others, so e2e ran on nf-db's lock and `rm` deleted it
+  (BL-137, 2026-09-26). Acquire alone, read the result, then run.
 - `apps/web/src/**/*.test.tsx` and `packages/shared/src/index.test.ts` are CRLF. A scripted
   replace with `\n` literals finds nothing; normalise or match `\r\n`, and write back in CRLF.
