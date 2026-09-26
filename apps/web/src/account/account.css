@@ -564,6 +564,11 @@
   margin-inline: -18px;
   padding-inline: 18px;
 }
+/* The list does not clip (its menus overflow it), so the tint rounds its own
+   corners where it meets the list's rounded edge. */
+.account-main .workspace-list .pb-row[aria-current="true"]:first-child { border-radius: 8px 8px 0 0; }
+.account-main .workspace-list .pb-row[aria-current="true"]:last-child { border-radius: 0 0 8px 8px; }
+.account-main .workspace-list .pb-row[aria-current="true"]:only-child { border-radius: 8px; }
 /* The pill has the tint's own green; on that row it turns white. */
 .account-main .pb-row[aria-current="true"] .account-pill { background: var(--theme-surface); }
 /* Stacked on a narrow screen, the current row has no button to push the menu to

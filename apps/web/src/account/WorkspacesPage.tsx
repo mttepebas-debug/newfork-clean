@@ -141,6 +141,22 @@ export default function WorkspacesPage() {
     }
   };
 
+  // Arrow keys walk the open menu's enabled items; Tab keeps working as well.
+  const moveMenuFocus = (key: string): boolean => {
+    const items = [...(actionsMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [])];
+    if (!items.length) return false;
+    const at = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next = key === "Home" ? 0
+      : key === "End" ? items.length - 1
+        : key === "ArrowDown" ? (at + 1) % items.length
+          : key === "ArrowUp" ? (at <= 0 ? items.length - 1 : at - 1)
+            : -1;
+    const item = items[next];
+    if (!item) return false;
+    item.focus();
+    return true;
+  };
+
   useEffect(() => {
     setCandidates([]);
     setSearchError(null);
@@ -653,11 +669,23 @@ export default function WorkspacesPage() {
                       aria-haspopup="menu"
                       aria-expanded={actionsOpen}
                       onClick={() => setOpenActionsWorkspaceId(current => current === workspace.id ? null : workspace.id)}
+                      onKeyDown={(event) => {
+                        if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                        event.preventDefault();
+                        setOpenActionsWorkspaceId(workspace.id);
+                        const key = event.key === "ArrowDown" ? "Home" : "End";
+                        window.requestAnimationFrame(() => moveMenuFocus(key));
+                      }}
                     >
                       <Ellipsis size={18} aria-hidden />
                     </button>
                     {actionsOpen ? (
-                      <div className="workspace-actions-popover" role="menu" aria-label={`Actions for ${workspace.name}`}>
+                      <div
+                        className="workspace-actions-popover"
+                        role="menu"
+                        aria-label={`Actions for ${workspace.name}`}
+                        onKeyDown={(event) => { if (moveMenuFocus(event.key)) event.preventDefault(); }}
+                      >
                         <button
                           role="menuitem"
                           type="button"

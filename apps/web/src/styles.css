@@ -11032,8 +11032,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: var(--theme-muted);
   font-size: 12px;
 }
+/* No overflow clip: each row's actions menu opens below the list and must show whole. */
 .workspace-list {
-  overflow: hidden;
   border: 1px solid #d9dfdc;
   border-radius: 7px;
   background: var(--theme-surface);

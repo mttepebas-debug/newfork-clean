@@ -392,6 +392,27 @@ describe("WorkspacesPage", () => {
     expect(selectActiveWorkspace).not.toHaveBeenCalled();
   });
 
+  it("walks the actions menu with the arrow keys, skipping the disabled item", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    renderPage();
+
+    const trigger = await screen.findByRole("button", { name: "Actions for Meyhouse" });
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const menu = await screen.findByRole("menu", { name: "Actions for Meyhouse" });
+    const item = (name: string) => screen.getByRole("menuitem", { name });
+    await waitFor(() => expect(document.activeElement).toBe(item("Transfer ownership")));
+
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(item("Close later"));
+    fireEvent.keyDown(menu, { key: "End" });
+    expect(document.activeElement).toBe(item("Close now"));
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(item("Transfer ownership"));
+    fireEvent.keyDown(menu, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(item("Close now"));
+  });
+
   it("keeps owner actions in one accessible menu and returns focus on Escape", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     renderPage();
