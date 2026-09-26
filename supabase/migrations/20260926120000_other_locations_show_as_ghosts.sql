@@ -108,10 +108,15 @@ begin
     join public.locations location
       on location.id = shift.location_id and location.workspace_id = target_workspace_id
      and location.archived_at is null
-    -- Names travel with the ghost: an archived job or type is not in the model's lists.
-    join public.jobs job on job.id = shift.job_id and job.workspace_id = target_workspace_id
+    -- Names travel with the ghost, named as the grid names a real shift: from
+    -- the live job and type (null once archived or deleted, as the grid's
+    -- lists leave them out) and the labels as the shift recorded them.
+    left join public.jobs job
+      on job.id = shift.job_id and job.workspace_id = target_workspace_id
+     and job.archived_at is null and job.deleted_at is null
     left join public.shift_types shift_type
       on shift_type.id = shift.shift_type_id and shift_type.workspace_id = target_workspace_id
+     and shift_type.archived_at is null and shift_type.deleted_at is null
     where not exists (select 1 from allowed_locations allowed where allowed.id = shift.location_id)
   ), week_availability as materialized (
     select * from app_private.schedule_week_availability(

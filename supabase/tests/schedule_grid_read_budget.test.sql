@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(13);
 
 -- FOUNDATION-B 5.3: the Schedule grid reads a week with availability from the
 -- weekly marks within 50 ms: 30 people at two locations, most with marks, some
@@ -38,8 +38,8 @@ select tests.publish_week('wb', 1, (
   from generate_series(1, 30) n cross join (values (1), (3)) days(d)
 ));
 
--- ponytail: labelled by hand; the world builder publishes without labels.
-update public.schedule_published_shifts set label_names = array['On call']
+-- ponytail: labelled and noted by hand; the world builder publishes without.
+update public.schedule_published_shifts set label_names = array['On call'], note = 'Ghost note stays at Besiktas'
 where employee_id = tests.id('wb:p3') and location_id = tests.id('wb:B');
 
 create temp table wb_run (who text, n integer, ms numeric, marked integer, model jsonb);
@@ -84,6 +84,20 @@ select is((select count(*)::integer from mina_model, jsonb_array_elements(model 
 select is((select g -> 'label_names' from mina_model, jsonb_array_elements(model -> 'ghost_shifts') g
   where (g ->> 'employee_id')::uuid = tests.id('wb:p3')), '["On call"]'::jsonb,
   'a ghost carries its labels: Mina sees p3 is on call at Besiktas');
+select ok((select position('Ghost note stays at Besiktas' in model::text) = 0 from mina_model),
+  'the Besiktas shift''s note is nowhere in Mina''s model');
+select is((select (length(model::text) - length(replace(model::text, s.id::text, ''))) / length(s.id::text)
+  from mina_model, public.schedule_published_shifts s
+  where s.employee_id = tests.id('wb:p3') and s.location_id = tests.id('wb:B')), 1,
+  'the Besiktas shift appears once in Mina''s model, as a ghost, with nothing else of it');
+
+-- A job the grid no longer lists (archived) has no name on the ghost either.
+-- ponytail: archived by hand, after the measured reads.
+update public.jobs set archived_at = now() where id = tests.id('wb:job:cook');
+select is(
+  (select array_agg(distinct coalesce(g ->> 'job_name', 'null')) from jsonb_array_elements(
+    public.get_schedule_read_model_service(tests.user('wb:mina'), tests.id('wb'), tests.week(1)) -> 'ghost_shifts') g),
+  array['null'], 'an archived job is not named on a ghost, as the grid does not name it');
 select is((select model -> 'ghost_shifts' from wb_run where who = 'owner' and n = 1), '[]'::jsonb,
   'the owner reaches every location, so nothing is a ghost');
 
