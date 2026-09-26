@@ -3,7 +3,7 @@ import type {
   ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
-import { Check, CloudOff, Edit3 } from "lucide-react";
+import { Check, CloudOff, Edit3, MapPin } from "lucide-react";
 import type {
   CSSProperties,
   MouseEvent,
@@ -15,6 +15,7 @@ import {
   formatScheduleBadgeAriaLabel,
   formatScheduleShiftWarningAria,
 } from "../badgeAccessibility";
+import { Tooltip } from "../../shell/Tooltip";
 import type { TimeFormat } from "../timeInput";
 import type { ShiftPublicationState } from "./ScheduleContextMenu";
 import type { EffectiveScheduleShift } from "../hooks/useEffectiveShifts";
@@ -354,12 +355,12 @@ export function GhostShiftCard({
     : displayedLocation
       ? `also scheduled at ${displayedLocation}`
       : "";
+  // Every ghost wears the same dead gray; the place sits behind a pin, not on a line.
   return (
     <article
       className="schedule-shift-badge"
       style={
         {
-          "--shift-color": type?.color ?? "#54736a",
           "--schedule-row-badge-height": `${badgeHeight}px`,
         } as CSSProperties
       }
@@ -376,29 +377,25 @@ export function GhostShiftCard({
       data-schedule-row-key={rowKey}
       data-ghost="true"
       data-job-color-dot={false}
-      data-has-markers={false}
+      data-has-markers={Boolean(displayedLocation)}
       data-shift-labels-visible={showShiftLabels}
-      title={
-        sourceLocation
-          ? `Also scheduled at ${sourceLocation}${
-              warningText ? ` and ${warningText}` : ""
-            }`
-          : warningText || undefined
-      }
     >
+      {displayedLocation ? (
+        <span className="schedule-shift-badge-markers">
+          <Tooltip
+            label="Location"
+            content={displayedLocation}
+            className="schedule-ghost-location"
+          >
+            <MapPin size={12} strokeWidth={2.4} aria-hidden="true" />
+          </Tooltip>
+        </span>
+      ) : null}
       <span
         className="schedule-shift-badge-content"
         data-shift-badge-content="true"
       >
         <strong>{title}</strong>
-        {displayedLocation ? (
-          <span
-            className="schedule-shift-location"
-            data-shift-badge-location="true"
-          >
-            {displayedLocation}
-          </span>
-        ) : null}
         {showShiftLabels && labelText.displayText ? (
           <span className="schedule-shift-labels" title={labelText.fullText}>
             {labelText.displayText}
@@ -456,7 +453,7 @@ type GhostShiftMetadata = {
   readonly ghost_shift_type_name?: string | null;
 };
 
-function ghostShiftLocation(shift: ScheduleShift): string | null {
+export function ghostShiftLocation(shift: ScheduleShift): string | null {
   const metadata = shift as ScheduleShift & GhostShiftMetadata;
   return metadata.ghost_location_name ?? metadata.source_location_name ?? null;
 }
