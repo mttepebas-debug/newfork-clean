@@ -97,16 +97,24 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
   yeni `origin/main`'den görsel kısmı yapar. Dilim iki parça da main'e girince kapanır.
 
 ## 5. İş akışı (her iş)
-0. Onay: kullanıcı işi onaylar (bölüm 11.3).
-1. Plan: `nf-planlama` `docs/plan/tasks/<ID>.md` açar (`_TEMPLATE.md`: Goal / In scope /
+0. Tazelik kontrolü: iş backlog'dan, eski bir plandan ya da devir notundan geliyorsa, kullanıcıya
+   sunulmadan ve role verilmeden önce bugünkü `origin/main`'de (ve gerekiyorsa yerel DB'de) yeniden
+   ölçülür. Madde için bir hüküm: **geçerli** (anlatıldığı gibi duruyor), **değişmiş** (kısmen
+   düzelmiş ya da şekli farklı; madde bugünkü hâline göre yeniden yazılır), **bayat** (zaten
+   düzelmiş ya da artık anlamsız; kanıtıyla kapatılır, iş açılmaz). Hüküm, tarih ve commit ile
+   maddenin altına yazılır: "Tazelik 2026-09-26 (`<commit>`): geçerli — <kanıt, dosya:satır>".
+   Kullanıcıya iş, bu hükümle birlikte sunulur. Kontrolü `nf-planlama` yapar (kod okuma, SELECT);
+   küçük maddede koordinatör kendisi yapar.
+1. Onay: kullanıcı işi onaylar (bölüm 11.3).
+2. Plan: `nf-planlama` `docs/plan/tasks/<ID>.md` açar (`_TEMPLATE.md`: Goal / In scope /
    Out of scope / Done when / Touches / Test plan / Risk + "Reviewer:" satırı). "Done when" ölçülebilir.
-2. Kapsam (kökteki `kapsam-yonetimi.md`): yolda çıkan yeni fikir mevcut işe eklenmez (bölüm 11.4).
-3. Uygulama: ilgili rol. Hata için önce onu yakalayan kırmızı test, sonra düzeltme. Yeni davranış =
+3. Kapsam (kökteki `kapsam-yonetimi.md`): yolda çıkan yeni fikir mevcut işe eklenmez (bölüm 11.4).
+4. Uygulama: ilgili rol. Hata için önce onu yakalayan kırmızı test, sonra düzeltme. Yeni davranış =
    yeni test.
-4. İnceleme: `nf-guvenlik` (her kod işi); ekran değiştiyse ayrıca `nf-gorsel-qa`. Onay
+5. İnceleme: `nf-guvenlik` (her kod işi); ekran değiştiyse ayrıca `nf-gorsel-qa`. Onay
    `ONAY @<commit-sha>` biçiminde. Değişiklik istenirse aynı rol ajanına düzeltme için yeniden yazılır.
-5. Entegrasyon: koordinatör (bölüm 6).
-6. Kapanış: "Done when" maddelerinin kanıtı task dosyasının "Notes / Result"una yazılır
+6. Entegrasyon: koordinatör (bölüm 6).
+7. Kapanış: "Done when" maddelerinin kanıtı task dosyasının "Notes / Result"una yazılır
    (`nf-planlama` ya da koordinatör); koordinatör kullanıcıya bölüm 10'daki biçimde raporlar.
 
 ## 6. Git, worktree, entegrasyon (kod kaybı olmaz)
@@ -238,7 +246,7 @@ Kısa yaz, ham araç çıktısı yapıştırma.
    kullanıcının kelimeleriyle: ne anlaşıldı, kapsam içi ve bilerek dışarıda bırakılan, ne zaman
    bitmiş sayılır, hangi rol(ler) ve neden. **Onay gelmeden iş başlamaz.** İstisna: kullanıcının
    onayladığı bir planın sıradaki adımı (ör. FOUNDATION-B aşamaları) sorulmadan yürür. Yazılı bir
-   şeye (backlog, eski plan, devir notu) göre davranmadan önce bugünkü repoda ölçülür. Rolün
+   şeye (backlog, eski plan, devir notu) göre davranmadan önce bugünkü repoda ölçülür (tazelik kontrolü, bölüm 5 adım 0). Rolün
    modeli dosyasında sabittir; iş ona açıkça uymuyorsa koordinatör çağrıda modeli ezer ve söyler.
    Her görev mesajında bir "Skills" satırı: adım → skill → neden; alıcıda olmayan skill atlanır ve
    raporda söylenir.
