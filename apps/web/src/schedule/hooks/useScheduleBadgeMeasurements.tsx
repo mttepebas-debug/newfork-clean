@@ -13,7 +13,6 @@ import {
 } from "react";
 
 import {
-  availabilityWarningVariant,
   formatScheduleBadgeTimeRange,
   formatScheduleShiftBadgeTitle,
 } from "../components/ShiftCard";
@@ -166,7 +165,7 @@ export function renderScheduleBadgeWidthMeasurer({
       // Same corner space the card reserves (ShiftCard data-has-markers).
       hasMarkers: !isGhostScheduleShift(shift) && (
         Boolean(publicationStateForShift(shift)) ||
-        (availabilityWarningVariant === "corner" && shift.warning_codes.includes("availability"))
+        shift.warning_codes.includes("availability")
       ),
       hasStack:
         shift.employee_id === null &&
