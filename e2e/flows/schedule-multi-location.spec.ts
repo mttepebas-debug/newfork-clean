@@ -63,10 +63,18 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   await expect(ayseLocationHeaders).not.toContainText("Besiktas");
 
   // Ali's Besiktas shift shows as a ghost in Ayse's Kadikoy grid, tag included.
+  // 2026-09-26 decision: the ghost card itself carries no location line (only
+  // type-job, label, time); the location lives in the corner pin's tooltip
+  // bubble (Tooltip.tsx, aria-describedby) -- so it's confirmed here by
+  // opening that bubble, not by reading the card's own text.
   const ghost = ayse.getByTestId("ghost-shift-badge");
   await expect(ghost).toBeVisible();
-  await expect(ghost).toContainText("Besiktas");
+  await expect(ghost).toContainText("Cook");
   await expect(ghost).toContainText("On call");
+  await expect(ghost).toContainText("9:00 AM - 5:00 PM");
+  await expect(ghost).not.toContainText("Besiktas");
+  await ghost.getByRole("button", { name: "Location" }).click();
+  await expect(ayse.getByRole("tooltip")).toContainText("Besiktas");
 
   // A draft is needed before "Publish" is even enabled; an empty one is enough
   // to check which locations the button covers.
