@@ -11,3 +11,4 @@
 - [Oturumsuz e-posta ucu](checklist-public-auth-email-endpoint.md) — sızıntı sırası, Vercel'de beklenmeyen gönderim donar, recovery token_hash tek başına oturum
 - [Boş kablolama testleri](checklist-vacuous-wiring-tests.md) — düzeltmenin ana satırı silinse hangi test düşer; mock'lanan modül ve uzun taban tuzakları
 - [Mock sınırı ve zaman testi izolasyonu](checklist-mock-boundary-and-timing-isolation.md) — BL-137; test iddiası mocklanmış modülün dışında mı, tek testte birden fazla zaman vakası eşiği belirsizleştirir
+- [Daraltılan kısıtın ikizleri](checklist-check-narrowing-twins.md) — zod ikizi ve web seçenekleri, rpcFailure, JSON null CHECK'ten geçer, zincirleme kırmızılar
