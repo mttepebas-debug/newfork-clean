@@ -1981,9 +1981,11 @@ $function$
 -- Whether a manager reaches this person's availability with a permission,
 -- asked of the core about the person (where they work, their rank, whether it
 -- is the actor). Callers name the permission: availability.read ->
--- availability.team_read, availability.manage -> availability.team_write,
--- employees.manage -> employee.save (who hears of a change). Any other
--- permission is an unknown action (22023).
+-- availability.team_read, availability.manage -> availability.team_write.
+-- employees.manage is who hears of a change: every manager of a location the
+-- person works at, whatever the person's rank (user decision 2026-09-26), so
+-- it asks availability.team_read without the older employee-only access check.
+-- Any other permission is an unknown action (22023).
 CREATE OR REPLACE FUNCTION public.weekly_preference_manager_scope(actor uuid, w uuid, emp uuid, capability text)
  RETURNS boolean
  LANGUAGE sql
@@ -1992,9 +1994,9 @@ CREATE OR REPLACE FUNCTION public.weekly_preference_manager_scope(actor uuid, w 
 AS $function$
  with asked as (
   select case capability when 'availability.read' then 'availability.team_read'
-   when 'availability.manage' then 'availability.team_write' when 'employees.manage' then 'employee.save' end as action
+   when 'availability.manage' then 'availability.team_write' when 'employees.manage' then 'availability.team_read' end as action
  )
- select public.service_actor_can_access_employee(actor,w,emp)
+ select (capability = 'employees.manage' or public.service_actor_can_access_employee(actor,w,emp))
   and app_private.authz_reason(actor,w,asked.action,target_person=>emp) is null
  from asked;
 $function$

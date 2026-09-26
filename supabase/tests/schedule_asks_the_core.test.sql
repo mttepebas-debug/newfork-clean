@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(63);
+select plan(67);
 
 -- FB-6.1 step .2: Schedule's entry points ask the authorization core
 -- (app_private.authorize() / scope_set()) instead of the three old Schedule
@@ -243,6 +243,30 @@ select is(pg_temp.may_write_note('ayse', 'emre'), 'yes', 'Ayşe writes a note ab
 select is(pg_temp.may_write_note('ayse', 'can'), 'no', 'Ayşe does not write a note about Can, a manager at Kadıköy');
 select is(pg_temp.may_write_note('ayse', 'ayse'), 'no', 'Ayşe does not write a note about herself');
 select is(pg_temp.may_write_note('zeynep', 'owner'), 'no', 'an admin does not write a note about the owner');
+
+-- Who hears when somebody updates their own weekly availability: every
+-- manager of a location they work at, whatever their rank, and the owner and
+-- admins (user decision 2026-09-26). Read from the notification the save queues.
+create function pg_temp.hears(person text, whose text) returns boolean
+language plpgsql
+as $$
+declare heard jsonb;
+begin
+  perform public.weekly_preferences_save_service(tests.user('sc:' || whose), tests.id('sc'), jsonb_build_object(
+    'employee_id', tests.id('sc:' || whose), 'source', 'employee',
+    'expected_revision', coalesce((select p.revision from public.employee_weekly_preferences p where p.employee_id = tests.id('sc:' || whose)), 0),
+    'settings_revision', (select s.availability_preferences_revision from public.workspace_scheduling_settings s where s.workspace_id = tests.id('sc')),
+    'preference', public.empty_weekly_preference('time_range')), gen_random_uuid());
+  select o.payload -> 'recipient_user_ids' into heard from public.notification_outbox o
+  where o.workspace_id = tests.id('sc') and o.subject_type = 'weekly_availability' and o.subject_id = tests.id('sc:' || whose)::text
+  order by o.created_at desc, o.id desc limit 1;
+  return heard @> jsonb_build_array(tests.user('sc:' || person));
+end;
+$$;
+select is(pg_temp.hears('ayse', 'can'), true, 'Ayşe hears when Can, a manager at Kadıköy, updates his availability');
+select is(pg_temp.hears('zeynep', 'can'), true, 'the admin hears when Can updates his availability');
+select is(pg_temp.hears('ayse', 'emre'), true, 'Ayşe hears when Emre, who works at Kadıköy, updates his availability');
+select is(pg_temp.hears('mehmet', 'emre'), false, 'Mehmet (Beşiktaş) does not hear about Emre (Kadıköy)');
 
 -- With no live location in the workspace, the owner reads an empty Shift Hub
 -- manager view and team availability instead of a refusal.
