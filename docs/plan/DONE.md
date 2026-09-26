@@ -54,3 +54,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | BL-142 | kurulum sihirbazının alanları WCAG AA; telefonda Tab ile gelinen alan Continue çubuğunun arkasında kalmıyor | a4638b4
 2026-09-26 | FB-6.1.10 (BL-115) | belge eksiği olan çalışanın canlı bildirimleri sayfa açılışında ~5 sn gecikmiyor; izinsiz Shift Hub kanalı hiç açılmıyor | a458d32
 2026-09-26 | BL-139 | müsaitlik bildirimini alan müdür o kişinin müsaitliğini açabiliyor; Manager note yalnız çalışan hakkında, terfide siliniyor | f0ca450
+2026-09-26 | FB-6.1.5 | yalnız bazı lokasyonları yöneten müdür, kişilerin diğer lokasyonlardaki yayınlanmış vardiyalarını ghost kart olarak görüyor (iş, tip, etiket; not yok); ızgara ≤22 ms | 9dc5b39
