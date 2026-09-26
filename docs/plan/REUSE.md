@@ -118,7 +118,9 @@ gelince çözülür.
 | hesap | WorkspacesPage | `workspaces` | `account/WorkspacesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | kabuk | WorkspaceHubPage | | `shell/WorkspaceHubPage.tsx` | belgelenmedi |
 | kabuk | WorkspaceStatusPage | `/workspaces/status/:workspaceId` | `shell/WorkspaceStatusPage.tsx` | belgelenmedi |
-| giris | SignInPage | `/sign-in` | `views/SignInPage.tsx` | belgelenmedi |
+| giris | SignInPage | `/sign-in` | `views/SignInPage.tsx` | belgelendi 2026-09-26 |
+| giris | ForgotPasswordPage | `/forgot-password` | `views/ForgotPasswordPage.tsx` | belgelendi 2026-09-26 (BL-137; görsel cila bekliyor) |
+| giris | ResetPasswordPage | `/reset-password` | `views/ResetPasswordPage.tsx` | belgelendi 2026-09-26 (BL-137; görsel cila bekliyor) |
 | giris | AcceptInvitationPage | `/accept-invite`, `/invite/accept` | `employees/AcceptInvitationPage.tsx` | belgelenmedi |
 | kamuya acik | PrivacyPage / TermsPage / ContactPage / AccessibilityPage / PrivacyChoicesPage | `/privacy`, `/terms`, `/contact`, `/accessibility`, `/your-privacy-choices` | `public/PublicTrustPages.tsx` | belgelenmedi |
 | kurulum | OwnerOnboardingPage | `/welcome/:workspaceId/*` | `views/OwnerOnboardingPage.tsx` | belgelenmedi |
@@ -154,6 +156,88 @@ Bir sayfanın bölümü yazılırken başlık `### <Sayfa adı>` olur, tablodaki
 durumu `belgelendi <tarih>` yapılır, ve bölüm şunları söyler: sayfa ne işe
 yarar, yukarıdaki reuse girdilerinden hangilerini kullanır, kendine özgü
 kuralları neler, bilinen tuhaflıkları var mı.
+
+### SignInPage
+
+**Ne işe yarar.** `/sign-in`: içeri girme, yeni hesap ya da yeni workspace
+açma, davetle katılan biri için çalışan hesabı açma
+(`apps/web/src/views/SignInPage.tsx:1`).
+
+**Kullandığı ortak parçalar.** `PreBizFrame` (`shell/prebiz/PreBiz.tsx`) çerçeve
+ve başlık; `.sign-in-form` ve `.onboarding-field` alan düzeni; `.pb-btn` /
+`.pb-btn-primary` / `.pb-btn-secondary` / `.pb-btn-block` düğmeler
+(`SignInPage.tsx:74-136`).
+
+**Kendine özgü kurallar.**
+- Giriş modunda parola alanının altında "Forgot password?" bağlantısı
+  `/forgot-password`'a gider; yalnız hesap oluşturma modunda gizli
+  (`SignInPage.tsx:103-105`).
+- İkinci düğme (giriş/hesap oluşturma arasında geçiş) hiçbir zaman yeşil
+  değil — ekrandan çıkışın ikinci yolu olduğu için beyaz (`SignInPage.tsx:124-135`).
+- `?from=` hedefi yalnız aynı origin'e ve `/` ile başlayan bir yola izin
+  verir; başka bir şey `/app`'e döner (`safeSignInDestination`,
+  `SignInPage.tsx:149-159`).
+
+**Bilinen tuhaflıklar.** Yok.
+
+### ForgotPasswordPage
+
+**Ne işe yarar.** `/forgot-password`: parolasını unutan kişi e-postasını
+yazar, bir sıfırlama bağlantısı ister (BL-137,
+`apps/web/src/views/ForgotPasswordPage.tsx:1`).
+
+**Kullandığı ortak parçalar.** `PreBizFrame`, `.sign-in-form`,
+`.onboarding-field`, `.pb-btn pb-btn-primary pb-btn-block`
+(`ForgotPasswordPage.tsx:33-73`); API `requestPasswordReset`
+(`apps/web/src/lib/supabase.ts:626`).
+
+**Kendine özgü kurallar.**
+- Ekran hesap var olsun olmasın aynı metni gösterir: "If an account exists
+  for this email, we sent a reset link." — bir e-postanın Newfork'ta kayıtlı
+  olup olmadığı dışarıdan anlaşılmaz (`ForgotPasswordPage.tsx:44`).
+- Sunucu tarafında her cevap sabit 1,5 saniyede çıkar
+  (`defaultResponseFloorMs`, `apps/api/src/account/password-reset.ts:26,93`);
+  gönderim en çok 1,2 saniye beklenir (`defaultSendBudgetMs`, aynı dosya
+  satır 27), böylece hesabın var olup olmadığı yanıt süresinden de
+  anlaşılmaz.
+- Hız sınırı e-posta başına saatte 3, IP adresi başına saatte 10 istek
+  (`password-reset.ts:21-22`); aşılırsa 429 + `retry-after: 3600`
+  (`password-reset.ts:72-76`).
+
+**Bilinen tuhaflıklar.** BL-162: hız sınırı sunucu örneğinin belleğinde
+tutuluyor (Vercel'de örnek başına sayaç); kalıcı DB sayacı bekliyor.
+
+### ResetPasswordPage
+
+**Ne işe yarar.** `/reset-password`: e-postadaki bağlantıyla gelen kişi yeni
+parolasını belirler ve içeri girer (BL-137,
+`apps/web/src/views/ResetPasswordPage.tsx:1`).
+
+**Kullandığı ortak parçalar.** `PreBizFrame`, `.sign-in-form`,
+`.onboarding-field`, `.pb-btn pb-btn-primary pb-btn-block`
+(`ResetPasswordPage.tsx:76-125`); API `openPasswordResetSession` /
+`saveNewPassword` / `abandonPasswordResetSession`
+(`apps/web/src/lib/supabase.ts:639,651,659`).
+
+**Kendine özgü kurallar.**
+- Belirteç bağlantının `#token_hash=` parçasında (fragment) taşınır — bu bir
+  tarayıcının sunucuya hiç göndermediği kısımdır, log'a düşmez — ve sayfa
+  ilk render'dan sonra adres çubuğundan temizlenir (`ResetPasswordPage.tsx:20-32`).
+- Belirteç sayfa açılışında değil "Save password"a basılınca harcanır: bir
+  e-posta tarayıcısının bağlantıyı önden açması belirteci tüketmez
+  (`ResetPasswordPage.tsx:40-55`).
+- Belirteç bir kez harcanınca oturum açılır; parola reddedilirse ikinci
+  deneme aynı oturumla sürer. Sayfadan kaydetmeden ayrılınca (unmount) o
+  oturum kapatılır (`abandonPasswordResetSession`, `ResetPasswordPage.tsx:33-38`).
+- Yeni parola en az 8 karakter (`ResetPasswordPage.tsx:89,102`).
+- Belirteç yoksa, süresi geçmişse ya da zaten harcanmışsa ekran "Reset link
+  not valid" gösterir ve yeni bağlantı istemeye yönlendirir
+  (`ResetPasswordPage.tsx:68-74`).
+
+**Bilinen tuhaflıklar.** BL-161: Supabase'in kendi asgari parola uzunluğu 6
+(`supabase/config.toml:188`), web ekranları 8 istiyor; `updateUser`
+doğrudan Supabase'e gittiği için Supabase'i doğrudan çağıran biri 6
+karakterle geçebilir (yalnız kendi hesabına).
 
 ### ProfilePage, PreferencesPage, NotificationPreferencesPage (kısmi: butonlar)
 
