@@ -12,6 +12,7 @@ export const authzActionKeys = [
   "announcement.read",
   "announcement.write",
   "audit.read",
+  "availability.note_read",
   "availability.own",
   "availability.team_read",
   "availability.team_write",
@@ -94,6 +95,7 @@ interface TargetedRule {
 export const targetedAuthzActions = {
   "announcement.write": { permission: "announcements.manage" },
   "audit.read": { permission: "workspace.manage" },
+  "availability.note_read": { person: true, permission: "availability.read" },
   "availability.team_read": { person: true, permission: "availability.read" },
   "availability.team_write": { person: true, permission: "availability.manage" },
   "employee.archive": { person: true, permission: "employees.archive" },
@@ -229,17 +231,14 @@ export function expected<A extends TargetedAuthzAction>(
     case "availability.team_read":
       // Whoever hears of a person's availability update reads it: owner and
       // admins everybody, a manager everybody who works at their locations.
-      // Nobody reads the Manager note about themselves this way.
-      if (isSelf) return false;
       return high || shares;
 
     case "availability.team_write":
-      // A private availability note: the record edit rule. Owner and admins
-      // for themselves too; a manager only for somebody below them.
-      if (actor.role === "owner") return true;
-      if (actor.role === "admin") return isSelf || targetRank < rankOf.admin;
-      if (!shares || isSelf) return false;
-      return targetRank < rankOf.manager;
+    case "availability.note_read":
+      // The Manager note is about employees only, never a manager, an admin
+      // or the owner, themselves included.
+      if (person?.role !== "employee") return false;
+      return high || shares;
 
     case "employee.terminate":
     case "employee.archive":

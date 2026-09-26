@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(78);
+select plan(84);
 
 -- FB-6.1 step .2: Schedule's entry points ask the authorization core
 -- (app_private.authorize() / scope_set()) instead of the three old Schedule
@@ -228,8 +228,9 @@ select is(pg_temp.said(format($$select public.list_schedule_templates_service(%L
 select is(pg_temp.said(format($$select public.get_schedule_template_service(%L, %L, gen_random_uuid())$$, tests.user('sc:tina'), tests.id('sc'))),
   '42501 authz.missing_permission schedule.templates.read', 'a manager-type role without template access cannot open a template');
 
--- A manager's private availability note about a person (Team availability)
--- follows the record edit rule (user decision 2026-09-26, REUSE "Müsaitlik notu").
+-- The Manager note (Team availability) is about employees only: nobody writes
+-- or reads one about a manager, an admin or the owner, themselves included
+-- (user decision 2026-09-26, REUSE "Müsaitlik notu yalnız çalışan için").
 create function pg_temp.may_write_note(person text, whose text) returns text
 language plpgsql
 as $$
@@ -245,8 +246,10 @@ select is(pg_temp.may_write_note('ayse', 'can'), 'no', 'Ayşe does not write a n
 select is(pg_temp.may_write_note('ayse', 'ayse'), 'no', 'Ayşe does not write a note about herself');
 select is(pg_temp.may_write_note('zeynep', 'owner'), 'no', 'an admin does not write a note about the owner');
 select is(pg_temp.may_write_note('zeynep', 'zafer'), 'no', 'an admin does not write a note about another admin');
-select is(pg_temp.may_write_note('zeynep', 'zeynep'), 'yes', 'an admin writes a note about herself');
-select is(pg_temp.may_write_note('owner', 'owner'), 'yes', 'the owner writes a note about herself');
+select is(pg_temp.may_write_note('zeynep', 'zeynep'), 'no', 'an admin has no Manager note, not even her own');
+select is(pg_temp.may_write_note('owner', 'owner'), 'no', 'the owner has no Manager note, not even her own');
+select is(pg_temp.may_write_note('zeynep', 'emre'), 'yes', 'Zeynep (admin) writes a note about Emre, an employee');
+select is(pg_temp.may_write_note('zeynep', 'ayse'), 'no', 'Zeynep (admin) does not write a note about Ayşe, a manager');
 
 -- Who hears when somebody updates their own weekly availability: every
 -- manager of a location they work at, whatever their rank, and the owner and
@@ -272,15 +275,15 @@ select is(pg_temp.hears('zeynep', 'can'), true, 'the admin hears when Can update
 select is(pg_temp.hears('ayse', 'emre'), true, 'Ayşe hears when Emre, who works at Kadıköy, updates his availability');
 select is(pg_temp.hears('mehmet', 'emre'), false, 'Mehmet (Beşiktaş) does not hear about Emre (Kadıköy)');
 
--- Whoever hears of the update reads it: the person's weekly availability and
--- the Manager note (user decision 2026-09-26, REUSE "Müsaitlik okuma =
--- bildirim alıcıları", BL-139). The note stays hidden from the person it is
--- about unless they may write it (owner and admins).
+-- Whoever hears of the update reads the person's weekly availability (user
+-- decision 2026-09-26, REUSE "Müsaitlik okuma = bildirim alıcıları", BL-139);
+-- the Manager note comes with it only when the person is an employee.
 create function pg_temp.reads(reader uuid, whose uuid) returns boolean
 language plpgsql
 as $$
 begin
-  return jsonb_typeof(public.weekly_preferences_read_service(reader, tests.id('sc'), whose) -> 'manager') = 'object';
+  perform public.weekly_preferences_read_service(reader, tests.id('sc'), whose);
+  return true;
 exception when sqlstate '42501' then
   return false;
 end;
@@ -288,6 +291,16 @@ $$;
 create function pg_temp.reads(person text, whose text) returns boolean
 language sql
 as $$ select pg_temp.reads(tests.user('sc:' || person), tests.id('sc:' || whose)) $$;
+create function pg_temp.reads_note(person text, whose text) returns boolean
+language plpgsql
+as $$
+begin
+  return jsonb_typeof(public.weekly_preferences_read_service(tests.user('sc:' || person), tests.id('sc'), tests.id('sc:' || whose))
+    -> 'manager') = 'object';
+exception when sqlstate '42501' then
+  return false;
+end;
+$$;
 select is(pg_temp.reads('ayse', 'can'), true, 'Ayşe reads the availability of Can, a manager at Kadıköy');
 -- Here the owner works nowhere, so no manager hears of or reads their update;
 -- Ayşe reads an owner who works at Kadıköy in the authorization matrix.
@@ -295,9 +308,13 @@ select is(pg_temp.reads('ayse', 'owner'), false, 'Ayşe does not read the owner,
 select is(pg_temp.reads('ayse', 'zeynep'), true, 'Ayşe reads the availability of Zeynep, an admin at Kadıköy');
 select is(pg_temp.reads('mehmet', 'emre'), false, 'Mehmet (Beşiktaş) does not read Emre (Kadıköy)');
 select is(pg_temp.reads('emre', 'can'), false, 'Emre, an employee, does not read Can''s availability');
-select is(pg_temp.reads('ayse', 'ayse'), false, 'Ayşe does not read the Manager note about herself');
-select is(array[pg_temp.reads('ayse', 'can')::text, pg_temp.may_write_note('ayse', 'can')], array['true', 'no'],
-  'Can''s Manager note reaches Ayşe, who cannot write it');
+select is(pg_temp.reads_note('zeynep', 'emre'), true, 'Zeynep (admin) reads the Manager note about Emre');
+select is(pg_temp.reads_note('ayse', 'emre'), true, 'Ayşe reads the Manager note about Emre');
+select is(pg_temp.reads_note('zeynep', 'ayse'), false, 'Zeynep (admin) reads no Manager note about Ayşe, a manager');
+select is(pg_temp.reads_note('ayse', 'can'), false, 'Ayşe reads Can''s availability but no Manager note: he is a manager');
+select is(pg_temp.reads_note('ayse', 'ayse'), false, 'Ayşe has no Manager note to read about herself');
+select is(public.weekly_preferences_read_service(tests.user('sc:ayse'), tests.id('sc'), tests.id('sc:can')) -> 'manager', 'null'::jsonb,
+  'the read model says so with manager: null');
 
 -- The two sets are one: for every person, who hears of their update is who
 -- reads it.

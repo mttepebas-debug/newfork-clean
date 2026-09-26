@@ -191,6 +191,8 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select (public.weekly_preferences_read_service($1, $2, $3) ->> 'can_manage')::boolean$$),
   ('availability.team_read', 'person', 'availability.read', false, true,
    $$select public.weekly_preference_manager_scope($1, $2, $3, 'availability.read')$$),
+  ('availability.note_read', 'person', 'availability.read', false, true,
+   $$select jsonb_typeof(public.weekly_preferences_read_service($1, $2, $3) -> 'manager') = 'object'$$),
   ('employee.terminate', 'person', 'employees.archive', false, false,
    $$select public.terminate_employee_service($1, $2, $3, localtimestamp, 'Europe/Istanbul', 'matrix probe', gen_random_uuid()) is not null$$),
   ('employee.archive', 'person', 'employees.archive', false, false,
@@ -316,6 +318,7 @@ insert into core_action (key, core_key, blank) values
   ('employee.save', 'employee.save', 'null'),
   ('availability.team_write', 'availability.team_write', 'null'),
   ('availability.team_read', 'availability.team_read', 'null'),
+  ('availability.note_read', 'availability.note_read', 'null'),
   ('employee.terminate', 'employee.terminate', 'null'),
   ('employee.archive', 'employee.archive', 'null'),
   ('employee.remove_access', 'employee.remove_access', 'null'),
@@ -425,25 +428,20 @@ begin
     if pg_temp.rank(t.class) >= pg_temp.rank('manager') then return 'deny'; end if;
     return 'allow';
 
-  when 'availability.team_write' then
-    -- A private availability note about a person follows the record edit rule
-    -- (user decisions 2026-09-26, REUSE "Müsaitlik notu"): owner and admins for
-    -- themselves too, an admin not for another admin or the owner, a manager
-    -- only for somebody below them and not for themselves.
-    if p.class = 'owner' then return 'allow'; end if;
-    if p.class = 'admin' then
-      return case when is_self or pg_temp.rank(t.class) < pg_temp.rank('admin') then 'allow' else 'deny' end;
-    end if;
-    if not shares or is_self then return 'deny'; end if;
-    return case when pg_temp.rank(t.class) < pg_temp.rank('manager') then 'allow' else 'deny' end;
+  when 'availability.team_write', 'availability.note_read' then
+    -- The Manager note is about employees only (user decision 2026-09-26,
+    -- REUSE "Müsaitlik notu yalnız çalışan için"): nobody writes or reads one
+    -- about a manager, an admin or the owner, themselves included. Owner and
+    -- admins for every employee, a manager for those at their locations.
+    if t.class <> 'employee' then return 'deny'; end if;
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when shares then 'allow' else 'deny' end;
 
   when 'availability.team_read' then
-    -- Whoever hears of a person's availability update reads it, the Manager
-    -- note included (user decision 2026-09-26, REUSE "Müsaitlik okuma =
-    -- bildirim alıcıları"): owner and admins everybody, a manager everybody who
-    -- works at their locations, peers and seniors too. Nobody reads the note
-    -- about themselves this way; owner and admins read theirs as its writers.
-    if is_self then return 'deny'; end if;
+    -- Whoever hears of a person's availability update reads it (user decision
+    -- 2026-09-26, REUSE "Müsaitlik okuma = bildirim alıcıları"): owner and
+    -- admins everybody, a manager everybody who works at their locations,
+    -- peers and seniors too. The note is availability.note_read.
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when shares then 'allow' else 'deny' end;
 

@@ -1,11 +1,12 @@
 {
- "sourceSha256": "9233036c375a79643ab0f2c0e3e5f41bbde2d82b04bc37e97bc4c18ca989d05b",
+ "sourceSha256": "b9eddd12c728263d52e6eaf8448f61edd78129420dc17d87b9253755f81b5856",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
   "announcement.read",
   "announcement.write",
   "audit.read",
+  "availability.note_read",
   "availability.own",
   "availability.team_read",
   "availability.team_write",
@@ -459,6 +460,13 @@
    "permission": "announcements.manage",
    "coreKey": "announcement.write",
    "blank": "org"
+  },
+  {
+   "key": "availability.note_read",
+   "targetKind": "person",
+   "permission": "availability.read",
+   "coreKey": "availability.note_read",
+   "blank": "null"
   },
   {
    "key": "availability.team_read",
@@ -1068,6 +1076,726 @@
    "deny"
   ],
   [
+   "availability.note_read",
+   "ali",
+   "ali",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ali",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ali",
+   "emre",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ali",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ali",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ali",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ali",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ali",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "aydan",
+   "ali",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "aydan",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "aydan",
+   "emre",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "aydan",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "aydan",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "aydan",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "aydan",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "aydan",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ayse",
+   "ali",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "ayse",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ayse",
+   "emre",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "ayse",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ayse",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ayse",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ayse",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "ayse",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "can",
+   "ali",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "can",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "can",
+   "emre",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "can",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "can",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "can",
+   "veli",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "can",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "can",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "emre",
+   "ali",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "emre",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "emre",
+   "emre",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "emre",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "emre",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "emre",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "emre",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "emre",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "mehmet",
+   "ali",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "mehmet",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "mehmet",
+   "emre",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "mehmet",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "mehmet",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "mehmet",
+   "veli",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "mehmet",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "mehmet",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nil",
+   "ali",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "nil",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nil",
+   "emre",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "nil",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nil",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nil",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nil",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nil",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nur",
+   "ali",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nur",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nur",
+   "emre",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nur",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nur",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nur",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nur",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "nur",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "olcay",
+   "ali",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "olcay",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "olcay",
+   "emre",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "olcay",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "olcay",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "olcay",
+   "veli",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "olcay",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "olcay",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "pelin",
+   "ali",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "pelin",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "pelin",
+   "emre",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "pelin",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "pelin",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "pelin",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "pelin",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "pelin",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "remzi",
+   "ali",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "remzi",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "remzi",
+   "emre",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "remzi",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "remzi",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "remzi",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "remzi",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "remzi",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "sami",
+   "ali",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "sami",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "sami",
+   "emre",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "sami",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "sami",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "sami",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "sami",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "sami",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "veli",
+   "ali",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "veli",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "veli",
+   "emre",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "veli",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "veli",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "veli",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "veli",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "veli",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "xavier",
+   "ali",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "xavier",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "xavier",
+   "emre",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "xavier",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "xavier",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "xavier",
+   "veli",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "xavier",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "xavier",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "zeynep",
+   "ali",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "zeynep",
+   "ayse",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "zeynep",
+   "emre",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "zeynep",
+   "olcay",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "zeynep",
+   "self",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "zeynep",
+   "veli",
+   "allow"
+  ],
+  [
+   "availability.note_read",
+   "zeynep",
+   "xena",
+   "deny"
+  ],
+  [
+   "availability.note_read",
+   "zeynep",
+   "zeynep",
+   "deny"
+  ],
+  [
    "availability.team_read",
    "ali",
    "ali",
@@ -1173,7 +1901,7 @@
    "availability.team_read",
    "ayse",
    "ayse",
-   "deny"
+   "allow"
   ],
   [
    "availability.team_read",
@@ -1191,7 +1919,7 @@
    "availability.team_read",
    "ayse",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "availability.team_read",
@@ -1239,17 +1967,17 @@
    "availability.team_read",
    "can",
    "self",
-   "deny"
-  ],
-  [
-   "availability.team_read",
-   "can",
-   "veli",
    "allow"
   ],
   [
    "availability.team_read",
    "can",
+   "veli",
+   "allow"
+  ],
+  [
+   "availability.team_read",
+   "can",
    "xena",
    "deny"
   ],
@@ -1335,7 +2063,7 @@
    "availability.team_read",
    "mehmet",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "availability.team_read",
@@ -1383,7 +2111,7 @@
    "availability.team_read",
    "nil",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "availability.team_read",
@@ -1473,13 +2201,13 @@
    "availability.team_read",
    "olcay",
    "olcay",
-   "deny"
+   "allow"
   ],
   [
    "availability.team_read",
    "olcay",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "availability.team_read",
@@ -1767,17 +2495,17 @@
    "availability.team_read",
    "zeynep",
    "self",
-   "deny"
-  ],
-  [
-   "availability.team_read",
-   "zeynep",
-   "veli",
    "allow"
   ],
   [
    "availability.team_read",
    "zeynep",
+   "veli",
+   "allow"
+  ],
+  [
+   "availability.team_read",
+   "zeynep",
    "xena",
    "deny"
   ],
@@ -1785,7 +2513,7 @@
    "availability.team_read",
    "zeynep",
    "zeynep",
-   "deny"
+   "allow"
   ],
   [
    "availability.team_write",
@@ -2181,7 +2909,7 @@
    "availability.team_write",
    "olcay",
    "ayse",
-   "allow"
+   "deny"
   ],
   [
    "availability.team_write",
@@ -2193,13 +2921,13 @@
    "availability.team_write",
    "olcay",
    "olcay",
-   "allow"
+   "deny"
   ],
   [
    "availability.team_write",
    "olcay",
    "self",
-   "allow"
+   "deny"
   ],
   [
    "availability.team_write",
@@ -2217,7 +2945,7 @@
    "availability.team_write",
    "olcay",
    "zeynep",
-   "allow"
+   "deny"
   ],
   [
    "availability.team_write",
@@ -2469,7 +3197,7 @@
    "availability.team_write",
    "zeynep",
    "ayse",
-   "allow"
+   "deny"
   ],
   [
    "availability.team_write",
@@ -2487,7 +3215,7 @@
    "availability.team_write",
    "zeynep",
    "self",
-   "allow"
+   "deny"
   ],
   [
    "availability.team_write",
@@ -2505,7 +3233,7 @@
    "availability.team_write",
    "zeynep",
    "zeynep",
-   "allow"
+   "deny"
   ],
   [
    "employee.archive",
