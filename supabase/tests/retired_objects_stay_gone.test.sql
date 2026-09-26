@@ -193,6 +193,12 @@ insert into retired (kind, name, step) values
   ('function_signature', 'public.publish_schedule_draft_service(uuid, uuid, uuid, uuid[], uuid[], boolean, integer, text, jsonb)', 'FB-6.1.4'),
   ('function_signature', 'public.preview_schedule_publication_service(uuid, uuid, uuid, uuid[])', 'FB-6.1.4'),
   ('function_signature', 'public.apply_schedule_template_service(uuid, uuid, uuid, integer, uuid, text)', 'FB-6.1.4');
+-- BL-186: every read shows today's marks; the publication snapshot's
+-- availability visibility and the reminder stamp that fed it are gone.
+insert into retired (kind, name, step) values
+  ('function', 'weekly_published_availability_visible', 'BL-186'),
+  ('function', 'stamp_weekly_reminder_disable', 'BL-186'),
+  ('column', 'manager_weekly_reminders.last_disabled_at', 'BL-186');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

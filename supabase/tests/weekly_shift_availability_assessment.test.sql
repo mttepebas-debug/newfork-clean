@@ -46,31 +46,31 @@ select is(pg_temp.weekly_assess('{"start_time":"18:00","end_time":"18:00"}')->>'
 select throws_ok($$select pg_temp.weekly_assess('{"location_id":"ad419000-0000-4000-8000-000000000099"}')$$,'22023',null,'unknown location is a technical error');
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
  select w,emp,jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array(dinner)),1,actor from wp_fixture;
-select is(pg_temp.weekly_assess()->>'operation','warning_requires_override','custom hours overlapping a selected type produce a soft conflict');
-select is(pg_temp.weekly_assess()->>'warning_policy','confirm','the default action asks for confirmation');
+-- BL-186: an availability mark is a warning that never gates the shift.
+select is(pg_temp.weekly_assess()->>'has_availability_conflict','true','custom hours overlapping a selected type produce an availability warning');
+select is(pg_temp.weekly_assess()->>'operation','allowed','and the warning never gates the shift');
 select ok(not (pg_temp.weekly_assess() ?| array['type_restrictions','service_classification']),'no shift type restriction or custom work classification');
-select is(pg_temp.weekly_assess(jsonb_build_object('shift_type_id',(select dinner from wp_fixture),'start_time','12:00','end_time','17:00'))->>'operation',
- 'allowed','actual hours trump matching type identity; touching endpoint is clear');
-select is(pg_temp.weekly_assess(jsonb_build_object('shift_type_id',(select hidden_type from wp_fixture)))->>'operation',
- 'warning_requires_override','different type still conflicts when actual hours overlap');
-create temp table weekly_fingerprint as select pg_temp.weekly_assess()->>'fingerprint' fp;
-select is(pg_temp.weekly_assess('{"time_snapshot":{"captured_at":"2035-01-01T00:00:00Z"}}')->>'fingerprint',(select fp from weekly_fingerprint),
+select is(pg_temp.weekly_assess(jsonb_build_object('shift_type_id',(select dinner from wp_fixture),'start_time','12:00','end_time','17:00'))->>'has_availability_conflict',
+ 'false','actual hours trump matching type identity; touching endpoint is clear');
+select is(pg_temp.weekly_assess(jsonb_build_object('shift_type_id',(select hidden_type from wp_fixture)))->>'has_availability_conflict',
+ 'true','different type still conflicts when actual hours overlap');
+-- The warning's own fingerprint is what Publish acknowledges (S2 A).
+create temp table weekly_fingerprint as select pg_temp.weekly_assess()->>'availability_fingerprint' fp;
+select is(pg_temp.weekly_assess('{"time_snapshot":{"captured_at":"2035-01-01T00:00:00Z"}}')->>'availability_fingerprint',(select fp from weekly_fingerprint),
  'snapshot metadata without physical time changes does not re-prompt');
-select is(pg_temp.weekly_assess(jsonb_build_object('shift_type_id',(select dinner from wp_fixture)))->>'fingerprint',(select fp from weekly_fingerprint),
+select is(pg_temp.weekly_assess(jsonb_build_object('shift_type_id',(select dinner from wp_fixture)))->>'availability_fingerprint',(select fp from weekly_fingerprint),
  'type label changes without physical time changes do not re-prompt');
 insert into public.manager_weekly_reminders(workspace_id,employee_id,preference,revision,updated_by,notes)
  select w,emp,public.empty_weekly_preference('time_range'),1,manager,array['','Private note','','','','',''] from wp_fixture;
-select is(pg_temp.weekly_assess()->>'fingerprint',(select fp from weekly_fingerprint),'manager note alone does not invalidate acceptance');
+select is(pg_temp.weekly_assess()->>'availability_fingerprint',(select fp from weekly_fingerprint),'manager note alone does not invalidate acknowledgment');
 select ok(position('Private note' in pg_temp.weekly_assess()::text)=0,'assessment does not contain private notes');
 update public.employee_weekly_preferences set revision=revision+1,preference=jsonb_set(preference,'{days,2,all_day}','true') where workspace_id=(select w from wp_fixture);
 update public.workspace_scheduling_settings set availability_preferences_revision=availability_preferences_revision+1,availability_onboarding_required=true
  where workspace_id=(select w from wp_fixture);
-select is(pg_temp.weekly_assess()->>'fingerprint',(select fp from weekly_fingerprint),'unrelated weekday, revision and onboarding setting do not re-prompt');
-update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"warn"') where workspace_id=(select w from wp_fixture);
-select is(pg_temp.weekly_assess()->>'warning_policy','warn','the warning policy is explicit');
-select isnt(pg_temp.weekly_assess()->>'fingerprint',(select fp from weekly_fingerprint),'confirm to warn changes acceptance context');
+select is(pg_temp.weekly_assess()->>'availability_fingerprint',(select fp from weekly_fingerprint),'unrelated weekday, revision and onboarding setting do not re-prompt');
+select isnt(pg_temp.weekly_assess('{"start_time":"19:00"}')->>'availability_fingerprint',(select fp from weekly_fingerprint),'different hours are a different warning');
 update public.shift_types set default_start_time='21:00',default_end_time='02:00' where id=(select dinner from wp_fixture);
-select is(pg_temp.weekly_assess()->>'operation','allowed','current defaults replace previous restriction hours');
+select is(pg_temp.weekly_assess()->>'has_availability_conflict','false','current defaults replace previous restriction hours');
 select is(pg_temp.weekly_assess('{"scheduled_date":"2035-01-16","start_time":"01:00","end_time":"03:00"}')->>'coverage','none',
  'next-day All day and overnight type are combined');
 update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,2,all_day}','false') where workspace_id=(select w from wp_fixture);
@@ -79,11 +79,11 @@ select is(pg_temp.weekly_assess('{"scheduled_date":"2035-01-16","start_time":"01
 update public.manager_weekly_reminders set preference=jsonb_set(preference,'{days,1,range}','{"start":"18:00","end":"19:00"}') where workspace_id=(select w from wp_fixture);
 select is(pg_temp.weekly_assess()->>'coverage','partial','independent manager reminder contributes a conflict');
 update public.manager_weekly_reminders set enabled=false where workspace_id=(select w from wp_fixture);
-select is(pg_temp.weekly_assess()->>'operation','allowed','off suppresses manager reminder without clearing its week');
+select is(pg_temp.weekly_assess()->>'has_availability_conflict','false','off suppresses manager reminder without clearing its week');
 update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"19:00"}')
  where workspace_id=(select w from wp_fixture);
-select is(pg_temp.weekly_assess()->>'operation','warning_requires_override','off does not hide employee conflict');
-select is(pg_temp.weekly_assess('{"time_timezone":"America/New_York"}')->>'operation','allowed',
+select is(pg_temp.weekly_assess()->>'has_availability_conflict','true','off does not hide employee conflict');
+select is(pg_temp.weekly_assess('{"time_timezone":"America/New_York"}')->>'has_availability_conflict','false',
  'actual saved instant is compared against current target-location local preference');
 select is(pg_temp.weekly_assess('{"time_timezone":"America/New_York"}')->>'preference_timezone','America/Los_Angeles','preference timezone remains target location');
 select throws_ok($$select pg_temp.weekly_assess('{"time_basis":"type_default","time_snapshot":{"start_time":"17:00","end_time":"22:00"}}')$$,
@@ -101,12 +101,12 @@ insert into public.schedule_time_off_requests(id,workspace_id,employee_id,locati
  select 'ad419000-0000-4000-8000-000000000003',w,emp,other_loc,'approved',actor from wp_fixture;
 insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
  select w,'ad419000-0000-4000-8000-000000000003','2035-01-15','21:00','22:00','approved' from wp_fixture;
-select is(pg_temp.weekly_assess()->>'operation','blocked','approved leave stays blocking even with availability confirmation');
+select is(pg_temp.weekly_assess()->>'operation','blocked','approved leave stays blocking, availability mark or not');
 select is(pg_temp.weekly_assess()->'leave'->0->'intervals'->0->>'start_at','2035-01-16T02:00:00.000000Z','leave is evaluated in its own saved location timezone');
 select is((select count(*) from jsonb_array_elements(pg_temp.weekly_assess()->'reasons') x where x->>'code'='availability'),1::bigint,
  'one combined availability reason independent of approved leave');
 update public.schedule_time_off_requests set status='pending',revision=revision+1 where id='ad419000-0000-4000-8000-000000000003';
-select is(pg_temp.weekly_assess()->>'operation','warning_requires_override','pending leave does not add a hard block');
+select is(pg_temp.weekly_assess()->>'operation','allowed','pending leave does not add a hard block');
 select ok(not has_function_privilege('authenticated','public.assess_weekly_shift_availability(uuid,uuid,jsonb)','execute'),'employee cannot query raw manager intervals');
 select ok(not has_function_privilege('service_role','public.assess_weekly_shift_availability(uuid,uuid,jsonb)','execute'),'internal evaluator has no exposed impersonation RPC');
 select * from finish();

@@ -18,7 +18,6 @@ insert into public.employee_job_assignments(workspace_id,employee_id,job_id,crea
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
 select w,emp,(select jsonb_set(p,'{days}',(select jsonb_agg(d||'{"range":{"start":"00:00","end":"10:00"}}') from jsonb_array_elements(p->'days') d))
  from (select public.empty_weekly_preference('time_range') p) x),1,employee_actor from dhr;
-update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"block"') where workspace_id=(select w from dhr);
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) select typ,w,'Default hours review','12:00','16:00' from dhr;
 update dhr set session=(public.acquire_schedule_edit_session_service(actor,w,week,'blank',null)->'session'->>'id')::uuid;
 select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'create',d.named,null,jsonb_build_object('employee_id',null,'location_id',d.loc,'job_id',d.job,'shift_type_id',d.typ,'scheduled_date',d.week,'time_basis','type_default','hide_time_on_badge',true),gen_random_uuid())
@@ -87,19 +86,15 @@ select is((select count(*)::integer from public.schedule_default_hours_reviews w
 update public.shift_types set default_start_time='09:00' where id=(select typ from dhr);
 update dhr d set command=command||jsonb_build_object('expected_session_revision',s.revision) from public.schedule_edit_sessions s where s.id=d.session;
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
-select is((preview->>'blocked_count')::integer,1,'new hours outside hard availability are blocked') from dhr;
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'23514',null,'hard availability blocks apply');
-update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from dhr);
-update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
-select is(preview->'shifts'->0->'after_assessment'->>'operation','warning_requires_override','soft policy requires a fresh override') from dhr;
-update dhr set command=command||jsonb_build_object('overrides',jsonb_build_array(jsonb_build_object('shift_id',named,'note','Reviewed the new service reference hours')));
-update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
-select is((preview->>'blocked_count')::integer,0,'authorized reason permits reviewing the soft override') from dhr;
+-- BL-186: new hours in the person's marked time are only a warning.
+select is((preview->>'blocked_count')::integer,0,'new hours in marked unavailable time are not blocked: availability is a preference') from dhr;
+select is(preview->'shifts'->0->'after_assessment'->>'operation','allowed','and need no confirmation') from dhr;
+select ok((preview->'shifts'->0->'after_assessment'->>'has_availability_conflict')::boolean,'the review still shows the availability warning') from dhr;
 create temp table dhr_leave as select (public.submit_employee_time_off_periods_service(employee_actor,w,loc,'Default review leave',jsonb_build_array(jsonb_build_object('segment_date',week,'start_time','13:00','end_time','14:00')),gen_random_uuid(),'UTC')->>'request_id')::uuid id from dhr;
 select public.resolve_schedule_time_off_request_service(actor,w,(select id from dhr_leave),1,'approve') from dhr;
 select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'40001',null,'approved leave arriving after review makes the fingerprint stale');
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
-select is((preview->>'blocked_count')::integer,1,'approved leave remains hard despite an availability override reason') from dhr;
+select is((preview->>'blocked_count')::integer,1,'approved leave stays a hard block') from dhr;
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'10:30:00','rejected attempts preserve the last applied reference hours') from dhr d;
 -- Published shifts are edited through a new draft session, never in place.
 create temp table dhr_pub as select w,actor,loc,job,emp,week+7 week,'afa70000-0000-4000-8000-000000000010'::uuid typ,
