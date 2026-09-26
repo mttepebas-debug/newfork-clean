@@ -11,6 +11,7 @@ metadata:
 - Dropped overloads go to `retired_objects_stay_gone` as `function_signature` (to_regprocedure is exact, defaults do not match it); dropped names as `function`; `authorization_coverage` loses their rows; `authz_catalog` ceilings drop in the same commit.
 - Tests that mocked an inner layer with `create or replace` (notification_schedule_publish_atomic) lose their seam: rewrite them on the real path with the test world.
 - Moving a refusal to the core changes the message to `Not allowed` (hint authz.*): grep tests for the old message text (`throws_ok(..., '42501', '<old text>')`), green and red files alike, and for a manager with no location a read now refuses instead of returning empty.
+- Removing a `known_gap` row (matrix section 6) needs no dump: the TS twin's sourceSha256 covers only sections 2..5 (`packages/shared/src/authorization-matrix-source.ts`). Moving a function off the old Schedule helpers also shrinks `helper_caller` and its count in `schedule_asks_the_core.test.sql` (BL-177: 10 -> 8).
 - New matrix actions change the rule sections: re-run `pnpm.cmd --filter @newfork/shared dump:authz-matrix` and add the core key to `targetedAuthzActions` in `packages/shared/src/authorization.ts` (nf-backend's file; say so in the report).
 
 **Why:** FB-6.1 .4, 2026-09-26: 24 _base layers and 4 overloads folded; these were the places a trial run went red.
