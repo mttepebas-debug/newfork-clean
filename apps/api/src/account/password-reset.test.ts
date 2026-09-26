@@ -77,32 +77,50 @@ describe("password reset request", () => {
     await app.close();
   });
 
-  it("waits for the send but cuts it at the budget, so every answer comes at the floor", async () => {
-    let seen: AbortSignal | undefined;
-    const hung = vi.fn((_email: string, signal: AbortSignal) => {
-      seen = signal;
-      return new Promise<void>(() => undefined);
-    });
-    const instant = vi.fn(async () => undefined);
+  // The floor is 0 here, so only the route's wait for the send can hold the
+  // answer back: dropping that wait turns both halves red.
+  it("finishes a send that fits the budget before it answers", async () => {
     let delivered = false;
     const slowButInBudget = vi.fn(async () => {
       await new Promise((resolve) => setTimeout(resolve, 40));
       delivered = true;
     });
-
-    for (const send of [hung, instant, slowButInBudget]) {
-      const app = await appWith(send, { responseFloorMs: 120, sendBudgetMs: 80 });
-      const started = performance.now();
-      const response = await post(app, known);
-      const elapsed = performance.now() - started;
-      expect(response.statusCode).toBe(202);
-      expect(elapsed).toBeGreaterThanOrEqual(115);
-      expect(elapsed).toBeLessThan(1_000);
-      await app.close();
-    }
-    // The hung send was told to stop; the slow one finished before the answer.
-    expect(seen?.aborted).toBe(true);
+    const app = await appWith(slowButInBudget, { responseFloorMs: 0, sendBudgetMs: 80 });
+    const started = performance.now();
+    const response = await post(app, known);
+    const elapsed = performance.now() - started;
+    expect(response.statusCode).toBe(202);
     expect(delivered).toBe(true);
+    expect(elapsed).toBeGreaterThanOrEqual(35);
+    await app.close();
+  });
+
+  it("aborts a send still running at the budget and answers then", async () => {
+    let seen: AbortSignal | undefined;
+    const hung = vi.fn((_email: string, signal: AbortSignal) => {
+      seen = signal;
+      return new Promise<void>(() => undefined);
+    });
+    const app = await appWith(hung, { responseFloorMs: 0, sendBudgetMs: 80 });
+    const started = performance.now();
+    const response = await post(app, known);
+    const elapsed = performance.now() - started;
+    expect(response.statusCode).toBe(202);
+    expect(seen?.aborted).toBe(true);
+    expect(elapsed).toBeGreaterThanOrEqual(75);
+    expect(elapsed).toBeLessThan(1_000);
+    await app.close();
+  });
+
+  it("holds even an instant send to the floor", async () => {
+    const app = await appWith(vi.fn(async () => undefined), {
+      responseFloorMs: 120,
+      sendBudgetMs: 80,
+    });
+    const started = performance.now();
+    expect((await post(app, known)).statusCode).toBe(202);
+    expect(performance.now() - started).toBeGreaterThanOrEqual(115);
+    await app.close();
   });
 
   it("takes the same time for an email with an account and one without", async () => {

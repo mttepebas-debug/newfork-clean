@@ -13,9 +13,13 @@ import { PreBizFrame } from "../shell/prebiz/PreBiz";
 // second try if the password itself is refused; leaving without saving signs
 // it out (a closed tab is handled on the next load, in lib/supabase).
 export default function ResetPasswordPage() {
-  const { hash } = useLocation();
+  const { hash, pathname } = useLocation();
   const navigate = useNavigate();
-  const tokenHash = new URLSearchParams(hash.slice(1)).get("token_hash") ?? "";
+  // Kept from the first render: the address is cleaned below, and a later
+  // render would find the fragment empty.
+  const [tokenHash] = useState(
+    () => new URLSearchParams(hash.slice(1)).get("token_hash") ?? "",
+  );
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -23,12 +27,15 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const unsavedSession = useRef(false);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // The token leaves the address bar and the history entry.
+    if (hash) window.history.replaceState(null, "", pathname);
+    return () => {
       if (unsavedSession.current) void abandonPasswordResetSession();
-    },
-    [],
-  );
+    };
+    // Mount only: this runs once for the link the page was opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
