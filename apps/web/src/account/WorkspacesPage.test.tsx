@@ -713,9 +713,9 @@ describe("WorkspacesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start transfer" }));
 
     expect((await screen.findByRole("alert")).textContent).toBe(
-      "They need to finish their profile before they can own the business.",
+      "That person has no legal name on file here yet, and an owner needs one because documents and signatures use it. Ask them to finish setting up their account, then start the transfer again.",
     );
-    expect(screen.queryByText(/no legal name on file/)).toBeNull();
+    expect(screen.queryByText(/the new owner has no legal name/)).toBeNull();
   });
 
   it("lets a target admin accept a pending ownership transfer", async () => {

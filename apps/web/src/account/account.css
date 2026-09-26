@@ -271,6 +271,11 @@
   gap: 14px;
 }
 
+/* The legal name reads in one line, as it does at setup: first, middle, last. */
+.account-legal-name-grid {
+  grid-template-columns: 2fr 1fr 2fr;
+}
+
 .account-field {
   display: grid;
   min-width: 0;
@@ -496,7 +501,8 @@
     padding: 16px;
   }
 
-  .account-field-grid {
+  .account-field-grid,
+  .account-legal-name-grid {
     grid-template-columns: 1fr;
   }
 

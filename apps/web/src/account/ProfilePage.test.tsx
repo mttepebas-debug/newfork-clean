@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { AccountProfile } from "@newfork/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter, Route, Routes } from "react-router";
 import ProfilePage from "./ProfilePage";
 import {
   getOwnLegalName,
@@ -59,7 +60,12 @@ function renderProfile() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <ProfilePage />
+      <MemoryRouter initialEntries={["/account/profile"]}>
+        <Routes>
+          <Route path="/account/profile" element={<ProfilePage />} />
+          <Route path="/welcome/:workspaceId" element={<p>Setup screen</p>} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -244,7 +250,9 @@ describe("ProfilePage", () => {
     });
     const view = render(
       <QueryClientProvider client={queryClient}>
-        <ProfilePage />
+        <MemoryRouter>
+          <ProfilePage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 
@@ -254,7 +262,9 @@ describe("ProfilePage", () => {
     account = { ...account, displayName: "Server Owner" };
     view.rerender(
       <QueryClientProvider client={queryClient}>
-        <ProfilePage />
+        <MemoryRouter>
+          <ProfilePage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 
@@ -343,9 +353,24 @@ describe("ProfilePage", () => {
     renderProfile();
 
     expect(
-      await screen.findByText("Finish onboarding here first, then keep these details up to date."),
+      await screen.findByText(
+        "Finish setting up your account here, then you can add your phone number and emergency contact.",
+      ),
     ).toBeTruthy();
     expect(screen.queryByLabelText("Emergency contact")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Continue setup for Meyhouse" }));
+    expect(await screen.findByText("Setup screen")).toBeTruthy();
+  });
+
+  it("says a legal name could not be loaded, not that it could not be saved", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([workspace("owner")]);
+    vi.mocked(getOwnLegalName).mockRejectedValue(new Error("offline"));
+    renderProfile();
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Your legal name could not be loaded. Reload the page to try again.",
+    );
+    expect(screen.queryByLabelText("Legal first name")).toBeNull();
   });
 });
 

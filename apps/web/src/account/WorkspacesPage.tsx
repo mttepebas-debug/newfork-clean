@@ -1081,7 +1081,7 @@ const lifecycleReasons: Readonly<Record<string, string>> = {
   "transfer.target_onboarding_incomplete":
     "That person has not finished setting up their account. Ask them to finish it, then start the transfer again.",
   "transfer.target_legal_name_missing":
-    "They need to finish their profile before they can own the business.",
+    "That person has no legal name on file here yet, and an owner needs one because documents and signatures use it. Ask them to finish setting up their account, then start the transfer again.",
   "transfer.target_is_self":
     "You already own this workspace. Pick somebody else to hand it to.",
   "transfer.not_found":

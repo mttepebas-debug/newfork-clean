@@ -7,6 +7,7 @@ import { Button, ConfirmButton } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
   listOwnEmploymentRecords,
@@ -326,10 +327,12 @@ function OwnerLegalNameBlock({
   // Kept above the form, which starts over when the saved name comes back.
   const save = useSaveOwnLegalName(workspaceId);
   if (legalName.isPending) return null;
+  // A failed read is not a failed save: the save wording would send the owner
+  // looking for a change they never made.
   if (legalName.isError)
     return (
       <p className="form-error" role="alert">
-        {legalNameErrorMessage(legalName.error)}
+        Your legal name could not be loaded. Reload the page to try again.
       </p>
     );
   return (
@@ -364,7 +367,12 @@ function OwnerLegalNameForm({
   const field = (suffix: string) => `legal-name-${workspaceId}-${suffix}`;
   const input = (part: keyof OwnerLegalName, label: string, suffix: string) => (
     <label className="account-field" htmlFor={field(suffix)}>
-      <span>{label}</span>
+      <span>
+        {label}
+        {part === "middleName" ? (
+          <span className="field-optional">optional</span>
+        ) : null}
+      </span>
       <input
         id={field(suffix)}
         aria-label={`Legal ${label.toLowerCase()}`}
@@ -392,7 +400,7 @@ function OwnerLegalNameForm({
       }}
     >
       {workspaceName ? <strong>{workspaceName}</strong> : null}
-      <div className="account-field-grid">
+      <div className="account-field-grid account-legal-name-grid">
         {input("firstName", "First name", "first")}
         {input("middleName", "Middle name", "middle")}
         {input("lastName", "Last name", "last")}
@@ -472,6 +480,7 @@ function WorkspaceIdentities() {
  */
 function EmploymentContacts() {
   const cache = useQueryClient();
+  const navigate = useNavigate();
   const workspaces = useAccountWorkspaces();
   const records = useQuery({
     queryKey: ["account-employment-records"],
@@ -501,7 +510,19 @@ function EmploymentContacts() {
           onboardingUnfinished(workspaces.data, record.workspaceId) ? (
             <div key={record.workspaceId} className="account-employment-record">
               <strong>{record.workspaceName}</strong>
-              <p>Finish onboarding here first, then keep these details up to date.</p>
+              <p className="account-record-note">
+                Finish setting up your account here, then you can add your
+                phone number and emergency contact.
+              </p>
+              <div className="account-button-row">
+                <Button
+                  type="button"
+                  aria-label={`Continue setup for ${record.workspaceName}`}
+                  onClick={() => navigate(`/welcome/${record.workspaceId}`)}
+                >
+                  Continue setup
+                </Button>
+              </div>
             </div>
           ) : (
             <EmploymentContactForm

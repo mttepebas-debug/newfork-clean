@@ -1,0 +1,1 @@
+- [Screenshots without the migration](screenshots-without-migration.md) — route-intercept in Playwright, fresh owner path to setup step 1, worktree git traps, transfer error vanishes

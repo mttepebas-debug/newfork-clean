@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type {
   ActiveWorkspaceContext,
   Department,
@@ -202,10 +202,10 @@ describe("OwnerOnboardingPage", () => {
         name: "Name your workspace",
       }),
     ).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Your first name"), {
+    fireEvent.change(screen.getByLabelText("First name"), {
       target: { value: "Taylor" },
     });
-    fireEvent.change(screen.getByLabelText("Your last name"), {
+    fireEvent.change(screen.getByLabelText("Last name"), {
       target: { value: "Owner" },
     });
     const progress = screen.getByRole("progressbar", { name: "Steps done" });
@@ -254,8 +254,16 @@ describe("OwnerOnboardingPage", () => {
       await screen.findByRole("heading", { name: "Name your workspace" }),
     ).toBeTruthy();
     expect(screen.queryByLabelText("Your full name")).toBeNull();
-    expect(screen.getByLabelText("Your first name")).toBeTruthy();
-    expect(screen.getByLabelText("Your last name")).toBeTruthy();
+    // BL-080: the name given here is the legal one, and the group says so.
+    const name = screen.getByRole("group", {
+      name: "Name as it appears on your ID",
+    });
+    expect(within(name).getByLabelText("First name")).toBeTruthy();
+    expect(within(name).getByLabelText("Last name")).toBeTruthy();
+    expect(name.getAttribute("aria-describedby")).toBe("owner-name-help");
+    expect(document.getElementById("owner-name-help")?.textContent).toMatch(
+      /preferred name later in Account › Profile/,
+    );
     expect(
       screen.getByRole("button", { name: /continue/i }),
     ).toHaveProperty("disabled", true);
@@ -270,10 +278,10 @@ describe("OwnerOnboardingPage", () => {
         name: "Name your workspace",
       }),
     ).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Your first name"), {
+    fireEvent.change(screen.getByLabelText("First name"), {
       target: { value: "Taylor" },
     });
-    fireEvent.change(screen.getByLabelText("Your last name"), {
+    fireEvent.change(screen.getByLabelText("Last name"), {
       target: { value: "Owner" },
     });
     const workspaceNameInput = screen.getByLabelText("Workspace name");

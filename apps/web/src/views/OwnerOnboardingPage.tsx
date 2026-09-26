@@ -908,9 +908,15 @@ export default function OwnerOnboardingPage() {
             </header>
             <form className="onboarding-form" onSubmit={saveWorkspaceIdentity}>
               <div className="owner-onboarding-grid">
-                <div className="owner-name-row wide">
+                {/* The owner's legal name: saved as the account name and as the
+                    name documents read. Going by another name is Profile's job. */}
+                <fieldset
+                  className="ob-fieldset owner-name-row wide"
+                  aria-describedby="owner-name-help"
+                >
+                  <legend>Name as it appears on your ID</legend>
                   <label htmlFor="owner-first-name">
-                    Your first name
+                    First name
                     <input
                       id="owner-first-name"
                       value={ownerFirstName}
@@ -932,7 +938,7 @@ export default function OwnerOnboardingPage() {
                     />
                   </label>
                   <label htmlFor="owner-last-name">
-                    Your last name
+                    Last name
                     <input
                       id="owner-last-name"
                       value={ownerLastName}
@@ -942,7 +948,11 @@ export default function OwnerOnboardingPage() {
                       required
                     />
                   </label>
-                </div>
+                  <small id="owner-name-help" className="field-help">
+                    Documents and signatures use this name. Go by something
+                    else? Add a preferred name later in Account › Profile.
+                  </small>
+                </fieldset>
                 <label className="wide" htmlFor="workspace-name">
                   Workspace name
                   <input
