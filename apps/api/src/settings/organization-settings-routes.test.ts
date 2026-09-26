@@ -94,6 +94,15 @@ describe("organization settings routes", () => {
     expect(service.updateSchedulingSettings).toHaveBeenCalledTimes(1);
     await app.close();
   });
+  it("rejects a softer approved time off rule before it reaches the database", async () => {
+    const service = organizationSettingsServiceMock();
+    const app = buildApp({ organizationSettingsService: service, contextResolver: { resolve: async () => ({ ...context, permissions: ["schedule.conflict_rules.manage"] }) } });
+    const response = await app.inject({ method: "PUT", url: `/v1/workspaces/${workspaceId}/scheduling-settings/conflicts`, headers: { authorization: "Bearer valid-token" }, payload: { ...conflicts, conflict_rules: { ...conflicts.conflict_rules, approved_time_off: "confirm" } } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: "Valid conflict settings required" });
+    expect(service.updateSchedulingSettings).not.toHaveBeenCalled();
+    await app.close();
+  });
   it("returns stale conflict revision as 409 without silently retrying", async () => {
     const service = organizationSettingsServiceMock();
     vi.mocked(service.updateSchedulingSettings).mockRejectedValue(Object.assign(new Error("Conflict rules changed. Reload the current rules before saving."), { code: "PT409" }));

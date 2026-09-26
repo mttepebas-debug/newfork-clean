@@ -7,7 +7,9 @@ export const scheduleConflictRulesSchema = z.object({
   // Warn, Require confirmation (soft) or Block (hard); a manager's private
   // reminder is always soft whatever this says.
   availability: z.enum(["warn", "confirm", "block"]),
-  approved_time_off: z.enum(["confirm", "block"]),
+  // Approved time off always blocks a manager's assignment (FB-6.1 T5); the
+  // key stays required because the database constraint expects it.
+  approved_time_off: z.literal("block"),
   closed_location: z.enum(["warn", "confirm", "block"]),
   minimum_travel: z.enum(["warn", "confirm", "block"]),
   minimum_rest: z.enum(["warn", "confirm", "block"]),

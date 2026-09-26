@@ -113,6 +113,26 @@ describe("ConflictHandlingSettingsPage", () => {
     );
   });
 
+  it("offers no approved time off choice but still saves it as block", async () => {
+    renderPage();
+    const input = await screen.findByLabelText(
+      "Minimum travel time (minutes)",
+    );
+    expect(screen.queryByText("Approved time off")).toBeNull();
+    expect(screen.queryByLabelText("Approved time off handling")).toBeNull();
+    fireEvent.change(input, { target: { value: "45" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save conflict rules" }),
+    );
+    await waitFor(() =>
+      expect(organizationRequest).toHaveBeenCalledTimes(2),
+    );
+    const body = JSON.parse(
+      String(vi.mocked(organizationRequest).mock.calls[1]![2]!.body),
+    );
+    expect(body.conflict_rules.approved_time_off).toBe("block");
+  });
+
   it("does not silently turn a cleared minimum into zero", async () => {
     renderPage();
     const input = await screen.findByLabelText(

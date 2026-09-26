@@ -28,12 +28,6 @@ const conflictRuleChoices: readonly {
     actions: ["warn", "confirm", "block"],
   },
   {
-    key: "approved_time_off",
-    label: "Approved time off",
-    description: "Assignments that overlap approved leave.",
-    actions: ["confirm", "block"],
-  },
-  {
     key: "closed_location",
     label: "Closed location or shift type",
     description: "Assignments on a closed date.",
