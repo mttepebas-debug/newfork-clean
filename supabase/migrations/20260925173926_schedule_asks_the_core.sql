@@ -51,8 +51,12 @@
 -- permissions they have today.
 insert into app_private.authz_actions (key, scope_class, effect, permission_key) values
   ('settings.conflict_rules.write', 'org', 'write', 'schedule.conflict_rules.manage'),
-  ('schedule.templates.read', 'set', 'read', 'schedule.templates.read'),
-  ('availability.team_write', 'person', 'write', 'availability.manage');
+  ('schedule.templates.read', 'set', 'read', 'schedule.templates.read');
+-- A manager's private availability note about a person follows the record
+-- edit rule (REUSE "Müsaitlik notu", user decision 2026-09-26): only for
+-- somebody ranked below, never for oneself; an admin not for the owner.
+insert into app_private.authz_actions (key, scope_class, effect, permission_key, no_self, rank_below) values
+  ('availability.team_write', 'person', 'write', 'availability.manage', true, true);
 
 -- 2. The four-argument document conflicts list: nothing but a test called it; the
 -- API asks the seven-argument one with the locations it publishes (N17).
@@ -1974,12 +1978,12 @@ end;
 $function$
 ;
 
--- Whether a manager reaches this person's availability with a permission: the
--- person works at a location the matching action reaches, or the actor reaches
--- the whole organization with it. Callers name the permission:
--- availability.read -> availability.team_read, availability.manage ->
--- availability.team_write, employees.manage -> employee.save (who hears of a
--- change). Any other permission is an unknown action (22023).
+-- Whether a manager reaches this person's availability with a permission,
+-- asked of the core about the person (where they work, their rank, whether it
+-- is the actor). Callers name the permission: availability.read ->
+-- availability.team_read, availability.manage -> availability.team_write,
+-- employees.manage -> employee.save (who hears of a change). Any other
+-- permission is an unknown action (22023).
 CREATE OR REPLACE FUNCTION public.weekly_preference_manager_scope(actor uuid, w uuid, emp uuid, capability text)
  RETURNS boolean
  LANGUAGE sql
@@ -1990,11 +1994,9 @@ AS $function$
   select case capability when 'availability.read' then 'availability.team_read'
    when 'availability.manage' then 'availability.team_write' when 'employees.manage' then 'employee.save' end as action
  )
- select public.service_actor_can_access_employee(actor,w,emp) and exists(select 1 from public.employee_profiles e cross join asked where e.workspace_id=w and e.id=emp and (
-  exists(select 1 from public.employee_location_assignments a where a.workspace_id=w and a.employee_id=emp and a.ended_at is null
-   and a.location_id=any(app_private.scope_set(actor,w,asked.action)))
-  or app_private.authz_reason(actor,w,asked.action,'{}'::uuid[]) is null
- ));
+ select public.service_actor_can_access_employee(actor,w,emp)
+  and app_private.authz_reason(actor,w,asked.action,target_person=>emp) is null
+ from asked;
 $function$
 ;
 

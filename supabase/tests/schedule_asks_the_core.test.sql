@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(59);
+select plan(63);
 
 -- FB-6.1 step .2: Schedule's entry points ask the authorization core
 -- (app_private.authorize() / scope_set()) instead of the three old Schedule
@@ -226,6 +226,23 @@ select is(pg_temp.said(format($$select public.list_schedule_templates_service(%L
   '42501 authz.missing_permission schedule.templates.read', 'a manager-type role without template access cannot list templates');
 select is(pg_temp.said(format($$select public.get_schedule_template_service(%L, %L, gen_random_uuid())$$, tests.user('sc:tina'), tests.id('sc'))),
   '42501 authz.missing_permission schedule.templates.read', 'a manager-type role without template access cannot open a template');
+
+-- A manager's private availability note about a person (Team availability)
+-- follows the record edit rule (user decision 2026-09-26, REUSE "Müsaitlik notu").
+create function pg_temp.may_write_note(person text, whose text) returns text
+language plpgsql
+as $$
+begin
+  return case when (public.weekly_preferences_read_service(tests.user('sc:' || person), tests.id('sc'), tests.id('sc:' || whose))
+    ->> 'can_manage')::boolean then 'yes' else 'no' end;
+exception when sqlstate '42501' then
+  return 'no';
+end;
+$$;
+select is(pg_temp.may_write_note('ayse', 'emre'), 'yes', 'Ayşe writes a note about Emre, who works at Kadıköy');
+select is(pg_temp.may_write_note('ayse', 'can'), 'no', 'Ayşe does not write a note about Can, a manager at Kadıköy');
+select is(pg_temp.may_write_note('ayse', 'ayse'), 'no', 'Ayşe does not write a note about herself');
+select is(pg_temp.may_write_note('zeynep', 'owner'), 'no', 'an admin does not write a note about the owner');
 
 -- With no live location in the workspace, the owner reads an empty Shift Hub
 -- manager view and team availability instead of a refusal.

@@ -187,6 +187,8 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
        (select j.job_id from public.employee_job_assignments j where j.employee_id = e.id and j.ended_at is null and j.is_primary limit 1),
        e.is_remote, e.is_excluded_from_schedule, e.revision) is not null
      from public.employee_profiles e where e.id = $3$$),
+  ('availability.team_write', 'person', 'availability.manage', false, true,
+   $$select (public.weekly_preferences_read_service($1, $2, $3) ->> 'can_manage')::boolean$$),
   ('employee.terminate', 'person', 'employees.archive', false, false,
    $$select public.terminate_employee_service($1, $2, $3, localtimestamp, 'Europe/Istanbul', 'matrix probe', gen_random_uuid()) is not null$$),
   ('employee.archive', 'person', 'employees.archive', false, false,
@@ -310,6 +312,7 @@ insert into core_action (key, core_key, blank) values
   ('employee.read', 'employee.read', 'null'),
   ('employee.list', 'employee.list', 'null'),
   ('employee.save', 'employee.save', 'null'),
+  ('availability.team_write', 'availability.team_write', 'null'),
   ('employee.terminate', 'employee.terminate', 'null'),
   ('employee.archive', 'employee.archive', 'null'),
   ('employee.remove_access', 'employee.remove_access', 'null'),
@@ -418,6 +421,17 @@ begin
     if not shares or is_self then return 'deny'; end if;
     if pg_temp.rank(t.class) >= pg_temp.rank('manager') then return 'deny'; end if;
     return 'allow';
+
+  when 'availability.team_write' then
+    -- A manager's private availability note about a person follows the record
+    -- edit rule, never for oneself (user decision 2026-09-26, REUSE "Müsaitlik notu").
+    if is_self then return 'deny'; end if;
+    if p.class = 'owner' then return 'allow'; end if;
+    if p.class = 'admin' then
+      return case when pg_temp.rank(t.class) < pg_temp.rank('admin') then 'allow' else 'deny' end;
+    end if;
+    if not shares then return 'deny'; end if;
+    return case when pg_temp.rank(t.class) < pg_temp.rank('manager') then 'allow' else 'deny' end;
 
   when 'employee.terminate', 'employee.archive' then
     -- Ending employment or archiving is admin and owner only; a manager only

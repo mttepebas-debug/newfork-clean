@@ -94,6 +94,7 @@ interface TargetedRule {
 export const targetedAuthzActions = {
   "announcement.write": { permission: "announcements.manage" },
   "audit.read": { permission: "workspace.manage" },
+  "availability.team_write": { person: true, permission: "availability.manage" },
   "employee.archive": { person: true, permission: "employees.archive" },
   "employee.change_role": { person: true, permission: "employees.manage" },
   "employee.create": { permission: "employees.manage" },
@@ -223,6 +224,13 @@ export function expected<A extends TargetedAuthzAction>(
       if (actor.role === "admin") return person?.role !== "owner";
       if (!shares || isSelf) return false;
       return targetRank < rankOf.manager;
+
+    case "availability.team_write":
+      // A private availability note: the record edit rule, never for oneself.
+      if (isSelf) return false;
+      if (actor.role === "owner") return true;
+      if (actor.role === "admin") return targetRank < rankOf.admin;
+      return shares && targetRank < rankOf.manager;
 
     case "employee.terminate":
     case "employee.archive":
