@@ -66,3 +66,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | FB-6.1.7 | müsaitlik ayarı Sert'e çekilince, önceden kabul edilip yayınlanmış değişmemiş vardiyalar haftanın yeniden yayınını engellemiyor | (main)
 2026-09-26 | FB-6.1.9 (kısmi) | Takvim ekranlarının düğmeleri yetki çekirdeğine soruyor; lokasyonu olmayan müdür sunucunun reddedeceği düğmeleri görmüyor | ffca7eb
 2026-09-26 | BL-177 | izin talepleri bir üst kademeye gidiyor: müdür başka müdürün, admin owner'ın iznine karar veremiyor; owner'ın talebi anında onaylı | (main)
+2026-09-26 | FB-6.1.12 | yayın ve çok lokasyonlu yayın akışları tarayıcıda uçtan uca sınanıyor (e2e 10 senaryo) | dd937fd
