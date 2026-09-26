@@ -411,6 +411,23 @@ export function employmentContactRecordFromRow(
   });
 }
 
+/**
+ * The owner's legal name: the name on their ID, the one documents and
+ * signatures read. First and last are required; a middle name may be empty.
+ * The limits are the database's (app_private.write_owner_legal_name).
+ */
+export const ownerLegalNameSchema = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  middleName: z.string().trim().max(80),
+  lastName: z.string().trim().min(1).max(80),
+});
+export type OwnerLegalName = z.infer<typeof ownerLegalNameSchema>;
+
+/** What Account > Profile reads: null until a legal name is on file. */
+export const ownerLegalNameResponseSchema = z.object({
+  legalName: ownerLegalNameSchema.nullable(),
+});
+
 export const workspaceSummarySchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),

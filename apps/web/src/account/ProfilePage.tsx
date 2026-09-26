@@ -1,6 +1,7 @@
 import {
   normalizeAccountPhone,
   type EmploymentContactRecord,
+  type OwnerLegalName,
 } from "@newfork/shared";
 import { Button, ConfirmButton } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +20,14 @@ import {
   saveOwnEmploymentContact,
 } from "../employees/employee-data";
 import { AccountPageHeader } from "./components";
+import {
+  legalNameErrorMessage,
+  onboardingUnfinished,
+  ownedWorkspaces,
+  useAccountWorkspaces,
+  useOwnLegalName,
+  useSaveOwnLegalName,
+} from "./legal-name-data";
 import { useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { AvatarCropDialog } from "./AvatarCropDialog";
 import { validateAvatarFile } from "./avatar-crop";
@@ -264,9 +273,146 @@ export default function ProfilePage() {
           </Button>
         </div>
       </form>
+      <OwnerLegalNames />
       <WorkspaceIdentities />
       <EmploymentContacts />
     </section>
+  );
+}
+
+/**
+ * The owner's legal name: the name on their ID, which documents and
+ * signatures read. Given at the first step of setup; changed here, and each
+ * change goes to the audit log. Shown only where this account is the owner.
+ */
+function OwnerLegalNames() {
+  const workspaces = useAccountWorkspaces();
+  const owned = ownedWorkspaces(workspaces.data);
+  if (owned.length === 0) return null;
+
+  return (
+    <section className="account-section-block" aria-labelledby="account-legal-name-title">
+      <div className="account-section-copy">
+        <h2 id="account-legal-name-title">Legal name</h2>
+        <p>
+          The name as it appears on your ID. Documents and signatures use it;
+          every change is recorded.
+        </p>
+      </div>
+      <div className="account-section-body">
+        {owned.map((workspace) => (
+          <OwnerLegalNameBlock
+            key={workspace.id}
+            workspaceId={workspace.id}
+            workspaceName={workspace.name}
+            showName={owned.length > 1}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function OwnerLegalNameBlock({
+  workspaceId,
+  workspaceName,
+  showName,
+}: {
+  readonly workspaceId: string;
+  readonly workspaceName: string;
+  readonly showName: boolean;
+}) {
+  const legalName = useOwnLegalName(workspaceId);
+  // Kept above the form, which starts over when the saved name comes back.
+  const save = useSaveOwnLegalName(workspaceId);
+  if (legalName.isPending) return null;
+  if (legalName.isError)
+    return (
+      <p className="form-error" role="alert">
+        {legalNameErrorMessage(legalName.error)}
+      </p>
+    );
+  return (
+    <OwnerLegalNameForm
+      // A saved name comes back from the server and starts a clean form.
+      key={JSON.stringify(legalName.data)}
+      workspaceId={workspaceId}
+      workspaceName={showName ? workspaceName : null}
+      initial={legalName.data ?? { firstName: "", middleName: "", lastName: "" }}
+      save={save}
+    />
+  );
+}
+
+function OwnerLegalNameForm({
+  workspaceId,
+  workspaceName,
+  initial,
+  save,
+}: {
+  readonly workspaceId: string;
+  readonly workspaceName: string | null;
+  readonly initial: OwnerLegalName;
+  readonly save: ReturnType<typeof useSaveOwnLegalName>;
+}) {
+  const [draft, setDraft] = useState(initial);
+  const dirty =
+    draft.firstName !== initial.firstName ||
+    draft.middleName !== initial.middleName ||
+    draft.lastName !== initial.lastName;
+  const ready = draft.firstName.trim() !== "" && draft.lastName.trim() !== "";
+  const field = (suffix: string) => `legal-name-${workspaceId}-${suffix}`;
+  const input = (part: keyof OwnerLegalName, label: string, suffix: string) => (
+    <label className="account-field" htmlFor={field(suffix)}>
+      <span>{label}</span>
+      <input
+        id={field(suffix)}
+        aria-label={`Legal ${label.toLowerCase()}`}
+        value={draft[part]}
+        maxLength={80}
+        required={part !== "middleName"}
+        onChange={(event) => {
+          save.reset();
+          setDraft({ ...draft, [part]: event.target.value });
+        }}
+      />
+    </label>
+  );
+
+  return (
+    <form
+      className="account-employment-record"
+      onSubmit={(event) => {
+        event.preventDefault();
+        save.mutate({
+          firstName: draft.firstName.trim(),
+          middleName: draft.middleName.trim(),
+          lastName: draft.lastName.trim(),
+        });
+      }}
+    >
+      {workspaceName ? <strong>{workspaceName}</strong> : null}
+      <div className="account-field-grid">
+        {input("firstName", "First name", "first")}
+        {input("middleName", "Middle name", "middle")}
+        {input("lastName", "Last name", "last")}
+      </div>
+      {save.isError ? (
+        <p className="form-error" role="alert">
+          {legalNameErrorMessage(save.error)}
+        </p>
+      ) : null}
+      {save.isSuccess ? (
+        <p className="form-success" role="status">
+          Legal name saved
+        </p>
+      ) : null}
+      <div className="account-button-row">
+        <Button type="submit" disabled={save.isPending || !dirty || !ready}>
+          {save.isPending ? "Saving" : "Save legal name"}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -326,6 +472,7 @@ function WorkspaceIdentities() {
  */
 function EmploymentContacts() {
   const cache = useQueryClient();
+  const workspaces = useAccountWorkspaces();
   const records = useQuery({
     queryKey: ["account-employment-records"],
     queryFn: () =>
@@ -348,17 +495,26 @@ function EmploymentContacts() {
         </p>
       </div>
       <div className="account-section-body">
-        {(records.data ?? []).map((record) => (
-          <EmploymentContactForm
-            key={record.workspaceId}
-            record={record}
-            onSaved={() =>
-              cache.invalidateQueries({
-                queryKey: ["account-employment-records"],
-              })
-            }
-          />
-        ))}
+        {(records.data ?? []).map((record) =>
+          // Nothing to keep a contact on until onboarding writes the record;
+          // the database would refuse the save.
+          onboardingUnfinished(workspaces.data, record.workspaceId) ? (
+            <div key={record.workspaceId} className="account-employment-record">
+              <strong>{record.workspaceName}</strong>
+              <p>Finish onboarding here first, then keep these details up to date.</p>
+            </div>
+          ) : (
+            <EmploymentContactForm
+              key={record.workspaceId}
+              record={record}
+              onSaved={() =>
+                cache.invalidateQueries({
+                  queryKey: ["account-employment-records"],
+                })
+              }
+            />
+          ),
+        )}
       </div>
     </section>
   );

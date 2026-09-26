@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { HttpError } from "../http-error.js";
 import { z } from "zod";
+import { ownerLegalNameSchema } from "@newfork/shared";
 import {
   bearerToken,
   resolveWorkspaceAuthorization,
@@ -129,6 +130,63 @@ export function registerWorkspaceAccountRoutes(
       return requestError(reply, error);
     }
   });
+
+  // The owner's legal name (BL-080). No gate here: the database core decides
+  // (workspace.setup, owner only) and its refusal travels as its reason.
+  app.get(
+    "/v1/account/workspaces/:workspaceId/legal-name",
+    async (request, reply) => {
+      const accessToken = bearerToken(request.headers.authorization);
+      const params = workspaceParams.safeParse(request.params);
+      if (!accessToken)
+        return reply.status(401).send({ error: "Bearer token required" });
+      if (!params.success)
+        return reply.status(400).send({ error: "Valid workspace required" });
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Workspace account service is not configured" });
+      try {
+        return reply.send({
+          legalName: await options.service.getOwnLegalName(
+            accessToken,
+            params.data.workspaceId,
+          ),
+        });
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  );
+
+  app.put(
+    "/v1/account/workspaces/:workspaceId/legal-name",
+    async (request, reply) => {
+      const accessToken = bearerToken(request.headers.authorization);
+      const params = workspaceParams.safeParse(request.params);
+      const body = ownerLegalNameSchema.safeParse(request.body);
+      if (!accessToken)
+        return reply.status(401).send({ error: "Bearer token required" });
+      if (!params.success || !body.success)
+        return reply
+          .status(400)
+          .send({ error: "A first and a last name are required" });
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Workspace account service is not configured" });
+      try {
+        await options.service.saveOwnLegalName(
+          accessToken,
+          params.data.workspaceId,
+          body.data,
+        );
+        return reply.status(204).send();
+      } catch (error) {
+        return requestError(reply, error);
+      }
+    },
+  );
 
   app.post("/v1/account/workspaces", async (request, reply) => {
     const accessToken = bearerToken(request.headers.authorization);

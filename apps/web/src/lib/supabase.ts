@@ -6,6 +6,8 @@ import {
   type AccountAttention,
   type EmploymentContactRecord,
   type WorkspaceIdentity,
+  ownerLegalNameResponseSchema,
+  type OwnerLegalName,
   accountProfileSchema,
   activeWorkspaceContextSchema,
   normalizeAccountPhone,
@@ -306,6 +308,27 @@ export async function listOwnEmploymentRecords(
   return employmentContactRecordSchema
     .array()
     .parse(await apiRequest(client, "/v1/account/employment-records"));
+}
+
+/** The owner's own legal name in one workspace; null until one is on file. */
+export async function getOwnLegalName(
+  client: SupabaseClient,
+  workspaceId: string,
+): Promise<OwnerLegalName | null> {
+  return ownerLegalNameResponseSchema.parse(
+    await apiRequest(client, `/v1/account/workspaces/${workspaceId}/legal-name`),
+  ).legalName;
+}
+
+export async function saveOwnLegalName(
+  client: SupabaseClient,
+  workspaceId: string,
+  name: OwnerLegalName,
+): Promise<void> {
+  await apiRequest(client, `/v1/account/workspaces/${workspaceId}/legal-name`, {
+    method: "PUT",
+    body: JSON.stringify(name),
+  });
 }
 
 export async function listAccountWorkspaces(

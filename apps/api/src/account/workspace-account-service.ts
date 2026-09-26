@@ -5,6 +5,7 @@ import {
   workspaceSummaryFromRow,
   type AccountAttention,
   type EmploymentContactRecord,
+  type OwnerLegalName,
   type WorkspaceIdentity,
   type WorkspaceSummary,
 } from "@newfork/shared";
@@ -71,6 +72,17 @@ export interface WorkspaceAccountService {
       readonly ownerMiddleName?: string | null;
       readonly ownerLastName?: string | null;
     },
+  ): Promise<void>;
+  /** The owner's own legal name in this workspace; null when none is on file. */
+  getOwnLegalName(
+    accessToken: string,
+    workspaceId: string,
+  ): Promise<OwnerLegalName | null>;
+  /** Changes it; the database writes the audit line when something changed. */
+  saveOwnLegalName(
+    accessToken: string,
+    workspaceId: string,
+    name: OwnerLegalName,
   ): Promise<void>;
   /** Records that this account just opened this workspace. */
   touchWorkspace(accessToken: string, workspaceId: string): Promise<void>;
@@ -307,6 +319,32 @@ export function createWorkspaceAccountServiceWithClients(options: {
         owner_first_name: input.ownerFirstName ?? null,
         owner_middle_name: input.ownerMiddleName ?? null,
         owner_last_name: input.ownerLastName ?? null,
+      });
+    },
+    async getOwnLegalName(accessToken, workspaceId) {
+      const rows = (await rpc("get_own_legal_name_service", {
+        ...(await actorArgs(accessToken)),
+        target_workspace_id: workspaceId,
+      })) as readonly {
+        legal_first_name: string | null;
+        legal_middle_name: string | null;
+        legal_last_name: string | null;
+      }[];
+      const row = rows?.[0];
+      if (!row?.legal_first_name || !row.legal_last_name) return null;
+      return {
+        firstName: row.legal_first_name,
+        middleName: row.legal_middle_name ?? "",
+        lastName: row.legal_last_name,
+      };
+    },
+    async saveOwnLegalName(accessToken, workspaceId, name) {
+      await rpc("save_owner_legal_name_service", {
+        ...(await actorArgs(accessToken)),
+        target_workspace_id: workspaceId,
+        legal_first_name: name.firstName,
+        legal_middle_name: name.middleName,
+        legal_last_name: name.lastName,
       });
     },
     async listWorkspaceIdentities(accessToken) {

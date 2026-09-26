@@ -3,7 +3,14 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { AccountProfile } from "@newfork/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProfilePage from "./ProfilePage";
-import { listWorkspaceIdentities } from "../lib/supabase";
+import {
+  getOwnLegalName,
+  listAccountWorkspaces,
+  listOwnEmploymentRecords,
+  listWorkspaceIdentities,
+  saveOwnLegalName,
+} from "../lib/supabase";
+import { RequestError } from "../lib/request-error";
 import { requestAvailabilityNavigation } from "../availability/availability-navigation";
 import { uploadAccountAvatar, removeAccountAvatar } from "../lib/supabase";
 import { cropAvatar } from "./avatar-crop";
@@ -28,7 +35,23 @@ vi.mock("../lib/supabase", () => ({
   uploadAccountAvatar: vi.fn(),
   removeAccountAvatar: vi.fn(async () => undefined),
   listWorkspaceIdentities: vi.fn(async () => []),
+  listAccountWorkspaces: vi.fn(async () => []),
+  listOwnEmploymentRecords: vi.fn(async () => []),
+  getOwnLegalName: vi.fn(async () => null),
+  saveOwnLegalName: vi.fn(async () => undefined),
 }));
+
+const ownedWorkspaceId = "51000000-0000-4000-8000-000000000001";
+function workspace(role: "owner" | "employee", status: "active" | "pending" = "active") {
+  return {
+    id: ownedWorkspaceId,
+    name: "Meyhouse",
+    role,
+    status,
+    isActive: true,
+    onboarding: { status: "complete" as const, currentStep: 4 },
+  };
+}
 
 function renderProfile() {
   const queryClient = new QueryClient({
@@ -239,6 +262,90 @@ describe("ProfilePage", () => {
       "value",
       "Draft Owner",
     );
+  });
+
+  // BL-080: the owner's legal name, the one documents read, is theirs to change here.
+  it("shows the owner their legal name and saves a change to it", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([workspace("owner")]);
+    vi.mocked(getOwnLegalName).mockResolvedValue({
+      firstName: "Mert",
+      middleName: "",
+      lastName: "Tepebas",
+    });
+    renderProfile();
+
+    const first = await screen.findByLabelText("Legal first name");
+    await waitFor(() => expect(first).toHaveProperty("value", "Mert"));
+    expect(getOwnLegalName).toHaveBeenCalledWith(expect.anything(), ownedWorkspaceId);
+    const save = screen.getByRole("button", { name: "Save legal name" });
+    expect(save).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByLabelText("Legal middle name"), {
+      target: { value: "Ali" },
+    });
+    fireEvent.click(save);
+
+    await waitFor(() =>
+      expect(saveOwnLegalName).toHaveBeenCalledWith(expect.anything(), ownedWorkspaceId, {
+        firstName: "Mert",
+        middleName: "Ali",
+        lastName: "Tepebas",
+      }),
+    );
+    expect(await screen.findByText("Legal name saved")).toBeTruthy();
+  });
+
+  it("does not show a legal name to somebody who owns nothing", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([workspace("employee")]);
+    renderProfile();
+
+    await waitFor(() => expect(listAccountWorkspaces).toHaveBeenCalled());
+    expect(screen.queryByLabelText("Legal first name")).toBeNull();
+    expect(getOwnLegalName).not.toHaveBeenCalled();
+  });
+
+  it("says why a legal name was not saved", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([workspace("owner")]);
+    vi.mocked(getOwnLegalName).mockResolvedValue({
+      firstName: "Mert",
+      middleName: "",
+      lastName: "Tepebas",
+    });
+    vi.mocked(saveOwnLegalName).mockRejectedValue(
+      new RequestError("Not allowed", "authz.owner_only", undefined, 403),
+    );
+    renderProfile();
+
+    const last = await screen.findByLabelText("Legal last name");
+    await waitFor(() => expect(last).toHaveProperty("value", "Tepebas"));
+    fireEvent.change(last, { target: { value: "Tepebaş" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save legal name" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Only the owner can change this legal name.",
+    );
+  });
+
+  it("asks somebody still onboarding to finish before keeping contacts here", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([workspace("employee", "pending")]);
+    vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
+      {
+        workspaceId: ownedWorkspaceId,
+        workspaceName: "Meyhouse",
+        employeeId: "97f65b16-a7ad-4f50-990e-d89030ac4701",
+        preferredName: "",
+        phone: null,
+        emergencyContactName: "",
+        emergencyContactRelationship: "",
+        emergencyContactPhone: "",
+        emergencyContactEmail: "",
+      },
+    ]);
+    renderProfile();
+
+    expect(
+      await screen.findByText("Finish onboarding here first, then keep these details up to date."),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText("Emergency contact")).toBeNull();
   });
 });
 

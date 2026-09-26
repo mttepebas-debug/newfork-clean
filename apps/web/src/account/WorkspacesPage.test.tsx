@@ -687,6 +687,37 @@ describe("WorkspacesPage", () => {
     );
   });
 
+  // BL-080: the business goes only to somebody whose legal name is on file.
+  it("says why a transfer to somebody without a legal name was refused", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(initiateWorkspaceOwnershipTransfer).mockRejectedValueOnce(
+      new RequestError(
+        "the new owner has no legal name on file yet",
+        "transfer.target_legal_name_missing",
+        undefined,
+        400,
+      ),
+    );
+    renderPage();
+
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Transfer ownership" }));
+    fireEvent.change(screen.getByLabelText("Find an admin by name or email"), {
+      target: { value: "Admin" },
+    });
+    fireEvent.click(await screen.findByRole("radio", { name: /Eligible Admin/ }));
+    fireEvent.click(screen.getByLabelText(/I understand I cannot undo this/));
+    fireEvent.change(screen.getByLabelText("Account password"), {
+      target: { value: "fresh-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Start transfer" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "They need to finish their profile before they can own the business.",
+    );
+    expect(screen.queryByText(/no legal name on file/)).toBeNull();
+  });
+
   it("lets a target admin accept a pending ownership transfer", async () => {
     const targetWorkspace = {
       ...ownerWorkspace,
