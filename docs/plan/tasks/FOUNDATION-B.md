@@ -407,3 +407,4 @@ Aşama 0: tamamlandı (bir açık madde) · 1: 0,5–1 · 2: 1,5–2,5 · 3: 0,7
   - Schedule ızgarası okuması CI'da `schedule_grid_read_budget` ile her gönderimde <50 ms ölçülüyor; Shift Hub takası 5.1'de tarayıcıda tamamlandı; ızgara, kaydetme ve yayın tek availability sistemini okuyor (5.3).
   - Sıfırdan kurulum: CI `db` işi her gönderimde migration + seed'den kuruyor, yeşil. Yerel Meyhouse fixture'ı bugünkü şemayla sütun kontrolünde uyumlu; paylaşılan yerel veritabanında `db reset` kullanıcı onayı istediği için koşulmadı.
   - Yeşil liste 92 dosya / 5971 ok / 0 not ok (yerel, iki son migration'la).
+- 2026-09-26 **FB-6.1 `.2` + `.3a` + `.3b` main'de** (`f210196`): Takvim'in 34 DB giriş noktası ve 80 API geçişi yetki çekirdeğine soruyor; plan kilidi devralma silindi. Yeşil liste 93 dosya (92 + `schedule_asks_the_core`), e2e 5/5. Ayrıntı ve kanıt `FB-6.1.md` Notes. Sıradaki: `.5` (ızgara bütçesi taban ölçümü + ghost).
