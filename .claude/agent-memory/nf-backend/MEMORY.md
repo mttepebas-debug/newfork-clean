@@ -1,3 +1,4 @@
 - [Authz matrix twin](authz-matrix-twin.md) — dump command, hash guard, uncovered-branch trap, can() no-target source, global handler carries reason (BL-128)
 - [rpcFailure filter](rpcfailure-filter.md) — BL-131 rules; unmapped errcode = 500; errcode census command before moving a service onto it
 - [API gate](api-gate.md) — resolveActor + authorize, gate-first, permission→action mapping, per-route table test, codemod trap (FB-6.1 .3)
+- [Realtime join measure](realtime-join-measure.md) — local measurement script, fixture, refused join ~5.2 s stalls concurrent joins (FB-6.1.10)
