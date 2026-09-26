@@ -66,11 +66,15 @@ declare
   preview jsonb;
   result jsonb;
 begin
-  -- ponytail: callers pass the request the actor just filed as themselves.
   if app_private.authz_reason(actor, w, 'workspace.setup') is not null then
     return null;
   end if;
-  select * into r from public.schedule_time_off_requests where id = rid and workspace_id = w;
+  -- Only the owner's own request; anybody else's is left as it is.
+  select * into r from public.schedule_time_off_requests where id = rid and workspace_id = w
+    and employee_id in (select e.id from public.employee_profiles e where e.workspace_id = w and e.user_id = actor);
+  if r.id is null then
+    return null;
+  end if;
   if r.request_type = 'time_off' then
     preview := public.preview_time_off_assignment_decision_service(actor, w, rid, r.revision, 'approve', '[]');
     result := public.decide_time_off_with_assignments_service(actor, w, rid, r.revision, 'approve', '', '[]',
