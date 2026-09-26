@@ -2452,10 +2452,12 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
       postal_code: z.string().trim().max(20).nullable().optional(),
       country_code: z.string().trim().length(2).nullable().optional(),
       date_of_birth: z.string().date().nullable(),
-      emergency_contact_name: z.string().trim().min(1).max(120),
+      // Null together until a contact is given: the owner's record is opened
+      // at setup with the legal name only (BL-080).
+      emergency_contact_name: z.string().trim().min(1).max(120).nullable(),
       emergency_contact_relationship: z.string().trim().min(1).max(80).nullable(),
       emergency_contact_email: z.string().trim().email().or(z.literal("")),
-      emergency_contact_phone: z.string().trim().min(7).max(30),
+      emergency_contact_phone: z.string().trim().min(7).max(30).nullable(),
       share_phone_with_teammates: z.boolean(),
       share_email_with_teammates: z.boolean(),
     })
