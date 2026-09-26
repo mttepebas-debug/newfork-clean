@@ -438,3 +438,40 @@ insert into public.workspace_memberships (
 update public.employee_profiles
 set user_id = 'a6000000-0000-4000-8000-000000000001'
 where id = '15000000-0000-4000-8000-000000000001';
+
+-- Every owner here finished setup, and setup files the owner the way it files
+-- anybody else (BL-080): an employee record under the name its first step
+-- asked for, that name as their legal name, and every location and job. This is
+-- the state app_private.apply_owner_onboarding_update leaves; written out here
+-- because these workspaces are seeded as already finished.
+do $$
+declare
+  owner_row record;
+begin
+  for owner_row in
+    select * from (values
+      ('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'::uuid, '0e000000-0000-4000-8000-000000000001'::uuid, 'E-0005', 'Local', 'Owner', 'owner@newfork.test'),
+      ('7ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid, 'b0000000-0000-4000-8000-000000000001'::uuid, '0e000000-0000-4000-8000-000000000002'::uuid, 'E-0002', 'External', 'Owner', 'external-owner@newfork.test'),
+      ('8ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid, 'b0000000-0000-4000-8000-000000000001'::uuid, '0e000000-0000-4000-8000-000000000003'::uuid, 'E-0001', 'External', 'Owner', 'external-owner@newfork.test'),
+      ('9ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid, 'b0000000-0000-4000-8000-000000000001'::uuid, '0e000000-0000-4000-8000-000000000004'::uuid, 'E-0001', 'External', 'Owner', 'external-owner@newfork.test')
+    ) seeded (workspace_id, user_id, employee_id, employee_code, first_name, last_name, email)
+  loop
+    insert into public.employee_profiles (
+      id, workspace_id, user_id, employee_code, first_name, last_name,
+      preferred_name, invitation_email, created_by
+    ) values (
+      owner_row.employee_id, owner_row.workspace_id, owner_row.user_id,
+      owner_row.employee_code, owner_row.first_name, owner_row.last_name,
+      '', owner_row.email, owner_row.user_id
+    );
+    insert into public.employee_private_profiles (
+      employee_id, workspace_id, legal_first_name, legal_last_name
+    ) values (
+      owner_row.employee_id, owner_row.workspace_id, owner_row.first_name, owner_row.last_name
+    );
+    perform app_private.open_owner_record_to_everything(
+      owner_row.workspace_id, owner_row.employee_id, owner_row.user_id
+    );
+  end loop;
+end;
+$$;

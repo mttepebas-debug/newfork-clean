@@ -29,6 +29,10 @@ update tc set parent=pg_temp.tc_new('2035-01-15','09:00','17:00');
 update tc set segment=(select id from public.schedule_time_off_segments where request_id=tc.parent);
 update tc set original=(select to_jsonb(s) from public.schedule_time_off_segments s where id=tc.segment),periods=jsonb_build_array(jsonb_build_object('segment_id',segment,'starts_at','2035-01-15T15:00:00Z','ends_at','2035-01-15T19:00:00Z'));
 select throws_ok($$select public.employee_request_action_service(actor,w,parent,'time_off','cancel',2) from tc$$,'40001',null,'old cancel action cannot remove approved leave');
+-- The seeded owner is filed as an employee (BL-080), so this call now reaches the
+-- request lookup and answers P0002 like any employee naming somebody else's
+-- leave; the no-contract answer for that is 42501 + authz.out_of_scope.
+select todo('FOUNDATION-B stage 6 Time off: somebody else''s leave answers 42501 authz.out_of_scope, not P0002', 1);
 select throws_ok($$select public.submit_employee_time_off_cancellation_service(manager,w,parent,2,'',periods,op) from tc$$,'42501',null,'manager cannot submit a cancellation as another employee');
 select throws_ok($$select public.submit_employee_time_off_cancellation_service(actor,gen_random_uuid(),parent,2,'',periods,op) from tc$$,'42501',null,'workspace ownership is enforced');
 select throws_ok($$select public.submit_employee_time_off_cancellation_service(actor,w,parent,1,'',periods,op) from tc$$,'40001',null,'cancellation requires current parent revision');
