@@ -61,3 +61,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | BL-137 (işlevsel) | parolasını unutan kişi giriş ekranından sıfırlama bağlantısı isteyip yeni parola belirleyebiliyor; hesabın varlığı dışarıdan anlaşılmıyor | ec7fd07
 2026-09-26 | BL-165 | Account → Workspaces'te "⋯" menüsü artık kesilmiyor, klavyeyle gezilebiliyor | 45a17db
 2026-09-26 | BL-158 | "On call" gibi vardiya etiketleri yayında, yeniden düzenlemede, kurtarılan taslakta ve takastan sonra kaybolmuyor; ghost kartta görünüyor | 52c307e
+2026-09-26 | FB-6.1.6 | onaylı izin müdürün vardiya yazmasında her zaman kesin engel; ayar ekranından seçeneği kalktı | 73eee2d
