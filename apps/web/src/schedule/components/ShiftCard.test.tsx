@@ -3,7 +3,7 @@ import type {
   ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -296,7 +296,7 @@ describe("GhostShiftCard", () => {
     expect(badge.style.getPropertyValue("--shift-color")).toBe("");
   });
 
-  it("names the place in a tooltip on keyboard focus and hides it on Escape", () => {
+  it("names the place in a tooltip on keyboard focus and hides it on Escape", async () => {
     const ghostShift = {
       ...shift,
       ghost: true,
@@ -327,7 +327,7 @@ describe("GhostShiftCard", () => {
     fireEvent.mouseEnter(pin);
     expect(screen.getByRole("tooltip").textContent).toBe("Besiktas");
     fireEvent.mouseLeave(pin);
-    expect(screen.queryByRole("tooltip")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
   });
 
   it("titles an out-of-scope ghost with the job, type and labels it carries", () => {
