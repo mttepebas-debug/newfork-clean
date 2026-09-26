@@ -98,15 +98,15 @@ select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-00
 select ok((public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'shifts'->0->'warning_codes') ? 'closed_location', 'read model projects closure warning');
 select throws_ok(
   $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000003', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$,
-  '42501', 'manager schedule read access required', 'employee access class cannot read manager Schedule'
+  '42501', 'Not allowed', 'employee access class cannot read manager Schedule'
 );
 select throws_ok(
   $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$,
-  '42501', 'manager schedule read access required', 'cross-tenant Schedule read is denied'
+  '42501', 'Not allowed', 'cross-tenant Schedule read is denied'
 );
 select throws_ok(
   $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000002', '2026-08-19')$$,
-  '42501', 'manager schedule read access required', 'same account employee role in another tenant cannot read manager Schedule'
+  '42501', 'Not allowed', 'same account employee role in another tenant cannot read manager Schedule'
 );
 
 select * from finish();

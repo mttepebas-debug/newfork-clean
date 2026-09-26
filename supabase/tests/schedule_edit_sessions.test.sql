@@ -223,7 +223,7 @@ select throws_ok(
   $$select public.acquire_schedule_edit_session_service(
     '51000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
     current_date - (extract(isodow from current_date)::integer - 1), 'blank', null)$$,
-  '42501', 'schedule manage access denied', 'employee cannot acquire an edit session'
+  '42501', 'Not allowed', 'employee cannot acquire an edit session'
 );
 select throws_ok(
   $$select public.mutate_schedule_edit_shift_service(

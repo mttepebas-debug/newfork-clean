@@ -80,7 +80,9 @@ update public.employee_weekly_preferences set preference=public.empty_weekly_pre
 update public.manager_weekly_reminders set enabled=true,preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true') where workspace_id=(select w from ws);
 select ok((pg_temp.project()->'days'->0->>'all_day')::boolean,'all-day projection is explicit');
 select tests.stops_working_at((select id from public.workspace_memberships where workspace_id=(select w from ws) and user_id=(select manager from ws)));
-select is(jsonb_array_length(coalesce(pg_temp.the_employee(pg_temp.read_model())->'weekly_availability','[]')),0,'revoked location scope removes preference projection');
+-- With no location left the manager reads no week at all (FB-6.1 .4: the core
+-- refuses a manager out of reach instead of returning an empty grid).
+select throws_ok($$select pg_temp.read_model()$$,'42501','Not allowed','revoked location scope removes preference projection');
 select ok(not has_function_privilege('authenticated','app_private.schedule_week_availability(uuid,date,uuid[],uuid[],boolean)','EXECUTE'),'raw projection helper is private');
 select * from finish();
 rollback;

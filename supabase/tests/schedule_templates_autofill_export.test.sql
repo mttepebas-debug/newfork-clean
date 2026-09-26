@@ -79,7 +79,7 @@ select is(preset->>'name','Wall chart','export preset creates') from phase5d_sta
 select is(jsonb_array_length(public.list_schedule_export_presets_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'presets'),1,'export preset lists for creator') from phase5d_state;
 select is(public.delete_schedule_export_preset_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(preset->>'id')::uuid)->>'status','deleted','export preset deletes') from phase5d_state;
 select is(jsonb_array_length(public.list_schedule_export_presets_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'presets'),0,'deleted preset disappears') from phase5d_state;
-select throws_ok($$select public.create_schedule_template_service('94000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','94200000-0000-4000-8000-000000000001','Denied',true)$$,'42501','schedule template access denied','employee cannot create template');
+select throws_ok($$select public.create_schedule_template_service('94000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','94200000-0000-4000-8000-000000000001','Denied',true)$$,'42501','Not allowed','employee cannot create template');
 select throws_ok($$select public.preview_schedule_export_service('94000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'published',null,array['11000000-0000-4000-8000-000000000001'::uuid])$$,'42501','Not allowed','employee cannot export manager schedule');
 
 select * from finish();

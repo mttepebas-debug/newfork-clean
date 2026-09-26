@@ -153,7 +153,6 @@ insert into service_class values
   ('preview_schedule_auto_fill_service', 'schedule.edit'),
   ('preview_schedule_default_hours_service', 'schedule.edit'),
   ('preview_schedule_export_service', 'schedule.export'),
-  ('preview_schedule_publication_before_availability_review_service', 'schedule.publish'),
   ('preview_schedule_publication_service', 'schedule.publish'),
   ('preview_schedule_unpublication_service', 'schedule.publish'),
   ('preview_time_off_assignment_decision_service', 'time_off.decide'),

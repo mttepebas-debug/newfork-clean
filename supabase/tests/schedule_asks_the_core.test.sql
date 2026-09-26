@@ -102,21 +102,7 @@ select is(app_private.scope_set(tests.user('sc:nur'), tests.id('sc'), 'schedule.
 
 create temporary table helper_caller (name text primary key, moves_in text not null);
 insert into helper_caller values
-  -- FB-6.1 .4: folded into one function per Schedule job
-  ('acquire_schedule_edit_session_service_past_week_base', 'FB-6.1 .4'),
-  ('apply_schedule_template_service_label_base', 'FB-6.1 .4'),
-  ('create_schedule_export_schedule_service', 'FB-6.1 .4'),
-  ('create_schedule_template_service_label_base', 'FB-6.1 .4'),
-  ('delete_schedule_draft_service', 'FB-6.1 .4'),
-  ('delete_schedule_template_service', 'FB-6.1 .4'),
-  ('mutate_schedule_edit_shift_service_base', 'FB-6.1 .4'),
-  ('mutate_schedule_edit_shift_service_label_base', 'FB-6.1 .4'),
-  ('preview_schedule_publication_before_availability_review_service', 'FB-6.1 .4'),
-  ('preview_schedule_unpublication_exchange_base', 'FB-6.1 .4'),
-  ('record_schedule_export_event_service', 'FB-6.1 .4'),
-  ('rename_schedule_template_service', 'FB-6.1 .4'),
-  ('save_schedule_edit_session_service_exchange_base', 'FB-6.1 .4'),
-  ('update_schedule_export_schedule_service', 'FB-6.1 .4'),
+  -- FB-6.1 .4 moved the last fourteen Schedule callers (one function per job).
   -- FB-6.3: time off
   ('apply_time_off_period_decision', 'FB-6.3'),
   ('decide_time_off_with_assignments_service', 'FB-6.3'),
@@ -148,7 +134,7 @@ select is(
   '{}'::text[],
   'every name on the list still asks them: a function that moved to the core comes off the list'
 );
-select is((select count(*)::integer from asks_helpers), 24, 'twenty-four functions still ask the old helpers (58 before FB-6.1 .2)');
+select is((select count(*)::integer from asks_helpers), 10, 'ten functions still ask the old helpers, all time off or shift exchanges (58 before FB-6.1 .2, 24 before .4)');
 
 -- 2. The "somewhere" shape ----------------------------------------------------------------
 -- Every target_locations => app_private.scope_set( call is the whole shape, asks

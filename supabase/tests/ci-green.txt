@@ -57,6 +57,7 @@ supabase/tests/schedule_asks_the_core.test.sql
 supabase/tests/schedule_draft_availability_reads.test.sql
 supabase/tests/schedule_edit_locks.test.sql
 supabase/tests/schedule_grid_read_budget.test.sql
+supabase/tests/schedule_one_function_per_job.test.sql
 supabase/tests/schedule_read_model_rls.test.sql
 supabase/tests/schedule_reads_weekly_availability.test.sql
 supabase/tests/schedule_realtime_channels.test.sql

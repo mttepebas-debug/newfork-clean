@@ -170,6 +170,29 @@ insert into retired (kind, name, step) values
   ('function_signature', 'public.list_schedule_draft_document_conflicts_service(uuid, uuid, uuid, date)', 'FB-6.1.2'),
   -- nobody takes over somebody else's open edit (user decision 2026-09-25)
   ('function', 'takeover_schedule_edit_session_service', 'FB-6.1.2');
+-- FB-6.1 .4: one function per Schedule job; the layers under each and the
+-- overloads beside it are gone.
+insert into retired (kind, name, step)
+select 'function', name, 'FB-6.1.4' from unnest(array[
+  'acquire_schedule_edit_session_service_past_week_base',
+  'apply_schedule_template_service_label_base', 'create_schedule_template_service_label_base',
+  'get_schedule_edit_session_service_base', 'get_schedule_edit_session_service_label_base',
+  'get_schedule_read_model_service_employee_exclusion_base', 'get_schedule_read_model_service_label_base',
+  'get_schedule_read_model_service_shift_label_management_base',
+  'mutate_schedule_edit_shift_service_base', 'mutate_schedule_edit_shift_service_document_conflict_base',
+  'mutate_schedule_edit_shift_service_label_base', 'mutate_schedule_edit_shift_service_soft_audit_base',
+  'preview_schedule_publication_before_availability_review_service', 'preview_schedule_unpublication_exchange_base',
+  'publish_schedule_draft_exchange_base', 'publish_schedule_draft_service_document_conflict_base',
+  'publish_schedule_draft_service_document_conflict_legacy_base', 'publish_schedule_draft_service_label_base',
+  'save_schedule_edit_session_service_base', 'save_schedule_edit_session_service_exchange_base',
+  'save_schedule_edit_session_service_label_base', 'save_schedule_edit_session_service_retroactive_base',
+  'unpublish_schedule_service_exchange_base'
+]) name;
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.publish_schedule_draft_service(uuid, uuid, uuid, uuid[], integer, text, jsonb)', 'FB-6.1.4'),
+  ('function_signature', 'public.publish_schedule_draft_service(uuid, uuid, uuid, uuid[], uuid[], boolean, integer, text, jsonb)', 'FB-6.1.4'),
+  ('function_signature', 'public.preview_schedule_publication_service(uuid, uuid, uuid, uuid[])', 'FB-6.1.4'),
+  ('function_signature', 'public.apply_schedule_template_service(uuid, uuid, uuid, integer, uuid, text)', 'FB-6.1.4');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

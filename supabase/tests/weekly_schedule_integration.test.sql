@@ -84,11 +84,10 @@ update ws s set draft=(public.save_schedule_edit_session_service(manager,w,sessi
 create function pg_temp.preflight() returns jsonb language sql as $$
  select public.preview_schedule_publication_service(manager,w,draft,array[loc],null,true) from ws;
 $$;
-create function pg_temp.publish(decisions jsonb default '[]',legacy boolean default false) returns jsonb language plpgsql as $$
+create function pg_temp.publish(decisions jsonb default '[]') returns jsonb language plpgsql as $$
 declare s ws%rowtype; rev integer;
 begin
  select * into s from ws; select revision into rev from public.schedule_drafts where id=s.draft;
- if legacy then return public.publish_schedule_draft_service(s.manager,s.w,s.draft,array[s.loc],rev,s.preview->>'fingerprint',decisions); end if;
  return public.publish_schedule_draft_service(s.manager,s.w,s.draft,array[s.loc],null,true,rev,s.preview->>'fingerprint',decisions);
 end; $$;
 select is(pg_temp.preflight()->'findings'->0->>'availability_state','accepted','canonical preflight retains accepted conflict group');
@@ -113,7 +112,7 @@ update public.manager_weekly_reminders set enabled=true where workspace_id=(sele
 select is(pg_temp.preflight()->'findings','[]'::jsonb,'re-enabling does not backfill published warning');
 select is(public.schedule_availability_read_projection(manager,w,(select to_jsonb(p) from public.schedule_published_shifts p where p.workspace_id=w limit 1))->'availability_assessment'->>'has_availability_conflict','false','published read suppresses re-enabled reminder') from ws;
 update ws set preview=public.preview_schedule_publication_service(manager,w,draft,array[loc]);
-select lives_ok($$select pg_temp.publish('[]',true)$$,'legacy publication overload also preserves unchanged responsibility without another decision');
+select lives_ok($$select pg_temp.publish('[]')$$,'republishing preserves unchanged responsibility without another decision');
 select is((select availability_snapshot from public.schedule_published_shifts p join public.schedule_location_publications l on l.id=p.publication_id where p.workspace_id=s.w and l.status='current' limit 1),snapshot,'republish keeps immutable original evidence') from ws s;
 -- A distinct new assignment must not inherit the previous publication's choice.
 -- The employee's own mark follows Warn (a manager's reminder would ask for confirmation).

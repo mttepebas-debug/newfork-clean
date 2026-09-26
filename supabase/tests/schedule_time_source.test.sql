@@ -65,7 +65,7 @@ select lives_ok($$select public.discard_schedule_edit_session_service(actor,w,se
 
 update time_source_state set result=public.preview_schedule_publication_service(actor,w,draft,array[loc]);
 select is(result->>'status','publish_ready','resolved open reference is publishable') from time_source_state;
-select lives_ok($$select public.publish_schedule_draft_service(s.actor,s.w,s.draft,array[s.loc],d.revision,s.result->>'fingerprint','[]') from time_source_state s join public.schedule_drafts d on d.id=s.draft$$,'publication preserves source atomically');
+select lives_ok($$select public.publish_schedule_draft_service(s.actor,s.w,s.draft,array[s.loc],null,true,d.revision,s.result->>'fingerprint','[]') from time_source_state s join public.schedule_drafts d on d.id=s.draft$$,'publication preserves source atomically');
 select is((select time_snapshot->>'default_revision' from public.schedule_published_shifts where source_shift_id=s.shift order by created_at desc limit 1),'1','published shift retains original defaults') from time_source_state s;
 select is((select time_timezone from public.schedule_published_shifts where source_shift_id=s.shift order by created_at desc limit 1),(select time_timezone from public.schedule_draft_shifts where id=s.shift and draft_id=s.draft),'publication retains the saved timezone') from time_source_state s;
 update time_source_state set session=(public.acquire_schedule_edit_session_service(actor,w,week,'published',null)->'session'->>'id')::uuid;

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(17);
 
 -- FOUNDATION-B 5.3: the Schedule grid reads a week with availability from the
 -- weekly marks within 50 ms: 30 people at two locations, most with marks, some
@@ -93,6 +93,24 @@ select is((select (length(model::text) - length(replace(model::text, s.id::text,
   where s.employee_id = tests.id('wb:p3') and s.location_id = tests.id('wb:B')), 1,
   'the Besiktas shift appears once in Mina''s model, as a ghost, with nothing else of it');
 
+select is((select model -> 'ghost_shifts' from wb_run where who = 'owner' and n = 1), '[]'::jsonb,
+  'the owner reaches every location, so nothing is a ghost');
+
+-- A ghost names the shift type as the grid does, and not once it is archived.
+-- ponytail: typed and archived by hand, after the measured reads.
+insert into public.shift_types (id, workspace_id, name, default_start_time, default_end_time)
+values (tests.remember('wb:type:double', gen_random_uuid()), tests.id('wb'), 'Double', '09:00', '15:00');
+update public.schedule_published_shifts set shift_type_id = tests.id('wb:type:double')
+where employee_id = tests.id('wb:p3') and location_id = tests.id('wb:B');
+create function pg_temp.p3_ghost_type() returns text language sql as $$
+  select g ->> 'shift_type_name' from jsonb_array_elements(
+    public.get_schedule_read_model_service(tests.user('wb:mina'), tests.id('wb'), tests.week(1)) -> 'ghost_shifts') g
+  where (g ->> 'employee_id')::uuid = tests.id('wb:p3')
+$$;
+select is(pg_temp.p3_ghost_type(), 'Double', 'a ghost names its shift type: Mina sees p3''s Besiktas shift is a Double');
+update public.shift_types set archived_at = now() where id = tests.id('wb:type:double');
+select is(pg_temp.p3_ghost_type(), null, 'an archived shift type is not named on a ghost');
+
 -- A job the grid no longer lists (archived) has no name on the ghost either.
 -- ponytail: archived by hand, after the measured reads.
 update public.jobs set archived_at = now() where id = tests.id('wb:job:cook');
@@ -100,8 +118,17 @@ select is(
   (select array_agg(distinct coalesce(g ->> 'job_name', 'null')) from jsonb_array_elements(
     public.get_schedule_read_model_service(tests.user('wb:mina'), tests.id('wb'), tests.week(1)) -> 'ghost_shifts') g),
   array['null'], 'an archived job is not named on a ghost, as the grid does not name it');
-select is((select model -> 'ghost_shifts' from wb_run where who = 'owner' and n = 1), '[]'::jsonb,
-  'the owner reaches every location, so nothing is a ghost');
+
+-- A deleted location is gone from the grid and from the ghosts alike: the
+-- grid and the ghosts draw the same line (FB-6.1 .4, nf-guvenlik (a)).
+-- ponytail: closed by hand; there is no delete-location entry point yet.
+update public.locations set archived_at = now(), deleted_at = now() where id = tests.id('wb:B');
+select is((select count(*)::integer from jsonb_array_elements(
+    public.get_schedule_read_model_service(tests.user('wb:mina'), tests.id('wb'), tests.week(1)) -> 'ghost_shifts') g
+  where (g ->> 'location_id')::uuid = tests.id('wb:B')), 0, 'no ghost at a deleted location');
+select is((select array(select l ->> 'id' from jsonb_array_elements(
+    public.get_schedule_read_model_service(tests.user('wb:owner'), tests.id('wb'), tests.week(1)) -> 'locations') l)),
+  array[tests.id('wb:K')::text], 'the owner''s grid has no row for a deleted location');
 
 select * from finish();
 rollback;

@@ -32,13 +32,15 @@ select cmp_ok(
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 60, 'functions with their own scope or rank logic only go down'
+  '<=', 59, 'functions with their own scope or rank logic only go down'
 );
 
--- Wrapper chains and versioned copies of one entry point. Target 0.
+-- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
+-- folded Schedule's 24 into one function per job (37 -> 13), and with them
+-- the grid's own scope reading (60 -> 59 above).
 select cmp_ok(
   (select count(*)::integer from core_function where name ~ '(_base|_v[0-9]+|_legacy)(_|$)'),
-  '<=', 37, '_base, _vN and _legacy functions only go down'
+  '<=', 13, '_base, _vN and _legacy functions only go down'
 );
 
 -- Policies that read the JWT themselves rather than through the core.

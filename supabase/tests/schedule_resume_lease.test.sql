@@ -53,7 +53,7 @@ select ok((result->'session'->>'dirty')::boolean,'resume preserves unsaved state
 select is((select to_jsonb(s) from public.schedule_edit_session_shifts s where s.session_id=f.session),snapshot,'resume preserves complete working shift') from lease_fixture f;
 select lives_ok($$select public.heartbeat_schedule_edit_session_service(actor,w,session) from lease_fixture$$,'heartbeat works immediately after expired resume');
 select is(public.acquire_schedule_edit_session_service(other_actor,w,week,'draft',draft)->>'status','conflict','another manager cannot open the draft while the renewed lease holds it') from lease_fixture;
-select throws_ok($$select public.acquire_schedule_edit_session_service(outsider,w,week,'blank',null) from lease_fixture$$,'42501','schedule manage access denied','unauthorized actor cannot resume');
+select throws_ok($$select public.acquire_schedule_edit_session_service(outsider,w,week,'blank',null) from lease_fixture$$,'42501','Not allowed','unauthorized actor cannot resume');
 set local role postgres;
 update public.schedule_edit_sessions set expires_at=now()-interval '1 minute' where id=(select session from lease_fixture);
 set local role service_role;

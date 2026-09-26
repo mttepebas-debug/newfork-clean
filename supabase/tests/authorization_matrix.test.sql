@@ -66,6 +66,21 @@ select tests.publish_week('m', 0, '[
 ]');
 select tests.cover_case('m', 'emre-k', 'emre', 'ali');
 select tests.cover_case('m', 'veli-b', 'veli', 'ali');
+-- Drafts and templates at one or both locations (REUSE "Taslak ve lokasyon"
+-- B3, K-2; M2 publish and export).
+-- ponytail: stored as they are; a draft is written by saving a whole edit and
+-- a template from a draft, neither of which the rule depends on.
+insert into public.schedule_drafts (id, workspace_id, week_start, name, created_by, updated_by, location_ids)
+select tests.remember('m:dr:' || d.label, gen_random_uuid()), tests.id('m'), tests.week(2), 'Draft ' || d.label,
+  tests.user('m:owner'), tests.user('m:owner'), array(select tests.id('m:' || l) from unnest(d.locs) l)
+from (values ('K', array['K']), ('B', array['B']), ('KB', array['K', 'B'])) d(label, locs);
+insert into public.schedule_templates (id, workspace_id, name, created_by, updated_by)
+select tests.remember('m:tpl:' || t.label, gen_random_uuid()), tests.id('m'), 'Template ' || t.label,
+  tests.user('m:owner'), tests.user('m:owner')
+from (values ('K'), ('KB')) t(label);
+insert into public.schedule_template_shifts (workspace_id, template_id, location_id, job_id, day_offset, start_time, end_time, time_basis)
+select tests.id('m'), tests.id('m:tpl:' || t.label), tests.id('m:' || l), tests.id('m:job:cook'), 0, '09:00', '15:00', 'explicit'
+from (values ('K', array['K']), ('KB', array['K', 'B'])) t(label, locs), unnest(t.locs) l;
 
 -- 2. Who they are, written down independently of the app ------------------------
 -- class: owner | admin | manager | employee. status: active | suspended |
@@ -140,7 +155,13 @@ insert into target values
   ('sh:ali-k',   'shift',     'm', '{K}',   'employee', 'ali'),
   ('sh:ayse-k',  'shift',     'm', '{K}',   'manager',  'ayse'),
   ('case:emre-k', 'case',     'm', '{K}',   'employee', 'emre'),
-  ('case:veli-b', 'case',     'm', '{B}',   'employee', 'veli');
+  ('case:veli-b', 'case',     'm', '{B}',   'employee', 'veli'),
+  ('dr:K',       'draft',     'm', '{K}',   null,       null),
+  ('dr:B',       'draft',     'm', '{B}',   null,       null),
+  ('dr:KB',      'draft',     'm', '{K,B}', null,       null),
+  -- a template has no location of its own: where its shifts are
+  ('tpl:K',      'template',  'm', '{K}',   null,       null),
+  ('tpl:KB',     'template',  'm', '{K,B}', null,       null);
 
 create temporary table target_id as
 select t.label,
@@ -155,6 +176,7 @@ select t.label,
     when t.kind = 'site' then tests.id('m:' || substr(t.label, 6))
     when t.kind = 'shift' then tests.id('m:shift:' || substr(t.label, 4))
     when t.kind = 'case' then tests.id('m:case:' || substr(t.label, 6))
+    when t.kind in ('draft', 'template') then tests.id('m:' || t.label)
   end as id
 from target t;
 
@@ -267,6 +289,25 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
        'insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note, affects_scheduling, location_ids, location_id) values (%L, ''Probe'', ''event'', %L, %L, ''none'', '''', false, %L::uuid[], %L)',
        $2, tests.week(0), tests.week(0), coalesce(array_remove(array[$3], null), '{}'), $3)) > 0$$);
 
+-- A draft or a template with several locations, and the locations a publish
+-- or an export names (FB-6.1 .4). The export and the publish preview are asked
+-- of the draft's own locations.
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
+  ('schedule.draft_delete', 'draft', 'schedule.manage', false, false,
+   $$select public.delete_schedule_draft_service($1, $2, $3) is not null$$),
+  ('schedule.publish_locations', 'draft', 'schedule.publish', false, false,
+   $$select public.preview_schedule_publication_service($1, $2, $3,
+       (select d.location_ids from public.schedule_drafts d where d.id = $3), null, true) is not null$$),
+  ('schedule.export_locations', 'draft', 'schedule.export', false, false,
+   $$select public.record_schedule_export_event_service($1, $2, 'probe', 'pdf', jsonb_build_object('location_ids',
+       (select to_jsonb(d.location_ids) from public.schedule_drafts d where d.id = $3))) is not null$$),
+  ('schedule.template_rename', 'template', 'schedule.templates.manage', false, false,
+   $$select public.rename_schedule_template_service($1, $2, $3, 'Probe ' || gen_random_uuid(),
+       (select t.revision from public.schedule_templates t where t.id = $3)) is not null$$),
+  ('schedule.template_delete', 'template', 'schedule.templates.manage', false, false,
+   $$select public.delete_schedule_template_service($1, $2, $3,
+       (select t.revision from public.schedule_templates t where t.id = $3)) is not null$$);
+
 -- Direct browser reads of the two sensitive tables the browser can still read.
 -- Removing someone's access unlinks their employee record from their account;
 -- the only unlinked record the matrix targets is the actor's own (Sami, self).
@@ -329,6 +370,11 @@ insert into core_action (key, core_key, blank) values
   ('schedule.edit', 'schedule.edit', 'null'),
   ('schedule.templates.read', 'schedule.templates.read', 'null'),
   ('schedule.publish', 'schedule.publish', 'null'),
+  ('schedule.draft_delete', 'schedule.edit', 'null'),
+  ('schedule.publish_locations', 'schedule.publish', 'null'),
+  ('schedule.export_locations', 'schedule.export', 'null'),
+  ('schedule.template_rename', 'schedule.templates', 'null'),
+  ('schedule.template_delete', 'schedule.templates', 'null'),
   ('exchange.approve', 'exchange.approve', 'null'),
   ('settings.organization.write', 'settings.organization.write', 'null'),
   ('settings.locations.write', 'settings.locations.write', 'null'),
@@ -518,6 +564,14 @@ begin
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;
 
+  when 'schedule.draft_delete', 'schedule.template_rename', 'schedule.template_delete',
+       'schedule.publish_locations', 'schedule.export_locations' then
+    -- A draft or template with several locations is deleted or renamed only by
+    -- a manager of every one of them, or an admin or the owner (B3, K-2); a
+    -- publish or an export names only locations the manager reaches (M2).
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when covers then 'allow' else 'deny' end;
+
   when 'exchange.approve' then
     -- A pickup or cover is approved at the shift's location only.
     if is_self then return 'deny'; end if;
@@ -662,6 +716,15 @@ begin
     when 'time_off', 'shift', 'case' then
       person := case t.holder when 'olcay' then tests.id('m:owner') else tests.id('m:' || t.holder) end;
       places := array(select tests.id('m:' || l) from unnest(t.locs) l);
+    when 'draft', 'template' then
+      places := array(select tests.id('m:' || l) from unnest(t.locs) l);
+      -- A one-place action is asked at each location in turn.
+      if (select a.scope_class from app_private.authz_actions a where a.key = m.core_key) = 'place' then
+        select r into reason from unnest(places) place,
+          app_private.authz_reason(user_id, tests.id('m'), m.core_key, array[place]) r
+        where r is not null limit 1;
+        return case when reason is null then 'allow' else 'deny:' || reason end;
+      end if;
     when 'workspace' then
       -- Opening the editor asks for the locations the person may edit.
       if (select a.scope_class from app_private.authz_actions a where a.key = m.core_key) = 'set' then
