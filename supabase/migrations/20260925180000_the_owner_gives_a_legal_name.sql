@@ -79,6 +79,121 @@ $$;
 revoke all on function app_private.write_owner_legal_name(uuid, uuid, text, text, text)
   from public, anon, authenticated;
 
+-- 3a. The owner's record is filed under the names setup asked for, and nothing else -----
+--
+-- It used to fall back to the account's display name, the sign-up metadata,
+-- the e-mail's local part, and finally 'Owner' / '-'. Setup now refuses a
+-- first step without a name, so that chain could only ever guess -- the thing
+-- decision 3 rules out. A record is opened from the given and family name or
+-- not at all.
+create or replace function app_private.ensure_owner_employee_profile(
+  target_workspace_id uuid,
+  owner_user_id uuid,
+  owner_first_name text default null,
+  owner_middle_name text default null,
+  owner_last_name text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  existing_employee_id uuid;
+  next_code bigint;
+  owner_email text;
+  given_name text := btrim(coalesce(owner_first_name, ''));
+  family_name text := btrim(coalesce(owner_last_name, ''));
+begin
+  if not exists (
+    select 1
+    from public.workspace_memberships membership
+    where membership.workspace_id = target_workspace_id
+      and membership.user_id = owner_user_id
+      and membership.role = 'owner'::public.workspace_role
+      and membership.status = 'active'::public.membership_status
+  ) then
+    raise exception 'active owner membership required' using errcode = '42501';
+  end if;
+
+  select employee.id
+  into existing_employee_id
+  from public.employee_profiles employee
+  where employee.workspace_id = target_workspace_id
+    and employee.user_id = owner_user_id
+    and employee.archived_at is null
+  order by employee.created_at
+  limit 1
+  for update;
+
+  -- Whatever the employees tab says is what the workspace decided to call this
+  -- person. Setup finishing again is not a reason to argue with it, and the
+  -- owner hides from the schedule there like anyone else.
+  if existing_employee_id is not null then
+    return existing_employee_id;
+  end if;
+
+  if given_name = '' or family_name = '' then
+    raise exception 'a legal name needs a first and a last name' using errcode = '22023';
+  end if;
+
+  select lower(auth_user.email) into owner_email
+  from auth.users auth_user
+  where auth_user.id = owner_user_id;
+
+  select coalesce(max(substring(employee.employee_code from 3)::bigint), 0) + 1
+  into next_code
+  from public.employee_profiles employee
+  where employee.workspace_id = target_workspace_id
+    and employee.employee_code ~ '^E-[0-9]+$';
+
+  insert into public.workspace_employee_counters (workspace_id, next_value)
+  values (target_workspace_id, next_code + 1)
+  on conflict (workspace_id) do update
+  set next_value = greatest(
+    public.workspace_employee_counters.next_value + 1,
+    excluded.next_value
+  )
+  returning next_value - 1 into next_code;
+
+  insert into public.employee_profiles (
+    workspace_id, user_id, employee_code, first_name, middle_name, last_name,
+    preferred_name, invitation_email, internal_note, is_remote,
+    is_excluded_from_schedule, created_by
+  ) values (
+    target_workspace_id,
+    owner_user_id,
+    'E-' || lpad(next_code::text, 4, '0'),
+    -- Too long is refused with the legal name's own words right after this.
+    left(given_name, 80),
+    left(btrim(coalesce(owner_middle_name, '')), 80),
+    left(family_name, 80),
+    '',
+    owner_email,
+    -- An internal note is a manager's sentence about a person. Nothing the
+    -- system has to say belongs in it.
+    '',
+    false,
+    -- On the schedule like everyone else. Exclude is a choice made in the row.
+    false,
+    owner_user_id
+  )
+  returning id into existing_employee_id;
+
+  insert into public.employee_events (
+    workspace_id, employee_id, actor_user_id, action, summary
+  ) values (
+    target_workspace_id,
+    existing_employee_id,
+    owner_user_id,
+    'employee.owner_record_created',
+    'Owner employee record created when setup began'
+  );
+
+  return existing_employee_id;
+end;
+$function$;
+
 -- 3. Setup's first step writes it, and no step passes without it ----------------------
 --
 -- The rule lives in the one function that moves setup forward: every save
@@ -199,6 +314,19 @@ begin
     updated_at = completed_timestamp
   where workspace_id = target_workspace_id;
 
+  -- No names sent and none on file: the first step has not been answered.
+  if not names_given and not exists (
+    select 1
+    from public.employee_profiles employee
+    join public.employee_private_profiles private_profile
+      on private_profile.employee_id = employee.id
+    where employee.workspace_id = target_workspace_id
+      and employee.user_id = actor_user_id
+      and employee.archived_at is null
+  ) then
+    raise exception 'the owner''s legal name is required' using errcode = '23514';
+  end if;
+
   -- The owner is a member from the first step, so their record exists from the
   -- first step too. Waiting for completion meant the team list did not contain
   -- the one person who was certainly on the team.
@@ -215,12 +343,6 @@ begin
       target_workspace_id, owner_employee_id,
       owner_first_name, owner_middle_name, owner_last_name
     );
-  end if;
-  if not exists (
-    select 1 from public.employee_private_profiles private_profile
-    where private_profile.employee_id = owner_employee_id
-  ) then
-    raise exception 'the owner''s legal name is required' using errcode = '23514';
   end if;
 
   -- Locations and jobs come into existence during setup, so this runs on every

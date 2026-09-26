@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(38);
 
 -- BL-080. An owner gives their legal name at the first step of setup: the
 -- three name fields there are the legal name as well as the account's and the
@@ -241,6 +241,22 @@ select is(pg_temp.read('ln:owner', 'ln'), 'Olcay|Deniz|Ownerson', 'the owner rea
 select tests.new_user('blank:owner', 'Blank Owner');
 select tests.remember('blank', public.create_owner_workspace_service(tests.user('blank:owner'), 'Blank Co'));
 select is(pg_temp.read('blank:owner', 'blank'), '<null>|<null>|<null>', 'with no legal name on file every part reads as nothing');
+
+-- The owner's record is filed only under the names the first step asked for;
+-- there is no fallback to the account name, the e-mail or a placeholder.
+select is(
+  pg_temp.refusal(format(
+    'select app_private.ensure_owner_employee_profile(%L, %L)',
+    tests.id('blank'), tests.user('blank:owner')
+  )),
+  '22023',
+  'an owner''s record is not filed without a name'
+);
+select is(
+  (select count(*)::integer from public.employee_profiles where workspace_id = tests.id('blank')),
+  0,
+  'and nothing is filed under the account''s name instead'
+);
 
 select is(
   array[pg_temp.read('ln:ali', 'ln'), pg_temp.read('ln:ayse', 'ln'), pg_temp.read('ln:ada', 'ln')],
