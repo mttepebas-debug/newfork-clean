@@ -171,3 +171,139 @@
   background: transparent;
   color: var(--theme-on-accent);
 }
+
+/* 11-15: the real card's frame, size and layout; only the "dead" fill differs.
+   Every ghost shares one gray; no type, job or location color. No opacity. */
+.schedule-shift-badge[data-ghost="true"]:is(
+    [data-ghost-variant="11"],
+    [data-ghost-variant="11b"],
+    [data-ghost-variant="12"],
+    [data-ghost-variant="13"],
+    [data-ghost-variant="14"],
+    [data-ghost-variant="15"]
+  ) {
+  opacity: 1;
+  box-shadow: none;
+  border: 1px solid var(--dg-edge);
+  background: repeating-linear-gradient(
+    var(--dg-angle),
+    var(--dg-line) 0 var(--dg-line-w),
+    var(--dg-fill) var(--dg-line-w) var(--dg-step)
+  );
+  color: var(--dg-text);
+}
+.schedule-shift-badge[data-ghost="true"]:is(
+    [data-ghost-variant="11"],
+    [data-ghost-variant="11b"],
+    [data-ghost-variant="12"],
+    [data-ghost-variant="13"],
+    [data-ghost-variant="14"],
+    [data-ghost-variant="15"]
+  )::before {
+  display: none;
+}
+.schedule-shift-badge[data-ghost="true"]:is(
+    [data-ghost-variant="11"],
+    [data-ghost-variant="11b"],
+    [data-ghost-variant="12"],
+    [data-ghost-variant="13"],
+    [data-ghost-variant="14"],
+    [data-ghost-variant="15"]
+  )
+  :is(strong, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: var(--dg-text);
+}
+
+/* 11 (and 11b): closest to a disabled button: flat light gray, faint fine hatch. */
+.schedule-shift-badge[data-ghost="true"]:is([data-ghost-variant="11"], [data-ghost-variant="11b"]) {
+  --dg-angle: 135deg;
+  --dg-fill: #eef0ef;
+  --dg-line: #e2e5e3;
+  --dg-line-w: 1px;
+  --dg-step: 5px;
+  --dg-edge: #d3d9d6;
+  --dg-text: #56615c;
+}
+/* 12: cool ash, wide soft bands. */
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="12"] {
+  --dg-angle: 135deg;
+  --dg-fill: #f2f3f3;
+  --dg-line: #e3e6e6;
+  --dg-line-w: 5px;
+  --dg-step: 10px;
+  --dg-edge: #c6cccc;
+  --dg-text: #4f5857;
+}
+/* 13: bleached paper, thin dense lines the other way. */
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="13"] {
+  --dg-angle: 45deg;
+  --dg-fill: #f6f6f3;
+  --dg-line: #dedcd5;
+  --dg-line-w: 1px;
+  --dg-step: 4px;
+  --dg-edge: #cfcdc5;
+  --dg-text: #57554e;
+}
+/* 14: darker ash, dense stripes, the most "switched off". */
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="14"] {
+  --dg-angle: 135deg;
+  --dg-fill: #e6e9e7;
+  --dg-line: #d6dad8;
+  --dg-line-w: 3px;
+  --dg-step: 6px;
+  --dg-edge: #b8bfbc;
+  --dg-text: #3e4643;
+}
+/* 15: nearly white, sparse hairlines, the faintest. */
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="15"] {
+  --dg-angle: 135deg;
+  --dg-fill: #fafbfa;
+  --dg-line: #e3e7e5;
+  --dg-line-w: 1px;
+  --dg-step: 8px;
+  --dg-edge: #dde2df;
+  --dg-text: #57625d;
+}
+
+/* The label as plain text, like the lines around it (ghosts in 11-15, real cards in 11b). */
+.schedule-shift-badge .schedule-shift-labels[data-dev-plain-label] {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: #34413c;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: inherit;
+}
+.schedule-shift-badge[data-ghost="true"] .schedule-shift-labels[data-dev-plain-label] {
+  color: var(--dg-text);
+}
+
+.dev-ghost-pin {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  pointer-events: auto;
+  cursor: default;
+}
+.dev-ghost-pin:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 1px;
+}
+.dev-ghost-tooltip {
+  position: fixed;
+  z-index: 200;
+  transform: translate(-50%, -100%);
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: var(--theme-action);
+  color: var(--theme-on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 16px rgb(17 24 39 / 18%);
+}

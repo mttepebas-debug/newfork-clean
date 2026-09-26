@@ -9,7 +9,8 @@ import type {
   MouseEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   formatScheduleBadgeAriaLabel,
@@ -291,7 +292,11 @@ export function ShiftCard({
           </span>
         ) : null}
         {showShiftLabels && labelText.displayText ? (
-          <span className="schedule-shift-labels" title={labelText.fullText}>
+          <span
+            className="schedule-shift-labels"
+            title={labelText.fullText}
+            data-dev-plain-label={devGhostVariant() === "11b" || undefined}
+          >
             {labelText.displayText}
           </span>
         ) : null}
@@ -347,7 +352,9 @@ export function GhostShiftCard({
         showShiftType,
       );
   // 6-10: every ghost shares one neutral look, whatever its type, job or location.
-  const devNeutral = devGhost !== null && Number(devGhost) >= 6;
+  const devNeutral = devGhost !== null && parseInt(devGhost, 10) >= 6;
+  // 11-15 (and 11b): the real card's frame and layout, a dead hatched fill, a pin for the place.
+  const devSame = devGhost !== null && parseInt(devGhost, 10) >= 11;
   const ghostColor = devNeutral
     ? "#66716c"
     : (type?.color ??
@@ -401,6 +408,11 @@ export function GhostShiftCard({
           : warningText || undefined
       }
     >
+      {devSame && displayedLocation ? (
+        <span className="schedule-shift-badge-markers">
+          <DevGhostPin location={displayedLocation} />
+        </span>
+      ) : null}
       {devGhost === "8" ? (
         <span className="dev-ghost-corner" aria-hidden="true">
           <MapPin size={10} strokeWidth={2.5} />
@@ -417,7 +429,7 @@ export function GhostShiftCard({
           </span>
         ) : null}
         <strong>{title}</strong>
-        {displayedLocation && !devStrip ? (
+        {displayedLocation && !devStrip && !devSame ? (
           <span
             className="schedule-shift-location"
             data-shift-badge-location="true"
@@ -429,7 +441,11 @@ export function GhostShiftCard({
           </span>
         ) : null}
         {showShiftLabels && labelText.displayText ? (
-          <span className="schedule-shift-labels" title={labelText.fullText}>
+          <span
+            className="schedule-shift-labels"
+            title={labelText.fullText}
+            data-dev-plain-label={devSame || undefined}
+          >
             {labelText.displayText}
           </span>
         ) : null}
@@ -488,12 +504,44 @@ type GhostShiftMetadata = {
 // DEV-only ghost color mockups (ghost-color): ?devGhost=before|now|2..10.
 // The out-of-scope type color is not sent yet, so the mockups paint a purple "Bar" type.
 const DEV_GHOST_TYPE_COLOR = "#7B5EA7";
-const DEV_GHOST_VARIANTS = new Set(["before", "now", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
+const DEV_GHOST_VARIANTS = new Set(["before", "now", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "11b", "12", "13", "14", "15"]);
 if (import.meta.env.DEV) void import("../../dev/ghostColorVariants.css");
 function devGhostVariant(): string | null {
   if (!import.meta.env.DEV || typeof window === "undefined") return null;
   const value = new URLSearchParams(window.location.search).get("devGhost");
   return value && DEV_GHOST_VARIANTS.has(value) ? value : null;
+}
+
+// DEV-only (ghost-color): the pin shows the place in a bubble on hover or focus.
+function DevGhostPin({ location }: { readonly location: string }) {
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const show = (event: { currentTarget: HTMLElement }) =>
+    setAnchor(event.currentTarget.getBoundingClientRect());
+  return (
+    <span
+      className="dev-ghost-pin"
+      tabIndex={0}
+      aria-label={`At ${location}`}
+      onMouseEnter={show}
+      onFocus={show}
+      onMouseLeave={() => setAnchor(null)}
+      onBlur={() => setAnchor(null)}
+    >
+      <MapPin size={12} strokeWidth={2.4} aria-hidden="true" />
+      {anchor
+        ? createPortal(
+            <span
+              className="dev-ghost-tooltip"
+              role="tooltip"
+              style={{ left: anchor.left + anchor.width / 2, top: anchor.top - 6 }}
+            >
+              {location}
+            </span>,
+            document.body,
+          )
+        : null}
+    </span>
+  );
 }
 
 function ghostShiftLocation(shift: ScheduleShift): string | null {
