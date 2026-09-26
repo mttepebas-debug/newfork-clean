@@ -292,7 +292,10 @@ Kısa yaz, ham araç çıktısı yapıştırma.
     başlatılan süreçler PID ile durdurulur. Uzun yol yüzünden `git worktree remove` yarım kalırsa
     PowerShell `Remove-Item -LiteralPath '\\?\C:\...' -Recurse -Force`, ardından `git worktree prune`.
     Bağlam dolarken iş sınırında durulur: yarım iş bitirilir ya da park edilir, bitmiş commit'lenir,
-    yalnız sohbette yaşayan bilgi task dosyasına yazılır.
+    yalnız sohbette yaşayan bilgi task dosyasına yazılır. Her iş bitişinde bakım satırında bağlam
+    doluluğu yazılır; yarıyı geçince bir sonraki sınırda devir raporu (`docs/plan/HANDOFF.md`) ve
+    yeni koordinatör oturumu önerilir (kullanıcı kararı 2026-09-26). Uzun kod işleri rol
+    oturumlarında (bölüm 12) yürür; alt ajan yalnız kısa işte (inceleme, görsel QA, ölçüm, keşif).
 11. **Rol hafızası.** Rollerin öğrendikleri `.claude/agent-memory/<rol>/`'da (git'te). Koordinatör
     ayda bir farkı okur; yanlış ya da eskimiş kaydı sildirir.
 
