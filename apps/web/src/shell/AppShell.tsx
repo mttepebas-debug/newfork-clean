@@ -174,7 +174,7 @@ const settingsNavItem: NavItem = {
 export function AppShell() {
   const { context, account, signOut } = useAuth();
   useAccountNotificationRealtime(account?.userId ?? context?.userId);
-  useExchangeRealtime(context?.workspace.id);
+  useExchangeRealtime(context);
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarPanelOwner, setSidebarPanelOwner] = useState<string | null>(null);
   const [sidebarPanelCollapsed, setSidebarPanelCollapsed] = useState(false);

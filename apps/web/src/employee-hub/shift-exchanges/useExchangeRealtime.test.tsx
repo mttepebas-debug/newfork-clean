@@ -1,3 +1,4 @@
+import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -39,6 +40,11 @@ const realtime = vi.hoisted(() => {
 });
 vi.mock("../../lib/supabase", () => ({ supabaseClient: realtime }));
 
+// Only what the gate reads: the workspace and the core's answer (`actions`).
+function context(workspace: string, actions = ["exchange.offer_own"]) {
+  return { workspace: { id: workspace }, actions } as unknown as ActiveWorkspaceContext;
+}
+
 function setup() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -55,10 +61,11 @@ function setup() {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
-  const hook = renderHook(({ workspace }) => useExchangeRealtime(workspace), {
-    initialProps: { workspace: "workspace" },
-    wrapper,
-  });
+  const hook = renderHook(
+    ({ workspace, actions }: { workspace: string; actions?: string[] }) =>
+      useExchangeRealtime(context(workspace, actions)),
+    { initialProps: { workspace: "workspace" } as { workspace: string; actions?: string[] }, wrapper },
+  );
   return { ...hook, client, keys };
 }
 
@@ -80,6 +87,18 @@ async function tick(ms: number) {
 function changed() {
   act(() => realtime.channels[0]?.broadcast?.({ payload: { workspace_id: "workspace" } }));
 }
+
+describe("joining only a channel the person may join", () => {
+  it("does not open the Shift Hub channel for someone the core refuses (BL-115)", () => {
+    const { rerender, unmount } = setup();
+    expect(realtime.channels.map((channel) => channel.name)).toEqual(["shift-exchanges:workspace"]);
+    // A missing required document or unfinished activation takes exchange.offer_own away.
+    rerender({ workspace: "workspace", actions: [] });
+    expect(realtime.removeChannel).toHaveBeenCalledWith(realtime.channels[0]);
+    expect(realtime.channels).toHaveLength(1);
+    unmount();
+  });
+});
 
 describe("workspace staffing and exchange invalidation", () => {
   it("combines domain, inbox and recovery signals without postponing the first refresh", async () => {
