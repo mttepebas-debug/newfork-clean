@@ -43,6 +43,10 @@ Before a batch: run ONE file first, then prove nothing stayed, e.g. `select key 
 - The scratchpad directory is shared by every subagent of the same coordinator session: another agent overwrote `trial.sh` and `one.txt` mid-task (2026-09-26). Keep scripts and outputs in a per-task subfolder (`scratchpad/<task>/`).
 - Take db.lock atomically with `( set -o noclobber; echo ... > db.lock )` inside a script, then grep your own name back; two agents were waiting on the same lock that day.
 
+- 2026-09-26 a reviewer's runner let a test file's own trailing `rollback;` close the outer transaction and what followed committed for real (6 workspaces leaked at 20:43 UTC). Safe shape: one psql session per file, migration inserted right after the file's own first `begin;` line, `ON_ERROR_STOP=1`, and compare workspace/auth.users/tests.ids counts before and after.
+- A prelude that runs `set constraints all immediate` must end with `set constraints all deferred;`, or deferred dependency triggers (e.g. `enforce_role_permission_dependencies`) fire mid-test and fake a red.
+- Permanent cleanup deletes on the shared DB (COMMIT) were refused by the permission classifier for this role (2026-09-26): prepare the script, rolled-back trial and JSONL backup, then hand the COMMIT back. The capture-trigger backup script lives in `artifacts/koordinator/db-cleanup-2026-09-26-b/cleanup-script.sql`.
+
 **Why:** 2026-09-25 the unquoted `echo begin;` from this note applied the FB-6.1 .2 migration to the shared DB for 8 minutes during review (undone).
 
 Related: [[core-call-cost]], [[sql-traps-core-translation]].
