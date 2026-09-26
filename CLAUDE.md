@@ -152,11 +152,15 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
   - `db.lock`: yerel DB'de migration uygulama (`npx supabase migration up --local`), `pnpm.cmd test:db`,
     `pnpm.cmd e2e`, fixture yeniden üretimi.
   - `main.lock`: main'e gönderim.
-  - Almak: dosya yoksa oluştur, içine `rol/oturum, amaç, başlangıç zamanı` yaz, sonra geri oku;
-    sahibi sen değilsen bekle. İş bitince sil. 2 saatten eski kilidi koordinatöre sormadan silme.
+  - Kilit yalnız yardımcıyla alınır ve bırakılır (elle `echo >` / `rm` yok):
+    `node scripts/lock.mjs take <db|main> "<rol/oturum>, <amaç>"`; alamazsa (exit 1) iş başlamaz, beklenir.
+    Bırakmak `node scripts/lock.mjs release <db|main> "<rol/oturum>"` (yalnız sahibi siler); durum
+    `node scripts/lock.mjs status`. 2 saatten eski kilidi koordinatöre sormadan silme.
 - `db.lock` varken uygulamada veri girme (okuma serbest).
-- Migration denemesi önce tek transaction + rollback. Kalıcı uygulama `nf-guvenlik` onayından sonra,
-  tam kapıdan önce yapılır. Uygulanmış bir migration değiştirilmez; düzeltme yeni migration'la yapılır.
+- Migration denemesi önce tek transaction + rollback. Bir branch'in migration'ı ortak yerel DB'ye
+  kalıcı olarak yalnız main'e alınmadan hemen önce, `main.lock` ile aynı pencerede ve `nf-guvenlik`
+  onayından sonra uygulanır (kullanıcı kararı 2026-09-26). Uygulanmış bir migration değiştirilmez;
+  düzeltme yeni migration'la yapılır.
 - `supabase db reset` kullanıcı onayı ister (yerel fixture'ı siler). Yerel Supabase'i başlatmak
   (`pnpm.cmd supabase:start`) serbest; durdurmak koordinatörün izniyle.
 - Yerel hesap `owner@newfork.test`, parola `supabase/seed.sql` içinde.
