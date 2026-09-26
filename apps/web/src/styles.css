@@ -43,8 +43,6 @@
   --schedule-focus-ring-color: var(--theme-focus);
   --schedule-current-ring-color: var(--theme-current);
   /* Ghost shift card: switched-off gray, shared by every ghost. */
-  --schedule-ghost-fill: #eef0ef;
-  --schedule-ghost-hatch: #e2e5e3;
   --schedule-ghost-edge: #d3d9d6;
   --schedule-ghost-text: #56615c;
   --schedule-motion-fast: 120ms;
@@ -5837,14 +5835,14 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 /* A ghost is the real card switched off: same frame and layout, one dead gray
    with a fine sparse hatch whatever its type, job or place. No opacity, so the
-   text keeps AA (5.08:1 on the hatch line). */
+   text keeps AA (5.11:1 on the hatch line). */
 .schedule-shift-badge[data-ghost="true"] {
   pointer-events: none;
   border-color: var(--schedule-ghost-edge);
   background: repeating-linear-gradient(
     135deg,
-    var(--schedule-ghost-hatch) 0 1px,
-    var(--schedule-ghost-fill) 1px 5px
+    var(--theme-border-subtle) 0 1px,
+    var(--theme-surface-muted) 1px 5px
   );
   box-shadow: none;
 }
