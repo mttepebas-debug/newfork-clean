@@ -121,6 +121,17 @@ insert into public.workspace_memberships(workspace_id,user_id,role,status) value
 ('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000409','admin','active'),
 ('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000410','admin','active'),
 ('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000411','admin','active');
+-- Each has a legal name on file, or none of them would be a candidate (BL-080).
+with filed as (
+  insert into public.employee_profiles(workspace_id,user_id,employee_code,first_name,last_name,created_by)
+  select 'a5500000-0000-4000-8000-000000000101', u.id, 'E-8' || lpad(n::text, 3, '0'), 'Bounded', 'Admin ' || n,
+    'a5500000-0000-4000-8000-000000000001'
+  from generate_series(0, 11) n
+  join auth.users u on u.id = ('a5500000-0000-4000-8000-000000000' || (400 + n)::text)::uuid
+  returning id, workspace_id, last_name
+)
+insert into public.employee_private_profiles(employee_id,workspace_id,legal_first_name,legal_last_name)
+select id, workspace_id, 'Bounded', last_name from filed;
 set local role service_role;
 select is((select count(*)::int from public.search_workspace_ownership_candidates_service('a5500000-0000-4000-8000-000000000002','a5500000-0000-4000-8000-000000000101','bounded-admin')),10,'candidate results limited to ten');
 select lives_ok($q$select public.request_workspace_closure_service('a5500000-0000-4000-8000-000000000002','a5500000-0000-4000-8000-000000000101','scheduled_end_period',null,true,now()+interval '3 days')$q$,'owner schedules closure');

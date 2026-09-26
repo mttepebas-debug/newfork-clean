@@ -633,3 +633,45 @@ begin
   );
 end;
 $function$;
+
+-- 8. The candidate list offers only people a transfer would accept -----------------------
+--
+-- Section 7 refuses a transfer to somebody with no legal name on file; the
+-- Workspaces screen's candidate search still offered them, so the screen would
+-- let an owner pick a person and then say no. Same filter here, same shape.
+create or replace function public.search_workspace_ownership_candidates_service(actor_user_id uuid, target_workspace_id uuid, search_text text)
+ returns table("userId" uuid, name text, email text)
+ language plpgsql
+ stable security definer
+ set search_path to ''
+as $function$
+begin
+  if actor_user_id is null or not app_private.workspace_allows_interactive_access(target_workspace_id)
+    or not exists (
+      select 1 from public.workspace_memberships m
+      left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
+      where m.workspace_id = target_workspace_id and m.user_id = actor_user_id
+        and m.status = 'active' and coalesce(r.access_class, m.role) = 'owner'
+    ) then raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required'; end if;
+  if search_text is null or char_length(btrim(search_text)) not between 2 and 80 then
+    raise exception 'search must contain 2 to 80 characters' using errcode = '22023', hint = 'search.length_invalid';
+  end if;
+  return query
+    select m.user_id, coalesce(nullif(concat_ws(' ', coalesce(nullif(e.preferred_name, ''), e.first_name), e.last_name), ''), p.display_name, u.email)::text, u.email::text
+    from public.workspace_memberships m
+    join auth.users u on u.id = m.user_id and u.email_confirmed_at is not null
+    left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
+    left join public.employee_profiles e on e.workspace_id = m.workspace_id and e.user_id = m.user_id and e.archived_at is null
+    left join public.user_profiles p on p.user_id = m.user_id
+    where m.workspace_id = target_workspace_id and m.status = 'active'
+      and m.user_id <> actor_user_id and coalesce(r.access_class, m.role) = 'admin'
+      -- Active legacy memberships without an onboarding case are already complete.
+      and not exists (select 1 from public.employee_onboarding_cases c
+        where c.workspace_id = target_workspace_id and c.membership_id = m.id and c.status <> 'approved')
+      -- A legal name on file, or the transfer would be refused (BL-080).
+      and exists (select 1 from public.employee_private_profiles private_profile
+        where private_profile.employee_id = e.id)
+      -- Literal substring matching: '%' and '_' cannot enumerate the directory.
+      and position(lower(btrim(search_text)) in lower(concat_ws(' ', e.first_name, e.last_name, e.preferred_name, p.display_name, u.email))) > 0
+    order by 2, m.user_id limit 10;
+end; $function$;

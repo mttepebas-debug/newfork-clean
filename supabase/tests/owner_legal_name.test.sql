@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(36);
 
 -- BL-080. An owner gives their legal name at the first step of setup: the
 -- three name fields there are the legal name as well as the account's and the
@@ -282,6 +282,20 @@ select is(
 );
 select is(pg_temp.transfer('ln:ada'), 'allowed',
   'an admin whose onboarding filed a legal name can be offered ownership');
+
+-- The candidate list offers only people a transfer would accept.
+select ok(
+  tests.user('ln:ada') in (
+    select "userId" from public.search_workspace_ownership_candidates_service(
+      tests.user('ln:owner'), tests.id('ln'), 'Ada')),
+  'an admin with a legal name on file is offered as a candidate'
+);
+select is(
+  (select count(*)::integer from public.search_workspace_ownership_candidates_service(
+     tests.user('ln:owner'), tests.id('ln'), 'Nameless')),
+  0,
+  'an admin with none is not offered at all'
+);
 
 select * from finish();
 rollback;
