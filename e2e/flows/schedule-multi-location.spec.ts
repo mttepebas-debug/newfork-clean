@@ -103,10 +103,18 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   await expect(zeynep).not.toHaveURL(/mode=edit/);
 
   // Beşiktaş is already published, so the trigger reads "Published"; saving
-  // a draft leaves its "what next" menu open, so only open it if it isn't.
+  // a draft can leave its own dropdown state applied to this separate menu
+  // too, so the panel is sometimes already open by the time we get here.
+  // Wait (don't snapshot) for it to settle either way before deciding whether
+  // "Published" still needs a click.
   const publishAnotherDraft = zeynep.getByRole("button", { name: "Publish another draft" });
-  if (!(await publishAnotherDraft.isVisible())) {
+  const menuAlreadyOpen = await publishAnotherDraft
+    .waitFor({ state: "visible", timeout: 2_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!menuAlreadyOpen) {
     await zeynep.getByRole("button", { name: "Published" }).click();
+    await publishAnotherDraft.waitFor({ state: "visible" });
   }
   await publishAnotherDraft.click();
   // Scoped to the dialog: the topbar's own "Next week" nav button also
