@@ -12,6 +12,17 @@
 -- and a note about a non-employee no longer exists. The old helper
 -- service_actor_can_access_employee leaves the write path: the core now says
 -- everything it said (employees only, at the manager's locations).
+--
+-- The read model: `manager` is the note when the reader may see it, null for
+-- an employee's note they may not see (the employee's own view), and absent
+-- when the person is not an employee.
+--
+-- A person who stops being an employee loses their note for good (user
+-- decision 2026-09-26, REUSE a9c7797): one trigger on the membership row, the
+-- one place every role change passes (role change, invitation, ownership
+-- transfer, setup). Made an employee again, they start with an empty note.
+-- Who hears of an update is exactly who reads it: the recipients ask
+-- availability.team_read alone, owner and admins included.
 
 alter table app_private.authz_actions add column employee_target boolean not null default false;
 
@@ -19,6 +30,25 @@ update app_private.authz_actions set employee_target = true, rank_below = false 
 update app_private.authz_actions set no_self = false where key = 'availability.team_read';
 insert into app_private.authz_actions (key, scope_class, effect, permission_key, employee_target)
 values ('availability.note_read', 'person', 'read', 'availability.read', true);
+
+-- Whether an account ranks as an employee in a workspace: the one definition
+-- the core, the read model and the role-change trigger share. Somebody with no
+-- account or membership yet ranks as an employee.
+create function app_private.ranks_as_employee(workspace uuid, account uuid) returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((
+    select app_private.authz_rank(role.access_class) = app_private.authz_rank('employee')
+    from public.workspace_memberships membership
+    join public.workspace_roles role
+      on role.id = membership.role_id and role.workspace_id = membership.workspace_id
+    where membership.workspace_id = workspace and membership.user_id = account
+  ), true);
+$$;
+revoke all on function app_private.ranks_as_employee(uuid, uuid) from public, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION app_private.authz_check(state app_private.actor_state, rule_row app_private.authz_actions, target_locations uuid[], target_person uuid, target_user uuid)
  RETURNS text
@@ -139,16 +169,9 @@ begin
 
   -- Some actions are about employees only: never a manager, an admin or the
   -- owner, whoever asks, themselves included (the Manager note, 2026-09-26).
-  if rule_row.employee_target and (person is not null or whose is not null) then
-    target_access := null;
-    select role.access_class into target_access
-    from public.workspace_memberships membership
-    join public.workspace_roles role
-      on role.id = membership.role_id and role.workspace_id = membership.workspace_id
-    where membership.workspace_id = state.workspace_id and membership.user_id = whose;
-    if coalesce(target_access, 'employee') <> 'employee' then
-      return 'rank';
-    end if;
+  if rule_row.employee_target and (person is not null or whose is not null)
+     and not app_private.ranks_as_employee(state.workspace_id, whose) then
+    return 'rank';
   end if;
 
   if state.class in ('owner', 'admin') then
@@ -212,6 +235,10 @@ begin
 end;
 $function$;
 
+-- Whether a manager reaches this person's availability, asked of the core
+-- about the person: availability.read -> availability.team_read (their week;
+-- who hears of an update), availability.note -> availability.note_read (the
+-- Manager note, employees only), availability.manage -> availability.team_write.
 CREATE OR REPLACE FUNCTION public.weekly_preference_manager_scope(actor uuid, w uuid, emp uuid, capability text)
  RETURNS boolean
  LANGUAGE sql
@@ -223,6 +250,7 @@ AS $function$
    when 'availability.read' then 'availability.team_read'
    when 'availability.note' then 'availability.note_read'
    else 'availability.team_write' end,target_person=>emp) is null
+  -- Any other capability is nobody's: no, never an error the caller could skip.
   else false end;
 $function$;
 
@@ -271,8 +299,126 @@ begin
   'can_edit_employee',coalesce(own_record,false),'can_manage',can_manage,
   'settings',jsonb_build_object('input_mode',settings.availability_input_mode,
    'onboarding_required',settings.availability_onboarding_required,'revision',settings.availability_preferences_revision),
-  'employee',employee_record,'manager',manager_record,'shift_types',types,'time_format',settings.time_format);
+  'employee',employee_record,'shift_types',types,'time_format',settings.time_format)
+  -- The manager part: the note when it is this reader's to see; null for an
+  -- employee's note they may not see; left out when there is no note at all
+  -- (the person is not an employee).
+  || case when can_view_manager then jsonb_build_object('manager',manager_record)
+     when app_private.ranks_as_employee(w,employee.user_id) then jsonb_build_object('manager',null)
+     else '{}'::jsonb end;
 end; $function$;
+
+CREATE OR REPLACE FUNCTION public.weekly_preferences_save_service(actor uuid, w uuid, command jsonb, request_key uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare emp uuid:=(command->>'employee_id')::uuid; source text:=command->>'source'; model jsonb; prior jsonb;
+ old_command public.weekly_preference_commands%rowtype; required jsonb; choice jsonb; row_value jsonb; commitment record;
+ event uuid:=gen_random_uuid(); kept integer:=0; cancelled integer:=0; resolved integer:=0; finalized jsonb:='[]'; result jsonb;
+ c public.shift_exchange_cases%rowtype; a public.shift_exchange_applications%rowtype; recipients uuid[]; summary text; changed_days text;
+begin
+ if request_key is null then raise exception 'Idempotency key required' using errcode='22023'; end if;
+ perform public.availability_lock_workspace(w);
+ -- Authorize again before idempotent replay; never return a stored private read model.
+ model:=public.weekly_preferences_read_service(actor,w,emp);
+ if source is null or source not in ('employee','manager') or not coalesce((model->>case when source='employee' then 'can_edit_employee' else 'can_manage' end)::boolean,false) then raise exception 'Preference write access required' using errcode='42501'; end if;
+ select * into old_command from public.weekly_preference_commands q where q.workspace_id=w and q.actor_user_id=actor and q.request_key=weekly_preferences_save_service.request_key;
+ if old_command.request_key is not null then
+  if old_command.command<>command then raise exception 'Idempotency key was used for another save' using errcode='22023'; end if;
+  return old_command.result||jsonb_build_object('model',model);
+ end if;
+ model:=public.validate_weekly_preference_command(actor,w,command); prior:=model->source;
+ if source='employee' then
+  required:=public.weekly_preference_commitment_conflicts(w,emp,command->'preference');
+  if exists(select 1 from jsonb_array_elements(coalesce(command->'decisions','[]')) d group by d->>'kind',d->>'id' having count(*)>1) then raise exception 'Choose each request once' using errcode='22023'; end if;
+  for row_value in select value from jsonb_array_elements(required) loop
+   if not exists(select 1 from jsonb_array_elements(coalesce(command->'decisions','[]')) d where d->>'kind'=row_value->>'kind' and d->>'id'=row_value->>'id' and d->>'fingerprint'=row_value->>'fingerprint' and d->>'action' in ('keep','cancel')) then
+    raise exception 'Pending requests changed. Review each conflicting request before saving.' using errcode='PT409'; end if;
+  end loop;
+ end if;
+ insert into public.weekly_preference_events(id,workspace_id,employee_id,source,actor_user_id,before_record,after_record,decisions)
+  values(event,w,emp,source,actor,prior,'{}',coalesce(command->'decisions','[]'));
+ for choice in select value from jsonb_array_elements(coalesce(command->'decisions','[]')) loop
+  if choice->>'action' is null or choice->>'action' not in ('keep','cancel') then raise exception 'Choose keep or cancel' using errcode='22023'; end if;
+  select * into commitment from public.weekly_preference_commitments(w,emp,choice->>'kind',(choice->>'id')::uuid);
+  if not found then raise exception 'Request does not belong to this employee' using errcode='42501'; end if;
+  if commitment.status='finalized' then finalized:=finalized||jsonb_build_array(jsonb_build_object('kind',commitment.kind,'id',commitment.id)); continue; end if;
+  if commitment.status='resolved' then resolved:=resolved+1; continue; end if;
+  select value into row_value from jsonb_array_elements(required) where value->>'kind'=choice->>'kind' and value->>'id'=choice->>'id' and value->>'fingerprint'=choice->>'fingerprint';
+  if row_value is null then raise exception 'The request conflict changed. Review it again before saving.' using errcode='PT409'; end if;
+  insert into public.weekly_preference_commitment_decisions(workspace_id,employee_id,kind,request_id,conflict_fingerprint,action,event_id)
+   values(w,emp,commitment.kind,commitment.id,choice->>'fingerprint',choice->>'action',event)
+   on conflict(workspace_id,employee_id,kind,request_id) do update set conflict_fingerprint=excluded.conflict_fingerprint,action=excluded.action,event_id=excluded.event_id;
+  if choice->>'action'='keep' then kept:=kept+1; continue; end if;
+  if commitment.kind='exchange_swap' then
+   select * into c from public.shift_exchange_cases where workspace_id=w and id=commitment.id for update;
+   update public.shift_exchange_cases set status='cancelled',revision=revision+1,updated_at=now() where id=c.id;
+   update public.shift_exchange_applications set status='closed_case_cancelled',updated_at=now() where workspace_id=w and case_id=c.id and status in ('invited','pending_manager');
+   delete from public.shift_exchange_votes where workspace_id=w and case_id=c.id;
+   perform public.shift_exchange_emit(actor,w,c.id,null,'case_closed','Employee cancelled the swap after updating availability. No assignment changed.');
+  else
+   select * into a from public.shift_exchange_applications where workspace_id=w and id=commitment.id for update;
+   select * into c from public.shift_exchange_cases where workspace_id=w and id=a.case_id for update;
+   update public.shift_exchange_applications set status='withdrawn',updated_at=now() where id=a.id;
+   update public.shift_exchange_cases set status=case when audience='direct' then 'cancelled' else status end,revision=revision+1,updated_at=now() where id=c.id;
+   delete from public.shift_exchange_votes where workspace_id=w and case_id=c.id and application_id=a.id;
+   perform public.shift_exchange_emit(actor,w,c.id,a.id,'application_withdrawn','Employee withdrew this request after updating availability. No assignment changed.');
+  end if;
+  cancelled:=cancelled+1;
+ end loop;
+ if source='employee' then
+  insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
+   values(w,emp,command->'preference',1,actor) on conflict(workspace_id,employee_id) do update set preference=excluded.preference,revision=employee_weekly_preferences.revision+1,updated_by=actor,updated_at=now();
+  update public.employee_onboarding_requirements set status='completed',completed_at=now(),rejection_reason=null,updated_at=now() where workspace_id=w and employee_id=emp and kind='availability';
+  update public.employee_onboarding_cases set revision=revision+1,updated_at=now() where workspace_id=w and employee_id=emp;
+ else
+  insert into public.manager_weekly_reminders(workspace_id,employee_id,preference,enabled,notes,revision,updated_by)
+   values(w,emp,command->'preference',(command->>'enabled')::boolean,array(select jsonb_array_elements_text(command->'notes')),1,actor)
+   on conflict(workspace_id,employee_id) do update set preference=excluded.preference,enabled=excluded.enabled,notes=excluded.notes,revision=manager_weekly_reminders.revision+1,updated_by=actor,updated_at=now();
+ end if;
+ model:=public.weekly_preferences_read_service(actor,w,emp);
+ update public.weekly_preference_events set after_record=model->(command->>'source') where id=event;
+ select string_agg((array['Sun','Mon','Tue','Wed','Thu','Fri','Sat'])[(d->>'day')::integer+1],', ' order by (d->>'day')::integer) into changed_days
+ from jsonb_array_elements(command->'preference'->'days') d
+ where d is distinct from (select value from jsonb_array_elements(prior->'preference'->'days') where value->'day'=d->'day');
+ summary:=case when source='manager' then 'Manager reminders updated.' else 'Weekly availability updated. '||case when changed_days is null then 'Week confirmed.' else 'Changed days: '||changed_days||'.' end end;
+ insert into public.employee_events(workspace_id,employee_id,actor_user_id,action,summary) values(w,emp,actor,case when source='manager' then 'manager_reminders_updated' else 'weekly_availability_updated' end,summary);
+ if source='employee' then
+  select coalesce(array_agg(m.user_id),'{}') into recipients from public.workspace_memberships m where m.workspace_id=w and m.status='active' and m.user_id<>actor
+   and public.weekly_preference_manager_scope(m.user_id,w,emp,'availability.read');
+  perform public.enqueue_notification_outbox_service(w,event,'availability.weekly_updated',1,actor,'weekly_availability',emp::text,
+   jsonb_build_object('recipient_user_ids',to_jsonb(recipients),'audience_contract','availability_scoped_recipients','category','request',
+    'title','Availability updated','body',(model->>'employee_name')||': '||summary,'safe_preview','An employee updated weekly availability.',
+    'action_url','/app/employees?employeeId='||emp::text||'&section=availability','employee_id',emp,'changed_days',changed_days,'group_key','weekly-availability:'||emp::text),now());
+ end if;
+ result:=jsonb_build_object('kept_count',kept,'cancelled_count',cancelled,'resolved_count',resolved,'finalized',finalized);
+ insert into public.weekly_preference_commands(workspace_id,actor_user_id,request_key,command,result) values(w,actor,request_key,command,result);
+ return result||jsonb_build_object('model',model);
+end; $function$;
+
+create function app_private.manager_note_follows_role() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  -- Above employee: the Manager note about them goes, for good.
+  if not app_private.ranks_as_employee(new.workspace_id, new.user_id) then
+    delete from public.manager_weekly_reminders note
+    using public.employee_profiles employee
+    where employee.workspace_id = new.workspace_id and employee.user_id = new.user_id
+      and note.workspace_id = employee.workspace_id and note.employee_id = employee.id;
+  end if;
+  return null;
+end;
+$$;
+revoke all on function app_private.manager_note_follows_role() from public, anon, authenticated;
+
+create trigger manager_note_follows_role
+after insert or update of role, role_id on public.workspace_memberships
+for each row execute function app_private.manager_note_follows_role();
 
 -- No old data is kept (CLAUDE.md §9): notes about somebody who is not an
 -- employee go. Somebody with no membership yet counts as an employee.

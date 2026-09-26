@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(84);
+select plan(90);
 
 -- FB-6.1 step .2: Schedule's entry points ask the authorization core
 -- (app_private.authorize() / scope_set()) instead of the three old Schedule
@@ -295,8 +295,8 @@ create function pg_temp.reads_note(person text, whose text) returns boolean
 language plpgsql
 as $$
 begin
-  return jsonb_typeof(public.weekly_preferences_read_service(tests.user('sc:' || person), tests.id('sc'), tests.id('sc:' || whose))
-    -> 'manager') = 'object';
+  return coalesce(jsonb_typeof(public.weekly_preferences_read_service(tests.user('sc:' || person), tests.id('sc'), tests.id('sc:' || whose))
+    -> 'manager') = 'object', false);
 exception when sqlstate '42501' then
   return false;
 end;
@@ -313,8 +313,27 @@ select is(pg_temp.reads_note('ayse', 'emre'), true, 'Ayşe reads the Manager not
 select is(pg_temp.reads_note('zeynep', 'ayse'), false, 'Zeynep (admin) reads no Manager note about Ayşe, a manager');
 select is(pg_temp.reads_note('ayse', 'can'), false, 'Ayşe reads Can''s availability but no Manager note: he is a manager');
 select is(pg_temp.reads_note('ayse', 'ayse'), false, 'Ayşe has no Manager note to read about herself');
-select is(public.weekly_preferences_read_service(tests.user('sc:ayse'), tests.id('sc'), tests.id('sc:can')) -> 'manager', 'null'::jsonb,
-  'the read model says so with manager: null');
+select is(public.weekly_preferences_read_service(tests.user('sc:ayse'), tests.id('sc'), tests.id('sc:can')) ? 'manager', false,
+  'the read model says so by leaving the manager part out');
+
+-- Saving a Manager note about somebody who is not an employee is refused.
+create function pg_temp.save_note(person text, whose text) returns text
+language plpgsql
+as $$
+begin
+  perform public.weekly_preferences_save_service(tests.user('sc:' || person), tests.id('sc'), jsonb_build_object(
+    'employee_id', tests.id('sc:' || whose), 'source', 'manager',
+    'expected_revision', coalesce((select n.revision from public.manager_weekly_reminders n where n.employee_id = tests.id('sc:' || whose)), 0),
+    'settings_revision', (select s.availability_preferences_revision from public.workspace_scheduling_settings s where s.workspace_id = tests.id('sc')),
+    'preference', public.empty_weekly_preference('time_range'), 'enabled', true,
+    'notes', jsonb_build_array('Call before Friday', '', '', '', '', '', '')), gen_random_uuid());
+  return 'saved';
+exception when others then
+  return sqlstate;
+end;
+$$;
+select is(pg_temp.save_note('zeynep', 'ayse'), '42501', 'Zeynep (admin) cannot save a Manager note about Ayşe, a manager');
+select is(pg_temp.save_note('owner', 'owner'), '42501', 'the owner cannot save a Manager note about herself');
 
 -- The two sets are one: for every person, who hears of their update is who
 -- reads it.
@@ -504,6 +523,25 @@ select is(
   '42501 authz.out_of_scope schedule.edit',
   'checking a shift with no location is refused, the owner too'
 );
+
+-- A person who stops being an employee loses their Manager note for good (user
+-- decision 2026-09-26, REUSE a9c7797): Emre is made a manager and back.
+create function pg_temp.make(whose text, role_key text) returns void
+language sql
+as $$
+  select public.update_employee_membership_role_service(tests.user('sc:owner'), tests.id('sc'), tests.id('sc:' || whose),
+    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('sc') and r.system_key::text = role_key));
+$$;
+create function pg_temp.notes_about(whose text) returns integer
+language sql
+as $$ select count(*)::integer from public.manager_weekly_reminders n where n.employee_id = tests.id('sc:' || whose) $$;
+select is(pg_temp.save_note('ayse', 'emre'), 'saved', 'Ayşe saves a Manager note about Emre');
+select is(pg_temp.notes_about('emre'), 1, 'Emre has a Manager note');
+select pg_temp.make('emre', 'manager');
+select is(pg_temp.notes_about('emre'), 0, 'made a manager, Emre''s Manager note is deleted');
+select pg_temp.make('emre', 'employee');
+select is(public.weekly_preferences_read_service(tests.user('sc:zeynep'), tests.id('sc'), tests.id('sc:emre')) -> 'manager' ->> 'revision', '0',
+  'an employee again, Emre starts with an empty Manager note');
 
 select * from finish();
 rollback;
