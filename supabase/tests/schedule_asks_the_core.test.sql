@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(67);
+select plan(70);
 
 -- FB-6.1 step .2: Schedule's entry points ask the authorization core
 -- (app_private.authorize() / scope_set()) instead of the three old Schedule
@@ -45,6 +45,7 @@ select tests.role('sc', 'no templates', 'manager', array(
     and rp.permission_key not in ('schedule.templates.read', 'schedule.templates.manage')
 ));
 select tests.person('sc', 'tina', 'no templates', array['K'], array['cook']);
+select tests.person('sc', 'zafer', 'admin', array['B'], array['server']);
 -- A workspace whose every location is closed.
 select tests.world('sn');
 
@@ -243,6 +244,9 @@ select is(pg_temp.may_write_note('ayse', 'emre'), 'yes', 'Ayşe writes a note ab
 select is(pg_temp.may_write_note('ayse', 'can'), 'no', 'Ayşe does not write a note about Can, a manager at Kadıköy');
 select is(pg_temp.may_write_note('ayse', 'ayse'), 'no', 'Ayşe does not write a note about herself');
 select is(pg_temp.may_write_note('zeynep', 'owner'), 'no', 'an admin does not write a note about the owner');
+select is(pg_temp.may_write_note('zeynep', 'zafer'), 'no', 'an admin does not write a note about another admin');
+select is(pg_temp.may_write_note('zeynep', 'zeynep'), 'yes', 'an admin writes a note about herself');
+select is(pg_temp.may_write_note('owner', 'owner'), 'yes', 'the owner writes a note about herself');
 
 -- Who hears when somebody updates their own weekly availability: every
 -- manager of a location they work at, whatever their rank, and the owner and

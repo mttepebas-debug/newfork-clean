@@ -52,11 +52,12 @@
 insert into app_private.authz_actions (key, scope_class, effect, permission_key) values
   ('settings.conflict_rules.write', 'org', 'write', 'schedule.conflict_rules.manage'),
   ('schedule.templates.read', 'set', 'read', 'schedule.templates.read');
--- A manager's private availability note about a person follows the record
--- edit rule (REUSE "Müsaitlik notu", user decision 2026-09-26): only for
--- somebody ranked below, never for oneself; an admin not for the owner.
-insert into app_private.authz_actions (key, scope_class, effect, permission_key, no_self, rank_below) values
-  ('availability.team_write', 'person', 'write', 'availability.manage', true, true);
+-- A private availability note about a person follows the record edit rule
+-- (REUSE "Müsaitlik notu", user decisions 2026-09-26): a manager only for
+-- somebody ranked below, not for themselves; an admin not for another admin or
+-- the owner; the owner and admins for themselves too.
+insert into app_private.authz_actions (key, scope_class, effect, permission_key, rank_below) values
+  ('availability.team_write', 'person', 'write', 'availability.manage', true);
 
 -- 2. The four-argument document conflicts list: nothing but a test called it; the
 -- API asks the seven-argument one with the locations it publishes (N17).

@@ -226,11 +226,12 @@ export function expected<A extends TargetedAuthzAction>(
       return targetRank < rankOf.manager;
 
     case "availability.team_write":
-      // A private availability note: the record edit rule, never for oneself.
-      if (isSelf) return false;
+      // A private availability note: the record edit rule. Owner and admins
+      // for themselves too; a manager only for somebody below them.
       if (actor.role === "owner") return true;
-      if (actor.role === "admin") return targetRank < rankOf.admin;
-      return shares && targetRank < rankOf.manager;
+      if (actor.role === "admin") return isSelf || targetRank < rankOf.admin;
+      if (!shares || isSelf) return false;
+      return targetRank < rankOf.manager;
 
     case "employee.terminate":
     case "employee.archive":

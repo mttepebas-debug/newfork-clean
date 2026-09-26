@@ -1,5 +1,5 @@
 {
- "sourceSha256": "a36baff145731af37c198b874d2f46bfc52ac032f31e67df8f9955d363533673",
+ "sourceSha256": "81ef244106d5b55365b54702413b56c851fa63c02e0e56b0dfbabd02a3e5e63b",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -1466,13 +1466,13 @@
    "availability.team_write",
    "olcay",
    "olcay",
-   "deny"
+   "allow"
   ],
   [
    "availability.team_write",
    "olcay",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "availability.team_write",
@@ -1760,7 +1760,7 @@
    "availability.team_write",
    "zeynep",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "availability.team_write",
@@ -1778,7 +1778,7 @@
    "availability.team_write",
    "zeynep",
    "zeynep",
-   "deny"
+   "allow"
   ],
   [
    "employee.archive",
