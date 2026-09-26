@@ -101,7 +101,9 @@ export function SignInPage() {
               required
             />
             {creatingAccount ? null : (
-              <Link to="/forgot-password">Forgot password?</Link>
+              <Link className="pb-link" to="/forgot-password">
+                Forgot password?
+              </Link>
             )}
           </div>
           {error ? (

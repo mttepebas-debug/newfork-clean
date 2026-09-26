@@ -67,9 +67,18 @@ export default function ResetPasswordPage() {
 
   if (linkInvalid)
     return (
-      <PreBizFrame narrow titleId="reset-password-title" title="Reset link not valid">
-        <p>This reset link has expired or was already used.</p>
-        <Link to="/forgot-password">Request a new link</Link>
+      <PreBizFrame
+        narrow
+        titleId="reset-password-title"
+        title="Reset link not valid"
+        description="This reset link has expired or was already used."
+      >
+        {/* The one way forward from here, so it is the green one. */}
+        <div className="pb-stack">
+          <Link className="pb-btn pb-btn-primary pb-btn-block" to="/forgot-password">
+            Request a new link
+          </Link>
+        </div>
       </PreBizFrame>
     );
 

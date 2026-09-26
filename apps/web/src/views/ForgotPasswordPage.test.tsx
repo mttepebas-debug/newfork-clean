@@ -38,11 +38,14 @@ describe("ForgotPasswordPage", () => {
     await waitFor(() =>
       expect(requestPasswordReset).toHaveBeenCalledWith("ayse@example.test"),
     );
-    expect(await screen.findByText(sameAnswer)).toBeTruthy();
+    // The answer is announced and reads as the app's success message.
+    const answer = await screen.findByRole("status");
+    expect(answer.textContent).toBe(sameAnswer);
+    expect(answer.className).toBe("form-success");
     expect(screen.queryByLabelText("Email")).toBeNull();
-    expect(screen.getByRole("link", { name: "Back to sign in" }).getAttribute("href")).toBe(
-      "/sign-in",
-    );
+    const back = screen.getByRole("link", { name: "Back to sign in" });
+    expect(back.getAttribute("href")).toBe("/sign-in");
+    expect(back.className).toBe("pb-link");
   });
 
   it("shows a refusal such as the rate limit and keeps the form", async () => {
