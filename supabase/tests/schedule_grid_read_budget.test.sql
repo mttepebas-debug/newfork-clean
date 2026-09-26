@@ -34,15 +34,19 @@ select tests.id('wb'), tests.id('wb:p' || n),
   true, 1, tests.user('wb:owner')
 from generate_series(1, 30) n where n % 2 = 0;
 
+-- p3's Wednesday at Besiktas is tagged "On call" and noted in the editor, and
+-- goes out with the rest of the week on the real save and publish path (BL-158).
+select tests.as_browser(tests.user('wb:owner'), format(
+  $sql$insert into public.shift_labels (id, workspace_id, name) values (%L, %L, 'On call')$sql$,
+  tests.remember('wb:label:on-call', gen_random_uuid()), tests.id('wb')));
 select tests.publish_week('wb', 1, (
   select jsonb_agg(jsonb_build_object('label', 'p' || n || '-' || d, 'person', 'p' || n,
-    'loc', case when n % 3 = 2 or (n % 3 = 0 and d = 3) then 'B' else 'K' end, 'job', 'cook', 'day', d, 'start', '09:00', 'end', '15:00'))
+    'loc', case when n % 3 = 2 or (n % 3 = 0 and d = 3) then 'B' else 'K' end, 'job', 'cook', 'day', d, 'start', '09:00', 'end', '15:00')
+    || case when n = 3 and d = 3 then jsonb_build_object('note', 'Ghost note stays at Besiktas',
+         'label_ids', jsonb_build_array(tests.id('wb:label:on-call')), 'label_names', jsonb_build_array('On call'))
+       else '{}'::jsonb end)
   from generate_series(1, 30) n cross join (values (1), (3)) days(d)
 ));
-
--- ponytail: labelled and noted by hand; the world builder publishes without.
-update public.schedule_published_shifts set label_names = array['On call'], note = 'Ghost note stays at Besiktas'
-where employee_id = tests.id('wb:p3') and location_id = tests.id('wb:B');
 
 create temp table wb_run (who text, n integer, ms numeric, marked integer, model jsonb);
 do $$

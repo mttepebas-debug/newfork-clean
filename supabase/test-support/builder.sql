@@ -338,7 +338,9 @@ $$;
 
 -- One shift added to an open edit the way the Schedule screen adds it: assess,
 -- then create with the assessment's fingerprint. shift is {"person", "loc",
--- "job", "day" (0 = Monday), "start", "end"}; n is the week. Returns the shift id.
+-- "job", "day" (0 = Monday), "start", "end"} and optionally "note", "label_ids",
+-- "label_names" (the shift's tags as the quick editor sends them); n is the
+-- week. Returns the shift id.
 create or replace function tests.add_shift(actor uuid, w text, session uuid, n integer, shift jsonb)
 returns uuid
 language plpgsql
@@ -354,7 +356,9 @@ declare
     'start_time', shift ->> 'start',
     'end_time', shift ->> 'end',
     'time_timezone', 'Europe/Istanbul',
-    'note', ''
+    'note', coalesce(shift ->> 'note', ''),
+    'label_ids', coalesce(shift -> 'label_ids', '[]'::jsonb),
+    'label_names', coalesce(shift -> 'label_names', '[]'::jsonb)
   );
   shift_id uuid := gen_random_uuid();
 begin
@@ -372,8 +376,8 @@ $$;
 
 -- A week somebody writes and publishes on the Schedule screen: open editing,
 -- check each shift, add it, save the draft, preview, publish. shifts is a JSON
--- list of {"label", "person", "loc", "job", "day" (0 = Monday), "start", "end"}.
--- Labels: <w>:shift:<label> (the published shift id). Returns the draft id.
+-- list of {"label", "person", "loc", "job", "day" (0 = Monday), "start", "end"}
+-- plus tests.add_shift's optional keys. Labels: <w>:shift:<label> (the published shift id). Returns the draft id.
 -- tests.publish_week(w, n, shifts) publishes as the owner.
 create or replace function tests.publish_week_as(owner_id uuid, w text, n integer, shifts jsonb)
 returns uuid
