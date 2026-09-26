@@ -37,14 +37,14 @@ select is((template->'template'->>'shift_count')::integer,2,'template captures e
 select is((template->'template'->>'open_slot_count')::integer,2,'assignment stripping creates open slots') from phase5d_state;
 select is((select jsonb_array_length(public.list_schedule_templates_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'templates')),1,'template list returns accessible template');
 select is((select max((x->>'day_offset')::integer) from phase5d_state,jsonb_array_elements(template->'shifts') x),1,'template stores relative day offsets');
-select is((select count(*)::integer from public.schedule_template_events where action='created'),1,'template creation is audited');
+select is((select count(*)::integer from public.schedule_template_events where workspace_id='6ea5d512-bc7f-4cf3-aad4-2f0815de00fd' and action='created'),1,'template creation is audited');
 select throws_ok(format($$select public.rename_schedule_template_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',%L,'Stale',99)$$,(select template->'template'->>'id' from phase5d_state)),'40001','schedule template revision stale','stale template rename fails');
 update phase5d_state s set template=public.rename_schedule_template_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(s.template->'template'->>'id')::uuid,'Opening pattern',1);
 select is((template->'template'->>'revision')::integer,2,'template rename increments revision') from phase5d_state;
 update phase5d_state set assigned_template=public.create_schedule_template_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','94200000-0000-4000-8000-000000000001','Assigned pattern',false);
 select is((assigned_template->'template'->>'open_slot_count')::integer,1,'template may preserve employee assignments') from phase5d_state;
 select is(public.delete_schedule_template_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(assigned_template->'template'->>'id')::uuid,1)->>'status','deleted','template deletes by revision') from phase5d_state;
-select is((select count(*)::integer from public.schedule_template_events where action='deleted'),1,'template deletion is audited');
+select is((select count(*)::integer from public.schedule_template_events where workspace_id='6ea5d512-bc7f-4cf3-aad4-2f0815de00fd' and action='deleted'),1,'template deletion is audited');
 
 update phase5d_state set acquired=public.acquire_schedule_edit_session_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'blank',null);
 select is(acquired->>'status','acquired','blank edit session acquired for template apply') from phase5d_state;
@@ -53,7 +53,7 @@ select is(applied->>'status','applied','template applies to active edit lease') 
 select is((applied->>'applied_shift_count')::integer,2,'template apply copies both shifts atomically') from phase5d_state;
 select is(jsonb_array_length(applied->'session'->'shifts'),2,'applied session returns complete snapshot') from phase5d_state;
 select is((select count(*)::integer from jsonb_array_elements(applied->'session'->'shifts') x where x->>'employee_id' is null),2,'stripped template remains open after apply') from phase5d_state;
-select is((select count(*)::integer from public.schedule_template_events where action='applied'),1,'template application is audited');
+select is((select count(*)::integer from public.schedule_template_events where workspace_id='6ea5d512-bc7f-4cf3-aad4-2f0815de00fd' and action='applied'),1,'template application is audited');
 select throws_ok(format($$select public.apply_schedule_template_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',%L,1,%L,'merge')$$,(select acquired->'session'->>'id' from phase5d_state),(select template->'template'->>'id' from phase5d_state)),'40001','session revision stale','template apply rejects stale edit revision');
 
 update phase5d_state s set autofill=public.preview_schedule_auto_fill_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(s.applied->'session'->>'id')::uuid);

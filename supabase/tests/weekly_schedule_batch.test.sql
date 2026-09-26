@@ -36,18 +36,24 @@ update ws set session=(public.acquire_schedule_edit_session_service(manager,w,'2
 update ws s set original_revision=e.revision from public.schedule_edit_sessions e where e.id=s.session;
 update ws set payload=jsonb_build_object('location_id',loc,'employee_id',emp,'job_id',job,'scheduled_date','2035-01-15',
  'time_basis','explicit','start_time','18:00','end_time','20:00','time_timezone','America/Los_Angeles','note','');
+-- Two conflicting days: Monday (day 15, index 1) for the batch's own valid
+-- acceptance below, Friday (2035-01-19, index 5) kept clean until the O1
+-- fix needs a second, independent conflict.
 insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,preference,revision,updated_by)
- select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true'),1,manager from ws;
+ select w,emp,true,jsonb_set(jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true'),'{days,5,all_day}','true'),1,manager from ws;
 update ws set payload=payload||jsonb_build_object('availability_assessment_fingerprint',public.assess_schedule_shift_service(manager,w,payload,null,session)->>'fingerprint');
 update ws set batch=jsonb_build_array(payload,payload||'{"scheduled_date":"2035-01-16"}');
 create function pg_temp.create_batch(p jsonb default null,k uuid default null) returns jsonb language sql as $$
  select public.create_schedule_shifts_batch_service(manager,w,session,original_revision,coalesce(p,batch),coalesce(k,request_key)) from ws;
 $$;
--- The first item lands on a day with no conflict of its own (it would commit
--- on its own merits); the later, second item reuses payload's own conflicting
--- day with a fingerprint that can never match, so only ITS staleness is under
--- test here, not an accidental double-booking between the two.
-select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload||'{"scheduled_date":"2035-01-16"}',payload||'{"availability_assessment_fingerprint":"stale"}')) from ws$$,'PT409',null,'later stale assessment rolls the whole command back');
+-- The first item is payload as built above: Monday, a real conflict, and a
+-- fingerprint that actually matches, so it commits on its own merits AND
+-- records a genuine acceptance. The later, second item is a *different*
+-- conflicting day (Friday, its own reminder) with a fingerprint that can
+-- never match, so only ITS staleness is under test, and the whole batch,
+-- including the first item's already-written acceptance, must still roll
+-- back together (nf-guvenlik O1, 2026-09-26).
+select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload,payload||'{"scheduled_date":"2035-01-19","availability_assessment_fingerprint":"stale"}')) from ws$$,'PT409',null,'later stale assessment rolls the whole command back');
 select is((select count(*) from public.schedule_edit_session_shifts where workspace_id=(select w from ws)),0::bigint,'no first shift remains after later failure');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),0::bigint,'first acceptance also rolls back');
 select is((select revision from public.schedule_edit_sessions where id=(select session from ws)),(select original_revision from ws),'failed batch does not advance the session');

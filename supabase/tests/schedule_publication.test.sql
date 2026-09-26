@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(44);
+select plan(47);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -65,11 +65,11 @@ insert into publication_state (hard,soft) values (
  public.preview_schedule_publication_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000002'::uuid])
 );
 select is(hard->>'status','hard_blocked','an approved leave hard-blocks preview') from publication_state;
-select is((select count(*)::integer from jsonb_array_elements(hard->'findings') x where x->>'severity'='hard'),1,'hard finding is canonical') from publication_state;
+select is((select count(*)::integer from jsonb_array_elements(hard->'findings') x where x->>'severity'='hard' and x->'shift_ids' ? '85000000-0000-4000-8000-000000000012'),1,'the hard finding names the shift overlapping the approved leave') from publication_state;
 select throws_ok(format($$select public.publish_schedule_draft_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid],null,true,1,%L,'[]')$$,(select hard->>'fingerprint' from publication_state)),'23514','schedule has hard publication blockers','hard blocker cannot be bypassed');
 select is((select count(*)::integer from public.schedule_location_publications where location_id='11000000-0000-4000-8000-000000000001'),1,'hard blocked publish rolls back');
 select is(soft->>'status','override_required','a closure requires override') from publication_state;
-select is((select count(*)::integer from jsonb_array_elements(soft->'findings') x where x->>'severity'='soft'),1,'closure finding is canonical') from publication_state;
+select is((select count(*)::integer from jsonb_array_elements(soft->'findings') x where x->>'severity'='soft' and x->'shift_ids' ? '85000000-0000-4000-8000-000000000013'),1,'the closure finding names the shift falling on the closure') from publication_state;
 select throws_ok(format($$select public.publish_schedule_draft_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000002'::uuid],null,true,1,%L,'[]')$$,(select soft->>'fingerprint' from publication_state)),'22023','Confirm the current schedule conflicts before publishing','soft finding requires reason');
 select throws_ok($$select public.publish_schedule_draft_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000002'::uuid],null,true,1,repeat('f',64),'[]')$$,'PT409','stale publication preview','stale fingerprint fails closed');
 
@@ -80,7 +80,7 @@ jsonb_build_array(jsonb_build_object('finding_id',s.soft->'findings'->0->>'id','
 select is(published->>'status','published','reviewed draft publishes') from publication_state;
 select is((select version_number from public.schedule_location_publications where location_id='11000000-0000-4000-8000-000000000002' and status='current'),2,'republish increments version');
 select is((select status::text from public.schedule_location_publications where id='21000000-0000-4000-8000-000000000002'),'superseded','prior version is superseded');
-select is((select count(*)::integer from public.schedule_publication_overrides),1,'override is audited');
+select is((select count(*)::integer from public.schedule_publication_overrides where workspace_id='6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'),1,'override is audited');
 select is((select count(*)::integer from public.schedule_publication_events where workspace_id='6ea5d512-bc7f-4cf3-aad4-2f0815de00fd' and action='published'),1,'publish event is recorded');
 select is((select jsonb_array_length(public.get_schedule_read_model_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date)->'shifts')),8,'republish does not duplicate live shifts, and carries the newly reviewed one');
 
@@ -96,6 +96,23 @@ select is((select jsonb_array_length(public.get_schedule_publication_history_ser
 
 select throws_ok($$select public.preview_schedule_publication_service('53000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid])$$,'42501','Not allowed','employee cannot preview');
 select throws_ok($$select public.preview_schedule_publication_service('53000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000002'::uuid])$$,'42501','Not allowed','scoped manager cannot preview another location');
+-- The message alone ('Not allowed') is the same string for every authz.*
+-- reason; check the reason itself (nf-guvenlik D2, 2026-09-26).
+create function pg_temp.said(statement text) returns text
+language plpgsql as $$
+declare code text; reason text; what text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint, what = pg_exception_detail;
+  return concat_ws(' ', code, nullif(reason, ''), nullif(what, ''));
+end;
+$$;
+select is(pg_temp.said($$select public.preview_schedule_publication_service('53000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid])$$),
+  '42501 authz.missing_permission schedule.publish', 'an employee is refused for missing permission, not some other reason');
+select is(pg_temp.said($$select public.preview_schedule_publication_service('53000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000002'::uuid])$$),
+  '42501 authz.out_of_scope schedule.publish', 'a scoped manager is refused as out of scope for the other location, not some other reason');
 set local role postgres;
 insert into public.document_types(
  id,workspace_id,title,description,required_at_onboarding,requires_review,accepted_formats,tracks_expiry,expiry_warning_days,expiry_schedule_impact,sort_order,created_by
@@ -254,8 +271,10 @@ insert into public.employee_location_assignments (workspace_id, employee_id, loc
 ('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','15000000-0000-4000-8000-000000000003','11900000-0000-4000-8000-000000000001','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
 insert into public.schedule_drafts (id, workspace_id, week_start, name, revision, created_by, updated_by, location_ids)
 values ('85000000-0000-4000-8000-000000000020','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),'Department publish test',1,'d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5',array['11900000-0000-4000-8000-000000000001']::uuid[]);
--- Day +1 of the week: neither employee has a real shift then, anywhere else
--- in this fixture (0001 works Mon and Fri, 0003 works Wed and Thu).
+-- Day +1 of the week (Tuesday): employee 0002 does have a real shift that
+-- day at another location (15:00-23:00, from the seed), but this new
+-- 10:00-14:00 shift ends before that one starts, so it is not a
+-- double-booking; employee 0003's real shifts are Wed and Thu, not Tue.
 insert into public.schedule_draft_shifts (id, workspace_id, draft_id, location_id, employee_id, job_id, shift_type_id, scheduled_date, start_time, end_time, note, revision) values
 ('85000000-0000-4000-8000-000000000021','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000020','11900000-0000-4000-8000-000000000001','15000000-0000-4000-8000-000000000002','13000000-0000-4000-8000-000000000002',null,current_date-(extract(isodow from current_date)::integer-1)+1,'10:00','14:00','Dining Room shift',1),
 ('85000000-0000-4000-8000-000000000022','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','85000000-0000-4000-8000-000000000020','11900000-0000-4000-8000-000000000001','15000000-0000-4000-8000-000000000003','13000000-0000-4000-8000-000000000003',null,current_date-(extract(isodow from current_date)::integer-1)+1,'10:00','14:00','Kitchen shift',1);
@@ -269,7 +288,8 @@ update department_publish_state s set published = public.publish_schedule_draft_
   array['11900000-0000-4000-8000-000000000001'::uuid],array['12000000-0000-4000-8000-000000000001'::uuid],false,
   1,s.dining->>'fingerprint','[]');
 select is(published->>'status','published','the named department publishes on its own') from department_publish_state;
-select is((select count(*)::integer from public.schedule_published_shifts where location_id='11900000-0000-4000-8000-000000000001'),1,'only the Dining Room shift goes live; the Kitchen shift stays in the draft');
+select is((select count(*)::integer from public.schedule_published_shifts where location_id='11900000-0000-4000-8000-000000000001'),1,'only the Dining Room shift goes live');
+select is((select count(*)::integer from public.schedule_draft_shifts where id='85000000-0000-4000-8000-000000000022' and draft_id='85000000-0000-4000-8000-000000000020'),1,'the Kitchen shift itself stays in the draft, unpublished, not merely uncounted');
 
 select * from finish();
 rollback;
