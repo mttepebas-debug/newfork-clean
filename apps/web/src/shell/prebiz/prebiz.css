@@ -293,14 +293,6 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-/* DEV-only variant (?variant=quiet): the trust-link colour instead of green. */
-.pb-links-quiet .pb-link {
-  color: var(--theme-muted-strong);
-  font-weight: 400;
-}
-.pb-links-quiet .pb-link:hover {
-  color: var(--theme-accent);
-}
 /* Under a field it sits at the field's right edge, clear of the label column. */
 .onboarding-field > .pb-link {
   justify-self: end;
