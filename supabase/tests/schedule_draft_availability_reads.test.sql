@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(19);
 
 -- FOUNDATION-B 5.3c: the draft conflict list (Publish -> review) and the weekly
 -- shift list behind Export read the weekly marks through the shared check,
@@ -48,36 +48,41 @@ insert into public.employee_weekly_preferences (workspace_id, employee_id, prefe
 values (tests.id('dr'), tests.id('dr:ali'),
   jsonb_set(public.empty_weekly_preference('time_range'), '{days,1,range}', '{"start": "13:00", "end": "15:00"}'),
   1, tests.user('dr:ali'));
-select is(jsonb_array_length(pg_temp.conflicts() -> 'conflicts'), 1, 'a mark added after the draft shows as a conflict');
-select is(pg_temp.conflicts() -> 'conflicts' -> 0 -> 'assessment' ->> 'operation', 'warning_requires_override', 'under Require confirmation it asks for a decision');
-select is(pg_temp.conflicts() -> 'conflicts' -> 0 -> 'assessment' -> 'unavailable_intervals',
+-- BL-186: a mark is a preference, a warning on the shift and never a conflict.
+select is(jsonb_array_length(pg_temp.conflicts() -> 'conflicts'), 0, 'a mark added after the draft is not a conflict');
+select ok((pg_temp.lunch() -> 'availability_assessment' ->> 'has_availability_conflict')::boolean, 'the weekly list shows it as a warning');
+select is(pg_temp.lunch() -> 'availability_assessment' -> 'unavailable_intervals',
   (select public.assess_weekly_shift_availability(tests.id('dr'), tests.id('dr:ali'), payload || jsonb_build_object('id', shift)) -> 'unavailable_intervals' from dr),
   'with the same unavailable hours as the shared check');
 select isnt(pg_temp.conflicts() ->> 'fingerprint', (select before_mark ->> 'fingerprint' from dr), 'a new mark changes the list''s fingerprint');
 select is(pg_temp.lunch() -> 'warning_codes', '["availability"]'::jsonb, 'the weekly list agrees with the conflict list');
 select ok(not (pg_temp.lunch() -> 'availability_assessment' ?| array['sources', 'leave', 'pending']), 'and keeps leave and sources to itself');
 
--- Kadikoy's manager sees Kadikoy's conflict; Besiktas's manager sees none of it.
-select is(jsonb_array_length(pg_temp.conflicts('ayse') -> 'conflicts'), 1, 'the Kadikoy manager sees the Kadikoy conflict');
-select is(jsonb_array_length(pg_temp.conflicts('mehmet') -> 'conflicts'), 0, 'the Besiktas manager does not');
+-- Kadikoy's manager sees Kadikoy's warning; Besiktas's manager sees none of it.
+select ok((select bool_or((x -> 'availability_assessment' ->> 'has_availability_conflict')::boolean) from dr,
+  jsonb_array_elements(public.list_schedule_weekly_shifts_service(tests.user('dr:ayse'), tests.id('dr'), tests.week(1), null, draft, false) -> 'shifts') x),
+  'the Kadikoy manager sees the warning on the Kadikoy shift');
+select ok((select not bool_or(coalesce((x -> 'availability_assessment' ->> 'has_availability_conflict')::boolean, false)) from dr,
+  jsonb_array_elements(public.list_schedule_weekly_shifts_service(tests.user('dr:mehmet'), tests.id('dr'), tests.week(1), null, draft, false) -> 'shifts') x),
+  'the Besiktas manager does not');
 select is((select jsonb_array_length(public.list_schedule_weekly_shifts_service(tests.user('dr:ayse'), tests.id('dr'), tests.week(1), null, draft, false) -> 'shifts') from dr),
   1, 'the weekly list shows a manager only their locations');
 set local role authenticated;
 select throws_ok($$select public.schedule_availability_enrich_read(null, null, '{}')$$, '42501', null, 'the browser cannot call the enrichment helper');
 reset role;
 
--- Published with the conflict accepted, then the setting moves to Block.
+-- Published with the warning acknowledged; the grid keeps reading today's marks.
 update dr set preview = public.preview_schedule_publication_service(tests.user('dr:owner'), tests.id('dr'), draft, array[tests.id('dr:K'), tests.id('dr:B')], null, true);
 select lives_ok($$select public.publish_schedule_draft_service(tests.user('dr:owner'), tests.id('dr'), r.draft, array[tests.id('dr:K'), tests.id('dr:B')], null, true,
   d.revision, r.preview ->> 'fingerprint',
   (select coalesce(jsonb_agg(jsonb_build_object('finding_id', f ->> 'id')), '[]') from jsonb_array_elements(r.preview -> 'findings') f where f ->> 'severity' = 'soft'))
-  from dr r join public.schedule_drafts d on d.id = r.draft$$, 'the manager publishes the conflict on purpose');
-update public.workspace_scheduling_settings set conflict_rules = jsonb_set(conflict_rules, '{availability}', '"block"')
-where workspace_id = tests.id('dr');
-select is(pg_temp.lunch(false) -> 'availability_assessment' ->> 'operation', 'allowed', 'published work keeps what it was accepted with after the switch');
-select is(pg_temp.lunch(false) ->> 'availability_responsibility_retained', 'true', 'and says so');
-select is(pg_temp.lunch(false) -> 'warning_codes', '["availability"]'::jsonb, 'it still shows the conflict it was accepted with, as the grid does');
-select is(jsonb_array_length(pg_temp.conflicts() -> 'conflicts'), 0, 'the draft does not re-check unchanged published work');
+  from dr r join public.schedule_drafts d on d.id = r.draft$$, 'the manager acknowledges the warning and publishes');
+select is(pg_temp.lunch(false) -> 'availability_assessment' ->> 'operation', 'allowed', 'the published shift is allowed');
+select is(pg_temp.lunch(false) ->> 'availability_responsibility_retained', 'true', 'and keeps its published responsibility');
+select is(pg_temp.lunch(false) -> 'warning_codes', '["availability"]'::jsonb, 'it shows today''s mark as a warning, as the grid does');
+select is(jsonb_array_length(pg_temp.conflicts() -> 'conflicts'), 0, 'the draft lists no conflict');
+delete from public.employee_weekly_preferences where employee_id = tests.id('dr:ali');
+select is(pg_temp.lunch(false) -> 'warning_codes', '[]'::jsonb, 'once Ali clears the mark the published shift shows no warning');
 
 select * from finish();
 rollback;

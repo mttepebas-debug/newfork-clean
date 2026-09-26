@@ -56,7 +56,7 @@ select throws_ok($$update public.workspace_scheduling_settings set conflict_rule
 select throws_ok($$update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{document_conditional_grace}','"block"') where workspace_id=(select w from f)$$,'23514',null,'server rejects overdue severity softer than grace');
 update public.employee_onboarding_requirements set lifecycle_exempt=true where id='b1520000-0000-4000-8000-000000000002';
 select is(pg_temp.assess('{"start_time":"10:00"}')->>'conflict_severity','allow','exemption removes document conflict without other rule changes');
-update public.workspace_scheduling_settings set conflict_rules='{"availability":"warn","approved_time_off":"block","closed_location":"confirm","minimum_travel":"confirm","minimum_rest":"confirm"}' where workspace_id=(select w from f);
+update public.workspace_scheduling_settings set conflict_rules='{"approved_time_off":"block","closed_location":"confirm","minimum_travel":"confirm","minimum_rest":"confirm"}' where workspace_id=(select w from f);
 select is((select conflict_rules->>'document_required' from public.workspace_scheduling_settings where workspace_id=(select w from f)),'block','legacy partial rules preserve current document choices');
 -- The actual publication command must revalidate the same canonical document policy.
 create temp table pub as select (public.save_schedule_edit_session_service(f.actor,f.w,e.id,e.revision,'Document publish proof',null,null)->>'id')::uuid draft, null::jsonb preview

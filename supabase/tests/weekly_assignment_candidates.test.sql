@@ -55,13 +55,12 @@ select is((pg_temp.candidate()->>'available_start')::timestamptz,'2035-01-16 02:
 select is((pg_temp.candidate()->>'available_end')::timestamptz,'2035-01-16 06:00Z'::timestamptz,'partial conflict keeps original end');
 select ok(not (pg_temp.candidate()->'reasons' ? 'Available for the full interval'),'a warning does not falsely claim full availability');
 select is(pg_temp.candidate('{"scheduled_date":"2035-01-16"}')->'availability'->>'coverage','partial','the candidate date wins over a copied scheduled_date');
-select is(pg_temp.candidate('{"start_time":"20:00"}')->'availability'->>'operation','allowed','touching endpoints have no conflict');
+select is(pg_temp.candidate('{"start_time":"20:00"}')->'availability'->>'has_availability_conflict','false','touching endpoints have no conflict');
 select is(pg_temp.candidate('{"time_timezone":"America/New_York"}')->'availability'->>'coverage','partial','actual saved timezone is compared with current target location rules');
 update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true') where workspace_id=(select w from ws);
-update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from ws);
 select is(pg_temp.candidate()->>'status','eligible','an all-day mark keeps the person selectable');
 select is(pg_temp.candidate()->'availability'->>'coverage','none','full preference conflict is retained as warning evidence');
-select is(pg_temp.candidate()->'availability'->>'warning_policy','confirm','current manager warning policy is returned separately');
+select ok((pg_temp.candidate()->'availability'->>'has_availability_conflict')::boolean and pg_temp.candidate()->'availability'->>'operation'='allowed','the mark is a warning on an allowed assignment (BL-186)');
 select is((pg_temp.candidate()->>'available_end')::timestamptz,'2035-01-16 06:00Z'::timestamptz,'all-day conflict never shortens responsibility');
 
 -- Real blockers and full-span employment checks are still authoritative.
@@ -109,11 +108,11 @@ select is(pg_temp.candidate()->'availability'->'employee_intervals','[]'::jsonb,
 select ok(jsonb_array_length(pg_temp.candidate()->'availability'->'manager_intervals')>0,'private adapter preserves sources for actor-specific projection');
 select ok(pg_temp.candidate()::text not like '%Private manager note%','even the private assessment omits manager notes');
 update public.manager_weekly_reminders set enabled=false where workspace_id=(select w from ws);
-select is(pg_temp.candidate()->'availability'->>'operation','allowed','disabled reminders no longer warn');
+select is(pg_temp.candidate()->'availability'->>'has_availability_conflict','false','disabled reminders no longer warn');
 update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array((select shift_type from ws))) where workspace_id=(select w from ws);
-select is(pg_temp.candidate('{"shift_type_id":null}')->'availability'->>'operation','warning_requires_override','actual hours overlap a preference regardless of assignment type identity');
+select is(pg_temp.candidate('{"shift_type_id":null}')->'availability'->>'has_availability_conflict','true','actual hours overlap a preference regardless of assignment type identity');
 update public.shift_types set default_start_time='22:00',default_end_time='02:00' where id=(select shift_type from ws);
-select is(pg_temp.candidate()->'availability'->>'operation','allowed','current type defaults take effect immediately');
+select is(pg_temp.candidate()->'availability'->>'has_availability_conflict','false','current type defaults take effect immediately');
 select is(pg_temp.candidate('{"date":"2035-01-16","start_time":"01:00","end_time":"03:00"}')->>'status','eligible','overnight type remains a soft conflict the next day');
 select is(pg_temp.candidate('{"date":"2035-01-16","start_time":"01:00","end_time":"03:00"}')->'availability'->>'coverage','partial','overnight next-day warning is not lost');
 update public.shift_types set archived_at=now() where id=(select shift_type from ws);

@@ -7,7 +7,7 @@ supabase/tests/authorization_core.test.sql
 supabase/tests/authorization_coverage.test.sql
 supabase/tests/authorization_matrix.test.sql
 supabase/tests/authz_catalog.test.sql
-supabase/tests/availability_three_levels.test.sql
+supabase/tests/availability_is_a_preference.test.sql
 supabase/tests/bl052_document_account_inbox.test.sql
 supabase/tests/bl052_document_conflicts.test.sql
 supabase/tests/bl052_document_correction_drafts.test.sql
