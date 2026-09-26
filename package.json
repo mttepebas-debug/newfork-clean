@@ -7,7 +7,7 @@
     "dev:turbo": "turbo dev",
     "build": "turbo build",
     "typecheck": "turbo typecheck",
-    "test": "turbo test",
+    "test": "node --test scripts/lock.test.mjs && turbo test",
     "test:db": "node scripts/reload-test-builder.mjs && supabase test db",
     "e2e": "playwright test -c e2e/playwright.config.ts",
     "lint": "turbo lint",
