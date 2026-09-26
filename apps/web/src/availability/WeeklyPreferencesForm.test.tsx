@@ -11,6 +11,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   emptyWeeklyPreference,
+  weeklyPreferenceReadSchema,
   type WeeklyPreferenceRead,
   type WeeklyPreferenceSave,
 } from "@newfork/shared";
@@ -234,6 +235,19 @@ describe("weekly preference form", () => {
     expect(
       screen.getByRole("heading", { name: "Employee availability" }),
     ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+
+  it("draws no reminder section when the read leaves the manager field out (manager+ target)", () => {
+    // The read omits `manager` when the person is a manager, admin or owner.
+    const { manager: _omitted, ...wire } = model();
+    const parsed = weeklyPreferenceReadSchema.parse(wire);
+    expect("manager" in parsed).toBe(false);
+    render(
+      <WeeklyPreferencesForm model={parsed} audience="manager" onSave={vi.fn()} />,
+    );
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByText(/manager reminders/i)).toBeNull();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
 

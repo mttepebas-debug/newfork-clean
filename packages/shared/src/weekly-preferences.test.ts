@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   emptyWeeklyPreference,
   preferenceIsEmpty,
+  weeklyPreferenceReadSchema,
   weeklyPreferenceSaveSchema,
   weeklyPreferenceSchema,
 } from "./weekly-preferences";
@@ -145,5 +146,22 @@ describe("weekly unavailable preference contract", () => {
         notes: Array(7).fill(""),
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("weekly preference read: the manager note in three shapes (BL-139)", () => {
+  const record = { revision: 1, submitted: true, updated_at: null, preference: emptyWeeklyPreference("shift_type") };
+  const read = {
+    employee_id: employee, employee_name: "Ada Lovelace", can_edit_employee: true, can_manage: true,
+    settings: { input_mode: "shift_type", onboarding_required: false, revision: 1 },
+    employee: record, shift_types: [], time_format: "12h",
+  };
+  it("keeps a note the reader may see, a null for an employee target, and no field for a manager+ target", () => {
+    const note = { ...record, enabled: true, notes: Array<string>(7).fill("") };
+    expect(weeklyPreferenceReadSchema.parse({ ...read, manager: note }).manager).toMatchObject({ enabled: true });
+    expect(weeklyPreferenceReadSchema.parse({ ...read, manager: null }).manager).toBeNull();
+    const omitted = weeklyPreferenceReadSchema.safeParse(read);
+    expect(omitted.success).toBe(true);
+    expect(omitted.success && "manager" in omitted.data).toBe(false);
   });
 });

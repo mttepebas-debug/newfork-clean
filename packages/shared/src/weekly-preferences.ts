@@ -101,7 +101,9 @@ export const weeklyPreferenceReadSchema = z.object({
   can_manage: z.boolean(),
   settings: weeklyPreferenceSettingsSchema,
   employee: weeklyPreferenceRecordSchema,
-  manager: managerPreferenceRecordSchema.nullable(),
+  // Object: the reader sees the note. null: an employee target whose note this
+  // reader may not see. Absent: the target is a manager, admin or owner (no note).
+  manager: managerPreferenceRecordSchema.nullable().optional(),
   shift_types: z.array(preferenceShiftTypeSchema),
   time_format: z.enum(["12h", "24h"]),
 });

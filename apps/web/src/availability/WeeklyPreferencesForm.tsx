@@ -28,7 +28,7 @@ export function WeeklyPreferencesForm(props: Props) {
   return (
     <PreferenceForm
       // Losing the manager record remounts too: a private reminder draft is dropped.
-      key={`${props.model.employee_id}:${props.audience}:${props.model.manager !== null}`}
+      key={`${props.model.employee_id}:${props.audience}:${props.model.manager != null}`}
       {...props}
     />
   );
@@ -44,9 +44,9 @@ function PreferenceForm({
   const manager = audience === "manager";
   // No reminder data (the person is a manager+, or the reader may not see
   // notes): the manager view shows only the employee's week, no reminder tab.
-  const reminders = manager && model.manager !== null;
+  const reminders = manager && model.manager != null;
   const canEdit = manager
-    ? model.can_manage && model.manager !== null
+    ? model.can_manage && model.manager != null
     : model.can_edit_employee;
   const [tab, setTab] = useState<"employee" | "manager">("employee");
   const tabId = useId();
