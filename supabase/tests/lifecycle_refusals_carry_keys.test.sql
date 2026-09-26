@@ -40,7 +40,8 @@ select is(
    join screen_facing_function on screen_facing_function.name = routine.proname
    cross join lateral regexp_matches(routine.prosrc, 'hint = ''([a-z_]+(\.[a-z_]+)+)''', 'g') key
    where space.nspname = 'public'),
-  31,
+  -- 32 since BL-080 added transfer.target_legal_name_missing.
+  32,
   'and every key is a dotted lower-case name'
 );
 

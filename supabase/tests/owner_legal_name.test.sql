@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(34);
 
 -- BL-080. An owner gives their legal name at the first step of setup: the
 -- three name fields there are the legal name as well as the account's and the
@@ -252,6 +252,36 @@ select is(
   array['42501 authz.not_member', '42501 authz.not_member'],
   'and nobody reads it from another workspace'
 );
+
+-- 6. Ownership goes only to somebody with a legal name (user decision 2026-09-26) ------
+
+-- An admin the workspace knows only as a member: verified, active, no
+-- onboarding case, no private record.
+select tests.new_user('ln:nameless', 'Nameless Admin');
+-- Written as the test's own setup, not as whoever a service call last named.
+select set_config('request.jwt.claim.sub', '', true), set_config('request.jwt.claims', '', true);
+insert into public.workspace_memberships (workspace_id, user_id, role, role_id, status)
+select tests.id('ln'), tests.user('ln:nameless'), 'admin'::public.workspace_role, role.id,
+  'active'::public.membership_status
+from public.workspace_roles role
+where role.workspace_id = tests.id('ln') and role.system_key = 'admin';
+
+create function pg_temp.transfer(target_label text) returns text language sql as $$
+  select pg_temp.refusal(format(
+    'select public.initiate_workspace_ownership_transfer_service(%L, %L, %L)',
+    tests.user('ln:owner'), tests.id('ln'), tests.user(target_label)
+  ))
+$$;
+
+select is(pg_temp.transfer('ln:nameless'), '23514 transfer.target_legal_name_missing',
+  'ownership is not offered to somebody with no legal name on file');
+select is(
+  (select count(*)::integer from public.workspace_ownership_transfers where workspace_id = tests.id('ln')),
+  0,
+  'and no transfer is started'
+);
+select is(pg_temp.transfer('ln:ada'), 'allowed',
+  'an admin whose onboarding filed a legal name can be offered ownership');
 
 select * from finish();
 rollback;

@@ -1212,6 +1212,16 @@ insert into public.employee_profiles (
   'Target',
   '10000000-0000-4000-8000-000000000001'
 );
+-- Ownership only goes to somebody with a legal name on file (BL-080); this
+-- admin's onboarding filed one.
+insert into public.employee_private_profiles (
+  employee_id, workspace_id, legal_first_name, legal_last_name
+) values (
+  '43000000-0000-4000-8000-000000000004',
+  '20000000-0000-4000-8000-000000000004',
+  'Transfer',
+  'Target'
+);
 insert into public.workspace_onboarding (
   workspace_id,
   status,

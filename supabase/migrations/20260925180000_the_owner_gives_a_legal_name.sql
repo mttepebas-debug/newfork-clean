@@ -478,3 +478,158 @@ revoke all on function public.get_own_legal_name_service(uuid, uuid)
   from public, anon, authenticated;
 grant execute on function public.get_own_legal_name_service(uuid, uuid)
   to service_role;
+
+-- 7. Ownership goes only to somebody with a legal name -----------------------------------
+--
+-- User decision 2026-09-26: an owner without a legal name cannot exist, so a
+-- transfer to somebody without one is refused when it is started. Nothing
+-- removes a legal name once filed, so accepting the transfer does not ask
+-- again. Same shape as the other refusals the Workspaces screen reads: 23514
+-- and a transfer.* key.
+create or replace function public.initiate_workspace_ownership_transfer_service(actor_user_id uuid, target_workspace_id uuid, target_user_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  workspace_row public.workspaces%rowtype;
+  actor_membership public.workspace_memberships%rowtype;
+  target_membership public.workspace_memberships%rowtype;
+  target_access public.workspace_role;
+  target_email_verified boolean;
+  target_onboarding_blocked boolean;
+  transfer_id uuid;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'workspace.transfer_ownership');
+
+  if actor_user_id is null or target_user_id is null then
+    raise exception 'valid actor and target required' using errcode = '42501', hint = 'actor.required';
+  end if;
+  if actor_user_id = target_user_id then
+    raise exception 'ownership transfer target must be another account' using errcode = '23514', hint = 'transfer.target_is_self';
+  end if;
+
+  select * into workspace_row
+  from public.workspaces
+  where id = target_workspace_id
+  for update;
+
+  if workspace_row.id is null or workspace_row.lifecycle_status <> 'active' then
+    raise exception 'workspace not found' using errcode = '02000', hint = 'workspace.not_found';
+  end if;
+
+  select membership.* into actor_membership
+  from public.workspace_memberships membership
+  where membership.workspace_id = target_workspace_id
+    and membership.user_id = actor_user_id
+    and membership.status = 'active'
+  limit 1;
+
+  if exists (
+    select 1
+    from public.workspace_ownership_transfers transfer
+    where transfer.workspace_id = target_workspace_id
+      and transfer.status = 'pending'
+  ) then
+    raise exception 'pending ownership transfer already exists' using errcode = '23505', hint = 'transfer.already_pending';
+  end if;
+
+  select membership.* into target_membership
+  from public.workspace_memberships membership
+  where membership.workspace_id = target_workspace_id
+    and membership.user_id = target_user_id
+    and membership.status = 'active'
+  limit 1
+  for update;
+
+  select coalesce(role.access_class, membership.role) into target_access
+  from public.workspace_memberships membership
+  left join public.workspace_roles role
+    on role.id = membership.role_id
+   and role.workspace_id = membership.workspace_id
+  where membership.workspace_id = target_workspace_id
+    and membership.user_id = target_user_id
+    and membership.status = 'active'
+  limit 1;
+
+  if target_membership.id is null or target_access is distinct from 'admin'::public.workspace_role then
+    raise exception 'ownership transfer target must be an active admin' using errcode = '23514', hint = 'transfer.target_not_admin';
+  end if;
+
+  select exists (
+    select 1
+    from auth.users target_user
+    where target_user.id = target_user_id
+      and target_user.email_confirmed_at is not null
+  ) into target_email_verified;
+  if not target_email_verified then
+    raise exception 'ownership transfer target must have a verified email' using errcode = '23514', hint = 'transfer.target_email_unverified';
+  end if;
+
+  select exists (
+    select 1
+    from public.employee_onboarding_cases onboarding
+    where onboarding.workspace_id = target_workspace_id
+      and onboarding.membership_id = target_membership.id
+      and onboarding.status <> 'approved'
+  ) into target_onboarding_blocked;
+  if target_onboarding_blocked then
+    raise exception 'ownership transfer target must have completed onboarding' using errcode = '23514', hint = 'transfer.target_onboarding_incomplete';
+  end if;
+
+  -- The owner's legal name is required (BL-080), so ownership only goes to
+  -- somebody whose legal name is already on file here.
+  if not exists (
+    select 1
+    from public.employee_profiles employee
+    join public.employee_private_profiles private_profile
+      on private_profile.employee_id = employee.id
+    where employee.workspace_id = target_workspace_id
+      and employee.user_id = target_user_id
+      and employee.archived_at is null
+  ) then
+    raise exception 'the new owner has no legal name on file yet' using errcode = '23514', hint = 'transfer.target_legal_name_missing';
+  end if;
+
+  insert into public.workspace_ownership_transfers (
+    workspace_id,
+    initiated_by,
+    target_user_id,
+    previous_owner_membership_id,
+    target_membership_id
+  )
+  values (
+    target_workspace_id,
+    actor_user_id,
+    target_user_id,
+    actor_membership.id,
+    target_membership.id
+  )
+  returning id into transfer_id;
+
+  insert into public.audit_events (
+    workspace_id,
+    actor_user_id,
+    action,
+    target_type,
+    target_id,
+    metadata
+  )
+  values (
+    target_workspace_id,
+    actor_user_id,
+    'workspace.ownership_transfer.initiated',
+    'workspace_ownership_transfer',
+    transfer_id::text,
+    jsonb_build_object('target_user_id', target_user_id)
+  );
+
+  return jsonb_build_object(
+    'status', 'pending',
+    'transfer_id', transfer_id,
+    'workspace_id', target_workspace_id,
+    'target_user_id', target_user_id
+  );
+end;
+$function$;

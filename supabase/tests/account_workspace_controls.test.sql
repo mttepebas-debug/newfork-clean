@@ -23,6 +23,12 @@ insert into public.workspace_memberships(id,workspace_id,user_id,role,status) va
 insert into public.user_profiles(user_id, display_name) values ('a5500000-0000-4000-8000-000000000002','Eligible Admin'),('a5500000-0000-4000-8000-000000000005','Incomplete Admin');
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 values ('a5500000-0000-4000-8000-000000000301','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000005','E-9999','Incomplete','Admin','a5500000-0000-4000-8000-000000000001');
+-- The eligible admin's onboarding filed a legal name; ownership only goes to
+-- somebody with one on file (BL-080).
+insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
+values ('a5500000-0000-4000-8000-000000000302','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000002','E-9998','Eligible','Admin','a5500000-0000-4000-8000-000000000001');
+insert into public.employee_private_profiles(employee_id,workspace_id,legal_first_name,legal_last_name)
+values ('a5500000-0000-4000-8000-000000000302','a5500000-0000-4000-8000-000000000101','Eligible','Admin');
 insert into public.employee_onboarding_cases(workspace_id,employee_id,membership_id)
 values('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000301','a5500000-0000-4000-8000-000000000205');
 set local role service_role;
