@@ -694,7 +694,22 @@ describe("shared contracts", () => {
           recurrence: "annual",
         },
       ],
+      ghost_shifts: [
+        {
+          id: "80000000-0000-4000-8000-000000000001",
+          employee_id: employeeId,
+          location_id: "10000000-0000-4000-8000-000000000009",
+          location_name: "Besiktas",
+          scheduled_date: "2026-08-17",
+          start_time: "18:00",
+          end_time: "02:00",
+          crosses_midnight: true,
+        },
+      ],
     });
+    expect(parsed.ghost_shifts).toEqual([
+      expect.objectContaining({ location_name: "Besiktas", crosses_midnight: true }),
+    ]);
     expect(parsed.locations[0]?.publication_status).toBe("published");
     expect(parsed.settings.time_format).toBe("12h");
     expect(parsed.employees[0]?.shift_type_ids ?? []).toEqual([]);

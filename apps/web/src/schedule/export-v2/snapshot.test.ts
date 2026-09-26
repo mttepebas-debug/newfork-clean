@@ -129,6 +129,19 @@ describe("Export v2 immutable preview projection", () => {
     expect(ready().ghosts).toEqual([]);
     expect(ready({ ...value, display: { ...value.display, showClockTimes: false } }).ghosts?.[0]?.start).toBeNull();
   });
+  it("keeps ghosts from locations outside the actor's scope out of the export (T3)", () => {
+    // Mina manages only Kadikoy; Ali also works at Besiktas, which she cannot see.
+    const value = { ...input(), display: { ...display, layout: "separate" as const } };
+    value.model.locations = [{ ...value.model.locations[0]!, name: "Kadikoy" }];
+    value.model.shifts = [shift("kadikoy")];
+    value.model.ghost_shifts = [{ id: "besiktas", employee_id: "person-a", location_id: "loc-besiktas",
+      location_name: "Besiktas", scheduled_date: "2026-09-14", start_time: "15:00", end_time: "18:00", crosses_midnight: false }];
+    const result = ready(value);
+    expect(result.shifts.map(item => item.id)).toEqual(["kadikoy"]);
+    expect(result.ghosts).toEqual([]);
+    expect(result.locations.map(location => location.name)).toEqual(["Kadikoy"]);
+    expect(JSON.stringify(result)).not.toContain("Besiktas");
+  });
   it("projects current total comparisons, all-day/partial closures and deduplicated important dates", () => {
     const value = input();
     value.display = { ...display, showTotalHours: true };
