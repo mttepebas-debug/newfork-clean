@@ -2,3 +2,5 @@
 - [Cross-worktree git block](cross-worktree-git-block.md) — sandbox refuses any `git` command (log/-C/--git-dir) aimed at a worktree other than this agent's own, even the task-assigned one; read `.git/worktrees/<name>/HEAD` + `refs/heads/<branch>` instead
 - [supabase db query is single-statement](supabase-db-query-file-single-statement.md) — `--file` on a multi-statement SQL file errors; pipe into `docker exec ... psql -f -` instead, container name from config.toml project_id
 - [Shared DB unscoped count flakiness](shared-db-unscoped-count-flakiness.md) — superuser count(*) with no fixture-id where is flaky only in full local test:db runs (BL-170); same pattern found unfixed in several sibling bl052/time_off/termination test files
+- [repeat-each breaks shared-world specs](repeat-each-breaks-shared-world-specs.md) — `--repeat-each` collides on fixed draft names from `tests.publish_week`; run separate invocations instead
+- [gh CLI verifies CI failures](gh-cli-verifies-ci-failures.md) — gh is authenticated; pull `gh api .../actions/jobs/<id>/logs` before trusting a task's paraphrase of what failed (BL-180 was misreported)
