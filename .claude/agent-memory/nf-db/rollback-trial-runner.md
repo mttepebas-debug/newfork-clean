@@ -26,6 +26,9 @@ Before a batch: run ONE file first, then prove nothing stayed, e.g. `select key 
 - Whole suite (116 files) takes ~3.5 min; hold db.lock while it runs.
 - The TS twin dump (`dump:authz-matrix`) reads `app_private.authz_actions` from the live DB: with an unapplied migration, run a scratch copy of `packages/shared/scripts/dump-authorization-matrix.ts` that puts the migration after its `begin;` (the script's template already has the semicolon).
 
+- The shared DB can carry another branch's migration applied for real before it reaches main (2026-09-26: BL-080's owner-legal-name migration turned 6 ci-green files red). Before blaming your migration, run the red files again with no migration: identical counts = not yours.
+- Grid budget numbers (FB-6.1.5, fixture `schedule_grid_read_budget`, best warm read): owner ~18-20 ms, one-location manager ~12-14 ms; ghost set costs ~1 ms.
+
 **Why:** 2026-09-25 the unquoted `echo begin;` from this note applied the FB-6.1 .2 migration to the shared DB for 8 minutes during review (undone).
 
 Related: [[core-call-cost]], [[sql-traps-core-translation]].
