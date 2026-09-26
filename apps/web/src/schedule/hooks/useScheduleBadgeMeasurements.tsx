@@ -15,6 +15,7 @@ import {
 import {
   formatScheduleBadgeTimeRange,
   formatScheduleShiftBadgeTitle,
+  ghostShiftLocation,
 } from "../components/ShiftCard";
 import { escapeAttributeValue } from "../lib/scheduleInteractionTargets";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
@@ -162,9 +163,10 @@ export function renderScheduleBadgeWidthMeasurer({
         showClockTimes && !shift.hide_time_on_badge
           ? `${formatScheduleBadgeTimeRange(shift.start_time, shift.end_time, timeFormat)}${shift.crosses_midnight ? " +1" : ""}`
           : "",
-      hasMarkers: Boolean(
-        !isGhostScheduleShift(shift) && publicationStateForShift(shift),
-      ),
+      // A ghost's location pin takes the marker corner, like a real card's publish mark.
+      hasMarkers: isGhostScheduleShift(shift)
+        ? Boolean(locationName ?? ghostShiftLocation(shift))
+        : Boolean(publicationStateForShift(shift)),
       hasStack:
         shift.employee_id === null &&
         (unassignedStackCounts.get(scheduleBadgeMeasurementStackKey(shift)) ?? 0) >

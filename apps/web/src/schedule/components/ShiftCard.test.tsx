@@ -108,6 +108,18 @@ describe("ShiftCard", () => {
     expect(document.querySelector(".schedule-shift-color-dot")).toBeNull();
   });
 
+  it("reads title, labels, then time, with no location pin", () => {
+    renderShiftCard({ locationName: null });
+
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    const parts = [...badge.querySelectorAll("[data-shift-badge-content] > *")].map(
+      (node) => node.textContent,
+    );
+    expect(parts).toEqual(["Dinner-Server", "Trainer", "5:00 PM - 10:30 PM"]);
+    expect(badge.querySelector(".schedule-ghost-location")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Location" })).toBeNull();
+  });
+
   it("keeps focused shift semantics separate from multi-select pressed state", () => {
     renderShiftCard({ selected: false, focused: true });
 
@@ -269,15 +281,53 @@ describe("GhostShiftCard", () => {
 
     const badge = screen.getByTestId("ghost-shift-badge");
     expect(badge.getAttribute("data-ghost")).toBe("true");
-    expect(badge.getAttribute("data-has-markers")).toBe("false");
-    expect(badge.querySelector("svg")).toBeNull();
+    // The location pin takes the marker corner, so the title keeps clear of it.
+    expect(badge.getAttribute("data-has-markers")).toBe("true");
     expect(document.querySelector(".schedule-shift-color-dot")).toBeNull();
-    expect(screen.getByText("Patio")).toBeTruthy();
+    // The place is behind the pin, not on its own line.
+    expect(screen.queryByText("Patio")).toBeNull();
+    expect(badge.querySelector("[data-shift-badge-location]")).toBeNull();
+    expect(screen.getByRole("button", { name: "Location" })).toBeTruthy();
     expect(screen.getByText("5:00 PM - 10:30 PM")).toBeTruthy();
-    expect(badge.getAttribute("title")).toContain("Also scheduled at Patio");
     expect(badge.getAttribute("aria-label")).toContain(
       "also scheduled at Patio",
     );
+    // Every ghost wears the same gray: no type color rides along.
+    expect(badge.style.getPropertyValue("--shift-color")).toBe("");
+  });
+
+  it("names the place in a tooltip on keyboard focus and hides it on Escape", () => {
+    const ghostShift = {
+      ...shift,
+      ghost: true,
+      ghost_location_name: "Besiktas",
+    } as ScheduleShift;
+    render(
+      <GhostShiftCard
+        shift={ghostShift}
+        job="Server"
+        type={shiftType}
+        showShiftType
+        showShiftLabels
+        showClockTimes
+        showJobColorDot
+        rowKey="row-1"
+        badgeHeight={52}
+      />,
+    );
+
+    const pin = screen.getByRole("button", { name: "Location" });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.focus(pin);
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip.textContent).toBe("Besiktas");
+    expect(pin.getAttribute("aria-describedby")).toBe(tooltip.id);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.mouseEnter(pin);
+    expect(screen.getByRole("tooltip").textContent).toBe("Besiktas");
+    fireEvent.mouseLeave(pin);
+    expect(screen.queryByRole("tooltip")).toBeNull();
   });
 
   it("titles an out-of-scope ghost with the job, type and labels it carries", () => {
@@ -312,8 +362,8 @@ describe("GhostShiftCard", () => {
     const parts = [...badge.querySelectorAll("[data-shift-badge-content] > *")].map(
       (node) => node.textContent,
     );
-    // Same parts, same order as the real card: title, location, labels, time.
-    expect(parts).toEqual(["Late-Bartender", "Besiktas", "On call", "5:00 PM - 10:30 PM"]);
+    // Same lines, same order as the real card: title, labels as text, time.
+    expect(parts).toEqual(["Late-Bartender", "On call", "5:00 PM - 10:30 PM"]);
     expect(badge.getAttribute("aria-label")).toContain("Late-Bartender");
   });
 
