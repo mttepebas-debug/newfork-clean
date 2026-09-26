@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, type InitialEntry, useLocation } from "react-router";
@@ -72,6 +72,9 @@ const context = {
   documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
 } satisfies ActiveWorkspaceContext;
+// A fresh sign-in hands out a new session, and AuthContext a new context
+// object with the same content. Tests swap it to act that out.
+let authContext: ActiveWorkspaceContext = context;
 
 const workspaces = [
   {
@@ -117,7 +120,7 @@ const ownerWorkspace = {
 } satisfies WorkspaceSummary;
 
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({ account, context, refresh }),
+  useAuth: () => ({ account, context: authContext, refresh }),
 }));
 
 vi.mock("../lib/supabase", () => ({
@@ -341,6 +344,7 @@ describe("WorkspacesPage", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    authContext = context;
     HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
     vi.mocked(searchWorkspaceOwnershipCandidates).mockResolvedValue([{ userId: targetUserId, name: "Eligible Admin", email: "admin@example.test" }]);
     vi.mocked(cancelWorkspaceOwnershipTransfer).mockResolvedValue(undefined);
@@ -716,6 +720,48 @@ describe("WorkspacesPage", () => {
       "That person has no legal name on file here yet, and an owner needs one because documents and signatures use it. Ask them to finish setting up their account, then start the transfer again.",
     );
     expect(screen.queryByText(/the new owner has no legal name/)).toBeNull();
+  });
+
+  // The password check signs in again; the session refresh that follows used to
+  // reload the list, wipe the refusal and flash "Loading workspaces..." (BL-080).
+  it("keeps a transfer refusal and the list on screen when the session refreshes", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    vi.mocked(initiateWorkspaceOwnershipTransfer).mockRejectedValueOnce(
+      new RequestError(
+        "the new owner has no legal name on file yet",
+        "transfer.target_legal_name_missing",
+        undefined,
+        400,
+      ),
+    );
+    renderPage();
+
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Transfer ownership" }));
+    fireEvent.change(screen.getByLabelText("Find an admin by name or email"), {
+      target: { value: "Admin" },
+    });
+    fireEvent.click(await screen.findByRole("radio", { name: /Eligible Admin/ }));
+    fireEvent.click(screen.getByLabelText(/I understand I cannot undo this/));
+    fireEvent.change(screen.getByLabelText("Account password"), {
+      target: { value: "fresh-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Start transfer" }));
+
+    const refusal = (await screen.findByRole("alert")).textContent;
+    expect(refusal).toContain("no legal name on file here yet");
+    // The session refresh lands a moment later: same person, same workspace,
+    // a new context object. Any render picks it up.
+    authContext = { ...context };
+    fireEvent.change(screen.getByLabelText("Account password"), {
+      target: { value: "fresh-password " },
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(screen.getByRole("alert").textContent).toBe(refusal);
+    expect(screen.queryByText("Loading workspaces...")).toBeNull();
+    expect(listAccountWorkspaces).toHaveBeenCalledTimes(1);
   });
 
   it("lets a target admin accept a pending ownership transfer", async () => {

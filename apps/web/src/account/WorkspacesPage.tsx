@@ -157,9 +157,17 @@ export default function WorkspacesPage() {
     return () => { active = false; window.clearTimeout(timer); };
   }, [transferTarget, candidateQuery]);
 
+  // Reload when the account or its active workspace changes, not when the
+  // context object is merely rebuilt: a fresh sign-in (the password check before
+  // a transfer or a closure) rebuilds it, and reloading then wiped the refusal
+  // the person had not read yet.
+  const contextWorkspaceId = context?.workspace.id ?? null;
+  const latestContext = useRef(context);
+  latestContext.current = context;
   useEffect(() => {
     if (!supabaseClient) {
-      setWorkspaces(context ? [workspaceSummaryFromContext(context)] : []);
+      const current = latestContext.current;
+      setWorkspaces(current ? [workspaceSummaryFromContext(current)] : []);
       setLoaded(true);
       return;
     }
@@ -188,7 +196,7 @@ export default function WorkspacesPage() {
     return () => {
       active = false;
     };
-  }, [context, account?.userId]);
+  }, [contextWorkspaceId, account?.userId]);
 
   const reloadWorkspaces = async (): Promise<void> => {
     if (!supabaseClient) {
