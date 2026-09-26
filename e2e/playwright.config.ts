@@ -39,6 +39,18 @@ function localSupabase(): Record<string, string> {
 
 const supabase = localSupabase();
 
+// `noUncheckedIndexedAccess` makes every lookup on a Record<string, string>
+// come back `string | undefined`; the webServer env below needs a definite
+// string, and a missing key means `supabase status` didn't print what this
+// file expects -- worth failing loudly on, not passing `undefined` through.
+function requireSupabaseEnv(key: string): string {
+  const value = supabase[key];
+  if (!value) {
+    throw new Error(`supabase status -o env did not print ${key}`);
+  }
+  return value;
+}
+
 export default defineConfig({
   testDir: "./flows",
   globalSetup: "./global-setup.ts",
@@ -65,9 +77,9 @@ export default defineConfig({
         HOST: "127.0.0.1",
         PORT: String(apiPort),
         APP_URL: webUrl,
-        SUPABASE_URL: supabase.API_URL,
-        SUPABASE_ANON_KEY: supabase.ANON_KEY,
-        SUPABASE_SERVICE_ROLE_KEY: supabase.SERVICE_ROLE_KEY,
+        SUPABASE_URL: requireSupabaseEnv("API_URL"),
+        SUPABASE_ANON_KEY: requireSupabaseEnv("ANON_KEY"),
+        SUPABASE_SERVICE_ROLE_KEY: requireSupabaseEnv("SERVICE_ROLE_KEY"),
       },
     },
     {
@@ -77,8 +89,8 @@ export default defineConfig({
       reuseExistingServer: false,
       env: {
         VITE_API_URL: apiUrl,
-        VITE_SUPABASE_URL: supabase.API_URL,
-        VITE_SUPABASE_ANON_KEY: supabase.ANON_KEY,
+        VITE_SUPABASE_URL: requireSupabaseEnv("API_URL"),
+        VITE_SUPABASE_ANON_KEY: requireSupabaseEnv("ANON_KEY"),
       },
     },
   ],
