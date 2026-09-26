@@ -3,7 +3,7 @@ import type {
   ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
-import { Check, CloudOff, Edit3 } from "lucide-react";
+import { Check, CloudOff, Edit3, MapPin } from "lucide-react";
 import type {
   CSSProperties,
   MouseEvent,
@@ -346,9 +346,13 @@ export function GhostShiftCard({
         metadata.ghost_job_name?.trim() || job,
         showShiftType,
       );
-  const ghostColor =
-    type?.color ??
-    (devGhost && !devBefore && devGhost !== "now" ? DEV_GHOST_TYPE_COLOR : "#54736a");
+  // 6-10: every ghost shares one neutral look, whatever its type, job or location.
+  const devNeutral = devGhost !== null && Number(devGhost) >= 6;
+  const ghostColor = devNeutral
+    ? "#66716c"
+    : (type?.color ??
+      (devGhost && !devBefore && devGhost !== "now" ? DEV_GHOST_TYPE_COLOR : "#54736a"));
+  const devStrip = devGhost === "6" && displayedLocation;
   const showClockRow = showClockTimes && !shift.hide_time_on_badge;
   const timeText = formatScheduleBadgeTimeRange(
     shift.start_time,
@@ -397,16 +401,30 @@ export function GhostShiftCard({
           : warningText || undefined
       }
     >
+      {devGhost === "8" ? (
+        <span className="dev-ghost-corner" aria-hidden="true">
+          <MapPin size={10} strokeWidth={2.5} />
+        </span>
+      ) : null}
       <span
         className="schedule-shift-badge-content"
         data-shift-badge-content="true"
       >
+        {devStrip ? (
+          <span className="dev-ghost-strip">
+            <MapPin size={10} strokeWidth={2.5} aria-hidden="true" />
+            {displayedLocation}
+          </span>
+        ) : null}
         <strong>{title}</strong>
-        {displayedLocation ? (
+        {displayedLocation && !devStrip ? (
           <span
             className="schedule-shift-location"
             data-shift-badge-location="true"
           >
+            {devGhost === "10" ? (
+              <MapPin size={10} strokeWidth={2.5} aria-hidden="true" />
+            ) : null}
             {displayedLocation}
           </span>
         ) : null}
@@ -467,10 +485,10 @@ type GhostShiftMetadata = {
   readonly ghost_shift_type_name?: string | null;
 };
 
-// DEV-only ghost color mockups (ghost-color): ?devGhost=before|now|2|3|4|5.
+// DEV-only ghost color mockups (ghost-color): ?devGhost=before|now|2..10.
 // The out-of-scope type color is not sent yet, so the mockups paint a purple "Bar" type.
 const DEV_GHOST_TYPE_COLOR = "#7B5EA7";
-const DEV_GHOST_VARIANTS = new Set(["before", "now", "2", "3", "4", "5"]);
+const DEV_GHOST_VARIANTS = new Set(["before", "now", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
 if (import.meta.env.DEV) void import("../../dev/ghostColorVariants.css");
 function devGhostVariant(): string | null {
   if (!import.meta.env.DEV || typeof window === "undefined") return null;
