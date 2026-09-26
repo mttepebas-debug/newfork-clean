@@ -3,7 +3,8 @@ import { getShiftTimeBasis } from "@newfork/shared";
 
 type Projection = NonNullable<ScheduleEmployee["weekly_availability"]>[number];
 type Interval = Projection["unavailable_intervals"][number];
-// "reminder": the only conflict is a manager's private reminder, which is always soft.
+// "reminder": only a manager's private reminder overlaps. Like the employee's
+// own mark it is a warning, never a block (BL-186).
 export type WeeklyTargetStatus = "available" | "unavailable" | "reminder" | "time_off" | "unknown";
 
 // Server-provided offset segments avoid a second timezone engine in the browser.

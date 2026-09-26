@@ -63,7 +63,7 @@ function organizationSettingsServiceMock(): OrganizationSettingsService {
 }
 
 describe("organization settings routes", () => {
-  const conflicts = { conflict_rules: { availability: "confirm", approved_time_off: "block", closed_location: "confirm", minimum_travel: "confirm", minimum_rest: "confirm" }, conflict_rules_revision: 3, minimum_travel_minutes: 30, minimum_rest_minutes: 0 } as const;
+  const conflicts = { conflict_rules: { approved_time_off: "block", closed_location: "confirm", minimum_travel: "confirm", minimum_rest: "confirm" }, conflict_rules_revision: 3, minimum_travel_minutes: 30, minimum_rest_minutes: 0 } as const;
   it("guards conflict read and write with the single permission and binds the actor", async () => {
     const service = organizationSettingsServiceMock();
     vi.mocked(service.readSchedulingSettings).mockResolvedValue({ workspace_id: workspaceId, week_start_day: "monday", schedule_deadline_day: "sunday", time_format: "12h", ...conflicts });
@@ -98,6 +98,15 @@ describe("organization settings routes", () => {
     const service = organizationSettingsServiceMock();
     const app = buildApp({ organizationSettingsService: service, contextResolver: { resolve: async () => ({ ...context, permissions: ["schedule.conflict_rules.manage"] }) } });
     const response = await app.inject({ method: "PUT", url: `/v1/workspaces/${workspaceId}/scheduling-settings/conflicts`, headers: { authorization: "Bearer valid-token" }, payload: { ...conflicts, conflict_rules: { ...conflicts.conflict_rules, approved_time_off: "confirm" } } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: "Valid conflict settings required" });
+    expect(service.updateSchedulingSettings).not.toHaveBeenCalled();
+    await app.close();
+  });
+  it("refuses an availability rule: availability is a preference, not a conflict (BL-186)", async () => {
+    const service = organizationSettingsServiceMock();
+    const app = buildApp({ organizationSettingsService: service, contextResolver: { resolve: async () => ({ ...context, permissions: ["schedule.conflict_rules.manage"] }) } });
+    const response = await app.inject({ method: "PUT", url: `/v1/workspaces/${workspaceId}/scheduling-settings/conflicts`, headers: { authorization: "Bearer valid-token" }, payload: { ...conflicts, conflict_rules: { ...conflicts.conflict_rules, availability: "block" } } });
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({ error: "Valid conflict settings required" });
     expect(service.updateSchedulingSettings).not.toHaveBeenCalled();

@@ -3,10 +3,9 @@ import { shiftTimeBasisSchema } from "./availability";
 
 export const scheduleConflictSeveritySchema = z.enum(["allow", "warn", "confirm", "block"]);
 export type ScheduleConflictSeverity = z.infer<typeof scheduleConflictSeveritySchema>;
-export const scheduleConflictRulesSchema = z.object({
-  // Warn, Require confirmation (soft) or Block (hard); a manager's private
-  // reminder is always soft whatever this says.
-  availability: z.enum(["warn", "confirm", "block"]),
+// Availability is a preference, never a conflict rule (BL-186): an
+// availability key is refused rather than dropped.
+export const scheduleConflictRulesSchema = z.strictObject({
   // Approved time off always blocks a manager's assignment (FB-6.1 T5); the
   // key stays required because the database constraint expects it.
   approved_time_off: z.literal("block"),
@@ -30,7 +29,7 @@ export const scheduleConflictSettingsSchema = z.object({
 });
 export type ScheduleConflictSettings = z.infer<typeof scheduleConflictSettingsSchema>;
 export const DEFAULT_SCHEDULE_CONFLICT_RULES: ScheduleConflictRules = {
-  availability: "confirm", approved_time_off: "block", closed_location: "confirm",
+  approved_time_off: "block", closed_location: "confirm",
   minimum_travel: "confirm", minimum_rest: "confirm",
   document_required: "confirm", document_conditional_grace: "warn", document_conditional_overdue: "confirm",
 };
@@ -75,7 +74,9 @@ export const shiftAvailabilityAssessmentSchema = z.object({
   assessment_minutes: z.number().nullable(),
   can_override: z.boolean(),
   warning_policy: z.enum(["warn", "confirm"]).optional(),
+  // Availability only warns (BL-186): these name the warning, never gate.
   has_availability_conflict: z.boolean().optional(),
+  availability_fingerprint: z.string().regex(/^[a-f0-9]{64}$/).nullable().optional(),
   preference_timezone: z.string().optional(),
   employee_intervals: z.array(interval).optional(),
   manager_intervals: z.array(interval).optional(),

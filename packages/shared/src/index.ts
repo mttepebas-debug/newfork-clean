@@ -1673,6 +1673,10 @@ export const schedulePublishFindingSchema = z.object({
   scheduled_date: z.string().date(),
   date: z.string().date().nullable().optional(),
   shift_ids: z.array(z.string().uuid()),
+  // An availability warning acknowledged at an earlier publish (BL-186).
+  acknowledged_by_user_id: z.string().uuid().optional(),
+  acknowledged_by_name: z.string().trim().min(1).max(161).optional(),
+  acknowledged_at: z.string().datetime({ offset: true }).optional(),
 });
 export type SchedulePublishFinding = z.infer<
   typeof schedulePublishFindingSchema
@@ -1723,9 +1727,10 @@ export type SchedulePublicationPreview = z.infer<
   typeof schedulePublicationPreviewSchema
 >;
 
+// The publisher acknowledges a finding by id; who and when are recorded by
+// the database, there is no written reason (BL-190).
 export const schedulePublicationOverrideInputSchema = z.object({
   finding_id: z.string().min(12).max(64),
-  reason: z.string().trim().min(10).max(500),
 });
 export type SchedulePublicationOverrideInput = z.infer<
   typeof schedulePublicationOverrideInputSchema
