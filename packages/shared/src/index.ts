@@ -1311,6 +1311,20 @@ export const scheduleImportantDateSchema = z.object({
   recurrence: importantDateRecurrenceSchema.default("none"),
 });
 
+// A published shift of someone on the grid at a location the reader does not
+// reach: where and when only, never editable. Only the manager week read sends it.
+export const scheduleGhostShiftSchema = z.object({
+  id: z.string().uuid(),
+  employee_id: z.string().uuid(),
+  location_id: z.string().uuid(),
+  location_name: z.string().trim().min(1).max(120),
+  scheduled_date: z.string().date(),
+  start_time: timeOfDaySchema,
+  end_time: timeOfDaySchema,
+  crosses_midnight: z.boolean(),
+});
+export type ScheduleGhostShift = z.infer<typeof scheduleGhostShiftSchema>;
+
 export const scheduleReadModelSchema = z.object({
   workspace_id: z.string().uuid(),
   week_start: z.string().date(),
@@ -1332,6 +1346,8 @@ export const scheduleReadModelSchema = z.object({
   shifts: z.array(scheduleShiftSchema),
   closures: z.array(scheduleClosureSchema),
   important_dates: z.array(scheduleImportantDateSchema).default([]),
+  // ponytail: optional because the employee board read shares this schema and never sends it.
+  ghost_shifts: z.array(scheduleGhostShiftSchema).optional(),
 });
 export type ScheduleReadModel = z.infer<typeof scheduleReadModelSchema>;
 

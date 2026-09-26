@@ -7,6 +7,7 @@ import {
   orderScheduleCellShifts,
   scheduleCellStateKey,
 } from "./useCellState";
+import { isGhostScheduleShift } from "../lib/scheduleShiftMetadata";
 
 const employeeId = "55555555-5555-4555-8555-555555555555";
 const mainLocationId = "11111111-1111-4111-8111-111111111111";
@@ -155,6 +156,57 @@ describe("buildScheduleCellState", () => {
       ghost: true,
       ghost_location_name: "Main Dining",
     });
+  });
+
+  it("turns out-of-scope ghost_shifts into read-only ghosts in the person's visible cells", () => {
+    const outOfScopeLocationId = "11111111-1111-4111-8111-111111111119";
+    const state = buildScheduleCellState({
+      ...model([shift({ id: "shift-main", location_id: mainLocationId, start_time: "09:00", end_time: "13:00" })]),
+      ghost_shifts: [
+        {
+          id: "ghost-elsewhere",
+          employee_id: employeeId,
+          location_id: outOfScopeLocationId,
+          location_name: "Besiktas",
+          scheduled_date: "2026-08-17",
+          start_time: "12:00",
+          end_time: "16:00",
+          crosses_midnight: false,
+        },
+      ],
+    });
+
+    for (const locationId of [mainLocationId, patioLocationId]) {
+      const cell = state.get(scheduleCellStateKey(locationId, "2026-08-17", employeeId));
+      const ghost = cell?.ghostShifts.find((item) => item.id === "ghost-elsewhere");
+      expect(ghost).toMatchObject({ ghost: true, ghost_location_name: "Besiktas", start_time: "12:00", end_time: "16:00" });
+      expect(isGhostScheduleShift(ghost!)).toBe(true);
+    }
+    // The real Main Dining shift overlaps the ghost, the same way two real shifts would.
+    const mainCell = state.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId));
+    expect(mainCell?.hasOverlap).toBe(true);
+    expect(mainCell?.conflictingShiftIds.has("shift-main")).toBe(true);
+    expect(state.get(scheduleCellStateKey(outOfScopeLocationId, "2026-08-17", employeeId))?.ghostShifts ?? []).toEqual([]);
+  });
+
+  it("ignores ghost_shifts whose location is already on the grid", () => {
+    const state = buildScheduleCellState({
+      ...model([]),
+      ghost_shifts: [
+        {
+          id: "ghost-in-scope",
+          employee_id: employeeId,
+          location_id: mainLocationId,
+          location_name: "Main Dining",
+          scheduled_date: "2026-08-17",
+          start_time: "09:00",
+          end_time: "13:00",
+          crosses_midnight: false,
+        },
+      ],
+    });
+
+    expect([...state.values()].flatMap((cell) => cell.ghostShifts)).toEqual([]);
   });
 
   it("marks overlapping same-employee shifts across locations", () => {

@@ -73,7 +73,18 @@ export function buildScheduleCellState(model: ScheduleReadModel): ScheduleCellSt
     }
   }
 
-  const assigned = model.shifts.filter((shift) => shift.employee_id);
+  const gridLocationIds = new Set(model.locations.map((location) => location.id));
+  // Out-of-scope shifts join the same ghost and overlap pass, but never model.shifts.
+  const outOfScope = (model.ghost_shifts ?? [])
+    .filter((ghost) => !gridLocationIds.has(ghost.location_id))
+    .map(outOfScopeShift);
+  const ghostLocationNames = new Map(
+    (model.ghost_shifts ?? []).map((ghost) => [ghost.location_id, ghost.location_name]),
+  );
+  const assigned = [
+    ...model.shifts.filter((shift) => shift.employee_id),
+    ...outOfScope,
+  ];
   const byEmployeeDate = new Map<string, ScheduleShift[]>();
 
   for (const shift of assigned) {
@@ -95,7 +106,14 @@ export function buildScheduleCellState(model: ScheduleReadModel): ScheduleCellSt
           cells,
           scheduleCellStateKey(location.id, shift.scheduled_date, employeeId),
         );
-        cell.ghostShifts.push(makeGhostShift(shift, locationName(model, shift.location_id)));
+        cell.ghostShifts.push(
+          makeGhostShift(
+            shift,
+            locationName(model, shift.location_id) ??
+              ghostLocationNames.get(shift.location_id) ??
+              null,
+          ),
+        );
       }
     }
 
@@ -244,6 +262,27 @@ function makeGhostShift(shift: ScheduleShift, sourceLocationName: string | null)
     ghost: true,
     ghost_location_name: sourceLocationName,
   } as ScheduleShift;
+}
+
+// ponytail: the ghost read carries where and when only; job and type stay empty, the badge falls back to "Shift".
+function outOfScopeShift(
+  ghost: NonNullable<ScheduleReadModel["ghost_shifts"]>[number],
+): ScheduleShift {
+  return {
+    id: ghost.id,
+    location_id: ghost.location_id,
+    employee_id: ghost.employee_id,
+    job_id: "",
+    shift_type_id: null,
+    scheduled_date: ghost.scheduled_date,
+    start_time: ghost.start_time,
+    end_time: ghost.end_time,
+    crosses_midnight: ghost.crosses_midnight,
+    unpaid_break_minutes: 0,
+    hide_time_on_badge: false,
+    note: "",
+    warning_codes: [],
+  };
 }
 
 function locationName(model: ScheduleReadModel, locationId: string): string | null {
