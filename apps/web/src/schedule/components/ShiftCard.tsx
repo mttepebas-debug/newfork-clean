@@ -3,7 +3,7 @@ import type {
   ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
-import { Check, CloudOff, Edit3 } from "lucide-react";
+import { CalendarOff, Check, CloudOff, Edit3 } from "lucide-react";
 import type {
   CSSProperties,
   MouseEvent,
@@ -12,6 +12,7 @@ import type {
 import { useEffect, useRef } from "react";
 
 import {
+  formatAvailabilityWarning,
   formatScheduleBadgeAriaLabel,
   formatScheduleShiftWarningAria,
 } from "../badgeAccessibility";
@@ -21,6 +22,17 @@ import type { EffectiveScheduleShift } from "../hooks/useEffectiveShifts";
 import "./schedule-shift-save.css";
 
 const SINGLE_CLICK_FOCUS_DELAY_MS = 250;
+
+// How a cell shows "Ali shows as unavailable for this shift" (BL-186).
+// DEV only: ?availabilityWarning=strip opens the second option for the
+// design pick; production always draws the corner icon. Remove the loser.
+export type AvailabilityWarningVariant = "corner" | "strip";
+export const availabilityWarningVariant: AvailabilityWarningVariant =
+  import.meta.env.DEV &&
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("availabilityWarning") === "strip"
+    ? "strip"
+    : "corner";
 
 export function formatShiftLabelDisplay(labelNames: readonly string[]): {
   readonly fullText: string;
@@ -36,6 +48,8 @@ export function ShiftCard({
   job,
   type,
   locationName,
+  employeeName = null,
+  availabilityVariant = availabilityWarningVariant,
   editing = false,
   showShiftType,
   showShiftLabels,
@@ -61,6 +75,9 @@ export function ShiftCard({
   readonly job: string;
   readonly type: ScheduleReadModel["shift_types"][number] | undefined;
   readonly locationName?: string | null;
+  /** The row's person, named in the availability warning. */
+  readonly employeeName?: string | null;
+  readonly availabilityVariant?: AvailabilityWarningVariant;
   readonly editing?: boolean;
   readonly showShiftType: boolean;
   readonly showShiftLabels: boolean;
@@ -102,7 +119,11 @@ export function ShiftCard({
     timeFormat,
   );
   const labelText = formatShiftLabelDisplay(shift.label_names ?? []);
-  const warningText = formatScheduleShiftWarningAria(shift.warning_codes);
+  const warningText = formatScheduleShiftWarningAria(shift.warning_codes, employeeName);
+  const availabilityWarning = shift.warning_codes.includes("availability")
+    ? formatAvailabilityWarning(employeeName)
+    : null;
+  const showAvailabilityCorner = Boolean(availabilityWarning) && availabilityVariant === "corner";
   const modifierSelectionHandledRef = useRef(false);
   const pendingSingleClickRef = useRef<number | null>(null);
   const cancelPendingSingleClick = () => {
@@ -160,9 +181,11 @@ export function ShiftCard({
       data-selected={selected}
       data-dragging={dragging}
       data-job-color-dot={false}
-      data-has-markers={Boolean(publicationState)}
+      data-has-markers={Boolean(publicationState) || showAvailabilityCorner}
       data-shift-labels-visible={showShiftLabels}
       data-publication-state={publicationState ?? undefined}
+      data-availability-warning={availabilityWarning ? availabilityVariant : undefined}
+      title={availabilityWarning ?? undefined}
       data-focused={focused}
       data-current={focused}
       data-stack-count={stackCount > 1 ? stackCount : undefined}
@@ -250,8 +273,16 @@ export function ShiftCard({
           aria-hidden="true"
         />
       ) : null}
-      {publicationState ? (
+      {availabilityWarning && availabilityVariant === "strip" ? (
+        <span className="schedule-shift-availability-strip" aria-hidden="true" />
+      ) : null}
+      {publicationState || showAvailabilityCorner ? (
         <span className="schedule-shift-badge-markers">
+          {showAvailabilityCorner ? (
+            <span className="schedule-shift-availability-flag" aria-hidden="true">
+              <CalendarOff size={12} strokeWidth={2.4} />
+            </span>
+          ) : null}
           {publicationState === "locked" ? (
             <Check size={12} aria-label="Live - published to employees">
               <title>Live - published to employees</title>
@@ -318,11 +349,13 @@ export function GhostShiftCard({
   showJobColorDot: _showJobColorDot,
   rowKey,
   badgeHeight,
+  employeeName = null,
 }: {
   readonly shift: ScheduleShift;
   readonly job: string;
   readonly type: ScheduleReadModel["shift_types"][number] | undefined;
   readonly locationName?: string | null;
+  readonly employeeName?: string | null;
   readonly showShiftType: boolean;
   readonly showShiftLabels: boolean;
   readonly showClockTimes: boolean;
@@ -348,7 +381,7 @@ export function GhostShiftCard({
     timeFormat,
   );
   const labelText = formatShiftLabelDisplay(shift.label_names ?? []);
-  const warningText = formatScheduleShiftWarningAria(shift.warning_codes);
+  const warningText = formatScheduleShiftWarningAria(shift.warning_codes, employeeName);
   const otherLocationText = sourceLocation
     ? `also scheduled at ${sourceLocation}`
     : displayedLocation

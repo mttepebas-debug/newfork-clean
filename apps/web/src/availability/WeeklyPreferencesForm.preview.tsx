@@ -144,7 +144,7 @@ function Preview() {
       }}
     >
       {params.get("view") === "preflight" ? (
-        <div style={{ padding: 16 }}><PublishPreflightPanel preview={preflight} locations={[]} overrideReasons={{}} onOverrideReasonChange={() => {}} /></div>
+        <div style={{ padding: 16 }}><PublishPreflightPanel preview={preflight} locations={[]} /></div>
       ) : params.get("view") === "settings" ? (
         <MemoryRouter>
           <WeeklyPreferenceSettings

@@ -72,8 +72,7 @@ export function isPublishPreflightBlockReason(
   return (
     value === "unacknowledged" ||
     value === "stale_fingerprint" ||
-    value === "not_overrideable" ||
-    value === "missing_reason"
+    value === "not_overrideable"
   );
 }
 

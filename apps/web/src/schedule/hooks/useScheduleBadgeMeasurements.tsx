@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import {
+  availabilityWarningVariant,
   formatScheduleBadgeTimeRange,
   formatScheduleShiftBadgeTitle,
 } from "../components/ShiftCard";
@@ -162,8 +163,10 @@ export function renderScheduleBadgeWidthMeasurer({
         showClockTimes && !shift.hide_time_on_badge
           ? `${formatScheduleBadgeTimeRange(shift.start_time, shift.end_time, timeFormat)}${shift.crosses_midnight ? " +1" : ""}`
           : "",
-      hasMarkers: Boolean(
-        !isGhostScheduleShift(shift) && publicationStateForShift(shift),
+      // Same corner space the card reserves (ShiftCard data-has-markers).
+      hasMarkers: !isGhostScheduleShift(shift) && (
+        Boolean(publicationStateForShift(shift)) ||
+        (availabilityWarningVariant === "corner" && shift.warning_codes.includes("availability"))
       ),
       hasStack:
         shift.employee_id === null &&
