@@ -100,6 +100,9 @@ export function SignInPage() {
               onChange={(event) => setPassword(event.target.value)}
               required
             />
+            {creatingAccount ? null : (
+              <Link to="/forgot-password">Forgot password?</Link>
+            )}
           </div>
           {error ? (
             <p className="form-error" role="alert">

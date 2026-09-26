@@ -14,6 +14,12 @@ import {
   type AccountDeletionWorker,
 } from "./account/account-deletion-worker";
 import { registerAccountSecurityRoutes } from "./account/account-security-routes";
+import { createClient } from "@supabase/supabase-js";
+import {
+  createPasswordResetSender,
+  registerPasswordResetRoutes,
+  type PasswordResetSender,
+} from "./account/password-reset";
 import {
   createAccountSecurityService,
   type AccountSecurityService,
@@ -142,6 +148,7 @@ function isAllowedOrigin(
 interface BuildAppOptions {
   readonly contextResolver?: WorkspaceContextResolver | null;
   readonly accountSecurityService?: AccountSecurityService | null;
+  readonly passwordResetSender?: PasswordResetSender | null;
   readonly accountDeletionWorker?: AccountDeletionWorker | null;
   readonly accountDeletionCron?: {
     readonly cronSecret?: string;
@@ -480,6 +487,12 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
 
   registerAccountSecurityRoutes(app, { service: accountSecurityService });
+  registerPasswordResetRoutes(app, {
+    send:
+      options.passwordResetSender === undefined
+        ? createPasswordResetSenderFromEnvironment()
+        : options.passwordResetSender,
+  });
   registerAccountDeletionRoutes(app, {
     worker: accountDeletionWorker,
     cronSecret:
@@ -941,6 +954,24 @@ function createAccountSecurityServiceFromEnvironment(): AccountSecurityService |
     url,
     anonKey,
     serviceRoleKey,
+    appUrl: process.env.APP_URL ?? "http://127.0.0.1:5555",
+    resendApiKey: process.env.RESEND_API_KEY,
+    emailFrom: process.env.ACCOUNT_SECURITY_FROM ?? process.env.EMPLOYEE_INVITE_FROM,
+    production: process.env.NODE_ENV === "production",
+  });
+}
+
+// The service role is needed only for auth.admin.generateLink: a recovery link
+// can be minted for an email only by the admin API.
+function createPasswordResetSenderFromEnvironment(): PasswordResetSender | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  const admin = createClient(url, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  }).auth.admin;
+  return createPasswordResetSender({
+    admin,
     appUrl: process.env.APP_URL ?? "http://127.0.0.1:5555",
     resendApiKey: process.env.RESEND_API_KEY,
     emailFrom: process.env.ACCOUNT_SECURITY_FROM ?? process.env.EMPLOYEE_INVITE_FROM,
