@@ -1,0 +1,1 @@
+- [e2e not in typecheck gate](e2e-not-in-typecheck-gate.md) — turbo lint/typecheck skip e2e/; validate a new spec with `--list` + direct eslint instead
