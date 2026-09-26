@@ -49,3 +49,5 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | FB-6.1 .2+.3 | Takvim'in 34 DB giriş noktası ve 80 API geçişi yetki çekirdeğine soruyor; plan kilidi devralma silindi; müsaitlik bildirimi kişiyi yöneten herkese | f210196
 2026-09-26 | BL-136 + BL-138 | Giriş ve çalışan onboarding alanlarının odak halkası ve kenarı WCAG AA'yı geçiyor; alt linkler telefonda tutturulabiliyor | 6061d34
 2026-09-26 | BL-080 | yeni owner kurulumda resmî adını veriyor, Account > Profile'da görüp değiştirebiliyor; resmî adsız kişiye sahiplik devri yok | 917f68b
+2026-09-21 | BL-077 | web testleri paralel yükte zaman aşımına düşmüyor (`testTimeout: 20000`) | d03532c
+2026-09-23 | BL-097 | başka lokasyonun taslak vardiyası plan oturumu kaydedilince artık silinmiyor; kilit taslak başına, oturum lokasyonu dışındaki yazım 42501 | e860d66
