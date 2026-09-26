@@ -1,6 +1,6 @@
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
-import { hubPath, resolveLanding } from "./resolveLanding";
+import { hubPath, noAccessHomePath, resolveLanding } from "./resolveLanding";
 
 function workspace(
   overrides: Partial<WorkspaceSummary> & Pick<WorkspaceSummary, "id" | "name">,
@@ -135,5 +135,37 @@ describe("resolveLanding", () => {
         workspaces: [workspace({ ...ready, status: "suspended" })],
       }),
     ).toEqual({ kind: "hub", path: hubPath });
+  });
+});
+
+describe("noAccessHomePath", () => {
+  const managerWith = (actions: string[]) =>
+    ({
+      workspace: { id: ready.id, name: ready.name },
+      membership: { role: "manager" },
+      // The permission key alone must not decide it: can() reads actions.
+      permissions: ["workspace.read", "schedule.read"],
+      actions,
+    }) as unknown as ActiveWorkspaceContext;
+
+  it("sends a person who can read the workspace to Workspace", () => {
+    expect(
+      noAccessHomePath(managerWith(["workspace.read", "schedule.read"]), "/app/schedule"),
+    ).toBe("/app/workspace");
+  });
+
+  it("sends a schedule-only person to the hub, not back to Schedule where /app lands them", () => {
+    const scheduleOnly = managerWith(["schedule.read"]);
+    expect(noAccessHomePath(scheduleOnly, "/app/schedule")).toBe(hubPath);
+  });
+
+  it("never points back at the page that refused", () => {
+    expect(
+      noAccessHomePath(managerWith(["workspace.read"]), "/app/workspace"),
+    ).toBe(hubPath);
+  });
+
+  it("sends a person with no workspace loaded to the hub", () => {
+    expect(noAccessHomePath(null, "/app/schedule")).toBe(hubPath);
   });
 });

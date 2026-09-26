@@ -81,8 +81,10 @@ vi.mock("./auth/AuthContext", async () => {
     },
     permissions: shared.permissionsForRole(role),
     // What the core would list for this role with every location: the
-    // workspace-wide actions the matrix twin answers yes to.
+    // workspace-wide actions the matrix twin answers yes to, plus
+    // workspace.read, which every active member has (authz_has_permission).
     actions: shared.authzActionKeys.filter((action) => {
+      if (action === "workspace.read") return true;
       const rule = (shared.targetedAuthzActions as Record<string, { person?: boolean }>)[action];
       return rule !== undefined && !rule.person && (shared.expected as (...args: unknown[]) => boolean)(
         {
@@ -1046,6 +1048,28 @@ describe("App", () => {
       screen.queryByRole("button", { name: "Edit live schedule" }),
     ).toBeNull();
     expect(acquireScheduleEditSession).not.toHaveBeenCalled();
+  });
+
+  it("shows the no-access card, not the raw error, when the API refuses the schedule", async () => {
+    vi.mocked(getScheduleReadModel).mockRejectedValue(
+      new ScheduleRequestError("Forbidden by authz.out_of_scope", 404, {
+        reason: "authz.out_of_scope",
+      }),
+    );
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-24");
+    testAuth.role = "owner";
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "You don't have access to this schedule",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Back to Home" }).getAttribute("href"),
+    ).toBe("/app/workspace");
+    expect(screen.queryByText("Schedule unavailable")).toBeNull();
+    expect(screen.queryByText(/authz\./)).toBeNull();
   });
 
   it("disables publish from a blank preview when the week has no published schedule", async () => {
