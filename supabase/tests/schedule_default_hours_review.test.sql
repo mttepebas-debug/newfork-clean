@@ -5,7 +5,7 @@ create temp table dhr as select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid w,'
  'afa70000-0000-4000-8000-000000000005'::uuid loc,'afa70000-0000-4000-8000-000000000006'::uuid job,
  'afa70000-0000-4000-8000-000000000007'::uuid emp,'afa70000-0000-4000-8000-000000000008'::uuid employee_actor,
  'afa70000-0000-4000-8000-000000000001'::uuid typ,'afa70000-0000-4000-8000-000000000002'::uuid named,
- 'afa70000-0000-4000-8000-000000000003'::uuid explicit_shift,'afa70000-0000-4000-8000-000000000004'::uuid unresolved,
+ 'afa70000-0000-4000-8000-000000000003'::uuid explicit_shift,
  current_date-extract(isodow from current_date)::integer+1+700 week,null::uuid session,null::jsonb command,null::jsonb preview,null::jsonb result;
 insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code) select 'T00033', loc,w,'Default review UTC','UTC','1 Test St','Test','CA','94000' from dhr;
 insert into public.jobs(id,workspace_id,name) select job,w,'Default review job' from dhr;
@@ -25,10 +25,8 @@ select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revisio
  from dhr d join public.schedule_edit_sessions s on s.id=d.session;
 select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'create',d.explicit_shift,null,jsonb_build_object('employee_id',null,'location_id',d.loc,'job_id',d.job,'shift_type_id',d.typ,'scheduled_date',d.week,'time_basis','explicit','start_time','09:00','end_time','11:00'),gen_random_uuid())
  from dhr d join public.schedule_edit_sessions s on s.id=d.session;
-select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'create',d.unresolved,null,jsonb_build_object('employee_id',null,'location_id',d.loc,'job_id',d.job,'shift_type_id',d.typ,'scheduled_date',d.week,'time_basis','unresolved','hide_time_on_badge',true),gen_random_uuid())
- from dhr d join public.schedule_edit_sessions s on s.id=d.session;
 update public.shift_types set default_start_time='11:00',default_end_time='17:00' where id=(select typ from dhr);
-update dhr d set command=jsonb_build_object('expected_session_revision',s.revision,'starts_on',week,'ends_on',week+6,'shift_ids',jsonb_build_array(named,explicit_shift,unresolved),'overrides','[]'::jsonb) from public.schedule_edit_sessions s where s.id=d.session;
+update dhr d set command=jsonb_build_object('expected_session_revision',s.revision,'starts_on',week,'ends_on',week+6,'shift_ids',jsonb_build_array(named,explicit_shift),'overrides','[]'::jsonb) from public.schedule_edit_sessions s where s.id=d.session;
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is((preview->>'changed_count')::integer,1,'only saved reference shifts are changed') from dhr;
 select is((preview->>'blocked_count')::integer,0,'unassigned default changes need no availability override') from dhr;
@@ -46,7 +44,6 @@ update dhr set result=public.apply_schedule_default_hours_service(actor,w,sessio
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'11:00:00','apply changes the selected reference hours') from dhr d;
 select is((select time_snapshot->>'default_revision' from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'2','apply records the reviewed current revision') from dhr d;
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.explicit_shift),'09:00:00','explicit clock hours are untouched') from dhr d;
-select is((select time_basis from public.schedule_edit_session_shifts where session_id=d.session and id=d.unresolved),'unresolved','unconfirmed hours are not silently assigned defaults') from dhr d;
 select ok((result->>'dirty')::boolean,'result remains an unsaved edit session') from dhr;
 select is(public.apply_schedule_default_hours_service(actor,w,session,command),result,'identical retry returns the committed result') from dhr;
 select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||'{"acknowledge_reference_overlaps":true}') from dhr$$,'40001',null,'retry key cannot authorize different review content');
@@ -63,18 +60,16 @@ select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revisio
  from dhr d join public.schedule_edit_sessions s on s.id=d.session join public.schedule_edit_session_shifts x on x.session_id=d.session and x.id=d.named;
 select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'create','afa70000-0000-4000-8000-000000000009',null,jsonb_build_object('employee_id',d.emp,'location_id',d.loc,'job_id',d.job,'shift_type_id',d.typ,'scheduled_date',d.week,'time_basis','explicit','start_time','17:30','end_time','19:00'),gen_random_uuid())
  from dhr d join public.schedule_edit_sessions s on s.id=d.session;
-select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'create','afa70000-0000-4000-8000-000000000013',null,jsonb_build_object('employee_id',d.emp,'location_id',d.loc,'job_id',d.job,'shift_type_id',d.typ,'scheduled_date',d.week+1,'time_basis','unresolved','hide_time_on_badge',true),gen_random_uuid())
- from dhr d join public.schedule_edit_sessions s on s.id=d.session;
 update dhr d set command=jsonb_build_object('expected_session_revision',s.revision,'starts_on',week,'ends_on',week+6,'shift_ids',jsonb_build_array(named),'overrides','[]'::jsonb) from public.schedule_edit_sessions s where s.id=d.session;
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is((preview->'shifts'->0->>'before_overlap_count')::integer,0,'old reference hours have no overlap') from dhr;
 select is((preview->'shifts'->0->>'after_overlap_count')::integer,1,'new reference hours expose the overlapping peer') from dhr;
-select is((preview->'shifts'->0->>'unconfirmed_peer_count')::integer,1,'unknown peer hours are separate from known overlaps') from dhr;
+select ok(not (preview->'shifts'->0 ? 'unconfirmed_peer_count'),'every saved shift has hours, so no peer is counted as unknown') from dhr;
 select is(preview->'shifts'->0->'after_assessment'->>'operation','allowed','new interval is evaluated against employee hours') from dhr;
 select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'23514',null,'reference overlap needs explicit acknowledgment');
 update dhr set result=public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid(),'acknowledge_reference_overlaps',true));
 select is((select end_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'18:00:00','acknowledged reference overlap remains a reviewed draft change') from dhr d;
-select is((public.apply_schedule_default_hours_service(actor,w,session,(select r.command from public.schedule_default_hours_reviews r where r.session_id=d.session and jsonb_array_length(r.command->'shift_ids')=3))->>'revision')::integer,
+select is((public.apply_schedule_default_hours_service(actor,w,session,(select r.command from public.schedule_default_hours_reviews r where r.session_id=d.session and jsonb_array_length(r.command->'shift_ids')=2))->>'revision')::integer,
  (result->>'revision')::integer,'old idempotent retry returns the current session instead of undoing later client state') from dhr d;
 select is((select count(*)::integer from public.schedule_default_hours_reviews where session_id=(select session from dhr)),2,'old retry adds no review and applies no shifts again');
 update public.shift_types set default_start_time='09:00' where id=(select typ from dhr);
@@ -104,17 +99,17 @@ select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revisio
  from dhr_pub d join public.schedule_edit_sessions s on s.id=d.session;
 update dhr_pub d set draft=(public.save_schedule_edit_session_service(actor,w,session,s.revision,'Published default review',null,null)->>'id')::uuid from public.schedule_edit_sessions s where s.id=d.session;
 update dhr_pub set preview=public.preview_schedule_publication_service(actor,w,draft,array[loc]);
-select public.publish_schedule_draft_service(d.actor,d.w,d.draft,array[d.loc],s.revision,d.preview->>'fingerprint','[]') from dhr_pub d join public.schedule_drafts s on s.id=d.draft;
+select public.publish_schedule_draft_service(d.actor,d.w,d.draft,array[d.loc],null,true,s.revision,d.preview->>'fingerprint','[]') from dhr_pub d join public.schedule_drafts s on s.id=d.draft;
 update dhr_pub set session=(public.acquire_schedule_edit_session_service(actor,w,week,'published',null)->'session'->>'id')::uuid;
 select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'create',d.second_shift,null,jsonb_build_object('employee_id',d.emp,'location_id',d.loc,'job_id',d.job,'shift_type_id',d.typ,'scheduled_date',d.week+1,'time_basis','type_default','hide_time_on_badge',true),gen_random_uuid())
  from dhr_pub d join public.schedule_edit_sessions s on s.id=d.session;
 update public.shift_types set default_start_time='13:00',default_end_time='17:00' where id=(select typ from dhr_pub);
 update dhr_pub d set command=jsonb_build_object('expected_session_revision',s.revision,'starts_on',week,'ends_on',week+6,'shift_ids',jsonb_build_array(shift,second_shift),'overrides','[]'::jsonb) from public.schedule_edit_sessions s where s.id=d.session;
 update dhr_pub set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
--- A later reference failure must roll back earlier rows in this batch.
+-- An assignment that ends after the review makes the review stale: no row of the batch is applied.
 update public.employee_job_assignments set ended_at=now() where employee_id=(select emp from dhr_pub) and job_id=(select job from dhr_pub);
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr_pub$$,'23503',null,'later assignment validation failure rejects the entire batch');
-select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.shift),'12:00:00','earlier row update is rolled back when a later row fails') from dhr_pub d;
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr_pub$$,'40001',null,'an assignment ending after review rejects the entire batch');
+select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.shift),'12:00:00','no row of the rejected batch is applied') from dhr_pub d;
 update public.employee_job_assignments set ended_at=null where employee_id=(select emp from dhr_pub) and job_id=(select job from dhr_pub);
 update dhr_pub set result=public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid()));
 select is((select start_time::text from public.schedule_published_shifts where workspace_id=d.w and source_shift_id=d.shift),'12:00:00','published responsibility keeps its original hours until publication') from dhr_pub d;
