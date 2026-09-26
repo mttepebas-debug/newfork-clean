@@ -74,22 +74,13 @@ describe("ShiftCard", () => {
     expect(badge.getAttribute("aria-label")).toContain("conflicts with another shift");
   });
   it("says the person shows as unavailable with an amber corner mark (BL-186)", () => {
-    renderShiftCard({ shift: { ...shift, warning_codes: ["availability"] }, employeeName: "Ali Kaya", availabilityVariant: "corner" });
+    renderShiftCard({ shift: { ...shift, warning_codes: ["availability"] }, employeeName: "Ali Kaya" });
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });
     expect(badge.getAttribute("aria-label")).toContain("Ali Kaya shows as unavailable for this shift");
     expect(badge.getAttribute("title")).toBe("Ali Kaya shows as unavailable for this shift.");
-    expect(badge.getAttribute("data-availability-warning")).toBe("corner");
+    expect(badge.getAttribute("data-availability-warning")).toBe("true");
     expect(badge.getAttribute("data-has-markers")).toBe("true");
     expect(badge.querySelector(".schedule-shift-availability-flag")).not.toBeNull();
-    expect(badge.querySelector(".schedule-shift-availability-strip")).toBeNull();
-  });
-  it("draws the strip option instead of the corner mark when asked", () => {
-    renderShiftCard({ shift: { ...shift, warning_codes: ["availability"] }, employeeName: "Ali Kaya", availabilityVariant: "strip" });
-    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
-    expect(badge.getAttribute("data-availability-warning")).toBe("strip");
-    expect(badge.getAttribute("data-has-markers")).toBe("false");
-    expect(badge.querySelector(".schedule-shift-availability-strip")).not.toBeNull();
-    expect(badge.querySelector(".schedule-shift-availability-flag")).toBeNull();
   });
   it("shows no availability mark while the shift has none (the optimistic cell before saving)", () => {
     renderShiftCard({ shift: { ...shift, optimistic: true }, employeeName: "Ali Kaya" });

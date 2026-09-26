@@ -258,18 +258,12 @@ describe("weekly preference form", () => {
     expect(screen.getByRole("tab", { name: "Manager reminders" })).toBeTruthy();
   });
 
-  it("tells the employee availability is a preference and what to do when scheduled anyway (BL-186)", () => {
+  it("tells the employee in one sentence that availability is a preference (BL-186)", () => {
     const view = render(
       <WeeklyPreferencesForm model={model()} audience="employee" onSave={vi.fn()} />,
     );
-    const text = view.container.querySelector(".weekly-preferences-explainer")?.textContent ?? "";
-    expect(text).toContain("Availability is a preference, not a guarantee");
-    expect(text).toContain("a manager can still schedule you");
-    expect(text).toContain("work the shift, release it so a coworker can pick it up, or ask for cover");
-    expect(text).toContain("send a time off request");
-    expect(text).toContain("already published, you can also swap, release or ask for cover");
-    expect(text).toContain("A manager approves each of these.");
-    expect(text).not.toMatch(/workspace|team/i);
+    const text = (view.container.querySelector(".weekly-preferences-explainer")?.textContent ?? "").replace(/\s+/g, " ").trim();
+    expect(text).toBe("Availability is a preference, not a guarantee: a manager can still schedule you when you've marked yourself unavailable.");
     view.unmount();
     const onboarding = render(
       <WeeklyPreferencesForm model={model()} audience="employee" onSave={vi.fn()} wizard />,
