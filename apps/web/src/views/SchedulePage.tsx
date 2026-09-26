@@ -46,6 +46,7 @@ import {
 import { ScheduleGrid } from "../schedule/components/ScheduleGrid";
 import { ScheduleTopBar } from "../schedule/components/ScheduleTopBar";
 import { ScheduleState } from "../schedule/components/ScheduleState";
+import { NoAccessState } from "../shell/NoAccessState";
 import { ShiftQuickEditor } from "../schedule/components/ShiftQuickEditor";
 import type { PresetCreateTarget } from "../schedule/components/SchedulePresetRows";
 import {
@@ -1794,6 +1795,15 @@ export function SchedulePage({
     employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
     showUnassignedShifts, showRoleSeparators, showTotalHours]);
 
+  // DEV only (FB-6.1.9): ?devNoAccess=card|inline|page previews the variants.
+  const devNoAccess = import.meta.env.DEV ? search.get("devNoAccess") : null;
+  if (devNoAccess !== null)
+    return (
+      <NoAccessState
+        subject="this schedule"
+        variant={devNoAccess === "inline" || devNoAccess === "page" ? devNoAccess : "card"}
+      />
+    );
   if (query.isPending)
     return (
       <ScheduleState

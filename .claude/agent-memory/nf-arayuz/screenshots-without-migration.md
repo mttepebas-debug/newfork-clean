@@ -10,4 +10,6 @@ metadata:
 - A fresh owner reaches setup step 1 via a new `…@newfork.test` magic-link account → /workspaces → "Create your workspace" (plain /onboarding redirects back to /workspaces).
 - Account ▸ Workspaces transfer: after the password re-check the page reloads its list (`useEffect` on `[context, account?.userId]` in `apps/web/src/account/WorkspacesPage.tsx` calls `setError(null)`), so any transfer refusal disappears after ~1 s. Take the screenshot the moment the alert appears.
 - Clipping checks (BL-165): never `scrollIntoViewIfNeeded` a popover inside an `overflow: hidden` box: it scrolls that box and hides the clip. Scroll the window with `window.scrollBy` and compare the popover rect with each non-visible-overflow ancestor's rect.
+- Schedule grid read is `GET …/schedule/reference?date=&view=` (`schedule-data.ts` getScheduleReadModel); to show a refusal, `page.route(/\/schedule\/reference\?/)` → 403 `{reason:"authz.out_of_scope"}` (2026-09-26).
+- apps/web vitest has no jest-dom: `toBeInTheDocument`/`toHaveClass` fail ("Invalid Chai property"); use `getBy*` + plain `expect`.
 - Scratch scripts: bash heredoc + python edits outside the worktree get refused as "too complex to verify"; edit scratch files with Edit/Write instead.
