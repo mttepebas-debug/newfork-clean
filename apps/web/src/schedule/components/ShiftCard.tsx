@@ -23,17 +23,6 @@ import "./schedule-shift-save.css";
 
 const SINGLE_CLICK_FOCUS_DELAY_MS = 250;
 
-// How a cell shows "Ali shows as unavailable for this shift" (BL-186).
-// DEV only: ?availabilityWarning=strip opens the second option for the
-// design pick; production always draws the corner icon. Remove the loser.
-export type AvailabilityWarningVariant = "corner" | "strip";
-export const availabilityWarningVariant: AvailabilityWarningVariant =
-  import.meta.env.DEV &&
-  typeof window !== "undefined" &&
-  new URLSearchParams(window.location.search).get("availabilityWarning") === "strip"
-    ? "strip"
-    : "corner";
-
 export function formatShiftLabelDisplay(labelNames: readonly string[]): {
   readonly fullText: string;
   readonly displayText: string;
@@ -49,7 +38,6 @@ export function ShiftCard({
   type,
   locationName,
   employeeName = null,
-  availabilityVariant = availabilityWarningVariant,
   editing = false,
   showShiftType,
   showShiftLabels,
@@ -77,7 +65,6 @@ export function ShiftCard({
   readonly locationName?: string | null;
   /** The row's person, named in the availability warning. */
   readonly employeeName?: string | null;
-  readonly availabilityVariant?: AvailabilityWarningVariant;
   readonly editing?: boolean;
   readonly showShiftType: boolean;
   readonly showShiftLabels: boolean;
@@ -123,7 +110,8 @@ export function ShiftCard({
   const availabilityWarning = shift.warning_codes.includes("availability")
     ? formatAvailabilityWarning(employeeName)
     : null;
-  const showAvailabilityCorner = Boolean(availabilityWarning) && availabilityVariant === "corner";
+  // TBD (user, 2026-09-26): cell availability warning look to be redesigned
+  const showAvailabilityCorner = Boolean(availabilityWarning);
   const modifierSelectionHandledRef = useRef(false);
   const pendingSingleClickRef = useRef<number | null>(null);
   const cancelPendingSingleClick = () => {
@@ -184,7 +172,7 @@ export function ShiftCard({
       data-has-markers={Boolean(publicationState) || showAvailabilityCorner}
       data-shift-labels-visible={showShiftLabels}
       data-publication-state={publicationState ?? undefined}
-      data-availability-warning={availabilityWarning ? availabilityVariant : undefined}
+      data-availability-warning={availabilityWarning ? "true" : undefined}
       title={availabilityWarning ?? undefined}
       data-focused={focused}
       data-current={focused}
@@ -272,9 +260,6 @@ export function ShiftCard({
           data-current={focused}
           aria-hidden="true"
         />
-      ) : null}
-      {availabilityWarning && availabilityVariant === "strip" ? (
-        <span className="schedule-shift-availability-strip" aria-hidden="true" />
       ) : null}
       {publicationState || showAvailabilityCorner ? (
         <span className="schedule-shift-badge-markers">

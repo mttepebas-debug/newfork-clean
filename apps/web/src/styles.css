@@ -10313,17 +10313,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-radius: 999px;
   background: var(--theme-warning-soft);
   color: var(--theme-warning);
-}
-.schedule-shift-badge .schedule-shift-availability-strip {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 2;
-  height: 4px;
-  background: var(--theme-warning);
-}
-.schedule-shift-stack-count {
+}.schedule-shift-stack-count {
   position: absolute;
   right: 5px;
   top: 5px;

@@ -316,12 +316,7 @@ function PreferenceForm({
             {!manager && !wizard && (
               <p className="weekly-preferences-explainer">
                 Availability is a preference, not a guarantee: a manager can
-                still schedule you when you've marked yourself unavailable. If
-                that happens, it's up to you to work the shift, release it so a
-                coworker can pick it up, or ask for cover. If you can't work at
-                all, send a time off request; for a shift that's already
-                published, you can also swap, release or ask for cover. A
-                manager approves each of these.
+                still schedule you when you've marked yourself unavailable.
               </p>
             )}
             {manager && (
