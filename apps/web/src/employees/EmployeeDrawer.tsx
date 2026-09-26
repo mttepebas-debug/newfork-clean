@@ -2853,7 +2853,7 @@ function sectionDescription(section: EmployeeSection): string {
   return {
     profile: "Identity and manager-owned contact details.",
     employment: "Location, job, start date, and internal context.",
-    availability: "Employee preferences and shared manager reminders.",
+    availability: "Employee preferences.",
     documents: "Onboarding document requirement progress.",
     access: "Invitation and workspace access state.",
     history: "Audited employee lifecycle changes.",
