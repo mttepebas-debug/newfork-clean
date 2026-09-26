@@ -41,7 +41,7 @@ const model: ScheduleReadModel = {
   workspace_id: "66666666-6666-4666-8666-666666666666",
   week_start: "2026-08-17",
   week_start_day: "monday",
-  settings: { time_format: "12h", conflict_rules: { availability: "confirm", approved_time_off: "block", closed_location: "block", minimum_travel: "confirm", minimum_rest: "confirm" } },
+  settings: { time_format: "12h", conflict_rules: { approved_time_off: "block", closed_location: "block", minimum_travel: "confirm", minimum_rest: "confirm" } },
   locations: [
     {
       id: locationId,

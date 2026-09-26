@@ -33,7 +33,6 @@ const context: ActiveWorkspaceContext = {
 };
 const conflictSettings = {
   conflict_rules: {
-    availability: "confirm",
     approved_time_off: "block",
     closed_location: "confirm",
     minimum_travel: "confirm",
@@ -131,6 +130,25 @@ describe("ConflictHandlingSettingsPage", () => {
       String(vi.mocked(organizationRequest).mock.calls[1]![2]!.body),
     );
     expect(body.conflict_rules.approved_time_off).toBe("block");
+  });
+
+  it("offers no availability rule and never saves one (BL-186)", async () => {
+    renderPage();
+    const input = await screen.findByLabelText(
+      "Minimum travel time (minutes)",
+    );
+    expect(screen.queryByText("Employee availability")).toBeNull();
+    fireEvent.change(input, { target: { value: "45" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save conflict rules" }),
+    );
+    await waitFor(() =>
+      expect(organizationRequest).toHaveBeenCalledTimes(2),
+    );
+    const body = JSON.parse(
+      String(vi.mocked(organizationRequest).mock.calls[1]![2]!.body),
+    );
+    expect(body.conflict_rules).not.toHaveProperty("availability");
   });
 
   it("does not silently turn a cleared minimum into zero", async () => {

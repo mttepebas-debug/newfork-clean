@@ -145,19 +145,40 @@ describe("ShiftQuickEditor", () => {
     );
     return onSubmit;
   }
-  // What the server answers when the shift overlaps the employee's marked hours.
+  // The employee's own mark on the shift's hours: only a warning (BL-186).
+  const availabilityReason = { code: "availability", message: "The assignment overlaps unavailable hours.", definite: true, severity: "warn" as const };
+  // What the server answers when a Conflict handling rule set to Warn or
+  // Require confirmation matches (minimum rest here).
   function weekly(level: "warn" | "confirm"): ShiftAvailabilityAssessment {
     return {
       ...confirmedAvailability,
       conflict_severity: level,
       operation: "warning_requires_override",
       warning_policy: level,
-      has_availability_conflict: true,
       can_override: false,
-      reasons: [{ code: "availability", message: "The assignment overlaps unavailable hours.", definite: true, severity: level }],
+      reasons: [{ code: "minimum_rest", message: "There is not enough rest time between shifts.", definite: true, severity: level }],
     };
   }
   const weeklyWarning = weekly("warn");
+
+  it("saves over the employee's unavailable hours without asking (BL-186)", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, has_availability_conflict: true,
+      availability_fingerprint: "c".repeat(64), reasons: [availabilityReason] });
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
+    expect(toast.warning).not.toHaveBeenCalled();
+  });
+
+  it("leaves availability out of another rule's confirmation (BL-186)", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...weekly("confirm"), reasons: [...weekly("confirm").reasons, availabilityReason] });
+    renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    const sheet = await screen.findByRole("dialog", { name: "Shift conflict" });
+    expect(sheet.textContent).toContain("not enough rest time");
+    expect(sheet.textContent).not.toContain("unavailable hours");
+  });
 
   it("saves a weekly warn conflict with one toast and no written reason", async () => {
     vi.mocked(loadShiftAvailability).mockResolvedValue(weeklyWarning);
@@ -169,7 +190,7 @@ describe("ShiftQuickEditor", () => {
       "Shift saved with a warning",
       expect.objectContaining({
         dedupeKey: "schedule-quick-editor-availability-warning",
-        description: "The assignment overlaps unavailable hours.",
+        description: "There is not enough rest time between shifts.",
       }),
     );
     expect(onSubmit.mock.calls[0]![0]).toMatchObject({ availability_assessment_fingerprint: weeklyWarning.fingerprint });
@@ -222,8 +243,8 @@ describe("ShiftQuickEditor", () => {
       coverage: "none",
       reasons: [
         {
-          code: "availability",
-          message: "The assignment overlaps unavailable hours.",
+          code: "approved_time_off",
+          message: "Approved time off overlaps this assignment.",
           definite: true,
           severity: "block",
         },
@@ -234,7 +255,7 @@ describe("ShiftQuickEditor", () => {
     expect(
       (await screen.findByRole("dialog", { name: "Shift conflict" }))
         .textContent,
-    ).toContain("overlaps unavailable hours");
+    ).toContain("Approved time off overlaps");
     expect(screen.queryByRole("button", { name: /anyway|Place shift/ })).toBeNull();
     expect(onSubmit).not.toHaveBeenCalled();
   });
