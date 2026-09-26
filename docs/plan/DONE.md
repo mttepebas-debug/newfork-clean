@@ -64,3 +64,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | FB-6.1.6 | onaylı izin müdürün vardiya yazmasında her zaman kesin engel; ayar ekranından seçeneği kalktı | 73eee2d
 2026-09-26 | BL-170, BL-171 | yerel veritabanı testleri güncel test yardımcılarıyla koşuyor; belge testi ortak ortamda yanlış kırmızı vermiyor | efb285d
 2026-09-26 | FB-6.1.7 | müsaitlik ayarı Sert'e çekilince, önceden kabul edilip yayınlanmış değişmemiş vardiyalar haftanın yeniden yayınını engellemiyor | (main)
+2026-09-26 | FB-6.1.9 (kısmi) | Takvim ekranlarının düğmeleri yetki çekirdeğine soruyor; lokasyonu olmayan müdür sunucunun reddedeceği düğmeleri görmüyor | ffca7eb
