@@ -477,35 +477,16 @@ describe("shared contracts", () => {
       employee_name: "Alex Rivera",
     });
     expect(
-      schedulePublicationOverrideInputSchema.parse({
-        finding_id: findingId,
-        reason: "Employee confirmed availability for this service.",
-      }).reason,
-    ).toContain("confirmed");
-    expect(() =>
-      schedulePublicationOverrideInputSchema.parse({
-        finding_id: findingId,
-        reason: "ok",
-      }),
-    ).toThrow();
+      schedulePublicationOverrideInputSchema.parse({ finding_id: findingId }),
+    ).toEqual({ finding_id: findingId });
     expect(
       schedulePublicationPreflightAckSchema.parse({
         fingerprint: preview.fingerprint,
-        decisions: [
-          {
-            finding_id: findingId,
-            reason: "Employee confirmed availability for this service.",
-          },
-        ],
+        decisions: [{ finding_id: findingId }],
       }),
     ).toEqual({
       fingerprint: preview.fingerprint,
-      decisions: [
-        {
-          finding_id: findingId,
-          reason: "Employee confirmed availability for this service.",
-        },
-      ],
+      decisions: [{ finding_id: findingId }],
     });
     const published = schedulePublishResultSchema.parse({
       status: "published",

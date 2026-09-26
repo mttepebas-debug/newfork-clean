@@ -163,7 +163,6 @@ const scheduleFixture = vi.hoisted(() => ({
     time_format: "12h",
     // Database defaults; the read model always carries conflict rules.
     conflict_rules: {
-      availability: "confirm",
       approved_time_off: "block",
       closed_location: "confirm",
       minimum_travel: "confirm",
@@ -3475,16 +3474,9 @@ describe("App", () => {
     expect(window.location.search).toContain("view=week");
   }, 20000);
 
-  it("blocks paste before opening the drawer when the target employee is unavailable", async () => {
+  it("pastes onto hours the employee marked unavailable: availability never blocks (BL-186)", async () => {
     const unavailableFixture = {
       ...scheduleFixture,
-      settings: {
-        ...scheduleFixture.settings,
-        conflict_rules: {
-          ...scheduleFixture.settings.conflict_rules!,
-          availability: "block",
-        },
-      },
       employees: [
         {
           ...scheduleFixture.employees[0]!,
@@ -3557,19 +3549,15 @@ describe("App", () => {
       `[data-drop-cell="true"][data-employee-id="${scheduleFixture.employees[0]!.id}"][data-location-id="${scheduleFixture.locations[0]!.id}"][data-date="2026-08-18"]`,
     );
     expect(unavailableCell).toBeTruthy();
+    vi.mocked(createScheduleShifts).mockClear();
     fireEvent.click(unavailableCell!, { clientX: 80, clientY: 96 });
 
-    expect(
-      await screen.findByRole("dialog", { name: "Shift conflict" }),
-    ).toBeTruthy();
-    expect(
-      screen.getAllByText("The assignment overlaps unavailable hours."),
-    ).toHaveLength(2);
-    expect(screen.queryByRole("dialog", { name: "Paste shift" })).toBeNull();
-    expect(screen.getByRole("status", { name: "Paste status" })).toHaveProperty(
-      "textContent",
-      "The assignment overlaps unavailable hours.",
-    );
+    await waitFor(() => expect(createScheduleShifts).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(createScheduleShifts).mock.calls[0]?.[2]).toEqual([
+      expect.objectContaining({ employee_id: scheduleFixture.employees[0]!.id, scheduled_date: "2026-08-18" }),
+    ]);
+    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
+    expect(screen.queryByText("Paste blocked")).toBeNull();
   });
 
   it("shows the reference-style stale quick editor state after edit conflicts", async () => {
@@ -4415,7 +4403,6 @@ describe("App", () => {
         [
           {
             finding_id: "closed-location-finding",
-            reason: "Schedule conflict confirmed by manager.",
           },
         ],
         affectedEmployeeIds,
@@ -4424,7 +4411,6 @@ describe("App", () => {
           decisions: [
             {
               finding_id: "closed-location-finding",
-              reason: "Schedule conflict confirmed by manager.",
             },
           ],
         },
@@ -4773,7 +4759,6 @@ describe("App", () => {
         [
           {
             finding_id: "risk-advance-notice",
-            reason: "Schedule conflict confirmed by manager.",
           },
         ],
         [scheduleFixture.employees[0]!.id],
@@ -4782,7 +4767,6 @@ describe("App", () => {
           decisions: [
             {
               finding_id: "risk-advance-notice",
-              reason: "Schedule conflict confirmed by manager.",
             },
           ],
         },
@@ -4920,7 +4904,6 @@ describe("App", () => {
         [
           {
             finding_id: "stale-availability-finding",
-            reason: "Schedule conflict confirmed by manager.",
           },
         ],
         [scheduleFixture.employees[0]!.id],
@@ -4929,7 +4912,6 @@ describe("App", () => {
           decisions: [
             {
               finding_id: "stale-availability-finding",
-              reason: "Schedule conflict confirmed by manager.",
             },
           ],
         },

@@ -12,6 +12,8 @@ metadata:
 - Never put the db.lock acquire, the e2e run and the lock release in ONE parallel tool batch: a
   failed acquire does not stop the others, so e2e ran on nf-db's lock and `rm` deleted it
   (BL-137, 2026-09-26). Acquire alone, read the result, then run.
+- A heredoc python edit script can be refused too (BL-186); the Edit tool handles CRLF files
+  directly and is the cheapest route for multi-spot edits.
 - `apps/web/src/**/*.test.tsx` and `packages/shared/src/index.test.ts` are CRLF. A scripted
   replace with `\n` literals finds nothing; normalise or match `\r\n`, and write back in CRLF.
 - `pnpm.cmd --filter <pkg> exec vitest run <file>` prints `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`

@@ -41,14 +41,20 @@ describe("weekly Schedule advisory projection", () => {
     expect(evaluateScheduleShiftConflicts(model, [], input)).toEqual([expect.objectContaining({ type: "time_off" })]);
     expect(evaluateScheduleShiftConflicts({ ...model, employees: [employee] }, [], input)).toEqual([expect.objectContaining({ type: "availability", rule_kind: "weekly" })]);
   });
-  it("asks for confirmation, never blocks, when only a manager's reminder overlaps", () => {
+  it("only warns, for the employee's own mark and a manager's reminder alike (BL-186)", () => {
     const reminderOnly = { ...employee, weekly_availability: [{ ...projection, employee_intervals: [] }] };
+    const ownMark = { ...employee, weekly_availability: [{ ...projection, employee_intervals: projection.unavailable_intervals }] };
     expect(weeklyTargetAvailability(reminderOnly, input)).toBe("reminder");
-    expect(weeklyTargetAvailability({ ...employee, weekly_availability: [{ ...projection, employee_intervals: projection.unavailable_intervals }] }, input))
-      .toBe("unavailable");
-    const model = { settings: { time_format: "12h", conflict_rules: { availability: "block" } }, employees: [reminderOnly],
+    expect(weeklyTargetAvailability(ownMark, input)).toBe("unavailable");
+    const model = { settings: { time_format: "12h", conflict_rules: { approved_time_off: "block", closed_location: "confirm", minimum_travel: "confirm", minimum_rest: "confirm" } },
+      employees: [reminderOnly], locations: [{ id: loc, name: "West" }], jobs: [{ id: job, name: "Server" }], shift_types: [], closures: [] } as unknown as ScheduleReadModel;
+    expect(evaluateScheduleShiftConflicts(model, [], input)).toEqual([expect.objectContaining({ type: "availability", severity: "warn" })]);
+    expect(evaluateScheduleShiftConflicts({ ...model, employees: [ownMark] }, [], input)).toEqual([expect.objectContaining({ type: "availability", severity: "warn" })]);
+  });
+  it("adds nothing for availability it cannot place; the server's answer is the one that counts (BL-186)", () => {
+    const model = { settings: { time_format: "12h" }, employees: [{ ...employee, weekly_availability: [] }],
       locations: [{ id: loc, name: "West" }], jobs: [{ id: job, name: "Server" }], shift_types: [], closures: [] } as unknown as ScheduleReadModel;
-    expect(evaluateScheduleShiftConflicts(model, [], input)).toEqual([expect.objectContaining({ type: "availability", severity: "confirm" })]);
+    expect(evaluateScheduleShiftConflicts(model, [], input)).toEqual([]);
   });
   it("uses actual hours rather than the selected shift type identity", () => {
     expect(weeklyTargetAvailability(employee, { ...input, shift_type_id: job, start_time: "10:00", end_time: "12:00" })).toBe("available");

@@ -16,7 +16,7 @@ const input = { employee_id: "employee", location_id: "location", scheduled_date
 function assessment(changes: Partial<ShiftAvailabilityAssessment> = {}): ShiftAvailabilityAssessment {
   return { conflict_severity: "warn", coverage: "partial", operation: "warning_requires_override", time_basis: "explicit", timezone: "UTC", assessment_scope: "shift_interval",
     intervals: [], available_intervals: [], unavailable_intervals: [], unknown_intervals: [],
-    reasons: [{ code: "availability", message: "Unavailable hours", definite: true }], fingerprint: "a".repeat(64),
+    reasons: [{ code: "minimum_rest", message: "Not enough rest", definite: true }], fingerprint: "a".repeat(64),
     policy_revision: 1, fold_resolution: null, assessment_minutes: 120, can_override: true, warning_policy: "warn", ...changes };
 }
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(loadShiftAvailability).mockResolvedValue(assessment()); });
@@ -39,9 +39,23 @@ describe("Schedule drop assessment", () => {
       "Shifts saved with warnings",
       expect.objectContaining({
         dedupeKey: "schedule-drop-availability-warning",
-        description: "Unavailable hours",
+        description: "Not enough rest",
       }),
     );
+  });
+  it("drops onto unavailable hours without review or toast (BL-186)", async () => {
+    const unavailable = { code: "availability", message: "Unavailable hours", definite: true, severity: "warn" as const };
+    vi.mocked(loadShiftAvailability).mockResolvedValue(assessment({ operation: "allowed", has_availability_conflict: true, reasons: [unavailable] }));
+    const h = setup(); h.start("shift");
+    await waitFor(() => expect(h.save).toHaveBeenCalledOnce());
+    expect(h.result.current.review).toBeNull(); expect(toast.warning).not.toHaveBeenCalled();
+  });
+  it("names only the rule that warned, not availability (BL-186)", async () => {
+    const unavailable = { code: "availability", message: "Unavailable hours", definite: true, severity: "warn" as const };
+    vi.mocked(loadShiftAvailability).mockResolvedValue(assessment({ reasons: [...assessment().reasons, unavailable] }));
+    const h = setup(); h.start("shift");
+    await waitFor(() => expect(toast.warning).toHaveBeenCalledOnce());
+    expect(toast.warning.mock.calls[0]![1]).toMatchObject({ description: "Not enough rest" });
   });
   it("does not save an earlier allowed item when a later item is blocked", async () => {
     vi.mocked(loadShiftAvailability).mockResolvedValueOnce(assessment({ operation: "allowed" }))

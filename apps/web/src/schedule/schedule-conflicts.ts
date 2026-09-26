@@ -12,12 +12,14 @@ export type ScheduleConflictReason =
 export function scheduleConflictSeverity(reason: ScheduleConflictReason): ScheduleConflictSeverity {
   if (typeof reason === "string") return "block";
   if (["allow", "warn", "confirm", "block"].includes(String(reason.severity))) return reason.severity as ScheduleConflictSeverity;
-  return ["availability", "closed_day", "assessment_unknown"].includes(String(reason.type)) ? "confirm" : "block";
+  // Availability is a preference: it only ever warns (BL-186).
+  if (reason.type === "availability") return "warn";
+  return ["closed_day", "assessment_unknown"].includes(String(reason.type)) ? "confirm" : "block";
 }
 
 function applyConflictPolicy(reasons: ScheduleConflictReason[], model: ScheduleReadModel): ScheduleConflictReason[] {
   const rules = model.settings.conflict_rules;
-  const ruleKeys: Record<string, keyof ScheduleConflictRules> = { availability: "availability", time_off: "approved_time_off", closed_day: "closed_location", minimum_travel: "minimum_travel", minimum_rest: "minimum_rest" };
+  const ruleKeys: Record<string, keyof ScheduleConflictRules> = { time_off: "approved_time_off", closed_day: "closed_location", minimum_travel: "minimum_travel", minimum_rest: "minimum_rest" };
   return reasons.map(reason => {
     if (typeof reason === "string") return reason;
     const key = ruleKeys[String(reason.type)];
@@ -351,12 +353,9 @@ export function evaluateScheduleShiftConflicts(
   const weeklyStatus = weeklyTargetAvailability(employee, input);
   if (weeklyStatus === "time_off") {
     reasons.push({ ...context, type: "time_off", message: "Approved time off overlaps this assignment." });
-  } else if (weeklyStatus === "reminder") {
-    reasons.push({ ...context, type: "availability", rule_kind: "weekly", severity: "confirm",
-      message: "The assignment overlaps hours a manager noted as unavailable." });
-  } else if (weeklyStatus === "unavailable" || weeklyStatus === "unknown") {
-    reasons.push({ ...context, type: "availability", rule_kind: "weekly", ...(weeklyStatus === "unknown" ? { severity: "confirm" } : {}),
-      message: weeklyStatus === "unknown" ? "Availability needs checking before assignment." : "The assignment overlaps unavailable hours." });
+  } else if (weeklyStatus === "reminder" || weeklyStatus === "unavailable") {
+    reasons.push({ ...context, type: "availability", rule_kind: "weekly", severity: "warn",
+      message: weeklyStatus === "reminder" ? "The assignment overlaps hours a manager noted as unavailable." : "The assignment overlaps unavailable hours." });
   }
 
   const targetInterval = weeklyTargetInterval(employee, input);
