@@ -1,7 +1,7 @@
 - [Atlanan alan yoklaması](checklist-omitted-input-probe.md) — TS yetki ikizinde opsiyonel hedef alanı atlanınca izin çıkıyor mu; matris kapsamaz
 - [rpcFailure filtresi](checklist-rpcfailure-raw-detail.md) — BL-131 sonrasi; servis rpcFailure'a gecerken JSON mesajli RAISE yutulur mu, detail uuid kimin
 - [API kapısı çekirdek eylemleri](checklist-api-gate-core-actions.md) — resolveActor+authorize; manages=works kilitlenmesi, ikiz inline kapı, rota tablosu tamlığı
-- [Rollback denemesi güvenliği](feedback-rollback-trial-safety.md) — "begin;" noktalı virgülsüz migration kalıcı uygulanır; önce dump, tek dosya, iz kontrolü
+- [Rollback denemesi güvenliği](feedback-rollback-trial-safety.md) — "begin;" noktalı virgülsüz ya da çok dosya tek oturumda = kalıcı sızıntı; her dosya ayrı psql oturumu
 - [Boş dizi tuzakları](checklist-empty-array-traps.md) — array(select..) bilinmeyeni '{}' yapar (owner geçer); '{}' <@ x true; silinmiş lokasyon owner'ı da kilitler
 - [no_self ile rank_below farkı](checklist-no-self-vs-rank-below.md) — no_self owner/admin kendi satırını da keser; "kayıt kuralıyla aynı" = yalnız rank_below
 - [NOT NULL gevşetmesi okuyucuları](checklist-not-null-relax-readers.md) — kolon null olabilince jsonb döndüren fonksiyon + shared zod şeması 500 verir; mock'lar yakalamaz

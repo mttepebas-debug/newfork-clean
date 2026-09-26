@@ -1,12 +1,15 @@
 ---
 name: feedback-rollback-trial-safety
-description: Rolled-back migration trial on the shared local DB silently becomes permanent if "begin" lacks its semicolon; how to run it safely and check it stayed rolled back
+description: Rolled-back migration trial on the shared local DB silently becomes permanent (missing "begin;" semicolon, or several test files in one session); one psql session per test file, migration spliced after its own begin
 metadata:
   type: feedback
 ---
 
-When feeding psql `{ echo ...; echo "begin;"; cat migration; cat test; }`, the word begin MUST carry its semicolon inside the quotes. `echo begin;` (the nf-db recipe in `.claude/agent-memory/nf-db/rollback-trial-runner.md` as of `2a5322b`) prints `begin` with no `;`, psql joins it with the next line into a syntax error, and the migration then runs in autocommit: applied for good, without a schema_migrations row.
+Two ways a "rolled-back" trial on the shared local DB has turned permanent:
 
-**Why:** 2026-09-25, FB-6.1 .2 review: my first trial run applied `20260925173926` permanently to the shared local DB for ~8 minutes. Restored by re-running the pre-trial `pg_get_functiondef` dumps, deleting the 3 inserted authz_actions rows, recreating the 2 dropped functions with ACL `{postgres=X, service_role=X}`; verified byte-identical. `supabase/tests/ci-green.txt` has CRLF line endings, which broke the loop too.
+1. `echo begin` without the semicolon inside the quotes: psql joins it with the next line into a syntax error and the migration runs in autocommit, applied for good without a schema_migrations row. (2026-09-25, FB-6.1 .2: `20260925173926` live for ~8 minutes; restored from pre-trial `pg_get_functiondef` dumps.)
+2. Several test files concatenated into ONE psql session under an outer `begin` with savepoints, stripping only lines that are exactly `begin;` / `rollback;`. Some files end in `select * from finish();rollback;` on one line (bl052_document_conflicts): that inline rollback ends the outer transaction (migration rolled back) and every later file runs in autocommit, committing its fixtures. (2026-09-26, BL-186 review: 6 fixture workspaces, ~20 auth users, `tests.ids` labels dr/wr, and rows INSIDE the Meyhouse workspace, including 2 locations "Default review UTC"/"Test Wing", 5 shift types, drafts, publications, time off and 2 notification_outbox rows, committed at 20:43 UTC; 11 pgTAP files then failed locally on duplicate keys. The user chose a targeted cleanup, done by nf-db.)
 
-**How to apply:** before any trial: (1) dump `pg_get_functiondef` of every function the migration replaces (the way back); (2) `echo "begin;"`, strip `\r` from list files; (3) run ONE file first and check a migration marker (a new authz_actions key, a dropped function) is absent afterwards; only then loop. Related: [[checklist-api-gate-core-actions]].
+**Why:** the shared DB is everyone's test bed and holds the user's Meyhouse demo data; tests with fixed UUIDs cannot run twice once their fixture leaks, so one bad trial turns other sessions' test:db red and shows junk in the user's app.
+
+**How to apply:** one psql process per test file, built as `head -1 test` (its `begin;`) + migration + `tail -n +2 test`, run with `-v ON_ERROR_STOP=1` (an error ends the session and the open transaction dies with it). Before looping: check each file's first line is `begin;` and its only `rollback;` is the last statement; run ONE file first and compare workspaces / auth.users / tests.ids counts and a migration marker (a dropped function) before and after. Never `ON_ERROR_STOP 0` with an outer transaction. Dump replaced functions first (the way back). Related: [[checklist-api-gate-core-actions]].
