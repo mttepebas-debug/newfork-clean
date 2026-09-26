@@ -67,7 +67,7 @@ select lives_ok($$select pg_temp.upload(2);select pg_temp.submit_file();select p
 select is((select status::text from public.workspace_memberships where id='35200000-0000-4000-8000-000000000002'),'pending_activation','rejected onboarding still requires case re-Submit after replacement approval');
 select lives_ok($$select pg_temp.submit_case()$$,'case re-Submit confirms corrected onboarding');
 select is((select status::text from public.workspace_memberships where id='35200000-0000-4000-8000-000000000002'),'active','final required approval activates pending employee');
-select is((select count(*)::integer from public.employee_documents where review_status='accepted'),1,'legacy file projection reflects only accepted retained version');
+select is((select count(*)::integer from public.employee_documents where requirement_id='65200000-0000-4000-8000-000000000001' and review_status='accepted'),1,'legacy file projection reflects only accepted retained version');
 -- First Conditional upload must wait for review, unlike an initial deferral.
 update public.workspace_memberships set status='pending_activation' where id='35200000-0000-4000-8000-000000000002';
 update public.employee_onboarding_cases set status='in_progress',approved_at=null,approved_by=null,submitted_at=null,final_approval_required=false where id='55200000-0000-4000-8000-000000000001';
