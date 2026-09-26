@@ -63,6 +63,18 @@ describe("SignInPage", () => {
     auth.signUp.mockResolvedValue(true);
   });
 
+  it("offers a way to reset a forgotten password when signing in, not when creating an account", () => {
+    renderPage();
+    expect(
+      screen.getByRole("link", { name: "Forgot password?" }).getAttribute("href"),
+    ).toBe("/forgot-password");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create a workspace account" }),
+    );
+    expect(screen.queryByRole("link", { name: "Forgot password?" })).toBeNull();
+  });
+
   it("lets a potential customer switch from sign-in to workspace account creation", async () => {
     renderPage();
 

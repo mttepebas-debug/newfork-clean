@@ -607,6 +607,37 @@ export async function restoreAccountDeletionWithToken(
   return body;
 }
 
+// BL-137. The API answers the same whether or not the email has an account;
+// only a refusal (bad email, rate limit, service down) throws.
+export async function requestPasswordReset(email: string): Promise<void> {
+  const response = await fetch(`${apiUrl}/v1/auth/password-reset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (response.ok) return;
+  const body = (await response.json().catch(() => null)) as { error?: string } | null;
+  throw new Error(body?.error ?? "The reset link could not be sent. Try again.");
+}
+
+// Trades the reset link's one-time token for a session. This is the only way
+// the reset screen gets a session; false means expired, used or not a link.
+export async function openPasswordResetSession(tokenHash: string): Promise<boolean> {
+  if (!supabaseClient) return false;
+  clearTabWorkspaceId();
+  const { data, error } = await supabaseClient.auth.verifyOtp({
+    type: "recovery",
+    token_hash: tokenHash,
+  });
+  return !error && Boolean(data.session);
+}
+
+export async function saveNewPassword(password: string): Promise<void> {
+  if (!supabaseClient) throw new Error("Sign-in is unavailable in this browser session.");
+  const { error } = await supabaseClient.auth.updateUser({ password });
+  if (error) throw new Error(error.message);
+}
+
 export async function restoreAccountDeletion(
   client: SupabaseClient,
 ): Promise<void> {

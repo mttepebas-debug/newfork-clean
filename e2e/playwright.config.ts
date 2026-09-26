@@ -39,6 +39,11 @@ function localSupabase(): Record<string, string> {
 
 const supabase = localSupabase();
 
+// A spec that needs the auth admin API (the password reset flow mints its
+// link there, since no email leaves a local run) reads these two.
+process.env.E2E_SUPABASE_URL = requireSupabaseEnv("API_URL");
+process.env.E2E_SERVICE_ROLE_KEY = requireSupabaseEnv("SERVICE_ROLE_KEY");
+
 // `noUncheckedIndexedAccess` makes every lookup on a Record<string, string>
 // come back `string | undefined`; the webServer env below needs a definite
 // string, and a missing key means `supabase status` didn't print what this

@@ -18,6 +18,8 @@ import "./styles.css";
 
 const AccountLayout = lazy(() => import("./account/AccountLayout"));
 const AccountRecoveryPage = lazy(() => import("./account/AccountRecoveryPage"));
+const ForgotPasswordPage = lazy(() => import("./views/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./views/ResetPasswordPage"));
 // DEV pages are gated at the import, not only the route: a lazy() import that
 // exists in production code still ships its chunk.
 const EmployeeOnboardingPreview = import.meta.env.DEV
@@ -158,6 +160,8 @@ export function App() {
                 />
               </Route>
               <Route path="/sign-in" element={<SignInPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route
                 path="/account-recovery"
                 element={<AccountRecoveryPage />}

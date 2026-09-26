@@ -7,6 +7,8 @@ export type Person = "ali" | "ayse" | "deniz" | "emre" | "mehmet" | "zeynep";
 const world: { readonly password: string; readonly emails: Record<Person, string> } =
   JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8"));
 
+export const emailOf = (person: Person): string => world.emails[person];
+
 // Signs in through the real sign-in screen.
 export async function signIn(page: Page, person: Person) {
   await page.goto("/sign-in");
