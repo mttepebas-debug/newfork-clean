@@ -1,7 +1,8 @@
 -- FB-6.1 .5 (T3, REUSE B1): a manager limited to some locations sees, on the
--- week grid, the shifts the people on it work elsewhere, as ghosts: where and
--- when only, read only. Ayşe (Kadıköy) sees that Ali works 09:00-15:00 at
--- Beşiktaş on Tuesday; Beşiktaş gets no grid row and stays out of `locations`,
+-- week grid, the shifts the people on it work elsewhere, as ghosts, read only:
+-- where, when, the job, the shift type and the labels, never the free-text note
+-- (user decision 2026-09-26). Ayşe (Kadıköy) sees that Ali works 09:00-15:00 at
+-- Beşiktaş on Tuesday as a cook, labelled On call; Beşiktaş gets no grid row and stays out of `locations`,
 -- so the export (which draws `locations`) does not change.
 --
 -- One variable against the grid budget: the chain is not folded yet (.4), only
@@ -92,9 +93,11 @@ begin
     where shift.scheduled_date between resolved_week_start and resolved_week_start + 6
   ), ghost_shifts as (
     -- A shift somebody on this grid works at a location the actor does not
-    -- reach: only where and when, never what (REUSE B1, FB-6.1 T3).
+    -- reach: what the shift card says, not its note (REUSE B1, FB-6.1 T3).
     select shift.id, shift.employee_id, shift.location_id, location.name as location_name,
-      shift.scheduled_date, shift.start_time, shift.end_time, shift.crosses_midnight
+      shift.scheduled_date, shift.start_time, shift.end_time, shift.crosses_midnight,
+      shift.job_id, job.name as job_name, shift.shift_type_id, shift_type.name as shift_type_name,
+      shift.label_ids, shift.label_names
     from visible_employees employee
     join public.schedule_published_shifts shift
       on shift.employee_id = employee.id
@@ -105,6 +108,10 @@ begin
     join public.locations location
       on location.id = shift.location_id and location.workspace_id = target_workspace_id
      and location.archived_at is null
+    -- Names travel with the ghost: an archived job or type is not in the model's lists.
+    join public.jobs job on job.id = shift.job_id and job.workspace_id = target_workspace_id
+    left join public.shift_types shift_type
+      on shift_type.id = shift.shift_type_id and shift_type.workspace_id = target_workspace_id
     where not exists (select 1 from allowed_locations allowed where allowed.id = shift.location_id)
   ), week_availability as materialized (
     select * from app_private.schedule_week_availability(
@@ -228,7 +235,13 @@ begin
         'scheduled_date', ghost.scheduled_date,
         'start_time', to_char(ghost.start_time, 'HH24:MI'),
         'end_time', to_char(ghost.end_time, 'HH24:MI'),
-        'crosses_midnight', ghost.crosses_midnight
+        'crosses_midnight', ghost.crosses_midnight,
+        'job_id', ghost.job_id,
+        'job_name', ghost.job_name,
+        'shift_type_id', ghost.shift_type_id,
+        'shift_type_name', ghost.shift_type_name,
+        'label_ids', to_jsonb(ghost.label_ids),
+        'label_names', to_jsonb(ghost.label_names)
       ) order by ghost.scheduled_date, ghost.start_time, ghost.id)
       from ghost_shifts ghost
     ), '[]'::jsonb),

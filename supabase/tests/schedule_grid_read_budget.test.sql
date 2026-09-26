@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(10);
 
 -- FOUNDATION-B 5.3: the Schedule grid reads a week with availability from the
 -- weekly marks within 50 ms: 30 people at two locations, most with marks, some
@@ -38,6 +38,10 @@ select tests.publish_week('wb', 1, (
   from generate_series(1, 30) n cross join (values (1), (3)) days(d)
 ));
 
+-- ponytail: labelled by hand; the world builder publishes without labels.
+update public.schedule_published_shifts set label_names = array['On call']
+where employee_id = tests.id('wb:p3') and location_id = tests.id('wb:B');
+
 create temp table wb_run (who text, n integer, ms numeric, marked integer, model jsonb);
 do $$
 declare started timestamptz; model jsonb; who text;
@@ -72,8 +76,14 @@ select is(
   'Mina sees each Wednesday Besiktas shift of the people who work at both locations as a ghost');
 select is(
   (select array(select distinct k from mina_model, jsonb_array_elements(model -> 'ghost_shifts') g, jsonb_object_keys(g) k order by 1)),
-  array['crosses_midnight', 'employee_id', 'end_time', 'id', 'location_id', 'location_name', 'scheduled_date', 'start_time'],
-  'a ghost says where and when only');
+  array['crosses_midnight', 'employee_id', 'end_time', 'id', 'job_id', 'job_name', 'label_ids', 'label_names', 'location_id',
+        'location_name', 'scheduled_date', 'shift_type_id', 'shift_type_name', 'start_time'],
+  'a ghost says what the shift card says, never its note');
+select is((select count(*)::integer from mina_model, jsonb_array_elements(model -> 'ghost_shifts') g
+  where (g ->> 'job_id')::uuid = tests.id('wb:job:cook') and g ->> 'job_name' = 'Cook'), 10, 'a ghost names the job');
+select is((select g -> 'label_names' from mina_model, jsonb_array_elements(model -> 'ghost_shifts') g
+  where (g ->> 'employee_id')::uuid = tests.id('wb:p3')), '["On call"]'::jsonb,
+  'a ghost carries its labels: Mina sees p3 is on call at Besiktas');
 select is((select model -> 'ghost_shifts' from wb_run where who = 'owner' and n = 1), '[]'::jsonb,
   'the owner reaches every location, so nothing is a ghost');
 
