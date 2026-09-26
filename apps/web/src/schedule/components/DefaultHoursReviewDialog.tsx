@@ -16,7 +16,6 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
   const [reviewedSignature, setReviewedSignature] = useState("");
   const [pending, setPending] = useState<"review" | "apply" | null>(null);
   const [error, setError] = useState("");
-  const [acknowledged, setAcknowledged] = useState(false);
   const dialog = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const mounted = useRef(true);
@@ -28,11 +27,9 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
   const signature = JSON.stringify(command);
   const currentSignature = useRef(signature); currentSignature.current = signature;
   const fresh = Boolean(review && reviewedSignature === signature);
-  const overlaps = Boolean(review?.shifts.some(s => s.will_change && s.after_overlap_count > 0));
   const needsAvailabilityConfirmation = Boolean(review?.shifts.some(s => s.can_apply
     && s.after_assessment?.operation === "warning_requires_override"
     && s.after_assessment.warning_policy === "confirm" && !s.after_assessment.override_recorded));
-  useEffect(() => { setAcknowledged(false); }, [signature]);
   useEffect(() => { if (pending) dialog.current?.focus(); }, [pending]);
   useEffect(() => {
     mounted.current = true;
@@ -45,13 +42,13 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
     setPending("review"); setError("");
     try {
       const result = await previewScheduleDefaultHours(workspaceId, session.id, command);
-      if (mounted.current && signature === currentSignature.current) { setReview(result); setReviewedSignature(signature); setAcknowledged(false); }
+      if (mounted.current && signature === currentSignature.current) { setReview(result); setReviewedSignature(signature); }
     } catch (caught) { if (mounted.current) { setReviewedSignature(""); setError(caught instanceof Error ? caught.message : "Review unavailable"); } }
     finally { if (mounted.current) setPending(null); }
   };
   const apply = async () => {
-    if (!command || !review || !fresh || pending || review.blocked_count || !review.changed_count || (overlaps && !acknowledged)) return;
-    const values = { ...command, fingerprint: review.fingerprint, acknowledge_reference_overlaps: acknowledged,
+    if (!command || !review || !fresh || pending || review.blocked_count || !review.changed_count) return;
+    const values = { ...command, fingerprint: review.fingerprint,
       confirm_availability: needsAvailabilityConfirmation };
     const keySignature = JSON.stringify(values);
     if (retry.current?.signature !== keySignature) retry.current = { signature: keySignature, key: crypto.randomUUID() };
@@ -63,12 +60,11 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
     finally { if (mounted.current) setPending(null); }
   };
   const hours = (s: ScheduleDefaultHoursPreview["shifts"][number]["before"]) => {
-    const clock = (value: string | null) => {
-      if (!value) return "Unconfirmed";
+    const clock = (value: string) => {
       const [h, m] = value.split(":");
       return model.settings.time_format === "24h" ? `${h}:${m}` : `${Number(h) % 12 || 12}:${m} ${Number(h) >= 12 ? "PM" : "AM"}`;
     };
-    return `${clock(s.start_time)} – ${clock(s.end_time)}${s.start_time && s.end_time && s.end_time < s.start_time ? " (next day)" : ""} · ${s.time_timezone ?? "Time zone unconfirmed"}`;
+    return `${clock(s.start_time)} – ${clock(s.end_time)}${s.end_time < s.start_time ? " (next day)" : ""} · ${s.time_timezone}`;
   };
   return <div className="schedule-dialog-layer">
     <button type="button" className="schedule-dialog-backdrop" aria-label="Close default hours review" disabled={Boolean(pending)} onClick={onClose} />
@@ -109,8 +105,7 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
             {s.reason ? <p>{s.reason}</p> : null}
             {s.after_assessment?.reasons.map((r, i) => <p key={i}>{r.message}</p>)}
           </article>)}
-          {overlaps ? <label><input type="checkbox" disabled={!fresh || Boolean(pending)} checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} />I reviewed reference overlaps. Publication checks still apply.</label> : null}
-          <button type="button" disabled={!fresh || Boolean(pending) || !review.changed_count || Boolean(review.blocked_count) || (overlaps && !acknowledged)} onClick={() => void apply()}>{pending === "apply" ? "Applying…" : `${needsAvailabilityConfirmation ? "Confirm availability and apply" : "Apply"} ${review.changed_count} change${review.changed_count === 1 ? "" : "s"} to edit session`}</button>
+          <button type="button" disabled={!fresh || Boolean(pending) || !review.changed_count || Boolean(review.blocked_count)} onClick={() => void apply()}>{pending === "apply" ? "Applying…" : `${needsAvailabilityConfirmation ? "Confirm availability and apply" : "Apply"} ${review.changed_count} change${review.changed_count === 1 ? "" : "s"} to edit session`}</button>
         </section> : null}
       </div>
     </section>

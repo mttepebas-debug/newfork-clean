@@ -10,7 +10,7 @@ export const scheduleDefaultHoursApplySchema = scheduleDefaultHoursInputSchema.e
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/), idempotency_key: z.string().uuid(),
   confirm_availability: z.boolean().default(false),
 });
-const reference = z.object({ start_time: z.string().nullable(), end_time: z.string().nullable(), time_timezone: z.string().nullable(),
+const reference = z.object({ start_time: z.string(), end_time: z.string(), time_timezone: z.string(),
   time_basis: shiftTimeBasisSchema,
   time_snapshot: z.object({ default_revision: z.number().int().positive() }).passthrough().nullable(),
 });
