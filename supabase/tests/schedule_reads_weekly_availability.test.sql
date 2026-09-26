@@ -3,10 +3,10 @@ create extension if not exists pgtap with schema extensions;
 select plan(10);
 
 -- FOUNDATION-B 5.3a: the Schedule grid, Edit mode and Employee Hub -> Schedule
--- draw availability from the weekly marks. A published shift keeps what was
--- accepted when it was published; a shift being edited is checked against
--- today's marks; an employee sees only their own marks, never the manager's
--- private reminder.
+-- draw availability from the weekly marks. Every shift, published or being
+-- edited, is checked against today's marks (BL-186: a mark is a warning, not
+-- an acceptance kept from publishing); an employee sees only their own marks,
+-- never the manager's private reminder.
 
 select tests.world('wr');
 select tests.person('wr', 'ayse', 'manager', array['K'], array['cook']);
@@ -45,24 +45,17 @@ select is((select jsonb_agg(p ->> 'location_id') from jsonb_array_elements(pg_te
 select is(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability' -> 0 -> 'days' -> 4 ->> 'has_unavailable', 'true',
   'the manager sees the private reminder in the grid');
 select ok(not coalesce(pg_temp.codes(pg_temp.grid(), tests.id('wr:shift:thu')) ? 'availability', false),
-  'published work accepted without a conflict shows no warning');
+  'a published shift in free hours shows no warning');
 
--- What was accepted at publishing stays: a conflict recorded then keeps
--- showing, whatever the marks say today.
-set local session_replication_role = replica;
-update public.schedule_published_shifts
-set availability_snapshot = jsonb_build_object('status', 'assessed', 'captured_at', now(),
-  'assessment', jsonb_build_object('has_availability_conflict', true,
-    'employee_intervals', '[{"start_at": "2000-01-01T00:00:00.000000Z", "end_at": "2000-01-01T01:00:00.000000Z"}]'::jsonb))
-where id = tests.id('wr:shift:thu');
-set local session_replication_role = origin;
+-- Ali marks Thursday morning after the week went out (BL-184): the published
+-- shift shows it.
+update public.employee_weekly_preferences set preference = pg_temp.mark(preference, 4, '{"range": {"start": "10:00", "end": "11:00"}}')
+where employee_id = tests.id('wr:ali');
 select ok(pg_temp.codes(pg_temp.grid(), tests.id('wr:shift:thu')) ? 'availability',
-  'published work accepted with a conflict keeps showing it');
+  'a mark made after publishing shows on the published shift');
 
--- Edit mode: unchanged published work keeps its snapshot, a new shift is
--- checked against today's marks. Warn lets the conflicting shift be written.
-update public.workspace_scheduling_settings set conflict_rules = jsonb_set(conflict_rules, '{availability}', '"warn"')
-where workspace_id = tests.id('wr');
+-- Edit mode: every shift is checked against today's marks, and a shift over
+-- a marked evening is written (a warning, never a block).
 create temp table wr_edit (key text primary key, value uuid);
 insert into wr_edit values ('session', (public.acquire_schedule_edit_session_service(
   tests.user('wr:ayse'), tests.id('wr'), tests.week(1), 'published', null) -> 'session' ->> 'id')::uuid);
@@ -79,7 +72,7 @@ select ok(pg_temp.codes(pg_temp.edit(), (select value from wr_edit where key = '
 select ok(not (pg_temp.codes(pg_temp.edit(), (select value from wr_edit where key = 'tuesday')) ? 'availability'),
   'a new shift on a free morning is not');
 select ok(pg_temp.codes(pg_temp.edit(), tests.id('wr:shift:thu')) ? 'availability',
-  'unchanged published work keeps what it was accepted with');
+  'unchanged published work shows today''s mark too');
 
 -- Employee Hub -> Schedule: Ali's own marks, never the manager's note.
 create function pg_temp.board() returns jsonb language sql as $$

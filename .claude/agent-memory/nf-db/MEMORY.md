@@ -3,5 +3,6 @@
 - [Folding a chain](folding-chains.md) — labeled nested block per inner layer, drop overloads before adding defaults, retired signatures, mocked seams, message text, TS twin
 - [SQL traps moving onto the core](sql-traps-core-translation.md) — any((select..))::uuid[], plpgsql IF+CASE, somewhere shape, location delete needs archived_at, document-blocked test recipe
 - [Leave rules in code](leave-rules-in-code.md) — approved_time_off read once in assess; CHECK = block since FB-6.1.6; exchange-over-own-leave REUSE rule not implemented
-- [Published shift retention](published-shift-retention.md) — where an unchanged published shift keeps its availability acceptance: grid, trigger, publish preview (Block since FB-6.1.7)
+- [Published shift retention](published-shift-retention.md) — availability never retained since BL-186; the 4 remaining prior_publication callers (non-availability)
 - [Shift time guarantees](shift-time-guarantees.md) — basis/hours CHECKs, trigger fills time zone (NOT NULL since FB-6.1.8), overlap always blocks; batch review checks new-vs-new
+- [Availability is a preference](availability-is-a-preference.md) — BL-186 contract: warn-only reasons, availability_fingerprint, publish availability finding + ack lookup
