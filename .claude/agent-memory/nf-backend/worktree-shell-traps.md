@@ -14,3 +14,6 @@ metadata:
   (BL-137, 2026-09-26). Acquire alone, read the result, then run.
 - `apps/web/src/**/*.test.tsx` and `packages/shared/src/index.test.ts` are CRLF. A scripted
   replace with `\n` literals finds nothing; normalise or match `\r\n`, and write back in CRLF.
+- `pnpm.cmd --filter <pkg> exec vitest run <file>` prints `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`
+  whenever the test FAILS (non-zero exit); vitest did run. Read the `Tests` line, not that message.
+  Web/api resolve `@newfork/shared` from its build: after a shared edit run `--filter @newfork/shared build`.
