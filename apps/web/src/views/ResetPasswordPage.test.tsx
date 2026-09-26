@@ -62,6 +62,18 @@ describe("ResetPasswordPage", () => {
     expect(abandonPasswordResetSession).not.toHaveBeenCalled();
   });
 
+  it("takes the token out of the address bar and history, and still uses it on Save", async () => {
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    renderPage();
+    expect(replaceState).toHaveBeenCalledWith(null, "", "/reset-password");
+    replaceState.mockRestore();
+
+    fill("new-password-1");
+    await waitFor(() =>
+      expect(openPasswordResetSession).toHaveBeenCalledWith("hash-1"),
+    );
+  });
+
   it("does not read a token from the query string, which reaches server logs", () => {
     renderPage("/reset-password?token_hash=hash-1");
     expect(
