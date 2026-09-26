@@ -739,6 +739,17 @@
   padding: 9px 12px;
   margin: 0 0 14px;
 }
+/* Employee Hub → My availability: availability is a preference (BL-186). */
+.weekly-preferences-explainer {
+  max-width: 72ch;
+  margin: 0 0 14px;
+  border-left: 3px solid var(--wp-accent);
+  padding: 9px 12px;
+  background: var(--wp-soft);
+  color: var(--wp-text);
+  font-size: 13px;
+  line-height: 1.5;
+}
 .weekly-previous-preferences summary {
   font-size: 12px;
   cursor: pointer;

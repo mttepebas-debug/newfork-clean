@@ -12,6 +12,15 @@ describe("schedule badge accessibility", () => {
     );
   });
 
+  it("says where the person stands for the shift, not that availability changed (BL-186)", () => {
+    expect(formatScheduleShiftWarningAria(["availability"], "Ali Kaya")).toBe(
+      "Ali Kaya shows as unavailable for this shift",
+    );
+    expect(formatScheduleShiftWarningAria(["availability", "overlap"])).toBe(
+      "shows as unavailable for this shift, conflicts with another shift",
+    );
+  });
+
   it("keeps title, labels, time, location, and warning text in badge aria order", () => {
     expect(
       formatScheduleBadgeAriaLabel({

@@ -151,6 +151,13 @@ describe("ConflictHandlingSettingsPage", () => {
     expect(body.conflict_rules).not.toHaveProperty("availability");
   });
 
+  it("says in plain words what always happens with time off and availability (BL-185, BL-186)", async () => {
+    renderPage();
+    await screen.findByLabelText("Minimum travel time (minutes)");
+    expect(screen.getByText("Approved time off always keeps someone off the schedule.")).toBeTruthy();
+    expect(screen.getByText("Availability is a preference: you'll see a warning, never a block.")).toBeTruthy();
+  });
+
   it("does not silently turn a cleared minimum into zero", async () => {
     renderPage();
     const input = await screen.findByLabelText(

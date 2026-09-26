@@ -145,6 +145,10 @@ export default function ConflictHandlingSettingsPage() {
             disabled={mutation.isPending}
             style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
           >
+            <ul className="conflict-settings-always">
+              <li>Approved time off always keeps someone off the schedule.</li>
+              <li>Availability is a preference: you'll see a warning, never a block.</li>
+            </ul>
             {conflictRuleChoices.map((rule) => (
               <SettingsChoiceRow
                 key={rule.key}

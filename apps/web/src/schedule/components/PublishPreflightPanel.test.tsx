@@ -6,8 +6,18 @@ import {
   publishGatingRisks,
   publishInformationalFindings,
   publishHardBlockers,
+  publishNewAvailabilityWarnings,
   publishOverrideableBlockers,
 } from "./PublishPreflightPanel";
+
+const mainDining = {
+  id: "33333333-3333-4333-8333-333333333333",
+  name: "Main Dining",
+  timezone: "America/Los_Angeles",
+  sort_order: 1,
+  publication_status: "published" as const,
+  published_at: null,
+};
 
 const preview: SchedulePublicationPreview = {
   status: "override_required",
@@ -32,9 +42,21 @@ const preview: SchedulePublicationPreview = {
   ],
 };
 
+// What the database sends for "Ali shows as unavailable" (BL-186).
+const availabilityWarning = {
+  ...preview.findings[0]!,
+  id: "availability-00001",
+  code: "availability" as const,
+  availability_state: "new" as const,
+  warning_policy: "confirm" as const,
+  tier: "risk" as const,
+  employee_name: "Ali Kaya",
+  message: "Ali Kaya shows as unavailable for this shift.",
+};
+
 describe("PublishPreflightPanel", () => {
   it("separates new weekly conflicts from collapsed accepted conflicts without reason inputs", () => {
-    const fresh = { ...preview.findings[0]!, availability_state: "new" as const, warning_policy: "confirm" as const, tier: "risk" as const, employee_name: "Alex" };
+    const fresh = { ...preview.findings[0]!, code: "schedule_conflict" as const, availability_state: "new" as const, warning_policy: "confirm" as const, tier: "risk" as const, employee_name: "Alex" };
     const accepted = { ...fresh, id: "accepted-00001", availability_state: "accepted" as const, tier: "note" as const, employee_name: "Taylor" };
     const next = { ...preview, findings: [fresh, accepted] };
     expect(publishHardBlockers(next)).toEqual([]);
@@ -42,7 +64,7 @@ describe("PublishPreflightPanel", () => {
     expect(publishGatingRisks(next)).toEqual([]);
     expect(publishInformationalFindings(next)).toEqual([]);
     const review = vi.fn();
-    render(<PublishPreflightPanel preview={next} locations={[]} overrideReasons={{}} onOverrideReasonChange={vi.fn()} onReviewShift={review} />);
+    render(<PublishPreflightPanel preview={next} locations={[]} onReviewShift={review} />);
     expect(screen.getByText("Current schedule conflicts")).toBeTruthy();
     const disclosure = screen.getByText("Previously accepted (1)").closest("details");
     expect(disclosure).toHaveProperty("open", false);
@@ -52,39 +74,56 @@ describe("PublishPreflightPanel", () => {
     expect(review).toHaveBeenCalledExactlyOnceWith(fresh);
   });
 
+  it("lists a new availability warning with an explicit confirmation (BL-186)", () => {
+    const next = { ...preview, findings: [availabilityWarning] };
+    expect(publishNewAvailabilityWarnings(next)).toEqual([availabilityWarning]);
+    const onAcknowledge = vi.fn();
+    const view = render(
+      <PublishPreflightPanel preview={next} locations={[mainDining]}
+        availabilityAcknowledged={false} onAvailabilityAcknowledgedChange={onAcknowledge} />,
+    );
+    expect(screen.getByText("1 availability warning")).toBeTruthy();
+    expect(screen.getByText("Availability")).toBeTruthy();
+    expect(screen.getByText("Ali Kaya shows as unavailable for this shift.")).toBeTruthy();
+    expect(screen.queryByText(/schedule conflict/)).toBeNull();
+    const confirm = screen.getByRole("checkbox", { name: "I've seen this warning and want to publish anyway" });
+    expect(confirm).toHaveProperty("checked", false);
+    fireEvent.click(confirm);
+    expect(onAcknowledge).toHaveBeenCalledExactlyOnceWith(true);
+    view.rerender(
+      <PublishPreflightPanel preview={{ ...next, findings: [availabilityWarning, { ...availabilityWarning, id: "availability-00002" }] }}
+        locations={[mainDining]} availabilityAcknowledged onAvailabilityAcknowledgedChange={onAcknowledge} />,
+    );
+    expect(screen.getByRole("checkbox", { name: "I've seen these 2 warnings and want to publish anyway" })).toHaveProperty("checked", true);
+  });
+
+  it("shows who acknowledged an earlier availability warning and when, without asking again", () => {
+    const accepted = {
+      ...availabilityWarning,
+      availability_state: "accepted" as const,
+      tier: "note" as const,
+      acknowledged_by_name: "Ayşe Demir",
+      acknowledged_at: "2026-09-26T18:00:00+00:00",
+    };
+    render(<PublishPreflightPanel preview={{ ...preview, status: "publish_ready", findings: [accepted] }} locations={[mainDining]} />);
+    expect(screen.getByText("Previously accepted (1)")).toBeTruthy();
+    expect(screen.getByText("Acknowledged by Ayşe Demir · Sep 26")).toBeTruthy();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
   it("never treats a hard finding as a weekly acknowledgement", () => {
     const hard = { ...preview.findings[0]!, severity: "hard" as const, availability_state: "accepted" as const, warning_policy: "warn" as const };
     expect(publishHardBlockers({ ...preview, findings: [hard] })).toEqual([hard]);
   });
 
   it("summarizes warnings without a reason input", () => {
-    const onReason = vi.fn();
-
-    render(
-      <PublishPreflightPanel
-        preview={preview}
-        locations={[
-          {
-            id: "33333333-3333-4333-8333-333333333333",
-            name: "Main Dining",
-            timezone: "America/Los_Angeles",
-            sort_order: 1,
-            publication_status: "published",
-            published_at: null,
-          },
-        ]}
-        overrideReasons={{}}
-        onOverrideReasonChange={onReason}
-      />,
-    );
+    render(<PublishPreflightPanel preview={preview} locations={[mainDining]} />);
 
     expect(screen.getByText("1 blocker")).toBeTruthy();
     expect(screen.getByText("Warnings to review")).toBeTruthy();
     expect(screen.getByText("Alex is outside availability.")).toBeTruthy();
     expect(screen.getByText("2026-08-17 · Main Dining")).toBeTruthy();
-
-    expect(screen.queryByRole("textbox", { name: "Reason" })).toBeNull();
-    expect(onReason).not.toHaveBeenCalled();
+    expect(screen.queryByRole("textbox")).toBeNull();
   });
 
   it("shows clear ready state when no findings exist", () => {
@@ -92,8 +131,6 @@ describe("PublishPreflightPanel", () => {
       <PublishPreflightPanel
         preview={{ ...preview, status: "publish_ready", findings: [] }}
         locations={[]}
-        overrideReasons={{}}
-        onOverrideReasonChange={vi.fn()}
       />,
     );
 
@@ -111,8 +148,6 @@ describe("PublishPreflightPanel", () => {
       <PublishPreflightPanel
         preview={preview}
         locations={[]}
-        overrideReasons={{}}
-        onOverrideReasonChange={vi.fn()}
         blockReason="stale_fingerprint"
       />,
     );
@@ -147,23 +182,7 @@ describe("PublishPreflightPanel", () => {
       alreadyLiveRisk,
     ]);
 
-    render(
-      <PublishPreflightPanel
-        preview={nextPreview}
-        locations={[
-          {
-            id: "33333333-3333-4333-8333-333333333333",
-            name: "Main Dining",
-            timezone: "America/Los_Angeles",
-            sort_order: 1,
-            publication_status: "published",
-            published_at: null,
-          },
-        ]}
-        overrideReasons={{}}
-        onOverrideReasonChange={vi.fn()}
-      />,
-    );
+    render(<PublishPreflightPanel preview={nextPreview} locations={[mainDining]} />);
 
     expect(screen.getByText("Ready to publish")).toBeTruthy();
     expect(screen.getByText("Notes and already-live issues")).toBeTruthy();

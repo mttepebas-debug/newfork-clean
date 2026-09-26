@@ -40,6 +40,7 @@ const shift = {
   crosses_midnight: false,
   hide_time_on_badge: false,
   label_names: ["Patio"],
+  warning_codes: [] as ScheduleShift["warning_codes"],
 } as ScheduleShift;
 
 const locationGroups = [
