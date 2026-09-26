@@ -46,3 +46,6 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-25 | FB-6.0-can | web yetki sözleşmesi doğdu: can(), isNoAccess(), ortak eylem kataloğu; SQL matrisiyle 1890 hücre uyuşuyor, ekran değişmedi | f7c6772
 2026-09-25 | BL-128 | API'nin genel hata yakalayıcısı yetki reddini gerekçesiyle gönderiyor; web isNoAccess() onu tanıyor | 8802229
 2026-09-25 | BL-131 | API 4xx cevaplarında veritabanının ham ayrıntısı (tablo/kısıt adı, satır değeri) artık gitmiyor; tanınmayan hata 500 | 787ff8f
+2026-09-26 | FB-6.1 .2+.3 | Takvim'in 34 DB giriş noktası ve 80 API geçişi yetki çekirdeğine soruyor; plan kilidi devralma silindi; müsaitlik bildirimi kişiyi yöneten herkese | f210196
+2026-09-26 | BL-136 + BL-138 | Giriş ve çalışan onboarding alanlarının odak halkası ve kenarı WCAG AA'yı geçiyor; alt linkler telefonda tutturulabiliyor | 6061d34
+2026-09-26 | BL-080 | yeni owner kurulumda resmî adını veriyor, Account > Profile'da görüp değiştirebiliyor; resmî adsız kişiye sahiplik devri yok | 917f68b
