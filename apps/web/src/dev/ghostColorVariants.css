@@ -1,0 +1,57 @@
+/* DEV-only ghost color mockups (ghost-color, ?devGhost=2..5). Deleted after the pick. */
+
+/* 2: the type's own color, faded fill, dashed inner edge in that color. */
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="2"] {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--shift-color) 38%, var(--theme-surface));
+  background: color-mix(in srgb, var(--shift-color) 10%, var(--theme-surface));
+}
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="2"] strong {
+  color: var(--theme-muted-strong);
+}
+
+/* 3: neutral gray card, a strip on the left in the type's color. */
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="3"] {
+  opacity: 1;
+  border: 1px dashed var(--theme-border-strong);
+  background: var(--theme-surface-muted);
+  box-shadow: inset 4px 0 0 var(--shift-color);
+  padding-left: 11px;
+}
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="3"]::before {
+  display: none;
+}
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="3"] strong,
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="3"]
+  .schedule-shift-location,
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="3"]
+  .schedule-shift-time {
+  color: var(--theme-muted-strong);
+}
+
+/* 4: white card, dashed edge and title in the type's color. */
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="4"] {
+  opacity: 1;
+  border: 2px dashed color-mix(in srgb, var(--shift-color) 85%, #26332e);
+  background: var(--theme-surface);
+}
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="4"]::before {
+  display: none;
+}
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="4"] strong {
+  color: color-mix(in srgb, var(--shift-color) 72%, #1d2525);
+}
+
+/* 5: the type's color as a hatched fill ("somewhere else"). */
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="5"] {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--shift-color) 55%, var(--theme-surface));
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--shift-color) 18%, var(--theme-surface)) 0 5px,
+    color-mix(in srgb, var(--shift-color) 6%, var(--theme-surface)) 5px 10px
+  );
+}
+.schedule-shift-badge[data-ghost="true"][data-ghost-variant="5"]::before {
+  display: none;
+}

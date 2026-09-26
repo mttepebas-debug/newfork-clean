@@ -336,18 +336,28 @@ export function GhostShiftCard({
   // An out-of-scope ghost carries its own job and type names; the lists may not have them.
   const metadata = shift as ScheduleShift & GhostShiftMetadata;
   const carriedTypeName = metadata.ghost_shift_type_name?.trim();
-  const title = formatScheduleShiftBadgeTitle(
-    carriedTypeName ? { name: carriedTypeName } : type,
-    metadata.ghost_job_name?.trim() || job,
-    showShiftType,
-  );
+  // DEV-only ghost color mockups (ghost-color); deleted after the pick.
+  const devGhost = devGhostVariant();
+  const devBefore = devGhost === "before";
+  const title = devBefore
+    ? formatScheduleShiftBadgeTitle(type, job, showShiftType)
+    : formatScheduleShiftBadgeTitle(
+        carriedTypeName ? { name: carriedTypeName } : type,
+        metadata.ghost_job_name?.trim() || job,
+        showShiftType,
+      );
+  const ghostColor =
+    type?.color ??
+    (devGhost && !devBefore && devGhost !== "now" ? DEV_GHOST_TYPE_COLOR : "#54736a");
   const showClockRow = showClockTimes && !shift.hide_time_on_badge;
   const timeText = formatScheduleBadgeTimeRange(
     shift.start_time,
     shift.end_time,
     timeFormat,
   );
-  const labelText = formatShiftLabelDisplay(shift.label_names ?? []);
+  const labelText = formatShiftLabelDisplay(
+    devBefore ? [] : (shift.label_names ?? []),
+  );
   const warningText = formatScheduleShiftWarningAria(shift.warning_codes);
   const otherLocationText = sourceLocation
     ? `also scheduled at ${sourceLocation}`
@@ -359,7 +369,7 @@ export function GhostShiftCard({
       className="schedule-shift-badge"
       style={
         {
-          "--shift-color": type?.color ?? "#54736a",
+          "--shift-color": ghostColor,
           "--schedule-row-badge-height": `${badgeHeight}px`,
         } as CSSProperties
       }
@@ -371,6 +381,7 @@ export function GhostShiftCard({
         warningText,
       })}
       data-testid="ghost-shift-badge"
+      data-ghost-variant={devGhost ?? undefined}
       data-shift-badge="true"
       data-shift-id={shift.id}
       data-schedule-row-key={rowKey}
@@ -455,6 +466,17 @@ type GhostShiftMetadata = {
   readonly ghost_job_name?: string | null;
   readonly ghost_shift_type_name?: string | null;
 };
+
+// DEV-only ghost color mockups (ghost-color): ?devGhost=before|now|2|3|4|5.
+// The out-of-scope type color is not sent yet, so the mockups paint a purple "Bar" type.
+const DEV_GHOST_TYPE_COLOR = "#7B5EA7";
+const DEV_GHOST_VARIANTS = new Set(["before", "now", "2", "3", "4", "5"]);
+if (import.meta.env.DEV) void import("../../dev/ghostColorVariants.css");
+function devGhostVariant(): string | null {
+  if (!import.meta.env.DEV || typeof window === "undefined") return null;
+  const value = new URLSearchParams(window.location.search).get("devGhost");
+  return value && DEV_GHOST_VARIANTS.has(value) ? value : null;
+}
 
 function ghostShiftLocation(shift: ScheduleShift): string | null {
   const metadata = shift as ScheduleShift & GhostShiftMetadata;
