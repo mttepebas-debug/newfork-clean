@@ -381,7 +381,9 @@ export function ShiftQuickEditor({
   );
   const assessmentReasons = (result: ShiftAvailabilityAssessment | null) => {
     if (!result || result.operation === "allowed" || result.override_recorded || result.responsibility_retained) return [];
-    return result.reasons.map(reason => ({ type: "availability_assessment", severity: reason.severity === "block" ? "hard" : "soft", message: reason.message }));
+    // Availability is a preference: the cell shows it, it never asks (BL-186).
+    return result.reasons.filter(reason => reason.code !== "availability")
+      .map(reason => ({ type: "availability_assessment", severity: reason.severity === "block" ? "hard" : "soft", message: reason.message }));
   };
   const rawConflictReasons = [
     ...(assessment ? [] : localConflictReasons),

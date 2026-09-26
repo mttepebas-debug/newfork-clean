@@ -5,7 +5,6 @@ import {
   scheduleDraftListSchema,
   scheduleDraftDeleteResultSchema,
   scheduleBulkDeleteResultSchema,
-  scheduleAvailabilityConflictResultSchema,
   scheduleDraftSummarySchema,
   scheduleEditAcquireResultSchema,
   scheduleEditSessionSchema,
@@ -34,7 +33,6 @@ import {
   type ScheduleDraftList,
   type ScheduleDraftDeleteResult,
   type ScheduleBulkDeleteResult,
-  type ScheduleAvailabilityConflictResult,
   type ScheduleDraftSummary,
   type ScheduleEditAcquireResult,
   type ScheduleEditSession,
@@ -163,19 +161,6 @@ export function scheduleExportPreviewHtmlKey(
   request: ScheduleExportRequest,
 ) {
   return ["schedule-export-preview-html", workspaceId, request] as const;
-}
-
-export function scheduleDraftAvailabilityConflictsKey(
-  workspaceId: string | null,
-  weekStart: string,
-  draftId: string | null,
-) {
-  return [
-    "schedule-draft-availability-conflicts",
-    workspaceId,
-    weekStart,
-    draftId,
-  ] as const;
 }
 
 export function draftsKey(workspaceId: string | null, weekStart: string) {
@@ -485,19 +470,6 @@ export async function deleteScheduleDraft(
     await activeScheduleRequest(`/schedule/drafts/${draftId}`, {
       method: "DELETE",
     }),
-  );
-}
-
-export async function fetchDraftAvailabilityConflicts(
-  workspaceId: string,
-  draftId: string,
-  weekStart: string,
-): Promise<ScheduleAvailabilityConflictResult> {
-  const query = new URLSearchParams({ week_start: weekStart });
-  return scheduleAvailabilityConflictResultSchema.parse(
-    await activeScheduleRequest(
-      `/schedule/drafts/${draftId}/availability-conflicts?${query}`,
-    ),
   );
 }
 

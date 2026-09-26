@@ -460,13 +460,10 @@ export function PublishScheduleDialog({
     try {
       let currentPreview = preview;
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        const overrideDecisions = [...publishOverrideableBlockers(currentPreview), ...publishGatingRisks(currentPreview)].map((finding) => ({
-          finding_id: finding.id,
-          reason: "Schedule conflict confirmed by manager.",
-        })).concat(publishNewAvailabilityFindings(currentPreview).map((finding) => ({
-          finding_id: finding.id,
-          reason: finding.warning_policy === "confirm" ? "Schedule conflict confirmed by manager." : "Schedule warning acknowledged (warn policy).",
-        })));
+        // An acknowledgement names the finding; the database records who and
+        // when (BL-186, BL-190).
+        const overrideDecisions = [...publishOverrideableBlockers(currentPreview), ...publishGatingRisks(currentPreview),
+          ...publishNewAvailabilityFindings(currentPreview)].map((finding) => ({ finding_id: finding.id }));
         try {
           await onPublish(currentPreview, overrideDecisions, notifyEmployeeIds,
             { fingerprint: currentPreview.fingerprint, decisions: overrideDecisions }, departmentScope);

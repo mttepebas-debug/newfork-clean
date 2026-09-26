@@ -2478,20 +2478,10 @@ describe("api app", () => {
         expected_draft_revision: 1,
         fingerprint: "a".repeat(64),
         notify_employee_ids: ["15000000-0000-4000-8000-000000000001"],
-        overrides: [
-          {
-            finding_id: "availability-1234567890abcdef",
-            reason: "Employee confirmed availability for this service.",
-          },
-        ],
+        overrides: [{ finding_id: "availability-1234567890abcdef" }],
         preflight_ack: {
           fingerprint: "a".repeat(64),
-          decisions: [
-            {
-              finding_id: "availability-1234567890abcdef",
-              reason: "Employee confirmed availability for this service.",
-            },
-          ],
+          decisions: [{ finding_id: "availability-1234567890abcdef" }],
         },
       },
     });
@@ -2507,15 +2497,33 @@ describe("api app", () => {
         notifyEmployeeIds: ["15000000-0000-4000-8000-000000000001"],
         preflightAck: {
           fingerprint: "a".repeat(64),
-          decisions: [
-            {
-              finding_id: "availability-1234567890abcdef",
-              reason: "Employee confirmed availability for this service.",
-            },
-          ],
+          decisions: [{ finding_id: "availability-1234567890abcdef" }],
         },
       }),
     ]);
+  });
+
+  it("says an unacknowledged availability warning stops the publish (BL-186)", async () => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleService: scheduleServiceMock({
+        publish: async () => { throw rpcFailure({ message: "Acknowledge the availability warnings before publishing", code: "22023" }); },
+      }),
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publications",
+      headers: { authorization: "Bearer owner-token" },
+      payload: {
+        draft_id: "85000000-0000-4000-8000-000000000001",
+        location_ids: ["11000000-0000-4000-8000-000000000001"],
+        expected_draft_revision: 1,
+        fingerprint: "a".repeat(64),
+        overrides: [],
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe("Acknowledge the availability warnings before publishing");
   });
 
   it("returns a successful publish response with a notification warning", async () => {

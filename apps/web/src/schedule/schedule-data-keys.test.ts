@@ -4,7 +4,6 @@ import type { ScheduleExportRequest } from "@newfork/shared/schedule";
 
 import {
   scheduleEditLockKey,
-  scheduleDraftAvailabilityConflictsKey,
   scheduleExportPreviewHtmlKey,
   schedulePublicationStatusKey,
   scheduleReferenceKey,
@@ -45,18 +44,6 @@ describe("schedule reference query key aliases", () => {
       "schedule-publication-status",
       "workspace",
       "2026-08-17",
-    ]);
-    expect(
-      scheduleDraftAvailabilityConflictsKey(
-        "workspace",
-        "2026-08-17",
-        "draft-1",
-      ),
-    ).toEqual([
-      "schedule-draft-availability-conflicts",
-      "workspace",
-      "2026-08-17",
-      "draft-1",
     ]);
   });
 

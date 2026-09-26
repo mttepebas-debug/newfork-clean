@@ -258,7 +258,24 @@ describe("PublishScheduleDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: policy === "warn" ? "Next" : "Next" }));
     fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
     await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
-    expect(onPublish.mock.calls[0]![1]).toEqual([{ finding_id: finding.id, reason: policy === "confirm" ? "Schedule conflict confirmed by manager." : "Schedule warning acknowledged (warn policy)." }]);
+    expect(onPublish.mock.calls[0]![1]).toEqual([{ finding_id: finding.id }]);
+  });
+
+  it("acknowledges a new availability warning by its id only; the database records who and when (BL-186)", async () => {
+    const finding = publishFinding({ id: "d".repeat(64), code: "availability", availability_state: "new", warning_policy: "confirm", tier: "risk",
+      message: "Alex Rivera shows as unavailable for this shift." });
+    const accepted = publishFinding({ id: "e".repeat(64), code: "availability", availability_state: "accepted", warning_policy: "confirm", tier: "note",
+      message: "Alex Rivera shows as unavailable for this shift.", acknowledged_by_name: "Ayse Manager", acknowledged_at: "2026-09-20T18:00:00+00:00" });
+    const next = { ...preview, status: "override_required" as const, findings: [finding, accepted] };
+    const onPublish = vi.fn().mockResolvedValue({});
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={onPublish} />);
+    await clickReadyNext();
+    expect((await screen.findAllByText("Alex Rivera shows as unavailable for this shift.")).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
+    expect(onPublish.mock.calls[0]![1]).toEqual([{ finding_id: finding.id }]);
+    expect(onPublish.mock.calls[0]![3]).toEqual({ fingerprint: next.fingerprint, decisions: [{ finding_id: finding.id }] });
   });
 
   it("does not reconfirm or resubmit previously accepted weekly findings", async () => {

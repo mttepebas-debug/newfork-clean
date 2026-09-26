@@ -22,12 +22,6 @@ const conflictRuleChoices: readonly {
   { key: "document_conditional_grace", label: "Conditional documents during grace", description: "Unresolved documents while the delivery period is still open.", actions: ["warn", "confirm", "block"] },
   { key: "document_conditional_overdue", label: "Conditional documents after grace", description: "Unresolved documents after the delivery deadline. Cannot be softer than the grace rule.", actions: ["confirm", "block"] },
   {
-    key: "availability",
-    label: "Employee availability",
-    description: "Assignments during unavailable hours.",
-    actions: ["warn", "confirm", "block"],
-  },
-  {
     key: "closed_location",
     label: "Closed location or shift type",
     description: "Assignments on a closed date.",
