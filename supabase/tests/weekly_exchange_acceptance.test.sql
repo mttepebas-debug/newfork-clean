@@ -76,7 +76,6 @@ update state set aid=(select id from public.shift_exchange_applications where ca
 select is(pg_temp.command(second_user,jsonb_build_object('action','apply','shift_id',pg_temp.shift_id(1),'case_id',cid,'availability_fingerprint',token),key)->>'case_id',cid::text,'retry reuses the successful acceptance') from ws,state;
 select is((select count(*) from public.shift_exchange_applications where case_id=cid),1::bigint,'retry does not duplicate acceptance') from state;
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(1)),(select first_emp from ws),'employee acceptance does not transfer before manager decision');
-update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{availability}','"confirm"') where workspace_id=(select w from ws);
 update state set preview=(select public.shift_exchange_preview(manager,w,cid,aid) from ws);
 select is(preview->>'allowed','true','manager finalization needs no second employee or reminder decision') from state;
 select ok(not (preview::text like '%manager_intervals%' or preview::text like '%employee_intervals%'),'manager exchange preview has no raw preference payload') from state;
@@ -93,8 +92,9 @@ update state set preview=(select public.shift_exchange_preview(manager,w,cid,aid
 update state set result=(select pg_temp.command(manager,jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',result->>'revision','fingerprint',preview->>'fingerprint')) from ws);
 select is(result->>'status','completed','actual manager command completes with no extra availability override') from state;
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(1)),(select second_emp from ws),'accepted employee receives the full shift');
-select is((select actor_user_id from public.schedule_availability_overrides where workspace_id=(select w from ws) and revoked_at is null),(select second_user from ws),'immutable acceptance records employee identity, not an invented manager decision');
-select is((select availability_snapshot->'override'->'assessment'->>'consent_application_id' from public.schedule_published_shifts where id=pg_temp.shift_id(1)),(select aid::text from state),'published snapshot carries assignment-bound voluntary evidence');
+-- BL-186: availability never gates a transfer; the employee's own choice is the application above.
+select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),0::bigint,'no acceptance evidence is needed for the employee''s own mark');
+select is((select availability_snapshot->'assessment'->>'has_availability_conflict' from public.schedule_published_shifts where id=pg_temp.shift_id(1)),'true','the published shift records the warning it was taken with');
 select is((select preference from public.employee_weekly_preferences where employee_id=(select second_emp from ws)),pg_temp.unavailable(),'voluntary assignment never rewrites the employee week');
 select ok(exists(select 1 from public.notification_outbox where workspace_id=(select w from ws) and payload->>'request_action'='transfer_completed'),'existing transfer notification outbox remains connected');
 
@@ -115,7 +115,7 @@ update state set result=(select pg_temp.command(manager,jsonb_build_object('acti
 select is(result->>'status','completed','swap completes without re-prompting either employee or manager') from state;
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(3)),(select first_emp from ws),'requester receives their accepted shift');
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(4)),(select second_emp from ws),'invited employee receives their accepted shift');
-select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws) and revoked_at is null),3::bigint,'each transferred responsibility gets its own evidence');
+select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),0::bigint,'the swap records no acceptance either');
 update public.employee_weekly_preferences set preference=public.empty_weekly_preference('time_range') where employee_id=(select second_emp from ws);
 select is(pg_temp.warning(second_emp,2),null::jsonb,'manager-only conflict never asks the employee to reveal or accept a private reminder') from ws;
 update state set result=(select pg_temp.command(second_user,jsonb_build_object('action','apply','shift_id',pg_temp.shift_id(2))) from ws);
