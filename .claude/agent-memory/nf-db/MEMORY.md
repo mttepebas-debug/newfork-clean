@@ -2,3 +2,4 @@
 - [Core call cost](core-call-cost.md) — authz_reason/scope_set ~0.33 ms each vs 0.04 ms helper; compute scope once; draft shifts read slowed by per-shift projection
 - [Folding a chain](folding-chains.md) — labeled nested block per inner layer, drop overloads before adding defaults, retired signatures, mocked seams, message text, TS twin
 - [SQL traps moving onto the core](sql-traps-core-translation.md) — any((select..))::uuid[], plpgsql IF+CASE, somewhere shape, location delete needs archived_at, document-blocked test recipe
+- [Leave rules in code](leave-rules-in-code.md) — approved_time_off read once in assess; CHECK = block since FB-6.1.6; exchange-over-own-leave REUSE rule not implemented
