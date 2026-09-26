@@ -77,6 +77,7 @@ supabase/tests/the_schedule_uses_the_preferred_name.test.sql
 supabase/tests/time_off_cancellation_requests.test.sql
 supabase/tests/time_off_decision_identity_guard.test.sql
 supabase/tests/time_off_physical_request_counts.test.sql
+supabase/tests/time_off_published_assignment_disposition.test.sql
 supabase/tests/time_off_requested_periods.test.sql
 supabase/tests/timezone_names.test.sql
 supabase/tests/weekly_assignment_candidates.test.sql
