@@ -25,14 +25,10 @@ type Props = {
 // Remount on actor changes; an employee's unsaved rules must never follow a
 // drawer selection to the next employee. Live revisions do not reset a draft.
 export function WeeklyPreferencesForm(props: Props) {
-  if (props.audience === "manager" && props.model.manager === null) {
-    return (
-      <p role="status">Manager reminders are not available for this account.</p>
-    );
-  }
   return (
     <PreferenceForm
-      key={`${props.model.employee_id}:${props.audience}`}
+      // Losing the manager record remounts too: a private reminder draft is dropped.
+      key={`${props.model.employee_id}:${props.audience}:${props.model.manager !== null}`}
       {...props}
     />
   );
@@ -46,6 +42,9 @@ function PreferenceForm({
   wizard = false,
 }: Props) {
   const manager = audience === "manager";
+  // No reminder data (the person is a manager+, or the reader may not see
+  // notes): the manager view shows only the employee's week, no reminder tab.
+  const reminders = manager && model.manager !== null;
   const canEdit = manager
     ? model.can_manage && model.manager !== null
     : model.can_edit_employee;
@@ -217,12 +216,14 @@ function PreferenceForm({
     <section
       className="weekly-preferences-panel"
       aria-label={
-        manager
+        reminders
           ? "Employee availability and manager reminders"
-          : "Weekly availability"
+          : manager
+            ? "Employee availability"
+            : "Weekly availability"
       }
     >
-      {manager && (
+      {reminders && (
         <div
           role="tablist"
           aria-label="Availability"
@@ -266,8 +267,8 @@ function PreferenceForm({
       )}
       <div
         id={`${tabId}-panel`}
-        role={manager ? "tabpanel" : undefined}
-        aria-labelledby={manager ? `${tabId}-${tab}` : undefined}
+        role={reminders ? "tabpanel" : undefined}
+        aria-labelledby={reminders ? `${tabId}-${tab}` : undefined}
         className="weekly-preferences-body"
       >
         {manager && tab === "employee" ? (

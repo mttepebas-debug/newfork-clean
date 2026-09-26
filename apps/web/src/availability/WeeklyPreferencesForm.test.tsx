@@ -217,6 +217,33 @@ describe("weekly preference form", () => {
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
 
+  it("draws no reminder section when the model carries no manager record", () => {
+    render(
+      <WeeklyPreferencesForm
+        model={{ ...model(), manager: null }}
+        audience="manager"
+        onSave={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByText(/manager reminders/i)).toBeNull();
+    expect(screen.queryByText(/not available/i)).toBeNull();
+    expect(
+      screen.queryByRole("switch", { name: "Enable manager reminders" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "Employee availability" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+
+  it("offers the reminder tab when the model carries a manager record", () => {
+    render(
+      <WeeklyPreferencesForm model={model()} audience="manager" onSave={vi.fn()} />,
+    );
+    expect(screen.getByRole("tab", { name: "Manager reminders" })).toBeTruthy();
+  });
+
   it("can submit a completely available week without making artificial edits", async () => {
     const data = model();
     data.employee.submitted = false;
