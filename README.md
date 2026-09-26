@@ -26,6 +26,9 @@ in `supabase/seed.sql`. `pnpm.cmd supabase:reset` wipes the local DB.
 Copy `.env.example` to `.env.local` files and fill in values; env files are not
 committed.
 
+Shared locks (`db.lock`, `main.lock`, see CLAUDE.md §7): `node scripts/lock.mjs take <db|main> "<role, purpose>"`,
+`release <db|main> "<role>"`, or `status` — `take`/`release` exit 1 on conflict instead of overwriting.
+
 ## Plan
 
 Current plan, tasks and backlog live in [`docs/plan/`](docs/plan/ROADMAP.md).
