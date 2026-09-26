@@ -26,8 +26,10 @@ in `supabase/seed.sql`. `pnpm.cmd supabase:reset` wipes the local DB.
 Copy `.env.example` to `.env.local` files and fill in values; env files are not
 committed.
 
-Shared locks (`db.lock`, `main.lock`, see CLAUDE.md §7): `node scripts/lock.mjs take <db|main> "<role, purpose>"`,
-`release <db|main> "<role>"`, or `status` — `take`/`release` exit 1 on conflict instead of overwriting.
+Shared locks (`db.lock`, `main.lock`, see CLAUDE.md §7): `node scripts/lock.mjs take <db|main> "<role/session, purpose>"`
+(identity must be `role/session`, e.g. `"nf-test/fb61-11, migration trial"`), `release <db|main> "<role/session>"`,
+or `status` — `take`/`release` exit 1 on conflict instead of overwriting. Covered by `pnpm.cmd test`
+(runs `node --test scripts/lock.test.mjs` first).
 
 ## Plan
 
