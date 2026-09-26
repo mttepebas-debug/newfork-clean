@@ -35,6 +35,9 @@ import {
 } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { noAccessHomePath } from "../auth/resolveLanding";
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
 import { EmployeeDrawer } from "../employees/EmployeeDrawer";
 import { ScheduleFilterCommandStrip } from "../schedule/components/ScheduleFilterCommandStrip";
 import {
@@ -1801,7 +1804,12 @@ export function SchedulePage({
       />
     );
   if (query.isError)
-    return (
+    return isNoAccess(query.error) ? (
+      <NoAccessState
+        subject="this schedule"
+        homeHref={noAccessHomePath(context, scheduleBasePath)}
+      />
+    ) : (
       <ScheduleState
         title="Schedule unavailable"
         detail={query.error.message}
