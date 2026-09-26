@@ -1,1 +1,2 @@
 - [Backlog işaret sayımı](backlog-unmarked-entries.md) — kapananlar en altta; grep sayımı nasıl doğrulanır
+- [Worktree Bash koruması](worktree-bash-guard.md) — değişkenli/karmaşık komutta git reddedilir; uzun metin için scratchpad dosyası + betik
