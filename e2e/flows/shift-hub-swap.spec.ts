@@ -64,6 +64,9 @@ test("a two-location swap completes after both managers approve", async ({ brows
   await mehmet.getByRole("button", { name: "Review Deniz Person" }).click();
   await mehmet.getByRole("button", { name: /^Approve transfer to Deniz/ }).click();
   await mehmet.getByRole("button", { name: /^Confirm transfer to Deniz/ }).click();
-  await expect.poll(() => holder("ali-k")).toBe("Deniz");
+  // BL-180: on the shared CI machine (three self-hosted runners on one box)
+  // the click-to-commit round trip can occasionally outrun the default 15s
+  // poll window; this only widens the wait, the awaited value is unchanged.
+  await expect.poll(() => holder("ali-k"), { timeout: 30_000 }).toBe("Deniz");
   expect(holder("deniz-b")).toBe("Ali");
 });
