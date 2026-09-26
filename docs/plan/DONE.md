@@ -58,3 +58,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | BL-140, BL-143, BL-146, BL-150 | CI yük altında yanlış kırmızı vermiyor (bütçe testi ve temizlik adımı), e2e dosyaları tip kapısında, bozuk izin testi yeşil listede | 4dedc62
 2026-09-26 | FB-6.1.4 | Takvim'in her işi tek veritabanı fonksiyonu (yayın 9→1); çok lokasyonlu taslak/şablon/yayın/dışa aktarmada bütün lokasyonların yetkisi soruluyor; ızgara 16 ms | b126918
 2026-09-26 | BL-148 (kısmi) | Account ekranlarında 30 ham renk tema token'ına geçti, görünüm aynı | b90a1cd
+2026-09-26 | BL-137 (işlevsel) | parolasını unutan kişi giriş ekranından sıfırlama bağlantısı isteyip yeni parola belirleyebiliyor; hesabın varlığı dışarıdan anlaşılmıyor | ec7fd07
