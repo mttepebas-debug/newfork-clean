@@ -278,6 +278,52 @@
   margin-top: 28px;
 }
 
+/* A text link on a form screen ("Forgot password?", "Back to sign in"). 24px
+   touch target like the trust links (WCAG 2.5.8); focus ring from `a:focus-visible`. */
+.pb-link {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  color: var(--theme-accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.pb-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* DEV-only variant (?variant=quiet): the trust-link colour instead of green. */
+.pb-links-quiet .pb-link {
+  color: var(--theme-muted-strong);
+  font-weight: 400;
+}
+.pb-links-quiet .pb-link:hover {
+  color: var(--theme-accent);
+}
+/* Under a field it sits at the field's right edge, clear of the label column. */
+.onboarding-field > .pb-link {
+  justify-self: end;
+}
+/* The way back sits centred under the form or the answer. */
+.pb-stage > .pb-link {
+  margin-top: 20px;
+}
+/* Form and stage messages read like the stage alert above: danger colour,
+   left under the fields they are about; the answer to a request, centred. */
+.pb-stage-narrow .sign-in-form > .form-error {
+  margin: 0;
+  color: var(--theme-danger);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+}
+.pb-stage > .form-success {
+  margin: 18px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 /* Wizard: the same frame, the side panel also says where you are. */
 .pb-side-group {
   display: grid;

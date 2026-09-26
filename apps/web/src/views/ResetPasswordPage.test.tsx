@@ -129,9 +129,13 @@ describe("ResetPasswordPage", () => {
   it("shows the invalid-link state at once when the link carries no token", () => {
     renderPage("/reset-password");
     expect(
-      screen.getByText("This reset link has expired or was already used."),
-    ).toBeTruthy();
+      screen.getByText("This reset link has expired or was already used.").className,
+    ).toBe("pb-description");
     expect(screen.queryByLabelText("New password")).toBeNull();
+    // The one way forward is the green button, not a bare link.
+    expect(
+      screen.getByRole("link", { name: "Request a new link" }).className,
+    ).toContain("pb-btn-primary");
   });
 
   it("keeps the opened session when the password is refused, so a second try needs no new link", async () => {

@@ -65,9 +65,9 @@ describe("SignInPage", () => {
 
   it("offers a way to reset a forgotten password when signing in, not when creating an account", () => {
     renderPage();
-    expect(
-      screen.getByRole("link", { name: "Forgot password?" }).getAttribute("href"),
-    ).toBe("/forgot-password");
+    const forgot = screen.getByRole("link", { name: "Forgot password?" });
+    expect(forgot.getAttribute("href")).toBe("/forgot-password");
+    expect(forgot.className).toBe("pb-link");
 
     fireEvent.click(
       screen.getByRole("button", { name: "Create a workspace account" }),
