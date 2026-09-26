@@ -31,6 +31,20 @@ const apiUrl =
 export const newforkApiUrl = apiUrl;
 export const accountProfileAvatarBucket = "account-profile-photos";
 
+// BL-137: set while a reset link's session is open and no new password is
+// saved yet. If the tab closed in that window, drop the stored session here,
+// before the auth client below can read it.
+const passwordResetPendingKey = "newfork.passwordResetPending";
+try {
+  if (window.localStorage.getItem(passwordResetPendingKey)) {
+    for (const key of Object.keys(window.localStorage))
+      if (/^sb-.+-auth-token$/.test(key)) window.localStorage.removeItem(key);
+    window.localStorage.removeItem(passwordResetPendingKey);
+  }
+} catch {
+  // Storage blocked: the auth client cannot persist a session either.
+}
+
 export const supabaseClient: SupabaseClient | null =
   supabaseUrl && supabaseAnonKey
     ? createClient(supabaseUrl, supabaseAnonKey, {
@@ -629,13 +643,22 @@ export async function openPasswordResetSession(tokenHash: string): Promise<boole
     type: "recovery",
     token_hash: tokenHash,
   });
-  return !error && Boolean(data.session);
+  if (error || !data.session) return false;
+  window.localStorage.setItem(passwordResetPendingKey, "1");
+  return true;
 }
 
 export async function saveNewPassword(password: string): Promise<void> {
   if (!supabaseClient) throw new Error("Sign-in is unavailable in this browser session.");
   const { error } = await supabaseClient.auth.updateUser({ password });
   if (error) throw new Error(error.message);
+  window.localStorage.removeItem(passwordResetPendingKey);
+}
+
+// The person left the reset screen without saving: the link's session goes.
+export async function abandonPasswordResetSession(): Promise<void> {
+  window.localStorage.removeItem(passwordResetPendingKey);
+  await supabaseClient?.auth.signOut({ scope: "local" });
 }
 
 export async function restoreAccountDeletion(

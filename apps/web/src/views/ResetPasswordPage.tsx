@@ -1,21 +1,34 @@
-import { useState, type FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
-import { openPasswordResetSession, saveNewPassword } from "../lib/supabase";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
+import {
+  abandonPasswordResetSession,
+  openPasswordResetSession,
+  saveNewPassword,
+} from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 
-// BL-137. The link's token is spent on Save, not on page load, so a mail
-// scanner that opens the link does not use it up. Once spent, the session
-// stays for a second try if the password itself is refused.
+// BL-137. The token is in the fragment (#token_hash=), which never reaches a
+// server log. It is spent on Save, not on page load, so a mail scanner that
+// opens the link does not use it up. Once spent, the session stays for a
+// second try if the password itself is refused; leaving without saving signs
+// it out (a closed tab is handled on the next load, in lib/supabase).
 export default function ResetPasswordPage() {
-  const [searchParams] = useSearchParams();
+  const { hash } = useLocation();
   const navigate = useNavigate();
-  const tokenHash = searchParams.get("token_hash") ?? "";
+  const tokenHash = new URLSearchParams(hash.slice(1)).get("token_hash") ?? "";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [sessionOpen, setSessionOpen] = useState(false);
   const [linkInvalid, setLinkInvalid] = useState(tokenHash === "");
   const [error, setError] = useState<string | null>(null);
+  const unsavedSession = useRef(false);
+
+  useEffect(
+    () => () => {
+      if (unsavedSession.current) void abandonPasswordResetSession();
+    },
+    [],
+  );
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -26,14 +39,15 @@ export default function ResetPasswordPage() {
     }
     setSubmitting(true);
     try {
-      if (!sessionOpen) {
+      if (!unsavedSession.current) {
         if (!(await openPasswordResetSession(tokenHash))) {
           setLinkInvalid(true);
           return;
         }
-        setSessionOpen(true);
+        unsavedSession.current = true;
       }
       await saveNewPassword(password);
+      unsavedSession.current = false;
       navigate("/app", { replace: true });
     } catch (caught: unknown) {
       setError(
