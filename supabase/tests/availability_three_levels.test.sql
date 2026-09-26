@@ -78,7 +78,6 @@ update tl_run set preview = pg_temp.preview(draft);
 select is(preview ->> 'status', 'publish_ready', 'a placed-anyway shift is ready to publish under Require confirmation') from tl_run;
 
 select pg_temp.set_level('block');
-select todo('FOUNDATION-B stage 6 Schedule: publication re-checks an unchanged published shift under the new level', 1);
 select is(pg_temp.preview(published) ->> 'status', 'publish_ready', 'a shift published before Block stays publishable') from tl_run;
 select is(pg_temp.preview(draft) ->> 'status', 'hard_blocked', 'Block stops a draft''s earlier "place anyway"') from tl_run;
 select throws_ok($$select public.publish_schedule_draft_service(tests.user('tl:owner'), tests.id('tl'), r.draft, array[tests.id('tl:K')], null, true,
@@ -87,7 +86,6 @@ select throws_ok($$select public.publish_schedule_draft_service(tests.user('tl:o
 select lives_ok($$select public.unpublish_schedule_service(tests.user('tl:owner'), tests.id('tl'), tests.week(2), array[tests.id('tl:K')],
   public.preview_schedule_unpublication_service(tests.user('tl:owner'), tests.id('tl'), tests.week(2), array[tests.id('tl:K')]) ->> 'fingerprint')$$,
   'the week can be unpublished');
-select todo('FOUNDATION-B stage 6 Schedule: publication re-checks an unchanged published shift under the new level', 1);
 select is(pg_temp.preview(published) ->> 'status', 'publish_ready', 'and republished unchanged under Block') from tl_run;
 
 create temp table tl_block as select
