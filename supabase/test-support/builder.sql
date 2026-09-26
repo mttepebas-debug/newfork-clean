@@ -336,10 +336,34 @@ begin
 end;
 $$;
 
+-- A tag the owner made in Settings > Shift labels (found if it is already
+-- there). Label: <w>:label:<lowercase name>.
+create or replace function tests.shift_label(w text, label_name text)
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  found uuid;
+begin
+  select l.id into found from public.shift_labels l
+  where l.workspace_id = tests.id(w) and lower(l.name) = lower(label_name) and l.archived_at is null;
+  if found is null then
+    found := gen_random_uuid();
+    perform tests.as_browser(tests.user(w || ':owner'), format(
+      $sql$insert into public.shift_labels (id, workspace_id, name) values (%L, %L, %L)$sql$,
+      found, tests.id(w), label_name));
+  end if;
+  return tests.remember(w || ':label:' || lower(label_name), found);
+end;
+$$;
+
 -- One shift added to an open edit the way the Schedule screen adds it: assess,
 -- then create with the assessment's fingerprint. shift is {"person", "loc",
--- "job", "day" (0 = Monday), "start", "end"} and optionally "note", "label_ids",
--- "label_names" (the shift's tags as the quick editor sends them); n is the
+-- "job", "day" (0 = Monday), "start", "end"} and optionally "note",
+-- "hide_time_on_badge", "label_ids", "label_names" (the shift's tags as the
+-- quick editor sends them; with names only, the tags are made in the catalog
+-- with tests.shift_label, as the server takes names from there); n is the
 -- week. Returns the shift id.
 create or replace function tests.add_shift(actor uuid, w text, session uuid, n integer, shift jsonb)
 returns uuid
@@ -357,7 +381,10 @@ declare
     'end_time', shift ->> 'end',
     'time_timezone', 'Europe/Istanbul',
     'note', coalesce(shift ->> 'note', ''),
-    'label_ids', coalesce(shift -> 'label_ids', '[]'::jsonb),
+    'hide_time_on_badge', coalesce((shift ->> 'hide_time_on_badge')::boolean, false),
+    'label_ids', coalesce(shift -> 'label_ids', (
+      select coalesce(jsonb_agg(tests.shift_label(w, tag.name) order by tag.ord), '[]'::jsonb)
+      from jsonb_array_elements_text(coalesce(shift -> 'label_names', '[]'::jsonb)) with ordinality as tag(name, ord))),
     'label_names', coalesce(shift -> 'label_names', '[]'::jsonb)
   );
   shift_id uuid := gen_random_uuid();
