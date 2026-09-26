@@ -172,6 +172,12 @@ describe("buildScheduleCellState", () => {
           start_time: "12:00",
           end_time: "16:00",
           crosses_midnight: false,
+          job_id: "33333333-3333-4333-8333-333333333399",
+          job_name: "Bartender",
+          shift_type_id: "44444444-4444-4444-8444-444444444499",
+          shift_type_name: "Late",
+          label_ids: ["66666666-6666-4666-8666-666666666699"],
+          label_names: ["On call"],
         },
       ],
     });
@@ -181,6 +187,16 @@ describe("buildScheduleCellState", () => {
       const ghost = cell?.ghostShifts.find((item) => item.id === "ghost-elsewhere");
       expect(ghost).toMatchObject({ ghost: true, ghost_location_name: "Besiktas", start_time: "12:00", end_time: "16:00" });
       expect(isGhostScheduleShift(ghost!)).toBe(true);
+      // What the card says travels with the ghost; the note never does.
+      expect(ghost).toMatchObject({
+        job_id: "33333333-3333-4333-8333-333333333399",
+        ghost_job_name: "Bartender",
+        shift_type_id: "44444444-4444-4444-8444-444444444499",
+        ghost_shift_type_name: "Late",
+        label_ids: ["66666666-6666-4666-8666-666666666699"],
+        label_names: ["On call"],
+        note: "",
+      });
     }
     // The real Main Dining shift overlaps the ghost, the same way two real shifts would.
     const mainCell = state.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId));
@@ -202,6 +218,12 @@ describe("buildScheduleCellState", () => {
           start_time: "09:00",
           end_time: "13:00",
           crosses_midnight: false,
+          job_id: "33333333-3333-4333-8333-333333333333",
+          job_name: "Server",
+          shift_type_id: null,
+          shift_type_name: null,
+          label_ids: [],
+          label_names: [],
         },
       ],
     });

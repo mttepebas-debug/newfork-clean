@@ -279,4 +279,69 @@ describe("GhostShiftCard", () => {
       "also scheduled at Patio",
     );
   });
+
+  it("titles an out-of-scope ghost with the job, type and labels it carries", () => {
+    // Besiktas is outside the reader's scope: its job and type are not in the model's lists.
+    const ghostShift = {
+      ...shift,
+      job_id: "55555555-5555-4555-8555-555555555599",
+      shift_type_id: "11111111-1111-4111-8111-111111111199",
+      label_names: ["On call"],
+      note: "",
+      ghost: true,
+      ghost_location_name: "Besiktas",
+      ghost_job_name: "Bartender",
+      ghost_shift_type_name: "Late",
+    } as ScheduleShift;
+
+    render(
+      <GhostShiftCard
+        shift={ghostShift}
+        job="Shift"
+        type={undefined}
+        showShiftType
+        showShiftLabels
+        showClockTimes
+        showJobColorDot
+        rowKey="row-1"
+        badgeHeight={52}
+      />,
+    );
+
+    const badge = screen.getByTestId("ghost-shift-badge");
+    const parts = [...badge.querySelectorAll("[data-shift-badge-content] > *")].map(
+      (node) => node.textContent,
+    );
+    // Same parts, same order as the real card: title, location, labels, time.
+    expect(parts).toEqual(["Late-Bartender", "Besiktas", "On call", "5:00 PM - 10:30 PM"]);
+    expect(badge.getAttribute("aria-label")).toContain("Late-Bartender");
+  });
+
+  it("falls back to Shift when the ghost carries no job or type name", () => {
+    const ghostShift = {
+      ...shift,
+      label_names: [],
+      ghost: true,
+      ghost_location_name: "Besiktas",
+      ghost_job_name: "  ",
+      ghost_shift_type_name: null,
+    } as ScheduleShift;
+
+    render(
+      <GhostShiftCard
+        shift={ghostShift}
+        job="Shift"
+        type={undefined}
+        showShiftType
+        showShiftLabels
+        showClockTimes
+        showJobColorDot
+        rowKey="row-1"
+        badgeHeight={52}
+      />,
+    );
+
+    const badge = screen.getByTestId("ghost-shift-badge");
+    expect(badge.querySelector("strong")?.textContent).toBe("Shift");
+  });
 });

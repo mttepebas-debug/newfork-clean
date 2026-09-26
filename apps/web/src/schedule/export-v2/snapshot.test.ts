@@ -135,12 +135,14 @@ describe("Export v2 immutable preview projection", () => {
     value.model.locations = [{ ...value.model.locations[0]!, name: "Kadikoy" }];
     value.model.shifts = [shift("kadikoy")];
     value.model.ghost_shifts = [{ id: "besiktas", employee_id: "person-a", location_id: "loc-besiktas",
-      location_name: "Besiktas", scheduled_date: "2026-09-14", start_time: "15:00", end_time: "18:00", crosses_midnight: false }];
+      location_name: "Besiktas", scheduled_date: "2026-09-14", start_time: "15:00", end_time: "18:00", crosses_midnight: false,
+      job_id: "job-bar", job_name: "Bartender", shift_type_id: null, shift_type_name: null, label_ids: [], label_names: ["On call"] }];
     const result = ready(value);
     expect(result.shifts.map(item => item.id)).toEqual(["kadikoy"]);
     expect(result.ghosts).toEqual([]);
     expect(result.locations.map(location => location.name)).toEqual(["Kadikoy"]);
     expect(JSON.stringify(result)).not.toContain("Besiktas");
+    expect(JSON.stringify(result)).not.toContain("Bartender");
   });
   it("projects current total comparisons, all-day/partial closures and deduplicated important dates", () => {
     const value = input();

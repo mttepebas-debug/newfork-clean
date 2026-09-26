@@ -1329,7 +1329,8 @@ export const scheduleImportantDateSchema = z.object({
 });
 
 // A published shift of someone on the grid at a location the reader does not
-// reach: where and when only, never editable. Only the manager week read sends it.
+// reach: what the shift card says (names travel with it), never its note, never
+// editable. Only the manager week read sends it.
 export const scheduleGhostShiftSchema = z.object({
   id: z.string().uuid(),
   employee_id: z.string().uuid(),
@@ -1339,6 +1340,12 @@ export const scheduleGhostShiftSchema = z.object({
   start_time: timeOfDaySchema,
   end_time: timeOfDaySchema,
   crosses_midnight: z.boolean(),
+  job_id: z.string().uuid(),
+  job_name: z.string().max(120).nullable(),
+  shift_type_id: z.string().uuid().nullable(),
+  shift_type_name: z.string().max(120).nullable(),
+  label_ids: z.array(z.string().uuid()),
+  label_names: z.array(z.string().trim().min(1).max(80)),
 });
 export type ScheduleGhostShift = z.infer<typeof scheduleGhostShiftSchema>;
 

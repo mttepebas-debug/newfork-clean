@@ -264,7 +264,8 @@ function makeGhostShift(shift: ScheduleShift, sourceLocationName: string | null)
   } as ScheduleShift;
 }
 
-// ponytail: the ghost read carries where and when only; job and type stay empty, the badge falls back to "Shift".
+// The job and type of an out-of-scope location are not in the model's lists,
+// so their names ride along for GhostShiftCard. The note is never sent.
 function outOfScopeShift(
   ghost: NonNullable<ScheduleReadModel["ghost_shifts"]>[number],
 ): ScheduleShift {
@@ -272,17 +273,21 @@ function outOfScopeShift(
     id: ghost.id,
     location_id: ghost.location_id,
     employee_id: ghost.employee_id,
-    job_id: "",
-    shift_type_id: null,
+    job_id: ghost.job_id,
+    shift_type_id: ghost.shift_type_id,
     scheduled_date: ghost.scheduled_date,
     start_time: ghost.start_time,
     end_time: ghost.end_time,
     crosses_midnight: ghost.crosses_midnight,
     unpaid_break_minutes: 0,
     hide_time_on_badge: false,
+    label_ids: ghost.label_ids,
+    label_names: ghost.label_names,
     note: "",
     warning_codes: [],
-  };
+    ghost_job_name: ghost.job_name,
+    ghost_shift_type_name: ghost.shift_type_name,
+  } as ScheduleShift;
 }
 
 function locationName(model: ScheduleReadModel, locationId: string): string | null {

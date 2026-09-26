@@ -333,7 +333,14 @@ export function GhostShiftCard({
 }) {
   const sourceLocation = ghostShiftLocation(shift);
   const displayedLocation = locationName ?? sourceLocation;
-  const title = formatScheduleShiftBadgeTitle(type, job, showShiftType);
+  // An out-of-scope ghost carries its own job and type names; the lists may not have them.
+  const metadata = shift as ScheduleShift & GhostShiftMetadata;
+  const carriedTypeName = metadata.ghost_shift_type_name?.trim();
+  const title = formatScheduleShiftBadgeTitle(
+    carriedTypeName ? { name: carriedTypeName } : type,
+    metadata.ghost_job_name?.trim() || job,
+    showShiftType,
+  );
   const showClockRow = showClockTimes && !shift.hide_time_on_badge;
   const timeText = formatScheduleBadgeTimeRange(
     shift.start_time,
@@ -409,7 +416,7 @@ export function GhostShiftCard({
 }
 
 export function formatScheduleShiftBadgeTitle(
-  type: ScheduleReadModel["shift_types"][number] | undefined,
+  type: Pick<ScheduleReadModel["shift_types"][number], "name"> | undefined,
   job: string,
   showShiftType = true,
 ): string {
@@ -445,6 +452,8 @@ type GhostShiftMetadata = {
   readonly is_ghost?: boolean;
   readonly ghost_location_name?: string | null;
   readonly source_location_name?: string | null;
+  readonly ghost_job_name?: string | null;
+  readonly ghost_shift_type_name?: string | null;
 };
 
 function ghostShiftLocation(shift: ScheduleShift): string | null {

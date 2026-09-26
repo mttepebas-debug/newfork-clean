@@ -704,12 +704,27 @@ describe("shared contracts", () => {
           start_time: "18:00",
           end_time: "02:00",
           crosses_midnight: true,
+          job_id: "20000000-0000-4000-8000-000000000009",
+          job_name: "Bartender",
+          shift_type_id: null,
+          shift_type_name: null,
+          label_ids: ["30000000-0000-4000-8000-000000000009"],
+          label_names: ["On call"],
+          note: "Private note",
         },
       ],
     });
     expect(parsed.ghost_shifts).toEqual([
-      expect.objectContaining({ location_name: "Besiktas", crosses_midnight: true }),
+      expect.objectContaining({
+        location_name: "Besiktas",
+        crosses_midnight: true,
+        job_name: "Bartender",
+        shift_type_name: null,
+        label_names: ["On call"],
+      }),
     ]);
+    // The ghost never carries the shift's free-text note, even if one is sent.
+    expect(parsed.ghost_shifts?.[0]).not.toHaveProperty("note");
     expect(parsed.locations[0]?.publication_status).toBe("published");
     expect(parsed.settings.time_format).toBe("12h");
     expect(parsed.employees[0]?.shift_type_ids ?? []).toEqual([]);
