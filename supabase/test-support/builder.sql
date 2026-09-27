@@ -349,6 +349,7 @@ declare
   actor uuid := tests.user(w || ':' || person_label);
   workspace uuid := tests.id(w);
   employee uuid := tests.id(w || ':' || person_label);
+  model jsonb := public.weekly_preferences_read_service(actor, workspace, employee);
   preference jsonb;
 begin
   select jsonb_build_object('input_mode', 'time_range', 'days', jsonb_agg(
@@ -362,7 +363,9 @@ begin
 
   perform public.weekly_preferences_save_service(
     actor, workspace,
-    jsonb_build_object('source', 'employee', 'employee_id', employee, 'preference', preference, 'decisions', '[]'::jsonb),
+    -- The save refuses a stale screen: send the revisions the page was read at.
+    jsonb_build_object('source', 'employee', 'employee_id', employee, 'preference', preference, 'decisions', '[]'::jsonb,
+      'expected_revision', model -> 'employee' -> 'revision', 'settings_revision', model -> 'settings' -> 'revision'),
     gen_random_uuid()
   );
   perform tests.settle();
