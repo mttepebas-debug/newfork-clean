@@ -311,3 +311,7 @@ Kısa yaz, ham araç çıktısı yapıştırma.
 - Kapanış: koordinatör doğrular (commit main'de, worktree ve branch silinmiş, arkada iş yok,
   bildiği her şey kayıtta) ve kullanıcıya "arşivlenebilir" der. Arşiv, telefon bağlantısı (Remote
   Control) açıkken reddedilir; kapatmak için her seferinde kullanıcıya sorulur.
+- Rol oturumu yenileme: bağlamı dolan rol oturumu arşivlenmeden önce yerine YENİ bir oturum açılır;
+  yeni oturum Remote Control açık ve kenar çubuğunda sabitlenmiş (pinned) başlar, başlığı
+  "Rol: <rol> (<uzmanlık>)" biçimindedir. Koordinatör açıldıktan sonra ikisini doğrular
+  (kullanıcı kararı 2026-09-27).
