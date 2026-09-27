@@ -200,6 +200,9 @@ insert into retired (kind, name, step) values
   ('function', 'stamp_weekly_reminder_disable', 'BL-186'),
   ('column', 'manager_weekly_reminders.last_disabled_at', 'BL-186'),
   ('trigger', 'manager_weekly_reminders.weekly_reminder_disable_stamp', 'BL-186');
+-- BL-198: the publish asks the pre-flight check (shift_exchange_draft_undoes).
+insert into retired (kind, name, step) values
+  ('function', 'shift_exchange_assert_draft', 'BL-198');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
