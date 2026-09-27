@@ -34,6 +34,9 @@ import { CatalogPageHeader } from "./CatalogPageHeader";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 type StatusFilter = "all" | "draft" | "scheduled" | "published";
 type SortKey = "title" | "audience" | "author" | "status" | "date";
 type Option = { id: string; name: string };
@@ -130,6 +133,14 @@ export function AnnouncementsPage() {
   const open = (item: AnnouncementRecord) =>
     navigate(`/app/announcements/${item.id}`, { preventScrollReset: true });
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="announcements"
+        homeHref={noAccessHomePath(context, "/app/announcements")}
+      />
+    );
   return (
     <section
       className="settings-page jobs-settings-page announcements-page announcements-catalog-page"

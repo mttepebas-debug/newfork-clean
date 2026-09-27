@@ -14,6 +14,10 @@ import {
   listDocuments,
   type DocumentAudience,
 } from "./document-data";
+import { useAuth } from "../auth/AuthContext";
+import { noAccessHomePath } from "../auth/resolveLanding";
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
 import "./documents.css";
 
@@ -44,6 +48,7 @@ export function EmployeeDocumentsList(props: {
   employeeId?: string;
   initialRequirementId?: string | null;
 }) {
+  const { context } = useAuth();
   const query = useQuery({
     queryKey: documentQueryKey(props.audience, props.userId),
     queryFn: () => listDocuments(props.audience),
@@ -255,11 +260,16 @@ export function EmployeeDocumentsList(props: {
         )}
       </div>
       {query.isLoading && <p className="settings-state">Loading documents…</p>}
-      {query.error && (
+      {query.error && (isNoAccess(query.error) ? (
+        <NoAccessState
+          subject="these documents"
+          homeHref={noAccessHomePath(context, "/app/employees/documents")}
+        />
+      ) : (
         <p className="settings-state error" role="alert">
           {errorText(query.error)}
         </p>
-      )}
+      ))}
       {selected && (
         <DocumentReviewDrawer
           audience={props.audience}

@@ -13,6 +13,9 @@ import { AccountPageHeader } from "./components";
 import { getNotificationPreferences, saveNotificationPreferences } from "./notification-preferences-data";
 import "./notification-preferences.css";
 
+import { noAccessHomePath } from "../auth/resolveLanding";
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
 type Entry = NotificationUserPreferencesResponse["catalog"][number];
 type Drafts = Record<string, NotificationChannelPreference>;
 const channels = ["in_app", "email"] as const;
@@ -135,7 +138,9 @@ export default function NotificationPreferencesPage() {
       {dirtyKeys.length > 0 ? <small>Save or discard changes before choosing another workspace.</small> : null}
     </label> : !context ? <p>Workspace notification controls become available when you have workspace access.</p> : null}
     {query.isLoading ? <p>Loading preferences</p> : null}
-    {query.error || mutation.error ? <p className="form-error" role="alert">{(query.error ?? mutation.error)?.message}</p> : null}
+    {isNoAccess(query.error) ? <NoAccessState subject="this workspace's notifications"
+      homeHref={noAccessHomePath(context, "/account/preferences/notifications")} />
+      : query.error || mutation.error ? <p className="form-error" role="alert">{(query.error ?? mutation.error)?.message}</p> : null}
     <div className="notification-preference-list" aria-label="Workspace notification channels">
       <div className="notification-matrix-header notification-matrix-grid">
         <span aria-hidden="true" />

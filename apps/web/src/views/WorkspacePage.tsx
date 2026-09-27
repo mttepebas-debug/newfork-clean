@@ -37,6 +37,9 @@ import {
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const widgetLabels: Record<WorkspaceWidgetId, string> = {
   operations: "Today",
   pending_requests: "Pending requests",
@@ -80,6 +83,14 @@ export function WorkspacePage() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="this workspace"
+        homeHref={noAccessHomePath(context, "/app/workspace")}
+      />
+    );
   if (query.isLoading) return <PageState text="Loading Workspace..." />;
   if (query.error || !query.data) {
     return (

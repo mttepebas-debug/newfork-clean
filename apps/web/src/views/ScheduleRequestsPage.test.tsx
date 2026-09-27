@@ -11,6 +11,7 @@ import { PermissionRoute } from "../auth/PermissionRoute";
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { decideTimeOff, getScheduleRequests, previewTimeOffAssignment } from "../schedule/requests-data";
 
+import { RequestError } from "../lib/request-error";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const context = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
@@ -392,5 +393,15 @@ describe("ScheduleRequestsPage", () => {
     await waitFor(() => expect(decideTimeOff).toHaveBeenCalledWith(workspaceId, fixture.time_off_requests[0]!.id, expect.objectContaining({
       assignment_fingerprint: "b".repeat(64), assignment_decisions: [{ shift_id: shiftId, action: "release_entire_shift" }],
     })));
+  });
+});
+
+describe("no access (FB-6.1.9)", () => {
+  it("shows the no-access card, not the raw error, when the API refuses requests (FB-6.1.9)", async () => {
+    vi.mocked(getScheduleRequests).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403)); vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, cases: [], opportunities: [], own_shifts: [] });
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "You don't have access to requests" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
+    expect(screen.queryByText("Forbidden")).toBeNull();
   });
 });

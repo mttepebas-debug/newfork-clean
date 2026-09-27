@@ -12,6 +12,9 @@ import { useAuth } from "../auth/AuthContext";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import { organizationRequest } from "./organization-data";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const conflictRuleChoices: readonly {
   key: keyof ScheduleConflictRules;
   label: string;
@@ -119,6 +122,14 @@ export default function ConflictHandlingSettingsPage() {
     if (!stale && !mutation.isPending) mutation.mutate(parsed.data);
   };
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="conflict rules"
+        homeHref={noAccessHomePath(context, "/app/settings/scheduling/conflicts")}
+      />
+    );
   return (
     <section
       className="settings-page"

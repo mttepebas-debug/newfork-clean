@@ -17,6 +17,7 @@ import {
   saveSchedulingSettings,
 } from "./organization-data";
 
+import { RequestError } from "../lib/request-error";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
 const context: ActiveWorkspaceContext = {
@@ -119,6 +120,14 @@ describe("SchedulingSettingsPage checklist mode", () => {
     );
     return { client, ...view };
   }
+
+  it("shows the no-access card, not the raw error, when the API refuses scheduling settings (FB-6.1.9)", async () => {
+    vi.mocked(loadSchedulingSettings).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "You don't have access to scheduling settings" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
+    expect(screen.queryByText("Forbidden")).toBeNull();
+  });
 
   it("requires explicit week start and time format choices in checklist mode", async () => {
     renderPage();

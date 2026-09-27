@@ -17,6 +17,9 @@ import {
 } from "./organization-data";
 import "./scheduling-settings.css";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const defaults: SchedulingSettingsInput = {
   week_start_day: "monday",
   schedule_deadline_day: "sunday",
@@ -112,6 +115,14 @@ export default function SchedulingSettingsPage() {
     mutation.mutate(general);
   };
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="scheduling settings"
+        homeHref={noAccessHomePath(context, "/app/settings/scheduling")}
+      />
+    );
   return (
     <section
       className="settings-page"

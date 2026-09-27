@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import EmployeesPage from "./EmployeesPage";
 import { listEmployees } from "./employee-data";
 
+import { RequestError } from "../lib/request-error";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
 const context = {
@@ -197,5 +198,15 @@ describe("EmployeesPage", () => {
         "active",
       ),
     );
+  });
+});
+
+describe("no access (FB-6.1.9)", () => {
+  it("shows the no-access card, not the raw error, when the API refuses employees (FB-6.1.9)", async () => {
+    vi.mocked(listEmployees).mockRejectedValueOnce(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "You don't have access to employees" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
+    expect(screen.queryByText("Forbidden")).toBeNull();
   });
 });
