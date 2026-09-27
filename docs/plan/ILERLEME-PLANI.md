@@ -24,6 +24,7 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 | K11 | BL-214 Discard butonu kenarı (ortak buton değeri) ve BL-216 birbirine yakın token'lar | **Açık** — ortak değer kuralı (CLAUDE.md §11.7) |
 | K12 | BL-221 — belgesi eksik owner'ın izni de onaysız mı kaydolsun? (bugün incelemeye düşüyor, müdürlere inceleme bildirimi gidiyor) | **Açık** |
 | K13 | BL-230 — takas onaylandıktan sonra hafta yayından kaldırılırsa takas korunsun mu? (a) en son yayına bak (Önerilen) / (b) kaldırma sıfırlar, REUSE'a yazılır / (c) beklesin | **Açık** |
+| K14 | FB-6.1.9 Settings ürün soruları (S1–S4): (1) varsayılan manager rolünde Settings okuma izinleri yok — REUSE:51 "manager katalogu salt okunur görür" ile çelişiyor; (2) `roles.read` manager tipi role verilebiliyor — REUSE Roles'u manager'a kapatıyor; (3) Acknowledgements manager kataloğunun parçası mı; (4) Important dates okuma kapsamı ve başka lokasyon adlarının görünmesi | **Açık** — seçenekli metni koordinatörde; FB-6.8'i etkiler |
 
 ## 3. Sıradaki en önemli iş (gerekçesiyle)
 1. **FB-6.1.14 hosted toplu gönderim (K5 son onayı).** Gerekçe: canlı ile main arasındaki fark en büyük risk; `.9` bittiği için engel yalnız kullanıcının onayı.
