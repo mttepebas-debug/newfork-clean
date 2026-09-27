@@ -58,12 +58,12 @@ test("publishing a draft that undoes an approved swap is refused, not overwritte
   }
 
   // An older draft, saved from a screen that never saw the swap: Kadikoy's
-  // slot the swap moved to Deniz still shows Emre.
+  // slot the swap moved to Deniz still shows Ali, who had it before.
   sql(`
     select tests.remember('${run}:session:stale', (public.acquire_schedule_edit_session_service(
       tests.user('${run}:ayse'), tests.id('${run}'), tests.week(${WEEK}), 'blank', null) -> 'session' ->> 'id')::uuid);
     select tests.add_shift(tests.user('${run}:ayse'), '${run}', tests.id('${run}:session:stale'), ${WEEK},
-      '{"person": "emre", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}');
+      '{"person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}');
     select public.save_schedule_edit_session_service(tests.user('${run}:ayse'), tests.id('${run}'),
       tests.id('${run}:session:stale'), (select revision from public.schedule_edit_sessions where id = tests.id('${run}:session:stale')),
       'Before the swap', null, null);`);
@@ -94,6 +94,7 @@ test("publishing a draft that undoes an approved swap is refused, not overwritte
     where s.id = tests.id('${run}:shift:ali-swap');`);
   expect(holder).toBe("Deniz");
   const versionCount = sql(`select count(distinct version_number) from public.schedule_location_publications
-    where workspace_id = tests.id('${run}') and location_id = tests.id('${run}:K');`);
+    where workspace_id = tests.id('${run}') and location_id = tests.id('${run}:K')
+      and week_start = tests.week(${WEEK});`);
   expect(versionCount).toBe("1");
 });
