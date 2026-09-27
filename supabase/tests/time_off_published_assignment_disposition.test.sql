@@ -1,22 +1,26 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
-create temp table tad as select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid w,
- 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'::uuid manager,'af9b0000-0000-4000-8000-000000000001'::uuid actor,
- '15000000-0000-4000-8000-000000000001'::uuid emp,'11000000-0000-4000-8000-000000000001'::uuid loc,
- '22000000-0000-4000-8000-000000000004'::uuid shift,gen_random_uuid() request,gen_random_uuid() segment,gen_random_uuid() op,
+select tests.world('tad');
+select tests.person('tad', 'emp', 'employee', array['K'], array['cook']);
+select tests.publish_week('tad', 1, jsonb_build_array(jsonb_build_object(
+  'label', 's', 'person', 'emp', 'loc', 'K', 'job', 'cook', 'day', 1, 'start', '15:00', 'end', '23:00'
+)));
+create temp table tad as select tests.id('tad') w,
+ tests.user('tad:owner') manager, tests.user('tad:emp') actor,
+ tests.id('tad:emp') emp, tests.id('tad:K') loc,
+ tests.id('tad:shift:s') shift, gen_random_uuid() request,gen_random_uuid() segment,gen_random_uuid() op,
  null::jsonb preview,null::jsonb result,null::jsonb decisions,null::jsonb original;
-insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
-select actor,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','timeoff-assignment@example.test','','{}','{}',now(),now() from tad;
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from tad;
-update public.employee_profiles set user_id=(select actor from tad) where id=(select emp from tad);
 update tad set original=(select to_jsonb(ps) from public.schedule_published_shifts ps where id=tad.shift);
 insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,reason,created_by,period_version)
 select request,w,emp,loc,'Time off during a published shift',actor,2 from tad;
+-- BL-217: the location's own timezone is read live instead of assumed as a
+-- literal, so this file can never again disagree with a location it does not
+-- own (BL-209's root cause).
 insert into public.schedule_time_off_segments(id,workspace_id,request_id,segment_date,start_time,end_time,time_timezone,starts_at,ends_at,ends_next_day,fold_choices)
 select t.segment,t.w,t.request,(p->>'segment_date')::date,(p->>'start_time')::time,(p->>'end_time')::time,p->>'time_timezone',
  (p->>'starts_at')::timestamptz,(p->>'ends_at')::timestamptz,(p->>'ends_next_day')::boolean,p->'fold_choices'
- from tad t cross join lateral (select public.time_off_resolve_period(jsonb_build_object('segment_date',t.original->>'scheduled_date','start_time','15:00','end_time','23:00'),'America/Los_Angeles') p) resolved;
+ from tad t cross join lateral (select public.time_off_resolve_period(jsonb_build_object('segment_date',t.original->>'scheduled_date','start_time','15:00','end_time','23:00'),(select timezone from public.locations where id=t.loc)) p) resolved;
 update tad set decisions=jsonb_build_array(jsonb_build_object('segment_id',segment,'pieces',
  (select jsonb_build_array(
   jsonb_build_object('starts_at',s.starts_at,'ends_at',s.starts_at+interval '1 hour','status','denied'),
@@ -33,7 +37,7 @@ select throws_ok($$select public.resolve_schedule_time_off_request_service(manag
 select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint','[]') from tad$$,'22023',null,'every affected assignment needs an explicit choice');
 select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,'stale',jsonb_build_array(jsonb_build_object('shift_id',shift,'action','release_entire_shift'))) from tad$$,'40001',null,'stale preview cannot release an assignment');
 select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',shift,'action','keep'))) from tad$$,'22023',null,'approval cannot leave the conflicting shift assigned');
-select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id','22000000-0000-4000-8000-000000000001','action','release_entire_shift'))) from tad$$,'22023',null,'cannot release an unrelated shift');
+select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',gen_random_uuid(),'action','release_entire_shift'))) from tad$$,'22023',null,'cannot release an unrelated shift');
 select is((select count(*)::int from public.time_off_decision_pieces where request_id=(select request from tad)),0,'failed final approval rolls back the leave decision');
 select is((select count(*)::int from public.time_off_assignment_releases where request_id=(select request from tad)),0,'failed final approval writes no release history');
 select is((select employee_id from public.schedule_published_shifts where id=(select shift from tad)),emp,'failed final approval keeps the employee responsible') from tad;
@@ -42,20 +46,20 @@ update public.schedule_published_shifts set employee_id=null where id=(select sh
 select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',shift,'action','release_entire_shift'))) from tad$$,'40001',null,'a real assignment change after preview invalidates the decision');
 rollback to savepoint assignment_changed;
 savepoint restricted_reviewer;
-insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
-values('af9b0000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','timeoff-reviewer@example.test','','{}','{}',now(),now());
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,'af9b0000-0000-4000-8000-000000000002','manager','active',true from tad;
--- all_locations is turned off for a manager-class role on the way in, so the
--- reviewer is given every location in the workspace by name -- which is
--- what all_locations meant here.
-select tests.works_at(m.id, l.id) from tad t join public.workspace_memberships m on m.workspace_id=t.w and m.user_id='af9b0000-0000-4000-8000-000000000002'
- join public.locations l on l.workspace_id=t.w;
-insert into public.workspace_role_permissions(workspace_id,role_id,permission_key)
-select w,m.role_id,'schedule.time_off_requests.manage' from tad t join public.workspace_memberships m on m.workspace_id=t.w and m.user_id='af9b0000-0000-4000-8000-000000000002' on conflict do nothing;
-delete from public.workspace_role_permissions where permission_key='schedule.publish' and role_id=(select role_id from public.workspace_memberships where workspace_id=(select w from tad) and user_id='af9b0000-0000-4000-8000-000000000002');
-select is(public.preview_time_off_assignment_decision_service('af9b0000-0000-4000-8000-000000000002',w,request,1,'partial_approve',decisions)->>'restricted_count','1','request management alone does not grant assignment release') from tad;
-select is(jsonb_array_length(public.preview_time_off_assignment_decision_service('af9b0000-0000-4000-8000-000000000002',w,request,1,'partial_approve',decisions)->'affected_shifts'),0,'restricted assignment details are not exposed in preview') from tad;
-select throws_ok($$select public.decide_time_off_with_assignments_service('af9b0000-0000-4000-8000-000000000002',w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',shift,'action','release_entire_shift'))) from tad$$,'42501',null,'publishing permission is required for every affected assignment');
+-- A manager-class role with request management but not the publish
+-- permission every full manager keeps -- built off today's real manager
+-- permission set (nothing hand-listed here can drift out of date).
+select tests.role('tad', 'time off reviewer', 'manager', array(
+ select rp.permission_key
+ from public.workspace_role_permissions rp
+ join public.workspace_roles r on r.id = rp.role_id
+ where r.workspace_id = (select w from tad) and r.system_key = 'manager'
+   and rp.permission_key <> 'schedule.publish'
+));
+select tests.person('tad', 'reviewer', 'time off reviewer', array['K', 'B'], array['cook']);
+select is(public.preview_time_off_assignment_decision_service(tests.user('tad:reviewer'),w,request,1,'partial_approve',decisions)->>'restricted_count','1','request management alone does not grant assignment release') from tad;
+select is(jsonb_array_length(public.preview_time_off_assignment_decision_service(tests.user('tad:reviewer'),w,request,1,'partial_approve',decisions)->'affected_shifts'),0,'restricted assignment details are not exposed in preview') from tad;
+select throws_ok($$select public.decide_time_off_with_assignments_service(tests.user('tad:reviewer'),w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',shift,'action','release_entire_shift'))) from tad$$,'42501',null,'publishing permission is required for every affected assignment');
 rollback to savepoint restricted_reviewer;
 update tad set result=public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','Release entire shift to open coverage.',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',shift,'action','release_entire_shift')));
 select is(result->>'status','partially_approved','final approval records the partial leave outcome') from tad;
