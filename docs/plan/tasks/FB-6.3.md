@@ -1,5 +1,5 @@
 # FB-6.3 İzin dilimini yetki çekirdeğine taşı (FOUNDATION-B Aşama 6)
-Status: draft — 2026-09-27 ön ölçüm (`nf-planlama`, FB-6.2 cevap beklerken). Başlamadan önce: FB-6.2 main'de, BL-183 main'de, "Açık sorular" S1–S4 cevaplı, P1–P3 koordinatörce verilmiş; `.0` taze ölçümü yeniden yapılır.
+Status: draft — S1–S3 cevaplı (2026-09-27), S4 TBD. Başlamadan önce: FB-6.2 main'de, BL-183 main'de, P1–P3 koordinatörce verilmiş; `.0` taze ölçüm.
 Session: -   Branch: task/FB-6.3   Worktree: newfork-wt/FB-6.3   DB: lock (migration + test:db + e2e)
 
 Program: `docs/plan/tasks/FOUNDATION-B.md` → Aşama 6 → dilim tablosu, satır FB-6.3. Ürün kuralları: `docs/plan/REUSE.md` → "İzin (time off)" (`:68-71`) ve "Rütbe" (`:44`). Kalıp: `FB-6.1.md`, `FB-6.2.md`.
@@ -47,19 +47,23 @@ Reviewer: `nf-guvenlik` (her kod adımı); ekran değiştiren adımlarda (`.5`, 
 - **BL-174** yayın yazma tetikleyicisinin izni atlaması — Schedule tarafı; FB-6.1'in `.14`'ünden önce ya da ayrı iş (bu dilim tetikleyiciye dokunmaz).
 - **BL-209** yerel veri kayması (D şeridi); bu dilimin testleri CI'ın temiz DB'sinde değerlendirilir.
 
-## Açık sorular (kullanıcıya; cevap gelmeden `.1` başlamaz)
+## Açık sorular — S1–S3 cevaplandı 2026-09-27 (kullanıcı, `nf-planlama` penceresi); S4 açık (TBD)
 - **S1 — Çok günlü talepte oylama günlere göre mi, talebin bütününe mi?** Ali'nin Pazartesi (Kadıköy) + Salı (Beşiktaş) talebi.
   - (a) **(Önerilen)** Talebin bütünü: iki günün bütün oy verenleri (Ayşe ve Mehmet) onaylayınca kesinleşir, biri reddederse bütün talep reddedilir. Gerekçe: REUSE'un "hepsi onaylayınca kesinleşir, biri reddederse red" cümlesiyle birebir; çalışan için tek sonuç. Admin/owner gerekirse yine gün gün (kısmi) karar verebilir — bu özellik bugün var (`time_off_decision_pieces`).
   - (b) Gün gün: Pazartesi'yi yalnız Ayşe, Salı'yı yalnız Mehmet karar verir; Pazartesi onaylı, Salı reddedilmiş olabilir.
+  - **Cevap: (a) talebin bütünü.**
 - **S2 — Aynı lokasyonda birden çok müdür varsa lokasyonun oyunu kim verir?**
   - (a) **(Önerilen)** O lokasyonun müdürlerinden herhangi biri, lokasyon adına; ikinci müdür aynı oyu tekrar vermez, kararı görür.
   - (b) O lokasyonun bütün müdürleri ayrı ayrı onaylamalı.
+  - **Cevap: (a) herhangi biri.**
 - **S3 — Talepte lokasyon yokken izin saatleri hangi saat dilimiyle kaydedilir?** Bugün talep lokasyonun saat dilimini kullanıyor.
   - (a) **(Önerilen)** Kişinin birincil lokasyonunun saat dilimi, talep anında kayda sabitlenir (sonradan birincil lokasyon değişse de talep değişmez). Birincil lokasyonu yoksa (lokasyonsuz kişi) çalışanın cihazının saat dilimi, yine talep anında sabitlenir — workspace'in kendi saat dilimi kolonu yok (yalnız `locations.timezone`).
   - (b) Çalışanın cihazının saat dilimi, talep anında sabitlenir.
+  - **Cevap: (a) birincil lokasyonun saat dilimi** (lokasyonsuz kişide cihazınki), talep anında sabitlenir.
 - **S4 — Onaylı izni iptal isteği (çalışan "iznimi geri alıyorum" der) kimin kararıdır?**
   - (a) **(Önerilen)** Talebin kendisiyle aynı kural: iptal edilen günlerde yayınlı vardiyası olan lokasyonların müdürleri, yoksa birincil lokasyonun müdürü; admin/owner tek başına.
   - (b) Yalnız ilk izni onaylamış olanlar.
+  - **Cevap: TBD** — kullanıcı sonra karar verecek. Etki: iptal kararı (`.3`'ün iptal kısmı ve iptal eylemi hücreleri) cevaba kadar bekler; bugünkü iptal akışı değiştirilmez.
 
 Kuraldan çıkan, soru olmayan sonuçlar (REUSE'dan): kişi lokasyonsuzsa (FB-6.2 S1) ya da birincil lokasyonunun müdürü yoksa talep admin/owner'a düşer; oy verenler her kararda yeniden hesaplanır — arada yayınlanan yeni bir lokasyonun vardiyası o lokasyonun oyunu da gerektirir, artık yayınlı vardiyası olmayan lokasyonun verdiği oy sayılmaz.
 
@@ -126,4 +130,5 @@ Kuraldan çıkan, soru olmayan sonuçlar (REUSE'dan): kişi lokasyonsuzsa (FB-6.
 Plan: `superpowers:writing-plans`; yürütme: `superpowers:executing-plans`. SQL/RLS: `supabase:supabase`, `supabase:supabase-postgres-best-practices`. Önce kırmızı: `superpowers:test-driven-development`. Beklenmedik kırmızı: `superpowers:systematic-debugging`. İnceleme: `superpowers:requesting-code-review`, `security-review`, `superpowers:verification-before-completion`. Görsel: `frontend-design:frontend-design`.
 
 ## Notes / Result
+- 2026-09-27 (`nf-planlama`): kullanıcı S1 (a) talebin bütünü, S2 (a) lokasyonun herhangi bir müdürü, S3 (a) birincil lokasyonun saat dilimi dedi; S4 (iptalin onayı) TBD. İptal kısmı cevaba kadar kapsamda bekler; REUSE "İzin" güncellendi.
 - 2026-09-27 (`nf-planlama`): dosya açıldı (ILERLEME-PLANI E şeridi, 1. iş). Ön ölçüm `origin/main` `b4b6d02`. Dilim tablosuna göre değişenler: rütbe (BL-177) ve 2 yardımcı çağıranı zaten bitti; oylamanın kodu hiç yok (yeni motor); tahmin 0,5–1 → 1–1,5 kişi-hafta. Kullanıcıya dört soru (S1–S4), koordinatöre üç planlama kararı (P1–P3). Ç-a: BL-183 bu dilimden önce.

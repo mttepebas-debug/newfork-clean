@@ -71,6 +71,7 @@ Kaynak: `docs/plan/research/fb61-dis-degerlendirme-2026-09-25.md` bölüm B, do�
 **İzin (time off)**
 - İzin kişiye aittir; talep formunda lokasyon seçilmez.
 - Onay: o gün yayınlı vardiyası olan her lokasyonun manager'ı oy verir (hepsi onaylayınca kesinleşir, biri reddederse red). Hiç yayınlı vardiya yoksa (yayınlanmamış hafta ya da boş gün) birincil lokasyonun (`employee_location_assignments.is_primary`) manager'ı karar verir. Admin/owner her durumda tek başına karar verebilir; birincil lokasyonun manager'ı yoksa talep onlara düşer. Oy verenler karar anında hesaplanır.
+- **Oylamanın ayrıntısı (kullanıcı kararları 2026-09-27, FB-6.3 S1–S3):** çok günlü talepte oy talebin bütünü içindir — bütün günlerin oy verenleri onaylayınca kesinleşir, biri reddederse bütün talep reddedilir (admin/owner gün gün karar verebilir). Bir lokasyonda birden çok müdür varsa lokasyonun oyunu herhangi biri verir. Talepte lokasyon yoktur; izin saatleri kişinin birincil lokasyonunun saat dilimiyle (lokasyonsuz kişide cihazınki) talep anında sabitlenir. Onaylı iznin iptalini kimin onaylayacağı açık (TBD).
 - Onaylanan izin bütün lokasyonlarda kesin engeldir (manager bunun üstüne vardiya yazamaz; ayarı yoktur). Diğer manager'lara bildirim gider, taslaklarda çakışma görünür.
 
 **Müsaitlik**
