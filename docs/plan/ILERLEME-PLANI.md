@@ -22,6 +22,8 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 | K9 | Onboarding yedi adım + avatar | **Cevaplı:** lansman için şart, F4'ten önce |
 | K10 | FB-6.3 S4 — onaylı iznin iptalini kim onaylar | **Açık (TBD)**; soru `tasks/FB-6.3.md`'de hazır |
 | K11 | BL-214 Discard butonu kenarı (ortak buton değeri) ve BL-216 birbirine yakın token'lar | **Açık** — ortak değer kuralı (CLAUDE.md §11.7) |
+| K12 | BL-221 — belgesi eksik owner'ın izni de onaysız mı kaydolsun? (bugün incelemeye düşüyor, müdürlere inceleme bildirimi gidiyor) | **Açık** |
+| K13 | BL-230 — takas onaylandıktan sonra hafta yayından kaldırılırsa takas korunsun mu? (a) en son yayına bak (Önerilen) / (b) kaldırma sıfırlar, REUSE'a yazılır / (c) beklesin | **Açık** |
 
 ## 3. Sıradaki en önemli iş (gerekçesiyle)
 1. **FB-6.1.14 hosted toplu gönderim (K5 son onayı).** Gerekçe: canlı ile main arasındaki fark en büyük risk; `.9` bittiği için engel yalnız kullanıcının onayı.
