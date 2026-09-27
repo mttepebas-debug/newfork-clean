@@ -77,3 +77,23 @@ Kurulum sihirbazının departman/iş adımında otomatik olarak **Department: Ma
 
 ## 5. Rol oturumlarına soru
 Koordinatör kısa soru sormaya izin verdi; sormadım. Kod haritası yeterli ve D1–D5 ürün kararı; teknik yol (sistem satırı için `system_key` + DB tetikleyicisi, `workspace_roles` kalıbı) karar verildikten sonra `nf-db`'nin görev dosyasında sorulur. Arayüz tarafında sihirbazın açıklama metni ve çekmece gösterimi D1–D2 cevabına bağlı; `nf-arayuz` o zaman DEV'de varyant hazırlar.
+
+## 6. Kullanıcının kararları (2026-09-27, bu pencerede, çoktan seçmeli)
+- **D1 — Korunan kayıt.** "Owner" işi **ve "Management" departmanı** korunan sistem kayıtlarıdır: kurulumda otomatik oluşur, silinemez, arşivlenemez, adı değiştirilebilir; "en az 1 departman ve 1 iş" kuralına sayılmaz. Management'a sonradan başka işler eklenebilir (ör. "Manager", "Assistant Manager").
+- **D2 — Önce atanmalı.** Owner yalnız atandığı işlerde çalışır; sonradan eklenen iş (ör. "Barista") owner'a otomatik atanmaz, çekmeceden atanır. **Bu, S4'ün iş kısmını değiştirir** ("bütün pozisyonlarda, ataması olmasa da çalışabilir" → işlerde atama gerekir). Bugünkü `jobs_reach_the_owner` tetikleyicisi kalkar.
+- **D3 — Lokasyon otomatik.** Sonradan eklenen lokasyon owner'a otomatik atanır (bugünkü `locations_reach_the_owner` kalır); S4'ün lokasyon kısmı aynen geçerli.
+- **D4 — Yeni sıralama ve Management grubu.** Schedule sıralama menüsüne **"By department"** eklenir. **"Job/Position"** (kullanıcının "by job") modunda Management ayrı bir grup olarak **en altta** görünür. Management departmanına bağlı işi olan herkes, "By department" ve "Job/Position" sıralamalarında her zaman en alttaki Management grubunda listelenir. Management'a sonradan eklenen işler (Manager, Assistant Manager) de bu grupta.
+- **D5 — Owner işi yalnız owner'da;** sahiplik devrinde yeni owner'a geçer.
+- **Karma kişi (Management işi + başka departmandan iş):** kişi **iki grupta da** görünür.
+  - Management departmanının işleri kişi için **her zaman birincil** sayılır; çekmecede bu işler için "birincil yap/yapma" seçeneği yoktur.
+  - Kişiye başka işler de atanabilir; bunlardan biri **ayrıca** birincil seçilebilir (isteğe bağlı).
+  - Takvim ızgarasında kişi her koşulda Management grubunda, ikinci bir birincil işi varsa onun grubunda da listelenir.
+  - İki satır eş çalışır: iş atanırsa hücreler iki satırda da görünür; ghost hücreler iki satırda da görünür.
+  - "Exclude" seçilirse kişi Takvim'de **tamamen** gizlenir.
+
+## 7. Kararların açtığı uygulama notları (kullanıcıya sorulmadı; plan aşamasında netleşecek)
+- **Exclude davranışı değişiyor:** bugün "exclude" işaretli kişi o hafta vardiyası varsa ızgarada görünüyor (`apps/web/src/schedule/lib/scheduleEmployeeSort.ts:85-99`). Karar "tamamen gizlenir" diyor. Vardiyası olan exclude'lu kişinin vardiyası ızgarada hiç görünmezse yöneticinin o vardiyayı görmediği bir durum oluşur — **soru olarak kullanıcıya dönmeli** (öneri: exclude'lu kişiye vardiya yazılamaz ya da vardiyası varsa satır görünür).
+- **Kurulumda eklenen işler:** bugün owner kurulumdaki bütün işlere otomatik atanıyor. D2 "sonradan eklenenler atanmaz" diyor; kurulumda eklenen (ör. "Cook") işlere atanıp atanmayacağı açık — **soru** (öneri: kurulumda yalnız "Owner" atanır, diğerleri çekmeceden).
+- **Birincil iş çiftliği:** kişinin iki birincili olabilir (Management işi + isteğe bağlı bir diğer). Bugünkü şema tek `is_primary` varsayıyor (`employee_job_assignments.is_primary`); `nf-db` tasarımı.
+- **İki satır = aynı vardiyanın iki görünümü:** saat toplamları, kişi sayısı, dışa aktarma ve yazdırma kişiyi bir kez saymalı; A–Z modunda kişi tek satır (karardan çıkarım; teyit edilecek).
+- **Dokunduğu dilimler:** katalog koruması ve sihirbaz FB-6.8 (Settings/katalog) + kurulum; owner ataması, birincil kuralı ve çekmece FB-6.2; ızgara gruplaması ve iki satır Takvim (FB-6.1 kapandıktan sonra ayrı iş). Görev dosyası ayrı açılmalı.
