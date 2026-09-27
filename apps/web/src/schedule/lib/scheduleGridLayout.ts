@@ -9,6 +9,9 @@ import { addDays } from "./scheduleDateTime";
 export const scheduleGridEmployeeColumnWidth = 200;
 export const scheduleGridTotalColumnWidth = 120;
 export const scheduleGridMinDayColumnWidth = 112;
+// Narrowest day a fitted week may give a shift card before it breaks the
+// title letter by letter; below it the week scrolls like the separate view.
+export const scheduleGridFitMinDayColumnWidth = 88;
 export const scheduleGridTotalRowHeight = 40;
 export const scheduleGridHorizontalNavHeight = 17;
 export const scheduleGridPreviewCellHorizontalChrome = 3;
@@ -118,6 +121,26 @@ export function countScheduleGridTotalColumns({
   return columns + (showTotalHours ? 1 : 0);
 }
 
+/**
+ * Whether a fitted week still gives every day a readable width. An unmeasured
+ * box (width 0, first render or a test DOM) keeps the fitted layout.
+ */
+export function scheduleGridFitsVisibleDays({
+  width,
+  columns,
+  showTotalHours,
+}: {
+  readonly width: number;
+  readonly columns: number;
+  readonly showTotalHours: boolean;
+}): boolean {
+  if (width <= 0) return true;
+  const fixed =
+    scheduleGridEmployeeColumnWidth +
+    (showTotalHours ? scheduleGridTotalColumnWidth : 0);
+  return width >= fixed + columns * scheduleGridFitMinDayColumnWidth;
+}
+
 export function createScheduleGridTemplateColumns({
   columns,
   fitVisibleColumns = false,
@@ -128,10 +151,7 @@ export function createScheduleGridTemplateColumns({
   readonly showTotalHours: boolean;
 }): string {
   if (fitVisibleColumns) {
-    // On a phone the stylesheet sets --schedule-fit-day-min so days keep a
-    // readable width and the grid scrolls; elsewhere it is unset and days share
-    // the width down to zero, as before (BL-205).
-    return `minmax(144px, ${scheduleGridEmployeeColumnWidth}px) repeat(${columns}, minmax(var(--schedule-fit-day-min, 0px), 1fr))${
+    return `minmax(144px, ${scheduleGridEmployeeColumnWidth}px) repeat(${columns}, minmax(0, 1fr))${
       showTotalHours ? ` minmax(72px, ${scheduleGridTotalColumnWidth}px)` : ""
     }`;
   }

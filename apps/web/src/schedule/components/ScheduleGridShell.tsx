@@ -14,6 +14,7 @@ import {
   calculateScheduleGridFillerHeight,
   createScheduleGridTemplateColumns,
   scheduleGridEmployeeColumnWidth,
+  scheduleGridFitsVisibleDays,
   scheduleGridTotalColumnWidth,
   scheduleGridHorizontalNavHeight,
   scheduleGridTotalRowHeight,
@@ -64,6 +65,11 @@ export function ScheduleGridShell({
           7,
       )
     : dayColumnMinWidth;
+  // A fitted week that would squeeze days below a readable width (a phone, a
+  // tablet, a narrow window) scrolls instead (BL-205).
+  const fitsColumns =
+    fitVisibleColumns &&
+    scheduleGridFitsVisibleDays({ width: viewportWidth, columns, showTotalHours });
   const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
   const totalBottomOffsetPx = hasHorizontalOverflow
     ? scheduleGridHorizontalNavHeight
@@ -216,7 +222,7 @@ export function ScheduleGridShell({
         role="grid"
         data-testid="schedule-grid"
         data-schedule-grid-track="true"
-        data-schedule-fit-visible-columns={fitVisibleColumns || undefined}
+        data-schedule-fit-visible-columns={fitsColumns || undefined}
         data-schedule-column-count={columns}
         aria-label={`${view === "day" ? "Daily" : "Weekly"} ${
           editing ? "editable" : "published"
@@ -227,7 +233,7 @@ export function ScheduleGridShell({
             "--schedule-employee-column-width": `${scheduleGridEmployeeColumnWidth}px`,
             gridTemplateColumns: createScheduleGridTemplateColumns({
               columns,
-              fitVisibleColumns,
+              fitVisibleColumns: fitsColumns,
               showTotalHours,
             }),
           } as CSSProperties

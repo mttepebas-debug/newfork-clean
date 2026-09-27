@@ -11,6 +11,7 @@ import {
   createScheduleGridDays,
   createScheduleGridLocationGroups,
   createScheduleGridTemplateColumns,
+  scheduleGridFitsVisibleDays,
   resolveScheduleInteractionLocationId,
 } from "./scheduleGridLayout";
 
@@ -198,7 +199,22 @@ describe("scheduleGridLayout", () => {
         fitVisibleColumns: true,
         showTotalHours: true,
       }),
-    ).toBe("minmax(144px, 200px) repeat(7, minmax(var(--schedule-fit-day-min, 0px), 1fr)) minmax(72px, 120px)");
+    ).toBe("minmax(144px, 200px) repeat(7, minmax(0, 1fr)) minmax(72px, 120px)");
+  });
+
+  it("fits a week only while every day keeps a readable width", () => {
+    const week = { columns: 7, showTotalHours: false };
+    // 200 employee column + 7 x 88 = 816
+    expect(scheduleGridFitsVisibleDays({ ...week, width: 975 })).toBe(true);
+    expect(scheduleGridFitsVisibleDays({ ...week, width: 816 })).toBe(true);
+    expect(scheduleGridFitsVisibleDays({ ...week, width: 815 })).toBe(false);
+    expect(scheduleGridFitsVisibleDays({ ...week, width: 463 })).toBe(false);
+    // The totals column takes 120 more.
+    expect(
+      scheduleGridFitsVisibleDays({ ...week, showTotalHours: true, width: 935 }),
+    ).toBe(false);
+    // Unmeasured keeps the fitted layout.
+    expect(scheduleGridFitsVisibleDays({ ...week, width: 0 })).toBe(true);
   });
 
   it("counts visible body and filler rows", () => {
