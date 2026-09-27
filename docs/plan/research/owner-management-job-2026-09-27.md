@@ -97,3 +97,8 @@ Koordinatör kısa soru sormaya izin verdi; sormadım. Kod haritası yeterli ve 
 - **Birincil iş çiftliği:** kişinin iki birincili olabilir (Management işi + isteğe bağlı bir diğer). Bugünkü şema tek `is_primary` varsayıyor (`employee_job_assignments.is_primary`); `nf-db` tasarımı.
 - **İki satır = aynı vardiyanın iki görünümü:** saat toplamları, kişi sayısı, dışa aktarma ve yazdırma kişiyi bir kez saymalı; A–Z modunda kişi tek satır (karardan çıkarım; teyit edilecek).
 - **Dokunduğu dilimler:** katalog koruması ve sihirbaz FB-6.8 (Settings/katalog) + kurulum; owner ataması, birincil kuralı ve çekmece FB-6.2; ızgara gruplaması ve iki satır Takvim (FB-6.1 kapandıktan sonra ayrı iş). Görev dosyası ayrı açılmalı.
+
+## 8. §7'deki iki sorunun cevabı (kullanıcı, 2026-09-27)
+- **Exclude'lu kişinin vardiyası:** yayınlanmış vardiyalar düşmez. Yayınlanmış program düzenlenirse de düşmez. Aynı program yayından kaldırılıp yeniden yayınlanırsa da vardiyalar düşmez ve kişi gizlenmez. **Yeni bir taslak açıldığında** kişi gizlenir (yeni taslağa satırı gelmez). Yani "tamamen gizlenir" kuralı yeni taslaktan itibaren işler; mevcut yayın ve onun düzenlemeleri kişiyi ve vardiyalarını korur.
+- **Kurulumdaki işler:** owner yalnız Management → Owner işine otomatik atanır. Kurulumda ya da sonradan eklenen diğer işlere otomatik atanmaz; çekmeceden atanır.
+- **Lokasyonlar:** kurulumda da uygulama içinde de eklense owner'a otomatik atanır ve çekmecede işaretli görünür; **bu seçim kaldırılamaz** (çekmecede devre dışı).
