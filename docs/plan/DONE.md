@@ -67,3 +67,13 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | FB-6.1.9 (kısmi) | Takvim ekranlarının düğmeleri yetki çekirdeğine soruyor; lokasyonu olmayan müdür sunucunun reddedeceği düğmeleri görmüyor | ffca7eb
 2026-09-26 | BL-177 | izin talepleri bir üst kademeye gidiyor: müdür başka müdürün, admin owner'ın iznine karar veremiyor; owner'ın talebi anında onaylı | (main)
 2026-09-26 | FB-6.1.12 | yayın ve çok lokasyonlu yayın akışları tarayıcıda uçtan uca sınanıyor (e2e 10 senaryo) | dd937fd
+2026-09-24 | BL-092 | takasta bırakılan vardiya kendisiyle çakışmıyor; aynı saatteki iki lokasyonlu takas tamamlanıyor | migration 20260924161659
+2026-09-24 | BL-093 | eski Requests takas akışı silindi; vardiya yalnız Shift Hub'da el değiştiriyor, lokasyonu olmayan aday listeye girmiyor | migration 20260924163120
+2026-09-24 | BL-095 | Line Up ve aday listesi silindi (FOUNDATION-B 5.6) | migration 20260924180901
+2026-09-23 | BL-098 | çalışan kartını kaydetmek onaylı tercih edilen adı artık silmiyor | migration 20260923101814
+2026-09-24 | BL-103, BL-104, BL-106 | CI kullanıcının bilgisayarına taşınınca (BL-107) ücretli dakika, imaj indirme ve çift koşu sorunları ortadan kalktı | ad0a435
+2026-09-24 | BL-111 | yerel Supabase'in log servisi Docker Desktop'ta düşmüyor (analytics kapalı) | a530d02
+2026-09-24 | BL-113 | eski projenin üç runner servisi kapatıldı | -
+2026-09-26 | BL-141 | onboarding'deki "Share my info" kutusu Continue çubuğunun altında kalmıyor (bayat bulgu, iş gerekmedi) | -
+2026-09-26 | BL-160 | Takvim'in ret testleri gerçek authz gerekçesini ve ayrıntısını da denetliyor | 79c8d13
+2026-09-26 | BL-074 | kapsam-yonetimi.md artık var olan docs/plan dosyalarını gösteriyor | 39028dc
