@@ -18,8 +18,7 @@ import type { Department, Job } from "@newfork/shared";
 import { useAuth } from "../auth/AuthContext";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
-  listDepartments,
-  listJobs,
+  loadDepartmentsAndJobs,
   reorderOrganizationEntities,
   setDepartmentArchived,
   setJobArchived,
@@ -75,13 +74,7 @@ export default function JobsSettingsPage() {
   const data = useQuery({
     queryKey,
     enabled: Boolean(workspaceId),
-    queryFn: async () => {
-      const [departments, jobs] = await Promise.all([
-        listDepartments(workspaceId),
-        listJobs(workspaceId),
-      ]);
-      return { departments, jobs };
-    },
+    queryFn: () => loadDepartmentsAndJobs(workspaceId),
   });
   const counts = useQuery({
     queryKey: ["organization-job-counts", workspaceId],

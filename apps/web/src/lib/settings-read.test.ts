@@ -6,6 +6,7 @@ import {
   listJobs,
   listLocations,
   listShiftLabels,
+  loadDepartmentsAndJobs,
   listShiftTypes,
 } from "../settings/organization-data";
 import { loadRoleWorkspace } from "../settings/roles-data";
@@ -21,6 +22,7 @@ const reads: Array<[string, () => Promise<unknown>, string, unknown]> = [
   ["Locations", () => listLocations(workspace), "locations", []],
   ["Jobs (departments)", () => listDepartments(workspace), "jobs", { departments: [], jobs: [] }],
   ["Jobs (jobs)", () => listJobs(workspace), "jobs", { departments: [], jobs: [] }],
+  ["Jobs (both, one request)", () => loadDepartmentsAndJobs(workspace), "jobs", { departments: [], jobs: [] }],
   ["Shift types", () => listShiftTypes(workspace), "shift-types", []],
   ["Shift labels", () => listShiftLabels(workspace), "shift-labels", []],
   ["Important dates", () => listImportantDates(workspace), "important-dates", { dates: [], locations: [] }],
