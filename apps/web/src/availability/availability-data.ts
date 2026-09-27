@@ -1,3 +1,4 @@
+import { requestFailure } from "../lib/request-error";
 import {
   shiftAvailabilityAssessmentSchema,
   type ScheduleShiftMutationInput,
@@ -43,11 +44,7 @@ async function request(
   });
   const body = (await response.json().catch(() => null)) as unknown;
   if (!response.ok)
-    throw Object.assign(new Error(
-      body && typeof body === "object" && "error" in body
-        ? String(body.error)
-        : "Availability could not be updated",
-    ), { status: response.status });
+    throw requestFailure(body, response.status, "Availability could not be updated");
   return body;
 }
 export async function loadWeeklyPreferenceSettings(workspace: string) {

@@ -1,3 +1,4 @@
+import { requestFailure } from "../lib/request-error";
 import {
   accountPendingInvitationSchema,
   employeeDetailSchema,
@@ -105,14 +106,7 @@ async function request(
   );
   const body = (await response.json().catch(() => null)) as unknown;
   if (!response.ok)
-    throw Object.assign(
-      new Error(
-        typeof body === "object" && body && "error" in body
-          ? String(body.error)
-          : "Employee operation failed",
-      ),
-      { status: response.status },
-    );
+    throw requestFailure(body, response.status, "Employee operation failed");
   return body;
 }
 
@@ -562,11 +556,7 @@ export async function listPendingEmployeeInvitations(): Promise<
   });
   const body = (await response.json()) as unknown;
   if (!response.ok) {
-    throw new Error(
-      typeof body === "object" && body && "error" in body
-        ? String(body.error)
-        : "Pending invitations could not be loaded",
-    );
+    throw requestFailure(body, response.status, "Pending invitations could not be loaded");
   }
   return accountPendingInvitationSchema.array().parse(body);
 }

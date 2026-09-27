@@ -1,4 +1,4 @@
-import { RequestError } from "./request-error";
+import { requestFailure } from "./request-error";
 import {
   accountAttentionSchema,
   employmentContactRecordSchema,
@@ -128,15 +128,8 @@ export async function apiRequest(
   });
   const body = (await response.json().catch(() => null)) as unknown;
   if (response.status === 401) await ensureSessionAlive(client);
-  if (!response.ok) {
-    const shape = typeof body === "object" && body ? (body as Record<string, unknown>) : {};
-    throw new RequestError(
-      "error" in shape ? String(shape.error) : "Workspace operation failed",
-      typeof shape.reason === "string" ? shape.reason : undefined,
-      typeof shape.detail === "string" ? shape.detail : undefined,
-      response.status,
-    );
-  }
+  if (!response.ok)
+    throw requestFailure(body, response.status, "Workspace operation failed");
   return body;
 }
 

@@ -1,0 +1,70 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getNotificationPreferences } from "../account/notification-preferences-data";
+import { loadWeeklyTeam } from "../availability/availability-data";
+import {
+  getAnnouncements,
+  getNotifications,
+  getWorkspaceDashboard,
+} from "../communications/communications-data";
+import { getEmployeeHub } from "../employee-hub/employee-hub-data";
+import { listEmployees } from "../employees/employee-data";
+import { getScheduleRequests } from "../schedule/requests-data";
+import { getNotificationSettings } from "../settings/notification-settings-data";
+import { loadSchedulingSettings } from "../settings/organization-data";
+import { isNoAccess } from "./no-access";
+
+vi.mock("./supabase", () => ({
+  getApiAccessToken: vi.fn(async () => "token"),
+  getTabWorkspaceId: vi.fn(() => null),
+  newforkApiUrl: "http://api.test",
+  supabaseClient: {
+    auth: { getSession: async () => ({ data: { session: { access_token: "token" } } }) },
+  },
+}));
+
+const workspace = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+
+// Every screen's first read, through the request helper it really uses.
+const reads: Array<[string, () => Promise<unknown>]> = [
+  ["Workspace", () => getWorkspaceDashboard(workspace)],
+  ["Employees", () => listEmployees(workspace, false, "", "all")],
+  ["Requests", () => getScheduleRequests(workspace, { timeOffQueue: "needs_review", locationId: "", search: "" })],
+  ["Availability", () => loadWeeklyTeam(workspace)],
+  ["Announcements", () => getAnnouncements(workspace)],
+  ["Notifications", () => getNotifications(workspace)],
+  ["Employee Hub", () => getEmployeeHub(workspace, "2026-09-21", "2026-09-27")],
+  ["Settings > Notifications", () => getNotificationSettings(workspace)],
+  ["Settings > Scheduling", () => loadSchedulingSettings(workspace)],
+  ["Account > Notification preferences", () => getNotificationPreferences(workspace)],
+];
+
+async function failure(read: () => Promise<unknown>) {
+  return read().then(
+    () => { throw new Error("expected the read to fail"); },
+    (error: unknown) => error,
+  );
+}
+
+describe("the API's no reaches every screen's read as a no (FB-6.1.9)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each(reads)("%s keeps the refusal's status and authz reason", async (_screen, read) => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: "Forbidden", reason: "authz.missing_permission" }),
+    })));
+    const error = await failure(read);
+    expect(isNoAccess(error)).toBe(true);
+    expect((error as Error).message).toBe("Forbidden");
+  });
+
+  it.each(reads)("%s does not call a plain failure a no", async (_screen, read) => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: "Internal server error" }),
+    })));
+    expect(isNoAccess(await failure(read))).toBe(false);
+  });
+});

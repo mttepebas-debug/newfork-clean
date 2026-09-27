@@ -1,3 +1,4 @@
+import { requestFailure } from "../lib/request-error";
 import {
   departmentInputSchema,
   departmentSchema,
@@ -71,11 +72,7 @@ export async function organizationRequest(
   );
   const body = (await response.json().catch(() => null)) as unknown;
   if (!response.ok)
-    throw new Error(
-      typeof body === "object" && body && "error" in body
-        ? String(body.error)
-        : "Organization settings operation failed",
-    );
+    throw requestFailure(body, response.status, "Organization settings operation failed");
   return body;
 }
 
