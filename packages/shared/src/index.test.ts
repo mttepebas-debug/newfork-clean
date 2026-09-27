@@ -19,6 +19,7 @@ import {
   normalizeAccountPhone,
   permissionsForRole,
   scheduleReadModelSchema,
+  schedulePublishFindingSchema,
   schedulePublicationPreflightAckSchema,
   schedulePublicationOverrideInputSchema,
   schedulePublicationPreviewSchema,
@@ -1780,5 +1781,32 @@ describe("acknowledgement template schemas", () => {
         retention_policy_id: "24000000-0000-4000-8000-000000000001",
       }),
     ).toThrow("Activation blocking requires onboarding assignment");
+  });
+});
+
+describe("publish finding: an approved shift change the draft would undo (BL-198)", () => {
+  // Exactly what shift_exchange_draft_undoes() builds.
+  const undone = {
+    id: "shift_exchange_undone:40000000-0000-4000-8000-000000000009",
+    code: "shift_exchange_undone", severity: "hard", overrideable: false, tier: "blocker", introduced: true,
+    location_id: "10000000-0000-4000-8000-000000000001", location_name: "Kadikoy",
+    employee_id: "30000000-0000-4000-8000-000000000002", employee_name: "Can Demir",
+    scheduled_date: "2026-09-29", start_time: "09:00", end_time: "17:00",
+    shift_ids: ["40000000-0000-4000-8000-000000000010"],
+    exchange_case_id: "50000000-0000-4000-8000-000000000001", exchange_kind: "cover",
+    from_employee_id: "30000000-0000-4000-8000-000000000001", from_employee_name: "Ayse Kaya",
+    to_employee_id: "30000000-0000-4000-8000-000000000002", to_employee_name: "Can Demir",
+    draft_employee_id: "30000000-0000-4000-8000-000000000001", draft_employee_name: "Ayse Kaya",
+    message: "This shift was handed over from Ayse Kaya to Can Demir after the schedule was last published, and this draft does not have it. Publishing would undo it.",
+  };
+
+  it("keeps the code and every exchange field", () => {
+    expect(schedulePublishFindingSchema.parse(undone)).toEqual(undone);
+  });
+
+  it("takes an open pickup (no previous owner) and a draft that left the shift out", () => {
+    const pickup = { ...undone, exchange_kind: "open_pickup", from_employee_id: null, from_employee_name: null,
+      draft_employee_id: null, draft_employee_name: null, shift_ids: [] };
+    expect(schedulePublishFindingSchema.parse(pickup)).toEqual(pickup);
   });
 });

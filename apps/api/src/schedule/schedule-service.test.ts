@@ -574,6 +574,26 @@ describe("createScheduleReadService realtime invalidation", () => {
     ).rejects.toMatchObject({ statusCode: 500, message: "Internal server error" });
   });
 
+  it("passes an approved shift change the draft would undo to the screen (BL-198)", async () => {
+    const undone = {
+      id: "shift_exchange_undone:40000000-0000-4000-8000-000000000009",
+      code: "shift_exchange_undone", severity: "hard", overrideable: false, tier: "blocker", introduced: true,
+      location_id: locationId, location_name: "Kadikoy",
+      employee_id: "30000000-0000-4000-8000-000000000002", employee_name: "Can Demir",
+      scheduled_date: "2026-08-18", start_time: "09:00", end_time: "17:00", shift_ids: [],
+      exchange_case_id: "50000000-0000-4000-8000-000000000001", exchange_kind: "swap",
+      from_employee_id: "30000000-0000-4000-8000-000000000001", from_employee_name: "Ayse Kaya",
+      to_employee_id: "30000000-0000-4000-8000-000000000002", to_employee_name: "Can Demir",
+      draft_employee_id: null, draft_employee_name: null,
+      message: "This shift was swapped from Ayse Kaya to Can Demir after the schedule was last published, and this draft does not have it. Publishing would undo it.",
+    };
+    const preview = schedulePublicationPreview();
+    mocks.rpc.mockResolvedValueOnce({ data: { ...preview, findings: [undone] }, error: null });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    const result = await service.previewPublication({ actorUserId, workspaceId, draftId, locationIds: [locationId] });
+    expect(result.findings).toEqual([undone]);
+  });
+
   it("passes department publish scope to the Supabase RPC", async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: schedulePublicationPreview(),

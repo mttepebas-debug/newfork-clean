@@ -1652,6 +1652,8 @@ export const schedulePublishFindingCodeSchema = z.enum([
   "clopening",
   "advance_notice",
   "solo_opener",
+  // A shift change approved after the last publication that the draft would undo (BL-198).
+  "shift_exchange_undone",
 ]);
 export const schedulePublishFindingSchema = z.object({
   id: z.string().min(12).max(64),
@@ -1677,6 +1679,18 @@ export const schedulePublishFindingSchema = z.object({
   acknowledged_by_user_id: z.string().uuid().optional(),
   acknowledged_by_name: z.string().trim().min(1).max(161).optional(),
   acknowledged_at: z.string().datetime({ offset: true }).optional(),
+  // shift_exchange_undone only: the approved change and what the draft has instead.
+  // from_* is null for an open pickup; draft_* is null when the draft left the shift out.
+  start_time: timeOfDaySchema.optional(),
+  end_time: timeOfDaySchema.optional(),
+  exchange_case_id: z.string().uuid().optional(),
+  exchange_kind: z.enum(["cover", "open_pickup", "swap"]).optional(),
+  from_employee_id: z.string().uuid().nullable().optional(),
+  from_employee_name: z.string().trim().min(1).max(161).nullable().optional(),
+  to_employee_id: z.string().uuid().optional(),
+  to_employee_name: z.string().trim().min(1).max(161).nullable().optional(),
+  draft_employee_id: z.string().uuid().nullable().optional(),
+  draft_employee_name: z.string().trim().min(1).max(161).nullable().optional(),
 });
 export type SchedulePublishFinding = z.infer<
   typeof schedulePublishFindingSchema
