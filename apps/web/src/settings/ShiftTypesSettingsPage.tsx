@@ -189,12 +189,29 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
   };
 
   // The API's "no" gets the one no-access card, never its raw sentence.
+  // The card takes the catalog's place, not the page's: the title and the
+  // Shift types | Shift labels switch stay, so the other tab is still reachable.
   if (isNoAccess(query.error))
     return (
-      <NoAccessState
-        subject="shift types"
-        homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-types")}
-      />
+      <section
+        className="settings-page jobs-settings-page shift-catalog-settings-page"
+        aria-labelledby="shift-types-settings-title"
+      >
+        <SettingsHeader
+          icon={<Clock3 size={21} aria-hidden />}
+          title="Shift types"
+          description="Reusable service periods with default times and schedule colors."
+          action={
+            <div className="shift-catalog-header-actions">
+              <ShiftCatalogTabs />
+            </div>
+          }
+        />
+        <NoAccessState
+          subject="shift types"
+          homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-types")}
+        />
+      </section>
     );
   return (
     <section

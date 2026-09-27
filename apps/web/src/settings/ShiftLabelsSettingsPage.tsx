@@ -121,12 +121,29 @@ export default function ShiftLabelsSettingsPage() {
   };
 
   // The API's "no" gets the one no-access card, never its raw sentence.
+  // The card takes the catalog's place, not the page's: the title and the
+  // Shift types | Shift labels switch stay, so the other tab is still reachable.
   if (isNoAccess(query.error))
     return (
-      <NoAccessState
-        subject="shift labels"
-        homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-labels")}
-      />
+      <section
+        className="settings-page jobs-settings-page shift-catalog-settings-page"
+        aria-labelledby="shift-labels-settings-title"
+      >
+        <SettingsHeader
+          icon={<Tags size={21} aria-hidden />}
+          title="Shift labels"
+          description="Reusable badge tags such as Training, Close, Expo, or Lead Server."
+          action={
+            <div className="shift-catalog-header-actions">
+              <ShiftCatalogTabs />
+            </div>
+          }
+        />
+        <NoAccessState
+          subject="shift labels"
+          homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-labels")}
+        />
+      </section>
     );
   return (
     <section
