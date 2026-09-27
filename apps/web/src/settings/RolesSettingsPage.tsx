@@ -36,6 +36,9 @@ import {
 } from "./roles-data";
 import "./roles-settings.css";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const blankRole = (): WorkspaceRoleInput => ({
   name: "",
   description: "",
@@ -94,6 +97,14 @@ export default function RolesSettingsPage() {
       setCopy(initial);
       navigate(`/app/settings/roles/${id}`);
     });
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="roles"
+        homeHref={noAccessHomePath(context, "/app/settings/roles")}
+      />
+    );
   return (
     <section
       className="settings-page roles-page bl051-roles"

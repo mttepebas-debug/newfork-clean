@@ -30,6 +30,9 @@ import { JobAssignmentsDrawer } from "./JobAssignmentsDrawer";
 import "./jobs-settings.css";
 import { CatalogRowMenu as RowMenu } from "./CatalogRowMenu";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 type View = "hierarchy" | "departments" | "jobs";
 type SortKey = "name" | "department" | "jobs" | "employees";
 export default function JobsSettingsPage() {
@@ -445,6 +448,14 @@ export default function JobsSettingsPage() {
   const ungrouped = visibleJobs.filter(
     (job) => !job.department_id || !departmentMap.has(job.department_id),
   );
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(data.error))
+    return (
+      <NoAccessState
+        subject="positions"
+        homeHref={noAccessHomePath(context, "/app/settings/jobs")}
+      />
+    );
   if (ungrouped.length) groups.push({ id: "none", rows: ungrouped });
   const noRows =
     view === "jobs"

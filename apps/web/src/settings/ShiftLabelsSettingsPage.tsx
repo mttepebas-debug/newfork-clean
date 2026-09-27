@@ -22,6 +22,9 @@ import {
   setShiftLabelArchived,
 } from "./organization-data";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const defaultDraft: ShiftLabelInput = {
   name: "",
   color: "#54736A",
@@ -117,6 +120,14 @@ export default function ShiftLabelsSettingsPage() {
     reorderMutation.mutate(ids);
   };
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="shift labels"
+        homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-labels")}
+      />
+    );
   return (
     <section
       className="settings-page jobs-settings-page shift-catalog-settings-page"

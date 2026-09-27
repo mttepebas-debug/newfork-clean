@@ -23,6 +23,9 @@ import {
   setShiftTypeArchived,
 } from "./organization-data";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const defaultDraft: ShiftTypeInput = {
   name: "",
   color: "#5B7FA3",
@@ -41,9 +44,9 @@ export default function ShiftTypesSettingsPage() {
 }
 
 function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
+  const { context } = useAuth();
   const canEdit =
-    useAuth().context?.permissions.includes("settings.shift_catalog.manage") ??
-    false;
+    context?.permissions.includes("settings.shift_catalog.manage") ?? false;
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedType = searchParams.get("edit");
   const queryClient = useQueryClient();
@@ -185,6 +188,14 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
     reorderMutation.mutate(ids);
   };
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="shift types"
+        homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-types")}
+      />
+    );
   return (
     <section
       className="settings-page jobs-settings-page shift-catalog-settings-page"

@@ -2,10 +2,7 @@ import {
   documentDefinitionPreviewSchema,
   documentTargetOptionsSchema,
   signatureRetentionPolicyInputSchema,
-  signatureRetentionPolicySchema,
   signatureTemplateDraftInputSchema,
-  signatureTemplateSchema,
-  signatureTemplateVersionSchema,
   type SignatureRetentionPolicy,
   type SignatureRetentionPolicyInput,
   type SignatureTemplate,
@@ -14,15 +11,13 @@ import {
 } from "@newfork/shared";
 import { supabaseClient } from "../lib/supabase";
 
+import { readSettings } from "../lib/settings-read";
 function client() {
   if (!supabaseClient)
     throw new Error("Acknowledgement storage is not configured");
   return supabaseClient;
 }
 
-function check(error: { message: string } | null): void {
-  if (error) throw new Error(error.message);
-}
 
 async function request(
   workspaceId: string,
@@ -63,39 +58,7 @@ export interface SignatureSettingsData {
 export async function listSignatureSettings(
   workspaceId: string,
 ): Promise<SignatureSettingsData> {
-  const [policyResult, templateResult, versionResult] = await Promise.all([
-    client()
-      .from("signature_retention_policies")
-      .select(
-        "id,workspace_id,name,retention_trigger,duration_days,jurisdiction_scope,authority_reference,status,approved_at,archived_at",
-      )
-      .eq("workspace_id", workspaceId)
-      .order("name"),
-    client()
-      .from("signature_templates")
-      .select("id,workspace_id,name,archived_at")
-      .eq("workspace_id", workspaceId)
-      .order("name"),
-    client()
-      .from("signature_template_versions")
-      .select(
-        "id,workspace_id,template_id,version_number,title,summary,execution_class,content_text,content_digest,intent_statement,locale,effective_date,required_at_onboarding,blocks_activation,retention_policy_id,status,published_at,lifecycle_settings,lifecycle_revision",
-      )
-      .eq("workspace_id", workspaceId)
-      .order("version_number", { ascending: false }),
-  ]);
-  check(policyResult.error);
-  check(templateResult.error);
-  check(versionResult.error);
-  return {
-    policies: signatureRetentionPolicySchema
-      .array()
-      .parse(policyResult.data ?? []),
-    templates: signatureTemplateSchema.array().parse(templateResult.data ?? []),
-    versions: signatureTemplateVersionSchema
-      .array()
-      .parse(versionResult.data ?? []),
-  };
+  return readSettings(workspaceId, "acknowledgements");
 }
 
 export async function saveSignatureRetentionPolicy(

@@ -1,6 +1,5 @@
 import {
   documentTypeInputSchema,
-  documentTypeSchema,
   documentTargetOptionsSchema,
   documentPublicationPreviewSchema,
   type DocumentType,
@@ -8,14 +7,12 @@ import {
 } from "@newfork/shared";
 import { supabaseClient } from "../lib/supabase";
 
+import { readSettings } from "../lib/settings-read";
 function client() {
   if (!supabaseClient) throw new Error("Document storage is not configured");
   return supabaseClient;
 }
 
-function check(error: { message: string } | null): void {
-  if (error) throw new Error(error.message);
-}
 
 async function request(
   workspaceId: string,
@@ -50,16 +47,7 @@ async function request(
 export async function listDocumentTypes(
   workspaceId: string,
 ): Promise<DocumentType[]> {
-  const { data, error } = await client()
-    .from("document_types")
-    .select(
-      "id,workspace_id,title,description,required_at_onboarding,requires_review,accepted_formats,tracks_expiry,expiry_warning_days,expiry_schedule_impact,sort_order,archived_at,lifecycle_settings,lifecycle_revision,publication_status,publication_revision,published_at",
-    )
-    .eq("workspace_id", workspaceId)
-    .order("sort_order")
-    .order("title");
-  check(error);
-  return documentTypeSchema.array().parse(data ?? []);
+  return readSettings(workspaceId, "document-types");
 }
 
 export async function saveDocumentType(

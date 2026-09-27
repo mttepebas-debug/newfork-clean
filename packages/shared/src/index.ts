@@ -3002,3 +3002,27 @@ export * from "./shift-exchanges";
 export * from "./schedule-default-hours";
 
 export * from "./authorization";
+
+/**
+ * The Settings reads the API serves (GET /v1/workspaces/:id/settings/:kind),
+ * each from one `*_service` that answers "no" with 42501 + authz.* (FB-6.1.9).
+ * One map so the API route, its service and the web read the same contract.
+ */
+export const settingsReadSchemas = {
+  locations: z.array(locationSchema),
+  jobs: z.object({ departments: z.array(departmentSchema), jobs: z.array(jobSchema) }),
+  "shift-types": z.array(shiftTypeSchema),
+  "shift-labels": z.array(shiftLabelSchema),
+  // `locations`: where this person may place an important date.
+  "important-dates": z.object({ dates: z.array(importantDateSchema), locations: z.array(locationSchema) }),
+  roles: z.object({ permissions: z.array(permissionDefinitionSchema), roles: z.array(workspaceRoleRecordSchema) }),
+  "document-types": z.array(documentTypeSchema),
+  acknowledgements: z.object({
+    policies: z.array(signatureRetentionPolicySchema),
+    templates: z.array(signatureTemplateSchema),
+    versions: z.array(signatureTemplateVersionSchema),
+  }),
+} as const;
+export type SettingsReadKind = keyof typeof settingsReadSchemas;
+export type SettingsRead<K extends SettingsReadKind> = z.infer<(typeof settingsReadSchemas)[K]>;
+export const settingsReadKinds = Object.keys(settingsReadSchemas) as SettingsReadKind[];

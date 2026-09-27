@@ -16,12 +16,14 @@ import { CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText } from "./GeneralSettingsPage";
 import {
   listImportantDates,
-  listLocations,
   saveImportantDate,
   setImportantDateArchived,
 } from "./organization-data";
 import "./jobs-settings.css";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const typeLabels: Record<ImportantDateType, string> = {
   holiday: "Holiday",
   event: "Event",
@@ -93,17 +95,13 @@ export default function ImportantDatesSettingsPage() {
       item.location_ids ?? (item.location_id ? [item.location_id] : []),
     );
   const datesQueryKey = ["important-dates", workspaceId];
-  const locationsQueryKey = ["organization-locations", workspaceId];
   const query = useQuery({
     queryKey: datesQueryKey,
     queryFn: () => listImportantDates(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  const locations = useQuery({
-    queryKey: locationsQueryKey,
-    queryFn: () => listLocations(workspaceId),
-    enabled: Boolean(workspaceId),
-  });
+  // The picker offers the locations this person may place a date at, from the same read.
+  const pickerLocations = query.data?.locations ?? [];
   const [showArchived, setShowArchived] = useState(false);
   const [filter, setFilter] = useState<ImportantDateType | "all">("all");
   const [search, setSearch] = useState("");
@@ -140,7 +138,7 @@ export default function ImportantDatesSettingsPage() {
     onError: (error) => setFormError(errorText(error)),
   });
 
-  const items = query.data ?? [];
+  const items = query.data?.dates ?? [];
   const normalizedSearch = search.trim().toLowerCase();
   const visible = useMemo(
     () =>
@@ -224,6 +222,14 @@ export default function ImportantDatesSettingsPage() {
     });
   };
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="important dates"
+        homeHref={noAccessHomePath(context, "/app/important-dates")}
+      />
+    );
   return (
     <section
       className="settings-page jobs-settings-page important-dates-page important-dates-catalog-page"
@@ -389,7 +395,7 @@ export default function ImportantDatesSettingsPage() {
                         title={selectedLocationIds
                           .map(
                             (id) =>
-                              locations.data?.find(
+                              pickerLocations.find(
                                 (location) => location.id === id,
                               )?.name ?? "Archived location",
                           )
@@ -400,7 +406,7 @@ export default function ImportantDatesSettingsPage() {
                             ? "All locations"
                             : "Select a location"
                           : selectedLocationIds.length === 1
-                            ? (locations.data?.find(
+                            ? (pickerLocations.find(
                                 (location) =>
                                   location.id === selectedLocationIds[0],
                               )?.name ?? "Selected location")
@@ -424,7 +430,7 @@ export default function ImportantDatesSettingsPage() {
                           <span>All locations</span>
                         </label>
                       )}
-                      {(locations.data ?? [])
+                      {pickerLocations
                         .filter(
                           (location) =>
                             (!location.archived_at ||
@@ -465,10 +471,6 @@ export default function ImportantDatesSettingsPage() {
                             </span>
                           </label>
                         ))}
-                      {locations.isLoading && <p>Loading locations...</p>}
-                      {locations.error && (
-                        <p role="alert">Could not load locations.</p>
-                      )}
                     </div>
                   </details>
                 </div>
