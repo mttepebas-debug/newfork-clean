@@ -211,6 +211,9 @@ insert into retired (kind, name, step) values
   ('policy', 'signature_template_versions.signature_template_versions_select_authorized', 'FB-6.1.9'),
   ('policy', 'workspace_role_permissions.workspace_role_permissions_select_authorized', 'FB-6.1.9'),
   ('policy', 'permissions.permissions_select_authenticated', 'FB-6.1.9');
+-- BL-198: the publish asks the pre-flight check (shift_exchange_draft_undoes).
+insert into retired (kind, name, step) values
+  ('function', 'shift_exchange_assert_draft', 'BL-198');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

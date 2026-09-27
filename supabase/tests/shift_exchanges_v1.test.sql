@@ -20,8 +20,8 @@ select pg_temp.w(),pg_temp.emp(n),'13000000-0000-4000-8000-000000000001',pg_temp
 where not exists(select 1 from public.employee_job_assignments where employee_id=pg_temp.emp(n) and job_id='13000000-0000-4000-8000-000000000001' and ended_at is null);
 -- The seed's Alex Kim cannot work Fridays; this suite needs its four people free every day.
 delete from public.employee_weekly_preferences where workspace_id=pg_temp.w() and employee_id in(select pg_temp.emp(n) from generate_series(1,4)n);
-insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
-values('98010000-0000-4000-8000-000000000001',pg_temp.w(),'11000000-0000-4000-8000-000000000001','2030-01-07',1,pg_temp.manager());
+insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by,published_at)
+values('98010000-0000-4000-8000-000000000001',pg_temp.w(),'11000000-0000-4000-8000-000000000001','2030-01-07',1,pg_temp.manager(),now()-interval '1 day');
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
 select ('98020000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,pg_temp.w(),'11000000-0000-4000-8000-000000000001','98010000-0000-4000-8000-000000000001',case n when 4 then null when 3 then pg_temp.emp(2) else pg_temp.emp(1) end,'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-07'::date+n-1,'09:00','17:00',gen_random_uuid() from generate_series(1,4)n;
 create function pg_temp.shift(n integer) returns uuid language sql as $$select ('98020000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
@@ -71,11 +71,11 @@ select is((select employee_id from public.schedule_draft_shifts where draft_id='
 select is((select note from public.schedule_draft_shifts where draft_id='98040000-0000-4000-8000-000000000001'),'KEEP DRAFT NOTE','AT27 unrelated draft note retained');
 select is((select employee_id from public.schedule_edit_session_shifts where session_id='98040000-0000-4000-8000-000000000002'),pg_temp.emp(3),'AT27 dirty session ownership rebased');
 select is((select note from public.schedule_edit_session_shifts where session_id='98040000-0000-4000-8000-000000000002'),'KEEP SESSION NOTE','AT27 dirty session note retained');
-select lives_ok($$select public.shift_exchange_assert_draft(pg_temp.w(),'98040000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid])$$,'AT27 rebased draft can pass publication guard');
+select is(public.shift_exchange_draft_undoes(pg_temp.w(),'98040000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid]),'[]'::jsonb,'AT27 rebased draft can pass publication guard');
 select lives_ok($$select public.shift_exchange_assert_session(pg_temp.w(),'98040000-0000-4000-8000-000000000002')$$,'AT27 rebased session can pass save guard');
 update public.schedule_draft_shifts set employee_id=pg_temp.emp(1) where draft_id='98040000-0000-4000-8000-000000000001';
 update public.schedule_edit_session_shifts set employee_id=pg_temp.emp(1) where session_id='98040000-0000-4000-8000-000000000002';
-select throws_ok($$select public.shift_exchange_assert_draft(pg_temp.w(),'98040000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid])$$,'PT409',null,'AT27 stale owner cannot be published');
+select is((select jsonb_agg(f->>'code') from jsonb_array_elements(public.shift_exchange_draft_undoes(pg_temp.w(),'98040000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid])) f),'["shift_exchange_undone"]'::jsonb,'AT27 stale owner cannot be published');
 select throws_ok($$select public.shift_exchange_assert_session(pg_temp.w(),'98040000-0000-4000-8000-000000000002')$$,'PT409',null,'AT27 stale session cannot overwrite approved transfer');
 -- Direct invitation, consent withdrawal and a full two-direction swap.
 -- Recovery is explicit, preview-bound and preserves notes / unrelated edits.
