@@ -1,5 +1,5 @@
 # FB-6.2 Çalışanlar dilimini yetki çekirdeğine taşı (FOUNDATION-B Aşama 6)
-Status: draft — S1–S4 cevaplandı 2026-09-27; başlamak için FB-6.1 main'de ve "By role" (S4 kalanı) kararı.
+Status: ready (2026-09-27) — S1–S4 ve P1–P3 cevaplı; owner'ın Takvim gruplaması ve iş ataması BL-218'de (`docs/plan/tasks/BL-218.md`). Başlama şartı: FB-6.1 `.9` main'de (✓ `bee7713d`); `.4` BL-218 `.1`–`.3`'ten sonra.
 Session: -   Branch: task/FB-6.2   Worktree: newfork-wt/FB-6.2   DB: lock (migration + test:db + e2e)
 
 Program: `docs/plan/tasks/FOUNDATION-B.md` → Aşama 6 → dilim tablosu, satır FB-6.2 (`:169`).
@@ -123,6 +123,8 @@ Her madde bir sayı ya da komutla ölçülür.
 
 Yürütme sırası: `.0` → `.1` → `.2` → `.3` → `.4` → `.5` → `.6` → (`.7` ∥ `.9`) → `.8` → `.10` → `.11`. `.3`–`.6` aynı migration ailesine dokunduğu için tek `nf-db` oturumunda ardışık; her biri kendi commit'i ve incelemesi.
 
+**Sıralama (ILERLEME-PLANI Ç3/Ç4, 2026-09-27):** (1) **BL-218** `.1`–`.3` (owner ataması, Management/Owner sistem kayıtları) FB-6.2 `.4`'ten önce main'de olur; FB-6.2 `.0`–`.3` ondan bağımsız başlar. (2) **Ç3:** BL-187 `.6`'da. (3) **Ç4:** FB-6.2 `.1`–`.4` çekirdeğe (`app_private.authz_check`, kişi dalı) dokunur; çekirdeğe dokunan başka iş (BL-198 dahil) aynı anda yazılmaz — `nf-db` şeridinde ardışık, her biri kendi birleştirme penceresinde. BL-218 çekirdeğe dokunmaz.
+
 ## Touches
 - **`nf-db`:** `supabase/migrations/**` (dilimde 4–6 migration), `supabase/tests/authorization_matrix.test.sql`, `supabase/test-support/builder.sql`, kendi adımlarının pgTAP'ı, `retired_objects_stay_gone`.
 - **`nf-backend`:** `apps/api/src/employees/**`, `apps/web/src/employees/*-data.ts` ve hook'ları, `apps/web/src/App.tsx` (yalnız rota/koruma), `apps/web/src/auth/**` (`resolveLanding.ts`), `packages/shared/**`.
@@ -157,6 +159,7 @@ Yürütme sırası: `.0` → `.1` → `.2` → `.3` → `.4` → `.5` → `.6` �
 Plan: `superpowers:writing-plans`; yürütme: `superpowers:executing-plans` ya da `superpowers:subagent-driven-development`. SQL, RLS: `supabase:supabase`, `supabase:supabase-postgres-best-practices`. Her kural önce kırmızı: `superpowers:test-driven-development`. Beklenmedik kırmızı: `superpowers:systematic-debugging`. İnceleme: `superpowers:requesting-code-review`, `security-review`, `superpowers:verification-before-completion`. Görsel varyantlar: `frontend-design:frontend-design`; erişilebilirlik: `chrome-devtools-mcp:a11y-debugging`.
 
 ## Notes / Result
+- 2026-09-27 (`nf-planlama`): Status `ready`. Owner'ın "By role" yeri kullanıcı kararıyla çözüldü (D4) ve BL-218 görev dosyasına taşındı; sıralama Ç3/Ç4 yazıldı.
 - 2026-09-27 (`nf-planlama`): kullanıcı §7'nin iki sorusunu cevapladı (araştırma notu §8): owner yalnız Owner işine otomatik atanır; lokasyonlar otomatik ve çekmecede kaldırılamaz; exclude yeni taslaktan itibaren gizler, yayınlanmış vardiyalar düşmez. REUSE güncel.
 - 2026-09-27 (`nf-planlama`): kullanıcı Management/Owner fikrinde D1–D5'i ve karma kişi kuralını verdi (araştırma notu §6). **S4'ün iş kısmı değişti:** owner yalnız atandığı işlerde çalışır; lokasyon kısmı aynı. Done when 12 buna göre. Açık uygulama soruları (exclude'lu kişinin vardiyası, kurulumdaki işlere atama) notun §7'sinde.
 - 2026-09-27 (`nf-planlama`): kullanıcının S1–S4 cevapları işlendi (S1 (a) + lokasyonsuz kaydetme yasağı şartı, S2 (a), S3 (a), S4 genişletilmiş — owner her yerde çalışabilir, birincil zorunlu değil, exclude, A–Z); Done when 11–12 eklendi; REUSE "Roller ve kapsam" güncellendi. Açık: owner'ın "By role" yeri — Management/Owner fikri araştırması.
