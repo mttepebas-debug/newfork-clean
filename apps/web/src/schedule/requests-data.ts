@@ -1,3 +1,4 @@
+import { requestFailure } from "../lib/request-error";
 import {
   scheduleRequestMutationResultSchema,
   scheduleRequestsReadModelSchema,
@@ -32,11 +33,7 @@ async function request(
   );
   const body = (await response.json().catch(() => null)) as unknown;
   if (!response.ok)
-    throw new Error(
-      typeof body === "object" && body && "error" in body
-        ? String(body.error)
-        : "Schedule request operation failed",
-    );
+    throw requestFailure(body, response.status, "Schedule request operation failed");
   return body;
 }
 

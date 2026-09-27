@@ -25,3 +25,22 @@ export class RequestError extends Error {
     this.status = status;
   }
 }
+
+/**
+ * The error for a failed API response: its sentence, status and `authz.*` or
+ * other machine key. Every request helper throws this, so `isNoAccess()` can
+ * tell the API's "no" from any other failure on every screen.
+ */
+export function requestFailure(
+  body: unknown,
+  status: number,
+  fallback: string,
+): RequestError {
+  const shape = typeof body === "object" && body ? (body as Record<string, unknown>) : {};
+  return new RequestError(
+    "error" in shape ? String(shape.error) : fallback,
+    typeof shape.reason === "string" ? shape.reason : undefined,
+    typeof shape.detail === "string" ? shape.detail : undefined,
+    status,
+  );
+}

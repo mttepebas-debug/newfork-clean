@@ -1,3 +1,4 @@
+import { requestFailure } from "../lib/request-error";
 import {
   announcementListSchema,
   announcementMutationSchema,
@@ -50,11 +51,7 @@ async function request(
   );
   const body = (await response.json().catch(() => null)) as unknown;
   if (!response.ok) {
-    throw new Error(
-      typeof body === "object" && body && "error" in body
-        ? String(body.error)
-        : "Communication operation failed",
-    );
+    throw requestFailure(body, response.status, "Communication operation failed");
   }
   return body;
 }
