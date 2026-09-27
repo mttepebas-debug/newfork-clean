@@ -61,7 +61,6 @@ insert into public.employee_profiles(id,workspace_id,employee_code,first_name,la
 insert into public.employee_invitations(id,workspace_id,employee_id,email,role_id,token_hash,expires_at,created_by) values('b1051005-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000001','roles-invite@example.test',(select custom_role from role_test_state),repeat('a',64),now()+interval '1 day','b1051001-0000-4000-8000-000000000001');
 set local role service_role;
 select throws_ok($$select public.delete_workspace_role_service('b1051001-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001',(select custom_role from role_test_state))$$,'PT409',null,'Pending invitation references block deletion');
-select set_config('request.jwt.claim.sub','b1051001-0000-4000-8000-000000000001',true);
 select is((select (r->>'pending_invite_count')::integer from jsonb_array_elements(public.read_role_workspace_service('b1051001-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001')->'roles') r where r->>'id'=(select custom_role::text from role_test_state)),1,'Role editor reports real pending impact');
 select throws_ok($$select public.read_role_workspace_service('b1051001-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000002')$$,'42501','Not allowed','Cross-tenant role reads denied');
 set local role postgres;

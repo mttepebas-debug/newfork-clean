@@ -203,6 +203,14 @@ insert into retired (kind, name, step) values
 -- FB-6.1.9: Settings > Roles reads through read_role_workspace_service.
 insert into retired (kind, name, step) values
   ('function', 'read_role_workspace', 'FB-6.1.9');
+-- FB-6.1.9: Settings reads these through the API; the browser reads none.
+insert into retired (kind, name, step) values
+  ('policy', 'document_types.document_types_select_authorized', 'FB-6.1.9'),
+  ('policy', 'signature_retention_policies.signature_retention_policies_select_authorized', 'FB-6.1.9'),
+  ('policy', 'signature_templates.signature_templates_select_authorized', 'FB-6.1.9'),
+  ('policy', 'signature_template_versions.signature_template_versions_select_authorized', 'FB-6.1.9'),
+  ('policy', 'workspace_role_permissions.workspace_role_permissions_select_authorized', 'FB-6.1.9'),
+  ('policy', 'permissions.permissions_select_authenticated', 'FB-6.1.9');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

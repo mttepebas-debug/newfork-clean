@@ -86,7 +86,9 @@ select set_eq(
 
 -- ponytail: the web reads only the catalog tables, the account's own rows and
 -- roles directly; the rest of this list is either needed by RLS policies and
--- realtime or unused. Stage 6 trims it; until then it cannot grow.
+-- realtime or unused. Stage 6 trims it; until then it cannot grow. FB-6.1.9
+-- took out the tables Settings now reads through the API (document types,
+-- acknowledgements, role grants, the permission catalog).
 select set_eq(
   $$
     select table_name
@@ -94,12 +96,11 @@ select set_eq(
     where table_schema = 'public' and grantee in ('anon', 'authenticated', 'PUBLIC') and privilege_type = 'SELECT'
   $$,
   array[
-    'account_notification_items', 'account_organization_history', 'audit_events', 'departments', 'document_types',
+    'account_notification_items', 'account_organization_history', 'audit_events', 'departments',
     'employee_onboarding_settings', 'important_dates', 'jobs', 'locations',
-    'permissions', 'shift_labels', 'shift_types', 'signature_retention_policies', 'signature_template_versions',
-    'signature_templates', 'user_preferences', 'user_profiles', 'user_workspace_preferences',
+    'shift_labels', 'shift_types', 'user_preferences', 'user_profiles', 'user_workspace_preferences',
     'workspace_closure_requests', 'workspace_entitlements', 'workspace_memberships', 'workspace_onboarding',
-    'workspace_ownership_transfers', 'workspace_role_permissions', 'workspace_roles',
+    'workspace_ownership_transfers', 'workspace_roles',
     'workspace_scheduling_settings', 'workspaces'
   ],
   'the browser reads only the allowed tables'

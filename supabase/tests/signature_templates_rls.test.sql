@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(45);
+select plan(47);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -200,10 +200,12 @@ select lives_ok(
   'template can be restored'
 );
 
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000003', true);
-select is((select count(*)::integer from public.signature_templates), 0, 'manager without permission cannot list templates');
 set local role postgres;
+select throws_ok(
+  $$select public.read_signature_settings_service(
+    '15000000-0000-4000-8000-000000000003', '25000000-0000-4000-8000-000000000001')$$,
+  '42501', 'Not allowed', 'manager without permission cannot list templates'
+);
 select throws_ok(
   $$select public.save_signature_retention_policy_service(
     '15000000-0000-4000-8000-000000000003',
@@ -244,10 +246,12 @@ select lives_ok(
   'admin can assign the custom acknowledgement role'
 );
 
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000003', true);
-select is((select count(*)::integer from public.signature_templates), 1, 'custom role can read acknowledgement templates');
 set local role postgres;
+select is(
+  jsonb_array_length(public.read_signature_settings_service(
+    '15000000-0000-4000-8000-000000000003', '25000000-0000-4000-8000-000000000001') -> 'templates'),
+  1, 'custom role can read acknowledgement templates'
+);
 select lives_ok(
   $$select public.save_signature_retention_policy_service(
     '15000000-0000-4000-8000-000000000003',
@@ -257,10 +261,22 @@ select lives_ok(
   'custom template manager can create retention policy'
 );
 
+set local role postgres;
+select throws_ok(
+  $$select public.read_signature_settings_service(
+    '15000000-0000-4000-8000-000000000004', '25000000-0000-4000-8000-000000000001')$$,
+  '42501', 'Not allowed', 'other tenant cannot read templates or retention policies'
+);
+-- Acknowledgements are read through the API only (FB-6.1.9): the browser
+-- reads none of the three tables, not even the owner.
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000004', true);
-select is((select count(*)::integer from public.signature_templates where workspace_id = '25000000-0000-4000-8000-000000000001'), 0, 'other tenant cannot read templates');
-select is((select count(*)::integer from public.signature_retention_policies where workspace_id = '25000000-0000-4000-8000-000000000001'), 0, 'other tenant cannot read retention policies');
+select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000001', true);
+select throws_ok($$select count(*) from public.signature_templates$$, '42501', null,
+  'the browser cannot read acknowledgement templates');
+select throws_ok($$select count(*) from public.signature_template_versions$$, '42501', null,
+  'the browser cannot read acknowledgement versions');
+select throws_ok($$select count(*) from public.signature_retention_policies$$, '42501', null,
+  'the browser cannot read retention policies');
 set local role postgres;
 select throws_ok(
   $$select public.save_signature_template_draft_service(

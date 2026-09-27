@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(28);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -130,10 +130,12 @@ select lives_ok(
 set local role postgres;
 select is((select count(*)::integer from public.audit_events where action = 'document_type.archived'), 1, 'document archive is audited');
 
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000003', true);
-select is((select count(*)::integer from public.document_types), 0, 'manager without permission cannot list document types');
 set local role service_role;
+select throws_ok(
+  $$select public.list_settings_document_types_service(
+    '14000000-0000-4000-8000-000000000003', '24000000-0000-4000-8000-000000000001')$$,
+  '42501', 'Not allowed', 'manager without permission cannot list document types'
+);
 select throws_ok(
   $$select public.save_document_type_service(
     '14000000-0000-4000-8000-000000000003',
@@ -176,10 +178,12 @@ select lives_ok(
   'admin can assign the custom document role'
 );
 
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000003', true);
-select is((select count(*)::integer from public.document_types), 2, 'custom document role can read the catalog');
 set local role service_role;
+select is(
+  jsonb_array_length(public.list_settings_document_types_service(
+    '14000000-0000-4000-8000-000000000003', '24000000-0000-4000-8000-000000000001')),
+  2, 'custom document role can read the catalog'
+);
 select lives_ok(
   $$select public.save_document_type_service(
     '14000000-0000-4000-8000-000000000003',
@@ -189,9 +193,20 @@ select lives_ok(
   'custom document manager can create a type'
 );
 
+set local role service_role;
+select throws_ok(
+  $$select public.list_settings_document_types_service(
+    '14000000-0000-4000-8000-000000000004', '24000000-0000-4000-8000-000000000001')$$,
+  '42501', 'Not allowed', 'other tenant cannot read document types'
+);
+-- The catalog is read through the API only (FB-6.1.9): the browser reads
+-- no document type, not even the owner.
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000004', true);
-select is((select count(*)::integer from public.document_types where workspace_id = '24000000-0000-4000-8000-000000000001'), 0, 'other tenant cannot read document types');
+select set_config('request.jwt.claim.sub', '14000000-0000-4000-8000-000000000001', true);
+select throws_ok(
+  $$select count(*) from public.document_types$$,
+  '42501', null, 'the browser cannot read document types'
+);
 set local role service_role;
 select throws_ok(
   $$select public.save_document_type_service(
