@@ -459,10 +459,15 @@ begin
   for shift in select value from jsonb_array_elements(shifts) loop
     perform tests.add_shift(owner_id, w, session, n, shift);
   end loop;
+  -- A fresh name each call: a real user picks one, and the product keeps at
+  -- most one active draft per name per week (schedule_drafts_active_name_idx).
+  -- A publish never archives the draft it came from (only deleting one does),
+  -- so two publishes of the same week -- e.g. shift-hub-swap.spec.ts under
+  -- --repeat-each reusing one world -- would collide on a fixed name (BL-210).
   draft := (public.save_schedule_edit_session_service(
     owner_id, workspace, session,
     (select e.revision from public.schedule_edit_sessions e where e.id = session),
-    'test world', null, null
+    'test world ' || substr(gen_random_uuid()::text, 1, 8), null, null
   ) ->> 'id')::uuid;
   location_ids := array(
     select distinct tests.id(w || ':' || (value ->> 'loc')) from jsonb_array_elements(shifts)
