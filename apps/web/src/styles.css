@@ -40,6 +40,13 @@
   --theme-danger-border: #ad3f36;
   --theme-danger-text: #653b36;
   --theme-danger-strong: #a43830;
+  --theme-text-tertiary: #68756f;
+  --theme-text-soft: #53625b;
+  --theme-surface-group: #f8faf8;
+  --theme-surface-hover: #e9efeb;
+  --theme-divider: #dfe5e1;
+  --theme-divider-soft: #e5eae7;
+  --theme-accent-focus: #236844;
   --schedule-action: var(--theme-action);
   --schedule-action-hover: var(--theme-action-hover);
   --schedule-grid-line-color: #dce2df;
