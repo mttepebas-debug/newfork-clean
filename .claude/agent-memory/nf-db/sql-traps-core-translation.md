@@ -19,3 +19,5 @@ metadata:
 
 **Why:** each cost a failed trial run on 2026-09-25.
 **How to apply:** check these before the first trial of any Stage 6 slice migration. See [[rollback-trial-runner]].
+
+- A finding/JSON that carries a `time` column must send `to_char(x, 'HH24:MI')`: `jsonb_build_object` writes `09:00:00`, the shared `timeOfDaySchema` accepts HH:MM only and the API answers 500 (BL-198, 2026-09-27). Ghost and open-shift findings already do this.
