@@ -24,7 +24,7 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - BL-056 Employee arayüzü: tüm sayfaların audit ve polish'i.
 - BL-057 Shift Hub bilgi mimarisi: tab karmaşası temizlenir, Time Tracking gizlenir.
 - BL-058 Beş tenant E2E prova verisi ve kabul turu.
-- BL-059 Billing/Stripe: plan, limit, promo, trial.
+- BL-059 Billing/Stripe: plan, limit, promo, trial. **2026-09-27:** araştırma `docs/plan/research/stripe-billing-2026-09-27.md`, görev dosyası `docs/plan/tasks/BL-059.md` (draft; kullanıcıya S1–S7). Tazelik: deneme kaydı yazılıyor ama hiçbir kod okumuyor — deneme bitince bir şey olmuyor; ikinci deneme engeli yok.
 - BL-067 Schedule günlük/haftalık saat limitleri.
 - OBS-001 Invite/access mutasyonları (reminder/revoke/remove access) ve provider kabulü → tasks/JOIN-001.md (J2).
 - OBS-002 Availability save → manager → Schedule browser zinciri ve otomatik bildirim (local cron 503 hatası dahil).
