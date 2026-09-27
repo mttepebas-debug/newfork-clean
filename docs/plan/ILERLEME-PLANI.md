@@ -34,7 +34,7 @@ Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en
 
 | Şerit | Rol | 1 | 2 | 3 | 4 |
 |---|---|---|---|---|---|
-| A — DB | `nf-db` | **BL-183 + BL-197** main'e (koordinatör birleştirir, bu akşam) | **BL-198 DB** — B, C, D parçalarıyla aynı birleştirmede main'e | **Settings ikiz SELECT ölçümü** (BL-222) | **FB-6.2 `.1`** (BL-218 ready ✓) → BL-218 `.1`–`.3` |
+| A — DB | `nf-db` | **BL-183 + BL-197** main'e (koordinatör birleştirir, bu akşam) | **BL-198 DB** — B, C, D parçalarıyla aynı birleştirmede main'e | ~~Settings ikiz SELECT ölçümü~~ **bitti 09-27** → BL-222 (6 tabloyu kapatan migration), BL-231, BL-232 (FB-6.8) | **FB-6.2 `.1`** (BL-218 ready ✓) → BL-218 `.1`–`.3` |
 | B — API/web veri | `nf-backend` | **BL-198 web/API** + BL-197 `skipped` tipi | **BL-211** (`GET /schedule/shifts` 500) | **FB-6.2** `permissions.includes` → `can()` (Done when 6) | BL-213 (Shift changes `ExchangeError`) |
 | C — Arayüz | `nf-arayuz` | **BL-192 + BL-205** DEV varyantları (telefonda yönetim gezinmesi, Together başlıkları) | **BL-198 / BL-197 metinleri** | **BL-215** (sihirbazda ham hex) | BL-218 `.4`–`.6` (A/B'den sonra) |
 | D — Test | `nf-test` | **BL-210** (`shift-hub-swap` tekrar koşu) | **BL-212** (rozet ölçüm testi) | **BL-217** (iki test `tests.world()`'e; BL-209 onarımından sonra) | **BL-198 e2e** |
