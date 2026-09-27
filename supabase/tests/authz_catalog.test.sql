@@ -17,7 +17,7 @@ where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace);
 -- (stage 4a), which this count leaves out.
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'auth\.uid\(\)' and name <> 'rls_can'),
-  '<=', 33, 'functions that call auth.uid() only go down'
+  '<=', 32, 'functions that call auth.uid() only go down'
 );
 
 -- Pretends to be the caller by writing the JWT subject: the bridges that let a

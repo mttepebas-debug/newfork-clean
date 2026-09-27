@@ -40,10 +40,7 @@ select set_eq(
     'app_private.rls_can',
     'app_private.workspace_allows_interactive_access',
     'app_private.workspace_has_permission',
-    'app_private.workspace_role_for',
-    -- ponytail: Settings > Roles still calls this from the browser; it leaves
-    -- this list when that screen moves behind the API (FOUNDATION-B stage 6).
-    'public.read_role_workspace'
+    'app_private.workspace_role_for'
   ],
   'authenticated executes only the allowed SECURITY DEFINER functions'
 );

@@ -200,6 +200,9 @@ insert into retired (kind, name, step) values
   ('function', 'stamp_weekly_reminder_disable', 'BL-186'),
   ('column', 'manager_weekly_reminders.last_disabled_at', 'BL-186'),
   ('trigger', 'manager_weekly_reminders.weekly_reminder_disable_stamp', 'BL-186');
+-- FB-6.1.9: Settings > Roles reads through read_role_workspace_service.
+insert into retired (kind, name, step) values
+  ('function', 'read_role_workspace', 'FB-6.1.9');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

@@ -23,6 +23,8 @@ select tests.role('s', 'catalog lead', 'manager', array(
 select tests.person('s', 'lale', 'catalog lead', array['K'], array['cook']);
 select tests.person('s', 'nuri', 'catalog lead', null, null);
 select tests.person('s', 'emre', 'employee', array['K'], array['cook']);
+-- Invited to the custom role, not accepted yet: a pending invitation.
+select tests.person('s', 'pia', 'catalog lead', array['K'], array['cook'], 'pending');
 
 -- An owner halfway through setup: the workspace is still a draft, with no
 -- location yet. The setup wizard reads locations, departments and jobs.
@@ -193,13 +195,51 @@ select is(
   'and the owner every location'
 );
 
-select set_config('request.jwt.claim.sub', tests.user('s:owner')::text, true);
+-- Settings > Roles: the whole permission catalog, every role row as stored
+-- plus what the role editor shows about it.
+create temporary table roles_read as
+select public.read_role_workspace_service(tests.user('s:owner'), tests.id('s')) as body;
 select is(
-  public.read_role_workspace_service(tests.user('s:owner'), tests.id('s')),
-  public.read_role_workspace(tests.id('s')),
-  'Settings > Roles reads what the browser read before'
+  (select body -> 'permissions' from roles_read),
+  (select jsonb_agg(p order by p.sort_order) from public.permissions p),
+  'Settings > Roles reads the whole permission catalog, in order'
 );
-select set_config('request.jwt.claim.sub', '', true);
+select is(
+  array(select r ->> 'name' from roles_read, jsonb_array_elements(body -> 'roles') r),
+  array(select r.name from public.workspace_roles r where r.workspace_id = tests.id('s') order by r.sort_order, r.name),
+  'Settings > Roles reads every role of the workspace, in order'
+);
+select is(
+  array(select r ->> 'name' from roles_read, jsonb_array_elements(body -> 'roles') r
+        where r - array['permission_keys', 'member_count', 'pending_invite_count', 'blocking_member_count',
+                        'blocking_invite_count', 'editable', 'deletable']
+          is distinct from (select to_jsonb(w) from public.workspace_roles w where w.id = (r ->> 'id')::uuid)),
+  '{}'::text[],
+  'each role carries its stored row and nothing else besides the editor''s seven fields'
+);
+select is(
+  array(select r ->> 'name' from roles_read, jsonb_array_elements(body -> 'roles') r
+        where r -> 'permission_keys' is distinct from coalesce((
+          select jsonb_agg(g.permission_key order by g.permission_key)
+          from public.workspace_role_permissions g where g.role_id = (r ->> 'id')::uuid), '[]'::jsonb)),
+  '{}'::text[],
+  'each role lists exactly its granted permissions'
+);
+select is(
+  (select jsonb_build_object('member_count', r -> 'member_count', 'pending_invite_count', r -> 'pending_invite_count',
+     'blocking_member_count', r -> 'blocking_member_count', 'blocking_invite_count', r -> 'blocking_invite_count',
+     'editable', r -> 'editable', 'deletable', r -> 'deletable')
+   from roles_read, jsonb_array_elements(body -> 'roles') r where r ->> 'name' = 'catalog lead'),
+  jsonb_build_object('member_count', 2, 'pending_invite_count', 1, 'blocking_member_count', 2,
+    'blocking_invite_count', 3, 'editable', true, 'deletable', false),
+  'the custom role counts its two members and one pending invitation, and cannot be deleted while used'
+);
+select is(
+  (select jsonb_build_object('editable', r -> 'editable', 'deletable', r -> 'deletable')
+   from roles_read, jsonb_array_elements(body -> 'roles') r where r ->> 'name' = 'Owner'),
+  '{"editable": false, "deletable": false}'::jsonb,
+  'the owner role is neither editable nor deletable'
+);
 
 select is(
   jsonb_typeof(public.list_settings_document_types_service(tests.user('s:owner'), tests.id('s'))),
