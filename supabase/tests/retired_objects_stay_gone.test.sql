@@ -214,6 +214,10 @@ insert into retired (kind, name, step) values
 -- BL-198: the publish asks the pre-flight check (shift_exchange_draft_undoes).
 insert into retired (kind, name, step) values
   ('function', 'shift_exchange_assert_draft', 'BL-198');
+-- BL-218: the owner is put on the Owner job only; new jobs are assigned by hand.
+insert into retired (kind, name, step) values
+  ('trigger', 'jobs.jobs_reach_the_owner', 'BL-218'),
+  ('trigger', 'jobs.jobs_reach_the_owner_on_restore', 'BL-218');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
