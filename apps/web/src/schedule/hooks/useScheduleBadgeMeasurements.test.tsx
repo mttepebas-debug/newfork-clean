@@ -208,6 +208,73 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
     ]);
   });
 
+  it("reserves marker space for a real shift's availability warning without a publication marker", () => {
+    const warnedShift = {
+      ...shift,
+      id: "warned-1",
+      employee_id: "employee-1",
+      warning_codes: ["availability"],
+    } as ScheduleShift;
+
+    render(
+      <>
+        {renderScheduleBadgeWidthMeasurer({
+          shifts: [warnedShift],
+          jobs: [job],
+          shiftTypes: [shiftType],
+          locationGroups,
+          showShiftType: true,
+          showShiftLabels: true,
+          showClockTimes: true,
+          timeFormat: "12h",
+          showJobColorDot: true,
+          showLocationInBadge: false,
+          showShiftTypePresets: false,
+        })}
+      </>,
+    );
+
+    expect(
+      document.querySelector<HTMLElement>(".schedule-badge-width-measure")
+        ?.dataset.hasMarkers,
+    ).toBe("true");
+  });
+
+  it("reserves marker space for a ghost shift's location pin", () => {
+    const ghostShift = {
+      ...shift,
+      id: "ghost-1",
+      ghost: true,
+      ghost_location_name: "Besiktas",
+    } as ScheduleShift & {
+      readonly ghost: boolean;
+      readonly ghost_location_name: string;
+    };
+
+    render(
+      <>
+        {renderScheduleBadgeWidthMeasurer({
+          shifts: [ghostShift],
+          jobs: [job],
+          shiftTypes: [shiftType],
+          locationGroups,
+          showShiftType: true,
+          showShiftLabels: true,
+          showClockTimes: true,
+          timeFormat: "12h",
+          showJobColorDot: true,
+          showLocationInBadge: false,
+          showShiftTypePresets: false,
+        })}
+      </>,
+    );
+
+    expect(
+      document.querySelector<HTMLElement>(".schedule-badge-width-measure")
+        ?.dataset.hasMarkers,
+    ).toBe("true");
+  });
+
   it("does not render when there is nothing to measure", () => {
     const { container } = render(
       <>
