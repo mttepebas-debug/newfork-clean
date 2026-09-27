@@ -26,6 +26,7 @@ import {
   transitionAnnouncement,
 } from "../communications/communications-data";
 
+import { RequestError } from "../lib/request-error";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const now = "2026-09-11T12:00:00.000Z";
 const context = {
@@ -478,3 +479,20 @@ function announcement(
     ...rest,
   };
 }
+
+describe("no access (FB-6.1.9)", () => {
+  it("shows the no-access card, not the raw error, when the API refuses announcements (FB-6.1.9)", async () => {
+    vi.mocked(getAnnouncements).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
+    renderRoute("/app/announcements", <AnnouncementsPage />);
+    expect(await screen.findByRole("heading", { name: "You don't have access to announcements" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
+    expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+  it("shows the no-access card, not the raw error, when the API refuses notifications (FB-6.1.9)", async () => {
+    vi.mocked(getNotifications).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
+    renderRoute("/app/notifications", <NotificationsPage />);
+    expect(await screen.findByRole("heading", { name: "You don't have access to notifications" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
+    expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+});

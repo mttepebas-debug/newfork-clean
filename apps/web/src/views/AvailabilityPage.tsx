@@ -14,6 +14,9 @@ import { CatalogSortButton } from "./CatalogSortButton";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import "../availability/weekly-team.css";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const EmployeeDrawer = lazy(() =>
   import("../employees/EmployeeDrawer").then((module) => ({
     default: module.EmployeeDrawer,
@@ -91,6 +94,14 @@ export function AvailabilityPage() {
   const openEmployee = (id: string) =>
     updateParams({ employeeId: id, section: "availability" }, false);
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="team availability"
+        homeHref={noAccessHomePath(context, "/app/availability")}
+      />
+    );
   return (
     <section
       className="availability-page weekly-team-page"

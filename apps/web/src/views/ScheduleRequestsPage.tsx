@@ -45,6 +45,9 @@ import {
   previewTimeOffAssignment,
 } from "../schedule/requests-data";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 type Tab = "time-off" | "shift-changes";
 type RequestSortKey = "employee" | "date" | "location" | "status" | "review";
 type Decision = {
@@ -265,6 +268,14 @@ function ScheduleRequestsPageContent() {
     />
   );
   // Shift Hub reads ?case= itself, so manager notification links land here.
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="requests"
+        homeHref={noAccessHomePath(context, "/app/schedule/requests")}
+      />
+    );
   if (tab === "shift-changes" && canReadShift && context)
     return (
       <section

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ConflictHandlingSettingsPage from "./ConflictHandlingSettingsPage";
 import { organizationRequest } from "./organization-data";
 
+import { RequestError } from "../lib/request-error";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const context: ActiveWorkspaceContext = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
@@ -78,6 +79,14 @@ describe("ConflictHandlingSettingsPage", () => {
     );
     return { client, ...view };
   }
+
+  it("shows the no-access card, not the raw error, when the API refuses conflict rules (FB-6.1.9)", async () => {
+    vi.mocked(organizationRequest).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "You don't have access to conflict rules" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
+    expect(screen.queryByText("Forbidden")).toBeNull();
+  });
 
   it("uses the canonical Settings header and saves through the existing endpoint", async () => {
     renderPage();

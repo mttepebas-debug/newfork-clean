@@ -13,6 +13,8 @@ import {
   saveNotificationPolicy,
 } from "./notification-settings-data";
 
+import { MemoryRouter } from "react-router";
+import { RequestError } from "../lib/request-error";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 let permissions: ActiveWorkspaceContext["permissions"];
@@ -152,7 +154,9 @@ function renderWithClient() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <NotificationSettingsPage />
+      <MemoryRouter>
+        <NotificationSettingsPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -315,5 +319,16 @@ describe("NotificationSettingsPage", () => {
         reason: "Restore visible category defaults",
       }),
     );
+  });
+});
+
+describe("no access (FB-6.1.9)", () => {
+  it("shows the no-access card, not the raw error, when the API refuses notification settings (FB-6.1.9)", async () => {
+    permissions = ["notifications.settings.read"];
+    vi.mocked(getNotificationSettings).mockRejectedValueOnce(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "You don't have access to notification settings" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
+    expect(screen.queryByText("Forbidden")).toBeNull();
   });
 });

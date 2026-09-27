@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AvailabilityPage } from "./AvailabilityPage";
 import { loadWeeklyTeam } from "../availability/availability-data";
 
+import { RequestError } from "../lib/request-error";
 const workspace = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const main = "11000000-0000-4000-8000-000000000001";
 const patio = "11000000-0000-4000-8000-000000000002";
@@ -21,7 +22,7 @@ const sam = "15000000-0000-4000-8000-000000000003";
 const dinner = "15000000-0000-4000-8000-000000000004";
 
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({ context: { workspace: { id: workspace } } }),
+  useAuth: () => ({ context: { workspace: { id: workspace }, actions: [] } }),
 }));
 vi.mock("../availability/availability-data", () => ({
   loadWeeklyTeam: vi.fn(),
@@ -227,5 +228,15 @@ describe("weekly team availability", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(screen.getByText("Alex Kim")).toBeTruthy());
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("no access (FB-6.1.9)", () => {
+  it("shows the no-access card, not the raw error, when the API refuses team availability (FB-6.1.9)", async () => {
+    vi.mocked(loadWeeklyTeam).mockRejectedValueOnce(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "You don't have access to team availability" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
+    expect(screen.queryByText("Forbidden")).toBeNull();
   });
 });

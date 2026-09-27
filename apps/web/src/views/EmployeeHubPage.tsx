@@ -31,6 +31,9 @@ import { EmployeeMorePage } from "../employee-hub/EmployeeMobileNav";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 // Navigation between these pages lives in the app sidebar. This map supplies
 // the shared catalog header copy, written for the employee reading it.
 const pageCopy: Record<
@@ -98,6 +101,14 @@ export function EmployeeHubPage() {
     });
     return () => cancelAnimationFrame(frame);
   }, [location.key, location.hash, hasHubData]);
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="Employee Hub"
+        homeHref={noAccessHomePath(context, "/app/employee-hub")}
+      />
+    );
   if (independentPage)
     return (
       <section

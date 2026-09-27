@@ -35,6 +35,9 @@ import {
 } from "../communications/NotificationShiftDetails";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 type Category = "all" | NotificationCategory;
 type NotificationMutationInput = {
   notification_id: string | null;
@@ -83,6 +86,14 @@ export function NotificationsPage() {
   const groups = useMemo(() => groupByDay(notifications), [notifications]);
   const unreadCount = query.data?.pages[0]?.unread_count ?? 0;
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="notifications"
+        homeHref={noAccessHomePath(context, "/app/notifications")}
+      />
+    );
   if (query.isLoading)
     return <NotificationState text="Loading notifications..." />;
   if (query.error)

@@ -22,6 +22,9 @@ import {
 } from "./notification-settings-data";
 import "./notification-settings.css";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const channels = ["in_app", "email", "push"] as const;
 type CatalogEntry = NotificationSettingsResponse["catalog"][number];
 type Draft = Pick<
@@ -181,6 +184,14 @@ export default function NotificationSettingsPage() {
     [category, catalog, deferredSearch],
   );
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(settings.error))
+    return (
+      <NoAccessState
+        subject="notification settings"
+        homeHref={noAccessHomePath(context, "/app/settings/notifications")}
+      />
+    );
   if (!context) return null;
   const header = (
     <SettingsHeader

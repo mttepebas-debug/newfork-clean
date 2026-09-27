@@ -33,6 +33,9 @@ import {
   type EmployeeSummary,
 } from "@newfork/shared";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const statusFilters = [
   "all",
   "invited",
@@ -228,6 +231,14 @@ export default function EmployeesPage() {
   );
 
   const drawerOpen = creating || Boolean(employeeId);
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(employees.error))
+    return (
+      <NoAccessState
+        subject="employees"
+        homeHref={noAccessHomePath(context, "/app/employees")}
+      />
+    );
   return (
     <section className="employees-page" aria-labelledby="employees-title">
       <CatalogPageHeader

@@ -21,6 +21,9 @@ import {
   ScheduleRequestError,
 } from "../schedule/schedule-data";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 function shortDate(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -109,6 +112,14 @@ export default function ScheduleTemplatesPage() {
     }
   }
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(templatesQuery.error))
+    return (
+      <NoAccessState
+        subject="schedule templates"
+        homeHref={noAccessHomePath(context, "/app/schedule/templates")}
+      />
+    );
   return (
     <main className="schedule-templates-page">
       <div className="page-header schedule-templates-header">

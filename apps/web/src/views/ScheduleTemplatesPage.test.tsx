@@ -11,6 +11,7 @@ import {
 } from "../schedule/schedule-data";
 import ScheduleTemplatesPage from "./ScheduleTemplatesPage";
 
+import { RequestError } from "../lib/request-error";
 const auth = vi.hoisted(() => ({
   context: {
     workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" },
@@ -182,5 +183,15 @@ describe("ScheduleTemplatesPage", () => {
     renderPage();
 
     expect(await screen.findByText("No templates yet")).toBeTruthy();
+  });
+});
+
+describe("no access (FB-6.1.9)", () => {
+  it("shows the no-access card, not the raw error, when the API refuses schedule templates (FB-6.1.9)", async () => {
+    listTemplatesMock.mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "You don't have access to schedule templates" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
+    expect(screen.queryByText("Forbidden")).toBeNull();
   });
 });
