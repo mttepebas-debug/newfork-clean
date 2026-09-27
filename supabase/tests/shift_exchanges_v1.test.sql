@@ -1,29 +1,45 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
-create function pg_temp.w() returns uuid language sql as $$select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid$$;
-create function pg_temp.manager() returns uuid language sql as $$select 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'::uuid$$;
-create function pg_temp.actor(n integer) returns uuid language sql as $$select ('98000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
-create function pg_temp.emp(n integer) returns uuid language sql as $$select ('15000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
+-- BL-217: this file used to run its scenario directly against the seeded
+-- Meyhouse workspace and its real Main Dining / Garden Room locations,
+-- mutating one location's timezone mid-test (AT20/AT21 below). A lost
+-- rollback there is exactly what corrupted the shared local database once
+-- already (BL-209) -- a throwaway tests.world() means the same failure mode
+-- can only ever strand throwaway fixture data, never a real tenant's.
+select tests.world('sx');
+select tests.person('sx', 'emp1', 'employee', array['K', 'B'], array['cook']);
+select tests.person('sx', 'emp2', 'employee', array['K', 'B'], array['cook']);
+select tests.person('sx', 'emp3', 'employee', array['K', 'B'], array['cook']);
+select tests.person('sx', 'emp4', 'employee', array['K', 'B'], array['cook']);
+-- tests.world()'s two locations start on Europe/Istanbul; this file's
+-- baseline (before AT20/AT21 flip either location) is the same Pacific zone
+-- the real Meyhouse locations used to carry.
+update public.locations set timezone = 'America/Los_Angeles' where workspace_id = tests.id('sx');
+select tests.remember('sx:type:cook', gen_random_uuid());
+insert into public.shift_types (id, workspace_id, name, default_start_time, default_end_time)
+values (tests.id('sx:type:cook'), tests.id('sx'), 'Line Cook', '09:00', '17:00');
+create function pg_temp.w() returns uuid language sql as $$select tests.id('sx')$$;
+create function pg_temp.manager() returns uuid language sql as $$select tests.user('sx:owner')$$;
+-- Actors 1-4 are the four employees above, by their real linked user; 5-6
+-- are the cross-location managers created below (workspace members with no
+-- employee_profile of their own, same as before).
+create function pg_temp.actor(n integer) returns uuid language sql as $$
+  select case when n between 1 and 4 then tests.user('sx:emp' || n)
+    else ('98000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid end
+$$;
+create function pg_temp.emp(n integer) returns uuid language sql as $$select tests.id('sx:emp' || n)$$;
+create function pg_temp.loc(n integer) returns uuid language sql as $$
+  select tests.id('sx:' || case n when 1 then 'K' else 'B' end)
+$$;
+create function pg_temp.loc1() returns uuid language sql as $$select pg_temp.loc(1)$$;
+create function pg_temp.loc2() returns uuid language sql as $$select pg_temp.loc(2)$$;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
-select pg_temp.actor(n),'00000000-0000-0000-0000-000000000000','authenticated','authenticated','exchange-'||n||'@example.test','','{}','{}',now(),now() from generate_series(1,6)n;
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations)
-select pg_temp.w(),pg_temp.actor(n),'employee','active',true from generate_series(1,4)n;
-update public.employee_profiles set user_id=pg_temp.actor(right(id::text,1)::int) where id in(pg_temp.emp(1),pg_temp.emp(2),pg_temp.emp(3));
-insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,preferred_name,created_by)
-values(pg_temp.emp(4),pg_temp.w(),pg_temp.actor(4),'E-9804','Drew','Test','',pg_temp.manager());
-insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
-select pg_temp.w(),pg_temp.emp(n),l.id,pg_temp.manager() from generate_series(1,4)n cross join public.locations l where l.workspace_id=pg_temp.w() and l.id in('11000000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000002')
-and not exists(select 1 from public.employee_location_assignments a where a.employee_id=pg_temp.emp(n) and a.location_id=l.id and ended_at is null);
-insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by)
-select pg_temp.w(),pg_temp.emp(n),'13000000-0000-4000-8000-000000000001',pg_temp.manager() from generate_series(1,4)n
-where not exists(select 1 from public.employee_job_assignments where employee_id=pg_temp.emp(n) and job_id='13000000-0000-4000-8000-000000000001' and ended_at is null);
--- The seed's Alex Kim cannot work Fridays; this suite needs its four people free every day.
-delete from public.employee_weekly_preferences where workspace_id=pg_temp.w() and employee_id in(select pg_temp.emp(n) from generate_series(1,4)n);
+select pg_temp.actor(n),'00000000-0000-0000-0000-000000000000','authenticated','authenticated','exchange-'||n||'@example.test','','{}','{}',now(),now() from generate_series(5,6)n;
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
-values('98010000-0000-4000-8000-000000000001',pg_temp.w(),'11000000-0000-4000-8000-000000000001','2030-01-07',1,pg_temp.manager());
+values('98010000-0000-4000-8000-000000000001',pg_temp.w(),pg_temp.loc1(),'2030-01-07',1,pg_temp.manager());
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
-select ('98020000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,pg_temp.w(),'11000000-0000-4000-8000-000000000001','98010000-0000-4000-8000-000000000001',case n when 4 then null when 3 then pg_temp.emp(2) else pg_temp.emp(1) end,'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-07'::date+n-1,'09:00','17:00',gen_random_uuid() from generate_series(1,4)n;
+select ('98020000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,pg_temp.w(),pg_temp.loc1(),'98010000-0000-4000-8000-000000000001',case n when 4 then null when 3 then pg_temp.emp(2) else pg_temp.emp(1) end,tests.id('sx:job:cook'),tests.id('sx:type:cook'),'2030-01-07'::date+n-1,'09:00','17:00',gen_random_uuid() from generate_series(1,4)n;
 create function pg_temp.shift(n integer) returns uuid language sql as $$select ('98020000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
 create temp table sx_state(cid uuid, aid uuid, result jsonb, preview jsonb);
 insert into sx_state values(null,null,null,null);
@@ -71,11 +87,11 @@ select is((select employee_id from public.schedule_draft_shifts where draft_id='
 select is((select note from public.schedule_draft_shifts where draft_id='98040000-0000-4000-8000-000000000001'),'KEEP DRAFT NOTE','AT27 unrelated draft note retained');
 select is((select employee_id from public.schedule_edit_session_shifts where session_id='98040000-0000-4000-8000-000000000002'),pg_temp.emp(3),'AT27 dirty session ownership rebased');
 select is((select note from public.schedule_edit_session_shifts where session_id='98040000-0000-4000-8000-000000000002'),'KEEP SESSION NOTE','AT27 dirty session note retained');
-select lives_ok($$select public.shift_exchange_assert_draft(pg_temp.w(),'98040000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid])$$,'AT27 rebased draft can pass publication guard');
+select lives_ok($$select public.shift_exchange_assert_draft(pg_temp.w(),'98040000-0000-4000-8000-000000000001',array[pg_temp.loc1()::uuid])$$,'AT27 rebased draft can pass publication guard');
 select lives_ok($$select public.shift_exchange_assert_session(pg_temp.w(),'98040000-0000-4000-8000-000000000002')$$,'AT27 rebased session can pass save guard');
 update public.schedule_draft_shifts set employee_id=pg_temp.emp(1) where draft_id='98040000-0000-4000-8000-000000000001';
 update public.schedule_edit_session_shifts set employee_id=pg_temp.emp(1) where session_id='98040000-0000-4000-8000-000000000002';
-select throws_ok($$select public.shift_exchange_assert_draft(pg_temp.w(),'98040000-0000-4000-8000-000000000001',array['11000000-0000-4000-8000-000000000001'::uuid])$$,'PT409',null,'AT27 stale owner cannot be published');
+select throws_ok($$select public.shift_exchange_assert_draft(pg_temp.w(),'98040000-0000-4000-8000-000000000001',array[pg_temp.loc1()::uuid])$$,'PT409',null,'AT27 stale owner cannot be published');
 select throws_ok($$select public.shift_exchange_assert_session(pg_temp.w(),'98040000-0000-4000-8000-000000000002')$$,'PT409',null,'AT27 stale session cannot overwrite approved transfer');
 -- Direct invitation, consent withdrawal and a full two-direction swap.
 -- Recovery is explicit, preview-bound and preserves notes / unrelated edits.
@@ -106,12 +122,12 @@ select is((select employee_id from public.schedule_published_shifts where id=pg_
 -- Cross-location approval: each scoped manager votes; only the second commits.
 insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations)
 select pg_temp.w(),pg_temp.actor(n),'manager', 'active',false from generate_series(5,6)n;
-select tests.works_at(id, case when user_id=pg_temp.actor(5) then '11000000-0000-4000-8000-000000000001'::uuid else '11000000-0000-4000-8000-000000000002'::uuid end) from public.workspace_memberships where workspace_id=pg_temp.w() and user_id in(pg_temp.actor(5),pg_temp.actor(6));
+select tests.works_at(id, case when user_id=pg_temp.actor(5) then pg_temp.loc1()::uuid else pg_temp.loc2()::uuid end) from public.workspace_memberships where workspace_id=pg_temp.w() and user_id in(pg_temp.actor(5),pg_temp.actor(6));
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
-values('98010000-0000-4000-8000-000000000002',pg_temp.w(),'11000000-0000-4000-8000-000000000002','2030-01-07',1,pg_temp.manager());
+values('98010000-0000-4000-8000-000000000002',pg_temp.w(),pg_temp.loc2(),'2030-01-07',1,pg_temp.manager());
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
-values(pg_temp.shift(5),pg_temp.w(),'11000000-0000-4000-8000-000000000001','98010000-0000-4000-8000-000000000001',pg_temp.emp(1),'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-11','09:00','17:00',gen_random_uuid()),
-(pg_temp.shift(6),pg_temp.w(),'11000000-0000-4000-8000-000000000002','98010000-0000-4000-8000-000000000002',pg_temp.emp(2),'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-12','09:00','17:00',gen_random_uuid());
+values(pg_temp.shift(5),pg_temp.w(),pg_temp.loc1(),'98010000-0000-4000-8000-000000000001',pg_temp.emp(1),tests.id('sx:job:cook'),tests.id('sx:type:cook'),'2030-01-11','09:00','17:00',gen_random_uuid()),
+(pg_temp.shift(6),pg_temp.w(),pg_temp.loc2(),'98010000-0000-4000-8000-000000000002',pg_temp.emp(2),tests.id('sx:job:cook'),tests.id('sx:type:cook'),'2030-01-12','09:00','17:00',gen_random_uuid());
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.shift(5),'requested_shift_id',pg_temp.shift(6)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid);
@@ -160,9 +176,9 @@ update public.employee_job_assignments set ended_at=null where workspace_id=pg_t
 update public.employee_location_assignments set ended_at='2030-01-07T20:00:00Z' where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
 select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 location assignment must cover the entire shift');
 update public.employee_location_assignments set ended_at=null where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
-update public.locations set timezone='America/New_York' where id='11000000-0000-4000-8000-000000000002';
+update public.locations set timezone='America/New_York' where id=pg_temp.loc2();
 insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
-values('98050000-0000-4000-8000-000000000001',pg_temp.w(),pg_temp.emp(4),'11000000-0000-4000-8000-000000000002','approved',pg_temp.manager());
+values('98050000-0000-4000-8000-000000000001',pg_temp.w(),pg_temp.emp(4),pg_temp.loc2(),'approved',pg_temp.manager());
 insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
 values(pg_temp.w(),'98050000-0000-4000-8000-000000000001','2030-01-07','09:00','10:00','approved');
 select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','eligible','AT21 09:00 New York leave does not overlap 09:00 Los Angeles shift');
@@ -193,15 +209,15 @@ select throws_ok($$select public.shift_exchanges_maintain_service(100)$$,'42501'
 reset role;
 -- Time-source integration: unknown hours are not eligible; saved zones are canonical.
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
-values(pg_temp.shift(7),pg_temp.w(),'11000000-0000-4000-8000-000000000002','98010000-0000-4000-8000-000000000002',pg_temp.emp(4),'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-08','09:00','10:00',gen_random_uuid());
-update public.locations set timezone='America/Los_Angeles' where id='11000000-0000-4000-8000-000000000002';
+values(pg_temp.shift(7),pg_temp.w(),pg_temp.loc2(),'98010000-0000-4000-8000-000000000002',pg_temp.emp(4),tests.id('sx:job:cook'),tests.id('sx:type:cook'),'2030-01-08','09:00','10:00',gen_random_uuid());
+update public.locations set timezone='America/Los_Angeles' where id=pg_temp.loc2();
 select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2)))->>'status','eligible','AT20 conflict checks retain other shifts saved timezone');
-update public.locations set timezone='America/New_York' where id='11000000-0000-4000-8000-000000000001';
+update public.locations set timezone='America/New_York' where id=pg_temp.loc1();
 select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2)))->>'status','eligible','AT20 target eligibility retains its saved timezone after location edit');
-update public.locations set timezone='America/Los_Angeles' where id='11000000-0000-4000-8000-000000000001';
+update public.locations set timezone='America/Los_Angeles' where id=pg_temp.loc1();
 -- Drive the real outbox projection only for events created by this transaction.
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
-select pg_temp.shift(n),pg_temp.w(),'11000000-0000-4000-8000-000000000001','98010000-0000-4000-8000-000000000001',pg_temp.emp(n-7),'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-13',case n when 8 then '09:00'::time else '13:00'::time end,case n when 8 then '12:00'::time else '17:00'::time end,gen_random_uuid() from generate_series(8,9)n;
+select pg_temp.shift(n),pg_temp.w(),pg_temp.loc1(),'98010000-0000-4000-8000-000000000001',pg_temp.emp(n-7),tests.id('sx:job:cook'),tests.id('sx:type:cook'),'2030-01-13',case n when 8 then '09:00'::time else '13:00'::time end,case n when 8 then '12:00'::time else '17:00'::time end,gen_random_uuid() from generate_series(8,9)n;
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.shift(8),'requested_shift_id',pg_temp.shift(9)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid);
@@ -222,11 +238,11 @@ do $$ declare row record; begin for row in select id from public.notification_ou
 select is((select count(*) from public.notifications where workspace_id=pg_temp.w()),(select n from sx_inbox_count),'AT33 retrying projection does not duplicate inbox items');
 -- Additional decision matrix: use a separate week to avoid accidental conflicts.
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
-select ('98010000-0000-4000-8000-'||lpad((n+2)::text,12,'0'))::uuid,pg_temp.w(),('11000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'2030-01-14',1,pg_temp.manager() from generate_series(1,2)n;
+select ('98010000-0000-4000-8000-'||lpad((n+2)::text,12,'0'))::uuid,pg_temp.w(),pg_temp.loc(n),'2030-01-14',1,pg_temp.manager() from generate_series(1,2)n;
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
-select pg_temp.shift(n),pg_temp.w(),case when n in(13,15) then '11000000-0000-4000-8000-000000000002'::uuid else '11000000-0000-4000-8000-000000000001'::uuid end,
+select pg_temp.shift(n),pg_temp.w(),case when n in(13,15) then pg_temp.loc2()::uuid else pg_temp.loc1()::uuid end,
  case when n in(13,15) then '98010000-0000-4000-8000-000000000004'::uuid else '98010000-0000-4000-8000-000000000003'::uuid end,
- case when n=11 then null when n in(13,15) then pg_temp.emp(2) else pg_temp.emp(1) end,'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-14'::date+n-10,'09:00','17:00',gen_random_uuid() from generate_series(10,16)n;
+ case when n=11 then null when n in(13,15) then pg_temp.emp(2) else pg_temp.emp(1) end,tests.id('sx:job:cook'),tests.id('sx:type:cook'),'2030-01-14'::date+n-10,'09:00','17:00',gen_random_uuid() from generate_series(10,16)n;
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(10)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
 select public.shift_exchanges_command_service(pg_temp.actor(n),pg_temp.w(),jsonb_build_object('action','apply','shift_id',pg_temp.shift(10),'case_id',cid),gen_random_uuid()) from sx_state cross join generate_series(2,4)n;
@@ -299,14 +315,14 @@ update public.workspace_memberships set role='manager',role_id=(select role_id f
 -- about: that nobody approves their own exchange. They are given the
 -- workspace's locations first, so the refusal they get is that one.
 select tests.works_at(m.id, l) from public.workspace_memberships m
- cross join unnest(array['11000000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000002']::uuid[]) l
+ cross join unnest(array[pg_temp.loc1(),pg_temp.loc2()]::uuid[]) l
  where m.workspace_id=pg_temp.w() and m.user_id in(pg_temp.actor(1),pg_temp.actor(2));
 select is(public.shift_exchange_preview(pg_temp.actor(1),pg_temp.w(),cid,aid)->>'allowed','false','AT41 owner with manager role cannot approve their own release') from sx_state;
 select is(public.shift_exchange_preview(pg_temp.actor(2),pg_temp.w(),cid,aid)->>'allowed','false','AT41 recipient with manager role cannot approve their own pickup') from sx_state;
 select ok(public.shift_exchange_preview(pg_temp.actor(1),pg_temp.w(),cid,aid)->'reasons' @> '["A separate manager must approve your own exchange"]'::jsonb,'AT41 self-approval rejection explains the independent reviewer requirement') from sx_state;
 select throws_ok($$select public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',2,'fingerprint',public.shift_exchange_preview(pg_temp.actor(2),pg_temp.w(),cid,aid)->>'fingerprint'),gen_random_uuid()) from sx_state$$,'PT409',null,'AT41 recipient manager cannot bypass preview using the final command');
 -- A material change after the first scoped approval requires fresh consent and votes.
-select tests.works_at(id, '11000000-0000-4000-8000-000000000001') from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5);
+select tests.works_at(id, pg_temp.loc1()) from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5);
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.shift(10),'requested_shift_id',pg_temp.shift(15)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid);
@@ -341,7 +357,7 @@ update sx_state set aid=(select id from public.shift_exchange_applications where
 update sx_state set preview=public.shift_exchange_preview(pg_temp.manager(),pg_temp.w(),cid,aid);
 update public.schedule_location_publications set status='superseded' where id='98010000-0000-4000-8000-000000000003';
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
-values('98010000-0000-4000-8000-000000000005',pg_temp.w(),'11000000-0000-4000-8000-000000000001','2030-01-14',2,pg_temp.manager());
+values('98010000-0000-4000-8000-000000000005',pg_temp.w(),pg_temp.loc1(),'2030-01-14',2,pg_temp.manager());
 insert into public.schedule_published_shifts(workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id,time_basis,time_snapshot,time_timezone,unpaid_break_minutes)
 select workspace_id,location_id,'98010000-0000-4000-8000-000000000005',employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,coalesce(source_shift_id,id),time_basis,time_snapshot,time_timezone,unpaid_break_minutes
 from public.schedule_published_shifts where publication_id='98010000-0000-4000-8000-000000000003';
@@ -401,24 +417,24 @@ update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(
 update sx_state set cid=(result->>'case_id')::uuid;
 select public.shift_exchanges_command_service(pg_temp.actor(3),pg_temp.w(),jsonb_build_object('action','apply','shift_id',(select source_shift_id from public.schedule_published_shifts where id=pg_temp.shift(14)),'case_id',cid),gen_random_uuid()) from sx_state;
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid and status='pending_manager');
-create temp table sx_unpublish_review as select public.preview_schedule_unpublication_service(pg_temp.manager(),pg_temp.w(),'2030-01-14',array['11000000-0000-4000-8000-000000000001']::uuid[]) before_review;
+create temp table sx_unpublish_review as select public.preview_schedule_unpublication_service(pg_temp.manager(),pg_temp.w(),'2030-01-14',array[pg_temp.loc1()]::uuid[]) before_review;
 select public.shift_exchanges_command_service(pg_temp.manager(),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',2,'fingerprint',public.shift_exchange_preview(pg_temp.manager(),pg_temp.w(),cid,aid)->>'fingerprint'),gen_random_uuid()) from sx_state;
-select isnt(public.preview_schedule_unpublication_service(pg_temp.manager(),pg_temp.w(),'2030-01-14',array['11000000-0000-4000-8000-000000000001']::uuid[])->>'fingerprint',before_review->>'fingerprint','AT24 ownership change invalidates an earlier unpublish review even within the same publication') from sx_unpublish_review;
-select throws_ok($$select public.unpublish_schedule_service(pg_temp.manager(),pg_temp.w(),'2030-01-14',array['11000000-0000-4000-8000-000000000001']::uuid[],before_review->>'fingerprint') from sx_unpublish_review$$,'PT409',null,'AT24 stale unpublish cannot remove a newly approved assignment');
+select isnt(public.preview_schedule_unpublication_service(pg_temp.manager(),pg_temp.w(),'2030-01-14',array[pg_temp.loc1()]::uuid[])->>'fingerprint',before_review->>'fingerprint','AT24 ownership change invalidates an earlier unpublish review even within the same publication') from sx_unpublish_review;
+select throws_ok($$select public.unpublish_schedule_service(pg_temp.manager(),pg_temp.w(),'2030-01-14',array[pg_temp.loc1()]::uuid[],before_review->>'fingerprint') from sx_unpublish_review$$,'PT409',null,'AT24 stale unpublish cannot remove a newly approved assignment');
 select is((select status from public.schedule_location_publications where id='98010000-0000-4000-8000-000000000005'),'current','AT24 failed stale unpublish keeps the live publication');
 select is((select employee_id from public.schedule_published_shifts where publication_id='98010000-0000-4000-8000-000000000005' and scheduled_date='2030-01-18'),pg_temp.emp(3),'AT24 failed stale unpublish preserves the approved recipient');
-select lives_ok($$select public.unpublish_schedule_service(pg_temp.manager(),pg_temp.w(),'2030-01-14',array['11000000-0000-4000-8000-000000000001']::uuid[],public.preview_schedule_unpublication_service(pg_temp.manager(),pg_temp.w(),'2030-01-14',array['11000000-0000-4000-8000-000000000001']::uuid[])->>'fingerprint')$$,'AT24 a freshly reviewed unpublish remains available to the authorized manager');
+select lives_ok($$select public.unpublish_schedule_service(pg_temp.manager(),pg_temp.w(),'2030-01-14',array[pg_temp.loc1()]::uuid[],public.preview_schedule_unpublication_service(pg_temp.manager(),pg_temp.w(),'2030-01-14',array[pg_temp.loc1()]::uuid[])->>'fingerprint')$$,'AT24 a freshly reviewed unpublish remains available to the authorized manager');
 select is((select status from public.schedule_location_publications where id='98010000-0000-4000-8000-000000000005'),'unpublished','AT24 fresh review unpublishes only after manager confirmation');
 select is((select employee_id from public.schedule_published_shifts where publication_id='98010000-0000-4000-8000-000000000005' and scheduled_date='2030-01-18'),pg_temp.emp(3),'AT24 historical assignment retains the approved recipient after intentional unpublish');
 -- Changing the swap candidate requires a new case and fresh consent from all
 -- participants. An earlier location vote must not authorize the replacement.
-select tests.works_at(id, '11000000-0000-4000-8000-000000000001') from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5);
+select tests.works_at(id, pg_temp.loc1()) from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5);
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
-select ('98010000-0000-4000-8000-'||lpad((5+n)::text,12,'0'))::uuid,pg_temp.w(),('11000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'2030-01-21',1,pg_temp.manager() from generate_series(1,2)n;
+select ('98010000-0000-4000-8000-'||lpad((5+n)::text,12,'0'))::uuid,pg_temp.w(),pg_temp.loc(n),'2030-01-21',1,pg_temp.manager() from generate_series(1,2)n;
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
-select pg_temp.shift(16+n),pg_temp.w(),case when n=1 then '11000000-0000-4000-8000-000000000001'::uuid else '11000000-0000-4000-8000-000000000002'::uuid end,
+select pg_temp.shift(16+n),pg_temp.w(),case when n=1 then pg_temp.loc1()::uuid else pg_temp.loc2()::uuid end,
 case when n=1 then '98010000-0000-4000-8000-000000000006'::uuid else '98010000-0000-4000-8000-000000000007'::uuid end,
-pg_temp.emp(n),'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-20'::date+n,'09:00','17:00',gen_random_uuid() from generate_series(1,3)n;
+pg_temp.emp(n),tests.id('sx:job:cook'),tests.id('sx:type:cook'),'2030-01-20'::date+n,'09:00','17:00',gen_random_uuid() from generate_series(1,3)n;
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.shift(17),'requested_shift_id',pg_temp.shift(18)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid);
