@@ -28,7 +28,7 @@ as $$
    'severity','hard','overrideable',false,'tier','blocker','introduced',true,
    'location_id',x.location_id,'location_name',x.location_name,
    'employee_id',x.to_id,'employee_name',x.to_name,
-   'scheduled_date',x.scheduled_date,'start_time',x.start_time,'end_time',x.end_time,
+   'scheduled_date',x.scheduled_date,'start_time',to_char(x.start_time,'HH24:MI'),'end_time',to_char(x.end_time,'HH24:MI'),
    'shift_ids',coalesce(to_jsonb(x.draft_ids),'[]'::jsonb),
    'exchange_case_id',x.case_id,'exchange_kind',x.kind,
    'from_employee_id',x.from_id,'from_employee_name',x.from_name,
