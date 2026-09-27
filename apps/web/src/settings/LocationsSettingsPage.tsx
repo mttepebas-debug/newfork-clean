@@ -26,6 +26,9 @@ import {
   setLocationArchived,
 } from "./organization-data";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const emptyLocation: LocationDraft = {
   name: "",
   short_name: "",
@@ -157,6 +160,14 @@ export default function LocationsSettingsPage() {
           .includes(search.trim().toLowerCase())),
   );
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(locations.error))
+    return (
+      <NoAccessState
+        subject="locations"
+        homeHref={noAccessHomePath(context, "/app/settings/locations")}
+      />
+    );
   return (
     <section
       className="settings-page jobs-settings-page locations-catalog-settings-page"

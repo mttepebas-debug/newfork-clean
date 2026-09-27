@@ -44,6 +44,9 @@ import {
 } from "./signature-templates-data";
 import "./jobs-settings.css";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 type View = "templates" | "retention";
 
 const defaultPolicyDraft: SignatureRetentionPolicyInput = {
@@ -348,6 +351,14 @@ export default function SignatureTemplatesSettingsPage() {
     (editingTemplate === "new" ||
       !sameJson(parsedTemplateDraft.data, templateBaseline));
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="acknowledgements"
+        homeHref={noAccessHomePath(context, "/app/settings/acknowledgements")}
+      />
+    );
   return (
     <section
       className="settings-page jobs-settings-page acknowledgement-page"

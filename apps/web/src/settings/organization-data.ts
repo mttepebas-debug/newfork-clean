@@ -1,26 +1,20 @@
 import { requestFailure } from "../lib/request-error";
 import {
   departmentInputSchema,
-  departmentSchema,
   defaultScheduleLogoPlacement,
   jobInputSchema,
   jobSchema,
   locationInputSchema,
-  locationSchema,
   organizationLogoMaxBytes,
   organizationLogoMimeTypes,
   importantDateInputSchema,
-  importantDateSchema,
   schedulingSettingsInputSchema,
   schedulingSettingsSchema,
   shiftLabelInputSchema,
-  shiftLabelSchema,
   shiftTypeInputSchema,
-  shiftTypeSchema,
   workspaceSchema,
   type Department,
   type DepartmentInput,
-  type ImportantDate,
   type ImportantDateInput,
   type Job,
   type JobInput,
@@ -38,6 +32,7 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseClient } from "../lib/supabase";
 
+import { readSettings } from "../lib/settings-read";
 function client(): SupabaseClient {
   if (!supabaseClient)
     throw new Error("Organization storage is not configured");
@@ -232,17 +227,7 @@ export async function updateOrganizationName(
 }
 
 export async function listLocations(workspaceId: string): Promise<Location[]> {
-  const { data, error } = await client()
-    .from("locations")
-    .select(
-      "id,workspace_id,name,short_name,phone,street_address,city,region,postal_code,country_code,timezone,sort_order,archived_at",
-    )
-    .is("deleted_at", null)
-    .eq("workspace_id", workspaceId)
-    .order("sort_order")
-    .order("name");
-  message(error);
-  return locationSchema.array().parse(data ?? []);
+  return readSettings(workspaceId, "locations");
 }
 
 export async function saveLocation(
@@ -299,15 +284,7 @@ export async function setLocationArchived(
 export async function listDepartments(
   workspaceId: string,
 ): Promise<Department[]> {
-  const { data, error } = await client()
-    .from("departments")
-    .select("id,workspace_id,name,color,sort_order,archived_at")
-    .is("deleted_at", null)
-    .eq("workspace_id", workspaceId)
-    .order("sort_order")
-    .order("name");
-  message(error);
-  return departmentSchema.array().parse(data ?? []);
+  return (await readSettings(workspaceId, "jobs")).departments;
 }
 
 export async function saveDepartment(
@@ -346,15 +323,7 @@ export async function setDepartmentArchived(
 }
 
 export async function listJobs(workspaceId: string): Promise<Job[]> {
-  const { data, error } = await client()
-    .from("jobs")
-    .select("id,workspace_id,department_id,name,color,sort_order,archived_at")
-    .eq("workspace_id", workspaceId)
-    .is("deleted_at", null)
-    .order("sort_order")
-    .order("name");
-  message(error);
-  return jobSchema.array().parse(data ?? []);
+  return (await readSettings(workspaceId, "jobs")).jobs;
 }
 
 export async function saveJob(
@@ -431,36 +400,9 @@ export async function saveSchedulingSettings(
   });
 }
 
-export async function listImportantDates(
-  workspaceId: string,
-): Promise<ImportantDate[]> {
-  const locations = await listLocations(workspaceId);
-  const locationNames = new Map(
-    locations.map((location) => [location.id, location.name]),
-  );
-  const { data, error } = await client()
-    .from("important_dates")
-    .select(
-      "id,workspace_id,location_id,location_ids,title,type,starts_on,ends_on,recurrence,note,affects_scheduling,archived_at,locations(name)",
-    )
-    .eq("workspace_id", workspaceId)
-    .order("starts_on", { ascending: true })
-    .order("title");
-  message(error);
-  return importantDateSchema.array().parse(
-    (data ?? []).map((row) => ({
-      ...row,
-      location_names: (
-        row.location_ids ?? (row.location_id ? [row.location_id] : [])
-      ).map((id: string) => locationNames.get(id) ?? "Archived location"),
-      location_name:
-        typeof row.locations === "object" &&
-        row.locations !== null &&
-        "name" in row.locations
-          ? row.locations.name
-          : null,
-    })),
-  );
+/** The dates, and the locations this person may place one at (the editor's picker). */
+export async function listImportantDates(workspaceId: string) {
+  return readSettings(workspaceId, "important-dates");
 }
 
 export async function saveImportantDate(
@@ -511,29 +453,7 @@ export async function setImportantDateArchived(
 export async function listShiftTypes(
   workspaceId: string,
 ): Promise<ShiftType[]> {
-  const { data, error } = await client()
-    .from("shift_types")
-    .select(
-      "id,workspace_id,name,color,default_start_time,default_end_time,default_revision,crosses_midnight,sort_order,archived_at",
-    )
-    .is("deleted_at", null)
-    .eq("workspace_id", workspaceId)
-    .order("sort_order")
-    .order("name");
-  message(error);
-  return shiftTypeSchema.array().parse(
-    (data ?? []).map((row) => ({
-      ...row,
-      default_start_time:
-        typeof row.default_start_time === "string"
-          ? row.default_start_time.slice(0, 5)
-          : null,
-      default_end_time:
-        typeof row.default_end_time === "string"
-          ? row.default_end_time.slice(0, 5)
-          : null,
-    })),
-  );
+  return readSettings(workspaceId, "shift-types");
 }
 
 export async function saveShiftType(
@@ -601,15 +521,7 @@ export async function reorderShiftTypes(
 export async function listShiftLabels(
   workspaceId: string,
 ): Promise<ShiftLabel[]> {
-  const { data, error } = await client()
-    .from("shift_labels")
-    .select("id,workspace_id,name,color,sort_order,archived_at")
-    .is("deleted_at", null)
-    .eq("workspace_id", workspaceId)
-    .order("sort_order")
-    .order("name");
-  message(error);
-  return shiftLabelSchema.array().parse(data ?? []);
+  return readSettings(workspaceId, "shift-labels");
 }
 
 export async function saveShiftLabel(

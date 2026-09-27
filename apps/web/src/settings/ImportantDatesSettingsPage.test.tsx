@@ -15,7 +15,6 @@ import { describe, expect, it, vi } from "vitest";
 import ImportantDatesSettingsPage from "./ImportantDatesSettingsPage";
 import {
   listImportantDates,
-  listLocations,
   saveImportantDate,
   setImportantDateArchived,
 } from "./organization-data";
@@ -103,14 +102,12 @@ const dates = [
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
 vi.mock("./organization-data", () => ({
   listImportantDates: vi.fn(),
-  listLocations: vi.fn(),
   saveImportantDate: vi.fn(),
   setImportantDateArchived: vi.fn(),
 }));
 
 function renderPage() {
-  vi.mocked(listImportantDates).mockResolvedValue(dates);
-  vi.mocked(listLocations).mockResolvedValue([location]);
+  vi.mocked(listImportantDates).mockResolvedValue({ dates, locations: [location] });
   vi.mocked(saveImportantDate).mockResolvedValue(undefined);
   vi.mocked(setImportantDateArchived).mockResolvedValue(undefined);
   const client = new QueryClient({

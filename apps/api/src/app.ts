@@ -101,6 +101,11 @@ import {
   type DocumentTypesService,
 } from "./settings/document-types-service";
 import { registerOrganizationSettingsRoutes } from "./settings/organization-settings-routes";
+import { registerSettingsReadsRoutes } from "./settings/settings-reads-routes";
+import {
+  createSettingsReadsService,
+  type SettingsReadsService,
+} from "./settings/settings-reads-service";
 import {
   createOrganizationSettingsService,
   type OrganizationSettingsService,
@@ -171,6 +176,7 @@ interface BuildAppOptions {
   readonly notificationSettingsService?: NotificationSettingsService | null;
   readonly documentTypesService?: DocumentTypesService | null;
   readonly organizationSettingsService?: OrganizationSettingsService | null;
+  readonly settingsReadsService?: SettingsReadsService | null;
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
   readonly notificationOutboxCron?: {
@@ -338,6 +344,8 @@ export function buildApp(options: BuildAppOptions = {}) {
   const organizationSettingsService =
     options.organizationSettingsService ??
     createOrganizationSettingsServiceFromEnvironment();
+  const settingsReadsService =
+    options.settingsReadsService ?? createSettingsReadsServiceFromEnvironment();
   const rolesService =
     options.rolesService ?? createRolesServiceFromEnvironment();
   const signatureSettingsService =
@@ -916,6 +924,10 @@ export function buildApp(options: BuildAppOptions = {}) {
     service: organizationSettingsService,
     contextResolver,
   });
+  registerSettingsReadsRoutes(app, {
+    service: settingsReadsService,
+    contextResolver,
+  });
   registerRolesRoutes(app, {
     service: rolesService,
     contextResolver,
@@ -1101,6 +1113,14 @@ function createDocumentTypesServiceFromEnvironment(): DocumentTypesService | nul
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return url && serviceRoleKey
     ? createDocumentTypesService({ url, serviceRoleKey })
+    : null;
+}
+
+function createSettingsReadsServiceFromEnvironment(): SettingsReadsService | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && serviceRoleKey
+    ? createSettingsReadsService({ url, serviceRoleKey })
     : null;
 }
 

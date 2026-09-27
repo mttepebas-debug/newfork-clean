@@ -31,6 +31,9 @@ import "./jobs-settings.css";
 import { DocumentPublicationDialog } from "./DocumentPublicationDialog";
 import { DocumentSettingsEditor } from "./DocumentSettingsEditor";
 
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 const defaultDraft: DocumentTypeInput = {
   title: "",
   description: "",
@@ -221,6 +224,14 @@ export default function DocumentsSettingsPage() {
     );
   };
 
+  // The API's "no" gets the one no-access card, never its raw sentence.
+  if (isNoAccess(query.error))
+    return (
+      <NoAccessState
+        subject="document settings"
+        homeHref={noAccessHomePath(context, "/app/settings/documents")}
+      />
+    );
   return (
     <section
       className="settings-page jobs-settings-page document-catalog-settings-page"

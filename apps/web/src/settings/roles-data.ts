@@ -1,21 +1,17 @@
 import {
-  permissionDefinitionSchema,
   workspaceRoleInputSchema,
-  workspaceRoleRecordSchema,
   type PermissionDefinition,
   type WorkspaceRoleInput,
   type WorkspaceRoleRecord,
 } from "@newfork/shared";
 import { supabaseClient } from "../lib/supabase";
 
+import { readSettings } from "../lib/settings-read";
 function client() {
   if (!supabaseClient) throw new Error("Role storage is not configured");
   return supabaseClient;
 }
 
-function check(error: { message: string } | null): void {
-  if (error) throw new Error(error.message);
-}
 
 async function request(
   workspaceId: string,
@@ -51,16 +47,7 @@ export async function loadRoleWorkspace(workspaceId: string): Promise<{
   readonly permissions: PermissionDefinition[];
   readonly roles: WorkspaceRoleRecord[];
 }> {
-  const { data, error } = await client().rpc("read_role_workspace", {
-    target_workspace_id: workspaceId,
-  });
-  check(error);
-  return {
-    permissions: permissionDefinitionSchema
-      .array()
-      .parse(data?.permissions ?? []),
-    roles: workspaceRoleRecordSchema.array().parse(data?.roles ?? []),
-  };
+  return readSettings(workspaceId, "roles");
 }
 
 export async function saveWorkspaceRole(
