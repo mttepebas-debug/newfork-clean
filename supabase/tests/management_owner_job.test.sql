@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(36);
 
 -- BL-218. Setup gives every workspace two protected catalog records: the
 -- Management department and, under it, the Owner job. Nobody deletes or
@@ -303,7 +303,66 @@ select matches(
   'nor by any other way into the table'
 );
 
--- 6. Ownership moves the Owner job -----------------------------------------------------
+-- 6. Management jobs are always primary; one other job may be too ---------------------
+-- T1 (a): nothing new is stored. A job under Management counts as primary for
+-- whoever works it, so its assignment never carries is_primary; the one
+-- is_primary a person may have is a job outside Management.
+
+select tests.as_browser(tests.user('mo:owner'), format(
+  $sql$insert into public.jobs (id, workspace_id, name, department_id) values (%L, %L, 'Manager', %L), (%L, %L, 'Host', %L)$sql$,
+  tests.remember('mo:job:manager', gen_random_uuid()), tests.id('mo'), pg_temp.management('mo'),
+  tests.remember('mo:job:host', gen_random_uuid()), tests.id('mo'), tests.id('mo:kitchen')
+));
+create function pg_temp.is_primary(person text, job text) returns boolean language sql as $$
+  select a.is_primary from public.employee_job_assignments a
+  where a.employee_id = tests.id('mo:' || person) and a.job_id = tests.id('mo:job:' || job) and a.ended_at is null
+$$;
+
+-- Bora cooks (primary) and also manages.
+select tests.person('mo', 'bora', 'employee', array['K'], array['cook']);
+select is(
+  pg_temp.save_record(tests.user('mo:owner'), 'mo', tests.id('mo:bora'),
+    array[tests.id('mo:K')], array[tests.id('mo:job:cook'), tests.id('mo:job:manager')]),
+  'allowed',
+  'a Management job is added next to a primary job of another department'
+);
+select is(
+  pg_temp.is_primary('bora', 'cook') || '|' || pg_temp.is_primary('bora', 'manager'),
+  'true|false',
+  'the cook job stays the one stored primary; Manager is primary by its department'
+);
+
+-- Cemre has no job left, then gets Manager from Settings > Jobs.
+select tests.person('mo', 'cemre', 'employee', array['K'], array['cook']);
+update public.employee_job_assignments set ended_at = now(), is_primary = false
+where employee_id = tests.id('mo:cemre') and ended_at is null;
+select public.update_job_assignments_service(
+  tests.user('mo:owner'), tests.id('mo'), tests.id('mo:job:manager'),
+  jsonb_build_array(jsonb_build_object(
+    'employee_id', tests.id('mo:cemre'), 'assigned', true,
+    'expected_revision', (select revision from public.employee_profiles where id = tests.id('mo:cemre'))
+  ))
+);
+select is(pg_temp.is_primary('cemre', 'manager'), false,
+  'a Management job given from Settings > Jobs is not stored as primary');
+select is(
+  pg_temp.refusal(format(
+    'update public.employee_job_assignments set is_primary = true where employee_id = %L and job_id = %L and ended_at is null',
+    tests.id('mo:cemre'), tests.id('mo:job:manager')
+  )),
+  '23514',
+  'nor can it be marked primary by any writer'
+);
+
+-- Deniz hosts (primary); Host then moves under Management.
+select tests.person('mo', 'deniz', 'employee', array['K'], array['host']);
+select tests.as_browser(tests.user('mo:owner'), format(
+  'update public.jobs set department_id = %L where id = %L', pg_temp.management('mo'), tests.id('mo:job:host')
+));
+select is(pg_temp.is_primary('deniz', 'host'), false,
+  'a job moved under Management stops being a stored primary');
+
+-- 7. Ownership moves the Owner job -----------------------------------------------------
 
 select public.initiate_workspace_ownership_transfer_service(
   tests.user('mo:owner'), tests.id('mo'), tests.user('mo:ada')
