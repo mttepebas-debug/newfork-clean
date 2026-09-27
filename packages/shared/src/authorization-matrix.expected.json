@@ -1,5 +1,5 @@
 {
- "sourceSha256": "3e2b8f98c4daefe4b45ce2ab9568baa4687e7e17495748e93fdc32b5401ec8fe",
+ "sourceSha256": "96ccb33b143f3f1ce6d2d78fd3b53f87cf55ed7316e13554ab5b8ad80d5c8312",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -47,15 +47,22 @@
   "settings.availability.write",
   "settings.catalog.read",
   "settings.conflict_rules.write",
+  "settings.documents.read",
   "settings.documents.write",
+  "settings.important_dates.read",
+  "settings.jobs.read",
   "settings.jobs.write",
+  "settings.locations.read",
   "settings.locations.write",
   "settings.notifications.read",
   "settings.notifications.write",
   "settings.organization.write",
   "settings.people",
+  "settings.roles.read",
   "settings.roles.write",
   "settings.scheduling.write",
+  "settings.shift_catalog.read",
+  "settings.signature_templates.read",
   "time_off.decide",
   "time_off.request_own",
   "workspace.accept_ownership",
@@ -86,7 +93,14 @@
    "locs": [
     "K"
    ],
-   "permissionsRemoved": []
+   "permissionsRemoved": [
+    "settings.locations.read",
+    "settings.jobs.read",
+    "settings.shift_catalog.read",
+    "roles.read",
+    "documents.read",
+    "signature_templates.read"
+   ]
   },
   {
    "label": "ayse",
@@ -96,7 +110,14 @@
    "locs": [
     "K"
    ],
-   "permissionsRemoved": []
+   "permissionsRemoved": [
+    "settings.locations.read",
+    "settings.jobs.read",
+    "settings.shift_catalog.read",
+    "roles.read",
+    "documents.read",
+    "signature_templates.read"
+   ]
   },
   {
    "label": "can",
@@ -107,7 +128,14 @@
     "K",
     "B"
    ],
-   "permissionsRemoved": []
+   "permissionsRemoved": [
+    "settings.locations.read",
+    "settings.jobs.read",
+    "settings.shift_catalog.read",
+    "roles.read",
+    "documents.read",
+    "signature_templates.read"
+   ]
   },
   {
    "label": "emre",
@@ -127,7 +155,14 @@
    "locs": [
     "B"
    ],
-   "permissionsRemoved": []
+   "permissionsRemoved": [
+    "settings.locations.read",
+    "settings.jobs.read",
+    "settings.shift_catalog.read",
+    "roles.read",
+    "documents.read",
+    "signature_templates.read"
+   ]
   },
   {
    "label": "nil",
@@ -139,7 +174,13 @@
    ],
    "permissionsRemoved": [
     "employees.manage",
-    "schedule.publish"
+    "schedule.publish",
+    "settings.locations.read",
+    "settings.jobs.read",
+    "settings.shift_catalog.read",
+    "roles.read",
+    "documents.read",
+    "signature_templates.read"
    ]
   },
   {
@@ -148,7 +189,14 @@
    "class": "manager",
    "status": "active",
    "locs": [],
-   "permissionsRemoved": []
+   "permissionsRemoved": [
+    "settings.locations.read",
+    "settings.jobs.read",
+    "settings.shift_catalog.read",
+    "roles.read",
+    "documents.read",
+    "signature_templates.read"
+   ]
   },
   {
    "label": "olcay",
@@ -189,7 +237,14 @@
    "locs": [
     "K"
    ],
-   "permissionsRemoved": []
+   "permissionsRemoved": [
+    "settings.locations.read",
+    "settings.jobs.read",
+    "settings.shift_catalog.read",
+    "roles.read",
+    "documents.read",
+    "signature_templates.read"
+   ]
   },
   {
    "label": "veli",
@@ -738,10 +793,38 @@
    "blank": "null"
   },
   {
+   "key": "settings.documents.read",
+   "targetKind": "workspace",
+   "permission": "documents.read",
+   "coreKey": "settings.documents.read",
+   "blank": "null"
+  },
+  {
+   "key": "settings.important_dates.read",
+   "targetKind": "workspace",
+   "permission": "important_dates.read",
+   "coreKey": "settings.important_dates.read",
+   "blank": "null"
+  },
+  {
+   "key": "settings.jobs.read",
+   "targetKind": "workspace",
+   "permission": "settings.jobs.read",
+   "coreKey": "settings.jobs.read",
+   "blank": "null"
+  },
+  {
    "key": "settings.jobs.write",
    "targetKind": "workspace",
    "permission": null,
    "coreKey": "settings.jobs.write",
+   "blank": "null"
+  },
+  {
+   "key": "settings.locations.read",
+   "targetKind": "location",
+   "permission": "settings.locations.read",
+   "coreKey": "settings.locations.read",
    "blank": "null"
   },
   {
@@ -759,6 +842,13 @@
    "blank": "null"
   },
   {
+   "key": "settings.roles.read",
+   "targetKind": "workspace",
+   "permission": "roles.read",
+   "coreKey": "settings.roles.read",
+   "blank": "null"
+  },
+  {
    "key": "settings.roles.write",
    "targetKind": "workspace",
    "permission": null,
@@ -770,6 +860,20 @@
    "targetKind": "workspace",
    "permission": null,
    "coreKey": "settings.scheduling.write",
+   "blank": "null"
+  },
+  {
+   "key": "settings.shift_catalog.read",
+   "targetKind": "workspace",
+   "permission": "settings.shift_catalog.read",
+   "coreKey": "settings.shift_catalog.read",
+   "blank": "null"
+  },
+  {
+   "key": "settings.signature_templates.read",
+   "targetKind": "workspace",
+   "permission": "signature_templates.read",
+   "coreKey": "settings.signature_templates.read",
    "blank": "null"
   },
   {
@@ -14483,6 +14587,276 @@
    "allow"
   ],
   [
+   "settings.documents.read",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "ayse",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "can",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "mehmet",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "nil",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.documents.read",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.documents.read",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.important_dates.read",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.important_dates.read",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.important_dates.read",
+   "ayse",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.important_dates.read",
+   "can",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.important_dates.read",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.important_dates.read",
+   "mehmet",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.important_dates.read",
+   "nil",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.important_dates.read",
+   "nur",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.important_dates.read",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.important_dates.read",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.important_dates.read",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.important_dates.read",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.important_dates.read",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.important_dates.read",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.important_dates.read",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.jobs.read",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "ayse",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "can",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "mehmet",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "nil",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.jobs.read",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.jobs.read",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
    "settings.jobs.write",
    "ali",
    "workspace",
@@ -14573,6 +14947,366 @@
    "allow"
   ],
   [
+   "settings.locations.read",
+   "ali",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "ali",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "ali",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "ali",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "aydan",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "aydan",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "aydan",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "aydan",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "ayse",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "ayse",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "ayse",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "ayse",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "can",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "can",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "can",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "can",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "emre",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "emre",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "emre",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "emre",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "mehmet",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "mehmet",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "mehmet",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "mehmet",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "nil",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "nil",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "nil",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "nil",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "nur",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "nur",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "nur",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "nur",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "olcay",
+   "B",
+   "allow"
+  ],
+  [
+   "settings.locations.read",
+   "olcay",
+   "K",
+   "allow"
+  ],
+  [
+   "settings.locations.read",
+   "olcay",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "olcay",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "pelin",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "pelin",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "pelin",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "pelin",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "remzi",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "remzi",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "remzi",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "remzi",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "sami",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "sami",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "sami",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "sami",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "veli",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "veli",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "veli",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "veli",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "xavier",
+   "B",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "xavier",
+   "K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "xavier",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "xavier",
+   "x:K",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "zeynep",
+   "B",
+   "allow"
+  ],
+  [
+   "settings.locations.read",
+   "zeynep",
+   "K",
+   "allow"
+  ],
+  [
+   "settings.locations.read",
+   "zeynep",
+   "none",
+   "deny"
+  ],
+  [
+   "settings.locations.read",
+   "zeynep",
+   "x:K",
+   "deny"
+  ],
+  [
    "settings.locations.write",
    "ali",
    "workspace",
@@ -14753,6 +15487,96 @@
    "allow"
   ],
   [
+   "settings.roles.read",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "ayse",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "can",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "mehmet",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "nil",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.roles.read",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.roles.read",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
    "settings.roles.write",
    "ali",
    "workspace",
@@ -14928,6 +15752,186 @@
   ],
   [
    "settings.scheduling.write",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "ayse",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "can",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "mehmet",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "nil",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.shift_catalog.read",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.signature_templates.read",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "ayse",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "can",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "mehmet",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "nil",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.signature_templates.read",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.signature_templates.read",
    "zeynep",
    "workspace",
    "allow"

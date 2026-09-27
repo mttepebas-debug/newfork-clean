@@ -110,6 +110,13 @@ insert into persona values
   ('remzi',  'm', 'employee', 'removed',    '{B}',   '{}'),
   ('aydan',  'm', 'manager',  'restricted', '{K}',   '{}'),
   ('xavier', 'x', 'owner',    'active',     '{K,B}', '{}');
+-- The manager role an owner starts with holds none of the Settings read
+-- permissions below (important_dates.read aside); an owner may grant them to a
+-- manager-type role (settings_reads_ask_the_core.test.sql).
+update persona set permissions_removed = permissions_removed || array[
+  'settings.locations.read', 'settings.jobs.read', 'settings.shift_catalog.read',
+  'roles.read', 'documents.read', 'signature_templates.read']
+where class = 'manager';
 
 create temporary table actor as
 select p.label,
@@ -318,6 +325,26 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('read.audit', 'workspace', null, false, true,
    $$select tests.as_browser($1, format('select 1 from public.audit_events where workspace_id = %L', $2)) > 0$$);
 
+-- The Settings pages' reads (FB-6.1.9): one entry point per page, each asking
+-- the core for the permission the page is opened with.
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
+  ('settings.locations.read', 'location', 'settings.locations.read', false, true,
+   $$select exists (select 1 from jsonb_array_elements(public.list_settings_locations_service($1, $2)) l
+     where (l ->> 'id')::uuid = $3)$$),
+  ('settings.jobs.read', 'workspace', 'settings.jobs.read', false, false,
+   $$select public.read_settings_jobs_service($1, $2) is not null$$),
+  ('settings.shift_catalog.read', 'workspace', 'settings.shift_catalog.read', false, false,
+   $$select public.list_settings_shift_types_service($1, $2) is not null
+     and public.list_settings_shift_labels_service($1, $2) is not null$$),
+  ('settings.important_dates.read', 'workspace', 'important_dates.read', false, false,
+   $$select public.read_settings_important_dates_service($1, $2) is not null$$),
+  ('settings.roles.read', 'workspace', 'roles.read', false, false,
+   $$select public.read_role_workspace_service($1, $2) is not null$$),
+  ('settings.documents.read', 'workspace', 'documents.read', false, false,
+   $$select public.list_settings_document_types_service($1, $2) is not null$$),
+  ('settings.signature_templates.read', 'workspace', 'signature_templates.read', false, false,
+   $$select public.read_signature_settings_service($1, $2) is not null$$);
+
 -- The consistency layer: the older helpers that each answer "may this person
 -- manage this location?" on their own. They must all give the same answer as
 -- the rule, a blank location included. Stage 4 replaces them with the core.
@@ -382,6 +409,13 @@ insert into core_action (key, core_key, blank) values
   ('settings.roles.write', 'settings.roles.write', 'null'),
   ('settings.scheduling.write', 'settings.scheduling.write', 'null'),
   ('settings.conflict_rules.write', 'settings.conflict_rules.write', 'null'),
+  ('settings.locations.read', 'settings.locations.read', 'null'),
+  ('settings.jobs.read', 'settings.jobs.read', 'null'),
+  ('settings.shift_catalog.read', 'settings.shift_catalog.read', 'null'),
+  ('settings.important_dates.read', 'settings.important_dates.read', 'null'),
+  ('settings.roles.read', 'settings.roles.read', 'null'),
+  ('settings.documents.read', 'settings.documents.read', 'null'),
+  ('settings.signature_templates.read', 'settings.signature_templates.read', 'null'),
   ('workspace.close', 'workspace.close', 'null'),
   ('workspace.transfer_ownership', 'workspace.transfer_ownership', 'null'),
   ('time_off.decide', 'time_off.decide', 'null'),
@@ -538,6 +572,23 @@ begin
   when 'settings.organization.write', 'settings.locations.write', 'settings.jobs.write',
        'settings.roles.write', 'settings.scheduling.write', 'settings.conflict_rules.write' then
     -- Managers read the catalog; they never write organization settings (D1).
+    return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
+
+  when 'settings.locations.read' then
+    -- Owner and admins read every location, a manager only where they work
+    -- (REUSE "Ürün kuralları": Locations'ta yalnız kendi lokasyonları).
+    if t.locs is null then return 'deny'; end if;
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when covers then 'allow' else 'deny' end;
+
+  when 'settings.jobs.read', 'settings.shift_catalog.read', 'settings.important_dates.read',
+       'settings.documents.read', 'settings.signature_templates.read' then
+    -- Managers read the catalog, as far as their role holds the page's read
+    -- permission (checked above).
+    return 'allow';
+
+  when 'settings.roles.read' then
+    -- Roles are not shown to managers (REUSE "Ürün kuralları").
     return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
 
   when 'workspace.close', 'workspace.transfer_ownership' then

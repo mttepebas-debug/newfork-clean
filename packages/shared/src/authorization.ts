@@ -53,15 +53,22 @@ export const authzActionKeys = [
   "settings.availability.write",
   "settings.catalog.read",
   "settings.conflict_rules.write",
+  "settings.documents.read",
   "settings.documents.write",
+  "settings.important_dates.read",
+  "settings.jobs.read",
   "settings.jobs.write",
+  "settings.locations.read",
   "settings.locations.write",
   "settings.notifications.read",
   "settings.notifications.write",
   "settings.organization.write",
   "settings.people",
+  "settings.roles.read",
   "settings.roles.write",
   "settings.scheduling.write",
+  "settings.shift_catalog.read",
+  "settings.signature_templates.read",
   "time_off.decide",
   "time_off.request_own",
   "workspace.accept_ownership",
@@ -124,6 +131,13 @@ export const targetedAuthzActions = {
   "settings.roles.write": { permission: "roles.manage" },
   "settings.scheduling.write": { permission: "settings.schedule_rules.manage" },
   "settings.conflict_rules.write": { permission: "schedule.conflict_rules.manage" },
+  "settings.locations.read": { permission: "settings.locations.read" },
+  "settings.jobs.read": { permission: "settings.jobs.read" },
+  "settings.shift_catalog.read": { permission: "settings.shift_catalog.read" },
+  "settings.important_dates.read": { permission: "important_dates.read" },
+  "settings.roles.read": { permission: "roles.read" },
+  "settings.documents.read": { permission: "documents.read" },
+  "settings.signature_templates.read": { permission: "signature_templates.read" },
   "time_off.decide": { person: true, permission: "schedule.time_off_requests.manage" },
   "time_off.request_own": { permission: null, own: true },
   "workspace.close": { permission: null, ownerOnly: true },
@@ -284,6 +298,22 @@ export function expected<A extends TargetedAuthzAction>(
     case "settings.conflict_rules.write":
     case "audit.read":
       // Managers read the catalog; they never write organization settings.
+      return high;
+
+    case "settings.locations.read":
+      // Owner and admins every location, a manager where they work.
+      return atPlace();
+
+    case "settings.jobs.read":
+    case "settings.shift_catalog.read":
+    case "settings.important_dates.read":
+    case "settings.documents.read":
+    case "settings.signature_templates.read":
+      // Managers read the catalog, as far as their role holds the permission.
+      return true;
+
+    case "settings.roles.read":
+      // Roles are not shown to managers.
       return high;
 
     case "workspace.close":

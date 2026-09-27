@@ -47,6 +47,8 @@ Before a batch: run ONE file first, then prove nothing stayed, e.g. `select key 
 - A prelude that runs `set constraints all immediate` must end with `set constraints all deferred;`, or deferred dependency triggers (e.g. `enforce_role_permission_dependencies`) fire mid-test and fake a red.
 - Permanent cleanup deletes on the shared DB (COMMIT) were refused by the permission classifier for this role (2026-09-26): prepare the script, rolled-back trial and JSONL backup, then hand the COMMIT back. The capture-trigger backup script lives in `artifacts/koordinator/db-cleanup-2026-09-26-b/cleanup-script.sql`.
 
+- A reusable per-file runner (FB-6.1.9, 2026-09-27): write it with the Write tool into `scratchpad/<task>/trial.sh`; per file `awk 'NR==1 && /^begin;/ {print; <cat migration>; next} {print}'` piped to one `psql -X -v ON_ERROR_STOP=1`, then count `^not ok` minus TODO, `ERROR:`, `^1\.\.`, and print workspaces/auth.users/authz_actions counts before and after. `lock.mjs take` wants the owner as `rol/oturum` (e.g. `nf-db/fb61-9-settings-db`).
+
 **Why:** 2026-09-25 the unquoted `echo begin;` from this note applied the FB-6.1 .2 migration to the shared DB for 8 minutes during review (undone).
 
 Related: [[core-call-cost]], [[sql-traps-core-translation]].
