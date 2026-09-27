@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(19);
 
 -- BL-188 (REUSE Q-C): a deleted location counts in no template or scheduled
 -- export rule. "Standard week" has shifts at Kadikoy and Besiktas. While
@@ -15,10 +15,23 @@ select tests.person('dl', 'ayse', 'manager', array['K'], array['cook']);
 -- scheduled exports, and a template is saved from a whole edit.
 insert into public.schedule_templates (workspace_id, name, created_by, updated_by)
 values (tests.id('dl'), 'Standard week', tests.user('dl:owner'), tests.user('dl:owner'));
-select tests.remember('dl:template', (select id from public.schedule_templates where workspace_id = tests.id('dl')));
-insert into public.schedule_template_shifts (workspace_id, template_id, location_id, job_id, day_offset, start_time, end_time, time_basis, time_timezone)
-select tests.id('dl'), tests.id('dl:template'), tests.id('dl:' || loc), tests.id('dl:job:cook'), 1, '09:00', '15:00', 'explicit', 'Europe/Istanbul'
+select tests.remember('dl:template', (select id from public.schedule_templates where workspace_id = tests.id('dl') and name = 'Standard week'));
+insert into public.schedule_template_shifts (workspace_id, template_id, location_id, job_id, day_offset, start_time, end_time, time_basis, time_timezone, note)
+select tests.id('dl'), tests.id('dl:template'), tests.id('dl:' || loc), tests.id('dl:job:cook'), 1, '09:00', '15:00', 'explicit', 'Europe/Istanbul',
+  case loc when 'B' then 'Besiktas keys are in the safe' else '' end
 from unnest(array['K', 'B']) loc;
+-- A location that is only archived (not deleted) still counts: "Old kitchen"
+-- has shifts at Kadikoy and the archived Moda.
+insert into public.locations (workspace_id, name, short_name, street_address, city, region, postal_code, timezone)
+values (tests.id('dl'), 'Moda', 'MDA', '1 St', 'Istanbul', 'Istanbul', '34710', 'Europe/Istanbul');
+select tests.remember('dl:A', (select l.id from public.locations l where l.workspace_id = tests.id('dl') and l.short_name = 'MDA'));
+insert into public.schedule_templates (workspace_id, name, created_by, updated_by)
+values (tests.id('dl'), 'Old kitchen', tests.user('dl:owner'), tests.user('dl:owner'));
+insert into public.schedule_template_shifts (workspace_id, template_id, location_id, job_id, day_offset, start_time, end_time, time_basis, time_timezone)
+select tests.id('dl'), (select id from public.schedule_templates where workspace_id = tests.id('dl') and name = 'Old kitchen'),
+  tests.id('dl:' || loc), tests.id('dl:job:cook'), 2, '09:00', '15:00', 'explicit', 'Europe/Istanbul'
+from unnest(array['K', 'A']) loc;
+update public.locations set archived_at = now() where id = tests.id('dl:A');
 select public.create_schedule_export_preset_service(tests.user('dl:ayse'), tests.id('dl'), 'Weekly', '{}'::jsonb);
 insert into public.scheduled_schedule_exports
   (workspace_id, preset_id, name, recipients, location_ids, day_of_week, send_hour, created_by, updated_by)
@@ -42,6 +55,9 @@ create function pg_temp.recent_exports() returns text[] language sql as $$
   select array(select e ->> 'surface' from jsonb_array_elements(
     public.list_schedule_export_events_service(tests.user('dl:ayse'), tests.id('dl')) -> 'events') e order by 1)
 $$;
+create function pg_temp.opened(person text) returns jsonb language sql as $$
+  select public.get_schedule_template_service(tests.user('dl:' || person), tests.id('dl'), tests.id('dl:template'))
+$$;
 create function pg_temp.revision() returns integer language sql as $$
   select revision from public.schedule_templates where id = tests.id('dl:template')
 $$;
@@ -61,6 +77,11 @@ update public.locations set archived_at = now(), deleted_at = now() where id = t
 select is(pg_temp.templates(), array['Standard week'], 'after Besiktas is deleted Ayse sees the template');
 select is(public.get_schedule_template_service(tests.user('dl:ayse'), tests.id('dl'), tests.id('dl:template')) -> 'template' ->> 'name',
   'Standard week', 'and opens it');
+select is((select jsonb_agg(s ->> 'location_id') from jsonb_array_elements(pg_temp.opened('ayse') -> 'shifts') s),
+  jsonb_build_array(tests.id('dl:K')), 'with only the Kadikoy shift: nothing of the deleted Besiktas, its note included');
+select is((select jsonb_agg(s ->> 'location_id') from jsonb_array_elements(pg_temp.opened('owner') -> 'shifts') s),
+  jsonb_build_array(tests.id('dl:K')), 'the owner too opens it without the deleted Besiktas shift');
+select ok(not ('Old kitchen' = any (pg_temp.templates())), 'an archived (not deleted) Moda still counts: Ayse does not see Old kitchen');
 select is(public.rename_schedule_template_service(tests.user('dl:ayse'), tests.id('dl'), tests.id('dl:template'), 'Kadikoy week', pg_temp.revision())
   -> 'template' ->> 'name', 'Kadikoy week', 'renaming it keeps the new name');
 select is((select name from public.schedule_templates where id = tests.id('dl:template')), 'Kadikoy week', 'and it is saved');
