@@ -15,6 +15,7 @@ metadata:
 - An edit opened from the published week (`acquire ... 'published'`) keys its rows by the draft source id: `row.id = row.source_published_shift_id = published.source_shift_id`, not the published id. Match rows the way the swap review does: `row.id in (p.id, p.source_shift_id) or row.source_published_shift_id = p.id`, or by person + date.
 - In a `pg_temp` plpgsql helper, `tests.id('<w>:case:x')` right after `perform tests.cover_case(...)` in the same function raised "no such label" (2026-09-26). Use the helper's return value, or call the builder at top level.
 - Swap review rule already pinned by a green test: `shift_exchanges_v1` AT27 "recovery preserves manager note" — a shift that is in the edit takes only who/where/when from the swap. Changing that is a product question, not a fix (BL-167).
+- Custom GUC scope flags (`newfork.*_scope`) read back as `''`, not NULL, on a pooled connection that set them earlier with `set_config(..., true)`. `nullif(current_setting(x,true),'') is not null and exists(... = (current_setting(x,true)::jsonb->>'k')::uuid)` still raises 22P02: the planner evaluates the stable expression inside EXISTS to estimate selectivity (even `EXPLAIN` fails). Read it once: `scope jsonb := nullif(current_setting(x,true),'')::jsonb;`. Found 2026-09-26 in `guard_schedule_assignment_availability` (intermittent two-location swap 500).
 
 **Why:** each cost a failed trial run on 2026-09-25.
 **How to apply:** check these before the first trial of any Stage 6 slice migration. See [[rollback-trial-runner]].
