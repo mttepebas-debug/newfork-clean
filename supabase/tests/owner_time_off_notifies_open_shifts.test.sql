@@ -13,9 +13,13 @@ select tests.person('ot', 'mert', 'manager', array['K'], array['cook']);
 select tests.person('ot', 'can', 'manager', array['B'], array['cook']);
 select tests.person('ot', 'zeynep', 'admin', array['K'], array['cook']);
 select tests.person('ot', 'ali', 'employee', array['K'], array['cook']);
--- Olcay (the owner) works Wednesday at Kadikoy and Thursday at Besiktas.
+-- Olcay (the owner) works four shifts on Wednesday at Kadikoy and one on
+-- Thursday at Besiktas.
 select tests.publish_week('ot', 1, '[
+  {"label": "olcay-k1", "person": "owner", "loc": "K", "job": "cook", "day": 2, "start": "07:00", "end": "09:00"},
   {"label": "olcay-k", "person": "owner", "loc": "K", "job": "cook", "day": 2, "start": "10:00", "end": "16:00"},
+  {"label": "olcay-k3", "person": "owner", "loc": "K", "job": "cook", "day": 2, "start": "17:00", "end": "19:00"},
+  {"label": "olcay-k4", "person": "owner", "loc": "K", "job": "cook", "day": 2, "start": "20:00", "end": "22:00"},
   {"label": "olcay-b", "person": "owner", "loc": "B", "job": "cook", "day": 3, "start": "10:00", "end": "16:00"}
 ]');
 
@@ -38,10 +42,14 @@ select is(
    from pg_temp.outbox(tests.id('ot:owner:time_off'), 'schedule.owner_time_off.shifts_opened') o),
   array(select x from unnest(array[tests.user('ot:ayse'), tests.user('ot:mert')]) x order by 1),
   'it goes to both Kadikoy managers only: not the Besiktas manager, an admin or the owner');
-select ok(
-  (select o.payload ->> 'body' ~ (to_char(tests.week(1) + 2, 'Dy Mon FMDD') || '.*10:00.*Kadikoy')
+select is(
+  (select jsonb_build_object('title', o.payload ->> 'title', 'body', o.payload ->> 'body', 'preview', o.payload ->> 'safe_preview')
    from pg_temp.outbox(tests.id('ot:owner:time_off'), 'schedule.owner_time_off.shifts_opened') o),
-  'the notice names the shift: day, hours and location');
+  (select jsonb_build_object('title', 'Olcay is off — 4 shifts are open',
+     'body', d || ', 7:00 AM–9:00 AM (Kadikoy); ' || d || ', 10:00 AM–4:00 PM (Kadikoy); ' || d || ', 5:00 PM–7:00 PM (Kadikoy); +1 more',
+     'preview', 'Approved time off left shifts open.')
+   from (select to_char(tests.week(1) + 2, 'Dy, Mon FMDD') d) x),
+  'the notice names the first three shifts by day, hours and location, then how many more');
 select is(
   (select o.payload ->> 'action_url' from pg_temp.outbox(tests.id('ot:owner:time_off'), 'schedule.owner_time_off.shifts_opened') o),
   '/app/schedule?date=' || (tests.week(1) + 2)::text, 'and opens that week''s Schedule');

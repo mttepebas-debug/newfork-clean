@@ -16,7 +16,7 @@
 --   listing the open shifts there. Admins, other locations' managers and the
 --   owner get none (user decision); a location without a manager tells nobody.
 --   No shift released, no notice. Cancelling the time off sends nothing.
--- Wording is nf-arayuz's; this is the proposed text from the task file.
+-- Wording: nf-arayuz (2026-09-27).
 
 insert into public.notification_catalog (
   type_key, schema_version, category, severity, sensitivity, supported_channels,
@@ -74,21 +74,26 @@ begin
   ), per_person as (
    select t.user_id, count(*)::integer n, min(t.scheduled_date) first_day,
     to_jsonb(array_agg(distinct t.location_id)) location_ids,
-    string_agg(to_char(t.scheduled_date, 'Dy Mon FMDD') || ', ' || to_char(t.start_time, fmt) || '–' || to_char(t.end_time, fmt)
-     || ' (' || t.location_name || ')', '; ' order by t.scheduled_date, t.start_time, t.location_name) lines
+    -- "Wed, Aug 30, 10:00 AM–4:00 PM (Kadikoy)": the start day only, also past midnight.
+    array_agg(to_char(t.scheduled_date, 'Dy, Mon FMDD') || ', ' || to_char(t.start_time, fmt) || '–' || to_char(t.end_time, fmt)
+     || ' (' || t.location_name || ')' order by t.scheduled_date, t.start_time, t.location_name) shift_lines
    from told t group by t.user_id
+  ), worded as (
+   -- At most three shifts, then "+N more".
+   select p.*, array_to_string(p.shift_lines[1:3], '; ')
+     || case when cardinality(p.shift_lines) > 3 then '; +' || (cardinality(p.shift_lines) - 3) || ' more' else '' end lines
+   from per_person p
   )
   select n, first_day, location_ids, lines, array_agg(user_id order by user_id) recipients
-  from per_person group by n, first_day, location_ids, lines
+  from worded group by n, first_day, location_ids, lines
  loop
   perform public.enqueue_notification_outbox_service(w, gen_random_uuid(), 'schedule.owner_time_off.shifts_opened', 1, actor,
    'schedule_time_off_requests', rid::text,
    jsonb_build_object('request_id', rid, 'location_ids', g.location_ids, 'recipient_user_ids', to_jsonb(g.recipients),
     'audience_contract', 'owner_time_off_location_managers', 'category', 'schedule',
     'title', left(coalesce(owner_name, 'The owner') || ' is off — ' || g.n || case when g.n = 1 then ' shift is open' else ' shifts are open' end, 160),
-    -- ponytail: 2000 is the notification body limit; a week of shifts is far below it.
-    'body', left(g.lines, 2000),
-    'safe_preview', 'Time off left shifts open.',
+    'body', g.lines,
+    'safe_preview', 'Approved time off left shifts open.',
     'action_url', '/app/schedule?date=' || g.first_day::text,
     'group_key', 'schedule_time_off_requests:' || rid::text),
    now());
@@ -102,7 +107,7 @@ values ('schedule.owner_time_off.shifts_opened', 1, 'owner-time-off-open-shifts'
   '20260927130000_owner_time_off_tells_managers.sql', 'notify_owner_time_off_open_shifts', 'outbox_v1');
 insert into public.notification_template_versions (type_key, schema_version, channel, locale, template_version, template_key, content, status, published_at)
 values ('schedule.owner_time_off.shifts_opened', 1, 'in_app', 'en', 1, 'schedule.owner_time_off.shifts_opened.v1',
-  '{"title": "Shifts are open", "body": "Time off left shifts open.", "action_url": "/app/schedule", "safe_preview": "Time off left shifts open."}',
+  '{"title": "Shifts are open", "body": "Approved time off left shifts open.", "action_url": "/app/schedule", "safe_preview": "Approved time off left shifts open."}',
   'published', now());
 
 create or replace function app_private.record_owner_time_off(actor uuid, w uuid, rid uuid)
