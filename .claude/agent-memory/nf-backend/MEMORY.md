@@ -5,3 +5,4 @@
 - [Worktree shell traps](worktree-shell-traps.md) — isolated Bash refuses compound git/cp; .env paths; web test files are CRLF
 - [can() migration traps](can-migration-traps.md) — `permissions?.includes` hides from grep; App.test renders SchedulePage; key→action map; no-access card + home path
 - [Resend emails and e2e](resend-email-e2e.md) — API mail bypasses mailpit; e2e mints links via admin generate_link (top-level hashed_token)
+- [Fixture from real DB output](fixture-from-real-db-output.md) — never hand-write contract fixtures from SQL; rolled-back real call + zod parse (BL-198)
