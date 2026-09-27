@@ -5,3 +5,7 @@
 - [repeat-each breaks shared-world specs](repeat-each-breaks-shared-world-specs.md) — `--repeat-each` collides on fixed draft names from `tests.publish_week`; run separate invocations instead
 - [gh CLI verifies CI failures](gh-cli-verifies-ci-failures.md) — gh is authenticated; pull `gh api .../actions/jobs/<id>/logs` before trusting a task's paraphrase of what failed (BL-180 was misreported)
 - [Failure screenshots include leftover pages](failure-screenshots-include-leftover-pages.md) — workers:1 shares one browser; test-failed-N.png can be an EARLIER unrelated test's still-open page, not the failing test's own
+- [Playwright screenshot to disk](playwright-screenshot-to-disk.md) — Claude_Browser MCP can't save PNGs; drive the same steps with a throwaway Playwright script inside e2e/ instead
+- [Shift exchange builder traps](shift-exchange-builder-traps.md) — actor param is auth user id not employee id; publish-scope GUC cast trap on raw approve; no note field in Schedule UI; enable_shift_hub is dead; approve auto-rebases dirty sessions silently
+- [Owner cannot delete own location](owner-cannot-delete-own-location.md) — `tests.world()` owner is assigned at both starter locations; deleting either 42501s until `tests.stops_working_at()` ends the owner's own assignment there first
+- [Rename template rollback on closed location](rename-template-rollback-on-closed-location.md) — rename passes authorize() same as delete but then re-fetches with a stricter (non-Q-B) rule and 404-rolls-back; delete has no such re-fetch and commits
