@@ -4,3 +4,4 @@
 - [Shared DB unscoped count flakiness](shared-db-unscoped-count-flakiness.md) — superuser count(*) with no fixture-id where is flaky only in full local test:db runs (BL-170); same pattern found unfixed in several sibling bl052/time_off/termination test files
 - [repeat-each breaks shared-world specs](repeat-each-breaks-shared-world-specs.md) — `--repeat-each` collides on fixed draft names from `tests.publish_week`; run separate invocations instead
 - [gh CLI verifies CI failures](gh-cli-verifies-ci-failures.md) — gh is authenticated; pull `gh api .../actions/jobs/<id>/logs` before trusting a task's paraphrase of what failed (BL-180 was misreported)
+- [Failure screenshots include leftover pages](failure-screenshots-include-leftover-pages.md) — workers:1 shares one browser; test-failed-N.png can be an EARLIER unrelated test's still-open page, not the failing test's own
