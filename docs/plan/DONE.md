@@ -77,3 +77,5 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | BL-141 | onboarding'deki "Share my info" kutusu Continue çubuğunun altında kalmıyor (bayat bulgu, iş gerekmedi) | -
 2026-09-26 | BL-160 | Takvim'in ret testleri gerçek authz gerekçesini ve ayrıntısını da denetliyor | 79c8d13
 2026-09-26 | BL-074 | kapsam-yonetimi.md artık var olan docs/plan dosyalarını gösteriyor | 39028dc
+2026-09-26 | BL-186 | müsaitlik bir tercih: hiçbir yolda vardiya yazmayı, kaydetmeyi, yayını ya da takası durdurmuyor, yalnız uyarı gösteriyor (yerel; hosted FB-6.1.14 ile) | 04e853a
+2026-09-26 | BL-208 | iki lokasyonlu onaylı takas boş kapsam ayarı yüzünden artık 500 ile düşmüyor | 22d73de
