@@ -6,3 +6,4 @@
 - [Published shift retention](published-shift-retention.md) — availability never retained since BL-186; the 4 remaining prior_publication callers (non-availability)
 - [Shift time guarantees](shift-time-guarantees.md) — basis/hours CHECKs, trigger fills time zone (NOT NULL since FB-6.1.8), overlap always blocks; batch review checks new-vs-new
 - [Availability is a preference](availability-is-a-preference.md) — BL-186 contract: warn-only reasons, availability_fingerprint, publish availability finding + ack lookup
+- [Exchange survives publish](exchange-survives-publish.md) — BL-198: shift_exchange_draft_undoes is the one rule; case time vs current publication; one-transaction now() trap
