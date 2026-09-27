@@ -25,6 +25,7 @@ supabase/tests/bl064_conflict_severity.test.sql
 supabase/tests/browser_privileges.test.sql
 supabase/tests/catalog_entity_deletion.test.sql
 supabase/tests/communication_operations.test.sql
+supabase/tests/deleted_location_counts_nowhere.test.sql
 supabase/tests/document_publication.test.sql
 supabase/tests/document_types_rls.test.sql
 supabase/tests/employee_code_counter_resync.test.sql

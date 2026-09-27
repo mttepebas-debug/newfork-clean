@@ -412,9 +412,10 @@ as $$
     public.list_schedule_export_events_service(tests.user('sc:' || person), tests.id('sc')) -> 'events') e order by 1)
 $$;
 
-select is(pg_temp.scheduled_exports('ayse'), array['k-only'], 'Ayşe (Kadıköy) sees only the scheduled exports all at Kadıköy');
-select is(pg_temp.scheduled_exports('can'), array['b-only', 'k-and-b', 'k-only'],
-  'a manager of both sees every scheduled export all at their locations, no closed, unknown or foreign one');
+-- BL-188 (Q-C): a deleted location counts nowhere; Kadıköy + the closed Moda is a Kadıköy record.
+select is(pg_temp.scheduled_exports('ayse'), array['k-and-closed', 'k-only'], 'Ayşe (Kadıköy) sees the scheduled exports all at Kadıköy once the closed location is left out');
+select is(pg_temp.scheduled_exports('can'), array['b-only', 'k-and-b', 'k-and-closed', 'k-only'],
+  'a manager of both sees every scheduled export all at their locations, none only closed, unknown or foreign');
 select is(pg_temp.scheduled_exports('owner'),
   array['b-only', 'closed-only', 'foreign', 'k-and-b', 'k-and-closed', 'k-only', 'unknown'],
   'the owner sees every scheduled export');
@@ -424,9 +425,9 @@ select is(pg_temp.scheduled_exports('zeynep'),
 select is(pg_temp.said(format($$select public.list_schedule_export_schedules_service(%L, %L)$$, tests.user('sc:nur'), tests.id('sc'))),
   '42501 authz.out_of_scope schedule.export', 'a manager with no location is refused the scheduled exports');
 
-select is(pg_temp.recent_exports('ayse'), array['k-only'], 'Ayşe sees only the recent exports all at Kadıköy');
-select is(pg_temp.recent_exports('can'), array['b-only', 'k-and-b', 'k-only'],
-  'a manager of both sees no recent export with a closed, unknown, foreign, blank or malformed location');
+select is(pg_temp.recent_exports('ayse'), array['k-and-closed', 'k-only'], 'Ayşe sees the recent exports all at Kadıköy once the closed location is left out');
+select is(pg_temp.recent_exports('can'), array['b-only', 'k-and-b', 'k-and-closed', 'k-only'],
+  'a manager of both sees no recent export only closed, or with an unknown, foreign, blank or malformed location');
 select is(pg_temp.recent_exports('owner'),
   array['b-only', 'closed-only', 'empty', 'foreign', 'garbage', 'k-and-b', 'k-and-closed', 'k-only', 'missing', 'unknown'],
   'the owner sees the ten recent exports');
