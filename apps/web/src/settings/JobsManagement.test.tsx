@@ -27,15 +27,24 @@ vi.mock("./jobs-management-data", () => ({
   saveJobDetails: vi.fn(),
   saveJobAssignments: vi.fn(),
 }));
-vi.mock("./organization-data", () => ({
-  listJobs: vi.fn(),
-  listDepartments: vi.fn(),
+vi.mock("./organization-data", () => {
+  // The one departments-and-jobs read answers from the two mocks the tests set.
+  const listDepartments = vi.fn();
+  const listJobs = vi.fn();
+  return {
+  listDepartments,
+  listJobs,
+  loadDepartmentsAndJobs: vi.fn(async (workspaceId: string) => ({
+    departments: await listDepartments(workspaceId),
+    jobs: await listJobs(workspaceId),
+  })),
   saveDepartment: vi.fn(),
   saveJob: vi.fn(),
   setJobArchived: vi.fn(),
   setDepartmentArchived: vi.fn(),
   reorderOrganizationEntities: vi.fn(),
-}));
+};
+});
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     context: {

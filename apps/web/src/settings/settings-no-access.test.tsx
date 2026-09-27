@@ -38,6 +38,7 @@ vi.mock("./organization-data", async (original) => ({
   listLocations: vi.fn(async () => { throw refused(); }),
   listDepartments: vi.fn(async () => { throw refused(); }),
   listJobs: vi.fn(async () => { throw refused(); }),
+  loadDepartmentsAndJobs: vi.fn(async () => { throw refused(); }),
   listShiftTypes: vi.fn(async () => { throw refused(); }),
   listShiftLabels: vi.fn(async () => { throw refused(); }),
   listImportantDates: vi.fn(async () => { throw refused(); }),

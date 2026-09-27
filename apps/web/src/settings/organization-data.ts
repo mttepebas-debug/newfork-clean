@@ -281,6 +281,11 @@ export async function setLocationArchived(
   );
 }
 
+/** Departments and jobs together: one read, one request. */
+export async function loadDepartmentsAndJobs(workspaceId: string) {
+  return readSettings(workspaceId, "jobs");
+}
+
 export async function listDepartments(
   workspaceId: string,
 ): Promise<Department[]> {

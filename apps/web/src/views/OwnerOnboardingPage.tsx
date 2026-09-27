@@ -45,7 +45,7 @@ import {
 } from "../lib/supabase";
 import {
   listDepartments,
-  listJobs,
+  loadDepartmentsAndJobs,
   listLocations,
   saveDepartment,
   saveJob,
@@ -1890,10 +1890,9 @@ async function loadOwnerReferences(workspaceId: string): Promise<{
   readonly departments: Department[];
   readonly jobs: Job[];
 }> {
-  const [locations, departments, jobs] = await Promise.all([
+  const [locations, { departments, jobs }] = await Promise.all([
     listLocations(workspaceId),
-    listDepartments(workspaceId),
-    listJobs(workspaceId),
+    loadDepartmentsAndJobs(workspaceId),
   ]);
   return { locations, departments, jobs };
 }

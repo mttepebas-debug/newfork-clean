@@ -75,9 +75,17 @@ vi.mock("../lib/supabase", () => ({
   supabaseClient: storage.supabaseClient,
 }));
 
-vi.mock("../settings/organization-data", () => ({
-  listDepartments: vi.fn(),
-  listJobs: vi.fn(),
+vi.mock("../settings/organization-data", () => {
+  // The one departments-and-jobs read answers from the two mocks the tests set.
+  const listDepartments = vi.fn();
+  const listJobs = vi.fn();
+  return {
+  listDepartments,
+  listJobs,
+  loadDepartmentsAndJobs: vi.fn(async (workspaceId: string) => ({
+    departments: await listDepartments(workspaceId),
+    jobs: await listJobs(workspaceId),
+  })),
   listLocations: vi.fn(),
   saveDepartment: vi.fn(),
   saveJob: vi.fn(),
@@ -85,7 +93,8 @@ vi.mock("../settings/organization-data", () => ({
   setDepartmentArchived: vi.fn(),
   setJobArchived: vi.fn(),
   setLocationArchived: vi.fn(),
-}));
+};
+});
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const locationId = "11000000-0000-4000-8000-000000000001";
