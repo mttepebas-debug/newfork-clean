@@ -26,6 +26,20 @@
   --theme-success-soft: #e7f1ed;
   --theme-current: #b7791f;
   --theme-on-accent: #ffffff;
+  /* Account screens (BL-148): kept at their exact values, no nearer token fits. */
+  --theme-text-secondary: #50605a;
+  --theme-text-menu: #26352f;
+  --theme-accent-soft: #dbece5;
+  --theme-accent-deep: #244c3d;
+  --theme-focus-halo: #c9eadf;
+  --theme-border-hover: #95aaa1;
+  --theme-warning-surface: #fbf6ec;
+  --theme-warning-border: #bf872d;
+  --theme-warning-text: #5f491f;
+  --theme-danger-surface: #fff8f6;
+  --theme-danger-border: #ad3f36;
+  --theme-danger-text: #653b36;
+  --theme-danger-strong: #a43830;
   --schedule-action: var(--theme-action);
   --schedule-action-hover: var(--theme-action-hover);
   --schedule-grid-line-color: #dce2df;
