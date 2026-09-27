@@ -90,7 +90,7 @@ select is(
    from sd, jsonb_array_elements(pg_temp.undone(value)) f where key = 'stale'),
   jsonb_build_object('severity', 'hard', 'overrideable', false, 'tier', 'blocker',
     'from', tests.id('sd:ali'), 'to', tests.id('sd:deniz'), 'draft_employee', tests.id('sd:emre'),
-    'date', tests.week(1) + 1, 'start', '09:00:00', 'end', '15:00:00', 'kind', 'swap'),
+    'date', tests.week(1) + 1, 'start', '09:00', 'end', '15:00', 'kind', 'swap'),
   'the finding says who had the shift, who has it now, who the draft gives it to, and when');
 select throws_ok($$select pg_temp.publish(tests.id('sd:draft:first'))$$, '23514', 'schedule has hard publication blockers',
   'publishing the stale draft is refused');
