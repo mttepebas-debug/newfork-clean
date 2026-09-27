@@ -68,6 +68,7 @@ supabase/tests/schedule_reads_weekly_availability.test.sql
 supabase/tests/schedule_realtime_channels.test.sql
 supabase/tests/schedule_requests.test.sql
 supabase/tests/schedule_resume_lease.test.sql
+supabase/tests/schedule_scope_settings_read_safely.test.sql
 supabase/tests/schedule_templates_autofill_export.test.sql
 supabase/tests/schedule_time_source.test.sql
 supabase/tests/schedule_week_availability.test.sql
