@@ -79,3 +79,5 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | BL-074 | kapsam-yonetimi.md artık var olan docs/plan dosyalarını gösteriyor | 39028dc
 2026-09-26 | BL-186 | müsaitlik bir tercih: hiçbir yolda vardiya yazmayı, kaydetmeyi, yayını ya da takası durdurmuyor, yalnız uyarı gösteriyor (yerel; hosted FB-6.1.14 ile) | 04e853a
 2026-09-26 | BL-208 | iki lokasyonlu onaylı takas boş kapsam ayarı yüzünden artık 500 ile düşmüyor | 22d73de
+2026-09-26 | FB-6.1.5 (ghost 11b) | başka lokasyondaki vardiyanın ghost kartı gerçek kartla aynı düzende, gri taramalı; lokasyon adı iğne baloncuğunda, klavye ve dokunmayla açılıyor | 52a00d6
+2026-09-26 | BL-180 | takas e2e testi CI yükünde yanlış kırmızı vermiyor (asıl kök BL-208 düzeldi, bekleme 30 sn) | 021c63e
