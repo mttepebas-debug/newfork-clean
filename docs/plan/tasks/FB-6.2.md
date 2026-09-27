@@ -1,5 +1,5 @@
 # FB-6.2 Çalışanlar dilimini yetki çekirdeğine taşı (FOUNDATION-B Aşama 6)
-Status: draft — 2026-09-26 yazıldı (`nf-planlama`). Başlamadan önce: FB-6.1 main'de, BL-139 main'de, "Açık sorular" S1–S4 cevaplı, "Planlama kararları" P1–P3 koordinatörce verilmiş.
+Status: draft — S1–S4 cevaplandı 2026-09-27; başlamak için FB-6.1 main'de ve "By role" (S4 kalanı) kararı.
 Session: -   Branch: task/FB-6.2   Worktree: newfork-wt/FB-6.2   DB: lock (migration + test:db + e2e)
 
 Program: `docs/plan/tasks/FOUNDATION-B.md` → Aşama 6 → dilim tablosu, satır FB-6.2 (`:169`).
@@ -63,21 +63,25 @@ Reviewer: `nf-guvenlik` (her kod adımı); ekranı değiştiren adımlarda (`.8`
 - Yöneticinin izin kısaltma eylemi (BL-127), müsaitlik (FB-6.5), Settings kataloğu (FB-6.8).
 - `employee_hub` kırmızısı: `.0`'da nedeni okunur; "Çalışan görünümüne geç"le ilgisi yoksa ait olduğu dilime yazılır, bu dilime eklenmez.
 
-## Açık sorular (kullanıcıya; cevap gelmeden ilgili adım başlamaz)
+## Açık sorular — cevaplandı 2026-09-27 (kullanıcı, koordinatör kanalıyla)
 - **S1 — Kişinin tek lokasyonundan çıkarılması (REUSE `:46` "Açık karar").** Ayşe (Kadıköy müdürü) yalnız Kadıköy'de çalışan Emre'yi "Kadıköy'den çıkar"ırsa ne olur?
   - (a) **(Önerilen)** Çıkarma olur (atama ve gelecek vardiyalar biter), Emre lokasyonsuz ama çalışan olarak kalır; admin ve owner'a "Emre'nin lokasyonu kalmadı — işten çıkar ya da yeni lokasyon ata" bildirimi gider; Emre admin/owner'ın Employees listesinde "No location" etiketiyle görünür. Gerekçe: yöneticinin işi kendi lokasyonunda biter, tam işten çıkarma kuralı (yalnız admin/owner) bozulmaz.
   - (b) Engellenir: tek lokasyonsa düğme "Ask an admin to end employment" der ve admin'e talep gider.
   - (c) Otomatik tam işten çıkarma. (Kuralla çelişir: tam çıkarma yalnız admin/owner.)
   - Etki: `.2`'nin komutu ve matris kuralı buna göre yazılır.
+  - **Cevap: (a).** **Kullanıcı şartı:** "çalışan kaydı lokasyonsuz kaydedilemez" kuralı bozulmaz. Çıkarma komutu kaydı "No location" durumuna getirebilir; Employees çekmecesinden (drawer) kaydetme yine en az bir lokasyon ister. Testi Done when 11'de.
 - **S2 — "Yalnız yönetir" lokasyonundaki yönetici nerede görünür?** Mehmet Beşiktaş'ı yalnız yönetiyor (vardiyaya girmiyor).
   - (a) **(Önerilen)** Beşiktaş Employees listesinde "Manages" etiketiyle görünür (Beşiktaş'ın diğer yöneticileri onu görür, M2), Takvim ızgarasında Beşiktaş satırı açılmaz, vardiyaya yazılamaz.
   - (b) Hiçbir Beşiktaş listesinde görünmez; yalnız admin/owner bilir.
+  - **Cevap: (a)** — "Manages" etiketiyle listede, ızgarada satır yok.
 - **S3 — Rolü manager'dan employee'ye düşen kişinin "yalnız yönetir" lokasyonları.**
   - (a) **(Önerilen)** Aynı işlemde kalkar; denetim kaydına yazılır. Çalıştığı atamalar kalır.
   - (b) Kalır ama etkisizdir (rol yeniden manager olursa geri gelir).
+  - **Cevap: (a)** — aynı işlemde kalkar, denetim kaydına yazılır.
 - **S4 — Owner'ın çalışan kaydında birincil lokasyon ve iş zorunlu mu?** Bugün kurulumun yarattığı owner kaydında ikisi de yok ve kaydetme 23502 ile düşüyor (`owner-record-no-primary`).
   - (a) **(Önerilen)** Owner için isteğe bağlı: owner vardiyaya girmeyebilir; boşken kayıt kaydedilir, owner ızgarada satır açmaz.
   - (b) Zorunlu: kurulum sihirbazı sorar, Account ▸ Profile'da boş bırakılamaz.
+  - **Cevap (kullanıcının kelimeleriyle, (a)'nın genişletilmiş hâli):** owner bütün lokasyonlarda ve bütün pozisyonlarda (job), ataması olmasa da çalışabilir. Kaydederken birincil lokasyon ve birincil iş **zorunlu değil**. Schedule ızgarasında adının çıkmaması isteniyorsa "exclude" işaretlenir, aksi hâlde adı otomatik çıkar. A–Z sıralamada baş harfine göre yer alır. "By role" sıralamasındaki yeri **açık**: kullanıcının Management/Owner fikrine bağlı (`docs/plan/research/owner-management-job-2026-09-27.md`).
 
 ## Planlama kararları (koordinatöre; ürün kuralı değil)
 - **P1 — Sahipsiz çağıranlar.** İş katalogu (5) ve pano/yapılacaklar (3) hiçbir dilimin satırında yok; ikisi de kişi hedefli kontrol yapıyor. **Öneri:** FB-6.2 alır (8 fonksiyon; 4'ü `request.jwt.claim` yazıyor). Böylece `can_access_employee` (2 oid), `can_manage_employee_record`, `can_assign_employee_locations` bu dilimde **silinebilir** — `can_manage_employee_record`'un tek FB-6.6 çağıranı (`review_employee_onboarding_before_availability_service`) için yalnız o satır değiştirilir, fonksiyonun geri kalanı FB-6.6'da. Elenen: silmeyi FB-6.6'ya ertelemek (üç yardımcı iki dilim daha yaşar, K-1'in bedeli tekrarlanır).
@@ -96,6 +100,8 @@ Her madde bir sayı ya da komutla ölçülür.
 8. e2e akış 2 (davet: yönetici kendi lokasyonuna davet eder, davetli kabul eder, listede görünür; başka lokasyona davet 403) ve akış 10'un kapsam yarısı (yönetici kendi lokasyonundaki eş rütbeyi görür, başka lokasyondakini görmez; "kendi lokasyonundan çıkar") yeşil.
 9. BL-145: başkasının kaydına `save_own_employment_contact_service` → 42501 + `authz.*` hint (pgTAP hücresi).
 10. Her kural değişikliği önce kırmızı matris hücresiyle (commit sırası incelemede görülür).
+11. **S1 şartı (kullanıcı):** (i) `employee.remove_from_location` kişinin tek lokasyonunda çalışınca kayıt lokasyonsuz kalır, Employees listesinde "No location" etiketiyle görünür, admin/owner'a bildirim kuyruğa girer; (ii) aynı kayıt çekmeceden (`save_employee_service`) lokasyonsuz kaydedilmeye çalışılınca reddedilir (pgTAP + web vitest). İkisi aynı test dosyasında.
+12. **S4 (kullanıcı):** owner kaydı birincil lokasyon/iş olmadan kaydedilir (`owner-record-no-primary` kapanır); owner atanmadığı lokasyon ve işlerde de vardiyaya yazılabilir; "exclude" işaretli değilse ızgarada satırı çıkar, işaretliyse çıkmaz; A–Z sıralamada adının baş harfine göre. "By role" yeri açık karar (araştırma notu) cevaplanınca eklenir.
 
 ## Alt adımlar (sıra, sahip, DB kilidi)
 **Her adım için geçerli kabul kriteri (ratchet kuralı, FB-6.1'den):** adımın commit'i altı `authz_catalog` sayacının hiçbirini artırmaz; yeni fonksiyon ancak eskisini aynı commit'te silerek girer. Kapsam/rütbe sayacında bugün 2 birim gevşeklik var (tavan 63, değer 61; FB-6.1 `.4` tazelik kontrolü) — bu dilim o payı kullanamaz. Her `nf-db` adımı kapanmadan `supabase test db supabase/tests/authz_catalog.test.sql` → 0 not ok. Migration önce tek transaction + rollback.
@@ -151,6 +157,7 @@ Yürütme sırası: `.0` → `.1` → `.2` → `.3` → `.4` → `.5` → `.6` �
 Plan: `superpowers:writing-plans`; yürütme: `superpowers:executing-plans` ya da `superpowers:subagent-driven-development`. SQL, RLS: `supabase:supabase`, `supabase:supabase-postgres-best-practices`. Her kural önce kırmızı: `superpowers:test-driven-development`. Beklenmedik kırmızı: `superpowers:systematic-debugging`. İnceleme: `superpowers:requesting-code-review`, `security-review`, `superpowers:verification-before-completion`. Görsel varyantlar: `frontend-design:frontend-design`; erişilebilirlik: `chrome-devtools-mcp:a11y-debugging`.
 
 ## Notes / Result
+- 2026-09-27 (`nf-planlama`): kullanıcının S1–S4 cevapları işlendi (S1 (a) + lokasyonsuz kaydetme yasağı şartı, S2 (a), S3 (a), S4 genişletilmiş — owner her yerde çalışabilir, birincil zorunlu değil, exclude, A–Z); Done when 11–12 eklendi; REUSE "Roller ve kapsam" güncellendi. Açık: owner'ın "By role" yeri — Management/Owner fikri araştırması.
 - 2026-09-27 (`nf-planlama`): koordinatör kararı (ILERLEME-PLANI Ç3) — BL-187 `.6`'ya katıldı; kabul: owner kendi çalıştığı lokasyonu silebiliyor (pgTAP hücresi + BL-187 kapanır).
 - 2026-09-26 (koordinatör): P1, P2 (a) ve P3 önerildiği gibi kabul edildi. P1: iş katalogu (5) ve pano/yapılacaklar (3) çağıranları FB-6.2'de; üç yardımcı bu dilimde silinir. P2: "yalnız yönetir" ayrı tabloda (`membership_managed_locations`), `nf-guvenlik` onayıyla. P3: `service_actor_can_access_employee` FB-6.6'da silinir; FOUNDATION-B FB-6.6 satırına kapanış kriteri yazıldı. S1–S4 kullanıcıyı bekliyor (kullanıcı 2026-09-26'da uzakta; dönünce toplu sorulacak).
 - 2026-09-26 (`nf-planlama`): dosya açıldı. Tazelik ölçümü `origin/main` `39028dc`, yerel DB yalnız SELECT. Değerlendirmeler: BL-129 ve BL-145 **bu dilime ait** (In scope); BL-076 **ait değil** (Out of scope, ortak API kapısı). BL-139 FB-6.5'in `weekly_preference_manager_scope` işini önden yapıyor (FOUNDATION-B'ye not düşüldü) ve `authz_check`'e dokunduğu için bu dilimin önkoşulu. Kullanıcıya dört soru (S1–S4), koordinatöre üç planlama kararı (P1–P3).

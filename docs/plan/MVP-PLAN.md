@@ -93,7 +93,7 @@ F0'dan sonra, F1'den önce. Bir kullanıcının bir business'a bağlanma yolunun
 |---|---|
 | BL-034 | Landing sayfası ve signup hunisi |
 | BL-059 | Stripe: plan/limit, 14 gün trial, checkout, webhook, fatura portalı, tekrar trial engeli |
-| BL-007/008 | Onboarding yedi adım ve avatar (lansman için gerekli mi, karar gerekiyor) |
+| BL-007/008 | Onboarding yedi adım ve avatar — **lansman için şart** (kullanıcı kararı 2026-09-27); F4'ten önce |
 
 ### F5 — Guardrail ve polish
 | ID | İş |
@@ -120,4 +120,4 @@ Native mobil uygulama, BL-067 saat limitleri, Kiosk, Time Tracking, payroll, com
 - Fazlar sırayla ilerler: F0 → FJ → F1 → F6 (FJ 2026-09-19 kullanıcı kararıyla araya girdi). Bir faz içindeki task'lar paralel çalışabilir.
 
 ## Açık kararlar
-1. Onboarding yedi adım ve avatar (BL-007/008) lansman için şart mı? (F4'ten önce sorulacak)
+1. ~~Onboarding yedi adım ve avatar (BL-007/008) lansman için şart mı?~~ **Cevaplandı 2026-09-27: şart, F4'ten önce.**

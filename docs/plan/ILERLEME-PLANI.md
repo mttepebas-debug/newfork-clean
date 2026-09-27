@@ -13,15 +13,15 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 ## 2. Karar bekleyenler (kullanıcıya, tek turda; önerilen ilk)
 | # | Karar | Önerilen | Neyi açar |
 |---|---|---|---|
-| K1 | FB-6.2 S1 — kişinin **tek** lokasyonundan çıkarılması | Kişi lokasyonsuz çalışan kalır, admin/owner'a "lokasyonu kalmadı" bildirimi | FB-6.2 (Çalışanlar) — kritik yol |
-| K2 | FB-6.2 S2 — "yalnız yönetir" müdür nerede görünür | Listede "Manages" etiketiyle, ızgarada değil | FB-6.2 |
-| K3 | FB-6.2 S3 — rolü düşenin "yalnız yönetir" lokasyonları | Aynı anda kalkar, kayda geçer | FB-6.2 |
-| K4 | FB-6.2 S4 — owner kaydında birincil lokasyon/iş | İsteğe bağlı | FB-6.2 |
-| K5 | Hosted toplu gönderim zamanı (FB-6.1.14) ve Auth ayarları (OTP 3600, APP_URL, gönderen adres, parola ≥8) | `.9` biter bitmez; Auth ayarlarını kullanıcı yapar | Canlı = main |
-| K6 | BL-209 yerel DB kayması: hedefli onarım mı `supabase db reset` mi | Önce hedefli onarım (`nf-test` teşhis); tutmazsa reset | Birleştirmelerde yanlış alarm biter |
+| K1 | FB-6.2 S1 — kişinin **tek** lokasyonundan çıkarılması | **Cevap 09-27: (a)** + lokasyonsuz kaydetme yasağı şartı | FB-6.2 (Çalışanlar) — kritik yol |
+| K2 | FB-6.2 S2 — "yalnız yönetir" müdür nerede görünür | **Cevap 09-27: (a)** | FB-6.2 |
+| K3 | FB-6.2 S3 — rolü düşenin "yalnız yönetir" lokasyonları | **Cevap 09-27: (a)** | FB-6.2 |
+| K4 | FB-6.2 S4 — owner kaydında birincil lokasyon/iş | **Cevap 09-27:** owner her yerde çalışabilir, birincil zorunlu değil, exclude, A–Z; "By role" açık (Management/Owner araştırması) | FB-6.2 |
+| K5 | Hosted toplu gönderim zamanı (FB-6.1.14) ve Auth ayarları (OTP 3600, APP_URL, gönderen adres, parola ≥8) | **Cevap 09-27:** `.9` biter bitmez, göndermeden önce kullanıcıdan son onay; Auth ayarlarını kullanıcı yapar | Canlı = main |
+| K6 | BL-209 yerel DB kayması: hedefli onarım mı `supabase db reset` mi | **Cevap 09-27:** hedefli onarım (`nf-test` teşhis, `nf-db` uygular) | Birleştirmelerde yanlış alarm biter |
 | K7 | FB-6.1.0 ekran turu + `.13` görsel kararlar: ne zaman | Kullanıcı müsait olduğu ilk gün, 30–45 dk | FB-6.1 kapanışı |
 | K8 | Küçükler: BL-078 kapansın mı (evet), arşivli iş/tip adı kartta gösterilsin mi, eski oturumların arşivi | — | kayıt temizliği |
-| K9 | Onboarding yedi adım + avatar (BL-007/008) lansman için şart mı | F4'ten önce | MVP kapsamı |
+| K9 | Onboarding yedi adım + avatar (BL-007/008) lansman için şart mı | **Cevap 09-27:** şart, F4'ten önce (MVP-PLAN) | MVP kapsamı |
 
 ## 3. Sıradaki en önemli iş (gerekçesiyle)
 1. **FB-6.1 kapanışı (`.9` → `.14` hosted gönderim).** Gerekçe: canlı ile main arasındaki fark en büyük risk; pilot kapanmadan diğer dilimlerin tahmini yenilenemez (FOUNDATION-B kuralı).
