@@ -143,7 +143,7 @@ describe("ScheduleGridShell", () => {
 
     expect(grid.getAttribute("data-schedule-fit-visible-columns")).toBe("true");
     expect(grid.style.gridTemplateColumns).toBe(
-      "minmax(144px, 200px) repeat(7, minmax(0, 1fr)) minmax(72px, 120px)",
+      "minmax(144px, 200px) repeat(7, minmax(var(--schedule-fit-day-min, 0px), 1fr)) minmax(72px, 120px)",
     );
   });
 

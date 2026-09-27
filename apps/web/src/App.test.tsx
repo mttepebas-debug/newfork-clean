@@ -874,7 +874,7 @@ describe("App", () => {
         .getByRole("grid", { name: "Weekly published schedule" })
         .getAttribute("style"),
     ).toContain(
-      "grid-template-columns: minmax(144px, 200px) repeat(7, minmax(0, 1fr)) minmax(72px, 120px)",
+      "grid-template-columns: minmax(144px, 200px) repeat(7, minmax(var(--schedule-fit-day-min, 0px), 1fr)) minmax(72px, 120px)",
     );
     expect(
       screen.getByRole("gridcell", { name: "Alex Rivera total hours 6h 30m" }),

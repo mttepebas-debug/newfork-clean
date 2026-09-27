@@ -4747,6 +4747,15 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-grid-exact[data-schedule-fit-visible-columns="true"] {
   width: 100%;
 }
+/* Phone: a fitted week would squeeze seven days into ~20px each and break card
+   titles letter by letter. Days keep the separate view's minimum and the grid
+   scrolls inside its own box instead (BL-205). */
+@media (max-width: 720px) {
+  .schedule-grid-exact[data-schedule-fit-visible-columns="true"] {
+    --schedule-fit-day-min: var(--schedule-day-column-min);
+    width: max-content;
+  }
+}
 .schedule-grid-exact > * {
   min-width: 0;
   border-right: var(--schedule-grid-line-width) solid

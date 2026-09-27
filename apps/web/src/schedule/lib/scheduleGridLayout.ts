@@ -128,7 +128,10 @@ export function createScheduleGridTemplateColumns({
   readonly showTotalHours: boolean;
 }): string {
   if (fitVisibleColumns) {
-    return `minmax(144px, ${scheduleGridEmployeeColumnWidth}px) repeat(${columns}, minmax(0, 1fr))${
+    // On a phone the stylesheet sets --schedule-fit-day-min so days keep a
+    // readable width and the grid scrolls; elsewhere it is unset and days share
+    // the width down to zero, as before (BL-205).
+    return `minmax(144px, ${scheduleGridEmployeeColumnWidth}px) repeat(${columns}, minmax(var(--schedule-fit-day-min, 0px), 1fr))${
       showTotalHours ? ` minmax(72px, ${scheduleGridTotalColumnWidth}px)` : ""
     }`;
   }
