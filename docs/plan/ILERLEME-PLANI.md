@@ -26,6 +26,7 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 | K13 | BL-230 — takas onaylandıktan sonra hafta yayından kaldırılırsa takas korunsun mu? (a) en son yayına bak (Önerilen) / (b) kaldırma sıfırlar, REUSE'a yazılır / (c) beklesin | **Açık** |
 | K14 | FB-6.1.9 Settings ürün soruları (S1–S4): (1) varsayılan manager rolünde Settings okuma izinleri yok — REUSE:51 "manager katalogu salt okunur görür" ile çelişiyor; (2) `roles.read` manager tipi role verilebiliyor — REUSE Roles'u manager'a kapatıyor; (3) Acknowledgements manager kataloğunun parçası mı; (4) Important dates okuma kapsamı ve başka lokasyon adlarının görünmesi | **Açık** — seçenekli metni koordinatörde; FB-6.8'i etkiler |
 | K15 | Faturalama (BL-059) S1–S7: fiyat birimi, giriş fiyatı, deneme sonu, plan sayısı, yıllık ödeme, iptal/iade, satış vergisi (+ şirketin eyaleti) | **Açık** — F4; kod FOUNDATION-B sonrası |
+| K16 | FB-6.1b S1–S3 — "yayınlanmışları soluk göster" anahtarı: hangi vardiyalar görünür, anahtar hangi düzenlemelerde var, açık mı kapalı mı başlar | **Açık** — seçenekli metin `tasks/FB-6.1b.md`; T1/T2 teknik teyit koordinatörde |
 
 ## 3. Sıradaki en önemli iş (gerekçesiyle)
 1. **FB-6.1.14 hosted toplu gönderim (K5 son onayı).** Gerekçe: canlı ile main arasındaki fark en büyük risk; `.9` bittiği için engel yalnız kullanıcının onayı.
@@ -42,7 +43,7 @@ Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en
 | B — API/web veri | `nf-backend` | **BL-198 web/API** + BL-197 `skipped` tipi | **BL-211** (`GET /schedule/shifts` 500) | **FB-6.2** `permissions.includes` → `can()` (Done when 6) | BL-213 (Shift changes `ExchangeError`) |
 | C — Arayüz | `nf-arayuz` | **BL-192 + BL-205** DEV varyantları (telefonda yönetim gezinmesi, Together başlıkları) | **BL-198 / BL-197 metinleri** | **BL-215** (sihirbazda ham hex) | BL-218 `.4`–`.6` (A/B'den sonra) |
 | D — Test | `nf-test` | **BL-210** (`shift-hub-swap` tekrar koşu) | **BL-212** (rozet ölçüm testi) | **BL-217** (iki test `tests.world()`'e; BL-209 onarımından sonra) | **BL-198 e2e** |
-| E — Plan | `nf-planlama` | ~~Kayıt turu (BL-218 dosyası, FB-6.2 ready, FB-6.1 kaydı, backlog, bu plan)~~ **bitti 09-27** | **FB-6.3 S4 sorusu** hazır tut (K10) | ~~BL-059 Stripe araştırması~~ **bitti 09-27** → `tasks/BL-059.md` (S1–S7 kullanıcıda, K15) | FB-6.1b görev dosyası |
+| E — Plan | `nf-planlama` | ~~Kayıt turu (BL-218 dosyası, FB-6.2 ready, FB-6.1 kaydı, backlog, bu plan)~~ **bitti 09-27** | **FB-6.3 S4 sorusu** hazır tut (K10) | ~~BL-059 Stripe araştırması~~ **bitti 09-27** → `tasks/BL-059.md` (S1–S7 kullanıcıda, K15) | ~~FB-6.1b görev dosyası~~ **bitti 09-27** (`tasks/FB-6.1b.md`; `.1` BL-159 A şeridine hazır, B4 K16'yı bekler) |
 | F — İnceleme | `nf-guvenlik`, `nf-gorsel-qa` | çağrıldıkça | | | |
 | Koordinatör | — | Birleştirme pencereleri (A1, sonra BL-198 paketi) | **FB-6.1.14 hosted gönderim** (K5 son onayıyla) | **Ekran turu K7** (`.0` + `.13`) | Temizlik (§6) |
 
