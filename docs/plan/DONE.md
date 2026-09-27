@@ -81,3 +81,5 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | BL-208 | iki lokasyonlu onaylı takas boş kapsam ayarı yüzünden artık 500 ile düşmüyor | 22d73de
 2026-09-26 | FB-6.1.5 (ghost 11b) | başka lokasyondaki vardiyanın ghost kartı gerçek kartla aynı düzende, gri taramalı; lokasyon adı iğne baloncuğunda, klavye ve dokunmayla açılıyor | 52a00d6
 2026-09-26 | BL-180 | takas e2e testi CI yükünde yanlış kırmızı vermiyor (asıl kök BL-208 düzeldi, bekleme 30 sn) | 021c63e
+2026-09-27 | BL-148 + BL-166 | Account ekranlarında ham renk kalmadı, görünüm aynı; giriş alanlarının kenarı WCAG AA | f5fb2f1
+2026-09-27 | FB-6.1.9 (API ekranları) | API'den okuyan 13 ekran yetki reddinde "erişim yok" kartı gösteriyor; istek yardımcıları reddin gerekçesini koruyor | 0693b51
