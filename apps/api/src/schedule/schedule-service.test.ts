@@ -575,18 +575,9 @@ describe("createScheduleReadService realtime invalidation", () => {
   });
 
   it("passes an approved shift change the draft would undo to the screen (BL-198)", async () => {
-    const undone = {
-      id: "shift_exchange_undone:40000000-0000-4000-8000-000000000009",
-      code: "shift_exchange_undone", severity: "hard", overrideable: false, tier: "blocker", introduced: true,
-      location_id: locationId, location_name: "Kadikoy",
-      employee_id: "30000000-0000-4000-8000-000000000002", employee_name: "Can Demir",
-      scheduled_date: "2026-08-18", start_time: "09:00", end_time: "17:00", shift_ids: [],
-      exchange_case_id: "50000000-0000-4000-8000-000000000001", exchange_kind: "swap",
-      from_employee_id: "30000000-0000-4000-8000-000000000001", from_employee_name: "Ayse Kaya",
-      to_employee_id: "30000000-0000-4000-8000-000000000002", to_employee_name: "Can Demir",
-      draft_employee_id: null, draft_employee_name: null,
-      message: "This shift was swapped from Ayse Kaya to Can Demir after the schedule was last published, and this draft does not have it. Publishing would undo it.",
-    };
+    // Verbatim from a real run of shift_exchange_draft_undoes() (nf-db bl198-fix ae3f31b9,
+    // approved_exchange_survives_a_stale_draft green run): times arrive as HH:MM.
+    const undone = {"id": "shift_exchange_undone:d766ef91-397b-4f46-af27-5bab6c044268", "code": "shift_exchange_undone", "tier": "blocker", "message": "This shift was swapped from Ali Person to Deniz Person after the schedule was last published, and this draft does not have it. Publishing would undo it.", "end_time": "15:00", "severity": "hard", "shift_ids": ["f60a3476-ba75-4532-a061-9b0c0672cc08"], "introduced": true, "start_time": "09:00", "employee_id": "51017f0c-a2f8-4fd0-8568-b49c88bd8a50", "location_id": "f1a169ae-0ac7-4cea-82aa-be9fc3ee3cb8", "overrideable": false, "employee_name": "Deniz Person", "exchange_kind": "swap", "location_name": "Kadikoy", "scheduled_date": "2028-08-29", "to_employee_id": "51017f0c-a2f8-4fd0-8568-b49c88bd8a50", "exchange_case_id": "b2df6d9b-eb62-41fa-802d-63290c32016e", "from_employee_id": "cbea0cee-6fc4-4ab3-ab2a-3289fb33ca2c", "to_employee_name": "Deniz Person", "draft_employee_id": "4cd03230-948b-45d6-846b-1f03931ff361", "from_employee_name": "Ali Person", "draft_employee_name": "Emre Person"};
     const preview = schedulePublicationPreview();
     mocks.rpc.mockResolvedValueOnce({ data: { ...preview, findings: [undone] }, error: null });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
