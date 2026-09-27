@@ -38,13 +38,13 @@ begin
  template_scope := app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.templates.read');
  org_wide := app_private.authz_reason(actor_user_id, target_workspace_id, 'schedule.templates.read', '{}'::uuid[]) is null;
  select jsonb_build_object('template',jsonb_build_object('id',t.id,'workspace_id',t.workspace_id,'name',t.name,'revision',t.revision,
-   'shift_count',(select count(*) from public.schedule_template_shifts s where s.template_id=t.id),
-   'open_slot_count',(select count(*) from public.schedule_template_shifts s where s.template_id=t.id and s.employee_id is null),
+   'shift_count',(select count(*) from public.schedule_template_shifts s where s.template_id=t.id and s.location_id=any(places.ids)),
+   'open_slot_count',(select count(*) from public.schedule_template_shifts s where s.template_id=t.id and s.location_id=any(places.ids) and s.employee_id is null),
    'created_by_name',coalesce(u.display_name,'Manager'),'updated_at',t.updated_at),
    'shifts',coalesce((select jsonb_agg(jsonb_build_object('id',s.id,'location_id',s.location_id,'employee_id',s.employee_id,'job_id',s.job_id,
      'shift_type_id',s.shift_type_id,'day_offset',s.day_offset,'time_basis',s.time_basis,'time_snapshot',s.time_snapshot,'time_timezone',s.time_timezone,'start_time',to_char(s.start_time,'HH24:MI'),'end_time',to_char(s.end_time,'HH24:MI'),
      'crosses_midnight',s.crosses_midnight,'hide_time_on_badge',coalesce(s.hide_time_on_badge,false),'label_ids',to_jsonb(coalesce(s.label_ids,'{}'::uuid[])),
-     'label_names',to_jsonb(coalesce(s.label_names,'{}'::text[])),'note',s.note) order by s.day_offset,s.start_time,s.id) from public.schedule_template_shifts s where s.template_id=t.id),'[]'::jsonb))
+     'label_names',to_jsonb(coalesce(s.label_names,'{}'::text[])),'note',s.note) order by s.day_offset,s.start_time,s.id) from public.schedule_template_shifts s where s.template_id=t.id and s.location_id=any(places.ids)),'[]'::jsonb))
  into result from public.schedule_templates t join public.user_profiles u on u.user_id=t.created_by
  cross join lateral (select public.live_location_ids(t.workspace_id, array(select distinct s.location_id from public.schedule_template_shifts s where s.template_id=t.id)) ids) places
  where t.id=target_template_id and t.workspace_id=target_workspace_id
@@ -72,11 +72,11 @@ begin
    'created_by_name',coalesce(u.display_name,'Manager'),'updated_at',t.updated_at
  ) order by t.updated_at desc,t.id) filter(where t.id is not null),'[]'::jsonb))
  from public.schedule_templates t join public.user_profiles u on u.user_id=t.created_by
- cross join lateral (select count(*)::integer shift_count,count(*) filter(where s.employee_id is null)::integer open_slot_count,
-   public.live_location_ids(t.workspace_id, array(select distinct z.location_id from public.schedule_template_shifts z where z.template_id=t.id)) location_ids
-   from public.schedule_template_shifts s where s.template_id=t.id) x
+ cross join lateral (select public.live_location_ids(t.workspace_id, array(select distinct z.location_id from public.schedule_template_shifts z where z.template_id=t.id)) ids) live
+ cross join lateral (select count(*)::integer shift_count,count(*) filter(where s.employee_id is null)::integer open_slot_count
+   from public.schedule_template_shifts s where s.template_id=t.id and s.location_id=any(live.ids)) x
  where t.workspace_id=target_workspace_id
- and (org_wide or (cardinality(x.location_ids)>0 and x.location_ids <@ template_scope))
+ and (org_wide or (cardinality(live.ids)>0 and live.ids <@ template_scope))
  );
 end;
 $function$
