@@ -81,6 +81,20 @@ from (values ('K'), ('KB')) t(label);
 insert into public.schedule_template_shifts (workspace_id, template_id, location_id, job_id, day_offset, start_time, end_time, time_basis)
 select tests.id('m'), tests.id('m:tpl:' || t.label), tests.id('m:' || l), tests.id('m:job:cook'), 0, '09:00', '15:00', 'explicit'
 from (values ('K', array['K']), ('KB', array['K', 'B'])) t(label, locs), unnest(t.locs) l;
+-- BL-188 (Q-C): a template at Kadikoy and a location deleted since counts as
+-- a Kadikoy template in every rule.
+-- ponytail: a location deleted by hand; there is no delete-location builder step.
+insert into public.locations (workspace_id, name, short_name, street_address, city, region, postal_code, timezone)
+values (tests.id('m'), 'Moda', 'MDA', '1 St', 'Istanbul', 'Istanbul', '34710', 'Europe/Istanbul');
+select tests.remember('m:D', (select l.id from public.locations l where l.workspace_id = tests.id('m') and l.short_name = 'MDA'));
+insert into public.schedule_templates (id, workspace_id, name, created_by, updated_by)
+values (tests.remember('m:tpl:KD', gen_random_uuid()), tests.id('m'), 'Template KD', tests.user('m:owner'), tests.user('m:owner'));
+insert into public.schedule_template_shifts (workspace_id, template_id, location_id, job_id, day_offset, start_time, end_time, time_basis)
+select tests.id('m'), tests.id('m:tpl:KD'), tests.id('m:' || l), tests.id('m:job:cook'), 0, '09:00', '15:00', 'explicit'
+from unnest(array['K', 'D']) l;
+-- as deleting it on Settings does: whoever worked there (the owner) stops.
+update public.employee_location_assignments set ended_at = now() where location_id = tests.id('m:D') and ended_at is null;
+update public.locations set archived_at = now(), deleted_at = now() where id = tests.id('m:D');
 
 -- 2. Who they are, written down independently of the app ------------------------
 -- class: owner | admin | manager | employee. status: active | suspended |
@@ -168,7 +182,9 @@ insert into target values
   ('dr:KB',      'draft',     'm', '{K,B}', null,       null),
   -- a template has no location of its own: where its shifts are
   ('tpl:K',      'template',  'm', '{K}',   null,       null),
-  ('tpl:KB',     'template',  'm', '{K,B}', null,       null);
+  ('tpl:KB',     'template',  'm', '{K,B}', null,       null),
+  -- shifts at K and a deleted location, which counts nowhere (Q-C, BL-188)
+  ('tpl:KD',     'template',  'm', '{K}',   null,       null);
 
 create temporary table target_id as
 select t.label,

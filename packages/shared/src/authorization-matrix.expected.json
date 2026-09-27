@@ -1,5 +1,5 @@
 {
- "sourceSha256": "96ccb33b143f3f1ce6d2d78fd3b53f87cf55ed7316e13554ab5b8ad80d5c8312",
+ "sourceSha256": "be640bd2190e41122d8ce6f03fe913e958556921721d8392085969f4bf7fc6d1",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -507,6 +507,16 @@
    "locs": [
     "K",
     "B"
+   ],
+   "class": null,
+   "holder": null
+  },
+  {
+   "label": "tpl:KD",
+   "kind": "template",
+   "tenant": "m",
+   "locs": [
+    "K"
    ],
    "class": null,
    "holder": null
@@ -14060,6 +14070,12 @@
   ],
   [
    "schedule.template_delete",
+   "ali",
+   "tpl:KD",
+   "deny"
+  ],
+  [
+   "schedule.template_delete",
    "aydan",
    "tpl:K",
    "deny"
@@ -14068,6 +14084,12 @@
    "schedule.template_delete",
    "aydan",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_delete",
+   "aydan",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14084,6 +14106,12 @@
   ],
   [
    "schedule.template_delete",
+   "ayse",
+   "tpl:KD",
+   "allow"
+  ],
+  [
+   "schedule.template_delete",
    "can",
    "tpl:K",
    "allow"
@@ -14092,6 +14120,12 @@
    "schedule.template_delete",
    "can",
    "tpl:KB",
+   "allow"
+  ],
+  [
+   "schedule.template_delete",
+   "can",
+   "tpl:KD",
    "allow"
   ],
   [
@@ -14108,6 +14142,12 @@
   ],
   [
    "schedule.template_delete",
+   "emre",
+   "tpl:KD",
+   "deny"
+  ],
+  [
+   "schedule.template_delete",
    "mehmet",
    "tpl:K",
    "deny"
@@ -14116,6 +14156,12 @@
    "schedule.template_delete",
    "mehmet",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_delete",
+   "mehmet",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14132,6 +14178,12 @@
   ],
   [
    "schedule.template_delete",
+   "nil",
+   "tpl:KD",
+   "allow"
+  ],
+  [
+   "schedule.template_delete",
    "nur",
    "tpl:K",
    "deny"
@@ -14140,6 +14192,12 @@
    "schedule.template_delete",
    "nur",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_delete",
+   "nur",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14156,6 +14214,12 @@
   ],
   [
    "schedule.template_delete",
+   "olcay",
+   "tpl:KD",
+   "allow"
+  ],
+  [
+   "schedule.template_delete",
    "pelin",
    "tpl:K",
    "deny"
@@ -14164,6 +14228,12 @@
    "schedule.template_delete",
    "pelin",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_delete",
+   "pelin",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14180,6 +14250,12 @@
   ],
   [
    "schedule.template_delete",
+   "remzi",
+   "tpl:KD",
+   "deny"
+  ],
+  [
+   "schedule.template_delete",
    "sami",
    "tpl:K",
    "deny"
@@ -14188,6 +14264,12 @@
    "schedule.template_delete",
    "sami",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_delete",
+   "sami",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14204,6 +14286,12 @@
   ],
   [
    "schedule.template_delete",
+   "veli",
+   "tpl:KD",
+   "deny"
+  ],
+  [
+   "schedule.template_delete",
    "xavier",
    "tpl:K",
    "deny"
@@ -14212,6 +14300,12 @@
    "schedule.template_delete",
    "xavier",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_delete",
+   "xavier",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14224,6 +14318,12 @@
    "schedule.template_delete",
    "zeynep",
    "tpl:KB",
+   "allow"
+  ],
+  [
+   "schedule.template_delete",
+   "zeynep",
+   "tpl:KD",
    "allow"
   ],
   [
@@ -14240,6 +14340,12 @@
   ],
   [
    "schedule.template_rename",
+   "ali",
+   "tpl:KD",
+   "deny"
+  ],
+  [
+   "schedule.template_rename",
    "aydan",
    "tpl:K",
    "deny"
@@ -14248,6 +14354,12 @@
    "schedule.template_rename",
    "aydan",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_rename",
+   "aydan",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14264,6 +14376,12 @@
   ],
   [
    "schedule.template_rename",
+   "ayse",
+   "tpl:KD",
+   "allow"
+  ],
+  [
+   "schedule.template_rename",
    "can",
    "tpl:K",
    "allow"
@@ -14272,6 +14390,12 @@
    "schedule.template_rename",
    "can",
    "tpl:KB",
+   "allow"
+  ],
+  [
+   "schedule.template_rename",
+   "can",
+   "tpl:KD",
    "allow"
   ],
   [
@@ -14288,6 +14412,12 @@
   ],
   [
    "schedule.template_rename",
+   "emre",
+   "tpl:KD",
+   "deny"
+  ],
+  [
+   "schedule.template_rename",
    "mehmet",
    "tpl:K",
    "deny"
@@ -14296,6 +14426,12 @@
    "schedule.template_rename",
    "mehmet",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_rename",
+   "mehmet",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14312,6 +14448,12 @@
   ],
   [
    "schedule.template_rename",
+   "nil",
+   "tpl:KD",
+   "allow"
+  ],
+  [
+   "schedule.template_rename",
    "nur",
    "tpl:K",
    "deny"
@@ -14320,6 +14462,12 @@
    "schedule.template_rename",
    "nur",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_rename",
+   "nur",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14336,6 +14484,12 @@
   ],
   [
    "schedule.template_rename",
+   "olcay",
+   "tpl:KD",
+   "allow"
+  ],
+  [
+   "schedule.template_rename",
    "pelin",
    "tpl:K",
    "deny"
@@ -14344,6 +14498,12 @@
    "schedule.template_rename",
    "pelin",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_rename",
+   "pelin",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14360,6 +14520,12 @@
   ],
   [
    "schedule.template_rename",
+   "remzi",
+   "tpl:KD",
+   "deny"
+  ],
+  [
+   "schedule.template_rename",
    "sami",
    "tpl:K",
    "deny"
@@ -14368,6 +14534,12 @@
    "schedule.template_rename",
    "sami",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_rename",
+   "sami",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14384,6 +14556,12 @@
   ],
   [
    "schedule.template_rename",
+   "veli",
+   "tpl:KD",
+   "deny"
+  ],
+  [
+   "schedule.template_rename",
    "xavier",
    "tpl:K",
    "deny"
@@ -14392,6 +14570,12 @@
    "schedule.template_rename",
    "xavier",
    "tpl:KB",
+   "deny"
+  ],
+  [
+   "schedule.template_rename",
+   "xavier",
+   "tpl:KD",
    "deny"
   ],
   [
@@ -14404,6 +14588,12 @@
    "schedule.template_rename",
    "zeynep",
    "tpl:KB",
+   "allow"
+  ],
+  [
+   "schedule.template_rename",
+   "zeynep",
+   "tpl:KD",
    "allow"
   ],
   [
