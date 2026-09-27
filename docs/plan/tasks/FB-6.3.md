@@ -1,5 +1,5 @@
 # FB-6.3 İzin dilimini yetki çekirdeğine taşı (FOUNDATION-B Aşama 6)
-Status: draft — S1–S3 cevaplı (2026-09-27), S4 TBD. Başlamadan önce: FB-6.2 main'de, BL-183 main'de, P1–P3 koordinatörce verilmiş; `.0` taze ölçüm.
+Status: draft — S1–S3 cevaplı, S4 TBD; P1–P3 verildi (2026-09-27). Başlamadan önce: FB-6.2 main'de, BL-183 main'de; `.0` taze ölçüm.
 Session: -   Branch: task/FB-6.3   Worktree: newfork-wt/FB-6.3   DB: lock (migration + test:db + e2e)
 
 Program: `docs/plan/tasks/FOUNDATION-B.md` → Aşama 6 → dilim tablosu, satır FB-6.3. Ürün kuralları: `docs/plan/REUSE.md` → "İzin (time off)" (`:68-71`) ve "Rütbe" (`:44`). Kalıp: `FB-6.1.md`, `FB-6.2.md`.
@@ -34,7 +34,7 @@ Reviewer: `nf-guvenlik` (her kod adımı); ekran değiştiren adımlarda (`.5`, 
 - **Oylama motoru:** karar anında oy verenleri hesaplayan tek fonksiyon (çekirdek üzerinden: `scope_set(..., 'time_off.decide')`; satır içi kapsam yok); oy kaydı (kim, hangi lokasyon adına, ne zaman, onay/ret); talep durumu "kısmen onaylandı / bekliyor: <lokasyonlar>"; ret tek oyla; admin/owner tek başına. `authorize_time_off_decision` bu motoru kullanır.
 - **İptal kararı** (onaylı iznin geri çekilmesi) aynı kurala bağlanır (S4); çekirdekte eylemi olur.
 - Kalan 3 yardımcı çağıranı çekirdeğe; `notify_schedule_request_event_service`'in satır içi kapsamı çekirdeğe (alıcılar = oy verenler).
-- **K-1 yardımcı kapanışı:** FB-6.3 ile FB-6.4'ten son kapanan dilim üç `schedule_actor_*` yardımcısını siler ve matris kırpmasını aynı commit'te yapar (kural `FB-6.1.md` "Silen dilim için üçü tek commit").
+- **K-1 yardımcı kapanışı:** üç `schedule_actor_*` yardımcısının silinmesi ve matris kırpması **FB-6.4'te** (P2); FB-6.3 kendi 3 çağıranını taşır, yardımcılara dokunmaz.
 - **API:** `schedule-requests-routes.ts`'in iki route-yerel kapısı (8 çağrı) → `authorize(context, action)` (FB-6.1 E1 kalıbı); aynı dosyadaki `requestError` → `rpcFailure` (BL-134'ün bu dosyaya düşen parçası).
 - **Web:** Employee Hub → My availability → Time Off Requests formunda lokasyon yok; Schedule → Requests → Time off'ta oy durumu (hangi lokasyonun onayı bekleniyor) görünür; "Hours need verification" ölü dalı (BL-110 izin parçası) silinir. Görsel karar DEV'de 2–3 varyant.
 - Kırmızı `time_off_partial_period_decisions` yeşile ve `ci-green.txt`'e; `schedule_requests` yeşil kalır (dosya seviyesinde, yarım olamaz).
@@ -67,10 +67,10 @@ Reviewer: `nf-guvenlik` (her kod adımı); ekran değiştiren adımlarda (`.5`, 
 
 Kuraldan çıkan, soru olmayan sonuçlar (REUSE'dan): kişi lokasyonsuzsa (FB-6.2 S1) ya da birincil lokasyonunun müdürü yoksa talep admin/owner'a düşer; oy verenler her kararda yeniden hesaplanır — arada yayınlanan yeni bir lokasyonun vardiyası o lokasyonun oyunu da gerektirir, artık yayınlı vardiyası olmayan lokasyonun verdiği oy sayılmaz.
 
-## Planlama kararları (koordinatöre)
-- **P1 — BL-127 ve BL-182 nerede?** İkisi de onaylı iznin bir kısmını kısaltan aynı mekanizmayı ister. **Öneri:** mekanizma bir kez, FB-6.4'te (takas, BL-182) yazılır; BL-127 onun üstüne FB-6.4'ten hemen sonra ayrı küçük iş. Elenen: FB-6.3'e katmak (oylama motoruyla birlikte dilimi ikiye katlar).
-- **P2 — K-1 silmesi hangi dilimde?** Hangisi son kapanırsa (FB-6.3 / FB-6.4); FB-6.4 daha büyük olduğu için büyük ihtimalle FB-6.4. FB-6.3 kendi 3 çağıranını taşır, yardımcıya dokunmaz.
-- **P3 — BL-134'ün `schedule-requests` parçası bu dilimde mi?** **Öneri:** evet; aynı route dosyası, `.5`'te aynı commit.
+## Planlama kararları — verildi 2026-09-27 (koordinatör; üçü de öneri gibi)
+- **P1 — BL-127 ve BL-182 nerede?** **Karar: öneri gibi** — "izin kısalır" mekanizması FB-6.4'te bir kez yazılır (BL-182), BL-127 hemen ardından. İkisi de onaylı iznin bir kısmını kısaltan aynı mekanizmayı ister. **Öneri:** mekanizma bir kez, FB-6.4'te (takas, BL-182) yazılır; BL-127 onun üstüne FB-6.4'ten hemen sonra ayrı küçük iş. Elenen: FB-6.3'e katmak (oylama motoruyla birlikte dilimi ikiye katlar).
+- **P2 — K-1 silmesi hangi dilimde?** **Karar: FB-6.4.** Hangisi son kapanırsa (FB-6.3 / FB-6.4); FB-6.4 daha büyük olduğu için büyük ihtimalle FB-6.4. FB-6.3 kendi 3 çağıranını taşır, yardımcıya dokunmaz.
+- **P3 — BL-134'ün `schedule-requests` parçası bu dilimde mi?** **Karar: evet, `.5`'te.** **Öneri:** evet; aynı route dosyası, `.5`'te aynı commit.
 
 ## Done when
 1. `schedule_time_off_requests` tablosunda `location_id` kolonu yok; iki gönderim servisinin imzasında lokasyon yok; `rg "legacy_location" apps packages supabase/tests` → 0 (migration geçmişi hariç).
@@ -130,5 +130,6 @@ Kuraldan çıkan, soru olmayan sonuçlar (REUSE'dan): kişi lokasyonsuzsa (FB-6.
 Plan: `superpowers:writing-plans`; yürütme: `superpowers:executing-plans`. SQL/RLS: `supabase:supabase`, `supabase:supabase-postgres-best-practices`. Önce kırmızı: `superpowers:test-driven-development`. Beklenmedik kırmızı: `superpowers:systematic-debugging`. İnceleme: `superpowers:requesting-code-review`, `security-review`, `superpowers:verification-before-completion`. Görsel: `frontend-design:frontend-design`.
 
 ## Notes / Result
+- 2026-09-27 (koordinatör, kayıt `nf-planlama`): P1–P3 öneri gibi — "izin kısalır" FB-6.4'te (BL-182), BL-127 ardından; K-1 silmesi FB-6.4'te; BL-134'ün schedule-requests parçası `.5`'te.
 - 2026-09-27 (`nf-planlama`): kullanıcı S1 (a) talebin bütünü, S2 (a) lokasyonun herhangi bir müdürü, S3 (a) birincil lokasyonun saat dilimi dedi; S4 (iptalin onayı) TBD. İptal kısmı cevaba kadar kapsamda bekler; REUSE "İzin" güncellendi.
 - 2026-09-27 (`nf-planlama`): dosya açıldı (ILERLEME-PLANI E şeridi, 1. iş). Ön ölçüm `origin/main` `b4b6d02`. Dilim tablosuna göre değişenler: rütbe (BL-177) ve 2 yardımcı çağıranı zaten bitti; oylamanın kodu hiç yok (yeni motor); tahmin 0,5–1 → 1–1,5 kişi-hafta. Kullanıcıya dört soru (S1–S4), koordinatöre üç planlama kararı (P1–P3). Ç-a: BL-183 bu dilimden önce.
