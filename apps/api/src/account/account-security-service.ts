@@ -3,7 +3,7 @@ import { createCommunicationServiceWithClient, type CommunicationService } from 
 import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
-import { rpcFailure } from "../http-error.js";
+import { HttpError, rpcFailure } from "../http-error.js";
 import { createUserVerifier } from "../auth/verify-user.js";
 
 export interface AccountSecurityState {
@@ -170,7 +170,9 @@ export function createAccountSecurityService(options: {
       });
       const result = await verifier.auth.signInWithPassword({ email, password });
       if (result.error || !result.data.session)
-        throw new Error("Current password is incorrect");
+        throw new HttpError("Current password is incorrect", 403, {
+          reason: "session.password_incorrect",
+        });
       await verifier.auth.signOut({ scope: "local" });
     },
     async signOut(accessToken, scope) {

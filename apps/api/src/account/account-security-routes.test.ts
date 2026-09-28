@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import type { AccountSecurityService } from "./account-security-service";
 import { registerAccountSecurityRoutes } from "./account-security-routes";
+import { HttpError } from "../http-error.js";
 
 const accessToken = "route-access-token";
 
@@ -81,9 +82,11 @@ describe("account security routes", () => {
     await app.close();
   });
 
-  it("answers a wrong current password with 400 and a readable message", async () => {
+  it("answers a wrong current password with 403 and its machine key", async () => {
     const changePassword = vi.fn(async () => {
-      throw new Error("Current password is incorrect");
+      throw new HttpError("Current password is incorrect", 403, {
+        reason: "session.password_incorrect",
+      });
     });
     const app = await appWith(service({ changePassword }));
     const response = await app.inject({
@@ -96,8 +99,11 @@ describe("account security routes", () => {
         confirmPassword: "new-password",
       },
     });
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ error: "Current password is incorrect" });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: "Current password is incorrect",
+      reason: "session.password_incorrect",
+    });
     await app.close();
   });
 

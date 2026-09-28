@@ -1,9 +1,29 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  createAccountSecurityService,
   createAccountSecurityServiceWithClients,
   tokenDigest,
   createRecoveryEmailDelivery,
 } from "./account-security-service";
+
+const supabase = vi.hoisted(() => ({
+  getUser: vi.fn(),
+  signInWithPassword: vi.fn(),
+  signOut: vi.fn(),
+  adminSignOut: vi.fn(),
+  rpc: vi.fn(),
+}));
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: () => ({
+    rpc: supabase.rpc,
+    auth: {
+      getUser: supabase.getUser,
+      signInWithPassword: supabase.signInWithPassword,
+      signOut: supabase.signOut,
+      admin: { signOut: supabase.adminSignOut },
+    },
+  }),
+}));
 
 const userId = "73000000-0000-4000-8000-000000000001";
 const requestId = "73000000-0000-4000-8000-000000000002";
@@ -254,5 +274,41 @@ describe("account security service", () => {
       service.resendAccountDeletionRecovery("unknown@example.test"),
     ).resolves.toBeUndefined();
     expect(deliverRecoveryEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe("account security service against Supabase Auth", () => {
+  it("refuses a wrong current password with 403 and its machine key before touching the password", async () => {
+    supabase.getUser.mockResolvedValue({
+      data: { user: { id: userId, email: "owner@example.test" } },
+      error: null,
+    });
+    supabase.signInWithPassword.mockResolvedValue({
+      data: { session: null },
+      error: { message: "Invalid login credentials" },
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const service = createAccountSecurityService({
+      url: "https://example.supabase.co",
+      anonKey: "anon",
+      serviceRoleKey: "service-role",
+      appUrl: "https://app.newfork.test",
+    });
+
+    await expect(
+      service.changePassword(accessToken, "wrong-password", "new-password"),
+    ).rejects.toMatchObject({
+      message: "Current password is incorrect",
+      statusCode: 403,
+      reason: "session.password_incorrect",
+    });
+    expect(supabase.signInWithPassword).toHaveBeenCalledWith({
+      email: "owner@example.test",
+      password: "wrong-password",
+    });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(supabase.adminSignOut).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });

@@ -232,7 +232,10 @@ function requestError(reply: FastifyReply, error: unknown) {
   // A typed status wins: it comes from the SQLSTATE the RPC raised, not from
   // the wording of its message. The matching below stays for untyped throws.
   if (error instanceof HttpError)
-    return reply.status(error.statusCode).send({ error: message });
+    return reply.status(error.statusCode).send({
+      error: message,
+      ...(error.reason ? { reason: error.reason } : {}),
+    });
   if (/bearer|session|required|incorrect|password|blocked/i.test(message)) {
     const status = /bearer|session/i.test(message) ? 401 : /blocked/i.test(message) ? 409 : 400;
     return reply.status(status).send({ error: message });
