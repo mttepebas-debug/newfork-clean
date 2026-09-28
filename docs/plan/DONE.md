@@ -104,3 +104,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-28 | BL-235 | uyarı bildirimlerindeki "!" işareti okunur: rozet `--theme-warning`, 5,93:1 (önce 2,60) | dc3c9730
 2026-09-28 | BL-250 | iki telefon alt çubuğunda klavye odak halkası aynı (3px, 2px dışarıda) | dc3c9730
 2026-09-28 | BL-251 | iki telefon alt çubuğunun üst çizgisi aynı token (`--theme-border`) | dc3c9730
+2026-09-28 | BL-100 | yerel ortak DB'de eski araştırmadan kalan "FX" workspace'i ve 4 deneme kullanıcısı silindi (kullanıcı komutu; yedeksiz, kullanıcı kararı) | -
