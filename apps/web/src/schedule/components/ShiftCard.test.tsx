@@ -13,6 +13,7 @@ import {
   formatScheduleBadgeTimeRange,
   formatScheduleShiftBadgeTitle,
 } from "./ShiftCard";
+import { isShiftNoteOpen } from "./ShiftNoteCorner";
 
 const shiftType: ScheduleReadModel["shift_types"][number] = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -432,6 +433,37 @@ describe("ShiftCard manager note (BL-199)", () => {
     } finally {
       window.removeEventListener("keydown", scheduleEscape);
       document.removeEventListener("keydown", scheduleEscape, true);
+    }
+  });
+
+  it("lets Escape through once the note it showed is gone", () => {
+    vi.useFakeTimers();
+    const props: Parameters<typeof ShiftCard>[0] = {
+      shift: { ...shift, note },
+      job: "Server",
+      type: shiftType,
+      showShiftType: true,
+      showShiftLabels: true,
+      showClockTimes: true,
+      showJobColorDot: true,
+      rowKey: "row-1",
+      badgeHeight: 52,
+      publicationState: null,
+    };
+    const { rerender } = render(<ShiftCard {...props} />);
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    expect(openNote(badge, badge.querySelector("[data-shift-note-marker]")!)).not.toBeNull();
+    // Someone clears the note (the editor saves it blank) while it is open.
+    rerender(<ShiftCard {...props} shift={{ ...shift, note: "" }} />);
+    expect(noteCard()).toBeNull();
+    expect(isShiftNoteOpen()).toBe(false);
+    const scheduleEscape = vi.fn();
+    window.addEventListener("keydown", scheduleEscape);
+    try {
+      fireEvent.keyDown(document.body, { key: "Escape" });
+      expect(scheduleEscape).toHaveBeenCalledOnce();
+    } finally {
+      window.removeEventListener("keydown", scheduleEscape);
     }
   });
 

@@ -49,8 +49,11 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
     closeTimer.current = window.setTimeout(() => setAnchor(null), CLOSE_DELAY_MS);
   };
 
+  // Listeners only while a note shows: a note cleared while open must not
+  // leave an invisible one swallowing the next Escape.
+  const showing = anchor !== null && note !== "";
   useEffect(() => {
-    if (!anchor) return;
+    if (!showing) return;
     const close = () => setAnchor(null);
     // Escape closes the note and nothing else: caught on window's capture
     // pass, before the Schedule's own Escape clears filters or the week.
@@ -70,7 +73,13 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
       window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("scroll", close, true);
     };
-  }, [anchor]);
+  }, [showing]);
+
+  useEffect(() => {
+    if (note) return;
+    clearTimers();
+    setAnchor(null);
+  }, [clearTimers, note]);
 
   useLayoutEffect(() => {
     setCardHeight(anchor ? (cardRef.current?.offsetHeight ?? 0) : 0);
