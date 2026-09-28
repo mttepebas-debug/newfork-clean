@@ -1,88 +1,82 @@
-# İlerleme planı — çoklu rol oturumu (sürüm 2, 2026-09-27 akşam)
+# İlerleme planı — çoklu rol oturumu (sürüm 3, 2026-09-28)
 
-Hazırlayan: `nf-planlama`; şerit sırası 2026-09-27 akşam koordinatörünün ("Hand off raporu", `local_323e063c-…`) planından. Koordinatör 2026-09-28'den beri "Koordinatör (devir 2026-09-27 gece)", `local_08c32131-90ea-4552-9d19-9b1a7dae5a5a` (CLAUDE.md `2121037a`). Kullanıcı kullanım limitini beklemeden devam dedi.
-Ölçüm: `origin/main` `bee7713d`; yerel DB = main (son migration `20260927131000`). Sürüm 1: `b4b6d02` (aynı gün sabah).
+Hazırlayan: `nf-planlama` (`local_c67b8d60-…`). Koordinatör: "Koordinatör (devir 2026-09-27 gece)", `local_08c32131-90ea-4552-9d19-9b1a7dae5a5a`.
+Ölçüm: `origin/main` `916ef652`, 2026-09-28; yerel DB = main (son migration `20260928030000`); main CI son kod koşusu yeşil (run 36406391992, `7127bd96`). Sürüm 2: `bee7713d` ölçümü (2026-09-27 akşam).
 Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandıkça satırı "bitti" olur. Kaynaklar: `ROADMAP.md`, `MVP-PLAN.md`, `tasks/FOUNDATION-B.md`, `BACKLOG.md`.
 
 ## 1. Nerede duruyoruz
-- **FOUNDATION-B ~%58** (tahmin ağırlıklı; aynı formül 9,75 + 2,4 × 0,82 + 0,1 = 11,8 / 20,5; FB-6.1 bu kez satır sayımıyla). Aşama 1–5 bitti. Takvim dilimi (FB-6.1) **%82 = 14/17 adım satırı** (`tasks/FB-6.1.md` adım tablosu, 2026-09-28): açık `.0` ekran turu, `.13` görsel, `.14` kapanış + hosted gönderim. Önceki "~%92" ağırlıklı tahmindi; geri gidiş yok, yöntem farkı. BL-218 `.1`–`.2` main'de; FB-6.2 (Çalışanlar) ready, `.4` BL-218 `.3`'ü bekliyor. Aşama 7 başlamadı.
-- **Bugün (09-28 gece) main'e girenler, hepsinde main CI yeşil (koordinatör):** `merge-0927d` `65bdeaae` (BL-198 onaylı takas korunur, BL-212, BL-205 telefonda hafta sütunları, BL-197 arşivli etiket), BL-234 `efef60c1` (yayından kaldırılan hafta yeniden yayınlanır), BL-218 `.1`–`.2` `2cdffd2c` + `108dee9c`, BL-237 `8f80282c`, BL-192 `74bb480e` (telefonda yönetici alt çubuğu), BL-231 `59b41c7f`, BL-230 `51bf2b8e`, BL-221 `8dfdfcbe`. Yerel `test:db` kırmızısı 18 dosya (taban 23; BL-237 beşini kapattı; liste `artifacts/koordinator/bl221-red.txt`).
-- **Hosted güncel (2026-09-28):** 26 migration gönderildi (`20260925173926`..`20260928030000`), advisors'ta yeni bulgu yok. Web/API Vercel'de henüz yayında değil.
+- **FOUNDATION-B ~%58** (sürüm 2 ile aynı formül: 9,75 + 2,4 × 0,82 + 0,1 = 11,8 / 20,5; tahmin ağırlıklı). **Değişmedi:** 09-28 gündüz main'e girenler programın adımı değil, backlog ve cila işi. Aşama 1–5 bitti. Takvim dilimi (FB-6.1) **%82 = 14/17 adım satırı**: açık `.0` ekran turu, `.13` görsel, `.14` kapanış (hosted gönderim yapıldı). BL-218 `.1`–`.2` main'de, `.3` (`nf-backend`) başlamadı; FB-6.2 (Çalışanlar) ready, `.4` BL-218 `.3`'ü bekliyor. Aşama 7 başlamadı.
+- **09-28 main'e girenler (hepsinde main CI yeşil):**
+  - gece: BL-198, BL-212, BL-205, BL-197 (`65bdeaae`), BL-234, BL-218 `.1`–`.2`, BL-237, BL-192 (telefonda yönetici alt çubuğu), BL-231, BL-230, BL-221;
+  - gündüz: BL-239 + BL-240 (tek telefon kırılımı 720px, `2ca3803e`); **görsel tutarlılık paketi** (BL-214, BL-216, BL-235, BL-250, BL-251; `dc3c9730` + `7127bd96`): beyaz düğmeler ve form alanları aynı koyu kenarda, altı ikiz renk silindi, uyarı işareti okunur, iki alt çubuk aynı;
+  - kayıt: BL-100 (yerel DB'deki FX artığı silindi), BL-078 (işlem gerekmez).
+- **Şu an çalışan:** `nf-db` — **BL-252 + BL-246** (sahiplik devrinde owner kuralları: kayıt değişmezi, yeni owner'ın belgeleri muaf, eski owner'ın owner muafiyetleri kalkar; `tasks/BL-252.md`). Diğer rol oturumları boşta (ListAgents, 2026-09-28).
+- **Hosted:** 26 migration gönderildi (son `20260928030000`), advisors temiz. Web/API Vercel'de henüz yayında değil.
 - **MVP geneli ~%45–50** (2026-09-26 raporu; ölçülmedi).
 
 ## 2. Karar bekleyenler
-| # | Karar | Durum |
+**Açık (kullanıcı):**
+| # | Karar | Not |
 |---|---|---|
-| K1–K4 | FB-6.2 S1–S4 | **Cevaplı 09-27** (REUSE "Roller ve kapsam") |
-| D1–D5 | Management departmanı / Owner işi | **Cevaplı 09-27** → BL-218 (`tasks/BL-218.md`, ready) |
-| K5 | Hosted toplu gönderim | **Yapıldı 2026-09-28:** kullanıcı onayladı ve komutları çalıştırdı; 26 migration, hosted son sürüm `20260928030000`, yedek `artifacts/koordinator/hosted-backup-2026-09-28/` (`FB-6.1.md` Notes) |
-| K6 | BL-209 yerel DB kayması | **Cevaplı:** hedefli onarım; tek satırlık komut kullanıcıda (BACKLOG BL-209) |
-| K7 | FB-6.1.0 ekran turu + `.13` görsel kararlar | **Açık** — kullanıcının müsait olduğu ilk gün, 30–45 dk |
-| K8 | Küçükler: ~~BL-078~~ (**cevaplı 2026-09-28:** işlem gerekmez, kapandı); **arşivli iş/tip adı** | **Cevaplı 2026-09-28:** arşivli ad görünür (ör. "Line Cook"), "Shift" değil, etiket yok → **BL-254** (`nf-db` okuma modeli → `nf-backend` web; REUSE "Arşivli iş ve vardiya tipi adı"). Eski oturumların arşivi koordinatörde |
-| K9 | Onboarding yedi adım + avatar | **Cevaplı:** lansman için şart, F4'ten önce |
-| K10 | FB-6.3 S4 — onaylı iznin iptalini kim onaylar | **Açık (TBD)** — kullanıcı 2026-09-28: uzun konuşulacak; soru `tasks/FB-6.3.md`'de hazır |
-| K11 | BL-214 Discard butonu kenarı (ortak buton değeri) ve BL-216 birbirine yakın token'lar | **Cevaplı 2026-09-28:** beyaz düğme kenarı = form alanı kenarı (REUSE UI-09); yakın token'lar birleşir. BL-235 rozet rengi koordinatör kararıyla `--theme-warning`. **Ek 2026-09-28:** Settings'teki beş genel form alanı (ham `#c7cfcb`) da pakete girer, kenar `--theme-muted` (BL-214). Hepsi tek `nf-arayuz` işi (görsel tutarlılık paketi): **bitti 2026-09-28** (`dc3c9730` + `7127bd96`; BL-214/216/235/250/251 kapandı; yeni BL-255..260) |
-| K12 | BL-221 — belgesi eksik owner'ın izni de onaysız mı kaydolsun? (bugün incelemeye düşüyor, müdürlere inceleme bildirimi gidiyor) | **Cevaplı 09-28:** evet, onaysız kaydolur → `nf-db` |
-| K13 | BL-230 — takas onaylandıktan sonra hafta yayından kaldırılırsa takas korunsun mu? (a) en son yayına bak (Önerilen) / (b) kaldırma sıfırlar, REUSE'a yazılır / (c) beklesin | **Cevaplı 09-28:** (a) en son yayın → `nf-db` |
-| K14 | FB-6.1.9 Settings ürün soruları (S1–S4): (1) varsayılan manager rolünde Settings okuma izinleri yok — REUSE:51 "manager katalogu salt okunur görür" ile çelişiyor; (2) `roles.read` manager tipi role verilebiliyor — REUSE Roles'u manager'a kapatıyor; (3) Acknowledgements manager kataloğunun parçası mı; (4) Important dates okuma kapsamı ve başka lokasyon adlarının görünmesi | **Cevaplı 09-28:** S1 varsayılan manager rolüne katalog okuma izinleri eklenir; S2 manager tipi role roles.* verilemez; S3 Acknowledgements katalog gibi salt okunur; S4 manager yalnız kendi lokasyonlarının + workspace geneli önemli tarihleri görür → FB-6.8 |
-| K15 | Faturalama (BL-059) S1–S7: fiyat birimi, giriş fiyatı, deneme sonu, plan sayısı, yıllık ödeme, iptal/iade, satış vergisi (+ şirketin eyaleti) | **Açık** — F4; kod FOUNDATION-B sonrası |
-| K16 | FB-6.1b S1–S3 — "yayınlanmışları soluk göster" anahtarı: hangi vardiyalar görünür, anahtar hangi düzenlemelerde var, açık mı kapalı mı başlar | **Cevaplı 09-28:** S1 (a) haftanın tüm yayınlıları, S2 (a) her düzenlemede, S3 (a) kapalı + son seçim hatırlanır; T1/T2 teknik teyit koordinatörde |
-| K17 | BL-218 S1 (owner kendi Owner işini kaldırabilir mi), S2 (Owner işi başka departmana taşınabilir mi), S3 (exclude'dan önce taslağa yazılmış yayınlanmamış vardiya) | **Cevaplı 09-28:** S1 hayır, S2 hayır, S3 kalsın (müdür görüp siler) |
-| K18 | BL-192 telefon yönetim menüsü | **Cevaplı 09-28:** A, alt çubuk → `nf-arayuz` |
-| K19 | BL-238 çok saat dilimli workspace'te hafta ne zaman geçmiş sayılır | **Açık** — kullanıcı uzun konuşmak istiyor |
+| K7 | FB-6.1 `.0` ekran turu + `.13` görsel kararlar | kullanıcının müsait olduğu ilk gün, 30–45 dk; FB-6.1'i kapatan tek şey |
+| K10 | FB-6.3 S4 — onaylı iznin iptalini kim onaylar | uzun konuşulacak; soru `tasks/FB-6.3.md`'de |
+| K15 | Faturalama (BL-059) S1–S7 | F4; kod FOUNDATION-B sonrası |
+| K19 | BL-238 — çok saat dilimli workspace'te hafta ne zaman geçmiş sayılır | uzun konuşulacak; her Pazar yöneticiyi ve CI'ı etkiliyor |
+| K20 | BL-255 — ikinci beyaz düğme sistemi (`.job-secondary-button`, 16 ekran: Settings → Jobs, Locations, Documents, Announcements…) tek sisteme birleşsin mi | görünüm 16 ekranda değişir; önce/sonra görüntüsüyle sorulur |
+| K21 | Sıradaki `nf-db` işlerinin başlaması: BL-254 (arşivli iş/tip adı) | kullanıcı aynı anda tek iş istiyor; sıra §3 |
+
+**Cevaplı (kayıtta; ayrıntı BACKLOG / REUSE / görev dosyaları):** K1–K4 FB-6.2 S1–S4 · D1–D5 Management/Owner · K5 hosted gönderim (yapıldı 09-28) · K6 BL-209 hedefli onarım (komut kullanıcıda) · K8 arşivli ad görünür (→ BL-254) · K9 onboarding yedi adım (F4'ten önce) · K11 görsel paket (bitti) · K12 BL-221 · K13 BL-230 · K14 Settings S1–S4 (→ FB-6.8) · K16 FB-6.1b S1–S3 · K17 BL-218 S1–S3 · K18 BL-192 · **09-28 gündüz:** BL-252 S1 (a) kayıt değişmezi + S2 (b) eski owner'ın muafiyetleri kalkar (S3/S4 `nf-db` ölçümüyle kapandı) · BL-218 `.5` Owner iş listesinde Management altında kilitli, liste departmanlara göre gruplu · BL-199 sırası (devir işinden sonra) · BL-100 yedeksiz silme (yapıldı).
 
 ## 3. Sıradaki en önemli iş (gerekçesiyle)
-1. ~~FB-6.1.14 hosted toplu gönderim~~ **yapıldı 2026-09-28.** FB-6.1'i kapatmak için kalan: `.0` ekran turu (kullanıcıyla, K7) ve `.13` görsel.
-2. **BL-238** (Pazar akşamı "bu hafta" UTC'ye göre; high/risky). Gerekçe: her Pazar yöneticiyi ve CI'ı kilitliyor; K19 kullanıcıyla konuşulacak.
-3. **BL-218 `.3` → FB-6.2.** Gerekçe: programın kritik yolu; BL-218 `.1`–`.2` main'de, `.3` (`nf-backend`) FB-6.2 `.4`'ün son önkoşulu. FB-6.1b `.1` (BL-159) artık başlayabilir (Ç8).
-4. ~~Settings ikiz okuma (BL-222)~~ bitti 09-27 (`89fdf494`); kayıt 09-28.
-5. **BL-252 + BL-246 (`nf-db`, 2026-09-28'den beri) → BL-199.** Kullanıcı 2026-09-28 bu işi seçti; BL-246 kısmı sürüyor; BL-252 S1 (a) ve S2 (b) cevaplı 2026-09-28 (kayıt değişmezi + eski owner'ın muafiyetleri kalkar; `tasks/BL-252.md`). **Sonra BL-199** (müdür Schedule'da vardiyaya not yazamıyor; kullanıcı kararı 2026-09-28: devir işinden hemen sonra).
+1. **BL-252 + BL-246 (`nf-db`, sürüyor).** Kullanıcının seçtiği iş. Kayıt dalı `task/bl252-s3s4-planlama` (`ff412252`) bu işle birlikte main'e gider.
+2. **BL-199 — müdür Schedule'da vardiyaya not yazamıyor** (`nf-arayuz` alan + `nf-backend` kaydetme doğrulaması + e2e). Kullanıcı kararı 09-28: devir işinden hemen sonra.
+3. **BL-218 `.3` → FB-6.2.** Programın kritik yolu: `.3` (`nf-backend`) FB-6.2 `.4`'ün son önkoşulu. `.5` artık veri parçası da istiyor (işlere departman + `system_key`: önce `nf-db` okuma + `nf-backend`, sonra `nf-arayuz` varyantları). FB-6.1b `.1` (BL-159) de başlayabilir (Ç8).
+4. **BL-238** (Pazar akşamı "bu hafta" UTC'ye göre; high/risky) — K19 konuşulunca.
+5. **K7 ekran turu** — FB-6.1'i %100'e taşır; kullanıcının günü.
 
 ## 4. Şeritler (paralel rol oturumları)
-Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en çok iki ağır iş; migration ortak yerel DB'ye yalnız birleştirme penceresinde (`scripts/lock.mjs`); her kod işi `nf-guvenlik`, ekranı değişen `nf-gorsel-qa`.
+Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en çok iki ağır iş; migration ortak yerel DB'ye yalnız birleştirme penceresinde (`scripts/lock.mjs`); her kod işi `nf-guvenlik`, ekranı değişen `nf-gorsel-qa`. **Kullanıcı aynı anda tek iş istiyor (2026-09-28):** şeritler sıra listesidir, paralel başlatma kullanıcı onayıyla.
 
-| Şerit | Rol | 1 | 2 | 3 | 4 |
-|---|---|---|---|---|---|
-| A — DB | `nf-db` | **BL-183 + BL-197** main'e (koordinatör birleştirir, bu akşam) | **BL-198 DB** — B, C, D parçalarıyla aynı birleştirmede main'e | ~~Settings ikiz SELECT ölçümü~~ **bitti 09-27** → BL-222 (6 tabloyu kapatan migration), BL-231, BL-232 (FB-6.8) | **FB-6.2 `.1`** (BL-218 ready ✓) → BL-218 `.1`–`.3` |
-| B — API/web veri | `nf-backend` | **BL-198 web/API** + BL-197 `skipped` tipi | **BL-211** (`GET /schedule/shifts` 500) | **FB-6.2** `permissions.includes` → `can()` (Done when 6) | BL-213 (Shift changes `ExchangeError`) |
-| C — Arayüz | `nf-arayuz` | **BL-192 + BL-205** DEV varyantları (telefonda yönetim gezinmesi, Together başlıkları) | **BL-198 / BL-197 metinleri** | **BL-215** (sihirbazda ham hex) | BL-218 `.4`–`.6` (A/B'den sonra) · **görsel tutarlılık paketi** (BL-214 + Settings'in beş form alanı + BL-216 + BL-235 `styles.css`; BL-250 + BL-251 alt çubuklar; **bitti 2026-09-28**, `7127bd96`) · sırada kullanıcı kararıyla BL-255 (ikinci beyaz düğme sistemi) |
-| D — Test | `nf-test` | **BL-210** (`shift-hub-swap` tekrar koşu) | **BL-212** (rozet ölçüm testi) | **BL-217** (iki test `tests.world()`'e; BL-209 onarımından sonra) | **BL-198 e2e** |
-| E — Plan | `nf-planlama` | ~~Kayıt turu (BL-218 dosyası, FB-6.2 ready, FB-6.1 kaydı, backlog, bu plan)~~ **bitti 09-27** | **FB-6.3 S4 sorusu** hazır tut (K10) | ~~BL-059 Stripe araştırması~~ **bitti 09-27** → `tasks/BL-059.md` (S1–S7 kullanıcıda, K15) | ~~FB-6.1b görev dosyası~~ **bitti 09-27** (`tasks/FB-6.1b.md`; `.1` BL-159 A şeridine hazır, B4 K16'yı bekler) |
-| F — İnceleme | `nf-guvenlik`, `nf-gorsel-qa` | çağrıldıkça | | | |
-| Koordinatör | — | Birleştirme pencereleri (A1, sonra BL-198 paketi) | **FB-6.1.14 hosted gönderim** (K5 son onayıyla) | **Ekran turu K7** (`.0` + `.13`) | Temizlik (§6) |
-
-Eşzamanlılık: B1, C1, D1 ve E aynı anda koşabilir (dosyaları ayrık). BL-198'in dört parçası (A2, B1, C2, D4) tek birleştirme penceresinde main'e girer (sözleşme değişiyor). A4 (FB-6.2 `.1`) çekirdeğe dokunur; A2 (BL-198) çekirdeğe dokunuyorsa A4 ondan sonra (Ç4).
+| Şerit | Rol | Şimdi | Sonra | Bekleyen |
+|---|---|---|---|---|
+| A — DB | `nf-db` | **BL-252 + BL-246** | BL-254 (K21) · BL-218 `.5` veri okuması · FB-6.1b `.1` (BL-159) · FB-6.2 `.1` | BL-209 onarımı (komut kullanıcıda), BL-217 (BL-209'dan sonra) |
+| B — API/web veri | `nf-backend` | — | BL-199 kaydetme yolu · **BL-218 `.3`** · BL-254 web (3 satır) · FB-6.2 `permissions.includes` → `can()` | BL-213 |
+| C — Arayüz | `nf-arayuz` | — | **BL-199** alan + metin · BL-218 `.4`–`.6` · BL-256..260 (küçük, tek iş) | BL-255 (K20) |
+| D — Test | `nf-test` | — | BL-199 e2e · BL-245 (bildirim testleri yerelde kararsız) · BL-120 (tam koşuda zaman aşımı; 09-28 yine düştü) | BL-217 |
+| E — Plan | `nf-planlama` | — | FB-6.1 kapanış notu (`.0` + `.13`'ten sonra) · her birleştirmenin kaydı | — |
+| F — İnceleme | `nf-guvenlik`, `nf-gorsel-qa` | çağrıldıkça | | |
+| Koordinatör | — | BL-252 birleştirme penceresi | Ekran turu K7 · temizlik (§6) | |
 
 ## 5. Çakışmalar ve sıralama kuralları
-- **Ç1 — FB-6.2 Employees ekranı.** `EmployeeDrawer`/`EmployeesPage`'teki `permissions.includes` → `can()` FB-6.2'nin Done when 6'sı (B3); Employees'in tarayıcıdan doğrudan okuması (`employee-data.ts:207-225`) BL-222 ile FB-6.2'de.
-- **Ç2 — BL-198 ile BL-206.** BL-206 (ölü kod silme) BL-198'den ve hosted gönderimden sonra.
+- **Ç1 — FB-6.2 Employees ekranı.** `EmployeeDrawer`/`EmployeesPage`'teki `permissions.includes` → `can()` FB-6.2'nin Done when 6'sı; çekmecenin okumaları BL-231 ile API'den geçiyor (bitti 09-28). BL-243, BL-244 FB-6.2 diliminde.
+- **Ç2 — BL-206 (ölü kod silme)** BL-198'den ve hosted gönderimden sonra: ikisi de oldu, BL-206 artık başlayabilir.
 - **Ç3 — BL-187 FB-6.2 `.6`'da** (koordinatör kararı 09-27).
-- **Ç4 — Çekirdek sahipliği.** `app_private.authz_check`'e dokunan işler (FB-6.2 `.1`–`.4`, gerekiyorsa BL-198) aynı anda yazılmaz; A şeridinde ardışık, her biri kendi birleştirme penceresinde. BL-218 çekirdeğe dokunmaz; FB-6.2 `.4`'ten önce `.1`–`.3`'ü main'de olur.
-- **Ç5 — Hosted gönderim sıra şartı.** Onaylı izin CHECK'i ve BL-186 migration'ı web/API yayınıyla aynı anda; sonra security advisors. Arada main'e giren migration'lar aynı pakete.
-- **Ç6 — Ortak yerel DB.** BL-209 onarılana kadar yerelde `shift_exchanges_v1`, `time_off_published_assignment_disposition` (ve ayrılmamış `weekly_exchange_changed_terms`, BL-227) kırmızısı bilinen yanlış alarm.
-- **Ç8 — `nf-db` sırası, BL-218'den sonra (koordinatör, 2026-09-28).** (1) FB-6.1b `.1` (BL-159) BL-218 `.2`'den sonra: ikisi de `apply_schedule_template_service`'e dokunuyor (BL-218 T2). (2) BL-234 (yayından kaldırılan hafta yeniden yayınlanamıyor) ve BL-230 (yayından kaldırmada takas) birlikte, BL-218'den sonra: aynı yüzey. BL-230'un K13 cevabı gelmezse BL-234 tek başına gider. (3) **BL-252 + BL-246** (devir: kayıt değişmezi + iki yönlü belge muafiyeti, tek iş; 2026-09-28 başladı) ve **BL-254** (arşivli iş/tip adı; `nf-db` → `nf-backend`): görsel tutarlılık paketi bittikten sonra, kullanıcı onayıyla (kullanıcı aynı anda tek iş istiyor; koordinatör 2026-09-28). Paket 2026-09-28 bitti (`7127bd96`); ikisi kullanıcı onayını bekliyor.
+- **Ç4 — Çekirdek sahipliği.** `app_private.authz_check`'e dokunan işler (FB-6.2 `.1`–`.4`) aynı anda yazılmaz; A şeridinde ardışık, her biri kendi birleştirme penceresinde.
+- **Ç5 — Yayın.** Web/API Vercel yayını yapılınca security advisors yeniden koşar; arada main'e giren migration'lar aynı pakete.
+- **Ç6 — Ortak yerel DB.** BL-209 onarılana kadar yerelde `shift_exchanges_v1`, `time_off_published_assignment_disposition` (ve `weekly_exchange_changed_terms`, BL-227) kırmızısı bilinen yanlış alarm; BL-245 bildirim testleri de yerelde kararsız.
 - **Ç7 — Bağlam.** Her rol oturumu iş sınırında bağlam doluluğunu söyler; yarıyı geçince devir (CLAUDE.md §11.10, §12 yenileme).
+- **Ç8 — `nf-db` sırası.** (1) FB-6.1b `.1` (BL-159) BL-218 `.2`'den sonra (✓, başlayabilir): ikisi de `apply_schedule_template_service`'e dokunuyor. (2) BL-234 + BL-230 bitti 09-28. (3) **BL-252 + BL-246** sürüyor; **BL-254** ondan sonra, kullanıcı onayıyla (kullanıcı aynı anda tek iş istiyor).
+- **Ç9 — BL-218 `.5` veri önce.** Çekmecenin iş listesi bugün düz ve referans okuması işin departmanını ve `system_key`'ini taşımıyor (`tasks/BL-218.md` Notes); `nf-arayuz` varyantları `nf-db` + `nf-backend` parçası main'e girince.
 
 ## 6. Temizlik (koordinatör, iş aralarında)
-- Eski dallar (`git branch --no-merged origin/main`): her biri `git cherry`/içerik farkıyla doğrulanıp silinir.
-- `.claude/worktrees/` altındaki bitmiş worktree'ler.
+- Ölçüm 2026-09-28 (bu çalışma kopyası): `git branch --no-merged origin/main` **43 yerel dal**, `git worktree list` **34 worktree**. Soy ağacına göre sayım; rebase'le main'e alınmış dallar da "birleşmemiş" görünür, içerik farkı ölçülmedi. Her dal `git cherry` / içerik farkıyla doğrulanıp silinir; bitmiş worktree'ler kaldırılır.
 
 ## 7. MVP listesi (kalan, faz sırasıyla)
 | Faz | Kalan | Durum | Engel |
 |---|---|---|---|
 | F0 temel | OPS-010 hosted smoke; SEC-001 (Supabase'ten cevap) | bekliyor | kullanıcı / Supabase |
-| FOUNDATION-B | FB-6.1 `.0`/`.13`/`.14`; FB-6.2 … FB-6.8; FB-6.1b; BL-218; Aşama 7 | ~%59 | K5, K7 |
+| FOUNDATION-B | FB-6.1 `.0`/`.13`/`.14`; FB-6.2 … FB-6.8; FB-6.1b; BL-218 `.3`–`.7`; Aşama 7 | ~%58 | K7; kullanıcı tek iş istiyor |
 | FJ katılım | JOIN-010, JOIN-007 kalanı; akış 2 "Davet" e2e (FB-6.2'de) | ~%80 | — |
-| F1 çekirdek akışlar | UI-DOC-001, BL-038, REQ-AUDIT, BL-048, BL-055; açık high'lar BL-198, BL-182, BL-127, BL-187 (FB-6.2) | ~%55 | FOUNDATION-B dilimleri |
+| F1 çekirdek akışlar | UI-DOC-001, BL-038, REQ-AUDIT, BL-048, BL-055; açık high'lar BL-182, BL-127, BL-187 (FB-6.2); BL-199 (sırada) | ~%55 | FOUNDATION-B dilimleri |
 | F2 günlük operasyon | ANN-001; Line Up (ayrı proje, MVP'de mi — sorulmadı) | ~%20 | ürün kararı |
 | F3 bildirimler | Resend teslimatı, bildirim sistemi yeniden tasarımı, BL-099, BL-101 | ~%20 | FB-6.7 |
-| F4 ticari | BL-059 Stripe, BL-034 landing, BL-007/008 (şart) | ~%5 | FOUNDATION-B bitişi (araştırma şimdi) |
-| F5 cila | BL-192, BL-205, BL-193, THEME-003, BL-214/216 | ~%15 | K11 |
+| F4 ticari | BL-059 Stripe, BL-034 landing, BL-007/008 (şart) | ~%5 | K15; FOUNDATION-B bitişi |
+| F5 cila | BL-193, THEME-003, BL-255..260, BL-249 | ~%30 (BL-192, BL-205, görsel paket bitti; tahmin) | K20 |
 | F6 lansman | BL-058 beş tenant e2e, REL-001, REL-002 | başlamadı | hepsi |
 
-## 8. Bu akşamın sırası (koordinatöre)
-1. A1: BL-183 + BL-197 birleştirme penceresi.
-2. Kullanıcıya K5 son onayı (hosted toplu gönderim) + K7 (ekran turu günü) + K10/K11 (tek turda).
-3. B1 / C1 / D1 görev mesajları (BL-198 web/API, BL-192+205 varyantları, BL-210); A2 BL-198 DB.
-4. BL-198 dört parçası hazır olunca tek pencere.
-5. A3 BL-222 ölçümü → A4 FB-6.2 `.1`.
+## 8. Sıra (koordinatöre)
+1. BL-252 + BL-246 birleştirme penceresi (`nf-guvenlik` onayıyla); `task/bl252-s3s4-planlama` kaydı aynı pencerede.
+2. Kullanıcıya tek turda: BL-199'u başlatma onayı, K20 (BL-255, önce/sonra görüntüsüyle), K7 günü.
+3. BL-199 (`nf-backend` → `nf-arayuz` → `nf-test`).
+4. BL-218 `.3` → `.5` veri parçası → FB-6.2.
+5. Temizlik (§6): dal ve worktree sayısı yüksek.
