@@ -30,6 +30,9 @@ Türkçe; karmaşık kararlar başlık başlık, örnekli, chat'te sorulur (kull
 4. BL-237 `bl237-date-tests` @e1a05ae2 ONAY (nf-test, 5 pgTAP dosyası tests.world()'e; Düşük 1: taslak arşivi doğrudan update, not).
    BL-234'ten SONRA birleştir (ikisi de publish_week/taslak adlarıyla ilgili).
 
+5. **BL-192** `bl192-a` @f7516d79 (nf-guvenlik ONAY @f7516d79, nf-gorsel-qa ONAY @d44a3a75; taban c81a5bbb): telefonda yönetim alt çubuğu. BL-237'den sonra.
+6. **BL-231** `bl231-db` @16690fb5 (ONAY, migration 20260928010000) + nf-backend `bl231` (yapılıyor). İkisi birlikte, BL-192'den sonra.
+
 ## 1. Bugün (09-27) main'e girenler
 Settings 8 sayfa API'den (FB-6.1.9 bitti: 0693b51, a833cbe, bee7713d), read_role_workspace silindi
 (131000), Settings 6 tablonun tarayıcı SELECT'i kapandı (150000, 89fdf494), BL-183 owner izni bildirimi
