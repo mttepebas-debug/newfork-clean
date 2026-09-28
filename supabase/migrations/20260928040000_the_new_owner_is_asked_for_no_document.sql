@@ -2,6 +2,45 @@
 -- asked for no document from then on, like any owner. Accepting the transfer
 -- excuses what they still owed, and a document block lifts with it.
 
+-- What excusing an owner's document means, in one place: the documents that
+-- reach an owner (z_owner_documents_arrive_excused) and the ones a new owner
+-- still owed when the transfer was accepted.
+create function app_private.owner_document_excused(requirement public.employee_onboarding_requirements)
+returns public.employee_onboarding_requirements
+language plpgsql
+immutable
+set search_path = ''
+as $$
+begin
+  requirement.lifecycle_exempt := true;
+  requirement.required := false;
+  requirement.blocks_activation := false;
+  requirement.deadline_at := null;
+  requirement.lifecycle_close_reason :=
+    'An owner is not asked for the documents they ask of everyone else';
+  return requirement;
+end;
+$$;
+revoke all on function app_private.owner_document_excused(public.employee_onboarding_requirements)
+  from public, anon, authenticated;
+
+create or replace function app_private.owner_documents_arrive_excused()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.kind in ('document', 'acknowledgement')
+    and not coalesce(new.lifecycle_exempt, false)
+    and app_private.employee_record_is_workspace_owner(new.workspace_id, new.employee_id)
+  then
+    new := app_private.owner_document_excused(new);
+  end if;
+  return new;
+end;
+$$;
+
 CREATE OR REPLACE FUNCTION public.respond_workspace_ownership_transfer_service(actor_user_id uuid, target_workspace_id uuid, transfer_id uuid, transfer_action text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -140,21 +179,15 @@ begin
     and employee.archived_at is null;
 
   -- The new owner is asked for no document from now on, like any owner
-  -- (BL-246): what they still owed is excused as it is for the documents that
-  -- reach an owner later (z_owner_documents_arrive_excused), and the document
-  -- block lifts. The same result as excusing it by hand, which an owner's
-  -- record then refuses to take back.
+  -- (BL-246): what they still owed is excused the way a document reaching an
+  -- owner later is, and the document block lifts with it.
   update public.employee_onboarding_requirements requirement
-  set lifecycle_exempt = true,
-      required = false,
-      blocks_activation = false,
-      deadline_at = null,
-      paused_remaining_seconds = null,
-      document_suspended_at = null,
-      lifecycle_closed_at = null,
-      lifecycle_close_reason =
-        'An owner is not asked for the documents they ask of everyone else',
-      lifecycle_revision = lifecycle_revision + 1,
+  set (lifecycle_exempt, required, blocks_activation, deadline_at, lifecycle_close_reason) = (
+        select excused.lifecycle_exempt, excused.required, excused.blocks_activation,
+          excused.deadline_at, excused.lifecycle_close_reason
+        from app_private.owner_document_excused(requirement) excused
+      ),
+      lifecycle_revision = requirement.lifecycle_revision + 1,
       updated_at = now()
   from public.employee_profiles employee
   where employee.id = requirement.employee_id
