@@ -1,0 +1,4 @@
+- [Vite stale dep cache hides gated buttons](vite-stale-dep-cache-gates-missing.md) — restart vite --force before concluding a gate/permission regression is real
+- [Ghost shift mock via Playwright route](ghost-shift-mock-via-playwright-route.md) — auto-ghost vs out-of-scope ghost_shifts semantics; how to launch standalone Playwright in this repo
+- [Ports 5616/5617 occupied by stale worktree](ports-5616-occupied-by-stale-worktree.md) — pick a free port pair instead of killing a foreign PID; say so in the report
+- [Meyhouse fixture is owner-only](schedule-fixture-owner-only-no-manager-employee-login.md) — no manager/employee login for the ghost-shift/availability schedule data; e2e builder needed for other roles (DB write, out of scope)

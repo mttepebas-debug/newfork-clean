@@ -17,3 +17,5 @@
 - [Yayın kuralları ve unpublish](checklist-publish-rules-unpublish-path.md) — yalnız 'current' yayına bakan kural unpublish sonrası kör; onay→unpublish→eski taslak yoklaması
 - [Kontratı gerçek DB çıktısıyla sına](checklist-contract-real-db-shape.md) — elle yazılmış fixture saat biçimi farkını gizler (DB 09:00:00, şema HH:MM); gerçek payload'ı şemadan geçir
 - [e2e ortak dünya sayımları](checklist-e2e-shared-world-counts.md) — e2e specleri tek dünyayı paylaşır; DB sayımı kendi haftasına bağlı olmalı, yeşil kanıt tam koşudan
+- [Kurgu değişince boşa düşen kontrol](checklist-vacuous-after-fixture-change.md) — kırmızı test yeşile çekilirken kurgu kaydıysa komşu "0 kaldı" kontrolleri hâlâ kırılabilir mi
+- [Mesaj metni sızıntısı + kırmızı ayrımı](checklist-message-text-leak-and-red-split.md) — reason metni ghost alanlarıyla kıyasla; testi migration'sız da koştur
