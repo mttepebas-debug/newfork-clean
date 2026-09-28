@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(18);
 
 -- BL-218 (T2 a). A person excluded from Schedule gets no new shift in an
 -- edit: not by hand, not as a pending change, not from a template (the
@@ -54,7 +54,7 @@ create function pg_temp.save(session uuid) returns uuid
 language sql as $$
   select (public.save_schedule_edit_session_service(
     tests.user('ex:owner'), tests.id('ex'), session,
-    (select e.revision from public.schedule_edit_sessions e where e.id = session), 'bl218 ' || session, null, null
+    (select e.revision from public.schedule_edit_sessions e where e.id = session), 'bl218 ' || gen_random_uuid(), null, null
   ) ->> 'id')::uuid
 $$;
 create function pg_temp.publish(draft uuid) returns text
@@ -164,6 +164,38 @@ select is(
   1,
   'its shift comes in open instead'
 );
+
+-- 3. A draft shift written before the exclusion stays for the manager -------------------
+-- S3 (user, 2026-09-28): it is not removed silently; the week does not publish
+-- with it, the manager sees it and deletes it.
+
+select tests.person('ex', 'gul', 'employee', array['K'], array['cook']);
+select tests.remember('ex:edit:w3', pg_temp.open_edit(3, 'blank'));
+select tests.remember('ex:shift:gul', tests.add_shift(tests.user('ex:owner'), 'ex', tests.id('ex:edit:w3'), 3,
+  '{"person": "gul", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "13:00"}'));
+select tests.remember('ex:draft:w3', pg_temp.save(tests.id('ex:edit:w3')));
+update public.employee_profiles set is_excluded_from_schedule = true where id = tests.id('ex:gul');
+
+select tests.remember('ex:edit:w3b', pg_temp.open_edit(3, 'draft', tests.id('ex:draft:w3')));
+select is(
+  (select count(*)::integer from public.schedule_edit_session_shifts
+   where session_id = tests.id('ex:edit:w3b') and id = tests.id('ex:shift:gul') and employee_id = tests.id('ex:gul')),
+  1,
+  'the draft keeps the shift written for Gül before she was excluded'
+);
+select tests.remember('ex:draft:w3b', pg_temp.save(tests.id('ex:edit:w3b')));
+select is(pg_temp.publish(tests.id('ex:draft:w3b')), '23514',
+  'the week does not publish with it');
+-- The manager opens the draft again and deletes the shift.
+select tests.remember('ex:edit:w3c', pg_temp.open_edit(3, 'draft', tests.id('ex:draft:w3b')));
+select public.mutate_schedule_edit_shift_service(
+  tests.user('ex:owner'), tests.id('ex'), tests.id('ex:edit:w3c'),
+  (select revision from public.schedule_edit_sessions where id = tests.id('ex:edit:w3c')),
+  'delete', tests.id('ex:shift:gul'),
+  (select revision from public.schedule_edit_session_shifts where session_id = tests.id('ex:edit:w3c') and id = tests.id('ex:shift:gul'))
+);
+select is(pg_temp.publish(pg_temp.save(tests.id('ex:edit:w3c'))), 'allowed',
+  'once the manager deletes it, the week publishes');
 
 select * from finish();
 rollback;
