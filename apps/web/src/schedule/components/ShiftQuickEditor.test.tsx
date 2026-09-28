@@ -1177,6 +1177,17 @@ describe("ShiftQuickEditor note", () => {
     expect(onSubmit.mock.calls[0]![0]).toMatchObject({ note: "Bring the keys", start_time: "16:00" });
   });
 
+  // nf-guvenlik D1: a save that only moves the hours still sends the note the
+  // editor opened with; the edit service empties a note the payload leaves out.
+  it("keeps the note when only the hours change", async () => {
+    const onSubmit = renderEditor({ mode: "edit", shift: noted });
+    fireEvent.change(screen.getByLabelText("End time"), { target: { value: "23:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]![0]).toMatchObject({ end_time: "23:00", note: "Bring the catering order list" });
+  });
+
   it("clears the note when the field is left blank, spaces included", async () => {
     const onSubmit = renderEditor({ mode: "edit", shift: noted });
     fireEvent.change(note(), { target: { value: "   " } });
