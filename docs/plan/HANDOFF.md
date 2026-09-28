@@ -7,33 +7,34 @@ bildir. Ölçüm anı: `origin/main` = `ebf1d42c`. Kullanıcı telefondan (Remot
 Türkçe; karmaşık kararlar başlık başlık, örnekli, chat'te sorulur (kullanıcının isteği).
 
 ## 0. İlk işler (sırayla)
-1. **Pasifik 00:00'dan (07:00 UTC) ÖNCE main'e KOD gönderme.** BL-238 (aşağıda) yüzünden Pazar akşamı
+**Durum 2026-09-28 (kayıt `nf-planlama`):** kuyruk bitti — 2a–2c ve 4–8 main'de, hepsinde main CI yeşil (koordinatör); açık kalan yalnız BL-217 (madde 3). Hosted gönderim de yapıldı (2026-09-28).
+1. **(09-28 penceresi geçti; kural BL-238 kapanana kadar her Pazar geçerli.)** **Pasifik 00:00'dan (07:00 UTC) ÖNCE main'e KOD gönderme.** BL-238 (aşağıda) yüzünden Pazar akşamı
    e2e `schedule-locks.spec.ts` main'de de kırmızı; CI kırmızı olur ve main donar. Docs push serbest.
 2. 00:00 PDT'den sonra üç birleştirme, sırayla, her birinde CI'ı izle:
-   a. **`../newfork-wt/merge-0927d`** (branch `merge-0927d`, hazır): BL-198 (DB+web, ONAY @2875a823),
+   a. **BİTTİ 09-28 (`65bdeaae`, main CI yeşil).** **`../newfork-wt/merge-0927d`** (branch `merge-0927d`, hazır): BL-198 (DB+web, ONAY @2875a823),
       BL-212 (ONAY @a8f40a53), BL-205 (ONAY @4a92dd39 güvenlik + @b3cc5cdb görsel), BL-197 web
       (ONAY @ff866053) + BL-197 arayüz (ONAY @3c5f8f16 ikisi). Kod kapısı yeşil (lint/typecheck/test/build).
       test:db: BL-198 migration (20260927114500) yerel DB'ye UYGULANDI; kırmızı kümesi bilinen yerel
       kaymalar (BL-237, BL-209 çifti). e2e 10/12 — düşen ikisi schedule-locks (BL-238, main'de de düşüyor,
       nf-test kanıtladı). Yapılacak: `git fetch && git rebase origin/main`, gece yarısından sonra
       `pnpm.cmd e2e` (db.lock) → 12/12 bekle → main.lock → `git push origin HEAD:main` → `gh run watch`.
-   b. **BL-234** `bl234` @5a6a7a24 (ONAY): aynı hafta iki kez yayınlanıp yeniden düzenlenince Publish
+   b. **BİTTİ 09-28 (`efef60c1`).** **BL-234** `bl234` @5a6a7a24 (ONAY): aynı hafta iki kez yayınlanıp yeniden düzenlenince Publish
       önizlemesi 500. Migration `20260927165000`. nf-test'in builder.sql düzeltmelerini de taşıyor
       (bl210'daki 6349add9 + 75b16f6c eşdeğerleri). Pencere: migration up + test:db + e2e + kapı.
-   c. **BL-218 .2** `bl218-s3` @30056d12 (ONAY; `bl218-1` @76289c7d + S3 kararını kilitleyen test, nf-guvenlik ONAY 2026-09-28): Management/Owner veritabanı kuralları. Migration
+   c. **BİTTİ 09-28 (`2cdffd2c`, TODO'lar `108dee9c`).** **BL-218 .2** `bl218-s3` @30056d12 (ONAY; `bl218-1` @76289c7d + S3 kararını kilitleyen test, nf-guvenlik ONAY 2026-09-28): Management/Owner veritabanı kuralları. Migration
       `20260927160000` — BL-234'ün 165000'inden ESKİ, `--include-all` gerekir. BL-234 girince nf-db
       `excluded_person_leaves_new_drafts`'teki 2 TODO'yu kaldıracak (haber ver).
-3. BL-198 e2e spec (`bl198-e2e` @2b56dc8a, ONAY) merge-0927d'ye EKLENDİ (tam e2e 11/13, düşen 2 = BL-238).
+3. **e2e kısmı BİTTİ** (merge-0927d içinde); **BL-217 AÇIK.** BL-198 e2e spec (`bl198-e2e` @2b56dc8a, ONAY) merge-0927d'ye EKLENDİ (tam e2e 11/13, düşen 2 = BL-238).
    Sonra ve BL-217
    (`bl217-rebase-on-bl198` @ed158ef9, nf-guvenlik ONAY @c794f296 içeriği; rebase'li hali yeniden bakılmalı).
 
-4. BL-237 `bl237-date-tests` @e1a05ae2 ONAY (nf-test, 5 pgTAP dosyası tests.world()'e; Düşük 1: taslak arşivi doğrudan update, not).
+4. **BİTTİ 09-28 (`8f80282c`).** BL-237 `bl237-date-tests` @e1a05ae2 ONAY (nf-test, 5 pgTAP dosyası tests.world()'e; Düşük 1: taslak arşivi doğrudan update, not).
    BL-234'ten SONRA birleştir (ikisi de publish_week/taslak adlarıyla ilgili).
 
-5. **BL-192** `bl192-a` @f7516d79 (nf-guvenlik ONAY @f7516d79, nf-gorsel-qa ONAY @d44a3a75; taban c81a5bbb): telefonda yönetim alt çubuğu. BL-237'den sonra.
-6. **BL-231** `bl231-db` @16690fb5 (ONAY, migration 20260928010000) + nf-backend `bl231` (yapılıyor). İkisi birlikte, BL-192'den sonra.
-7. **BL-230** `bl230` @409e2c2f (ONAY; merge-0927d 0a92268e üstünde, migration 20260928020000): yayından kaldırılan haftada onaylı takas korunur (K13 a). merge-0927d'den sonra rebase.
-8. **BL-221** `bl221` @a6972a19 (ONAY; migration 20260928030000): belgesi eksik owner'ın kendi izni onaysız (K12). Düşük 1 fixture devir yoluyla kurulabilir; Düşük 2 kısayol "workspace açık" kontrolünü atlıyor (talep yolu zaten kapılı).
+5. **BİTTİ 09-28 (`74bb480e`).** **BL-192** `bl192-a` @f7516d79 (nf-guvenlik ONAY @f7516d79, nf-gorsel-qa ONAY @d44a3a75; taban c81a5bbb): telefonda yönetim alt çubuğu. BL-237'den sonra.
+6. **BİTTİ 09-28 (`59b41c7f`).** **BL-231** `bl231-db` @16690fb5 (ONAY, migration 20260928010000) + nf-backend `bl231` (yapılıyor). İkisi birlikte, BL-192'den sonra.
+7. **BİTTİ 09-28 (`51bf2b8e`).** **BL-230** `bl230` @409e2c2f (ONAY; merge-0927d 0a92268e üstünde, migration 20260928020000): yayından kaldırılan haftada onaylı takas korunur (K13 a). merge-0927d'den sonra rebase.
+8. **BİTTİ 09-28 (`8dfdfcbe`).** **BL-221** `bl221` @a6972a19 (ONAY; migration 20260928030000): belgesi eksik owner'ın kendi izni onaysız (K12). Düşük 1 fixture devir yoluyla kurulabilir; Düşük 2 kısayol "workspace açık" kontrolünü atlıyor (talep yolu zaten kapılı).
 Birleştirme penceresinde bl052_document_notifications / bl052_document_account_inbox kırmızısı bilinen yerel kayma (ortak DB'de 99 birikmiş pending bildirim; CI'da düşmez, nf-test 2026-09-28).
 
 ## 1. Bugün (09-27) main'e girenler
@@ -67,6 +68,7 @@ Henüz sorulmadı: FB-6.1.14 hosted toplu gönderim son onayı (K5), K15 Stripe 
 S1–S4, K16 FB-6.1b S1–S3, K10 FB-6.3 S4, K11 BL-214/216, BL-235 ikon rengi. Liste `ILERLEME-PLANI.md` §2.
 
 ## 4. Hosted gönderim (FB-6.1.14) için not
+**Kapandı 2026-09-28:** gönderim yapıldı (26 migration, son sürüm `20260928030000`); ad çakışması sayımı 0, advisors'ta yeni bulgu yok. Ayrıntı `tasks/FB-6.1.md` Notes.
 Önce: aktif "Management"/"Owner" adlı departman/iş sayımı (BL-218 Düşük 3; ad çakışması backfill'i
 düşürür); migration 140000 API'den önce/aynı anda (BL-197); BL-209 yerel saat dilimi komutu kullanıcıda.
 

@@ -84,3 +84,15 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-27 | BL-148 + BL-166 | Account ekranlarında ham renk kalmadı, görünüm aynı; giriş alanlarının kenarı WCAG AA | f5fb2f1
 2026-09-27 | FB-6.1.9 (API ekranları) | API'den okuyan 13 ekran yetki reddinde "erişim yok" kartı gösteriyor; istek yardımcıları reddin gerekçesini koruyor | 0693b51
 2026-09-28 | SEC-001 | Supabase `net` şemasını kapatmıyor (yönetilen şema); risk kabul edildi, `net_access_stays_out_of_reach` bekçisi API'ye açılan her `net` yolunu yakalıyor | def86c18
+2026-09-28 | BL-198 | onaylı bir takas artık eski bir taslağın yayınıyla geri alınamıyor; yayın reddediliyor ve önizleme nedenini söylüyor | 65bdeaae
+2026-09-28 | BL-212 | ızgara kartının köşe işaretinin iki eksik durumu testli | 65bdeaae
+2026-09-28 | BL-205 | telefonda birleşik haftada kart başlıkları harf harf kırılmıyor; gün sütunu okunur genişlikte, gerekirse hafta yatay kayıyor | 65bdeaae
+2026-09-28 | BL-197 | şablon uygulanınca arşivli etiket vardiyaya geçmiyor; mesaj bırakılan etiketleri adıyla söylüyor | 65bdeaae
+2026-09-28 | BL-234 | yayından kaldırılan hafta aynı taslakla yeniden yayınlanabiliyor (önizleme artık 500 vermiyor) | efef60c1
+2026-09-28 | BL-218 .1–.2 | Management departmanı ve Owner işi korunan sistem kayıtları; owner yalnız Owner işine atanıyor; exclude edilen kişi yeni taslaklarda gizli | 2cdffd2c
+2026-09-28 | BL-237 | beş Schedule pgTAP dosyası tarihten bağımsız kendi dünyasında; yerel test:db yanlış kırmızısı 23 → 18 dosya | 8f80282c
+2026-09-28 | BL-192 | telefonda yönetici alt menü çubuğuyla gezinebiliyor | 74bb480e
+2026-09-28 | BL-231 | çalışan çekmecesinin seçim listeleri API ve yetki çekirdeğinden geliyor | 59b41c7f
+2026-09-28 | BL-230 | hafta yayından kaldırılıp yeniden yayınlansa da onaylı takas korunuyor | 51bf2b8e
+2026-09-28 | BL-221 | belgesi eksik owner'ın kendi izni de onay beklemeden kaydoluyor | 8dfdfcbe
+2026-09-27 | BL-222 | tarayıcı Settings kataloğunun altı tablosunu artık doğrudan okuyamıyor; okuma yalnız API'den (kayıt 2026-09-28) | 89fdf494

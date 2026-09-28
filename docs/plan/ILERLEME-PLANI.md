@@ -5,9 +5,9 @@ Hazırlayan: `nf-planlama`; şerit sırası 2026-09-27 akşam koordinatörünün
 Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandıkça satırı "bitti" olur. Kaynaklar: `ROADMAP.md`, `MVP-PLAN.md`, `tasks/FOUNDATION-B.md`, `BACKLOG.md`.
 
 ## 1. Nerede duruyoruz
-- **FOUNDATION-B ~%59** (tahmin ağırlıklı; ölçülmüş iş değil). Aşama 1–5 bitti. Takvim dilimi (FB-6.1) **~%92**: `.9` bitti (`0693b51`, `a833cbe`, `bee7713d`); kalan `.0` ekran turu, `.13` görsel, `.14` kapanış + hosted gönderim. FB-6.2 (Çalışanlar) **ready**; FB-6.3 (İzin) S4 hariç cevaplı. Aşama 7 başlamadı.
-- **Bugün main'e girenler:** BL-148/166 (Account renkleri), FB-6.1.9 (erişim yok kartı, 13 ekran + Settings 8 sayfa), BL-188 (silinmiş lokasyon şablonda sayılmıyor).
-- **Hosted geride:** `20260925173926`'dan bu yana migration'lar yalnız yerelde. `.14` toplu gönderimi kullanıcının son onayıyla (K5).
+- **FOUNDATION-B ~%58** (tahmin ağırlıklı; aynı formül 9,75 + 2,4 × 0,82 + 0,1 = 11,8 / 20,5; FB-6.1 bu kez satır sayımıyla). Aşama 1–5 bitti. Takvim dilimi (FB-6.1) **%82 = 14/17 adım satırı** (`tasks/FB-6.1.md` adım tablosu, 2026-09-28): açık `.0` ekran turu, `.13` görsel, `.14` kapanış + hosted gönderim. Önceki "~%92" ağırlıklı tahmindi; geri gidiş yok, yöntem farkı. BL-218 `.1`–`.2` main'de; FB-6.2 (Çalışanlar) ready, `.4` BL-218 `.3`'ü bekliyor. Aşama 7 başlamadı.
+- **Bugün (09-28 gece) main'e girenler, hepsinde main CI yeşil (koordinatör):** `merge-0927d` `65bdeaae` (BL-198 onaylı takas korunur, BL-212, BL-205 telefonda hafta sütunları, BL-197 arşivli etiket), BL-234 `efef60c1` (yayından kaldırılan hafta yeniden yayınlanır), BL-218 `.1`–`.2` `2cdffd2c` + `108dee9c`, BL-237 `8f80282c`, BL-192 `74bb480e` (telefonda yönetici alt çubuğu), BL-231 `59b41c7f`, BL-230 `51bf2b8e`, BL-221 `8dfdfcbe`. Yerel `test:db` kırmızısı 18 dosya (taban 23; BL-237 beşini kapattı; liste `artifacts/koordinator/bl221-red.txt`).
+- **Hosted güncel (2026-09-28):** 26 migration gönderildi (`20260925173926`..`20260928030000`), advisors'ta yeni bulgu yok. Web/API Vercel'de henüz yayında değil.
 - **MVP geneli ~%45–50** (2026-09-26 raporu; ölçülmedi).
 
 ## 2. Karar bekleyenler
@@ -15,7 +15,7 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 |---|---|---|
 | K1–K4 | FB-6.2 S1–S4 | **Cevaplı 09-27** (REUSE "Roller ve kapsam") |
 | D1–D5 | Management departmanı / Owner işi | **Cevaplı 09-27** → BL-218 (`tasks/BL-218.md`, ready) |
-| K5 | Hosted toplu gönderim | **Cevaplı:** `.9` biter bitmez, son onay kullanıcıdan — `.9` bitti, **şimdi son onay sorulacak** |
+| K5 | Hosted toplu gönderim | **Yapıldı 2026-09-28:** kullanıcı onayladı ve komutları çalıştırdı; 26 migration, hosted son sürüm `20260928030000`, yedek `artifacts/koordinator/hosted-backup-2026-09-28/` (`FB-6.1.md` Notes) |
 | K6 | BL-209 yerel DB kayması | **Cevaplı:** hedefli onarım; tek satırlık komut kullanıcıda (BACKLOG BL-209) |
 | K7 | FB-6.1.0 ekran turu + `.13` görsel kararlar | **Açık** — kullanıcının müsait olduğu ilk gün, 30–45 dk |
 | K8 | Küçükler: BL-078 kapansın mı, arşivli iş/tip adı kartta, eski oturumların arşivi | **Açık** |
@@ -32,10 +32,10 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 | K19 | BL-238 çok saat dilimli workspace'te hafta ne zaman geçmiş sayılır | **Açık** — kullanıcı uzun konuşmak istiyor |
 
 ## 3. Sıradaki en önemli iş (gerekçesiyle)
-1. **FB-6.1.14 hosted toplu gönderim (K5 son onayı).** Gerekçe: canlı ile main arasındaki fark en büyük risk; `.9` bittiği için engel yalnız kullanıcının onayı.
-2. **BL-198** (onaylı takas eski taslakla geri alınıyor; high/risky). DB + web/API + metin + e2e aynı birleştirmede. Gerekçe: sessiz veri kaybı.
-3. **BL-218 → FB-6.2.** Gerekçe: programın kritik yolu; BL-218 `.1`–`.3` FB-6.2 `.4`'ün önkoşulu.
-4. **Settings ikiz okuma ölçümü (BL-222).** Gerekçe: FB-6.1.9 okumayı API'ye taşıdı ama tarayıcı izni açık; ölçülmeden izin kaldırılmaz.
+1. ~~FB-6.1.14 hosted toplu gönderim~~ **yapıldı 2026-09-28.** FB-6.1'i kapatmak için kalan: `.0` ekran turu (kullanıcıyla, K7) ve `.13` görsel.
+2. **BL-238** (Pazar akşamı "bu hafta" UTC'ye göre; high/risky). Gerekçe: her Pazar yöneticiyi ve CI'ı kilitliyor; K19 kullanıcıyla konuşulacak.
+3. **BL-218 `.3` → FB-6.2.** Gerekçe: programın kritik yolu; BL-218 `.1`–`.2` main'de, `.3` (`nf-backend`) FB-6.2 `.4`'ün son önkoşulu. FB-6.1b `.1` (BL-159) artık başlayabilir (Ç8).
+4. ~~Settings ikiz okuma (BL-222)~~ bitti 09-27 (`89fdf494`); kayıt 09-28.
 
 ## 4. Şeritler (paralel rol oturumları)
 Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en çok iki ağır iş; migration ortak yerel DB'ye yalnız birleştirme penceresinde (`scripts/lock.mjs`); her kod işi `nf-guvenlik`, ekranı değişen `nf-gorsel-qa`.
