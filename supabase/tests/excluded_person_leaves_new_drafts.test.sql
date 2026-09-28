@@ -105,10 +105,6 @@ select is(
   1,
   'opening the same draft again brings Eda''s shift along'
 );
--- Today a draft reopened after its week was taken down cannot be previewed:
--- its starting publications hold two versions of Kadikoy and
--- schedule_publication_changes_since_start fails, whoever is on the week.
-select todo('republishing a week taken down fails in the publication preview (separate bug)', 2);
 select is(pg_temp.publish(pg_temp.save(tests.id('ex:edit:w1c'))), 'allowed',
   'and it publishes again');
 select is(pg_temp.published_for('eda', 1), 1,
