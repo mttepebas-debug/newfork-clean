@@ -18,6 +18,13 @@ const CARD_HALF_WIDTH = 136;
 // Space between the shift card and its note, and between the note and the screen edge.
 const GAP = 8;
 
+// Open notes right now. The quick editor leaves Escape to an open note, so
+// the first Escape closes the note and the editor keeps what was typed.
+let openNotes = 0;
+export function isShiftNoteOpen(): boolean {
+  return openNotes > 0;
+}
+
 /**
  * A shift's manager note (BL-199): an ink corner at the card's top left. The
  * note opens only while a mouse rests on that corner; any press, drag,
@@ -53,10 +60,12 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
       event.stopImmediatePropagation();
       close();
     };
+    openNotes += 1;
     document.addEventListener("pointerdown", close, true);
     window.addEventListener("keydown", onKey, true);
     window.addEventListener("scroll", close, true);
     return () => {
+      openNotes -= 1;
       document.removeEventListener("pointerdown", close, true);
       window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("scroll", close, true);

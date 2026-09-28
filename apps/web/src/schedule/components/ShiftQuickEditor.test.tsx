@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadShiftAvailability } from "../../availability/availability-data";
 import type { ShiftAvailabilityAssessment } from "@newfork/shared";
 
+import { ShiftCard } from "./ShiftCard";
 import { ShiftQuickEditor } from "./ShiftQuickEditor";
 const toast = vi.hoisted(() => ({ warning: vi.fn(), error: vi.fn() }));
 vi.mock("@newfork/ui", async (importOriginal) => ({
@@ -1154,6 +1155,70 @@ describe("ShiftQuickEditor note", () => {
       "None", "15m", "30m", "45m", "60m",
       "checkbox",
     ]);
+  });
+
+  it("spends Escape on an open shift note first, keeping the editor and what was typed", () => {
+    vi.useFakeTimers();
+    try {
+      const onClose = vi.fn();
+      render(
+        <>
+          <ShiftQuickEditor
+            model={{ ...model, shifts: [noted] }}
+            state={create}
+            timeFormat="12h"
+            formatTime={(value) => value}
+            addDays={(value) => value}
+            scheduleClosureCoversDate={() => false}
+            onClose={onClose}
+            onReload={vi.fn()}
+            onDelete={vi.fn()}
+            onSubmit={vi.fn()}
+          />
+          <ShiftCard
+            shift={noted}
+            job="Server"
+            type={model.shift_types[0]}
+            showShiftType
+            showShiftLabels={false}
+            showClockTimes
+            showJobColorDot={false}
+            rowKey="row-1"
+            badgeHeight={48}
+            publicationState={null}
+          />
+        </>,
+      );
+      fireEvent.change(note(), { target: { value: "Half typed" } });
+      // The pointer wanders from the editor onto another shift's note corner.
+      const badge = screen.getByRole("button", { name: /has a manager note/ });
+      const corner = badge.querySelector("[data-shift-note-marker]")!;
+      const pointer = (element: Element, type: string, related: Element | null) => {
+        const event = new Event(type, { bubbles: true });
+        Object.defineProperties(event, {
+          pointerType: { value: "mouse" },
+          relatedTarget: { value: related },
+          buttons: { value: 0 },
+        });
+        fireEvent(element, event);
+      };
+      pointer(badge, "pointerover", null);
+      pointer(badge, "pointerout", corner);
+      pointer(corner, "pointerover", badge);
+      act(() => { vi.advanceTimersByTime(300); });
+      expect(document.querySelector(".schedule-shift-note-card")).not.toBeNull();
+
+      act(() => { fireEvent.keyDown(document.body, { key: "Escape" }); });
+      expect(document.querySelector(".schedule-shift-note-card")).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(note().value).toBe("Half typed");
+
+      // With the note shut, Escape reaches the editor again.
+      fireEvent.keyDown(document.body, { key: "Escape" });
+      expect(onClose).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("takes no more than 500 characters and says none are left", () => {

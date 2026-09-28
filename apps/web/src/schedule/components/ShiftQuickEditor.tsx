@@ -42,6 +42,7 @@ import {
 } from "../lib/shiftEditorView";
 import { ScheduleConflictNotice } from "./ScheduleConflictNotice";
 import { ScheduleConflictSheet } from "./ScheduleConflictSheet";
+import { isShiftNoteOpen } from "./ShiftNoteCorner";
 import { TimeInput } from "./TimeInput";
 
 const clockOffFallbackStartTime = "";
@@ -1147,7 +1148,8 @@ function useDismissFloatingMenu(
       event.stopImmediatePropagation();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      // An open shift note is the top layer: its Escape closes only it.
+      if (event.key !== "Escape" || isShiftNoteOpen()) return;
       event.stopPropagation();
       onDismiss();
     };
