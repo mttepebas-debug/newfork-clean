@@ -93,7 +93,6 @@ test("a fresh token with the wrong password does not take over the workspace", a
     {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      // ponytail: field name assumed "password"; align with part A's request schema.
       body: JSON.stringify({ transferId: offer.transferId, action: "accept", password: "not-adas-password" }),
     },
   );
