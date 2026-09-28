@@ -703,13 +703,20 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
               event.preventDefault();
               return;
             }
-            if (event.shiftKey && activeSegment === "hour") {
+            // At the field's edge, Tab hands focus to the owner's handler; with
+            // none, the browser moves on as usual, so the field is never a
+            // keyboard trap (BL-199: End time swallowed Tab, Start time Shift+Tab).
+            if (event.shiftKey && activeSegment === "hour" && onAutoRetreat) {
               event.preventDefault();
               commitDraft();
-              onAutoRetreat?.();
+              onAutoRetreat();
               return;
             }
-            if (!event.shiftKey && activeSegment === getLastSegment(timeFormat)) {
+            if (
+              !event.shiftKey &&
+              activeSegment === getLastSegment(timeFormat) &&
+              onAutoAdvance
+            ) {
               event.preventDefault();
               commitDraft({ advance: true, advanceReason: "tab" });
               return;

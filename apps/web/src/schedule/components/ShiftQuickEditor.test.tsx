@@ -1,5 +1,5 @@
 import type { ScheduleEditableShift, ScheduleReadModel } from "@newfork/shared/schedule";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadShiftAvailability } from "../../availability/availability-data";
 import type { ShiftAvailabilityAssessment } from "@newfork/shared";
@@ -1052,6 +1052,22 @@ function getTimeSegment(
   );
 }
 
+// A browser's Tab: the key goes to the focused element first; unless it was
+// kept (preventDefault), focus moves on to the next tabbable element.
+function tabLikeABrowser() {
+  const from = document.activeElement as HTMLElement;
+  if (!fireEvent.keyDown(from, { key: "Tab" })) return;
+  const tabbable = Array.from(
+    document.querySelectorAll<HTMLElement>("button, input, textarea, select, a[href], [tabindex]"),
+  ).filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled);
+  act(() => tabbable[tabbable.indexOf(from) + 1]?.focus());
+}
+function describeFocus(): string {
+  const active = document.activeElement as HTMLElement;
+  if (active instanceof HTMLInputElement && active.type === "checkbox") return "checkbox";
+  return active.getAttribute("aria-label") ?? active.textContent?.trim() ?? active.tagName;
+}
+
 // BL-199: a manager writes, changes and clears the shift's note here.
 describe("ShiftQuickEditor note", () => {
   const noted: ScheduleEditableShift = {
@@ -1122,6 +1138,22 @@ describe("ShiftQuickEditor note", () => {
     } finally {
       Element.prototype.scrollIntoView = original;
     }
+  });
+
+  it("lets a keyboard user Tab from End time through the break and badge options to Note", () => {
+    renderEditor({ mode: "edit", shift: noted });
+    const path: string[] = [];
+    act(() => screen.getByLabelText("End time").focus());
+    for (let press = 0; press < 12 && document.activeElement !== note(); press += 1) {
+      path.push(describeFocus());
+      tabLikeABrowser();
+    }
+    expect(document.activeElement).toBe(note());
+    expect(path).toEqual([
+      "End time", "End time", "End time",
+      "None", "15m", "30m", "45m", "60m",
+      "checkbox",
+    ]);
   });
 
   it("takes no more than 500 characters and says none are left", () => {

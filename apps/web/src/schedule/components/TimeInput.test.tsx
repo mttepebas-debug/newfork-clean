@@ -134,6 +134,45 @@ describe("TimeInput", () => {
     expect(getSegment(input, "minute")?.dataset.active).toBe("true");
   });
 
+  // BL-199: at the field's edge Tab goes to the owner's handler, or, with
+  // none, to the browser; fireEvent returns false when the key was kept.
+  it("lets Tab leave at the last segment when nobody takes the focus", () => {
+    render(<TimeInput value="16:00" onChange={vi.fn()} timeFormat="12h" ariaLabel="End time" />);
+    const input = screen.getByLabelText("End time") as HTMLInputElement;
+    act(() => input.focus());
+    expect(fireEvent.keyDown(input, { key: "Tab" })).toBe(false);
+    expect(fireEvent.keyDown(input, { key: "Tab" })).toBe(false);
+    expect(getSegment(input, "period")?.dataset.active).toBe("true");
+    expect(fireEvent.keyDown(input, { key: "Tab" })).toBe(true);
+  });
+
+  it("still hands the last segment's Tab to onAutoAdvance when there is one", () => {
+    const onAutoAdvance = vi.fn();
+    render(
+      <TimeInput
+        value="16:00"
+        onChange={vi.fn()}
+        timeFormat="12h"
+        ariaLabel="Start time"
+        onAutoAdvance={onAutoAdvance}
+      />,
+    );
+    const input = screen.getByLabelText("Start time") as HTMLInputElement;
+    act(() => input.focus());
+    fireEvent.keyDown(input, { key: "Tab" });
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(fireEvent.keyDown(input, { key: "Tab" })).toBe(false);
+    expect(onAutoAdvance).toHaveBeenCalledWith("tab");
+  });
+
+  it("lets Shift+Tab leave at the hour segment when nobody takes the focus", () => {
+    render(<TimeInput value="16:00" onChange={vi.fn()} timeFormat="12h" ariaLabel="Start time" />);
+    const input = screen.getByLabelText("Start time") as HTMLInputElement;
+    act(() => input.focus());
+    // Focus lands on the hour segment, the field's first.
+    expect(fireEvent.keyDown(input, { key: "Tab", shiftKey: true })).toBe(true);
+  });
+
   it("moves from the end hour segment back to the start AM/PM segment with Shift+Tab", () => {
     const onChange = vi.fn();
 
