@@ -9,7 +9,9 @@ import {
   loadAccountSecurityState,
   requestSecureAccountDeletion,
   resendAccountEmailChange,
+  signOutOtherAccountSessions,
 } from "../lib/supabase";
+import { RequestError } from "../lib/request-error";
 
 const account: AccountProfile = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
@@ -85,6 +87,19 @@ describe("SecurityPage", () => {
     await waitFor(() => expect(resendAccountEmailChange).toHaveBeenCalledWith({}));
     fireEvent.click(screen.getByRole("button", { name: "Cancel change" }));
     await waitFor(() => expect(cancelAccountEmailChange).toHaveBeenCalledWith({}));
+  });
+
+  it.each([
+    ["session.password_incorrect", 403, "Current password is incorrect", "That password did not match. Type it again."],
+    ["session.password_required", 400, "Current password required", "Type your account password to continue."],
+  ] as const)("answers %s with the Workspaces sentence, not the server's", async (reason, status, serverText, sentence) => {
+    vi.mocked(signOutOtherAccountSessions).mockRejectedValue(new RequestError(serverText, reason, undefined, status));
+    render(<SecurityPage />);
+    const sessions = (await screen.findByRole("heading", { name: "Active sessions" })).closest("section")!;
+    fireEvent.change(within(sessions).getByLabelText("Current password"), { target: { value: "wrong-password" } });
+    fireEvent.click(within(sessions).getByRole("button", { name: /Sign out other sessions/ }));
+    expect((await screen.findByRole("alert")).textContent).toBe(sentence);
+    expect(screen.queryByText(serverText)).toBeNull();
   });
 
   it("requires current, new, and matching confirmation before password change", async () => {

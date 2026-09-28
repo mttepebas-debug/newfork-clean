@@ -24,6 +24,10 @@ export function SignInPage() {
   const destination = safeSignInDestination(requestedDestination);
   const inviteFlow = isInviteAcceptDestination(destination);
   const [creatingAccount, setCreatingAccount] = useState(inviteFlow);
+  // The address a new account must confirm before it can sign in.
+  const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(
+    null,
+  );
   // Set when the server ended the session; the next sign-in clears it.
   const [sessionExpired] = useState(
     () => window.sessionStorage.getItem(sessionExpiredStorageKey) === "1",
@@ -44,8 +48,46 @@ export function SignInPage() {
       ? await signUp(email, password)
       : await signIn(email, password);
     setSubmitting(false);
+    if (signedIn === "email_confirmation_required") {
+      setConfirmationSentTo(email.trim());
+      setPassword("");
+      return;
+    }
     if (signedIn) navigate(destination, { replace: true });
   };
+
+  // The account exists but has no session until its email is confirmed, so
+  // the form gives way to what to do next (SEC-003).
+  if (confirmationSentTo)
+    return (
+      <PreBizFrame narrow titleId="sign-in-title" title="Check your email">
+        <div
+          data-testid="signup-check-email"
+          role="status"
+        >
+          <p>
+            We sent a confirmation link to <strong>{confirmationSentTo}</strong>.
+            Open it to confirm your email, then sign in.
+          </p>
+          <p>
+            Nothing after a few minutes? Check your spam folder, and make sure
+            the address above is spelled right.
+          </p>
+        </div>
+        <div className="pb-stack">
+          <button
+            className="pb-btn pb-btn-secondary pb-btn-block"
+            type="button"
+            onClick={() => {
+              setConfirmationSentTo(null);
+              setCreatingAccount(false);
+            }}
+          >
+            Back to sign in
+          </button>
+        </div>
+      </PreBizFrame>
+    );
 
   return (
     <PreBizFrame

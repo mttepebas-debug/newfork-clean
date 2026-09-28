@@ -139,6 +139,27 @@ describe("AcceptInvitationPage", () => {
     },
   );
 
+  it("tells an account with an unconfirmed email to confirm it first", async () => {
+    vi.mocked(acceptEmployeeInvitation).mockRejectedValue(
+      new InvitationError("email_unconfirmed"),
+    );
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Accept invitation" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Confirm your email first" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Open the confirmation link we sent when you created your account, then open this invitation again.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/on our side/)).toBeNull();
+  });
+
   it("treats a token no invitation carries as its own ending", async () => {
     vi.mocked(previewEmployeeInvitation).mockResolvedValue(null);
     renderPage();

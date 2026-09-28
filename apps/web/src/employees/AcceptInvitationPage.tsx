@@ -22,6 +22,7 @@ type Outcome =
   | "not_found"
   | "email_mismatch"
   | "already_member"
+  | "email_unconfirmed"
   | "failed";
 
 export default function AcceptInvitationPage() {
@@ -161,6 +162,8 @@ function resolveOutcome(input: {
     if (input.acceptanceError.code === "already_member") return "already_member";
     if (input.acceptanceError.code === "invitation_not_found")
       return "not_found";
+    if (input.acceptanceError.code === "email_unconfirmed")
+      return "email_unconfirmed";
     return "failed";
   }
   if (input.acceptanceError) return "failed";
@@ -202,6 +205,12 @@ function closedInvitation(
         title: `${workspaceName} isn't open right now`,
         description:
           "The workspace was closed or put on hold. Ask your manager about it.",
+      };
+    case "email_unconfirmed":
+      return {
+        title: "Confirm your email first",
+        description:
+          "Open the confirmation link we sent when you created your account, then open this invitation again.",
       };
     case "not_found":
       return {

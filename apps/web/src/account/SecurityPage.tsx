@@ -15,6 +15,7 @@ import {
   type AccountDeletionBlocker,
   type AccountSecurityState,
 } from "../lib/supabase";
+import { RequestError } from "../lib/request-error";
 import { AccountPageHeader } from "./components";
 
 export default function SecurityPage() {
@@ -200,7 +201,18 @@ export default function SecurityPage() {
   );
 }
 
+// Same sentences as the workspace close and hand-over prompts on Workspaces.
+const passwordRefusals: Readonly<Record<string, string>> = {
+  "session.password_incorrect": "That password did not match. Type it again.",
+  "session.password_required": "Type your account password to continue.",
+};
+
 function errorMessage(error: unknown, fallback: string): string {
+  const refusal =
+    error instanceof RequestError && error.reason
+      ? passwordRefusals[error.reason]
+      : undefined;
+  if (refusal) return refusal;
   return error instanceof Error ? error.message : fallback;
 }
 

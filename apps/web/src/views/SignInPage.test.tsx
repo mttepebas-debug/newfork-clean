@@ -109,6 +109,55 @@ describe("SignInPage", () => {
     expect(auth.signIn).not.toHaveBeenCalled();
   });
 
+  it("asks a new account to confirm its email instead of signing it in", async () => {
+    auth.signUp.mockResolvedValue("email_confirmation_required");
+    renderPageWithProbe();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create a workspace account" }),
+    );
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: " future-owner@example.test " },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "newfork-local" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+    const sent = await screen.findByTestId("signup-check-email");
+    expect(screen.getByRole("heading", { name: "Check your email" })).toBeTruthy();
+    expect(sent.textContent).toContain(
+      "We sent a confirmation link to future-owner@example.test.",
+    );
+    expect(sent.textContent).toContain("then sign in");
+    expect(sent.textContent).toContain("Check your spam folder");
+    // No session yet, so nothing to go to.
+    expect(screen.queryByLabelText("Current path")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to sign in" }));
+    expect(screen.getByRole("heading", { name: "Sign in" })).toBeTruthy();
+    expect(screen.queryByTestId("signup-check-email")).toBeNull();
+  });
+
+  it("goes straight in when the new account is signed in already", async () => {
+    auth.signUp.mockResolvedValue("signed_in");
+    renderPageWithProbe();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create a workspace account" }),
+    );
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "future-owner@example.test" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "newfork-local" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+    expect(
+      (await screen.findByLabelText("Current path")).textContent,
+    ).toBe("/app");
+    expect(screen.queryByTestId("signup-check-email")).toBeNull();
+  });
+
   it("starts with an empty email and no local development copy", () => {
     renderPage();
     expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("");

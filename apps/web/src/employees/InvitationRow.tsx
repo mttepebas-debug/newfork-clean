@@ -35,6 +35,10 @@ export function InvitationRow({
   });
   const busy = accept.isPending || decline.isPending;
   const failure = accept.error ?? decline.error;
+  // Read the InvitationError code by shape: the hub and Workspaces tests mock
+  // employee-data without the class.
+  const unconfirmed =
+    (failure as { code?: unknown } | null)?.code === "email_unconfirmed";
 
   // Floor, so the label errs toward urgency: three hours left reads "today".
   const days = Math.max(
@@ -54,7 +58,13 @@ export function InvitationRow({
           )}
         </StatusBadge>
       }
-      error={failure ? "Invitation update failed" : null}
+      error={
+        unconfirmed
+          ? "Confirm your email first: open the link we sent when you created your account."
+          : failure
+            ? "Invitation update failed"
+            : null
+      }
     >
       <ConfirmButton
         className="pb-btn pb-btn-danger"
