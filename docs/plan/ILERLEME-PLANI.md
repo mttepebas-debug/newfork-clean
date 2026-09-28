@@ -22,11 +22,14 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 | K9 | Onboarding yedi adım + avatar | **Cevaplı:** lansman için şart, F4'ten önce |
 | K10 | FB-6.3 S4 — onaylı iznin iptalini kim onaylar | **Açık (TBD)**; soru `tasks/FB-6.3.md`'de hazır |
 | K11 | BL-214 Discard butonu kenarı (ortak buton değeri) ve BL-216 birbirine yakın token'lar | **Açık** — ortak değer kuralı (CLAUDE.md §11.7) |
-| K12 | BL-221 — belgesi eksik owner'ın izni de onaysız mı kaydolsun? (bugün incelemeye düşüyor, müdürlere inceleme bildirimi gidiyor) | **Açık** |
-| K13 | BL-230 — takas onaylandıktan sonra hafta yayından kaldırılırsa takas korunsun mu? (a) en son yayına bak (Önerilen) / (b) kaldırma sıfırlar, REUSE'a yazılır / (c) beklesin | **Açık** |
+| K12 | BL-221 — belgesi eksik owner'ın izni de onaysız mı kaydolsun? (bugün incelemeye düşüyor, müdürlere inceleme bildirimi gidiyor) | **Cevaplı 09-28:** evet, onaysız kaydolur → `nf-db` |
+| K13 | BL-230 — takas onaylandıktan sonra hafta yayından kaldırılırsa takas korunsun mu? (a) en son yayına bak (Önerilen) / (b) kaldırma sıfırlar, REUSE'a yazılır / (c) beklesin | **Cevaplı 09-28:** (a) en son yayın → `nf-db` |
 | K14 | FB-6.1.9 Settings ürün soruları (S1–S4): (1) varsayılan manager rolünde Settings okuma izinleri yok — REUSE:51 "manager katalogu salt okunur görür" ile çelişiyor; (2) `roles.read` manager tipi role verilebiliyor — REUSE Roles'u manager'a kapatıyor; (3) Acknowledgements manager kataloğunun parçası mı; (4) Important dates okuma kapsamı ve başka lokasyon adlarının görünmesi | **Açık** — seçenekli metni koordinatörde; FB-6.8'i etkiler |
 | K15 | Faturalama (BL-059) S1–S7: fiyat birimi, giriş fiyatı, deneme sonu, plan sayısı, yıllık ödeme, iptal/iade, satış vergisi (+ şirketin eyaleti) | **Açık** — F4; kod FOUNDATION-B sonrası |
 | K16 | FB-6.1b S1–S3 — "yayınlanmışları soluk göster" anahtarı: hangi vardiyalar görünür, anahtar hangi düzenlemelerde var, açık mı kapalı mı başlar | **Açık** — seçenekli metin `tasks/FB-6.1b.md`; T1/T2 teknik teyit koordinatörde |
+| K17 | BL-218 S1 (owner kendi Owner işini kaldırabilir mi), S2 (Owner işi başka departmana taşınabilir mi), S3 (exclude'dan önce taslağa yazılmış yayınlanmamış vardiya) | **Cevaplı 09-28:** S1 hayır, S2 hayır, S3 kalsın (müdür görüp siler) |
+| K18 | BL-192 telefon yönetim menüsü | **Cevaplı 09-28:** A, alt çubuk → `nf-arayuz` |
+| K19 | BL-238 çok saat dilimli workspace'te hafta ne zaman geçmiş sayılır | **Açık** — kullanıcı uzun konuşmak istiyor |
 
 ## 3. Sıradaki en önemli iş (gerekçesiyle)
 1. **FB-6.1.14 hosted toplu gönderim (K5 son onayı).** Gerekçe: canlı ile main arasındaki fark en büyük risk; `.9` bittiği için engel yalnız kullanıcının onayı.

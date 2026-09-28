@@ -53,14 +53,10 @@ Son CI: bee7713d ve 89fdf494 koşuları altyapı yüzünden iptal (WSL çöktü,
   `Rol: nf-db — Settings okumaları`, `Rol: nf-db — BL-198` (BL-198 main'e girince). Arşivden önce RC
   kapatılmalı; kullanıcıya sor.
 
-## 3. Kullanıcıdan bekleyen kararlar (chat'te sorulmuş, cevap yok)
-1. Owner kendi Owner işini kaldırabilir mi (BL-218 S1) — önerilen (a) hayır; .2 buna göre YAPILDI.
-2. Owner işi başka departmana taşınabilir mi (S2) — önerilen (a) hayır; .2 buna göre YAPILDI.
-3. Exclude'dan önce yeni taslağa yazılmış yayınlanmamış vardiya — önerilen "kalsın"; kural yazılmadı.
-4. BL-230 yayından kaldırılan haftada onaylı takas — önerilen (a) en son yayına bak.
-5. BL-221 belgesi eksik owner'ın izni onaysız mı — önerilen (a) evet.
-6. BL-192 telefon yönetim menüsü A/B/C (görüntü gönderildi) — önerilen A alt çubuk.
-7. BL-238 çok saat dilimli workspace'te hafta ne zaman "geçmiş" olur — (a) önerilen: en batıdaki lokasyonda biter; (b) lokasyon başına; (c) workspace'e ana saat dilimi ayarı. nf-db ölçümü tamam (4 fonksiyon + 2 yardımcı, tek migration; BL-218 main'e girdikten sonra), cevap bekliyor.
+## 3. Kullanıcıdan bekleyen kararlar
+Cevaplandı 2026-09-28 (yeni koordinatör `local_08c32131…`): 1 S1 hayır, 2 S2 hayır, 3 exclude'da taslak vardiya kalsın,
+4 BL-230 (a) en son yayın, 5 BL-221 evet onaysız, 6 BL-192 A alt çubuk. Kayıt: BACKLOG, ILERLEME-PLANI K12/K13/K17/K18, tasks/BL-218.md.
+Açık: 7 BL-238 saat dilimi (K19) — kullanıcı uzun konuşmak istiyor; birleştirmeleri etkilemez.
 Henüz sorulmadı: FB-6.1.14 hosted toplu gönderim son onayı (K5), K15 Stripe S1–S7, K14 Settings
 S1–S4, K16 FB-6.1b S1–S3, K10 FB-6.3 S4, K11 BL-214/216, BL-235 ikon rengi. Liste `ILERLEME-PLANI.md` §2.
 
