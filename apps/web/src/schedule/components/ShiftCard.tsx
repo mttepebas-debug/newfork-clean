@@ -188,6 +188,8 @@ export function ShiftCard({
       data-current={focused}
       data-stack-count={stackCount > 1 ? stackCount : undefined}
       aria-pressed={selected}
+      onPointerEnter={noteCorner.badgeHandlers.onPointerEnter}
+      onPointerLeave={noteCorner.badgeHandlers.onPointerLeave}
       onPointerDown={(event) => {
         if (!handleModifierSelectionStart(event, "pointer")) modifierSelectionHandledRef.current = false;
         onPointerDown?.(shift.id, event);

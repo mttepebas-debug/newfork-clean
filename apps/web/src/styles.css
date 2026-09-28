@@ -10389,6 +10389,21 @@ button.workspace-switcher-item:hover:not(:disabled) {
   transform: translateX(-50%);
   animation: schedule-shift-note-card-in 120ms ease-out;
 }
+/* The 8px between the shift card and its note belongs to the note, so the
+   pointer never falls into a gap on its way across (WCAG 1.4.13). */
+.schedule-shift-note-card::before {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 10px;
+  content: "";
+}
+.schedule-shift-note-card[data-side="below"]::before {
+  top: -10px;
+}
+.schedule-shift-note-card[data-side="above"]::before {
+  bottom: -10px;
+}
 .schedule-shift-note-card-head {
   display: flex;
   align-items: center;

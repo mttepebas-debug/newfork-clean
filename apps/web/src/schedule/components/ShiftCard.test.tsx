@@ -360,11 +360,32 @@ describe("ShiftCard manager note (BL-199)", () => {
     expect(noteCard()).toBeNull();
   });
 
-  it("closes when the pointer leaves the corner for the rest of the card", () => {
+  it("keeps the note while the pointer crosses its card to a note below, closing when it leaves both", () => {
     const { badge, corner } = noted();
-    openNote(badge, corner);
-    move(corner, badge.querySelector("strong"));
+    const card = openNote(badge, corner);
+    expect(card.getAttribute("data-side")).toBe("below");
+    const body = badge.querySelector("strong")!;
+    // Corner, then down across the card: the card is the bridge.
+    move(corner, body);
+    wait(400);
+    expect(noteCard()).not.toBeNull();
+    move(body, card);
+    wait(400);
+    expect(noteCard()).not.toBeNull();
+    // Back onto the card, then away from both.
+    move(card, body);
+    move(body, document.body);
     wait(200);
+    expect(noteCard()).toBeNull();
+  });
+
+  it("does not open when the pointer only passes the corner on its way into the card", () => {
+    const { badge, corner } = noted();
+    move(null, badge);
+    move(badge, corner);
+    wait(100);
+    move(corner, badge.querySelector("strong"));
+    wait(400);
     expect(noteCard()).toBeNull();
   });
 

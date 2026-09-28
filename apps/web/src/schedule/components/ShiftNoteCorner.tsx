@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type PointerEvent,
   type SyntheticEvent,
 } from "react";
 import { createPortal } from "react-dom";
@@ -44,10 +45,14 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
     openTimer.current = null;
     closeTimer.current = null;
   }, []);
-  const closeSoon = () => {
+  const closeSoon = useCallback(() => {
     clearTimers();
     closeTimer.current = window.setTimeout(() => setAnchor(null), CLOSE_DELAY_MS);
-  };
+  }, [clearTimers]);
+  // Once open, the shift card is the bridge to its note (WCAG 1.4.13): the
+  // pointer crosses it to a note below without the note closing on the way.
+  const inside = (element: Element | null, target: EventTarget | null) =>
+    target instanceof Node && Boolean(element?.contains(target));
 
   // Listeners only while a note shows: a note cleared while open must not
   // leave an invisible one swallowing the next Escape.
@@ -94,7 +99,7 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
 
   useEffect(() => clearTimers, [clearTimers]);
 
-  if (!note) return { corner: null, card: null };
+  if (!note) return { corner: null, card: null, badgeHandlers: noBadgeHandlers };
 
   const corner = (
     <span
@@ -113,7 +118,10 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
         );
       }}
       onPointerLeave={(event) => {
-        if (event.pointerType === "mouse") closeSoon();
+        if (event.pointerType !== "mouse") return;
+        const badge = event.currentTarget.closest("[data-shift-badge]");
+        if (anchor && inside(badge, event.relatedTarget)) return;
+        closeSoon();
       }}
       onPointerMove={(event) => {
         if (event.buttons === 0) return;
@@ -159,8 +167,25 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
       )
     : null;
 
-  return { corner, card };
+  const badgeHandlers: NoteBadgeHandlers = {
+    onPointerEnter: (event: PointerEvent<HTMLElement>) => {
+      if (anchor && event.pointerType === "mouse") clearTimers();
+    },
+    onPointerLeave: (event: PointerEvent<HTMLElement>) => {
+      if (!anchor || event.pointerType !== "mouse") return;
+      if (inside(cardRef.current, event.relatedTarget)) return;
+      closeSoon();
+    },
+  };
+
+  return { corner, card, badgeHandlers };
 }
+
+interface NoteBadgeHandlers {
+  readonly onPointerEnter?: (event: PointerEvent<HTMLElement>) => void;
+  readonly onPointerLeave?: (event: PointerEvent<HTMLElement>) => void;
+}
+const noBadgeHandlers: NoteBadgeHandlers = {};
 
 /**
  * Where the note goes: above the shift if it fits, else below it if that
