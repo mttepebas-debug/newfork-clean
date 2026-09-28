@@ -19,3 +19,4 @@
 - [e2e ortak dünya sayımları](checklist-e2e-shared-world-counts.md) — e2e specleri tek dünyayı paylaşır; DB sayımı kendi haftasına bağlı olmalı, yeşil kanıt tam koşudan
 - [Kurgu değişince boşa düşen kontrol](checklist-vacuous-after-fixture-change.md) — kırmızı test yeşile çekilirken kurgu kaydıysa komşu "0 kaldı" kontrolleri hâlâ kırılabilir mi
 - [Mesaj metni sızıntısı + kırmızı ayrımı](checklist-message-text-leak-and-red-split.md) — reason metni ghost alanlarıyla kıyasla; testi migration'sız da koştur
+- [Korunan kaydın bütün kolonları](checklist-protected-record-all-columns.md) — sistem satırı: department_id gibi anlam taşıyan kolon ve ended_at da korunmalı; fark bazlı save listeden düşeni bitirir
