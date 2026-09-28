@@ -10381,13 +10381,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
   box-shadow: 0 10px 24px rgb(17 24 39 / 16%), 0 2px 6px rgb(17 24 39 / 8%);
   color: var(--theme-text-body);
   text-align: left;
+  /* left is the note's centre; top comes measured, so it never leaves the screen. */
+  transform: translateX(-50%);
   animation: schedule-shift-note-card-in 120ms ease-out;
-}
-.schedule-shift-note-card[data-side="above"] {
-  transform: translate(-50%, -100%);
-}
-.schedule-shift-note-card[data-side="below"] {
-  transform: translate(-50%, 0);
 }
 .schedule-shift-note-card-head {
   display: flex;

@@ -2,9 +2,9 @@ import { StickyNote } from "lucide-react";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
-  type CSSProperties,
   type SyntheticEvent,
 } from "react";
 import { createPortal } from "react-dom";
@@ -15,6 +15,8 @@ const OPEN_DELAY_MS = 250;
 const CLOSE_DELAY_MS = 150;
 // Half of the note card's widest width (272px).
 const CARD_HALF_WIDTH = 136;
+// Space between the shift card and its note, and between the note and the screen edge.
+const GAP = 8;
 
 /**
  * A shift's manager note (BL-199): an ink corner at the card's top left. The
@@ -24,6 +26,9 @@ const CARD_HALF_WIDTH = 136;
  */
 export function useShiftNoteCorner(note: string, suppressed: boolean) {
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  // Measured before paint, so a long note is placed where it fits.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = useState(0);
   const openTimer = useRef<number | null>(null);
   const closeTimer = useRef<number | null>(null);
   const clearTimers = useCallback(() => {
@@ -57,6 +62,10 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
       window.removeEventListener("scroll", close, true);
     };
   }, [anchor]);
+
+  useLayoutEffect(() => {
+    setCardHeight(anchor ? (cardRef.current?.offsetHeight ?? 0) : 0);
+  }, [anchor, note]);
 
   // A drag moves the card away from its note.
   useEffect(() => {
@@ -100,12 +109,19 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
 
   // The note sits in a portal under the grid cell; its presses stay its own.
   const keepInside = (event: SyntheticEvent) => event.stopPropagation();
-  const card = anchor
+  const place = anchor
+    ? placeNoteCard(anchor, cardHeight, {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      })
+    : null;
+  const card = anchor && place
     ? createPortal(
         <div
+          ref={cardRef}
           className="schedule-shift-note-card"
-          data-side={anchor.top > 150 ? "above" : "below"}
-          style={noteCardPosition(anchor)}
+          data-side={place.side}
+          style={{ left: place.left, top: place.top }}
           aria-hidden="true"
           onPointerEnter={clearTimers}
           onPointerLeave={closeSoon}
@@ -128,12 +144,30 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
   return { corner, card };
 }
 
-function noteCardPosition(anchor: DOMRect): CSSProperties {
+/**
+ * Where the note goes: above the shift if it fits, else below it if that
+ * fits, else on the roomier side, held at least 8px inside the screen.
+ * `left` is the note's centre; `top` its top edge.
+ */
+export function placeNoteCard(
+  anchor: { readonly top: number; readonly bottom: number; readonly left: number; readonly width: number },
+  cardHeight: number,
+  viewport: { readonly width: number; readonly height: number },
+): { readonly left: number; readonly top: number; readonly side: "above" | "below" } {
   const left = Math.min(
-    Math.max(anchor.left + anchor.width / 2, CARD_HALF_WIDTH + 8),
-    window.innerWidth - CARD_HALF_WIDTH - 8,
+    Math.max(anchor.left + anchor.width / 2, CARD_HALF_WIDTH + GAP),
+    viewport.width - CARD_HALF_WIDTH - GAP,
   );
-  return anchor.top > 150
-    ? { left, top: anchor.top - 8 }
-    : { left, top: anchor.bottom + 8 };
+  const aboveTop = anchor.top - GAP - cardHeight;
+  const belowTop = anchor.bottom + GAP;
+  if (aboveTop >= GAP) return { left, top: aboveTop, side: "above" };
+  if (belowTop + cardHeight <= viewport.height - GAP) {
+    return { left, top: belowTop, side: "below" };
+  }
+  const side = anchor.top > viewport.height - anchor.bottom ? "above" : "below";
+  const top = Math.max(
+    GAP,
+    Math.min(side === "above" ? aboveTop : belowTop, viewport.height - GAP - cardHeight),
+  );
+  return { left, top, side };
 }
