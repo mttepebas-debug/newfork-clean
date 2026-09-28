@@ -332,9 +332,9 @@ export default function WorkspacesPage() {
         mode: closureTarget.mode,
         typedWorkspaceName:
           closureTarget.mode === "immediate" ? closureNameConfirmation : null,
-        ...(closureTarget.mode === "immediate"
-          ? { password: sensitivePassword }
-          : {}),
+        ...(unfinishedSetup(closureTarget.workspace)
+          ? {}
+          : { password: sensitivePassword }),
       });
       await clearTenantQueriesForOrganizationSwitch(queryClient);
       if (
@@ -592,7 +592,7 @@ export default function WorkspacesPage() {
           const onboarding = workspace.status === "pending";
           // An employer draft is active but not set up: its owner continues it, it
           // is not opened. Another member can only open it and wait, as before.
-          const draft = workspace.role === "owner" && workspace.status === "active" && workspace.onboarding.status !== "complete";
+          const draft = unfinishedSetup(workspace);
           const hasOwnerActions = workspace.role === "owner" && (
             (!pendingTransfer && (lifecycleStatus === "active" || lifecycleStatus === "closure_scheduled")) ||
             pendingTransfer?.role === "initiator"
@@ -851,17 +851,19 @@ export default function WorkspacesPage() {
                   placeholder={closureTarget.workspace.name}
                 />
               </label>
-              <label className="account-field">
-                Account password
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  value={sensitivePassword}
-                  onChange={(event) => setSensitivePassword(event.target.value)}
-                />
-              </label>
             </>
           ) : null}
+          {unfinishedSetup(closureTarget.workspace) ? null : (
+            <label className="account-field">
+              Account password
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={sensitivePassword}
+                onChange={(event) => setSensitivePassword(event.target.value)}
+              />
+            </label>
+          )}
           <label className="settings-checkbox">
             <input
               type="checkbox"
@@ -886,8 +888,9 @@ export default function WorkspacesPage() {
                 closingWorkspaceId === closureTarget.workspace.id ||
                 !closureAcknowledged ||
                 (closureTarget.mode === "immediate" &&
-                  (closureNameConfirmation !== closureTarget.workspace.name ||
-                    sensitivePassword.trim().length === 0))
+                  closureNameConfirmation !== closureTarget.workspace.name) ||
+                (!unfinishedSetup(closureTarget.workspace) &&
+                  sensitivePassword.trim().length === 0)
               }
               onClick={submitClosure}
             >
@@ -1107,6 +1110,19 @@ const lifecycleReasons: Readonly<Record<string, string>> = {
   "session.password_required": "Type your account password to continue.",
   "session.password_incorrect": "That password did not match. Type it again.",
 };
+
+/**
+ * A setup its owner never finished: it holds nothing, so closing it asks for no
+ * password. The server reads the same three fields (workspace-account-routes
+ * isUnfinishedSetup) and has the last word.
+ */
+function unfinishedSetup(workspace: WorkspaceSummary): boolean {
+  return (
+    workspace.role === "owner" &&
+    workspace.status === "active" &&
+    workspace.onboarding.status !== "complete"
+  );
+}
 
 /**
  * The same answers keyed by the English the database raises, for a refusal that

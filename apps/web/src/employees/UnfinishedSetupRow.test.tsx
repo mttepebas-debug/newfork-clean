@@ -58,25 +58,9 @@ describe("UnfinishedSetupRow", () => {
     vi.mocked(requestWorkspaceClosure).mockReset();
   });
 
-  it("answers a refusal by its key, not by the sentence the server sent", async () => {
+  it("says the general answer when a discard is refused", async () => {
     vi.mocked(requestWorkspaceClosure).mockRejectedValue(
-      // Deliberately not the English the row used to match on.
-      new RequestError(
-        "Some other wording entirely",
-        "session.reauthentication_required",
-      ),
-    );
-    renderRow();
-    discard();
-
-    expect(
-      await screen.findByText("Sign in again to discard this setup"),
-    ).toBeDefined();
-  });
-
-  it("falls back to the general answer for any other refusal", async () => {
-    vi.mocked(requestWorkspaceClosure).mockRejectedValue(
-      new RequestError("Recent reauthentication required"),
+      new RequestError("Some wording the row never shows", "workspace.not_found"),
     );
     renderRow();
     discard();

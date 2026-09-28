@@ -13,6 +13,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import { rpcFailure } from "../http-error.js";
 import { createUserVerifier } from "../auth/verify-user.js";
+import { createPasswordVerifier } from "../auth/verify-password.js";
 
 export interface WorkspaceAccountService {
   /**
@@ -136,6 +137,11 @@ export function createWorkspaceAccountService(options: {
   });
 
   const verifyUser = createUserVerifier(authClient);
+  const verifyPasswordFor = createPasswordVerifier(() =>
+    createClient(options.url, options.anonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    }),
+  );
   return createWorkspaceAccountServiceWithClients({
     rpcClient,
     resolveActorUserId: async (accessToken) => {
@@ -143,12 +149,19 @@ export function createWorkspaceAccountService(options: {
       if (!user) throw new Error("Valid bearer session required");
       return user.id;
     },
+    verifyPassword: async (accessToken, password) => {
+      const user = await verifyUser(accessToken);
+      if (!user?.email) throw new Error("Valid bearer session required");
+      await verifyPasswordFor(user.email, password);
+    },
   });
 }
 
 export function createWorkspaceAccountServiceWithClients(options: {
   rpcClient: RpcClient;
   resolveActorUserId(accessToken: string): Promise<string>;
+  /** Signs in as the bearer with this password; left out, every check fails. */
+  verifyPassword?(accessToken: string, password: string): Promise<void>;
 }): WorkspaceAccountService {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await options.rpcClient.rpc(name, args);
@@ -161,6 +174,11 @@ export function createWorkspaceAccountServiceWithClients(options: {
   }
 
   return {
+    async verifyPassword(accessToken, password) {
+      if (!options.verifyPassword)
+        throw new Error("Password check is not configured");
+      await options.verifyPassword(accessToken, password);
+    },
     async listWorkspaces(accessToken) {
       return (
         (await rpc("list_my_workspaces_service", {

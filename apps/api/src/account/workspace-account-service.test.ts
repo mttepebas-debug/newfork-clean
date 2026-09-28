@@ -6,6 +6,16 @@ const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
 describe("workspace account service", () => {
+  it("checks the password with the verifier it was built with, and fails closed without one (SEC-003)", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    const verifyPassword = vi.fn(async () => undefined);
+    const service = createWorkspaceAccountServiceWithClients({ rpcClient: { rpc }, resolveActorUserId: async () => userId, verifyPassword });
+    await expect(service.verifyPassword(accessToken, "pass word ")).resolves.toBeUndefined();
+    expect(verifyPassword).toHaveBeenCalledWith(accessToken, "pass word ");
+    const unconfigured = createWorkspaceAccountServiceWithClients({ rpcClient: { rpc }, resolveActorUserId: async () => userId });
+    await expect(unconfigured.verifyPassword(accessToken, "pass word ")).rejects.toThrow();
+    expect(rpc).not.toHaveBeenCalled();
+  });
   it("forwards candidate search and cancellation with the resolved actor", async () => {
     const rpc = vi.fn(async () => ({ data: [], error: null }));
     const service = createWorkspaceAccountServiceWithClients({ rpcClient: { rpc }, resolveActorUserId: async () => userId });

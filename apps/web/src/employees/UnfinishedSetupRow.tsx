@@ -3,7 +3,6 @@ import { Button, ConfirmButton } from "@newfork/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { RequestError } from "../lib/request-error";
 import {
   requestWorkspaceClosure,
   setTabWorkspaceId,
@@ -71,17 +70,9 @@ export function UnfinishedSetupRow({
           {employer ? "Setup in progress" : "Onboarding in progress"}
         </StatusBadge>
       }
-      error={
-        discard.error
-          ? // An unfinished setup no longer asks for a fresh sign-in, so this
-            // answer is the safety net for a refusal that still does. It reads
-            // the key, not the sentence, so a reworded server keeps it working.
-            discard.error instanceof RequestError &&
-            discard.error.reason === "session.reauthentication_required"
-            ? "Sign in again to discard this setup"
-            : "Setup could not be updated"
-          : null
-      }
+      // An unfinished setup is discarded without a password (SEC-003), so no
+      // refusal here needs its own sentence.
+      error={discard.error ? "Setup could not be updated" : null}
     >
       {ownSetup ? (
         <ConfirmButton

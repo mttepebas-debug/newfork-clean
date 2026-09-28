@@ -568,7 +568,13 @@ describe("WorkspacesPage", () => {
     fireEvent.click(
       screen.getByLabelText(/I understand everyone loses access/),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Schedule close" }));
+    // SEC-003: scheduling is not a lesser thing than closing now.
+    const scheduleButton = screen.getByRole("button", { name: "Schedule close" });
+    expect(scheduleButton).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByLabelText("Account password"), {
+      target: { value: "fresh-password" },
+    });
+    fireEvent.click(scheduleButton);
 
     await waitFor(() =>
       expect(requestWorkspaceClosure).toHaveBeenCalledWith(
@@ -577,6 +583,7 @@ describe("WorkspacesPage", () => {
           workspaceId,
           mode: "scheduled_end_period",
           typedWorkspaceName: null,
+          password: "fresh-password",
         },
       ),
     );
@@ -869,8 +876,44 @@ describe("WorkspacesPage", () => {
     await openWorkspaceActions();
     fireEvent.click(screen.getByRole("menuitem", { name: "Close later" }));
     fireEvent.click(screen.getByLabelText(/I understand everyone loses access/));
+    fireEvent.change(screen.getByLabelText("Account password"), {
+      target: { value: "fresh-password" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Schedule close" }));
   }
+
+  // A setup its owner never finished holds nothing worth a password; the
+  // server does not ask for one, so neither does the screen.
+  it.each([
+    ["Close later", "Schedule close", "scheduled_end_period"],
+    ["Close now", "Close now", "immediate"],
+  ] as const)("closes an unfinished setup without a password: %s", async (item, button, mode) => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      { ...ownerWorkspace, onboarding: { status: "incomplete", currentStep: 2 } },
+    ]);
+    renderPage();
+
+    await openWorkspaceActions();
+    fireEvent.click(screen.getByRole("menuitem", { name: item }));
+    expect(screen.queryByLabelText("Account password")).toBeNull();
+    if (mode === "immediate")
+      fireEvent.change(screen.getByLabelText("Type the workspace name"), {
+        target: { value: "Meyhouse" },
+      });
+    fireEvent.click(screen.getByLabelText(/I understand everyone loses access/));
+    fireEvent.click(screen.getByRole("button", { name: button }));
+
+    await waitFor(() =>
+      expect(requestWorkspaceClosure).toHaveBeenCalledWith(
+        supabaseClientMock,
+        {
+          workspaceId,
+          mode,
+          typedWorkspaceName: mode === "immediate" ? "Meyhouse" : null,
+        },
+      ),
+    );
+  });
 
   it("states the rule that blocks a closure once, with the way out of it", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);

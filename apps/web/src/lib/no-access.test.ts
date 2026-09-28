@@ -28,7 +28,7 @@ describe("isNoAccess", () => {
   it("does not take other refusals for no access", () => {
     // A business rule, not a permission.
     expect(isNoAccess(new RequestError("Conflict", "schedule.past_week", undefined, 409))).toBe(false);
-    expect(isNoAccess(new RequestError("Forbidden", "session.reauthentication_required", undefined, 403))).toBe(false);
+    expect(isNoAccess(new RequestError("Forbidden", "session.password_incorrect", undefined, 403))).toBe(false);
     // An authz key with a status that is not a no.
     expect(isNoAccess(new RequestError("Oops", "authz.out_of_scope", undefined, 500))).toBe(false);
     // Nothing to go on.
