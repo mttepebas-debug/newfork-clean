@@ -32,7 +32,9 @@ export default function SecurityPage() {
   const deletionDialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Which action failed, so its sentence shows beside that action's button.
+  const [failure, setFailure] = useState<{ readonly key: string; readonly message: string } | null>(null);
+  const errorIn = (key: string) => (failure?.key === key ? failure.message : null);
   useEffect(() => {
     if (confirmDeletion) deletionDialog.current?.showModal();
     else deletionDialog.current?.close();
@@ -66,7 +68,7 @@ export default function SecurityPage() {
         setBlockers(deletionBlockers);
       })
       .catch((loadError: unknown) => {
-        if (active) setError(errorMessage(loadError, "Security details could not be loaded"));
+        if (active) setFailure({ key: "load", message: errorMessage(loadError, "Security details could not be loaded") });
       });
     return () => { active = false; };
   }, [account, context]);
@@ -75,13 +77,13 @@ export default function SecurityPage() {
 
   const run = async (key: string, action: () => Promise<void>, success: string) => {
     setBusy(key);
-    setError(null);
+    setFailure(null);
     setStatus(null);
     try {
       await action();
       setStatus(success);
     } catch (actionError: unknown) {
-      setError(errorMessage(actionError, "Security change could not be saved"));
+      setFailure({ key, message: errorMessage(actionError, "Security change could not be saved") });
     } finally {
       setBusy(null);
     }
@@ -147,6 +149,7 @@ export default function SecurityPage() {
           <label className="account-field"><span>New password</span><input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
           <label className="account-field"><span>Confirm password</span><input type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
           <Button className="account-field-wide" type="submit" disabled={busy !== null || !currentPassword || newPassword.length < 8 || newPassword !== confirmPassword}><KeyRound size={15} aria-hidden /> Change password</Button>
+          <FormAlert className="form-error account-field-wide" message={errorIn("password")} />
         </form>
       </section>
 
@@ -161,6 +164,7 @@ export default function SecurityPage() {
             <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={sessionPassword} onChange={(event) => setSessionPassword(event.target.value)} required /></label>
             <Button type="submit" disabled={busy !== null || !sessionPassword}><LogOut size={15} aria-hidden /> Sign out other sessions</Button>
           </form>
+          <FormAlert className="form-error" message={errorIn("sessions")} />
         </div>
       </section>
 
@@ -185,9 +189,9 @@ export default function SecurityPage() {
             await signOut();
           }, "Account deletion requested"); }}>
             <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={deletionPassword} onChange={(event) => setDeletionPassword(event.target.value)} required /></label>
-            {error ? <p role="alert" className="form-error">{error}</p> : null}
+            <FormAlert className="form-error" message={errorIn("delete")} />
             <div className="account-button-row">
-              <Button type="button" className="secondary-button" disabled={busy === "delete"} onClick={() => { setConfirmDeletion(false); setDeletionPassword(""); setError(null); }}>Cancel</Button>
+              <Button type="button" className="secondary-button" disabled={busy === "delete"} onClick={() => { setConfirmDeletion(false); setDeletionPassword(""); setFailure(null); }}>Cancel</Button>
               <Button className="danger-button" type="submit" disabled={busy !== null || blockers.length > 0 || !deletionPassword}>Confirm account deletion</Button>
             </div>
           </form>
@@ -195,7 +199,8 @@ export default function SecurityPage() {
         </div>
       </section>
 
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      {/* The three password forms answer beside their own button; the rest here. */}
+      {failure && !["password", "sessions", "delete"].includes(failure.key) ? <p className="form-error" role="alert">{failure.message}</p> : null}
       {status ? <p className="form-success" role="status">{status}</p> : null}
     </section>
   );
@@ -206,6 +211,15 @@ const passwordRefusals: Readonly<Record<string, string>> = {
   "session.password_incorrect": "That password did not match. Type it again.",
   "session.password_required": "Type your account password to continue.",
 };
+
+/** A form's own refusal, under its button; scrolled into view so a button at the fold still shows it. */
+function FormAlert({ className, message }: { readonly className: string; readonly message: string | null }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    ref.current?.scrollIntoView?.({ block: "nearest" });
+  }, [message]);
+  return message ? <p ref={ref} role="alert" className={className}>{message}</p> : null;
+}
 
 function errorMessage(error: unknown, fallback: string): string {
   const refusal =

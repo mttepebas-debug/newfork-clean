@@ -98,8 +98,38 @@ describe("SecurityPage", () => {
     const sessions = (await screen.findByRole("heading", { name: "Active sessions" })).closest("section")!;
     fireEvent.change(within(sessions).getByLabelText("Current password"), { target: { value: "wrong-password" } });
     fireEvent.click(within(sessions).getByRole("button", { name: /Sign out other sessions/ }));
-    expect((await screen.findByRole("alert")).textContent).toBe(sentence);
+    expect((await within(sessions).findByRole("alert")).textContent).toBe(sentence);
     expect(screen.queryByText(serverText)).toBeNull();
+  });
+
+  it.each(["Password", "Active sessions", "Delete your account?"])("answers a refusal from %s beside that form and nowhere else", async (where) => {
+    HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+    const refusal = new RequestError("Current password is incorrect", "session.password_incorrect", undefined, 403);
+    vi.mocked(changeAccountPassword).mockRejectedValue(refusal);
+    vi.mocked(signOutOtherAccountSessions).mockRejectedValue(refusal);
+    vi.mocked(requestSecureAccountDeletion).mockRejectedValue(refusal);
+    render(<SecurityPage />);
+    const section = (name: string) => screen.getByRole("heading", { name, hidden: true }).closest("section, dialog") as HTMLElement;
+    await screen.findByText("Primary email · not verified");
+    if (where === "Password") {
+      const form = section("Password");
+      fireEvent.change(within(form).getByLabelText("Current password"), { target: { value: "wrong" } });
+      fireEvent.change(within(form).getByLabelText("New password"), { target: { value: "new-password" } });
+      fireEvent.change(within(form).getByLabelText("Confirm password"), { target: { value: "new-password" } });
+      fireEvent.click(within(form).getByRole("button", { name: /Change password/ }));
+    } else if (where === "Active sessions") {
+      const form = section("Active sessions");
+      fireEvent.change(within(form).getByLabelText("Current password"), { target: { value: "wrong" } });
+      fireEvent.click(within(form).getByRole("button", { name: /Sign out other sessions/ }));
+    } else {
+      fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
+      const dialog = screen.getByRole("dialog", { name: "Delete your account?" });
+      fireEvent.change(within(dialog).getByLabelText("Current password"), { target: { value: "wrong" } });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Confirm account deletion" }));
+    }
+    const alert = await within(section(where)).findByRole("alert", { hidden: true });
+    expect(alert.textContent).toBe("That password did not match. Type it again.");
+    expect(screen.getAllByRole("alert", { hidden: true })).toHaveLength(1);
   });
 
   it("requires current, new, and matching confirmation before password change", async () => {
