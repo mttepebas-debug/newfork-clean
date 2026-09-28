@@ -105,7 +105,7 @@ Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca g
 |---|---|---|---|---|
 | 1 | K10 | FB-6.3 S4 — onaylı iznin iptalini kim onaylar | FB-6.3.1 ve ardındaki 10 satır | 47 |
 | 2 | K7 | FB-6.1 ekran turu günü | FB-6.1.0, .13, .14, A7 | 15 |
-| — | K19, K20, K21, K23, K15 | BL-238 saat dilimi · BL-255 · BL-254 · denetim sırasının yeri · faturalama | aktif hedeflerde satır yok | 0 |
+| — | K19, K20, K21, K23, K15, K24 | BL-238 saat dilimi · BL-255 · BL-254 · denetim sırasının yeri · faturalama · K24: kurulumu bitmemiş workspace'ten davet gitmişse kapatma yine parolasız kalsın mı (BL-284; tek hat gereği SEC-003'ten sonra sorulur) | aktif hedeflerde satır yok | 0 |
 **Not:** K10'un satırları FB-6.2 bittikten sonra başlar. Ağırlık en yüksek olsa da cevap FB-6.3.1'e kadar gerekmez. **K22 kapandı 2026-09-28:** kullanıcı hosted panelde "Confirm email"i ve "Require current password / Secure password change"i açtığını yazdı (koordinatör penceresi); S.F artık yalnız S.E'yi bekliyor. Aktif hedefi (SEC-003) durduran açık karar kalmadı.
 
 ## 6. Paralel yerleşim (aynı anda en çok 2 ağır iş)
