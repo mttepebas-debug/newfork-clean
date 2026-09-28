@@ -23,8 +23,8 @@ Türkçe; karmaşık kararlar başlık başlık, örnekli, chat'te sorulur (kull
    c. **BL-218 .2** `bl218-1` @76289c7d (ONAY): Management/Owner veritabanı kuralları. Migration
       `20260927160000` — BL-234'ün 165000'inden ESKİ, `--include-all` gerekir. BL-234 girince nf-db
       `excluded_person_leaves_new_drafts`'teki 2 TODO'yu kaldıracak (haber ver).
-3. Sonra: BL-198 e2e spec (`bl198-e2e` @2b56dc8a; tam e2e 11/13 — düşen 2 schedule-locks = BL-238;
-   nf-guvenlik yeniden incelemesi istendi) ve BL-217
+3. BL-198 e2e spec (`bl198-e2e` @2b56dc8a, ONAY) merge-0927d'ye EKLENDİ (tam e2e 11/13, düşen 2 = BL-238).
+   Sonra ve BL-217
    (`bl217-rebase-on-bl198` @ed158ef9, nf-guvenlik ONAY @c794f296 içeriği; rebase'li hali yeniden bakılmalı).
 
 ## 1. Bugün (09-27) main'e girenler
