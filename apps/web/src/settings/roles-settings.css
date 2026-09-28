@@ -311,13 +311,7 @@
 }
 
 .bl051-roles .secondary-button {
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
   font-weight: 500;
-}
-.bl051-roles .secondary-button:hover {
-  background: var(--surface-soft);
 }
 .bl051-roles .rp-mobile-selector {
   display: none;

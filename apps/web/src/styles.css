@@ -2341,14 +2341,6 @@
   overflow-wrap: anywhere;
   min-width: 0;
 }
-.employee-drawer-create .nf-button.secondary-button {
-  background: transparent;
-  border: 1px solid #bac6bf;
-  color: inherit;
-}
-.employee-drawer-create .nf-button.secondary-button:hover {
-  background: rgb(110 130 120 / 10%);
-}
 .employee-drawer-create .nf-button.secondary-button:disabled {
   opacity: 0.5;
 }
