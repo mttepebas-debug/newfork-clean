@@ -38,7 +38,7 @@ Kaynak: `tasks/SEC-003.md`, koordinatör girdisi 2026-09-28, dallar yukarıda.
 | S.C | Uçtan uca: parola değişimi ve devir parolayla; yeni owner yerel posta kutusundan e-postasını onaylar | — | — | 3 | incelemede (`d0751603`, `0d03389e`, `74e2d363` `ci.yml` tek satır; iki kırmızı doğru nedenle, S.A/S.B sonrası yeşil koşu bekliyor) | `nf-test` | `e2e/**`, `.github/workflows/ci.yml` |
 | S.D | Ekran metinleri: "e-postanı doğrula" ve "parola yanlış" | S.A, S.B | — | 2 | bekliyor | `nf-arayuz` | giriş/kayıt ekranı, Account → Security |
 | S.E | Birleştirme: tam kapı, `nf-guvenlik`, `nf-gorsel-qa` (Account → Workspaces'te ekran değişti), ultrareview önerisi, yerel auth yeniden başlatma | S.1b, S.A, S.B, S.C, S.D | — | 3 | bekliyor | koordinatör | — |
-| S.F | Hosted: BL-265 (+ SEC-003 migration'ı), "Confirm email" açılır | S.E | K22 | 2 | bekliyor | koordinatör + kullanıcı | hosted |
+| S.F | Hosted: BL-265 + SEC-003 migration'ı gönderimi ("Confirm email" kullanıcı tarafından açıldı, K22 kapandı) | S.E | — | 2 | bekliyor | koordinatör + kullanıcı (gönderim onayı) | hosted |
 
 ## 3. İş tablosu — FOUNDATION-B Aşama 6–7 (aktif hedef bitince)
 Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-218.md`, `FB-6.2.md`, `FB-6.3.md`; durumlar `origin/main` `1d349d2a`.
@@ -105,9 +105,8 @@ Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca g
 |---|---|---|---|---|
 | 1 | K10 | FB-6.3 S4 — onaylı iznin iptalini kim onaylar | FB-6.3.1 ve ardındaki 10 satır | 47 |
 | 2 | K7 | FB-6.1 ekran turu günü | FB-6.1.0, .13, .14, A7 | 15 |
-| 3 | K22 | Hosted panel: "Require current password", "Confirm email" açılır — **bugün soruluyor (koordinatör, 2026-09-28)** | S.F | 2 (ama SEC-003'ün bitişini tutuyor) |
 | — | K19, K20, K21, K23, K15 | BL-238 saat dilimi · BL-255 · BL-254 · denetim sırasının yeri · faturalama | aktif hedeflerde satır yok | 0 |
-**Not:** K10'un satırları FB-6.2 bittikten sonra başlar. Ağırlık en yüksek olsa da cevap FB-6.3.1'e kadar gerekmez. SEC-003 sürerken kullanıcıya en erken sorulacak olan K22'dir, çünkü aktif hedefin bitişini tutuyor.
+**Not:** K10'un satırları FB-6.2 bittikten sonra başlar. Ağırlık en yüksek olsa da cevap FB-6.3.1'e kadar gerekmez. **K22 kapandı 2026-09-28:** kullanıcı hosted panelde "Confirm email"i ve "Require current password / Secure password change"i açtığını yazdı (koordinatör penceresi); S.F artık yalnız S.E'yi bekliyor. Aktif hedefi (SEC-003) durduran açık karar kalmadı.
 
 ## 6. Paralel yerleşim (aynı anda en çok 2 ağır iş)
 - **Şu an (SEC-003 içinde):** S.1b (`nf-db`, test sırasında `db.lock`) ve S.C (`nf-test`, e2e `db.lock`) ağır; ikisi aynı anda `db.lock` tutamaz (`scripts/lock.mjs` sıraya koyar). S.A ve S.B API ve web işi, ağır değil (tam kapı birleştirmede).
