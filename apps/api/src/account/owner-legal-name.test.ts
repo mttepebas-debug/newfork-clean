@@ -136,12 +136,6 @@ describe("owner legal name routes (BL-080)", () => {
 
 describe("ownership transfer to somebody without a legal name (BL-080)", () => {
   it("passes the refusal's key to the screen", async () => {
-    const iat = Math.floor(Date.now() / 1000) - 30;
-    const fresh = [
-      "eyJhbGciOiJub25lIn0",
-      Buffer.from(JSON.stringify({ iat })).toString("base64url"),
-      "signature",
-    ].join(".");
     const initiateOwnershipTransfer = vi.fn(async () => {
       throw rpcFailure({
         message: "the new owner has no legal name on file yet",
@@ -149,11 +143,12 @@ describe("ownership transfer to somebody without a legal name (BL-080)", () => {
         hint: "transfer.target_legal_name_missing",
       });
     });
-    const response = await appWith({ initiateOwnershipTransfer }).inject({
+    const verifyPassword = vi.fn(async () => undefined);
+    const response = await appWith({ initiateOwnershipTransfer, verifyPassword }).inject({
       method: "POST",
       url: `/v1/account/workspaces/${workspaceId}/ownership-transfer`,
-      headers: { authorization: `Bearer ${fresh}` },
-      payload: { targetUserId: userId },
+      headers,
+      payload: { targetUserId: userId, password: "correct horse battery staple" },
     });
     // 23514 is a 400 in statusForPostgresCode; the screen keys on the reason.
     expect(response.statusCode).toBe(400);

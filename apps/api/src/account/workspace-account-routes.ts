@@ -22,6 +22,7 @@ const workspaceClosureBody = z
     typedWorkspaceName: z.string().trim().min(1).max(120).nullable().optional(),
     acknowledged: z.boolean(),
     effectiveAt: z.string().datetime({ offset: true }).nullable().optional(),
+    password: z.string().max(1024).optional(),
   })
   .superRefine((value, issue) => {
     if (!value.acknowledged) {
@@ -45,10 +46,12 @@ const workspaceClosureBody = z
   });
 const ownershipTransferBody = z.object({
   targetUserId: z.string().uuid(),
+  password: z.string().max(1024).optional(),
 });
 const ownershipTransferResponseBody = z.object({
   transferId: z.string().uuid(),
   action: z.union([z.literal("accept"), z.literal("reject")]),
+  password: z.string().max(1024).optional(),
 });
 const ownerOnboardingBody = z.object({
   workspaceName: z.string().trim().min(1).max(120),
@@ -65,7 +68,6 @@ const ownerOnboardingInvitationIntentBody = z.object({
   employeeId: z.string().uuid(),
   email: z.string().trim().email(),
 });
-const recentReauthenticationWindowMs = 10 * 60 * 1000;
 
 export function registerWorkspaceAccountRoutes(
   app: FastifyInstance,
@@ -240,24 +242,31 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      // Both ways of closing a workspace ask for a fresh sign-in. Scheduling it
-      // used to be exempt, on the reading that a date in the future is not
-      // destructive yet -- but the workspace is marked as closing the moment it
-      // is asked for, everybody in it is told, and the date arrives on its own.
-      // Somebody who walked away from an unlocked laptop should not be able to
-      // lose a workspace that way either.
+      // Both ways of closing a workspace ask for the password, checked here on
+      // the server. Scheduling it used to be exempt, on the reading that a date
+      // in the future is not destructive yet -- but the workspace is marked as
+      // closing the moment it is asked for, everybody in it is told, and the
+      // date arrives on its own. Somebody who walked away from an unlocked
+      // laptop should not be able to lose a workspace that way either.
       //
       // The exemption that stays is the one about the workspace, not the mode:
       // a setup its owner never finished holds nothing worth a password.
       if (
-        !hasRecentReauthentication(accessToken) &&
         !(await isUnfinishedSetup(
           options.service,
           accessToken,
           params.data.workspaceId,
         ))
       ) {
-        return reauthenticationRequired(reply);
+        if (
+          await refusedPassword(
+            options.service,
+            accessToken,
+            body.data.password,
+            reply,
+          )
+        )
+          return reply;
       }
       try {
         return reply.send(
@@ -317,9 +326,15 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      if (!hasRecentReauthentication(accessToken)) {
-        return reauthenticationRequired(reply);
-      }
+      if (
+        await refusedPassword(
+          options.service,
+          accessToken,
+          body.data.password,
+          reply,
+        )
+      )
+        return reply;
       try {
         return reply.send(
           await options.service.initiateOwnershipTransfer(accessToken, {
@@ -349,8 +364,17 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      if (body.data.action === "accept" && !hasRecentReauthentication(accessToken)) {
-        return reauthenticationRequired(reply);
+      // Rejecting gives nothing away; accepting takes the workspace on.
+      if (body.data.action === "accept") {
+        if (
+          await refusedPassword(
+            options.service,
+            accessToken,
+            body.data.password,
+            reply,
+          )
+        )
+          return reply;
       }
       try {
         return reply.send(
@@ -590,11 +614,6 @@ export function registerWorkspaceAccountRoutes(
 }
 
 /**
- * The one refusal this module raises itself rather than passing on from the
- * database. It carries a key like the others do, so the screen answers it the
- * same way and the sentence stays free to change.
- */
-/**
  * A setup its owner never finished holds nothing: they are its only member, no
  * invitation has gone out yet, and there is no schedule to lose. Deleting one
  * undoes a false start, so it does not ask for the password that closing a
@@ -620,11 +639,36 @@ async function isUnfinishedSetup(
   }
 }
 
-function reauthenticationRequired(reply: FastifyReply) {
-  return reply.status(403).send({
-    error: "Recent reauthentication required",
-    reason: "session.reauthentication_required",
-  });
+/**
+ * The password gate for closing a workspace and handing it over (SEC-003). The
+ * server signs in with the password itself: an open session, however fresh its
+ * token, does not prove who is at the keyboard. No password is 400
+ * session.password_required; a wrong one is the service's 403
+ * session.password_incorrect. Both carry a key, so the screen answers them
+ * like any other refusal and the sentence stays free to change.
+ */
+async function refusedPassword(
+  service: WorkspaceAccountService,
+  accessToken: string,
+  password: string | undefined,
+  reply: FastifyReply,
+): Promise<boolean> {
+  // ponytail: a boolean, not the reply -- a FastifyReply is thenable, so an
+  // async function returning one resolves to undefined.
+  if (!password) {
+    reply.status(400).send({
+      error: "Current password required",
+      reason: "session.password_required",
+    });
+    return true;
+  }
+  try {
+    await service.verifyPassword(accessToken, password);
+    return false;
+  } catch (error) {
+    requestError(reply, error);
+    return true;
+  }
 }
 
 function requestError(reply: FastifyReply, error: unknown) {
@@ -653,30 +697,4 @@ function requestError(reply: FastifyReply, error: unknown) {
   if (message.includes("revision conflict"))
     return reply.status(409).send({ error: message });
   return reply.status(400).send({ error: message });
-}
-
-function hasRecentReauthentication(accessToken: string): boolean {
-  const issuedAtSeconds = parseJwtIssuedAt(accessToken);
-  if (!issuedAtSeconds) return false;
-  const issuedAtMs = issuedAtSeconds * 1000;
-  const nowMs = Date.now();
-  return (
-    issuedAtMs <= nowMs &&
-    nowMs - issuedAtMs <= recentReauthenticationWindowMs
-  );
-}
-
-function parseJwtIssuedAt(accessToken: string): number | null {
-  const [, payload] = accessToken.split(".");
-  if (!payload) return null;
-  try {
-    const decoded = JSON.parse(
-      Buffer.from(payload, "base64url").toString("utf8"),
-    ) as { iat?: unknown };
-    return typeof decoded.iat === "number" && Number.isFinite(decoded.iat)
-      ? decoded.iat
-      : null;
-  } catch {
-    return null;
-  }
 }

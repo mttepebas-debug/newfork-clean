@@ -321,39 +321,20 @@ export default function WorkspacesPage() {
     setError(null);
   };
 
-  const reauthenticateForSensitiveAction = async (): Promise<void> => {
-    if (!supabaseClient) return;
-    const password = sensitivePassword.trim();
-    if (!password)
-      throw new PersonFacingError("Type your account password to continue.");
-    if (!account?.email)
-      throw new PersonFacingError(
-        "Sign out and sign in again, then try once more.",
-      );
-    const { error: signInError } =
-      await supabaseClient.auth.signInWithPassword({
-        email: account.email,
-        password,
-      });
-    if (signInError)
-      throw new PersonFacingError(
-        "That password did not match. Type it again.",
-      );
-  };
-
   const submitClosure = async (): Promise<void> => {
     if (!supabaseClient || !closureTarget) return;
     setClosingWorkspaceId(closureTarget.workspace.id);
     setError(null);
     try {
-      if (closureTarget.mode === "immediate") {
-        await reauthenticateForSensitiveAction();
-      }
+      // The server checks the password (SEC-003).
       await requestWorkspaceClosure(supabaseClient, {
         workspaceId: closureTarget.workspace.id,
         mode: closureTarget.mode,
         typedWorkspaceName:
           closureTarget.mode === "immediate" ? closureNameConfirmation : null,
+        ...(closureTarget.mode === "immediate"
+          ? { password: sensitivePassword }
+          : {}),
       });
       await clearTenantQueriesForOrganizationSwitch(queryClient);
       if (
@@ -428,10 +409,10 @@ export default function WorkspacesPage() {
     setTransferringWorkspaceId(transferTarget.id);
     setError(null);
     try {
-      await reauthenticateForSensitiveAction();
       await initiateWorkspaceOwnershipTransfer(supabaseClient, {
         workspaceId: transferTarget.id,
         targetUserId: transferTargetUserId.trim(),
+        password: sensitivePassword,
       });
       await reloadWorkspaces();
       setTransferTarget(null);
@@ -456,11 +437,11 @@ export default function WorkspacesPage() {
     setTransferringWorkspaceId(workspace.id);
     setError(null);
     try {
-      if (action === "accept") await reauthenticateForSensitiveAction();
       await respondWorkspaceOwnershipTransfer(supabaseClient, {
         workspaceId: workspace.id,
         transferId: workspace.pendingOwnershipTransfer.id,
         action,
+        ...(action === "accept" ? { password: sensitivePassword } : {}),
       });
       await clearTenantQueriesForOrganizationSwitch(queryClient);
       await refresh();
@@ -1044,9 +1025,6 @@ export default function WorkspacesPage() {
   );
 }
 
-/** An error whose sentence was written for the person, so it is shown as it is. */
-class PersonFacingError extends Error {}
-
 /**
  * The closure and transfer rules live in the database, and it states them for
  * the people who wrote them. Each one is said here once, in the words of the
@@ -1126,8 +1104,8 @@ const lifecycleReasons: Readonly<Record<string, string>> = {
     "This request was not sent to you. Reload the page to see the ones that were.",
   "transfer.expired":
     "This request ran out of time. Ask the owner to send it again.",
-  "session.reauthentication_required":
-    "You have been signed in too long for this. Sign out, sign in again, and come back to this screen.",
+  "session.password_required": "Type your account password to continue.",
+  "session.password_incorrect": "That password did not match. Type it again.",
 };
 
 /**
@@ -1169,7 +1147,6 @@ const lifecycleSentences: Readonly<Record<string, string>> = {
 
 /** The sentence for this failure, never the server's own. */
 function lifecycleMessage(error: unknown, fallback: string): string {
-  if (error instanceof PersonFacingError) return error.message;
   const keyed =
     error instanceof RequestError && error.reason
       ? lifecycleReasons[error.reason]

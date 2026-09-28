@@ -15,6 +15,11 @@ import { rpcFailure } from "../http-error.js";
 import { createUserVerifier } from "../auth/verify-user.js";
 
 export interface WorkspaceAccountService {
+  /**
+   * Signs in as the bearer with this password. Throws 403
+   * session.password_incorrect when it is not theirs (SEC-003).
+   */
+  verifyPassword(accessToken: string, password: string): Promise<void>;
   listWorkspaces(accessToken: string): Promise<WorkspaceSummary[]>;
   /** What the account area is waiting for, per tab. */
   countAttention(accessToken: string): Promise<AccountAttention>;

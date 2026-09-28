@@ -618,29 +618,30 @@ describe("WorkspacesPage", () => {
     fireEvent.click(submitButton);
 
     await waitFor(() =>
-      expect(supabaseClientMock.auth.signInWithPassword).toHaveBeenCalledWith({
-        email: "owner@example.test",
-        password: "fresh-password",
-      }),
-    );
-    await waitFor(() =>
       expect(requestWorkspaceClosure).toHaveBeenCalledWith(
         supabaseClientMock,
         {
           workspaceId,
           mode: "immediate",
           typedWorkspaceName: "Meyhouse",
+          password: "fresh-password",
         },
       ),
     );
+    // SEC-003: the server checks the password; the browser no longer signs in.
+    expect(supabaseClientMock.auth.signInWithPassword).not.toHaveBeenCalled();
   });
 
-  it("does not request immediate closure when reauthentication fails", async () => {
+  it("says the password did not match when the server refuses it", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
-    supabaseClientMock.auth.signInWithPassword.mockResolvedValueOnce({
-      data: {},
-      error: { message: "Invalid login credentials" },
-    });
+    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
+      new RequestError(
+        "Current password is incorrect",
+        "session.password_incorrect",
+        undefined,
+        403,
+      ),
+    );
     renderPage();
 
     await openWorkspaceActions();
@@ -659,8 +660,8 @@ describe("WorkspacesPage", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "That password did not match. Type it again.",
     );
-    expect(screen.queryByText(/Recent reauthentication failed/)).toBeNull();
-    expect(requestWorkspaceClosure).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Current password is incorrect/)).toBeNull();
+    expect(supabaseClientMock.auth.signInWithPassword).not.toHaveBeenCalled();
   });
 
   it("requires explicit acknowledgement and a target admin id before owner transfer starts", async () => {
@@ -696,20 +697,16 @@ describe("WorkspacesPage", () => {
     fireEvent.click(submitButton);
 
     await waitFor(() =>
-      expect(supabaseClientMock.auth.signInWithPassword).toHaveBeenCalledWith({
-        email: "owner@example.test",
-        password: "fresh-password",
-      }),
-    );
-    await waitFor(() =>
       expect(initiateWorkspaceOwnershipTransfer).toHaveBeenCalledWith(
         supabaseClientMock,
         {
           workspaceId,
           targetUserId,
+          password: "fresh-password",
         },
       ),
     );
+    expect(supabaseClientMock.auth.signInWithPassword).not.toHaveBeenCalled();
   });
 
   // BL-080: the business goes only to somebody whose legal name is on file.
@@ -816,21 +813,17 @@ describe("WorkspacesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Accept transfer" }));
 
     await waitFor(() =>
-      expect(supabaseClientMock.auth.signInWithPassword).toHaveBeenCalledWith({
-        email: "owner@example.test",
-        password: "fresh-password",
-      }),
-    );
-    await waitFor(() =>
       expect(respondWorkspaceOwnershipTransfer).toHaveBeenCalledWith(
         supabaseClientMock,
         {
           workspaceId,
           transferId,
           action: "accept",
+          password: "fresh-password",
         },
       ),
     );
+    expect(supabaseClientMock.auth.signInWithPassword).not.toHaveBeenCalled();
     expect(refresh).toHaveBeenCalled();
   });
 
@@ -914,40 +907,20 @@ describe("WorkspacesPage", () => {
     expect(screen.queryByText(/a wording nobody/)).toBeNull();
   });
 
-  // The API raises this one itself rather than passing it on from the database,
-  // and it was the last refusal these screens still matched by its English.
-  it("answers a reauthentication refusal by its key too", async () => {
+  // The API raises this one itself rather than passing it on from the database.
+  it("answers a missing password by its key", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
-      new RequestError(
-        "Recent reauthentication required",
-        "session.reauthentication_required",
-      ),
+      new RequestError("Current password required", "session.password_required", undefined, 400),
     );
     renderPage();
 
     await openScheduledClosure();
 
     expect((await screen.findByRole("alert")).textContent).toBe(
-      "You have been signed in too long for this. Sign out, sign in again, and come back to this screen.",
+      "Type your account password to continue.",
     );
-    expect(screen.queryByText(/Recent reauthentication required/)).toBeNull();
-  });
-
-  // Without the key it is a sentence like any other the screen does not know.
-  it("no longer recognises that refusal by its English alone", async () => {
-    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
-    vi.mocked(requestWorkspaceClosure).mockRejectedValueOnce(
-      new Error("Recent reauthentication required"),
-    );
-    renderPage();
-
-    await openScheduledClosure();
-
-    expect((await screen.findByRole("alert")).textContent).not.toContain(
-      "signed in too long",
-    );
-    expect(screen.queryByText(/Recent reauthentication required/)).toBeNull();
+    expect(screen.queryByText(/Current password required/)).toBeNull();
   });
 
   // The refusal names the transfer standing in the way, so the way out is a

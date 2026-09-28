@@ -403,6 +403,8 @@ export async function requestWorkspaceClosure(
     readonly mode: "scheduled_end_period" | "immediate";
     readonly typedWorkspaceName?: string | null;
     readonly effectiveAt?: string | null;
+    /** Checked by the server; a setup its owner never finished needs none. */
+    readonly password?: string;
   },
 ): Promise<void> {
   await apiRequest(
@@ -415,6 +417,7 @@ export async function requestWorkspaceClosure(
         typedWorkspaceName: input.typedWorkspaceName ?? null,
         effectiveAt: input.effectiveAt ?? null,
         acknowledged: true,
+        password: input.password,
       }),
     },
   );
@@ -436,6 +439,7 @@ export async function initiateWorkspaceOwnershipTransfer(
   input: {
     readonly workspaceId: string;
     readonly targetUserId: string;
+    readonly password: string;
   },
 ): Promise<void> {
   await apiRequest(
@@ -443,7 +447,10 @@ export async function initiateWorkspaceOwnershipTransfer(
     `/v1/account/workspaces/${input.workspaceId}/ownership-transfer`,
     {
       method: "POST",
-      body: JSON.stringify({ targetUserId: input.targetUserId }),
+      body: JSON.stringify({
+        targetUserId: input.targetUserId,
+        password: input.password,
+      }),
     },
   );
 }
@@ -466,6 +473,8 @@ export async function respondWorkspaceOwnershipTransfer(
     readonly workspaceId: string;
     readonly transferId: string;
     readonly action: "accept" | "reject";
+    /** Accepting asks for it; rejecting does not. */
+    readonly password?: string;
   },
 ): Promise<void> {
   await apiRequest(
@@ -476,6 +485,7 @@ export async function respondWorkspaceOwnershipTransfer(
       body: JSON.stringify({
         transferId: input.transferId,
         action: input.action,
+        password: input.password,
       }),
     },
   );

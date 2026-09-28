@@ -7,11 +7,14 @@ import {
   clearTabWorkspaceId,
   ensureSessionAlive,
   getTabWorkspaceId,
+  initiateWorkspaceOwnershipTransfer,
   loadAccountProfile,
   loadAccountDeletionBlockers,
   removeAccountAvatar,
   requestAccountEmailChange,
+  requestWorkspaceClosure,
   resolveWorkspaceContext,
+  respondWorkspaceOwnershipTransfer,
   restoreAccountDeletionWithToken,
   saveAccountProfile,
   selectActiveWorkspace,
@@ -388,5 +391,54 @@ describe("account security API contracts", () => {
       body: JSON.stringify({ token: "one-time-recovery-token" }),
     });
     expect(new Headers((init as RequestInit).headers).has("Authorization")).toBe(false);
+  });
+});
+
+// SEC-003: the password goes to the API, which signs in with it; the browser
+// no longer signs in again to make its token look fresh.
+describe("workspace lifecycle password", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends the password with closing, handing over and accepting a workspace", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({}), { status: 200 })),
+    );
+    const transferId = "81000000-0000-4000-8000-000000000001";
+    const targetUserId = "10000000-0000-4000-8000-000000000003";
+
+    await requestWorkspaceClosure(client(), {
+      workspaceId,
+      mode: "immediate",
+      typedWorkspaceName: "Meyhouse",
+      password: "pass word ",
+    });
+    await initiateWorkspaceOwnershipTransfer(client(), {
+      workspaceId,
+      targetUserId,
+      password: "pass word ",
+    });
+    await respondWorkspaceOwnershipTransfer(client(), {
+      workspaceId,
+      transferId,
+      action: "accept",
+      password: "pass word ",
+    });
+    await respondWorkspaceOwnershipTransfer(client(), {
+      workspaceId,
+      transferId,
+      action: "reject",
+    });
+
+    const bodies = vi
+      .mocked(fetch)
+      .mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+    // Sent as typed: a password may end in a space.
+    expect(bodies[0]).toMatchObject({ mode: "immediate", password: "pass word " });
+    expect(bodies[1]).toEqual({ targetUserId, password: "pass word " });
+    expect(bodies[2]).toEqual({ transferId, action: "accept", password: "pass word " });
+    expect(bodies[3]).toEqual({ transferId, action: "reject" });
   });
 });

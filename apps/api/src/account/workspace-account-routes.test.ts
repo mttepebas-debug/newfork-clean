@@ -1,20 +1,31 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { buildApp } from "../app";
-import { rpcFailure } from "../http-error.js";
+import { HttpError, rpcFailure } from "../http-error.js";
 import type { WorkspaceAccountService } from "./workspace-account-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const accessToken = "valid-token";
+// A token signed a moment ago: it used to open the password gate on its own.
 const freshAccessToken = fakeJwt({
   iat: Math.floor(Date.now() / 1000) - 30,
 });
-const staleAccessToken = fakeJwt({
-  iat: Math.floor(Date.now() / 1000) - 60 * 60,
-});
-const futureAccessToken = fakeJwt({
-  iat: Math.floor(Date.now() / 1000) + 60,
-});
+const password = "correct horse battery staple";
+const passwordOk = () => vi.fn(async () => undefined);
+const passwordWrong = () =>
+  vi.fn(async () => {
+    throw new HttpError("Current password is incorrect", 403, {
+      reason: "session.password_incorrect",
+    });
+  });
+const passwordRequired = {
+  error: "Current password required",
+  reason: "session.password_required",
+};
+const passwordIncorrect = {
+  error: "Current password is incorrect",
+  reason: "session.password_incorrect",
+};
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const employeeId = "97f65b16-a7ad-4f50-990e-d89030ac4701";
 
@@ -85,12 +96,14 @@ describe("workspace account routes", () => {
     expect(response.json()).toEqual({ error: message });
   });
 
-  it("rejects with an older authenticated session without requiring a password", async () => {
+  it("rejects a transfer without asking for the password", async () => {
     const respondOwnershipTransfer = vi.fn(async () => ({ status: "rejected" }));
-    const app = buildApp({ workspaceAccountService: { respondOwnershipTransfer } as unknown as WorkspaceAccountService });
-    const response = await app.inject({ method: "POST", url: `/v1/account/workspaces/${workspaceId}/ownership-transfer/respond`, headers: { authorization: `Bearer ${staleAccessToken}` }, payload: { transferId: workspaceId, action: "reject" } });
+    const verifyPassword = passwordWrong();
+    const app = buildApp({ workspaceAccountService: { respondOwnershipTransfer, verifyPassword } as unknown as WorkspaceAccountService });
+    const response = await app.inject({ method: "POST", url: `/v1/account/workspaces/${workspaceId}/ownership-transfer/respond`, headers: { authorization: `Bearer ${accessToken}` }, payload: { transferId: workspaceId, action: "reject" } });
     expect(response.statusCode).toBe(200);
-    expect(respondOwnershipTransfer).toHaveBeenCalledWith(staleAccessToken, { workspaceId, transferId: workspaceId, action: "reject" });
+    expect(respondOwnershipTransfer).toHaveBeenCalledWith(accessToken, { workspaceId, transferId: workspaceId, action: "reject" });
+    expect(verifyPassword).not.toHaveBeenCalled();
   });
 
   it("cancels a transfer using path workspace and server actor", async () => {
@@ -500,28 +513,32 @@ describe("workspace account routes", () => {
     expect(resetOwnerOnboarding).not.toHaveBeenCalled();
   });
 
-  it("requests workspace closure with the workspace id from the path", async () => {
+  it("closes a workspace once the server has checked the password", async () => {
     const requestClosure = vi.fn(async () => ({ status: "scheduled" }));
+    const verifyPassword = passwordOk();
     const app = buildApp({
       workspaceAccountService: {
         requestClosure,
+        verifyPassword,
       } as unknown as WorkspaceAccountService,
     });
 
     const response = await app.inject({
       method: "POST",
       url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: `Bearer ${freshAccessToken}` },
+      headers: { authorization: `Bearer ${accessToken}` },
       payload: {
         workspaceId: "spoofed",
         mode: "scheduled_end_period",
         acknowledged: true,
         effectiveAt: "2026-09-19T12:00:00.000Z",
+        password,
       },
     });
 
     expect(response.statusCode, response.body).toBe(200);
-    expect(requestClosure).toHaveBeenCalledWith(freshAccessToken, {
+    expect(verifyPassword).toHaveBeenCalledWith(accessToken, password);
+    expect(requestClosure).toHaveBeenCalledWith(accessToken, {
       workspaceId,
       mode: "scheduled_end_period",
       typedWorkspaceName: null,
@@ -541,17 +558,19 @@ describe("workspace account routes", () => {
     const app = buildApp({
       workspaceAccountService: {
         requestClosure,
+        verifyPassword: passwordOk(),
       } as unknown as WorkspaceAccountService,
     });
 
     const response = await app.inject({
       method: "POST",
       url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: `Bearer ${freshAccessToken}` },
+      headers: { authorization: `Bearer ${accessToken}` },
       payload: {
         mode: "scheduled_end_period",
         acknowledged: true,
         effectiveAt: "2026-09-19T12:00:00.000Z",
+        password,
       },
     });
 
@@ -609,11 +628,11 @@ describe("workspace account routes", () => {
     expect(requestClosure).not.toHaveBeenCalled();
   });
 
-  it("requires recent reauthentication for scheduled workspace closure", async () => {
-    // Scheduling used to be the way round the password. The workspace is
-    // marked as closing the moment it is asked for, and the date arrives on
-    // its own, so it is not a lesser thing than closing it now.
+  it("refuses to close a set-up workspace without a password, a fresh token or not", async () => {
+    // Scheduling used to be the way round the password, and then a token
+    // signed a moment ago was. Neither proves who is at the keyboard.
     const requestClosure = vi.fn(async () => ({ status: "scheduled" }));
+    const verifyPassword = passwordOk();
     const listWorkspaces = vi.fn(async () => [
       {
         id: workspaceId,
@@ -628,213 +647,93 @@ describe("workspace account routes", () => {
       workspaceAccountService: {
         requestClosure,
         listWorkspaces,
+        verifyPassword,
       } as unknown as WorkspaceAccountService,
     });
 
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: `Bearer ${staleAccessToken}` },
-      payload: {
-        mode: "scheduled_end_period",
-        acknowledged: true,
-        effectiveAt: "2026-09-19T12:00:00.000Z",
-      },
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({
-      error: "Recent reauthentication required",
-      reason: "session.reauthentication_required",
-    });
-    expect(requestClosure).not.toHaveBeenCalled();
-  });
-
-  it("schedules a closure on a setup its owner never finished without a fresh sign-in", async () => {
-    // The exemption is about the workspace, not the mode: nothing is in there
-    // to lose.
-    const requestClosure = vi.fn(async () => ({ status: "scheduled" }));
-    const listWorkspaces = vi.fn(async () => [
-      {
-        id: workspaceId,
-        name: "Meyhouse",
-        role: "owner",
-        status: "active",
-        isActive: false,
-        onboarding: { status: "incomplete", currentStep: 2 },
-      },
-    ]);
-    const app = buildApp({
-      workspaceAccountService: {
-        requestClosure,
-        listWorkspaces,
-      } as unknown as WorkspaceAccountService,
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: `Bearer ${staleAccessToken}` },
-      payload: {
-        mode: "scheduled_end_period",
-        acknowledged: true,
-        effectiveAt: "2026-09-19T12:00:00.000Z",
-      },
-    });
-
-    expect(response.statusCode, response.body).toBe(200);
-    expect(requestClosure).toHaveBeenCalledTimes(1);
-  });
-
-  it("requires recent reauthentication for immediate workspace closure", async () => {
-    const requestClosure = vi.fn(async () => ({ status: "deleted" }));
-    const app = buildApp({
-      workspaceAccountService: {
-        requestClosure,
-      } as unknown as WorkspaceAccountService,
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: `Bearer ${staleAccessToken}` },
-      payload: {
-        mode: "immediate",
-        typedWorkspaceName: "Meyhouse",
-        acknowledged: true,
-      },
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({
-      error: "Recent reauthentication required",
-      reason: "session.reauthentication_required",
-    });
-    expect(requestClosure).not.toHaveBeenCalled();
-  });
-
-  it("closes a setup its owner never finished without a fresh sign-in", async () => {
-    const requestClosure = vi.fn(async () => ({ status: "deleted" }));
-    const listWorkspaces = vi.fn(async () => [
-      {
-        id: workspaceId,
-        name: "Meyhouse",
-        role: "owner",
-        status: "active",
-        isActive: false,
-        onboarding: { status: "incomplete", currentStep: 2 },
-      },
-    ]);
-    const app = buildApp({
-      workspaceAccountService: {
-        requestClosure,
-        listWorkspaces,
-      } as unknown as WorkspaceAccountService,
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: `Bearer ${staleAccessToken}` },
-      payload: {
-        mode: "immediate",
-        typedWorkspaceName: "Meyhouse",
-        acknowledged: true,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(requestClosure).toHaveBeenCalledTimes(1);
-  });
-
-  it("still asks for a fresh sign-in to close a workspace that is set up", async () => {
-    const requestClosure = vi.fn(async () => ({ status: "deleted" }));
-    const listWorkspaces = vi.fn(async () => [
-      {
-        id: workspaceId,
-        name: "Meyhouse",
-        role: "owner",
-        status: "active",
-        isActive: true,
-        onboarding: { status: "complete", currentStep: 4 },
-      },
-    ]);
-    const app = buildApp({
-      workspaceAccountService: {
-        requestClosure,
-        listWorkspaces,
-      } as unknown as WorkspaceAccountService,
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: `Bearer ${staleAccessToken}` },
-      payload: {
-        mode: "immediate",
-        typedWorkspaceName: "Meyhouse",
-        acknowledged: true,
-      },
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(requestClosure).not.toHaveBeenCalled();
-  });
-
-  it("does not treat malformed or future-issued tokens as recent reauthentication", async () => {
-    const requestClosure = vi.fn(async () => ({ status: "deleted" }));
-    const app = buildApp({
-      workspaceAccountService: {
-        requestClosure,
-      } as unknown as WorkspaceAccountService,
-    });
-
-    for (const token of ["malformed-token", futureAccessToken]) {
+    for (const payload of [
+      { mode: "scheduled_end_period", acknowledged: true, effectiveAt: "2026-09-19T12:00:00.000Z" },
+      { mode: "immediate", typedWorkspaceName: "Meyhouse", acknowledged: true },
+      { mode: "immediate", typedWorkspaceName: "Meyhouse", acknowledged: true, password: "" },
+    ]) {
       const response = await app.inject({
         method: "POST",
         url: `/v1/account/workspaces/${workspaceId}/closure`,
-        headers: { authorization: `Bearer ${token}` },
-        payload: {
-          mode: "immediate",
-          typedWorkspaceName: "Meyhouse",
-          acknowledged: true,
-        },
+        headers: { authorization: `Bearer ${freshAccessToken}` },
+        payload,
       });
-
-      expect(response.statusCode).toBe(403);
-      expect(response.json()).toEqual({
-        error: "Recent reauthentication required",
-      reason: "session.reauthentication_required",
-      });
+      expect(response.statusCode, JSON.stringify(payload)).toBe(400);
+      expect(response.json()).toEqual(passwordRequired);
     }
+    expect(verifyPassword).not.toHaveBeenCalled();
     expect(requestClosure).not.toHaveBeenCalled();
   });
 
-  it("does not count a token without an issue time as recent reauthentication", async () => {
+  it("refuses to close a workspace with a wrong password", async () => {
     const requestClosure = vi.fn(async () => ({ status: "deleted" }));
+    const verifyPassword = passwordWrong();
     const app = buildApp({
       workspaceAccountService: {
         requestClosure,
+        verifyPassword,
       } as unknown as WorkspaceAccountService,
     });
 
     const response = await app.inject({
       method: "POST",
       url: `/v1/account/workspaces/${workspaceId}/closure`,
-      headers: { authorization: "Bearer not-a-jwt" },
+      headers: { authorization: `Bearer ${freshAccessToken}` },
       payload: {
         mode: "immediate",
         typedWorkspaceName: "Meyhouse",
         acknowledged: true,
+        password: "not it",
       },
     });
 
     expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({
-      error: "Recent reauthentication required",
-      reason: "session.reauthentication_required",
-    });
+    expect(response.json()).toEqual(passwordIncorrect);
+    expect(verifyPassword).toHaveBeenCalledWith(freshAccessToken, "not it");
     expect(requestClosure).not.toHaveBeenCalled();
+  });
+
+  it("closes a setup its owner never finished without a password, either way", async () => {
+    // The exemption is about the workspace, not the mode: nothing is in there
+    // to lose.
+    const requestClosure = vi.fn(async () => ({ status: "deleted" }));
+    const verifyPassword = passwordWrong();
+    const listWorkspaces = vi.fn(async () => [
+      {
+        id: workspaceId,
+        name: "Meyhouse",
+        role: "owner",
+        status: "active",
+        isActive: false,
+        onboarding: { status: "incomplete", currentStep: 2 },
+      },
+    ]);
+    const app = buildApp({
+      workspaceAccountService: {
+        requestClosure,
+        listWorkspaces,
+        verifyPassword,
+      } as unknown as WorkspaceAccountService,
+    });
+
+    for (const payload of [
+      { mode: "scheduled_end_period", acknowledged: true, effectiveAt: "2026-09-19T12:00:00.000Z" },
+      { mode: "immediate", typedWorkspaceName: "Meyhouse", acknowledged: true },
+    ]) {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/account/workspaces/${workspaceId}/closure`,
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload,
+      });
+      expect(response.statusCode, response.body).toBe(200);
+    }
+    expect(requestClosure).toHaveBeenCalledTimes(2);
+    expect(verifyPassword).not.toHaveBeenCalled();
   });
 
   it("cancels scheduled workspace closure from the path workspace", async () => {
@@ -859,108 +758,117 @@ describe("workspace account routes", () => {
     expect(cancelClosure).toHaveBeenCalledWith(accessToken, workspaceId);
   });
 
-  it("initiates ownership transfer without accepting body workspace identity", async () => {
+  it("starts an ownership transfer once the server has checked the password", async () => {
     const initiateOwnershipTransfer = vi.fn(async () => ({ status: "pending" }));
+    const verifyPassword = passwordOk();
     const targetUserId = "10000000-0000-4000-8000-000000000003";
     const app = buildApp({
       workspaceAccountService: {
         initiateOwnershipTransfer,
+        verifyPassword,
       } as unknown as WorkspaceAccountService,
     });
 
     const response = await app.inject({
       method: "POST",
       url: `/v1/account/workspaces/${workspaceId}/ownership-transfer`,
-      headers: { authorization: `Bearer ${freshAccessToken}` },
+      headers: { authorization: `Bearer ${accessToken}` },
       payload: {
         workspaceId: "spoofed",
         targetUserId,
+        password,
       },
     });
 
     expect(response.statusCode, response.body).toBe(200);
-    expect(initiateOwnershipTransfer).toHaveBeenCalledWith(freshAccessToken, {
+    expect(verifyPassword).toHaveBeenCalledWith(accessToken, password);
+    expect(initiateOwnershipTransfer).toHaveBeenCalledWith(accessToken, {
       workspaceId,
       targetUserId,
     });
   });
 
-  it("requires recent reauthentication before starting ownership transfer", async () => {
+  it("refuses to start an ownership transfer without the right password", async () => {
     const initiateOwnershipTransfer = vi.fn(async () => ({ status: "pending" }));
     const targetUserId = "10000000-0000-4000-8000-000000000003";
-    const app = buildApp({
-      workspaceAccountService: {
-        initiateOwnershipTransfer,
-      } as unknown as WorkspaceAccountService,
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/account/workspaces/${workspaceId}/ownership-transfer`,
-      headers: { authorization: `Bearer ${staleAccessToken}` },
-      payload: { targetUserId },
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({
-      error: "Recent reauthentication required",
-      reason: "session.reauthentication_required",
-    });
+    for (const [payload, status, body] of [
+      [{ targetUserId }, 400, passwordRequired],
+      [{ targetUserId, password: "" }, 400, passwordRequired],
+      [{ targetUserId, password: "not it" }, 403, passwordIncorrect],
+    ] as const) {
+      const app = buildApp({
+        workspaceAccountService: {
+          initiateOwnershipTransfer,
+          verifyPassword: passwordWrong(),
+        } as unknown as WorkspaceAccountService,
+      });
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/account/workspaces/${workspaceId}/ownership-transfer`,
+        headers: { authorization: `Bearer ${freshAccessToken}` },
+        payload,
+      });
+      expect(response.statusCode, JSON.stringify(payload)).toBe(status);
+      expect(response.json()).toEqual(body);
+    }
     expect(initiateOwnershipTransfer).not.toHaveBeenCalled();
   });
 
-  it("responds to ownership transfer with the path workspace", async () => {
+  it("accepts an ownership transfer once the server has checked the password", async () => {
     const respondOwnershipTransfer = vi.fn(async () => ({ status: "accepted" }));
+    const verifyPassword = passwordOk();
     const transferId = "41000000-0000-4000-8000-000000000001";
     const app = buildApp({
       workspaceAccountService: {
         respondOwnershipTransfer,
+        verifyPassword,
       } as unknown as WorkspaceAccountService,
     });
 
     const response = await app.inject({
       method: "POST",
       url: `/v1/account/workspaces/${workspaceId}/ownership-transfer/respond`,
-      headers: { authorization: `Bearer ${freshAccessToken}` },
+      headers: { authorization: `Bearer ${accessToken}` },
       payload: {
         workspaceId: "spoofed",
         transferId,
         action: "accept",
+        password,
       },
     });
 
     expect(response.statusCode, response.body).toBe(200);
-    expect(respondOwnershipTransfer).toHaveBeenCalledWith(freshAccessToken, {
+    expect(verifyPassword).toHaveBeenCalledWith(accessToken, password);
+    expect(respondOwnershipTransfer).toHaveBeenCalledWith(accessToken, {
       workspaceId,
       transferId,
       action: "accept",
     });
   });
 
-  it("requires recent reauthentication before responding to ownership transfer", async () => {
+  it("refuses to accept an ownership transfer without the right password", async () => {
     const respondOwnershipTransfer = vi.fn(async () => ({ status: "accepted" }));
     const transferId = "41000000-0000-4000-8000-000000000001";
-    const app = buildApp({
-      workspaceAccountService: {
-        respondOwnershipTransfer,
-      } as unknown as WorkspaceAccountService,
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/account/workspaces/${workspaceId}/ownership-transfer/respond`,
-      headers: { authorization: `Bearer ${staleAccessToken}` },
-      payload: {
-        transferId,
-        action: "accept",
-      },
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({
-      error: "Recent reauthentication required",
-      reason: "session.reauthentication_required",
-    });
+    for (const [payload, status, body] of [
+      [{ transferId, action: "accept" }, 400, passwordRequired],
+      [{ transferId, action: "accept", password: "" }, 400, passwordRequired],
+      [{ transferId, action: "accept", password: "not it" }, 403, passwordIncorrect],
+    ] as const) {
+      const app = buildApp({
+        workspaceAccountService: {
+          respondOwnershipTransfer,
+          verifyPassword: passwordWrong(),
+        } as unknown as WorkspaceAccountService,
+      });
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/account/workspaces/${workspaceId}/ownership-transfer/respond`,
+        headers: { authorization: `Bearer ${freshAccessToken}` },
+        payload,
+      });
+      expect(response.statusCode, JSON.stringify(payload)).toBe(status);
+      expect(response.json()).toEqual(body);
+    }
     expect(respondOwnershipTransfer).not.toHaveBeenCalled();
   });
 
