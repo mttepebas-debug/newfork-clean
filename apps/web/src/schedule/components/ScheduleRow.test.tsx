@@ -138,6 +138,22 @@ describe("ScheduleRow blank-cell interactions", () => {
     ).toBeTruthy();
   });
 
+  it("still stacks two matching open shifts without notes into one x2 card", () => {
+    const openShift = { ...shift, id: "open-1", employee_id: null, note: "" };
+    const { container } = renderRow({
+      employee: null,
+      shifts: [openShift, { ...openShift, id: "open-2" }],
+      totalShifts: [openShift, { ...openShift, id: "open-2" }],
+      selectedIds: [],
+    });
+    const badges = container.querySelectorAll(
+      ".schedule-shift-badge[data-shift-badge='true']:not([data-ghost='true'])",
+    );
+    expect(badges).toHaveLength(1);
+    expect(badges[0]?.getAttribute("data-stack-count")).toBe("2");
+    expect(container.querySelector("[data-shift-note-marker]")).toBeNull();
+  });
+
   it("stacks matching unassigned shift badges and updates the remaining count while dragging one", () => {
     const openShift = {
       ...shift,

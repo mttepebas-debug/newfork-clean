@@ -1262,14 +1262,28 @@ describe("ShiftQuickEditor note", () => {
     expect(onSubmit.mock.calls[0]![0].note).toBe("");
   });
 
-  it("writes the same note on every shift of a bulk add", async () => {
+  it("takes no note when several open shifts are added at once (user, 2026-09-28)", async () => {
     const onSubmit = renderEditor({ ...create, employeeId: null });
-    fireEvent.click(screen.getByRole("button", { name: "Increase count" }));
-    fireEvent.click(screen.getByRole("button", { name: "Increase count" }));
     fireEvent.change(note(), { target: { value: "Patio opens at 5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Increase count" }));
+    expect(note().disabled).toBe(true);
+    expect(note().value).toBe("");
+    expect(screen.getByText("Notes go on one shift at a time.").id).toBe(
+      note().getAttribute("aria-describedby"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Increase count" }));
     fireEvent.click(screen.getByRole("button", { name: "Add 3 shifts" }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ note: "Patio opens at 5", employee_id: null }), 3);
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ note: "", employee_id: null }), 3);
+  });
+
+  it("gives the typed note back when the count returns to one", () => {
+    renderEditor({ ...create, employeeId: null });
+    fireEvent.change(note(), { target: { value: "Patio opens at 5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Increase count" }));
+    fireEvent.click(screen.getByRole("button", { name: "Decrease count" }));
+    expect(note().disabled).toBe(false);
+    expect(note().value).toBe("Patio opens at 5");
   });
 });

@@ -424,7 +424,8 @@ export function ShiftQuickEditor({
     const basePayload = {
       ...value,
       // Blank means no note: spaces alone never reach the shift.
-      note: (value.note ?? "").trim(),
+      // A note goes on one shift only (user, 2026-09-28): none on a bulk add.
+      note: count > 1 ? "" : (value.note ?? "").trim(),
       ...(checked?.warning_policy && checked.operation === "warning_requires_override"
         ? { availability_assessment_fingerprint: checked.fingerprint }
         : {}),
@@ -950,7 +951,9 @@ export function ShiftQuickEditor({
             <div className="schedule-shift-note-head">
               <label htmlFor={`${noteId}-input`}>Note</label>
               <small id={`${noteId}-count`}>
-                {formatShiftNoteRemaining(value.note ?? "")}
+                {count > 1
+                  ? "Notes go on one shift at a time."
+                  : formatShiftNoteRemaining(value.note ?? "")}
               </small>
             </div>
             <textarea
@@ -959,7 +962,10 @@ export function ShiftQuickEditor({
               maxLength={shiftNoteMaxLength}
               aria-describedby={`${noteId}-count`}
               placeholder="Add a note for this shift"
-              value={value.note ?? ""}
+              // Adding several open shifts at once takes no note; the text
+              // comes back if the count returns to one.
+              disabled={count > 1}
+              value={count > 1 ? "" : (value.note ?? "")}
               // A field half under the sticky action bar counts as visible
               // to the browser; bring all of it into view (scroll-padding
               // keeps it clear of the header and the bar).
