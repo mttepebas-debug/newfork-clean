@@ -99,3 +99,8 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-28 | BL-078 | işlem gerekmez (kullanıcı kararı): yanlış commit'e giren migration içerik olarak doğru, geçmiş değiştirilmedi | -
 2026-09-28 | BL-239 | telefon ile masaüstü arasında tek geçiş genişliği (720px): altında yalnız alt çubuk, üstünde yalnız sidebar, yatay kaydırma yok | 2ca3803e
 2026-09-28 | BL-240 | Employee Hub alt çubuğunun renkleri tema token'larından; seçili yazı 6,30:1, odak 5,25:1 | 2ca3803e
+2026-09-28 | BL-214 | beyaz düğmeler ve Settings'in beş form alanı aynı koyu kenarda (`--theme-muted`, 5,07:1; önce 1,72 / 1,59); ekran bazlı ezmeler silindi | 7127bd96
+2026-09-28 | BL-216 | birbirine çok yakın altı renk token'ı silindi, kullanımı 0; kalan çiftlerin ayrı rolü BACKLOG'da gerekçesiyle | dc3c9730
+2026-09-28 | BL-235 | uyarı bildirimlerindeki "!" işareti okunur: rozet `--theme-warning`, 5,93:1 (önce 2,60) | dc3c9730
+2026-09-28 | BL-250 | iki telefon alt çubuğunda klavye odak halkası aynı (3px, 2px dışarıda) | dc3c9730
+2026-09-28 | BL-251 | iki telefon alt çubuğunun üst çizgisi aynı token (`--theme-border`) | dc3c9730
