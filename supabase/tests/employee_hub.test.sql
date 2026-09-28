@@ -2,6 +2,22 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(13);
 
+-- BL-237: this file reads whatever the shared Meyhouse workspace's real data
+-- already has published for "the current week" -- it never publishes
+-- anything itself. `current_date`'s week only matches that real data on the
+-- day someone last published it; every day after, the real week and
+-- `current_date`'s week are different weeks and the read model comes back
+-- empty. pg_temp.week_start() asks the real data which week it actually
+-- published, instead of assuming it is this one.
+create function pg_temp.week_start() returns date language sql stable as $$
+  select coalesce(
+    (select week_start from public.schedule_location_publications
+     where workspace_id = '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd' and status = 'current'
+     order by published_at desc limit 1),
+    current_date - (extract(isodow from current_date)::integer - 1)
+  )
+$$;
+
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('98000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','hub-alex@example.test','','{}','{}',now(),now()),
 ('98000000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','hub-jordan@example.test','','{}','{}',now(),now()),
@@ -37,7 +53,7 @@ reset role;
 select throws_ok($$select public.get_employee_hub_service('98000000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date,current_date+14)$$,'42501','employee profile required','active membership without employee profile fails closed');
 
 create temp table hub_state(model jsonb,result jsonb,request_id uuid);
-insert into hub_state(model) values(public.get_employee_hub_service('98000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',current_date-(extract(isodow from current_date)::integer-1),current_date+42));
+insert into hub_state(model) values(public.get_employee_hub_service('98000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',pg_temp.week_start(),pg_temp.week_start()+42));
 select is(model->'employee'->>'id','15000000-0000-4000-8000-000000000001','read model resolves actor employee server-side') from hub_state;
 select is(jsonb_array_length(model->'shifts'),2,'read model returns only actor published shifts') from hub_state;
 select is(jsonb_array_length(model->'open_shifts'),1,'read model exposes open shifts at assigned locations') from hub_state;

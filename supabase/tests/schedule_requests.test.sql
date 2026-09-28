@@ -2,6 +2,21 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(24);
 
+-- BL-237: this file's time-off segments must overlap real seed shift
+-- 22000000-...-0001, published for Meyhouse's real current week.
+-- `current_date`'s week only matches that real published week on the day it
+-- was last published; every day after, they are different weeks and nothing
+-- overlaps. pg_temp.week_start() asks the real data which week it actually
+-- published, instead of assuming it is this one.
+create function pg_temp.week_start() returns date language sql stable as $$
+  select coalesce(
+    (select week_start from public.schedule_location_publications
+     where workspace_id = '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd' and status = 'current'
+     order by published_at desc limit 1),
+    current_date-(extract(isodow from current_date)::integer-1)
+  )
+$$;
+
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
 ('97000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','phase6b-manager@example.test','','{}','{}',now(),now()),
 ('97000000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','phase6b-employee@example.test','','{}','{}',now(),now());
@@ -25,8 +40,8 @@ insert into public.schedule_time_off_requests(id,workspace_id,employee_id,locati
 ('97200000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','15000000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000001','Family appointment','97000000-0000-4000-8000-000000000002'),
 ('97200000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','15000000-0000-4000-8000-000000000003','11000000-0000-4000-8000-000000000002','Garden request','97000000-0000-4000-8000-000000000002');
 insert into public.schedule_time_off_segments(id,workspace_id,request_id,segment_date) values
-('97300000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1)),
-('97300000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001',current_date-(extract(isodow from current_date)::integer-1)+1),
+('97300000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001',pg_temp.week_start()),
+('97300000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001',pg_temp.week_start()+1),
 ('97300000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000002',current_date);
 insert into public.schedule_time_off_events(workspace_id,request_id,action,actor_user_id,note) values
 ('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','97200000-0000-4000-8000-000000000001','submitted','97000000-0000-4000-8000-000000000002','Family appointment');
