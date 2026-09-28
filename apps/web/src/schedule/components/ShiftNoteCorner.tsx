@@ -40,15 +40,20 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
   useEffect(() => {
     if (!anchor) return;
     const close = () => setAnchor(null);
+    // Escape closes the note and nothing else: caught on window's capture
+    // pass, before the Schedule's own Escape clears filters or the week.
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      close();
     };
     document.addEventListener("pointerdown", close, true);
-    document.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
     window.addEventListener("scroll", close, true);
     return () => {
       document.removeEventListener("pointerdown", close, true);
-      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("scroll", close, true);
     };
   }, [anchor]);

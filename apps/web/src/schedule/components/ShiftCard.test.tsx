@@ -416,6 +416,25 @@ describe("ShiftCard manager note (BL-199)", () => {
     expect(noteCard()).toBeNull();
   });
 
+  it("spends Escape on the note alone, so the Schedule keeps its filters and week", () => {
+    const { badge, corner } = noted();
+    const scheduleEscape = vi.fn();
+    window.addEventListener("keydown", scheduleEscape);
+    document.addEventListener("keydown", scheduleEscape, true);
+    try {
+      expect(openNote(badge, corner)).not.toBeNull();
+      act(() => { fireEvent.keyDown(document.body, { key: "Escape" }); });
+      expect(noteCard()).toBeNull();
+      expect(scheduleEscape).not.toHaveBeenCalled();
+      // With the note shut, Escape reaches the Schedule again.
+      fireEvent.keyDown(document.body, { key: "Escape" });
+      expect(scheduleEscape).toHaveBeenCalled();
+    } finally {
+      window.removeEventListener("keydown", scheduleEscape);
+      document.removeEventListener("keydown", scheduleEscape, true);
+    }
+  });
+
   it.each([
     ["a click or the start of a drag", (badge: Element) => pointerEvent(badge, "pointerdown", "mouse", null)],
     ["Escape", () => fireEvent.keyDown(document, { key: "Escape" })],
