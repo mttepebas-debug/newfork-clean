@@ -6191,6 +6191,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
      overflow-y lets the body scroll under the sticky header and action bar. */
   overflow-x: hidden;
   overflow-y: auto;
+  /* Focus scrolling must clear the sticky header (40px) and action bar
+     (47px), or Tab stops on a field hidden under them (BL-199, measured). */
+  scroll-padding-top: 48px;
+  scroll-padding-bottom: 56px;
   scrollbar-width: none;
 }
 .schedule-quick-editor--floating::-webkit-scrollbar {

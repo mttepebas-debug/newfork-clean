@@ -1110,6 +1110,20 @@ describe("ShiftQuickEditor note", () => {
     expect(onSubmit.mock.calls[0]![0].note).toBe("Bring the catering order list");
   });
 
+  it("brings the whole field into view when it takes focus, clear of the sticky bar", () => {
+    const scrollIntoView = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      renderEditor(create);
+      fireEvent.focus(note());
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+      expect(scrollIntoView.mock.contexts[0]).toBe(note());
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
   it("takes no more than 500 characters and says none are left", () => {
     renderEditor(create);
     fireEvent.change(note(), { target: { value: "x".repeat(520) } });

@@ -959,6 +959,12 @@ export function ShiftQuickEditor({
               aria-describedby={`${noteId}-count`}
               placeholder="Add a note for this shift"
               value={value.note ?? ""}
+              // A field half under the sticky action bar counts as visible
+              // to the browser; bring all of it into view (scroll-padding
+              // keeps it clear of the header and the bar).
+              onFocus={(event) =>
+                event.currentTarget.scrollIntoView?.({ block: "nearest" })
+              }
               onChange={(event) =>
                 setValue({
                   ...value,
