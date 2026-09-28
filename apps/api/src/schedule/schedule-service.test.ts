@@ -699,6 +699,31 @@ describe("createScheduleReadService realtime invalidation", () => {
     });
   });
 
+  it("passes the labels a template could not apply to the screen (BL-197)", async () => {
+    // Verbatim from a real run of apply_schedule_template_service() (migration
+    // 20260927140000, rolled back): Standby was archived after "Standard week" was saved.
+    const answer = {"mode": "merge", "status": "applied", "session": {"id": "5fcdb17c-6782-44f9-b1de-5ff57d8e9d86", "dirty": true, "shifts": [{"id": "493b3bd6-7629-4ce7-a360-0308f5caa3c4", "note": "", "job_id": "0fa432e2-9746-4a72-83bd-bbcf00caac59", "locked": false, "end_time": "15:00", "revision": 1, "label_ids": ["d123f2f7-ae36-4600-83e3-3726774136a1"], "start_time": "09:00", "time_basis": "explicit", "employee_id": null, "label_names": ["Opener"], "location_id": "bcf27afe-a1c1-4c2b-9741-5955be7a69ae", "shift_type_id": null, "time_snapshot": null, "time_timezone": "Europe/Istanbul", "warning_codes": [], "scheduled_date": "2028-09-05", "pending_op_type": null, "crosses_midnight": false, "hide_time_on_badge": false, "unpaid_break_minutes": 0, "source_published_shift_id": null}, {"id": "3bc439a0-45be-4cec-959a-ee3efc11721f", "note": "", "job_id": "0fa432e2-9746-4a72-83bd-bbcf00caac59", "locked": false, "end_time": "15:00", "revision": 1, "label_ids": [], "start_time": "09:00", "time_basis": "explicit", "employee_id": null, "label_names": [], "location_id": "bcf27afe-a1c1-4c2b-9741-5955be7a69ae", "shift_type_id": null, "time_snapshot": null, "time_timezone": "Europe/Istanbul", "warning_codes": [], "scheduled_date": "2028-09-06", "pending_op_type": null, "crosses_midnight": false, "hide_time_on_badge": false, "unpaid_break_minutes": 0, "source_published_shift_id": null}], "revision": 2, "expires_at": "2026-09-28T01:31:50.366372+00:00", "week_start": "2028-09-04", "holder_name": "Olcay Owner", "source_kind": "blank", "location_ids": ["bcf27afe-a1c1-4c2b-9741-5955be7a69ae", "cfc71385-03e2-46a0-9d26-824e077da40e"], "workspace_id": "08b697b2-76e2-405b-a102-0b5d12089288", "holder_user_id": "d72cbff6-f055-48b1-920b-64b88a1e1c2f", "last_heartbeat": "2026-09-28T01:27:50.366372+00:00", "source_draft_id": null, "source_revision": 0}, "skipped": [{"kind": "archived_label", "name": "Standby", "shift_count": 2}], "applied_shift_count": 2, "converted_open_count": 0};
+    mocks.rpc.mockResolvedValueOnce({ data: answer, error: null });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+    const result = await service.applyTemplate({
+      actorUserId,
+      workspaceId,
+      sessionId: answer.session.id,
+      expectedSessionRevision: 1,
+      templateId: "86000000-0000-4000-8000-000000000001",
+      mode: "merge",
+      departmentKeys: null,
+    });
+
+    expect(result.skipped).toEqual([
+      { kind: "archived_label", name: "Standby", shift_count: 2 },
+    ]);
+  });
+
   it("keeps successful writes successful when realtime broadcast fails", async () => {
     mocks.send.mockRejectedValueOnce(new Error("realtime unavailable"));
     mocks.rpc.mockResolvedValueOnce({

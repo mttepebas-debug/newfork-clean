@@ -1992,6 +1992,14 @@ export const scheduleTemplateApplyResultSchema = z.object({
   mode: z.enum(["merge", "overwrite"]),
   applied_shift_count: z.coerce.number().int().nonnegative(),
   converted_open_count: z.coerce.number().int().nonnegative(),
+  // What the template could not apply, one entry per kind and name; [] when nothing (BL-197).
+  skipped: z.array(
+    z.object({
+      kind: z.enum(["archived_label"]),
+      name: z.string().trim().min(1),
+      shift_count: z.coerce.number().int().positive(),
+    }),
+  ),
   session: scheduleEditSessionSchema,
 });
 export type ScheduleTemplateApplyResult = z.infer<

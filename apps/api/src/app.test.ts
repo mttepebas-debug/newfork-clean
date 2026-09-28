@@ -2992,6 +2992,7 @@ describe("api app", () => {
             mode: input.mode,
             applied_shift_count: 0,
             converted_open_count: 0,
+            skipped: [],
             session: scheduleSessionMockModel(),
           };
         },
@@ -3834,6 +3835,7 @@ function scheduleServiceMock(
       mode: "overwrite",
       applied_shift_count: 0,
       converted_open_count: 0,
+      skipped: [],
       session: scheduleSessionMockModel(),
     }),
     previewAutoFill: async () => ({
