@@ -268,6 +268,11 @@ Kısa yaz, ham araç çıktısı yapıştırma.
    belirsizse tek satırla sorulur. İş sürerken gelen mesaj önce "işi değiştiriyor mu?" diye okunur.
    Geri alınamaz hiçbir şey yedeksiz koşmaz; yedeğin adı ve yeri raporda. Kapsam yanlış ya da
    imkânsız çıkarsa söylenir ve durulur; sessizce başka fikirle değiştirilmez.
+   **Tek hat (kullanıcı kararı 2026-09-28):** bir iş başlayınca o iş bitene kadar yalnız onunla
+   ilerlenir. Yolda bulunan, işin önünde olmayan her şey backlog'a yazılmaya devam eder ama iş
+   açılmaz; istisna yalnız çok büyük bir güvenlik açığı ya da planın yönünü değiştiren ve
+   bekleyemeyen bir eksik (kullanıcıya sorulur). İş parçalara bölünüp aynı anda birden fazla
+   oturumda ilerleyebilir; parçalar aynı işin içindedir, başka konuya oturum açılmaz.
 5. **Verim ve kalite.** Kontrol alışkanlıkla değil bir karar değiştirdiği için koşulur: sessizce
    bozulan kural (yetki, satır erişimi), teslim edilen şeyin kendisi ve saniyelik kontroller hemen;
    birbirine bağlı küçük değişiklikler ve yavaş, düşük riskli kontroller sınırda (push öncesi,
@@ -275,8 +280,9 @@ Kısa yaz, ham araç çıktısı yapıştırma.
    Sınırda ertelenen her kontrol koşulur. Fazla düzgün sonuç bozuk ölçümdür: önce bir satır elle
    doğrulanır. Her sayı nereden ve ne zaman ölçüldüğüyle yazılır.
 6. **İşin sonunda.** Rapor bölüm 10'daki gibi. Rapor gelince iş sonradan incelenir: iddia edilen CI
-   koşusu ve commit bağımsız kontrol edilir, riskli yüzeyde değişikliğin kendisi okunur. Her iş
-   sonunda backlog okunur; kritikleşen, bu işle kolaylaşan ya da sıradaki doğru iş gerekçesiyle önerilir.
+   koşusu ve commit bağımsız kontrol edilir, riskli yüzeyde değişikliğin kendisi okunur. Sıradaki iş
+   aktif plandan (`ILERLEME-PLANI.md` sırası) gelir; backlog iş bittikten sonra okunur ve oradan
+   yalnız kritikleşen madde önerilir.
 7. **Kayıtlar.** Backlog tek dosya (`docs/plan/BACKLOG.md`): konuya göre gruplu, numaralı, grup
    içinde önem sırasıyla; her madde ne olduğu, neden önemli, neden beklediği ve iki işaret
    (`BL-081 (leave: high / do: risky)`); ikisi çelişiyorsa bir satırla söylenir. Yeni BL numarasından
