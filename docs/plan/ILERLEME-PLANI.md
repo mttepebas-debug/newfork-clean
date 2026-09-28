@@ -56,6 +56,7 @@ Eşzamanlılık: B1, C1, D1 ve E aynı anda koşabilir (dosyaları ayrık). BL-1
 - **Ç4 — Çekirdek sahipliği.** `app_private.authz_check`'e dokunan işler (FB-6.2 `.1`–`.4`, gerekiyorsa BL-198) aynı anda yazılmaz; A şeridinde ardışık, her biri kendi birleştirme penceresinde. BL-218 çekirdeğe dokunmaz; FB-6.2 `.4`'ten önce `.1`–`.3`'ü main'de olur.
 - **Ç5 — Hosted gönderim sıra şartı.** Onaylı izin CHECK'i ve BL-186 migration'ı web/API yayınıyla aynı anda; sonra security advisors. Arada main'e giren migration'lar aynı pakete.
 - **Ç6 — Ortak yerel DB.** BL-209 onarılana kadar yerelde `shift_exchanges_v1`, `time_off_published_assignment_disposition` (ve ayrılmamış `weekly_exchange_changed_terms`, BL-227) kırmızısı bilinen yanlış alarm.
+- **Ç8 — `nf-db` sırası, BL-218'den sonra (koordinatör, 2026-09-28).** (1) FB-6.1b `.1` (BL-159) BL-218 `.2`'den sonra: ikisi de `apply_schedule_template_service`'e dokunuyor (BL-218 T2). (2) BL-234 (yayından kaldırılan hafta yeniden yayınlanamıyor) ve BL-230 (yayından kaldırmada takas) birlikte, BL-218'den sonra: aynı yüzey. BL-230'un K13 cevabı gelmezse BL-234 tek başına gider.
 - **Ç7 — Bağlam.** Her rol oturumu iş sınırında bağlam doluluğunu söyler; yarıyı geçince devir (CLAUDE.md §11.10, §12 yenileme).
 
 ## 6. Temizlik (koordinatör, iş aralarında)

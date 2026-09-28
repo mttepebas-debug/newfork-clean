@@ -76,8 +76,8 @@ Kurallardan çıkan, soru olmayanlar:
 ## Alt adımlar
 | Adım | İş | Sahip | Bağımlılık |
 |---|---|---|---|
-| `.0` | S1–S3 kullanıcıya; T1/T2 teyidi | koordinatör | — |
-| `.1` | BL-159 (T1–T3), kırmızı hücre → düzeltme | `nf-db` | yok; hemen başlayabilir. Çekirdeğe dokunmaz; FB-6.2'nin çekirdek işiyle çakışmaz (ILERLEME-PLANI Ç4) |
+| `.0` | S1–S3 kullanıcıya (K16); T1/T2 teyidi ✓ | koordinatör | — |
+| `.1` | BL-159 (T1–T3), kırmızı hücre → düzeltme | `nf-db` | BL-218 `.2`'den sonra (ikisi de `apply_schedule_template_service`'e dokunuyor; ILERLEME-PLANI Ç8). Çekirdeğe dokunmaz (Ç4) |
 | `.2` | B4 anahtarı + DEV varyantları | `nf-arayuz` | `.0` cevabı |
 | `.3` | e2e iki senaryo | `nf-test` | `.1` ve `.2` main'de |
 
@@ -101,3 +101,4 @@ Tahmini boyut: `.1` yarım gün, `.2` bir gün, `.3` yarım gün.
 
 ## Notes / Result
 - 2026-09-27 (`nf-planlama`): görev dosyası yazıldı (koordinatörün görevi). Tazelik: B2'nin dört parçası main'de; açık kalan BL-159 (geçerli). B4 yok, büyük olasılıkla yalnız web işi. Kullanıcıya üç soru (S1–S3), koordinatöre iki teknik teyit (T1, T2).
+- 2026-09-28 (koordinatör, kayıt `nf-planlama`): T1 = reddet (42501 + `authz.out_of_scope`), T2 = reddet — teyitli. `.1` sırası BL-218 `.2`'den sonra (Ç8).
