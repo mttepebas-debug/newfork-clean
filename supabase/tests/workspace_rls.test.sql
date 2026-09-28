@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(116);
+select plan(119);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -1330,21 +1330,33 @@ select throws_ok(
   'pending ownership transfer must be resolved before workspace closure',
   'pending ownership transfer blocks organization closure'
 );
-select throws_like(
+select throws_ok(
   $$select public.request_account_deletion_v2_service(
     '10000000-0000-4000-8000-000000000001',
     repeat('a', 64)
   )$$,
-  '%pending_ownership_transfer%',
+  '23514',
+  null,
   'pending ownership transfer blocks initiator account deletion'
 );
-select throws_like(
+select ok(
+  public.get_account_deletion_blockers_service('10000000-0000-4000-8000-000000000001')
+    @> '[{"kind": "pending_ownership_transfer"}]',
+  'the pending transfer is what blocks the initiator'
+);
+select throws_ok(
   $$select public.request_account_deletion_v2_service(
     '10000000-0000-4000-8000-000000000003',
     repeat('a', 64)
   )$$,
-  '%pending_ownership_transfer%',
+  '23514',
+  null,
   'pending ownership transfer blocks target account deletion'
+);
+select ok(
+  public.get_account_deletion_blockers_service('10000000-0000-4000-8000-000000000003')
+    @> '[{"kind": "pending_ownership_transfer"}]',
+  'the pending transfer is what blocks the target'
 );
 set local role postgres;
 select throws_ok(
@@ -1466,13 +1478,19 @@ select is(
   'ownership transfer moves internal billing owner and requires a new payment method'
 );
 
-select throws_like(
+select throws_ok(
   $$select public.request_account_deletion_v2_service(
     '10000000-0000-4000-8000-000000000003',
     repeat('a', 64)
   )$$,
-  '%active_membership%',
+  '23514',
+  null,
   'global account deletion is blocked while active organization access exists'
+);
+select ok(
+  public.get_account_deletion_blockers_service('10000000-0000-4000-8000-000000000003')
+    @> '[{"kind": "active_membership"}]',
+  'the active membership is what blocks it'
 );
 select lives_ok(
   $$select public.request_account_deletion_v2_service(

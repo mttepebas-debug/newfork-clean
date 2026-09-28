@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(14);
 
 -- SEC-003 #9 (BL-274, user S2 (a)): an invitation is accepted only by an
 -- account whose email address is confirmed, through the emailed link (token)
@@ -59,10 +59,30 @@ create function pg_temp.member(person text) returns boolean language sql as $$
     where m.workspace_id = tests.id('iv') and m.user_id = tests.user('iv:' || person))
 $$;
 
+create function pg_temp.listed(person text) returns integer language sql as $$
+  select count(*)::integer from public.list_pending_employee_invitations_for_account_service(tests.user('iv:' || person))
+$$;
+create function pg_temp.counted(person text) returns integer language sql as $$
+  select workspaces from public.count_account_attention_service(tests.user('iv:' || person))
+$$;
+create function pg_temp.decline(person text) returns text language sql as $$
+  select pg_temp.refusal(format('select public.decline_employee_invitation_service(%L, %L)',
+    tests.user('iv:' || person), (select invitation_id from invited where invited.person = decline.person)))
+$$;
+
 select pg_temp.invite('ali');
 select pg_temp.invite('bora');
--- Ali's account was opened with his address, but nobody has confirmed it.
-update auth.users set email_confirmed_at = null where id = tests.user('iv:ali');
+select pg_temp.invite('cem');
+-- Ali's and Cem's accounts were opened with their addresses, but nobody has
+-- confirmed them.
+update auth.users set email_confirmed_at = null where id in (tests.user('iv:ali'), tests.user('iv:cem'));
+
+-- An unconfirmed account does not see the invitation, count it, or decline it.
+select is(pg_temp.listed('ali'), 0, 'an unconfirmed account sees no invitation in Account > Workspaces');
+select is(pg_temp.counted('ali'), 0, 'nor counts it among what waits for them');
+select is(pg_temp.decline('cem'), '42501 authz.not_active', 'nor can decline it');
+select is((select status::text from public.employee_invitations where id = (select invitation_id from invited where person = 'cem')),
+  'pending', 'so the invitation stays open for the real owner of the address');
 
 select is(pg_temp.by_token('ali'), '42501 authz.not_active',
   'an unconfirmed account cannot accept through the emailed link');
@@ -75,7 +95,10 @@ select is(pg_temp.by_id('ali', 'bora'), '42501',
   'a confirmed account cannot accept an invitation to another address');
 
 -- Once the address is confirmed, both ways work.
-update auth.users set email_confirmed_at = now() where id = tests.user('iv:ali');
+update auth.users set email_confirmed_at = now() where id in (tests.user('iv:ali'), tests.user('iv:cem'));
+select is(pg_temp.listed('ali'), 1, 'a confirmed account sees the invitation');
+select is(pg_temp.counted('ali'), 1, 'and counts it');
+select is(pg_temp.decline('cem'), 'allowed', 'and can decline one');
 select is(pg_temp.by_id('ali'), 'allowed', 'a confirmed account accepts from Account > Workspaces');
 select is(pg_temp.by_token('bora'), 'allowed', 'and through the emailed link');
 select ok(pg_temp.member('ali') and pg_temp.member('bora'), 'both joined');
