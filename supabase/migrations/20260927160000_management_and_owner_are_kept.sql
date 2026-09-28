@@ -81,6 +81,14 @@ begin
     raise exception 'Management and Owner are kept; rename them instead'
       using errcode = '23514', hint = 'catalog.system_record';
   end if;
+  -- The Owner job stays under Management (S2 a): elsewhere it could be marked
+  -- primary and leave the Management group.
+  if tg_table_name = 'jobs' then
+    if old.system_key = 'owner' and new.department_id is distinct from old.department_id then
+      raise exception 'The Owner job stays under Management'
+        using errcode = '23514', hint = 'catalog.system_record';
+    end if;
+  end if;
   return new;
 end;
 $$;
@@ -123,6 +131,14 @@ set search_path = ''
 as $$
 begin
   if new.ended_at is not null then
+    -- The owner keeps the Owner job (S1 a); a change of ownership moves the
+    -- membership first, so the old owner's assignment ends as anyone's.
+    if tg_op = 'UPDATE' and old.ended_at is null
+       and exists (select 1 from public.jobs job where job.id = new.job_id and job.system_key = 'owner')
+       and app_private.employee_record_is_workspace_owner(new.workspace_id, new.employee_id) then
+      raise exception 'The owner keeps the Owner job'
+        using errcode = '23514', hint = 'employee.owner_job';
+    end if;
     return new;
   end if;
   if exists (select 1 from public.jobs job where job.id = new.job_id and job.system_key = 'owner')

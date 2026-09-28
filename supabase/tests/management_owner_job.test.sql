@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(35);
+select plan(40);
 
 -- BL-218. Setup gives every workspace two protected catalog records: the
 -- Management department and, under it, the Owner job. Nobody deletes or
@@ -264,7 +264,46 @@ select is(
   'and the new names are kept'
 );
 
--- 5. The Owner job is the owner's alone ------------------------------------------------
+-- The Owner job stays under Management (S2 a, 2026-09-27): moved elsewhere it
+-- could be marked primary and leave the Management group.
+select is(
+  pg_temp.refusal(format(
+    'select tests.as_browser(%L, %L)',
+    tests.user('mo:owner'),
+    format('update public.jobs set department_id = %L where id = %L', tests.id('mo:kitchen'), pg_temp.owner_job('mo'))
+  )),
+  '23514 catalog.system_record',
+  'the Owner job cannot be moved out of Management'
+);
+
+-- 5. The Owner job is the owner's alone, and the owner keeps it ------------------------
+-- S1 a (2026-09-27): only a change of ownership takes it off the owner.
+
+select is(
+  pg_temp.save_record(tests.user('mo:owner'), 'mo', tests.id('mo:owner'),
+    pg_temp.locations_of(tests.id('mo:owner')),
+    array(select j from unnest(pg_temp.jobs_of(tests.id('mo:owner'))) j where j <> pg_temp.owner_job('mo'))),
+  '23514 employee.owner_job',
+  'the owner cannot save their record without the Owner job'
+);
+select is(
+  pg_temp.save_record(tests.user('mo:owner'), 'mo', tests.id('mo:owner'),
+    pg_temp.locations_of(tests.id('mo:owner')), '{}'::uuid[]),
+  '23514 employee.owner_job',
+  'nor with no job at all'
+);
+select is(
+  pg_temp.refusal(format(
+    'update public.employee_job_assignments set ended_at = now() where employee_id = %L and job_id = %L and ended_at is null',
+    tests.id('mo:owner'), pg_temp.owner_job('mo')
+  )),
+  '23514 employee.owner_job',
+  'nor be taken off it by any other writer'
+);
+select ok(
+  pg_temp.owner_job('mo') = any (pg_temp.jobs_of(tests.id('mo:owner'))),
+  'the owner still works the Owner job'
+);
 
 select tests.person('mo', 'ada', 'admin', array['K'], array['cook']);
 
