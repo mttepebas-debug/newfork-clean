@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(28);
 
 -- BL-252/BL-246 (user, 2026-09-28). Accepting an ownership transfer hands
 -- over what being the owner means: the new owner works the Owner job and the
@@ -49,6 +49,49 @@ select tests.settle();
 update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
 where source_id = (select id from required_document) and lifecycle_user_id = tests.user('ot:deniz');
 
+-- Two more: a policy everybody must sign, with no period; and a permit that
+-- is taken down before the transfer and put back up after it.
+create function pg_temp.publish_type(title text, settings jsonb) returns uuid language plpgsql as $$
+declare
+  type_id uuid := public.save_document_type_lifecycle_service(tests.user('ot:owner'), tests.id('ot'), null, null, jsonb_build_object(
+    'title', title, 'description', title, 'requires_review', true, 'accepted_formats', array['pdf'],
+    'tracks_expiry', false, 'expiry_warning_days', 30, 'lifecycle_settings', settings));
+begin
+  perform pg_temp.set_publication(type_id, 'published');
+  return type_id;
+end;
+$$;
+create function pg_temp.set_publication(type_id uuid, status text) returns void language plpgsql as $$
+declare
+  preview jsonb := public.preview_document_publication_service(tests.user('ot:owner'), tests.id('ot'), type_id);
+begin
+  perform public.set_document_publication_service(tests.user('ot:owner'), tests.id('ot'), type_id,
+    (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token',
+    'Publication', status);
+end;
+$$;
+create function pg_temp.settings(mode text, period integer) returns jsonb language sql as $$
+  select jsonb_build_object('mode', mode, 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', period, 'suspend_on_overdue', period is not null, 'extra_fields', '[]'::jsonb)
+$$;
+select tests.remember('ot:policy', pg_temp.publish_type('Policy', pg_temp.settings('required', null)));
+select tests.remember('ot:permit', pg_temp.publish_type('Permit', pg_temp.settings('conditional', 7)));
+select tests.settle();
+
+-- The requirement a person holds for a document type.
+create function pg_temp.req(person text, type_id uuid) returns public.employee_onboarding_requirements language sql as $$
+  select r from public.employee_onboarding_requirements r
+  where r.source_id = type_id and r.employee_id = tests.id(person)
+$$;
+create function pg_temp.card() returns uuid language sql as $$ select id from required_document $$;
+
+-- A reviewer excuses Deniz from the policy by hand, before any transfer.
+select public.set_employee_document_exemption_service(tests.user('ot:owner'), tests.id('ot'),
+  (pg_temp.req('ot:deniz', tests.id('ot:policy'))).id, (pg_temp.req('ot:deniz', tests.id('ot:policy'))).lifecycle_revision,
+  true, 'Signed on paper');
+
 create function pg_temp.deniz_excused() returns boolean language sql as $$
   select r.lifecycle_exempt from public.employee_onboarding_requirements r
   where r.source_id = (select id from required_document) and r.lifecycle_user_id = tests.user('ot:deniz')
@@ -86,6 +129,9 @@ select pg_temp.cancel();
 select is(pg_temp.deniz_excused(), false, 'nor does a cancelled one');
 select ok(pg_temp.works_owner_job('ot:owner') and not pg_temp.works_owner_job('ot:deniz'),
   'and the owner keeps the Owner job');
+select ok((pg_temp.req('ot:owner', pg_temp.card())).lifecycle_exempt
+    and (pg_temp.req('ot:owner', tests.id('ot:policy'))).lifecycle_exempt,
+  'and stays excused from the documents');
 
 -- 2. Only somebody with a live employee record here accepts -------------------------
 -- ponytail: the product cannot reach either state (an invitation always names a
@@ -114,6 +160,8 @@ select is(pg_temp.deniz_excused(), false, 'and excuses nothing by trying');
 
 -- 4. Accepted --------------------------------------------------------------------------
 
+select pg_temp.set_publication(tests.id('ot:permit'), 'draft');
+
 select is(pg_temp.respond('ot:deniz', 'accept'), 'allowed', 'Deniz accepts');
 select ok(pg_temp.works_owner_job('ot:deniz'), 'Deniz works the Owner job');
 select ok(not pg_temp.works_owner_job('ot:owner'), 'the old owner no longer does');
@@ -133,6 +181,41 @@ select is(
 );
 select is((select count(*)::integer from public.workspace_ownership_transfers
   where workspace_id = tests.id('ot') and status = 'accepted'), 1, 'one transfer was accepted');
+select is((pg_temp.req('ot:deniz', pg_temp.card())).owner_excused, true,
+  'her card is excused because she is the owner');
+select ok((pg_temp.req('ot:deniz', tests.id('ot:policy'))).lifecycle_exempt
+    and not (pg_temp.req('ot:deniz', tests.id('ot:policy'))).owner_excused,
+  'the policy a reviewer excused by hand stays excused by hand');
+
+-- 5. The old owner, now an admin, is asked for the documents everyone is ------------
+
+select is((pg_temp.req('ot:owner', pg_temp.card())).lifecycle_exempt, false,
+  'the old owner''s owner excuse from the card is taken back');
+select ok((pg_temp.req('ot:owner', pg_temp.card())).deadline_at > now() + interval '6 days',
+  'and the card is due a full period from now');
+select ok((pg_temp.req('ot:owner', tests.id('ot:policy'))).required
+    and (pg_temp.req('ot:owner', tests.id('ot:policy'))).blocks_activation
+    and not (pg_temp.req('ot:owner', tests.id('ot:policy'))).lifecycle_exempt,
+  'the policy is required again, as it is of everyone');
+select ok(not app_private.document_actor_blocked(tests.user('ot:owner'), tests.id('ot')),
+  'the old owner is not blocked by what they owe again');
+select is(
+  (select count(*)::integer from public.onboarding_events a
+   where a.target_id = (pg_temp.req('ot:owner', pg_temp.card())).id::text and a.action = 'document.exemption_removed'),
+  1,
+  'taking the excuse back is recorded like removing any exemption'
+);
+
+-- The permit was taken down before the transfer: nothing about it changes
+-- while it is down, and the excuse is taken back when it is put back up.
+select ok((pg_temp.req('ot:owner', tests.id('ot:permit'))).lifecycle_exempt
+    and (pg_temp.req('ot:owner', tests.id('ot:permit'))).owner_excused,
+  'a document taken down keeps the old owner''s excuse while it is down');
+select pg_temp.set_publication(tests.id('ot:permit'), 'published');
+select is((pg_temp.req('ot:owner', tests.id('ot:permit'))).lifecycle_exempt, false,
+  'and loses it when the document is put back up');
+select is((pg_temp.req('ot:deniz', tests.id('ot:permit'))).lifecycle_exempt, true,
+  'while the new owner stays excused from it');
 
 select * from finish();
 rollback;
