@@ -1,0 +1,135 @@
+/* Phone navigation for owner, admin and manager (BL-192): a bottom bar in the
+   shape of the Employee Hub bar (.eh-mobile-nav). Above 720px the sidebar
+   stays and none of this draws. */
+.mm-bar,
+.mm-sheet {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .app-shell[data-employee-shell="false"],
+  .app-shell[data-employee-shell="false"][data-sidebar-collapsed="true"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  /* The page scrolls above the bar, so nothing sits underneath it. */
+  .app-shell[data-employee-shell="false"] > .app-main {
+    grid-row: 1;
+  }
+
+  .mm-bar {
+    display: grid;
+    grid-row: 2;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    z-index: 30;
+    padding: 7px 10px max(7px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--theme-border);
+    background: var(--theme-surface);
+  }
+  /* The on-screen keyboard needs the room while a field is being typed in. */
+  .app-shell[data-employee-shell="false"]:has(input:focus, textarea:focus, select:focus)
+    .mm-bar {
+    display: none;
+  }
+  .mm-bar a,
+  .mm-bar button {
+    display: flex;
+    min-width: 0;
+    min-height: 51px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--theme-muted);
+    font: inherit;
+    font-size: 10px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .mm-bar span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mm-bar .active,
+  .mm-sheet nav .active {
+    background: var(--theme-selected);
+    color: var(--theme-accent-strong);
+    font-weight: 650;
+  }
+  .mm-bar :focus-visible,
+  .mm-sheet :focus-visible {
+    outline: 3px solid var(--theme-focus);
+    outline-offset: 2px;
+  }
+
+  .mm-icon-button {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--theme-text);
+    cursor: pointer;
+  }
+
+  /* More rises from the bottom as a sheet. */
+  .mm-sheet[open] {
+    display: block;
+    inset: auto 0 0;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .mm-sheet::backdrop {
+    /* Same scrim as the Account confirmation dialog; no backdrop token exists yet. */
+    background: rgb(15 28 22 / 45%);
+  }
+  .mm-sheet-body {
+    display: grid;
+    gap: 4px;
+    padding: 8px 12px max(16px, env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    background: var(--theme-surface);
+  }
+  .mm-sheet-body header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 8px;
+    color: var(--theme-text);
+    font-size: 16px;
+  }
+  .mm-sheet nav {
+    display: grid;
+    gap: 2px;
+  }
+  .mm-sheet nav a,
+  .mm-sheet nav button {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--theme-text-body);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+}

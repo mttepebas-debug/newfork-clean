@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -56,6 +56,9 @@ const employeeContext = {
 } satisfies ActiveWorkspaceContext;
 
 let currentContext: ActiveWorkspaceContext = context;
+// The phone bar (ManagementMobileNav) repeats these links; jsdom applies no
+// media queries, so the sidebar's own links are read inside the sidebar.
+const sidebar = () => within(screen.getByRole("complementary", { name: "Application sidebar" }));
 const signOut = vi.fn();
 function GuardedRoute() {
   const dialog = useAvailabilityNavigationGuard({dirty:true,busy:false});
@@ -212,7 +215,7 @@ describe("AppShell notification badge", () => {
       "Expand menu",
     );
 
-    const availabilityLink = screen.getByRole("link", { name: "Availability" });
+    const availabilityLink = sidebar().getByRole("link", { name: "Availability" });
     expect(availabilityLink.className).toContain("rail-peek-item");
     expect(availabilityLink.hasAttribute("data-rail-peek")).toBe(true);
     expect(availabilityLink.getAttribute("title")).toBeNull();
@@ -220,7 +223,7 @@ describe("AppShell notification badge", () => {
       "Availability",
     );
 
-    const workspaceLink = screen.getByRole("link", { name: "Workspace" });
+    const workspaceLink = sidebar().getByRole("link", { name: "Workspace" });
     expect(workspaceLink.className).toContain("rail-peek-item");
     expect(workspaceLink.hasAttribute("data-rail-peek")).toBe(true);
     expect(workspaceLink.getAttribute("data-rail-active")).toBe("true");
@@ -230,10 +233,10 @@ describe("AppShell notification badge", () => {
     );
 
     expect(
-      screen.getByRole("link", { name: "Requests" }).getAttribute("href"),
+      sidebar().getByRole("link", { name: "Requests" }).getAttribute("href"),
     ).toBe("/app/schedule/requests");
 
-    const notificationsLink = screen.getByRole("link", {
+    const notificationsLink = sidebar().getByRole("link", {
       name: "Notifications",
     });
     expect(notificationsLink.className).toContain("rail-peek-item");
@@ -276,7 +279,7 @@ describe("AppShell notification badge", () => {
     expect(await screen.findByText("Settings route")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Collapse menu" }));
 
-    const settingsLink = screen.getByRole("link", { name: "Settings" });
+    const settingsLink = sidebar().getByRole("link", { name: "Settings" });
     expect(settingsLink.getAttribute("data-rail-active")).toBe("true");
     expect(settingsLink.querySelector(".rail-flyout")?.textContent).toBe(
       "Settings",
@@ -299,8 +302,8 @@ describe("AppShell notification badge", () => {
     expect(await screen.findByText("Schedule Requests route")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Collapse menu" }));
 
-    const scheduleLink = screen.getByRole("link", { name: "Schedule" });
-    const requestsLink = screen.getByRole("link", { name: "Requests" });
+    const scheduleLink = sidebar().getByRole("link", { name: "Schedule" });
+    const requestsLink = sidebar().getByRole("link", { name: "Requests" });
 
     expect(scheduleLink.className).not.toContain("active");
     expect(scheduleLink.getAttribute("aria-current")).toBeNull();
@@ -326,7 +329,7 @@ describe("AppShell notification badge", () => {
         .getByRole("button", { name: "Collapse Schedule" })
         .getAttribute("aria-expanded"),
     ).toBe("true");
-    expect(screen.getByRole("link", { name: "Requests" })).toBeTruthy();
+    expect(sidebar().getByRole("link", { name: "Requests" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Collapse Schedule" }));
 
@@ -335,7 +338,7 @@ describe("AppShell notification badge", () => {
         .getByRole("button", { name: "Expand Schedule" })
         .getAttribute("aria-expanded"),
     ).toBe("false");
-    expect(screen.queryByRole("link", { name: "Requests" })).toBeNull();
+    expect(sidebar().queryByRole("link", { name: "Requests" })).toBeNull();
   });
 
   it("orders management navigation before shared navigation", async () => {
@@ -374,16 +377,16 @@ describe("AppShell notification badge", () => {
     currentContext = { ...context, permissions: ["workspace.read", "employees.read"] };
     renderShell();
     expect(await screen.findByText("Workspace route")).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Requests" })).toBeNull();
+    expect(sidebar().queryByRole("link", { name: "Requests" })).toBeNull();
     expect(document.querySelector('a[href="/app/schedule"]')).toBeNull();
-    expect(screen.queryByRole("link", { name: "Availability" })).toBeNull();
+    expect(sidebar().queryByRole("link", { name: "Availability" })).toBeNull();
   });
 
   it.each(["schedule.time_off_requests.read", "schedule.shift_change_requests.read"] as const)("keeps Requests reachable with %s without Schedule access", async permission => {
     currentContext = { ...context, permissions: ["workspace.read", permission] };
     renderShell();
     await screen.findByText("Workspace route");
-    expect(screen.getByRole("link", { name: "Requests" }).getAttribute("href")).toBe("/app/schedule/requests");
+    expect(sidebar().getByRole("link", { name: "Requests" }).getAttribute("href")).toBe("/app/schedule/requests");
     expect(document.querySelector('a[href="/app/schedule"]')).toBeNull();
   });
 
@@ -391,18 +394,18 @@ describe("AppShell notification badge", () => {
     currentContext = { ...context, membership: { ...context.membership, role } };
     const { container } = renderShell("/app/availability");
     await screen.findByText("Team Availability route");
-    const link = screen.getByRole("link", { name: "Availability" });
+    const link = sidebar().getByRole("link", { name: "Availability" });
     expect(link.getAttribute("href")).toBe("/app/availability");
     expect(link.getAttribute("aria-current")).toBe("page");
     expect(container.querySelector(".app-shell")?.getAttribute("data-employee-shell")).toBe("false");
     expect(screen.queryByText("Employee Hub route")).toBeNull();
-    fireEvent.click(screen.getByRole("link", { name: "Workspace" }));
+    fireEvent.click(sidebar().getByRole("link", { name: "Workspace" }));
     await screen.findByText("Workspace route");
     fireEvent.click(screen.getByRole("button", { name: "Collapse Schedule" }));
-    fireEvent.click(screen.getByRole("link", { name: "Availability" }));
+    fireEvent.click(sidebar().getByRole("link", { name: "Availability" }));
     await screen.findByText("Team Availability route");
     fireEvent.click(screen.getByRole("button", { name: "Collapse menu" }));
-    expect(screen.getByRole("link", { name: "Availability" }).getAttribute("data-rail-active")).toBe("true");
+    expect(sidebar().getByRole("link", { name: "Availability" }).getAttribute("data-rail-active")).toBe("true");
   });
 
   it("does not expose team availability to an employee opening its direct URL", async () => {
@@ -410,8 +413,8 @@ describe("AppShell notification badge", () => {
     renderShell("/app/availability");
     await screen.findByText("Employee Hub route");
     expect(screen.queryByText("Team Availability route")).toBeNull();
-    expect(screen.queryByRole("link", { name: "Availability" })).toBeNull();
-    expect(screen.getByRole("link", { name: "My Availability" })).toBeTruthy();
+    expect(sidebar().queryByRole("link", { name: "Availability" })).toBeNull();
+    expect(sidebar().getByRole("link", { name: "My Availability" })).toBeTruthy();
   });
 
   it("orders employee navigation without exposing management routes", async () => {
@@ -438,14 +441,14 @@ describe("AppShell notification badge", () => {
       "Announcements",
       "Notifications",
     ]);
-    expect(screen.queryByRole("link", { name: "Workspace" })).toBeNull();
+    expect(sidebar().queryByRole("link", { name: "Workspace" })).toBeNull();
     expect(
       container
         .querySelector('.sidebar-nav a[href="/app/employee-hub/schedule"]')
         ?.textContent,
     ).toBe("Schedule");
     expect(document.querySelector('a[href="/app/schedule"]')).toBeNull();
-    expect(screen.queryByRole("link", { name: "Employees" })).toBeNull();
+    expect(sidebar().queryByRole("link", { name: "Employees" })).toBeNull();
   });
 
   it("keeps Employee Hub inactive when an employee child route owns the page", async () => {
@@ -464,7 +467,7 @@ describe("AppShell notification badge", () => {
     const hubLink = container.querySelector(
       '.sidebar-nav a[href="/app/employee-hub"]',
     )!;
-    const shiftHubLink = screen.getByRole("link", { name: "Shift Hub" });
+    const shiftHubLink = sidebar().getByRole("link", { name: "Shift Hub" });
 
     expect(hubLink.className).not.toContain("active");
     expect(shiftHubLink.className).toContain("active");

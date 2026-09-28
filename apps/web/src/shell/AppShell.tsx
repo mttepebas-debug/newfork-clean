@@ -19,6 +19,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { AppSidebarPanelContext } from "./AppSidebarPanel";
+import { ManagementMobileNav } from "./ManagementMobileNav";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { EmployeeMobileNav } from "../employee-hub/EmployeeMobileNav";
 import { useAuth } from "../auth/AuthContext";
@@ -259,12 +260,17 @@ export function AppShell() {
     context.membership.role === "owner" ||
     context.membership.role === "admin" ||
     settingsNavItem.anyOf.some((permission) => permissions.has(permission));
+  const isEmployee = context.membership.role === "employee";
+  const signOutAfterAvailabilityCheck = () =>
+    requestAvailabilityNavigation(() => {
+      void signOut();
+    });
   return (
     <AppSidebarPanelContext.Provider value={sidebarPanelHost}>
     <div
       className="app-shell"
       data-sidebar-collapsed={sidebarPanelOwner ? sidebarPanelCollapsed : collapsed}
-      data-employee-shell={context.membership.role === "employee"}
+      data-employee-shell={isEmployee}
     >
       <aside className="app-sidebar" aria-label="Application sidebar">
         {sidebarPanelOwner ? <div className="app-sidebar-panel-host" ref={setSidebarPanelTarget} /> : <>
@@ -453,11 +459,7 @@ export function AppShell() {
             type="button"
             aria-label={collapsed ? "Sign out" : undefined}
             data-rail-peek={collapsed ? "" : undefined}
-            onClick={() =>
-              requestAvailabilityNavigation(() => {
-                void signOut();
-              })
-            }
+            onClick={signOutAfterAvailabilityCheck}
           >
             <span className="nav-icon-frame">
               <LogOut size={18} aria-hidden />
@@ -472,7 +474,16 @@ export function AppShell() {
       <main className="app-main">
         <Outlet />
       </main>
-      {context.membership.role === "employee" && <EmployeeMobileNav />}
+      {isEmployee && <EmployeeMobileNav />}
+      {isEmployee ? null : (
+        <ManagementMobileNav
+          links={[
+            ...visibleNavItems.filter((item) => item.section !== "employee"),
+            ...(canViewSettings ? [settingsNavItem] : []),
+          ]}
+          onSignOut={signOutAfterAvailabilityCheck}
+        />
+      )}
     </div>
     </AppSidebarPanelContext.Provider>
   );

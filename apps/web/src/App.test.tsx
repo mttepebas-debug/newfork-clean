@@ -8,6 +8,11 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+
+// The phone bar (ManagementMobileNav) repeats the sidebar's links; jsdom applies
+// no media queries, so sidebar links are read inside the sidebar.
+const sidebar = () =>
+  within(screen.getByRole("complementary", { name: "Application sidebar" }));
 import type { ScheduleReadModel } from "@newfork/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, appQueryClient } from "./App";
@@ -894,16 +899,16 @@ describe("App", () => {
     ).toBeTruthy();
     fireEvent.pointerDown(document.body);
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Employees" })).toBeTruthy();
+    expect(sidebar().getByRole("link", { name: "Employees" })).toBeTruthy();
     const footerLinks = Array.from(
       container.querySelectorAll(".sidebar-footer .nav-item"),
     ).map((item) => item.lastElementChild?.textContent);
     expect(footerLinks).toEqual(["Settings", "Account", "Sign out"]);
-    fireEvent.click(screen.getByRole("link", { name: "Employees" }));
+    fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
     expect(
       await screen.findByRole("heading", { name: "Employees" }),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("link", { name: "Settings" }));
+    fireEvent.click(sidebar().getByRole("link", { name: "Settings" }));
     expect(
       await screen.findByRole("heading", { name: "General" }),
     ).toBeTruthy();
@@ -930,7 +935,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Roles & permissions" }),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("link", { name: "Account" }));
+    fireEvent.click(sidebar().getByRole("link", { name: "Account" }));
     expect(
       await screen.findByRole("heading", { name: "Profile" }),
     ).toBeTruthy();
@@ -2926,7 +2931,7 @@ describe("App", () => {
       within(dialog).getByRole("button", { name: "Increase count" }),
     );
 
-    const employeesLink = app.getByRole("link", { name: "Employees" });
+    const employeesLink = sidebar().getByRole("link", { name: "Employees" });
     fireEvent.pointerDown(employeesLink);
     fireEvent.click(employeesLink);
 
@@ -4333,7 +4338,9 @@ describe("App", () => {
     const { container } = render(<App />);
     await signInAs("owner");
     fireEvent.click(
-      await screen.findByRole("link", { name: "Schedule" }, { timeout: 5000 }),
+      within(
+        await screen.findByRole("complementary", { name: "Application sidebar" }, { timeout: 5000 }),
+      ).getByRole("link", { name: "Schedule" }),
     );
     fireEvent.click(
       await screen.findByRole(
@@ -5362,8 +5369,8 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Workspace" }),
     ).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Employees" })).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+    expect(sidebar().getByRole("link", { name: "Employees" })).toBeTruthy();
+    expect(sidebar().queryByRole("link", { name: "Settings" })).toBeNull();
   });
 
   it("redirects employee-only users away from the manager Schedule route", async () => {
