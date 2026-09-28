@@ -1,7 +1,7 @@
 # İlerleme planı — hesaplı (sürüm 5, 2026-09-28)
 
 Hazırlayan: `nf-planlama` (`local_c67b8d60-…`). Koordinatör: "Koordinatör — devir 2026-09-28", `local_41428574-b1a9-44cb-9a7c-cd34afc9456a`.
-Ölçüm: `origin/main` `1d349d2a`, 2026-09-28; SEC-003 dalı `task/sec-003` (`34fc2075`, `3eeb4c11`) ve `task/sec-003-c` (`d0751603`, `0d03389e`); koordinatör girdisi aynı gün. Hesap betiği: satırlar, bağımlılıklar ve puanlar bu dosyadaki tablolardır; sayıları elle değil betikle ürettim, tablo değişince aynı yolla yeniden hesaplanır.
+Ölçüm: `origin/main` `1d349d2a`, 2026-09-28; SEC-003 commit'leri `34fc2075`, `3eeb4c11` (`nf-db`), `6887fbbc` (`nf-backend`), `d0751603`, `0d03389e`, `74e2d363` (`nf-test`) — hepsi `git cat-file` ile doğrulandı; durumlar koordinatörün 2026-09-28 güncellemesiyle. Hesap betiği: satırlar, bağımlılıklar ve puanlar bu dosyadaki tablolardır; sayıları elle değil betikle ürettim, tablo değişince aynı yolla yeniden hesaplanır.
 
 **Güncelleme kuralı (3 satır):**
 1. Tablo her main birleşmesinde, her karar cevabında ve işi durduran her bulguda yeniden hesaplanır (durum, yüzde, sıra, karar ağırlığı).
@@ -22,7 +22,7 @@ Durum: bitti (main'de) · incelemede (commit var, ONAY ya da birleştirme bekliy
 ## 1. Hedefler ve ilerleme (biten puan ÷ toplam puan)
 | Hedef | Biten / toplam | Yüzde | Not |
 |---|---|---|---|
-| **SEC-003 hesap güvenliği paketi** (aktif) | 1 / 26 | **%3,8** (2026-09-28, `1d349d2a`) | Main'e paket olarak girer; dallarda ayrıca incelemede 3, sürüyor 10 puan. |
+| **SEC-003 hesap güvenliği paketi** (aktif) | 1 / 26 | **%3,8** (2026-09-28, `1d349d2a`) | Main'e paket olarak girer; dallarda ayrıca incelemede 8 (S.1a, S.1b, S.C), sürüyor 10 puan (S.A, S.B). |
 | **FOUNDATION-B — Aşama 6–7** (sonraki) | 77 / 230 | **%33,5** (2026-09-28, `1d349d2a`) | Bitenlerin 61 puanı FB-6.1'in 14 adımının geriye dönük puanı (tahmin). Açık dilimlerden FB-6.4–6.8 ve Aşama 7 görev dosyasız (tahmin, 44 puan). |
 | FOUNDATION-B — program geneli (bilgi) | 155 / 308 | %50,3 (tahmin) | Aşama 1–5 bitti; plandaki süre orta noktaları × 8 = 78 puan sayıldı. Eski "~%58" formülünün yerine geçer; ikisi farklı ölçü, karşılaştırılmaz. |
 
@@ -32,12 +32,12 @@ Kaynak: `tasks/SEC-003.md`, koordinatör girdisi 2026-09-28, dallar yukarıda.
 |---|---|---|---|---|---|---|---|
 | S.0 | Görev dosyası ve kararlar | — | — | 1 | bitti | `nf-planlama` | `tasks/SEC-003.md` |
 | S.1a | Eski parolasız hesap silme yolu veritabanından kalkar; davet kabulü onaylı e-posta ister | — | — | 3 | incelemede (`34fc2075`, `nf-guvenlik` ONAY) | `nf-db` | `supabase/migrations`, `supabase/tests` |
-| S.1b | Onaysız hesap davet listesini görmez, reddedemez (`3eeb4c11`); yerel `enable_confirmations`; D-1 | S.1a | — | 2 | sürüyor | `nf-db` | `supabase/migrations`, `supabase/config.toml` |
-| S.A | Account → Workspaces'te kapatma ve sahiplik devri parolayı sunucuda sorar (#3); eski silme rotaları kalkar (#4) | — | — | 5 | sürüyor | `nf-backend` | `apps/api/src/account/workspace-account-*`, `packages/shared`, `apps/web/src/lib/supabase.ts`, `WorkspacesPage.tsx` |
-| S.B | Davet, silinen hesabın kilidini açmaz (#1); Account → Security'de parola değişimi mevcut parolayı ister (#2); O-1; davet kabulünün API tarafı ve görünen ad (#9) | S.1a | — | 5 | hazır (işçi oturumu kartı bekliyor) | işçi oturumu (`nf-backend` kuralları) | `apps/api/src/employees/invitation-service.ts`, `employee-create-service.ts`, `apps/api/src/account/account-security-*`, `apps/api/src/app.ts` |
-| S.C | Uçtan uca: parola değişimi ve devir parolayla; yeni owner yerel posta kutusundan e-postasını onaylar | — | — | 3 | sürüyor (`d0751603`, `0d03389e`; `ci.yml` satırı açık) | `nf-test` | `e2e/**`, `.github/workflows/ci.yml` |
+| S.1b | Onaysız hesap davet listesini görmez, reddedemez (`3eeb4c11`); yerel `enable_confirmations`; D-1 | S.1a | — | 2 | incelemede (`nf-guvenlik` ONAY @`3eeb4c11`: O-2, D-1, config; koşul: `config.toml` yalnız S.C ve S.D ile aynı birleştirmede main'e) | `nf-db` | `supabase/migrations`, `supabase/config.toml` |
+| S.A | Account → Workspaces'te kapatma ve sahiplik devri parolayı sunucuda sorar (#3; planlı kapatma "Close at end of period" penceresine var olan parola alanı gelir, iki ölü `reauthentication_required` dalı silinir; ortak yardımcı `apps/api/src/auth/verify-password.ts`, hata anahtarı `session.password_incorrect` S.B ile ortak); eski silme rotaları kalkar (#4, `6887fbbc`) | — | — | 5 | sürüyor (#4 commit'li) | `nf-backend` | `apps/api/src/account/workspace-account-*`, `apps/api/src/auth/verify-password.ts`, `packages/shared`, `apps/web/src/lib/supabase.ts`, `WorkspacesPage.tsx` |
+| S.B | Davet, silinen hesabın kilidini açmaz (#1); Account → Security'de parola değişimi mevcut parolayı ister (#2; hata anahtarı `session.password_incorrect`, S.A ile ortak); O-1 ve testi; davet kabulünün API tarafı ve görünen ad (#9) | S.1a | — | 5 | sürüyor (işçi oturumu "SEC-003-B davet kilidi ve parola kontrolü") | işçi oturumu (`nf-backend` kuralları) | `apps/api/src/employees/invitation-service.ts`, `employee-create-service.ts`, `apps/api/src/account/account-security-*`, `apps/api/src/app.ts` |
+| S.C | Uçtan uca: parola değişimi ve devir parolayla; yeni owner yerel posta kutusundan e-postasını onaylar | — | — | 3 | incelemede (`d0751603`, `0d03389e`, `74e2d363` `ci.yml` tek satır; iki kırmızı doğru nedenle, S.A/S.B sonrası yeşil koşu bekliyor) | `nf-test` | `e2e/**`, `.github/workflows/ci.yml` |
 | S.D | Ekran metinleri: "e-postanı doğrula" ve "parola yanlış" | S.A, S.B | — | 2 | bekliyor | `nf-arayuz` | giriş/kayıt ekranı, Account → Security |
-| S.E | Birleştirme: tam kapı, `nf-guvenlik`, ultrareview önerisi, yerel auth yeniden başlatma | S.1b, S.A, S.B, S.C, S.D | — | 3 | bekliyor | koordinatör | — |
+| S.E | Birleştirme: tam kapı, `nf-guvenlik`, `nf-gorsel-qa` (Account → Workspaces'te ekran değişti), ultrareview önerisi, yerel auth yeniden başlatma | S.1b, S.A, S.B, S.C, S.D | — | 3 | bekliyor | koordinatör | — |
 | S.F | Hosted: BL-265 (+ SEC-003 migration'ı), "Confirm email" açılır | S.E | K22 | 2 | bekliyor | koordinatör + kullanıcı | hosted |
 
 ## 3. İş tablosu — FOUNDATION-B Aşama 6–7 (aktif hedef bitince)
@@ -93,25 +93,25 @@ Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-21
 Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca gelen bütün satırlar) → (ii) doğrudan açtığı satır sayısı → (iii) küçük puan.
 | Sıra | ID | Hedef | (i) arkasında (satır) | (ii) doğrudan açtığı | (iii) puan |
 |---|---|---|---|---|---|
-| **1** | **S.B** | SEC-003 (aktif) | 7 (3) | 2 | 5 |
+| **1** | **S.D** (bekliyor; aktif hedefte başlayacak ilk satır) | SEC-003 (aktif) | 5 (2) | 1 | 2 |
 | 2 | BL-218.3 | FOUNDATION-B | 120 (29) | 4 | 5 |
 | 3 | FB-6.2.0 | FOUNDATION-B | 114 (27) | 1 | 1 |
 | — | FB-6.1b.1 | FOUNDATION-B | 11 (2) | 1 | 3 |
 | — | FB-6.1b.2 | FOUNDATION-B | 11 (2) | 1 | 3 |
-**Gerekçe:** Tek hat kuralı gereği önce aktif hedefin hazır satırı gelir: **S.B**, SEC-003'ün tek hazır parçası ve birleştirmeyi (S.E) doğrudan tutuyor. SEC-003 bitince FOUNDATION-B'de **BL-218.3** en uzun zinciri açıyor: FB-6.2.4 onu beklediği için bütün Çalışanlar, İzin, Ayarlar dilimleri ve Aşama 7 (120 puan) arkasında. **FB-6.2.0** puanı neredeyse aynı zinciri (114) tek puanlık bir ölçümle başlatıyor. Ölçüm tek başına bir `nf-planlama` işi olduğu için BL-218.3 ile çakışmıyor. Kullanıcı kararıyla BL-199 bu ikisinin önüne girer (§7).
+**Gerekçe:** Tek hat kuralı gereği önce aktif hedef gelir. **SEC-003'te "hazır" satır kalmadı** (2026-09-28): S.A ve S.B sürüyor, S.1a, S.1b ve S.C incelemede. Aktif hedefte başlayacak ilk satır **S.D** (ekran metinleri); S.A ve S.B bitince hazır olur, arkasında S.E ve S.F var (5 puan). SEC-003 bitince FOUNDATION-B'de **BL-218.3** en uzun zinciri açıyor: FB-6.2.4 onu beklediği için bütün Çalışanlar, İzin, Ayarlar dilimleri ve Aşama 7 (120 puan) arkasında. **FB-6.2.0** puanı neredeyse aynı zinciri (114) tek puanlık bir ölçümle başlatıyor. Ölçüm tek başına bir `nf-planlama` işi olduğu için BL-218.3 ile çakışmıyor. Kullanıcı kararıyla BL-199 bu ikisinin önüne girer (§7).
 
 ## 5. Kararlar (açık; sorma sırası = durdurduğu puan)
 | Sıra | K | Soru | Durdurduğu satırlar | Toplam puan |
 |---|---|---|---|---|
 | 1 | K10 | FB-6.3 S4 — onaylı iznin iptalini kim onaylar | FB-6.3.1 ve ardındaki 10 satır | 47 |
 | 2 | K7 | FB-6.1 ekran turu günü | FB-6.1.0, .13, .14, A7 | 15 |
-| 3 | K22 | Hosted panel: "Require current password", "Confirm email" açılır | S.F | 2 (ama SEC-003'ün bitişini tutuyor) |
+| 3 | K22 | Hosted panel: "Require current password", "Confirm email" açılır — **bugün soruluyor (koordinatör, 2026-09-28)** | S.F | 2 (ama SEC-003'ün bitişini tutuyor) |
 | — | K19, K20, K21, K23, K15 | BL-238 saat dilimi · BL-255 · BL-254 · denetim sırasının yeri · faturalama | aktif hedeflerde satır yok | 0 |
 **Not:** K10'un satırları FB-6.2 bittikten sonra başlar. Ağırlık en yüksek olsa da cevap FB-6.3.1'e kadar gerekmez. SEC-003 sürerken kullanıcıya en erken sorulacak olan K22'dir, çünkü aktif hedefin bitişini tutuyor.
 
 ## 6. Paralel yerleşim (aynı anda en çok 2 ağır iş)
 - **Şu an (SEC-003 içinde):** S.1b (`nf-db`, test sırasında `db.lock`) ve S.C (`nf-test`, e2e `db.lock`) ağır; ikisi aynı anda `db.lock` tutamaz (`scripts/lock.mjs` sıraya koyar). S.A ve S.B API ve web işi, ağır değil (tam kapı birleştirmede).
-- **Aktif hedefte hazır tek satır S.B; sürmekte olan S.A ile dosya çakışması:** ana dosyaları ayrık (S.A `workspace-account-*`, S.B `invitation-service`, `employee-create-service`, `account-security-*`, `app.ts`). **Olası ortak dosyalar:** `packages/shared/src/index.ts` (ikisi de istek şeması değiştirebilir) ve `apps/web/src/lib/supabase.ts` (S.A ölü fonksiyonları siler; S.B web çağrısı eklerse). Dallar okunmadı, bu yüzden **ölçülmedi**. Birleştirmede sıra: önce S.A, sonra S.B rebase.
+- **Aynı anda süren S.A ve S.B'nin dosya çakışması:** ana dosyaları ayrık (S.A `workspace-account-*`, `auth/verify-password.ts`; S.B `invitation-service`, `employee-create-service`, `account-security-*`, `app.ts`). **Bilinen ortak nokta:** `apps/api/src/account/account-security-service.ts` — S.B #2 için değiştiriyor; S.A birleştirmeden sonra onu ortak `verify-password.ts`'e bağlayacak (koordinatör: A yapar). Sıra: önce S.B'nin #2'si, sonra S.A'nın bağlaması. Ortak hata anahtarı `session.password_incorrect` iki dalda aynı yazılmalı. **Olası ortak dosyalar:** `packages/shared/src/index.ts` ve `apps/web/src/lib/supabase.ts`; dallar okunmadı, **ölçülmedi**.
 - **SEC-003 bitince:** BL-218.3 (`nf-backend`) ile FB-6.2.0 (`nf-planlama` + bir `nf-test` koşusu) dosya paylaşmıyor, ikisi aynı anda gidebilir. FB-6.1b.1 ve FB-6.2.2–6.2.6 aynı `supabase/migrations` ailesine yazar: aynı anda tek `nf-db` adımı.
 
 ## 7. Hedef dışı (tek satırlık özet)
