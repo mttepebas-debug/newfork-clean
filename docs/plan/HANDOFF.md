@@ -57,6 +57,7 @@ Son CI: bee7713d ve 89fdf494 koşuları altyapı yüzünden iptal (WSL çöktü,
 4. BL-230 yayından kaldırılan haftada onaylı takas — önerilen (a) en son yayına bak.
 5. BL-221 belgesi eksik owner'ın izni onaysız mı — önerilen (a) evet.
 6. BL-192 telefon yönetim menüsü A/B/C (görüntü gönderildi) — önerilen A alt çubuk.
+7. BL-238 çok saat dilimli workspace'te hafta ne zaman "geçmiş" olur — (a) önerilen: en batıdaki lokasyonda biter; (b) lokasyon başına; (c) workspace'e ana saat dilimi ayarı. nf-db ölçümü tamam (4 fonksiyon + 2 yardımcı, tek migration; BL-218 main'e girdikten sonra), cevap bekliyor.
 Henüz sorulmadı: FB-6.1.14 hosted toplu gönderim son onayı (K5), K15 Stripe S1–S7, K14 Settings
 S1–S4, K16 FB-6.1b S1–S3, K10 FB-6.3 S4, K11 BL-214/216, BL-235 ikon rengi. Liste `ILERLEME-PLANI.md` §2.
 
