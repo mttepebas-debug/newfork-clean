@@ -97,7 +97,7 @@ Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca g
 | 2 | FB-6.2.0 | FOUNDATION-B (aktif) | 114 (27) | 1 | 1 |
 | — | FB-6.1b.1 | FOUNDATION-B | 11 (2) | 1 | 3 |
 | — | FB-6.1b.2 | FOUNDATION-B | 11 (2) | 1 | 3 |
-**Gerekçe (yeniden hesap 2026-09-28, SEC-003 bitti):** Aktif hedef artık FOUNDATION-B. Hesapta ilk sırada **BL-218.3**: FB-6.2.4 onu beklediği için Çalışanlar, İzin, Ayarlar dilimleri ve Aşama 7 (29 satır, 120 puan) arkasında; doğrudan 4 satırı açıyor. İkinci **FB-6.2.0**: neredeyse aynı zinciri (114) tek puanlık bir ölçümle başlatıyor, BL-218.3 ile dosya paylaşmıyor. FB-6.1b.1 ve .2'nin arkasında yalnız 11 puan var. **Ama sıradaki iş BL-199:** kullanıcı 2026-09-28'de "SEC-003'ten sonra BL-199" dedi (§7). BL-199 hedef dışı ve yüzdeye girmez; hesap onu sıralamaz, kullanıcı kararı öne alır. BL-199 bitince sıra hesaptan gelir: BL-218.3, sonra FB-6.2.0.
+**Gerekçe (yeniden hesap 2026-09-28, SEC-003 bitti):** Aktif hedef artık FOUNDATION-B. Hesapta ilk sırada **BL-218.3**: FB-6.2.4 onu beklediği için Çalışanlar, İzin, Ayarlar dilimleri ve Aşama 7 (29 satır, 120 puan) arkasında; doğrudan 4 satırı açıyor. İkinci **FB-6.2.0**: neredeyse aynı zinciri (114) tek puanlık bir ölçümle başlatıyor, BL-218.3 ile dosya paylaşmıyor. FB-6.1b.1 ve .2'nin arkasında yalnız 11 puan var. **Durum 2026-09-28: kullanıcı bekletti** ("şimdilik dur"; yeni iş açılmıyor, BL-199 ölçümü de beklemede). Kullanıcı devam deyince: **sıradaki iş BL-199:** kullanıcı 2026-09-28'de "SEC-003'ten sonra BL-199" dedi (§7). BL-199 hedef dışı ve yüzdeye girmez; hesap onu sıralamaz, kullanıcı kararı öne alır. BL-199 bitince sıra hesaptan gelir: BL-218.3, sonra FB-6.2.0.
 
 ## 5. Kararlar (açık; sorma sırası = durdurduğu puan)
 | Sıra | K | Soru | Durdurduğu satırlar | Toplam puan |
@@ -114,7 +114,7 @@ Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca g
 - SEC-003'ün paralel yerleşim notları (S.A/S.B ortak dosyası) iş kapandığı için düştü.
 
 ## 7. Hedef dışı (tek satırlık özet)
-- **BL-199** (müdür Schedule'da vardiyaya not yazamıyor; 5 puan, tahmin): kullanıcı kararıyla SEC-003'ten hemen sonra, **şimdi sırada** (2026-09-28). Hedeflerin dışında; yüzdelere girmez.
+- **BL-199** (müdür Schedule'da vardiyaya not yazamıyor; 5 puan, tahmin): kullanıcı kararıyla SEC-003'ten hemen sonra sıradaydı; **kullanıcı bekletti (2026-09-28): "şimdilik dur" — yeni iş açılmıyor, BL-199'un ölçümü de beklemede.** Hedeflerin dışında; yüzdelere girmez.
 - **MVP'nin kalan fazları:** F0 (OPS-010, SEC-001), FJ (~%80), F1 (~%55), F2 (~%20), F3 (~%20), F4 (~%5, K15), F5 (~%30), F6 (başlamadı). Hepsi 2026-09-26 tahmini, ölçülmedi. FOUNDATION-B bitince sıra `ROADMAP.md`'den gelir.
 - **Kod denetimi (BL-266..282):** SEC-003 dışındakiler backlog'da. Yerleri K23 ile kullanıcıya soruluyor.
 - **Temizlik (koordinatör):** 43 birleşmemiş görünen dal, 34 worktree (sürüm 3 ölçümü). Arşiv adayı oturumlar: eski `nf-db` "BL-198" ve "Settings okumaları", "Code review", "ultrareview: bl252", "bl252-f6".
