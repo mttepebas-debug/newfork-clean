@@ -27,7 +27,7 @@ Türkçe; karmaşık kararlar başlık başlık, örnekli, chat'te sorulur (kull
    Sonra ve BL-217
    (`bl217-rebase-on-bl198` @ed158ef9, nf-guvenlik ONAY @c794f296 içeriği; rebase'li hali yeniden bakılmalı).
 
-4. BL-237 `bl237-date-tests` (nf-test, 7 commit, 5 pgTAP dosyası tests.world()'e; nf-guvenlik incelemesinde).
+4. BL-237 `bl237-date-tests` @e1a05ae2 ONAY (nf-test, 5 pgTAP dosyası tests.world()'e; Düşük 1: taslak arşivi doğrudan update, not).
    BL-234'ten SONRA birleştir (ikisi de publish_week/taslak adlarıyla ilgili).
 
 ## 1. Bugün (09-27) main'e girenler
