@@ -13,13 +13,15 @@ vi.mock("../lib/supabase", () => ({
 
 afterEach(() => vi.unstubAllGlobals());
 
+// Part of the owner's answer from read_employee_references_service on the "r"
+// world of supabase/tests/employee_references_ask_the_core.test.sql (rolled back).
 const answer = {
+  jobs: [{ id: "4d10b47f-58a8-401d-a4bb-92fec24a1819", name: "Old", archived_at: "2026-09-28T05:03:02.777745+00:00" }],
   locations: [
-    { id: "10000000-0000-4000-8000-000000000001", name: "Kadikoy", archived_at: null, timezone: "America/New_York" },
+    { id: "01793040-e611-47d7-8b30-e04663faac46", name: "Kadikoy", timezone: "Europe/Istanbul", archived_at: null },
   ],
-  jobs: [{ id: "33000000-0000-4000-8000-000000000001", name: "Server", archived_at: "2026-09-01T10:00:00+00:00" }],
   invite_roles: [
-    { id: "44000000-0000-4000-8000-000000000001", name: "Employee", system_key: "employee", access_class: "employee" },
+    { id: "1cf1ccb7-a238-4190-bb3a-41401f0f2f1d", name: "lead", system_key: null, access_class: "manager" },
   ],
 };
 
@@ -35,9 +37,9 @@ describe("Employees reference data (BL-231)", () => {
   it("reads the drawer's pick lists through the API, not the tables", async () => {
     const fetchMock = respond(200, answer);
     await expect(loadEmployeeReferenceData(workspaceId)).resolves.toEqual({
-      locations: [{ id: answer.locations[0]!.id, name: "Kadikoy", archived: false, timezone: "America/New_York" }],
-      jobs: [{ id: answer.jobs[0]!.id, name: "Server", archived: true }],
-      inviteRoles: [{ id: answer.invite_roles[0]!.id, name: "Employee", systemKey: "employee", accessClass: "employee" }],
+      locations: [{ id: answer.locations[0]!.id, name: "Kadikoy", archived: false, timezone: "Europe/Istanbul" }],
+      jobs: [{ id: answer.jobs[0]!.id, name: "Old", archived: true }],
+      inviteRoles: [{ id: answer.invite_roles[0]!.id, name: "lead", systemKey: null, accessClass: "manager" }],
     });
     expect(fetchMock.mock.calls[0]![0]).toBe(`http://api.test/v1/workspaces/${workspaceId}/employees/reference-data`);
   });

@@ -29,6 +29,7 @@ export const authzActionKeys = [
   "employee.list",
   "employee.make_admin",
   "employee.read",
+  "employee.references.read",
   "employee.remove_access",
   "employee.request_preferred_name",
   "employee.save",
@@ -111,6 +112,7 @@ export const targetedAuthzActions = {
   "employee.list": { person: true, permission: "employees.read" },
   "employee.make_admin": { person: true, permission: null, ownerOnly: true },
   "employee.read": { person: true, permission: "employees.read" },
+  "employee.references.read": { permission: "employees.read" },
   "employee.remove_access": { person: true, permission: "employees.manage" },
   "employee.save": { person: true, permission: "employees.manage" },
   "employee.terminate": { person: true, permission: "employees.archive" },
@@ -301,7 +303,9 @@ export function expected<A extends TargetedAuthzAction>(
       return high;
 
     case "settings.locations.read":
-      // Owner and admins every location, a manager where they work.
+    case "employee.references.read":
+      // Owner and admins every location, a manager where they work; the
+      // Employees drawer's pickers the same (BL-231).
       return atPlace();
 
     case "settings.jobs.read":

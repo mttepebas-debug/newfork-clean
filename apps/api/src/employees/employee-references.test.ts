@@ -16,14 +16,32 @@ const context = {
   permissions: [],
   actions: [],
 } as unknown as ActiveWorkspaceContext;
+// The owner's answer, taken from read_employee_references_service on the
+// "r" world of supabase/tests/employee_references_ask_the_core.test.sql
+// (rolled back): an archived location and job, a custom role without system_key.
 const answer = {
+  jobs: [
+    { id: "88186637-6539-4ddf-8a2b-a10b641afcff", name: "Cook", archived_at: null },
+    { id: "4d10b47f-58a8-401d-a4bb-92fec24a1819", name: "Old", archived_at: "2026-09-28T05:03:02.777745+00:00" },
+    { id: "c1f5b9ca-76a2-4230-b4bd-b53998ffd380", name: "Server", archived_at: null },
+  ],
   locations: [
-    { id: "10000000-0000-4000-8000-000000000001", name: "Kadikoy", archived_at: null, timezone: "America/New_York" },
+    { id: "102dbed5-c14c-4b58-9ed0-c943cad3c9f5", name: "Arnavutkoy", timezone: "Europe/Istanbul", archived_at: "2026-09-28T05:03:02.777745+00:00" },
+    { id: "7bf57f91-6d31-4085-ab65-1a0341fe0933", name: "Besiktas", timezone: "Europe/Istanbul", archived_at: null },
+    { id: "01793040-e611-47d7-8b30-e04663faac46", name: "Kadikoy", timezone: "Europe/Istanbul", archived_at: null },
   ],
-  jobs: [{ id: "33000000-0000-4000-8000-000000000001", name: "Server", archived_at: "2026-09-01T10:00:00+00:00" }],
   invite_roles: [
-    { id: "44000000-0000-4000-8000-000000000001", name: "Employee", system_key: "employee", access_class: "employee" },
+    { id: "0e49ab84-f0ae-4f4a-8213-dfeb62381dd3", name: "Admin", system_key: "admin", access_class: "admin" },
+    { id: "39627693-613f-4a88-aeb5-175e3582cfe9", name: "Manager", system_key: "manager", access_class: "manager" },
+    { id: "8c3c39d9-6695-448a-bff6-b91ef8f7cccf", name: "Employee", system_key: "employee", access_class: "employee" },
+    { id: "1cf1ccb7-a238-4190-bb3a-41401f0f2f1d", name: "lead", system_key: null, access_class: "manager" },
   ],
+};
+// A manager without employee_access.manage: their own location, no roles.
+const managerAnswer = {
+  jobs: answer.jobs,
+  locations: [answer.locations[2]!],
+  invite_roles: [],
 };
 
 function app(service: EmployeeDirectoryService, resolved: ActiveWorkspaceContext | null = context) {
@@ -90,6 +108,8 @@ describe("Employees reference data service (BL-231)", () => {
     const rpc = vi.fn(async () => ({ data: answer, error: null }));
     const service = createEmployeeDirectoryServiceWithClient({ rpc });
     expect(await service.references({ actorUserId: userId, workspaceId })).toEqual(answer);
+    rpc.mockResolvedValueOnce({ data: managerAnswer, error: null });
+    expect(await service.references({ actorUserId: userId, workspaceId })).toEqual(managerAnswer);
     expect(rpc).toHaveBeenCalledWith("read_employee_references_service", {
       actor_user_id: userId,
       target_workspace_id: workspaceId,
