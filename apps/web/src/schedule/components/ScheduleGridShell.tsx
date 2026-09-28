@@ -14,6 +14,7 @@ import {
   calculateScheduleGridFillerHeight,
   createScheduleGridTemplateColumns,
   scheduleGridEmployeeColumnWidth,
+  scheduleGridFitDayWidth,
   scheduleGridFitsVisibleDays,
   scheduleGridTotalColumnWidth,
   scheduleGridHorizontalNavHeight,
@@ -25,6 +26,41 @@ const horizontalNavMinThumbWidthPx = 34;
 const horizontalNavFallbackTrackWidthPx = 240;
 const dragAutoscrollEdgePx = 56;
 const dragAutoscrollMaxStepPx = 24;
+
+let titleCanvas: CanvasRenderingContext2D | null | undefined;
+
+// Reads each card on the grid: its title's longest word (a line may break
+// after a space or a hyphen) and the room its day cell leaves around the
+// title. 0 when nothing can be measured (no cards, no canvas in a test DOM).
+function measureFitDayWidth(grid: HTMLElement): number {
+  if (titleCanvas === undefined) {
+    titleCanvas = document.createElement("canvas").getContext("2d");
+  }
+  const canvas = titleCanvas;
+  if (!canvas) return 0;
+  const cards: { longestWord: number; chrome: number }[] = [];
+  grid
+    .querySelectorAll<HTMLElement>(".schedule-shift-badge strong")
+    .forEach((title) => {
+      let cell: HTMLElement | null = title;
+      while (cell && cell.parentElement !== grid) cell = cell.parentElement;
+      const text = title.textContent?.trim();
+      if (!cell || !text) return;
+      canvas.font = getComputedStyle(title).font;
+      const longestWord = Math.max(
+        ...text
+          .split(/\s+|(?<=-)/)
+          .map((word) => canvas.measureText(word).width),
+      );
+      cards.push({
+        longestWord,
+        chrome:
+          cell.getBoundingClientRect().width -
+          title.getBoundingClientRect().width,
+      });
+    });
+  return cards.length ? scheduleGridFitDayWidth(cards) : 0;
+}
 
 export function ScheduleGridShell({
   children,
@@ -56,6 +92,7 @@ export function ScheduleGridShell({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [fillerHeightPx, setFillerHeightPx] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(0);
+  const [fitDayWidth, setFitDayWidth] = useState(0);
   const effectiveDayColumnMinWidth = fitWeeklyLocations
     ? Math.max(
         dayColumnMinWidth,
@@ -69,7 +106,12 @@ export function ScheduleGridShell({
   // tablet, a narrow window) scrolls instead (BL-205).
   const fitsColumns =
     fitVisibleColumns &&
-    scheduleGridFitsVisibleDays({ width: viewportWidth, columns, showTotalHours });
+    scheduleGridFitsVisibleDays({
+      width: viewportWidth,
+      columns,
+      showTotalHours,
+      dayWidth: fitDayWidth || undefined,
+    });
   const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
   const totalBottomOffsetPx = hasHorizontalOverflow
     ? scheduleGridHorizontalNavHeight
@@ -79,6 +121,10 @@ export function ScheduleGridShell({
     const scroll = scrollRef.current;
     if (!scroll) return;
     setViewportWidth(scroll.clientWidth);
+    if (fitVisibleColumns && gridRef.current) {
+      const next = measureFitDayWidth(gridRef.current);
+      setFitDayWidth((current) => (current === next ? current : next));
+    }
 
     const filler = scroll.querySelector<HTMLElement>(
       "[data-schedule-filler-height-px='true']",
@@ -115,7 +161,7 @@ export function ScheduleGridShell({
     setFillerHeightPx((current) =>
       current === nextHeight ? current : nextHeight,
     );
-  }, [totalBottomOffsetPx]);
+  }, [fitVisibleColumns, gridRef, totalBottomOffsetPx]);
 
   useLayoutEffect(() => {
     const scroll = scrollRef.current;

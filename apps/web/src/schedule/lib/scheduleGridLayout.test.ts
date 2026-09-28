@@ -11,6 +11,7 @@ import {
   createScheduleGridDays,
   createScheduleGridLocationGroups,
   createScheduleGridTemplateColumns,
+  scheduleGridFitDayWidth,
   scheduleGridFitsVisibleDays,
   resolveScheduleInteractionLocationId,
 } from "./scheduleGridLayout";
@@ -215,6 +216,26 @@ describe("scheduleGridLayout", () => {
     ).toBe(false);
     // Unmeasured keeps the fitted layout.
     expect(scheduleGridFitsVisibleDays({ ...week, width: 0 })).toBe(true);
+  });
+
+  it("sizes a fitted day by the widest card's longest word and its chrome", () => {
+    // No cards: the floor.
+    expect(scheduleGridFitDayWidth([])).toBe(88);
+    // "Dinner-Server" beside the availability flag: "Dinner-" ~46px of text,
+    // ~64px taken by padding and the flag.
+    const flagged = { longestWord: 45.4, chrome: 64.6 };
+    expect(scheduleGridFitDayWidth([{ longestWord: 40, chrome: 20 }, flagged])).toBe(110);
+
+    const week = { columns: 7, dayWidth: 110 };
+    // 1280 window, box 975: fits without totals (200 + 7 x 110 = 970)...
+    expect(
+      scheduleGridFitsVisibleDays({ ...week, showTotalHours: false, width: 975 }),
+    ).toBe(true);
+    // ...but not with the 120px totals column (1090), where each day would get
+    // 93.6px and the flagged title broke as "Dinn / er- / Serv / er".
+    expect(
+      scheduleGridFitsVisibleDays({ ...week, showTotalHours: true, width: 975 }),
+    ).toBe(false);
   });
 
   it("counts visible body and filler rows", () => {

@@ -9,8 +9,7 @@ import { addDays } from "./scheduleDateTime";
 export const scheduleGridEmployeeColumnWidth = 200;
 export const scheduleGridTotalColumnWidth = 120;
 export const scheduleGridMinDayColumnWidth = 112;
-// Narrowest day a fitted week may give a shift card before it breaks the
-// title letter by letter; below it the week scrolls like the separate view.
+// Floor for a fitted week's day when there are no cards to measure.
 export const scheduleGridFitMinDayColumnWidth = 88;
 export const scheduleGridTotalRowHeight = 40;
 export const scheduleGridHorizontalNavHeight = 17;
@@ -122,23 +121,42 @@ export function countScheduleGridTotalColumns({
 }
 
 /**
- * Whether a fitted week still gives every day a readable width. An unmeasured
- * box (width 0, first render or a test DOM) keeps the fitted layout.
+ * The narrowest day that shows every card title without splitting a word:
+ * each card's longest word plus what the card and its cell take around the
+ * title (padding, markers such as the availability flag). Neither depends on
+ * the column width, so the answer is the same fitted or scrolling.
+ */
+export function scheduleGridFitDayWidth(
+  cards: readonly { readonly longestWord: number; readonly chrome: number }[],
+): number {
+  return cards.reduce(
+    (widest, card) => Math.max(widest, Math.ceil(card.longestWord + card.chrome)),
+    scheduleGridFitMinDayColumnWidth,
+  );
+}
+
+/**
+ * Whether a fitted week still gives every day that width. In a fitted week the
+ * employee and totals columns grow to their full 200px / 120px before the days
+ * share the rest, so those are the widths to subtract. An unmeasured box
+ * (width 0, first render or a test DOM) keeps the fitted layout.
  */
 export function scheduleGridFitsVisibleDays({
   width,
   columns,
   showTotalHours,
+  dayWidth = scheduleGridFitMinDayColumnWidth,
 }: {
   readonly width: number;
   readonly columns: number;
   readonly showTotalHours: boolean;
+  readonly dayWidth?: number;
 }): boolean {
   if (width <= 0) return true;
   const fixed =
     scheduleGridEmployeeColumnWidth +
     (showTotalHours ? scheduleGridTotalColumnWidth : 0);
-  return width >= fixed + columns * scheduleGridFitMinDayColumnWidth;
+  return width >= fixed + columns * dayWidth;
 }
 
 export function createScheduleGridTemplateColumns({
