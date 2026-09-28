@@ -70,8 +70,9 @@ K11 BL-214/216, BL-235 rozet rengi (koordinatör), BL-078, BL-246 (devirde belge
 - BL-252: çalışan kaydı olmayana devir reddedilmez; kabulde kayıt otomatik açılır ve Owner işine yerleşir → BL-246 ile tek `nf-db` işi.
 Kayıt: BACKLOG, REUSE "Ürün kuralları" (Rütbe altı + "Arşivli iş ve vardiya tipi adı"), ILERLEME-PLANI K8/K11.
 Açık (kullanıcı): K19 BL-238 saat dilimi ve K10 FB-6.3 S4 (ikisi de uzun konuşulacak), K15 Stripe S1–S7 (F4), K7 FB-6.1 `.0` ekran turu + `.13`.
-Açık (koordinatör teyidi, iş başlamadan): BL-252 — yeni owner'ın arşivlenmiş çalışan kaydı varsa yeni kayıt mı açılır, arşivden mi döner;
-BL-254 — karar Schedule'daki çakışma penceresini ve başka lokasyonun soluk (ghost) vardiyalarını da kapsıyor mu. Liste `ILERLEME-PLANI.md` §2.
+Cevaplandı 2026-09-28 (üçüncü tur): BL-252 — arşivlenmiş kaydı olan yeni owner'ın kaydı arşivden geri açılır, yeni kayıt açılmaz;
+BL-254 — kural her yerde, çakışma penceresi ve ghost vardiyalar dahil. İkisi de görsel tutarlılık paketi (`nf-arayuz`'da) bittikten
+sonra, kullanıcı onayıyla (ILERLEME Ç8). Liste `ILERLEME-PLANI.md` §2.
 
 ## 4. Hosted gönderim (FB-6.1.14) için not
 **Kapandı 2026-09-28:** gönderim yapıldı (26 migration, son sürüm `20260928030000`); ad çakışması sayımı 0, advisors'ta yeni bulgu yok. Management/Owner ad çakışması sayımı (BL-218 Düşük 3) bayat: backfill düşmedi, hosted'da 3 sistem departmanı + 3 sistem işi doğrulandı (koordinatör). Ayrıntı `tasks/FB-6.1.md` Notes.
