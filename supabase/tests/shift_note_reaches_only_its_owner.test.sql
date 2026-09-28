@@ -53,33 +53,41 @@ create function pg_temp.hub(person text) returns jsonb language sql as $$
   select pg_temp.answer(format('select public.get_employee_hub_service(%L, %L, %L, %L)',
     tests.user('sn:' || person), tests.id('sn'), tests.week(1), tests.week(1) + 6))
 $$;
+-- Deniz's Wednesday is in the answer's list, with an empty note, and his note
+-- is nowhere in the answer. The shift has to be there first: a refused or
+-- empty answer has no note in it either, and must not pass for one that hides it.
+create function pg_temp.shows_deniz_without_note(answer jsonb, list text) returns boolean language sql as $$
+  select coalesce(jsonb_path_exists(answer, format('$.%s[*] ? (@.id == $id && @.note == "")', list)::jsonpath,
+      jsonb_build_object('id', tests.id('sn:shift:deniz-wed'))), false)
+    and not 'Deniz: leaves at 3 for the doctor' = any (pg_temp.notes(answer))
+$$;
 
 -- 1. The team schedule (Employee Hub > Schedule) ------------------------------------------
 
 select ok('Ali: bring the catering list' = any (pg_temp.notes(pg_temp.board('ali'))),
   'Ali''s team schedule carries the note on his own shift');
-select ok(not 'Deniz: leaves at 3 for the doctor' = any (pg_temp.notes(pg_temp.board('ali'))),
+select ok(pg_temp.shows_deniz_without_note(pg_temp.board('ali'), 'shifts'),
   'but not the note on Deniz''s shift');
 select ok(jsonb_path_exists(pg_temp.board('ali'),
     '$.shifts[*] ? (@.employee_id == $who && @.note == "")', jsonb_build_object('who', tests.id('sn:deniz'))),
   'Deniz''s shift is still there, with an empty note');
 select ok('Open: the new oven arrives' = any (pg_temp.notes(pg_temp.board('ali'))),
   'the open shift anyone at Kadikoy may pick up keeps its note');
-select ok(not 'Deniz: leaves at 3 for the doctor' = any (pg_temp.notes(pg_temp.board('ayse'))),
+select ok(pg_temp.shows_deniz_without_note(pg_temp.board('ayse'), 'shifts'),
   'Ayse''s team schedule does not carry Deniz''s note either');
 
 -- 2. Employee Hub ----------------------------------------------------------------------
 
 select ok('Ali: bring the catering list' = any (pg_temp.notes(pg_temp.hub('ali'))),
   'Ali''s Employee Hub carries the note on his own shift');
-select ok(not 'Deniz: leaves at 3 for the doctor' = any (pg_temp.notes(pg_temp.hub('ali'))),
+select ok(pg_temp.shows_deniz_without_note(pg_temp.hub('ali'), 'team_shifts'),
   'but not the note on Deniz''s shift among the team''s shifts');
 select ok(jsonb_path_exists(pg_temp.hub('ali'),
     '$.team_shifts[*] ? (@.employee_id == $who && @.note == "")', jsonb_build_object('who', tests.id('sn:deniz'))),
   'Deniz''s shift is still there, with an empty note');
 select ok(jsonb_path_exists(pg_temp.hub('ali'), '$.open_shifts[*] ? (@.note == "Open: the new oven arrives")'),
   'the open shift keeps its note');
-select ok(not 'Deniz: leaves at 3 for the doctor' = any (pg_temp.notes(pg_temp.hub('ayse'))),
+select ok(pg_temp.shows_deniz_without_note(pg_temp.hub('ayse'), 'team_shifts'),
   'Ayse''s Employee Hub does not carry Deniz''s note either');
 
 -- 3. The Schedule: the manager reads every note, an employee reads none -----------------
