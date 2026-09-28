@@ -294,13 +294,10 @@ export default function ScheduleShiftDesignPage() {
       }
       const additions = Array.from({ length: count }, (_, index) => {
         const next = createdShiftCount + index + 1;
+        // The editor's payload as it is: a bulk add carries no note (BL-199).
         return mutationToShift(
           `10000000-0000-4000-8000-${String(next).padStart(12, "0")}`,
-          {
-            ...mutation,
-            note:
-              count > 1 ? `${mutation.note} ${index + 1}`.trim() : mutation.note,
-          },
+          mutation,
         );
       });
       return { ...current, shifts: [...current.shifts, ...additions] };
