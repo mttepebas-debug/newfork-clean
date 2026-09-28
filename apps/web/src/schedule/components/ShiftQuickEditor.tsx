@@ -2,6 +2,7 @@ import type {
   ScheduleReadModel,
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
+import { scheduleShiftSchema } from "@newfork/shared/schedule";
 import { useToast } from "@newfork/ui";
 import type { ShiftAvailabilityAssessment } from "@newfork/shared";
 import { loadShiftAvailability } from "../../availability/availability-data";
@@ -49,8 +50,8 @@ import { getLastSegment, TimeInput } from "./TimeInput";
 const clockOffFallbackStartTime = "";
 const clockOffFallbackEndTime = "";
 const softConflictOverrideNote = "Manager acknowledged schedule warning.";
-// The database and the shared schema both cap a shift note at 500 (BL-199).
-export const shiftNoteMaxLength = 500;
+// One limit, the shared schema's (the database's CHECK says the same, 500).
+export const shiftNoteMaxLength = scheduleShiftSchema.shape.note.maxLength ?? 0;
 
 interface QuickEditorSelectOption {
   readonly value: string;
@@ -440,7 +441,7 @@ export function ShiftQuickEditor({
       ...value,
       // Blank means no note: spaces alone never reach the shift.
       // A note goes on one shift only (user, 2026-09-28): none on a bulk add.
-      note: count > 1 ? "" : (value.note ?? "").trim(),
+      note: count > 1 ? "" : value.note.trim(),
       ...(checked?.warning_policy && checked.operation === "warning_requires_override"
         ? { availability_assessment_fingerprint: checked.fingerprint }
         : {}),
@@ -969,7 +970,7 @@ export function ShiftQuickEditor({
               <small id={`${noteId}-count`}>
                 {count > 1
                   ? "Notes go on one shift at a time."
-                  : formatShiftNoteRemaining(value.note ?? "")}
+                  : formatShiftNoteRemaining(value.note)}
               </small>
             </div>
             <textarea
@@ -981,7 +982,7 @@ export function ShiftQuickEditor({
               // Adding several open shifts at once takes no note; the text
               // comes back if the count returns to one.
               disabled={count > 1}
-              value={count > 1 ? "" : (value.note ?? "")}
+              value={count > 1 ? "" : value.note}
               // A field half under the sticky action bar counts as visible
               // to the browser; bring all of it into view (scroll-padding
               // keeps it clear of the header and the bar).

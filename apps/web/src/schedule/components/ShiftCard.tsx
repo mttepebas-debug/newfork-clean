@@ -116,7 +116,7 @@ export function ShiftCard({
   const showAvailabilityCorner = Boolean(availabilityWarning);
   // The manager's note (BL-199): an ink corner, the note on a mouse hover of
   // that corner, and the text as the card's description for screen readers.
-  const note = shift.note?.trim() ?? "";
+  const note = shift.note.trim();
   const noteDescriptionId = useId();
   const noteCorner = useShiftNoteCorner(note, Boolean(dragging));
   const modifierSelectionHandledRef = useRef(false);
