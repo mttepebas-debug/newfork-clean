@@ -126,7 +126,9 @@ export function registerAccountSecurityRoutes(
     if (!accessToken)
       return reply.status(401).send({ error: "Bearer token required" });
     if (!body.success)
-      return reply.status(400).send({ error: "Valid password change required" });
+      return hasCurrentPassword(request.body)
+        ? reply.status(400).send({ error: "Valid password change required" })
+        : passwordRequired(reply);
     if (!options.service) return unavailable(reply);
     try {
       await options.service.changePassword(
@@ -145,8 +147,7 @@ export function registerAccountSecurityRoutes(
     const body = currentPasswordBody.safeParse(request.body);
     if (!accessToken)
       return reply.status(401).send({ error: "Bearer token required" });
-    if (!body.success)
-      return reply.status(400).send({ error: "Current password required" });
+    if (!body.success) return passwordRequired(reply);
     if (!options.service) return unavailable(reply);
     try {
       await options.service.signOutOtherSessions(
@@ -177,8 +178,7 @@ export function registerAccountSecurityRoutes(
     const body = currentPasswordBody.safeParse(request.body);
     if (!accessToken)
       return reply.status(401).send({ error: "Bearer token required" });
-    if (!body.success)
-      return reply.status(400).send({ error: "Current password required" });
+    if (!body.success) return passwordRequired(reply);
     if (!options.service) return unavailable(reply);
     try {
       return reply.send(
@@ -221,6 +221,19 @@ export function registerAccountSecurityRoutes(
       return reply.status(202).send({ status: "accepted" });
     },
   );
+}
+
+function hasCurrentPassword(body: unknown): boolean {
+  const value = (body as { currentPassword?: unknown } | null)?.currentPassword;
+  return typeof value === "string" && value.length > 0;
+}
+
+// Same key as the workspace close/hand-over prompts, so a screen reads one.
+function passwordRequired(reply: FastifyReply) {
+  return reply.status(400).send({
+    error: "Current password required",
+    reason: "session.password_required",
+  });
 }
 
 function unavailable(reply: FastifyReply) {

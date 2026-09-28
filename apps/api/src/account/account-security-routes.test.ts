@@ -107,6 +107,30 @@ describe("account security routes", () => {
     await app.close();
   });
 
+  it.each([
+    ["/v1/account/security/password", { currentPassword: "", newPassword: "new-password", confirmPassword: "new-password" }],
+    ["/v1/account/security/sessions/sign-out-others", { currentPassword: "" }],
+    ["/v1/account/security/deletion", {}],
+  ])("answers an empty current password with 400 session.password_required (%s)", async (url, payload) => {
+    const svc = service();
+    const app = await appWith(svc);
+    const response = await app.inject({
+      method: "POST",
+      url,
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: "Current password required",
+      reason: "session.password_required",
+    });
+    expect(svc.changePassword).not.toHaveBeenCalled();
+    expect(svc.signOutOtherSessions).not.toHaveBeenCalled();
+    expect(svc.requestAccountDeletion).not.toHaveBeenCalled();
+    await app.close();
+  });
+
   it("requests deletion with current password only and ignores spoofed identity", async () => {
     const requestAccountDeletion = vi.fn(async () => ({ status: "pending" }));
     const app = await appWith(service({ requestAccountDeletion }));
