@@ -47,6 +47,9 @@ process.env.E2E_SERVICE_ROLE_KEY = requireSupabaseEnv("SERVICE_ROLE_KEY");
 // token alone must not be enough for a sensitive action, SEC-003), reads these.
 process.env.E2E_API_URL = apiUrl;
 process.env.E2E_ANON_KEY = requireSupabaseEnv("ANON_KEY");
+// Supabase's local mail catcher, where sign-up confirmations land (SEC-003).
+// Older CLIs print it as INBUCKET_URL.
+process.env.E2E_MAILPIT_URL = supabase.MAILPIT_URL ?? supabase.INBUCKET_URL ?? "";
 
 // `noUncheckedIndexedAccess` makes every lookup on a Record<string, string>
 // come back `string | undefined`; the webServer env below needs a definite

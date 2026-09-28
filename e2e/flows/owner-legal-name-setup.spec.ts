@@ -29,6 +29,29 @@ function legalNameFor(email: string): string {
   `);
 }
 
+/**
+ * The confirmation link Supabase mailed to this address, read from the local
+ * mail catcher (Mailpit). Sign-up needs a confirmed email (SEC-003).
+ */
+async function confirmationLink(email: string): Promise<string> {
+  const mailpit = process.env.E2E_MAILPIT_URL;
+  if (!mailpit) throw new Error("playwright.config.ts did not find the local mail catcher");
+  let link: string | undefined;
+  await expect
+    .poll(async () => {
+      const found = (await (
+        await fetch(`${mailpit}/api/v1/search?query=${encodeURIComponent(`to:"${email}"`)}`)
+      ).json()) as { messages: { ID: string }[] };
+      const id = found.messages[0]?.ID;
+      if (!id) return false;
+      const message = (await (await fetch(`${mailpit}/api/v1/message/${id}`)).json()) as { Text: string };
+      link = /https?:\/\/\S+\/auth\/v1\/verify\?[^\s)]+/.exec(message.Text)?.[0];
+      return Boolean(link);
+    })
+    .toBe(true);
+  return link!;
+}
+
 /** Signs up a brand-new account and starts a workspace, landing on setup step 1. */
 async function signUpAndStartWorkspace(page: Page, email: string, password: string): Promise<void> {
   await page.goto("/sign-in");
@@ -36,6 +59,21 @@ async function signUpAndStartWorkspace(page: Page, email: string, password: stri
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Create account" }).click();
+  // No session until the email is confirmed: the screen says so instead.
+  // ponytail: test id until nf-arayuz's wording lands; then match the text.
+  await expect(page.getByTestId("signup-check-email")).toBeVisible();
+
+  // The link redirects to the configured site (the user's dev server, not this
+  // run's port), so it is followed only as far as the auth server that confirms.
+  const confirmed = await fetch(await confirmationLink(email), { redirect: "manual" });
+  expect(confirmed.status).toBeGreaterThanOrEqual(300);
+  expect(confirmed.status).toBeLessThan(400);
+  expect(confirmed.headers.get("location") ?? "").not.toContain("error");
+
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/workspaces$/);
 
   await page.getByRole("button", { name: "Create your workspace" }).click();
