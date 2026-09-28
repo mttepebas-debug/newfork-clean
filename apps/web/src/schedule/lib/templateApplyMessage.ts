@@ -1,0 +1,38 @@
+import type { ScheduleTemplateApplyResult } from "@newfork/shared";
+
+const longNameLimit = 28;
+
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+function shortName(name: string): string {
+  return name.length > longNameLimit
+    ? `${name.slice(0, longNameLimit - 1).trimEnd()}…`
+    : name;
+}
+
+function listNames(names: readonly string[]): string {
+  if (names.length === 1) return names[0]!;
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]}`;
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more`;
+}
+
+/**
+ * The "Template applied" toast text. When the template carried labels that are
+ * archived now, the shifts still came in without them, and the person is told
+ * which labels and how many shifts (BL-197).
+ */
+export function templateAppliedDescription(
+  templateName: string,
+  result: Pick<ScheduleTemplateApplyResult, "applied_shift_count" | "skipped">,
+): string {
+  const added = `${templateName}: ${plural(result.applied_shift_count, "shift", "shifts")} added.`;
+  const labels = result.skipped.filter((item) => item.kind === "archived_label");
+  if (labels.length === 0) return added;
+  const names = listNames(labels.map((item) => shortName(item.name)));
+  const shifts = labels.reduce((sum, item) => sum + item.shift_count, 0);
+  const one = labels.length === 1;
+  return `${added} ${names} ${one ? "is" : "are"} archived, so ${plural(shifts, "shift was", "shifts were")} added without ${one ? "it" : "them"}.`;
+}

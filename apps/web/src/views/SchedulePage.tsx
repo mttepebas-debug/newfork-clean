@@ -129,6 +129,7 @@ import {
   parseSaveDraftNameConflict,
 } from "../schedule/lib/draftSaveFlow";
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButton";
+import { templateAppliedDescription } from "../schedule/lib/templateApplyMessage";
 import { resolveScheduleShiftSelectionIds } from "../schedule/lib/scheduleShiftSelection";
 import {
   applyShiftClipboardSnapshot,
@@ -3269,11 +3270,12 @@ export function SchedulePage({
                     const templateName =
                       templates.find((item) => item.id === templateId)?.name ??
                       "Template";
-                    toast.success(
+                    // Archived labels left off: same toast, warning tone (BL-197).
+                    (result.skipped.length ? toast.warning : toast.success)(
                       "Template applied",
                       {
                         dedupeKey: `schedule-template-applied:${templateId}`,
-                        description: `${templateName}: ${result.applied_shift_count} ${result.applied_shift_count === 1 ? "shift" : "shifts"} added.`,
+                        description: templateAppliedDescription(templateName, result),
                       },
                     );
                     rememberUndoSnapshot(gridEditSession);
