@@ -567,5 +567,7 @@ function unassignedShiftStackKey(shift: ScheduleShift): string {
     shift.end_time,
     shift.hide_time_on_badge ? "clock-hidden" : "clock-visible",
     shift.crosses_midnight ? "overnight" : "same-day",
+    // A note sets a shift apart: stacked, only the first card's note would show.
+    shift.note.trim(),
   ].join("|");
 }

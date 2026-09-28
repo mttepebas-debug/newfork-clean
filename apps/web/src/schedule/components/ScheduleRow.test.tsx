@@ -118,6 +118,26 @@ function renderRow(overrides: Partial<Parameters<typeof ScheduleRow>[0]> = {}) {
 }
 
 describe("ScheduleRow blank-cell interactions", () => {
+  it("keeps an open shift with a note out of the stack of matching ones, so its note shows (BL-199)", () => {
+    const openShift = { ...shift, id: "open-1", employee_id: null, note: "" };
+    const notedOpenShift = { ...openShift, id: "open-2", note: "The new oven arrives at 10" };
+    const { container } = renderRow({
+      employee: null,
+      shifts: [openShift, notedOpenShift],
+      totalShifts: [openShift, notedOpenShift],
+      selectedIds: [],
+    });
+    const badges = container.querySelectorAll(
+      ".schedule-shift-badge[data-shift-badge='true']:not([data-ghost='true'])",
+    );
+    expect(badges).toHaveLength(2);
+    expect(container.querySelector("[data-stack-count]")).toBeNull();
+    expect(container.querySelectorAll("[data-shift-note-marker]")).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { description: "The new oven arrives at 10" }),
+    ).toBeTruthy();
+  });
+
   it("stacks matching unassigned shift badges and updates the remaining count while dragging one", () => {
     const openShift = {
       ...shift,
