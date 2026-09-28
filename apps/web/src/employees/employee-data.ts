@@ -356,15 +356,32 @@ export async function removeEmployeeAccess(
   }
 }
 
+/**
+ * Why an invitation could not be answered. `email_unconfirmed`: the account
+ * has not confirmed its email address yet, so it may not accept or decline.
+ */
+// ponytail: email_unconfirmed sits here, not in @newfork/shared's
+// invitationFailureCodeSchema, because SEC-003 part A owns packages/shared
+// right now; move it there once both parts are on main.
+export type InvitationAnswerFailure = InvitationFailureCode | "email_unconfirmed";
+
 /** An invitation that could not be answered, carrying the server's word for why. */
 export class InvitationError extends Error {
-  readonly code: InvitationFailureCode;
+  readonly code: InvitationAnswerFailure;
 
-  constructor(code: InvitationFailureCode) {
+  constructor(code: InvitationAnswerFailure) {
     super(code);
     this.name = "InvitationError";
     this.code = code;
   }
+}
+
+function invitationError(body: { code?: unknown } | null): InvitationError {
+  return new InvitationError(
+    body?.code === "email_unconfirmed"
+      ? "email_unconfirmed"
+      : invitationFailureCodeSchema.catch("invitation_unavailable").parse(body?.code),
+  );
 }
 
 export async function acceptEmployeeInvitation(
@@ -383,12 +400,7 @@ export async function acceptEmployeeInvitation(
     workspaceId?: string;
     code?: string;
   } | null;
-  if (!response.ok || !body?.workspaceId)
-    throw new InvitationError(
-      invitationFailureCodeSchema.catch("invitation_unavailable").parse(
-        body?.code,
-      ),
-    );
+  if (!response.ok || !body?.workspaceId) throw invitationError(body);
   return body.workspaceId;
 }
 
@@ -547,12 +559,11 @@ export async function acceptPendingEmployeeInvitation(
       headers: { Authorization: `Bearer ${token}` },
     },
   );
-  const body = (await response.json()) as {
+  const body = (await response.json().catch(() => null)) as {
     workspaceId?: string;
-    error?: string;
-  };
-  if (!response.ok || !body.workspaceId)
-    throw new Error(body.error ?? "Invitation acceptance failed");
+    code?: string;
+  } | null;
+  if (!response.ok || !body?.workspaceId) throw invitationError(body);
   return body.workspaceId;
 }
 
@@ -567,10 +578,10 @@ export async function declinePendingEmployeeInvitation(
       headers: { Authorization: `Bearer ${token}` },
     },
   );
-  if (!response.ok) {
-    const body = (await response.json()) as { error?: string };
-    throw new Error(body.error ?? "Invitation decline failed");
-  }
+  if (!response.ok)
+    throw invitationError(
+      (await response.json().catch(() => null)) as { code?: string } | null,
+    );
 }
 
 export async function previewEmployeeInvitation(

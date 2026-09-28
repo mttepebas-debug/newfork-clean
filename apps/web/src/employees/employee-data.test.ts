@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RequestError } from "../lib/request-error";
-import { loadEmployeeReferenceData } from "./employee-data";
+import {
+  acceptEmployeeInvitation,
+  acceptPendingEmployeeInvitation,
+  declinePendingEmployeeInvitation,
+  InvitationError,
+  loadEmployeeReferenceData,
+} from "./employee-data";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
@@ -49,5 +55,30 @@ describe("Employees reference data (BL-231)", () => {
     const failure = await loadEmployeeReferenceData(workspaceId).catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(RequestError);
     expect(failure).toMatchObject({ reason: "authz.out_of_scope", status: 403 });
+  });
+});
+
+describe("Invitation answers (SEC-003 #9)", () => {
+  const invitationId = "1131ca31-392f-4ea0-bdc2-e1235e1496b1";
+  const unconfirmed = {
+    error: "Confirm your email address to answer this invitation",
+    code: "email_unconfirmed",
+  };
+
+  it.each([
+    ["the emailed link", () => acceptEmployeeInvitation("a".repeat(64))],
+    ["Join on a pending row", () => acceptPendingEmployeeInvitation(invitationId)],
+    ["Decline on a pending row", () => declinePendingEmployeeInvitation(invitationId)],
+  ])("tells an unconfirmed email apart from a wrong account (%s)", async (_, answer) => {
+    respond(403, unconfirmed);
+    const failure = await answer().catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(InvitationError);
+    expect(failure).toMatchObject({ code: "email_unconfirmed" });
+  });
+
+  it("keeps a wrong account as invitation_email_mismatch on Decline", async () => {
+    respond(403, { error: "This invitation is for a different account", code: "invitation_email_mismatch" });
+    const failure = await declinePendingEmployeeInvitation(invitationId).catch((error: unknown) => error);
+    expect(failure).toMatchObject({ code: "invitation_email_mismatch" });
   });
 });

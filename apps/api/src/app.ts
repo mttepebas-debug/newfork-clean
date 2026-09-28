@@ -197,6 +197,14 @@ function invitationFailure(error: unknown): {
     error instanceof HttpError ? error.pgCode : undefined;
   switch (pgCode) {
     case "42501":
+      if (error instanceof HttpError && error.reason === "authz.not_active")
+        return {
+          status: 403,
+          body: {
+            error: "Confirm your email address to answer this invitation",
+            code: "email_unconfirmed",
+          },
+        };
       return {
         status: 403,
         body: {

@@ -1,4 +1,4 @@
-import { HttpError } from "../http-error.js";
+import { HttpError, rpcFailure } from "../http-error.js";
 import type { EmployeeInvitationService } from "./invitation-service.js";
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
@@ -64,6 +64,53 @@ describe("invitation endpoints", () => {
     expect(response.json().code).toBe("invitation_email_mismatch");
     // The server's own sentence never reaches the caller.
     expect(response.json().error).not.toContain("does not match");
+  });
+
+  it.each([
+    ["POST", "/v1/invitations/accept", { token }],
+    ["POST", "/v1/invitations/1131ca31-392f-4ea0-bdc2-e1235e1496b1/accept", undefined],
+    ["POST", "/v1/invitations/1131ca31-392f-4ea0-bdc2-e1235e1496b1/decline", undefined],
+  ] as const)(
+    "answers 403 email_unconfirmed when the account has not confirmed its email (%s %s)",
+    async (method, url, payload) => {
+      // The RPC's own error, through the same helper the service uses: the
+      // hint has to survive the trip to tell this apart from "not yours".
+      const response = await appWith(
+        serviceThrowing(
+          rpcFailure({
+            message: "the account email address is not confirmed",
+            code: "42501",
+            hint: "authz.not_active",
+          }),
+        ),
+      ).inject({
+        method,
+        url,
+        headers: { authorization: "Bearer employee-token" },
+        ...(payload ? { payload } : {}),
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toEqual({
+        error: "Confirm your email address to answer this invitation",
+        code: "email_unconfirmed",
+      });
+    },
+  );
+
+  it("still answers invitation_email_mismatch for a hint-less 42501 on decline", async () => {
+    const response = await appWith(
+      serviceThrowing(
+        rpcFailure({ message: "invitation is for another account", code: "42501" }),
+      ),
+    ).inject({
+      method: "POST",
+      url: "/v1/invitations/1131ca31-392f-4ea0-bdc2-e1235e1496b1/decline",
+      headers: { authorization: "Bearer employee-token" },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json().code).toBe("invitation_email_mismatch");
   });
 
   it("answers 404 when no open invitation carries the token", async () => {
