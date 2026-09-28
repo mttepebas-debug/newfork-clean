@@ -1,6 +1,6 @@
 # İlerleme planı — çoklu rol oturumu (sürüm 2, 2026-09-27 akşam)
 
-Hazırlayan: `nf-planlama`; şerit sırası koordinatörün ("Hand off raporu", `local_323e063c-efb6-4451-a9c6-39a35ec5e057`) 2026-09-27 akşam planından. Kullanıcı kullanım limitini beklemeden devam dedi.
+Hazırlayan: `nf-planlama`; şerit sırası 2026-09-27 akşam koordinatörünün ("Hand off raporu", `local_323e063c-…`) planından. Koordinatör 2026-09-28'den beri "Koordinatör (devir 2026-09-27 gece)", `local_08c32131-90ea-4552-9d19-9b1a7dae5a5a` (CLAUDE.md `2121037a`). Kullanıcı kullanım limitini beklemeden devam dedi.
 Ölçüm: `origin/main` `bee7713d`; yerel DB = main (son migration `20260927131000`). Sürüm 1: `b4b6d02` (aynı gün sabah).
 Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandıkça satırı "bitti" olur. Kaynaklar: `ROADMAP.md`, `MVP-PLAN.md`, `tasks/FOUNDATION-B.md`, `BACKLOG.md`.
 
