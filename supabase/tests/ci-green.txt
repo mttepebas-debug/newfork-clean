@@ -119,3 +119,4 @@ supabase/tests/owner_time_off_needs_no_documents.test.sql
 supabase/tests/ownership_transfer_hands_over_the_owner_record.test.sql
 supabase/tests/invitation_acceptance_needs_a_confirmed_email.test.sql
 supabase/tests/shift_note_reaches_only_its_owner.test.sql
+supabase/tests/shift_note_survives_every_path.test.sql
