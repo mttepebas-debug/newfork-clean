@@ -1,7 +1,7 @@
 # İlerleme planı — hesaplı (sürüm 5, 2026-09-28)
 
 Hazırlayan: `nf-planlama` (`local_c67b8d60-…`). Koordinatör: "Koordinatör — devir 2026-09-28", `local_41428574-b1a9-44cb-9a7c-cd34afc9456a`.
-Ölçüm: `origin/main` `721ea41f`, 2026-09-28 (SEC-003 kod kısmı main'de, main CI yeşil run 36445247470); önceki ölçüm `1d349d2a`; SEC-003 commit'leri `34fc2075`, `3eeb4c11` (`nf-db`), `6887fbbc` (`nf-backend`), `d0751603`, `0d03389e`, `74e2d363` (`nf-test`) — hepsi `git cat-file` ile doğrulandı; durumlar koordinatörün 2026-09-28 güncellemesiyle. Hesap betiği: satırlar, bağımlılıklar ve puanlar bu dosyadaki tablolardır; sayıları elle değil betikle ürettim, tablo değişince aynı yolla yeniden hesaplanır.
+Ölçüm: `origin/main` `10c11be5`, 2026-09-28 (SEC-003 kod kısmı `721ea41f`, main CI yeşil run 36445247470; hosted gönderim aynı gün, koordinatör); önceki ölçüm `721ea41f`; SEC-003 commit'leri `34fc2075`, `3eeb4c11` (`nf-db`), `6887fbbc` (`nf-backend`), `d0751603`, `0d03389e`, `74e2d363` (`nf-test`) — hepsi `git cat-file` ile doğrulandı; durumlar koordinatörün 2026-09-28 güncellemesiyle. Hesap betiği: satırlar, bağımlılıklar ve puanlar bu dosyadaki tablolardır; sayıları elle değil betikle ürettim, tablo değişince aynı yolla yeniden hesaplanır.
 
 **Güncelleme kuralı (3 satır):**
 1. Tablo her main birleşmesinde, her karar cevabında ve işi durduran her bulguda yeniden hesaplanır (durum, yüzde, sıra, karar ağırlığı).
@@ -22,11 +22,11 @@ Durum: bitti (main'de) · incelemede (commit var, ONAY ya da birleştirme bekliy
 ## 1. Hedefler ve ilerleme (biten puan ÷ toplam puan)
 | Hedef | Biten / toplam | Yüzde | Not |
 |---|---|---|---|
-| **SEC-003 hesap güvenliği paketi** (aktif) | 24 / 26 | **%92,3** (2026-09-28, `721ea41f`) | Kalan yalnız S.F (hosted gönderim, 2 puan; kullanıcı onayı soruluyor). Önceki: %3,8 (`1d349d2a`). |
-| **FOUNDATION-B — Aşama 6–7** (sonraki) | 77 / 230 | **%33,5** (2026-09-28, `721ea41f`; değişmedi) | Bitenlerin 61 puanı FB-6.1'in 14 adımının geriye dönük puanı (tahmin). Açık dilimlerden FB-6.4–6.8 ve Aşama 7 görev dosyasız (tahmin, 44 puan). |
+| SEC-003 hesap güvenliği paketi | 26 / 26 | **%100 — bitti** (2026-09-28, `10c11be5` + hosted) | Hedef kapandı; yayın öncesi şartlar §8'de. |
+| **FOUNDATION-B — Aşama 6–7** (**aktif**, 2026-09-28'den) | 77 / 230 | **%33,5** (2026-09-28, `10c11be5`; değişmedi) | Bitenlerin 61 puanı FB-6.1'in 14 adımının geriye dönük puanı (tahmin). Açık dilimlerden FB-6.4–6.8 ve Aşama 7 görev dosyasız (tahmin, 44 puan). |
 | FOUNDATION-B — program geneli (bilgi) | 155 / 308 | %50,3 (tahmin) | Aşama 1–5 bitti; plandaki süre orta noktaları × 8 = 78 puan sayıldı. Eski "~%58" formülünün yerine geçer; ikisi farklı ölçü, karşılaştırılmaz. |
 
-## 2. İş tablosu — SEC-003 (aktif hedef)
+## 2. İş tablosu — SEC-003 (bitti 2026-09-28; kayıt için)
 Kaynak: `tasks/SEC-003.md`, koordinatör girdisi 2026-09-28, dallar yukarıda.
 | ID | Ne (kişi için) | Bağlı olduğu | Karar | Puan | Durum | Rol | Ana dosyalar |
 |---|---|---|---|---|---|---|---|
@@ -38,9 +38,9 @@ Kaynak: `tasks/SEC-003.md`, koordinatör girdisi 2026-09-28, dallar yukarıda.
 | S.C | Uçtan uca: parola değişimi ve devir parolayla; yeni owner yerel posta kutusundan e-postasını onaylar | — | — | 3 | bitti (`721ea41f`) | `nf-test` | `e2e/**`, `.github/workflows/ci.yml` |
 | S.D | Ekran metinleri: "e-postanı doğrula" ve "parola yanlış" | S.A, S.B | — | 2 | bitti (`721ea41f`) | `nf-arayuz` | giriş/kayıt ekranı, Account → Security |
 | S.E | Birleştirme: tam kapı, `nf-guvenlik`, `nf-gorsel-qa` (Account → Workspaces'te ekran değişti), ultrareview önerisi (kullanıcı 2026-09-28: ultrareview istemedi), yerel auth yeniden başlatma (kullanıcı izin verdi) | S.1b, S.A, S.B, S.C, S.D | — | 3 | bitti (`721ea41f`) | koordinatör | — |
-| S.F | Hosted: BL-265 — `20260928040000` + `20260928050000` gönderimi (D1 sayımı 0/0, koordinatör 2026-09-28; "Confirm email" kullanıcı tarafından açıldı, K22 kapandı). **Yayın öncesi şart:** hosted e-posta teslimatı (SMTP, saatlik sınır) ölçülür ve S.D'nin "e-postanı doğrula" ekranı main'de; **BL-283** API parola doğrulamasına hesap başına deneme sınırı (kullanıcı kararı 2026-09-28; SEC-003 kapsamı dışında, yüzdeye girmez) — hepsi web/API yayınından önce | S.E | — | 2 | hazır (kullanıcı onayı soruluyor) | koordinatör + kullanıcı (gönderim onayı) | hosted |
+| S.F | Hosted: BL-265 — `20260928040000` + `20260928050000` gönderimi (D1 sayımı 0/0, koordinatör 2026-09-28; "Confirm email" kullanıcı tarafından açıldı, K22 kapandı). **Yayın öncesi şart:** hosted e-posta teslimatı (SMTP, saatlik sınır) ölçülür ve S.D'nin "e-postanı doğrula" ekranı main'de; **BL-283** API parola doğrulamasına hesap başına deneme sınırı (kullanıcı kararı 2026-09-28; SEC-003 kapsamı dışında, yüzdeye girmez) — hepsi web/API yayınından önce | S.E | — | 2 | bitti (hosted 2026-09-28) | koordinatör + kullanıcı (gönderim onayı) | hosted |
 
-## 3. İş tablosu — FOUNDATION-B Aşama 6–7 (aktif hedef bitince)
+## 3. İş tablosu — FOUNDATION-B Aşama 6–7 (aktif hedef)
 Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-218.md`, `FB-6.2.md`, `FB-6.3.md`; durumlar `origin/main` `1d349d2a`.
 | ID | Ne (kişi için) | Bağlı olduğu | Karar | Puan | Durum | Rol | Ana dosyalar |
 |---|---|---|---|---|---|---|---|
@@ -93,12 +93,11 @@ Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-21
 Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca gelen bütün satırlar) → (ii) doğrudan açtığı satır sayısı → (iii) küçük puan.
 | Sıra | ID | Hedef | (i) arkasında (satır) | (ii) doğrudan açtığı | (iii) puan |
 |---|---|---|---|---|---|
-| **1** | **S.F** | SEC-003 (aktif) | 0 (0) | 0 | 2 |
-| 2 | BL-218.3 | FOUNDATION-B | 120 (29) | 4 | 5 |
-| 3 | FB-6.2.0 | FOUNDATION-B | 114 (27) | 1 | 1 |
+| **1** | **BL-218.3** | FOUNDATION-B (aktif) | 120 (29) | 4 | 5 |
+| 2 | FB-6.2.0 | FOUNDATION-B (aktif) | 114 (27) | 1 | 1 |
 | — | FB-6.1b.1 | FOUNDATION-B | 11 (2) | 1 | 3 |
 | — | FB-6.1b.2 | FOUNDATION-B | 11 (2) | 1 | 3 |
-**Gerekçe (yeniden hesap 2026-09-28, `721ea41f`):** Tek hat gereği önce aktif hedef: SEC-003'te kalan tek satır **S.F** (hosted gönderim) ve hazır; arkasında satır yok ama hedefi kapatan son adım, kullanıcı onayını bekliyor. SEC-003 bitince FOUNDATION-B'de **BL-218.3** en uzun zinciri açıyor (FB-6.2.4 onu beklediği için Çalışanlar, İzin, Ayarlar dilimleri ve Aşama 7, 120 puan). **FB-6.2.0** neredeyse aynı zinciri (114) tek puanlık bir ölçümle başlatıyor; BL-218.3 ile çakışmıyor. Kullanıcı kararıyla BL-199 bu ikisinin önüne girer (§7).
+**Gerekçe (yeniden hesap 2026-09-28, SEC-003 bitti):** Aktif hedef artık FOUNDATION-B. Hesapta ilk sırada **BL-218.3**: FB-6.2.4 onu beklediği için Çalışanlar, İzin, Ayarlar dilimleri ve Aşama 7 (29 satır, 120 puan) arkasında; doğrudan 4 satırı açıyor. İkinci **FB-6.2.0**: neredeyse aynı zinciri (114) tek puanlık bir ölçümle başlatıyor, BL-218.3 ile dosya paylaşmıyor. FB-6.1b.1 ve .2'nin arkasında yalnız 11 puan var. **Ama sıradaki iş BL-199:** kullanıcı 2026-09-28'de "SEC-003'ten sonra BL-199" dedi (§7). BL-199 hedef dışı ve yüzdeye girmez; hesap onu sıralamaz, kullanıcı kararı öne alır. BL-199 bitince sıra hesaptan gelir: BL-218.3, sonra FB-6.2.0.
 
 ## 5. Kararlar (açık; sorma sırası = durdurduğu puan)
 | Sıra | K | Soru | Durdurduğu satırlar | Toplam puan |
@@ -109,13 +108,22 @@ Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca g
 **Not:** K10'un satırları FB-6.2 bittikten sonra başlar. Ağırlık en yüksek olsa da cevap FB-6.3.1'e kadar gerekmez. **K22 kapandı 2026-09-28:** kullanıcı hosted panelde "Confirm email"i ve "Require current password / Secure password change"i açtığını yazdı (koordinatör penceresi); S.F artık yalnız S.E'yi bekliyor. Aktif hedefi (SEC-003) durduran açık karar kalmadı. **Kararlar tablosu dışında açık onay:** S.F için hosted gönderim onayı (kullanıcının kendi "evet"i; CLAUDE.md §8) — koordinatör soruyor.
 
 ## 6. Paralel yerleşim (aynı anda en çok 2 ağır iş)
-- **Şu an (SEC-003 içinde):** S.1b (`nf-db`, test sırasında `db.lock`) ve S.C (`nf-test`, e2e `db.lock`) ağır; ikisi aynı anda `db.lock` tutamaz (`scripts/lock.mjs` sıraya koyar). S.A ve S.B API ve web işi, ağır değil (tam kapı birleştirmede).
-- **Aynı anda süren S.A ve S.B'nin dosya çakışması:** ana dosyaları ayrık (S.A `workspace-account-*`, `auth/verify-password.ts`; S.B `invitation-service`, `employee-create-service`, `account-security-*`, `app.ts`). **Bilinen ortak nokta:** `apps/api/src/account/account-security-service.ts` — S.B #2 için değiştiriyor; S.A birleştirmeden sonra onu ortak `verify-password.ts`'e bağlayacak (koordinatör: A yapar). Sıra: önce S.B'nin #2'si, sonra S.A'nın bağlaması. Ortak hata anahtarı `session.password_incorrect` iki dalda aynı yazılmalı. **Olası ortak dosyalar:** `packages/shared/src/index.ts` ve `apps/web/src/lib/supabase.ts`; dallar okunmadı, **ölçülmedi**.
-- **SEC-003 bitince:** BL-218.3 (`nf-backend`) ile FB-6.2.0 (`nf-planlama` + bir `nf-test` koşusu) dosya paylaşmıyor, ikisi aynı anda gidebilir. FB-6.1b.1 ve FB-6.2.2–6.2.6 aynı `supabase/migrations` ailesine yazar: aynı anda tek `nf-db` adımı.
+- **Şimdi:** BL-199 tek iş (kullanıcı kararı). Parçaları sırayla gider: `nf-backend` kaydetme yolu → `nf-arayuz` alan + metin → `nf-test` e2e; e2e sırasında `db.lock` tek ağır iş.
+- **BL-199'dan sonra, ilk iki hazır satır:** BL-218.3 (`nf-backend`; `packages/shared`, `apps/api/src/schedule`, web schedule/employees veri dosyaları) ile FB-6.2.0 (`nf-planlama` ölçümü + bir `nf-test` koşusu, `roles_permissions_rls` ve `employee_hub`) **dosya paylaşmıyor**; ikisi aynı anda gidebilir. Ağır iş yalnız FB-6.2.0'ın `test:db` koşusu (`db.lock`).
+- FB-6.1b.1 ve FB-6.2.1–6.2.6 aynı `supabase/migrations` ailesine yazar: aynı anda tek `nf-db` adımı. BL-218.5a (`nf-db` okuma) BL-218.3'ün sözleşmesini bekler.
+- SEC-003'ün paralel yerleşim notları (S.A/S.B ortak dosyası) iş kapandığı için düştü.
 
 ## 7. Hedef dışı (tek satırlık özet)
-- **BL-199** (müdür Schedule'da vardiyaya not yazamıyor; 5 puan, tahmin): kullanıcı kararıyla SEC-003'ten hemen sonra, hedeflerin dışında. Yüzdelere girmez. Koordinatör, tek hat kuralıyla yerini teyit etmeli.
+- **BL-199** (müdür Schedule'da vardiyaya not yazamıyor; 5 puan, tahmin): kullanıcı kararıyla SEC-003'ten hemen sonra, **şimdi sırada** (2026-09-28). Hedeflerin dışında; yüzdelere girmez.
 - **MVP'nin kalan fazları:** F0 (OPS-010, SEC-001), FJ (~%80), F1 (~%55), F2 (~%20), F3 (~%20), F4 (~%5, K15), F5 (~%30), F6 (başlamadı). Hepsi 2026-09-26 tahmini, ölçülmedi. FOUNDATION-B bitince sıra `ROADMAP.md`'den gelir.
 - **Kod denetimi (BL-266..282):** SEC-003 dışındakiler backlog'da. Yerleri K23 ile kullanıcıya soruluyor.
 - **Temizlik (koordinatör):** 43 birleşmemiş görünen dal, 34 worktree (sürüm 3 ölçümü). Arşiv adayı oturumlar: eski `nf-db` "BL-198" ve "Settings okumaları", "Code review", "ultrareview: bl252", "bl252-f6".
 - **Kurallar (değişmedi):** çekirdeğe dokunan işler aynı anda yazılmaz; yerel `test:db` taban kırmızısı 19 dosya (`artifacts/koordinator/sec003-red.txt`; yeni fark `security_audit_events`, BL-288); SEC-003 ile BL-271 aynı dosya (`AuthContext.tsx`), BL-271 sonra; Pazar kuralı (BL-238 kapanana kadar, HANDOFF §0).
+
+## 8. Yayın öncesi şartlar (web/API hosted yayınından önce; hedef yüzdelerine girmez)
+| Şart | Kaynak | Durum |
+|---|---|---|
+| Hosted e-posta teslimatı ölçülür (hangi SMTP, saatlik sınır; onay e-postası Supabase Auth'tan gidiyor) | SEC-003 pre-mortem, koordinatör 2026-09-28 | ölçülmedi |
+| BL-283 — API parola doğrulamasına hesap başına deneme sınırı | kullanıcı kararı 2026-09-28 | açık |
+| "Check your email" ekranı main'de | SEC-003 S.D | **bitti** (`721ea41f`) |
+**Öneri (`nf-planlama`, kullanıcı kararı değil):** kod denetiminin kalan yüksek güvenlik maddeleri — BL-270 (admin → admin erişim kaldırma), BL-271 (çıkışta önbellek), BL-276 (eski yetki kapısı) — da yayından önce kapansın. Yerleri K23 ile sorulacak.

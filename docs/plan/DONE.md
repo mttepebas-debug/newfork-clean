@@ -113,3 +113,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-28 | BL-268 | Account → Workspaces'te kapatma ve sahiplik devri parolayı sunucuda soruyor; açık oturum yetmiyor | 721ea41f
 2026-09-28 | BL-269 | parola sormayan eski hesap silme yolu kaldırıldı | 721ea41f
 2026-09-28 | BL-274 | e-postasını onaylamamış hesap bir daveti göremiyor ve kabul edemiyor; kayıttan sonra "Check your email" ekranı | 721ea41f
+2026-09-28 | BL-265 | hosted veritabanı main ile aynı: sahiplik devri kuralları ve onaylı e-posta şartı canlı ortamın veritabanında; güvenlik uyarısı yok | -
