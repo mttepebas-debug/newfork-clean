@@ -12,3 +12,8 @@
 - [Boş kablolama testleri](checklist-vacuous-wiring-tests.md) — düzeltmenin ana satırı silinse hangi test düşer; mock'lanan modül ve uzun taban tuzakları
 - [Mock sınırı ve zaman testi izolasyonu](checklist-mock-boundary-and-timing-isolation.md) — BL-137; test iddiası mocklanmış modülün dışında mı, tek testte birden fazla zaman vakası eşiği belirsizleştirir
 - [Daraltılan kısıtın ikizleri](checklist-check-narrowing-twins.md) — zod ikizi ve web seçenekleri, rpcFailure, JSON null CHECK'ten geçer, zincirleme kırmızılar
+- [Deneme kaynağı ve DB sapması](feedback-trial-sources-and-drift.md) — worktree incelenen sha'da mı; değilse git archive; kırmızıyı migration'sız tekrar koşup sapmayı ayır
+- [FB-6.1 .4 katlama kontrolü](checklist-fb61-4-fold.md) — ghost CTE'nin izinli lokasyonu ızgarayla birlikte scope_set'e geçmeli, deleted_at dahil
+- [Yayın kuralları ve unpublish](checklist-publish-rules-unpublish-path.md) — yalnız 'current' yayına bakan kural unpublish sonrası kör; onay→unpublish→eski taslak yoklaması
+- [Kontratı gerçek DB çıktısıyla sına](checklist-contract-real-db-shape.md) — elle yazılmış fixture saat biçimi farkını gizler (DB 09:00:00, şema HH:MM); gerçek payload'ı şemadan geçir
+- [e2e ortak dünya sayımları](checklist-e2e-shared-world-counts.md) — e2e specleri tek dünyayı paylaşır; DB sayımı kendi haftasına bağlı olmalı, yeşil kanıt tam koşudan
