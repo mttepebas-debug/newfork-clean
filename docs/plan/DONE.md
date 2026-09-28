@@ -97,3 +97,5 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-28 | BL-221 | belgesi eksik owner'ın kendi izni de onay beklemeden kaydoluyor | 8dfdfcbe
 2026-09-27 | BL-222 | tarayıcı Settings kataloğunun altı tablosunu artık doğrudan okuyamıyor; okuma yalnız API'den (kayıt 2026-09-28) | 89fdf494
 2026-09-28 | BL-078 | işlem gerekmez (kullanıcı kararı): yanlış commit'e giren migration içerik olarak doğru, geçmiş değiştirilmedi | -
+2026-09-28 | BL-239 | telefon ile masaüstü arasında tek geçiş genişliği (720px): altında yalnız alt çubuk, üstünde yalnız sidebar, yatay kaydırma yok | 2ca3803e
+2026-09-28 | BL-240 | Employee Hub alt çubuğunun renkleri tema token'larından; seçili yazı 6,30:1, odak 5,25:1 | 2ca3803e
