@@ -6187,8 +6187,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
     0 0 0 1px rgba(255, 255, 255, 0.72);
 }
 .schedule-quick-editor--floating {
-  max-height: none;
-  overflow: visible;
+  /* max-height comes from the inline style (top position + viewport, BL-199);
+     overflow-y lets the body scroll under the sticky header and action bar. */
+  overflow-x: hidden;
+  overflow-y: auto;
   scrollbar-width: none;
 }
 .schedule-quick-editor--floating::-webkit-scrollbar {

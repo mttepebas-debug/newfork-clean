@@ -316,6 +316,9 @@ export function ShiftQuickEditor({
       : fallbackY,
   );
   const [position, setPosition] = useState(initialPosition);
+  // Bounds the floating window to the visible screen below its top edge,
+  // with the same 8px bottom gap clampQuickEditorPosition keeps (BL-199).
+  const floatingMaxHeight = `calc(100dvh - ${position.y}px - 8px)`;
   const dragRef = useRef<{
     readonly pointerId: number;
     readonly startX: number;
@@ -626,7 +629,7 @@ export function ShiftQuickEditor({
         aria-label={presentation === "floating" ? title : undefined}
         style={
           presentation === "floating"
-            ? { top: position.y, left: position.x }
+            ? { top: position.y, left: position.x, maxHeight: floatingMaxHeight }
             : undefined
         }
         onPointerDown={(event) => event.stopPropagation()}
@@ -678,7 +681,7 @@ export function ShiftQuickEditor({
         aria-label={presentation === "floating" ? title : undefined}
         style={
           presentation === "floating"
-            ? { top: position.y, left: position.x }
+            ? { top: position.y, left: position.x, maxHeight: floatingMaxHeight }
             : undefined
         }
         onPointerDown={(event) => event.stopPropagation()}
