@@ -80,7 +80,6 @@ test("a manager's shift note reaches the employee, and deleting it takes it away
   const editor = ayse.getByRole("dialog", { name: "Add shift" });
   await editor.getByLabel("Start time").fill("9:00 AM");
   await editor.getByLabel("End time").fill("3:00 PM");
-  // Straight to the field, not by Tab: End time swallows a forward Tab today.
   const note = editor.getByRole("textbox", { name: "Note" });
   await note.fill(NOTE);
   await expect(note).toHaveAttribute("maxlength", "500");
