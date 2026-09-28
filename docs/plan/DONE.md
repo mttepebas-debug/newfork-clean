@@ -96,3 +96,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-28 | BL-230 | hafta yayından kaldırılıp yeniden yayınlansa da onaylı takas korunuyor | 51bf2b8e
 2026-09-28 | BL-221 | belgesi eksik owner'ın kendi izni de onay beklemeden kaydoluyor | 8dfdfcbe
 2026-09-27 | BL-222 | tarayıcı Settings kataloğunun altı tablosunu artık doğrudan okuyamıyor; okuma yalnız API'den (kayıt 2026-09-28) | 89fdf494
+2026-09-28 | BL-078 | işlem gerekmez (kullanıcı kararı): yanlış commit'e giren migration içerik olarak doğru, geçmiş değiştirilmedi | -
