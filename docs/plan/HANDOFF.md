@@ -27,6 +27,9 @@ Türkçe; karmaşık kararlar başlık başlık, örnekli, chat'te sorulur (kull
    Sonra ve BL-217
    (`bl217-rebase-on-bl198` @ed158ef9, nf-guvenlik ONAY @c794f296 içeriği; rebase'li hali yeniden bakılmalı).
 
+4. BL-237 `bl237-date-tests` (nf-test, 7 commit, 5 pgTAP dosyası tests.world()'e; nf-guvenlik incelemesinde).
+   BL-234'ten SONRA birleştir (ikisi de publish_week/taslak adlarıyla ilgili).
+
 ## 1. Bugün (09-27) main'e girenler
 Settings 8 sayfa API'den (FB-6.1.9 bitti: 0693b51, a833cbe, bee7713d), read_role_workspace silindi
 (131000), Settings 6 tablonun tarayıcı SELECT'i kapandı (150000, 89fdf494), BL-183 owner izni bildirimi
