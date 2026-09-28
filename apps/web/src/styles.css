@@ -7697,6 +7697,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-weight: 600;
   line-height: 1.4;
 }
+/* Disabled like the Employee picker beside it while several open shifts
+   are added at once (a note goes on one shift only). */
+.schedule-shift-form-section--note textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 /* 16px on a phone, or iOS zooms the page into the field. */
 @media (max-width: 520px) {
   .schedule-shift-form-section--note textarea {
