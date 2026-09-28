@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(29);
+select plan(33);
 
 -- BL-252/BL-246 (user, 2026-09-28). Accepting an ownership transfer hands
 -- over what being the owner means: the new owner works the Owner job and the
@@ -87,6 +87,23 @@ create function pg_temp.req(person text, type_id uuid) returns public.employee_o
 $$;
 create function pg_temp.card() returns uuid language sql as $$ select id from required_document $$;
 
+-- The employee handbook, a policy everybody signs, applied to everyone.
+create temporary table handbook (retention uuid, template uuid, version uuid, impact jsonb);
+insert into handbook (retention) select public.save_signature_retention_policy_service(tests.user('ot:owner'), tests.id('ot'),
+  null, 'Policy evidence', 'employment_end', 1095, 'Workspace', 'Internal policy');
+select public.approve_signature_retention_policy_service(tests.user('ot:owner'), tests.id('ot'), (select retention from handbook));
+update handbook set template = public.save_policy_lifecycle_service(tests.user('ot:owner'), tests.id('ot'), null, jsonb_build_object(
+  'title', 'Employee handbook', 'summary', 'Read it', 'content_text', 'Be kind.', 'intent_statement', 'I have read it.',
+  'locale', 'en-US', 'effective_date', current_date, 'retention_policy_id', retention,
+  'lifecycle_settings', pg_temp.settings('required', 3)));
+select public.publish_signature_template_service(tests.user('ot:owner'), tests.id('ot'), (select template from handbook));
+update handbook set version = (select v.id from public.signature_template_versions v where v.template_id = handbook.template and v.status = 'published');
+update handbook set impact = public.preview_policy_definition_apply_service(tests.user('ot:owner'), tests.id('ot'), version);
+select public.apply_policy_definition_service(tests.user('ot:owner'), tests.id('ot'), version,
+  (impact ->> 'revision')::integer, impact ->> 'preview_token', 'Everybody signs') from handbook;
+select tests.settle();
+create function pg_temp.handbook() returns uuid language sql as $$ select version from handbook $$;
+
 -- A reviewer excuses Deniz from the policy by hand, before any transfer.
 select public.set_employee_document_exemption_service(tests.user('ot:owner'), tests.id('ot'),
   (pg_temp.req('ot:deniz', tests.id('ot:policy'))).id, (pg_temp.req('ot:deniz', tests.id('ot:policy'))).lifecycle_revision,
@@ -130,8 +147,9 @@ select is(pg_temp.deniz_excused(), false, 'nor does a cancelled one');
 select ok(pg_temp.works_owner_job('ot:owner') and not pg_temp.works_owner_job('ot:deniz'),
   'and the owner keeps the Owner job');
 select ok((pg_temp.req('ot:owner', pg_temp.card())).lifecycle_exempt
-    and (pg_temp.req('ot:owner', tests.id('ot:policy'))).lifecycle_exempt,
-  'and stays excused from the documents');
+    and (pg_temp.req('ot:owner', tests.id('ot:policy'))).lifecycle_exempt
+    and (pg_temp.req('ot:owner', pg_temp.handbook())).owner_excused,
+  'and stays excused from the documents and the handbook');
 
 -- 2. Only somebody with a live employee record here takes ownership ------------------
 -- Archiving a record or removing its access, the product's two ways to part a
@@ -169,10 +187,24 @@ select is(pg_temp.deniz_excused(), false, 'and excuses nothing by trying');
 
 select pg_temp.set_publication(tests.id('ot:permit'), 'draft');
 
+-- Deniz hands in her card; it waits for review, with its clock stopped.
+select public.save_employee_document_draft_file_service(tests.user('ot:deniz'), (pg_temp.req('ot:deniz', pg_temp.card())).id,
+  (pg_temp.req('ot:deniz', pg_temp.card())).lifecycle_revision,
+  format('%s/%s/%s/%s.pdf', tests.id('ot'), tests.id('ot:deniz'), (pg_temp.req('ot:deniz', pg_temp.card())).id, gen_random_uuid()),
+  'card.pdf', 'application/pdf', 100);
+select public.submit_employee_document_lifecycle_service(tests.user('ot:deniz'), (pg_temp.req('ot:deniz', pg_temp.card())).id,
+  (pg_temp.req('ot:deniz', pg_temp.card())).lifecycle_revision,
+  (select s.id from public.employee_document_submissions s
+   where s.requirement_id = (pg_temp.req('ot:deniz', pg_temp.card())).id and s.state = 'draft'),
+  current_date + 30, '{}');
+
 select is(pg_temp.respond('ot:deniz', 'accept'), 'allowed', 'Deniz accepts');
 select ok(pg_temp.works_owner_job('ot:deniz'), 'Deniz works the Owner job');
 select ok(not pg_temp.works_owner_job('ot:owner'), 'the old owner no longer does');
 select is(pg_temp.deniz_excused(), true, 'her overdue document is excused');
+select ok((select r.deadline_at is null and r.paused_remaining_seconds is null and r.document_suspended_at is null
+   from public.employee_onboarding_requirements r where r.id = (pg_temp.req('ot:deniz', pg_temp.card())).id),
+  'and no clock is left on it, as with any exemption');
 select ok(not app_private.document_actor_blocked(tests.user('ot:deniz'), tests.id('ot')),
   'and the document block lifts');
 select is(
@@ -185,6 +217,13 @@ select is(
     'Back to work')),
   '42501',
   'the excuse cannot be taken back, as for any owner'
+);
+select is(
+  pg_temp.refusal(format('select public.set_employee_document_exemption_service(%L, %L, %L, %s, false, %L)',
+    tests.user('ot:deniz'), tests.id('ot'), (pg_temp.req('ot:deniz', pg_temp.card())).id,
+    (pg_temp.req('ot:deniz', pg_temp.card())).lifecycle_revision - 1, 'Back to work')),
+  '42501',
+  'not even with a stale copy: the owner rule answers before the revision check'
 );
 select is((select count(*)::integer from public.workspace_ownership_transfers
   where workspace_id = tests.id('ot') and status = 'accepted'), 1, 'one transfer was accepted');
@@ -210,6 +249,16 @@ select ok((pg_temp.req('ot:owner', tests.id('ot:policy'))).required
     and (pg_temp.req('ot:owner', tests.id('ot:policy'))).blocks_activation
     and not (pg_temp.req('ot:owner', tests.id('ot:policy'))).lifecycle_exempt,
   'the policy is required again, as it is of everyone');
+select ok(not (pg_temp.req('ot:owner', pg_temp.handbook())).lifecycle_exempt
+    and (pg_temp.req('ot:owner', pg_temp.handbook())).required
+    and (pg_temp.req('ot:owner', pg_temp.handbook())).deadline_at > now() + interval '2 days',
+  'the handbook is theirs to sign again, due a full period from now');
+select is(
+  (select count(*)::integer from public.onboarding_events a
+   where a.target_id = (pg_temp.req('ot:owner', pg_temp.handbook())).id::text and a.action = 'document.exemption_removed'),
+  1,
+  'and that is recorded too'
+);
 select ok(not app_private.document_actor_blocked(tests.user('ot:owner'), tests.id('ot')),
   'the old owner is not blocked by what they owe again');
 select is(

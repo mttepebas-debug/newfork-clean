@@ -8,8 +8,8 @@
 -- for the rest of the target's eligibility.
 --
 -- BL-252 (user, 2026-09-28): the old owner, now an admin, is asked for the
--- documents everyone is. The excuses they had for being the owner are taken
--- back when the transfer is accepted, the way a reviewer removes an exemption
+-- documents and policies everyone is. The excuses they had for being the
+-- owner are taken back when the transfer is accepted, the way a reviewer removes an exemption
 -- (audit, a fresh deadline from now); excuses somebody gave by hand stay. A
 -- document that is down keeps the excuse until it is put back up.
 
@@ -90,6 +90,9 @@ begin
   requirement.required := false;
   requirement.blocks_activation := false;
   requirement.deadline_at := null;
+  requirement.paused_remaining_seconds := null;
+  requirement.document_suspended_at := null;
+  requirement.lifecycle_closed_at := null;
   requirement.lifecycle_close_reason :=
     'An owner is not asked for the documents they ask of everyone else';
   return requirement;
@@ -121,7 +124,7 @@ $$;
 -- through here. The caller has decided the actor may; this keeps the rest of
 -- the rules. Taking an exemption back asks the document again as it asks
 -- everyone, whatever the exemption had set.
-create function app_private.set_document_exemption(r public.employee_onboarding_requirements, actor_user_id uuid, make_exempt boolean, exemption_reason text)
+create function app_private.set_document_exemption(r public.employee_onboarding_requirements, actor_user_id uuid, make_exempt boolean, exemption_reason text, expected_revision integer)
 returns integer
 language plpgsql
 security definer
@@ -133,6 +136,7 @@ begin
   raise exception 'an owner is not asked for the documents they ask of everyone else' using errcode='42501';
  end if;
  if not make_exempt then perform app_private.assert_document_published(r); end if;
+ if expected_revision is null or r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409'; end if;
  if make_exempt is null or nullif(btrim(exemption_reason),'') is null or char_length(exemption_reason)>500 then raise exception 'exemption reason required' using errcode='22023'; end if;
  if r.lifecycle_exempt=make_exempt then return r.lifecycle_revision; end if;
  asked:=app_private.document_requirement_asked(r);
@@ -156,7 +160,7 @@ begin
  return next_revision;
 end;
 $function$;
-revoke all on function app_private.set_document_exemption(public.employee_onboarding_requirements, uuid, boolean, text)
+revoke all on function app_private.set_document_exemption(public.employee_onboarding_requirements, uuid, boolean, text, integer)
   from public, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.set_employee_document_exemption_service(actor_user_id uuid, target_workspace_id uuid, target_requirement_id uuid, expected_revision integer, make_exempt boolean, exemption_reason text)
@@ -171,8 +175,7 @@ begin
  if r.id is null or not public.service_actor_has_permission(actor_user_id,target_workspace_id,'employee_documents.review')
   or not public.service_actor_can_access_employee(actor_user_id,target_workspace_id,r.employee_id)
   or not app_private.workspace_allows_interactive_access(target_workspace_id) then raise exception 'document exemption unavailable' using errcode='42501'; end if;
- if expected_revision is null or r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409'; end if;
- return app_private.set_document_exemption(r,actor_user_id,make_exempt,exemption_reason);
+ return app_private.set_document_exemption(r,actor_user_id,make_exempt,exemption_reason,expected_revision);
 end;
 $function$
 ;
@@ -208,7 +211,7 @@ begin
   update public.employee_onboarding_requirements set publication_paused_at=null,lifecycle_revision=lifecycle_revision+1 where workspace_id=target_workspace_id and source_id=d.id and kind='document' and publication_paused_at is not null and (lifecycle_exempt or lifecycle_closed_at is not null or lifecycle_retired_at is not null or lifecycle_assignment_disabled or status='superseded');
   for r in select * from public.employee_onboarding_requirements where workspace_id=target_workspace_id and source_id=d.id and kind='document'
    and owner_excused and lifecycle_retired_at is null and not app_private.employee_record_is_workspace_owner(workspace_id,employee_id) loop
-   perform app_private.set_document_exemption(r,actor_user_id,false,'No longer the owner');
+   perform app_private.set_document_exemption(r,actor_user_id,false,'No longer the owner',r.lifecycle_revision);
   end loop;
  else
   update public.document_types set publication_status='draft',publication_revision=publication_revision+1 where id=d.id;
@@ -377,9 +380,11 @@ begin
   -- recorded like any exemption, as the old owner's are when taken back.
   for owed in
   update public.employee_onboarding_requirements requirement
-  set (owner_excused, lifecycle_exempt, required, blocks_activation, deadline_at, lifecycle_close_reason) = (
+  set (owner_excused, lifecycle_exempt, required, blocks_activation, deadline_at, lifecycle_close_reason,
+       paused_remaining_seconds, document_suspended_at, lifecycle_closed_at) = (
         select excused.owner_excused, excused.lifecycle_exempt, excused.required, excused.blocks_activation,
-          excused.deadline_at, excused.lifecycle_close_reason
+          excused.deadline_at, excused.lifecycle_close_reason,
+          excused.paused_remaining_seconds, excused.document_suspended_at, excused.lifecycle_closed_at
         from app_private.owner_document_excused(requirement) excused
       ),
       lifecycle_revision = requirement.lifecycle_revision + 1,
@@ -408,13 +413,13 @@ begin
     where r.workspace_id = target_workspace_id
       and employee.workspace_id = target_workspace_id
       and employee.user_id = transfer_row.initiated_by
-      and r.kind = 'document'
+      and r.kind in ('document', 'acknowledgement')
       and r.owner_excused
       and r.lifecycle_retired_at is null
     for update of r
   loop
     begin
-      perform app_private.set_document_exemption(owed, actor_user_id, false, 'No longer the owner');
+      perform app_private.set_document_exemption(owed, actor_user_id, false, 'No longer the owner', owed.lifecycle_revision);
     exception when sqlstate 'PT409' then
       null;
     end;
