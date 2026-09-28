@@ -285,7 +285,10 @@ export function createAccountSecurityServiceWithClients(options: {
       await rpc("cancel_account_email_change_service", { actor_user_id: user.id });
     },
     async changePassword(accessToken, currentPassword, newPassword) {
-      const { user } = await requireUser(accessToken);
+      const { user, email } = await requireUser(accessToken);
+      // Checked here, not left to GoTrue: it only checks current_password
+      // when the project's "require current password" setting is on.
+      await options.authGateway.verifyPassword(email, currentPassword);
       await options.authGateway.updatePassword(accessToken, currentPassword, newPassword);
       try { await options.authGateway.signOut(accessToken, "others"); }
       finally { await recordSecurityEvent(user.id, "account.password_changed"); }

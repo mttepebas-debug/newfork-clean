@@ -124,12 +124,32 @@ describe("account security service", () => {
   it("changes the password and revokes only other sessions", async () => {
     const { service, auth } = serviceFixture();
     await service.changePassword(accessToken, "old-password", "new-password");
+    expect(auth.verifyPassword).toHaveBeenCalledWith(
+      "owner@example.test",
+      "old-password",
+    );
     expect(auth.updatePassword).toHaveBeenCalledWith(
       accessToken,
       "old-password",
       "new-password",
     );
     expect(auth.signOut).toHaveBeenCalledWith(accessToken, "others");
+  });
+
+  it("keeps the password and every session when the current password is wrong", async () => {
+    const { service, auth, rpc } = serviceFixture({
+      authOverrides: {
+        verifyPassword: vi.fn(async () => {
+          throw new Error("Current password is incorrect");
+        }),
+      },
+    });
+    await expect(
+      service.changePassword(accessToken, "wrong-password", "new-password"),
+    ).rejects.toThrow("Current password is incorrect");
+    expect(auth.updatePassword).not.toHaveBeenCalled();
+    expect(auth.signOut).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("verifies the current password before signing out other sessions", async () => {
@@ -164,6 +184,30 @@ describe("account security service", () => {
     );
     expect(deliverRecoveryEmail).not.toHaveBeenCalled();
     expect(auth.setBan).not.toHaveBeenCalled();
+  });
+
+  it("leaves the account untouched when deletion is asked with a wrong password", async () => {
+    const { service, auth, rpc, deliverRecoveryEmail } = serviceFixture({
+      authOverrides: {
+        verifyPassword: vi.fn(async () => {
+          throw new Error("Current password is incorrect");
+        }),
+      },
+    });
+    await expect(
+      service.requestAccountDeletion(accessToken, "wrong-password"),
+    ).rejects.toThrow("Current password is incorrect");
+    expect(rpc).not.toHaveBeenCalledWith(
+      "get_account_deletion_blockers_service",
+      expect.anything(),
+    );
+    expect(rpc).not.toHaveBeenCalledWith(
+      "request_account_deletion_v2_service",
+      expect.anything(),
+    );
+    expect(deliverRecoveryEmail).not.toHaveBeenCalled();
+    expect(auth.setBan).not.toHaveBeenCalled();
+    expect(auth.signOut).not.toHaveBeenCalled();
   });
 
   it("persists only a digest, delivers the raw recovery link, then disables all sessions", async () => {

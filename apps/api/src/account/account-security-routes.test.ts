@@ -81,6 +81,26 @@ describe("account security routes", () => {
     await app.close();
   });
 
+  it("answers a wrong current password with 400 and a readable message", async () => {
+    const changePassword = vi.fn(async () => {
+      throw new Error("Current password is incorrect");
+    });
+    const app = await appWith(service({ changePassword }));
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/account/security/password",
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: {
+        currentPassword: "wrong-password",
+        newPassword: "new-password",
+        confirmPassword: "new-password",
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: "Current password is incorrect" });
+    await app.close();
+  });
+
   it("requests deletion with current password only and ignores spoofed identity", async () => {
     const requestAccountDeletion = vi.fn(async () => ({ status: "pending" }));
     const app = await appWith(service({ requestAccountDeletion }));
