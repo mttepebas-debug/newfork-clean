@@ -32,6 +32,9 @@ Türkçe; karmaşık kararlar başlık başlık, örnekli, chat'te sorulur (kull
 
 5. **BL-192** `bl192-a` @f7516d79 (nf-guvenlik ONAY @f7516d79, nf-gorsel-qa ONAY @d44a3a75; taban c81a5bbb): telefonda yönetim alt çubuğu. BL-237'den sonra.
 6. **BL-231** `bl231-db` @16690fb5 (ONAY, migration 20260928010000) + nf-backend `bl231` (yapılıyor). İkisi birlikte, BL-192'den sonra.
+7. **BL-230** `bl230` @409e2c2f (ONAY; merge-0927d 0a92268e üstünde, migration 20260928020000): yayından kaldırılan haftada onaylı takas korunur (K13 a). merge-0927d'den sonra rebase.
+8. **BL-221** `bl221` @a6972a19 (ONAY; migration 20260928030000): belgesi eksik owner'ın kendi izni onaysız (K12). Düşük 1 fixture devir yoluyla kurulabilir; Düşük 2 kısayol "workspace açık" kontrolünü atlıyor (talep yolu zaten kapılı).
+Birleştirme penceresinde bl052_document_notifications / bl052_document_account_inbox kırmızısı bilinen yerel kayma (ortak DB'de 99 birikmiş pending bildirim; CI'da düşmez, nf-test 2026-09-28).
 
 ## 1. Bugün (09-27) main'e girenler
 Settings 8 sayfa API'den (FB-6.1.9 bitti: 0693b51, a833cbe, bee7713d), read_role_workspace silindi
