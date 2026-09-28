@@ -29,12 +29,13 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 
 ## 3. Sıradaki en önemli iş (gerekçesiyle)
 1. ~~BL-252 + BL-246~~ **bitti 2026-09-28** (`cb6013fb`).
-2. **BL-199 — müdür Schedule'da vardiyaya not yazamıyor** (`nf-arayuz` alan + `nf-backend` kaydetme doğrulaması + e2e). Kullanıcı kararı 09-28: devir işinden hemen sonra.
-3. **BL-218 `.3` → FB-6.2.** Programın kritik yolu: `.3` (`nf-backend`) FB-6.2 `.4`'ün son önkoşulu. `.5` artık veri parçası da istiyor (işlere departman + `system_key`: önce `nf-db` okuma + `nf-backend`, sonra `nf-arayuz` varyantları). FB-6.1b `.1` (BL-159) de başlayabilir (Ç8).
-4. **BL-238** (Pazar akşamı "bu hafta" UTC'ye göre; high/risky) — K19 konuşulunca.
-5. **K7 ekran turu** — FB-6.1'i %100'e taşır; kullanıcının günü.
+2. **SEC-003 hesap güvenliği paketi** (BL-266, BL-267, BL-268, BL-269, BL-274; kullanıcı kararı 2026-09-28: sıradaki tek iş). `nf-db` → `nf-backend` → `nf-test`, sırayla; ultrareview önerilir. S1, S2 ve hosted ayar kontrolü kullanıcıda (`tasks/SEC-003.md`).
+3. **BL-199 — müdür Schedule'da vardiyaya not yazamıyor** (`nf-arayuz` alan + `nf-backend` kaydetme doğrulaması + e2e). Kullanıcı kararı 09-28: SEC-003'ten sonra (önce "devir işinden hemen sonra" idi).
+4. **BL-218 `.3` → FB-6.2.** Programın kritik yolu: `.3` (`nf-backend`) FB-6.2 `.4`'ün son önkoşulu. `.5` artık veri parçası da istiyor (işlere departman + `system_key`: önce `nf-db` okuma + `nf-backend`, sonra `nf-arayuz` varyantları). FB-6.1b `.1` (BL-159) de başlayabilir (Ç8).
+5. **BL-238** (Pazar akşamı "bu hafta" UTC'ye göre; high/risky) — K19 konuşulunca.
+6. **K7 ekran turu** — FB-6.1'i %100'e taşır; kullanıcının günü.
 
-**Kod denetiminin önerdiği sıra (2026-09-28; öneri, kullanıcı kararı bekliyor — yukarıdaki sırayı değiştirmez, BL-199 sıradaki kalır):** (1) hesap güvenliği BL-266, BL-267, BL-268, BL-269, BL-274 (high/risky, ultrareview ile); (2) çıkışta önbellek temizliği + iki kullanıcılı test BL-271 (high/safe); (3) eski kapı → çekirdek, matrise ikinci admin BL-270 + BL-276 (high/risky, ultrareview ile); (4) dışa aktarma cron'u ve ekleri BL-272 + BL-101 (high/safe); (5) bayat ekranlar BL-278 + BL-273 (medium/safe); (6) CI bekçisi, `todo`, `forbidOnly` BL-281 (medium/safe). Kaynak: `BACKLOG.md` "Yeni bulgular (2026-09-28 kod denetimi)".
+**Kod denetiminin önerdiği sıra (2026-09-28; ilk adımı kullanıcı seçti → SEC-003, kalanı öneri):** (1) ~~hesap güvenliği BL-266, BL-267, BL-268, BL-269, BL-274~~ → SEC-003 (madde 2); (2) çıkışta önbellek temizliği + iki kullanıcılı test BL-271 (high/safe); (3) eski kapı → çekirdek, matrise ikinci admin BL-270 + BL-276 (high/risky, ultrareview ile); (4) dışa aktarma cron'u ve ekleri BL-272 + BL-101 (high/safe); (5) bayat ekranlar BL-278 + BL-273 (medium/safe); (6) CI bekçisi, `todo`, `forbidOnly` BL-281 (medium/safe). Kaynak: `BACKLOG.md` "Yeni bulgular (2026-09-28 kod denetimi)".
 
 ## 4. Şeritler (paralel rol oturumları)
 Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en çok iki ağır iş; migration ortak yerel DB'ye yalnız birleştirme penceresinde (`scripts/lock.mjs`); her kod işi `nf-guvenlik`, ekranı değişen `nf-gorsel-qa`. **Kullanıcı aynı anda tek iş istiyor (2026-09-28):** şeritler sıra listesidir, paralel başlatma kullanıcı onayıyla.
