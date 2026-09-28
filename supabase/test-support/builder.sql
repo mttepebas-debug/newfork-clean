@@ -410,7 +410,8 @@ as $$
 declare
   payload jsonb := jsonb_build_object(
     'location_id', tests.id(w || ':' || (shift ->> 'loc')),
-    'employee_id', tests.id(w || ':' || (shift ->> 'person')),
+    -- No person: an open shift, for anyone at the location to pick up.
+    'employee_id', case when shift ->> 'person' is not null then tests.id(w || ':' || (shift ->> 'person')) end,
     'job_id', tests.id(w || ':job:' || (shift ->> 'job')),
     'scheduled_date', tests.week(n) + (shift ->> 'day')::integer,
     'time_basis', 'explicit',
@@ -483,7 +484,7 @@ begin
     perform tests.remember(w || ':shift:' || (shift ->> 'label'), (
       select p.id from public.schedule_published_shifts p
       where p.workspace_id = workspace
-        and p.employee_id = tests.id(w || ':' || (shift ->> 'person'))
+        and p.employee_id is not distinct from case when shift ->> 'person' is not null then tests.id(w || ':' || (shift ->> 'person')) end
         and p.location_id = tests.id(w || ':' || (shift ->> 'loc'))
         and p.scheduled_date = tests.week(n) + (shift ->> 'day')::integer
         and p.start_time = (shift ->> 'start')::time
