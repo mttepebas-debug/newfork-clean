@@ -34,6 +34,7 @@ Dilim açıldığında (09-25) B2'nin kaydetme tarafı "tasarım ister" diye yaz
   - (a) **(Önerilen)** Kapalı başlar, kişinin son seçimi o tarayıcıda hatırlanır.
   - (b) Açık başlar.
   - (c) Her düzenlemede kapalı başlar, hatırlanmaz.
+- **Cevaplar (kullanıcı, 2026-09-28):** S1 (a) haftanın bütün yayınlanmış vardiyaları; S2 (a) her plan düzenlemesinde; S3 (a) kapalı başlar, son seçim o tarayıcıda hatırlanır.
 
 Kurallardan çıkan, soru olmayanlar:
 - Anahtar yalnız görünümü değiştirir. Yayın kontrolü ve çakışma hesabı anahtardan bağımsızdır, bugünkü gibi kalır (B4: "uyarı ve engel hesaplamasına girmez").
