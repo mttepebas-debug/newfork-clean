@@ -114,7 +114,7 @@ Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca g
 - SEC-003'ün paralel yerleşim notları (S.A/S.B ortak dosyası) iş kapandığı için düştü.
 
 ## 7. Hedef dışı (tek satırlık özet)
-- **BL-199** (müdür Schedule'da vardiyaya not yazamıyor; 5 puan, tahmin): kullanıcı kararıyla SEC-003'ten hemen sonra sıradaydı; **kullanıcı bekletti (2026-09-28): "şimdilik dur" — yeni iş açılmıyor, BL-199'un ölçümü de beklemede.** Hedeflerin dışında; yüzdelere girmez.
+- **BL-199** (müdür Schedule'da vardiyaya not yazamıyor; **sürüyor (ölçüm)** 2026-09-28 — görev dosyası taslağı `tasks/BL-199.md`, kapsam kullanıcı onayı ve S1–S5 cevabı bekliyor; puan tahmini 6–11, önerilen cevaplarla 10; önceki tahmin 5): kullanıcı kararıyla SEC-003'ten hemen sonra sıradaydı; **kullanıcı bekletti (2026-09-28): "şimdilik dur" — yeni iş açılmıyor, BL-199'un ölçümü de beklemede.** Hedeflerin dışında; yüzdelere girmez.
 - **MVP'nin kalan fazları:** F0 (OPS-010, SEC-001), FJ (~%80), F1 (~%55), F2 (~%20), F3 (~%20), F4 (~%5, K15), F5 (~%30), F6 (başlamadı). Hepsi 2026-09-26 tahmini, ölçülmedi. FOUNDATION-B bitince sıra `ROADMAP.md`'den gelir.
 - **Kod denetimi (BL-266..282):** SEC-003 dışındakiler backlog'da. Yerleri K23 ile kullanıcıya soruluyor.
 - **Temizlik (koordinatör):** 43 birleşmemiş görünen dal, 34 worktree (sürüm 3 ölçümü). Arşiv adayı oturumlar: eski `nf-db` "BL-198" ve "Settings okumaları", "Code review", "ultrareview: bl252", "bl252-f6".
