@@ -37,7 +37,7 @@
 .eh-mobile-nav a:focus-visible,
 .eh-sheet :focus-visible,
 .eh-more :focus-visible {
-  outline: 3px solid #559c80;
+  outline: 3px solid var(--theme-focus);
   outline-offset: 4px;
 }
 .eh-dashboard p,
@@ -942,7 +942,7 @@
     grid-row: 3;
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 720px) {
   body:has(.app-shell[data-employee-shell="true"]) {
     min-width: 0;
   }
@@ -980,8 +980,8 @@
     border-radius: 11px;
   }
   .eh-mobile-nav a.active {
-    background: #edf2e7;
-    color: #305e3d;
+    background: var(--theme-selected);
+    color: var(--theme-accent-strong);
     font-weight: 650;
   }
   .app-shell[data-employee-shell="true"]:has(
