@@ -6,6 +6,8 @@ insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data)
 values ('19000000-0000-4000-8000-000000000001', 'create-owner@example.test', '{}', '{}'),
        ('19000000-0000-4000-8000-000000000002', 'create-remote@example.test', '{}', '{}'),
        ('19000000-0000-4000-8000-000000000003', 'create-outsider@example.test', '{}', '{}');
+-- These accounts have confirmed their address; accepting an invitation asks for it (SEC-003).
+update auth.users set email_confirmed_at = now() where id::text like '19000000-%' and email_confirmed_at is null;
 insert into public.workspaces (id, name, created_by)
 values ('29000000-0000-4000-8000-000000000001', 'Create command test', '19000000-0000-4000-8000-000000000001');
 insert into public.workspace_memberships (workspace_id, user_id, role, all_locations)
@@ -106,6 +108,8 @@ select ok(not has_function_privilege('authenticated', 'public.create_employee_co
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data)
 values ('19000000-0000-4000-8000-000000000004', 'create-manager-actor@example.test', '{}', '{}'),
        ('19000000-0000-4000-8000-000000000005', 'create-manager-invite@example.test', '{}', '{}');
+-- These accounts have confirmed their address; accepting an invitation asks for it (SEC-003).
+update auth.users set email_confirmed_at = now() where id::text like '19000000-%' and email_confirmed_at is null;
 insert into public.workspace_memberships (workspace_id, user_id, role, all_locations)
 values ('29000000-0000-4000-8000-000000000001', '19000000-0000-4000-8000-000000000004', 'manager', false);
 insert into public.workspace_role_permissions (workspace_id, role_id, permission_key)

@@ -7,6 +7,8 @@ values
   ('b1051001-0000-4000-8000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'roles-admin@example.test', '', '{}', '{}', now(), now()),
   ('b1051001-0000-4000-8000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'roles-manager@example.test', '', '{}', '{}', now(), now()),
   ('b1051001-0000-4000-8000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'roles-outsider@example.test', '', '{}', '{}', now(), now());
+-- These accounts have confirmed their address; accepting an invitation asks for it (SEC-003).
+update auth.users set email_confirmed_at = now() where id::text like 'b1051001-%' and email_confirmed_at is null;
 
 insert into public.workspaces (id, name, created_by)
 values
@@ -68,6 +70,8 @@ select is((select role_id from public.employee_invitations where id='b1051005-00
 
 -- Invitation acceptance binds the current role; no permission snapshot is replayed.
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values('b1051001-0000-4000-8000-000000000005','00000000-0000-0000-0000-000000000000','authenticated','authenticated','roles-invite@example.test','','{}','{}',now(),now());
+-- These accounts have confirmed their address; accepting an invitation asks for it (SEC-003).
+update auth.users set email_confirmed_at = now() where id::text like 'b1051001-%' and email_confirmed_at is null;
 update role_test_state set version=(select updated_at from public.workspace_roles where id=custom_role);
 select public.save_workspace_role_service('b1051001-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001',(select custom_role from role_test_state),'Floor lead','Changed during invite', 'manager',array['workspace.read','schedule.read'],(select version from role_test_state));
 set local role service_role;
@@ -81,6 +85,8 @@ insert into public.locations(short_name, id,workspace_id,name,street_address,cit
 ('T00031','b1051006-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001','Outside','2 Test','Test','CA','90001','America/Los_Angeles');
 insert into public.jobs(id,workspace_id,name) values('b1051007-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','Server');
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values('b1051001-0000-4000-8000-000000000006','00000000-0000-0000-0000-000000000000','authenticated','authenticated','roles-employee@example.test','','{}','{}',now(),now());
+-- These accounts have confirmed their address; accepting an invitation asks for it (SEC-003).
+update auth.users set email_confirmed_at = now() where id::text like 'b1051001-%' and email_confirmed_at is null;
 insert into public.workspace_memberships(workspace_id,user_id,role) values('b1051002-0000-4000-8000-000000000001','b1051001-0000-4000-8000-000000000006','employee');
 insert into public.employee_profiles(id,workspace_id,employee_code,first_name,last_name,user_id,created_by) values
 ('b1051004-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001','E-0002','Manager','Test','b1051001-0000-4000-8000-000000000003','b1051001-0000-4000-8000-000000000001'),

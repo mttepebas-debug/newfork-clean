@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(117);
+select plan(116);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -1330,24 +1330,20 @@ select throws_ok(
   'pending ownership transfer must be resolved before workspace closure',
   'pending ownership transfer blocks organization closure'
 );
-select throws_ok(
-  $$select public.request_account_deletion_service(
+select throws_like(
+  $$select public.request_account_deletion_v2_service(
     '10000000-0000-4000-8000-000000000001',
-    'owner@example.test',
-    true
+    repeat('a', 64)
   )$$,
-  '23514',
-  'pending ownership transfer must be resolved before account deletion',
+  '%pending_ownership_transfer%',
   'pending ownership transfer blocks initiator account deletion'
 );
-select throws_ok(
-  $$select public.request_account_deletion_service(
+select throws_like(
+  $$select public.request_account_deletion_v2_service(
     '10000000-0000-4000-8000-000000000003',
-    'admin@example.test',
-    true
+    repeat('a', 64)
   )$$,
-  '23514',
-  'pending ownership transfer must be resolved before account deletion',
+  '%pending_ownership_transfer%',
   'pending ownership transfer blocks target account deletion'
 );
 set local role postgres;
@@ -1470,38 +1466,23 @@ select is(
   'ownership transfer moves internal billing owner and requires a new payment method'
 );
 
-select throws_ok(
-  $$select public.request_account_deletion_service(
+select throws_like(
+  $$select public.request_account_deletion_v2_service(
     '10000000-0000-4000-8000-000000000003',
-    'admin@example.test',
-    true
+    repeat('a', 64)
   )$$,
-  '23514',
-  'account has active organization access',
+  '%active_membership%',
   'global account deletion is blocked while active organization access exists'
 );
-select throws_ok(
-  $$select public.request_account_deletion_service(
-    '10000000-0000-4000-8000-000000000005',
-    'wrong@example.test',
-    true
-  )$$,
-  '23514',
-  'account email confirmation is required',
-  'global account deletion requires exact account email confirmation'
-);
 select lives_ok(
-  $$select public.request_account_deletion_service(
+  $$select public.request_account_deletion_v2_service(
     '10000000-0000-4000-8000-000000000005',
-    'no-org@example.test',
-    true
+    repeat('b', 64)
   )$$,
   'account without active organizations can request global account deletion'
 );
 select lives_ok(
-  $$select public.restore_account_deletion_request_service(
-    '10000000-0000-4000-8000-000000000005'
-  )$$,
+  $$select public.restore_account_deletion_by_token_service(repeat('b', 64))$$,
   'pending global account deletion can be restored inside the restore window'
 );
 

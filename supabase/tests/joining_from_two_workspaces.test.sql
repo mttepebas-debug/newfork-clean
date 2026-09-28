@@ -19,6 +19,8 @@ values
   ('1e000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'two-invites-first@example.test', '', '{}', '{}', now(), now()),
   ('1e000000-0000-4000-8000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'two-invites-second@example.test', '', '{}', '{}', now(), now()),
   ('1e000000-0000-4000-8000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'two-invites-joiner@example.test', '', '{}', '{}', now(), now());
+-- These accounts have confirmed their address; accepting an invitation asks for it (SEC-003).
+update auth.users set email_confirmed_at = now() where id::text like '1e000000-%' and email_confirmed_at is null;
 
 insert into public.user_profiles (user_id, display_name)
 values
@@ -135,6 +137,8 @@ select is(
 -- from somewhere else still unanswered.
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values ('1e000000-0000-4000-8000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'mid-setup@example.test', '', '{}', '{}', now(), now());
+-- These accounts have confirmed their address; accepting an invitation asks for it (SEC-003).
+update auth.users set email_confirmed_at = now() where id::text like '1e000000-%' and email_confirmed_at is null;
 insert into public.user_profiles (user_id, display_name)
 values ('1e000000-0000-4000-8000-000000000004', 'Sam Mid Setup');
 

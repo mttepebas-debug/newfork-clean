@@ -14,6 +14,8 @@ values
   ('16000000-0000-4000-8000-000000000008', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin-invite@example.test', '', '{}', '{}', now(), now()),
   ('16000000-0000-4000-8000-000000000009', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'expired-invite@example.test', '', '{}', '{}', now(), now()),
   ('16000000-0000-4000-8000-000000000010', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'archive-linked@example.test', '', '{}', '{}', now(), now());
+-- These accounts have confirmed their address; accepting an invitation asks for it (SEC-003).
+update auth.users set email_confirmed_at = now() where id::text like '16000000-%' and email_confirmed_at is null;
 
 insert into public.workspaces (id, name, created_by)
 values

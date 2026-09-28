@@ -218,6 +218,11 @@ insert into retired (kind, name, step) values
 insert into retired (kind, name, step) values
   ('trigger', 'jobs.jobs_reach_the_owner', 'BL-218'),
   ('trigger', 'jobs.jobs_reach_the_owner_on_restore', 'BL-218');
+-- SEC-003 (BL-269): account deletion goes one way, with the password
+-- (request_account_deletion_v2_service, restore_account_deletion_by_token_service).
+insert into retired (kind, name, step) values
+  ('function', 'request_account_deletion_service', 'SEC-003'),
+  ('function', 'restore_account_deletion_request_service', 'SEC-003');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
