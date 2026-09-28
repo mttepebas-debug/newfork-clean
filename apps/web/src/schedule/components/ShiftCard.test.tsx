@@ -3,8 +3,8 @@ import type {
   ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   GhostShiftCard,
@@ -265,6 +265,115 @@ describe("ShiftCard", () => {
         name: /Training · Lead Server · Close/i,
       }),
     ).toBeTruthy();
+  });
+});
+
+// BL-199: the manager-note corner. jsdom has no PointerEvent, so events are
+// built by hand with a pointer type. React reads enter/leave from the "out"
+// event of the element the pointer came from, as a browser sends it.
+function pointerEvent(
+  element: Element,
+  type: "pointerover" | "pointerout" | "pointerdown",
+  pointerType: string,
+  relatedTarget: Element | null,
+) {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperties(event, {
+    pointerType: { value: pointerType },
+    relatedTarget: { value: relatedTarget },
+  });
+  fireEvent(element, event);
+}
+function move(from: Element | null, to: Element | null, pointerType = "mouse") {
+  if (from) pointerEvent(from, "pointerout", pointerType, to);
+  if (to) pointerEvent(to, "pointerover", pointerType, from);
+}
+
+describe("ShiftCard manager note (BL-199)", () => {
+  afterEach(() => vi.useRealTimers());
+  const note = "Private party of 40 in the back room from 7 PM.";
+  const noted = () => {
+    vi.useFakeTimers();
+    renderShiftCard({ shift: { ...shift, note: `  ${note} ` } });
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    const corner = badge.querySelector("[data-shift-note-marker]")!;
+    return { badge, corner };
+  };
+  const wait = (ms: number) => act(() => { vi.advanceTimersByTime(ms); });
+  const noteCard = () => document.querySelector(".schedule-shift-note-card");
+  const openNote = (badge: Element, corner: Element) => {
+    move(null, badge);
+    move(badge, corner);
+    wait(300);
+    return noteCard()!;
+  };
+
+  it("marks only a shift with a note, and says so to a screen reader", () => {
+    const { badge, corner } = noted();
+    expect(corner).not.toBeNull();
+    expect(badge.getAttribute("data-has-note")).toBe("true");
+    expect(badge.getAttribute("aria-label")).toMatch(/, has a manager note$/);
+    expect(screen.getByRole("button", { description: note })).toBe(badge);
+  });
+
+  it("puts no corner and no note wording on a shift without a note", () => {
+    renderShiftCard({ shift: { ...shift, note: "   " } });
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    expect(badge.querySelector("[data-shift-note-marker]")).toBeNull();
+    expect(badge.getAttribute("aria-label")).not.toContain("manager note");
+    expect(badge.getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("opens the note only for a mouse resting on the corner", () => {
+    const { badge, corner } = noted();
+    move(null, badge.querySelector("strong"));
+    wait(400);
+    expect(noteCard()).toBeNull();
+    fireEvent.focus(badge);
+    wait(400);
+    expect(noteCard()).toBeNull();
+    move(badge.querySelector("strong"), corner, "touch");
+    wait(400);
+    expect(noteCard()).toBeNull();
+    move(corner, badge, "touch");
+
+    move(badge, corner);
+    wait(100);
+    expect(noteCard()).toBeNull();
+    wait(200);
+    expect(noteCard()?.textContent).toBe(`Manager note${note}`);
+    expect(noteCard()?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("stays open while the pointer moves onto the note, then closes when it leaves both", () => {
+    const { badge, corner } = noted();
+    const card = openNote(badge, corner);
+    expect(card).not.toBeNull();
+    move(corner, card);
+    wait(400);
+    expect(noteCard()).not.toBeNull();
+    move(card, document.body);
+    wait(200);
+    expect(noteCard()).toBeNull();
+  });
+
+  it("closes when the pointer leaves the corner for the rest of the card", () => {
+    const { badge, corner } = noted();
+    openNote(badge, corner);
+    move(corner, badge.querySelector("strong"));
+    wait(200);
+    expect(noteCard()).toBeNull();
+  });
+
+  it.each([
+    ["a click or the start of a drag", (badge: Element) => pointerEvent(badge, "pointerdown", "mouse", null)],
+    ["Escape", () => fireEvent.keyDown(document, { key: "Escape" })],
+    ["a scroll", () => fireEvent.scroll(window)],
+  ] as const)("closes on %s", (_, close) => {
+    const { badge, corner } = noted();
+    expect(openNote(badge, corner)).not.toBeNull();
+    act(() => close(badge));
+    expect(noteCard()).toBeNull();
   });
 });
 

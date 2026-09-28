@@ -9,7 +9,7 @@ import type {
   MouseEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 import {
   formatAvailabilityWarning,
@@ -21,6 +21,7 @@ import type { TimeFormat } from "../timeInput";
 import type { ShiftPublicationState } from "./ScheduleContextMenu";
 import type { EffectiveScheduleShift } from "../hooks/useEffectiveShifts";
 import "./schedule-shift-save.css";
+import { useShiftNoteCorner } from "./ShiftNoteCorner";
 
 const SINGLE_CLICK_FOCUS_DELAY_MS = 250;
 
@@ -113,6 +114,11 @@ export function ShiftCard({
     : null;
   // TBD (user, 2026-09-26): cell availability warning look to be redesigned
   const showAvailabilityCorner = Boolean(availabilityWarning);
+  // The manager's note (BL-199): an ink corner, the note on a mouse hover of
+  // that corner, and the text as the card's description for screen readers.
+  const note = shift.note?.trim() ?? "";
+  const noteDescriptionId = useId();
+  const noteCorner = useShiftNoteCorner(note, Boolean(dragging));
   const modifierSelectionHandledRef = useRef(false);
   const pendingSingleClickRef = useRef<number | null>(null);
   const cancelPendingSingleClick = () => {
@@ -145,6 +151,7 @@ export function ShiftCard({
   };
 
   return (
+    <>
     <button
       type="button"
       className="schedule-shift-badge"
@@ -160,7 +167,9 @@ export function ShiftCard({
         timeText: showClockRow ? timeText : "",
         locationText: locationName ?? "",
         warningText,
-      })}
+      }) + (note ? ", has a manager note" : "")}
+      aria-describedby={note ? noteDescriptionId : undefined}
+      data-has-note={note ? "true" : undefined}
       data-shift-badge="true"
       data-shift-id={shift.id}
       disabled={shift.optimistic}
@@ -262,6 +271,12 @@ export function ShiftCard({
           aria-hidden="true"
         />
       ) : null}
+      {note ? (
+        <span id={noteDescriptionId} className="sr-only">
+          {note}
+        </span>
+      ) : null}
+      {noteCorner.corner}
       {publicationState || showAvailabilityCorner ? (
         <span className="schedule-shift-badge-markers">
           {showAvailabilityCorner ? (
@@ -320,6 +335,8 @@ export function ShiftCard({
         ) : null}
       </span>
     </button>
+    {noteCorner.card}
+    </>
   );
 }
 

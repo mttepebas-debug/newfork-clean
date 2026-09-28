@@ -30,6 +30,22 @@ oturum: Claude canvas'ı `Artifact` aracıyla okur (`read`, `path: project/canva
 İşletme tarafı ayarlar (`apps/web/src/settings/*`) canvas'ta yalnız mimari artboard'larında
 çerçeve olarak geçer; ekran tasarımı orada yok.
 
+## Canvas dışı kurallar (kodda, canvas'ta artboard'u yok)
+
+- **Schedule kartında yönetici notu işareti (BL-199, kullanıcı kararı 2026-09-28, "Yorum köşesi").**
+  Notu olan vardiya kartının sol üst köşesinde 11px dolu üçgen; kartın 4px yuvarlaklığıyla kırpılır.
+  Renk `--theme-note` `#2f4fa3` (beyazda 7,6:1; vardiya türü tonlu kart zeminlerinde en kötü durumda,
+  siyah türde bile 5,6:1). Not yalnız fare üçgenin üstünde 250 ms durunca açılır (görünmeyen hover
+  alanı 16px kare); fare üçgenden nota geçince açık kalır, ikisinden de ayrılınca 150 ms sonra kapanır;
+  herhangi bir basış, sürükleme, Escape ve kaydırma kapatır. Klavye odağı ve dokunuş açmaz (dokunuş
+  bugünkü gibi karta süzgeç koyar); ekran okuyucu kartın adında ", has a manager note" ve açıklamasında
+  notun kendisini duyar. Açılan kart: beyaz, solda 3px `--theme-note` çizgi, StickyNote simgesi ve
+  "Manager note" başlığı, en çok 272px, kartın üstünde (kart ekranın üst 150px'indeyse altında).
+  Seçili kartta onay işareti üçgenin üstünde kalır, üçgenin ucu köşede görünür. `--theme-note` yalnız
+  bu işaret içindir; durum, uyarı ya da seçim rengi olarak kullanılmaz.
+  Kod: `apps/web/src/schedule/components/ShiftNoteCorner.tsx`, `ShiftCard.tsx`, `styles.css`
+  (`.schedule-shift-note-corner`, `.schedule-shift-note-card`).
+
 ## Karar kaydı
 
 IA kararının gerekçesi ve Documents/Notifications yüzey ayrımı: `docs/adr/0014-notification-policy-and-catalog.md`

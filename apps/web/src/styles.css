@@ -41,6 +41,9 @@
   --theme-danger-text: #653b36;
   --theme-danger-strong: #a43830;
   --theme-accent-focus: #236844;
+  /* A manager's note on a Schedule shift (BL-199): its own ink, so a note
+     never reads as a status, a warning or a selection. 7.6:1 on white. */
+  --theme-note: #2f4fa3;
   --schedule-action: var(--theme-action);
   --schedule-action-hover: var(--theme-action-hover);
   --schedule-grid-line-color: #dce2df;
@@ -10340,6 +10343,80 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-shift-badge[data-stack-count] .schedule-shift-badge-markers {
   right: 39px;
+}
+/* A shift with a manager's note (BL-199): an 11px ink triangle in the top
+   left, clipped by the card's radius, on a 16px hover area that stays
+   invisible. The note opens beside the card only for a mouse on that area. */
+.schedule-shift-badge .schedule-shift-note-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+}
+.schedule-shift-badge .schedule-shift-note-corner::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-top: 11px solid var(--theme-note);
+  border-right: 11px solid transparent;
+  content: "";
+}
+.schedule-shift-note-card {
+  position: fixed;
+  z-index: 200;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 272px;
+  border: 1px solid var(--theme-border);
+  border-left: 3px solid var(--theme-note);
+  border-radius: 8px;
+  padding: 8px 12px 9px 10px;
+  background: var(--theme-surface);
+  box-shadow: 0 10px 24px rgb(17 24 39 / 16%), 0 2px 6px rgb(17 24 39 / 8%);
+  color: var(--theme-text-body);
+  text-align: left;
+  animation: schedule-shift-note-card-in 120ms ease-out;
+}
+.schedule-shift-note-card[data-side="above"] {
+  transform: translate(-50%, -100%);
+}
+.schedule-shift-note-card[data-side="below"] {
+  transform: translate(-50%, 0);
+}
+.schedule-shift-note-card-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+  color: var(--theme-note);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+.schedule-shift-note-card p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+@keyframes schedule-shift-note-card-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .schedule-shift-note-card {
+    animation: none;
+  }
 }
 /* "Ali shows as unavailable for this shift" (BL-186): a preference, so a
    quiet amber mark, never the red of a conflict. */
