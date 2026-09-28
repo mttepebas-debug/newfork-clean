@@ -20,7 +20,7 @@ Türkçe; karmaşık kararlar başlık başlık, örnekli, chat'te sorulur (kull
    b. **BL-234** `bl234` @5a6a7a24 (ONAY): aynı hafta iki kez yayınlanıp yeniden düzenlenince Publish
       önizlemesi 500. Migration `20260927165000`. nf-test'in builder.sql düzeltmelerini de taşıyor
       (bl210'daki 6349add9 + 75b16f6c eşdeğerleri). Pencere: migration up + test:db + e2e + kapı.
-   c. **BL-218 .2** `bl218-1` @76289c7d (ONAY): Management/Owner veritabanı kuralları. Migration
+   c. **BL-218 .2** `bl218-s3` @30056d12 (ONAY; `bl218-1` @76289c7d + S3 kararını kilitleyen test, nf-guvenlik ONAY 2026-09-28): Management/Owner veritabanı kuralları. Migration
       `20260927160000` — BL-234'ün 165000'inden ESKİ, `--include-all` gerekir. BL-234 girince nf-db
       `excluded_person_leaves_new_drafts`'teki 2 TODO'yu kaldıracak (haber ver).
 3. BL-198 e2e spec (`bl198-e2e` @2b56dc8a, ONAY) merge-0927d'ye EKLENDİ (tam e2e 11/13, düşen 2 = BL-238).
