@@ -373,7 +373,9 @@ begin
 
   -- The new owner is asked for no document from now on, like any owner
   -- (BL-246): what they still owed is excused the way a document reaching an
-  -- owner later is, and the document block lifts with it.
+  -- owner later is, and the document block lifts with it. Each excuse is
+  -- recorded like any exemption, as the old owner's are when taken back.
+  for owed in
   update public.employee_onboarding_requirements requirement
   set (owner_excused, lifecycle_exempt, required, blocks_activation, deadline_at, lifecycle_close_reason) = (
         select excused.owner_excused, excused.lifecycle_exempt, excused.required, excused.blocks_activation,
@@ -389,7 +391,12 @@ begin
     and requirement.workspace_id = target_workspace_id
     and requirement.kind in ('document', 'acknowledgement')
     and not requirement.lifecycle_exempt
-    and requirement.lifecycle_retired_at is null;
+    and requirement.lifecycle_retired_at is null
+  returning requirement.*
+  loop
+    perform app_private.document_audit(owed, actor_user_id, 'document.exempted',
+      jsonb_build_object('reason', 'Now the owner', 'revision', owed.lifecycle_revision));
+  end loop;
 
   -- The old owner, now an admin, is asked for the documents everyone is
   -- (BL-252): the excuses they had for being the owner are taken back as a

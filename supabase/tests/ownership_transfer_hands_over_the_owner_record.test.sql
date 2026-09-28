@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(28);
+select plan(29);
 
 -- BL-252/BL-246 (user, 2026-09-28). Accepting an ownership transfer hands
 -- over what being the owner means: the new owner works the Owner job and the
@@ -133,23 +133,30 @@ select ok((pg_temp.req('ot:owner', pg_temp.card())).lifecycle_exempt
     and (pg_temp.req('ot:owner', tests.id('ot:policy'))).lifecycle_exempt,
   'and stays excused from the documents');
 
--- 2. Only somebody with a live employee record here accepts -------------------------
--- ponytail: the product cannot reach either state (an invitation always names a
--- record, archiving suspends the membership, starting a transfer asks for a
--- live record); both are forced by hand between the offer and the answer.
+-- 2. Only somebody with a live employee record here takes ownership ------------------
+-- Archiving a record or removing its access, the product's two ways to part a
+-- person from their record, both suspend the membership, and neither runs
+-- while a transfer is pending. So such an admin is never offered the
+-- workspace. (The acceptance also asks for a live record itself; no product
+-- path reaches that check alone.)
 
-select pg_temp.offer('ot:faruk');
-update public.employee_profiles set archived_at = now() where id = tests.id('ot:faruk');
-select is(pg_temp.respond('ot:faruk', 'accept'), '42501 transfer.participants_ineligible',
-  'an admin whose record is archived cannot accept');
-select pg_temp.cancel();
+create function pg_temp.offer_answer(person text) returns text language sql as $$
+  select pg_temp.refusal(format('select public.initiate_workspace_ownership_transfer_service(%L, %L, %L)',
+    tests.user('ot:owner'), tests.id('ot'), tests.user(person)))
+$$;
 
-select pg_temp.offer('ot:gizem');
-update public.employee_profiles set user_id = null where id = tests.id('ot:gizem');
-select is(pg_temp.respond('ot:gizem', 'accept'), '42501 transfer.participants_ineligible',
-  'nor can an admin with no record here');
-select pg_temp.cancel();
-select ok(pg_temp.works_owner_job('ot:owner'), 'the owner keeps the Owner job');
+select public.set_employee_archived_service(tests.user('ot:owner'), tests.id('ot'), tests.id('ot:faruk'), true, false);
+select is(pg_temp.offer_answer('ot:faruk'), '23514 transfer.target_not_admin',
+  'an admin whose record is archived is not offered the workspace');
+
+select public.remove_employee_access_service(tests.user('ot:owner'), tests.id('ot'), tests.id('ot:gizem'));
+select is(pg_temp.offer_answer('ot:gizem'), '23514 transfer.target_not_admin',
+  'nor is an admin whose access was removed');
+select ok(pg_temp.works_owner_job('ot:owner') and not pg_temp.works_owner_job('ot:faruk')
+    and not pg_temp.works_owner_job('ot:gizem')
+    and not exists (select 1 from public.workspace_ownership_transfers
+      where workspace_id = tests.id('ot') and status = 'accepted'),
+  'nothing is handed over: the owner keeps the Owner job');
 
 -- 3. Only the person offered the workspace answers -------------------------------------
 
@@ -183,6 +190,12 @@ select is((select count(*)::integer from public.workspace_ownership_transfers
   where workspace_id = tests.id('ot') and status = 'accepted'), 1, 'one transfer was accepted');
 select is((pg_temp.req('ot:deniz', pg_temp.card())).owner_excused, true,
   'her card is excused because she is the owner');
+select is(
+  (select array_agg(a.metadata ->> 'reason') from public.onboarding_events a
+   where a.target_id = (pg_temp.req('ot:deniz', pg_temp.card())).id::text and a.action = 'document.exempted'),
+  array['Now the owner'],
+  'the excuse is recorded like any exemption, with the transfer as its reason'
+);
 select ok((pg_temp.req('ot:deniz', tests.id('ot:policy'))).lifecycle_exempt
     and not (pg_temp.req('ot:deniz', tests.id('ot:policy'))).owner_excused,
   'the policy a reviewer excused by hand stays excused by hand');
