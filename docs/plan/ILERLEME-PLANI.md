@@ -1,85 +1,89 @@
-# İlerleme planı — çoklu rol oturumu (sürüm 3, 2026-09-28)
+# İlerleme planı — çoklu rol oturumu (sürüm 4, 2026-09-28)
 
-Hazırlayan: `nf-planlama` (`local_c67b8d60-…`). Koordinatör: "Koordinatör (devir 2026-09-27 gece)", `local_08c32131-90ea-4552-9d19-9b1a7dae5a5a`.
-Ölçüm: `origin/main` `916ef652`, 2026-09-28; yerel DB = main (son migration `20260928030000`); main CI son kod koşusu yeşil (run 36406391992, `7127bd96`). Sürüm 2: `bee7713d` ölçümü (2026-09-27 akşam).
-Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandıkça satırı "bitti" olur. Kaynaklar: `ROADMAP.md`, `MVP-PLAN.md`, `tasks/FOUNDATION-B.md`, `BACKLOG.md`.
+Hazırlayan: `nf-planlama` (`local_c67b8d60-…`), koordinatörle birlikte (kullanıcı isteği). Koordinatör: "Koordinatör — devir 2026-09-28", `local_41428574-b1a9-44cb-9a7c-cd34afc9456a`.
+Ölçüm: `origin/main` `db517fe9`, 2026-09-28; yerel DB = main (son migration `20260928040000`); main CI son kod koşusu yeşil (run 36416053874, `cb6013fb`). Koordinatör girdisi: 2026-09-28 (aynı gün). Sürüm 3: `916ef652`.
+Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandıkça satırı "bitti" olur. Kaynaklar: `ROADMAP.md`, `MVP-PLAN.md`, `tasks/FOUNDATION-B.md`, `BACKLOG.md`, `HANDOFF.md`.
 
 ## 1. Nerede duruyoruz
-- **FOUNDATION-B ~%58** (sürüm 2 ile aynı formül: 9,75 + 2,4 × 0,82 + 0,1 = 11,8 / 20,5; tahmin ağırlıklı). **Değişmedi:** 09-28 gündüz main'e girenler programın adımı değil, backlog ve cila işi. Aşama 1–5 bitti. Takvim dilimi (FB-6.1) **%82 = 14/17 adım satırı**: açık `.0` ekran turu, `.13` görsel, `.14` kapanış (hosted gönderim yapıldı). BL-218 `.1`–`.2` main'de, `.3` (`nf-backend`) başlamadı; FB-6.2 (Çalışanlar) ready, `.4` BL-218 `.3`'ü bekliyor. Aşama 7 başlamadı.
-- **09-28 main'e girenler (hepsinde main CI yeşil):**
-  - gece: BL-198, BL-212, BL-205, BL-197 (`65bdeaae`), BL-234, BL-218 `.1`–`.2`, BL-237, BL-192 (telefonda yönetici alt çubuğu), BL-231, BL-230, BL-221;
-  - gündüz: BL-239 + BL-240 (tek telefon kırılımı 720px, `2ca3803e`); **görsel tutarlılık paketi** (BL-214, BL-216, BL-235, BL-250, BL-251; `dc3c9730` + `7127bd96`): beyaz düğmeler ve form alanları aynı koyu kenarda, altı ikiz renk silindi, uyarı işareti okunur, iki alt çubuk aynı;
-  - kayıt: BL-100 (yerel DB'deki FX artığı silindi), BL-078 (işlem gerekmez).
-- **Şu an çalışan:** yok. **BL-252 + BL-246 + BL-263 bitti 2026-09-28** (`cb6013fb`, main CI yeşil run 36416053874): devir yalnız çalışan kaydı olan admin'e, yeni owner'ın belgeleri muaf, eski owner'ın owner muafiyetleri kalkar. Hosted'a gönderilmedi (BL-265).
-- **Hosted:** 26 migration gönderildi (son `20260928030000`), advisors temiz. Web/API Vercel'de henüz yayında değil.
+- **Kural: aynı anda tek iş** (kullanıcı talimatı, yeni koordinatör oturumunda tekrarlandı). Paralel kod yazımı yok; `docs/plan` kayıtları ve salt okuma ölçümleri engel değil.
+- **Şu an çalışan: SEC-003 hesap güvenliği paketi, adım 1/3 `nf-db`** ("Rol: nf-db — BL-218" oturumu; worktree `../newfork-wt/sec-003`, dal `task/sec-003`, henüz commit yok). `nf-db` kapsamı: eski parolasız silme yolunun iki DB fonksiyonu + `retired_objects_stay_gone` + kapsam kataloğundan iki satır (#4); davet kabulüne `email_confirmed_at` şartı + pgTAP (#9); kalıcı migration yok (birleştirme penceresinde). Sonra `nf-backend`, sonra `nf-test` (yerel `enable_confirmations` ve e2e kararı o adımda). Diğer roller boşta.
+- **FOUNDATION-B ~%58** (aynı formül: 9,75 + 2,4 × 0,82 + 0,1 = 11,8 / 20,5; tahmin ağırlıklı; sürüm 3'ten beri değişmedi). Aşama 1–5 bitti. Takvim dilimi (FB-6.1) **%82 = 14/17 adım**: açık `.0` ekran turu, `.13` görsel, `.14` kapanış. BL-218 `.1`–`.2` main'de, `.3` başlamadı; FB-6.2 (Çalışanlar) ready, `.4` BL-218 `.3`'ü bekliyor. Aşama 7 başlamadı.
+- **09-28 main'e girenler (hepsinde main CI yeşil):** gece BL-198, BL-212, BL-205, BL-197, BL-234, BL-218 `.1`–`.2`, BL-237, BL-192, BL-231, BL-230, BL-221; gündüz BL-239 + BL-240 (`2ca3803e`), görsel tutarlılık paketi (`dc3c9730` + `7127bd96`), **BL-252 + BL-246 + BL-263** sahiplik devrinde owner kuralları (`cb6013fb`). Kayıtlar: kod denetimi → BL-266..282, `tasks/SEC-003.md`, devir notu (`HANDOFF.md`), koordinatör kimliği (`db517fe9`).
+- **Hosted:** son sürüm `20260928030000`; bekleyen migration `20260928040000` (BL-265). Web/API Vercel'de henüz yayında değil.
 - **MVP geneli ~%45–50** (2026-09-26 raporu; ölçülmedi).
 
 ## 2. Karar bekleyenler
-**Açık (kullanıcı):**
+**Açık (kullanıcı) — koordinatör 2026-09-28: bugün yalnız devir soruları soruldu; aşağıdakilerin hiçbiri sorulmadı, cevap yok:**
 | # | Karar | Not |
 |---|---|---|
-| K7 | FB-6.1 `.0` ekran turu + `.13` görsel kararlar | kullanıcının müsait olduğu ilk gün, 30–45 dk; FB-6.1'i kapatan tek şey |
-| K10 | FB-6.3 S4 — onaylı iznin iptalini kim onaylar | uzun konuşulacak; soru `tasks/FB-6.3.md`'de |
-| K15 | Faturalama (BL-059) S1–S7 | F4; kod FOUNDATION-B sonrası |
-| K19 | BL-238 — çok saat dilimli workspace'te hafta ne zaman geçmiş sayılır | uzun konuşulacak; her Pazar yöneticiyi ve CI'ı etkiliyor |
-| K20 | BL-255 — ikinci beyaz düğme sistemi (`.job-secondary-button`, 16 ekran: Settings → Jobs, Locations, Documents, Announcements…) tek sisteme birleşsin mi | görünüm 16 ekranda değişir; önce/sonra görüntüsüyle sorulur |
-| K21 | Sıradaki `nf-db` işlerinin başlaması: BL-254 (arşivli iş/tip adı) | kullanıcı aynı anda tek iş istiyor; sıra §3 |
+| K22 | **Hosted panel kontrolü:** Authentication → "Require current password when updating" ve "Confirm email"; S2 (a) kararıyla "Confirm email" açılacak (ayrı hosted işlem, kullanıcının kendi "evet"i) | kullanıcıya hatırlatıldı, cevap yok; SEC-003'ün başlamasını engellemez, bitişinde gerekir |
+| K7 | FB-6.1 `.0` ekran turu + `.13` görsel kararlar | 30–45 dk; FB-6.1'i kapatan tek şey |
+| K20 | BL-255 — ikinci beyaz düğme sistemi (16 ekran) tek sisteme birleşsin mi | önce/sonra görüntüsüyle sorulur |
+| K21 | BL-254 (arşivli iş/tip adı) başlasın mı | sıra §3 |
+| K23 | Kod denetiminin önerdiği sıranın kalanı (SEC-003'ten sonra): BL-271 → BL-270 + BL-276 → BL-272 + BL-101 → BL-278 + BL-273 → BL-281 | öneri; BL-199 ve BL-218 `.3`'e göre yeri kullanıcı kararı |
+| K19 | BL-238 — çok saat dilimli workspace'te hafta ne zaman geçmiş sayılır | uzun konuşulacak |
+| K10 | FB-6.3 S4 — onaylı iznin iptalini kim onaylar | uzun konuşulacak |
+| K15 | Faturalama (BL-059) S1–S7 | F4 |
 
-**Cevaplı (kayıtta; ayrıntı BACKLOG / REUSE / görev dosyaları):** K1–K4 FB-6.2 S1–S4 · D1–D5 Management/Owner · K5 hosted gönderim (yapıldı 09-28) · K6 BL-209 hedefli onarım (komut kullanıcıda) · K8 arşivli ad görünür (→ BL-254) · K9 onboarding yedi adım (F4'ten önce) · K11 görsel paket (bitti) · K12 BL-221 · K13 BL-230 · K14 Settings S1–S4 (→ FB-6.8) · K16 FB-6.1b S1–S3 · K17 BL-218 S1–S3 · K18 BL-192 · **09-28 gündüz:** BL-252 S1 (a) kayıt değişmezi + S2 (b) eski owner'ın muafiyetleri kalkar (S3/S4 `nf-db` ölçümüyle kapandı) · BL-218 `.5` Owner iş listesinde Management altında kilitli, liste departmanlara göre gruplu · BL-199 sırası (devir işinden sonra) · BL-100 yedeksiz silme (yapıldı).
+**Cevaplı (bugün, kayıtta):** SEC-003 S1 (a) davet kilidi kaldırmaz, S2 (a) "Confirm email" + DB şartı · BL-252 S1 (a) / S2 (b) + ultrareview düzeltmeleri · BL-218 `.5` gruplama · BL-199 sırası (SEC-003'ten sonra) · BL-100 silme (yapıldı) · koordinatör devri (CLAUDE.md kimliği, RC, eski oturum arşivi). Önceki cevaplılar (K1–K6, K8, K9, K11–K14, K16–K18) sürüm 3'te ve BACKLOG/REUSE'da.
 
-## 3. Sıradaki en önemli iş (gerekçesiyle)
-1. ~~BL-252 + BL-246~~ **bitti 2026-09-28** (`cb6013fb`).
-2. **SEC-003 hesap güvenliği paketi** (BL-266, BL-267, BL-268, BL-269, BL-274; kullanıcı kararı 2026-09-28: sıradaki tek iş). `nf-db` → `nf-backend` → `nf-test`, sırayla; ultrareview önerilir. S1, S2 ve hosted ayar kontrolü kullanıcıda (`tasks/SEC-003.md`).
-3. **BL-199 — müdür Schedule'da vardiyaya not yazamıyor** (`nf-arayuz` alan + `nf-backend` kaydetme doğrulaması + e2e). Kullanıcı kararı 09-28: SEC-003'ten sonra (önce "devir işinden hemen sonra" idi).
-4. **BL-218 `.3` → FB-6.2.** Programın kritik yolu: `.3` (`nf-backend`) FB-6.2 `.4`'ün son önkoşulu. `.5` artık veri parçası da istiyor (işlere departman + `system_key`: önce `nf-db` okuma + `nf-backend`, sonra `nf-arayuz` varyantları). FB-6.1b `.1` (BL-159) de başlayabilir (Ç8).
-5. **BL-238** (Pazar akşamı "bu hafta" UTC'ye göre; high/risky) — K19 konuşulunca.
-6. **K7 ekran turu** — FB-6.1'i %100'e taşır; kullanıcının günü.
+## 3. Sıra (tek iş; koordinatör 2026-09-28: değişiklik yok)
+1. **SEC-003 hesap güvenliği paketi** (BL-266, BL-267, BL-268, BL-269, BL-274) — sürüyor. `nf-db` (adım 1) → `nf-backend` (adım 2: davet kilidi, parola doğrulama, hassas işlemlerde sunucuda parola, eski silme rotaları, kayıt sonrası "e-postanı doğrula" durumu) → `nf-test` (adım 3: e2e, `enable_confirmations` kararı); gerekirse `nf-arayuz` metni. Birleştirmeden önce kullanıcıya ultrareview önerilir. Bitiş şartlarından biri K22.
+2. **BL-265 hosted gönderim** (kod işi değil; koordinatör): SEC-003 bitince önerilir. D1 sayımı → kullanıcı onayı → push → advisors. SEC-003'ün migration'ı da o zamana kadar main'deyse aynı pakete girer.
+3. **BL-199** — müdür Schedule'da vardiyaya not yazamıyor (`nf-backend` kaydetme yolu → `nf-arayuz` alan + metin → `nf-test` e2e). Kullanıcı kararı: SEC-003'ten sonra.
+4. **BL-218 `.3` → `.5` veri → FB-6.2** — FOUNDATION-B'nin kritik yolu. `.3` (`nf-backend`) FB-6.2 `.4`'ün son önkoşulu; `.5` önce veri (`nf-db` okuma + `nf-backend`), sonra `nf-arayuz` varyantları (Ç9). FB-6.1b `.1` (BL-159) de bu sırada başlayabilir.
+5. **K23 sırasındaki denetim işleri**, kullanıcı yerlerini seçince.
+6. **BL-238** (K19 konuşulunca) · **K7 ekran turu** (kullanıcının günü; FB-6.1'i %100'e taşır).
 
-**Kod denetiminin önerdiği sıra (2026-09-28; ilk adımı kullanıcı seçti → SEC-003, kalanı öneri):** (1) ~~hesap güvenliği BL-266, BL-267, BL-268, BL-269, BL-274~~ → SEC-003 (madde 2); (2) çıkışta önbellek temizliği + iki kullanıcılı test BL-271 (high/safe); (3) eski kapı → çekirdek, matrise ikinci admin BL-270 + BL-276 (high/risky, ultrareview ile); (4) dışa aktarma cron'u ve ekleri BL-272 + BL-101 (high/safe); (5) bayat ekranlar BL-278 + BL-273 (medium/safe); (6) CI bekçisi, `todo`, `forbidOnly` BL-281 (medium/safe). Kaynak: `BACKLOG.md` "Yeni bulgular (2026-09-28 kod denetimi)".
+## 4. Roller (tek iş kuralıyla sıra listesi)
+Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); migration ortak yerel DB'ye yalnız birleştirme penceresinde (`scripts/lock.mjs`); her kod işi `nf-guvenlik`, ekranı değişen `nf-gorsel-qa`.
 
-## 4. Şeritler (paralel rol oturumları)
-Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en çok iki ağır iş; migration ortak yerel DB'ye yalnız birleştirme penceresinde (`scripts/lock.mjs`); her kod işi `nf-guvenlik`, ekranı değişen `nf-gorsel-qa`. **Kullanıcı aynı anda tek iş istiyor (2026-09-28):** şeritler sıra listesidir, paralel başlatma kullanıcı onayıyla.
-
-| Şerit | Rol | Şimdi | Sonra | Bekleyen |
-|---|---|---|---|---|
-| A — DB | `nf-db` | — | BL-254 (K21) · BL-218 `.5` veri okuması · FB-6.1b `.1` (BL-159) · FB-6.2 `.1` | BL-209 onarımı (komut kullanıcıda), BL-217 (BL-209'dan sonra) |
-| B — API/web veri | `nf-backend` | — | BL-199 kaydetme yolu · **BL-218 `.3`** · BL-254 web (3 satır) · FB-6.2 `permissions.includes` → `can()` | BL-213 |
-| C — Arayüz | `nf-arayuz` | — | **BL-199** alan + metin · BL-218 `.4`–`.6` · BL-256..260 (küçük, tek iş) | BL-255 (K20) |
-| D — Test | `nf-test` | — | BL-199 e2e · BL-245 (bildirim testleri yerelde kararsız) · BL-120 (tam koşuda zaman aşımı; 09-28 yine düştü) | BL-217 |
-| E — Plan | `nf-planlama` | — | FB-6.1 kapanış notu (`.0` + `.13`'ten sonra) · her birleştirmenin kaydı | — |
-| F — İnceleme | `nf-guvenlik`, `nf-gorsel-qa` | çağrıldıkça | | |
-| Koordinatör | — | BL-265 hosted (kullanıcı onayıyla) | Ekran turu K7 · temizlik (§6) | |
+| Rol | Oturum | Şimdi | Sonra (sırayla) |
+|---|---|---|---|
+| `nf-db` | `local_0af84e96…` | **SEC-003 adım 1** | BL-218 `.5` veri okuması · FB-6.1b `.1` (BL-159) · FB-6.2 `.1` · BL-254 (K21) · BL-270 + BL-276 (K23) |
+| `nf-backend` | `local_cb173b54…` | — | **SEC-003 adım 2** · BL-199 kaydetme yolu · **BL-218 `.3`** · BL-271 (K23; SEC-003'ten sonra, Ç10) |
+| `nf-test` | `local_0efbf957…` | — | **SEC-003 adım 3** · BL-199 e2e · BL-262 (yerel kırmızı liste ölçümü) · BL-245 · BL-120 · BL-281 (K23) |
+| `nf-arayuz` | `local_6a90e9ce…` | — | SEC-003 metinleri (gerekirse) · BL-199 alan + metin · BL-218 `.4`–`.6` · BL-256..260 · BL-255 (K20) |
+| `nf-guvenlik` | `local_8127d370…` | — | her adımın incelemesi (SEC-003: üç adım) |
+| `nf-gorsel-qa` | `local_13e7e4de…` | — | ekranı değişen adımlar (SEC-003 kayıt ekranı, BL-199) |
+| `nf-planlama` | `local_c67b8d60…` | — | her birleştirmenin kaydı · FB-6.1 kapanış notu (K7'den sonra) |
+| Koordinatör | `local_41428574…` | SEC-003 yürütme | BL-265 hosted · K22/K23 soruları · temizlik (§6) |
 
 ## 5. Çakışmalar ve sıralama kuralları
-- **Ç1 — FB-6.2 Employees ekranı.** `EmployeeDrawer`/`EmployeesPage`'teki `permissions.includes` → `can()` FB-6.2'nin Done when 6'sı; çekmecenin okumaları BL-231 ile API'den geçiyor (bitti 09-28). BL-243, BL-244 FB-6.2 diliminde.
-- **Ç2 — BL-206 (ölü kod silme)** BL-198'den ve hosted gönderimden sonra: ikisi de oldu, BL-206 artık başlayabilir.
-- **Ç3 — BL-187 FB-6.2 `.6`'da** (koordinatör kararı 09-27).
-- **Ç4 — Çekirdek sahipliği.** `app_private.authz_check`'e dokunan işler (FB-6.2 `.1`–`.4`) aynı anda yazılmaz; A şeridinde ardışık, her biri kendi birleştirme penceresinde.
-- **Ç5 — Yayın.** Web/API Vercel yayını yapılınca security advisors yeniden koşar; arada main'e giren migration'lar aynı pakete.
-- **Ç6 — Ortak yerel DB.** BL-209 onarılana kadar yerelde `shift_exchanges_v1`, `time_off_published_assignment_disposition` (ve `weekly_exchange_changed_terms`, BL-227) kırmızısı bilinen yanlış alarm; BL-245 bildirim testleri de yerelde kararsız.
-- **Ç7 — Bağlam.** Her rol oturumu iş sınırında bağlam doluluğunu söyler; yarıyı geçince devir (CLAUDE.md §11.10, §12 yenileme).
-- **Ç8 — `nf-db` sırası.** (1) FB-6.1b `.1` (BL-159) BL-218 `.2`'den sonra (✓, başlayabilir): ikisi de `apply_schedule_template_service`'e dokunuyor. (2) BL-234 + BL-230 bitti 09-28. (3) **BL-252 + BL-246** sürüyor; **BL-254** ondan sonra, kullanıcı onayıyla (kullanıcı aynı anda tek iş istiyor).
-- **Ç9 — BL-218 `.5` veri önce.** Çekmecenin iş listesi bugün düz ve referans okuması işin departmanını ve `system_key`'ini taşımıyor (`tasks/BL-218.md` Notes); `nf-arayuz` varyantları `nf-db` + `nf-backend` parçası main'e girince.
+- **Ç1 — FB-6.2 Employees ekranı.** `permissions.includes` → `can()` FB-6.2'nin Done when 6'sı; BL-243, BL-244 FB-6.2 diliminde.
+- **Ç2 — BL-206 (ölü kod silme)** başlayabilir (BL-198 ve hosted gönderim oldu); BL-280'in ikiz rota ailesiyle birlikte ele alınır.
+- **Ç3 — BL-187 FB-6.2 `.6`'da.**
+- **Ç4 — Çekirdek sahipliği.** `app_private.authz_check`'e dokunan işler (FB-6.2 `.1`–`.4`, BL-270 + BL-276) aynı anda yazılmaz.
+- **Ç5 — Yayın.** Web/API Vercel yayını yapılınca security advisors yeniden koşar; arada main'e giren migration'lar aynı hosted pakete. **Önerim (pre-mortem):** SEC-003 ve denetimin yüksek güvenlik maddeleri (BL-266..270) kapanmadan web/API hosted'da yayına alınmasın.
+- **Ç6 — Ortak yerel DB.** Yerel `test:db` taban kırmızısı 18 dosya (`artifacts/koordinator/bl252-red.txt` = `bl221-red.txt`); BL-209, BL-227, BL-245, BL-262 ailesi bilinen yanlış alarm. Birleştirmede "tabandan büyümedi" ölçütü.
+- **Ç7 — Bağlam.** Her rol oturumu iş sınırında bağlam doluluğunu söyler; yarıyı geçince devir (CLAUDE.md §11.10, §12).
+- **Ç8 — `nf-db` sırası.** SEC-003 adım 1 → BL-218 `.5` veri + FB-6.1b `.1` (BL-159; ikisi de BL-218 `.2`'den sonra, `apply_schedule_template_service` için sırayla) → FB-6.2 `.1` → BL-254 (K21).
+- **Ç9 — BL-218 `.5` veri önce.** Çekmecenin iş listesi düz, referans okuması departman ve `system_key` taşımıyor (`tasks/BL-218.md` Notes).
+- **Ç10 — SEC-003 ile BL-271 aynı dosya.** İkisi de `apps/web/src/auth/AuthContext.tsx`'e dokunur (SEC-003: kayıt sonrası oturumsuz durum; BL-271: çıkışta önbellek temizliği). BL-271 SEC-003 main'e girdikten sonra.
+- **Ç11 — Pazar kuralı** (BL-238 kapanana kadar): Pasifik Pazar 00:00'dan önce main'e kod gönderilmez (HANDOFF §0).
 
 ## 6. Temizlik (koordinatör, iş aralarında)
-- Ölçüm 2026-09-28 (bu çalışma kopyası): `git branch --no-merged origin/main` **43 yerel dal**, `git worktree list` **34 worktree**. Soy ağacına göre sayım; rebase'le main'e alınmış dallar da "birleşmemiş" görünür, içerik farkı ölçülmedi. Her dal `git cherry` / içerik farkıyla doğrulanıp silinir; bitmiş worktree'ler kaldırılır.
+- Dallar ve worktree'ler (ölçüm sürüm 3, 2026-09-28): 43 birleşmemiş görünen yerel dal, 34 worktree; soy ağacı sayımı, içerik farkı ölçülmedi. Her dal içerik farkıyla doğrulanıp silinir.
+- Arşiv adayı oturumlar (ListAgents 2026-09-28): eski `nf-db` "BL-198" ve "Settings okumaları" (boşta), "Code review" (denetim kaydı main'de), "ultrareview: bl252" (bulut, BL-252 kapandı). Arşivden önce doğrulanır, kullanıcıya sorulur.
+- Kullanıcıda: `../newfork-wt/bl252` boş klasörü; BL-209 onarım komutu; worktree temizlik betiği (HANDOFF §5).
 
 ## 7. MVP listesi (kalan, faz sırasıyla)
 | Faz | Kalan | Durum | Engel |
 |---|---|---|---|
 | F0 temel | OPS-010 hosted smoke; SEC-001 (Supabase'ten cevap) | bekliyor | kullanıcı / Supabase |
-| FOUNDATION-B | FB-6.1 `.0`/`.13`/`.14`; FB-6.2 … FB-6.8; FB-6.1b; BL-218 `.3`–`.7`; Aşama 7 | ~%58 | K7; kullanıcı tek iş istiyor |
+| FOUNDATION-B | FB-6.1 `.0`/`.13`/`.14`; FB-6.2 … FB-6.8; FB-6.1b; BL-218 `.3`–`.7`; Aşama 7 | ~%58 | K7; tek iş kuralı |
+| Güvenlik (kod denetimi 2026-09-28) | SEC-003 (sürüyor); BL-270, BL-271, BL-276 high; BL-272, BL-273 high; orta aileler BL-277..281; düşükler BL-282 | başladı | K22, K23 |
 | FJ katılım | JOIN-010, JOIN-007 kalanı; akış 2 "Davet" e2e (FB-6.2'de) | ~%80 | — |
 | F1 çekirdek akışlar | UI-DOC-001, BL-038, REQ-AUDIT, BL-048, BL-055; açık high'lar BL-182, BL-127, BL-187 (FB-6.2); BL-199 (sırada) | ~%55 | FOUNDATION-B dilimleri |
 | F2 günlük operasyon | ANN-001; Line Up (ayrı proje, MVP'de mi — sorulmadı) | ~%20 | ürün kararı |
 | F3 bildirimler | Resend teslimatı, bildirim sistemi yeniden tasarımı, BL-099, BL-101 | ~%20 | FB-6.7 |
 | F4 ticari | BL-059 Stripe, BL-034 landing, BL-007/008 (şart) | ~%5 | K15; FOUNDATION-B bitişi |
-| F5 cila | BL-193, THEME-003, BL-255..260, BL-249 | ~%30 (BL-192, BL-205, görsel paket bitti; tahmin) | K20 |
-| F6 lansman | BL-058 beş tenant e2e, REL-001, REL-002 | başlamadı | hepsi |
+| F5 cila | BL-193, THEME-003, BL-255..260, BL-249 | ~%30 (tahmin) | K20 |
+| F6 lansman | BL-058 beş tenant e2e, REL-001, REL-002; web/API hosted yayını (Ç5) | başlamadı | hepsi |
 
 ## 8. Sıra (koordinatöre)
-1. ~~BL-252 + BL-246 birleştirme penceresi~~ bitti 2026-09-28 (`cb6013fb`). Hosted gönderim BL-265 (önce D1 sayımı; kullanıcı onayı).
-2. Kullanıcıya tek turda: BL-199'u başlatma onayı, K20 (BL-255, önce/sonra görüntüsüyle), K7 günü.
-3. BL-199 (`nf-backend` → `nf-arayuz` → `nf-test`).
-4. BL-218 `.3` → `.5` veri parçası → FB-6.2.
-5. Temizlik (§6): dal ve worktree sayısı yüksek.
+1. SEC-003 adım 1 (`nf-db`) raporu → `nf-guvenlik` → adım 2 (`nf-backend`) → adım 3 (`nf-test`) → birleştirme penceresi (ultrareview önerisi, K22 teyidi).
+2. Kullanıcıya tek turda (SEC-003 sürerken, kod yazdırmadan): K22 panel kontrolü, K23 denetim sırasının yeri, K20, K21, K7 günü.
+3. BL-265 hosted (SEC-003 bitince).
+4. BL-199.
+5. BL-218 `.3` → `.5` veri → FB-6.2.
