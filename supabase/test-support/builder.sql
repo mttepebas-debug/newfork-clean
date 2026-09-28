@@ -486,6 +486,14 @@ begin
         and p.location_id = tests.id(w || ':' || (shift ->> 'loc'))
         and p.scheduled_date = tests.week(n) + (shift ->> 'day')::integer
         and p.start_time = (shift ->> 'start')::time
+        -- Republishing the same slot leaves the old (superseded) published
+        -- shift row in place alongside the new one; without this, remembering
+        -- a label an earlier publish already used for the same person/
+        -- location/day/time matches both and errors ("more than one row").
+        and exists (
+          select 1 from public.schedule_location_publications publication
+          where publication.id = p.publication_id and publication.status = 'current'
+        )
     ));
   end loop;
   perform tests.settle();
