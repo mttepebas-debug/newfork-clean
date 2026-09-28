@@ -5,6 +5,7 @@ import {
   employeeInputSchema,
   employeeCreateCommandSchema,
   employeeCreateResultSchema,
+  employeeReferenceDataSchema,
   type EmployeeCreateCommand,
   type EmployeeCreateResult,
   employeeRoleUpdateInputSchema,
@@ -44,7 +45,6 @@ export interface EmployeeReferenceData {
   readonly locations: readonly EmployeeOption[];
   readonly jobs: readonly EmployeeOption[];
   readonly inviteRoles: readonly InviteRoleOption[];
-  readonly inviteRolesError?: boolean;
 }
 
 export interface InviteRoleOption {
@@ -77,10 +77,6 @@ export interface EmployeeTerminationResult {
 function client(): SupabaseClient {
   if (!supabaseClient) throw new Error("Employee storage is not configured");
   return supabaseClient;
-}
-
-function check(error: { message: string } | null): void {
-  if (error) throw new Error(error.message);
 }
 
 async function request(
@@ -203,51 +199,30 @@ export async function terminateEmployee(
   };
 }
 
+/** The drawer's pick lists; the server keeps only what this person may pick (BL-231). */
 export async function loadEmployeeReferenceData(
   workspaceId: string,
 ): Promise<EmployeeReferenceData> {
-  const [locations, jobs, roles] = await Promise.all([
-    client()
-      .from("locations")
-      .select("id,name,archived_at,timezone")
-      .eq("workspace_id", workspaceId)
-      .order("sort_order")
-      .order("name"),
-    client()
-      .from("jobs")
-      .select("id,name,archived_at")
-      .eq("workspace_id", workspaceId)
-      .order("sort_order")
-      .order("name"),
-    client()
-      .from("workspace_roles")
-      .select("id,name,system_key,access_class")
-      .eq("workspace_id", workspaceId)
-      .neq("access_class", "owner")
-      .order("sort_order")
-      .order("name"),
-  ]);
-  check(locations.error);
-  check(jobs.error);
-  const map = (row: { id: unknown; name: unknown; archived_at: unknown }) => ({
-    id: String(row.id),
-    name: String(row.name),
-    archived: Boolean(row.archived_at),
-  });
+  const answer = employeeReferenceDataSchema.parse(
+    await request(workspaceId, "/reference-data"),
+  );
   return {
-    ...(roles.error ? { inviteRolesError: true } : {}),
-    locations: (locations.data ?? []).map((row) => ({
-      ...map(row),
-      timezone: String(row.timezone),
+    locations: answer.locations.map((row) => ({
+      id: row.id,
+      name: row.name,
+      archived: row.archived_at !== null,
+      timezone: row.timezone,
     })),
-    jobs: (jobs.data ?? []).map(map),
-    inviteRoles: (roles.error ? [] : (roles.data ?? [])).map((role) => ({
-      id: String(role.id),
-      name: String(role.name),
-      systemKey: role.system_key
-        ? (String(role.system_key) as WorkspaceRole)
-        : null,
-      accessClass: String(role.access_class) as WorkspaceRole,
+    jobs: answer.jobs.map((row) => ({
+      id: row.id,
+      name: row.name,
+      archived: row.archived_at !== null,
+    })),
+    inviteRoles: answer.invite_roles.map((role) => ({
+      id: role.id,
+      name: role.name,
+      systemKey: role.system_key,
+      accessClass: role.access_class,
     })),
   };
 }

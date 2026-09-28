@@ -2471,6 +2471,19 @@ export const employeeAssignmentSchema = z.object({
 });
 export type EmployeeAssignment = z.infer<typeof employeeAssignmentSchema>;
 
+/**
+ * What the Employees drawer picks from (BL-231): the locations the person may
+ * place somebody at, every job, and only the roles they may invite with.
+ */
+export const employeeReferenceDataSchema = z.object({
+  locations: z.array(locationSchema.pick({ id: true, name: true, archived_at: true, timezone: true })),
+  jobs: z.array(jobSchema.pick({ id: true, name: true, archived_at: true })),
+  invite_roles: z.array(
+    workspaceRoleRecordSchema.pick({ id: true, name: true, system_key: true, access_class: true }),
+  ),
+});
+export type EmployeeReferenceDataRecord = z.infer<typeof employeeReferenceDataSchema>;
+
 export const employeeEventSchema = z.object({
   id: z.string().uuid(),
   action: z.string().trim().min(1).max(120),

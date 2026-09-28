@@ -1,6 +1,8 @@
 import {
   employeeDetailSchema,
   employeeInputSchema,
+  employeeReferenceDataSchema,
+  type EmployeeReferenceDataRecord,
   employeeRoleUpdateInputSchema,
   employeeSummarySchema,
   pendingPreferredNameFromRow,
@@ -16,6 +18,7 @@ import {
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { rpcFailure } from "../http-error";
 
 export interface EmployeeTerminationInput {
   readonly effectiveLocal: string;
@@ -37,6 +40,7 @@ export interface EmployeeAvatarStatus {
 }
 
 export interface EmployeeDirectoryService {
+  references(input: { readonly actorUserId: string; readonly workspaceId: string }): Promise<EmployeeReferenceDataRecord>;
   getOwnAvatar?(input: { readonly actorUserId: string; readonly workspaceId: string }): Promise<EmployeeAvatarStatus>;
   list(input: {
     readonly actorUserId: string;
@@ -138,7 +142,10 @@ interface RpcClient {
   rpc(
     name: string,
     args: Record<string, unknown>,
-  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  ): PromiseLike<{
+    data: unknown;
+    error: { message: string; code?: string; hint?: string | null; details?: string | null } | null;
+  }>;
   readonly storage?: {
     from(bucket: string): {
       createSignedUrl(
@@ -190,6 +197,15 @@ export function createEmployeeDirectoryServiceWithClient(
   }
 
   return {
+    // ponytail: only this read is on rpcFailure; the rest of the file moves with BL-134.
+    async references(input) {
+      const { data, error } = await client.rpc("read_employee_references_service", {
+        actor_user_id: input.actorUserId,
+        target_workspace_id: input.workspaceId,
+      });
+      if (error) throw rpcFailure(error);
+      return employeeReferenceDataSchema.parse(data);
+    },
     async list(input) {
       return employeeSummarySchema.array().parse(
         await rpc("list_employees_service", {

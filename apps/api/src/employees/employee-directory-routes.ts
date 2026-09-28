@@ -7,6 +7,7 @@ import {
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
+  resolveActor,
   resolveWorkspaceAuthorization,
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
@@ -116,6 +117,23 @@ export function registerEmployeeDirectoryRoutes(
       }
     },
   );
+  // What the Employees drawer picks from (BL-231). No gate here: the service
+  // asks the core, and its "no" reaches the screen as 404 or 403.
+  app.get("/v1/workspaces/:workspaceId/employees/reference-data", async (request, reply) => {
+    const params = workspaceParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid workspace required" });
+    const actor = await resolveActor(
+      request.headers.authorization,
+      params.data.workspaceId,
+      options.contextResolver,
+    );
+    if (!options.service)
+      return reply.status(503).send({ error: "Employee directory service is not configured" });
+    return reply.send(
+      await options.service.references({ actorUserId: actor.userId, workspaceId: actor.workspace.id }),
+    );
+  });
+
   app.get("/v1/workspaces/:workspaceId/employees", async (request, reply) => {
     const params = workspaceParams.safeParse(request.params);
     const query = listQuery.safeParse(request.query);

@@ -66,10 +66,7 @@ import {
   getEmployeeOnboardingReview,
   reviewEmployeeOnboarding,
 } from "./onboarding-data";
-import {
-  canInviteWithRole,
-  employeeCreateReadiness,
-} from "./employee-create-flow";
+import { employeeCreateReadiness } from "./employee-create-flow";
 import { registerEmployeeHistoryGuard } from "./employee-history-guard";
 
 const sections = [
@@ -520,13 +517,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     !props.creating &&
     !dirty &&
     (createResult !== null || saveMutation.isSuccess);
-  const inviteRoles = (references.data?.inviteRoles ?? [])
-    .filter((role) =>
-      canInviteWithRole(
-        context?.membership.role ?? "employee",
-        role.accessClass,
-      ),
-    )
+  // The server sends only the roles this person may invite with (BL-231).
+  const inviteRoles = [...(references.data?.inviteRoles ?? [])]
     .sort((a, b) => {
       const rank = (key: string | null) =>
         key === "employee"
@@ -1016,17 +1008,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 {props.creating && references.isError ? (
                   <p role="alert">
                     Couldn't load locations, jobs or roles.{" "}
-                    <button
-                      type="button"
-                      onClick={() => void references.refetch()}
-                    >
-                      Retry
-                    </button>
-                  </p>
-                ) : null}
-                {props.creating && references.data?.inviteRolesError ? (
-                  <p role="alert">
-                    Couldn't load invite roles.{" "}
                     <button
                       type="button"
                       onClick={() => void references.refetch()}

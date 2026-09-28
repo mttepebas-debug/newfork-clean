@@ -1,8 +1,4 @@
-import {
-  employeeInputSchema,
-  type EmployeeInput,
-  type WorkspaceRole,
-} from "@newfork/shared";
+import { employeeInputSchema, type EmployeeInput } from "@newfork/shared";
 
 export function employeeCreateReadiness(draft: EmployeeInput) {
   const namesReady = Boolean(draft.first_name.trim() && draft.last_name.trim());
@@ -23,11 +19,4 @@ export function employeeCreateReadiness(draft: EmployeeInput) {
         is_remote: true,
       }).success && Boolean(draft.invitation_email.trim()),
   };
-}
-
-export function canInviteWithRole(actor: WorkspaceRole, target: WorkspaceRole) {
-  if (target === "owner") return false;
-  if (actor === "owner") return true;
-  if (actor === "admin") return target !== "admin";
-  return actor === "manager" && target === "employee";
 }
