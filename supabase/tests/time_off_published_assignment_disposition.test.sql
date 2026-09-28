@@ -3,13 +3,17 @@ create extension if not exists pgtap with schema extensions;
 select no_plan();
 select tests.world('tad');
 select tests.person('tad', 'emp', 'employee', array['K'], array['cook']);
+select tests.person('tad', 'other', 'employee', array['K'], array['cook']);
 select tests.publish_week('tad', 1, jsonb_build_array(jsonb_build_object(
   'label', 's', 'person', 'emp', 'loc', 'K', 'job', 'cook', 'day', 1, 'start', '15:00', 'end', '23:00'
+), jsonb_build_object(
+  'label', 'other', 'person', 'other', 'loc', 'K', 'job', 'cook', 'day', 1, 'start', '09:00', 'end', '14:00'
 )));
 create temp table tad as select tests.id('tad') w,
  tests.user('tad:owner') manager, tests.user('tad:emp') actor,
  tests.id('tad:emp') emp, tests.id('tad:K') loc,
- tests.id('tad:shift:s') shift, gen_random_uuid() request,gen_random_uuid() segment,gen_random_uuid() op,
+ tests.id('tad:shift:s') shift, tests.id('tad:shift:other') other_shift,
+ gen_random_uuid() request,gen_random_uuid() segment,gen_random_uuid() op,
  null::jsonb preview,null::jsonb result,null::jsonb decisions,null::jsonb original;
 update tad set original=(select to_jsonb(ps) from public.schedule_published_shifts ps where id=tad.shift);
 insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,reason,created_by,period_version)
@@ -37,7 +41,7 @@ select throws_ok($$select public.resolve_schedule_time_off_request_service(manag
 select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint','[]') from tad$$,'22023',null,'every affected assignment needs an explicit choice');
 select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,'stale',jsonb_build_array(jsonb_build_object('shift_id',shift,'action','release_entire_shift'))) from tad$$,'40001',null,'stale preview cannot release an assignment');
 select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',shift,'action','keep'))) from tad$$,'22023',null,'approval cannot leave the conflicting shift assigned');
-select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',gen_random_uuid(),'action','release_entire_shift'))) from tad$$,'22023',null,'cannot release an unrelated shift');
+select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',other_shift,'action','release_entire_shift'))) from tad$$,'22023',null,'cannot release an unrelated shift');
 select is((select count(*)::int from public.time_off_decision_pieces where request_id=(select request from tad)),0,'failed final approval rolls back the leave decision');
 select is((select count(*)::int from public.time_off_assignment_releases where request_id=(select request from tad)),0,'failed final approval writes no release history');
 select is((select employee_id from public.schedule_published_shifts where id=(select shift from tad)),emp,'failed final approval keeps the employee responsible') from tad;
