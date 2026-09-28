@@ -106,7 +106,6 @@ export function createEmployeeInvitationService(
       if (error) throw rpcFailure(error);
       const developmentUrl = `${options.appUrl.replace(/\/$/, "")}/invite/accept?token=${token}`;
       try {
-        await restoreAuthAccountForInvitation(client, input.email);
         await storeDeliverySecret(client, {
           actorUserId: input.actorUserId,
           workspaceId: input.workspaceId,
@@ -172,7 +171,6 @@ export function createEmployeeInvitationService(
       }
       const developmentUrl = `${options.appUrl.replace(/\/$/, "")}/invite/accept?token=${row.token}`;
       try {
-        await restoreAuthAccountForInvitation(client, row.email);
         await deliverInvitation(
           options,
           row.email,
@@ -394,35 +392,6 @@ export async function storeDeliverySecret(
     },
   );
   if (error) throw rpcFailure(error);
-}
-
-export async function restoreAuthAccountForInvitation(
-  client: SupabaseClient,
-  email: string,
-): Promise<void> {
-  const admin = client.auth?.admin;
-  if (!admin?.listUsers || !admin?.updateUserById) return;
-  const normalized = email.trim().toLowerCase();
-  if (!normalized) return;
-  const perPage = 1000;
-  for (let page = 1; ; page += 1) {
-    const { data, error } = await admin.listUsers({ page, perPage });
-    if (error)
-      throw new Error(`Account restore lookup failed: ${error.message}`);
-    const users = data?.users ?? [];
-    const user = users.find(
-      (candidate) => candidate.email?.trim().toLowerCase() === normalized,
-    );
-    if (user) {
-      const result = await admin.updateUserById(user.id, {
-        ban_duration: "none",
-      });
-      if (result.error)
-        throw new Error(`Account restore failed: ${result.error.message}`);
-      return;
-    }
-    if (users.length < perPage) return;
-  }
 }
 
 async function sha256(value: string): Promise<string> {

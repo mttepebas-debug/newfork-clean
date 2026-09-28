@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEmployeeCreateService } from "./employee-create-service";
-const mocks = vi.hoisted(() => ({ rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  rpc: vi.fn(),
+  auth: { admin: { listUsers: vi.fn(), updateUserById: vi.fn() } },
+}));
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => mocks }));
 const id = "10000000-0000-4000-8000-000000000001";
 const invitationId = "10000000-0000-4000-8000-000000000002";
@@ -29,7 +32,16 @@ const options = {
   resendApiKey: "test-key",
   production: true,
 };
-beforeEach(() => mocks.rpc.mockReset());
+beforeEach(() => {
+  mocks.rpc.mockReset();
+  mocks.auth.admin.listUsers.mockReset();
+  mocks.auth.admin.listUsers.mockResolvedValue({
+    data: { users: [{ id, email: "ada@example.test" }] },
+    error: null,
+  });
+  mocks.auth.admin.updateUserById.mockReset();
+  mocks.auth.admin.updateUserById.mockResolvedValue({ error: null });
+});
 afterEach(() => vi.unstubAllGlobals());
 describe("employee create service", () => {
   it("returns the saved employee on delivery failure and uses stable delivery identity", async () => {
@@ -77,6 +89,8 @@ describe("employee create service", () => {
       "mark_employee_invitation_delivery_service",
       expect.objectContaining({ delivery_result: "failed" }),
     );
+    expect(mocks.auth.admin.listUsers).not.toHaveBeenCalled();
+    expect(mocks.auth.admin.updateUserById).not.toHaveBeenCalled();
   });
   it("does not redeliver a successfully completed command", async () => {
     mocks.rpc.mockResolvedValueOnce({

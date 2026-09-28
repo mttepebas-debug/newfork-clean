@@ -179,40 +179,45 @@ describe("createEmployeeInvitationService", () => {
     );
   });
 
-  it("lifts a matching auth account ban before sending a rehire invitation", async () => {
-    const authUserId = "60000000-0000-4000-8000-000000000001";
-    mocks.rpc
-      .mockResolvedValueOnce({ data: invitationId, error: null })
-      .mockResolvedValueOnce({ data: null, error: null })
-      .mockResolvedValueOnce({ data: null, error: null });
-    mocks.listUsers.mockResolvedValueOnce({
-      data: {
-        users: [{ id: authUserId, email: "employee@example.test" }],
-      },
-      error: null,
-    });
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200 })));
+  it("leaves a locked account locked and answers the inviter the same way", async () => {
+    const lockedUser = {
+      id: "60000000-0000-4000-8000-000000000001",
+      email: "employee@example.test",
+      banned_until: "2126-09-28T00:00:00.000Z",
+    };
+    const invite = async (lockedAccountExists: boolean) => {
+      mocks.rpc
+        .mockResolvedValueOnce({ data: invitationId, error: null })
+        .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce({ data: null, error: null });
+      mocks.listUsers.mockResolvedValue({
+        data: { users: lockedAccountExists ? [lockedUser] : [] },
+        error: null,
+      });
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200 })));
+      const service = createEmployeeInvitationService({
+        url: "https://example.supabase.co",
+        serviceRoleKey: "service-role",
+        appUrl: "https://app.example.test",
+        resendApiKey: "resend-key",
+        production: true,
+      });
+      const result = await service.prepare({
+        actorUserId,
+        workspaceId,
+        employeeId,
+        email: "Employee@Example.Test",
+        roleId,
+      });
+      return { ...result, expiresAt: "<expires>" };
+    };
 
-    const service = createEmployeeInvitationService({
-      url: "https://example.supabase.co",
-      serviceRoleKey: "service-role",
-      appUrl: "https://app.example.test",
-      resendApiKey: "resend-key",
-      production: true,
-    });
+    const locked = await invite(true);
+    const unlocked = await invite(false);
 
-    await service.prepare({
-      actorUserId,
-      workspaceId,
-      employeeId,
-      email: "Employee@Example.Test",
-      roleId,
-    });
-
-    expect(mocks.listUsers).toHaveBeenCalledWith({ page: 1, perPage: 1000 });
-    expect(mocks.updateUserById).toHaveBeenCalledWith(authUserId, {
-      ban_duration: "none",
-    });
+    expect(locked).toEqual(unlocked);
+    expect(mocks.listUsers).not.toHaveBeenCalled();
+    expect(mocks.updateUserById).not.toHaveBeenCalled();
   });
 
   it("marks a development invitation as sent after preparing its local link", async () => {
@@ -308,5 +313,7 @@ describe("createEmployeeInvitationService", () => {
       "mark_employee_invitation_delivery_service",
       expect.objectContaining({ delivery_result: "sent" }),
     );
+    expect(mocks.listUsers).not.toHaveBeenCalled();
+    expect(mocks.updateUserById).not.toHaveBeenCalled();
   });
 });
