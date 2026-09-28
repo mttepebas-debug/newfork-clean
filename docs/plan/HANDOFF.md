@@ -63,9 +63,15 @@ Son CI: bee7713d ve 89fdf494 koşuları altyapı yüzünden iptal (WSL çöktü,
 ## 3. Kullanıcıdan bekleyen kararlar
 Cevaplandı 2026-09-28 (yeni koordinatör `local_08c32131…`): 1 S1 hayır, 2 S2 hayır, 3 exclude'da taslak vardiya kalsın,
 4 BL-230 (a) en son yayın, 5 BL-221 evet onaysız, 6 BL-192 A alt çubuk. Kayıt: BACKLOG, ILERLEME-PLANI K12/K13/K17/K18, tasks/BL-218.md.
-Açık: 7 BL-238 saat dilimi (K19) — kullanıcı uzun konuşmak istiyor; birleştirmeleri etkilemez.
-Henüz sorulmadı: FB-6.1.14 hosted toplu gönderim son onayı (K5), K15 Stripe S1–S7, K14 Settings
-S1–S4, K16 FB-6.1b S1–S3, K10 FB-6.3 S4, K11 BL-214/216, BL-235 ikon rengi. Liste `ILERLEME-PLANI.md` §2.
+Cevaplandı 2026-09-28 (ikinci tur): K5 hosted gönderim (yapıldı), K14 Settings S1–S4, K16 FB-6.1b S1–S3,
+K11 BL-214/216, BL-235 rozet rengi (koordinatör), BL-078, BL-246 (devirde belge muafiyeti), ve bu turda:
+- K8 arşivli iş/tip adı: kartta ve dışa aktarmada arşivli ad ("Line Cook"), "Shift" değil, etiket yok → yeni **BL-254** (`nf-db` → `nf-backend`).
+- BL-214 ek: Settings'teki beş genel form alanı (ham `#c7cfcb`) görsel tutarlılık paketine girer, kenar `--theme-muted`.
+- BL-252: çalışan kaydı olmayana devir reddedilmez; kabulde kayıt otomatik açılır ve Owner işine yerleşir → BL-246 ile tek `nf-db` işi.
+Kayıt: BACKLOG, REUSE "Ürün kuralları" (Rütbe altı + "Arşivli iş ve vardiya tipi adı"), ILERLEME-PLANI K8/K11.
+Açık (kullanıcı): K19 BL-238 saat dilimi ve K10 FB-6.3 S4 (ikisi de uzun konuşulacak), K15 Stripe S1–S7 (F4), K7 FB-6.1 `.0` ekran turu + `.13`.
+Açık (koordinatör teyidi, iş başlamadan): BL-252 — yeni owner'ın arşivlenmiş çalışan kaydı varsa yeni kayıt mı açılır, arşivden mi döner;
+BL-254 — karar Schedule'daki çakışma penceresini ve başka lokasyonun soluk (ghost) vardiyalarını da kapsıyor mu. Liste `ILERLEME-PLANI.md` §2.
 
 ## 4. Hosted gönderim (FB-6.1.14) için not
 **Kapandı 2026-09-28:** gönderim yapıldı (26 migration, son sürüm `20260928030000`); ad çakışması sayımı 0, advisors'ta yeni bulgu yok. Management/Owner ad çakışması sayımı (BL-218 Düşük 3) bayat: backfill düşmedi, hosted'da 3 sistem departmanı + 3 sistem işi doğrulandı (koordinatör). Ayrıntı `tasks/FB-6.1.md` Notes.
