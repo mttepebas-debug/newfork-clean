@@ -34,6 +34,8 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 4. **BL-238** (Pazar akşamı "bu hafta" UTC'ye göre; high/risky) — K19 konuşulunca.
 5. **K7 ekran turu** — FB-6.1'i %100'e taşır; kullanıcının günü.
 
+**Kod denetiminin önerdiği sıra (2026-09-28; öneri, kullanıcı kararı bekliyor — yukarıdaki sırayı değiştirmez, BL-199 sıradaki kalır):** (1) hesap güvenliği BL-266, BL-267, BL-268, BL-269, BL-274 (high/risky, ultrareview ile); (2) çıkışta önbellek temizliği + iki kullanıcılı test BL-271 (high/safe); (3) eski kapı → çekirdek, matrise ikinci admin BL-270 + BL-276 (high/risky, ultrareview ile); (4) dışa aktarma cron'u ve ekleri BL-272 + BL-101 (high/safe); (5) bayat ekranlar BL-278 + BL-273 (medium/safe); (6) CI bekçisi, `todo`, `forbidOnly` BL-281 (medium/safe). Kaynak: `BACKLOG.md` "Yeni bulgular (2026-09-28 kod denetimi)".
+
 ## 4. Şeritler (paralel rol oturumları)
 Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en çok iki ağır iş; migration ortak yerel DB'ye yalnız birleştirme penceresinde (`scripts/lock.mjs`); her kod işi `nf-guvenlik`, ekranı değişen `nf-gorsel-qa`. **Kullanıcı aynı anda tek iş istiyor (2026-09-28):** şeritler sıra listesidir, paralel başlatma kullanıcı onayıyla.
 
