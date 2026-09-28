@@ -362,6 +362,12 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('settings.signature_templates.read', 'workspace', 'signature_templates.read', false, false,
    $$select public.read_signature_settings_service($1, $2) is not null$$);
 
+-- The Employees drawer's pickers (BL-231): the locations the actor reaches.
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
+  ('employee.references.read', 'location', 'employees.read', false, true,
+   $$select exists (select 1 from jsonb_array_elements(public.read_employee_references_service($1, $2) -> 'locations') l
+     where (l ->> 'id')::uuid = $3)$$);
+
 -- The consistency layer: the older helpers that each answer "may this person
 -- manage this location?" on their own. They must all give the same answer as
 -- the rule, a blank location included. Stage 4 replaces them with the core.
@@ -433,6 +439,7 @@ insert into core_action (key, core_key, blank) values
   ('settings.roles.read', 'settings.roles.read', 'null'),
   ('settings.documents.read', 'settings.documents.read', 'null'),
   ('settings.signature_templates.read', 'settings.signature_templates.read', 'null'),
+  ('employee.references.read', 'employee.references.read', 'null'),
   ('workspace.close', 'workspace.close', 'null'),
   ('workspace.transfer_ownership', 'workspace.transfer_ownership', 'null'),
   ('time_off.decide', 'time_off.decide', 'null'),
@@ -591,9 +598,10 @@ begin
     -- Managers read the catalog; they never write organization settings (D1).
     return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
 
-  when 'settings.locations.read' then
+  when 'settings.locations.read', 'employee.references.read' then
     -- Owner and admins read every location, a manager only where they work
-    -- (REUSE "Ürün kuralları": Locations'ta yalnız kendi lokasyonları).
+    -- (REUSE "Ürün kuralları": Locations'ta yalnız kendi lokasyonları); the
+    -- Employees drawer's pickers the same (BL-231).
     if t.locs is null then return 'deny'; end if;
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;

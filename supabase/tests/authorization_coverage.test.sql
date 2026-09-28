@@ -169,6 +169,7 @@ insert into service_class values
   ('publish_schedule_draft_service', 'schedule.publish'),
   ('publish_signature_template_service', 'settings.documents.write'),
   ('queue_owner_onboarding_invitation_intent_service', 'workspace.setup'),
+  ('read_employee_references_service', 'employee.references.read'),
   ('read_job_assignments_service', 'settings.catalog.read'),
   ('read_new_job_assignments_service', 'settings.catalog.read'),
   ('read_role_workspace_service', 'settings.roles.read'),
