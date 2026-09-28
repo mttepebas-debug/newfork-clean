@@ -289,6 +289,18 @@
   font-weight: 700;
   text-decoration: none;
 }
+/* The way back is sometimes a button (same page, other state), not a route. */
+button.pb-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+/* Focus lands on the heading only by script, to say where the person is. */
+.pb-stage h1:focus {
+  outline: none;
+}
 .pb-link:hover {
   text-decoration: underline;
   text-underline-offset: 3px;

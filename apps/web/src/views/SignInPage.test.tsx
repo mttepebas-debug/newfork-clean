@@ -124,17 +124,23 @@ describe("SignInPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
     const sent = await screen.findByTestId("signup-check-email");
-    expect(screen.getByRole("heading", { name: "Check your email" })).toBeTruthy();
-    expect(sent.textContent).toContain(
-      "We sent a confirmation link to future-owner@example.test.",
+    expect(sent.getAttribute("role")).toBe("status");
+    expect(sent.textContent).toBe(
+      "Confirmation link sent to future-owner@example.test.",
     );
-    expect(sent.textContent).toContain("then sign in");
-    expect(sent.textContent).toContain("Check your spam folder");
+    const heading = screen.getByRole("heading", { name: "Check your email" });
+    // The form is gone, so focus goes to the heading rather than the page.
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.getByText(/then sign in\. Nothing after a few minutes\? Check your spam folder/)).toBeTruthy();
     // No session yet, so nothing to go to.
     expect(screen.queryByLabelText("Current path")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Back to sign in" }));
-    expect(screen.getByRole("heading", { name: "Sign in" })).toBeTruthy();
+    const back = screen.getByRole("button", { name: "Back to sign in" });
+    expect(back.className).toBe("pb-link");
+    fireEvent.click(back);
+    const signIn = screen.getByRole("heading", { name: "Sign in" });
+    await waitFor(() => expect(document.activeElement).toBe(signIn));
+    expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.queryByTestId("signup-check-email")).toBeNull();
   });
 

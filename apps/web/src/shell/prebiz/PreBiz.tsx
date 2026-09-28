@@ -56,7 +56,8 @@ export function PreBizFrame({
       >
         {/* Pages show "Checking…" first and then swap this title; without a
             live region a screen reader never hears that the page is ready. */}
-        <h1 id={titleId} aria-live="polite">
+        {/* tabIndex -1: a page whose form gives way to an answer moves focus here. */}
+        <h1 id={titleId} aria-live="polite" tabIndex={-1}>
           {title}
         </h1>
         {description ? <p className="pb-description">{description}</p> : null}

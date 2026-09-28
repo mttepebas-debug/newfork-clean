@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { hubPath } from "../auth/resolveLanding";
@@ -28,6 +28,13 @@ export function SignInPage() {
   const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(
     null,
   );
+  // The form gives way to the answer (and back), so focus would fall to the
+  // page; it goes to the heading, which names where the person now is.
+  const shownOnce = useRef(false);
+  useEffect(() => {
+    if (shownOnce.current) document.getElementById("sign-in-title")?.focus();
+    shownOnce.current = true;
+  }, [confirmationSentTo]);
   // Set when the server ended the session; the next sign-in clears it.
   const [sessionExpired] = useState(
     () => window.sessionStorage.getItem(sessionExpiredStorageKey) === "1",
@@ -56,27 +63,46 @@ export function SignInPage() {
     if (signedIn) navigate(destination, { replace: true });
   };
 
-  // The account exists but has no session until its email is confirmed, so
-  // the form gives way to what to do next (SEC-003).
-  if (confirmationSentTo)
-    return (
-      <PreBizFrame narrow titleId="sign-in-title" title="Check your email">
-        <div
-          data-testid="signup-check-email"
-          role="status"
-        >
-          <p>
-            We sent a confirmation link to <strong>{confirmationSentTo}</strong>.
-            Open it to confirm your email, then sign in.
+  return (
+    <PreBizFrame
+      narrow
+      titleId="sign-in-title"
+      title={
+        confirmationSentTo
+          ? "Check your email"
+          : creatingAccount
+            ? inviteFlow
+              ? "Create your employee account"
+              : "Create your workspace account"
+            : "Sign in"
+      }
+      description={
+        !supabaseConfigured
+          ? "Sign-in is unavailable in this browser session."
+          : confirmationSentTo
+            ? // The account exists but has no session until its email is
+              // confirmed (SEC-003); same shape as Forgot password's answer.
+              "Open the link we emailed you to confirm your address, then sign in. Nothing after a few minutes? Check your spam folder and the address below."
+            : sessionExpired
+              ? "Your session ended. Sign in again to pick up where you left off."
+              : creatingAccount
+                ? inviteFlow
+                  ? "Your email and a password of at least eight characters."
+                  : "You will name the workspace itself in the next step."
+                : undefined
+      }
+    >
+      {confirmationSentTo ? (
+        <>
+          <p
+            className="form-success"
+            role="status"
+            data-testid="signup-check-email"
+          >
+            Confirmation link sent to {confirmationSentTo}.
           </p>
-          <p>
-            Nothing after a few minutes? Check your spam folder, and make sure
-            the address above is spelled right.
-          </p>
-        </div>
-        <div className="pb-stack">
           <button
-            className="pb-btn pb-btn-secondary pb-btn-block"
+            className="pb-link"
             type="button"
             onClick={() => {
               setConfirmationSentTo(null);
@@ -85,34 +111,8 @@ export function SignInPage() {
           >
             Back to sign in
           </button>
-        </div>
-      </PreBizFrame>
-    );
-
-  return (
-    <PreBizFrame
-      narrow
-      titleId="sign-in-title"
-      title={
-        creatingAccount
-          ? inviteFlow
-            ? "Create your employee account"
-            : "Create your workspace account"
-          : "Sign in"
-      }
-      description={
-        !supabaseConfigured
-          ? "Sign-in is unavailable in this browser session."
-          : sessionExpired
-            ? "Your session ended. Sign in again to pick up where you left off."
-            : creatingAccount
-              ? inviteFlow
-                ? "Your email and a password of at least eight characters."
-                : "You will name the workspace itself in the next step."
-              : undefined
-      }
-    >
-      {supabaseConfigured ? (
+        </>
+      ) : supabaseConfigured ? (
         <form className="sign-in-form" onSubmit={handleSupabaseSignIn}>
           {/*
             Creating an account is an email and a password. A name is asked
@@ -180,12 +180,14 @@ export function SignInPage() {
           </div>
         </form>
       ) : null}
-      <nav className="sign-in-trust-links" aria-label="Trust and legal">
-        <Link to="/privacy">Privacy</Link>
-        <Link to="/terms">Terms</Link>
-        <Link to="/accessibility">Accessibility</Link>
-        <Link to="/contact">Contact</Link>
-      </nav>
+      {confirmationSentTo ? null : (
+        <nav className="sign-in-trust-links" aria-label="Trust and legal">
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
+          <Link to="/accessibility">Accessibility</Link>
+          <Link to="/contact">Contact</Link>
+        </nav>
+      )}
     </PreBizFrame>
   );
 }
