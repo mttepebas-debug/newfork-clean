@@ -36,6 +36,7 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 2. **BL-238** (Pazar akşamı "bu hafta" UTC'ye göre; high/risky). Gerekçe: her Pazar yöneticiyi ve CI'ı kilitliyor; K19 kullanıcıyla konuşulacak.
 3. **BL-218 `.3` → FB-6.2.** Gerekçe: programın kritik yolu; BL-218 `.1`–`.2` main'de, `.3` (`nf-backend`) FB-6.2 `.4`'ün son önkoşulu. FB-6.1b `.1` (BL-159) artık başlayabilir (Ç8).
 4. ~~Settings ikiz okuma (BL-222)~~ bitti 09-27 (`89fdf494`); kayıt 09-28.
+5. **BL-252 + BL-246 (`nf-db`, 2026-09-28'den beri) → BL-199.** Kullanıcı 2026-09-28 bu işi seçti; BL-246 kısmı sürüyor, BL-252 kısmı S1/S2 cevabını bekliyor (`tasks/BL-252.md`). **Sonra BL-199** (müdür Schedule'da vardiyaya not yazamıyor; kullanıcı kararı 2026-09-28: devir işinden hemen sonra).
 
 ## 4. Şeritler (paralel rol oturumları)
 Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en çok iki ağır iş; migration ortak yerel DB'ye yalnız birleştirme penceresinde (`scripts/lock.mjs`); her kod işi `nf-guvenlik`, ekranı değişen `nf-gorsel-qa`.
