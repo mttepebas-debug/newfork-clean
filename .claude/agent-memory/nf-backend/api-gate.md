@@ -15,3 +15,4 @@ metadata:
 - Pin every route with a table like `apps/api/src/schedule/schedule-routes-gate.test.ts` (non-member 404 / all-but-its-action 403 / only-its-action → 400 on bad ids) plus an onRoute completeness check against what the area registers. Changing one route's action makes 2 rows fail.
 - Test fixtures that build `ActiveWorkspaceContext` by hand need `actions`; `app.test.ts` owner uses `[...authzActionKeys]`.
 - Codemod over multi-line handlers: restrict arg matches to `[^;]*?`, a lazy `[\s\S]*?` swallowed whole neighbouring handlers.
+- Trap (SEC-003, 2026-09-28): a FastifyReply is thenable. An async helper that returns `reply.status(...).send(...)` resolves to undefined when awaited, so `const r = await helper(); if (r) return r;` never returns and the handler runs on. Return a boolean (see `refusedPassword` in `apps/api/src/account/workspace-account-routes.ts`). Only a table test that asserts the action was NOT called catches it.

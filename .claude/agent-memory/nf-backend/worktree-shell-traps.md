@@ -19,3 +19,4 @@ metadata:
 - `pnpm.cmd --filter <pkg> exec vitest run <file>` prints `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "vitest" not found`
   whenever the test FAILS (non-zero exit); vitest did run. Read the `Tests` line, not that message.
   Web/api resolve `@newfork/shared` from its build: after a shared edit run `--filter @newfork/shared build`.
+- A `node -e '...'` script whose body contains an apostrophe (e.g. "service's" in a comment) breaks bash quoting and bash then runs the leftover lines as commands (a bare `*` ran the first file name). Put edit scripts in a scratchpad `.cjs` file (Write tool) and run `node file.cjs <path>`; check `git status` after any quoting accident.
