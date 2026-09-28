@@ -1,4 +1,4 @@
-import type { ScheduleReadModel } from "@newfork/shared/schedule";
+import type { ScheduleEditableShift, ScheduleReadModel } from "@newfork/shared/schedule";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadShiftAvailability } from "../../availability/availability-data";
@@ -470,7 +470,6 @@ describe("ShiftQuickEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Increase count" }));
     fireEvent.click(screen.getByRole("button", { name: "Increase count" }));
     fireEvent.click(screen.getByRole("button", { name: "15m" }));
-    expect(screen.queryByText("Note")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Add 3 shifts" }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
@@ -1052,3 +1051,103 @@ function getTimeSegment(
     null
   );
 }
+
+// BL-199: a manager writes, changes and clears the shift's note here.
+describe("ShiftQuickEditor note", () => {
+  const noted: ScheduleEditableShift = {
+    id: "66666666-6666-4666-8666-666666666666",
+    location_id: model.locations[0]!.id,
+    employee_id: model.employees[0]!.id,
+    job_id: model.jobs[0]!.id,
+    shift_type_id: model.shift_types[0]!.id,
+    scheduled_date: model.week_start,
+    start_time: "16:00",
+    end_time: "22:00",
+    crosses_midnight: false,
+    unpaid_break_minutes: 30,
+    hide_time_on_badge: false,
+    label_ids: [],
+    label_names: [],
+    note: "Bring the catering order list",
+    warning_codes: [],
+    revision: 1,
+  };
+  function renderEditor(
+    state: Parameters<typeof ShiftQuickEditor>[0]["state"],
+    onSubmit = vi.fn().mockResolvedValue("saved" as const),
+  ) {
+    render(
+      <ShiftQuickEditor
+        model={{ ...model, shifts: state.mode === "edit" ? [noted] : [] }}
+        state={state}
+        timeFormat="12h"
+        formatTime={(value) => value}
+        addDays={(value) => value}
+        scheduleClosureCoversDate={() => false}
+        onClose={vi.fn()}
+        onReload={vi.fn()}
+        onDelete={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+    return onSubmit;
+  }
+  const note = () => screen.getByRole("textbox", { name: "Note" }) as HTMLTextAreaElement;
+  const create = { mode: "create" as const, locationId: model.locations[0]!.id, employeeId: model.employees[0]!.id, date: model.week_start };
+
+  it("writes a new shift's note without the spaces around it", async () => {
+    const onSubmit = renderEditor(create);
+    expect(note().value).toBe("");
+    expect(note()).toHaveProperty("maxLength", 500);
+    expect(screen.getByText("500 characters left")).toBeTruthy();
+    expect(note().getAttribute("aria-describedby")).toBe(screen.getByText("500 characters left").id);
+
+    fireEvent.change(note(), { target: { value: "  Bring the catering order list \n" } });
+    expect(screen.getByText("467 characters left")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]![0].note).toBe("Bring the catering order list");
+  });
+
+  it("takes no more than 500 characters and says none are left", () => {
+    renderEditor(create);
+    fireEvent.change(note(), { target: { value: "x".repeat(520) } });
+    expect(note().value).toHaveLength(500);
+    expect(screen.getByText("0 characters left")).toBeTruthy();
+    fireEvent.change(note(), { target: { value: "x".repeat(499) } });
+    expect(screen.getByText("1 character left")).toBeTruthy();
+  });
+
+  it("changes an existing shift's note", async () => {
+    const onSubmit = renderEditor({ mode: "edit", shift: noted });
+    expect(note().value).toBe("Bring the catering order list");
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+
+    fireEvent.change(note(), { target: { value: "Bring the keys" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]![0]).toMatchObject({ note: "Bring the keys", start_time: "16:00" });
+  });
+
+  it("clears the note when the field is left blank, spaces included", async () => {
+    const onSubmit = renderEditor({ mode: "edit", shift: noted });
+    fireEvent.change(note(), { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]![0].note).toBe("");
+  });
+
+  it("writes the same note on every shift of a bulk add", async () => {
+    const onSubmit = renderEditor({ ...create, employeeId: null });
+    fireEvent.click(screen.getByRole("button", { name: "Increase count" }));
+    fireEvent.click(screen.getByRole("button", { name: "Increase count" }));
+    fireEvent.change(note(), { target: { value: "Patio opens at 5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add 3 shifts" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ note: "Patio opens at 5", employee_id: null }), 3);
+  });
+});

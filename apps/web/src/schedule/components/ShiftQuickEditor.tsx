@@ -8,6 +8,7 @@ import { loadShiftAvailability } from "../../availability/availability-data";
 import { ChevronDown, Minus, Plus, Trash2, X } from "lucide-react";
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type CSSProperties,
@@ -46,6 +47,8 @@ import { TimeInput } from "./TimeInput";
 const clockOffFallbackStartTime = "";
 const clockOffFallbackEndTime = "";
 const softConflictOverrideNote = "Manager acknowledged schedule warning.";
+// The database and the shared schema both cap a shift note at 500 (BL-199).
+export const shiftNoteMaxLength = 500;
 
 interface QuickEditorSelectOption {
   readonly value: string;
@@ -290,6 +293,7 @@ export function ShiftQuickEditor({
   ) => Promise<"saved" | "stale" | null>;
 }) {
   const toast = useToast();
+  const noteId = useId();
   const editorRef = useRef<HTMLDivElement>(null);
   const startTimeInputRef = useRef<HTMLInputElement>(null);
   const endTimeInputRef = useRef<HTMLInputElement>(null);
@@ -415,6 +419,8 @@ export function ShiftQuickEditor({
     // Badge visibility cannot change the interval checked above.
     const basePayload = {
       ...value,
+      // Blank means no note: spaces alone never reach the shift.
+      note: (value.note ?? "").trim(),
       ...(checked?.warning_policy && checked.operation === "warning_requires_override"
         ? { availability_assessment_fingerprint: checked.fingerprint }
         : {}),
@@ -933,6 +939,31 @@ export function ShiftQuickEditor({
               Show times on badge
             </label>
           </section>
+          <section
+            className="schedule-shift-form-section schedule-shift-form-section--note"
+            aria-label="Shift note"
+          >
+            <div className="schedule-shift-note-head">
+              <label htmlFor={`${noteId}-input`}>Note</label>
+              <small id={`${noteId}-count`}>
+                {formatShiftNoteRemaining(value.note ?? "")}
+              </small>
+            </div>
+            <textarea
+              id={`${noteId}-input`}
+              rows={2}
+              maxLength={shiftNoteMaxLength}
+              aria-describedby={`${noteId}-count`}
+              placeholder="Add a note for this shift"
+              value={value.note ?? ""}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  note: event.target.value.slice(0, shiftNoteMaxLength),
+                })
+              }
+            />
+          </section>
           <div className="schedule-dialog-actions schedule-quick-editor-actions">
             {state.mode === "edit" ? (
               <button
@@ -994,6 +1025,11 @@ export function ShiftQuickEditor({
       />
     </>
   );
+}
+
+export function formatShiftNoteRemaining(note: string): string {
+  const left = Math.max(0, shiftNoteMaxLength - note.length);
+  return `${left} ${left === 1 ? "character" : "characters"} left`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
