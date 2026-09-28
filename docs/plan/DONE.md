@@ -108,3 +108,8 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-28 | BL-252 | sahiplik devri yalnız çalışan kaydı olan admin'e gider; Owner işi yeni owner'a geçer; eski owner'ın owner olduğu için muaf belgeleri yeniden istenir | cb6013fb
 2026-09-28 | BL-246 | devirle owner olan kişinin açık belge ve acknowledgement'ları devir anında muaf, kimse geri alamaz | cb6013fb
 2026-09-28 | BL-263 | owner'ın belge muafiyetini kaldırma isteği, eski sayfadan gelse de ilk seferde "owner'dan istenmez" diye reddedilir | cb6013fb
+2026-09-28 | BL-266 | davet, silinmekte olan bir hesabın kilidini artık açmıyor | 721ea41f
+2026-09-28 | BL-267 | Account → Security'de parola değiştirmek mevcut parolayı istiyor (sunucuda) | 721ea41f
+2026-09-28 | BL-268 | Account → Workspaces'te kapatma ve sahiplik devri parolayı sunucuda soruyor; açık oturum yetmiyor | 721ea41f
+2026-09-28 | BL-269 | parola sormayan eski hesap silme yolu kaldırıldı | 721ea41f
+2026-09-28 | BL-274 | e-postasını onaylamamış hesap bir daveti göremiyor ve kabul edemiyor; kayıttan sonra "Check your email" ekranı | 721ea41f
