@@ -68,7 +68,7 @@ Henüz sorulmadı: FB-6.1.14 hosted toplu gönderim son onayı (K5), K15 Stripe 
 S1–S4, K16 FB-6.1b S1–S3, K10 FB-6.3 S4, K11 BL-214/216, BL-235 ikon rengi. Liste `ILERLEME-PLANI.md` §2.
 
 ## 4. Hosted gönderim (FB-6.1.14) için not
-**Kapandı 2026-09-28:** gönderim yapıldı (26 migration, son sürüm `20260928030000`); ad çakışması sayımı 0, advisors'ta yeni bulgu yok. Ayrıntı `tasks/FB-6.1.md` Notes.
+**Kapandı 2026-09-28:** gönderim yapıldı (26 migration, son sürüm `20260928030000`); ad çakışması sayımı 0, advisors'ta yeni bulgu yok. Management/Owner ad çakışması sayımı (BL-218 Düşük 3) bayat: backfill düşmedi, hosted'da 3 sistem departmanı + 3 sistem işi doğrulandı (koordinatör). Ayrıntı `tasks/FB-6.1.md` Notes.
 Önce: aktif "Management"/"Owner" adlı departman/iş sayımı (BL-218 Düşük 3; ad çakışması backfill'i
 düşürür); migration 140000 API'den önce/aynı anda (BL-197); BL-209 yerel saat dilimi komutu kullanıcıda.
 
