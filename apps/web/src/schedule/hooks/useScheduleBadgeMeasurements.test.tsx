@@ -40,6 +40,7 @@ const shift = {
   crosses_midnight: false,
   hide_time_on_badge: false,
   label_names: ["Patio"],
+  note: "",
   warning_codes: [] as ScheduleShift["warning_codes"],
 } as ScheduleShift;
 
@@ -206,6 +207,46 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       "false",
       "true",
     ]);
+  });
+
+  it("counts a noted open shift apart from its twin, as the Unassigned row draws them (BL-199)", () => {
+    const openShift = {
+      ...shift,
+      id: "open-1",
+      employee_id: null,
+      scheduled_date: "2026-08-17",
+      warning_codes: [],
+      note: "",
+    } as ScheduleShift;
+    const measure = (shifts: ScheduleShift[]) => {
+      const { unmount } = render(
+        <>
+          {renderScheduleBadgeWidthMeasurer({
+            shifts,
+            jobs: [job],
+            shiftTypes: [shiftType],
+            locationGroups,
+            showShiftType: true,
+            showShiftLabels: true,
+            showClockTimes: true,
+            timeFormat: "12h",
+            showJobColorDot: true,
+            showLocationInBadge: false,
+            showShiftTypePresets: false,
+          })}
+        </>,
+      );
+      const stacks = Array.from(
+        document.querySelectorAll<HTMLElement>(".schedule-badge-width-measure"),
+      ).map((item) => item.dataset.hasStack);
+      unmount();
+      return stacks;
+    };
+
+    expect(
+      measure([openShift, { ...openShift, id: "open-2", note: "The new oven arrives at 10" }]),
+    ).toEqual(["false", "false"]);
+    expect(measure([openShift, { ...openShift, id: "open-2" }])).toEqual(["true", "true"]);
   });
 
   it("reserves marker space for a real shift's availability warning without a publication marker", () => {

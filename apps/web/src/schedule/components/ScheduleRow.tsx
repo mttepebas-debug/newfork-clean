@@ -43,6 +43,7 @@ import { ScheduleEmployeeCard } from "./ScheduleEmployeeCard";
 import type { PresetDragState } from "./SchedulePresetRows";
 import { ScheduleTotalValue } from "./ScheduleTotalsRow";
 import { GhostShiftCard, ShiftCard } from "./ShiftCard";
+import { unassignedShiftStackKey } from "../lib/unassignedShiftStack";
 
 export interface ActiveScheduleEditorTarget {
   readonly locationId: string;
@@ -556,18 +557,4 @@ function stackUnassignedCellShifts(
   }
 
   return stacks;
-}
-
-function unassignedShiftStackKey(shift: ScheduleShift): string {
-  return [
-    shift.location_id,
-    shift.scheduled_date,
-    shift.shift_type_id ?? "",
-    shift.start_time,
-    shift.end_time,
-    shift.hide_time_on_badge ? "clock-hidden" : "clock-visible",
-    shift.crosses_midnight ? "overnight" : "same-day",
-    // A note sets a shift apart: stacked, only the first card's note would show.
-    shift.note.trim(),
-  ].join("|");
 }

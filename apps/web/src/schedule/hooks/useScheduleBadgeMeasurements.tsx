@@ -24,6 +24,7 @@ import {
   publicationStateForShift,
 } from "../lib/scheduleShiftMetadata";
 import type { TimeFormat } from "../timeInput";
+import { unassignedShiftStackKey } from "../lib/unassignedShiftStack";
 
 export const NON_EDIT_SHIFT_BADGE_MIN_HEIGHT = 36;
 export const PREVIEW_SHIFT_BADGE_MIN_HEIGHT = 44;
@@ -139,7 +140,7 @@ export function renderScheduleBadgeWidthMeasurer({
   const unassignedStackCounts = new Map<string, number>();
   for (const shift of shifts) {
     if (shift.employee_id !== null || isGhostScheduleShift(shift)) continue;
-    const key = scheduleBadgeMeasurementStackKey(shift);
+    const key = unassignedShiftStackKey(shift);
     unassignedStackCounts.set(key, (unassignedStackCounts.get(key) ?? 0) + 1);
   }
   const shiftItems = shifts.map((shift) => {
@@ -172,7 +173,7 @@ export function renderScheduleBadgeWidthMeasurer({
           shift.warning_codes.includes("availability"),
       hasStack:
         shift.employee_id === null &&
-        (unassignedStackCounts.get(scheduleBadgeMeasurementStackKey(shift)) ?? 0) >
+        (unassignedStackCounts.get(unassignedShiftStackKey(shift)) ?? 0) >
           1,
     };
   });
@@ -229,18 +230,6 @@ export function renderScheduleBadgeWidthMeasurer({
       ))}
     </div>
   );
-}
-
-function scheduleBadgeMeasurementStackKey(shift: ScheduleShift): string {
-  return [
-    shift.location_id,
-    shift.scheduled_date,
-    shift.shift_type_id ?? "",
-    shift.start_time,
-    shift.end_time,
-    shift.hide_time_on_badge ? "clock-hidden" : "clock-visible",
-    shift.crosses_midnight ? "overnight" : "same-day",
-  ].join("|");
 }
 
 export function readMeasuredHeight(
