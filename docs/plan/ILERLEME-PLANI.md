@@ -10,7 +10,7 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
   - gece: BL-198, BL-212, BL-205, BL-197 (`65bdeaae`), BL-234, BL-218 `.1`–`.2`, BL-237, BL-192 (telefonda yönetici alt çubuğu), BL-231, BL-230, BL-221;
   - gündüz: BL-239 + BL-240 (tek telefon kırılımı 720px, `2ca3803e`); **görsel tutarlılık paketi** (BL-214, BL-216, BL-235, BL-250, BL-251; `dc3c9730` + `7127bd96`): beyaz düğmeler ve form alanları aynı koyu kenarda, altı ikiz renk silindi, uyarı işareti okunur, iki alt çubuk aynı;
   - kayıt: BL-100 (yerel DB'deki FX artığı silindi), BL-078 (işlem gerekmez).
-- **Şu an çalışan:** `nf-db` — **BL-252 + BL-246** (sahiplik devrinde owner kuralları: kayıt değişmezi, yeni owner'ın belgeleri muaf, eski owner'ın owner muafiyetleri kalkar; `tasks/BL-252.md`). Diğer rol oturumları boşta (ListAgents, 2026-09-28).
+- **Şu an çalışan:** yok. **BL-252 + BL-246 + BL-263 bitti 2026-09-28** (`cb6013fb`, main CI yeşil run 36416053874): devir yalnız çalışan kaydı olan admin'e, yeni owner'ın belgeleri muaf, eski owner'ın owner muafiyetleri kalkar. Hosted'a gönderilmedi (BL-265).
 - **Hosted:** 26 migration gönderildi (son `20260928030000`), advisors temiz. Web/API Vercel'de henüz yayında değil.
 - **MVP geneli ~%45–50** (2026-09-26 raporu; ölçülmedi).
 
@@ -28,7 +28,7 @@ Bu dosya bir çalışma planıdır; sıra değişince güncellenir, iş kapandı
 **Cevaplı (kayıtta; ayrıntı BACKLOG / REUSE / görev dosyaları):** K1–K4 FB-6.2 S1–S4 · D1–D5 Management/Owner · K5 hosted gönderim (yapıldı 09-28) · K6 BL-209 hedefli onarım (komut kullanıcıda) · K8 arşivli ad görünür (→ BL-254) · K9 onboarding yedi adım (F4'ten önce) · K11 görsel paket (bitti) · K12 BL-221 · K13 BL-230 · K14 Settings S1–S4 (→ FB-6.8) · K16 FB-6.1b S1–S3 · K17 BL-218 S1–S3 · K18 BL-192 · **09-28 gündüz:** BL-252 S1 (a) kayıt değişmezi + S2 (b) eski owner'ın muafiyetleri kalkar (S3/S4 `nf-db` ölçümüyle kapandı) · BL-218 `.5` Owner iş listesinde Management altında kilitli, liste departmanlara göre gruplu · BL-199 sırası (devir işinden sonra) · BL-100 yedeksiz silme (yapıldı).
 
 ## 3. Sıradaki en önemli iş (gerekçesiyle)
-1. **BL-252 + BL-246 (`nf-db`, sürüyor).** Kullanıcının seçtiği iş. Kayıt dalı `task/bl252-s3s4-planlama` (`ff412252`) bu işle birlikte main'e gider.
+1. ~~BL-252 + BL-246~~ **bitti 2026-09-28** (`cb6013fb`).
 2. **BL-199 — müdür Schedule'da vardiyaya not yazamıyor** (`nf-arayuz` alan + `nf-backend` kaydetme doğrulaması + e2e). Kullanıcı kararı 09-28: devir işinden hemen sonra.
 3. **BL-218 `.3` → FB-6.2.** Programın kritik yolu: `.3` (`nf-backend`) FB-6.2 `.4`'ün son önkoşulu. `.5` artık veri parçası da istiyor (işlere departman + `system_key`: önce `nf-db` okuma + `nf-backend`, sonra `nf-arayuz` varyantları). FB-6.1b `.1` (BL-159) de başlayabilir (Ç8).
 4. **BL-238** (Pazar akşamı "bu hafta" UTC'ye göre; high/risky) — K19 konuşulunca.
@@ -39,13 +39,13 @@ Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en
 
 | Şerit | Rol | Şimdi | Sonra | Bekleyen |
 |---|---|---|---|---|
-| A — DB | `nf-db` | **BL-252 + BL-246** | BL-254 (K21) · BL-218 `.5` veri okuması · FB-6.1b `.1` (BL-159) · FB-6.2 `.1` | BL-209 onarımı (komut kullanıcıda), BL-217 (BL-209'dan sonra) |
+| A — DB | `nf-db` | — | BL-254 (K21) · BL-218 `.5` veri okuması · FB-6.1b `.1` (BL-159) · FB-6.2 `.1` | BL-209 onarımı (komut kullanıcıda), BL-217 (BL-209'dan sonra) |
 | B — API/web veri | `nf-backend` | — | BL-199 kaydetme yolu · **BL-218 `.3`** · BL-254 web (3 satır) · FB-6.2 `permissions.includes` → `can()` | BL-213 |
 | C — Arayüz | `nf-arayuz` | — | **BL-199** alan + metin · BL-218 `.4`–`.6` · BL-256..260 (küçük, tek iş) | BL-255 (K20) |
 | D — Test | `nf-test` | — | BL-199 e2e · BL-245 (bildirim testleri yerelde kararsız) · BL-120 (tam koşuda zaman aşımı; 09-28 yine düştü) | BL-217 |
 | E — Plan | `nf-planlama` | — | FB-6.1 kapanış notu (`.0` + `.13`'ten sonra) · her birleştirmenin kaydı | — |
 | F — İnceleme | `nf-guvenlik`, `nf-gorsel-qa` | çağrıldıkça | | |
-| Koordinatör | — | BL-252 birleştirme penceresi | Ekran turu K7 · temizlik (§6) | |
+| Koordinatör | — | BL-265 hosted (kullanıcı onayıyla) | Ekran turu K7 · temizlik (§6) | |
 
 ## 5. Çakışmalar ve sıralama kuralları
 - **Ç1 — FB-6.2 Employees ekranı.** `EmployeeDrawer`/`EmployeesPage`'teki `permissions.includes` → `can()` FB-6.2'nin Done when 6'sı; çekmecenin okumaları BL-231 ile API'den geçiyor (bitti 09-28). BL-243, BL-244 FB-6.2 diliminde.
@@ -75,7 +75,7 @@ Kurallar: aynı dosyaya iki rol aynı anda konmaz (CLAUDE.md §4); aynı anda en
 | F6 lansman | BL-058 beş tenant e2e, REL-001, REL-002 | başlamadı | hepsi |
 
 ## 8. Sıra (koordinatöre)
-1. BL-252 + BL-246 birleştirme penceresi (`nf-guvenlik` onayıyla); `task/bl252-s3s4-planlama` kaydı aynı pencerede.
+1. ~~BL-252 + BL-246 birleştirme penceresi~~ bitti 2026-09-28 (`cb6013fb`). Hosted gönderim BL-265 (önce D1 sayımı; kullanıcı onayı).
 2. Kullanıcıya tek turda: BL-199'u başlatma onayı, K20 (BL-255, önce/sonra görüntüsüyle), K7 günü.
 3. BL-199 (`nf-backend` → `nf-arayuz` → `nf-test`).
 4. BL-218 `.3` → `.5` veri parçası → FB-6.2.

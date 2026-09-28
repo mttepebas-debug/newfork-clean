@@ -105,3 +105,6 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-28 | BL-250 | iki telefon alt çubuğunda klavye odak halkası aynı (3px, 2px dışarıda) | dc3c9730
 2026-09-28 | BL-251 | iki telefon alt çubuğunun üst çizgisi aynı token (`--theme-border`) | dc3c9730
 2026-09-28 | BL-100 | yerel ortak DB'de eski araştırmadan kalan "FX" workspace'i ve 4 deneme kullanıcısı silindi (kullanıcı komutu; yedeksiz, kullanıcı kararı) | -
+2026-09-28 | BL-252 | sahiplik devri yalnız çalışan kaydı olan admin'e gider; Owner işi yeni owner'a geçer; eski owner'ın owner olduğu için muaf belgeleri yeniden istenir | cb6013fb
+2026-09-28 | BL-246 | devirle owner olan kişinin açık belge ve acknowledgement'ları devir anında muaf, kimse geri alamaz | cb6013fb
+2026-09-28 | BL-263 | owner'ın belge muafiyetini kaldırma isteği, eski sayfadan gelse de ilk seferde "owner'dan istenmez" diye reddedilir | cb6013fb
