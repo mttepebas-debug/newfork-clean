@@ -35,7 +35,7 @@ test("publishing a draft that undoes an approved swap is refused, not overwritte
   const caseId = sql(`
     select tests.publish_week('${run}', ${WEEK}, '[
       {"label": "ali-swap", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
-      {"label": "deniz-swap", "person": "deniz", "loc": "B", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
+      {"label": "deniz-swap", "person": "deniz", "loc": "B", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
     ]');
     select public.shift_exchanges_command_service(tests.user('${run}:ali'), tests.id('${run}'),
       jsonb_build_object('action', 'create', 'kind', 'swap',
