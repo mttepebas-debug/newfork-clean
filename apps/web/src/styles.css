@@ -40,12 +40,6 @@
   --theme-danger-border: #ad3f36;
   --theme-danger-text: #653b36;
   --theme-danger-strong: #a43830;
-  --theme-text-tertiary: #68756f;
-  --theme-text-soft: #53625b;
-  --theme-surface-group: #f8faf8;
-  --theme-surface-hover: #e9efeb;
-  --theme-divider: #dfe5e1;
-  --theme-divider-soft: #e5eae7;
   --theme-accent-focus: #236844;
   --schedule-action: var(--theme-action);
   --schedule-action-hover: var(--theme-action-hover);
@@ -2765,12 +2759,12 @@ p {
 /* After .nf-button on purpose: <Button className="secondary-button"> is a
    dismiss button (Cancel, Discard, Back) and must not come out green. */
 .secondary-button {
-  border: 1px solid #bdc8c3;
+  border: 1px solid var(--theme-muted);
   background: var(--theme-surface);
-  color: #315048;
+  color: var(--theme-accent-deep);
 }
 .secondary-button:hover {
-  background: #f0f4f2;
+  background: var(--theme-surface-muted);
 }
 .sr-only {
   position: absolute;
@@ -6162,7 +6156,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: #d03b35;
 }
 .toast-type-icon.warning {
-  background: #d99216;
+  background: var(--theme-warning);
 }
 .toast-type-icon.info {
   background: #1f6ed4;
@@ -11320,7 +11314,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .form-field select {
   width: 100%;
   height: 42px;
-  border: 1px solid #c7cfcb;
+  border: 1px solid var(--theme-muted);
   border-radius: 6px;
   padding: 0 11px;
   background: var(--theme-surface);
@@ -11395,7 +11389,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .form-field textarea {
   width: 100%;
   resize: vertical;
-  border: 1px solid #c7cfcb;
+  border: 1px solid var(--theme-muted);
   border-radius: 6px;
   padding: 10px 11px;
   background: var(--theme-surface);
@@ -11480,7 +11474,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   overflow: hidden;
-  border: 1px solid #c7cfcb;
+  border: 1px solid var(--theme-muted);
   border-radius: 6px;
   background: var(--theme-surface);
 }
@@ -11745,7 +11739,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .setting-control > select {
   width: min(100%, 250px);
   height: 40px;
-  border: 1px solid #c7cfcb;
+  border: 1px solid var(--theme-muted);
   border-radius: 6px;
   padding: 0 10px;
   background: var(--theme-surface);
@@ -11761,7 +11755,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   box-sizing: border-box;
   width: 100%;
   height: 40px;
-  border: 1px solid #c7cfcb;
+  border: 1px solid var(--theme-muted);
   border-radius: 6px;
   padding: 0 10px;
   background: var(--theme-surface);
