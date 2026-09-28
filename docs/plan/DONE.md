@@ -83,4 +83,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-09-26 | BL-180 | takas e2e testi CI yükünde yanlış kırmızı vermiyor (asıl kök BL-208 düzeldi, bekleme 30 sn) | 021c63e
 2026-09-27 | BL-148 + BL-166 | Account ekranlarında ham renk kalmadı, görünüm aynı; giriş alanlarının kenarı WCAG AA | f5fb2f1
 2026-09-27 | FB-6.1.9 (API ekranları) | API'den okuyan 13 ekran yetki reddinde "erişim yok" kartı gösteriyor; istek yardımcıları reddin gerekçesini koruyor | 0693b51
-- 2026-09-28 SEC-001 kapandı: Supabase `net` şemasının ziyaretçi/kullanıcı izinlerini kapatmıyor (yönetilen şema); risk kabul edildi, `net_access_stays_out_of_reach` bekçi testi API'ye açılan her `net` yolunu yakalıyor.
+2026-09-28 | SEC-001 | Supabase `net` şemasını kapatmıyor (yönetilen şema); risk kabul edildi, `net_access_stays_out_of_reach` bekçisi API'ye açılan her `net` yolunu yakalıyor | def86c18
