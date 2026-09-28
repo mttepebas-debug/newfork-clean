@@ -28,6 +28,8 @@ const dragAutoscrollEdgePx = 56;
 const dragAutoscrollMaxStepPx = 24;
 
 let titleCanvas: CanvasRenderingContext2D | null | undefined;
+// Word widths by `font|word`; the grid re-measures on every render.
+const titleWordWidths = new Map<string, number>();
 
 // Reads each card on the grid: its title's longest word (a line may break
 // after a space or a hyphen) and the room its day cell leaves around the
@@ -46,11 +48,20 @@ function measureFitDayWidth(grid: HTMLElement): number {
       while (cell && cell.parentElement !== grid) cell = cell.parentElement;
       const text = title.textContent?.trim();
       if (!cell || !text) return;
-      canvas.font = getComputedStyle(title).font;
+      const font = getComputedStyle(title).font;
+      // No lookbehind: Safari 16.0-16.3 rejects it at parse time.
+      const words = text.replace(/-/g, "- ").split(/\s+/).filter(Boolean);
       const longestWord = Math.max(
-        ...text
-          .split(/\s+|(?<=-)/)
-          .map((word) => canvas.measureText(word).width),
+        ...words.map((word) => {
+          const key = `${font}|${word}`;
+          let width = titleWordWidths.get(key);
+          if (width === undefined) {
+            canvas.font = font;
+            width = canvas.measureText(word).width;
+            titleWordWidths.set(key, width);
+          }
+          return width;
+        }),
       );
       cards.push({
         longestWord,
@@ -93,6 +104,8 @@ export function ScheduleGridShell({
   const [fillerHeightPx, setFillerHeightPx] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(0);
   const [fitDayWidth, setFitDayWidth] = useState(0);
+  // Cards do not change size mid-drag; skip re-reading them every frame.
+  const dragging = Boolean(dragPointer);
   const effectiveDayColumnMinWidth = fitWeeklyLocations
     ? Math.max(
         dayColumnMinWidth,
@@ -121,7 +134,7 @@ export function ScheduleGridShell({
     const scroll = scrollRef.current;
     if (!scroll) return;
     setViewportWidth(scroll.clientWidth);
-    if (fitVisibleColumns && gridRef.current) {
+    if (fitVisibleColumns && !dragging && gridRef.current) {
       const next = measureFitDayWidth(gridRef.current);
       setFitDayWidth((current) => (current === next ? current : next));
     }
@@ -161,7 +174,7 @@ export function ScheduleGridShell({
     setFillerHeightPx((current) =>
       current === nextHeight ? current : nextHeight,
     );
-  }, [fitVisibleColumns, gridRef, totalBottomOffsetPx]);
+  }, [dragging, fitVisibleColumns, gridRef, totalBottomOffsetPx]);
 
   useLayoutEffect(() => {
     const scroll = scrollRef.current;
