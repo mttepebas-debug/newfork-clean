@@ -1,91 +1,57 @@
-# Koordinatör devri — 2026-09-27 gece (Pazar 19:20 PDT / Pazartesi 02:20 UTC)
+# Koordinatör devri — 2026-09-28
 
-Eski koordinatör: "Hand off raporu" oturumu (`local_323e063c-efb6-4451-a9c6-39a35ec5e057`), bağlamı doldu.
-Yeni koordinatör: bu dosyayı okuyan oturum. `CLAUDE.md` §3 ve §12'deki koordinatör kimliğini kendi
-kimliğinle güncelle (kullanıcı onayıyla; önceki devirde de böyle yapıldı) ve rol oturumlarına yeni kimliği
-bildir. Ölçüm anı: `origin/main` = `ebf1d42c`. Kullanıcı telefondan (Remote Control) izliyor. Dil: sade
-Türkçe; karmaşık kararlar başlık başlık, örnekli, chat'te sorulur (kullanıcının isteği).
+Eski koordinatör: "Koordinatör (devir 2026-09-27 gece)" (`local_08c32131-90ea-4552-9d19-9b1a7dae5a5a`), bağlamı yarıyı geçti; devir önerildi.
+Yeni koordinatör: bu dosyayı okuyan oturum. `CLAUDE.md` §3 ve §12'deki koordinatör kimliğini kendi kimliğinle güncelle (kullanıcı onayıyla; önceki devirlerde de böyle yapıldı) ve rol oturumlarına yeni kimliği bildir.
+Ölçüm anı: `origin/main` = `01871a2c` (+ bu kaydın dalı), 2026-09-28; yerel DB = main (son migration `20260928040000`). Kullanıcı telefondan (Remote Control) izliyor. Dil: sade Türkçe; karmaşık kararlar başlık başlık, örnekli, chat'te sorulur. **Kullanıcı aynı anda tek iş istiyor.**
+Durumun tamamı: `docs/plan/ILERLEME-PLANI.md` (sürüm 3). Kayıt tutan rol: `nf-planlama` (`local_c67b8d60…`).
 
 ## 0. İlk işler (sırayla)
-**Durum 2026-09-28 (kayıt `nf-planlama`):** kuyruk bitti — 2a–2c ve 4–8 main'de, hepsinde main CI yeşil (koordinatör); açık kalan yalnız BL-217 (madde 3). Hosted gönderim de yapıldı (2026-09-28).
-1. **(09-28 penceresi geçti; kural BL-238 kapanana kadar her Pazar geçerli.)** **Pasifik 00:00'dan (07:00 UTC) ÖNCE main'e KOD gönderme.** BL-238 (aşağıda) yüzünden Pazar akşamı
-   e2e `schedule-locks.spec.ts` main'de de kırmızı; CI kırmızı olur ve main donar. Docs push serbest.
-2. 00:00 PDT'den sonra üç birleştirme, sırayla, her birinde CI'ı izle:
-   a. **BİTTİ 09-28 (`65bdeaae`, main CI yeşil).** **`../newfork-wt/merge-0927d`** (branch `merge-0927d`, hazır): BL-198 (DB+web, ONAY @2875a823),
-      BL-212 (ONAY @a8f40a53), BL-205 (ONAY @4a92dd39 güvenlik + @b3cc5cdb görsel), BL-197 web
-      (ONAY @ff866053) + BL-197 arayüz (ONAY @3c5f8f16 ikisi). Kod kapısı yeşil (lint/typecheck/test/build).
-      test:db: BL-198 migration (20260927114500) yerel DB'ye UYGULANDI; kırmızı kümesi bilinen yerel
-      kaymalar (BL-237, BL-209 çifti). e2e 10/12 — düşen ikisi schedule-locks (BL-238, main'de de düşüyor,
-      nf-test kanıtladı). Yapılacak: `git fetch && git rebase origin/main`, gece yarısından sonra
-      `pnpm.cmd e2e` (db.lock) → 12/12 bekle → main.lock → `git push origin HEAD:main` → `gh run watch`.
-   b. **BİTTİ 09-28 (`efef60c1`).** **BL-234** `bl234` @5a6a7a24 (ONAY): aynı hafta iki kez yayınlanıp yeniden düzenlenince Publish
-      önizlemesi 500. Migration `20260927165000`. nf-test'in builder.sql düzeltmelerini de taşıyor
-      (bl210'daki 6349add9 + 75b16f6c eşdeğerleri). Pencere: migration up + test:db + e2e + kapı.
-   c. **BİTTİ 09-28 (`2cdffd2c`, TODO'lar `108dee9c`).** **BL-218 .2** `bl218-s3` @30056d12 (ONAY; `bl218-1` @76289c7d + S3 kararını kilitleyen test, nf-guvenlik ONAY 2026-09-28): Management/Owner veritabanı kuralları. Migration
-      `20260927160000` — BL-234'ün 165000'inden ESKİ, `--include-all` gerekir. BL-234 girince nf-db
-      `excluded_person_leaves_new_drafts`'teki 2 TODO'yu kaldıracak (haber ver).
-3. **e2e kısmı BİTTİ** (merge-0927d içinde); **BL-217 AÇIK.** BL-198 e2e spec (`bl198-e2e` @2b56dc8a, ONAY) merge-0927d'ye EKLENDİ (tam e2e 11/13, düşen 2 = BL-238).
-   Sonra ve BL-217
-   (`bl217-rebase-on-bl198` @ed158ef9, nf-guvenlik ONAY @c794f296 içeriği; rebase'li hali yeniden bakılmalı).
+1. **SEC-003 hesap güvenliği paketini `nf-db`'ye ver** (`docs/plan/tasks/SEC-003.md`, Status ready; BL-266, BL-267, BL-268, BL-269, BL-274). Sıra: `nf-db` → `nf-backend` → `nf-test` (gerekirse `nf-arayuz` metin), paralel yazma yok. Birleştirmeden önce kullanıcıya ultrareview öner. Not: kullanıcı ve eski koordinatör bu işe bazen "SEC-002" dedi; `tasks/SEC-002.md` 2026-09-22'den beri başka bir iş (done), kayıttaki adı SEC-003.
+2. **Hosted panel kontrolü kullanıcıda** (başlamayı engellemez): Authentication → "Require current password when updating" ve "Confirm email". S2 (a) kararıyla "Confirm email" açılacak — ayrı hosted işlem, kullanıcının kendi "evet"i; araçlar ayarı değiştiremiyorsa kullanıcı panelden yapar. SEC-003 Risk'teki e-posta teslimatı (hosted SMTP, Resend) ölçülmedi; ücretli servis gerekirse dolar tutarıyla sor.
+3. **BL-265 hosted gönderim:** bekleyen migration `20260928040000` (BL-252 + BL-246). Önce D1 sayımı (owner cümlesiyle muaf ama artık owner olmayan satırlar; kod yok, yalnız sayım), sonra kullanıcı onayı, sonra advisors.
+4. **Sonraki iş BL-199** (müdür Schedule'da vardiyaya not yazamıyor) — SEC-003'ten sonra (kullanıcı kararı).
+5. **Pazar kuralı (BL-238 kapanana kadar):** Pasifik 00:00'dan (07:00 UTC) önce Pazar akşamı main'e KOD gönderme; e2e `schedule-locks.spec.ts` o saatlerde main'de de kırmızı. Docs gönderimi serbest.
+6. **Açık kalan eski kuyruk:** BL-217 (`bl217-rebase-on-bl198` @ed158ef9; `nf-guvenlik` ONAY @c794f296 içeriği, rebase'li hali yeniden bakılmalı; BL-209 onarımından sonra).
 
-4. **BİTTİ 09-28 (`8f80282c`).** BL-237 `bl237-date-tests` @e1a05ae2 ONAY (nf-test, 5 pgTAP dosyası tests.world()'e; Düşük 1: taslak arşivi doğrudan update, not).
-   BL-234'ten SONRA birleştir (ikisi de publish_week/taslak adlarıyla ilgili).
+## 1. Bugün (09-28) main'e girenler — hepsinde main CI yeşil
+- **Gece:** BL-198, BL-212, BL-205, BL-197 (`65bdeaae`), BL-234 (`efef60c1`), BL-218 `.1`–`.2` (`2cdffd2c`, `108dee9c`), BL-237 (`8f80282c`), BL-192 telefonda yönetici alt çubuğu (`74bb480e`), BL-231 (`59b41c7f`), BL-230 (`51bf2b8e`), BL-221 (`8dfdfcbe`). Hosted toplu gönderim (26 migration, son `20260928030000`).
+- **Gündüz:** BL-239 + BL-240 tek telefon kırılımı 720px (`2ca3803e`); görsel tutarlılık paketi BL-214, BL-216, BL-235, BL-250, BL-251 (`dc3c9730` + `7127bd96`, run 36406391992); BL-252 + BL-246 + BL-263 sahiplik devrinde owner kuralları (`efdc4872`, `cb6013fb`, run 36416053874).
+- **Kayıtlar (`nf-planlama`):** kullanıcı kararları (K8 → BL-254, BL-214 form alanları, BL-252 S1 (a) / S2 (b), BL-218 `.5` gruplama, BL-199 sırası, BL-100 silme — kullanıcı çalıştırdı); ILERLEME sürüm 3; tüm repo kod denetimi → BL-266..282 ve 7 mevcut maddeye genişleme; `tasks/SEC-003.md`; BL-261..265.
 
-5. **BİTTİ 09-28 (`74bb480e`).** **BL-192** `bl192-a` @f7516d79 (nf-guvenlik ONAY @f7516d79, nf-gorsel-qa ONAY @d44a3a75; taban c81a5bbb): telefonda yönetim alt çubuğu. BL-237'den sonra.
-6. **BİTTİ 09-28 (`59b41c7f`).** **BL-231** `bl231-db` @16690fb5 (ONAY, migration 20260928010000) + nf-backend `bl231` (yapılıyor). İkisi birlikte, BL-192'den sonra.
-7. **BİTTİ 09-28 (`51bf2b8e`).** **BL-230** `bl230` @409e2c2f (ONAY; merge-0927d 0a92268e üstünde, migration 20260928020000): yayından kaldırılan haftada onaylı takas korunur (K13 a). merge-0927d'den sonra rebase.
-8. **BİTTİ 09-28 (`8dfdfcbe`).** **BL-221** `bl221` @a6972a19 (ONAY; migration 20260928030000): belgesi eksik owner'ın kendi izni onaysız (K12). Düşük 1 fixture devir yoluyla kurulabilir; Düşük 2 kısayol "workspace açık" kontrolünü atlıyor (talep yolu zaten kapılı).
-Birleştirme penceresinde bl052_document_notifications / bl052_document_account_inbox kırmızısı bilinen yerel kayma (ortak DB'de 99 birikmiş pending bildirim; CI'da düşmez, nf-test 2026-09-28).
+## 2. Rol oturumları (Remote Control açık, sabitli; ListAgents 2026-09-28)
+| Oturum | Kimlik | Durum |
+|---|---|---|
+| `Rol: nf-db — BL-218` | `local_0af84e96…` | boşta; SEC-003'ün ilk adımı ona |
+| `Rol: nf-backend` | `local_cb173b54…` | boşta; SEC-003 ikinci adım |
+| `Rol: nf-test` | `local_0efbf957…` | boşta; SEC-003 e2e, BL-262 (yerel kırmızı listesi ölçümü) adayı |
+| `Rol: nf-arayuz` | `local_6a90e9ce…` | boşta |
+| `Rol: nf-guvenlik` | `local_8127d370…` | boşta; her kod işinin incelemesi |
+| `Rol: nf-gorsel-qa` | `local_13e7e4de…` | boşta |
+| `Rol: nf-planlama` | `local_c67b8d60…` | boşta; bütün `docs/plan` kayıtları |
+- **Arşiv adayı:** eski `nf-db` oturumları "BL-198" (`local_3ee31446…`) ve "Settings okumaları" (`local_eafab146…`) boşta. Arşivden önce doğrula (iş, dal, kilit yok), RC açıkken arşiv reddedilir; kullanıcıya sor.
 
-## 1. Bugün (09-27) main'e girenler
-Settings 8 sayfa API'den (FB-6.1.9 bitti: 0693b51, a833cbe, bee7713d), read_role_workspace silindi
-(131000), Settings 6 tablonun tarayıcı SELECT'i kapandı (150000, 89fdf494), BL-183 owner izni bildirimi
-(130000), BL-197 DB (140000), BL-188, BL-208, BL-186, ghost 11b, BL-148/166. Planlama: BL-218/FB-6.2
-ready, FB-6.1b görev dosyası, BL-059 Stripe araştırması, BL-219..238. nf-guvenlik hafızası (6f57614b).
-Son CI: bee7713d ve 89fdf494 koşuları altyapı yüzünden iptal (WSL çöktü, PC yeniden başlatıldı);
-89fdf494'ten beri main'de kod var ama yeşil CI koşusu YOK — ilk gönderimin CI'ı bunları da kapsar.
+## 3. Kullanıcıdan bekleyen kararlar (liste: `ILERLEME-PLANI.md` §2)
+- **K7** FB-6.1 `.0` ekran turu + `.13` görsel kararlar (30–45 dk; FB-6.1'i kapatan tek şey).
+- **K10** FB-6.3 S4 — onaylı iznin iptalini kim onaylar (uzun konuşulacak).
+- **K15** faturalama BL-059 S1–S7 (F4).
+- **K19** BL-238 — çok saat dilimli workspace'te hafta ne zaman geçmiş sayılır (uzun konuşulacak).
+- **K20** BL-255 — ikinci beyaz düğme sistemi (16 ekran) tek sisteme birleşsin mi; önce/sonra görüntüsüyle sorulur.
+- **K21** BL-254 (arşivli iş/tip adı) başlasın mı.
+- **Hosted panel kontrolü** ("Require current password", "Confirm email") — §0 madde 2.
+- Kod denetiminin önerdiği sıranın kalanı (SEC-003'ten sonra): BL-271 önbellek, BL-270 + BL-276 eski kapı, BL-272 + BL-101 dışa aktarma, BL-278 + BL-273 bayat ekran, BL-281 CI bekçisi — öneri, kullanıcı kararı bekliyor (ILERLEME §3).
 
-## 2. Rol oturumları (hepsi Remote Control açık, sabitli)
-- `Rol: nf-db — BL-218` (`local_0af84e96…`): BL-238 salt okunur ölçüm yapıyor (current_date kullanan
-  sunucu fonksiyonları, saat dilimi kaynağı, önerilen yardımcı). Sonra BL-218 S1/S2/exclude ek
-  migration'ı (kullanıcı cevabına bağlı), ızgara okumasına system_key (.3 DB kısmı), FB-6.1b .1 (BL-159).
-- `Rol: nf-test` (`local_0efbf957…`): BL-198 tam e2e (spec 9b65ec47), sonra BL-237 (5 pgTAP dosyasını
-  tests.world()'e taşı; paylaşılan seed'e yazma YOK — izin sınıflandırıcısı reddetti, doğru).
-- `Rol: nf-arayuz` (`local_6a90e9ce…`): boşta. Aday: BL-192 seçimi gelince uygulama, BL-233.
-- `Rol: nf-backend` (`local_4b0cc8af…`): bağlam dolu, devir notu `bl197-web`:.claude/agent-memory/
-  nf-backend/handoff-2026-09-27.md (merge-0927d içinde). Yeni nf-backend oturum kartı çıkarıldı
-  (task_02c4ea9f); açılınca RC + pin, ilk iş BL-231 sözleşme önerisi.
-- `Rol: nf-guvenlik`, `Rol: nf-gorsel-qa`, `Rol: nf-planlama`: boşta.
-- Arşivlenebilir (doğrulandı, iş/branch/kilit yok): `Rol: nf-db (Veritabanı ve Yetki)` (eski, BL-208),
-  `Rol: nf-db — Settings okumaları`, `Rol: nf-db — BL-198` (BL-198 main'e girince). Arşivden önce RC
-  kapatılmalı; kullanıcıya sor.
-
-## 3. Kullanıcıdan bekleyen kararlar
-Cevaplandı 2026-09-28 (yeni koordinatör `local_08c32131…`): 1 S1 hayır, 2 S2 hayır, 3 exclude'da taslak vardiya kalsın,
-4 BL-230 (a) en son yayın, 5 BL-221 evet onaysız, 6 BL-192 A alt çubuk. Kayıt: BACKLOG, ILERLEME-PLANI K12/K13/K17/K18, tasks/BL-218.md.
-Cevaplandı 2026-09-28 (ikinci tur): K5 hosted gönderim (yapıldı), K14 Settings S1–S4, K16 FB-6.1b S1–S3,
-K11 BL-214/216, BL-235 rozet rengi (koordinatör), BL-078, BL-246 (devirde belge muafiyeti), ve bu turda:
-- K8 arşivli iş/tip adı: kartta ve dışa aktarmada arşivli ad ("Line Cook"), "Shift" değil, etiket yok → yeni **BL-254** (`nf-db` → `nf-backend`).
-- BL-214 ek: Settings'teki beş genel form alanı (ham `#c7cfcb`) görsel tutarlılık paketine girer, kenar `--theme-muted`.
-- BL-252: çalışan kaydı olmayana devir reddedilmez; kabulde kayıt otomatik açılır ve Owner işine yerleşir → BL-246 ile tek `nf-db` işi.
-Kayıt: BACKLOG, REUSE "Ürün kuralları" (Rütbe altı + "Arşivli iş ve vardiya tipi adı"), ILERLEME-PLANI K8/K11.
-Açık (kullanıcı): K19 BL-238 saat dilimi ve K10 FB-6.3 S4 (ikisi de uzun konuşulacak), K15 Stripe S1–S7 (F4), K7 FB-6.1 `.0` ekran turu + `.13`.
-Cevaplandı 2026-09-28 (üçüncü tur): BL-252 — arşivlenmiş kaydı olan yeni owner'ın kaydı arşivden geri açılır, yeni kayıt açılmaz;
-BL-254 — kural her yerde, çakışma penceresi ve ghost vardiyalar dahil. İkisi de görsel tutarlılık paketi (`nf-arayuz`'da) bittikten
-sonra, kullanıcı onayıyla (ILERLEME Ç8). Liste `ILERLEME-PLANI.md` §2.
-
-## 4. Hosted gönderim (FB-6.1.14) için not
-**Kapandı 2026-09-28:** gönderim yapıldı (26 migration, son sürüm `20260928030000`); ad çakışması sayımı 0, advisors'ta yeni bulgu yok. Management/Owner ad çakışması sayımı (BL-218 Düşük 3) bayat: backfill düşmedi, hosted'da 3 sistem departmanı + 3 sistem işi doğrulandı (koordinatör). Ayrıntı `tasks/FB-6.1.md` Notes.
-Önce: aktif "Management"/"Owner" adlı departman/iş sayımı (BL-218 Düşük 3; ad çakışması backfill'i
-düşürür); migration 140000 API'den önce/aynı anda (BL-197); BL-209 yerel saat dilimi komutu kullanıcıda.
+## 4. Hosted
+- **Bekleyen:** BL-265 — migration `20260928040000_the_new_owner_is_asked_for_no_document.sql`. Sıra: D1 sayımı (salt SELECT) → kullanıcı onayı → `supabase db push` (linked CLI; kullanıcının kendi "evet"i bu pencerede) → security advisors.
+- Hosted son sürüm `20260928030000`; web/API Vercel'de henüz yayında değil.
+- Hosted CLI ve yerel DB'ye kalıcı yazım auto-mode'da engelleniyor → komutu kullanıcıya PowerShell satırı olarak ver (§6).
 
 ## 5. Kullanıcının yapacakları
-BL-209 onarım komutu (yerel Main Dining saat dilimi) ve worktree temizlik betiği
-(`artifacts/koordinator/cleanup-worktrees-2026-09-27.sh`) hâlâ bekliyor olabilir — sor.
+- Hosted panel kontrolü (§0 madde 2); S2 (a) için "Confirm email"i açmak (kendi "evet"iyle).
+- `../newfork-wt/bl252` boş klasörü: terminal kapanınca silinecek.
+- BL-209 onarım komutu (yerel Main Dining saat dilimi) ve worktree temizlik betiği (`artifacts/koordinator/cleanup-worktrees-2026-09-27.sh`) hâlâ bekliyor olabilir — sor. Ölçüm (ILERLEME §6): 43 birleşmemiş görünen dal, 34 worktree.
 
 ## 6. Dersler (bu oturumdan)
-- Rol oturumu salt okunur ise (nf-guvenlik) hafıza notunu koordinatör main'e alır; commit iste(me).
-- `git cherry-pick --abort` bütün diziyi geri alır; tek commit'i atlamak için `--skip`.
-- Yerel test:db kırmızısı önce "paket mi, yerel kayma mı" diye ayrılır; bugün üç ayrı yerel kayma çıktı
-  (BL-209 saat dilimi, BL-237 bayat seed haftası, BL-238 UTC/Pacific).
-- "Fazla düzgün sonuç": ci-green kontrol döngüsünde CRLF yüzünden her dosya "NOT OK" çıktı; `tr -d '\r'`.
+- **Karar satırına yalnız kullanıcının cevabı yazılır.** BL-252 S2 (b) kaydına seçenek metninden "süre devir anından başlar" ve hiç sorulmamış "elle verilmiş muafiyetler kalır" girdi; koordinatör main'den önce yakaladı. Seçenek metni ya da çıkarım açık soru satırına gider. (Aynı kök: O2 — "42501 + `authz.*`" koordinatörün aktarımıydı, kullanıcının kararı yalnız "reddedilsin"di.)
+- **Ultrareview ölçülmemiş varsayımı yakaladı:** "acknowledgement'lar yalnız onboarding'de gelir, admin'e gelmez" ölçülmeden kabul edilip BL-252 kapsamından çıkarılmıştı; kullanıcının ultrareview'u yanlış olduğunu buldu. Kapsam daraltan her varsayım önce ölçülür.
+- **Hosted CLI ve yerel DB'ye kalıcı yazım auto-mode'da engelleniyor:** BL-100 silme SQL'i geri alınan denemede temizdi, kalıcı çalıştırma engellendi; kullanıcıya PowerShell komutu verildi, kullanıcı çalıştırdı. Plan bunu baştan varsaysın.
+- Önceki devirden hâlâ geçerli: yerel `test:db` kırmızısı önce "paket mi, yerel kayma mı" diye ayrılır (BL-209, BL-237, BL-238 türü); "fazla düzgün sonuç" CRLF yüzünden olabilir (`tr -d '\r'`); `git cherry-pick --abort` bütün diziyi geri alır, tek commit için `--skip`.
