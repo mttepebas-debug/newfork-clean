@@ -36,11 +36,12 @@ interface AuthContextValue {
   readonly ready: boolean;
   readonly supabaseConfigured: boolean;
   readonly signIn: (email: string, password: string) => Promise<boolean>;
-  readonly signUp: (
-    email: string,
-    password: string,
-    displayName?: string,
-  ) => Promise<boolean>;
+  /**
+   * `false` when sign-up was refused (the reason is in `error`);
+   * `"email_confirmation_required"` when the account exists but has no session
+   * until its email is confirmed; `"signed_in"` otherwise.
+   */
+  readonly signUp: (email: string, password: string) => Promise<SignUpResult>;
   readonly refresh: () => Promise<ActiveWorkspaceContext | null>;
   readonly signOut: () => Promise<void>;
   readonly updateAccount: (
@@ -55,6 +56,8 @@ interface AuthContextValue {
     >,
   ) => Promise<void>;
 }
+
+export type SignUpResult = false | "signed_in" | "email_confirmation_required";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -262,44 +265,23 @@ export function AuthProvider({
   );
 
   const signUp = useCallback(
-    async (
-      email: string,
-      password: string,
-      displayName?: string,
-    ): Promise<boolean> => {
+    async (email: string, password: string): Promise<SignUpResult> => {
       if (!supabaseClient) return false;
       setError(null);
       clearTabWorkspaceId();
       resetAccountScope();
-      const trimmedDisplayName = displayName?.trim();
       const { data, error: signUpError } = await supabaseClient.auth.signUp({
         email,
         password,
-        options: trimmedDisplayName
-          ? { data: { display_name: trimmedDisplayName } }
-          : undefined,
       });
       if (signUpError) {
         setError(signUpError.message);
         return false;
       }
-      if (data.session) {
-        if (trimmedDisplayName) {
-          await saveAccountProfile(
-            supabaseClient,
-            accountProfileSchema.parse({
-              userId: data.session.user.id,
-              email: data.session.user.email ?? email,
-              displayName: trimmedDisplayName,
-              phone: null,
-              theme: "system",
-            }),
-          );
-        }
-        setSession(data.session);
-        await resolveAuthenticatedSession(data.session);
-      }
-      return true;
+      if (!data.session) return "email_confirmation_required";
+      setSession(data.session);
+      await resolveAuthenticatedSession(data.session);
+      return "signed_in";
     },
     [resetAccountScope, resolveAuthenticatedSession],
   );
