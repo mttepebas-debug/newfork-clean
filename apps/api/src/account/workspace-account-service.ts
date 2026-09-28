@@ -11,7 +11,7 @@ import {
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 
-import { rpcFailure } from "../http-error.js";
+import { HttpError, rpcFailure } from "../http-error.js";
 import { createUserVerifier } from "../auth/verify-user.js";
 import { createPasswordVerifier } from "../auth/verify-password.js";
 
@@ -176,7 +176,7 @@ export function createWorkspaceAccountServiceWithClients(options: {
   return {
     async verifyPassword(accessToken, password) {
       if (!options.verifyPassword)
-        throw new Error("Password check is not configured");
+        throw new HttpError("Password check is not configured", 503);
       await options.verifyPassword(accessToken, password);
     },
     async listWorkspaces(accessToken) {

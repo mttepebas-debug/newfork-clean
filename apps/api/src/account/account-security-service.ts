@@ -3,8 +3,9 @@ import { createCommunicationServiceWithClient, type CommunicationService } from 
 import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
-import { HttpError, rpcFailure } from "../http-error.js";
+import { rpcFailure } from "../http-error.js";
 import { createUserVerifier } from "../auth/verify-user.js";
+import { createPasswordVerifier } from "../auth/verify-password.js";
 
 export interface AccountSecurityState {
   readonly email: string;
@@ -164,17 +165,12 @@ export function createAccountSecurityService(options: {
         accessToken,
       );
     },
-    async verifyPassword(email, password) {
-      const verifier = createClient(options.url, options.anonKey, {
+    // One password check for the whole API (SEC-003).
+    verifyPassword: createPasswordVerifier(() =>
+      createClient(options.url, options.anonKey, {
         auth: { autoRefreshToken: false, persistSession: false },
-      });
-      const result = await verifier.auth.signInWithPassword({ email, password });
-      if (result.error || !result.data.session)
-        throw new HttpError("Current password is incorrect", 403, {
-          reason: "session.password_incorrect",
-        });
-      await verifier.auth.signOut({ scope: "local" });
-    },
+      }),
+    ),
     async signOut(accessToken, scope) {
       const result = await adminClient.auth.admin.signOut(accessToken, scope);
       if (result.error) throw new Error(result.error.message);

@@ -510,6 +510,9 @@ export const invitationFailureCodeSchema = z.enum([
   "invitation_email_mismatch",
   "already_member",
   "invitation_unavailable",
+  // The account has not confirmed its email address yet, so it may not accept
+  // or decline an invitation (SEC-003).
+  "email_unconfirmed",
 ]);
 export type InvitationFailureCode = z.infer<typeof invitationFailureCodeSchema>;
 

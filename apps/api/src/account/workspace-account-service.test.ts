@@ -13,7 +13,7 @@ describe("workspace account service", () => {
     await expect(service.verifyPassword(accessToken, "pass word ")).resolves.toBeUndefined();
     expect(verifyPassword).toHaveBeenCalledWith(accessToken, "pass word ");
     const unconfigured = createWorkspaceAccountServiceWithClients({ rpcClient: { rpc }, resolveActorUserId: async () => userId });
-    await expect(unconfigured.verifyPassword(accessToken, "pass word ")).rejects.toThrow();
+    await expect(unconfigured.verifyPassword(accessToken, "pass word ")).rejects.toMatchObject({ statusCode: 503 });
     expect(rpc).not.toHaveBeenCalled();
   });
   it("forwards candidate search and cancellation with the resolved actor", async () => {
