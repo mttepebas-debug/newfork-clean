@@ -1,11 +1,13 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(17);
 
--- BL-246 (user, 2026-09-28): the person who becomes owner by a transfer is
--- asked for no document from then on, like any owner: their open document
--- obligations are excused when they accept, and a document block lifts.
--- A transfer that is rejected or cancelled changes nothing.
+-- BL-252/BL-246 (user, 2026-09-28). Accepting an ownership transfer hands
+-- over what being the owner means: the new owner works the Owner job and the
+-- old owner no longer does; the new owner is asked for no document, like any
+-- owner, so what they still owed is excused and a document block lifts.
+-- Only somebody with a live employee record here can accept. A transfer that
+-- is rejected, cancelled or refused changes nothing.
 
 -- What one statement answers: 'allowed', or the refusal as '<sqlstate> <hint>'.
 create function pg_temp.refusal(statement text) returns text
@@ -25,6 +27,8 @@ $$;
 select tests.world('ot');
 select tests.person('ot', 'deniz', 'admin', array['K'], array['cook']);
 select tests.person('ot', 'emre', 'employee', array['K'], array['cook']);
+select tests.person('ot', 'faruk', 'admin', array['K'], array['cook']);
+select tests.person('ot', 'gizem', 'admin', array['K'], array['cook']);
 
 -- A document everybody must hand in; Deniz's deadline has passed.
 create temporary table required_document (id uuid, preview jsonb);
@@ -49,11 +53,19 @@ create function pg_temp.deniz_excused() returns boolean language sql as $$
   select r.lifecycle_exempt from public.employee_onboarding_requirements r
   where r.source_id = (select id from required_document) and r.lifecycle_user_id = tests.user('ot:deniz')
 $$;
+create function pg_temp.works_owner_job(person text) returns boolean language sql as $$
+  select exists (select 1 from public.employee_job_assignments a
+    join public.jobs j on j.id = a.job_id and j.system_key = 'owner'
+    where a.employee_id = tests.id(person) and a.ended_at is null)
+$$;
 create function pg_temp.pending() returns uuid language sql as $$
   select id from public.workspace_ownership_transfers where workspace_id = tests.id('ot') and status = 'pending'
 $$;
-create function pg_temp.offer() returns void language sql as $$
-  select public.initiate_workspace_ownership_transfer_service(tests.user('ot:owner'), tests.id('ot'), tests.user('ot:deniz'))
+create function pg_temp.offer(person text default 'ot:deniz') returns void language sql as $$
+  select public.initiate_workspace_ownership_transfer_service(tests.user('ot:owner'), tests.id('ot'), tests.user(person))
+$$;
+create function pg_temp.cancel() returns void language sql as $$
+  select public.cancel_workspace_ownership_transfer_service(tests.user('ot:owner'), tests.id('ot'), pg_temp.pending())
 $$;
 create function pg_temp.respond(person text, action text) returns text language sql as $$
   select pg_temp.refusal(format('select public.respond_workspace_ownership_transfer_service(%L, %L, %L, %L)',
@@ -70,19 +82,41 @@ select is(pg_temp.respond('ot:deniz', 'reject'), 'allowed', 'Deniz rejects the t
 select is(pg_temp.deniz_excused(), false, 'a rejected transfer excuses no document');
 
 select pg_temp.offer();
-select public.cancel_workspace_ownership_transfer_service(tests.user('ot:owner'), tests.id('ot'), pg_temp.pending());
+select pg_temp.cancel();
 select is(pg_temp.deniz_excused(), false, 'nor does a cancelled one');
+select ok(pg_temp.works_owner_job('ot:owner') and not pg_temp.works_owner_job('ot:deniz'),
+  'and the owner keeps the Owner job');
 
--- 2. Only the person offered the workspace answers -------------------------------------
+-- 2. Only somebody with a live employee record here accepts -------------------------
+-- ponytail: the product cannot reach either state (an invitation always names a
+-- record, archiving suspends the membership, starting a transfer asks for a
+-- live record); both are forced by hand between the offer and the answer.
+
+select pg_temp.offer('ot:faruk');
+update public.employee_profiles set archived_at = now() where id = tests.id('ot:faruk');
+select is(pg_temp.respond('ot:faruk', 'accept'), '42501 transfer.participants_ineligible',
+  'an admin whose record is archived cannot accept');
+select pg_temp.cancel();
+
+select pg_temp.offer('ot:gizem');
+update public.employee_profiles set user_id = null where id = tests.id('ot:gizem');
+select is(pg_temp.respond('ot:gizem', 'accept'), '42501 transfer.participants_ineligible',
+  'nor can an admin with no record here');
+select pg_temp.cancel();
+select ok(pg_temp.works_owner_job('ot:owner'), 'the owner keeps the Owner job');
+
+-- 3. Only the person offered the workspace answers -------------------------------------
 
 select pg_temp.offer();
 select is(pg_temp.respond('ot:emre', 'accept'), '42501 transfer.target_required',
   'somebody else cannot accept it');
 select is(pg_temp.deniz_excused(), false, 'and excuses nothing by trying');
 
--- 3. Accepted: the new owner is asked for no document ----------------------------------
+-- 4. Accepted --------------------------------------------------------------------------
 
 select is(pg_temp.respond('ot:deniz', 'accept'), 'allowed', 'Deniz accepts');
+select ok(pg_temp.works_owner_job('ot:deniz'), 'Deniz works the Owner job');
+select ok(not pg_temp.works_owner_job('ot:owner'), 'the old owner no longer does');
 select is(pg_temp.deniz_excused(), true, 'her overdue document is excused');
 select ok(not app_private.document_actor_blocked(tests.user('ot:deniz'), tests.id('ot')),
   'and the document block lifts');
@@ -97,6 +131,8 @@ select is(
   '42501',
   'the excuse cannot be taken back, as for any owner'
 );
+select is((select count(*)::integer from public.workspace_ownership_transfers
+  where workspace_id = tests.id('ot') and status = 'accepted'), 1, 'one transfer was accepted');
 
 select * from finish();
 rollback;

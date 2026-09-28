@@ -1,6 +1,11 @@
 -- BL-246 (user, 2026-09-28): the person who becomes owner by a transfer is
 -- asked for no document from then on, like any owner. Accepting the transfer
 -- excuses what they still owed, and a document block lifts with it.
+--
+-- BL-252 (user, 2026-09-28): only somebody with a live employee record in the
+-- workspace can accept, so the Owner job always has somebody to go to.
+-- Starting a transfer already asks for one; accepting asks again, as it does
+-- for the rest of the target's eligibility.
 
 -- What excusing an owner's document means, in one place: the documents that
 -- reach an owner (z_owner_documents_arrive_excused) and the ones a new owner
@@ -120,6 +125,11 @@ begin
       and m.user_id = actor_user_id and m.status = 'active' and coalesce(r.access_class, m.role) = 'admin'
       and not exists (select 1 from public.employee_onboarding_cases c
         where c.membership_id = m.id and c.workspace_id = m.workspace_id and c.status <> 'approved')
+      -- The owner works the Owner job on their own record (BL-252), so only
+      -- somebody with a live record here takes ownership.
+      and exists (select 1 from public.employee_profiles employee
+        where employee.workspace_id = m.workspace_id and employee.user_id = m.user_id
+          and employee.archived_at is null)
   ) or not exists (
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
