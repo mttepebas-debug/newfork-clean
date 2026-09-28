@@ -50,15 +50,6 @@ const ownershipTransferResponseBody = z.object({
   transferId: z.string().uuid(),
   action: z.union([z.literal("accept"), z.literal("reject")]),
 });
-const accountDeletionBody = z
-  .object({
-    typedEmail: z.string().trim().email(),
-    acknowledged: z.boolean(),
-  })
-  .refine((value) => value.acknowledged, {
-    path: ["acknowledged"],
-    message: "Account deletion acknowledgement is required",
-  });
 const ownerOnboardingBody = z.object({
   workspaceName: z.string().trim().min(1).max(120),
   nextStep: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
@@ -398,48 +389,6 @@ export function registerWorkspaceAccountRoutes(
     try {
       return reply.send(await options.service.cancelOwnershipTransfer(accessToken, params.data.workspaceId, body.data.transferId));
     } catch (error) { return requestError(reply, error); }
-  });
-
-  app.post("/v1/account/deletion", async (request, reply) => {
-    const accessToken = bearerToken(request.headers.authorization);
-    const body = accountDeletionBody.safeParse(request.body);
-    if (!accessToken)
-      return reply.status(401).send({ error: "Bearer token required" });
-    if (!body.success)
-      return reply
-        .status(400)
-        .send({ error: "Valid account deletion details required" });
-    if (!options.service)
-      return reply
-        .status(503)
-        .send({ error: "Workspace account service is not configured" });
-    try {
-      return reply.send(
-        await options.service.requestAccountDeletion(accessToken, {
-          typedEmail: body.data.typedEmail,
-          acknowledged: body.data.acknowledged,
-        }),
-      );
-    } catch (error) {
-      return requestError(reply, error);
-    }
-  });
-
-  app.post("/v1/account/deletion/restore", async (request, reply) => {
-    const accessToken = bearerToken(request.headers.authorization);
-    if (!accessToken)
-      return reply.status(401).send({ error: "Bearer token required" });
-    if (!options.service)
-      return reply
-        .status(503)
-        .send({ error: "Workspace account service is not configured" });
-    try {
-      return reply.send(
-        await options.service.restoreAccountDeletion(accessToken),
-      );
-    } catch (error) {
-      return requestError(reply, error);
-    }
   });
 
   // How each workspace has this account on file. Read-only, and only the

@@ -481,22 +481,6 @@ export async function respondWorkspaceOwnershipTransfer(
   );
 }
 
-export async function requestAccountDeletion(
-  client: SupabaseClient,
-  input: {
-    readonly typedEmail: string;
-    readonly acknowledged: boolean;
-  },
-): Promise<void> {
-  await apiRequest(client, "/v1/account/deletion", {
-    method: "POST",
-    body: JSON.stringify({
-      typedEmail: input.typedEmail,
-      acknowledged: input.acknowledged,
-    }),
-  });
-}
-
 export interface AccountSecurityState {
   readonly emailVerified: boolean;
   readonly email: string;
@@ -652,14 +636,6 @@ export async function saveNewPassword(password: string): Promise<void> {
 export async function abandonPasswordResetSession(): Promise<void> {
   window.localStorage.removeItem(passwordResetPendingKey);
   await supabaseClient?.auth.signOut({ scope: "local" });
-}
-
-export async function restoreAccountDeletion(
-  client: SupabaseClient,
-): Promise<void> {
-  await apiRequest(client, "/v1/account/deletion/restore", {
-    method: "POST",
-  });
 }
 
 export async function saveOwnerOnboarding(

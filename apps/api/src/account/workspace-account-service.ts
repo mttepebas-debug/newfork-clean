@@ -52,14 +52,6 @@ export interface WorkspaceAccountService {
       readonly action: "accept" | "reject";
     },
   ): Promise<unknown>;
-  requestAccountDeletion(
-    accessToken: string,
-    input: {
-      readonly typedEmail: string;
-      readonly acknowledged: boolean;
-    },
-  ): Promise<unknown>;
-  restoreAccountDeletion(accessToken: string): Promise<unknown>;
   saveOwnerOnboarding(
     accessToken: string,
     input: {
@@ -126,23 +118,6 @@ interface RpcClient {
   }>;
 }
 
-interface AccountLifecycleAuthAdmin {
-  auth: {
-    admin: {
-      updateUserById(
-        userId: string,
-        attributes: { ban_duration: string | "none" },
-      ): PromiseLike<{ error: { message: string } | null }>;
-      signOut(
-        accessToken: string,
-        scope: "global",
-      ): PromiseLike<{ error: { message: string } | null }>;
-    };
-  };
-}
-
-const deletedAccountBanDuration = "876000h";
-
 export function createWorkspaceAccountService(options: {
   url: string;
   anonKey: string;
@@ -158,7 +133,6 @@ export function createWorkspaceAccountService(options: {
   const verifyUser = createUserVerifier(authClient);
   return createWorkspaceAccountServiceWithClients({
     rpcClient,
-    authAdminClient: rpcClient,
     resolveActorUserId: async (accessToken) => {
       const user = await verifyUser(accessToken);
       if (!user) throw new Error("Valid bearer session required");
@@ -169,7 +143,6 @@ export function createWorkspaceAccountService(options: {
 
 export function createWorkspaceAccountServiceWithClients(options: {
   rpcClient: RpcClient;
-  authAdminClient?: AccountLifecycleAuthAdmin | null;
   resolveActorUserId(accessToken: string): Promise<string>;
 }): WorkspaceAccountService {
   async function rpc(name: string, args: Record<string, unknown>) {
@@ -180,36 +153,6 @@ export function createWorkspaceAccountServiceWithClients(options: {
 
   async function actorArgs(accessToken: string) {
     return { actor_user_id: await options.resolveActorUserId(accessToken) };
-  }
-
-  async function disableAccountSession(
-    actorUserId: string,
-    accessToken: string,
-  ) {
-    if (!options.authAdminClient) return;
-    const ban = await options.authAdminClient.auth.admin.updateUserById(
-      actorUserId,
-      { ban_duration: deletedAccountBanDuration },
-    );
-    if (ban.error)
-      throw new Error(`Account disable failed: ${ban.error.message}`);
-
-    const signOut = await options.authAdminClient.auth.admin.signOut(
-      accessToken,
-      "global",
-    );
-    if (signOut.error)
-      throw new Error(`Account session revoke failed: ${signOut.error.message}`);
-  }
-
-  async function restoreAccountSession(actorUserId: string) {
-    if (!options.authAdminClient) return;
-    const result = await options.authAdminClient.auth.admin.updateUserById(
-      actorUserId,
-      { ban_duration: "none" },
-    );
-    if (result.error)
-      throw new Error(`Account restore failed: ${result.error.message}`);
   }
 
   return {
@@ -289,24 +232,6 @@ export function createWorkspaceAccountServiceWithClients(options: {
         transfer_id: input.transferId,
         transfer_action: input.action,
       });
-    },
-    async requestAccountDeletion(accessToken, input) {
-      const actor = await actorArgs(accessToken);
-      const result = await rpc("request_account_deletion_service", {
-        ...actor,
-        typed_email: input.typedEmail,
-        acknowledged: input.acknowledged,
-      });
-      await disableAccountSession(String(actor.actor_user_id), accessToken);
-      return result;
-    },
-    async restoreAccountDeletion(accessToken) {
-      const actor = await actorArgs(accessToken);
-      const result = await rpc("restore_account_deletion_request_service", {
-        ...actor,
-      });
-      await restoreAccountSession(String(actor.actor_user_id));
-      return result;
     },
     async saveOwnerOnboarding(accessToken, input) {
       await rpc("update_owner_onboarding_service", {

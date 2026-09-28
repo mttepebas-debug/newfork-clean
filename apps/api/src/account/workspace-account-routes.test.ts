@@ -964,77 +964,24 @@ describe("workspace account routes", () => {
     expect(respondOwnershipTransfer).not.toHaveBeenCalled();
   });
 
-  it("requests global account deletion from the bearer account only", async () => {
-    const requestAccountDeletion = vi.fn(async () => ({ status: "pending" }));
+  it("no longer answers the retired account deletion path (SEC-003 #4)", async () => {
+    const retired = vi.fn(async () => ({ status: "pending" }));
     const app = buildApp({
       workspaceAccountService: {
-        requestAccountDeletion,
+        requestAccountDeletion: retired,
+        restoreAccountDeletion: retired,
       } as unknown as WorkspaceAccountService,
     });
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/account/deletion",
-      headers: { authorization: `Bearer ${accessToken}` },
-      payload: {
-        actorUserId: "spoofed",
-        typedEmail: "owner@example.test",
-        acknowledged: true,
-      },
-    });
-
-    expect(response.statusCode, response.body).toBe(200);
-    expect(requestAccountDeletion).toHaveBeenCalledWith(accessToken, {
-      typedEmail: "owner@example.test",
-      acknowledged: true,
-    });
-  });
-
-  it("requires explicit acknowledgement before account deletion reaches the service", async () => {
-    const requestAccountDeletion = vi.fn(async () => ({ status: "pending" }));
-    const app = buildApp({
-      workspaceAccountService: {
-        requestAccountDeletion,
-      } as unknown as WorkspaceAccountService,
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/account/deletion",
-      headers: { authorization: `Bearer ${accessToken}` },
-      payload: {
-        typedEmail: "owner@example.test",
-        acknowledged: false,
-      },
-    });
-
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({
-      error: "Valid account deletion details required",
-    });
-    expect(requestAccountDeletion).not.toHaveBeenCalled();
-  });
-
-  it("restores global account deletion from the bearer account only", async () => {
-    const restoreAccountDeletion = vi.fn(async () => ({ status: "restored" }));
-    const app = buildApp({
-      workspaceAccountService: {
-        restoreAccountDeletion,
-      } as unknown as WorkspaceAccountService,
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/account/deletion/restore",
-      headers: { authorization: `Bearer ${accessToken}` },
-      payload: {
-        actorUserId: "spoofed",
-        workspaceId: "16fe2550-8960-480c-9874-cbc76a8e56a9",
-      },
-    });
-
-    expect(response.statusCode, response.body).toBe(200);
-    expect(restoreAccountDeletion).toHaveBeenCalledWith(accessToken);
+    for (const url of ["/v1/account/deletion", "/v1/account/deletion/restore"]) {
+      const response = await app.inject({
+        method: "POST",
+        url,
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { typedEmail: "owner@example.test", acknowledged: true },
+      });
+      expect(response.statusCode, url).toBe(404);
+    }
+    expect(retired).not.toHaveBeenCalled();
   });
 
   it("does not save owner onboarding when the active workspace context mismatches the path", async () => {
