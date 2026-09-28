@@ -117,6 +117,23 @@ describe("shiftClipboard", () => {
     ]);
   });
 
+  // BL-199: the edit service empties a note the payload leaves out, so every
+  // paste has to carry each copied shift's own note along.
+  it("pastes a selection with each shift's own note", () => {
+    const snapshot = createShiftClipboardSnapshotSelection([
+      editableShift({ id: "shift-1", note: "Patio section" }),
+      editableShift({ id: "shift-2", scheduled_date: "2026-08-18", note: "Cover the bar at 8" }),
+    ]);
+
+    expect(
+      applyShiftClipboardSnapshotSelection(snapshot!, {
+        locationId: "loc-2",
+        employeeId: "emp-2",
+        date: "2026-08-24",
+      }).map((item) => item.note),
+    ).toEqual(["Patio section", "Cover the bar at 8"]);
+  });
+
   it("applies a selected shift group relative to the clicked target date", () => {
     const snapshot = createShiftClipboardSnapshotSelection([
       editableShift({ id: "shift-1", scheduled_date: "2026-08-17" }),

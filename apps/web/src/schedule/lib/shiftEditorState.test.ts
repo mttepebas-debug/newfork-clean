@@ -158,6 +158,32 @@ describe("shiftEditorState", () => {
     );
   });
 
+  // BL-199: the quick editor sends the note it holds, and the edit service
+  // empties a note the payload leaves out.
+  it("keeps the note whichever way the shift type is changed in the editor", () => {
+    const value = buildScheduleShiftEditorInitialValue({ state: { mode: "edit", shift: editShift }, model });
+    const changes = [
+      { shiftType: model.shift_types[0], shiftTypeId: model.shift_types[0]!.id },
+      { shiftType: model.shift_types[1], shiftTypeId: model.shift_types[1]!.id },
+      { shiftType: undefined, shiftTypeId: null },
+      { shiftType: model.shift_types[1], shiftTypeId: model.shift_types[1]!.id, preserveTimes: true },
+    ];
+    expect(
+      changes.map((change) =>
+        applyScheduleShiftTypeDefaults({ value, clockOffFallbackStartTime: "", clockOffFallbackEndTime: "", ...change }).note,
+      ),
+    ).toEqual(["Keep close", "Keep close", "Keep close", "Keep close"]);
+  });
+
+  it("starts a new shift with an empty note, not a missing one", () => {
+    expect(
+      buildScheduleShiftEditorInitialValue({
+        state: { mode: "create", locationId: model.locations[0]!.id, employeeId: null, date: "2026-08-18" },
+        model,
+      }).note,
+    ).toBe("");
+  });
+
   it("uses preset times when creating from a preset badge", () => {
     expect(
       buildScheduleShiftEditorInitialValue({

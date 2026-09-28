@@ -44,6 +44,18 @@ describe("toScheduleShiftMutation", () => {
     });
   });
 
+  // BL-199: a drag (move or copy) saves this mapping (SchedulePage onMove /
+  // onCopyMove), and the edit service empties a note the payload leaves out.
+  it("keeps the note when a shift is dragged to another person, day or location", () => {
+    expect(
+      toScheduleShiftMutation(shift, {
+        location_id: "loc-2",
+        employee_id: "emp-2",
+        scheduled_date: "2026-08-18",
+      }).note,
+    ).toBe("Close patio");
+  });
+
   it("defaults missing label arrays and applies overrides last", () => {
     expect(
       toScheduleShiftMutation(
