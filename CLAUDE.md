@@ -113,6 +113,15 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
    yeni test.
 5. İnceleme: `nf-guvenlik` (her kod işi); ekran değiştiyse ayrıca `nf-gorsel-qa`. Onay
    `ONAY @<commit-sha>` biçiminde. Değişiklik istenirse aynı rol ajanına düzeltme için yeniden yazılır.
+   **Ultrareview hatırlatması** (kullanıcı kararı 2026-09-28): kod işi bitip main'e alınmadan önce
+   iş riskli bir yüzeye dokunuyorsa kullanıcıya ultrareview önerilir. Riskli yüzey şunlardır: yetki,
+   RLS, grant, migration, `*_service`, katılım/davet, sahiplik devri, veri silme. Ayrıca birçok dosyaya
+   yayılan büyük diff'ler de önerilir. Öneri tek satırdır ve neden önerildiği yazılır. Örnek: "BL-252
+   sahiplik devrine dokunuyor; bu worktree'nin oturumunda `/code-review ultra <kısa not>` önerilir."
+   Docs-only, küçük metin ya da CSS işinde önerilmez. Yalnız kullanıcı başlatır; ajan tetiklemez.
+   Branch'in worktree oturumunda koşar; ana klasörde (main) fark olmadığından koşmaz. Başlangıçta 3
+   ücretsiz hak var; kalan hakkı ve tahmini tutarı açılış penceresi gösterir. Ücretsiz haklar bitince
+   öneride dolar tutarı da yazılır. Bulgular `nf-guvenlik` incelemesine eklenir; onun yerine geçmez.
 6. Entegrasyon: koordinatör (bölüm 6).
 7. Kapanış: "Done when" maddelerinin kanıtı task dosyasının "Notes / Result"una yazılır
    (`nf-planlama` ya da koordinatör); koordinatör kullanıcıya bölüm 10'daki biçimde raporlar.
