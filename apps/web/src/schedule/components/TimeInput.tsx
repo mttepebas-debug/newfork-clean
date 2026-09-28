@@ -1011,7 +1011,8 @@ function getNextSegmentFromDraft(value: string, timeFormat: TimeFormat): TimeSeg
   return active;
 }
 
-function getLastSegment(timeFormat: TimeFormat): TimeSegment {
+/** The field's last segment: AM/PM in 12h, minutes in 24h. */
+export function getLastSegment(timeFormat: TimeFormat): TimeSegment {
   return timeFormat === "12h" ? "period" : "minute";
 }
 

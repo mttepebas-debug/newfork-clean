@@ -398,6 +398,36 @@ describe("ShiftQuickEditor", () => {
     document.body.removeEventListener("pointerdown", onOutsidePointerDown);
   });
 
+  it("steps back from End to Start's minutes in a 24-hour workspace (BL-199)", () => {
+    render(
+      <ShiftQuickEditor
+        model={model}
+        state={{ mode: "create", locationId: model.locations[0]!.id, employeeId: model.employees[0]!.id, date: model.week_start }}
+        timeFormat="24h"
+        formatTime={(value) => value}
+        addDays={(value) => value}
+        scheduleClosureCoversDate={() => false}
+        onClose={vi.fn()}
+        onReload={vi.fn()}
+        onDelete={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    const start = screen.getByLabelText("Start time") as HTMLInputElement;
+    const end = screen.getByLabelText("End time") as HTMLInputElement;
+    end.dataset.autoSelectSegment = "hour";
+    act(() => end.focus());
+    fireEvent.keyDown(end, { key: "Tab", shiftKey: true });
+
+    expect(document.activeElement).toBe(start);
+    expect(start.parentElement?.querySelector('[data-time-segment="period"]')).toBeNull();
+    expect(getTimeSegment(start, "minute")?.dataset.active).toBe("true");
+    // A second Shift+Tab walks back through Start, not past it.
+    fireEvent.keyDown(start, { key: "Tab", shiftKey: true });
+    expect(getTimeSegment(start, "hour")?.dataset.active).toBe("true");
+    expect(document.activeElement).toBe(start);
+  });
+
   it("links start and end time keyboard flow like the reference popup", () => {
     render(
       <ShiftQuickEditor

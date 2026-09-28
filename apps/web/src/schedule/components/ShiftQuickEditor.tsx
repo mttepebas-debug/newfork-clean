@@ -44,7 +44,7 @@ import {
 import { ScheduleConflictNotice } from "./ScheduleConflictNotice";
 import { ScheduleConflictSheet } from "./ScheduleConflictSheet";
 import { isShiftNoteOpen } from "./ShiftNoteCorner";
-import { TimeInput } from "./TimeInput";
+import { getLastSegment, TimeInput } from "./TimeInput";
 
 const clockOffFallbackStartTime = "";
 const clockOffFallbackEndTime = "";
@@ -898,8 +898,9 @@ export function ShiftQuickEditor({
                   density="compact"
                   onAutoRetreat={() => {
                     if (startTimeInputRef.current) {
+                      // Back onto Start's last segment: AM/PM, or minutes in 24h.
                       startTimeInputRef.current.dataset.autoSelectSegment =
-                        "period";
+                        getLastSegment(timeFormat);
                       startTimeInputRef.current.focus();
                     }
                   }}
