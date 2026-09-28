@@ -38,7 +38,7 @@ Kaynak: `tasks/SEC-003.md`, koordinatör girdisi 2026-09-28, dallar yukarıda.
 | S.C | Uçtan uca: parola değişimi ve devir parolayla; yeni owner yerel posta kutusundan e-postasını onaylar | — | — | 3 | incelemede (`d0751603`, `0d03389e`, `74e2d363` `ci.yml` tek satır; iki kırmızı doğru nedenle, S.A/S.B sonrası yeşil koşu bekliyor) | `nf-test` | `e2e/**`, `.github/workflows/ci.yml` |
 | S.D | Ekran metinleri: "e-postanı doğrula" ve "parola yanlış" | S.A, S.B | — | 2 | bekliyor | `nf-arayuz` | giriş/kayıt ekranı, Account → Security |
 | S.E | Birleştirme: tam kapı, `nf-guvenlik`, `nf-gorsel-qa` (Account → Workspaces'te ekran değişti), ultrareview önerisi, yerel auth yeniden başlatma | S.1b, S.A, S.B, S.C, S.D | — | 3 | bekliyor | koordinatör | — |
-| S.F | Hosted: BL-265 + SEC-003 migration'ı gönderimi ("Confirm email" kullanıcı tarafından açıldı, K22 kapandı) | S.E | — | 2 | bekliyor | koordinatör + kullanıcı (gönderim onayı) | hosted |
+| S.F | Hosted: BL-265 + SEC-003 migration'ı gönderimi ("Confirm email" kullanıcı tarafından açıldı, K22 kapandı). **Yayın öncesi şart:** hosted e-posta teslimatı (SMTP, saatlik sınır) ölçülür ve S.D'nin "e-postanı doğrula" ekranı main'de (web/API yayınından önce) | S.E | — | 2 | bekliyor | koordinatör + kullanıcı (gönderim onayı) | hosted |
 
 ## 3. İş tablosu — FOUNDATION-B Aşama 6–7 (aktif hedef bitince)
 Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-218.md`, `FB-6.2.md`, `FB-6.3.md`; durumlar `origin/main` `1d349d2a`.
