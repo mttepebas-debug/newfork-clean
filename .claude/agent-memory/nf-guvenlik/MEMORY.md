@@ -20,3 +20,4 @@
 - [Kurgu değişince boşa düşen kontrol](checklist-vacuous-after-fixture-change.md) — kırmızı test yeşile çekilirken kurgu kaydıysa komşu "0 kaldı" kontrolleri hâlâ kırılabilir mi
 - [Mesaj metni sızıntısı + kırmızı ayrımı](checklist-message-text-leak-and-red-split.md) — reason metni ghost alanlarıyla kıyasla; testi migration'sız da koştur
 - [Korunan kaydın bütün kolonları](checklist-protected-record-all-columns.md) — sistem satırı: department_id gibi anlam taşıyan kolon ve ended_at da korunmalı; fark bazlı save listeden düşeni bitirir
+- [Rebase sonrası anlam çakışması](checklist-rebase-semantic-conflict.md) — metin temiz rebase bile kırmızı çıkarabilir; tabana giren migration'larla dalın kendi testlerini bir kez koş
