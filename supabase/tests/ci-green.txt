@@ -114,3 +114,4 @@ supabase/tests/workspace_rls.test.sql
 supabase/tests/management_owner_job.test.sql
 supabase/tests/excluded_person_leaves_new_drafts.test.sql
 supabase/tests/employee_references_ask_the_core.test.sql
+supabase/tests/approved_exchange_survives_unpublish.test.sql
