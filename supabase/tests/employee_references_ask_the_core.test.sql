@@ -76,7 +76,7 @@ select is(pg_temp.keys(pg_temp.read('r:owner') -> 'invite_roles' -> 0), array['a
 
 select is(pg_temp.names(pg_temp.read('r:owner'), 'locations'), array['Arnavutkoy', 'Besiktas', 'Kadikoy'],
   'the owner reads every location, the archived one included, the deleted one not');
-select is(pg_temp.names(pg_temp.read('r:owner'), 'jobs'), array['Cook', 'Old', 'Server'],
+select is(pg_temp.names(pg_temp.read('r:owner'), 'jobs'), array['Cook', 'Old', 'Owner', 'Server'],
   'and every job, the archived one included, the deleted one not');
 select is(pg_temp.invite_classes('r:owner'), array['admin', 'employee', 'manager', 'manager'],
   'the owner invites with every role but owner');
@@ -87,7 +87,7 @@ select is(pg_temp.invite_classes('r:zeynep'), array['employee', 'manager', 'mana
   'an admin invites with manager and employee roles, not admin');
 select is(pg_temp.names(pg_temp.read('r:ayse'), 'locations'), array['Kadikoy'],
   'a manager reads the locations they work at');
-select is(pg_temp.names(pg_temp.read('r:ayse'), 'jobs'), array['Cook', 'Old', 'Server'],
+select is(pg_temp.names(pg_temp.read('r:ayse'), 'jobs'), array['Cook', 'Old', 'Owner', 'Server'],
   'and every job');
 select is(pg_temp.invite_classes('r:ayse'), '{}'::text[],
   'a manager who may not grant access reads no role to invite with');
