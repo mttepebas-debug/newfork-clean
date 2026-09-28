@@ -9,6 +9,7 @@ import { ChevronDown, Minus, Plus, Trash2, X } from "lucide-react";
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -57,6 +58,18 @@ interface QuickEditorSelectOption {
   readonly disabled?: boolean;
 }
 
+// A list opened near the foot of a short editor would run under the sticky
+// action bar; it brings itself into view (the editor's scroll-padding keeps
+// it clear of the bar), measured at 375x568 and 1280x600 (BL-199).
+function useListInView(root: RefObject<HTMLDivElement | null>, open: boolean) {
+  useLayoutEffect(() => {
+    if (!open) return;
+    root.current
+      ?.querySelector('[role="listbox"]')
+      ?.scrollIntoView?.({ block: "nearest" });
+  }, [open, root]);
+}
+
 function QuickEditorSelect({
   label,
   value,
@@ -72,6 +85,7 @@ function QuickEditorSelect({
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  useListInView(rootRef, open);
   const selectedOption = options.find((option) => option.value === value);
   const displayLabel = selectedOption?.label ?? options[0]?.label ?? "Select";
 
@@ -158,6 +172,7 @@ function QuickEditorLabelMultiSelect({
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  useListInView(rootRef, open);
   const selectedSet = new Set(selectedIds);
   const selectedLabels = labels.filter((label) => selectedSet.has(label.id));
   const displayLabel = selectedLabels.length

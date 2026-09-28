@@ -1221,6 +1221,21 @@ describe("ShiftQuickEditor note", () => {
     }
   });
 
+  it("brings an opened list into view so the action bar does not cover its end", () => {
+    const scrollIntoView = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      renderEditor(create);
+      fireEvent.click(screen.getByRole("combobox", { name: "Job" }));
+      const list = screen.getByRole("listbox", { name: "Job" });
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+      expect(scrollIntoView.mock.contexts).toContain(list);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
   it("takes no more than 500 characters and says none are left", () => {
     renderEditor(create);
     fireEvent.change(note(), { target: { value: "x".repeat(520) } });
