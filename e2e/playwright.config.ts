@@ -43,6 +43,10 @@ const supabase = localSupabase();
 // link there, since no email leaves a local run) reads these two.
 process.env.E2E_SUPABASE_URL = requireSupabaseEnv("API_URL");
 process.env.E2E_SERVICE_ROLE_KEY = requireSupabaseEnv("SERVICE_ROLE_KEY");
+// A spec that calls the API the way a script would, past the screens (a fresh
+// token alone must not be enough for a sensitive action, SEC-003), reads these.
+process.env.E2E_API_URL = apiUrl;
+process.env.E2E_ANON_KEY = requireSupabaseEnv("ANON_KEY");
 
 // `noUncheckedIndexedAccess` makes every lookup on a Record<string, string>
 // come back `string | undefined`; the webServer env below needs a definite
