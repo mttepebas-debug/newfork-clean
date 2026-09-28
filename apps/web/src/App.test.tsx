@@ -5370,7 +5370,7 @@ describe("App", () => {
       await screen.findByRole("heading", { name: "Workspace" }),
     ).toBeTruthy();
     expect(sidebar().getByRole("link", { name: "Employees" })).toBeTruthy();
-    expect(sidebar().queryByRole("link", { name: "Settings" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Settings", hidden: true })).toBeNull();
   });
 
   it("redirects employee-only users away from the manager Schedule route", async () => {

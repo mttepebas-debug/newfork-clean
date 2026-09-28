@@ -338,6 +338,7 @@ describe("AppShell notification badge", () => {
         .getByRole("button", { name: "Expand Schedule" })
         .getAttribute("aria-expanded"),
     ).toBe("false");
+    // Sidebar behaviour (a collapsed group hides its child); the phone bar lists Requests flat.
     expect(sidebar().queryByRole("link", { name: "Requests" })).toBeNull();
   });
 
@@ -377,9 +378,9 @@ describe("AppShell notification badge", () => {
     currentContext = { ...context, permissions: ["workspace.read", "employees.read"] };
     renderShell();
     expect(await screen.findByText("Workspace route")).toBeTruthy();
-    expect(sidebar().queryByRole("link", { name: "Requests" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Requests", hidden: true })).toBeNull();
     expect(document.querySelector('a[href="/app/schedule"]')).toBeNull();
-    expect(sidebar().queryByRole("link", { name: "Availability" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Availability", hidden: true })).toBeNull();
   });
 
   it.each(["schedule.time_off_requests.read", "schedule.shift_change_requests.read"] as const)("keeps Requests reachable with %s without Schedule access", async permission => {
@@ -413,7 +414,7 @@ describe("AppShell notification badge", () => {
     renderShell("/app/availability");
     await screen.findByText("Employee Hub route");
     expect(screen.queryByText("Team Availability route")).toBeNull();
-    expect(sidebar().queryByRole("link", { name: "Availability" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Availability", hidden: true })).toBeNull();
     expect(sidebar().getByRole("link", { name: "My Availability" })).toBeTruthy();
   });
 
@@ -441,14 +442,14 @@ describe("AppShell notification badge", () => {
       "Announcements",
       "Notifications",
     ]);
-    expect(sidebar().queryByRole("link", { name: "Workspace" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Workspace", hidden: true })).toBeNull();
     expect(
       container
         .querySelector('.sidebar-nav a[href="/app/employee-hub/schedule"]')
         ?.textContent,
     ).toBe("Schedule");
     expect(document.querySelector('a[href="/app/schedule"]')).toBeNull();
-    expect(sidebar().queryByRole("link", { name: "Employees" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Employees", hidden: true })).toBeNull();
   });
 
   it("keeps Employee Hub inactive when an employee child route owns the page", async () => {
