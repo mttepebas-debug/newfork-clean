@@ -45,7 +45,7 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 
 ## 3. Koordinatör, roller, iletişim ve onay zinciri
 - **Koordinatör:** Claude Code masaüstü uygulamasındaki "Koordinatör" oturumu
-  (`local_323e063c-efb6-4451-a9c6-39a35ec5e057`). Kullanıcının tek muhatabıdır: işi kullanıcıdan
+  (`local_08c32131-90ea-4552-9d19-9b1a7dae5a5a`). Kullanıcının tek muhatabıdır: işi kullanıcıdan
   alır, onaylatır, role verir, raporu kontrol eder, main'e alır, kullanıcıya raporlar.
 - **Rol ajanları** (`.claude/agents/`): sabit uzmanlık, model, effort ve araç sınırıyla tanımlı.
   Yeni ya da değişen rol dosyası, oturum yeniden başlatılınca yüklenir.
@@ -304,7 +304,7 @@ Kısa yaz, ham araç çıktısı yapıştırma.
 - Açılış: koordinatör görev kartı çıkarır (başlık = görev kimliği ve kısa ad), kullanıcı tek tıkla
   açar. Kartın metni: "`.claude/agents/<rol>.md` dosyasını oku ve o rolün kurallarıyla çalış; görev
   dosyası `docs/plan/tasks/<ID>.md`; worktree `../newfork-wt/<id>`, branch `task/<id>`; bitince
-  bölüm 10'daki raporu `SendMessage` ile koordinatöre (`local_323e063c-efb6-4451-a9c6-39a35ec5e057`)
+  bölüm 10'daki raporu `SendMessage` ile koordinatöre (`local_08c32131-90ea-4552-9d19-9b1a7dae5a5a`)
   gönder ve dur."
 - Birden fazla rol gerektiren uzun işte oturum rolleri sırayla üstlenir ya da koordinatör işi
   rollere göre ayrı oturumlara böler; aynı dosyaya iki oturum aynı anda konmaz.
