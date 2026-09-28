@@ -273,20 +273,22 @@ describe("ShiftCard", () => {
 // event of the element the pointer came from, as a browser sends it.
 function pointerEvent(
   element: Element,
-  type: "pointerover" | "pointerout" | "pointerdown",
+  type: "pointerover" | "pointerout" | "pointerdown" | "pointermove",
   pointerType: string,
   relatedTarget: Element | null,
+  buttons = 0,
 ) {
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperties(event, {
     pointerType: { value: pointerType },
     relatedTarget: { value: relatedTarget },
+    buttons: { value: buttons },
   });
   fireEvent(element, event);
 }
-function move(from: Element | null, to: Element | null, pointerType = "mouse") {
-  if (from) pointerEvent(from, "pointerout", pointerType, to);
-  if (to) pointerEvent(to, "pointerover", pointerType, from);
+function move(from: Element | null, to: Element | null, pointerType = "mouse", buttons = 0) {
+  if (from) pointerEvent(from, "pointerout", pointerType, to, buttons);
+  if (to) pointerEvent(to, "pointerover", pointerType, from, buttons);
 }
 
 describe("ShiftCard manager note (BL-199)", () => {
@@ -362,6 +364,55 @@ describe("ShiftCard manager note (BL-199)", () => {
     openNote(badge, corner);
     move(corner, badge.querySelector("strong"));
     wait(200);
+    expect(noteCard()).toBeNull();
+  });
+
+  it("stays shut while any card is being dragged across the corner", () => {
+    const { badge, corner } = noted();
+    // Another card's drag: the button is held down as the pointer passes.
+    move(null, badge, "mouse", 1);
+    move(badge, corner, "mouse", 1);
+    wait(400);
+    expect(noteCard()).toBeNull();
+    // A press that turns into a drag after the pointer arrived cancels the wait.
+    move(corner, badge);
+    move(badge, corner);
+    wait(100);
+    pointerEvent(corner, "pointermove", "mouse", null, 1);
+    wait(400);
+    expect(noteCard()).toBeNull();
+  });
+
+  it("does not open on a card being dragged, and closes when its drag starts", () => {
+    vi.useFakeTimers();
+    const props: Parameters<typeof ShiftCard>[0] = {
+      shift: { ...shift, note },
+      job: "Server",
+      type: shiftType,
+      locationName: "Main",
+      editing: true,
+      showShiftType: true,
+      showShiftLabels: true,
+      showClockTimes: true,
+      showJobColorDot: true,
+      rowKey: "row-1",
+      badgeHeight: 52,
+      publicationState: null,
+    };
+    const { rerender } = render(<ShiftCard {...props} dragging />);
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    const corner = badge.querySelector("[data-shift-note-marker]")!;
+    move(null, badge);
+    move(badge, corner);
+    wait(400);
+    expect(noteCard()).toBeNull();
+
+    rerender(<ShiftCard {...props} dragging={false} />);
+    move(corner, badge);
+    move(badge, corner);
+    wait(300);
+    expect(noteCard()).not.toBeNull();
+    rerender(<ShiftCard {...props} dragging />);
     expect(noteCard()).toBeNull();
   });
 

@@ -70,7 +70,8 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
       data-shift-note-marker="true"
       aria-hidden="true"
       onPointerEnter={(event) => {
-        if (event.pointerType !== "mouse" || suppressed) return;
+        // A pressed button means a drag, of this card or another, is passing.
+        if (event.pointerType !== "mouse" || event.buttons !== 0 || suppressed) return;
         clearTimers();
         const badge =
           event.currentTarget.closest("[data-shift-badge]") ?? event.currentTarget;
@@ -81,6 +82,11 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
       }}
       onPointerLeave={(event) => {
         if (event.pointerType === "mouse") closeSoon();
+      }}
+      onPointerMove={(event) => {
+        if (event.buttons === 0) return;
+        clearTimers();
+        setAnchor(null);
       }}
       // A press before the note opened must not open it afterwards.
       onPointerDown={clearTimers}
