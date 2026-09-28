@@ -148,7 +148,8 @@ $$;
 
 -- A workspace as its owner leaves setup: two locations (K = Kadikoy,
 -- B = Besiktas), one department (Kitchen) with two jobs (cook, server), and
--- the owner filed as an employee at both locations with both jobs.
+-- the owner filed as an employee at both locations with the Owner job only
+-- (setup also makes Management and Owner; cook and server are assigned by hand).
 -- Labels: <w>:owner, <w>:K, <w>:B, <w>:job:cook, <w>:job:server, <w>:kitchen.
 create or replace function tests.world(w text)
 returns uuid

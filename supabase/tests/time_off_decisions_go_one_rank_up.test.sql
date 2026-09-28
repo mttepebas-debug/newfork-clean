@@ -24,6 +24,9 @@ select tests.person('to', 'zafer', 'admin', array['K'], array['server']);
 select tests.person('to', 'emre', 'employee', array['K'], array['cook']);
 -- The owner works a published Wednesday shift at Kadikoy, the day every
 -- request below asks for.
+-- The owner works the Owner job only until somebody assigns another (BL-218).
+insert into public.employee_job_assignments (workspace_id, employee_id, job_id, created_by)
+values (tests.id('to'), tests.id('to:owner'), tests.id('to:job:cook'), tests.user('to:owner'));
 select tests.publish_week('to', 0, '[
   {"label": "owner-wed", "person": "owner", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
 ]');

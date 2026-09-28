@@ -92,9 +92,10 @@ values (tests.remember('m:tpl:KD', gen_random_uuid()), tests.id('m'), 'Template 
 insert into public.schedule_template_shifts (workspace_id, template_id, location_id, job_id, day_offset, start_time, end_time, time_basis)
 select tests.id('m'), tests.id('m:tpl:KD'), tests.id('m:' || l), tests.id('m:job:cook'), 0, '09:00', '15:00', 'explicit'
 from unnest(array['K', 'D']) l;
--- as deleting it on Settings does: whoever worked there (the owner) stops.
-update public.employee_location_assignments set ended_at = now() where location_id = tests.id('m:D') and ended_at is null;
+-- as deleting it on Settings does: the location goes, then whoever worked there
+-- (the owner, kept at every live location) stops.
 update public.locations set archived_at = now(), deleted_at = now() where id = tests.id('m:D');
+update public.employee_location_assignments set ended_at = now() where location_id = tests.id('m:D') and ended_at is null;
 
 -- 2. Who they are, written down independently of the app ------------------------
 -- class: owner | admin | manager | employee. status: active | suspended |
@@ -684,8 +685,6 @@ insert into known_gap values
    'a manager cannot move somebody between employee roles at their own location; decided allowed on 2026-09-24, 6A (stage 6, employees)'),
   ('manager-cannot-invite', '{manager}', '{employee.create}', '{K,B}',
    'a manager cannot add and invite an employee at their own location; employee_access.manage is required (stage 6, employees)'),
-  ('owner-record-no-primary', '{olcay}', '{employee.save}', '{self,olcay}',
-   'the owner record setup creates has no primary location or job, so saving it as it is fails with 23502 (stage 6, employees)'),
   ('admin-own-record', '{zeynep}', '{employee.save}', '{self,zeynep}',
    'an admin cannot save their own employee record, P0002 (stage 6, employees)'),
   ('important-date-no-as-validation', null, '{important_date.write}', '{K,B,x:K}',

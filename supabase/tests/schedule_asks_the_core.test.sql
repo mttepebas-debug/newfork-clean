@@ -70,11 +70,6 @@ select tests.settle();
 update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
 where source_id = (select id from required_document) and lifecycle_user_id = tests.user('sc:aydan');
 
--- The owner works nowhere: owning the workspace is not working somewhere.
-select tests.stops_working_at((
-  select m.id from public.workspace_memberships m
-  where m.workspace_id = tests.id('sc') and m.user_id = tests.user('sc:owner')
-));
 
 create function pg_temp.said(statement text) returns text
 language plpgsql
@@ -175,7 +170,7 @@ select cmp_ok((select count(distinct name)::integer from somewhere_call), '>=', 
 
 -- 3. How each "somewhere" gate says no ------------------------------------------------------
 -- A manager with no location, a manager missing a required document and an
--- employee are refused with the reason; the owner, who works nowhere, passes.
+-- employee are refused with the reason; the owner passes.
 
 create temporary table gate (action text primary key, statement text not null);
 insert into gate values
@@ -204,7 +199,7 @@ select is(pg_temp.at_gate('emre', g.action), '42501 authz.missing_permission ' |
   g.action || ': an employee does not hold the permission')
 from gate g order by g.action;
 select ok(pg_temp.at_gate('owner', g.action) not like '42501%',
-  g.action || ': the owner passes without working anywhere (' || pg_temp.at_gate('owner', g.action) || ')')
+  g.action || ': the owner passes (' || pg_temp.at_gate('owner', g.action) || ')')
 from gate g order by g.action;
 
 select is(pg_temp.said(format($$select public.list_schedule_templates_service(%L, %L)$$, tests.user('sc:tina'), tests.id('sc'))),
@@ -286,9 +281,8 @@ exception when sqlstate '42501' then
 end;
 $$;
 select is(pg_temp.reads('ayse', 'can'), true, 'Ayşe reads the availability of Can, a manager at Kadıköy');
--- Here the owner works nowhere, so no manager hears of or reads their update;
--- Ayşe reads an owner who works at Kadıköy in the authorization matrix.
-select is(pg_temp.reads('ayse', 'owner'), false, 'Ayşe does not read the owner, who works nowhere');
+-- The owner works at every location (BL-218), Kadıköy included.
+select is(pg_temp.reads('ayse', 'owner'), true, 'Ayşe reads the owner, who works at Kadıköy');
 select is(pg_temp.reads('ayse', 'zeynep'), true, 'Ayşe reads the availability of Zeynep, an admin at Kadıköy');
 select is(pg_temp.reads('mehmet', 'emre'), false, 'Mehmet (Beşiktaş) does not read Emre (Kadıköy)');
 select is(pg_temp.reads('emre', 'can'), false, 'Emre, an employee, does not read Can''s availability');

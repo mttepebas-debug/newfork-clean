@@ -143,19 +143,19 @@ select is(
 select is(
   (select array_agg(k order by k) from jsonb_object_keys(
     public.read_settings_jobs_service(tests.user('s:owner'), tests.id('s')) -> 'jobs' -> 0) k),
-  array['archived_at', 'color', 'department_id', 'id', 'name', 'sort_order', 'workspace_id'],
+  array['archived_at', 'color', 'department_id', 'id', 'name', 'sort_order', 'system_key', 'workspace_id'],
   'a job carries the columns Settings > Jobs shows'
 );
 select is(
-  array(select j ->> 'name' from jsonb_array_elements(
+  array(select (j ->> 'name') || coalesce(':' || (j ->> 'system_key'), '') from jsonb_array_elements(
     public.read_settings_jobs_service(tests.user('s:owner'), tests.id('s')) -> 'jobs') j),
-  array['Cook', 'Server'],
-  'Settings > Jobs reads the jobs'
+  array['Owner:owner', 'Cook', 'Server'],
+  'Settings > Jobs reads the jobs, the kept Owner job marked as the system''s'
 );
 select is(
-  array(select d ->> 'name' from jsonb_array_elements(
+  array(select (d ->> 'name') || coalesce(':' || (d ->> 'system_key'), '') from jsonb_array_elements(
     public.read_settings_jobs_service(tests.user('s:owner'), tests.id('s')) -> 'departments') d),
-  array['Kitchen'],
+  array['Management:management', 'Kitchen'],
   'and the departments, in the same answer'
 );
 

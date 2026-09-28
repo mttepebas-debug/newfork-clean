@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(35);
 
 -- BL-218. Setup gives every workspace two protected catalog records: the
 -- Management department and, under it, the Owner job. Nobody deletes or
@@ -153,7 +153,7 @@ select is(
     'update public.employee_location_assignments set ended_at = now() where employee_id = %L and location_id = %L and ended_at is null',
     tests.id('mo:owner'), tests.id('mo:B')
   )),
-  '23514',
+  '23514 employee.owner_locations',
   'the owner cannot be taken off a location'
 );
 select ok(
@@ -204,24 +204,16 @@ select is(
     'select public.delete_catalog_entity_service(%L, %L, %L, %L, %L)',
     tests.user('mo:owner'), tests.id('mo'), 'departments', pg_temp.management('mo'), 'keep'
   )),
-  '23514',
+  '23514 catalog.system_record',
   'Management cannot be deleted from Settings'
-);
-select is(
-  pg_temp.refusal(format(
-    'select public.delete_catalog_entity_service(%L, %L, %L, %L)',
-    tests.user('mo:owner'), tests.id('mo'), 'jobs', pg_temp.owner_job('mo')
-  )),
-  '23514',
-  'the Owner job cannot be deleted from Settings'
 );
 select is(
   pg_temp.refusal(format(
     'select public.delete_job_with_assignments_service(%L, %L, %L)',
     tests.user('mo:owner'), tests.id('mo'), pg_temp.owner_job('mo')
   )),
-  '23514',
-  'nor with its assignments'
+  '23514 catalog.system_record',
+  'the Owner job cannot be deleted from Settings'
 );
 select is(
   pg_temp.refusal(format(
@@ -229,7 +221,7 @@ select is(
     tests.user('mo:owner'),
     format('update public.departments set archived_at = now() where id = %L', pg_temp.management('mo'))
   )),
-  '23514',
+  '23514 catalog.system_record',
   'the browser cannot archive Management'
 );
 select is(
@@ -238,7 +230,7 @@ select is(
     tests.user('mo:owner'),
     format('update public.jobs set archived_at = now() where id = %L', pg_temp.owner_job('mo'))
   )),
-  '23514',
+  '23514 catalog.system_record',
   'nor the Owner job'
 );
 select isnt(
@@ -350,7 +342,7 @@ select is(
     'update public.employee_job_assignments set is_primary = true where employee_id = %L and job_id = %L and ended_at is null',
     tests.id('mo:cemre'), tests.id('mo:job:manager')
   )),
-  '23514',
+  '23514 employee.management_primary',
   'nor can it be marked primary by any writer'
 );
 

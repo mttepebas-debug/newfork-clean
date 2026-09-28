@@ -574,8 +574,11 @@ select ok(
   'owner employee record is excluded from scheduling by default'
 );
 create temporary table owner_employee_ids as
-select id, revision
-from public.employee_profiles
+select id, revision,
+  -- The owner stays at every location (BL-218): the save keeps them.
+  array(select a.location_id from public.employee_location_assignments a where a.employee_id = e.id and a.ended_at is null) as location_ids,
+  array(select a.job_id from public.employee_job_assignments a where a.employee_id = e.id and a.ended_at is null) as job_ids
+from public.employee_profiles e
 where workspace_id = '20000000-0000-4000-8000-000000000001'
   and user_id = '10000000-0000-4000-8000-000000000001';
 grant select on owner_employee_ids to service_role;
@@ -594,9 +597,9 @@ select lives_ok(
     'owner@example.test',
     null,
     '',
-    '{}'::uuid[],
+    (select location_ids from owner_employee_ids limit 1),
     null,
-    '{}'::uuid[],
+    (select job_ids from owner_employee_ids limit 1),
     null,
     false,
     true,

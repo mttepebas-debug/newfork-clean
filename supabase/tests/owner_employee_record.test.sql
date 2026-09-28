@@ -116,8 +116,8 @@ select is(
   'the workspace is open once its setup is done'
 );
 
--- Every location and every job, the way a manager adding somebody by hand
--- would leave it.
+-- Every location, and of the jobs only Owner (BL-218): the jobs setup added are
+-- assigned by hand, like everybody else's.
 select is(
   (select count(*)::integer from public.employee_location_assignments
    where workspace_id = (select workspace_id from owner_record_target)
@@ -126,11 +126,12 @@ select is(
   'the owner can work at every location the setup created'
 );
 select is(
-  (select count(*)::integer from public.employee_job_assignments
-   where workspace_id = (select workspace_id from owner_record_target)
-     and ended_at is null),
-  1,
-  'the owner can work every job the setup created'
+  (select string_agg(job.system_key, ',') from public.employee_job_assignments assignment
+   join public.jobs job on job.id = assignment.job_id
+   where assignment.workspace_id = (select workspace_id from owner_record_target)
+     and assignment.ended_at is null),
+  'owner',
+  'the owner works the Owner job, not the job the setup created'
 );
 
 -- A place added after setup has to reach the owner too; before this the record
@@ -155,8 +156,8 @@ select is(
   (select count(*)::integer from public.employee_job_assignments
    where workspace_id = (select workspace_id from owner_record_target)
      and ended_at is null),
-  2,
-  'a job added after setup reaches the owner on its own'
+  1,
+  'a job added after setup is not put on the owner'
 );
 
 -- Everyone but the owner gives an emergency contact during onboarding, and the

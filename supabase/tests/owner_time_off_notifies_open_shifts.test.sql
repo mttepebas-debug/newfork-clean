@@ -15,6 +15,9 @@ select tests.person('ot', 'zeynep', 'admin', array['K'], array['cook']);
 select tests.person('ot', 'ali', 'employee', array['K'], array['cook']);
 -- Olcay (the owner) works four shifts on Wednesday at Kadikoy and one on
 -- Thursday at Besiktas.
+-- The owner works the Owner job only until somebody assigns another (BL-218).
+insert into public.employee_job_assignments (workspace_id, employee_id, job_id, created_by)
+values (tests.id('ot'), tests.id('ot:owner'), tests.id('ot:job:cook'), tests.user('ot:owner'));
 select tests.publish_week('ot', 1, '[
   {"label": "olcay-k1", "person": "owner", "loc": "K", "job": "cook", "day": 2, "start": "07:00", "end": "09:00"},
   {"label": "olcay-k", "person": "owner", "loc": "K", "job": "cook", "day": 2, "start": "10:00", "end": "16:00"},
