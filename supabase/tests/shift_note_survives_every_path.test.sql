@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(16);
 
 -- BL-199: a manager's note on a shift ("Bring the catering order list") goes
 -- wherever the shift goes. Saving the week, making a template of it and
@@ -69,6 +69,9 @@ create function pg_temp.published_note(person text, n integer, day integer) retu
   join public.schedule_location_publications publication on publication.id = p.publication_id and publication.status = 'current'
   where p.workspace_id = tests.id('np') and p.employee_id = tests.id('np:' || person) and p.scheduled_date = tests.week(n) + day
 $$;
+create function pg_temp.board(person text, n integer) returns jsonb language sql as $$
+  select public.get_employee_schedule_board_service(tests.user('np:' || person), tests.id('np'), tests.week(n) + 1)
+$$;
 create function pg_temp.hub(person text, n integer) returns jsonb language sql as $$
   select public.get_employee_hub_service(tests.user('np:' || person), tests.id('np'), tests.week(n), tests.week(n) + 6)
 $$;
@@ -119,7 +122,8 @@ select is(pg_temp.published_note('ali', 1, 1), 'Bring the catering order list',
 -- (20260926200000_shift_labels_come_from_the_catalog.sql: target_note :=
 -- coalesce(row_payload->>'note', '')). Every Schedule screen sends the note
 -- it holds (the web cells in apps/web/src/schedule/lib); a new path that
--- leaves it out would erase it without a word.
+-- leaves it out would erase it without a word. If the contract ever turns to
+-- "leave the note alone when it is missing", this cell turns the other way.
 
 select pg_temp.rewrite(tests.id('np:session:w2'), tests.id('np:shift:w2-tue'), '{}', array['note']);
 
@@ -190,6 +194,14 @@ select is((select p.note from public.schedule_published_shifts p where p.id = te
   'Count the till before close', 'the Tuesday keeps its note');
 select ok(jsonb_path_exists(pg_temp.hub('deniz', 3), '$.shifts[*] ? (@.note == "Count the till before close")'),
   'Deniz, its new owner, reads it in Employee Hub');
+-- nf-guvenlik D2: Ali, who gave the Tuesday away, now sees it as a teammate's
+-- shift, and a teammate's shift carries no note (part 2, S1 (a)).
+select ok(jsonb_path_exists(pg_temp.board('ali', 3), '$.shifts[*] ? (@.id == $id && @.note == "")',
+    jsonb_build_object('id', tests.id('np:shift:ali-tue'))),
+  'Ali, who swapped it away, sees the Tuesday on his team schedule without its note');
+select ok(jsonb_path_exists(pg_temp.hub('ali', 3), '$.team_shifts[*] ? (@.id == $id && @.note == "")',
+    jsonb_build_object('id', tests.id('np:shift:ali-tue'))),
+  'and in Employee Hub without its note');
 
 -- Ali picks up Thursday's open shift; Ayse approves.
 select tests.remember('np:case:pickup', (public.shift_exchanges_command_service(tests.user('np:ali'), tests.id('np'), jsonb_build_object(
