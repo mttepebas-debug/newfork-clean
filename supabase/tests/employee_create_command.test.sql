@@ -150,7 +150,7 @@ select lives_ok($$insert into role_results select 'own-draft', public.create_emp
   '19000000-0000-4000-8000-000000000004', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000008', employee || '{"invitation_email":"create-manager-own@example.test"}', null) from create_fixture$$,
   'scoped manager can create a remote draft');
-select lives_ok($$select public.get_employee_detail_service('19000000-0000-4000-8000-000000000004', '29000000-0000-4000-8000-000000000001', (result->>'id')::uuid) from role_results where label='own-draft'$$, 'manager can reopen their own unassigned draft');
+select throws_ok($$select public.get_employee_detail_service('19000000-0000-4000-8000-000000000004', '29000000-0000-4000-8000-000000000001', (result->>'id')::uuid) from role_results where label='own-draft'$$, '42501', null, 'a manager does not open a record with no location: it is in nobody''s reach but admin and owner (M2)');
 select throws_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000004', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000009', employee, '59000000-0000-4000-8000-000000000001') from create_fixture$$,

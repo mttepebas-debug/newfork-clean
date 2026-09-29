@@ -285,7 +285,7 @@ where workspace_id = '26000000-0000-4000-8000-000000000001'
 grant select on directory_role_ids to service_role;
 set local role service_role;
 select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)), 3, 'owner lists linked manager employee profile');
-select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000002', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)), 1, 'location-scoped manager lists only assigned employee');
+select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000002', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)), 2, 'a location-scoped manager lists everyone at their location, a peer manager included (M2, KK-8)');
 select is(
   (public.get_employee_detail_service(
     '16000000-0000-4000-8000-000000000001',
@@ -300,9 +300,9 @@ select is(
     '16000000-0000-4000-8000-000000000002',
     '26000000-0000-4000-8000-000000000001',
     '76000000-0000-4000-8000-000000000001'
-  ),
-  null,
-  'location-scoped manager cannot open a linked manager employee drawer'
+  ) #>> '{allowed,save}',
+  'false',
+  'a location-scoped manager opens a peer manager''s drawer read-only (KK-8)'
 );
 select throws_ok(
   $$select public.save_employee_service(
@@ -466,7 +466,7 @@ delete from public.employee_location_assignments where employee_id = '76000000-0
 delete from public.employee_profiles where id = '76000000-0000-4000-8000-000000000004';
 set local role service_role;
 
-select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000003', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)), 0, 'other tenant cannot list employees');
+select throws_ok($$select * from public.list_employees_service('16000000-0000-4000-8000-000000000003', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)$$, '42501', null, 'other tenant cannot list employees');
 
 select lives_ok($$select public.set_employee_archived_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'uptown'), true, false)$$, 'owner archives an unlinked employee');
 select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', true, '', 'all', 100, 0)), 1, 'archived directory contains archived employee');
@@ -722,7 +722,7 @@ select lives_ok(
 set local role postgres;
 select is((select status::text from public.workspace_memberships where user_id = '16000000-0000-4000-8000-000000000008'), 'pending_activation', 'admin-role invitee remains pending until onboarding activation');
 set local role service_role;
-select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000008', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)), 0, 'pending admin-role invitee has no privileged access before activation');
+select throws_ok($$select * from public.list_employees_service('16000000-0000-4000-8000-000000000008', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)$$, '42501', null, 'pending admin-role invitee has no privileged access before activation');
 select throws_ok(
   $$select public.update_employee_membership_role_service(
     '16000000-0000-4000-8000-000000000001',
