@@ -181,6 +181,10 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   düğmesi gizli (`schedule/export-v2/export-v2.css:60`); dışa aktarma
   masaüstünden yapılır. Karar o gün ≤760px için verildi, eşik UI-14 ile
   720'ye indi.
+- Settings menüsünde "Hide/Show Unassigned Shifts Row" ve "Freeze/Unfreeze
+  Unassigned Shifts Row" yalnız düzenleme kipinde açık (2026-09-29, kullanıcı
+  kararı); view kipinde "Role Seperators" gibi soluk ve tıklanamaz. Diğer
+  görünüm ayarları iki kipte de açık.
 
 ### Schedule → Requests
 - İzin verisi, izin okuyabilen herkese iki sekmede de yüklenir: "Time off"

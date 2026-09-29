@@ -2465,6 +2465,7 @@ export function SchedulePage({
         onToggleUnassignedFrozen={() =>
           setUnassignedFrozen((current) => !current)
         }
+        unassignedRowSettingsDisabled={!isEditMode && !gridEditSession}
         dropdownDismissSignal={topbarDismissSignal}
         onDropdownOpenChange={setTopbarDropdownOpen}
         showShiftType={showShiftType}
