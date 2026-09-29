@@ -209,26 +209,50 @@ describe("account security routes", () => {
     const app = await appWith(service({ resendAccountDeletionRecovery }), 120, {
       recoveryResendBudgetMs: 60,
     });
-    const answers: { status: number; body: string; ms: number }[] = [];
-    for (const email of ["pending@example.test", "unknown@example.test"]) {
-      const started = Date.now();
-      const response = await app.inject({
-        method: "POST",
-        url: "/v1/account/security/deletion/recovery/resend",
-        payload: { email },
-      });
-      answers.push({ status: response.statusCode, body: response.body, ms: Date.now() - started });
+    // Fake clock, so the check holds on a loaded machine: only setTimeout and
+    // clearTimeout are faked; Fastify's setImmediate/nextTick stay real.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const answers: { status: number; body: string }[] = [];
+      for (const email of ["pending@example.test", "unknown@example.test"]) {
+        let answer: { status: number; body: string } | null = null;
+        const sent = app
+          .inject({
+            method: "POST",
+            url: "/v1/account/security/deletion/recovery/resend",
+            payload: { email },
+          })
+          .then((response) => {
+            answer = { status: response.statusCode, body: response.body };
+          });
+        let now = 0;
+        const at = async (ms: number) => {
+          await vi.advanceTimersByTimeAsync(ms - now);
+          now = ms;
+          for (let turn = 0; turn < 10; turn += 1) await new Promise((resolve) => setImmediate(resolve));
+        };
+        await at(0);
+        await at(59);
+        if (email === "pending@example.test") expect(signals[0]?.aborted).toBe(false);
+        await at(60);
+        if (email === "pending@example.test") expect(signals[0]?.aborted).toBe(true);
+        await at(119);
+        expect(answer, `${email} answered before the floor`).toBeNull();
+        await at(120);
+        expect(answer, `${email} not answered at the floor`).not.toBeNull();
+        await sent;
+        answers.push(answer!);
+      }
+      expect(answers).toEqual([
+        { status: 202, body: JSON.stringify({ status: "accepted" }) },
+        { status: 202, body: JSON.stringify({ status: "accepted" }) },
+      ]);
+      expect(signals).toHaveLength(2);
+      expect(signals[1]?.aborted).toBe(false);
+    } finally {
+      vi.useRealTimers();
+      await app.close();
     }
-    expect(answers.map(({ status, body }) => ({ status, body }))).toEqual([
-      { status: 202, body: JSON.stringify({ status: "accepted" }) },
-      { status: 202, body: JSON.stringify({ status: "accepted" }) },
-    ]);
-    for (const { ms } of answers) {
-      expect(ms).toBeGreaterThanOrEqual(115);
-      expect(ms).toBeLessThan(400);
-    }
-    expect(signals[0]?.aborted).toBe(true);
-    await app.close();
   });
 
   it("refuses a caller over its hourly resend limit without looking up the email", async () => {
