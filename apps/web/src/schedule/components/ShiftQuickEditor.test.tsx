@@ -1,4 +1,5 @@
 import type { ScheduleEditableShift, ScheduleReadModel } from "@newfork/shared/schedule";
+import { readFileSync } from "node:fs";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadShiftAvailability } from "../../availability/availability-data";
@@ -1159,6 +1160,14 @@ describe("ShiftQuickEditor note", () => {
     expect(onSubmit.mock.calls[0]![0].note).toBe("Bring the catering order list");
   });
 
+  // BL-291: cutting at 500 must not leave half an emoji; the database refuses it.
+  it("cuts a note at the limit without splitting an emoji in two", () => {
+    renderEditor(create);
+    fireEvent.change(note(), { target: { value: `${"a".repeat(499)}😀` } });
+    expect(note().value).toBe("a".repeat(499));
+    expect(screen.getByText("1 character left")).toBeTruthy();
+  });
+
   it("brings the whole field into view when it takes focus, clear of the sticky bar", () => {
     const scrollIntoView = vi.fn();
     const original = Element.prototype.scrollIntoView;
@@ -1332,5 +1341,66 @@ describe("ShiftQuickEditor note", () => {
     fireEvent.click(screen.getByRole("button", { name: "Decrease count" }));
     expect(note().disabled).toBe(false);
     expect(note().value).toBe("Patio opens at 5");
+  });
+});
+
+// G2: the editor's fields and buttons, as styles.css draws them.
+describe("ShiftQuickEditor styles", () => {
+  const styles = readFileSync("src/styles.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const rules = [...styles.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
+    selector: match[1]!.replace(/\s+/g, " ").trim(),
+    body: match[2]!,
+  }));
+  const bodyOf = (selector: string) =>
+    rules
+      .filter((rule) => rule.selector.split(/,\s(?![^(]*\))/).includes(selector))
+      .map((rule) => rule.body)
+      .join("\n");
+  const phone = [...styles.matchAll(/@media \(max-width: 520px\) \{([\s\S]*?)\n\}/g)]
+    .map((match) => match[1]!.replace(/\s+/g, " "))
+    .join("\n");
+
+  // BL-293 (WCAG 2.1 2.4.7): one visible focus ring everywhere, never hover alone.
+  it("never hides the focus ring on a control of the editor", () => {
+    const editorControls = /\.schedule-(quick-select|break-options|count-stepper|dialog-actions|shift-type-picker|time-input)\b/;
+    const hidden = rules.filter(
+      (rule) =>
+        editorControls.test(rule.selector) &&
+        rule.selector.includes(":focus-visible") &&
+        /outline:\s*(none|0)/.test(rule.body),
+    );
+    expect(hidden.map((rule) => rule.selector)).toEqual([]);
+    expect(bodyOf(".schedule-quick-editor :is(input, select, textarea):focus-visible")).toContain(
+      "outline: 2px solid var(--theme-focus)",
+    );
+    expect(bodyOf(".schedule-save-form :is(input, select):focus-visible")).toContain(
+      "outline: 2px solid var(--theme-focus)",
+    );
+  });
+
+  // BL-290 (WCAG 2.1 1.4.11, KARARLAR UI-09): a field's edge is --theme-muted.
+  it("draws every field edge in the form-field border colour", () => {
+    for (const selector of [
+      ".schedule-shift-form input",
+      ".schedule-save-form input",
+      '.schedule-quick-select > button[role="combobox"]',
+      ".schedule-time-input input",
+      ".schedule-break-options button",
+      ".schedule-count-stepper button",
+    ]) {
+      expect(bodyOf(selector), selector).toContain("border: 1px solid var(--theme-muted)");
+    }
+  });
+
+  // BL-294: iOS zooms into a field under 16px.
+  it("sets every field to 16px on a phone", () => {
+    expect(phone).toMatch(/\.schedule-shift-form :is\(input, select, textarea\),[^{]*\{ font-size: 16px;/);
+    expect(phone).toMatch(/\.schedule-time-input input,[^{]*\.schedule-time-input \.schedule-time-input__segments \{ font-size: 16px;/);
+    expect(phone).toMatch(/\.schedule-save-form :is\(input, select\)[^{]*\{ font-size: 16px;/);
+  });
+
+  // BL-295: the note grows with what is written, up to its max height.
+  it("lets the note field grow with its text", () => {
+    expect(bodyOf(".schedule-shift-form-section--note textarea")).toContain("field-sizing: content");
   });
 });
