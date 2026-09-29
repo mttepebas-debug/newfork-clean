@@ -107,40 +107,6 @@ export function pendingOpsKey(
   ] as const;
 }
 
-export function scheduleReferenceKey(
-  workspaceId: string | null,
-  weekStart?: string | null,
-) {
-  return weekStart
-    ? (["schedule-reference", workspaceId, weekStart] as const)
-    : (["schedule-reference", workspaceId] as const);
-}
-
-export function scheduleShiftsKey(
-  workspaceId: string | null,
-  weekStart: string,
-  draftId: string | null = null,
-  locationIds: readonly string[] = [],
-  includeLive = false,
-) {
-  return includeLive
-    ? ([
-        "schedule-shifts",
-        workspaceId,
-        weekStart,
-        draftId,
-        "include-live",
-        ...locationIds,
-      ] as const)
-    : ([
-        "schedule-shifts",
-        workspaceId,
-        weekStart,
-        draftId,
-        ...locationIds,
-      ] as const);
-}
-
 export function scheduleEditLockKey(
   workspaceId: string | null,
   weekStart: string,
@@ -173,6 +139,12 @@ export function scheduleReadKey(
   _view: ScheduleView,
 ) {
   return ["schedule-read", workspaceId, date] as const;
+}
+
+// Every cached day of a workspace's Schedule. The read is cached per date but
+// one change can move any day of the week, so invalidation uses this prefix.
+export function scheduleReadScopeKey(workspaceId: string | null) {
+  return ["schedule-read", workspaceId] as const;
 }
 
 export interface PastEditFinding {

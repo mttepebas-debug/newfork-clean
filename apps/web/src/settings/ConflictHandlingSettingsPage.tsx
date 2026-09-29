@@ -90,7 +90,7 @@ export default function ConflictHandlingSettingsPage() {
       setDraft(value);
       setDirty(false);
       void client.invalidateQueries({
-        queryKey: ["schedule-reference", workspaceId],
+        queryKey: ["schedule-read", workspaceId],
       });
       void client.invalidateQueries({
         queryKey: ["weekly-preference-settings", workspaceId],

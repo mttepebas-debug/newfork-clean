@@ -120,7 +120,7 @@ export default function JobsSettingsPage() {
         queryKey: ["employee-reference-data", workspaceId],
       }),
       queryClient.invalidateQueries({
-        queryKey: ["schedule-reference", workspaceId],
+        queryKey: ["schedule-read", workspaceId],
       }),
     ]);
   };

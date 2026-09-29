@@ -157,8 +157,6 @@ describe("draftSaveFlow", () => {
       queryClient,
       workspaceId: "workspace",
       weekStart: "2026-08-17",
-      selectedDate: "2026-08-19",
-      view: "week",
     });
 
     expect(invalidateSpy).toHaveBeenCalledWith({
@@ -168,8 +166,23 @@ describe("draftSaveFlow", () => {
       queryKey: ["schedule-pending-ops", "workspace", "2026-08-17"],
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: scheduleReadKey("workspace", "2026-08-19", "week"),
+      queryKey: ["schedule-read", "workspace"],
     });
+  });
+
+  // BL-278 (4): the read is cached per date, so a commit must reach every
+  // date of the week, not only the one on screen.
+  it("marks another cached day of the same week stale after a commit", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(scheduleReadKey("workspace", "2026-08-18", "day"), { shifts: [] });
+
+    invalidateScheduleCommitCaches({
+      queryClient,
+      workspaceId: "workspace",
+      weekStart: "2026-08-17",
+    });
+
+    expect(queryClient.getQueryState(scheduleReadKey("workspace", "2026-08-18", "day"))?.isInvalidated).toBe(true);
   });
 
   it("maps overlap save failures to the reference user-facing message", () => {

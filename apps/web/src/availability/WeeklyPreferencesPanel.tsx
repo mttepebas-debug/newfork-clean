@@ -79,8 +79,7 @@ function ConnectedPreferences({
       void client.invalidateQueries({
         queryKey: ["weekly-preferences", workspaceId],
       });
-      void client.invalidateQueries({ queryKey: ["schedule-reference", workspaceId] });
-      void client.invalidateQueries({ queryKey: ["schedule-shifts", workspaceId] });
+      void client.invalidateQueries({ queryKey: ["schedule-read", workspaceId] });
       onSaved?.();
       return result.model;
     } catch (error) {

@@ -80,8 +80,7 @@ describe("weekly preferences API panel", () => {
     vi.mocked(saveWeeklyPreferences).mockResolvedValue(result);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText("Saved");
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["schedule-reference", w] });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["schedule-shifts", w] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["schedule-read", w] });
   });
   it("replays exactly the same key and payload after a lost save response, without another preview", async () => {
     const { result } = await setup();

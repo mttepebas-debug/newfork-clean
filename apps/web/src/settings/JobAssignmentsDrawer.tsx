@@ -141,9 +141,6 @@ export function JobAssignmentsDrawer({
       client.invalidateQueries({
         queryKey: ["employee-reference-data", workspaceId],
       }),
-      client.invalidateQueries({
-        queryKey: ["schedule-reference", workspaceId],
-      }),
       client.invalidateQueries({ queryKey: ["schedule-read", workspaceId] }),
     ]);
   };

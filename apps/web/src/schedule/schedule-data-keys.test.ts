@@ -6,34 +6,10 @@ import {
   scheduleEditLockKey,
   scheduleExportPreviewHtmlKey,
   schedulePublicationStatusKey,
-  scheduleReferenceKey,
-  scheduleShiftsKey,
 } from "./schedule-data";
 
-describe("schedule reference query key aliases", () => {
-  it("keeps the imported reference schedule cache keys available", () => {
-    expect(scheduleReferenceKey("workspace", "2026-08-17")).toEqual([
-      "schedule-reference",
-      "workspace",
-      "2026-08-17",
-    ]);
-    expect(
-      scheduleShiftsKey(
-        "workspace",
-        "2026-08-17",
-        "draft-1",
-        ["loc-1", "loc-2"],
-        true,
-      ),
-    ).toEqual([
-      "schedule-shifts",
-      "workspace",
-      "2026-08-17",
-      "draft-1",
-      "include-live",
-      "loc-1",
-      "loc-2",
-    ]);
+describe("schedule query keys", () => {
+  it("keeps the edit lock and publication status keys", () => {
     expect(scheduleEditLockKey("workspace", "2026-08-17", "draft-1")).toEqual([
       "schedule-edit-lock",
       "workspace",

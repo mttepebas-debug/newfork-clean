@@ -53,8 +53,6 @@ function renderRealtimeHook(queryClient = new QueryClient()) {
       useScheduleRealtime({
         workspaceId: "workspace",
         weekStart: "2026-05-04",
-        selectedDate: "2026-05-05",
-        view: "week",
         locationIds: ["loc-1", "loc-2"],
         activeDraftId: "draft-1",
       }),
@@ -112,7 +110,7 @@ describe("useScheduleRealtime", () => {
     });
 
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ["schedule-read", "workspace", "2026-05-05"],
+      queryKey: ["schedule-read", "workspace"],
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["schedule-pending-ops", "workspace", "2026-05-04"],
@@ -120,6 +118,26 @@ describe("useScheduleRealtime", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["schedule-drafts", "workspace", "2026-05-04"],
     });
+  });
+
+  // BL-278 (4): a live change must reach every cached day of the week.
+  it("marks another cached day of the week stale on a published change", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["schedule-read", "workspace", "2026-05-07"], { shifts: [] });
+    renderRealtimeHook(queryClient);
+
+    mocks.broadcastHandler?.({
+      payload: {
+        kind: "schedule_invalidation",
+        workspace_id: "workspace",
+        week_start: "2026-05-04",
+        location_ids: ["loc-2"],
+        draft_id: null,
+        targets: ["published_shifts"],
+      },
+    });
+
+    expect(queryClient.getQueryState(["schedule-read", "workspace", "2026-05-07"])?.isInvalidated).toBe(true);
   });
 
   it("ignores invalidations for a different workspace, week, or location", () => {

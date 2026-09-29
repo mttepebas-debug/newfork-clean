@@ -593,8 +593,6 @@ export function SchedulePage({
   useScheduleRealtime({
     workspaceId: context?.workspace.id ?? null,
     weekStart: query.data?.week_start ?? selectedDate,
-    selectedDate,
-    view,
     locationIds: pendingOpsLocationIds,
     activeDraftId: gridEditSession?.source_draft_id ?? activeDraftId,
   });
@@ -683,8 +681,6 @@ export function SchedulePage({
         queryClient,
         workspaceId: context.workspace.id,
         weekStart: query.data.week_start,
-        selectedDate,
-        view,
       });
       clearPendingOpsCachesForDraft(
         queryClient,

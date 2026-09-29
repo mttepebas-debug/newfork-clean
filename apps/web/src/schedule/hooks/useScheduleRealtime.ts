@@ -1,9 +1,8 @@
-import type { ScheduleView } from "@newfork/shared/schedule";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { supabaseClient } from "../../lib/supabase";
-import { draftsKey, scheduleReadKey } from "../schedule-data";
+import { draftsKey, scheduleReadScopeKey } from "../schedule-data";
 
 type ScheduleInvalidationTarget =
   | "published_shifts"
@@ -28,8 +27,6 @@ export interface ScheduleInvalidationPayload {
 interface UseScheduleRealtimeOptions {
   readonly workspaceId: string | null | undefined;
   readonly weekStart: string;
-  readonly selectedDate: string;
-  readonly view: ScheduleView;
   readonly locationIds: readonly string[];
   readonly activeDraftId?: string | null;
 }
@@ -37,8 +34,6 @@ interface UseScheduleRealtimeOptions {
 export function useScheduleRealtime({
   workspaceId,
   weekStart,
-  selectedDate,
-  view,
   locationIds,
   activeDraftId = null,
 }: UseScheduleRealtimeOptions) {
@@ -63,7 +58,7 @@ export function useScheduleRealtime({
           draftTargetMatches(payload, activeDraftId)
         ) {
           void queryClient.invalidateQueries({
-            queryKey: scheduleReadKey(workspaceId, selectedDate, view),
+            queryKey: scheduleReadScopeKey(workspaceId ?? null),
           });
         }
 
@@ -94,8 +89,6 @@ export function useScheduleRealtime({
     activeDraftId,
     locationIds,
     queryClient,
-    selectedDate,
-    view,
     weekStart,
     workspaceId,
   ]);

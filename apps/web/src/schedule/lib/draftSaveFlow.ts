@@ -1,7 +1,7 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
-import type { ScheduleDraftSummary, ScheduleView } from "@newfork/shared/schedule";
+import type { ScheduleDraftSummary } from "@newfork/shared/schedule";
 
-import { draftsKey, scheduleReadKey } from "../schedule-data";
+import { draftsKey, scheduleReadScopeKey } from "../schedule-data";
 
 export interface PostSavePreviewArgs {
   readonly previousPreviewDraftId: string | null;
@@ -103,14 +103,10 @@ export function invalidateScheduleCommitCaches({
   queryClient,
   workspaceId,
   weekStart,
-  selectedDate,
-  view,
 }: {
   readonly queryClient: QueryClient;
   readonly workspaceId: string;
   readonly weekStart: string;
-  readonly selectedDate: string;
-  readonly view: ScheduleView;
 }): void {
   void queryClient.invalidateQueries({
     queryKey: draftsKey(workspaceId, weekStart),
@@ -119,7 +115,7 @@ export function invalidateScheduleCommitCaches({
     queryKey: ["schedule-pending-ops", workspaceId, weekStart],
   });
   void queryClient.invalidateQueries({
-    queryKey: scheduleReadKey(workspaceId, selectedDate, view),
+    queryKey: scheduleReadScopeKey(workspaceId),
   });
 }
 
