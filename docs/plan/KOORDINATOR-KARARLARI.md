@@ -265,6 +265,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Bedel:** shared `employeeDetailSchema`'ya yeni zorunlu anahtarlar → canlı DB'nin geride kalması (BL-405) bir migration daha büyür.
 - **Geri alma:** orta (okuma projeksiyonu + şema); S3/S4 kolay.
 - **Durum:** uygulanıyor (`.7b` + `.7b-db`).
+- **Kullanıcı yokken düzeltme (2026-09-30):** S3'ün "`private_contact` null = izin yok" varsayımı yanlıştı: sunucu gizli profil satırı hiç yokken de null döndürüyordu. Bu, main'e Profile gerilemesi soktu — owner bile onboarding'i bitmemiş kişinin Date of birth, Phone, Emergency contact ve adres alanlarını göremedi. Koordinatörün hatası: varsayım sunucuda ölçülmeden karara yazıldı. `.7b` görsel QA'sı yakaladı (KK-37). Düzeltme `809592bc` (migration `20260930190000_the_drawer_tells_nothing_on_file_from_not_allowed.sql`): null artık yalnız "okuma izni yok"; izinliye kayıt yoksa boş nesne gider. Ders: "null şu demek" diye karar yazmadan önce sunucunun null'u hangi durumlarda döndürdüğü ölçülür.
 
 ### KK-36 (2026-09-30) `.7b` S5: Workspace düzen kaydı çekirdeğe `.7b-db`'de sorar, rota kapısı ondan sonra kalkar
 - **Karar:** `PUT …/workspace/layout` rotasının kapısı `.7b`'de şimdilik durur. `save_workspace_layout_service` `.7b-db` migration'ında panonun kapısıyla aynı çekirdek eylemine sorar (ret ipuçlu); bugünkü davranış korunur (çalışan kendi düzenini bugün yazamıyorsa yine yazamaz). Sonra `.7b` rota kapısını kaldırır; BL-413'ün dördüncü rotası böylece kapanır.
