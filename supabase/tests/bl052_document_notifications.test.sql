@@ -30,6 +30,16 @@ select '25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000
 
 set constraints all immediate;
 
+-- BL-245: the lease takes the oldest 100 due rows of every workspace, so rows
+-- other runs left in a shared local queue push this test's own rows out of
+-- the window. Park them for this transaction only (the file rolls back).
+create function pg_temp.park_other_outbox() returns void language sql as $$
+  update public.notification_outbox set available_at = now() + interval '1 day'
+  where workspace_id <> '25200000-0000-4000-8000-000000000001' and status in ('pending', 'retry');
+  update public.notification_outbox set lease_expires_at = now() + interval '1 day'
+  where workspace_id <> '25200000-0000-4000-8000-000000000001' and status = 'leased';
+$$;
+
 create function pg_temp.maintain(t timestamptz) returns jsonb language sql as $$select public.documents_maintain_service(100,t)$$;
 select pg_temp.maintain('2026-03-08 15:59:59Z');
 select is((select count(*)::integer from public.notification_outbox where type_key='people.documents.missing'),0,'spring DST date before local 09 emits no digest');
@@ -54,6 +64,7 @@ update public.employee_onboarding_requirements set lifecycle_settings=jsonb_set(
 select public.save_employee_document_draft_file_service('15200000-0000-4000-8000-000000000002','65200000-0000-4000-8000-000000000001',1,'25200000-0000-4000-8000-000000000001/45200000-0000-4000-8000-000000000001/65200000-0000-4000-8000-000000000001/75200000-0000-4000-8000-000000000001.pdf','proof.pdf','application/pdf',100);
 select public.submit_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000002','65200000-0000-4000-8000-000000000001',2,(select id from public.employee_document_submissions where state='draft'),current_date+365,'{}');
 select is((select count(*)::integer from public.notification_outbox where type_key='people.documents.review'),1,'real Submit produces one reviewer event');
+select pg_temp.park_other_outbox();
 create temp table reviewer_leased as select * from public.lease_notification_outbox_service('bl052-reviewer-worker',100,60);
 select public.process_notification_outbox_service('bl052-reviewer-worker',id) from reviewer_leased;
 select ok(exists(select 1 from public.notification_inbox_items i join public.notification_recipients r on r.id=i.recipient_projection_id join public.notification_events e on e.id=r.event_id where e.type_key='people.documents.review' and r.recipient_user_id='15200000-0000-4000-8000-000000000001'),'review notification is actually projected to its authorized reviewer');
@@ -67,6 +78,7 @@ select pg_temp.maintain(((current_date+335)::text||' 10:00:00')::timestamp at ti
 select pg_temp.maintain(((current_date+358)::text||' 09:00:00')::timestamp at time zone 'America/Los_Angeles');
 select pg_temp.maintain(((current_date+364)::text||' 09:00:00')::timestamp at time zone 'America/Los_Angeles');
 select is((select count(*)::integer from public.notification_outbox where type_key='people.documents.expiry'),3,'30/7/1 expiry milestones each enqueue once per approved version');
+select pg_temp.park_other_outbox();
 create temp table leased as select * from public.lease_notification_outbox_service('bl052-worker',100,60);
 select lives_ok($$select public.process_notification_outbox_service('bl052-worker',id) from leased$$,'existing outbox pipeline projects document notifications');
 select ok(exists(select 1 from public.notification_inbox_items where action_url like '/app/account/documents?workspace=%'),'employee inbox links retain organization-specific Documents destination');

@@ -30,8 +30,19 @@ select '25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000
 
 set constraints all immediate;
 
+-- BL-245: the lease takes the oldest 100 due rows of every workspace, so rows
+-- other runs left in a shared local queue push this test's own rows out of
+-- the window. Park them for this transaction only (the file rolls back).
+create function pg_temp.park_other_outbox() returns void language sql as $$
+  update public.notification_outbox set available_at = now() + interval '1 day'
+  where workspace_id <> '25200000-0000-4000-8000-000000000001' and status in ('pending', 'retry');
+  update public.notification_outbox set lease_expires_at = now() + interval '1 day'
+  where workspace_id <> '25200000-0000-4000-8000-000000000001' and status = 'leased';
+$$;
+
 select app_private.enqueue_document_notification('25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000002','inbox-assigned','assigned','Document request','Open Documents','65200000-0000-4000-8000-000000000001');
 select app_private.enqueue_document_notification('25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000002','inbox-missing','missing','Documents need attention','Open Documents');
+select pg_temp.park_other_outbox();
 create temp table leased as select * from public.lease_notification_outbox_service('bl052-account-worker',100,60);
 select public.process_notification_outbox_service('bl052-account-worker',id) from leased;
 select public.record_account_security_notification_service('15200000-0000-4000-8000-000000000002','account.password_changed');
