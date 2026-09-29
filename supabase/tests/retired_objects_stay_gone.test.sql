@@ -242,6 +242,10 @@ insert into retired (kind, name, step) values
   -- nobody writes memberships from the browser (no grant); these never ran
   ('policy', 'workspace_memberships.memberships_update_manager', 'FB-6.2.4'),
   ('policy', 'workspace_memberships.memberships_delete_manager', 'FB-6.2.4');
+-- FB-6.2.6: the jobs catalog, catalog deletion and Workspace home ask the core;
+-- the old "may I see this person" helper (both copies) goes.
+insert into retired (kind, name, step) values
+  ('function', 'can_access_employee', 'FB-6.2.6');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

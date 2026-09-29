@@ -153,7 +153,8 @@ select throws_ok($$select public.create_employee_command_service(
   '39000000-0000-4000-8000-000000000009', employee, '59000000-0000-4000-8000-000000000001') from create_fixture$$,
   '42501', 'Not allowed', 'a manager who works nowhere creates nobody, whatever the role (M2)');
 set local role postgres;
-select set_config('request.jwt.claim.sub', '19000000-0000-4000-8000-000000000004', true);
-select ok(not public.can_access_employee('29000000-0000-4000-8000-000000000001', (select (result->>'id')::uuid from role_results where label='custom')), 'creator exception does not expose another managers remote draft');
+select ok(app_private.authz_reason('19000000-0000-4000-8000-000000000004', '29000000-0000-4000-8000-000000000001', 'employee.read',
+  target_person => (select (result->>'id')::uuid from role_results where label='custom')) is not null,
+  'creator exception does not expose another managers remote draft');
 select * from finish();
 rollback;

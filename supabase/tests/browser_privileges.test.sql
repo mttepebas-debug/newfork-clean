@@ -32,7 +32,6 @@ select set_eq(
   $$,
   array[
     -- RLS helpers the policies call.
-    'app_private.can_access_employee',
     'app_private.can_access_location',
     'app_private.can_manage_important_date',
     'app_private.can_manage_workspace',

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(10);
 
 -- How far the database is from one authorization core (FOUNDATION-B stage
 -- 2c). Each count is a pattern stage 4 and 6 remove; a ceiling only comes
@@ -115,6 +115,30 @@ select is(
     'workspace.create', 'workspace.read', 'workspace.setup', 'workspace.todos', 'workspace.transfer_ownership'
   ]::text[],
   'the core answers for exactly these actions'
+);
+
+-- The last old person helper answers only for documents and onboarding,
+-- which move to the core with FB-6.6 and take it with them (P3). The list
+-- only shrinks: nothing else starts asking it.
+select is(
+  array(
+    select p.proname::text from pg_proc p
+    where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
+      and p.prosrc ~ '(^|[^_a-z])service_actor_can_access_employee\s*\('
+      and p.proname <> 'service_actor_can_access_employee'
+      and p.proname not in (
+        'apply_lifecycle_definition', 'document_actor_can_read', 'document_definition_target_options_service',
+        'document_notification_policy', 'document_publication_can_access', 'document_timezone_admin',
+        'enqueue_document_notification', 'extend_employee_document_deadline_service',
+        'get_employee_onboarding_review_service', 'preview_employee_document_assignments_service',
+        'preview_lifecycle_definition', 'review_employee_document_lifecycle_service',
+        'review_employee_onboarding_before_availability_service', 'set_employee_document_exemption_service',
+        'sync_expiring_document_todos_service'
+      )
+    order by 1
+  ),
+  '{}'::text[],
+  'only documents and onboarding still ask service_actor_can_access_employee'
 );
 
 select * from finish();
