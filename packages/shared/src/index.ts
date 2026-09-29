@@ -2514,6 +2514,9 @@ export const employeeSummarySchema = z.object({
   display_status: employeeDisplayStatusSchema,
   archived_at: z.string().datetime({ offset: true }).nullable(),
   revision: z.coerce.number().int().positive(),
+  // The locations a manager manages without working there ("Manages", FB-6.2
+  // S2), as far as the reader reaches; [] for everybody else.
+  managed_location_names: z.array(z.string()),
 });
 export type EmployeeSummary = z.infer<typeof employeeSummarySchema>;
 
@@ -2551,7 +2554,7 @@ export const employeeEventSchema = z.object({
 });
 export type EmployeeEvent = z.infer<typeof employeeEventSchema>;
 
-export const employeeDetailSchema = employeeSummarySchema.extend({
+export const employeeDetailSchema = employeeSummarySchema.omit({ managed_location_names: true }).extend({
   user_id: z.string().uuid().nullable(),
   account_email: z.string().email().nullable().optional(),
   internal_note: z.string().max(1000),
@@ -2584,7 +2587,12 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
     })
     .nullable()
     .default(null),
-  locations: z.array(employeeAssignmentSchema),
+  // removable: may the reader take them off this location
+  // (employee.remove_from_location there; FB-6.2 S1).
+  locations: z.array(employeeAssignmentSchema.extend({ removable: z.boolean() })),
+  // Where a manager manages without working there (S2), as far as the reader
+  // reaches; [] for everybody else.
+  managed_locations: z.array(z.object({ id: z.string().uuid(), name: z.string() })),
   jobs: z.array(employeeAssignmentSchema),
   invitation: z
     .object({
@@ -2634,6 +2642,10 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
     remove_access: z.boolean(),
     change_role: z.boolean(),
     make_admin: z.boolean(),
+    // Only for a manager; false for everybody else.
+    set_managed_locations: z.boolean(),
+    invite: z.boolean(),
+    onboarding_review: z.boolean(),
   }),
 });
 export type EmployeeDetail = z.infer<typeof employeeDetailSchema>;

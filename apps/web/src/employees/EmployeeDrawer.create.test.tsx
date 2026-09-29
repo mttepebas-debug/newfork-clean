@@ -38,8 +38,9 @@ vi.mock("../auth/AuthContext", () => ({
     context: {
       workspace: { id: "11000000-0000-4000-8000-000000000001" },
       membership: { role: "owner" },
-      permissions: ["employees.manage", "employee_access.manage"],
-      actions: ["employee.create"],
+      permissions: ["employees.manage"],
+      // The core's answer: inviting is employee.invite, not a permission key.
+      actions: ["employee.create", "employee.invite"],
     },
   }),
 }));
@@ -131,6 +132,9 @@ describe("employee create flow", () => {
           remove_access: true,
           change_role: true,
           make_admin: true,
+          set_managed_locations: false,
+          invite: true,
+          onboarding_review: true,
         },
         onboarding: {
           status: "not_requested",
@@ -143,8 +147,10 @@ describe("employee create flow", () => {
             name: "Downtown",
             primary: true,
             archived: false,
+            removable: true,
           },
         ],
+        managed_locations: [],
         jobs: [{ id: ids.job, name: "Server", primary: true, archived: false }],
         archived_at: null,
         display_status: "not_invited",

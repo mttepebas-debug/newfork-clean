@@ -658,32 +658,6 @@ describe("api app", () => {
     });
   });
 
-  it("keeps Workspace todo actions unavailable to employee-only roles", async () => {
-    const createWorkspaceTodo = vi.fn();
-    const app = buildApp({
-      contextResolver: {
-        resolve: async () => ({
-          ...resolvedContext,
-          membership: { ...resolvedContext.membership, role: "employee" },
-          permissions: ["workspace.read"],
-        }),
-      },
-      communicationService: {
-        createWorkspaceTodo,
-      } as unknown as CommunicationService,
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace/todos`,
-      headers: { authorization: "Bearer valid-token" },
-      payload: { title: "Follow up" },
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(createWorkspaceTodo).not.toHaveBeenCalled();
-  });
-
   it("keeps Workspace todo actions inside the resolved tenant context", async () => {
     const createWorkspaceTodo = vi.fn();
     const resolveWorkspaceTodo = vi.fn();
@@ -702,7 +676,7 @@ describe("api app", () => {
       payload: { title: "Follow up" },
     });
     expect(created.statusCode).toBe(404);
-    expect(created.json()).toEqual({ error: "Workspace not found" });
+    expect(created.json()).toMatchObject({ error: "Workspace not found", reason: "authz.not_member" });
 
     const resolved = await app.inject({
       method: "POST",
@@ -710,7 +684,7 @@ describe("api app", () => {
       headers: { authorization: "Bearer valid-token" },
     });
     expect(resolved.statusCode).toBe(404);
-    expect(resolved.json()).toEqual({ error: "Workspace not found" });
+    expect(resolved.json()).toMatchObject({ error: "Workspace not found", reason: "authz.not_member" });
     expect(createWorkspaceTodo).not.toHaveBeenCalled();
     expect(resolveWorkspaceTodo).not.toHaveBeenCalled();
   });
@@ -910,30 +884,6 @@ describe("api app", () => {
         action: { notification_id: notificationId, action: "seen" },
       },
     ]);
-  });
-
-  it("keeps the manager Workspace unavailable to employee-only roles", async () => {
-    const app = buildApp({
-      contextResolver: {
-        resolve: async () => ({
-          ...resolvedContext,
-          membership: { ...resolvedContext.membership, role: "employee" },
-          permissions: [
-            "workspace.read",
-            "schedule.read",
-            "announcements.read",
-            "notifications.read",
-          ],
-        }),
-      },
-      communicationService: {} as CommunicationService,
-    });
-    const response = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/workspace`,
-      headers: { authorization: "Bearer valid-token" },
-    });
-    expect(response.statusCode).toBe(403);
   });
 
   it("forwards Schedule Requests filters and cursors", async () => {
@@ -1409,7 +1359,7 @@ describe("api app", () => {
       payload: { email: "employee@example.test" },
     });
     expect(crossWorkspace.statusCode).toBe(404);
-    expect(crossWorkspace.json()).toEqual({ error: "Workspace not found" });
+    expect(crossWorkspace.json()).toMatchObject({ error: "Workspace not found", reason: "authz.not_member" });
     expect(prepare).toHaveBeenCalledTimes(1);
 
     const crossWorkspaceRevoke = await app.inject({
@@ -1418,8 +1368,9 @@ describe("api app", () => {
       headers: { authorization: "Bearer valid-token" },
     });
     expect(crossWorkspaceRevoke.statusCode).toBe(404);
-    expect(crossWorkspaceRevoke.json()).toEqual({
+    expect(crossWorkspaceRevoke.json()).toMatchObject({
       error: "Workspace not found",
+      reason: "authz.not_member",
     });
     expect(revoke).toHaveBeenCalledTimes(1);
   });

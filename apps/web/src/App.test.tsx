@@ -92,6 +92,8 @@ vi.mock("./auth/AuthContext", async () => {
     // actions the same way.
     actions: shared.authzActionKeys.filter((action) => {
       if (action === "workspace.read") return true;
+      // Every active member's own hub (scope 'own' in the core).
+      if (action === "employee_hub.read" || action === "employee_hub.self") return true;
       const rule = (shared.targetedAuthzActions as Record<string, { person?: boolean }>)[action];
       return rule !== undefined && (shared.expected as (...args: unknown[]) => boolean)(
         {
@@ -5828,6 +5830,25 @@ describe("App", () => {
       expect(window.location.pathname).toBe("/app/employee-hub"),
     );
     expect(screen.queryByRole("heading", { name: "Schedule" })).toBeNull();
+  });
+
+  // FB-6.2 .7b (KK-35 S4): the employee view opens for whoever the core lets
+  // read their own hub, not for one role name; with no employee record of
+  // their own the hub answers with the no-access card.
+  it.each(["owner", "manager"] as const)("opens the employee view for a signed-in %s", async (role) => {
+    window.history.pushState({}, "", "/app/employee-hub");
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Sign in" }),
+    ).toBeTruthy();
+    await signInAs(role);
+
+    await waitFor(() =>
+      expect(window.location.pathname).toBe("/app/employee-hub"),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(window.location.pathname).toBe("/app/employee-hub");
   });
 
   it("redirects employee-only users away from the manager Workspace route", async () => {

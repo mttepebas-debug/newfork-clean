@@ -57,10 +57,12 @@ import {
   prepareEmployeeInvitation,
   removeEmployeeAvatar,
   removeEmployeeAccess,
+  removeEmployeeFromLocation,
   retryEmployeeInvitation,
   revokeEmployeeInvitation,
   saveEmployee,
   setEmployeeArchived,
+  setEmployeeManagedLocations,
   terminateEmployee,
   updateEmployeeRole,
   type EmployeeTerminationInput,
@@ -173,8 +175,18 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       (key !== "availability" || can(context, "availability.team_read")) &&
       (key !== "documents" || can(context, "documents.read")) &&
       (key !== "access" ||
-        context?.permissions.includes("employee_access.read") ||
-        context?.permissions.includes("employee_access.manage")),
+        (props.creating
+          ? can(context, "employee.invite")
+          : Boolean(
+              detail.data &&
+                (detail.data.allowed.invite ||
+                  detail.data.allowed.remove_access ||
+                  detail.data.allowed.change_role ||
+                  // The profile photo is removed here.
+                  detail.data.allowed.save ||
+                  // The server gives the invitation only to who may read access.
+                  detail.data.invitation !== null),
+            ))),
   );
   const activeSection =
     props.creating && (props.section !== "employment" || !readiness.namesReady)
@@ -294,10 +306,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const canSave = props.creating
     ? can(context, "employee.create")
     : (allowed?.save ?? false);
-  // ponytail: invitations stay on the access permission until the invitation
-  // services ask the core (FB-6.2 .5/.7b); the core has no action for it yet.
-  const canManageAccess =
-    context?.permissions.includes("employee_access.manage") ?? false;
+  // Inviting asks the core (employee.invite with the person, FB-6.2 .5); a new
+  // record, whether they may invite anybody at all.
+  const canManageAccess = props.creating
+    ? can(context, "employee.invite")
+    : (allowed?.invite ?? false);
   const archived = Boolean(detail.data?.archived_at);
   // Terminating an active record, restoring an archived one.
   const canChangeLifecycle = archived
@@ -463,6 +476,33 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           queryKey: ["employee-detail", workspaceId, props.employeeId],
         }),
       ]);
+    },
+    onError: (cause) => setError(errorMessage(cause)),
+  });
+  const refreshRecord = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
+      queryClient.invalidateQueries({
+        queryKey: ["employee-detail", workspaceId, props.employeeId],
+      }),
+    ]);
+  // Taking them off one location (FB-6.2 S1); the record stays.
+  const removeFromLocationMutation = useMutation({
+    mutationFn: (locationId: string) =>
+      removeEmployeeFromLocation(workspaceId, props.employeeId ?? "", locationId),
+    onSuccess: async () => {
+      setError(null);
+      await refreshRecord();
+    },
+    onError: (cause) => setError(errorMessage(cause)),
+  });
+  // A manager's locations managed without working there (S2), given whole.
+  const managedLocationsMutation = useMutation({
+    mutationFn: (locationIds: readonly string[]) =>
+      setEmployeeManagedLocations(workspaceId, props.employeeId ?? "", locationIds),
+    onSuccess: async () => {
+      setError(null);
+      await refreshRecord();
     },
     onError: (cause) => setError(errorMessage(cause)),
   });
@@ -1018,6 +1058,16 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                           detail.data.user_id === context.userId &&
                           detail.data.role_name === "Owner",
                       ),
+                      {
+                        onRemove: (locationId) =>
+                          removeFromLocationMutation.mutate(locationId),
+                        removingLocationId: removeFromLocationMutation.isPending
+                          ? (removeFromLocationMutation.variables ?? null)
+                          : null,
+                        onSaveManaged: (locationIds) =>
+                          managedLocationsMutation.mutate(locationIds),
+                        savingManaged: managedLocationsMutation.isPending,
+                      },
                       props.creating,
                     )
                   : null}
@@ -1599,6 +1649,7 @@ function renderSection(
   changingRole: boolean,
   /** The viewer is looking at their own record, and they own the workspace. */
   ownOwnerRecord: boolean,
+  locationActions: EmployeeLocationActions,
   creating = false,
 ) {
   if (section === "profile")
@@ -1626,6 +1677,7 @@ function renderSection(
         onboardingLoading={onboardingLoading}
         onReview={onReview}
         reviewing={reviewing}
+        canReview={allowed?.onboarding_review ?? false}
       />
     );
   if (section === "employment")
@@ -1636,6 +1688,8 @@ function renderSection(
         setDraft={setDraft}
         readOnly={readOnly}
         references={references}
+        detail={creating ? undefined : detail}
+        locationActions={locationActions}
       />
     );
   if (section === "availability")
@@ -1659,9 +1713,7 @@ function renderSection(
         inviteRoleId={inviteRoleId}
         onAddEmail={onAddEmail}
         readOnly={
-          Boolean(detail?.archived_at) ||
-          !canManageAccess ||
-          detail?.role_name === "Owner"
+          Boolean(detail?.archived_at) || !canManageAccess
         }
         archived={Boolean(detail?.archived_at)}
         allowed={allowed}
@@ -1684,7 +1736,10 @@ function OnboardingReviewPanel({
   loading,
   onReview,
   reviewing,
+  canReview,
 }: {
+  /** The server's answer: may the reader review this onboarding. */
+  readonly canReview: boolean;
   readonly onboarding: EmployeeOnboardingManager | null | undefined;
   readonly loading: boolean;
   readonly onReview: (
@@ -1694,9 +1749,7 @@ function OnboardingReviewPanel({
   ) => void;
   readonly reviewing: boolean;
 }) {
-  const permissions = useAuth().context?.permissions ?? [];
   // The panel reviews the legal name (profile) requirement only.
-  const canReview = permissions.includes("employees.private.manage");
   // The requirement whose correction note is being written.
   const [changesFor, setChangesFor] = useState<{
     readonly id: string;
@@ -1783,7 +1836,7 @@ function OnboardingReviewPanel({
       ) : (
         <p className="employee-panel-state">No requirements in this section.</p>
       )}
-      {activationReady && permissions.includes("employee_onboarding.review") ? (
+      {activationReady && canReview ? (
         <Button
           type="button"
           disabled={reviewing}
@@ -1836,8 +1889,11 @@ function ProfileSection({
   onboardingLoading,
   onReview,
   reviewing,
+  canReview,
 }: {
   creating?: boolean;
+  /** The server's answer: may the reader review this onboarding. */
+  canReview: boolean;
   draft: EmployeeInput;
   setDraft: React.Dispatch<React.SetStateAction<EmployeeInput>>;
   readOnly: boolean;
@@ -1860,8 +1916,8 @@ function ProfileSection({
   ) => void;
   reviewing: boolean;
 }) {
-  const canReadPrivate =
-    useAuth().context?.permissions.includes("employees.private.read") ?? false;
+  // The server gives the private contact only to who may read it (KK-35 S3).
+  const canReadPrivate = privateContact !== null;
   const profileReviewVisible =
     canReadPrivate &&
     onboarding?.requirements.some(
@@ -2030,11 +2086,21 @@ function ProfileSection({
             loading={onboardingLoading}
             onReview={onReview}
             reviewing={reviewing}
+            canReview={canReview}
           />
         </section>
       ) : null}
     </div>
   );
+}
+
+/** Taking somebody off a location and a manager's managed locations (FB-6.2 S1, S2). */
+interface EmployeeLocationActions {
+  readonly onRemove: (locationId: string) => void;
+  /** The location being taken off right now, if any. */
+  readonly removingLocationId: string | null;
+  readonly onSaveManaged: (locationIds: readonly string[]) => void;
+  readonly savingManaged: boolean;
 }
 
 function EmploymentSection({
@@ -2043,13 +2109,20 @@ function EmploymentSection({
   setDraft,
   readOnly,
   references,
+  detail,
+  locationActions,
 }: {
   creating?: boolean;
   draft: EmployeeInput;
   setDraft: React.Dispatch<React.SetStateAction<EmployeeInput>>;
   readOnly: boolean;
   references: Awaited<ReturnType<typeof loadEmployeeReferenceData>> | undefined;
+  /** The saved record; none while creating one. */
+  detail: EmployeeDetail | undefined;
+  locationActions: EmployeeLocationActions;
 }) {
+  // Where the server lets this reader take them off (employee.remove_from_location).
+  const removable = detail?.locations.filter((location) => location.removable) ?? [];
   return (
     <div className="employee-form-stack">
       {creating ? (
@@ -2106,6 +2179,37 @@ function EmploymentSection({
           }))
         }
       />
+      {removable.length > 0 ? (
+        <div className="employee-location-removals">
+          {removable.map((location) => (
+            <ConfirmButton
+              key={location.id}
+              className="danger-button"
+              type="button"
+              disabled={locationActions.removingLocationId !== null}
+              confirmLabel={`Confirm remove from ${location.name}`}
+              title="Their shifts there from now on are left open. The employee record stays."
+              onConfirm={() => locationActions.onRemove(location.id)}
+            >
+              {locationActions.removingLocationId === location.id
+                ? "Removing"
+                : `Remove from ${location.name}`}
+            </ConfirmButton>
+          ))}
+        </div>
+      ) : null}
+      {detail &&
+      (detail.allowed.set_managed_locations ||
+        detail.managed_locations.length > 0) ? (
+        <ManagedLocations
+          key={detail.managed_locations.map((location) => location.id).join()}
+          managed={detail.managed_locations}
+          options={references?.locations ?? []}
+          editable={detail.allowed.set_managed_locations}
+          saving={locationActions.savingManaged}
+          onSave={locationActions.onSaveManaged}
+        />
+      ) : null}
       <AssignmentPicker
         label="Jobs"
         required={!draft.is_remote && !draft.is_excluded_from_schedule}
@@ -2145,6 +2249,77 @@ function EmploymentSection({
           }
         />
       </label>
+    </div>
+  );
+}
+
+/**
+ * A manager's locations managed without working there (FB-6.2 S2): no shifts,
+ * no Schedule row there. The list is given whole; the server keeps it.
+ */
+function ManagedLocations({
+  managed,
+  options,
+  editable,
+  saving,
+  onSave,
+}: {
+  readonly managed: EmployeeDetail["managed_locations"];
+  readonly options: readonly EmployeeOption[];
+  readonly editable: boolean;
+  readonly saving: boolean;
+  readonly onSave: (locationIds: readonly string[]) => void;
+}) {
+  const [picked, setPicked] = useState<readonly string[]>(() =>
+    managed.map((location) => location.id),
+  );
+  const labelId = useId();
+  return (
+    <div
+      className="employee-managed-locations"
+      role="group"
+      aria-labelledby={labelId}
+    >
+      <span id={labelId}>Manages without working there</span>
+      {editable ? (
+        <>
+          {options
+            .filter(
+              (option) =>
+                !option.archived || picked.includes(option.id),
+            )
+            .map((option) => (
+              <label key={option.id}>
+                <input
+                  type="checkbox"
+                  checked={picked.includes(option.id)}
+                  disabled={saving}
+                  onChange={(event) =>
+                    setPicked((current) =>
+                      event.target.checked
+                        ? [...current, option.id]
+                        : current.filter((id) => id !== option.id),
+                    )
+                  }
+                />
+                {option.name}
+              </label>
+            ))}
+          <Button
+            type="button"
+            disabled={saving}
+            onClick={() => onSave(picked)}
+          >
+            {saving ? "Saving" : "Save managed locations"}
+          </Button>
+        </>
+      ) : (
+        <ul>
+          {managed.map((location) => (
+            <li key={location.id}>{location.name}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

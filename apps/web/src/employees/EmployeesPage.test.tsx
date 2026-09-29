@@ -61,6 +61,7 @@ const employees = [
     display_status: "active",
     archived_at: null,
     revision: 1,
+    managed_location_names: [],
   },
   {
     id: "15000000-0000-4000-8000-000000000002",
@@ -82,6 +83,7 @@ const employees = [
     display_status: "invited",
     archived_at: null,
     revision: 1,
+    managed_location_names: [],
   },
 ] satisfies EmployeeSummary[];
 

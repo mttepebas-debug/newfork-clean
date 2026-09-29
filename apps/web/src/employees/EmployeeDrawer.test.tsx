@@ -52,10 +52,12 @@ import {
   prepareEmployeeInvitation,
   removeEmployeeAccess,
   removeEmployeeAvatar,
+  removeEmployeeFromLocation,
   retryEmployeeInvitation,
   revokeEmployeeInvitation,
   saveEmployee,
   setEmployeeArchived,
+  setEmployeeManagedLocations,
   terminateEmployee,
   updateEmployeeRole,
 } from "./employee-data";
@@ -174,8 +176,10 @@ const detail = {
       name: "Main Dining",
       primary: true,
       archived: false,
+      removable: true,
     },
   ],
+  managed_locations: [],
   jobs: [
     {
       id: "22000000-0000-4000-8000-000000000001",
@@ -198,6 +202,9 @@ const detail = {
     remove_access: true,
     change_role: true,
     make_admin: true,
+    set_managed_locations: false,
+    invite: true,
+    onboarding_review: true,
   },
 } satisfies EmployeeDetail;
 
@@ -209,6 +216,9 @@ const ownRecordAllowed = {
   remove_access: false,
   change_role: false,
   make_admin: false,
+  set_managed_locations: false,
+  invite: false,
+  onboarding_review: false,
 };
 
 const refresh = vi.fn();
@@ -230,10 +240,12 @@ vi.mock("./employee-data", () => ({
   prepareEmployeeInvitation: vi.fn(),
   removeEmployeeAccess: vi.fn(),
   removeEmployeeAvatar: vi.fn(),
+  removeEmployeeFromLocation: vi.fn(),
   retryEmployeeInvitation: vi.fn(),
   revokeEmployeeInvitation: vi.fn(),
   saveEmployee: vi.fn(),
   setEmployeeArchived: vi.fn(),
+  setEmployeeManagedLocations: vi.fn(),
   terminateEmployee: vi.fn(),
   updateEmployeeRole: vi.fn(),
 }));
@@ -1352,7 +1364,7 @@ describe("EmployeeDrawer", () => {
   });
 
   it("does not make the location just unticked a Remote person's primary", async () => {
-    const second = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false };
+    const second = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false, removable: true };
     renderDrawer("employment", {
       ...detail,
       is_remote: true,
@@ -1403,7 +1415,22 @@ describe("EmployeeDrawer", () => {
   });
 
   it("shows legal name review in the profile tab when employee changes the provisional name", async () => {
-    renderDrawer("profile", detail, {
+    // The server gives the private contact to who may read it (KK-35 S3).
+    renderDrawer("profile", {
+      ...detail,
+      private_contact: {
+        legal_first_name: "Alex",
+        legal_last_name: "Kim",
+        phone: null,
+        date_of_birth: null,
+        emergency_contact_name: null,
+        emergency_contact_relationship: null,
+        emergency_contact_email: "",
+        emergency_contact_phone: null,
+        share_phone_with_teammates: false,
+        share_email_with_teammates: false,
+      },
+    }, {
       case_id: "aa000000-0000-4000-8000-000000000001",
       employee_id: employeeId,
       case_status: "submitted",
@@ -1627,6 +1654,9 @@ describe("EmployeeDrawer record actions follow the server", () => {
     remove_access: false,
     change_role: false,
     make_admin: false,
+    set_managed_locations: false,
+    invite: false,
+    onboarding_review: false,
   };
   const linked = {
     ...detail,
@@ -1744,5 +1774,121 @@ describe("EmployeeDrawer sections follow the core", () => {
     renderDrawer("profile");
     await screen.findByLabelText("First name");
     expect(getEmployeeOnboardingReview).not.toHaveBeenCalled();
+  });
+});
+
+// FB-6.2 .7b (KK-35): the drawer takes somebody off a location, edits a
+// manager's managed locations, invites and reviews onboarding only where the
+// server says so; no permission key is read on screen.
+describe("EmployeeDrawer locations and access follow the server", () => {
+  const mainDining = "11000000-0000-4000-8000-000000000001";
+  const patio = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false, removable: false };
+  const legalNameOnly = {
+    legal_first_name: "Alex",
+    legal_last_name: "Kim",
+    phone: null,
+    date_of_birth: null,
+    emergency_contact_name: null,
+    emergency_contact_relationship: null,
+    emergency_contact_email: "",
+    emergency_contact_phone: null,
+    share_phone_with_teammates: false,
+    share_email_with_teammates: false,
+  };
+  const profileReview = {
+    case_id: "aa000000-0000-4000-8000-000000000001",
+    employee_id: employeeId,
+    case_status: "submitted" as const,
+    revision: 4,
+    submitted_at: "2026-09-02T19:00:00.000Z",
+    progress_completed: 3,
+    progress_total: 3,
+    ssn_present: false,
+    requirements: [
+      {
+        id: "ab000000-0000-4000-8000-000000000001",
+        kind: "profile" as const,
+        title: "Profile and privacy",
+        description: "Legal name differs from the provisional employee name.",
+        status: "awaiting_review" as const,
+        required: true,
+        blocks_activation: true,
+        requires_review: true,
+        sort_order: 10,
+        source_id: null,
+        accepted_formats: [],
+        content_text: null,
+        content_digest: null,
+        intent_statement: null,
+        rejection_reason: null,
+      },
+    ],
+  };
+
+  it("takes somebody off a location the server lets the reader, in two clicks", async () => {
+    vi.mocked(removeEmployeeFromLocation).mockResolvedValue({ releasedShiftCount: 1, locationsLeft: 1 });
+    renderDrawer("employment", { ...detail, location_count: 2, locations: [...detail.locations, patio] });
+    const remove = await screen.findByRole("button", { name: "Remove from Main Dining" });
+    expect(screen.queryByRole("button", { name: "Remove from Patio" })).toBeNull();
+    fireEvent.click(remove);
+    expect(removeEmployeeFromLocation).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove from Main Dining" }));
+    await waitFor(() => expect(removeEmployeeFromLocation).toHaveBeenCalledWith(workspaceId, employeeId, mainDining));
+  });
+
+  it("offers no removal where the server answers no", async () => {
+    renderDrawer("employment", { ...detail, locations: [{ ...detail.locations[0]!, removable: false }] });
+    await screen.findByText("Locations");
+    expect(screen.queryByRole("button", { name: /Remove from/ })).toBeNull();
+  });
+
+  it("edits a manager's managed locations whole when the server lets the reader", async () => {
+    vi.mocked(setEmployeeManagedLocations).mockResolvedValue({ locationIds: [mainDining, patio.id] });
+    renderDrawer("employment", {
+      ...detail,
+      locations: [...detail.locations, patio],
+      managed_locations: [{ id: patio.id, name: "Patio" }],
+      allowed: { ...detail.allowed, set_managed_locations: true },
+    });
+    const group = await screen.findByRole("group", { name: "Manages without working there" });
+    const patioBox = within(group).getByLabelText("Patio") as HTMLInputElement;
+    expect(patioBox.checked).toBe(true);
+    fireEvent.click(within(group).getByLabelText("Main Dining"));
+    fireEvent.click(within(group).getByRole("button", { name: "Save managed locations" }));
+    await waitFor(() =>
+      expect(setEmployeeManagedLocations).toHaveBeenCalledWith(workspaceId, employeeId, [patio.id, mainDining]),
+    );
+  });
+
+  it("shows managed locations read-only to a reader the server does not let edit them", async () => {
+    renderDrawer("employment", { ...detail, managed_locations: [{ id: patio.id, name: "Patio" }] });
+    const group = await screen.findByRole("group", { name: "Manages without working there" });
+    expect(within(group).getByText("Patio")).toBeTruthy();
+    expect(within(group).queryByRole("checkbox")).toBeNull();
+    expect(within(group).queryByRole("button")).toBeNull();
+  });
+
+  it("offers no invitation when the server says the reader may not invite, whatever their permissions", async () => {
+    renderDrawer("profile", { ...detail, allowed: { ...detail.allowed, invite: false } });
+    await screen.findByLabelText("E-mail");
+    expect(screen.queryByRole("button", { name: "Invite" })).toBeNull();
+  });
+
+  it("offers no onboarding review when the server says no, whatever the reader's permissions", async () => {
+    renderDrawer(
+      "profile",
+      { ...detail, private_contact: legalNameOnly, allowed: { ...detail.allowed, onboarding_review: false } },
+      profileReview,
+    );
+    expect(await screen.findByText("Legal name review")).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Accept Profile and privacy" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("hides the legal name review when the server gives no private contact", async () => {
+    renderDrawer("profile", { ...detail, private_contact: null }, profileReview);
+    await screen.findByLabelText("E-mail");
+    expect(screen.queryByText("Legal name review")).toBeNull();
   });
 });
