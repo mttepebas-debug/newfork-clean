@@ -1,6 +1,6 @@
 # İlerleme planı — hesaplı (sürüm 6, 2026-09-29)
 
-Hazırlayan: `nf-planlama` (`local_c67b8d60-…`). Koordinatör: "Koordinatör — devir 2026-09-28", `local_41428574-b1a9-44cb-9a7c-cd34afc9456a`.
+Hazırlayan: `nf-planlama` (`local_c67b8d60-…`). Koordinatör: "Koordinatör el değiştirmesi", `local_243f826b-1906-491b-b1fc-1a1bdbb4316d` (2026-09-29'dan; CLAUDE.md main `3fa8bc7f`).
 Ölçüm: `origin/main` `228ff3b7`, 2026-09-29 (BL-218.3 kapandı: `.3-i`, `.3a`, `.3b`, `.3-ii` main'de `be46cd22`, main CI run 36522159307 yeşil — e2e işi bir kez yeniden koşturuldu, `tasks/BL-218.md` → Notes; üstüne hedef dışı Schedule sağ üst pencereler `228ff3b7`, FOUNDATION-B tablosunu değiştirmez). Önceki ölçüm `de80eda6`, 2026-09-28 (BL-199 kapandı, main CI yeşil run 36501225426; `10c11be5`'ten bu yana main'e yalnız BL-199 ve plan commit'leri girdi, FOUNDATION-B tablosu değişmedi); önceki ölçüm `10c11be5` (SEC-003 kod kısmı `721ea41f`, main CI yeşil run 36445247470; hosted gönderim aynı gün, koordinatör); SEC-003 commit'leri `34fc2075`, `3eeb4c11` (`nf-db`), `6887fbbc` (`nf-backend`), `d0751603`, `0d03389e`, `74e2d363` (`nf-test`) — hepsi `git cat-file` ile doğrulandı; durumlar koordinatörün 2026-09-28 güncellemesiyle. Hesap betiği: satırlar, bağımlılıklar ve puanlar bu dosyadaki tablolardır; sayıları elle değil betikle ürettim, tablo değişince aynı yolla yeniden hesaplanır.
 
 **Güncelleme kuralı (3 satır):**
@@ -136,3 +136,9 @@ FB-6.1.0 hazır sayılmaz: K7'yi (ekran turu günü) bekliyor.
 | "Check your email" ekranı main'de | SEC-003 S.D | **bitti** (`721ea41f`) |
 | Hosted veritabanı main ile aynı: BL-199 migration'ı `20260928060000` (iş arkadaşının notu çalışana gitmesin) | BL-199 kapanışı, koordinatör 2026-09-28 | **bitti 2026-09-29** — kullanıcı `20260928060000`–`100000` beş migration'ı gönderdi; koordinatör `list_migrations` ile gördü, `get_advisors` security'de yeni uyarı yok |
 **Öneri (`nf-planlama`, kullanıcı kararı değil):** kod denetiminin kalan yüksek güvenlik maddeleri — BL-270 (admin → admin erişim kaldırma), BL-271 (çıkışta önbellek), BL-276 (eski yetki kapısı) — da yayından önce kapansın. Yerleri K23 ile sorulacak.
+
+## 9. Backlog programı (2026-09-29)
+- **Ne:** kullanıcı kararıyla (2026-09-29, koordinatör aktardı) backlog önem sırasına ve yakınlığa göre gruplanıp sırayla düzeltiliyor; aynı anda en çok 2 grup, testler toplu turda. Plan: `docs/plan/tasks/BACKLOG-PROGRAM.md` (288 açık madde, 24 iş grubu + kayıt bakımı G0 + karar bekleyen + programa girmeyen 3 grup).
+- **İlk iki grup (aynı anda, dosyaca ayrık; T1 turu):** **G1** Schedule taslak ve yayın pencerelerinin davranış hataları (12 madde, en yüksek high / safe; BL-299 yanlış taslağı yayınlıyor, BL-300 klavyeyle çalışmıyor) ∥ **G2** Schedule hızlı düzenleyicinin alanları ve klavye odağı (5 madde, high / safe; BL-293 WCAG 2.4.7). G1, stil B oturumunun (`task/schedule-dialog-mockups`) pencereleriyle aynı dosyalarda: onun dalında ya da o main'e girince. Sonra G3 (bayat ekranlar, BL-271 gizlilik) ∥ G4 (zamanlanmış dışa aktarma).
+- **Tazelik:** G1–G3'ün 22 maddesi 2026-09-29'da ölçüldü (`3a31d625`): 21 geçerli, 1 değişmiş (BL-303), bayat yok. Sonraki gruplar sırası gelince.
+- **FB-6.2.1 park (kullanıcı kararı 2026-09-29):** program sürerken FOUNDATION-B'nin FB-6.2.1 adımı bekler; §4 hesabı ve FOUNDATION-B yüzdesi (%33,5) program bitene kadar değişmez. Program G7 (yetki ailesi A) FB-6.2 ile büyük ölçüde örtüşüyor; koordinatör G7'yi FB-6.2.1 açılışına bağlayabilir.
