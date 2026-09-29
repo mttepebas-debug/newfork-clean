@@ -15,7 +15,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { Navigate, useLocation, useNavigate, useParams } from "react-router";
+import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router";
 import { OnboardingDocumentStep } from "./OnboardingDocumentStep";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { useAuth } from "../auth/AuthContext";
@@ -512,6 +512,10 @@ function ProfileStep({
   const { account } = useAuth();
   const accountPhone = account?.phone ?? "";
   const accountEmail = account?.email ?? "";
+  // The account is the one source of the phone (BL-335): with one on the
+  // account this step only shows it; without one, what is typed here becomes
+  // the account's.
+  const phoneOnAccount = accountPhone !== "";
   const profileRequirement = model.requirements.find(
     (item) => item.kind === "profile",
   );
@@ -521,7 +525,7 @@ function ProfileStep({
       legal_middle_name: model.profile?.legal_middle_name ?? "",
       legal_last_name: model.profile?.legal_last_name ?? "",
       preferred_name: model.profile?.preferred_name ?? "",
-      phone: model.profile?.phone || accountPhone || "",
+      phone: phoneOnAccount ? accountPhone : (model.profile?.phone ?? ""),
       street_address: model.profile?.street_address ?? "",
       city: model.profile?.city ?? "",
       region: model.profile?.region ?? "",
@@ -538,9 +542,12 @@ function ProfileStep({
       share_email_with_teammates:
         model.profile?.share_email_with_teammates ?? false,
     }),
-    [accountPhone, model.profile],
+    [accountPhone, phoneOnAccount, model.profile],
   );
   const [profile, setProfile] = useState(initial);
+  // What is checked and sent: the account's phone when it has one, even if the
+  // account changed after this step opened.
+  const draft = phoneOnAccount ? { ...profile, phone: accountPhone } : profile;
   const [validationError, setValidationError] = useState<string | null>(null);
   const relationshipOptions = [
     "Spouse/partner",
@@ -560,12 +567,12 @@ function ProfileStep({
   );
   const mutation = useMutation({
     mutationFn: () =>
-      saveMyOnboardingProfile(workspaceId, profile, model.revision),
+      saveMyOnboardingProfile(workspaceId, draft, model.revision),
     onSuccess: onSaved,
   });
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const parsed = employeeOnboardingProfileSchema.safeParse(profile);
+    const parsed = employeeOnboardingProfileSchema.safeParse(draft);
     // The server only ever stores a whole profile, so both pages are checked
     // against the same schema; each page shows only its own complaints.
     const issue = parsed.success
@@ -729,9 +736,18 @@ function ProfileStep({
           label="Phone"
           type="tel"
           minLength={7}
-          value={profile.phone}
+          value={draft.phone}
           onChange={(value) => setProfile({ ...profile, phone: value })}
-          help="The number this workspace can reach you on."
+          readOnly={phoneOnAccount}
+          help={
+            phoneOnAccount ? (
+              <>
+                Change it in <Link to="/account/profile">Account › Profile</Link>.
+              </>
+            ) : (
+              "The number this workspace can reach you on."
+            )
+          }
         />
         <TextField
           label="Date of birth"
@@ -1016,7 +1032,7 @@ function TextField({
   readonly maxLength?: number;
   readonly minLength?: number;
   readonly readOnly?: boolean;
-  readonly help?: string;
+  readonly help?: ReactNode;
   readonly max?: string;
   /** Says so beside the label, and stops the browser demanding a value. */
   readonly optional?: boolean;
