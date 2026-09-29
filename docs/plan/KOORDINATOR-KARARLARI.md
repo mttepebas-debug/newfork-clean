@@ -248,3 +248,11 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** kimseye yeni erişim açılmıyor; belge/onboarding yardımcısı FB-6.6'nın kapsamı; T5b sınırda kalır.
 - **Geri alma:** kolay (FB-6.6 satırı kaldırınca hücre değişir).
 - **Durum:** uygulanıyor (T5b-4).
+
+### KK-34 (2026-09-30) KK-32 D1'in biçimi: `workspace.todos` çekirdekte org / read / `workspace.read`
+- **Karar:** To-do yazma eylemi çekirdekte `org` kapsamı, `read` etkisi ve `workspace.read` izniyle tanımlanır. M2'de `org/read` yöneticiye `org` verdiği için owner, admin ve yönetici workspace genelinde bugünkü gibi to-do yazar ve kapatır; çalışan `missing_permission` alır; kapalı workspace, onboarding'deki üye ve belge engeli ret alır (D2 kapanır). Pano kapısı aynı eylemi sorar. Migration yorumu "yazma eylemi, read etiketli — KK-34" der; `effect = read` etiketinin başka bir yazma kapısını atlatmadığı bir test hücresiyle sabitlenir.
+- **Reddedilenler:** to-do'yu lokasyona bağlamak (şema + ekran + davranış değişir); çekirdeğe eylem başına "yöneticiye org" bayrağı (çekirdek şekil değişikliği, daha riskli).
+- **Bedel:** bir yazma eylemi "read" etiketi taşır. `workspace.read`'i kaldırılmış özel yönetici rolü to-do yazamaz (bugün yazabiliyor ama panoyu açamıyor). Web `can('workspace.todos')` bugün çağrılmıyor.
+- **Dayanak:** KK-32 D1 (yönetici to-do yazmaya devam eder, ikiz kapı kalkar); en küçük çekirdek değişikliği; `nf-db` önerisi.
+- **Geri alma:** kolay (tek satır); çekirdek eylem başına kapsam desteği kazanırsa satır `write`'a döner.
+- **Durum:** uygulanıyor (T5b-4).
