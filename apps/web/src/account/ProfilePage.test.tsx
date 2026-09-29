@@ -14,6 +14,10 @@ import { RequestError } from "../lib/request-error";
 import { requestAvailabilityNavigation } from "../availability/availability-navigation";
 import { uploadAccountAvatar, removeAccountAvatar } from "../lib/supabase";
 import { cropAvatar } from "./avatar-crop";
+import {
+  requestPreferredName,
+  saveOwnEmploymentContact,
+} from "../employees/employee-data";
 
 vi.mock("./avatar-crop", async importOriginal => ({
   ...await importOriginal<typeof import("./avatar-crop")>(),
@@ -28,6 +32,11 @@ vi.mock("../auth/AuthContext", () => ({
     account,
     updateAccount,
   }),
+}));
+
+vi.mock("../employees/employee-data", () => ({
+  requestPreferredName: vi.fn(async () => "waiting"),
+  saveOwnEmploymentContact: vi.fn(async () => undefined),
 }));
 
 vi.mock("../lib/supabase", () => ({
@@ -93,7 +102,7 @@ describe("ProfilePage", () => {
       userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
       email: "owner@example.test",
       displayName: "Owner User",
-      phone: null,
+      phone: "+14155550142",
       avatarObjectPath: null,
       avatarUrl: null,
       theme: "system",
@@ -105,7 +114,7 @@ describe("ProfilePage", () => {
   it("saves global profile details only after the form becomes dirty", async () => {
     renderProfile();
     expect(screen.queryByLabelText("Email address")).toBeNull();
-    const submitButton = screen.getByRole("button", { name: "Save changes" });
+    const submitButton = screen.getByRole("button", { name: "Save" });
     expect(submitButton).toHaveProperty("disabled", true);
     fireEvent.change(screen.getByLabelText("Preferred name"), {
       target: { value: "Owner Updated" },
@@ -115,7 +124,7 @@ describe("ProfilePage", () => {
       expect(updateAccount).toHaveBeenCalledWith(
         "Owner Updated",
         "system",
-        null,
+        "+14155550142",
         { avatarObjectPath: null, avatarUrl: null },
       ),
     );
@@ -157,8 +166,8 @@ describe("ProfilePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
     expect(removeAccountAvatar).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", null,
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", "+14155550142",
       { avatarObjectPath: null, avatarUrl: null }));
     expect(removeAccountAvatar).toHaveBeenCalledWith(expect.anything(), account.userId, "old-path");
     expect(uploadAccountAvatar).not.toHaveBeenCalled();
@@ -171,12 +180,12 @@ describe("ProfilePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Use photo" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     vi.mocked(uploadAccountAvatar).mockRejectedValueOnce(new Error("Upload failed"));
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Upload failed");
     expect(removeAccountAvatar).not.toHaveBeenCalled();
     expect(updateAccount).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", null,
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", "+14155550142",
       { avatarObjectPath: "new-path", avatarUrl: "https://example.test/new.png" }));
     expect(removeAccountAvatar).toHaveBeenCalledWith(expect.anything(), account.userId, "old-path");
   });
@@ -196,7 +205,7 @@ describe("ProfilePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Use photo" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     updateAccount.mockRejectedValueOnce(new Error("Save response unavailable"));
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Save response unavailable");
     expect(removeAccountAvatar).not.toHaveBeenCalled();
   });
@@ -244,7 +253,7 @@ describe("ProfilePage", () => {
     const first = await screen.findByLabelText("Legal first name");
     await waitFor(() => expect(first).toHaveProperty("value", "Mert"));
     expect(getOwnLegalName).toHaveBeenCalledWith(expect.anything(), ownedWorkspaceId);
-    const save = screen.getByRole("button", { name: "Save changes" });
+    const save = screen.getByRole("button", { name: "Save" });
     expect(save).toHaveProperty("disabled", true);
     fireEvent.change(screen.getByLabelText("Legal middle name"), {
       target: { value: "Ali" },
@@ -287,7 +296,7 @@ describe("ProfilePage", () => {
     const last = await screen.findByLabelText("Legal last name");
     await waitFor(() => expect(last).toHaveProperty("value", "Tepebas"));
     fireEvent.change(last, { target: { value: "Tepebaş" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Only the owner can change this legal name.",
@@ -330,6 +339,96 @@ describe("ProfilePage", () => {
       "Your legal name could not be loaded. Reload the page to try again.",
     );
     expect(screen.queryByLabelText("Legal first name")).toBeNull();
+  });
+  function contactRecord(workspaceId: string, over: Record<string, string> = {}) {
+    return {
+      workspaceId,
+      workspaceName: "Meyhouse",
+      employeeId: `emp-${workspaceId}`,
+      preferredName: "",
+      phone: null,
+      emergencyContactName: "",
+      emergencyContactRelationship: "",
+      emergencyContactPhone: "",
+      emergencyContactEmail: "",
+      ...over,
+    };
+  }
+
+  it("keeps Save off while a required field is empty, and lets the middle and preferred names stay empty", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([workspace("owner")]);
+    vi.mocked(getOwnLegalName).mockResolvedValue({
+      firstName: "Mert",
+      middleName: "",
+      lastName: "Tepebas",
+    });
+    vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
+      contactRecord(ownedWorkspaceId, {
+        emergencyContactName: "Morgan",
+        emergencyContactRelationship: "Spouse",
+        emergencyContactPhone: "4155550199",
+      }),
+    ]);
+    renderProfile();
+    await screen.findByDisplayValue("Mert");
+    await screen.findByDisplayValue("Morgan");
+    const save = screen.getByRole("button", { name: "Save" });
+
+    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "" } });
+    expect(save).toHaveProperty("disabled", false);
+
+    fireEvent.change(screen.getByLabelText("Legal middle name"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "" } });
+    expect(save).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "415 555 0142" } });
+    expect(save).toHaveProperty("disabled", false);
+
+    fireEvent.change(screen.getByLabelText("Contact name"), { target: { value: "" } });
+    expect(save).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByLabelText("Contact name"), { target: { value: "Morgan" } });
+    fireEvent.change(screen.getByLabelText("Relationship"), { target: { value: "" } });
+    expect(save).toHaveProperty("disabled", true);
+  });
+
+  it("shows Discard only once something changed", () => {
+    renderProfile();
+    expect(screen.queryByRole("button", { name: "Discard" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Ay" } });
+    expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
+  });
+
+  it("writes one emergency contact and the preferred name to every workspace with one Save", async () => {
+    const second = "51000000-0000-4000-8000-000000000002";
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      workspace("employee"),
+      { ...workspace("employee"), id: second, name: "Ridgeline" },
+    ]);
+    vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
+      contactRecord(ownedWorkspaceId, {
+        emergencyContactName: "Morgan",
+        emergencyContactRelationship: "Spouse",
+        emergencyContactPhone: "4155550199",
+      }),
+      contactRecord(second, { workspaceName: "Ridgeline" }),
+    ]);
+    renderProfile();
+    await screen.findByDisplayValue("Morgan");
+    // No workspace names: it is one person's one contact.
+    expect(screen.queryByText("Ridgeline")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Ay" } });
+    fireEvent.change(screen.getByLabelText("Contact name"), { target: { value: "Sam" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(saveOwnEmploymentContact).toHaveBeenCalledTimes(2));
+    expect(saveOwnEmploymentContact).toHaveBeenCalledWith(
+      second,
+      `emp-${second}`,
+      expect.objectContaining({ name: "Sam", relationship: "Spouse", phone: "4155550199" }),
+    );
+    expect(requestPreferredName).toHaveBeenCalledTimes(2);
+    expect(updateAccount).toHaveBeenCalledWith("Ay", "system", "+14155550142", expect.anything());
+    expect(await screen.findByText(/manager needs to approve/)).toBeTruthy();
   });
 });
 
