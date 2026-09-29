@@ -20,8 +20,9 @@ gerekçesiyle. Ürün kararı yok.
    dokunulmadı. Bozmayla kanıtlanamadı (kare yarışı elle üretilemiyor); kanıt CI'daki hata metniyle
    birebir uyum ("Unable to find a label with the text of: Primary").
 4. **BL-195 — `NoAccessState` başlık kimliği `useId`.** Sunum dosyası ama program G13'e yazmış,
-   değişiklik tek satır; önce kırmızı test (iki kart aynı sayfada). Erişim-yok e2e senaryosu
-   ayrı karar (rapor).
+   değişiklik tek satır; önce kırmızı test (iki kart aynı sayfada). Erişim-yok e2e senaryosu:
+   koordinatör kararı (a), 2026-09-29 — önce Employees çekmecesi kapsam dışı kişide NoAccessState
+   göstersin (ürün kodu, G7), e2e ondan sonra; BL-195 o zamana kadar açık.
 5. **BL-202 — yalnız metin test edildi.** Satırda renk sınıfı yok (tazelik: değişmiş); sınıf
    eklemek sunum kararı, yapılmadı. İki testin gerçekten yakaladığı iki metin yer değiştirilerek
    kanıtlandı (ikisi kırmızı), sonra geri alındı.
