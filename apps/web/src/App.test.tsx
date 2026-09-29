@@ -564,18 +564,12 @@ vi.mock("./documents/document-data", async (importOriginal) => ({
   getDocumentAccess: vi.fn(async () => ({ restricted: false })),
 }));
 
-vi.mock("./schedule/schedule-data", () => ({
-  ScheduleRequestError: class ScheduleRequestError extends Error {
-    readonly status: number;
-    readonly body: unknown;
-
-    constructor(message: string, status: number, body: unknown) {
-      super(message);
-      this.name = "ScheduleRequestError";
-      this.status = status;
-      this.body = body;
-    }
-  },
+// Query keys and the error class come from the real module so the cache keys
+// the page writes and invalidates match production exactly (U12).
+vi.mock("./schedule/schedule-data", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./schedule/schedule-data")>();
+  return {
+  ScheduleRequestError: actual.ScheduleRequestError,
   getScheduleReadModel: vi.fn().mockResolvedValue(scheduleFixture),
   authorizeScheduleExportV2: vi.fn().mockResolvedValue(undefined),
   listScheduleDrafts: vi.fn().mockResolvedValue({ drafts: [] }),
@@ -586,23 +580,9 @@ vi.mock("./schedule/schedule-data", () => ({
     })),
   }),
   fetchPendingOps: vi.fn().mockResolvedValue({ pending_ops: [] }),
-  draftsKey: (workspaceId: string | null, weekStart: string) =>
-    ["schedule-drafts", workspaceId, weekStart] as const,
-  scheduleReadKey: (workspaceId: string | null, date: string, view: string) =>
-    ["schedule-read", workspaceId, date, view] as const,
-  pendingOpsKey: (
-    workspaceId: string | null,
-    weekStart: string,
-    locationId: string | null = null,
-    draftId: string | null = null,
-  ) =>
-    [
-      "schedule-pending-ops",
-      workspaceId,
-      weekStart,
-      locationId,
-      draftId,
-    ] as const,
+  draftsKey: actual.draftsKey,
+  scheduleReadKey: actual.scheduleReadKey,
+  pendingOpsKey: actual.pendingOpsKey,
   fetchSchedulePublicationStatus: vi.fn().mockResolvedValue({
     week_start: scheduleFixture.week_start,
     locations: [
@@ -766,7 +746,8 @@ vi.mock("./schedule/schedule-data", () => ({
     ),
   deleteScheduleExportSchedule: vi.fn().mockResolvedValue(undefined),
   deleteScheduleExportPreset: vi.fn(),
-}));
+  };
+});
 
 vi.mock("./schedule/hooks/useScheduleViewerPresence", () => ({
   useScheduleViewerPresence: () => [],
@@ -908,13 +889,23 @@ describe("App", () => {
       container.querySelectorAll(".sidebar-footer .nav-item"),
     ).map((item) => item.lastElementChild?.textContent);
     expect(footerLinks).toEqual(["Settings", "Account", "Sign out"]);
-    fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+  }, 40000);
+
+  // Each first visit to a lazy route transforms its module graph; under a
+  // loaded machine that alone can pass the file-wide 5 s async timeout
+  // (BL-120), so route headings get their own bound.
+  it("opens Employees, Settings and Account from the sidebar", async () => {
+    const lazyRoute = { timeout: 15000 };
+    window.history.pushState({}, "", "/app/employees");
+    testAuth.role = "owner";
+    render(<App />);
+
     expect(
-      await screen.findByRole("heading", { name: "Employees" }),
+      await screen.findByRole("heading", { name: "Employees" }, lazyRoute),
     ).toBeTruthy();
     fireEvent.click(sidebar().getByRole("link", { name: "Settings" }));
     expect(
-      await screen.findByRole("heading", { name: "General" }),
+      await screen.findByRole("heading", { name: "General" }, lazyRoute),
     ).toBeTruthy();
     const settingsNav = within(
       screen.getByRole("navigation", { name: "Organization settings" }),
@@ -929,7 +920,7 @@ describe("App", () => {
     expect(settingsNav.getByRole("link", { name: "Support" })).toBeTruthy();
     fireEvent.click(screen.getByRole("link", { name: "Acknowledgements" }));
     expect(
-      await screen.findByRole("heading", { name: "Acknowledgements" }),
+      await screen.findByRole("heading", { name: "Acknowledgements" }, lazyRoute),
     ).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Templates" })).toBeTruthy();
     expect(
@@ -937,13 +928,13 @@ describe("App", () => {
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("link", { name: "Roles & permissions" }));
     expect(
-      await screen.findByRole("heading", { name: "Roles & permissions" }),
+      await screen.findByRole("heading", { name: "Roles & permissions" }, lazyRoute),
     ).toBeTruthy();
     fireEvent.click(sidebar().getByRole("link", { name: "Account" }));
     expect(
-      await screen.findByRole("heading", { name: "Profile" }),
+      await screen.findByRole("heading", { name: "Profile" }, lazyRoute),
     ).toBeTruthy();
-  }, 40000);
+  }, 60000);
 
   it("shows reference-style visible and total hour comparison when filters hide assigned shifts", async () => {
     const prepType = {
@@ -1062,7 +1053,7 @@ describe("App", () => {
 
   it("shows the no-access card, not the raw error, when the API refuses the schedule", async () => {
     vi.mocked(getScheduleReadModel).mockRejectedValue(
-      new ScheduleRequestError("Forbidden by authz.out_of_scope", 404, {
+      new ScheduleRequestError("Forbidden by authz.out_of_scope", 403, {
         reason: "authz.out_of_scope",
       }),
     );
@@ -1970,7 +1961,10 @@ describe("App", () => {
         status: "stale_baseline",
       }),
     );
-    saveMock.mockResolvedValueOnce(savedDraft);
+    // The retry answers late, as it does on a loaded machine (BL-175).
+    saveMock.mockImplementationOnce(
+      () => new Promise((resolve) => setTimeout(() => resolve(savedDraft), 300)),
+    );
 
     window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
     render(<App />);
@@ -1993,9 +1987,11 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
 
     await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(2));
-    expect(
-      screen.queryByRole("dialog", { name: "Schedule save failed" }),
-    ).toBeNull();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Schedule save failed" }),
+      ).toBeNull(),
+    );
     expect(screen.queryByText("Editing draft")).toBeNull();
   });
 
