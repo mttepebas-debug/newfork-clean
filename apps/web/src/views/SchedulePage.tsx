@@ -1221,8 +1221,10 @@ export function SchedulePage({
   };
   const requestDiscardEditSession = () => {
     if (!context || !session || isDiscardingEditSession) return;
-    // Nothing to lose: leave edit mode without asking.
-    if (!hasUnsavedChanges) {
+    // Nothing to lose (no saved or in-flight change): leave edit mode without asking.
+    const dropInFlight =
+      dropReview.pending || dropReview.optimisticOps.length > 0;
+    if (!hasUnsavedChanges && !dropInFlight) {
       discardEditSession();
       return;
     }
