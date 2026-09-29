@@ -27,16 +27,22 @@ tasarım dilinde (yalnız `--theme-*` token'ları, `@newfork/ui` Button /
 ConfirmButton; yeni renk yok). Değişiklik başka sayfalara yansımaz; ortak
 bileşene yalnız Account'un kullandığı bir seçenek eklenebilir.
 
-## Durum
+## Durum (güncelleme 2026-09-29, devralan oturum)
 
-- **Bitti (kullanıcı gördü, beğendi):** çerçeve (sol menü, başlık) + Profile.
-  Commit'ler branch'te, son `db9473e7`, origin'e push'lu.
-- **Sıradaki (başlanmadı, kararları verildi):** Security, Preferences,
-  Notifications, Workspaces, Documents. Kararlar K-1…K-8
-  (`ACCOUNT-REDESIGN-kararlar.md`). Kod yazılmadı.
-- İnceleme (nf-guvenlik, nf-gorsel-qa), tam kapı, e2e: hiçbiri koşulmadı.
-  main'e alınmadı. Branch `d66f42c2` üstünde; main ilerledi (`3fa8bc7f`),
-  sonda rebase gerekir (REUSE.md → KARARLAR.md adı değişti).
+- **Bitti:** çerçeve + Profile (kullanıcı gördü) ve kalan beş sekme: Security,
+  Preferences, Notifications, Workspaces, Documents. Kararlar K-1…K-13
+  (`ACCOUNT-REDESIGN-kararlar.md`). Commit'ler branch'te, origin'e push'lu.
+- **Test (toplu, 2026-09-29):** `vitest run src/account src/documents
+  src/employees` 278/278 yeşil; `typecheck` ve `eslint src/account
+  src/documents` temiz. e2e koşulmadı.
+- **Koordinatörün işi (henüz yapılmadı):** nf-guvenlik ve nf-gorsel-qa
+  incelemesi, tam kapı, e2e (`account-password-change`,
+  `owner-legal-name-setup`), main'e alma. Branch `d66f42c2` tabanlı; main
+  28 commit ilerde ama çakışma yok (`git merge-tree` temiz, 2026-09-29).
+  Rebase sonrası `docs/plan/KARARLAR.md` Account → Profile maddesindeki
+  "Save changes" → "Save" düzeltilir (bu branch'te dosya hâlâ REUSE.md).
+- Ekran görüntüleri: `artifacts/arayuz/account-redesign/{before,after}/`
+  (worktree içinde, git'te değil).
 
 ## Profile'da kurulan ilkeler (diğer sekmelere uygula)
 
@@ -60,7 +66,7 @@ bileşene yalnız Account'un kullandığı bir seçenek eklenebilir.
 6. Telefonda: sekmeler 44px, input 44px, "Back to workspace / Sign out"
    sekmelerin üstünde.
 
-## Sekme sekme yapılacaklar
+## Sekme sekme (yapıldı; ayrıntı ve sapmalar K-9…K-13)
 
 - **Security** (`account/SecurityPage.tsx`): K-3, K-4, K-5. Email satırındaki
   posta ikonu kalkar; tam genişlik "Change password" sağa, normal boy
