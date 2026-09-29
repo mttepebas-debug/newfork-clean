@@ -450,6 +450,21 @@ describe("EmployeeDrawer", () => {
     expect(saveEmployee).not.toHaveBeenCalled();
   });
 
+  // BL-278 (2): termination releases published shifts; Schedule and the
+  // dashboard must not keep showing them.
+  it("refreshes Schedule and the dashboard after a termination", async () => {
+    const { client } = renderDrawer("employment");
+    client.setQueryData(["schedule-read", workspaceId, "2026-09-01"], { shifts: [] });
+    client.setQueryData(["workspace-dashboard", workspaceId], { pending: 1 });
+    fireEvent.click(await screen.findByRole("button", { name: "Terminate employee" }));
+    const dialog = screen.getByRole("dialog", { name: "Terminate employee" });
+    fireEvent.change(within(dialog).getByLabelText("Effective date and time"), { target: { value: "2026-09-01T12:00" } });
+    fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Employment ended" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm termination" }));
+    await waitFor(() => expect(client.getQueryState(["schedule-read", workspaceId, "2026-09-01"])?.isInvalidated).toBe(true));
+    expect(client.getQueryState(["workspace-dashboard", workspaceId])?.isInvalidated).toBe(true);
+  });
+
   it("terminates with archived location and job without reassigning or saving", async () => {
     renderDrawer("employment", {
       ...detail,

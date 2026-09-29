@@ -71,6 +71,7 @@ import {
   firstJobOutsideManagement,
 } from "./employee-create-flow";
 import { registerEmployeeHistoryGuard } from "./employee-history-guard";
+import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 
 const sections = [
   ["profile", "Profile", UserRound],
@@ -359,6 +360,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         queryClient.invalidateQueries({
           queryKey: ["employee-detail", workspaceId, props.employeeId],
         }),
+        // Released shifts leave Schedule, the dashboard and the hub.
+        refreshExchangeSurfaces(queryClient, workspaceId),
       ]);
       setTerminationOpen(false);
       allowNextDraftRefreshRef.current = true;
@@ -3033,6 +3036,11 @@ export function PendingPreferredNameRow({
       });
       await cache.invalidateQueries({ queryKey: ["employee-detail"] });
     },
+    // Someone may have answered it already; show the current list.
+    onError: () =>
+      cache.invalidateQueries({
+        queryKey: ["preferred-names-pending", workspaceId],
+      }),
   });
   const waiting = (pending.data ?? []).find(
     (request) => request.employeeId === employeeId,
@@ -3062,6 +3070,11 @@ export function PendingPreferredNameRow({
           Leave it
         </Button>
       </div>
+      {decide.error ? (
+        <p className="employee-field-error" role="alert">
+          {errorMessage(decide.error)}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -98,6 +98,16 @@ describe("a preferred name waiting for an answer", () => {
     );
   });
 
+  // BL-278 (8): a refused answer used to vanish; the manager thought it saved.
+  it("says so when the answer does not go through", async () => {
+    vi.mocked(decidePreferredName).mockRejectedValue(new Error("This request was already answered."));
+    renderRow();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Use it" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("This request was already answered.");
+  });
+
   it("shows nothing at all for somebody who asked for nothing", async () => {
     vi.mocked(listPendingPreferredNames).mockResolvedValue([]);
     const { container } = renderRow();
