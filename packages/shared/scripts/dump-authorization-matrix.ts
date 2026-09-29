@@ -40,7 +40,7 @@ select json_build_object(
   'coreActionKeys', (select json_agg(a.key order by a.key) from app_private.authz_actions a),
   'personas', (select json_agg(json_build_object(
       'label', p.label, 'tenant', p.tenant, 'class', p.class, 'status', p.status,
-      'locs', p.locs, 'permissionsRemoved', p.permissions_removed) order by p.label) from persona p),
+      'locs', p.locs, 'permissionsRemoved', p.permissions_removed, 'manages', p.manages) order by p.label) from persona p),
   'targets', (select json_agg(json_build_object(
       'label', t.label, 'kind', t.kind, 'tenant', t.tenant, 'locs', t.locs,
       'class', t.class, 'holder', t.holder) order by t.label) from target t),

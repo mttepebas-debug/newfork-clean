@@ -31,6 +31,7 @@ export const authzActionKeys = [
   "employee.read",
   "employee.references.read",
   "employee.remove_access",
+  "employee.remove_from_location",
   "employee.request_preferred_name",
   "employee.save",
   "employee.terminate",
@@ -109,11 +110,13 @@ export const targetedAuthzActions = {
   "employee.archive": { person: true, permission: "employees.archive" },
   "employee.change_role": { person: true, permission: "employees.manage" },
   "employee.create": { permission: "employees.manage" },
+  "employee.decide_preferred_name": { person: true, permission: "employees.manage" },
   "employee.list": { person: true, permission: "employees.read" },
   "employee.make_admin": { person: true, permission: null, ownerOnly: true },
   "employee.read": { person: true, permission: "employees.read" },
   "employee.references.read": { permission: "employees.read" },
   "employee.remove_access": { person: true, permission: "employees.manage" },
+  "employee.remove_from_location": { person: true, permission: "employees.manage" },
   "employee.save": { person: true, permission: "employees.manage" },
   "employee.terminate": { person: true, permission: "employees.archive" },
   "exchange.approve": { person: true, permission: "schedule.shift_change_requests.manage" },
@@ -166,7 +169,10 @@ export interface AuthzActor {
    * none is not a member at all.
    */
   readonly status: "active" | "restricted" | "suspended" | "invited" | "removed" | "none";
-  /** Where they work. A manager's reach; an empty list reaches nowhere. */
+  /**
+   * Where they work and where they only manage. A manager's reach; an empty
+   * list reaches nowhere.
+   */
   readonly locationIds: readonly string[];
   readonly permissions: readonly string[];
 }
@@ -221,7 +227,7 @@ export function expected<A extends TargetedAuthzAction>(
   const high = actor.role === "owner" || actor.role === "admin";
   const places = target?.locations;
   const listed = Array.isArray(places) ? (places as readonly string[]) : null;
-  // A manager's reach: where they work.
+  // A manager's reach: where they work or manage.
   const shares = listed !== null && listed.some((id) => actor.locationIds.includes(id));
   const covers =
     listed !== null && listed.length > 0 && listed.every((id) => actor.locationIds.includes(id));
@@ -239,10 +245,10 @@ export function expected<A extends TargetedAuthzAction>(
       return high || shares;
 
     case "employee.save":
-      // An admin does not edit the owner's record; a manager edits neither
-      // their own record nor a peer's or a senior's.
+      // An admin edits neither the owner's record nor another admin's (KK-24);
+      // a manager edits neither their own record nor a peer's or a senior's.
       if (actor.role === "owner") return true;
-      if (actor.role === "admin") return person?.role !== "owner";
+      if (actor.role === "admin") return person?.role !== "owner" && (isSelf || person?.role !== "admin");
       if (!shares || isSelf) return false;
       return targetRank < rankOf.manager;
 
@@ -265,6 +271,21 @@ export function expected<A extends TargetedAuthzAction>(
       if (isSelf) return false;
       if (actor.role === "owner") return true;
       return actor.role === "admin" && targetRank < rankOf.admin;
+
+    case "employee.remove_from_location":
+      // A manager takes an employee off a location they manage; the record
+      // stays. Nobody removes themselves or a peer.
+      if (isSelf) return false;
+      if (actor.role === "owner") return true;
+      if (actor.role === "admin") return targetRank < rankOf.admin;
+      return person?.role === "employee" && covers;
+
+    case "employee.decide_preferred_name":
+      // A request goes one rank up and nobody answers their own.
+      if (isSelf) return false;
+      if (actor.role === "owner") return true;
+      if (actor.role === "admin") return targetRank < rankOf.admin;
+      return person?.role === "employee" && shares;
 
     case "employee.make_admin":
       return !isSelf && person?.role !== "owner";

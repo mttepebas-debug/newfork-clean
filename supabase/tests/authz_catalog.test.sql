@@ -21,10 +21,11 @@ select cmp_ok(
 );
 
 -- Pretends to be the caller by writing the JWT subject: the bridges that let a
--- service_role call reuse a browser-era function. Target 0.
+-- service_role call reuse a browser-era function. Target 0. FB-6.2.3 took
+-- Employees' two read bridges (43 -> 41).
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'set_config\(\s*''request\.jwt\.claim'),
-  '<=', 43, 'functions that write request.jwt.claim only go down'
+  '<=', 41, 'functions that write request.jwt.claim only go down'
 );
 
 -- Decides scope or rank on its own instead of asking the core. Target 0
@@ -44,10 +45,11 @@ select cmp_ok(
 );
 
 -- Policies that read the JWT themselves rather than through the core.
+-- FB-6.2.3: memberships are read through rls_can (11 -> 10).
 select cmp_ok(
   (select count(*)::integer from pg_policies
    where schemaname = 'public' and (qual ~ 'auth\.uid' or with_check ~ 'auth\.uid')),
-  '<=', 11, 'policies that call auth.uid() only go down'
+  '<=', 10, 'policies that call auth.uid() only go down'
 );
 
 -- Work the product defers to commit. Stage 4b removed the three triggers that
@@ -75,11 +77,11 @@ select is(
 
 -- A 42501 that does not say which reason: every raise statement with 42501
 -- and no hint (BL-276). Measured 2026-09-29 on 20260929190000: 255 in 152
--- functions. Target 0.
+-- functions; 253 after FB-6.2.3. Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 255, 'refusals without an authz hint only go down'
+  '<=', 253, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or
