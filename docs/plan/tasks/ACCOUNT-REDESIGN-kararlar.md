@@ -158,3 +158,16 @@ Branch `task/account-redesign`, worktree `../newfork-wt/account-redesign`.
   numara hesaba yazılır. Ok işareti olarak "›" kullanıldı (Security'deki
   "Account › Workspaces" ile aynı). Veri, ekranın zaten okuduğu
   `useAuth().account.phone`'dan; yeni API ucu yok. Geri alma: kolay.
+- **K-23. Kurulumu bitmemiş workspace'in acil durum kişisi Profile'da form
+  değil, not.** e2e `owner-legal-name-setup` bunu yakaladı: kurulumun 2.
+  adımındaki yeni sahip Account › Profile'da acil durum formunu görüyor,
+  dolduruyor ve "could not be saved in New workspace" alıyordu. Veritabanı
+  fonksiyonu aynı girdiyi kabul ediyor (rollback'li denemeyle ölçüldü);
+  reddeden, kurulum bitene kadar kapalı olan workspace'in çalışan uçları.
+  Kural, çalışanın yarım onboarding'i için zaten olanla aynı: o workspace
+  için form yok; "Finish setting up this workspace, then you can add your
+  emergency contact. Continue it in Account › Workspaces." notu (bağlantılı).
+  Kural tek yerde: `unfinishedSetup` WorkspacesPage'den `components.tsx`'e
+  taşındı, iki sayfa onu çağırıyor. Preferred name istekleri de aynı
+  listeden gittiği için o workspace'e gönderilmez. API'nin bu durumda
+  sahibe izin verip vermemesi nf-backend kararı (rapora yazıldı).

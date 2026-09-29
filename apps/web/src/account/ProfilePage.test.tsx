@@ -98,6 +98,8 @@ describe("ProfilePage", () => {
     Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
     HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
     vi.mocked(uploadAccountAvatar).mockResolvedValue({ avatarObjectPath: "new-path", avatarUrl: "https://example.test/new.png" });
+    // clearAllMocks keeps a test's own answers; each test says which workspaces it has.
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
     account = {
       userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
       email: "owner@example.test",
@@ -495,6 +497,33 @@ describe("ProfilePage", () => {
     );
     expect(requestPreferredName).toHaveBeenCalledTimes(1);
     expect(requestPreferredName).toHaveBeenCalledWith(second, `emp-${second}`, "Ay");
+  });
+
+  it("asks an owner to finish setting up a workspace before its emergency contact", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      { ...workspace("owner"), onboarding: { status: "incomplete" as const, currentStep: 2 } },
+    ]);
+    vi.mocked(getOwnLegalName).mockResolvedValue({
+      firstName: "Jordan",
+      middleName: "",
+      lastName: "Rivera",
+    });
+    vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
+      contactRecord(ownedWorkspaceId),
+    ]);
+    renderProfile();
+    await screen.findByDisplayValue("Jordan");
+
+    // Its employee routes are shut until setup is done, so no form to refuse.
+    expect(await screen.findByText(/Finish setting up this workspace/)).toBeTruthy();
+    expect(screen.queryByLabelText("Contact name")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Account › Workspaces" }).getAttribute("href"),
+    ).toBe("/account/workspaces");
+    expect(screen.queryByText(/To save, fill in/)).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Legal first name"), { target: { value: "Jordana" } });
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
   });
 
   it("says which required fields are missing while Save is off", async () => {
