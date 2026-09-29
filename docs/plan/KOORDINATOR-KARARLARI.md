@@ -191,3 +191,9 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Dayanak:** CLAUDE.md §9 ve kullanıcının genel kuralı "eski veri korunmaz" (canlı veri yok; kurala uymayan kaydı kuran test silinir). G12 işçisinin ölçümü (`docs/plan/tasks/G12-kararlar.md`).
 - **Geri alma:** düşük.
 - **Durum:** BL-248 silmesi sonraki G12 turunda; BL-094 T4 kapanışında kapanır.
+
+### KK-26 (2026-09-29) G1'in kalan üç web maddesi G3 main'e girince başlar
+- **Karar:** BL-193 (Schedule'da ham doğrulama hatası), BL-324 (taslak okuması düşünce ızgara hatasız boş) ve `SchedulePage.tsx` `followUpAfterUnpublish` onError'unun ham `error.message`'ı G1 işçisine verildi, ama iş G3 (`task/g3-stale-screens`) main'e girdikten sonra güncel `origin/main`'den başlar.
+- **Dayanak:** G3 dalı `SchedulePage.tsx` ve `schedule-data.ts`'e dokunuyor (`e66ba44b`, ölçüm 2026-09-29); CLAUDE.md §4 "aynı dosyada iki rol aynı anda çalışmaz". G1 işçisi boşta; bekleme hattı durdurmuyor.
+- **Geri alma:** kolay (yalnız sıra).
+- **Durum:** uygulanıyor; G1 işçisine 2026-09-29 gece bildirildi.
