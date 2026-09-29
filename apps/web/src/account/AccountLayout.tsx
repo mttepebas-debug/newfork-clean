@@ -15,6 +15,7 @@ import { useAuth } from "../auth/AuthContext";
 import "./account.css";
 import { requestAvailabilityNavigation } from "../availability/availability-navigation";
 import { AccountAvatar } from "./AccountAvatar";
+import { AccountVariantSwitcher, useAccountVariant } from "./AccountVariantSwitcher";
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
 
 /**
@@ -62,6 +63,7 @@ export default function AccountLayout() {
     enabled: Boolean(account),
   });
   const waiting = attention.data ?? { documents: 0, workspaces: 0 };
+  const variant = useAccountVariant();
 
   useEffect(() => {
     if (contentRef.current) contentRef.current.scrollTop = 0;
@@ -75,13 +77,14 @@ export default function AccountLayout() {
   }, [pathname]);
 
   return (
-    <div className="account-shell">
+    <div className="account-shell" data-account-variant={variant}>
       <div className="account-layout-grid">
         <aside className="account-sidebar" aria-label="Account navigation">
         <div className="account-identity">
           <AccountAvatar globalUrl={account?.avatarUrl} name={account?.displayName ?? "Account"} className="account-avatar" />
           <div>
             <strong>{account?.displayName ?? "Account"}</strong>
+            {account?.email ? <span>{account.email}</span> : null}
           </div>
         </div>
         <nav ref={navRef} aria-label="Account">
@@ -129,18 +132,12 @@ export default function AccountLayout() {
         </div>
         </aside>
         <main className="account-content-scroll" ref={contentRef}>
-          <header className="account-overview-header">
-            <div>
-              <span className="account-eyebrow">Personal settings</span>
-              <h1>Account</h1>
-              <p>Manage the details and preferences that follow you across every workspace.</p>
-            </div>
-          </header>
           <div className="account-main">
             <Outlet />
           </div>
         </main>
       </div>
+      <AccountVariantSwitcher />
     </div>
   );
 }
