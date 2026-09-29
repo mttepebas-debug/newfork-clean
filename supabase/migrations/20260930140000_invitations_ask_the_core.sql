@@ -168,6 +168,15 @@ begin
     raise exception 'employee requires a location before invitation' using errcode = '22023';
   end if;
 
+  -- Inviting again takes back what was waiting: only an invitation the actor
+  -- could take back themselves (nf-guvenlik O-2).
+  if exists (
+    select 1 from public.employee_invitations pending
+    where pending.employee_id = target_employee_id and pending.status = 'pending'
+      and not app_private.can_invite_with_role(actor_user_id, target_workspace_id, pending.role_id)
+  ) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.invite';
+  end if;
   update public.employee_invitations
   set status = 'revoked', revoked_at = now(), updated_at = now()
   where employee_id = target_employee_id and status = 'pending';
@@ -328,15 +337,20 @@ as $$
 declare
   invitation_row public.employee_invitations%rowtype;
 begin
+  -- Asked before the lock (nf-guvenlik D-c); an unknown invitation has no
+  -- person and gets the answer one out of reach gets.
   select * into invitation_row
   from public.employee_invitations
   where id = target_invitation_id
-    and workspace_id = target_workspace_id
-  for update;
+    and workspace_id = target_workspace_id;
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.invite', target_person => invitation_row.employee_id);
   if not app_private.can_invite_with_role(actor_user_id, target_workspace_id, invitation_row.role_id) then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.invite';
   end if;
+  select * into invitation_row
+  from public.employee_invitations
+  where id = target_invitation_id
+  for update;
   if invitation_token is null
     or char_length(invitation_token) not between 32 and 256 then
     raise exception 'valid invitation token required' using errcode = '22023';
@@ -373,15 +387,20 @@ as $$
 declare
   invitation_row public.employee_invitations%rowtype;
 begin
+  -- Asked before the lock (nf-guvenlik D-c); an unknown invitation has no
+  -- person and gets the answer one out of reach gets.
   select * into invitation_row
   from public.employee_invitations
   where id = target_invitation_id
-    and workspace_id = target_workspace_id
-  for update;
+    and workspace_id = target_workspace_id;
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.invite', target_person => invitation_row.employee_id);
   if not app_private.can_invite_with_role(actor_user_id, target_workspace_id, invitation_row.role_id) then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.invite';
   end if;
+  select * into invitation_row
+  from public.employee_invitations
+  where id = target_invitation_id
+  for update;
   if delivery_result not in ('sent', 'failed') then
     raise exception 'valid invitation delivery result required' using errcode = '22023';
   end if;
