@@ -186,6 +186,40 @@ describe("PublishScheduleDialog", () => {
     expect(document.querySelector(".schedule-publication-summary")).toBeNull();
   });
 
+  // BL-299: the old draft's check must not carry the new draft into review.
+  it("does not move on with the old draft's check when the new draft's check fails", async () => {
+    const onPreview = vi.fn()
+      .mockResolvedValueOnce(preview)
+      .mockRejectedValue(new Error("Preview failed"));
+    render(<PublishScheduleDialog drafts={[draft, activeDraft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={onPreview} onPublish={vi.fn()} />);
+    await waitFor(() => expect(document.querySelector(".schedule-publication-summary")).not.toBeNull());
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Saved draft"), { target: { value: activeDraft.id } });
+    });
+    await waitFor(() => expect(onPreview).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    });
+
+    expect(screen.queryByTestId("schedule-publish-preview")).toBeNull();
+    expect(onPreview).toHaveBeenCalledTimes(3);
+    expect(onPreview.mock.calls[2]![0]).toBe(activeDraft.id);
+  });
+
+  // BL-108: a live location with no shifts is still published.
+  it("calls a published location with no live shifts published", async () => {
+    const empty: SchedulePublicationPreview = {
+      ...preview,
+      locations: [{ ...preview.locations[0]!, current_shift_count: 0 }],
+    };
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(empty)} onPublish={vi.fn()} />);
+    await waitFor(() => expect(document.querySelector(".schedule-publication-summary")).not.toBeNull());
+
+    expect(screen.queryByText("Not published yet")).toBeNull();
+    expect(screen.getByText("Published now")).toBeTruthy();
+  });
+
   it("continues a changed warn-only publication once with current evidence and unchanged recipients", async () => {
     const onPublish = vi.fn().mockRejectedValueOnce(staleError(warnPreview)).mockResolvedValue({});
     await startPublication(onPublish);
