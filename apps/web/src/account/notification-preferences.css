@@ -189,6 +189,15 @@
     padding-left: 12px;
   }
 
+  .notification-preference-list {
+    --notification-disclosure-width: 44px;
+  }
+
+  .notification-disclosure {
+    width: 44px;
+    height: 44px;
+  }
+
   /* A thumb needs 44px: the whole cell answers the tap, the box grows a little. */
   .notification-channel-toggle {
     min-height: 44px;
