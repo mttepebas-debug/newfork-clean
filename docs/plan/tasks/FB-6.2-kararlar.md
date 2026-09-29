@@ -156,6 +156,12 @@ içinde (hiçbir DB'ye uygulanmadı). Testler: yeni `people_behind_the_catalog_a
   bildir**. Dikkat: eski kural manager'a yalnız `access_class='employee'` hedefi veriyordu; `onboarding.review` rank_below +
   no_self — owner kendi kaydı ve admin→admin farkı olabilir, ölç. `invitations_on_the_core.test.sql` `can_manage_employee_record`'u
   anıyor (kontrol et). Fonksiyonun geri kalanı FB-6.6'da. Böylece Done when 3 tamamlanır.
+- **T5b-4 onboarding satırı kapandı (2026-09-30):** `20260930170000_onboarding_review_asks_the_core.sql` iki satırı
+  `app_private.authorize(…, 'onboarding.review', target_person => …)` ile değiştirdi, `can_manage_employee_record` silindi
+  (başka çağıranı yoktu) → `retired_objects_stay_gone`. Kilit `onboarding_review_on_the_core.test.sql` (17 hücre). İzin/ret
+  kümesi eskiyle aynı; retler artık nedenini söylüyor. Tek fark hücre 5: yalnız yöneten yönetici (KK-29) çekirdekten geçer,
+  FB-6.6'nın `service_actor_can_access_employee` satırında `P0002` alır (önce ipuçsuz 42501) — KK-33, FOUNDATION-B FB-6.6
+  satırına not. Sayaçlar: auth.uid 25→24, jwt 26→25, kapsam/rütbe 43→42, ipuçsuz 42501 177→176.
 - Deneme düzeneği aynı (bkz. `.4` notu); scratchpad'deki `t.sh` = dalın uygulanmamış migration'ları + ek migration'lar +
   builder + test tek işlemde.
 

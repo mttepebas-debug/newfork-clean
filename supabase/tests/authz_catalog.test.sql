@@ -14,31 +14,32 @@ from pg_proc p
 where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace);
 
 -- Reads the signed-in user from the JWT; at the end only app_private.rls_can()
--- (stage 4a), which this count leaves out. FB-6.2.6 dropped can_access_employee (27 -> 25).
+-- (stage 4a), which this count leaves out. FB-6.2.6 dropped can_access_employee (27 -> 25)
+-- and can_manage_employee_record (25 -> 24).
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'auth\.uid\(\)' and name <> 'rls_can'),
-  '<=', 25, 'functions that call auth.uid() only go down'
+  '<=', 24, 'functions that call auth.uid() only go down'
 );
 
 -- Pretends to be the caller by writing the JWT subject: the bridges that let a
 -- service_role call reuse a browser-era function. Target 0. FB-6.2.3 took
 -- Employees' two read bridges (43 -> 41), FB-6.2.4 the four write bridges and
 -- the onboarding activation's (41 -> 36), FB-6.2.5 the four invitation services' (36 -> 32),
--- FB-6.2.6 Settings > Jobs' six and catalog deletion's (32 -> 26).
+-- FB-6.2.6 Settings > Jobs' six and catalog deletion's (32 -> 26), the onboarding review's (26 -> 25).
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'set_config\(\s*''request\.jwt\.claim'),
-  '<=', 26, 'functions that write request.jwt.claim only go down'
+  '<=', 25, 'functions that write request.jwt.claim only go down'
 );
 
 -- Decides scope or rank on its own instead of asking the core. Target 0
 -- outside the core. FB-6.2.4: Employees' writes and the membership guard ask
 -- the core (59 -> 52); FB-6.2.5 the invitation's role rule and the owner's setup (52 -> 47);
 -- FB-6.2.6 Workspace home's counts and the Schedule's week list, BL-155 (47 -> 45), and
--- can_access_employee's two copies (45 -> 43).
+-- can_access_employee's two copies (45 -> 43), can_manage_employee_record (43 -> 42).
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 43, 'functions with their own scope or rank logic only go down'
+  '<=', 42, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
@@ -83,11 +84,12 @@ select is(
 -- A 42501 that does not say which reason: every raise statement with 42501
 -- and no hint (BL-276). Measured 2026-09-29 on 20260929190000: 255 in 152
 -- functions; 253 after FB-6.2.3; 226 after FB-6.2.4; 205 after FB-6.2.5; 189 after FB-6.2.6's
--- jobs, 181 after its dashboard, 177 after its refusals (BL-354). Target 0.
+-- jobs, 181 after its dashboard, 177 after its refusals (BL-354),
+-- 176 after the onboarding review. Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 177, 'refusals without an authz hint only go down'
+  '<=', 176, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or

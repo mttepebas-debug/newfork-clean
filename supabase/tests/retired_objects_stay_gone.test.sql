@@ -246,6 +246,10 @@ insert into retired (kind, name, step) values
 -- the old "may I see this person" helper (both copies) goes.
 insert into retired (kind, name, step) values
   ('function', 'can_access_employee', 'FB-6.2.6');
+-- FB-6.2.6: the onboarding review asks the core; the old "may I manage this
+-- record" helper had no other caller.
+insert into retired (kind, name, step) values
+  ('function', 'can_manage_employee_record', 'FB-6.2.6');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

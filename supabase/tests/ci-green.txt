@@ -137,3 +137,4 @@ supabase/tests/invitations_on_the_core.test.sql
 supabase/tests/preferred_names_on_the_core.test.sql
 supabase/tests/people_behind_the_catalog_ask_the_core.test.sql
 supabase/tests/refusals_answer_alike.test.sql
+supabase/tests/onboarding_review_on_the_core.test.sql
