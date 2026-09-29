@@ -126,6 +126,20 @@ select is(
     tests.user('m:emre'), tests.id('m'), tests.id('m:emre'), 'Em')),
   'allowed', 'the person asks on their own record'
 );
+-- The core's gates hold for one's own record too (nf-guvenlik D-a).
+select is(
+  pg_temp.refusal(format('select public.request_employee_preferred_name_service(%L, %L, %L, %L)',
+    tests.user('m:sami'), tests.id('m'), tests.id('m:sami'), 'Sam')),
+  '42501 authz.not_active', 'not with their access removed'
+);
+select tests.world('c');
+select tests.person('c', 'cem', 'employee', array['K'], array['cook']);
+update public.workspaces set lifecycle_status = 'suspended' where id = tests.id('c');
+select is(
+  pg_temp.refusal(format('select public.request_employee_preferred_name_service(%L, %L, %L, %L)',
+    tests.user('c:cem'), tests.id('c'), tests.id('c:cem'), 'Cemo')),
+  '42501 authz.workspace_closed', 'nor in a workspace that is closed'
+);
 
 select * from finish();
 rollback;
