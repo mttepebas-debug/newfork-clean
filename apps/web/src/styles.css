@@ -10752,8 +10752,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   margin: 20px;
   border: 1px solid #d6ddda;
   border-radius: 6px;
+  padding: 16px;
   background: var(--theme-surface);
   color: #65706b;
+  text-align: center;
 }
 .schedule-state strong {
   color: #26312d;
