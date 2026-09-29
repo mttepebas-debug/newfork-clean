@@ -23,10 +23,11 @@ select cmp_ok(
 -- Pretends to be the caller by writing the JWT subject: the bridges that let a
 -- service_role call reuse a browser-era function. Target 0. FB-6.2.3 took
 -- Employees' two read bridges (43 -> 41), FB-6.2.4 the four write bridges and
--- the onboarding activation's (41 -> 36), FB-6.2.5 the four invitation services' (36 -> 32).
+-- the onboarding activation's (41 -> 36), FB-6.2.5 the four invitation services' (36 -> 32),
+-- FB-6.2.6 Settings > Jobs' six and catalog deletion's (32 -> 26).
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'set_config\(\s*''request\.jwt\.claim'),
-  '<=', 32, 'functions that write request.jwt.claim only go down'
+  '<=', 26, 'functions that write request.jwt.claim only go down'
 );
 
 -- Decides scope or rank on its own instead of asking the core. Target 0
@@ -79,11 +80,12 @@ select is(
 
 -- A 42501 that does not say which reason: every raise statement with 42501
 -- and no hint (BL-276). Measured 2026-09-29 on 20260929190000: 255 in 152
--- functions; 253 after FB-6.2.3; 226 after FB-6.2.4; 205 after FB-6.2.5. Target 0.
+-- functions; 253 after FB-6.2.3; 226 after FB-6.2.4; 205 after FB-6.2.5; 189 after FB-6.2.6's
+-- jobs. Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 205, 'refusals without an authz hint only go down'
+  '<=', 189, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or
