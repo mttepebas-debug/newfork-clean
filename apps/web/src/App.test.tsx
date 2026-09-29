@@ -4954,6 +4954,70 @@ describe("App", () => {
     consoleError.mockRestore();
   });
 
+  it("says plainly when drafts cannot load before a new or edited draft, never unhandled (BL-394)", async () => {
+    const weekStart = "2026-11-16";
+    const draft = {
+      id: "99999999-9999-4999-8999-999999999992",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      name: "Plan D",
+      revision: 1,
+      created_by: "88888888-8888-4888-8888-888888888888",
+      updated_by: "88888888-8888-4888-8888-888888888888",
+      created_at: "2026-08-17T12:00:00Z",
+      updated_at: "2026-08-17T12:00:00Z",
+    };
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const failure = new ScheduleRequestError("permission denied for table schedule_drafts", 500, {
+      error: "permission denied for table schedule_drafts",
+    });
+    let failDraftList = false;
+    vi.mocked(getScheduleReadModel).mockResolvedValue(
+      scheduleFixtureForWeek(weekStart),
+    );
+    vi.mocked(listScheduleDrafts).mockImplementation(async () => {
+      if (failDraftList) throw failure;
+      return { drafts: [draft] };
+    });
+    const acquireMock = vi.mocked(acquireScheduleEditSession);
+    acquireMock.mockClear();
+    window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
+    testAuth.role = "owner";
+    render(<App />);
+
+    const trigger = await screen.findByRole(
+      "button",
+      { name: "Draft selector: New Schedule" },
+      { timeout: 5000 },
+    );
+    failDraftList = true;
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("button", { name: /New Schedule \(blank\)/ }));
+
+    expect(
+      await screen.findByText("Drafts could not be loaded. Try again."),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss error" }));
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Draft selector: New Schedule" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Plan D" }));
+
+    expect(
+      await screen.findByText("Drafts could not be loaded. Try again."),
+    ).toBeTruthy();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(acquireMock).not.toHaveBeenCalled();
+    expect(unhandled).not.toHaveBeenCalled();
+    expect(screen.queryByText(/permission denied/)).toBeNull();
+    expect(consoleError).toHaveBeenCalledWith(failure);
+    process.off("unhandledRejection", unhandled);
+    consoleError.mockRestore();
+  }, 15_000);
+
   it("says plainly when the page cannot refresh after an unpublish, never the raw error", async () => {
     const weekStart = "2026-11-16";
     const draft = {

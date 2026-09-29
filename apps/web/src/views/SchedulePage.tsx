@@ -899,8 +899,21 @@ export function SchedulePage({
     return result.drafts;
   };
 
+  // BL-394: editing starts from a fresh drafts list; if it cannot load, say so
+  // plainly and stop, with the reason in the console.
+  const refreshDraftsBeforeEdit = async (): Promise<boolean> => {
+    try {
+      await refreshDrafts();
+      return true;
+    } catch (error) {
+      console.error(error);
+      setOperationError("Drafts could not be loaded. Try again.");
+      return false;
+    }
+  };
+
   const startBlankDraftFromMenu = async () => {
-    await refreshDrafts();
+    if (!(await refreshDraftsBeforeEdit())) return;
     await acquire("blank");
   };
 
@@ -912,7 +925,7 @@ export function SchedulePage({
   };
 
   const editDraftFromMenu = async (draftId: string | null) => {
-    await refreshDrafts();
+    if (!(await refreshDraftsBeforeEdit())) return;
     await acquire(draftId ? "draft" : "published", draftId);
   };
 
