@@ -339,6 +339,11 @@ export function PublishScheduleDialog({
         ? current.filter((item) => item !== id)
         : [...current, id],
     );
+    forgetCheck();
+  };
+  // A new choice (draft or locations) makes the last check someone else's
+  // (BL-299): drop it, so Next checks again instead of reviewing it.
+  const forgetCheck = () => {
     setPreview(null);
     setStep(1);
     setAvailabilityAckFingerprint(null);
@@ -585,7 +590,10 @@ export function PublishScheduleDialog({
                 Saved draft
                 <select
                   value={draftId}
-                  onChange={(event) => setDraftId(event.target.value)}
+                  onChange={(event) => {
+                    setDraftId(event.target.value);
+                    forgetCheck();
+                  }}
                 >
                   {drafts.map((draft) => (
                     <option key={draft.id} value={draft.id}>
@@ -688,7 +696,9 @@ export function PublishScheduleDialog({
                           {summary
                             ? liveShiftCount > 0
                               ? `Live · ${liveShiftCount} ${shiftCountLabel(liveShiftCount)}`
-                              : "Not published yet"
+                              : location.publication_status === "published"
+                                ? "Published now"
+                                : "Not published yet"
                             : location.publication_status === "published"
                               ? "Published now"
                               : "Not published"}
