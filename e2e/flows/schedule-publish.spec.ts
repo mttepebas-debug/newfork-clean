@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
-import { signIn, type Person } from "../fixtures/world";
+import { signIn, type Person, draftName } from "../fixtures/world";
 
 // FOUNDATION-B FB-6.1.12, flow 5: a manager adds a shift, saves it as a named
 // draft, previews it and publishes it. The employee then sees the shift, and
@@ -25,16 +25,16 @@ test("a manager publishes a week and the employee sees the shift with its tag", 
   // The "On call" tag has to exist in the workspace catalog before the quick
   // editor can offer it; only an admin/owner manages the catalog.
   const zeynep = await openPage(browser, "zeynep", "/app/settings/scheduling/shift-labels");
-  await zeynep.getByRole("button", { name: "Add shift label" }).click();
+  await zeynep.getByRole("button", { name: "Add shift label", exact: true }).click();
   await zeynep.getByLabel("Name").fill("On call");
-  await zeynep.getByRole("button", { name: "Save shift label" }).click();
-  await expect(zeynep.getByRole("button", { name: "Edit On call" })).toBeVisible();
+  await zeynep.getByRole("button", { name: "Save shift label", exact: true }).click();
+  await expect(zeynep.getByRole("button", { name: "Edit On call", exact: true })).toBeVisible();
 
   const monday = sql(`select tests.week(2);`);
   const ayse = await openPage(browser, "ayse", `/app/schedule?date=${monday}`);
 
-  await ayse.getByRole("button", { name: "Draft selector: New Schedule" }).click();
-  await ayse.getByRole("button", { name: "New Schedule (blank)" }).click();
+  await ayse.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
+  await ayse.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
   await expect(ayse).toHaveURL(/mode=edit/);
 
   // The button only turns interactive on :hover (opacity/pointer-events are
@@ -43,34 +43,35 @@ test("a manager publishes a week and the employee sees the shift with its tag", 
   // lets the mouse arrive.
   const addShiftButton = ayse.getByRole("button", {
     name: `Add shift for Emre Person at Kadikoy on ${monday}`,
+    exact: true,
   });
   await addShiftButton.hover({ force: true });
   await addShiftButton.click();
-  const editor = ayse.getByRole("dialog", { name: "Add shift" });
+  const editor = ayse.getByRole("dialog", { name: "Add shift", exact: true });
   await editor.getByLabel("Start time").fill("9:00 AM");
   await editor.getByLabel("End time").fill("5:00 PM");
-  await editor.getByRole("combobox", { name: "Labels" }).click();
-  await editor.getByRole("option", { name: "On call" }).click();
-  await editor.getByRole("button", { name: "Add shift" }).click();
+  await editor.getByRole("combobox", { name: "Labels", exact: true }).click();
+  await editor.getByRole("option", { name: "On call", exact: true }).click();
+  await editor.getByRole("button", { name: "Add shift", exact: true }).click();
   await expect(editor).toHaveCount(0);
 
   // Save (the manager's "kaydet" step): a named draft.
   await ayse.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).click();
-  await ayse.getByLabel("Draft name").fill("Ayse week");
-  await ayse.getByRole("button", { name: "Save As" }).click();
+  await ayse.getByLabel("Draft name").fill(draftName("Ayse week"));
+  await ayse.getByRole("button", { name: "Save As", exact: true }).click();
   await expect(ayse).not.toHaveURL(/mode=edit/);
 
   // Preview, then publish. Scoped to the dialog: the topbar's own "Next week"
   // nav button also matches an unscoped, unexact "Next" query.
-  await ayse.getByRole("button", { name: "Publish" }).click();
+  await ayse.getByRole("button", { name: "Publish", exact: true }).click();
   const publishDialog = ayse.getByRole("dialog");
   await expect(publishDialog).toContainText("Select locations to publish");
   await publishDialog.getByRole("button", { name: "Next", exact: true }).click();
   await expect(ayse.getByTestId("schedule-publish-preview")).toBeVisible();
   await publishDialog.getByRole("button", { name: "Next", exact: true }).click();
-  await publishDialog.getByRole("button", { name: "Publish 1 location" }).click();
+  await publishDialog.getByRole("button", { name: "Publish 1 location", exact: true }).click();
   await expect(ayse.getByRole("dialog")).toHaveCount(0);
-  await expect(ayse.getByRole("button", { name: "Published" })).toBeVisible();
+  await expect(ayse.getByRole("button", { name: "Published", exact: true })).toBeVisible();
 
   const emre = await openPage(browser, "emre", `/app/employee-hub/schedule?date=${monday}`);
   const shiftBadge = emre.getByRole("button", { name: /On call/ });

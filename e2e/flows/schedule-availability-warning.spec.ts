@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
-import { signIn, type Person } from "../fixtures/world";
+import { signIn, type Person, draftName } from "../fixtures/world";
 
 // BL-186: availability is a preference, never a block. A manager can still
 // write a shift onto hours an employee marked "unavailable" -- the cell just
@@ -40,8 +40,8 @@ test("a manager writes to Ali's marked-unavailable hours, confirms the warning o
 
   const ayse = await openPage(browser, "ayse", `/app/schedule?date=${monday}`);
 
-  await ayse.getByRole("button", { name: "Draft selector: New Schedule" }).click();
-  await ayse.getByRole("button", { name: "New Schedule (blank)" }).click();
+  await ayse.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
+  await ayse.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
   await expect(ayse).toHaveURL(/mode=edit/);
 
   // The button only turns interactive on :hover (opacity/pointer-events are
@@ -50,13 +50,14 @@ test("a manager writes to Ali's marked-unavailable hours, confirms the warning o
   // lets the mouse arrive.
   const addShiftButton = ayse.getByRole("button", {
     name: `Add shift for Ali Person at Kadikoy on ${tuesday}`,
+    exact: true,
   });
   await addShiftButton.hover({ force: true });
   await addShiftButton.click();
-  const editor = ayse.getByRole("dialog", { name: "Add shift" });
+  const editor = ayse.getByRole("dialog", { name: "Add shift", exact: true });
   await editor.getByLabel("Start time").fill("6:00 PM");
   await editor.getByLabel("End time").fill("10:00 PM");
-  await editor.getByRole("button", { name: "Add shift" }).click();
+  await editor.getByRole("button", { name: "Add shift", exact: true }).click();
   await expect(editor).toHaveCount(0);
 
   // The write itself is silent -- no confirmation dialog, no block. The cell
@@ -67,13 +68,13 @@ test("a manager writes to Ali's marked-unavailable hours, confirms the warning o
   await expect(shiftBadge).toHaveAttribute("title", "Ali Person shows as unavailable for this shift.");
 
   await ayse.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).click();
-  await ayse.getByLabel("Draft name").fill("Ayse week");
-  await ayse.getByRole("button", { name: "Save As" }).click();
+  await ayse.getByLabel("Draft name").fill(draftName("Ayse week"));
+  await ayse.getByRole("button", { name: "Save As", exact: true }).click();
   await expect(ayse).not.toHaveURL(/mode=edit/);
 
   // Preview, then publish. Scoped to the dialog: the topbar's own "Next week"
   // nav button also matches an unscoped, unexact "Next" query.
-  await ayse.getByRole("button", { name: "Publish" }).click();
+  await ayse.getByRole("button", { name: "Publish", exact: true }).click();
   const publishDialog = ayse.getByRole("dialog");
   await expect(publishDialog).toContainText("Select locations to publish");
   await publishDialog.getByRole("button", { name: "Next", exact: true }).click();
@@ -85,23 +86,23 @@ test("a manager writes to Ali's marked-unavailable hours, confirms the warning o
   const nextButton = publishDialog.getByRole("button", { name: "Next", exact: true });
   await expect(nextButton).toBeDisabled();
   await publishDialog
-    .getByRole("checkbox", { name: "I've seen this warning and want to publish anyway" })
+    .getByRole("checkbox", { name: "I've seen this warning and want to publish anyway", exact: true })
     .check();
   await expect(nextButton).toBeEnabled();
   await nextButton.click();
-  await publishDialog.getByRole("button", { name: "Publish 1 location" }).click();
+  await publishDialog.getByRole("button", { name: "Publish 1 location", exact: true }).click();
   await expect(ayse.getByRole("dialog")).toHaveCount(0);
-  await expect(ayse.getByRole("button", { name: "Published" })).toBeVisible();
+  await expect(ayse.getByRole("button", { name: "Published", exact: true })).toBeVisible();
 
   // Republish the same, unchanged week: the warning now shows as already
   // accepted -- who and roughly when -- and Publish needs no fresh tick.
-  const publishAnotherDraft = ayse.getByRole("button", { name: "Publish another draft" });
+  const publishAnotherDraft = ayse.getByRole("button", { name: "Publish another draft", exact: true });
   const menuAlreadyOpen = await publishAnotherDraft
     .waitFor({ state: "visible", timeout: 2_000 })
     .then(() => true)
     .catch(() => false);
   if (!menuAlreadyOpen) {
-    await ayse.getByRole("button", { name: "Published" }).click();
+    await ayse.getByRole("button", { name: "Published", exact: true }).click();
     await publishAnotherDraft.waitFor({ state: "visible" });
   }
   await publishAnotherDraft.click();
@@ -112,18 +113,18 @@ test("a manager writes to Ali's marked-unavailable hours, confirms the warning o
 
   await expect(secondDialog.getByText("Previously accepted (1)")).toBeVisible();
   await expect(
-    secondDialog.getByRole("checkbox", { name: "I've seen this warning and want to publish anyway" }),
+    secondDialog.getByRole("checkbox", { name: "I've seen this warning and want to publish anyway", exact: true }),
   ).toHaveCount(0);
   const secondNext = secondDialog.getByRole("button", { name: "Next", exact: true });
   await expect(secondNext).toBeEnabled();
   await secondNext.click();
-  await secondDialog.getByRole("button", { name: "Publish 1 location" }).click();
+  await secondDialog.getByRole("button", { name: "Publish 1 location", exact: true }).click();
   await expect(ayse.getByRole("dialog")).toHaveCount(0);
 });
 
 test("Settings > Conflict handling no longer offers an Employee availability rule", async ({ browser }) => {
   const zeynep = await openPage(browser, "zeynep", "/app/settings/scheduling/conflicts");
-  await expect(zeynep.getByRole("heading", { name: "Conflict handling" })).toBeVisible();
+  await expect(zeynep.getByRole("heading", { name: "Conflict handling", exact: true })).toBeVisible();
   await expect(zeynep.getByText("Employee availability")).toHaveCount(0);
   await expect(
     zeynep.getByText("Availability is a preference: you'll see a warning, never a block."),

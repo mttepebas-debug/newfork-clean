@@ -52,7 +52,7 @@ async function signInAs(page: Page, email: string, password: string) {
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/app\//);
 }
 
@@ -78,7 +78,7 @@ test("Ada takes over the workspace with their password on Account > Workspaces",
   await page.goto("/account/workspaces");
   await page.getByRole("button", { name: `Accept owner transfer for ${offer.workspaceName}` }).click();
   await page.getByLabel("Account password").fill(adaPassword);
-  await page.getByRole("button", { name: "Accept transfer" }).click();
+  await page.getByRole("button", { name: "Accept transfer", exact: true }).click();
 
   await expect.poll(() => transferStatus(offer)).toBe("accepted");
 });

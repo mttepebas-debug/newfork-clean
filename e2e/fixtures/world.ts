@@ -14,5 +14,10 @@ export async function signIn(page: Page, person: Person) {
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(world.emails[person]);
   await page.getByLabel("Password").fill(world.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
+
+// Draft names are unique per workspace and week, and the world is made once
+// per run: a fixed name collides when a spec runs twice (--repeat-each, BL-203).
+export const draftName = (base: string): string =>
+  `${base} ${Math.random().toString(36).slice(2, 7)}`;

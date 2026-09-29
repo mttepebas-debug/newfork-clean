@@ -51,9 +51,9 @@ test("a two-location swap completes after both managers approve", async ({ brows
 
   const ayse = await openSchedule(browser, "ayse", casePath);
   // The case opens from the link; the decision buttons belong to a candidate.
-  await ayse.getByRole("button", { name: "Review Deniz Person" }).click();
-  await ayse.getByRole("button", { name: "Approve my location" }).click();
-  await ayse.getByRole("button", { name: "Record my approval" }).click();
+  await ayse.getByRole("button", { name: "Review Deniz Person", exact: true }).click();
+  await ayse.getByRole("button", { name: "Approve my location", exact: true }).click();
+  await ayse.getByRole("button", { name: "Record my approval", exact: true }).click();
   // Kadikoy's vote is recorded; nobody's shift has moved yet.
   await expect
     .poll(() => sql(`select count(*) from public.shift_exchange_votes where case_id = '${caseId}';`))
@@ -61,7 +61,7 @@ test("a two-location swap completes after both managers approve", async ({ brows
   expect(holder("ali-k")).toBe("Ali");
 
   const mehmet = await openSchedule(browser, "mehmet", casePath);
-  await mehmet.getByRole("button", { name: "Review Deniz Person" }).click();
+  await mehmet.getByRole("button", { name: "Review Deniz Person", exact: true }).click();
   await mehmet.getByRole("button", { name: /^Approve transfer to Deniz/ }).click();
   await mehmet.getByRole("button", { name: /^Confirm transfer to Deniz/ }).click();
   // BL-180: on the shared CI machine (three self-hosted runners on one box)

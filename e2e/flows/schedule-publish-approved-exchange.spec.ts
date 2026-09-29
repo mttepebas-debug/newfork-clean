@@ -71,8 +71,8 @@ test("publishing a draft that undoes an approved swap is refused, not overwritte
   const monday = sql(`select tests.week(${WEEK});`);
   const ayse = await openSchedule(browser, "ayse", `/app/schedule?date=${monday}`);
 
-  await ayse.getByRole("button", { name: "Published" }).click();
-  await ayse.getByRole("button", { name: "Publish another draft" }).click();
+  await ayse.getByRole("button", { name: "Published", exact: true }).click();
+  await ayse.getByRole("button", { name: "Publish another draft", exact: true }).click();
 
   const publishDialog = ayse.getByRole("dialog");
   await expect(publishDialog).toContainText("Select locations to publish");
@@ -84,7 +84,7 @@ test("publishing a draft that undoes an approved swap is refused, not overwritte
     publishDialog.getByRole("button", { name: "Next", exact: true }),
   ).toBeDisabled();
 
-  await publishDialog.getByRole("button", { name: "Cancel" }).click();
+  await publishDialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(ayse.getByRole("dialog")).toHaveCount(0);
 
   // Refused, not silently applied: Kadikoy's slot is still Deniz's, from the

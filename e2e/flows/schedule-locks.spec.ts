@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { signIn, type Person } from "../fixtures/world";
+import { draftName, signIn, type Person } from "../fixtures/world";
 
 // FOUNDATION-B 3b (user decision 2026-09-24, option A): only a draft is
 // locked. Ayse edits her draft, and Zeynep, an admin, is told who has it.
@@ -15,8 +15,8 @@ async function openSchedule(browser: Browser, person: Person): Promise<Page> {
 }
 
 async function startBlankEdit(page: Page) {
-  await page.getByRole("button", { name: "Draft selector: New Schedule" }).click();
-  await page.getByRole("button", { name: "New Schedule (blank)" }).click();
+  await page.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
+  await page.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
 }
 
 async function editDraft(page: Page, name: string) {
@@ -26,21 +26,22 @@ async function editDraft(page: Page, name: string) {
 }
 
 test("one person edits a draft at a time, and the admin is told who has it", async ({ browser }) => {
+  const plan = draftName("Ayse plan");
   const ayse = await openSchedule(browser, "ayse");
   await startBlankEdit(ayse);
   await expect(ayse).toHaveURL(/mode=edit/);
   await ayse.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).click();
-  await ayse.getByLabel("Draft name").fill("Ayse plan");
-  await ayse.getByRole("button", { name: "Save As" }).click();
+  await ayse.getByLabel("Draft name").fill(plan);
+  await ayse.getByRole("button", { name: "Save As", exact: true }).click();
   await expect(ayse).not.toHaveURL(/mode=edit/);
-  await editDraft(ayse, "Ayse plan");
+  await editDraft(ayse, plan);
   await expect(ayse).toHaveURL(/mode=edit/);
 
   const zeynep = await openSchedule(browser, "zeynep");
-  await editDraft(zeynep, "Ayse plan");
-  const dialog = zeynep.getByRole("dialog", { name: "Draft is being edited" });
+  await editDraft(zeynep, plan);
+  const dialog = zeynep.getByRole("dialog", { name: "Draft is being edited", exact: true });
   await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('Ayse Person is editing "Ayse plan"');
+  await expect(dialog).toContainText(`Ayse Person is editing "${plan}"`);
   // E2E_SHOTS=<folder> keeps a picture of the dialog for a screen review.
   if (process.env.E2E_SHOTS) {
     await zeynep.screenshot({ path: `${process.env.E2E_SHOTS}/schedule-lock-dialog.png` });
@@ -56,5 +57,5 @@ test("two managers and the admin edit the same week at the same time", async ({ 
   const zeynep = await openSchedule(browser, "zeynep");
   await startBlankEdit(zeynep);
   await expect(zeynep).toHaveURL(/mode=edit/);
-  await expect(zeynep.getByRole("dialog", { name: "Draft is being edited" })).toHaveCount(0);
+  await expect(zeynep.getByRole("dialog", { name: "Draft is being edited", exact: true })).toHaveCount(0);
 });

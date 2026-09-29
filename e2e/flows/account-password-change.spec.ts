@@ -33,7 +33,7 @@ async function signInAs(page: Page, email: string, password: string) {
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
 /** Whether a brand-new browser gets in with this password. */
@@ -53,7 +53,7 @@ async function changePassword(page: Page, current: string) {
   await page.getByLabel("Current password").first().fill(current);
   await page.getByLabel("New password", { exact: true }).fill(newPassword);
   await page.getByLabel("Confirm password").fill(newPassword);
-  await page.getByRole("button", { name: "Change password" }).click();
+  await page.getByRole("button", { name: "Change password", exact: true }).click();
 }
 
 test("a wrong current password does not change the password", async ({ page, browser }) => {

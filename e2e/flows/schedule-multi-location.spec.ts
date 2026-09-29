@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
-import { signIn, type Person } from "../fixtures/world";
+import { signIn, type Person, draftName } from "../fixtures/world";
 
 // FOUNDATION-B FB-6.1.12, flow 6: a manager scoped to Kadikoy cannot publish
 // Besiktas -- its grid never arrives, and the publish button only covers her
@@ -27,8 +27,8 @@ async function openPage(browser: Browser, person: Person, path: string): Promise
 }
 
 async function startBlankEdit(page: Page) {
-  await page.getByRole("button", { name: "Draft selector: New Schedule" }).click();
-  await page.getByRole("button", { name: "New Schedule (blank)" }).click();
+  await page.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
+  await page.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
 }
 
 // A blank draft starts truly empty; publishing it over an already-published
@@ -36,8 +36,8 @@ async function startBlankEdit(page: Page) {
 // instead starts from what's actually published, so a no-op save-and-publish
 // changes nothing at Besiktas.
 async function startEditingLiveSchedule(page: Page) {
-  await page.getByRole("button", { name: "Draft selector: New Schedule" }).click();
-  await page.getByRole("button", { name: "Edit live schedule" }).click();
+  await page.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
+  await page.getByRole("button", { name: "Edit live schedule", exact: true }).click();
 }
 
 test("a location-scoped manager cannot reach the other location, and only the admin can publish both", async ({
@@ -73,7 +73,7 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   await expect(ghost).toContainText("On call");
   await expect(ghost).toContainText("9:00 AM - 5:00 PM");
   await expect(ghost).not.toContainText("Besiktas");
-  await ghost.getByRole("button", { name: "Location" }).click();
+  await ghost.getByRole("button", { name: "Location", exact: true }).click();
   await expect(ayse.getByRole("tooltip")).toContainText("Besiktas");
 
   // A draft is needed before "Publish" is even enabled; an empty one is enough
@@ -81,17 +81,17 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   await startBlankEdit(ayse);
   await expect(ayse).toHaveURL(/mode=edit/);
   await ayse.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).click();
-  await ayse.getByLabel("Draft name").fill("Ayse week");
-  await ayse.getByRole("button", { name: "Save As" }).click();
+  await ayse.getByLabel("Draft name").fill(draftName("Ayse week"));
+  await ayse.getByRole("button", { name: "Save As", exact: true }).click();
   await expect(ayse).not.toHaveURL(/mode=edit/);
 
   // The publish button only ever covers her own location.
-  await ayse.getByRole("button", { name: "Publish" }).click();
+  await ayse.getByRole("button", { name: "Publish", exact: true }).click();
   const ayseDialog = ayse.getByRole("dialog");
   await expect(ayseDialog).toContainText("Select locations to publish");
   await expect(ayseDialog.getByText("1 of 1 locations selected")).toBeVisible();
   await expect(ayseDialog.getByText("Besiktas")).toHaveCount(0);
-  await ayseDialog.getByRole("button", { name: "Cancel" }).click();
+  await ayseDialog.getByRole("button", { name: "Cancel", exact: true }).click();
 
   const zeynep = await openPage(browser, "zeynep", `/app/schedule?date=${monday}`);
 
@@ -106,8 +106,8 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   await startEditingLiveSchedule(zeynep);
   await expect(zeynep).toHaveURL(/mode=edit/);
   await zeynep.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).click();
-  await zeynep.getByLabel("Draft name").fill("Zeynep week");
-  await zeynep.getByRole("button", { name: "Save As" }).click();
+  await zeynep.getByLabel("Draft name").fill(draftName("Zeynep week"));
+  await zeynep.getByRole("button", { name: "Save As", exact: true }).click();
   await expect(zeynep).not.toHaveURL(/mode=edit/);
 
   // Beşiktaş is already published, so the trigger reads "Published"; saving
@@ -115,13 +115,13 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   // too, so the panel is sometimes already open by the time we get here.
   // Wait (don't snapshot) for it to settle either way before deciding whether
   // "Published" still needs a click.
-  const publishAnotherDraft = zeynep.getByRole("button", { name: "Publish another draft" });
+  const publishAnotherDraft = zeynep.getByRole("button", { name: "Publish another draft", exact: true });
   const menuAlreadyOpen = await publishAnotherDraft
     .waitFor({ state: "visible", timeout: 2_000 })
     .then(() => true)
     .catch(() => false);
   if (!menuAlreadyOpen) {
-    await zeynep.getByRole("button", { name: "Published" }).click();
+    await zeynep.getByRole("button", { name: "Published", exact: true }).click();
     await publishAnotherDraft.waitFor({ state: "visible" });
   }
   await publishAnotherDraft.click();
@@ -136,7 +136,7 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   await zeynepDialog.getByRole("button", { name: "Next", exact: true }).click();
   await expect(zeynep.getByTestId("schedule-publish-preview")).toBeVisible();
   await zeynepDialog.getByRole("button", { name: "Next", exact: true }).click();
-  await zeynepDialog.getByRole("button", { name: "Publish 2 locations" }).click();
+  await zeynepDialog.getByRole("button", { name: "Publish 2 locations", exact: true }).click();
   await expect(zeynep.getByRole("dialog")).toHaveCount(0);
-  await expect(zeynep.getByRole("button", { name: "Published" })).toBeVisible();
+  await expect(zeynep.getByRole("button", { name: "Published", exact: true })).toBeVisible();
 });

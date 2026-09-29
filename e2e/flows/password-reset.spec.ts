@@ -27,7 +27,7 @@ async function recoveryTokenHash(email: string): Promise<string> {
 async function askForLink(page: Page, email: string) {
   await page.goto("/forgot-password");
   await page.getByLabel("Email").fill(email);
-  await page.getByRole("button", { name: "Send reset link" }).click();
+  await page.getByRole("button", { name: "Send reset link", exact: true }).click();
   await expect(page.getByText(sameAnswer)).toBeVisible();
 }
 
@@ -36,7 +36,7 @@ async function saveNewPassword(page: Page, tokenHash: string) {
   await page.goto(`/reset-password#token_hash=${encodeURIComponent(tokenHash)}`);
   await page.getByLabel("New password", { exact: true }).fill(newPassword);
   await page.getByLabel("Confirm password").fill(newPassword);
-  await page.getByRole("button", { name: "Save password" }).click();
+  await page.getByRole("button", { name: "Save password", exact: true }).click();
 }
 
 test("a person resets a forgotten password with a one-time link and signs in with it", async ({
@@ -46,7 +46,7 @@ test("a person resets a forgotten password with a one-time link and signs in wit
   const email = emailOf("deniz");
 
   await page.goto("/sign-in");
-  await page.getByRole("link", { name: "Forgot password?" }).click();
+  await page.getByRole("link", { name: "Forgot password?", exact: true }).click();
   await expect(page).toHaveURL(/\/forgot-password$/);
 
   // The same answer for an account and for an address nobody owns.
@@ -60,7 +60,7 @@ test("a person resets a forgotten password with a one-time link and signs in wit
   // The link works once.
   await saveNewPassword(page, tokenHash);
   await expect(page.getByText("This reset link has expired or was already used.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Request a new link" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Request a new link", exact: true })).toBeVisible();
 
   // A fresh browser signs in with the new password.
   const fresh = await browser.newContext();
@@ -68,7 +68,7 @@ test("a person resets a forgotten password with a one-time link and signs in wit
   await other.goto("/sign-in");
   await other.getByLabel("Email").fill(email);
   await other.getByLabel("Password").fill(newPassword);
-  await other.getByRole("button", { name: "Sign in" }).click();
+  await other.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(other).toHaveURL(/\/app\/employee-hub/);
   await fresh.close();
 });
