@@ -317,6 +317,20 @@ describe("ScheduleRequestsPage", () => {
       periods: [{ segment_id: "97300000-0000-4000-8000-000000000001", starts_at: future.start_at, ends_at: future.end_at }] });
     expect(await screen.findByText(/Alex Kim's time off is shorter/)).toBeTruthy();
   });
+  it("names the manager's hour picker by what it does and by its visible labels (G9b QA D2)", async () => {
+    const future = { start_at: "2099-08-17T14:00:00.000Z", end_at: "2099-08-17T18:00:00.000Z" };
+    vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_off_requests: [{ ...fixture.time_off_requests[0]!, status: "approved", revision: 2,
+      segments: [{ ...fixture.time_off_requests[0]!.segments[0]!, status: "approved", time_timezone: "UTC", effective_intervals: [future] }] }] });
+    renderPage(); await openTimeOffRequest();
+    fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose hours for period 1" }));
+    expect(screen.getByRole("group", { name: /^Hours to give back for period 1/ })).toBeTruthy();
+    for (const name of ["Starts on, period 1", "Start time, period 1", "Repeated time, start, period 1",
+      "Ends on, period 1", "End time, period 1", "Repeated time, end, period 1"])
+      expect(screen.getByLabelText(name)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Discard these edits for period 1" })).toBeTruthy();
+    expect(screen.queryByText(/Cancellation hours/)).toBeNull();
+  });
   it("offers no shortening while time off is still pending", async () => {
     renderPage(); await openTimeOffRequest();
     await screen.findByRole("button", { name: "Partial" });

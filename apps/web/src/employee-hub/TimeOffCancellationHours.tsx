@@ -12,8 +12,10 @@ function endpoint(instant: string, zone: string) {
   const later = resolveTimeOffSplit(wall.date, wall.clock, zone, "later");
   return { ...wall, fold: earlier === later ? "" : Date.parse(instant) === Date.parse(earlier) ? "earlier" : "later" } as { date: string; clock: string; fold: "" | "earlier" | "later" };
 }
-export function TimeOffCancellationHours({ period, index, timeFormat, onChange, onEditing }: {
+export function TimeOffCancellationHours({ period, index, timeFormat, onChange, onEditing, heading = "Cancellation hours" }: {
   period: CancellationChoice; index: number; timeFormat: "12h" | "24h";
+  /** What the chosen hours are for: the employee cancels, a manager gives hours back (G9b QA D2). */
+  heading?: string;
   onChange: (period: CancellationChoice) => void; onEditing: (editing: boolean) => void;
 }) {
   const [editing, setEditing] = useState(Boolean(period.initialEdit));
@@ -47,22 +49,23 @@ export function TimeOffCancellationHours({ period, index, timeFormat, onChange, 
   return <div className="time-off-cancellation-hours">
     <small>Approved bounds: {formatTimeOffInstant(period.original_start, period.zone, timeFormat)} – {formatTimeOffInstant(period.original_end, period.zone, timeFormat)}</small>
     {!editing ? <button ref={chooseButton} type="button" aria-label={`Choose hours for period ${index + 1}`} onClick={begin}>Choose hours</button> : <fieldset>
-      <legend>Cancellation hours for period {index + 1} · {period.zone}</legend>
+      <legend>{heading} for period {index + 1} · {period.zone}</legend>
       <p>Use the next date for an overnight end. Midnight on the next date ends the previous day.</p>
       {(["start", "end"] as const).map(side => {
         const value = side === "start" ? start : end, change = side === "start" ? setStart : setEnd;
-        const prefix = `Cancellation ${side} ${index + 1}`;
+        // Each name starts with the label on screen (WCAG 2.5.3), then says which period.
+        const which = `period ${index + 1}`;
         return <div className="time-off-cancellation-endpoint" key={side}>
-          <label>{side === "start" ? "Starts on" : "Ends on"}<input ref={side === "start" ? startDateInput : undefined} type="date" aria-label={`${prefix} date`} value={value.date} onChange={event => change({ ...value, date: event.target.value, fold: "" })} /></label>
-          <label>{side === "start" ? "Start time" : "End time"}<AvailabilityClockInput value={value.clock} timeFormat={timeFormat} label={`${prefix} time`} onChange={clock => change({ ...value, clock, fold: "" })} /></label>
-          <label>Repeated time<select aria-label={`${prefix} occurrence`} value={value.fold} onChange={event => change({ ...value, fold: event.target.value as typeof value.fold })}>
+          <label>{side === "start" ? "Starts on" : "Ends on"}<input ref={side === "start" ? startDateInput : undefined} type="date" aria-label={`${side === "start" ? "Starts on" : "Ends on"}, ${which}`} value={value.date} onChange={event => change({ ...value, date: event.target.value, fold: "" })} /></label>
+          <label>{side === "start" ? "Start time" : "End time"}<AvailabilityClockInput value={value.clock} timeFormat={timeFormat} label={`${side === "start" ? "Start time" : "End time"}, ${which}`} onChange={clock => change({ ...value, clock, fold: "" })} /></label>
+          <label>Repeated time<select aria-label={`Repeated time, ${side}, ${which}`} value={value.fold} onChange={event => change({ ...value, fold: event.target.value as typeof value.fold })}>
             <option value="">Ask if this clock repeats</option><option value="earlier">First occurrence</option><option value="later">Second occurrence</option>
           </select></label>
         </div>;
       })}
       {error ? <p role="alert">{error}</p> : null}
       <button type="button" aria-label={`Apply hours for period ${index + 1}`} onClick={apply}>Apply hours</button>
-      <button type="button" aria-label={`Keep previous hours for period ${index + 1}`} onClick={() => { setEditing(false); onEditing(false); setError(""); }}>Discard these edits</button>
+      <button type="button" aria-label={`Discard these edits for period ${index + 1}`} onClick={() => { setEditing(false); onEditing(false); setError(""); }}>Discard these edits</button>
     </fieldset>}
   </div>;
 }

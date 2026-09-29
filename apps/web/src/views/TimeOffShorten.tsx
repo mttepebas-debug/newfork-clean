@@ -61,7 +61,7 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
             onChange={event => setSelected(current => event.target.checked ? [...current, period.key] : current.filter(key => key !== period.key))} />
           {formatTimeOffInstant(period.starts_at, period.zone, timeFormat)} – {formatTimeOffInstant(period.ends_at, period.zone, timeFormat)}
         </label>
-        <TimeOffCancellationHours period={period} index={i} timeFormat={timeFormat}
+        <TimeOffCancellationHours period={period} index={i} timeFormat={timeFormat} heading="Hours to give back"
           onChange={value => setPeriods(current => current?.map(p => p.key === period.key ? value : p) ?? current)}
           onEditing={active => setEditing(current => active ? [...new Set([...current, period.key])] : current.filter(key => key !== period.key))} />
       </div>)}
