@@ -6426,7 +6426,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-time-input input {
   width: 100%;
   min-height: 38px;
-  border: 1px solid #cad4cf;
+  border: 1px solid var(--theme-muted);
   border-radius: 5px;
   padding: 0 9px;
   background: var(--theme-surface);
@@ -6494,14 +6494,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-time-input__segment.active.invalid {
   background: #ffe0dc;
   color: #7a261d;
-}
-.schedule-time-input input:hover {
-  border-color: #aab8b1;
-}
-.schedule-time-input input:focus-visible {
-  border-color: #238267;
-  outline: 2px solid rgba(35, 130, 103, 0.22);
-  outline-offset: 0;
 }
 .schedule-time-input input[aria-invalid="true"] {
   border-color: #c04b37;
@@ -7442,7 +7434,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-color: var(--shift-type-color, #176f59);
   background: color-mix(in srgb, var(--shift-type-color, #176f59) 10%, var(--theme-surface));
   color: var(--shift-type-color, #176f59);
-  outline: none;
 }
 .schedule-shift-type-picker button[aria-pressed="true"] {
   border-color: var(--shift-type-color, #172033);
@@ -7563,12 +7554,19 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-save-form select {
   width: 100%;
   min-height: 34px;
-  border: 1px solid var(--theme-border-strong);
+  border: 1px solid var(--theme-muted);
   border-radius: 5px;
   padding: 7px 9px;
   background: var(--theme-surface);
   color: #25312c;
   font: inherit;
+}
+/* G2 (BL-293): fields take the app's focus ring, like the buttons beside
+   them (button:focus-visible); hover never stands in for focus. */
+.schedule-quick-editor :is(input, select, textarea):focus-visible,
+.schedule-save-form :is(input, select):focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
 }
 .schedule-quick-select {
   position: relative;
@@ -7581,7 +7579,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: 1px solid var(--theme-border-strong);
+  border: 1px solid var(--theme-muted);
   border-radius: 5px;
   padding: 7px 9px;
   background: var(--theme-surface);
@@ -7596,10 +7594,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-quick-select > button[role="combobox"]:hover,
 .schedule-quick-select > button[role="combobox"]:focus-visible {
-  border-color: #9eb2a9;
-  background: #f8fbf9;
-  box-shadow: 0 0 0 2px rgba(35, 130, 103, 0.1);
-  outline: none;
+  background: var(--theme-surface-soft);
 }
 .schedule-quick-select > button[role="combobox"]:disabled {
   cursor: not-allowed;
@@ -7655,7 +7650,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-quick-select [role="option"]:hover,
 .schedule-quick-select [role="option"]:focus-visible {
   background: var(--theme-surface-muted);
-  outline: none;
+  /* Inside, or the list's edge clips the ring. */
+  outline-offset: -2px;
 }
 .schedule-quick-select [role="option"][aria-selected="true"] {
   background: #173e34;
@@ -7732,7 +7728,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-break-options button {
   min-height: 30px;
-  border: 1px solid var(--theme-border-strong);
+  border: 1px solid var(--theme-muted);
   border-radius: 5px;
   background: var(--theme-surface);
   color: #34413b;
@@ -7747,9 +7743,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-break-options button:hover,
 .schedule-break-options button:focus-visible {
-  border-color: #9eb2a9;
-  background: #f3f7f5;
-  outline: none;
+  background: var(--theme-surface-muted);
   transform: translateY(-1px);
 }
 .schedule-break-options button[aria-pressed="true"] {
@@ -7789,6 +7783,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-weight: 600;
 }
 .schedule-shift-form-section--note textarea {
+  /* BL-295: grows with the note up to max-height; rows={2} where unsupported. */
+  field-sizing: content;
   min-height: 52px;
   max-height: 160px;
   resize: vertical;
@@ -7802,9 +7798,14 @@ button.workspace-switcher-item:hover:not(:disabled) {
   cursor: not-allowed;
   opacity: 0.55;
 }
-/* 16px on a phone, or iOS zooms the page into the field. */
+/* 16px on a phone, or iOS zooms the page into the field (BL-294). */
 @media (max-width: 520px) {
-  .schedule-shift-form-section--note textarea {
+  .schedule-shift-form :is(input, select, textarea),
+  .schedule-save-form :is(input, select) {
+    font-size: 16px;
+  }
+  .schedule-time-input input,
+  .schedule-time-input .schedule-time-input__segments {
     font-size: 16px;
   }
 }
@@ -7822,7 +7823,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-count-stepper button {
   display: grid;
   place-items: center;
-  border: 1px solid var(--theme-border-strong);
+  border: 1px solid var(--theme-muted);
   border-radius: 5px;
   background: #f8faf8;
   color: #25312c;
@@ -7834,9 +7835,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-count-stepper button:hover,
 .schedule-count-stepper button:focus-visible {
-  border-color: #9eb2a9;
-  background: #eef5f1;
-  outline: none;
+  background: var(--theme-surface-muted);
   transform: translateY(-1px);
 }
 .schedule-count-stepper input {
@@ -7875,7 +7874,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-dialog-actions button:focus-visible {
   border-color: #9eb2a9;
   background: #f3f7f5;
-  outline: none;
   transform: translateY(-1px);
 }
 .schedule-dialog-actions button.primary {

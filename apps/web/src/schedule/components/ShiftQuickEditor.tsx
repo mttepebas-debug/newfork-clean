@@ -992,7 +992,7 @@ export function ShiftQuickEditor({
               onChange={(event) =>
                 setValue({
                   ...value,
-                  note: event.target.value.slice(0, shiftNoteMaxLength),
+                  note: clampShiftNote(event.target.value),
                 })
               }
             />
@@ -1058,6 +1058,13 @@ export function ShiftQuickEditor({
       />
     </>
   );
+}
+
+// BL-291: counts UTF-16 units like the shared schema's max(500), but never
+// keeps the first half of an emoji cut at the limit (the database refuses it).
+function clampShiftNote(note: string): string {
+  const cut = note.slice(0, shiftNoteMaxLength);
+  return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
 }
 
 export function formatShiftNoteRemaining(note: string): string {
