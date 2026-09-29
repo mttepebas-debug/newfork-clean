@@ -31,10 +31,14 @@ select * from no_plan();
 select tests.world('m');
 select tests.world('x');
 select tests.person('m', 'zeynep', 'admin', array['K'], array['server']);
+-- A second admin (BL-129): what one admin may do to another.
+select tests.person('m', 'kaan', 'admin', array['B'], array['server']);
 select tests.person('m', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('m', 'mehmet', 'manager', array['B'], array['cook']);
 select tests.person('m', 'can', 'manager', array['K', 'B'], array['cook']);
 select tests.person('m', 'nur', 'manager', null, null);
+-- Manages Besiktas without working there (KARARLAR "yalnız yönetir", FB-6.2 S2).
+select tests.person('m', 'selin', 'manager', null, null);
 select tests.role('m', 'shift lead', 'manager', array(
   select rp.permission_key
   from public.workspace_role_permissions rp
@@ -96,6 +100,23 @@ from unnest(array['K', 'D']) l;
 -- (the owner, kept at every live location) stops.
 update public.locations set archived_at = now(), deleted_at = now() where id = tests.id('m:D');
 update public.employee_location_assignments set ended_at = now() where location_id = tests.id('m:D') and ended_at is null;
+-- Where somebody works, one location at a time: what "remove from <location>"
+-- acts on (FB-6.2 S1). Label m:pl:<holder>@<location>.
+select tests.remember('m:pl:' || x.holder || '@' || x.loc, (
+  select a.id from public.employee_location_assignments a
+  where a.employee_id = tests.id(case x.holder when 'olcay' then 'm:owner' else 'm:' || x.holder end)
+    and a.location_id = tests.id('m:' || x.loc) and a.ended_at is null))
+from (values ('emre', 'K'), ('ali', 'K'), ('ali', 'B'), ('veli', 'B'), ('ayse', 'K'), ('zeynep', 'K'), ('olcay', 'K')) x(holder, loc);
+-- Preferred names waiting for a manager's answer. Label m:nr:<holder>.
+insert into public.employee_name_settings (workspace_id, preferred_name_approval)
+values (tests.id('m'), 'manager')
+on conflict (workspace_id) do update set preferred_name_approval = excluded.preferred_name_approval;
+select public.request_employee_preferred_name_service(tests.user('m:' || h), tests.id('m'), tests.id('m:' || h), initcap(h) || 'y')
+from unnest(array['emre', 'veli', 'ali', 'ayse', 'zeynep', 'kaan']) h;
+select tests.remember('m:nr:' || h, (
+    select r.id from public.employee_preferred_name_requests r
+    where r.employee_id = tests.id('m:' || h) and r.status = 'pending'))
+from unnest(array['emre', 'veli', 'ali', 'ayse', 'zeynep', 'kaan']) h;
 
 -- 2. Who they are, written down independently of the app ------------------------
 -- class: owner | admin | manager | employee. status: active | suspended |
@@ -107,11 +128,14 @@ create temporary table persona (
   class text not null,
   status text not null,
   locs text[] not null,
-  permissions_removed text[] not null default '{}'
+  permissions_removed text[] not null default '{}',
+  manages text[] not null default '{}'  -- a manager's locations they manage without working there
 );
 insert into persona values
   ('olcay',  'm', 'owner',    'active',     '{K,B}', '{}'),
   ('zeynep', 'm', 'admin',    'active',     '{K}',   '{}'),
+  ('kaan',   'm', 'admin',    'active',     '{B}',   '{}'),
+  ('selin',  'm', 'manager',  'active',     '{}',    '{}'),
   ('ayse',   'm', 'manager',  'active',     '{K}',   '{}'),
   ('mehmet', 'm', 'manager',  'active',     '{B}',   '{}'),
   ('can',    'm', 'manager',  'active',     '{K,B}', '{}'),
@@ -125,6 +149,7 @@ insert into persona values
   ('remzi',  'm', 'employee', 'removed',    '{B}',   '{}'),
   ('aydan',  'm', 'manager',  'restricted', '{K}',   '{}'),
   ('xavier', 'x', 'owner',    'active',     '{K,B}', '{}');
+update persona set manages = '{B}' where label = 'selin';
 -- The manager role an owner starts with holds none of the Settings read
 -- permissions below (important_dates.read aside); an owner may grant them to a
 -- manager-type role (settings_reads_ask_the_core.test.sql).
@@ -158,7 +183,25 @@ insert into target values
   ('ali',        'person',    'm', '{K,B}', 'employee', 'ali'),
   ('ayse',       'person',    'm', '{K}',   'manager',  'ayse'),
   ('zeynep',     'person',    'm', '{K}',   'admin',    'zeynep'),
+  ('kaan',       'person',    'm', '{B}',   'admin',    'kaan'),
+  -- where a person is reached: where they work and, for a manager, where they manage
+  ('selin',      'person',    'm', '{B}',   'manager',  'selin'),
   ('olcay',      'person',    'm', '{K,B}', 'owner',    'olcay'),
+  -- one person at one location
+  ('pl:emre@K',  'placement', 'm', '{K}',   'employee', 'emre'),
+  ('pl:ali@K',   'placement', 'm', '{K}',   'employee', 'ali'),
+  ('pl:ali@B',   'placement', 'm', '{B}',   'employee', 'ali'),
+  ('pl:veli@B',  'placement', 'm', '{B}',   'employee', 'veli'),
+  ('pl:ayse@K',  'placement', 'm', '{K}',   'manager',  'ayse'),
+  ('pl:zeynep@K', 'placement', 'm', '{K}',  'admin',    'zeynep'),
+  ('pl:olcay@K', 'placement', 'm', '{K}',   'owner',    'olcay'),
+  -- a preferred name waiting for an answer; locs: where its person works
+  ('nr:emre',    'name_request', 'm', '{K}',   'employee', 'emre'),
+  ('nr:veli',    'name_request', 'm', '{B}',   'employee', 'veli'),
+  ('nr:ali',     'name_request', 'm', '{K,B}', 'employee', 'ali'),
+  ('nr:ayse',    'name_request', 'm', '{K}',   'manager',  'ayse'),
+  ('nr:zeynep',  'name_request', 'm', '{K}',   'admin',    'zeynep'),
+  ('nr:kaan',    'name_request', 'm', '{B}',   'admin',    'kaan'),
   ('xena',       'person',    'x', '{K}',   'employee', 'xena'),
   ('K',          'location',  'm', '{K}',   null,       null),
   ('B',          'location',  'm', '{B}',   null,       null),
@@ -200,7 +243,7 @@ select t.label,
     when t.kind = 'site' then tests.id('m:' || substr(t.label, 6))
     when t.kind = 'shift' then tests.id('m:shift:' || substr(t.label, 4))
     when t.kind = 'case' then tests.id('m:case:' || substr(t.label, 6))
-    when t.kind in ('draft', 'template') then tests.id('m:' || t.label)
+    when t.kind in ('draft', 'template', 'placement', 'name_request') then tests.id('m:' || t.label)
   end as id
 from target t;
 
@@ -362,6 +405,17 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('settings.signature_templates.read', 'workspace', 'signature_templates.read', false, false,
    $$select public.read_signature_settings_service($1, $2) is not null$$);
 
+-- Removing somebody from one location (FB-6.2 S1), and answering a preferred
+-- name (BL-099): the pending list shows only what the actor may answer.
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
+  ('employee.remove_from_location', 'placement', 'employees.manage', false, false,
+   $$select public.remove_employee_from_location_service($1, $2, a.employee_id, a.location_id) is not null
+     from public.employee_location_assignments a where a.id = $3$$),
+  ('employee.decide_preferred_name', 'name_request', 'employees.manage', false, false,
+   $$select public.decide_employee_preferred_name_service($1, $2, $3, true)$$),
+  ('employee.pending_names', 'name_request', 'employees.manage', false, true,
+   $$select exists (select 1 from public.list_pending_preferred_names_service($1, $2) r where r.request_id = $3)$$);
+
 -- The Employees drawer's pickers (BL-231): the locations the actor reaches.
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
   ('employee.references.read', 'location', 'employees.read', false, true,
@@ -440,6 +494,9 @@ insert into core_action (key, core_key, blank) values
   ('settings.documents.read', 'settings.documents.read', 'null'),
   ('settings.signature_templates.read', 'settings.signature_templates.read', 'null'),
   ('employee.references.read', 'employee.references.read', 'null'),
+  ('employee.remove_from_location', 'employee.remove_from_location', 'null'),
+  ('employee.decide_preferred_name', 'employee.decide_preferred_name', 'null'),
+  ('employee.pending_names', 'employee.decide_preferred_name', 'null'),
   ('workspace.close', 'workspace.close', 'null'),
   ('workspace.transfer_ownership', 'workspace.transfer_ownership', 'null'),
   ('time_off.decide', 'time_off.decide', 'null'),
@@ -483,13 +540,14 @@ declare
   a action;
   t target;
   is_self boolean;
+  reach text[];
   shares boolean;
   covers boolean;
 begin
   select * into p from persona where label = actor_label;
   select * into a from action where key = action_key;
   if target_label = 'self' then
-    t := row('self', 'person', p.tenant, p.locs, p.class, actor_label)::target;
+    t := row('self', 'person', p.tenant, p.locs || p.manages, p.class, actor_label)::target;
   else
     select * into t from target where label = target_label;
   end if;
@@ -510,9 +568,11 @@ begin
   if a.owner_only and p.class <> 'owner' then return 'deny'; end if;
   if p.class = 'employee' then return 'deny'; end if;
 
-  -- A manager's reach: where they work. An empty list reaches nowhere.
-  shares := t.locs is not null and t.locs && p.locs;
-  covers := t.locs is not null and cardinality(t.locs) > 0 and t.locs <@ p.locs;
+  -- A manager's reach: where they work and where they only manage (KARARLAR
+  -- "yalnız yönetir"). An empty list reaches nowhere.
+  reach := p.locs || p.manages;
+  shares := t.locs is not null and t.locs && reach;
+  covers := t.locs is not null and cardinality(t.locs) > 0 and t.locs <@ reach;
 
   case action_key
   when 'employee.read', 'employee.list' then
@@ -525,8 +585,9 @@ begin
     -- nor a peer's or a senior's, and edits the whole record of somebody who
     -- also works at another location.
     if p.class = 'owner' then return 'allow'; end if;
+    -- Nor another admin's (FB-6.2, asked 2026-09-29: peers do not manage peers).
     if p.class = 'admin' then
-      return case when t.class = 'owner' then 'deny' else 'allow' end;
+      return case when t.class = 'owner' or (t.class = 'admin' and not is_self) then 'deny' else 'allow' end;
     end if;
     if not shares or is_self then return 'deny'; end if;
     if pg_temp.rank(t.class) >= pg_temp.rank('manager') then return 'deny'; end if;
@@ -564,6 +625,27 @@ begin
     -- Only admin and owner take access away (user decision 2026-09-24, 5A).
     return 'deny';
 
+  when 'employee.remove_from_location' then
+    -- A manager takes an employee off a location they manage; the record stays,
+    -- with no location if it was the only one (FB-6.2 S1). Ending employment
+    -- is admin and owner only (above). Nobody removes themselves or a peer.
+    if is_self then return 'deny'; end if;
+    if p.class = 'owner' then return 'allow'; end if;
+    if p.class = 'admin' then
+      return case when pg_temp.rank(t.class) < pg_temp.rank('admin') then 'allow' else 'deny' end;
+    end if;
+    return case when t.class = 'employee' and covers then 'allow' else 'deny' end;
+
+  when 'employee.decide_preferred_name', 'employee.pending_names' then
+    -- A request goes one rank up and nobody answers their own (BL-099); the
+    -- owner's own request passes by itself (KK-17), so it never waits here.
+    if is_self then return 'deny'; end if;
+    if p.class = 'owner' then return 'allow'; end if;
+    if p.class = 'admin' then
+      return case when pg_temp.rank(t.class) < pg_temp.rank('admin') then 'allow' else 'deny' end;
+    end if;
+    return case when t.class = 'employee' and shares then 'allow' else 'deny' end;
+
   when 'employee.make_admin' then
     -- Owner only (checked above); nobody changes their own role.
     return case when is_self or t.class = 'owner' then 'deny' else 'allow' end;
@@ -591,7 +673,7 @@ begin
   when 'schedule.edit', 'schedule.templates.read' then
     -- May they do it somewhere at all: a manager needs a location.
     if p.class in ('owner', 'admin') then return 'allow'; end if;
-    return case when cardinality(p.locs) > 0 then 'allow' else 'deny' end;
+    return case when cardinality(reach) > 0 then 'allow' else 'deny' end;
 
   when 'settings.organization.write', 'settings.locations.write', 'settings.jobs.write',
        'settings.roles.write', 'settings.scheduling.write', 'settings.conflict_rules.write' then
@@ -693,8 +775,14 @@ insert into known_gap values
    'a manager cannot move somebody between employee roles at their own location; decided allowed on 2026-09-24, 6A (stage 6, employees)'),
   ('manager-cannot-invite', '{manager}', '{employee.create}', '{K,B}',
    'a manager cannot add and invite an employee at their own location; employee_access.manage is required (stage 6, employees)'),
-  ('admin-own-record', '{zeynep}', '{employee.save}', '{self,zeynep}',
+  ('admin-own-record', '{admin}', '{employee.save}', '{self,zeynep,kaan}',
    'an admin cannot save their own employee record, P0002 (stage 6, employees)'),
+  ('admin-removes-admin-access', '{admin}', '{employee.remove_access}', '{zeynep,kaan}',
+   'an admin takes another admin''s access away: remove_employee_access_service does not ask the rank (BL-270, FB-6.2.4)'),
+  ('terminate-needs-location', null, '{employee.terminate}', '{selin}',
+   'ending the employment of somebody who works nowhere fails on the worksite time zone, 22023 (FB-6.2.4)'),
+  ('preferred-name-not-on-core', null, '{employee.decide_preferred_name,employee.pending_names}', null,
+   'answering a preferred name asks employees.manage only: no rank, a manager answers their own and a peer''s, anywhere (BL-099, FB-6.2.6)'),
   ('important-date-no-as-validation', null, '{important_date.write}', '{K,B,x:K}',
    'an important date at a location out of reach or in another workspace is refused as 23514 "Choose a location in this workspace", not as a permission no: the browser insert runs its trigger before row security (stage 6, announcements)'),
   ('restricted-no-notifications', '{aydan}', '{notifications.read_own}', null,
@@ -704,7 +792,7 @@ insert into known_gap values
   ('legacy-blank-location', null,
    '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish,legacy.communication_capability}', '{none}',
    'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2. 56 callers pass null for "anywhere"; each moves to scope_set() with its domain and the helpers go (stage 6)'),
-  ('time-off-needs-location', '{nur}', '{time_off.request_own}', null,
+  ('time-off-needs-location', '{nur,selin}', '{time_off.request_own}', null,
    'asking for time off still needs a location, so a person with none cannot ask; time off belongs to the person (stage 6, time off)');
 
 create temporary table known_hit (id text primary key);
@@ -785,9 +873,11 @@ begin
       else
         places := array[target_uuid];
       end if;
-    when 'time_off', 'shift', 'case' then
+    when 'time_off', 'shift', 'case', 'placement' then
       person := case t.holder when 'olcay' then tests.id('m:owner') else tests.id('m:' || t.holder) end;
       places := array(select tests.id('m:' || l) from unnest(t.locs) l);
+    when 'name_request' then
+      person := tests.id('m:' || t.holder);
     when 'draft', 'template' then
       places := array(select tests.id('m:' || l) from unnest(t.locs) l);
       -- A one-place action is asked at each location in turn.

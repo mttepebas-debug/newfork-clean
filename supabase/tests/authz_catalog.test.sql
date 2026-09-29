@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(9);
 
 -- How far the database is from one authorization core (FOUNDATION-B stage
 -- 2c). Each count is a pattern stage 4 and 6 remove; a ceiling only comes
@@ -71,6 +71,42 @@ select is(
   ),
   '{}'::text[],
   'every authz hint is one of the eight reasons'
+);
+
+-- A 42501 that does not say which reason: every raise statement with 42501
+-- and no hint (BL-276). Measured 2026-09-29 on 20260929190000: 255 in 152
+-- functions. Target 0.
+select cmp_ok(
+  (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
+   where m[1] ~ '42501' and m[1] !~* 'hint'),
+  '<=', 255, 'refusals without an authz hint only go down'
+);
+
+-- Every action the core answers for, both ways (BL-130): an action added or
+-- dropped in a migration fails here until this list, the matrix and the web's
+-- twin (packages/shared/src/authorization.ts) say so too.
+select is(
+  array(select a.key from app_private.authz_actions a order by a.key collate "C"),
+  array[
+    'account.self', 'announcement.acknowledge', 'announcement.read', 'announcement.write', 'audit.read',
+    'availability.note_read', 'availability.own', 'availability.team_read', 'availability.team_write',
+    'documents.read', 'documents.review', 'documents.self', 'employee.archive', 'employee.change_role',
+    'employee.create', 'employee.decide_preferred_name', 'employee.invite', 'employee.list',
+    'employee.make_admin', 'employee.read', 'employee.references.read', 'employee.remove_access',
+    'employee.remove_from_location', 'employee.request_preferred_name', 'employee.save', 'employee.terminate',
+    'employee_hub.read', 'employee_hub.self', 'exchange.apply_own', 'exchange.approve', 'exchange.offer_own',
+    'exchange.read', 'important_date.write', 'membership.read', 'notifications.read_own', 'onboarding.review',
+    'onboarding.self', 'requests.read', 'schedule.edit', 'schedule.export', 'schedule.publish', 'schedule.read',
+    'schedule.templates', 'schedule.templates.read', 'settings.availability.read', 'settings.availability.write',
+    'settings.catalog.read', 'settings.conflict_rules.write', 'settings.documents.read', 'settings.documents.write',
+    'settings.important_dates.read', 'settings.jobs.read', 'settings.jobs.write', 'settings.locations.read',
+    'settings.locations.write', 'settings.notifications.read', 'settings.notifications.write',
+    'settings.organization.write', 'settings.people', 'settings.roles.read', 'settings.roles.write',
+    'settings.scheduling.write', 'settings.shift_catalog.read', 'settings.signature_templates.read',
+    'time_off.decide', 'time_off.request_own', 'workspace.accept_ownership', 'workspace.close',
+    'workspace.create', 'workspace.read', 'workspace.setup', 'workspace.todos', 'workspace.transfer_ownership'
+  ]::text[],
+  'the core answers for exactly these actions'
 );
 
 select * from finish();
