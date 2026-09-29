@@ -103,6 +103,11 @@ import {
 } from "./settings/document-types-service";
 import { registerOrganizationSettingsRoutes } from "./settings/organization-settings-routes";
 import { registerSettingsReadsRoutes } from "./settings/settings-reads-routes";
+import { registerTimeOffShortenRoutes } from "./time-off/time-off-shorten-routes";
+import {
+  createTimeOffShortenService,
+  type TimeOffShortenService,
+} from "./time-off/time-off-shorten-service";
 import {
   createSettingsReadsService,
   type SettingsReadsService,
@@ -180,6 +185,7 @@ interface BuildAppOptions {
   readonly documentTypesService?: DocumentTypesService | null;
   readonly organizationSettingsService?: OrganizationSettingsService | null;
   readonly settingsReadsService?: SettingsReadsService | null;
+  readonly timeOffShortenService?: TimeOffShortenService | null;
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
   readonly notificationOutboxCron?: {
@@ -357,6 +363,8 @@ export function buildApp(options: BuildAppOptions = {}) {
     createOrganizationSettingsServiceFromEnvironment();
   const settingsReadsService =
     options.settingsReadsService ?? createSettingsReadsServiceFromEnvironment();
+  const timeOffShortenService =
+    options.timeOffShortenService ?? createTimeOffShortenServiceFromEnvironment();
   const rolesService =
     options.rolesService ?? createRolesServiceFromEnvironment();
   const signatureSettingsService =
@@ -946,6 +954,10 @@ export function buildApp(options: BuildAppOptions = {}) {
     service: organizationSettingsService,
     contextResolver,
   });
+  registerTimeOffShortenRoutes(app, {
+    service: timeOffShortenService,
+    contextResolver,
+  });
   registerSettingsReadsRoutes(app, {
     service: settingsReadsService,
     contextResolver,
@@ -1170,6 +1182,14 @@ function createDocumentTypesServiceFromEnvironment(): DocumentTypesService | nul
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return url && serviceRoleKey
     ? createDocumentTypesService({ url, serviceRoleKey })
+    : null;
+}
+
+function createTimeOffShortenServiceFromEnvironment(): TimeOffShortenService | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && serviceRoleKey
+    ? createTimeOffShortenService({ url, serviceRoleKey })
     : null;
 }
 

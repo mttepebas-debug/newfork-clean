@@ -34,6 +34,18 @@ export const timeOffCancellationPeriodSchema = z.object({
   segment_id: z.string().uuid(), starts_at: z.string().datetime({ offset: true }), ends_at: z.string().datetime({ offset: true }),
 }).refine(value => Date.parse(value.starts_at) < Date.parse(value.ends_at), { message: "Choose a positive period of approved leave." });
 export type TimeOffCancellationPeriod = z.infer<typeof timeOffCancellationPeriodSchema>;
+// BL-127: a manager gives back hours of approved time off (Requests → Time off).
+export const timeOffShortenInputSchema = z.object({
+  expected_revision: z.number().int().positive(),
+  periods: z.array(timeOffCancellationPeriodSchema).min(1).max(124),
+  note: z.string().max(1000).default(""),
+  operation_id: z.string().uuid(),
+});
+export type TimeOffShortenInput = z.infer<typeof timeOffShortenInputSchema>;
+export const timeOffShortenResultSchema = z.object({
+  status: z.string(), request_id: z.string().uuid(), revision: z.number().int().positive(),
+});
+export type TimeOffShortenResult = z.infer<typeof timeOffShortenResultSchema>;
 const timeOffReadIntervalSchema = z.object({ start_at: z.string().datetime({ offset: true }), end_at: z.string().datetime({ offset: true }) });
 
 export const timeOffDecisionPieceSchema = z.object({

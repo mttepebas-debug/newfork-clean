@@ -73,6 +73,22 @@ const caseStatusLabels: Record<ExchangeCase["status"], string> = {
 const activeApplication = (a: ExchangeApplication) =>
   a.status === "invited" || a.status === "pending_manager";
 
+
+type ConsentWarning =
+  | { fingerprint: string; time_off_intervals?: { start_at: string; end_at: string }[] }
+  | null
+  | undefined;
+
+/** BL-182: their own approved time off is given back only when they agree and a manager approves. */
+function takesTimeOff(warning: ConsentWarning) {
+  return Boolean(warning?.time_off_intervals?.length);
+}
+function consentMessage(warning: ConsentWarning, verb: "Requesting" | "Accepting") {
+  return takesTimeOff(warning)
+    ? "This is during your approved time off. If a manager approves, your time off is shortened for these hours and whoever approved it is told."
+    : `Conflicts with your availability. ${verb} anyway does not change your weekly preferences.`;
+}
+
 export function ExchangeDialog({
   title,
   children,
@@ -582,7 +598,11 @@ export function ShiftExchangeHub({
                             <Check size={14} />
                           )}
                           {opportunity.eligibility.availability_warning
-                            ? "Availability conflict"
+                            ? takesTimeOff(
+                                opportunity.eligibility.availability_warning,
+                              )
+                              ? "During your time off"
+                              : "Availability conflict"
                             : "Eligible"}
                         </span>
                       </div>
@@ -594,7 +614,10 @@ export function ShiftExchangeHub({
                       </p>
                       <p className="sx-help">
                         {opportunity.eligibility.availability_warning
-                          ? "Conflicts with your availability. Requesting anyway does not change your weekly preferences."
+                          ? consentMessage(
+                              opportunity.eligibility.availability_warning,
+                              "Requesting",
+                            )
                           : "Job and location match · No assignment blockers"}
                       </p>
                       {application ? (
@@ -1257,8 +1280,8 @@ function CaseDetail({
             )}
             {a.status === "invited" && a.eligibility?.availability_warning && (
               <p className="sx-pending">
-                <AlertTriangle size={14} /> Conflicts with your availability.
-                Accepting anyway does not change your weekly preferences.
+                <AlertTriangle size={14} />{" "}
+                {consentMessage(a.eligibility.availability_warning, "Accepting")}
               </p>
             )}
             {actionable && activeApplication(a) && (
@@ -1335,6 +1358,22 @@ function CaseDetail({
               “Another teammate selected”.
             </p>
           )}
+          {preview.data?.allowed &&
+            (preview.data.receiver.shortens_time_off ||
+              preview.data.giver?.shortens_time_off) && (
+              <p className="sx-pending">
+                <AlertTriangle size={14} />{" "}
+                {[
+                  preview.data.receiver.shortens_time_off && current.employee_name,
+                  preview.data.giver?.shortens_time_off &&
+                    (item.owner_name ?? "The original owner"),
+                ]
+                  .filter(Boolean)
+                  .join(" and ")}{" "}
+                agreed to work during approved time off. Approving shortens that
+                time off for these hours; whoever approved it is told.
+              </p>
+            )}
           {preview.isFetching && <p role="status">Rechecking eligibility…</p>}
           {preview.error && (
             <p className="sx-error" role="alert">
@@ -1914,9 +1953,11 @@ function CreateExchange({
                   <ExchangeShiftCard shift={targetShift} />
                   {targetShift.availability_warning && (
                     <p className="sx-pending">
-                      <AlertTriangle size={14} /> Conflicts with your
-                      availability. Requesting anyway does not change your
-                      weekly preferences.
+                      <AlertTriangle size={14} />{" "}
+                      {consentMessage(
+                        targetShift.availability_warning,
+                        "Requesting",
+                      )}
                     </p>
                   )}
                   <p>
