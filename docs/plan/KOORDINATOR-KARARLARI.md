@@ -242,3 +242,9 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** CLAUDE.md §9 (ikiz sistem yok, fail-closed), KARARLAR ürün kuralları (M2), `nf-guvenlik` önerileri.
 - **Geri alma:** (a)(c) kolay; (b) tek satır; (D1) orta (çekirdek satırı + servis; yönetici to-do'yu kaybetmesi istenirse satır geri kapanır).
 - **Durum:** uygulanıyor (T5b-4).
+
+### KK-33 (2026-09-30) T5b-4 onboarding incelemesi: KK-29 yöneticisi FB-6.6'ya kadar P0002 alır
+- **Karar:** `review_employee_onboarding…` çekirdeğe (`onboarding.review`) geçerken fonksiyonun `service_actor_can_access_employee` satırına dokunulmaz. Yalnız yönettiği lokasyondaki kişinin onboarding'ini açmaya çalışan yönetici (KK-29) çekirdekten geçer ama o satırda `P0002 onboarding case unavailable` alır (önce ipuçsuz 42501). Erişim değişmez; yalnız ret kodu değişir. Test hücresi bugünkü cevabı "FB-6.6 bilinen boşluk" açıklamasıyla kilitler; FB-6.6 maddesine not.
+- **Dayanak:** kimseye yeni erişim açılmıyor; belge/onboarding yardımcısı FB-6.6'nın kapsamı; T5b sınırda kalır.
+- **Geri alma:** kolay (FB-6.6 satırı kaldırınca hücre değişir).
+- **Durum:** uygulanıyor (T5b-4).
