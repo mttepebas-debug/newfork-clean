@@ -178,8 +178,17 @@
 
 .account-header-action .nf-button {
   gap: 7px;
-  min-height: 36px;
   padding-inline: 13px;
+}
+
+/* Account's form buttons (Save, Discard, Change email, Create workspace...)
+   are as tall as a field: 40px here, 44px on a phone. The photo's Upload and
+   Remove stay compact beside the avatar; row buttons follow the row kit. */
+.account-header-action .nf-button,
+.account-form-actions .nf-button,
+.account-inline-form .nf-button {
+  min-height: 40px;
+  padding-block: 0;
 }
 
 /* ---- Sections: one column, separated by a hairline ---- */
@@ -338,7 +347,7 @@
   clear: both;
   margin: -8px 0 0;
   color: var(--theme-muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.45;
 }
 
@@ -444,6 +453,14 @@
   line-height: 1.45;
 }
 
+/* Why Save is off, in one line right above it. */
+.account-form-missing {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 13px;
+  text-align: right;
+}
+
 .account-form-actions,
 .account-employment-record .account-button-row {
   justify-content: flex-end;
@@ -497,10 +514,6 @@
   flex: 1 1 auto;
 }
 
-/* Same height as the field beside it, so the pair reads as one line. */
-.account-inline-form .nf-button {
-  min-height: 40px;
-}
 
 .account-notice,
 .account-main .workspace-transfer-panel {
@@ -595,6 +608,17 @@
 
   .account-photo-actions .nf-button {
     min-height: 42px;
+  }
+
+  .account-header-action .nf-button,
+  .account-form-actions .nf-button,
+  .account-inline-form .nf-button {
+    min-height: 44px;
+  }
+
+  .account-main .employee-documents-list .toolbar-filter-select {
+    height: 44px;
+    min-height: 44px;
   }
 
   /* Workspaces' row buttons and menu reach the 44px a thumb needs. */
@@ -695,6 +719,10 @@
     width: 100%;
   }
 
+  .account-form-missing {
+    text-align: left;
+  }
+
   .account-profile-head {
     align-items: flex-start;
   }
@@ -722,6 +750,24 @@
 }
 .account-main .workspace-list .pb-row:has(+ .pb-row[aria-current="true"]) {
   border-bottom-color: transparent;
+}
+/* On the tint the muted grey falls under 4.5:1, so the role line steps up. */
+.account-main .workspace-list .pb-row[aria-current="true"] .pb-row-meta {
+  color: var(--theme-text-secondary);
+}
+
+/* Documents' type filter looks like every other Account field. */
+.account-main .employee-documents-list .toolbar-filter-select {
+  height: 40px;
+  min-height: 40px;
+  border-color: var(--theme-muted);
+  padding: 8px 11px;
+  font-size: 13px;
+}
+.account-main .employee-documents-list .toolbar-filter-select:focus {
+  border-color: var(--theme-accent-strong);
+  box-shadow: 0 0 0 3px var(--theme-focus-halo);
+  outline: none;
 }
 /* Stacked on a narrow screen, the current row has no button to push the menu to
    the right edge, and its right-anchored popover would open off the left side. */

@@ -53,6 +53,15 @@
   min-height: 0;
   padding: 20px 16px;
 }
+/* Two columns fit a phone: no sideways scroll to reach the status. */
+.employee-table.document-personal-table {
+  min-width: 0;
+}
+/* A long document name wraps rather than hiding behind an ellipsis. */
+.employee-table.document-personal-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .employee-documents-none {
   margin: 0;
   color: var(--theme-muted);
