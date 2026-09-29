@@ -115,7 +115,7 @@ select is((select status::text from public.workspace_memberships where id = '3a0
 select is((select count(*)::integer from public.employee_access_snapshots where employee_id = '7a000000-0000-4000-8000-000000000001'), 1, 'access restoration snapshot is retained');
 select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000001'), '7a000000-0000-4000-8000-000000000001'::uuid, 'same-day shift before effective instant stays assigned');
 select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000002'), null, 'same-day shift after effective instant becomes open');
-select is((select count(*)::integer from public.employee_offboarding_shift_actions), 1, 'released shift has durable audit detail');
+select is((select count(*)::integer from public.employee_offboarding_shift_actions where workspace_id='2a000000-0000-4000-8000-000000000001'), 1, 'released shift has durable audit detail');
 select is((select count(*)::integer from public.employee_offboarding_followups where kind = 'coverage_alert' and status = 'review_required'), 1, 'released shift creates a coverage alert');
 select is((select count(*)::integer from public.employee_offboarding_followups where kind = 'compliance_review' and status = 'review_required'), 1, 'released shift creates a compliance review candidate');
 select is((select count(*)::integer from public.employee_events where workspace_id = '2a000000-0000-4000-8000-000000000001' and action = 'employee.terminated'), 1, 'termination lifecycle event is recorded');
@@ -133,7 +133,7 @@ select lives_ok(
 );
 set local role postgres;
 select is((select count(*)::integer from public.employee_terminations where workspace_id = '2a000000-0000-4000-8000-000000000001'), 1, 'idempotent replay does not duplicate the termination');
-select is((select count(*)::integer from public.employee_offboarding_followups), 2, 'idempotent replay does not duplicate follow-ups');
+select is((select count(*)::integer from public.employee_offboarding_followups where workspace_id='2a000000-0000-4000-8000-000000000001'), 2, 'idempotent replay does not duplicate follow-ups');
 
 set local role service_role;
 select throws_ok(
