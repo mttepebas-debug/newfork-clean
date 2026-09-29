@@ -1,11 +1,42 @@
 # FB-6.2 Çalışanlar dilimini yetki çekirdeğine taşı (FOUNDATION-B Aşama 6)
 Status: ready (2026-09-27) — S1–S4 ve P1–P3 cevaplı; owner'ın Takvim gruplaması ve iş ataması BL-218'de (`docs/plan/tasks/BL-218.md`). Başlama şartı: FB-6.1 `.9` main'de (✓ `bee7713d`); `.4` BL-218 `.1`–`.3`'ten sonra.
+Tazelik: FB-6.2.0b 2026-09-29 (`4490f8e3`) aşağıda; G7 (backlog programı) bu dilimin kendisi — ayrı görev dosyası yok (koordinatör 2026-09-29).
 Session: -   Branch: task/FB-6.2   Worktree: newfork-wt/FB-6.2   DB: lock (migration + test:db + e2e)
 
 Program: `docs/plan/tasks/FOUNDATION-B.md` → Aşama 6 → dilim tablosu, satır FB-6.2 (`:169`).
 Kaynak: `docs/plan/handoffs/FOUNDATION-B-asama6-devir.md` §3 madde 2. Ürün kuralları: `docs/plan/KARARLAR.md` → "Ürün kuralları — rol, kapsam, uygunluk" (`:34-47`). Kalıp: `docs/plan/tasks/FB-6.1.md` (pilot).
 Önkoşullar: **FB-6.1 main'de** (kalıp, ratchet tavanları ve `.11`'in katalog düşüşü önce yerleşir); **BL-139 main'de** (branch `bl139`, `app_private.authz_check`'e dokunuyor — bu dilim de aynı fonksiyonun kişi dalına dokunacak; ikisi aynı anda yazılmaz).
 Reviewer: `nf-guvenlik` (her kod adımı); ekranı değiştiren adımlarda (`.8`, `.9`) ayrıca `nf-gorsel-qa`. Onay biçimi: `ONAY @<commit-sha>`.
+
+## Tazelik ölçümü FB-6.2.0b (2026-09-29)
+**Tazelik 2026-09-29 (`origin/main` `4490f8e3`): geçerli — dilimin sayıları 2026-09-28'den beri değişmedi; T1 (Account, G6, G9a) ve T2 (G4, G5, G13) bu dilimin fonksiyonlarına dokunmadı.** Ölçüm: salt okur alt ajan + `nf-planlama` iki kalemi elle doğruladı (BL-354 satırları, `decide_time_off_with_assignments_service` sırası). Yerel DB 381 migration, son `20260929180000` = main'deki son dosya; sorgular `default_transaction_read_only=on`.
+
+| Ne | 2026-09-28 | 2026-09-29 | Hüküm |
+|---|---|---|---|
+| Kişi yardımcıları | 4 ad / 5 oid | **4 / 5** | geçerli |
+| Kişi + davet (+ onboarding) köprüsü | 6 + 4 (+2) | **6 + 4 (+2)** | geçerli |
+| `can_access_employee` / `can_manage_employee_record` / `can_assign_employee_locations` / `service_actor_can_access_employee` çağıranı | 7 / 12 / 1 / 21 | **7 / 12 / 1 / 21** | geçerli |
+| RLS politikasında yardımcı çağrısı; `decide:` hücresi | 0; 0 | **0; 0** | geçerli |
+| `employee.*` eylemi | 13 (`remove_from_location` yok) | **13**, `remove_from_location` yok; çekirdekte toplam **72** eylem | geçerli |
+| Bu dilimin `known_gap`'i / dosyada | 5 / 9 | **5 / 9** (`authorization_matrix.test.sql:690`, `:692`, `:694`, `:696`, `:702`) | geçerli (satır kaydı) |
+| Katalog sayaçları (toplam / tavan) | 32/32, 43/43, 59/59, 13/13, 11/11, 10/10 | **aynı**, gevşeklik 0 | geçerli |
+| Bu dilimin sayaç payı | uid 8, jwt 14, kapsam 13, politika 1 | **aynı** (34 adlık liste; 09-28'in 35 adlık listesi dosyada yazılı değildi) | geçerli |
+| Web `permissions.includes` (Çalışanlar) | 12 | **12** (`EmployeeDrawer.tsx` 11, `EmployeesPage.tsx` 1) | geçerli |
+| "Çalışan görünümüne geç"; "yalnız yönetir" tablosu; davet e2e | yok; yok; yok (12 spec) | **yok; yok; yok (12 spec)** | geçerli |
+| Employee rolünde `all_locations = true` | 363 / 364 | **409 / 410** | değişmiş (sayı büyüdü, kural aynı) |
+| Tercih edilen ad onayı çekirdeğe soruyor mu | hayır | **hayır** — G6 yalnız teslimi yaptı; `decide_employee_preferred_name_service` son tanımı `20260929161000_an_approved_name_is_told_and_availability_has_its_producer.sql` (G6), `list_pending_preferred_names_service` `20260922110000`; ikisinde `has_permission` + `employees.manage` | geçerli |
+| Yeşil listede olmayan dosya | 15 | **14** (`account_notification_scope` yeşile geçti, `4490f8e3`); `roles_permissions_rls` ve `employee_hub` hâlâ listede değil | değişmiş |
+| Kırmızı kontroller (`roles_permissions_rls` 42/47, `employee_hub` 13/13) | `nf-test` koşusu 09-28 | **ölçülmedi** (koşu `db.lock` ister); kök nedenin kodu duruyor (BL-270 satırı aşağıda) | ölçülmedi — `.0b`'de `nf-test` koşar |
+
+**G7 kalemlerinin bugünkü hâli (hepsi `4490f8e3`):**
+- **BL-270 fail-open:** `enforce_membership_role_change` son tanım `supabase/migrations/20260914214056_account_workspace_owner_controls.sql:272`; `:319` `if actor_id is null then return new; end if;` duruyor; rütbe `workspace_role_for` ile (`:337-340`), `:343` ret hint'siz.
+- **BL-242:** `prepare_employee_invitation_service` son tanım `20260909001000_employee_create_command.sql:150`, satır içi rol kuralı `:207`, `:211` (`can_invite_with_role` çağırmıyor). Owner onboarding'in dört servisi `actor_role <> 'owner'` ile, `authorize` yok: `reset_owner_onboarding_service` (`20260908173000_owner_onboarding_reset_start_over.sql:1`, `:25`), `queue_owner_onboarding_invitation_intent_service` (`20260908179000_owner_onboarding_invitation_intents.sql:30`, `:53`), `list_owner_onboarding_invitation_intents_service` (`:108`, `:128`), `mark_owner_onboarding_invitation_intent_dispatched_service` (`:165`, `:186`).
+- **BL-130:** çekirdekte 72 eylem; TS listesi (`packages/shared/src/authorization.ts:9`) ve döküm 72; pgTAP'te canlı `authz_actions`'ı sabit listeyle **iki yönlü** karşılaştıran kontrol yok (`authorization_matrix:466`, `authorization_coverage:312` tek yönlü).
+- **BL-155:** `list_schedule_weekly_shifts_service` (`20260907105000_schedule_weekly_shifts_alias.sql:1`) kendi kapsam mantığıyla (`:28`, `:46`, `:65`, `:68`); taşınınca kapsam sayacı 59 → 58.
+- **BL-354:** `employee_hub_actor_service` (`20260929180000_time_off_doors_close_with_the_workspace.sql:18`) hint'siz iki 42501 `:33`, `:43`. `decide_time_off_with_assignments_service` (`20260926190000_time_off_decisions_ask_the_core.sql:204`) `:214` kilit, `:215` P0002, `:216` yetki; `preview_time_off_assignment_decision_service` (`:180`) aynı sıra `:189`/`:190`. `shorten_time_off_service` G9b'de (T3), main'de değil.
+- **BL-365:** `apps/web/src/employees/EmployeeDrawer.tsx:958-962` ham hata (`:960` `errorMessage(detail.error)`); çekmece `isNoAccess` (`apps/web/src/lib/no-access.ts:10`) ve `NoAccessState` (`apps/web/src/shell/NoAccessState.tsx:11`) kullanmıyor; `EmployeesPage.tsx:36-37`, `:235-237` kullanıyor (kalıp hazır).
+- **BL-281 (4) / BL-129:** matriste tek admin kişi (`zeynep`, `authorization_matrix.test.sql:115`).
+- **BL-276 (5):** hint'siz 42501 **153 fonksiyonda 255 yer** (yöntem: `public` + `app_private` `prosrc`'unda her `raise …;` ifadesi, `errcode = '42501'` geçen ve `hint` geçmeyen; toplam 42501 166 fonksiyon / 276 yer; üç satır elle doğrulandı). Denetimin 164 / 273'ü başka yöntemle; karşılaştırılamaz. Eski kapı (`service_actor_has_permission`) çağıranı **46** (değişmedi).
 
 ## Tazelik ölçümü FB-6.2.0 (2026-09-28)
 **Tazelik 2026-09-28 (`origin/main` `2fed2144`): geçerli — iki önkoşul main'de, dilim başlayabilir; tablonun yedi sayısı değişti (aşağıda).** Önkoşullar: FB-6.1'in işlevsel kısmı (`.1`–`.12`) main'de (son adım `.12` `dd937fd`, `tasks/FB-6.1.md:127`; açık kalan `.0`/`.13`/`.14` görsel tur ve kapanış, işlevsel değil); BL-139 main'de (`f0ca450`, `DONE.md:56`; `weekly_preference_manager_scope` artık `service_actor_can_access_employee` çağırmıyor).
@@ -155,10 +186,58 @@ Yürütme sırası: `.0` → `.1` → `.2` → `.3` → `.4` → `.5` → `.6` �
 
 **Sıralama (ILERLEME-PLANI Ç3/Ç4, 2026-09-27):** (1) **BL-218** `.1`–`.3` (owner ataması, Management/Owner sistem kayıtları) FB-6.2 `.4`'ten önce main'de olur; FB-6.2 `.0`–`.3` ondan bağımsız başlar. (2) **Ç3:** BL-187 `.6`'da. (3) **Ç4:** FB-6.2 `.1`–`.4` çekirdeğe (`app_private.authz_check`, kişi dalı) dokunur; çekirdeğe dokunan başka iş (BL-198 dahil) aynı anda yazılmaz — `nf-db` şeridinde ardışık, her biri kendi birleştirme penceresinde. BL-218 çekirdeğe dokunmaz.
 
+## G7 kalemleri (backlog programı; KK-5, KK-8, KK-11, KK-12, KK-17; 2026-09-29 ekleri)
+Bu dilim backlog programının G7 grubudur (`docs/plan/tasks/BACKLOG-PROGRAM.md`). Her kalem bir alt adıma bağlı; kapanışta (`.11`) her BL tek tek işaretlenir.
+
+| Kalem | Ne | Alt adım | Sahip |
+|---|---|---|---|
+| BL-129, BL-281 (4) | Matrise ikinci admin kişisi; admin-admin hücreleri | `.1` | `nf-db` |
+| BL-270 | `remove_employee_access_service` → `authorize` (`employee.remove_access` rütbe kuralı); `enforce_membership_role_change`'in **fail-open dalı kapanır** (`actor_id is null` → izin yok; önce kırmızı hücre) | `.1` hücre, `.4` düzeltme | `nf-db` |
+| BL-317 (KK-8) | Owner ve aynı lokasyondaki diğer yöneticiler Employees'te görünür: `list_employees(_service)`, `get_employee_detail(_service)`, **avatar (`get_employee_avatar_path_service`) `.4`'ten `.3`'e**; `can_access_employee` gevşetilmez; çekmecenin salt okunurluğu sunucudaki rütbe kuralından; manager kendi satırını salt okunur görür | `.3` | `nf-db` (+ `.7` web salt okunur bayrağı) |
+| BL-242 | `prepare_employee_invitation_service` → `can_invite_with_role` (üçüncü kopya silinir); owner onboarding'in dört servisi `actor_role <> 'owner'` → `authorize` | `.5` | `nf-db` |
+| BL-099 yetki kısmı (KK-11) + KK-17 Karar 1 | `decide_employee_preferred_name_service`, `list_pending_preferred_names_service` → `authorize` (`employee.decide_preferred_name`, `no_self`, `rank_below`); onayda `workspace_id` şartı (G6 D2); **owner'ın kendi talebi onay beklemez, kendiliğinden geçer** (hücre) | `.6` | `nf-db` |
+| BL-133 (kısmen) | `authorization_coverage` etiket düzeltmeleri; `delete_catalog_entity_service` kalemi `.6`'da çekirdeğe taşınır (P1), `activate_…` kalemi FB-6.6 | `.6` | `nf-db` |
+| BL-130 | pgTAP: canlı `authz_actions` ↔ sabit liste iki yönlü (72 eylem + bu dilimin yenileri) | `.1` | `nf-db` |
+| BL-155 | `list_schedule_weekly_shifts_service` → `scope_set`; kapsam sayacı −1 | `.6` | `nf-db` |
+| BL-276 (5) | `authz_catalog`'a yedinci sayaç: hint'siz 42501 (tavan = ölçülen değer, yalnız azalır); bu dilimin dokunduğu her fonksiyonda 0 | `.1` sayaç, `.3`–`.6` uygulama | `nf-db` |
+| BL-354 | "Hayır" sözleşmesi: `employee_hub_actor_service`'in iki reddi `authz.*` hint'li; `decide_time_off_with_assignments_service` ve `preview_time_off_assignment_decision_service`'te bilinmeyen talep kapsam dışıyla aynı cevabı alır (`authz.out_of_scope`), yetki kilitten önce; **`shorten_time_off_service` T3 (G9b) main'e girince** aynı kural | `.6` | `nf-db` |
+| BL-176 (`.7` kısmı), BL-243 | `PermissionRoute`, `WorkspacePage`, `resolveLanding.ts:72-74` → `can()`; Schedule kişi kartı ve Availability çekmeceyi yalnız `can(employee.read)` ile açar | `.7a` | `nf-backend` |
+| BL-365 (+ BL-195 e2e yarısı) | Employees çekmecesi kapsam dışı/yetkisiz kişide ham hata yerine `NoAccessState` (`isNoAccess`); sonra BL-195'in erişim-yok e2e'si | `.7a` kod, `.10` e2e | `nf-backend` (+ `nf-arayuz` görünüm), `nf-test` |
+
+**Dışarıda kalanlar (KK-12):** BL-179 (FB-6.3), BL-189 ve BL-276 (1) (FB-6.4), BL-264 ve BL-276 (2) (FB-6.6), BL-178 ve BL-232 (FB-6.8), BL-224 ve BL-276 (3) (Takvim), BL-261 (hesap), BL-071 (GS). BL-176'nın `SettingsHomeRedirect`/`SettingsLayout` kısmı FB-6.8.
+
+## Done when — G7 ekleri (2026-09-29)
+13. **BL-270:** ikinci admin'in başka admin'in erişimini kaldırması ve rolünü değiştirmesi 42501 + `authz.rank` (matris hücresi önce kırmızı); `enforce_membership_role_change` oturumsuz çağrıda (`actor_id is null`) reddeder — fail-open dalı yok (pgTAP hücresi).
+14. **BL-317:** manager kendi lokasyonundaki owner'ı ve eş rütbeli yöneticileri Employees listesinde ve detayda görür (`manager-hidden-peers` kapanır, Done when 2 ile aynı satır); avatar okuması aynı kuralla (hücre); manager bu kişilerin çekmecesini salt okunur görür (web vitest: bayrak sunucu cevabından).
+15. **BL-242:** `grep` → `prepare_employee_invitation_service` gövdesinde satır içi rol kuralı 0, `can_invite_with_role` 1; dört owner onboarding servisinde `actor_role <> 'owner'` 0, `authorize` 1'er (`prosrc`).
+16. **BL-099 + KK-17:** tercih edilen ad onayında kendi talebine `no_self` hücresi yeşil (owner hariç); owner'ın kendi talebi onaysız geçer (hücre); başka workspace'in talebine onay `authz.out_of_scope`.
+17. **BL-130:** pgTAP `authz_actions` ↔ sabit liste iki yönlü eşit (eylem eklenince test kırmızı).
+18. **Sayaçlar (Done when 4'e ek):** kapsam/rütbe tavanı BL-155 ile ≤46; yeni yedinci sayaç (hint'siz 42501) tavanı ölçülen değerle (`4490f8e3`: 255 yer) girer ve dilim sonunda bu dilimin dokunduğu fonksiyonlarda 0; hiçbir sayaç artmaz.
+19. **BL-354:** `employee_hub_actor_service`'in iki reddi `authz.*` hint'li; bilinmeyen `requestId` ile `decide_time_off_with_assignments_service` / `preview_time_off_assignment_decision_service` (ve T3 main'deyse `shorten_time_off_service`) kapsam dışı taleple **aynı** cevabı verir (42501 + `authz.out_of_scope`; iki hücre, cevaplar eşit); yetki kilitten önce.
+20. **BL-176/BL-243/BL-365:** `grep -c "permissions.includes\|hasPermission" apps/web/src/auth/PermissionRoute.tsx apps/web/src/auth/resolveLanding.ts apps/web/src/views/WorkspacePage.tsx` → 0; Schedule ve Availability çekmeceyi `can()` olmadan açmaz (vitest); çekmece kapsam dışı kişide `NoAccessState` gösterir (vitest), BL-195 erişim-yok e2e'si yeşil (`.10`).
+21. **Her yeni ya da değişen `*_service`** `authorization_coverage` ve matriste sınıflı (CLAUDE.md §9); API'de `authz.not_member` → 404, diğer `authz.*` → 403 (API testleri); yetki kodunda fail-open yok (`nf-guvenlik` onayında ayrı satır).
+
+## Parçalama önerisi (koordinatör karar verir; 2026-09-29)
+**Öneri: iki dal, üç toplu tur.**
+- **Dal A — `nf-db` (tek işçi, sıralı):** `.0b` ölçüm → `.1` matris + BL-130 + yedinci sayaç → `.2` veri modeli → `.3` okuma (BL-317) → `.4` yazma (BL-270) → `.5` davet (BL-242) → `.6` P1 + ad onayı + BL-155 + BL-354 + BL-133. Gerekçe: `.1`–`.6` aynı migration ailesine ve `app_private.authz_check`'in kişi dalına dokunuyor; iki DB işçisi aynı fonksiyonları çakıştırır (Ç4). Her adım kendi commit'i ve kırmızı hücresiyle.
+- **Dal B — `nf-backend` (paralel başlar):** `.7a` = veritabanı değişikliği beklemeyen web kısmı: BL-176 (`.7` kısmı), BL-243, BL-365 ve Çalışanlar'ın 12 `permissions.includes` → `can()`. Yalnız çekirdekte **bugün var olan** eylemlerle (`employee.read`, `employee.manage` …) çalışır; dosyaları `supabase/**`'a değmez, Dal A ile çakışmaz. `.7b` (yeni `employee.remove_from_location` route'u, "yalnız yönetir" uçları, `invitation-service.ts` yeni imzalar, "Çalışan görünümüne geç" koruması) Dal A'nın `.5`'i main'e girince.
+- **Sonra:** `.9` (`nf-test`, kırmızı dosyalar) `.6`'dan sonra; `.8` (`nf-arayuz`, görsel varyantlar — kullanıcı seçer) `.7b` main'e girince; `.10` e2e en son.
+- **Toplu tur sınırları:** **T5a** = Dal A `.0b`–`.3` + Dal B `.7a` (görünür kazanç: M2, BL-317 owner görünür, çekmece erişim-yok; `nf-guvenlik` R3, `test:db`, Employees e2e). **T5b** = `.4`–`.6` + `.7b` + `.9` (yazma, davet, sayaç düşüşü; `nf-guvenlik`, `/code-review`, kullanıcıya ultrareview önerisi). **T5c** = `.8` + `.10` + `.11` (görsel QA, akış 2 ve 10 e2e). Her tur kendi `ONAY @sha`'sı.
+- **Elenen:** (i) tek işçide baştan sona sıralı — web kısmı (`.7a`) 1–2 gün boşuna bekler; (ii) DB'yi iki işçiye bölmek — Ç4 çakışması.
+- **Sıra uyarısı:** G8 (KK-13, `scope_set` arşivli lokasyon) ve `.2` (`scope_set` "yalnız yönetir"i sayar) aynı fonksiyona dokunuyor; aynı anda yazılmaz. Program sırası G7 → G8 korunursa sorun yok; G8 öne alınırsa `.2`'den önce main'de olmalı.
+
+## Pre-mortem — G7 ekleri (2026-09-29, `nf-planlama`: "bu iş nasıl ters gider?")
+1. **Kalem kayboldu:** G7'nin 12 kalemi 7 alt adıma dağıldı, tur "bitti" dedi ama BL-354'ün önizleme yarısı ya da KK-17'nin owner hücresi yazılmadı. Önlem: yukarıdaki kalem tablosu kapanışta satır satır işaretlenir; eksik satır = dilim bitmedi.
+2. **Tavanda sıkışma:** altı sayaç sıfır gevşeklikte; yeni `employee.remove_from_location` komutu ya da "yalnız yönetir" servisi eski kalıpla (satır içi kapsam, hint'siz 42501) yazılır, sayaç artar ve tur kırmızıya düşer. Önlem: her `nf-db` commit'i `authz_catalog` ile kapanır; yedinci sayaç `.1`'de girer ki yeni kod hint'siz 42501 ekleyemesin.
+3. **Web can() ile sunucu ayrıştı:** Dal B `can()`'e geçerken sunucu kuralı henüz değişmemiş eylemi sorar; ekran "evet", sunucu "hayır" der (ya da tersi). Önlem: `.7a` yalnız bugün çekirdekte olan eylemleri kullanır; yeni eylemler `.7b`'de, Dal A main'e girdikten sonra.
+4. **Uzun dal main'den koptu:** Dal A `.1`–`.6` günler sürer; bu arada G8/G10 (`scope_set`, Schedule servisleri) ya da T3 (G9b izin fonksiyonları) aynı migration ailesine girer, rebase'de yetki fonksiyonu çift tanımlanır. Önlem: T5a/T5b tur sınırlarında main'e girilir; BL-354'ün `shorten_time_off_service` kısmı ancak T3 main'deyse yapılır; G8 G7'den sonra.
+5. **Kullanıcı yokken görsel karar bekler:** `.8`'in varyantları ("Remove from <location>", "Manages", "Çalışan görünümüne geç") kullanıcı seçimi ister; T5c durur. Önlem: T5a/T5b görsel karar gerektirmez; `.8` kullanıcıya dönüş listesine yazılır, işlevsel kısım main'e girer.
+
 ## Touches
 - **`nf-db`:** `supabase/migrations/**` (dilimde 4–6 migration), `supabase/tests/authorization_matrix.test.sql`, `supabase/test-support/builder.sql`, kendi adımlarının pgTAP'ı, `retired_objects_stay_gone`.
 - **`nf-backend`:** `apps/api/src/employees/**`, `apps/web/src/employees/*-data.ts` ve hook'ları, `apps/web/src/App.tsx` (yalnız rota/koruma), `apps/web/src/auth/**` (`resolveLanding.ts`), `packages/shared/**`.
 - **`nf-test`:** `supabase/tests/roles_permissions_rls.test.sql`, `authz_catalog.test.sql`, `ci-green.txt`, `e2e/flows/**`.
+- **G7 ekleri (2026-09-29, `4490f8e3`):** `nf-db` — owner onboarding servisleri (`20260908173000`, `20260908179000`), `prepare_employee_invitation_service` (`20260909001000:150`), `list_schedule_weekly_shifts_service` (`20260907105000`), `employee_hub_actor_service` (`20260929180000:18`), `decide_time_off_with_assignments_service` / `preview_time_off_assignment_decision_service` (`20260926190000:180`, `:204`), `authz_catalog.test.sql` (yedinci sayaç), `authorization_coverage.test.sql` (BL-133), yeni `authz_actions` sabit liste testi (BL-130). `nf-backend` — `apps/web/src/auth/{PermissionRoute.tsx,resolveLanding.ts}`, `apps/web/src/views/{WorkspacePage,SchedulePage,AvailabilityPage}.tsx` (yalnız çekmeceyi açan kapı), `apps/web/src/employees/EmployeeDrawer.tsx` (erişim-yok durumu; görünüm `nf-arayuz`).
 - **`nf-arayuz`:** Çalışanlar ekranlarının sunumu (`EmployeesPage`, `EmployeeDrawer`), `AppShell.tsx` sunumu, CSS/token, `docs/design-canvas.md`.
 
 ## Test plan
@@ -189,6 +268,7 @@ Yürütme sırası: `.0` → `.1` → `.2` → `.3` → `.4` → `.5` → `.6` �
 Plan: `superpowers:writing-plans`; yürütme: `superpowers:executing-plans` ya da `superpowers:subagent-driven-development`. SQL, RLS: `supabase:supabase`, `supabase:supabase-postgres-best-practices`. Her kural önce kırmızı: `superpowers:test-driven-development`. Beklenmedik kırmızı: `superpowers:systematic-debugging`. İnceleme: `superpowers:requesting-code-review`, `security-review`, `superpowers:verification-before-completion`. Görsel varyantlar: `frontend-design:frontend-design`; erişilebilirlik: `chrome-devtools-mcp:a11y-debugging`.
 
 ## Notes / Result
+- 2026-09-29 (`nf-planlama`, koordinatör görevi; `task/backlog-program-7`, taban `4490f8e3`): G7 bu dilime katıldı (ayrı `FB-6.2.1.md` açılmadı; ad çakışması — `FB-6.2.1` bu dosyada matris adımı). FB-6.2.0b tazeliği (dilim sayıları değişmedi; `all_locations` 409/410, yeşil dışı dosya 14; kırmızı koşular ölçülmedi), G7 kalem tablosu, Done when 13–21, parçalama önerisi (Dal A `nf-db` sıralı + Dal B `nf-backend` `.7a` paralel; T5a/T5b/T5c), G7 pre-mortem. Koordinatör kararı bekleyen: parçalama.
 - 2026-09-27 (`nf-planlama`): Status `ready`. Owner'ın "By role" yeri kullanıcı kararıyla çözüldü (D4) ve BL-218 görev dosyasına taşındı; sıralama Ç3/Ç4 yazıldı.
 - 2026-09-27 (`nf-planlama`): kullanıcı §7'nin iki sorusunu cevapladı (araştırma notu §8): owner yalnız Owner işine otomatik atanır; lokasyonlar otomatik ve çekmecede kaldırılamaz; exclude yeni taslaktan itibaren gizler, yayınlanmış vardiyalar düşmez. KARARLAR güncel.
 - 2026-09-27 (`nf-planlama`): kullanıcı Management/Owner fikrinde D1–D5'i ve karma kişi kuralını verdi (araştırma notu §6). **S4'ün iş kısmı değişti:** owner yalnız atandığı işlerde çalışır; lokasyon kısmı aynı. Done when 12 buna göre. Açık uygulama soruları (exclude'lu kişinin vardiyası, kurulumdaki işlere atama) notun §7'sinde.

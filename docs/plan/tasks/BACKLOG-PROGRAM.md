@@ -23,7 +23,7 @@ Test plan: kod yok. Sayım betikle yapıldı: açık madde listesi `BACKLOG.md` 
 
 Risk:
 - **Stil B ile çakışma — çözüldü (KK-4).** G1 ve G14, stil B mockup dalının (`task/schedule-dialog-mockups`) pencerelerine dokunuyor; o dal yalnız yerel DEV mockup, seçilen stil B zaten main'de (`228ff3b7`). G1 ve G14 o dalı beklemez, sıra aynı.
-- **G7 ile FB-6.2 örtüşmesi — çözüldü (KK-5).** G7 ayrı iş olarak açılmaz: sırası gelince FB-6.2.1'in görev dosyası açılır, G7'nin 17 maddesi onun kapsamına girer (`nf-db`, R3, `nf-guvenlik` zorunlu).
+- **G7 ile FB-6.2 örtüşmesi — çözüldü (KK-5).** G7 ayrı iş olarak açılmaz: FB-6.2 dilimi olarak yürür (`docs/plan/tasks/FB-6.2.md`; ayrı görev dosyası yok, koordinatör 2026-09-29), G7'nin 17 maddesi onun kapsamına girer (`nf-db`, R3, `nf-guvenlik` zorunlu).
 - **Bayat maddeler sırada yer tutar.** Tazelik yalnız ilk 3 grupta yapıldı; sonraki gruplarda bir kısmı bayat çıkabilir (aşağıdaki "Bayat görünenler"). Her grup başlamadan önce ölçülür (CLAUDE.md §5 adım 0).
 
 ## Sayım (2026-09-29, `origin/main` `3a31d625`)
@@ -35,7 +35,7 @@ Risk:
 ## İş sırası
 **Önce Account yeniden tasarımı (koordinatör kararı KK-1, 2026-09-29):** programda şu an tek iş Account yeniden tasarımı (Account → Profile, Security, Preferences, Notifications, Workspaces, Documents; `task/account-redesign`, `nf-arayuz`). Aşağıdaki grupların kod işleri o iş main'e girince başlar; bu plan (yalnız `docs/plan`) bu sırada hazırlanır. Etkisi: G16 ile BL-335 (iki telefon), BL-072 (iki avatar), BL-149 (Workspaces listesi bayat), BL-287, BL-331 ve BL-147 Account ekranlarına dokunuyor; tasarım main'e girince tazelikleri yeniden ölçülür.
 
-**Açık sorulara koordinatör cevabı (2026-09-29):** KK-4 — G1 ve G14 stil B mockup dalını beklemez (stil B main'de, `228ff3b7`), sıra aynı. KK-5 — G7 FB-6.2.1'in kapsamı olarak yürür; ayrı G7 işi açılmaz, sıra 7'de FB-6.2.1 görev dosyası açılır.
+**Açık sorulara koordinatör cevabı (2026-09-29):** KK-4 — G1 ve G14 stil B mockup dalını beklemez (stil B main'de, `228ff3b7`), sıra aynı. KK-5 — G7 FB-6.2 diliminin kapsamı olarak yürür; ayrı G7 işi açılmaz, sıra 7'de `FB-6.2.md` güncellenir (ad notu: "G7 ↔ FB-6.2 eşlemesi").
 
 Sıralama kuralı: önce en yüksek "leave" (critical yok; high); aynı önemde ucuz ve güvenli (do: safe) öne; bağımlılık korunur. Karar bekleyen, FOUNDATION-B'ye bağlı, yol haritası ve MVP sonrası grupları sıraya girmez (aşağıda). G0 sıradan bağımsızdır, her an paralel koşar.
 
@@ -48,7 +48,7 @@ Sıralama kuralı: önce en yüksek "leave" (critical yok; high); aynı önemde 
 | 4 | **G4** | Zamanlanmış dışa aktarma ve e-posta teslimatı | BL-101 U63 (BL-157 bayat, kapandı) (BL-272, BL-225, BL-163, BL-330 kapandı; BL-101 ve U63 kod kısmı kapandı, hosted kısmı açık) | high / moderate | R3 (BL-101 yetki çekirdeğine dokunuyor; belirsiz → üst sınıf) | `nf-backend` + `nf-db` | 1–1,5 gün — **main'de** (`4490f8e3`, T2 toplu turu; main CI 36583110901 yeşil); açık: BL-101 ve U63 hosted kısmı ("Hosted bekleyen"), sağlamlık notları BL-356 (G11) |
 | 5 | **G5** | Parola, oturum ve hesap güvenliği | BL-161 (high, KK-11: kurtarma bağlantısı) BL-357 BL-358 BL-359 BL-360 BL-361 (G5 ardı, düşük bulgular) (BL-283, BL-162, BL-279 kapandı; BL-161 kod kısmı kapandı, hosted kısmı açık) | high / moderate | R3 (parola/oturum) | `nf-db` + `nf-backend` | 1,5 gün — **main'de** (`4490f8e3`, T2 toplu turu; main CI 36583110901 yeşil); orta düzeltme `7b31a654`; açık: BL-161 hosted kısmı, G5 ardı BL-357…BL-361 |
 | 6 | **G6** | Bildirim teslimi | (BL-119 BL-342 BL-343 kapandı; BL-099 teslim kısmı kapandı, yetki kısmıyla G7'ye taşındı) | high / moderate | R3 (bildirim `*_service`) | `nf-db` | 0,5 gün — **main'de** (`209dbf8c`, T1 toplu turu; dal CI 36576683860 yeşil; main CI 36581376867 check+db+e2e yeşil). `account_notification_scope`'un asıl kanıtı bu main CI (seed'den kurulan DB) |
-| 7 | **G7** | FB-6.2.1 kapsamı: yetki çekirdeği ailesi A'nın Çalışanlar dilimine düşen kısmı (KK-5, KK-12) | BL-129 BL-270 BL-317 BL-242 BL-130 BL-155 BL-133 BL-176 BL-243 BL-276 (BL-133, BL-176, BL-276 kısmen; + BL-099'un yetki kısmı, KK-11) BL-354 BL-099 BL-365 | high / risky | R3 | `nf-db` (+ `nf-backend` BL-176/BL-243) | 2–3 gün |
+| 7 | **G7** | = FB-6.2 dilimi (`FB-6.2.md`): yetki çekirdeği ailesi A'nın Çalışanlar dilimine düşen kısmı (KK-5, KK-12) | BL-129 BL-270 BL-317 BL-242 BL-130 BL-155 BL-133 BL-176 BL-243 BL-276 (BL-133, BL-176, BL-276 kısmen; + BL-099'un yetki kısmı, KK-11) BL-354 BL-099 BL-365 | high / risky | R3 | `nf-db` (+ `nf-backend` BL-176/BL-243) | 2–3 gün |
 | 8 | **G8** | Silinmiş ve arşivli kayıtlar | BL-254 BL-132 (BL-188 bayat, kapandı) | medium / moderate | R3 (BL-132 `scope_set`) | `nf-db` (+ `nf-backend` okuma modeli) | 1 gün |
 | 9 | **G9** | İzin, takas ve kapsam kuralları | BL-127 BL-182 BL-200 BL-110 (BL-183, BL-185 bayat, kapandı) BL-362 BL-364 | high / risky | R3 | `nf-db` (+ `nf-backend` BL-200, `nf-arayuz` BL-110 metinleri) | 2 gün — G9a **main'de** (BL-247, BL-220, BL-109; `c9fc35a1`, T1; main CI 36581376867 check+db+e2e yeşil). G9b (BL-182 + BL-127) **ONAY @`1127dedd`**, **T3'te** (dal `task/batch-t3`, CI koşuyor). Açık: BL-200 (önce ölçüm), BL-110 kalanı, BL-362 ve BL-364 (G9b main'e girince geçerli) |
 | 10 | **G10** | Schedule kayıt ve yayın kuralları (veri) | BL-174 BL-191 BL-326 BL-325 BL-167 BL-228 BL-229 BL-292 BL-298 BL-236 BL-211 BL-238 (BL-190, BL-164 bayat, kapandı) | medium / moderate | R3 (`*_service` sözleşmesi, BL-292) | `nf-db` (+ `nf-backend` BL-298 shared şema) | 2 gün |
@@ -111,7 +111,7 @@ Her tur: `pnpm.cmd lint`, `typecheck`, `test`, `build`; turda migration varsa `t
 | T3 | G9b (BL-182 + BL-127) — CI'da (dal `task/batch-t3`) | `nf-guvenlik` ONAY @`1127dedd`; ızgara bütçesi ölçümü |
 | T3 | G5, sonra G14 | `test:db`; e2e: giriş/Account, Schedule; `nf-guvenlik` (G5 R3) |
 | T4 | G6, sonra G12 | `test:db` (G12 yalnız test dosyası); `nf-guvenlik` (G6 R3) |
-| T5 | G7 = FB-6.2.1 (tek başına, KK-5) | `test:db` + yetki matrisi; e2e: izin gerektiren akışlar; `nf-guvenlik` zorunlu, `/code-review` ve kullanıcıya ultrareview önerisi |
+| T5 | G7 = FB-6.2 dilimi (`FB-6.2.md`; tek başına, KK-5) | `test:db` + yetki matrisi; e2e: izin gerektiren akışlar; `nf-guvenlik` zorunlu, `/code-review` ve kullanıcıya ultrareview önerisi |
 | T6 | G8, sonra G13 | `test:db`; e2e: Templates, dışa aktarma |
 | T7 | G9, sonra G15 | `test:db`; e2e: izin, takas; görsel QA (G15 çok ekran) |
 | T8 | G10, sonra G16 | `test:db`; e2e: Schedule kayıt/yayın, giriş |
@@ -239,10 +239,11 @@ Hükümler BACKLOG.md'de maddelerin altında ("Tazelik 2026-09-29 (`7c63b997`, B
 - **G8 (3 madde):** BL-188 **bayat, kapandı** (`6dddfeb8`, `d58bf9be`, `d51b99ad`); BL-254 ve BL-132 değişmiş. BL-132 yeniden yazıldı: arşivli ama silinmemiş lokasyon çekirdekte kapsamda, Schedule'da yok; iki akış da (Archive, silme) bugün var; "tek kolon" hedefi Q-C ile çelişiyor — ürün kararı gerekebilir.
 - **G9 (9 madde):** BL-183 ve BL-185 **bayat, kapandı** (`d1db608a`/`3b233691`; `b40c0468`); BL-110 değişmiş (Schedule yarısı kapandı); BL-247'nin bir yan iddiası yanlış (talep yolu da kapalı workspace kapısından yoksun); kalan 5 geçerli. BL-182 düzeltmesi yalnız kabul fonksiyonunda kalırsa yetmez (tetikleyici + adaylık).
 
-### G7 ↔ FB-6.2 eşlemesi (KK-5: G7 = FB-6.2.1 kapsamı)
+### G7 ↔ FB-6.2 eşlemesi (KK-5: G7 = FB-6.2 dilimi, `FB-6.2.md`)
+**Ad notu (2026-09-29, koordinatör kararı):** KK-5/KK-12'deki "FB-6.2.1" dilimin bütününü kastediyordu; `FB-6.2.md`'de `FB-6.2.1` yalnız ilk alt adımın (matris) adı. G7'nin görev dosyası `FB-6.2.md`'nin kendisi; ayrı dosya açılmaz. Aşağıdaki tablodaki `.1`–`.7` FB-6.2'nin alt adımlarıdır.
 Ölçüm, G7'nin çoğunun FB-6.2'nin kendi dilimi değil, FOUNDATION-B'nin başka dilimlerinin (FB-6.3 İzin, FB-6.4 Takas, FB-6.6 Belgeler, FB-6.8 Ayarlar, Takvim) alanında olduğunu gösteriyor. **Karara bağlandı: KK-12, seçenek (a)** — FB-6.2.1 yalnız "FB-6.2'de zaten var" ve "yeni kapsam" sütunlarını alır; "başka dilimin alanı" sütunundakiler o dilime (program GF), BL-071 GS'ye.
 
-| Madde | FB-6.2'de zaten var | Başka dilimin alanı | FB-6.2.1'e yeni kapsam olur |
+| Madde | FB-6.2'de zaten var | Başka dilimin alanı | FB-6.2'ye yeni kapsam olur |
 |---|---|---|---|
 | BL-129 | `.1` (`FB-6.2.md:83`, `:124`, `:142`) | — | — |
 | BL-270 | `.4` (`:145`) + ikinci admin `.1` | — | fail-open (`20260914214056:319`) kırmızı hücresi |
@@ -312,6 +313,7 @@ Hükümler BACKLOG.md'de ("Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G…)
 - (6) Account'ta iki telefon alanı → **BL-335** (yeni, veri kararı), GK.
 
 ## Notes / Result
+- 2026-09-29 (`task/backlog-program-7`, taban `4490f8e3`): G7'nin görev dosyası `FB-6.2.md`'nin kendisi (koordinatör kararı (a); ad notu "G7 ↔ FB-6.2 eşlemesi"nde); G7 satırı ve T5 satırı "= FB-6.2 dilimi". `FB-6.2.md`'ye FB-6.2.0b tazeliği (`4490f8e3`), G7 kalem tablosu, Done when 13–21, parçalama önerisi (T5a/T5b/T5c), pre-mortem. BL-354 ek satırındaki satır numarası düzeltildi (karar servisi `:215`/`:216`; `:189`/`:190` önizleme servisi). Açık madde değişmedi (**232**).
 - 2026-09-29 (`task/backlog-program-7`, taban `4490f8e3`): T1 main CI 36581376867 yer tutuculara yazıldı. **T2 main'de** (G4, G5, G13). Kapandı: BL-272, BL-225, BL-330, BL-163 (G4), BL-283, BL-162, BL-279 (G5), BL-120, BL-175, BL-322, BL-196, BL-202, BL-328, BL-203, BL-210, BL-321, U12, U16, U18, U19 (G13) — 20; BL-144 BL-286'ya birleştirildi (koordinatör). Kısmen kapandı, açık kalan yazılı: BL-101 ve U63 (hosted tetik ve anahtar), BL-161 (hosted parola uzunluğu), BL-281 (2)(4), BL-195 (e2e yarısı → BL-365). DONE.md'ye 3 satır. BL-368 → 14 dosya. G9b T3'te. "Kullanıcıya dönüşte" listesi açıldı (BL-355 (3) ↔ K-15, BL-073) → açık madde 253 → **232**.
 - 2026-09-29 (`task/backlog-program-7`, taban `209dbf8c`): devir §3'ün dört işi — Account sonrası tazelik: G16'nın 20 maddesi (13 geçerli, 4 değişmiş, 3 bayat: U49, U53, U54 kapandı; BL-355 (3) K-15 kararıyla çeliştiği için düşürüldü — madde yazılırken karar dosyasına bakılmamıştı; BL-144 ile BL-286 aynı kök, birleştirilebilir) ve Account'a değen G15/G23 maddeleri (BL-258 değişmiş, BL-287 geçerli, BL-280 (1) geçerli; U30 ve BL-147 bayat, kapandı). BL-345 geçerli (çip kenarı 1,37:1), BL-350 geçerli (150 ms kancada, testi yok). BL-277 T1 kapanışında kapandı. G16 dokunduğu dosyalar "ölçüldü". İki salt okur alt ajan; `nf-planlama` iki bayat hükmü (BL-147, U49) ve U30'un kararını elle doğruladı → açık madde 258 → **253**.
 - 2026-09-29 (`task/backlog-program-7`, taban `209dbf8c`): **T1 main'de** (Account, BL-335, BL-332, G2, G22, G19, G6, G9a). Kapandı: BL-335, BL-332, BL-293, BL-290, BL-294, BL-295, BL-291, BL-207, BL-297, BL-277, BL-119, BL-342, BL-343, BL-247, BL-220, BL-109 (16; "Kapanan maddeler"e taşındı, DONE.md'ye 8 etki satırı). BL-099 açık kalır: teslim kısmı kapandı, yetki kısmıyla G7'ye taşındı. Yeni: BL-362 (izni kısalt ve ata tek adım, G9), BL-363 (izin API'si iki klasörde, G23), BL-364 (kısaltma satırı "Cancellation" görünüyor, G9), BL-365 (Employees çekmecesi ham hata, G7), BL-366 (çekmece formu ilk karede boş, G17), BL-367 (tek ekran bekleme ayarı, G13), BL-368 (15 pgTAP dosyasının CI durumu bilinmiyor, G12); ek satırlar: BL-357 (token gönderimden önce döndürülüyor), BL-354 (bilinmeyen izin talebi P0002), BL-195 (açık, e2e yarısı BL-365'e bağlı). T2 = G4 + G5 + G13; G9b ONAY @`1127dedd`, T1 sonrası tur. Main CI run'ı yer tutucu (`<run>`), koordinatör düzeltecek.
