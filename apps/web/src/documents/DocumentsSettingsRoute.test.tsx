@@ -9,7 +9,12 @@ const auth = vi.hoisted(() => ({
 }));
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
-    context: { permissions: auth.permissions, membership: { role: "manager" } },
+    // Where a refused route lands is the core's answer (resolveLanding).
+    context: {
+      permissions: auth.permissions,
+      actions: ["workspace.read"],
+      membership: { role: "manager" },
+    },
   }),
 }));
 vi.mock("../settings/DocumentsSettingsPage", () => ({

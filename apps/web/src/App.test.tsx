@@ -86,12 +86,14 @@ vi.mock("./auth/AuthContext", async () => {
     },
     permissions: shared.permissionsForRole(role),
     // What the core would list for this role with every location: the
-    // workspace-wide actions the matrix twin answers yes to, plus
-    // workspace.read, which every active member has (authz_has_permission).
+    // actions the matrix twin answers yes to somewhere (a person action for
+    // somebody: an employee), plus workspace.read, which every active member
+    // has (authz_has_permission). app_private.actor_actions lists person
+    // actions the same way.
     actions: shared.authzActionKeys.filter((action) => {
       if (action === "workspace.read") return true;
       const rule = (shared.targetedAuthzActions as Record<string, { person?: boolean }>)[action];
-      return rule !== undefined && !rule.person && (shared.expected as (...args: unknown[]) => boolean)(
+      return rule !== undefined && (shared.expected as (...args: unknown[]) => boolean)(
         {
           workspaceId,
           role,
@@ -100,6 +102,7 @@ vi.mock("./auth/AuthContext", async () => {
           permissions: shared.permissionsForRole(role),
         },
         action,
+        ...(rule.person ? [{ person: { role: "employee", isSelf: false } }] : []),
       );
     }),
     onboarding: { status: "complete", currentStep: 2 },
