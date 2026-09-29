@@ -34,6 +34,11 @@ export function bearerToken(authorization: string | undefined): string {
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** No session was sent at all (BL-076): sign in, whatever the workspace. */
+function signedOut(): HttpError {
+  return new HttpError("Sign in required", 401, { reason: "session.required" });
+}
+
 function notMember(): HttpError {
   return new HttpError("Workspace not found", 404, { reason: "authz.not_member" });
 }
@@ -49,7 +54,8 @@ export async function resolveActor(
   resolver: WorkspaceContextResolver | null,
 ): Promise<ActiveWorkspaceContext> {
   const accessToken = bearerToken(authorization);
-  if (!resolver || !accessToken) throw notMember();
+  if (!resolver) throw notMember();
+  if (!accessToken) throw signedOut();
   if (workspaceId !== null && !uuid.test(workspaceId)) throw notMember();
   const context = await resolver.resolve(accessToken, workspaceId);
   if (!context || (workspaceId !== null && context.workspace.id !== workspaceId))
@@ -80,7 +86,8 @@ export async function resolveAuthorizedWorkspaceContext(input: {
   readonly allowIncompleteOnboarding?: boolean;
 }): Promise<ActiveWorkspaceContext | null> {
   const accessToken = bearerToken(input.authorization);
-  if (!input.resolver || !accessToken) return null;
+  if (!input.resolver) return null;
+  if (!accessToken) throw signedOut();
 
   const context = await input.resolver.resolve(accessToken, input.workspaceId);
   if (
@@ -105,9 +112,8 @@ export async function resolveWorkspaceAuthorization(input: {
   readonly allowIncompleteOnboarding?: boolean;
 }): Promise<WorkspaceAuthorizationResult> {
   const accessToken = bearerToken(input.authorization);
-  if (!input.resolver || !accessToken) {
-    return { context: null, denied: "workspace_not_found" };
-  }
+  if (!input.resolver) return { context: null, denied: "workspace_not_found" };
+  if (!accessToken) throw signedOut();
 
   const context = await input.resolver.resolve(accessToken, input.workspaceId);
   if (
@@ -152,9 +158,8 @@ export async function resolveWorkspaceMembership(input: {
   readonly allowIncompleteOnboarding?: boolean;
 }): Promise<WorkspaceAuthorizationResult> {
   const accessToken = bearerToken(input.authorization);
-  if (!input.resolver || !accessToken) {
-    return { context: null, denied: "workspace_not_found" };
-  }
+  if (!input.resolver) return { context: null, denied: "workspace_not_found" };
+  if (!accessToken) throw signedOut();
 
   const context = await input.resolver.resolve(accessToken, input.workspaceId);
   if (

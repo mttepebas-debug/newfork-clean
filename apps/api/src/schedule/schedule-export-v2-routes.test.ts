@@ -42,7 +42,7 @@ describe("Export v2 read-only server authorization", () => {
     if (reason === "no-permission") value.permissions = [];
     if (reason === "other-workspace") value.workspace.id = id(99);
     const { app, post, getReadModel } = setup(reason === "no-context" ? null : value);
-    expect((await post(scope, reason === "no-token" ? "" : "Bearer test")).statusCode).toBe(403);
+    expect((await post(scope, reason === "no-token" ? "" : "Bearer test")).statusCode).toBe(reason === "no-token" ? 401 : 403);
     expect(getReadModel).not.toHaveBeenCalled(); await app.close();
   });
   it.each([

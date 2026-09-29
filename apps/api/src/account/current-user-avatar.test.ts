@@ -32,7 +32,7 @@ describe("current user avatar", () => {
     const denied = await app.inject({method:"GET",url:"/v1/workspaces/75000000-0000-4000-8000-000000000101/me/avatar",headers:{authorization:"Bearer token"}});
     expect(denied.statusCode).toBe(404);
     const anonymous = await app.inject({method:"GET",url:`/v1/workspaces/${context.workspace.id}/me/avatar`});
-    expect(anonymous.statusCode).toBe(404);
+    expect(anonymous.statusCode).toBe(401);
     expect(rpc).toHaveBeenCalledTimes(1);
     await app.close();
   });

@@ -5,6 +5,7 @@ import {
   authorize,
   createSupabaseWorkspaceContextResolver,
   resolveActor,
+  resolveAuthorizedWorkspaceContext,
   resolveWorkspaceAnyPermissionAuthorization,
   resolveWorkspaceAuthorization,
   resolveWorkspaceMembership,
@@ -248,6 +249,18 @@ describe("resolveWorkspaceAuthorization", () => {
     locationScope: { allLocations: true, locationIds: [] },
   };
 
+  // BL-076: a request with no session at all hears "sign in" (401), from
+  // every resolver, before anybody is asked about the workspace.
+  it("asks for a session when none was sent, whichever resolver", async () => {
+    const resolver = { resolve: vi.fn(async () => context) };
+    const input = { authorization: undefined, workspaceId, resolver };
+    await expect(resolveWorkspaceAuthorization({ ...input, permission: "workspace.manage" })).rejects.toMatchObject({ statusCode: 401 });
+    await expect(resolveWorkspaceAnyPermissionAuthorization({ ...input, anyOf: ["workspace.manage"] })).rejects.toMatchObject({ statusCode: 401 });
+    await expect(resolveWorkspaceMembership(input)).rejects.toMatchObject({ statusCode: 401 });
+    await expect(resolveAuthorizedWorkspaceContext({ ...input, permission: "workspace.manage" })).rejects.toMatchObject({ statusCode: 401 });
+    expect(resolver.resolve).not.toHaveBeenCalled();
+  });
+
   it("blocks incomplete owner onboarding contexts unless the route opts in", async () => {
     const resolver = { resolve: vi.fn(async () => context) };
 
@@ -399,7 +412,8 @@ describe("resolveActor and authorize", () => {
 
   it("refuses without a session, a resolver or a real workspace id, asking nobody", async () => {
     const resolver = { resolve: vi.fn(async () => context) };
-    await expect(resolveActor(undefined, workspaceId, resolver)).rejects.toMatchObject(notMember);
+    // BL-076: no session at all is "sign in", not "no such workspace".
+    await expect(resolveActor(undefined, workspaceId, resolver)).rejects.toMatchObject({ statusCode: 401 });
     await expect(resolveActor("Bearer token", "not-a-uuid", resolver)).rejects.toMatchObject(notMember);
     await expect(resolveActor("Bearer token", workspaceId, null)).rejects.toMatchObject(notMember);
     expect(resolver.resolve).not.toHaveBeenCalled();
