@@ -2331,6 +2331,7 @@ export function SchedulePage({
                 canPublishSchedule ? "publish" : "save-draft"
               }
               data-publication-tone={publishActionTone}
+              aria-expanded={publishMenuOpen}
             >
               {canPublishSchedule ? (
                 <>
