@@ -66,6 +66,7 @@ const model: ScheduleReadModel = {
       color: "#2563eb",
       sort_order: 0,
       department_id: null,
+      system_key: null,
     },
   ],
   shift_types: [
@@ -572,6 +573,7 @@ describe("ShiftQuickEditor", () => {
       color: "#f97316",
       sort_order: 0,
       department_id: null,
+      system_key: null,
     };
     const serverJob = {
       ...model.jobs[0]!,

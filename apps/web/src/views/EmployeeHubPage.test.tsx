@@ -144,6 +144,7 @@ const scheduleBoard = {
       color: "#2d8c64",
       sort_order: 1,
       department_id: null,
+      system_key: null,
     },
   ],
   shift_types: [],

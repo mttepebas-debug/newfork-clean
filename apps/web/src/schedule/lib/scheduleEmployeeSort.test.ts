@@ -5,6 +5,7 @@ import {
   createSortedScheduleModel,
   groupScheduleEmployeesByJob,
   isExcludedEmployeeVisibleForWeek,
+  nonManagementPrimaryJobId,
   primaryScheduleJobId,
   sortScheduleEmployees,
 } from "./scheduleEmployeeSort";
@@ -16,6 +17,7 @@ const jobs: ScheduleReadModel["jobs"] = [
     color: "#f59e0b",
     sort_order: 0,
     department_id: null,
+    system_key: null,
   },
   {
     id: "22222222-2222-4222-8222-222222222222",
@@ -23,8 +25,10 @@ const jobs: ScheduleReadModel["jobs"] = [
     color: "#10b981",
     sort_order: 1,
     department_id: null,
+    system_key: null,
   },
 ];
+const departments: ScheduleReadModel["departments"] = [];
 
 function employee(overrides: Partial<ScheduleEmployee>): ScheduleEmployee {
   return {
@@ -61,6 +65,7 @@ describe("scheduleEmployeeSort", () => {
         }),
       ],
       jobs,
+      departments,
       "alphabetical",
     );
 
@@ -96,6 +101,7 @@ describe("scheduleEmployeeSort", () => {
         }),
       ],
       jobs,
+      departments,
       "byJob",
     );
 
@@ -126,6 +132,7 @@ describe("scheduleEmployeeSort", () => {
         }),
       ],
       referenceOrderedJobs,
+      departments,
       "byJob",
     );
 
@@ -134,7 +141,7 @@ describe("scheduleEmployeeSort", () => {
       "Host Employee",
     ]);
     expect(
-      groupScheduleEmployeesByJob(sorted, referenceOrderedJobs).map(
+      groupScheduleEmployeesByJob(sorted, referenceOrderedJobs, departments).map(
         (group) => group.job?.name ?? "No job/position",
       ),
     ).toEqual(["Server", "Host"]);
@@ -160,6 +167,7 @@ describe("scheduleEmployeeSort", () => {
         }),
       ],
       jobs,
+      departments,
       "byJob",
     );
 
@@ -230,10 +238,11 @@ describe("scheduleEmployeeSort", () => {
         }),
       ],
       jobs,
+      departments,
       "byJob",
     );
 
-    const groups = groupScheduleEmployeesByJob(rows, jobs);
+    const groups = groupScheduleEmployeesByJob(rows, jobs, departments);
 
     expect(groups.map((group) => group.job?.name ?? "No job/position")).toEqual([
       "Host",
@@ -260,10 +269,11 @@ describe("scheduleEmployeeSort", () => {
         }),
       ],
       jobs,
+      departments,
       "byJob",
     );
 
-    const groups = groupScheduleEmployeesByJob(rows, jobs);
+    const groups = groupScheduleEmployeesByJob(rows, jobs, departments);
 
     expect(groups.map((group) => group.job?.name ?? "No job/position")).toEqual([
       "Host",
@@ -285,6 +295,7 @@ describe("scheduleEmployeeSort", () => {
           job_ids: [jobs[1]!.id],
         }),
         jobs,
+        departments,
       ),
     ).toBe(jobs[1]!.id);
   });
@@ -313,5 +324,57 @@ describe("scheduleEmployeeSort", () => {
         addDays,
       ),
     ).toBe(false);
+  });
+});
+
+describe("Management and the primary job outside it (BL-218)", () => {
+  const management = "d0000000-0000-4000-8000-000000000001";
+  const kitchen = "d0000000-0000-4000-8000-000000000002";
+  const bl218Departments: ScheduleReadModel["departments"] = [
+    { id: management, name: "Leadership", color: "#3C7A68", sort_order: 0, system_key: "management" },
+    { id: kitchen, name: "Kitchen", color: "#3C7A68", sort_order: 1, system_key: null },
+  ];
+  // The Schedule's job order puts Cook first and its id sorts first too, so
+  // neither a catalog-order nor a uuid-order pick lands on Management.
+  const cook = { id: "00000000-0000-4000-8000-00000000000c", name: "Cook", color: "#D39A36", sort_order: 0, department_id: kitchen, system_key: null };
+  const owner = { id: "0f000000-0000-4000-8000-000000000001", name: "Owner", color: "#4478A8", sort_order: 1, department_id: management, system_key: "owner" as const };
+  const manager = { id: "0f000000-0000-4000-8000-000000000002", name: "Manager", color: "#4478A8", sort_order: 2, department_id: management, system_key: null };
+  const assistant = { id: "0f000000-0000-4000-8000-000000000003", name: "Assistant Manager", color: "#4478A8", sort_order: 3, department_id: management, system_key: null };
+  const bl218Jobs: ScheduleReadModel["jobs"] = [cook, owner, manager, assistant];
+
+  const mixed = employee({ id: "e0000000-0000-4000-8000-000000000001", display_name: "Mia Mixed", job_ids: [cook.id, manager.id], primary_job_id: cook.id });
+  const ownerOnly = employee({ id: "e0000000-0000-4000-8000-000000000002", display_name: "Olcay Owner", job_ids: [owner.id], primary_job_id: null });
+  const twoManagement = employee({ id: "e0000000-0000-4000-8000-000000000003", display_name: "Tara Two", job_ids: [assistant.id, manager.id], primary_job_id: null });
+  const mixedNoPrimary = employee({ id: "e0000000-0000-4000-8000-000000000004", display_name: "Nia None", job_ids: [cook.id, manager.id], primary_job_id: null });
+
+  it("gives the primary job outside Management, or nobody's", () => {
+    expect(nonManagementPrimaryJobId(mixed, bl218Jobs, bl218Departments)).toBe(cook.id);
+    expect(nonManagementPrimaryJobId(ownerOnly, bl218Jobs, bl218Departments)).toBeNull();
+    expect(nonManagementPrimaryJobId(twoManagement, bl218Jobs, bl218Departments)).toBeNull();
+    expect(nonManagementPrimaryJobId(mixedNoPrimary, bl218Jobs, bl218Departments)).toBeNull();
+    // A Management job never counts as the primary, even if one were stored.
+    expect(nonManagementPrimaryJobId({ ...twoManagement, primary_job_id: manager.id }, bl218Jobs, bl218Departments)).toBeNull();
+  });
+
+  it("files the rest under their first Management job, never under a uuid-order pick", () => {
+    expect(primaryScheduleJobId(mixed, bl218Jobs, bl218Departments)).toBe(cook.id);
+    expect(primaryScheduleJobId(ownerOnly, bl218Jobs, bl218Departments)).toBe(owner.id);
+    expect(primaryScheduleJobId(twoManagement, bl218Jobs, bl218Departments)).toBe(manager.id);
+    expect(primaryScheduleJobId(mixedNoPrimary, bl218Jobs, bl218Departments)).toBe(manager.id);
+  });
+
+  it("groups and sorts Job/Position rows by that job, with nobody left as an unassigned job", () => {
+    const rows = sortScheduleEmployees([mixedNoPrimary, mixed, twoManagement, ownerOnly], bl218Jobs, bl218Departments, "byJob");
+    expect(rows.map((row) => row.display_name)).toEqual(["Mia Mixed", "Olcay Owner", "Nia None", "Tara Two"]);
+    expect(
+      groupScheduleEmployeesByJob(rows, bl218Jobs, bl218Departments).map((group) => [
+        group.job?.name ?? "Unassigned job",
+        group.employees.map((row) => row.display_name),
+      ]),
+    ).toEqual([
+      ["Cook", ["Mia Mixed"]],
+      ["Owner", ["Olcay Owner"]],
+      ["Manager", ["Nia None", "Tara Two"]],
+    ]);
   });
 });

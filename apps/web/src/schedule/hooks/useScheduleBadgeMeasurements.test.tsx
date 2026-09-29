@@ -19,6 +19,7 @@ const job: ScheduleReadModel["jobs"][number] = {
   color: "#2563eb",
   sort_order: 0,
   department_id: null,
+  system_key: null,
 };
 
 const shiftType: ScheduleReadModel["shift_types"][number] = {

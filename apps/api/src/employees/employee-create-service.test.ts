@@ -128,6 +128,23 @@ describe("employee create service", () => {
       message: managementAndOwnerRefusals["employee.management_primary"],
     });
   });
+  it("keeps Add employee's missing-primary refusal key and sentence (BL-218 .3b)", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: null,
+      error: {
+        code: "22023",
+        message: "employee requires a primary job outside Management",
+        hint: "employee.primary_job_required",
+      },
+    });
+    await expect(
+      createEmployeeCreateService(options).create(id, id, { ...command, invite_role_id: null }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      reason: "employee.primary_job_required",
+      message: managementAndOwnerRefusals["employee.primary_job_required"],
+    });
+  });
   it("does not send anything for Save even when email is populated", async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: { id, invitation_id: null, token: null, delivery_status: null },

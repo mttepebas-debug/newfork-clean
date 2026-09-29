@@ -21,6 +21,7 @@ const location = {
 const job = {
   id: "22222222-2222-4222-8222-222222222222",
   department_id: null,
+  system_key: null,
   name: "Server",
   color: "#2563eb",
   sort_order: 0,

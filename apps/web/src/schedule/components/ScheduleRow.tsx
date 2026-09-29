@@ -67,6 +67,7 @@ export function ScheduleRow({
   activeInteractionShiftLocationId,
   days,
   jobs,
+  departments,
   shiftTypes,
   closures,
   cellStateByKey,
@@ -108,6 +109,7 @@ export function ScheduleRow({
   readonly activeInteractionShiftLocationId: string | null;
   readonly days: readonly string[];
   readonly jobs: ScheduleReadModel["jobs"];
+  readonly departments: ScheduleReadModel["departments"];
   readonly shiftTypes: ScheduleReadModel["shift_types"];
   readonly closures: ScheduleReadModel["closures"];
   readonly cellStateByKey: ScheduleCellStateMap;
@@ -377,7 +379,7 @@ export function ScheduleRow({
                     locationId: interactionLocationId,
                     employeeId: employee?.id ?? null,
                     jobId: employee
-                      ? primaryScheduleJobId(employee, jobs)
+                      ? primaryScheduleJobId(employee, jobs, departments)
                       : null,
                     date: day,
                   },

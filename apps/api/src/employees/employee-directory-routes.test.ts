@@ -455,8 +455,12 @@ describe("employee directory routes", () => {
     ["employee.owner_job", "The owner keeps the Owner job"],
     ["employee.management_primary", "A Management job is primary by its department and is not marked primary"],
     ["employee.owner_locations", "The owner works at every location"],
+    ["employee.location_required", "employee requires a location and job unless remote or excluded from schedule"],
+    ["employee.job_required", "employee requires a location and job unless remote or excluded from schedule"],
+    ["employee.primary_job_required", "employee requires a primary job outside Management"],
   ] as const)("answers the save's %s refusal with 400, its key and a readable sentence (BL-218)", async (hint, raised) => {
-    const rpc = vi.fn(async () => ({ data: null, error: { code: "23514", message: raised, hint } }));
+    const code = hint.endsWith("_required") ? "22023" : "23514";
+    const rpc = vi.fn(async () => ({ data: null, error: { code, message: raised, hint } }));
     const app = buildApp({
       contextResolver: { resolve: async () => context },
       employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),

@@ -65,6 +65,7 @@ function model(overrides: Partial<ScheduleReadModel> = {}): ScheduleReadModel {
       {
         id: jobId,
         department_id: null,
+        system_key: null,
         name: "Server",
         color: "#2563EB",
         sort_order: 0,

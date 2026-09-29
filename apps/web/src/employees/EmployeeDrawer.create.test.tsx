@@ -264,7 +264,8 @@ describe("employee create flow", () => {
     vi.clearAllMocks();
     vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
       locations: [{ id: ids.location, name: "Downtown", archived: false }],
-      jobs: [{ id: ids.job, name: "Server", archived: false }],
+      departments: [],
+      jobs: [{ id: ids.job, name: "Server", archived: false, departmentId: null, management: false, owner: false }],
       inviteRoles: roles,
     });
     vi.mocked(createEmployee).mockResolvedValue({
@@ -398,6 +399,7 @@ describe("employee create flow", () => {
     fireEvent.click(screen.getByLabelText("Remote"));
     vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
       locations: [],
+      departments: [],
       jobs: [],
       inviteRoles: [roles[0]!],
     });

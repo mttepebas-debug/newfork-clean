@@ -4,6 +4,7 @@ import type {
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
 
+import { primaryScheduleJobId } from "./scheduleEmployeeSort";
 import {
   applyShiftClipboardSnapshot,
   type ShiftClipboardSnapshot,
@@ -36,11 +37,10 @@ function defaultJobIdForCreateState(
   const employee = state.employeeId
     ? model.employees.find((item) => item.id === state.employeeId)
     : null;
-  const employeeJobId =
-    employee?.primary_job_id &&
-    employee.job_ids.includes(employee.primary_job_id)
-      ? employee.primary_job_id
-      : employee?.job_ids[0];
+  // The row's own job (BL-218): an owner who only works Owner starts on Owner.
+  const employeeJobId = employee
+    ? primaryScheduleJobId(employee, model.jobs, model.departments)
+    : null;
 
   return employeeJobId ?? model.jobs[0]?.id ?? "";
 }

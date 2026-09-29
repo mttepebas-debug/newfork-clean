@@ -860,9 +860,10 @@ export type Job = z.infer<typeof jobSchema>;
 
 /**
  * What a person reads when the database keeps Management, the Owner job or the
- * owner's own assignments (BL-218), keyed by the hint it raises (23514). The
- * API answers with these and the web uses them for the writes it still makes
- * straight to the tables (Settings → Jobs archive and save).
+ * owner's own assignments (23514), or when the Employees drawer's save is
+ * missing a location or job (22023, .3b) — BL-218, keyed by the hint raised.
+ * The API answers with these and the web uses them for the writes it still
+ * makes straight to the tables (Settings → Jobs archive and save).
  */
 export const managementAndOwnerRefusals = {
   "catalog.system_record":
@@ -873,11 +874,28 @@ export const managementAndOwnerRefusals = {
     "A Management job can't be marked primary. Choose a job from another department as primary, or leave it empty if they only work in Management.",
   "employee.owner_locations":
     "The workspace owner works at every location, so a location can't be removed from them.",
+  "employee.location_required":
+    "Choose at least one location and mark one as primary, or turn on Remote or Exclude from schedule.",
+  "employee.job_required": "Choose at least one job, or turn on Remote or Exclude from schedule.",
+  "employee.primary_job_required": "Mark one of the jobs outside Management as primary.",
 } as const;
 /** The sentence for one of those hints; undefined for any other hint. */
 export function managementAndOwnerSentence(hint: string | null | undefined): string | undefined {
   const sentences: Readonly<Record<string, string>> = managementAndOwnerRefusals;
   return hint && Object.hasOwn(sentences, hint) ? sentences[hint] : undefined;
+}
+
+/**
+ * The jobs under Management (BL-218). Management can be renamed, so it is
+ * found by its department's system key, never by name. A Management job is
+ * primary by its department and is never the stored primary.
+ */
+export function managementJobIds(
+  departments: readonly { readonly id: string; readonly system_key: "management" | null }[],
+  jobs: readonly { readonly id: string; readonly department_id: string | null }[],
+): Set<string> {
+  const management = departments.find((department) => department.system_key === "management")?.id;
+  return new Set(management ? jobs.filter((job) => job.department_id === management).map((job) => job.id) : []);
 }
 
 export const locationInputSchema = locationSchema.pick({
@@ -1223,8 +1241,13 @@ export const scheduleReferenceSchema = z.object({
   sort_order: z.coerce.number().int().nonnegative(),
 });
 
+export const scheduleDepartmentSchema = scheduleReferenceSchema.extend({
+  system_key: departmentSchema.shape.system_key,
+});
+
 export const scheduleJobSchema = scheduleReferenceSchema.extend({
   department_id: z.string().uuid().nullable(),
+  system_key: jobSchema.shape.system_key,
 });
 
 export const scheduleShiftTypeSchema = scheduleReferenceSchema.extend({
@@ -1391,7 +1414,7 @@ export const scheduleReadModelSchema = z.object({
     })
     .default({ time_format: "12h" }),
   locations: z.array(scheduleLocationSchema),
-  departments: z.array(scheduleReferenceSchema),
+  departments: z.array(scheduleDepartmentSchema),
   jobs: z.array(scheduleJobSchema),
   shift_types: z.array(scheduleShiftTypeSchema),
   shift_labels: z.array(scheduleShiftLabelSchema).optional(),
@@ -2506,7 +2529,11 @@ export type EmployeeAssignment = z.infer<typeof employeeAssignmentSchema>;
  */
 export const employeeReferenceDataSchema = z.object({
   locations: z.array(locationSchema.pick({ id: true, name: true, archived_at: true, timezone: true })),
-  jobs: z.array(jobSchema.pick({ id: true, name: true, archived_at: true })),
+  // Archived ones included, so an archived job still finds its department (BL-218).
+  departments: z.array(departmentSchema.pick({ id: true, name: true, archived_at: true, system_key: true })),
+  jobs: z.array(
+    jobSchema.pick({ id: true, name: true, archived_at: true, department_id: true, system_key: true }),
+  ),
   invite_roles: z.array(
     workspaceRoleRecordSchema.pick({ id: true, name: true, system_key: true, access_class: true }),
   ),
@@ -2627,6 +2654,12 @@ export const employeeInputSchema = z
      * form from refusing first.
      */
     is_owner_record: z.boolean().optional(),
+    /**
+     * Every job is under Management (BL-218 .3b): a Management job is primary
+     * by its department, so there is no primary job to name. A location is
+     * still required. Like `is_owner_record`, the server decides for itself.
+     */
+    only_management_jobs: z.boolean().optional(),
     expected_revision: z.number().int().positive().nullable(),
   })
   .superRefine((value, issue) => {
@@ -2643,7 +2676,10 @@ export const employeeInputSchema = z
         path: ["location_ids"],
       });
     }
-    if (value.job_ids.length === 0 || value.primary_job_id === null) {
+    if (
+      value.job_ids.length === 0 ||
+      (value.primary_job_id === null && value.only_management_jobs !== true)
+    ) {
       issue.addIssue({
         code: "custom",
         message:

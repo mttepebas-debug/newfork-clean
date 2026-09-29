@@ -50,6 +50,7 @@ const model = {
       color: "#112233",
       sort_order: 0,
       department_id: null,
+      system_key: null,
     },
     {
       id: otherJobId,
@@ -57,6 +58,7 @@ const model = {
       color: "#223344",
       sort_order: 1,
       department_id: null,
+      system_key: null,
     },
   ],
   shift_types: [

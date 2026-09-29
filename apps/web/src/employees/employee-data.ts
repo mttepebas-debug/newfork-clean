@@ -12,6 +12,7 @@ import {
   employeeSummarySchema,
   invitationFailureCodeSchema,
   invitationPreviewSchema,
+  managementJobIds,
   pendingPreferredNameSchema,
   preferredNameApprovalSchema,
   preferredNameOutcomeSchema,
@@ -41,9 +42,25 @@ export interface EmployeeOption {
   readonly timezone?: string;
 }
 
+/** A department in the drawer's Jobs picker (BL-218). */
+export interface EmployeeDepartmentOption extends EmployeeOption {
+  /** Management, found by its system key: it can be renamed. */
+  readonly management: boolean;
+}
+
+/** A job in the drawer's Jobs picker, with where it sits (BL-218). */
+export interface EmployeeJobOption extends EmployeeOption {
+  readonly departmentId: string | null;
+  /** Under Management: primary by its department, never marked primary. */
+  readonly management: boolean;
+  /** The Owner job: only the workspace owner works it, and keeps it. */
+  readonly owner: boolean;
+}
+
 export interface EmployeeReferenceData {
   readonly locations: readonly EmployeeOption[];
-  readonly jobs: readonly EmployeeOption[];
+  readonly departments: readonly EmployeeDepartmentOption[];
+  readonly jobs: readonly EmployeeJobOption[];
   readonly inviteRoles: readonly InviteRoleOption[];
 }
 
@@ -206,6 +223,7 @@ export async function loadEmployeeReferenceData(
   const answer = employeeReferenceDataSchema.parse(
     await request(workspaceId, "/reference-data"),
   );
+  const management = managementJobIds(answer.departments, answer.jobs);
   return {
     locations: answer.locations.map((row) => ({
       id: row.id,
@@ -213,10 +231,19 @@ export async function loadEmployeeReferenceData(
       archived: row.archived_at !== null,
       timezone: row.timezone,
     })),
+    departments: answer.departments.map((row) => ({
+      id: row.id,
+      name: row.name,
+      archived: row.archived_at !== null,
+      management: row.system_key === "management",
+    })),
     jobs: answer.jobs.map((row) => ({
       id: row.id,
       name: row.name,
       archived: row.archived_at !== null,
+      departmentId: row.department_id,
+      management: management.has(row.id),
+      owner: row.system_key === "owner",
     })),
     inviteRoles: answer.invite_roles.map((role) => ({
       id: role.id,

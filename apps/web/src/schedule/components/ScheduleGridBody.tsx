@@ -172,6 +172,7 @@ export function ScheduleGridBody({
       activeInteractionShiftLocationId={activeInteractionShiftLocationId}
       days={days}
       jobs={model.jobs}
+      departments={model.departments}
       shiftTypes={model.shift_types}
       closures={model.closures}
       cellStateByKey={cellStateByKey}
@@ -219,6 +220,7 @@ export function ScheduleGridBody({
           activeInteractionShiftLocationId={activeInteractionShiftLocationId}
           days={days}
           jobs={model.jobs}
+          departments={model.departments}
           shiftTypes={model.shift_types}
           closures={model.closures}
           cellStateByKey={cellStateByKey}

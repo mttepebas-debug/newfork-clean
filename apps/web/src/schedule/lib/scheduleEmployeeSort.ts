@@ -1,3 +1,4 @@
+import { managementJobIds } from "@newfork/shared";
 import type {
   ScheduleEmployee,
   ScheduleReadModel,
@@ -6,18 +7,28 @@ import type {
 
 export type ScheduleEmployeeSortMode = "alphabetical" | "byJob";
 
+type Jobs = ScheduleReadModel["jobs"];
+type Departments = ScheduleReadModel["departments"];
+
 export function sortScheduleEmployees(
   employees: readonly ScheduleEmployee[],
-  jobs: ScheduleReadModel["jobs"],
+  jobs: Jobs,
+  departments: Departments,
   mode: ScheduleEmployeeSortMode,
 ): ScheduleEmployee[] {
-  const jobRank = buildScheduleJobRank(jobs);
+  const jobRank = new Map(jobs.map((job, index) => [job.id, index]));
+  const rank = new Map(
+    employees.map((employee) => {
+      const jobId = primaryScheduleJobId(employee, jobs, departments);
+      return [employee.id, jobId ? jobRank.get(jobId)! : Number.MAX_SAFE_INTEGER];
+    }),
+  );
   const employeeName = (employee: ScheduleEmployee) =>
     employee.display_name.trim().toLocaleLowerCase();
   return [...employees].sort((a, b) => {
     if (mode === "byJob") {
-      const aJobRank = primaryScheduleJobRank(a, jobRank);
-      const bJobRank = primaryScheduleJobRank(b, jobRank);
+      const aJobRank = rank.get(a.id)!;
+      const bJobRank = rank.get(b.id)!;
       if (aJobRank !== bJobRank) return aJobRank - bJobRank;
     }
     return (
@@ -32,22 +43,23 @@ export function createSortedScheduleModel(
 ): ScheduleReadModel {
   return {
     ...model,
-    employees: sortScheduleEmployees(model.employees, model.jobs, mode),
+    employees: sortScheduleEmployees(model.employees, model.jobs, model.departments, mode),
   };
 }
 
 export function groupScheduleEmployeesByJob(
   employees: readonly ScheduleEmployee[],
-  jobs: ScheduleReadModel["jobs"],
+  jobs: Jobs,
+  departments: Departments,
 ): {
-  readonly job: ScheduleReadModel["jobs"][number] | null;
+  readonly job: Jobs[number] | null;
   readonly employees: readonly ScheduleEmployee[];
 }[] {
   const rankedJobs = [...jobs];
   const groups = new Map<string, ScheduleEmployee[]>();
   const unassignedJobEmployees: ScheduleEmployee[] = [];
   for (const employee of employees) {
-    const primaryJobId = primaryScheduleJobId(employee, jobs);
+    const primaryJobId = primaryScheduleJobId(employee, jobs, departments);
     if (!primaryJobId) {
       unassignedJobEmployees.push(employee);
       continue;
@@ -57,7 +69,7 @@ export function groupScheduleEmployeesByJob(
     else groups.set(primaryJobId, [employee]);
   }
   const rankedGroups: {
-    readonly job: ScheduleReadModel["jobs"][number] | null;
+    readonly job: Jobs[number] | null;
     readonly employees: ScheduleEmployee[];
   }[] = rankedJobs
     .map((job) => ({ job, employees: groups.get(job.id) ?? [] }))
@@ -68,18 +80,37 @@ export function groupScheduleEmployeesByJob(
   return rankedGroups;
 }
 
+/**
+ * The primary job somebody was given outside Management, or null (BL-218).
+ * A Management job is primary by its department and never the stored one; the
+ * read sends no stand-in, so null means "none named".
+ */
+export function nonManagementPrimaryJobId(
+  employee: ScheduleEmployee,
+  jobs: Jobs,
+  departments: Departments,
+): string | null {
+  const primary = employee.primary_job_id;
+  if (!primary || !jobs.some((job) => job.id === primary)) return null;
+  return managementJobIds(departments, jobs).has(primary) ? null : primary;
+}
+
+/**
+ * The job a person's row sits under in Job/Position and a new shift starts
+ * with: their primary job outside Management; failing that the first
+ * Management job they work, then the first job they work, in the Schedule's
+ * job order. The separate Management group and the second row are BL-218 .6.
+ */
 export function primaryScheduleJobId(
   employee: ScheduleEmployee,
-  jobs: ScheduleReadModel["jobs"],
+  jobs: Jobs,
+  departments: Departments,
 ): string | null {
-  const validJobIds = new Set(jobs.map((job) => job.id));
-  if (employee.primary_job_id && validJobIds.has(employee.primary_job_id)) {
-    return employee.primary_job_id;
-  }
-  for (const job of jobs) {
-    if (employee.job_ids.includes(job.id)) return job.id;
-  }
-  return null;
+  const primary = nonManagementPrimaryJobId(employee, jobs, departments);
+  if (primary) return primary;
+  const management = managementJobIds(departments, jobs);
+  const held = jobs.filter((job) => employee.job_ids.includes(job.id));
+  return (held.find((job) => management.has(job.id)) ?? held[0])?.id ?? null;
 }
 
 export function isExcludedEmployeeVisibleForWeek(
@@ -96,24 +127,4 @@ export function isExcludedEmployeeVisibleForWeek(
     (shift) =>
       shift.employee_id === employee.id && weekDates.has(shift.scheduled_date),
   );
-}
-
-function buildScheduleJobRank(jobs: ScheduleReadModel["jobs"]): Map<string, number> {
-  return new Map(
-    jobs.map((job, index) => [job.id, index]),
-  );
-}
-
-function primaryScheduleJobRank(
-  employee: ScheduleEmployee,
-  jobRank: ReadonlyMap<string, number>,
-): number {
-  if (employee.primary_job_id && jobRank.has(employee.primary_job_id)) {
-    return jobRank.get(employee.primary_job_id)!;
-  }
-  for (const jobId of employee.job_ids) {
-    const rank = jobRank.get(jobId);
-    if (rank !== undefined) return rank;
-  }
-  return Number.MAX_SAFE_INTEGER;
 }

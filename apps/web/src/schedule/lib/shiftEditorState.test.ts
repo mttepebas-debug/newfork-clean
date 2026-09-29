@@ -34,6 +34,7 @@ const model: ScheduleReadModel = {
       color: "#0f766e",
       sort_order: 0,
       department_id: null,
+      system_key: null,
     },
   ],
   shift_types: [
@@ -280,5 +281,48 @@ describe("shiftEditorState", () => {
         time_basis: "explicit",
       }),
     );
+  });
+});
+
+describe("the job a new shift starts with (BL-218)", () => {
+  const management = "d0000000-0000-4000-8000-000000000001";
+  const kitchen = "d0000000-0000-4000-8000-000000000002";
+  const cook = { id: "00000000-0000-4000-8000-00000000000c", name: "Cook", color: "#D39A36", sort_order: 0, department_id: kitchen, system_key: null };
+  const ownerJob = { id: "0f000000-0000-4000-8000-000000000001", name: "Owner", color: "#4478A8", sort_order: 1, department_id: management, system_key: "owner" as const };
+  const manager = { id: "0f000000-0000-4000-8000-000000000002", name: "Manager", color: "#4478A8", sort_order: 2, department_id: management, system_key: null };
+  // Archived: still in job_ids, gone from the Schedule's job list.
+  const archivedId = "00000000-0000-4000-8000-000000000001";
+  const person = (id: string, jobIds: string[], primary: string | null) => ({
+    id, employee_code: id.slice(-4), display_name: id, location_ids: [model.locations[0]!.id], job_ids: jobIds, primary_job_id: primary,
+  });
+  const bl218: ScheduleReadModel = {
+    ...model,
+    departments: [
+      { id: kitchen, name: "Kitchen", color: "#3C7A68", sort_order: 0, system_key: null },
+      { id: management, name: "Leadership", color: "#3C7A68", sort_order: 1, system_key: "management" },
+    ],
+    jobs: [cook, ownerJob, manager],
+    employees: [
+      person("e0000000-0000-4000-8000-000000000001", [ownerJob.id], null),
+      person("e0000000-0000-4000-8000-000000000002", [cook.id, manager.id], null),
+      person("e0000000-0000-4000-8000-000000000003", [archivedId, manager.id], null),
+      person("e0000000-0000-4000-8000-000000000004", [cook.id, manager.id], cook.id),
+    ],
+  };
+  const jobFor = (employeeId: string | null) =>
+    buildScheduleShiftEditorInitialValue({
+      state: { mode: "create", locationId: model.locations[0]!.id, employeeId, date: "2026-08-18" },
+      model: bl218,
+    }).job_id;
+
+  it("is the row's job: the primary outside Management, else their first Management job", () => {
+    expect(jobFor(bl218.employees[0]!.id)).toBe(ownerJob.id); // the owner who only works Owner
+    expect(jobFor(bl218.employees[1]!.id)).toBe(manager.id); // no primary: Management, not Cook
+    expect(jobFor(bl218.employees[2]!.id)).toBe(manager.id); // never an archived job
+    expect(jobFor(bl218.employees[3]!.id)).toBe(cook.id);
+  });
+
+  it("falls back to the first job for the unassigned row", () => {
+    expect(jobFor(null)).toBe(cook.id);
   });
 });

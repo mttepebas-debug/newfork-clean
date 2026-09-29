@@ -234,7 +234,15 @@ function renderDrawer(
       ...location,
       timezone: "America/Los_Angeles",
     })),
-    jobs: detailFixture.jobs,
+    departments: [],
+    jobs: detailFixture.jobs.map((job) => ({
+      id: job.id,
+      name: job.name,
+      archived: job.archived,
+      departmentId: null,
+      management: false,
+      owner: false,
+    })),
     inviteRoles: [
       {
         id: employeeRoleId,
@@ -1155,6 +1163,62 @@ describe("EmployeeDrawer", () => {
         employeeId,
       ),
     );
+  });
+
+  describe("a Management job is primary by its department (BL-218 .3b)", () => {
+    const serverJobId = detail.jobs[0]!.id;
+    const managerJobId = "22000000-0000-4000-8000-0000000000aa";
+    function withManagementJob() {
+      vi.mocked(loadEmployeeReferenceData).mockResolvedValueOnce({
+        locations: detail.locations.map((location) => ({ ...location, timezone: "America/Los_Angeles" })),
+        departments: [{ id: "dd000000-0000-4000-8000-000000000001", name: "Leadership", archived: false, management: true }],
+        jobs: [
+          { id: serverJobId, name: "Server", archived: false, departmentId: null, management: false, owner: false },
+          { id: managerJobId, name: "Floor Manager", archived: false, departmentId: "dd000000-0000-4000-8000-000000000001", management: true, owner: false },
+        ],
+        inviteRoles: [],
+      });
+    }
+    const jobRow = (name: string) => screen.getByLabelText(name).closest("div")!;
+
+    it("saves somebody who only manages at one location with no primary job", async () => {
+      withManagementJob();
+      renderDrawer("employment");
+      fireEvent.click(await screen.findByLabelText("Floor Manager"));
+      fireEvent.click(screen.getByLabelText("Server"));
+      // No primary to pick for a Management job.
+      expect(within(jobRow("Floor Manager")).queryByLabelText("Primary")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() =>
+        expect(saveEmployee).toHaveBeenCalledWith(
+          workspaceId,
+          expect.objectContaining({
+            location_ids: [detail.locations[0]!.id],
+            primary_location_id: detail.locations[0]!.id,
+            job_ids: [managerJobId],
+            primary_job_id: null,
+            only_management_jobs: true,
+          }),
+          employeeId,
+        ),
+      );
+    });
+
+    it("keeps the primary on the job outside Management for somebody who does both", async () => {
+      withManagementJob();
+      renderDrawer("employment");
+      fireEvent.click(await screen.findByLabelText("Floor Manager"));
+      expect(within(jobRow("Floor Manager")).queryByLabelText("Primary")).toBeNull();
+      expect((within(jobRow("Server")).getByLabelText("Primary") as HTMLInputElement).checked).toBe(true);
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() =>
+        expect(saveEmployee).toHaveBeenCalledWith(
+          workspaceId,
+          expect.objectContaining({ job_ids: [serverJobId, managerJobId], primary_job_id: serverJobId, only_management_jobs: false }),
+          employeeId,
+        ),
+      );
+    });
   });
 
   it("shows selected work modes in employment and the summary rail", async () => {

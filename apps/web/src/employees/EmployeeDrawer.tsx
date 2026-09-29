@@ -66,7 +66,7 @@ import {
   getEmployeeOnboardingReview,
   reviewEmployeeOnboarding,
 } from "./onboarding-data";
-import { employeeCreateReadiness } from "./employee-create-flow";
+import { employeeCreateReadiness, onlyManagementJobs } from "./employee-create-flow";
 import { registerEmployeeHistoryGuard } from "./employee-history-guard";
 
 const sections = [
@@ -159,7 +159,12 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const pendingNavigationRef = useRef<(() => void) | null>(null);
   const allowNavigationRef = useRef(false);
   const previousSectionRef = useRef(props.section);
-  const readiness = employeeCreateReadiness(draft);
+  // BL-218 .3b: somebody whose jobs are all under Management names no primary job.
+  const ruledDraft: EmployeeInput = {
+    ...draft,
+    only_management_jobs: onlyManagementJobs(draft.job_ids, references.data?.jobs ?? []),
+  };
+  const readiness = employeeCreateReadiness(ruledDraft);
   const allowedSections = sections.filter(
     ([key]) =>
       (key !== "availability" ||
@@ -320,7 +325,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   });
   const saveMutation = useMutation({
     mutationFn: () =>
-      saveEmployee(workspaceId, draft, props.employeeId ?? undefined),
+      saveEmployee(workspaceId, ruledDraft, props.employeeId ?? undefined),
     onSuccess: async (savedId) => {
       draftEditedRef.current = false;
       allowNextDraftRefreshRef.current = true;
@@ -692,7 +697,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       return;
     const command: EmployeeCreateCommand = {
       request_id: crypto.randomUUID(),
-      employee: employeeInputSchema.parse(draft),
+      employee: employeeInputSchema.parse(ruledDraft),
       invite_role_id: invite ? inviteRoleId : null,
     };
     commandRef.current = command;
@@ -713,7 +718,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       } else startCreate(false);
       return;
     }
-    const parsed = employeeInputSchema.safeParse(draft);
+    const parsed = employeeInputSchema.safeParse(ruledDraft);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the employee details");
       return;
@@ -2724,7 +2729,8 @@ function AssignmentPicker({
   searchable = true,
 }: {
   label: string;
-  options: readonly EmployeeOption[];
+  /** `management`: primary by its department, never marked primary (BL-218). */
+  options: readonly (EmployeeOption & { readonly management?: boolean })[];
   selected: readonly string[];
   primary: string | null;
   disabled: boolean;
@@ -2733,6 +2739,8 @@ function AssignmentPicker({
   searchable?: boolean;
 }) {
   const [search, setSearch] = useState("");
+  const isManagement = (id: string) =>
+    options.some((option) => option.id === id && option.management);
   const available = options.filter(
     (option) => !option.archived || selected.includes(option.id),
   );
@@ -2774,15 +2782,15 @@ function AssignmentPicker({
                   onChange(
                     ids,
                     checked && primary === option.id
-                      ? (ids[0] ?? null)
-                      : (primary ?? option.id),
+                      ? (ids.find((id) => !isManagement(id)) ?? null)
+                      : (primary ?? (option.management ? null : option.id)),
                   );
                 }}
               />
               <span>{option.name}</span>
               {option.archived ? <small>Archived</small> : null}
             </label>
-            {checked ? (
+            {checked && !option.management ? (
               <label className="primary-choice">
                 <input
                   type="radio"

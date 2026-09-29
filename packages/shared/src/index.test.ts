@@ -10,6 +10,8 @@ import {
   departmentInputSchema,
   departmentSchema,
   documentTypeInputSchema,
+  employeeInputSchema,
+  employeeReferenceDataSchema,
   employeeOnboardingSchema,
   employeeOnboardingProfileSchema,
   healthResponseSchema,
@@ -17,6 +19,7 @@ import {
   jobInputSchema,
   jobSchema,
   locationInputSchema,
+  managementJobIds,
   notificationInboxSchema,
   normalizeAccountPhone,
   permissionsForRole,
@@ -618,6 +621,7 @@ describe("shared contracts", () => {
           color: "#4478A8",
           sort_order: 0,
           department_id: null,
+          system_key: null,
         },
       ],
       shift_types: [],
@@ -1450,6 +1454,100 @@ describe("employee onboarding schemas", () => {
     ).toThrow();
   });
 
+});
+
+describe("Management and Owner in the Schedule and drawer reads (BL-218)", () => {
+  const managementId = "30000000-0000-4000-8000-000000000001";
+  const kitchenId = "30000000-0000-4000-8000-000000000002";
+  const ownerJobId = "40000000-0000-4000-8000-000000000001";
+  const managerJobId = "40000000-0000-4000-8000-000000000002";
+  const cookJobId = "40000000-0000-4000-8000-000000000003";
+  const scheduleRead = (departments: unknown[], jobs: unknown[]) => ({
+    workspace_id: workspaceId,
+    week_start: "2026-08-17",
+    week_start_day: "monday",
+    locations: [],
+    departments,
+    jobs,
+    shift_types: [],
+    employees: [],
+    shifts: [],
+    closures: [],
+  });
+  const scheduleDepartment = { id: managementId, name: "Leadership", color: "#4478A8", sort_order: 0 };
+  const scheduleJob = { id: ownerJobId, name: "Owner", color: "#4478A8", sort_order: 0, department_id: managementId };
+
+  it("reads the Schedule's system keys and refuses a read without them", () => {
+    const parsed = scheduleReadModelSchema.parse(
+      scheduleRead([{ ...scheduleDepartment, system_key: "management" }], [{ ...scheduleJob, system_key: "owner" }]),
+    );
+    expect(parsed.departments[0]?.system_key).toBe("management");
+    expect(parsed.jobs[0]?.system_key).toBe("owner");
+    expect(() => scheduleReadModelSchema.parse(scheduleRead([scheduleDepartment], []))).toThrow();
+    expect(() => scheduleReadModelSchema.parse(scheduleRead([], [scheduleJob]))).toThrow();
+  });
+
+  it("reads the drawer's departments and each job's department and system key", () => {
+    const references = {
+      locations: [],
+      departments: [
+        { id: managementId, name: "Leadership", archived_at: null, system_key: "management" },
+        { id: kitchenId, name: "Kitchen", archived_at: null, system_key: null },
+      ],
+      jobs: [
+        { id: ownerJobId, name: "Owner", archived_at: null, department_id: managementId, system_key: "owner" },
+        { id: cookJobId, name: "Cook", archived_at: null, department_id: null, system_key: null },
+      ],
+      invite_roles: [],
+    };
+    expect(employeeReferenceDataSchema.parse(references)).toEqual(references);
+    expect(() => employeeReferenceDataSchema.parse({ ...references, departments: undefined })).toThrow();
+    expect(() =>
+      employeeReferenceDataSchema.parse({ ...references, jobs: [{ id: cookJobId, name: "Cook", archived_at: null }] }),
+    ).toThrow();
+  });
+
+  it("finds the jobs under Management by its system key, whatever it is called", () => {
+    const departments = [
+      { id: kitchenId, system_key: null },
+      { id: managementId, system_key: "management" as const },
+    ];
+    const jobs = [
+      { id: ownerJobId, department_id: managementId },
+      { id: managerJobId, department_id: managementId },
+      { id: cookJobId, department_id: kitchenId },
+      { id: "40000000-0000-4000-8000-000000000004", department_id: null },
+    ];
+    expect([...managementJobIds(departments, jobs)].sort()).toEqual([ownerJobId, managerJobId]);
+    expect(managementJobIds([], jobs).size).toBe(0);
+  });
+
+  const locationId = "10000000-0000-4000-8000-000000000001";
+  const managerOnly = {
+    first_name: "Maya",
+    last_name: "Reed",
+    preferred_name: "",
+    invitation_email: "",
+    start_date: "",
+    internal_note: "",
+    location_ids: [locationId],
+    primary_location_id: locationId,
+    job_ids: [managerJobId],
+    primary_job_id: null,
+    only_management_jobs: true,
+    expected_revision: null,
+  };
+
+  it("saves somebody who only works Management jobs without a primary job, at a location (.3b)", () => {
+    expect(employeeInputSchema.safeParse(managerOnly).success).toBe(true);
+    // At least one location stays required, and with it a primary location.
+    expect(employeeInputSchema.safeParse({ ...managerOnly, location_ids: [], primary_location_id: null }).success).toBe(false);
+    expect(employeeInputSchema.safeParse({ ...managerOnly, primary_location_id: null }).success).toBe(false);
+    // Anybody else still names a primary job.
+    expect(
+      employeeInputSchema.safeParse({ ...managerOnly, job_ids: [managerJobId, cookJobId], only_management_jobs: false }).success,
+    ).toBe(false);
+  });
 });
 
 describe("organization basics schemas", () => {

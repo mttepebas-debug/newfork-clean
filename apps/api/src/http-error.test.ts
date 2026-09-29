@@ -179,6 +179,32 @@ describe("the Management and Owner refusals (BL-218)", () => {
     ],
   ] as const;
 
+  // The drawer's save (BL-218 .3b) names what is missing, with 22023.
+  const missing = [
+    [
+      "employee.location_required",
+      "employee requires a location and job unless remote or excluded from schedule",
+      "Choose at least one location and mark one as primary, or turn on Remote or Exclude from schedule.",
+    ],
+    [
+      "employee.job_required",
+      "employee requires a location and job unless remote or excluded from schedule",
+      "Choose at least one job, or turn on Remote or Exclude from schedule.",
+    ],
+    [
+      "employee.primary_job_required",
+      "employee requires a primary job outside Management",
+      "Mark one of the jobs outside Management as primary.",
+    ],
+  ] as const;
+
+  it.each(missing)("answers %s with 400, its key and a sentence a person can read", (hint, raised, sentence) => {
+    const failure = rpcFailure({ message: raised, code: "22023", hint });
+    expect(failure.statusCode).toBe(400);
+    expect(failure.reason).toBe(hint);
+    expect(failure.message).toBe(sentence);
+  });
+
   it.each(refusals)("answers %s with 400, its key and a sentence a person can read", (hint, raised, sentence) => {
     const failure = rpcFailure({ message: raised, code: "23514", hint });
     expect(failure.statusCode).toBe(400);

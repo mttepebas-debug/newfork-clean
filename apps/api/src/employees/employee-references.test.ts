@@ -17,29 +17,37 @@ const context = {
   actions: [],
 } as unknown as ActiveWorkspaceContext;
 // The owner's answer, taken from read_employee_references_service on the
-// "r" world of supabase/tests/employee_references_ask_the_core.test.sql
-// (rolled back): an archived location and job, a custom role without system_key.
+// "r" world of supabase/tests/employee_references_ask_the_core.test.sql with
+// the BL-218 .3a migration applied (rolled back): an archived location and
+// job, Management with the Owner job under it, a custom role without system_key.
 const answer = {
   jobs: [
-    { id: "88186637-6539-4ddf-8a2b-a10b641afcff", name: "Cook", archived_at: null },
-    { id: "4d10b47f-58a8-401d-a4bb-92fec24a1819", name: "Old", archived_at: "2026-09-28T05:03:02.777745+00:00" },
-    { id: "c1f5b9ca-76a2-4230-b4bd-b53998ffd380", name: "Server", archived_at: null },
+    { id: "ae9f68ac-f2d1-46ad-b688-2cc2b25958cd", name: "Old", system_key: null, archived_at: "2026-09-29T01:34:58.259859+00:00", department_id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939" },
+    { id: "285cb253-3c31-41c3-950a-74c93ded13fb", name: "Owner", system_key: "owner", archived_at: null, department_id: "893f064e-2952-49ae-80f7-cc5ab30e192a" },
+    { id: "49f49836-56a9-49c9-ac67-7f469cc09e82", name: "Cook", system_key: null, archived_at: null, department_id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939" },
+    { id: "2db26a83-cf59-40ae-90e3-ace6ed6583f9", name: "Server", system_key: null, archived_at: null, department_id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939" },
   ],
   locations: [
-    { id: "102dbed5-c14c-4b58-9ed0-c943cad3c9f5", name: "Arnavutkoy", timezone: "Europe/Istanbul", archived_at: "2026-09-28T05:03:02.777745+00:00" },
-    { id: "7bf57f91-6d31-4085-ab65-1a0341fe0933", name: "Besiktas", timezone: "Europe/Istanbul", archived_at: null },
-    { id: "01793040-e611-47d7-8b30-e04663faac46", name: "Kadikoy", timezone: "Europe/Istanbul", archived_at: null },
+    { id: "525d0625-5580-410a-915d-5a6c9a2a8014", name: "Arnavutkoy", timezone: "Europe/Istanbul", archived_at: "2026-09-29T01:34:58.259859+00:00" },
+    { id: "eddd6f15-289e-416a-8727-e4ce6bca5600", name: "Besiktas", timezone: "Europe/Istanbul", archived_at: null },
+    { id: "e92f96de-3eb0-4203-a15c-aff6edfd4c39", name: "Kadikoy", timezone: "Europe/Istanbul", archived_at: null },
+  ],
+  departments: [
+    { id: "893f064e-2952-49ae-80f7-cc5ab30e192a", name: "Management", system_key: "management", archived_at: null },
+    { id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939", name: "Kitchen", system_key: null, archived_at: null },
   ],
   invite_roles: [
-    { id: "0e49ab84-f0ae-4f4a-8213-dfeb62381dd3", name: "Admin", system_key: "admin", access_class: "admin" },
-    { id: "39627693-613f-4a88-aeb5-175e3582cfe9", name: "Manager", system_key: "manager", access_class: "manager" },
-    { id: "8c3c39d9-6695-448a-bff6-b91ef8f7cccf", name: "Employee", system_key: "employee", access_class: "employee" },
-    { id: "1cf1ccb7-a238-4190-bb3a-41401f0f2f1d", name: "lead", system_key: null, access_class: "manager" },
+    { id: "ffb2b827-7762-40eb-a01e-3ce8d2cfe18c", name: "Admin", system_key: "admin", access_class: "admin" },
+    { id: "b237e45a-49ca-4b0b-9a9e-8bcaeb096044", name: "Manager", system_key: "manager", access_class: "manager" },
+    { id: "100f43c0-61dd-466a-b97c-fade55582aa7", name: "Employee", system_key: "employee", access_class: "employee" },
+    { id: "f8bd7763-1616-4cc2-bb47-d64f9053f106", name: "lead", system_key: null, access_class: "manager" },
   ],
 };
-// A manager without employee_access.manage: their own location, no roles.
+// A manager without employee_access.manage: their own location, no roles;
+// departments have no location scope.
 const managerAnswer = {
   jobs: answer.jobs,
+  departments: answer.departments,
   locations: [answer.locations[2]!],
   invite_roles: [],
 };
@@ -92,6 +100,15 @@ describe("Employees reference data (BL-231)", () => {
       expect(response.json()).toMatchObject({ reason: "authz.not_member" });
       await built.close();
     }
+  });
+
+  it("hands the drawer each job's department and the Management and Owner keys (BL-218)", async () => {
+    const rpc = vi.fn(async () => ({ data: answer, error: null }));
+    const built = app(createEmployeeDirectoryServiceWithClient({ rpc }));
+    const response = await get(built);
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(answer);
+    await built.close();
   });
 
   it("refuses a malformed workspace id before asking anybody", async () => {

@@ -66,6 +66,7 @@ const department: ScheduleReadModel["departments"][number] = {
   name: "Front of House",
   color: "#176954",
   sort_order: 0,
+  system_key: null,
 };
 
 const backDepartment: ScheduleReadModel["departments"][number] = {
@@ -73,6 +74,7 @@ const backDepartment: ScheduleReadModel["departments"][number] = {
   name: "Back of House",
   color: "#8d4a2f",
   sort_order: 1,
+  system_key: null,
 };
 
 const preview: SchedulePublicationPreview = {

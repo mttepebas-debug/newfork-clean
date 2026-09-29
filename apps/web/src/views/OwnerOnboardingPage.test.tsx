@@ -200,7 +200,8 @@ describe("OwnerOnboardingPage", () => {
     vi.mocked(saveEmployee).mockResolvedValue(employeeId);
     vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
       locations: [{ id: locationId, name: "Main Dining", archived: false }],
-      jobs: [{ id: jobId, name: "Server", archived: false }],
+      departments: [],
+      jobs: [{ id: jobId, name: "Server", archived: false, departmentId: null, management: false, owner: false }],
       inviteRoles: [],
     });
   });

@@ -74,7 +74,7 @@ export function createScheduleGridViewModel({
     hasEditSession && showPresetShiftBadges && showEmployeeGroupHeaders;
   const showLocationInBadge = layout === "unified";
   const employeeRowGroups = showEmployeeGroups
-    ? groupScheduleEmployeesByJob(rows, filtered.jobs)
+    ? groupScheduleEmployeesByJob(rows, filtered.jobs, filtered.departments)
     : [];
   const bodyRowCount = countScheduleGridBodyRows({
     rowCount: rows.length,

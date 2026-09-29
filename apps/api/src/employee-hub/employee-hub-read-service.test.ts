@@ -47,3 +47,40 @@ describe("employee hub weekly read boundary", () => {
     await expect(service.get(input)).rejects.toThrow();
   });
 });
+
+describe("employee team board read (BL-218)", () => {
+  // From get_employee_schedule_board_service for Emre on the "r" world of
+  // supabase/tests/employee_references_ask_the_core.test.sql, BL-218
+  // migrations 070000-090000 applied and rolled back; shifts and catalog
+  // lists left empty.
+  const board = {
+    jobs: [
+      { id: "29173f20-8534-4650-a445-362954990e7e", name: "Owner", color: "#4478A8", sort_order: 0, system_key: "owner", department_id: "4a942fbd-77f0-47ca-8fc9-98863b5730ec" },
+      { id: "a6e9c461-82fb-48a3-a7b6-cf92fc1911d5", name: "Cook", color: "#D39A36", sort_order: 1, system_key: null, department_id: "f3a14873-2fa4-455d-97e3-8ec992dd9e50" },
+    ],
+    settings: { time_format: "12h" },
+    employees: [
+      { id: "f7667db2-d98f-4ca1-8c6b-5a29fc225bc7", job_ids: ["29173f20-8534-4650-a445-362954990e7e"], display_name: "Olcay Owner", location_ids: ["a237a14a-76c9-441f-bc45-5eae2b13f5e0"], employee_code: "E-0001", primary_job_id: null },
+      { id: "c121ff27-f58c-4254-93ce-255a68d77b02", job_ids: ["a6e9c461-82fb-48a3-a7b6-cf92fc1911d5"], display_name: "Emre Person", location_ids: ["a237a14a-76c9-441f-bc45-5eae2b13f5e0"], employee_code: "E-0004", primary_job_id: "a6e9c461-82fb-48a3-a7b6-cf92fc1911d5" },
+    ],
+    locations: [{ id: "a237a14a-76c9-441f-bc45-5eae2b13f5e0", name: "Kadikoy", timezone: "Europe/Istanbul", sort_order: 0, published_at: null, publication_status: "unpublished" }],
+    week_start: "2026-09-28",
+    departments: [
+      { id: "4a942fbd-77f0-47ca-8fc9-98863b5730ec", name: "Management", color: "#3C7A68", sort_order: 0, system_key: "management" },
+      { id: "f3a14873-2fa4-455d-97e3-8ec992dd9e50", name: "Kitchen", color: "#3C7A68", sort_order: 1, system_key: null },
+    ],
+    workspace_id: "085697c9-c2c4-47bd-8c3d-0a6673e4c3e1",
+    week_start_day: "monday",
+    shift_types: [],
+    shifts: [],
+    closures: [],
+  };
+
+  it("loads the board with Management's and Owner's keys and the stored primary job", async () => {
+    rpc.mockResolvedValue({ data: board, error: null });
+    const result = await service.getScheduleBoard({ actorUserId: actor, workspaceId: workspace, targetDate: "2026-09-29" });
+    expect(result.departments).toEqual(board.departments);
+    expect(result.jobs).toEqual(board.jobs);
+    expect(result.employees.map((person) => person.primary_job_id)).toEqual([null, board.jobs[1]!.id]);
+  });
+});

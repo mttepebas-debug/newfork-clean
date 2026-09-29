@@ -21,6 +21,7 @@ const jobs: ScheduleReadModel["jobs"] = [
     color: "#f59e0b",
     sort_order: 0,
     department_id: null,
+    system_key: null,
   },
   {
     id: "22222222-2222-4222-8222-222222222222",
@@ -28,6 +29,7 @@ const jobs: ScheduleReadModel["jobs"] = [
     color: "#10b981",
     sort_order: 1,
     department_id: null,
+    system_key: null,
   },
 ];
 

@@ -7,6 +7,7 @@ import {
   InvitationError,
   loadEmployeeReferenceData,
 } from "./employee-data";
+import { onlyManagementJobs } from "./employee-create-flow";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
@@ -20,14 +21,22 @@ vi.mock("../lib/supabase", () => ({
 afterEach(() => vi.unstubAllGlobals());
 
 // Part of the owner's answer from read_employee_references_service on the "r"
-// world of supabase/tests/employee_references_ask_the_core.test.sql (rolled back).
+// world of supabase/tests/employee_references_ask_the_core.test.sql, BL-218
+// .3a applied (rolled back): Management with Owner under it, Kitchen with Old.
 const answer = {
-  jobs: [{ id: "4d10b47f-58a8-401d-a4bb-92fec24a1819", name: "Old", archived_at: "2026-09-28T05:03:02.777745+00:00" }],
+  jobs: [
+    { id: "ae9f68ac-f2d1-46ad-b688-2cc2b25958cd", name: "Old", system_key: null, archived_at: "2026-09-29T01:34:58.259859+00:00", department_id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939" },
+    { id: "285cb253-3c31-41c3-950a-74c93ded13fb", name: "Owner", system_key: "owner", archived_at: null, department_id: "893f064e-2952-49ae-80f7-cc5ab30e192a" },
+  ],
   locations: [
-    { id: "01793040-e611-47d7-8b30-e04663faac46", name: "Kadikoy", timezone: "Europe/Istanbul", archived_at: null },
+    { id: "e92f96de-3eb0-4203-a15c-aff6edfd4c39", name: "Kadikoy", timezone: "Europe/Istanbul", archived_at: null },
+  ],
+  departments: [
+    { id: "893f064e-2952-49ae-80f7-cc5ab30e192a", name: "Management", system_key: "management", archived_at: null },
+    { id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939", name: "Kitchen", system_key: null, archived_at: null },
   ],
   invite_roles: [
-    { id: "1cf1ccb7-a238-4190-bb3a-41401f0f2f1d", name: "lead", system_key: null, access_class: "manager" },
+    { id: "f8bd7763-1616-4cc2-bb47-d64f9053f106", name: "lead", system_key: null, access_class: "manager" },
   ],
 };
 
@@ -44,7 +53,14 @@ describe("Employees reference data (BL-231)", () => {
     const fetchMock = respond(200, answer);
     await expect(loadEmployeeReferenceData(workspaceId)).resolves.toEqual({
       locations: [{ id: answer.locations[0]!.id, name: "Kadikoy", archived: false, timezone: "Europe/Istanbul" }],
-      jobs: [{ id: answer.jobs[0]!.id, name: "Old", archived: true }],
+      departments: [
+        { id: answer.departments[0]!.id, name: "Management", archived: false, management: true },
+        { id: answer.departments[1]!.id, name: "Kitchen", archived: false, management: false },
+      ],
+      jobs: [
+        { id: answer.jobs[0]!.id, name: "Old", archived: true, departmentId: answer.departments[1]!.id, management: false, owner: false },
+        { id: answer.jobs[1]!.id, name: "Owner", archived: false, departmentId: answer.departments[0]!.id, management: true, owner: true },
+      ],
       inviteRoles: [{ id: answer.invite_roles[0]!.id, name: "lead", systemKey: null, accessClass: "manager" }],
     });
     expect(fetchMock.mock.calls[0]![0]).toBe(`http://api.test/v1/workspaces/${workspaceId}/employees/reference-data`);
@@ -80,5 +96,20 @@ describe("Invitation answers (SEC-003 #9)", () => {
     respond(403, { error: "This invitation is for a different account", code: "invitation_email_mismatch" });
     const failure = await declinePendingEmployeeInvitation(invitationId).catch((error: unknown) => error);
     expect(failure).toMatchObject({ code: "invitation_email_mismatch" });
+  });
+});
+
+describe("somebody who only works Management jobs (BL-218 .3b)", () => {
+  const job = (id: string, management: boolean) => ({ id, name: id, archived: false, departmentId: null, management, owner: false });
+  const jobs = [job("manager", true), job("assistant", true), job("cook", false)];
+
+  it("names no primary job only when every job is under Management", () => {
+    expect(onlyManagementJobs(["manager"], jobs)).toBe(true);
+    expect(onlyManagementJobs(["manager", "assistant"], jobs)).toBe(true);
+    expect(onlyManagementJobs(["manager", "cook"], jobs)).toBe(false);
+    // No job at all is "missing a job", not "only Management".
+    expect(onlyManagementJobs([], jobs)).toBe(false);
+    // Before the pick lists arrive nothing is known to be Management.
+    expect(onlyManagementJobs(["manager"], [])).toBe(false);
   });
 });

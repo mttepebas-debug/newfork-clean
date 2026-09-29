@@ -34,6 +34,7 @@ const job: ScheduleReadModel["jobs"][number] = {
   color: "#2563eb",
   sort_order: 0,
   department_id: null,
+  system_key: null,
 };
 
 const shiftType: ScheduleReadModel["shift_types"][number] = {
@@ -88,6 +89,7 @@ function renderRow(overrides: Partial<Parameters<typeof ScheduleRow>[0]> = {}) {
     activeInteractionShiftLocationId: null,
     days: ["2026-08-17"],
     jobs: [job],
+    departments: [],
     shiftTypes: [shiftType],
     closures: [],
     cellStateByKey: new Map(),
@@ -208,6 +210,7 @@ describe("ScheduleRow blank-cell interactions", () => {
           activeInteractionShiftLocationId={null}
           days={["2026-08-17"]}
           jobs={[job]}
+          departments={[]}
           shiftTypes={[shiftType]}
           closures={[]}
           cellStateByKey={new Map()}
@@ -296,6 +299,7 @@ describe("ScheduleRow blank-cell interactions", () => {
           activeInteractionShiftLocationId={null}
           days={["2026-08-17"]}
           jobs={[job]}
+          departments={[]}
           shiftTypes={[shiftType]}
           closures={[]}
           cellStateByKey={new Map()}

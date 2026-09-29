@@ -58,6 +58,39 @@ describe("createScheduleReadService read model", () => {
     expect(locationEq).toHaveBeenCalledWith("workspace_id", workspaceId);
     expect(locationIn).toHaveBeenCalledWith("id", [locationId]);
   });
+  it("hands the Schedule Management's and Owner's system keys and the stored primary job (BL-218)", async () => {
+    // From get_schedule_read_model_service on the "r" world of
+    // supabase/tests/employee_references_ask_the_core.test.sql, with the
+    // BL-218 .3a migration applied and rolled back: the owner works only the
+    // Owner job and has no primary; Ayse's primary is Cook.
+    const departments = [
+      { id: "893f064e-2952-49ae-80f7-cc5ab30e192a", name: "Management", color: "#3C7A68", sort_order: 0, system_key: "management" },
+      { id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939", name: "Kitchen", color: "#3C7A68", sort_order: 1, system_key: null },
+    ];
+    const jobs = [
+      { id: "285cb253-3c31-41c3-950a-74c93ded13fb", name: "Owner", color: "#4478A8", sort_order: 0, system_key: "owner", department_id: "893f064e-2952-49ae-80f7-cc5ab30e192a" },
+      { id: "49f49836-56a9-49c9-ac67-7f469cc09e82", name: "Cook", color: "#D39A36", sort_order: 1, system_key: null, department_id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939" },
+    ];
+    const employees = [
+      { id: "0ece5bab-720d-40f7-88f8-6833c661558e", job_ids: ["285cb253-3c31-41c3-950a-74c93ded13fb"], display_name: "Olcay Owner", location_ids: ["e92f96de-3eb0-4203-a15c-aff6edfd4c39", "eddd6f15-289e-416a-8727-e4ce6bca5600"], employee_code: "E-0001", primary_job_id: null, is_excluded_from_schedule: false },
+      { id: "4b551d02-784b-4dcb-af8b-083a2885f894", job_ids: ["49f49836-56a9-49c9-ac67-7f469cc09e82"], display_name: "Ayse Person", location_ids: ["e92f96de-3eb0-4203-a15c-aff6edfd4c39"], employee_code: "E-0002", primary_job_id: "49f49836-56a9-49c9-ac67-7f469cc09e82", is_excluded_from_schedule: false },
+    ];
+    mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday",
+      locations: [], departments, jobs, shift_types: [], employees, shifts: [],
+    }, error: null });
+    mocks.from.mockImplementation(() => {
+      const chain = {
+        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain, lte: () => chain, or: () => chain,
+        maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
+        then: (resolve: (value: unknown) => unknown) => resolve({ data: [], error: null }),
+      }; return chain;
+    });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    const result = await service.getReadModel(actorUserId, workspaceId, "2026-09-14");
+    expect(result.departments).toEqual(departments);
+    expect(result.jobs).toEqual(jobs);
+    expect(result.employees.map((employee) => employee.primary_job_id)).toEqual([null, jobs[1]!.id]);
+  });
   it("loads independent metadata concurrently after the authorized read model", async () => {
     let resolveSettings!: (value: { data: { time_format: string }; error: null }) => void;
     const settingsResult = new Promise<{ data: { time_format: string }; error: null }>((resolve) => {

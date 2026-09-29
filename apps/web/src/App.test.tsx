@@ -191,12 +191,14 @@ const scheduleFixture = vi.hoisted(() => ({
       name: "Front of house",
       color: "#2563EB",
       sort_order: 0,
+      system_key: null,
     },
   ],
   jobs: [
     {
       id: "33333333-3333-4333-8333-333333333333",
       department_id: "22222222-2222-4222-8222-222222222222",
+      system_key: null,
       name: "Server",
       color: "#2563EB",
       sort_order: 0,
