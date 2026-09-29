@@ -1,12 +1,23 @@
+/* Notifications: one list of categories separated by hairlines, the channel
+   columns named once above the boxes they label. No boxes around rows. */
 .notification-preferences {
   gap: 20px;
 }
 
+.notification-preferences > .account-page-header + * {
+  margin-top: 24px;
+}
+
+.notification-workspace-picker {
+  max-width: 320px;
+  margin-bottom: 20px;
+}
+
 .notification-preference-list {
-  --notification-channel-width: 76px;
-  --notification-disclosure-width: 34px;
+  --notification-channel-width: 72px;
+  --notification-disclosure-width: 32px;
   display: grid;
-  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .notification-matrix-grid {
@@ -17,10 +28,11 @@
 }
 
 .notification-matrix-header {
-  padding: 0 16px 2px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--theme-border);
   color: var(--theme-muted);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .notification-matrix-header span:nth-child(2),
@@ -30,14 +42,12 @@
 
 .notification-preference-group {
   display: grid;
-  overflow: hidden;
-  border-radius: 8px;
-  background: var(--theme-surface-soft);
+  border-bottom: 1px solid var(--theme-border-subtle);
 }
 
 .notification-preference-group-row {
-  min-height: 72px;
-  padding: 14px 16px;
+  min-height: 64px;
+  padding: 12px 0;
   cursor: pointer;
 }
 
@@ -47,15 +57,16 @@
 
 .notification-preference-group-heading h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .notification-preference-group-heading p {
   max-width: 44rem;
-  margin-top: 3px;
-  margin-bottom: 0;
+  margin: 2px 0 0;
   color: var(--theme-muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 400;
   line-height: 1.45;
 }
@@ -66,7 +77,7 @@
   height: 32px;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: 6px;
   place-items: center;
   justify-self: end;
   color: var(--theme-text-secondary);
@@ -91,31 +102,27 @@
   transform: rotate(180deg);
 }
 
+/* The single notifications sit under their category, indented one step, in
+   the same columns so each box stays under its channel name. */
 .notification-preference-details {
-  padding: 0 16px 14px;
-  border-top: 1px solid var(--theme-border-subtle);
+  padding: 0 0 8px 16px;
 }
 
 .notification-preference-details > h3 {
-  margin: 12px 0 8px;
-  color: var(--theme-text-secondary);
-  font-size: 11px;
-  font-weight: 700;
+  margin: 0 0 2px;
+  color: var(--theme-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .notification-preference-group-list {
   display: grid;
-  gap: 0;
 }
 
 .notification-preference-card {
-  min-height: 58px;
-  padding: 10px 0;
-  border: 0;
+  min-height: 52px;
+  padding: 8px 0;
   border-top: 1px solid var(--theme-border-subtle);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 .notification-preference-card:first-child {
@@ -124,27 +131,22 @@
 
 .notification-preference-card-heading {
   display: grid;
-  gap: 4px;
+  gap: 2px;
+  min-width: 0;
 }
 
 .notification-preference-card-heading h3 {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.25;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
-.notification-preference-card-heading p,
-.notification-preference-card-heading span {
+.notification-preference-card-heading p {
   margin: 0;
   color: var(--theme-muted);
-  font-size: 13px;
-}
-
-.notification-preference-body {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .notification-channel-toggle {
@@ -152,7 +154,6 @@
   align-items: center;
   justify-content: center;
   min-height: 2rem;
-  font-weight: 700;
   cursor: pointer;
 }
 
@@ -165,36 +166,31 @@
 }
 
 .notification-channel-toggle input {
+  width: 16px;
+  height: 16px;
   margin: 0;
+  accent-color: var(--theme-accent-strong);
 }
 
 @media (max-width: 720px) {
   .notification-preference-list {
-    --notification-channel-width: 54px;
-    --notification-disclosure-width: 32px;
+    --notification-channel-width: 52px;
   }
 
   .notification-matrix-grid {
-    column-gap: 5px;
+    column-gap: 4px;
   }
 
-  .notification-matrix-header,
-  .notification-preference-group-row {
-    padding-right: 10px;
-    padding-left: 10px;
+  .notification-workspace-picker {
+    max-width: none;
   }
 
   .notification-preference-details {
-    padding-right: 10px;
-    padding-left: 10px;
-  }
-
-  .notification-preference-group-heading h2 {
-    font-size: 12px;
+    padding-left: 12px;
   }
 
   .notification-preference-group-heading p,
   .notification-preference-card-heading p {
-    font-size: 11px;
+    font-size: 12px;
   }
 }

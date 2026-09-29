@@ -47,6 +47,14 @@ export default function PreferencesPage() {
     }
   };
 
+  // Picking the stored value again is no change, so Save closes again.
+  const choose = (nextDate: PersonalDateFormat, nextTime: PersonalTimeFormat) => {
+    setDateFormat(nextDate);
+    setTimeFormat(nextTime);
+    setDirty(nextDate !== account.dateFormat || nextTime !== account.timeFormat);
+    setSaved(false);
+  };
+
   const discard = () => {
     setTimeFormat(account.timeFormat);
     setDateFormat(account.dateFormat);
@@ -63,40 +71,38 @@ export default function PreferencesPage() {
         titleId="preferences-title"
         description="Choose how Newfork formats information for this account."
       />
-      <form onSubmit={submit}>
-        <section className="account-section-block">
-          <div className="account-section-copy">
-            <h2>Regional format</h2>
-            <p>Date and time presentation follows you across workspaces.</p>
-          </div>
-          <div className="account-section-body account-field-grid">
-            <label className="account-field">
-              <span>Date format</span>
-              <select value={dateFormat} onChange={(event) => { setDateFormat(event.target.value as PersonalDateFormat); setDirty(true); setSaved(false); }}>
-                <option value="system">System</option>
-                <option value="MM-DD-YYYY">09-14-2026</option>
-                <option value="DD-MM-YYYY">14-09-2026</option>
-                <option value="YYYY-MM-DD">2026-09-14</option>
-              </select>
-              <small>Display only; stored dates are unchanged.</small>
-            </label>
-            <label className="account-field">
-              <span>Time format</span>
-              <select value={timeFormat} onChange={(event) => { setTimeFormat(event.target.value as PersonalTimeFormat); setDirty(true); setSaved(false); }}>
-                <option value="system">System</option>
-                <option value="12h">9:30 AM</option>
-                <option value="24h">09:30</option>
-              </select>
-              <small>Workspace timezone is unchanged.</small>
-            </label>
-          </div>
-        </section>
+      <form className="account-section-block" aria-labelledby="regional-format-title" onSubmit={submit}>
+        <div className="account-section-copy">
+          <h2 id="regional-format-title">Regional format</h2>
+          <p>Date and time presentation follows you across workspaces.</p>
+        </div>
+        <div className="account-field-grid account-field-grid-3">
+          <label className="account-field">
+            <span>Date format</span>
+            <select value={dateFormat} onChange={(event) => choose(event.target.value as PersonalDateFormat, timeFormat)}>
+              <option value="system">System</option>
+              <option value="MM-DD-YYYY">09-14-2026</option>
+              <option value="DD-MM-YYYY">14-09-2026</option>
+              <option value="YYYY-MM-DD">2026-09-14</option>
+            </select>
+            <small>Display only; stored dates are unchanged.</small>
+          </label>
+          <label className="account-field">
+            <span>Time format</span>
+            <select value={timeFormat} onChange={(event) => choose(dateFormat, event.target.value as PersonalTimeFormat)}>
+              <option value="system">System</option>
+              <option value="12h">9:30 AM</option>
+              <option value="24h">09:30</option>
+            </select>
+            <small>Workspace timezone is unchanged.</small>
+          </label>
+        </div>
 
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {saved ? <p className="form-success" role="status">Preferences saved</p> : null}
         <div className="account-form-actions">
-          <Button className="secondary-button" type="button" disabled={!dirty || saving} onClick={discard}>Discard</Button>
-          <Button type="submit" disabled={!dirty || saving}>{saving ? "Saving" : "Save preferences"}</Button>
+          {dirty ? <Button className="secondary-button" type="button" disabled={saving} onClick={discard}>Discard</Button> : null}
+          <Button type="submit" disabled={!dirty || saving}>{saving ? "Saving" : "Save"}</Button>
         </div>
       </form>
     </section>
