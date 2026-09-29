@@ -42,7 +42,12 @@ function defaultJobIdForCreateState(
     ? primaryScheduleJobId(employee, model.jobs, model.departments)
     : null;
 
-  return employeeJobId ?? model.jobs[0]?.id ?? "";
+  // Only the owner works Owner, so it is never the stand-in (BL-218).
+  return (
+    employeeJobId ??
+    model.jobs.find((job) => job.system_key !== "owner")?.id ??
+    ""
+  );
 }
 
 export function buildScheduleShiftEditorInitialValue({

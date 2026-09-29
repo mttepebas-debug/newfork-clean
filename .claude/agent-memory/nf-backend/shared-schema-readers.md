@@ -1,6 +1,6 @@
 ---
 name: shared-schema-readers
-description: A shared zod schema can be parsed from more than one RPC (Schedule read + Employee Hub board); list every parser before making a field required. Drawer tests mock employee-data wholesale.
+description: A shared zod schema can be parsed from more than one RPC (Schedule read + Employee Hub board); list every parser before making a field required. The drawer's main test mocks employee-data wholesale.
 metadata:
   type: project
 ---
@@ -11,4 +11,4 @@ metadata:
 
 **How to apply:** name every reader in the question to the coordinator; take each reader's fixture from a rolled-back run ([[fixture-from-real-db-output]]).
 
-Trap: `EmployeeDrawer.test.tsx` / `.create.test.tsx` `vi.mock("./employee-data")` without the original, so a new pure helper exported from `employee-data.ts` is undefined in the drawer. Put form rules in `employees/employee-create-flow.ts` (not mocked) — `onlyManagementJobs` lives there.
+Trap: `EmployeeDrawer.test.tsx` does `vi.mock("./employee-data")` without the original (`EmployeeDrawer.create.test.tsx` spreads it), so a new pure helper exported from `employee-data.ts` is undefined in the drawer's main test. Put form rules in `employees/employee-create-flow.ts` (not mocked) — `firstJobOutsideManagement` lives there.

@@ -39,7 +39,6 @@ import { saveEmployee } from "../employees/employee-data";
 import {
   employeeCreateReadiness,
   firstJobOutsideManagement,
-  onlyManagementJobs,
 } from "../employees/employee-create-flow";
 import {
   listAccountWorkspaces,
@@ -713,7 +712,12 @@ export default function OwnerOnboardingPage() {
     setError(null);
     setSuccess(null);
     try {
-      const employeeId = await saveEmployee(workspaceId, employeeDraft);
+      // Same rule as the Employees drawer (BL-218), worked out now: a job
+      // can move under Management from Back: Jobs after it was ticked.
+      const employeeId = await saveEmployee(workspaceId, {
+        ...employeeDraft,
+        primary_job_id: firstJobOutsideManagement(employeeDraft.job_ids, managementIds),
+      });
       if (inviteAfterSave && employeeDraft.invitation_email.trim()) {
         await queueOwnerOnboardingInvitationIntent(supabaseClient, {
           workspaceId,
@@ -1463,13 +1467,7 @@ export default function OwnerOnboardingPage() {
                   selected={employeeDraft.job_ids}
                   required={!exemptFromSchedule(employeeDraft)}
                   onChange={(ids) =>
-                    setEmployeeDraft({
-                      ...employeeDraft,
-                      job_ids: ids,
-                      // Same rule as the Employees drawer (BL-218 .3b).
-                      primary_job_id: firstJobOutsideManagement(ids, managementIds),
-                      only_management_jobs: onlyManagementJobs(ids, managementIds),
-                    })
+                    setEmployeeDraft({ ...employeeDraft, job_ids: ids })
                   }
                 />
               </div>

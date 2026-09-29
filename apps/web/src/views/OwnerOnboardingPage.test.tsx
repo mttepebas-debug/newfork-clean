@@ -822,7 +822,41 @@ describe("OwnerOnboardingPage", () => {
       await waitFor(() =>
         expect(saveEmployee).toHaveBeenCalledWith(
           workspaceId,
-          expect.objectContaining({ job_ids: [managerJobId, jobId], primary_job_id: jobId, only_management_jobs: false }),
+          expect.objectContaining({ job_ids: [managerJobId, jobId], primary_job_id: jobId }),
+        ),
+      );
+    });
+
+    it("works the primary out on Add, after the job moved under Management from Back: Jobs", async () => {
+      vi.mocked(listLocations).mockResolvedValue([location]);
+      vi.mocked(listDepartments).mockResolvedValue([
+        department,
+        { ...department, id: managementId, name: "Management", system_key: "management" },
+      ]);
+      vi.mocked(listJobs).mockResolvedValue([job]);
+      renderPage(4);
+      await screen.findByRole("heading", { name: "Add your team" });
+      fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Maya" } });
+      fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Reed" } });
+      fireEvent.click(screen.getByRole("checkbox", { name: "Main Dining" }));
+      fireEvent.click(screen.getByRole("checkbox", { name: "Server" }));
+      // The wizard bar's Back: Jobs.
+      fireEvent.click(document.querySelector(".pb-bar .pb-btn-secondary")!);
+      await screen.findByRole("heading", { name: "What jobs do people work?" });
+      vi.mocked(listJobs).mockResolvedValue([{ ...job, department_id: managementId }]);
+      fireEvent.click(screen.getByRole("button", { name: "Server" }));
+      fireEvent.change(screen.getByLabelText("Department", { selector: "#job-panel-department" }), {
+        target: { value: managementId },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(saveJob).toHaveBeenCalled());
+      fireEvent.click(await screen.findByRole("button", { name: /continue/i }));
+      await screen.findByRole("heading", { name: "Add your team" });
+      fireEvent.click(screen.getByRole("button", { name: /add employee/i }));
+      await waitFor(() =>
+        expect(saveEmployee).toHaveBeenCalledWith(
+          workspaceId,
+          expect.objectContaining({ job_ids: [jobId], primary_job_id: null }),
         ),
       );
     });
@@ -832,7 +866,7 @@ describe("OwnerOnboardingPage", () => {
       await waitFor(() =>
         expect(saveEmployee).toHaveBeenCalledWith(
           workspaceId,
-          expect.objectContaining({ job_ids: [managerJobId], primary_job_id: null, only_management_jobs: true }),
+          expect.objectContaining({ job_ids: [managerJobId], primary_job_id: null }),
         ),
       );
     });

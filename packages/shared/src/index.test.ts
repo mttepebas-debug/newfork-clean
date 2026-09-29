@@ -19,6 +19,7 @@ import {
   jobInputSchema,
   jobSchema,
   locationInputSchema,
+  managementAndOwnerRefusals,
   managementJobIds,
   notificationInboxSchema,
   normalizeAccountPhone,
@@ -1534,19 +1535,25 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
     primary_location_id: locationId,
     job_ids: [managerJobId],
     primary_job_id: null,
-    only_management_jobs: true,
     expected_revision: null,
   };
 
-  it("saves somebody who only works Management jobs without a primary job, at a location (.3b)", () => {
+  it("leaves the primary job to the database and words what it still checks (.3b)", () => {
+    // Only Management, or Management and Cook with no primary: the database
+    // decides (employee.primary_job_required), the form does not guess.
     expect(employeeInputSchema.safeParse(managerOnly).success).toBe(true);
-    // At least one location stays required, and with it a primary location.
-    expect(employeeInputSchema.safeParse({ ...managerOnly, location_ids: [], primary_location_id: null }).success).toBe(false);
-    expect(employeeInputSchema.safeParse({ ...managerOnly, primary_location_id: null }).success).toBe(false);
-    // Anybody else still names a primary job.
-    expect(
-      employeeInputSchema.safeParse({ ...managerOnly, job_ids: [managerJobId, cookJobId], only_management_jobs: false }).success,
-    ).toBe(false);
+    expect(employeeInputSchema.safeParse({ ...managerOnly, job_ids: [managerJobId, cookJobId] }).success).toBe(true);
+    // A location, a primary location and a job stay required, in the same words the API uses.
+    const noLocation = employeeInputSchema.safeParse({ ...managerOnly, location_ids: [], primary_location_id: null });
+    expect(noLocation.error?.issues.map((issue) => issue.message)).toEqual([
+      managementAndOwnerRefusals["employee.location_required"],
+    ]);
+    expect(employeeInputSchema.safeParse({ ...managerOnly, primary_location_id: null }).error?.issues[0]?.message).toBe(
+      managementAndOwnerRefusals["employee.location_required"],
+    );
+    expect(employeeInputSchema.safeParse({ ...managerOnly, job_ids: [] }).error?.issues[0]?.message).toBe(
+      managementAndOwnerRefusals["employee.job_required"],
+    );
   });
 });
 

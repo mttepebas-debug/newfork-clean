@@ -2654,12 +2654,6 @@ export const employeeInputSchema = z
      * form from refusing first.
      */
     is_owner_record: z.boolean().optional(),
-    /**
-     * Every job is under Management (BL-218 .3b): a Management job is primary
-     * by its department, so there is no primary job to name. A location is
-     * still required. Like `is_owner_record`, the server decides for itself.
-     */
-    only_management_jobs: z.boolean().optional(),
     expected_revision: z.number().int().positive().nullable(),
   })
   .superRefine((value, issue) => {
@@ -2668,22 +2662,19 @@ export const employeeInputSchema = z
       value.is_excluded_from_schedule === true ||
       value.is_owner_record === true;
     if (assignmentOptional) return;
+    // Whether a primary job is needed depends on which jobs sit under
+    // Management; the database decides (employee.primary_job_required, BL-218).
     if (value.location_ids.length === 0 || value.primary_location_id === null) {
       issue.addIssue({
         code: "custom",
-        message:
-          "Employee requires a location unless remote or excluded from schedule",
+        message: managementAndOwnerRefusals["employee.location_required"],
         path: ["location_ids"],
       });
     }
-    if (
-      value.job_ids.length === 0 ||
-      (value.primary_job_id === null && value.only_management_jobs !== true)
-    ) {
+    if (value.job_ids.length === 0) {
       issue.addIssue({
         code: "custom",
-        message:
-          "Employee requires a job unless remote or excluded from schedule",
+        message: managementAndOwnerRefusals["employee.job_required"],
         path: ["job_ids"],
       });
     }

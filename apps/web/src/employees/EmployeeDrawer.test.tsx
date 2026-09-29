@@ -30,6 +30,7 @@ vi.mock("../documents/document-data", async (importOriginal) => ({
   previewEmployeeDocumentAssignments: vi.fn(),
   listDocuments: vi.fn().mockResolvedValue([]),
 }));
+import { RequestError } from "../lib/request-error";
 import { EmployeeDrawer } from "./EmployeeDrawer";
 import {
   loadWeeklyPreferences,
@@ -423,6 +424,10 @@ describe("EmployeeDrawer", () => {
     // The server refuses this shape; before, Save stayed enabled and failed
     // after the round trip.
     expect(save).toHaveProperty("disabled", true);
+    // Save says why it is held (BL-218), in the words the API would use.
+    expect(
+      screen.getByText("Choose at least one location and mark one as primary, or turn on Remote or Exclude from schedule."),
+    ).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Remote"));
     expect(save).toHaveProperty("disabled", false);
     expect(saveEmployee).not.toHaveBeenCalled();
@@ -1166,6 +1171,60 @@ describe("EmployeeDrawer", () => {
   });
 
   describe("a Management job is primary by its department (BL-218 .3b)", () => {
+    // Deniz works Host and Cook; Host moved under Management, so the database
+    // cleared the primary.
+    const deniz = {
+      ...detail,
+      primary_job_id: null,
+      primary_job_name: null,
+      job_count: 2,
+      jobs: [
+        { id: "22000000-0000-4000-8000-0000000000b1", name: "Host", primary: false, archived: false },
+        { id: "22000000-0000-4000-8000-0000000000b2", name: "Cook", primary: false, archived: false },
+      ],
+    };
+    function denizReferences() {
+      vi.mocked(loadEmployeeReferenceData).mockResolvedValueOnce({
+        locations: deniz.locations.map((location) => ({ ...location, timezone: "America/Los_Angeles" })),
+        departments: [{ id: "dd000000-0000-4000-8000-000000000001", name: "Management", archived: false, management: true }],
+        jobs: [
+          { id: deniz.jobs[0]!.id, name: "Host", archived: false, departmentId: "dd000000-0000-4000-8000-000000000001", management: true, owner: false },
+          { id: deniz.jobs[1]!.id, name: "Cook", archived: false, departmentId: null, management: false, owner: false },
+        ],
+        inviteRoles: [],
+      });
+    }
+
+    it("does not make the job just unticked the primary", async () => {
+      denizReferences();
+      renderDrawer("employment", deniz);
+      fireEvent.click(await screen.findByLabelText("Cook"));
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() =>
+        expect(saveEmployee).toHaveBeenCalledWith(
+          workspaceId,
+          expect.objectContaining({ job_ids: [deniz.jobs[0]!.id], primary_job_id: null }),
+          employeeId,
+        ),
+      );
+    });
+
+    it("saves Deniz and shows the database answer when a primary job is missing", async () => {
+      denizReferences();
+      vi.mocked(saveEmployee).mockRejectedValueOnce(
+        new RequestError("Mark one of the jobs outside Management as primary.", "employee.primary_job_required", undefined, 400),
+      );
+      renderDrawer("employment", deniz);
+      fireEvent.change(await screen.findByLabelText("Start date"), { target: { value: "2027-02-01" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      expect(await screen.findByText("Mark one of the jobs outside Management as primary.")).toBeTruthy();
+      expect(saveEmployee).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({ job_ids: deniz.jobs.map((job) => job.id), primary_job_id: null }),
+        employeeId,
+      );
+    });
+
     const serverJobId = detail.jobs[0]!.id;
     const managerJobId = "22000000-0000-4000-8000-0000000000aa";
     function withManagementJob() {
@@ -1197,7 +1256,6 @@ describe("EmployeeDrawer", () => {
             primary_location_id: detail.locations[0]!.id,
             job_ids: [managerJobId],
             primary_job_id: null,
-            only_management_jobs: true,
           }),
           employeeId,
         ),
@@ -1214,11 +1272,32 @@ describe("EmployeeDrawer", () => {
       await waitFor(() =>
         expect(saveEmployee).toHaveBeenCalledWith(
           workspaceId,
-          expect.objectContaining({ job_ids: [serverJobId, managerJobId], primary_job_id: serverJobId, only_management_jobs: false }),
+          expect.objectContaining({ job_ids: [serverJobId, managerJobId], primary_job_id: serverJobId }),
           employeeId,
         ),
       );
     });
+  });
+
+  it("does not make the location just unticked a Remote person's primary", async () => {
+    const second = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false };
+    renderDrawer("employment", {
+      ...detail,
+      is_remote: true,
+      primary_location_id: null,
+      primary_location_name: null,
+      location_count: 2,
+      locations: [{ ...detail.locations[0]!, primary: false }, second],
+    });
+    fireEvent.click(await screen.findByLabelText("Patio"));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(saveEmployee).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({ location_ids: [detail.locations[0]!.id], primary_location_id: null }),
+        employeeId,
+      ),
+    );
   });
 
   it("shows selected work modes in employment and the summary rail", async () => {

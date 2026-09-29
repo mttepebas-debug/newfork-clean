@@ -81,18 +81,16 @@ export function groupScheduleEmployeesByJob(
 }
 
 /**
- * The primary job somebody was given outside Management, or null (BL-218).
- * A Management job is primary by its department and never the stored one; the
- * read sends no stand-in, so null means "none named".
+ * The primary job somebody was given, which is always outside Management: a
+ * Management job is primary by its department and the database never stores
+ * it as primary (BL-218). Null when none was named or it is archived.
  */
 export function nonManagementPrimaryJobId(
   employee: ScheduleEmployee,
   jobs: Jobs,
-  departments: Departments,
 ): string | null {
   const primary = employee.primary_job_id;
-  if (!primary || !jobs.some((job) => job.id === primary)) return null;
-  return managementJobIds(departments, jobs).has(primary) ? null : primary;
+  return primary && jobs.some((job) => job.id === primary) ? primary : null;
 }
 
 /**
@@ -106,7 +104,7 @@ export function primaryScheduleJobId(
   jobs: Jobs,
   departments: Departments,
 ): string | null {
-  const primary = nonManagementPrimaryJobId(employee, jobs, departments);
+  const primary = nonManagementPrimaryJobId(employee, jobs);
   if (primary) return primary;
   const management = managementJobIds(departments, jobs);
   const held = jobs.filter((job) => employee.job_ids.includes(job.id));

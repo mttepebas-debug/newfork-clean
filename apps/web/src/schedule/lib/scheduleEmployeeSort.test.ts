@@ -348,12 +348,10 @@ describe("Management and the primary job outside it (BL-218)", () => {
   const mixedNoPrimary = employee({ id: "e0000000-0000-4000-8000-000000000004", display_name: "Nia None", job_ids: [cook.id, manager.id], primary_job_id: null });
 
   it("gives the primary job outside Management, or nobody's", () => {
-    expect(nonManagementPrimaryJobId(mixed, bl218Jobs, bl218Departments)).toBe(cook.id);
-    expect(nonManagementPrimaryJobId(ownerOnly, bl218Jobs, bl218Departments)).toBeNull();
-    expect(nonManagementPrimaryJobId(twoManagement, bl218Jobs, bl218Departments)).toBeNull();
-    expect(nonManagementPrimaryJobId(mixedNoPrimary, bl218Jobs, bl218Departments)).toBeNull();
-    // A Management job never counts as the primary, even if one were stored.
-    expect(nonManagementPrimaryJobId({ ...twoManagement, primary_job_id: manager.id }, bl218Jobs, bl218Departments)).toBeNull();
+    expect(nonManagementPrimaryJobId(mixed, bl218Jobs)).toBe(cook.id);
+    expect(nonManagementPrimaryJobId(ownerOnly, bl218Jobs)).toBeNull();
+    expect(nonManagementPrimaryJobId(twoManagement, bl218Jobs)).toBeNull();
+    expect(nonManagementPrimaryJobId(mixedNoPrimary, bl218Jobs)).toBeNull();
   });
 
   it("files the rest under their first Management job, never under a uuid-order pick", () => {

@@ -477,6 +477,23 @@ describe("employee directory routes", () => {
     await app.close();
   });
 
+  it("hands a save with no primary job to the database, which decides (BL-218 .3b)", async () => {
+    const save = vi.fn(async () => employeeId);
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      employeeDirectoryService: { save } as unknown as EmployeeDirectoryService,
+    });
+    const response = await app.inject({
+      method: "PUT",
+      url: `/v1/workspaces/${workspaceId}/employees/${employeeId}`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { ...employeeInput, primary_job_id: null },
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ employee: { ...employeeInput, primary_job_id: null } }));
+    await app.close();
+  });
+
   it("keeps a create's refusal key and sentence on the way out (BL-218)", async () => {
     const sentence = managementAndOwnerRefusals["employee.management_primary"];
     const create = vi.fn(async () => {

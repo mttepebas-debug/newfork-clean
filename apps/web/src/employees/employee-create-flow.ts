@@ -10,6 +10,11 @@ export function employeeCreateReadiness(draft: EmployeeInput) {
     namesReady,
     assignmentsOptional,
     employeeReady: parsed.success,
+    // What holds Save on a location or job, in the words the API uses (BL-218).
+    assignmentBlocker:
+      parsed.error?.issues.find(
+        (issue) => issue.path[0] === "location_ids" || issue.path[0] === "job_ids",
+      )?.message ?? null,
     emailPresent: Boolean(draft.invitation_email.trim()),
     emailReady:
       employeeInputSchema.safeParse({
@@ -19,17 +24,6 @@ export function employeeCreateReadiness(draft: EmployeeInput) {
         is_remote: true,
       }).success && Boolean(draft.invitation_email.trim()),
   };
-}
-
-/**
- * Every picked job is under Management (BL-218 .3b), so the record names no
- * primary job; sets `only_management_jobs` before the form is checked.
- */
-export function onlyManagementJobs(
-  jobIds: readonly string[],
-  management: ReadonlySet<string>,
-): boolean {
-  return jobIds.length > 0 && jobIds.every((id) => management.has(id));
 }
 
 /**

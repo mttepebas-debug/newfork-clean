@@ -69,7 +69,6 @@ import {
 import {
   employeeCreateReadiness,
   firstJobOutsideManagement,
-  onlyManagementJobs,
 } from "./employee-create-flow";
 import { registerEmployeeHistoryGuard } from "./employee-history-guard";
 
@@ -163,15 +162,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const pendingNavigationRef = useRef<(() => void) | null>(null);
   const allowNavigationRef = useRef(false);
   const previousSectionRef = useRef(props.section);
-  // BL-218 .3b: somebody whose jobs are all under Management names no primary job.
-  const ruledDraft: EmployeeInput = {
-    ...draft,
-    only_management_jobs: onlyManagementJobs(
-      draft.job_ids,
-      new Set(references.data?.jobs.filter((job) => job.management).map((job) => job.id)),
-    ),
-  };
-  const readiness = employeeCreateReadiness(ruledDraft);
+  const readiness = employeeCreateReadiness(draft);
   const allowedSections = sections.filter(
     ([key]) =>
       (key !== "availability" ||
@@ -332,7 +323,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   });
   const saveMutation = useMutation({
     mutationFn: () =>
-      saveEmployee(workspaceId, ruledDraft, props.employeeId ?? undefined),
+      saveEmployee(workspaceId, draft, props.employeeId ?? undefined),
     onSuccess: async (savedId) => {
       draftEditedRef.current = false;
       allowNextDraftRefreshRef.current = true;
@@ -704,7 +695,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       return;
     const command: EmployeeCreateCommand = {
       request_id: crypto.randomUUID(),
-      employee: employeeInputSchema.parse(ruledDraft),
+      employee: employeeInputSchema.parse(draft),
       invite_role_id: invite ? inviteRoleId : null,
     };
     commandRef.current = command;
@@ -725,7 +716,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       } else startCreate(false);
       return;
     }
-    const parsed = employeeInputSchema.safeParse(ruledDraft);
+    const parsed = employeeInputSchema.safeParse(draft);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the employee details");
       return;
@@ -1101,6 +1092,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           {error ? (
             <p className="employee-drawer-error" role="alert">
               {error}
+            </p>
+          ) : dirty && readiness.assignmentBlocker ? (
+            <p className="employee-drawer-error" role="status">
+              {readiness.assignmentBlocker}
             </p>
           ) : null}
           {uncertainCreate ? (
@@ -2787,10 +2782,14 @@ function AssignmentPicker({
                   const ids = checked
                     ? selected.filter((id) => id !== option.id)
                     : [...selected, option.id];
+                  // Unticking moves the primary only off the one unticked;
+                  // ticking fills an empty primary unless it is Management.
                   onChange(
                     ids,
-                    checked && primary === option.id
-                      ? firstJobOutsideManagement(ids, management)
+                    checked
+                      ? primary === option.id
+                        ? firstJobOutsideManagement(ids, management)
+                        : primary
                       : (primary ?? (option.management ? null : option.id)),
                   );
                 }}
