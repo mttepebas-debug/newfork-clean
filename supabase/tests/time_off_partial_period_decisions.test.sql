@@ -39,7 +39,7 @@ select throws_ok($$select pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15
 select throws_ok($$select pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00','2035-01-15T17:00:00')))$$,'22023',null,'timezone-free timestamps rejected');
 select throws_ok($$select pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T17:00:00Z','pending')))$$,'22023',null,'undecided piece rejected');
 select throws_ok($$select pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T17:00:00Z'),pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T17:00:00Z')))$$,'22023',null,'duplicate pieces rejected');
-select is((select count(*)::int from public.time_off_decision_pieces),0,'rejected pieces roll back all decision rows');
+select is((select count(*)::int from public.time_off_decision_pieces where workspace_id=(select w from tpd)),0,'rejected pieces roll back all decision rows');
 select is((select revision from public.schedule_time_off_requests where id=(select request from tpd)),1,'rejected pieces do not advance revision');
 select is((select count(*)::int from public.schedule_time_off_events where request_id=(select request from tpd)),1,'rejected pieces do not write a decision event');
 select throws_ok($$select public.resolve_schedule_time_off_request_service(actor,w,request,1,'approve') from tpd$$,'42501',null,'employee cannot decide own request');
@@ -59,7 +59,7 @@ select is(jsonb_array_length(public.time_off_request_periods(request,w)->0->'dec
 select is((select item->'decision_events'->0->>'note' from tpd t cross join lateral jsonb_array_elements(public.get_employee_hub_service(t.actor,t.w,'2035-01-01','2035-01-31')->'requests') item where item->>'id'=t.request::text),'Appointment hours approved; afternoon declined.','employee sees the manager decision note');
 select is((select item->'segments'->0->'decision_pieces' from tpd t cross join lateral jsonb_array_elements(public.get_schedule_requests_service(t.manager,t.w,'closed')->'time_off_requests') item where item->>'id'=t.request::text),public.time_off_request_periods(request,w)->0->'decision_pieces','manager sees the same decision pieces') from tpd;
 select is(pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T12:00:00Z'),pg_temp.p('2035-01-15T12:00:00Z','2035-01-15T17:00:00Z','denied')),1,op),result,'retry returns the original decision result') from tpd;
-select is((select count(*)::int from public.time_off_decision_pieces),2,'retry does not duplicate decision pieces');
+select is((select count(*)::int from public.time_off_decision_pieces where workspace_id=(select w from tpd)),2,'retry does not duplicate decision pieces');
 select throws_ok($$select pg_temp.decide(jsonb_build_array(pg_temp.p('2035-01-15T10:00:00Z','2035-01-15T17:00:00Z')),1,op) from tpd$$,'40001',null,'changed decision cannot reuse a key');
 select throws_ok($$update public.time_off_decision_pieces set status='denied'$$,'55000',null,'decision history cannot be rewritten');
 select throws_ok($$delete from public.time_off_decision_pieces$$,'55000',null,'decision history cannot be deleted');
