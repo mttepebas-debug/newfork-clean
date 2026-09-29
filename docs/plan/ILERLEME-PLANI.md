@@ -51,16 +51,18 @@ Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-21
 | FB-6.1.14 | FB-6.1 kapanışı | FB-6.1.13 | — | 2 | bekliyor | koordinatör | `tasks/FB-6.1.md` |
 | BL-218.1 | Management/Owner kırmızı testleri | — | — | 3 | bitti | `nf-db` | — |
 | BL-218.2 | Management/Owner veritabanı kuralları | — | — | 8 | bitti | `nf-db` | — |
-| BL-218.3 | Owner ve Management'ı Takvim ve Employees çekmecesine taşıyan veri sözleşmesi (tip, API, web veri) | — | — | 5 | kısmen hazır (tazelik 2026-09-28 `2fed2144`: katalog tipi ve yeni hata metinleri DB'siz başlar; Takvim ve çekmece parçası önce bir `nf-db` okuma adımı ister, öneri `.3a` — `tasks/BL-218.md` "`.3` tazelik") | `nf-backend` | `packages/shared`, `apps/api/src/schedule`, `apps/web/src/schedule/*-data`, `apps/web/src/employees/*-data` |
-| BL-218.4 | Kurulum sihirbazında "en az 1" metni; Settings → Jobs'ta kilitli Owner satırı | BL-218.3 | — | 3 | bekliyor | `nf-arayuz` | `OwnerOnboardingPage.tsx`, Settings → Jobs |
-| BL-218.5a | Employees çekmecesinin iş listesi için departman ve Owner bilgisi (okuma) | BL-218.3 | — | 3 | bekliyor | `nf-db` + `nf-backend` | `read_employee_references_service`, employees data |
-| BL-218.5b | Çekmecede iş listesi departmana göre gruplu, Owner kilitli (DEV varyantları) | BL-218.5a | — | 3 | bekliyor | `nf-arayuz` | `EmployeeDrawer.tsx` |
-| BL-218.6 | Takvim'de "By department", Management grubu, iki satır, tek sayım | BL-218.3 | — | 5 | bekliyor | `nf-arayuz` (+ `nf-backend`) | `apps/web/src/schedule/**` |
+| BL-218.3-i | Settings → Jobs okumasında sistem kimliği (`system_key`) ve DB'nin dört yeni "hayır"ı için okunur İngilizce hata cümleleri (DB'siz) | — | Böl, aynı anda yürüt | 2 | hazır | `nf-backend` | `packages/shared`, `apps/api/src/settings`, `apps/web/src/settings/organization-data.ts`, API hata eşlemesi |
+| BL-218.3a | Takvim ve çekmece referans okumasına departman/iş `system_key`, katı `primary_job_id`, işlere departman; pgTAP, ızgara <50 ms (`.5a`'nın DB yarısı dahil) | — | Böl, aynı anda yürüt | 3 | hazır | `nf-db` | `supabase/migrations` (`get_schedule_read_model_service`, `read_employee_references_service`) |
+| BL-218.3-ii | Takvim ve referans tipleri, API geçirme, Management'ı bulan saf yardımcı; yalnız Owner işi olan owner'da yeni vardiyanın varsayılan işi | BL-218.3a | Böl, aynı anda yürüt | 3 | bekliyor | `nf-backend` | `packages/shared`, `apps/api/src/schedule`, `apps/web/src/schedule/*-data`, `shiftEditorState.ts`, `apps/web/src/employees/*-data` |
+| BL-218.4 | Kurulum sihirbazında "en az 1" metni; Settings → Jobs'ta kilitli Owner satırı | BL-218.3-i | — | 3 | bekliyor | `nf-arayuz` | `OwnerOnboardingPage.tsx`, Settings → Jobs |
+| BL-218.5a | Employees çekmecesinin iş listesi için departman ve Owner bilgisi (okuma) | — | Böl, aynı anda yürüt | 0 | kapandı 2026-09-28: DB yarısı `.3a`'ya, `nf-backend` yarısı `.3-ii`'ye katıldı (3 puan oraya taşındı) | — | — |
+| BL-218.5b | Çekmecede iş listesi departmana göre gruplu, Owner kilitli (DEV varyantları) | BL-218.3-ii | — | 3 | bekliyor | `nf-arayuz` | `EmployeeDrawer.tsx` |
+| BL-218.6 | Takvim'de "By department", Management grubu, iki satır, tek sayım | BL-218.3-ii | — | 5 | bekliyor | `nf-arayuz` (+ `nf-backend`) | `apps/web/src/schedule/**` |
 | BL-218.7 | e2e: kurulum → çekmece → By department | BL-218.4, .5b, .6 | — | 3 | bekliyor | `nf-test` | `e2e/flows/**` |
 | FB-6.1b.1 | Açık düzenleme tutmadığı lokasyona vardiya ekleyemez (BL-159) | — | — | 3 | hazır | `nf-db` | `supabase/migrations` (`apply_schedule_template_service`) |
 | FB-6.1b.2 | Boş yeni taslakta "yayınlanmışları soluk göster" anahtarı (DEV varyantları) | — | — | 3 | hazır | `nf-arayuz` | `SchedulePage.tsx`, schedule CSS |
 | FB-6.1b.3 | e2e iki senaryo | FB-6.1b.1, .2 | — | 3 | bekliyor | `nf-test` | `e2e/flows/**` |
-| FB-6.2.0 | Çalışanlar dilimi taze ölçüm (FB-6.1 işlevsel kısmı ve BL-139 main'de) | — | — | 1 | ölçüm bitti 2026-09-28 (`2fed2144`, geçerli); `roles_permissions_rls` + `employee_hub` koşusu `nf-test`'te | `nf-planlama` (+ `nf-test` koşu) | `tasks/FB-6.2.md` |
+| FB-6.2.0 | Çalışanlar dilimi taze ölçüm (FB-6.1 işlevsel kısmı ve BL-139 main'de) | — | — | 1 | bitti 2026-09-28 (`756af40c` ölçüm; `nf-test` koşusu `2fed2144`: `employee_hub` 13/13, `roles_permissions_rls` 42/47) | `nf-planlama` (+ `nf-test` koşu) | `tasks/FB-6.2.md` |
 | FB-6.2.1 | Yetki matrisi: ikinci admin, "yalnız yönetir", lokasyondan çıkarma | FB-6.2.0 | — | 3 | bekliyor | `nf-db` | `supabase/tests/authorization_matrix.test.sql` |
 | FB-6.2.2 | Veri modeli: "yalnız yönetir", "kendi lokasyonundan çıkar" komutu | FB-6.2.1 | — | 5 | bekliyor | `nf-db` | `supabase/migrations` |
 | FB-6.2.3 | Çalışan okuma ve listesi çekirdeğe | FB-6.2.2 | — | 3 | bekliyor | `nf-db` | `supabase/migrations` |
@@ -69,7 +71,7 @@ Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-21
 | FB-6.2.6 | İş katalogu ve pano çağıranları çekirdeğe; BL-187 | FB-6.2.5 | — | 3 | bekliyor | `nf-db` | `supabase/migrations` |
 | FB-6.2.7 | API ve web veri: lokasyondan çıkarma ucu, `can()` geçişi, "Çalışan görünümüne geç" rotası | FB-6.2.6 | — | 5 | bekliyor | `nf-backend` | `employee-directory-routes.ts`, `App.tsx`, employees data |
 | FB-6.2.8 | Employees ekranı: "Kendi lokasyonundan çıkar", "Yalnız yönetir", etiketler (DEV varyantları) | FB-6.2.7 | — | 5 | bekliyor | `nf-arayuz` | `EmployeeDrawer.tsx`, `EmployeesPage.tsx` |
-| FB-6.2.9 | Kırmızı dosyalar yeşile (`roles_permissions_rls`) | FB-6.2.6 | — | 3 | bekliyor | `nf-test` | `supabase/tests/**`, `ci-green.txt` |
+| FB-6.2.9 | Kırmızı dosyalar yeşile (`roles_permissions_rls` #3, #7, #30, #35, #46) | FB-6.2.6 | — | 3 | bekliyor | `nf-test` | `supabase/tests/**`, `ci-green.txt` |
 | FB-6.2.10 | e2e: davet ve kapsam akışları | FB-6.2.7 | — | 3 | bekliyor | `nf-test` | `e2e/flows/invite.spec.ts` |
 | FB-6.2.11 | FB-6.2 kapanışı | FB-6.2.8, .9, .10 | — | 1 | bekliyor | koordinatör | `tasks/FB-6.2.md` |
 | FB-6.3.0 | İzin dilimi taze ölçüm | FB-6.2.11 | — | 1 | bekliyor | `nf-planlama` | `tasks/FB-6.3.md` |
@@ -110,7 +112,7 @@ Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca g
 ## 6. Paralel yerleşim (aynı anda en çok 2 ağır iş)
 - **Şimdi (2026-09-28, BL-199 kapandı):** sıradaki iki hazır satır BL-218.3 ve FB-6.2.0; aşağıdaki satıra göre aynı anda gidebilir.
 - **İlk iki hazır satır:** BL-218.3 (`nf-backend`; `packages/shared`, `apps/api/src/schedule`, web schedule/employees veri dosyaları) ile FB-6.2.0 (`nf-planlama` ölçümü + bir `nf-test` koşusu, `roles_permissions_rls` ve `employee_hub`) **dosya paylaşmıyor**; ikisi aynı anda gidebilir. Ağır iş yalnız FB-6.2.0'ın `test:db` koşusu (`db.lock`).
-- FB-6.1b.1 ve FB-6.2.1–6.2.6 aynı `supabase/migrations` ailesine yazar: aynı anda tek `nf-db` adımı. BL-218.5a (`nf-db` okuma) BL-218.3'ün sözleşmesini bekler.
+- FB-6.1b.1, BL-218.3a ve FB-6.2.1–6.2.6 aynı `supabase/migrations` ailesine yazar: aynı anda tek `nf-db` adımı. BL-218.3-i (`nf-backend`) ile BL-218.3a (`nf-db`) dosya paylaşmaz, aynı anda gider (kullanıcı kararı 2026-09-28); BL-218.3-ii `.3a`'nın sözleşmesini bekler.
 - SEC-003'ün paralel yerleşim notları (S.A/S.B ortak dosyası) iş kapandığı için düştü.
 
 ## 7. Hedef dışı (tek satırlık özet)
