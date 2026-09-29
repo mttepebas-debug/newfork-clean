@@ -128,32 +128,6 @@ describe("employee directory routes", () => {
     });
   });
 
-  it("denies employee-class accounts before calling the management directory service", async () => {
-    const list = vi.fn(async () => []);
-    const app = buildApp({
-      contextResolver: {
-        resolve: async () => ({
-          ...context,
-          membership: { ...context.membership, role: "employee" },
-          permissions: ["workspace.read"],
-        }),
-      },
-      employeeDirectoryService: {
-        list,
-      } as unknown as EmployeeDirectoryService,
-    });
-
-    const response = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${workspaceId}/employees`,
-      headers: { authorization: "Bearer valid-token" },
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({ error: "Employee read required" });
-    expect(list).not.toHaveBeenCalled();
-  });
-
   it("forwards employee saves without accepting actor or workspace from the body", async () => {
     const save = vi.fn(async () => employeeId);
     const app = buildApp({
@@ -202,19 +176,12 @@ describe("employee directory routes", () => {
       headers: { authorization: "Bearer valid-token" },
       payload: employeeInput,
     });
-    const listed = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${workspaceId}/employees`,
-      headers: { authorization: "Bearer valid-token" },
-    });
-
     expect(created.statusCode, created.body).toBe(201);
     expect(save).toHaveBeenCalledWith({
       actorUserId: userId,
       workspaceId,
       employee: employeeInput,
     });
-    expect(listed.statusCode).toBe(404);
   });
 
   it("requires archive permission before terminating an employee", async () => {
@@ -440,7 +407,7 @@ describe("employee directory routes", () => {
         payload: "payload" in request ? request.payload : undefined,
       });
       expect(response.statusCode, `${request.method} ${request.url}`).toBe(404);
-      expect(response.json()).toEqual({ error: "Workspace not found" });
+      expect(response.json()).toMatchObject({ error: "Workspace not found" });
     }
 
     expect(list).not.toHaveBeenCalled();
@@ -512,5 +479,77 @@ describe("employee directory routes", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({ error: sentence, reason: "employee.management_primary", requestId: expect.any(String) });
     await app.close();
+  });
+
+  // FB-6.2 .7a: reading and listing ask the authorization core in the database
+  // (T5a); the route keeps no permission gate of its own. The core's "no"
+  // reaches the screen with its reason: authz.not_member 404, other authz.* 403.
+  describe("reads ask the core", () => {
+    const reads = [
+      ["list", "list_employees_service", `/v1/workspaces/${workspaceId}/employees`],
+      ["detail", "get_employee_detail_service", `/v1/workspaces/${workspaceId}/employees/${employeeId}`],
+      ["photo", "get_employee_avatar_path_service", `/v1/workspaces/${workspaceId}/employees/${employeeId}/avatar`],
+    ] as const;
+    const noPermissions = { ...context, permissions: ["workspace.read"] as ActiveWorkspaceContext["permissions"] };
+
+    it.each(reads)("hands the %s read to the database even without the permission key", async (_name, rpcName, url) => {
+      const rpc = vi.fn(async () => ({
+        data: null,
+        error: { code: "42501", message: "Not allowed", hint: "authz.missing_permission", details: "employee.read" },
+      }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => noPermissions },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({ method: "GET", url, headers: { authorization: "Bearer valid-token" } });
+      expect(rpc).toHaveBeenCalledWith(rpcName, expect.objectContaining({ actor_user_id: userId, target_workspace_id: workspaceId }));
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({ reason: "authz.missing_permission" });
+      await app.close();
+    });
+
+    it.each(reads)("answers a person out of reach on the %s read with 403 authz.out_of_scope", async (_name, _rpcName, url) => {
+      const rpc = vi.fn(async () => ({
+        data: null,
+        error: { code: "42501", message: "Not allowed", hint: "authz.out_of_scope", details: "employee.read" },
+      }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => context },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({ method: "GET", url, headers: { authorization: "Bearer valid-token" } });
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({ reason: "authz.out_of_scope", detail: "employee.read" });
+      await app.close();
+    });
+
+    it.each(reads)("answers somebody who is not a member on the %s read with 404 authz.not_member", async (_name, _rpcName, url) => {
+      const rpc = vi.fn();
+      const app = buildApp({
+        contextResolver: { resolve: async () => null },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({ method: "GET", url, headers: { authorization: "Bearer valid-token" } });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
+      expect(rpc).not.toHaveBeenCalled();
+      await app.close();
+    });
+
+    it("answers a bad employee id with 400 before asking anybody", async () => {
+      const rpc = vi.fn();
+      const app = buildApp({
+        contextResolver: { resolve: async () => context },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({
+        method: "GET",
+        url: `/v1/workspaces/${workspaceId}/employees/not-a-uuid`,
+        headers: { authorization: "Bearer valid-token" },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(rpc).not.toHaveBeenCalled();
+      await app.close();
+    });
   });
 });

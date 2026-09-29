@@ -134,15 +134,13 @@ export function registerEmployeeDirectoryRoutes(
     const query = listQuery.safeParse(request.query);
     if (!params.success || !query.success)
       return reply.status(400).send({ error: "Valid employee query required" });
-    const context = await authorize(
+    // No gate here: the service asks the core, and its "no" reaches the
+    // screen as 404 or 403 with its reason (FB-6.2 .3).
+    const context = await resolveActor(
       request.headers.authorization,
       params.data.workspaceId,
-      "employees.read",
       options.contextResolver,
-      reply,
-      "Employee read required",
     );
-    if (!context) return;
     if (!options.service)
       return reply
         .status(503)
@@ -162,15 +160,12 @@ export function registerEmployeeDirectoryRoutes(
       const params = employeeParams.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid employee required" });
-      const context = await authorize(
+      // No gate here: the service asks the core (FB-6.2 .3).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.read",
         options.contextResolver,
-        reply,
-        "Employee read required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -191,15 +186,12 @@ export function registerEmployeeDirectoryRoutes(
       const params = employeeParams.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid employee required" });
-      const context = await authorize(
+      // No gate here: the service asks the core (FB-6.2 .3).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.read",
         options.contextResolver,
-        reply,
-        "Employee read required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
