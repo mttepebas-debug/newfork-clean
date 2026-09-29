@@ -33,6 +33,7 @@ supabase/tests/document_types_rls.test.sql
 supabase/tests/employee_code_counter_resync.test.sql
 supabase/tests/employee_create_command.test.sql
 supabase/tests/employee_directory_rls.test.sql
+supabase/tests/employee_drawer_reads.test.sql
 supabase/tests/employee_onboarding_workspace_selection.test.sql
 supabase/tests/employee_personal_tasks.test.sql
 supabase/tests/employee_private_storage_contract.test.sql
