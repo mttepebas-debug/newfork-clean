@@ -2018,7 +2018,7 @@ export function SchedulePage({
       return true;
     }
     if (unpublishOpen) {
-      setUnpublishOpen(false);
+      if (!isUnpublishing) setUnpublishOpen(false);
       return true;
     }
     if (autoFill) {

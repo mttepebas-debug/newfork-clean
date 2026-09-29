@@ -37,6 +37,7 @@ import {
   countLabel,
 } from "./PublishPreflightPanel";
 import { formatShortDateTime } from "../lib/scheduleDateTime";
+import { useCloseOnEscape } from "../lib/useCloseOnEscape";
 
 export interface SchedulePublicationDepartmentScope {
   readonly departmentIds?: readonly string[];
@@ -1012,18 +1013,7 @@ function Dialog({
   readonly children: ReactNode;
 }) {
   const titleId = useId();
-
-  useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      onClose();
-    };
-    window.addEventListener("keydown", closeOnEscape, true);
-    return () => window.removeEventListener("keydown", closeOnEscape, true);
-  }, [onClose]);
+  useCloseOnEscape(onClose);
 
   return (
     <div

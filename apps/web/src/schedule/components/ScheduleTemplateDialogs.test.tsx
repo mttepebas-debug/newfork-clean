@@ -118,6 +118,16 @@ describe("ScheduleTemplatesDialog", () => {
     ).toBeTruthy();
   });
 
+  it("closes on Escape even when a name field has focus (BL-329)", () => {
+    const props = renderDialog();
+
+    const field = screen.getAllByRole("textbox")[0]!;
+    field.focus();
+    fireEvent.keyDown(field, { key: "Escape" });
+
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("deletes a template on the second click, without the browser's confirm box", async () => {
     const confirm = vi.spyOn(window, "confirm");
     const props = renderDialog();
