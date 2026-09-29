@@ -10,7 +10,7 @@ import type {
   ScheduleView,
   ScheduleTemplateSummary,
 } from "@newfork/shared/schedule";
-import { useToast } from "@newfork/ui";
+import { Button, useToast } from "@newfork/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -1812,6 +1812,11 @@ export function SchedulePage({
     employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
     showUnassignedShifts, showRoleSeparators, showTotalHours]);
 
+  // BL-193: the reason a read failed goes to the console, never onto the screen.
+  useEffect(() => {
+    if (query.error && !isNoAccess(query.error)) console.error(query.error);
+  }, [query.error]);
+
   if (query.isPending)
     return (
       <ScheduleState
@@ -1828,8 +1833,9 @@ export function SchedulePage({
     ) : (
       <ScheduleState
         title="Schedule unavailable"
-        detail={query.error.message}
+        detail="This week's schedule could not be loaded. Try again."
         error
+        onRetry={() => void query.refetch()}
       />
     );
 
@@ -2509,6 +2515,17 @@ export function SchedulePage({
         actions={topBarActions}
       />
       <ScheduleFilterCommandStrip chips={filterChips} />
+      {activeDraftId && !gridEditSession && previewSource.error ? (
+        <div className="schedule-operation-error" role="alert">
+          This draft's shifts could not be loaded.
+          <Button
+            className="schedule-operation-retry"
+            onClick={previewSource.retry}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : null}
       {operationError ? (
         <div className="schedule-operation-error" role="alert">
           {operationError}
@@ -3186,10 +3203,12 @@ export function SchedulePage({
                 refreshDrafts,
                 previewDraft: previewDraftFromMenu,
                 showPublished: () => setScheduleMode("preview", null),
-                onError: (error) =>
+                onError: (error) => {
+                  console.error(error);
                   setOperationError(
-                    `Schedule unpublished, but the view did not refresh: ${(error as Error).message}`,
-                  ),
+                    "Schedule unpublished, but this page could not refresh. Reload to see the latest schedule.",
+                  );
+                },
               });
               void refreshPublicationStatus();
               void query.refetch();

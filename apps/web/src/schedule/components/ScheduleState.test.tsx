@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { ScheduleState } from "./ScheduleState";
 
@@ -23,5 +23,20 @@ describe("ScheduleState", () => {
     );
 
     expect(screen.getByRole("alert")).toBeTruthy();
+  });
+
+  it("offers Retry on an error when the caller can retry (BL-193)", () => {
+    const onRetry = vi.fn();
+    render(
+      <ScheduleState
+        title="Schedule unavailable"
+        detail="Could not load schedule."
+        error
+        onRetry={onRetry}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

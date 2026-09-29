@@ -59,4 +59,14 @@ describe("live preview source resolution", () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.source).toMatchObject({ name: "Renamed draft" });
   });
+  it("reads the draft again on retry after a failed read (BL-324)", async () => {
+    vi.mocked(fetchScheduleDraftShifts)
+      .mockRejectedValueOnce(new Error("Server error"))
+      .mockResolvedValueOnce({ shifts: shifts("a-again") });
+    const { result } = renderHook(props => usePreviewSource(props), { initialProps: base });
+    await waitFor(() => expect(result.current.error).toBe("Server error"));
+    act(() => result.current.retry());
+    expect(result.current.error).toBeNull();
+    await waitFor(() => expect(result.current.shifts?.[0]?.id).toBe("a-again"));
+  });
 });

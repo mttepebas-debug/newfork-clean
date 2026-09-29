@@ -4731,6 +4731,14 @@ button.workspace-switcher-item:hover:not(:disabled) {
   margin-left: auto;
   padding: 0;
 }
+/* BL-324: the draft-read error's Retry is an action, so it is green. */
+.schedule-operation-error .schedule-operation-retry {
+  width: auto;
+  border-color: var(--theme-accent);
+  padding: 0 12px;
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
 .schedule-paste-status {
   position: fixed;
   z-index: 90;

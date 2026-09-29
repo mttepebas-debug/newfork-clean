@@ -17,7 +17,9 @@ export function usePreviewSource({ workspaceId, model, modelVersion, activeDraft
   const draft = drafts?.find(item => item.id === activeDraftId);
   const week = model?.week_start;
   const locationKey = model?.locations.map(location => location.id).join(",") ?? "";
-  const key = JSON.stringify([workspaceId, week, activeDraftId, draft?.revision, draft?.name, modelVersion, locationKey]);
+  // BL-324: a retry reads the draft again; the attempt is part of the key so the failed read stops counting.
+  const [attempt, setAttempt] = useState(0);
+  const key = JSON.stringify([workspaceId, week, activeDraftId, draft?.revision, draft?.name, modelVersion, locationKey, attempt]);
   const [resolved, setResolved] = useState<{ key: string; shifts: readonly ScheduleShift[]; error: string | null } | null>(null);
   useEffect(() => {
     if (editing || loading || !workspaceId || !week || !activeDraftId || !drafts) return;
@@ -28,6 +30,7 @@ export function usePreviewSource({ workspaceId, model, modelVersion, activeDraft
     void fetchScheduleDraftShifts(workspaceId, week, activeDraftId, locationKey ? locationKey.split(",") : [])
       .then(result => { if (!cancelled) setResolved({ key, shifts: result.shifts, error: null }); })
       .catch((error: unknown) => {
+        console.error(error);
         if (!cancelled) setResolved({ key, shifts: [], error: error instanceof Error ? error.message : "Could not load the selected draft" });
       });
     return () => { cancelled = true; };
@@ -39,5 +42,5 @@ export function usePreviewSource({ workspaceId, model, modelVersion, activeDraft
     ? draft ? { kind: "draft", id: draft.id, revision: draft.revision, name: draft.name } : null
     : { kind: "published" };
   return { requestedKey: key, resolvedKey: ready ? key : null, source, loading: !ready,
-    shifts: current?.shifts ?? null, error: current?.error ?? null };
+    shifts: current?.shifts ?? null, error: current?.error ?? null, retry: () => setAttempt(value => value + 1) };
 }

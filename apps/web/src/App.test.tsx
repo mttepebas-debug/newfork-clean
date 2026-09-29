@@ -4827,6 +4827,189 @@ describe("App", () => {
     );
   }, 15_000);
 
+  it("shows a plain sentence and Retry when the schedule cannot be read, never the raw error (BL-193)", async () => {
+    const raw =
+      '[{"code":"invalid_type","path":["shifts",0,"conflict_severity"],"message":"Required"}]';
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getScheduleReadModel).mockRejectedValueOnce(new Error(raw));
+    window.history.pushState({}, "", "/app/schedule");
+    testAuth.role = "owner";
+    render(<App />);
+
+    expect(
+      await screen.findByText("Schedule unavailable", {}, { timeout: 5000 }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("This week's schedule could not be loaded. Try again."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/invalid_type/)).toBeNull();
+    expect(consoleError).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(
+      await screen.findByRole(
+        "button",
+        { name: "Draft selector: New Schedule" },
+        { timeout: 5000 },
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("Schedule unavailable")).toBeNull();
+    consoleError.mockRestore();
+  });
+
+  it("says above the grid when a draft's shifts cannot load, and retries (BL-324)", async () => {
+    const weekStart = "2026-11-16";
+    const draft = {
+      id: "99999999-9999-4999-8999-999999999994",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      name: "Plan B",
+      revision: 2,
+      created_by: "88888888-8888-4888-8888-888888888888",
+      updated_by: "88888888-8888-4888-8888-888888888888",
+      created_at: "2026-08-17T12:00:00Z",
+      updated_at: "2026-08-17T12:00:00Z",
+    };
+    const draftShift = {
+      ...scheduleFixture.shifts[0]!,
+      id: "66666666-6666-4666-8666-666666666994",
+      scheduled_date: weekStart,
+      start_time: "10:00",
+      end_time: "14:00",
+      revision: 2,
+    };
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getScheduleReadModel).mockResolvedValue(
+      scheduleFixtureForWeek(weekStart),
+    );
+    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    vi.mocked(fetchScheduleDraftShifts)
+      .mockRejectedValueOnce(
+        new ScheduleRequestError('relation "x" does not exist', 500, {
+          error: 'relation "x" does not exist',
+        }),
+      )
+      .mockResolvedValue({ shifts: [draftShift] });
+    window.history.pushState(
+      {},
+      "",
+      `/app/schedule?date=${weekStart}&draft=${draft.id}`,
+    );
+    testAuth.role = "owner";
+    const { container } = render(<App />);
+
+    const row = await screen.findByText(
+      "This draft's shifts could not be loaded.",
+      {},
+      { timeout: 5000 },
+    );
+    expect(screen.queryByText(/does not exist/)).toBeNull();
+    fireEvent.click(
+      within(row.closest("[role='alert']") as HTMLElement).getByRole("button", {
+        name: "Retry",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(
+        container.querySelector(".schedule-shift-badge")?.textContent,
+      ).toContain("10:00 AM - 2:00 PM"),
+    );
+    expect(
+      screen.queryByText("This draft's shifts could not be loaded."),
+    ).toBeNull();
+    consoleError.mockRestore();
+  }, 15_000);
+
+  it("says plainly when the page cannot refresh after an unpublish, never the raw error", async () => {
+    const weekStart = "2026-11-16";
+    const draft = {
+      id: "99999999-9999-4999-8999-999999999993",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      name: "Plan C",
+      revision: 2,
+      created_by: "88888888-8888-4888-8888-888888888888",
+      updated_by: "88888888-8888-4888-8888-888888888888",
+      created_at: "2026-08-17T12:00:00Z",
+      updated_at: "2026-08-17T12:00:00Z",
+    };
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getScheduleReadModel).mockResolvedValue(
+      scheduleFixtureForWeek(weekStart),
+    );
+    vi.mocked(listScheduleDrafts).mockImplementation(async () => {
+      if (vi.mocked(unpublishSchedule).mock.calls.length) {
+        throw new ScheduleRequestError(
+          "permission denied for table schedule_drafts",
+          500,
+          { error: "permission denied for table schedule_drafts" },
+        );
+      }
+      return { drafts: [draft] };
+    });
+    vi.mocked(previewScheduleUnpublish).mockResolvedValueOnce({
+      status: "unpublish_ready",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      locations: [
+        {
+          location_id: scheduleFixture.locations[0]!.id,
+          location_name: scheduleFixture.locations[0]!.name,
+          publication_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab",
+          version: 1,
+          shift_count: 1,
+        },
+      ],
+      fingerprint: "e".repeat(64),
+    });
+    vi.mocked(unpublishSchedule).mockResolvedValueOnce({
+      status: "unpublished",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      location_ids: [scheduleFixture.locations[0]!.id],
+      publication_ids: ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab"],
+      unpublished_at: "2026-08-17T12:05:00Z",
+    });
+    window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
+    testAuth.role = "owner";
+    render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole(
+        "button",
+        { name: "Draft selector: New Schedule" },
+        { timeout: 5000 },
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish schedule" }));
+    const unpublishDialog = await screen.findByRole("dialog", {
+      name: "Unpublish schedule",
+    });
+    fireEvent.click(within(unpublishDialog).getByLabelText(/Main Dining/));
+    fireEvent.click(
+      within(unpublishDialog).getByRole("button", {
+        name: "Unpublish 1 locations",
+      }),
+    );
+    fireEvent.click(
+      within(unpublishDialog).getByRole("button", {
+        name: "Confirm unpublish",
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Schedule unpublished, but this page could not refresh. Reload to see the latest schedule.",
+        {},
+        { timeout: 5000 },
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/permission denied/)).toBeNull();
+    consoleError.mockRestore();
+  }, 15_000);
+
   it("records confirmation when publishing schedule risks", async () => {
     const draft = {
       id: "99999999-9999-4999-8999-999999999998",
