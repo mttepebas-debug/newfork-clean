@@ -10,6 +10,13 @@ import {
   useState,
 } from "react";
 
+import {
+  draftMeta,
+  publishedMeta,
+  publishedTitle,
+  type PublishedScheduleSummary,
+} from "../lib/draftMenuLabels";
+
 type SaveDraftAction = (
   name: string,
   force: boolean,
@@ -17,13 +24,6 @@ type SaveDraftAction = (
 ) => boolean | void | Promise<unknown>;
 
 type RunningAction = "save-current" | "save-as" | "save-publish" | null;
-
-interface PublishedScheduleSummary {
-  readonly source_draft_id?: string | null;
-  readonly source_draft_name?: string | null;
-  readonly published_at: string;
-  readonly published_by_name?: string | null;
-}
 
 interface SaveDraftMenuProps {
   readonly drafts: readonly ScheduleDraftSummary[];
@@ -49,11 +49,6 @@ interface OverwriteTarget {
   readonly name: string;
 }
 
-type DraftWithActorNames = ScheduleDraftSummary & {
-  readonly created_by_name?: string | null;
-  readonly updated_by_name?: string | null;
-};
-
 export function suggestVersionedDraftName(
   base: string,
   takenNames: readonly string[],
@@ -65,40 +60,6 @@ export function suggestVersionedDraftName(
     if (!taken.has(normalizeDraftName(candidate))) return candidate;
   }
   return `${stripped} vrs.0.${Date.now()}`;
-}
-
-function shortDate(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function updatedByLabel(draft: DraftWithActorNames): string {
-  return draft.updated_by_name ?? draft.created_by_name ?? "Unknown";
-}
-
-function savedMeta(draft: ScheduleDraftSummary): string {
-  const actorLabel = updatedByLabel(draft);
-  const savedAt = shortDate(draft.updated_at);
-  if (actorLabel !== "Unknown") return `Saved by ${actorLabel} • ${savedAt}`;
-  return `Revision ${draft.revision} • ${savedAt}`;
-}
-
-function publishedTitle(summary?: PublishedScheduleSummary | null): string {
-  const title = summary?.source_draft_name?.trim();
-  return title ? title : "Published schedule";
-}
-
-function publishedByLabel(summary?: PublishedScheduleSummary | null): string {
-  const label = summary?.published_by_name?.trim();
-  return label ? label : "Unknown";
-}
-
-function publishedMeta(summary: PublishedScheduleSummary): string {
-  return `Published by ${publishedByLabel(summary)} • ${shortDate(summary.published_at)}`;
 }
 
 export function SaveDraftMenu({
@@ -353,7 +314,7 @@ export function SaveDraftMenu({
                 key={draft.id}
                 id={draft.id}
                 name={draft.name}
-                meta={savedMeta(draft)}
+                meta={draftMeta(draft)}
                 isSaving={isBusy}
                 onOverwrite={(target) =>
                   void run("save-current", () =>

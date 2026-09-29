@@ -17,14 +17,12 @@ import { ConfirmButton } from "@newfork/ui";
 import { type JSX, useEffect, useId, useRef, useState } from "react";
 
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../lib/scheduleActionButton";
-import { formatShortDateTime } from "../lib/scheduleDateTime";
-
-interface PublishedScheduleSummary {
-  readonly source_draft_id?: string | null;
-  readonly source_draft_name?: string | null;
-  readonly published_at: string;
-  readonly published_by_name?: string | null;
-}
+import {
+  draftMeta,
+  publishedMeta,
+  publishedTitle,
+  type PublishedScheduleSummary,
+} from "../lib/draftMenuLabels";
 
 type PublicationLocationStatus = SchedulePublicationStatus["locations"][number];
 
@@ -108,6 +106,8 @@ export function DraftDropdownMenu({
     ...drafts.filter((draft) => draft.id === publishedDraftId),
   ];
   const visibleDraftCount = drafts.length + (showPublishedFallbackRow ? 1 : 0);
+  // KK-23: the counter counts drafts only; the publication row is not one.
+  const draftCount = drafts.length;
   const triggerDisabled =
     visibleDraftCount === 0 && (!canManageDrafts || editDisabled);
 
@@ -215,7 +215,7 @@ export function DraftDropdownMenu({
           <div className="schedule-draft-menu-heading">
             <span>Saved drafts</span>
             <small>
-              {visibleDraftCount} {visibleDraftCount === 1 ? "draft" : "drafts"}
+              {draftCount} {draftCount === 1 ? "draft" : "drafts"}
             </small>
           </div>
           <div className="schedule-draft-menu-list">
@@ -278,7 +278,7 @@ export function DraftDropdownMenu({
                             </span>
                           ) : null}
                         </span>
-                        <small>{formatDraftMeta(draft)}</small>
+                        <small>{draftMeta(draft)}</small>
                         {isPublishedDraft ? (
                           <PublishedLocationBadges
                             statuses={publishedLocationStatuses}
@@ -468,38 +468,6 @@ export function DraftDropdownMenu({
       ) : null}
     </div>
   );
-}
-
-type DraftWithActorNames = ScheduleDraftSummary & {
-  readonly created_by_name?: string | null;
-  readonly updated_by_name?: string | null;
-};
-
-function updatedByLabel(draft: DraftWithActorNames): string {
-  return draft.updated_by_name ?? draft.created_by_name ?? "Unknown";
-}
-
-function formatDraftMeta(draft: ScheduleDraftSummary): string {
-  const actorLabel = updatedByLabel(draft);
-  const updatedAt = formatShortDateTime(draft.updated_at);
-  if (actorLabel !== "Unknown") return `Saved by ${actorLabel} • ${updatedAt}`;
-  return `Revision ${draft.revision} • ${updatedAt}`;
-}
-
-function publishedTitle(summary?: PublishedScheduleSummary | null): string {
-  const title = summary?.source_draft_name?.trim();
-  return title ? title : "Published schedule";
-}
-
-function publishedByLabel(summary?: PublishedScheduleSummary | null): string {
-  const label = summary?.published_by_name?.trim();
-  return label ? label : "Unknown";
-}
-
-function publishedMeta(summary: PublishedScheduleSummary): string {
-  return `Published by ${publishedByLabel(summary)} • ${formatShortDateTime(
-    summary.published_at,
-  )}`;
 }
 
 function publishedLocationBadges(

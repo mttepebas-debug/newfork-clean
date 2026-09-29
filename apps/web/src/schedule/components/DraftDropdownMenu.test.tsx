@@ -253,6 +253,8 @@ describe("DraftDropdownMenu", () => {
       row?.querySelector(".schedule-draft-menu-title-line")?.textContent,
     ).toBe("Week 34 finalPublished");
     expect(screen.queryByText("Published schedule")).toBeNull();
+    // KK-23: the counter counts drafts; the publication row is not one.
+    expect(screen.getByText("0 drafts")).toBeTruthy();
   });
 
   it("prefetches drafts on open and highlights the trigger", () => {
