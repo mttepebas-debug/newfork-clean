@@ -2290,7 +2290,8 @@ export function SchedulePage({
             publishedLocationStatuses={publicationStatus?.locations ?? []}
             onOpen={() => {
               closeTopActionSurfaces("newSchedule");
-              void refreshDrafts();
+              // A background refresh: the menu keeps the cached list, the reason goes to the console.
+              void refreshDrafts().catch((error: unknown) => console.error(error));
             }}
             onOpenChange={setNewScheduleMenuOpen}
             dismissSignal={newScheduleDismissSignal}

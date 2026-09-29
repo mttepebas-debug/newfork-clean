@@ -4922,6 +4922,38 @@ describe("App", () => {
     consoleError.mockRestore();
   }, 15_000);
 
+  it("keeps a failed drafts refresh on menu open in the console, not as an unhandled rejection", async () => {
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const failure = new ScheduleRequestError("permission denied for table schedule_drafts", 500, {
+      error: "permission denied for table schedule_drafts",
+    });
+    let failDraftList = false;
+    vi.mocked(listScheduleDrafts).mockImplementation(async () => {
+      if (failDraftList) throw failure;
+      return { drafts: [] };
+    });
+    window.history.pushState({}, "", "/app/schedule");
+    testAuth.role = "owner";
+    render(<App />);
+
+    const trigger = await screen.findByRole(
+      "button",
+      { name: "Draft selector: New Schedule" },
+      { timeout: 5000 },
+    );
+    failDraftList = true;
+    fireEvent.click(trigger);
+
+    await waitFor(() => expect(consoleError).toHaveBeenCalledWith(failure));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(unhandled).not.toHaveBeenCalled();
+    expect(screen.queryByText(/permission denied/)).toBeNull();
+    process.off("unhandledRejection", unhandled);
+    consoleError.mockRestore();
+  });
+
   it("says plainly when the page cannot refresh after an unpublish, never the raw error", async () => {
     const weekStart = "2026-11-16";
     const draft = {
