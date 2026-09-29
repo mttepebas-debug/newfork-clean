@@ -14,10 +14,16 @@ import { sendResendEmail } from "../email/resend-email.js";
 import { HttpError } from "../http-error.js";
 
 export const SCHEDULE_EXPORT_AUTO_DISABLE_FAILURES = 3;
+// ponytail: a fixed pool; each send can wait 30 s (resend-email.ts), so four
+// at a time keeps a busy hour inside the cron's limit. Raise it, or split the
+// candidates across runs, if the schedule count outgrows it (BL-356).
+const SCHEDULE_EXPORT_CONCURRENCY = 4;
 
 export interface ScheduleExportDelivery {
   send(input: {
     to: string;
+    /** One message per schedule, week and recipient, however often the cron retries (BL-356). */
+    idempotencyKey: string;
     subject: string;
     html: string;
     attachment: {
@@ -87,11 +93,11 @@ export async function runScheduledExportsCron(input: {
     await recordFailure(unreadable, new StoppedExport(UNREADABLE_EXPORT));
   }
 
-  for (const schedule of candidates.schedules) {
+  const runOne = async (schedule: ScheduledExportCronCandidate) => {
     try {
       if (!isScheduledExportDue(schedule, now)) {
         result.skipped += 1;
-        continue;
+        return;
       }
       result.due += 1;
       // The database already dropped deleted locations (Q-C).
@@ -118,6 +124,7 @@ export async function runScheduledExportsCron(input: {
         schedule.recipients.map((recipient) =>
           input.delivery.send({
             to: recipient,
+            idempotencyKey: `${schedule.id}:${weekStart}:${recipient}`,
             subject,
             html,
             attachment: {
@@ -152,7 +159,14 @@ export async function runScheduledExportsCron(input: {
     } catch (error) {
       await recordFailure(schedule, error);
     }
-  }
+  };
+
+  const queue = [...candidates.schedules];
+  await Promise.all(
+    Array.from({ length: SCHEDULE_EXPORT_CONCURRENCY }, async () => {
+      for (let next = queue.shift(); next; next = queue.shift()) await runOne(next);
+    }),
+  );
 
   return result;
 }

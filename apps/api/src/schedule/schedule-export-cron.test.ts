@@ -182,6 +182,49 @@ describe("scheduled schedule export cron", () => {
     );
   });
 
+  // BL-356 (2): a cron retried inside the same hour must not mail the same
+  // week's schedule to the same person twice; Resend drops a repeated key.
+  it("sends each recipient one message per schedule and week", async () => {
+    const send = vi.fn(async () => undefined);
+    await runScheduledExportsCron({
+      service: scheduleServiceMock([scheduleCandidate({ recipients: ["one@example.test", "two@example.test"] })]),
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: { send },
+    });
+
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "one@example.test", idempotencyKey: "8a000000-0000-4000-8000-000000000001:2026-08-17:one@example.test" }),
+    );
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "two@example.test", idempotencyKey: "8a000000-0000-4000-8000-000000000001:2026-08-17:two@example.test" }),
+    );
+  });
+
+  // BL-356 (1): one slow send must not hold every other workspace's export
+  // back until the cron's time runs out.
+  it("works on more than one schedule at a time", async () => {
+    let inFlight = 0;
+    let most = 0;
+    const send = vi.fn(async () => {
+      inFlight += 1;
+      most = Math.max(most, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      inFlight -= 1;
+    });
+    const result = await runScheduledExportsCron({
+      service: scheduleServiceMock([
+        scheduleCandidate({ id: "8a000000-0000-4000-8000-000000000011" }),
+        scheduleCandidate({ id: "8a000000-0000-4000-8000-000000000012" }),
+        scheduleCandidate({ id: "8a000000-0000-4000-8000-000000000013" }),
+      ]),
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: { send },
+    });
+
+    expect(result).toMatchObject({ checked: 3, sent: 3, failed: 0 });
+    expect(most).toBeGreaterThan(1);
+  });
+
   it("keeps going past an export whose time zone is not a real one (BL-272)", async () => {
     const service = scheduleServiceMock([
       scheduleCandidate({
