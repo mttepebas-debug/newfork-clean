@@ -146,6 +146,32 @@ describe("PublishScheduleDialog", () => {
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Publish 1 location" })); });
     return h;
   }
+  it("says what each step does and shows what needs attention before the counts", async () => {
+    const riskPreview: SchedulePublicationPreview = {
+      ...preview,
+      status: "override_required",
+      findings: [publishFinding({ id: "risk-finding-0001", tier: "risk", message: "Alex closes Friday and opens Saturday." })],
+    };
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(riskPreview)} onPublish={vi.fn()} />);
+
+    expect(screen.getByText(/Nothing is published until the last step\./)).toBeTruthy();
+    await waitFor(() => expect(document.querySelector(".schedule-publication-summary")).not.toBeNull());
+    const summary = document.querySelector(".schedule-publication-summary")?.textContent ?? "";
+    expect(summary).toContain("Service week");
+    expect(summary).toContain("1 location");
+    expect(summary).toContain("2 shifts");
+    expect(summary).toContain("1 person affected");
+
+    await clickReadyNext();
+    const review = await screen.findByTestId("schedule-publish-preview");
+    expect(screen.getByText(/Review what needs attention first/)).toBeTruthy();
+    const panel = review.querySelector("[data-publish-preflight]");
+    const diff = review.querySelector(".schedule-publication-diff");
+    expect(panel && diff && panel.compareDocumentPosition(diff) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // One summary of the findings, not the dialog's and the panel's both.
+    expect(screen.getAllByText("1 risk")).toHaveLength(1);
+  });
+
   it("continues a changed warn-only publication once with current evidence and unchanged recipients", async () => {
     const onPublish = vi.fn().mockRejectedValueOnce(staleError(warnPreview)).mockResolvedValue({});
     await startPublication(onPublish);

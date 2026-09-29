@@ -13,7 +13,6 @@ import {
   Loader2,
   RefreshCw,
   Search,
-  ShieldAlert,
   X,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
@@ -35,7 +34,6 @@ import {
   publishHardBlockers,
   publishOverrideableBlockers,
   publishNewAvailabilityFindings,
-  isWeeklyAvailabilityFinding,
   countLabel,
 } from "./PublishPreflightPanel";
 import { formatShortDateTime } from "../lib/scheduleDateTime";
@@ -58,6 +56,13 @@ const STEP_TITLES: Record<1 | 2 | 3, string> = {
   1: "Select locations to publish",
   2: "Pre-flight check",
   3: "Notify employees",
+};
+// One line under the title saying what the step does; nothing goes live
+// before the last button.
+const STEP_DESCRIPTIONS: Record<1 | 2 | 3, string> = {
+  1: "Choose the draft and the locations that go live. Nothing is published until the last step.",
+  2: "Review what needs attention first, then what changes at each location.",
+  3: "Choose who gets a notification, then publish.",
 };
 
 type LocationPreviewSummary = SchedulePublicationPreview["locations"][number];
@@ -225,34 +230,10 @@ export function PublishScheduleDialog({
     hasHardBlocker ||
     preview?.status === "hard_blocked" ||
     preview?.status === "past_week_closed";
-  const preflightReady =
-    preview?.status === "publish_ready" &&
-    hardFindings.length === 0 &&
-    softFindings.length === 0 &&
-    riskFindings.length === 0 && !needsAvailabilityConfirmation;
   const wizardStep = step;
   const stepOnePreviewPending = wizardStep === 1 && pending;
   const stepOnePreviewError =
     wizardStep === 1 && error && !scheduleConflicts.length;
-  const publishSummary =
-    preview && !preflightReady
-      ? [
-          hardFindings.length + softFindings.length
-            ? `${hardFindings.length + softFindings.length} ${
-                hardFindings.length + softFindings.length === 1
-                  ? "blocker"
-                  : "blockers"
-              }`
-            : null,
-          riskFindings.length
-            ? `${riskFindings.length} ${riskFindings.length === 1 ? "risk" : "risks"}`
-            : null,
-          newConflicts.length ? countLabel(newConflicts.length, "schedule conflict", "schedule conflicts") : null,
-          availabilityWarnings.length ? countLabel(availabilityWarnings.length, "availability warning", "availability warnings") : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")
-      : "Ready to publish";
   const previewSummaryByLocationId = useMemo(() => {
     const summaries = new Map<string, LocationPreviewSummary>();
     for (const location of preview?.locations ?? []) {
@@ -270,6 +251,8 @@ export function PublishScheduleDialog({
     ],
     [preview],
   );
+  const nextShiftCount =
+    preview?.locations.reduce((total, location) => total + location.next_shift_count, 0) ?? 0;
   const notifyEmployees = useMemo(() => {
     const needle = employeeSearch.trim().toLocaleLowerCase();
     return affectedEmployeeIds
@@ -553,7 +536,7 @@ export function PublishScheduleDialog({
   };
 
   return (
-    <Dialog title={STEP_TITLES[wizardStep]} onClose={reviewingShift ? () => {} : () => { previewRequestIdRef.current += 1; onClose(); }}>
+    <Dialog title={STEP_TITLES[wizardStep]} description={STEP_DESCRIPTIONS[wizardStep]} onClose={reviewingShift ? () => {} : () => { previewRequestIdRef.current += 1; onClose(); }}>
       <div className="schedule-publication-form">
         <div className="schedule-publication-steps" aria-label="Publish steps">
           {[
@@ -573,6 +556,23 @@ export function PublishScheduleDialog({
             </span>
           ))}
         </div>
+        {preview ? (
+          <p className="schedule-publication-summary">
+            <strong>{drafts.find((draft) => draft.id === draftId)?.name ?? "Draft"}</strong>
+            <span>
+              <strong>{locationIds.length}</strong>{" "}
+              {locationIds.length === 1 ? "location" : "locations"}
+            </span>
+            <span>
+              <strong>{nextShiftCount}</strong>{" "}
+              {nextShiftCount === 1 ? "shift" : "shifts"}
+            </span>
+            <span>
+              <strong>{affectedEmployeeIds.length}</strong>{" "}
+              {affectedEmployeeIds.length === 1 ? "person affected" : "people affected"}
+            </span>
+          </p>
+        ) : null}
         {wizardStep === 1 ? (
           <>
             {hasDrafts ? (
@@ -764,30 +764,26 @@ export function PublishScheduleDialog({
             className="schedule-publication-review"
             data-testid="schedule-publish-preview"
           >
-            {!preview.findings.some(isWeeklyAvailabilityFinding) ? <div
-              className="schedule-publication-preflight"
-              data-status={preview.status}
-            >
-              <span aria-hidden>
-                {preflightReady ? (
-                  <Check size={17} />
-                ) : (
-                  <ShieldAlert size={17} />
-                )}
-              </span>
-              <div>
-                <strong>{publishSummary}</strong>
-                <small>
-                  {preflightReady
-                    ? "Nothing in this week's changes needs attention before it goes live."
-                    : hasHardBlocker
-                      ? "Fix hard blockers in the schedule before publishing."
-                      : riskFindings.length
-                        ? "Blockers stop the publish. Risks go live once acknowledged."
-                        : "Every override is recorded with the published audit trail."}
-                </small>
-              </div>
-            </div> : null}
+            <PublishPreflightPanel
+              preview={preview}
+              locations={locations}
+              availabilityAcknowledged={availabilityAcknowledged}
+              onAvailabilityAcknowledgedChange={(value) =>
+                setAvailabilityAckFingerprint(value ? preview.fingerprint : null)
+              }
+              blockReason={preflightBlockReason}
+              reviewDisabled={pending || reviewingShift || isPublishing}
+              onReviewShift={onReviewShift ? (finding) => {
+                if (pending || reviewingShift || isPublishing) return;
+                setReviewingShift(true);
+                setError(null);
+                void onReviewShift(finding, {
+                  draftId, locationIds, departmentKeys: selectedDepartmentKeys, notifyEmployeeIds, reasons,
+                }).catch((caught: unknown) => {
+                  setError(caught instanceof Error ? caught.message : "The shift could not be opened. Try again.");
+                }).finally(() => setReviewingShift(false));
+              } : undefined}
+            />
             <div className="schedule-publication-diff">
               {preview.locations.map((location) => (
                 <section key={location.location_id}>
@@ -814,26 +810,6 @@ export function PublishScheduleDialog({
                 </section>
               ))}
             </div>
-            <PublishPreflightPanel
-              preview={preview}
-              locations={locations}
-              availabilityAcknowledged={availabilityAcknowledged}
-              onAvailabilityAcknowledgedChange={(value) =>
-                setAvailabilityAckFingerprint(value ? preview.fingerprint : null)
-              }
-              blockReason={preflightBlockReason}
-              reviewDisabled={pending || reviewingShift || isPublishing}
-              onReviewShift={onReviewShift ? (finding) => {
-                if (pending || reviewingShift || isPublishing) return;
-                setReviewingShift(true);
-                setError(null);
-                void onReviewShift(finding, {
-                  draftId, locationIds, departmentKeys: selectedDepartmentKeys, notifyEmployeeIds, reasons,
-                }).catch((caught: unknown) => {
-                  setError(caught instanceof Error ? caught.message : "The shift could not be opened. Try again.");
-                }).finally(() => setReviewingShift(false));
-              } : undefined}
-            />
           </div>
         ) : (
           <section className="schedule-publish-notify">
@@ -1006,10 +982,12 @@ export function PublishScheduleDialog({
 
 function Dialog({
   title,
+  description,
   onClose,
   children,
 }: {
   readonly title: string;
+  readonly description: string;
   readonly onClose: () => void;
   readonly children: ReactNode;
 }) {
@@ -1052,9 +1030,13 @@ function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={`${titleId}-description`}
       >
         <header>
-          <h2 id={titleId}>{title}</h2>
+          <div className="schedule-publication-heading">
+            <h2 id={titleId}>{title}</h2>
+            <p id={`${titleId}-description`}>{description}</p>
+          </div>
           <button
             type="button"
             className="icon-button"

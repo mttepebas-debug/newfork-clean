@@ -21,6 +21,7 @@ import {
   Save,
   Send,
   Trash2,
+  Undo2,
   WandSparkles,
   X,
 } from "lucide-react";
@@ -2355,7 +2356,7 @@ export function SchedulePage({
               <Check size={15} aria-hidden /> Published
             </button>
             {publishMenuOpen ? (
-              <div className="schedule-action-menu-panel">
+              <div className="schedule-action-menu-panel schedule-published-menu-panel">
                 <button
                   type="button"
                   onClick={() => {
@@ -2363,16 +2364,17 @@ export function SchedulePage({
                     void openPublish();
                   }}
                 >
-                  Publish another draft
+                  <Send size={14} aria-hidden /> Publish another draft
                 </button>
                 <button
                   type="button"
+                  data-tone="danger"
                   onClick={() => {
                     setPublishMenuOpen(false);
                     setUnpublishOpen(true);
                   }}
                 >
-                  Unpublish schedule
+                  <Undo2 size={14} aria-hidden /> Unpublish schedule
                 </button>
               </div>
             ) : null}

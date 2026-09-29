@@ -104,6 +104,27 @@ describe("DraftDropdownMenu", () => {
     await waitFor(() => expect(onEditDraft).toHaveBeenCalledWith(draftA.id));
   });
 
+  it("marks only the draft being viewed", () => {
+    const menu = (activeDraftId: string | null) => (
+      <DraftDropdownMenu
+        drafts={[draftA]}
+        activeDraftId={activeDraftId}
+        triggerLabel="Plan A"
+        onPreviewDraft={vi.fn()}
+        onEditDraft={vi.fn()}
+        onStartBlankDraft={vi.fn()}
+      />
+    );
+    const { rerender } = render(menu(draftA.id));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Draft selector: Plan A" }),
+    );
+    expect(within(screen.getByRole("dialog")).getByText("Viewing")).toBeTruthy();
+
+    rerender(menu(null));
+    expect(within(screen.getByRole("dialog")).queryByText("Viewing")).toBeNull();
+  });
+
   it("requires confirmation before deleting a draft", () => {
     const onDeleteDraft = vi.fn();
 
