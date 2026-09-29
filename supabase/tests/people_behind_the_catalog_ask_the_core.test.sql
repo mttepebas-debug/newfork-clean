@@ -90,7 +90,54 @@ select is(
   '42501 authz.missing_permission', 'an employee reads no job counts'
 );
 
--- 2. Deleting a job or a location ------------------------------------------------------
+-- 2. The dashboard's to-dos (Workspace home) --------------------------------------------
+-- A to-do about somebody is for whoever may read their record.
+
+create function pg_temp.todo(actor text, person uuid) returns text language sql as $$
+  select pg_temp.refusal(format('select public.create_workspace_todo_service(%L, %L, %L, %L, %L, null)',
+    tests.user('m:' || actor), tests.id('m'), 'Follow up', '', person))
+$$;
+
+select is(pg_temp.todo('ayse', tests.id('m:owner')), 'allowed',
+  'a manager writes a to-do about the owner at their location (M2)');
+select is(pg_temp.todo('mehmet', tests.id('m:selin')), 'allowed',
+  'about a manager who only manages Besiktas, for Besiktas''s other manager (KK-29)');
+select is(pg_temp.todo('ayse', tests.id('m:veli')), '42501 authz.out_of_scope',
+  'not about somebody at another location');
+select is(pg_temp.todo('ayse', gen_random_uuid()), '42501 authz.out_of_scope',
+  'an unknown person gets the answer somebody out of reach gets');
+select is(pg_temp.todo('emre', null), '42501 authz.missing_permission', 'an employee writes no to-do');
+
+select tests.remember('m:todo:veli', (public.create_workspace_todo_service(
+  tests.user('m:owner'), tests.id('m'), 'About Veli', '', tests.id('m:veli'), null) ->> 'id')::uuid);
+select tests.remember('m:todo:zeynep', (public.create_workspace_todo_service(
+  tests.user('m:owner'), tests.id('m'), 'About Zeynep', '', tests.id('m:zeynep'), null) ->> 'id')::uuid);
+select is(
+  pg_temp.refusal(format('select public.resolve_workspace_todo_service(%L, %L, %L)',
+    tests.user('m:ayse'), tests.id('m'), tests.id('m:todo:veli'))),
+  '42501 authz.out_of_scope', 'a manager resolves no to-do about somebody at another location'
+);
+select ok(
+  exists (select 1 from jsonb_array_elements(public.get_workspace_dashboard_service(tests.user('m:ayse'), tests.id('m')) -> 'todos') t
+          where (t ->> 'id')::uuid = tests.id('m:todo:zeynep')),
+  'the manager''s Workspace home lists the to-do about the admin at their location'
+);
+select ok(
+  not exists (select 1 from jsonb_array_elements(public.get_workspace_dashboard_service(tests.user('m:ayse'), tests.id('m')) -> 'todos') t
+              where (t ->> 'id')::uuid = tests.id('m:todo:veli')),
+  'and not the one about somebody at another location'
+);
+select tests.time_off('m', 'veli');
+select is(
+  (public.get_workspace_dashboard_service(tests.user('m:selin'), tests.id('m')) #>> '{metrics,pending_time_off_count}')::integer,
+  1, 'a manager who only manages Besiktas counts its pending time off on Workspace home'
+);
+select is(
+  pg_temp.refusal(format('select public.get_workspace_dashboard_service(%L, %L)', tests.user('m:emre'), tests.id('m'))),
+  '42501 authz.missing_permission', 'an employee opens no manager Workspace home'
+);
+
+-- 3. Deleting a job or a location ------------------------------------------------------
 
 select is(
   pg_temp.refusal(format('select public.delete_job_with_assignments_service(%L, %L, %L)',
