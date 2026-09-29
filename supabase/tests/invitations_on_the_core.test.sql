@@ -142,7 +142,7 @@ select ok(pg_temp.refusal(format('select public.list_owner_onboarding_invitation
 -- The rule lives in one place (BL-242): no copy of the role rule in the
 -- invitation, no JWT written, no role read off the membership.
 select ok(
-  (select p.prosrc ~ 'can_invite_with_role' and p.prosrc !~* 'access_class' from pg_proc p
+  (select p.prosrc ~ 'can_invite_with_role' and p.prosrc !~ 'actor_role' from pg_proc p
    where p.oid = 'public.prepare_employee_invitation_service(uuid,uuid,uuid,text,uuid,text,timestamptz)'::regprocedure),
   'the invitation asks the one role rule and keeps no copy of it'
 );

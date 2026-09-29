@@ -474,12 +474,13 @@ select lives_ok($$select public.set_employee_archived_service('16000000-0000-400
 select is((select count(*)::integer from public.list_employees_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)), 5, 'active directory contains restored, linked manager, remote and excluded profiles');
 
 set local role service_role;
-select throws_ok(
+-- A manager invites an employee where they work (FB-6.2.5, BL-242).
+select lives_ok(
   $$select public.prepare_employee_invitation_service(
     '16000000-0000-4000-8000-000000000002', '26000000-0000-4000-8000-000000000001',
     (select id from employee_ids where label = 'downtown'), 'ada@example.test', null, repeat('a', 64), now() + interval '7 days'
   )$$,
-  '42501', 'employee access management required', 'manager cannot prepare invitations through service boundary'
+  'a manager prepares an invitation for an employee at their location'
 );
 select lives_ok(
   $$select public.update_employee_membership_role_service(
@@ -955,7 +956,7 @@ select throws_ok(
   '42501', 'Not allowed', 'a linked user cannot reach their own record to archive it'
 );
 set local role postgres;
-select is((select count(*)::integer from public.employee_events where employee_id = (select id from employee_ids where label = 'downtown') and action in ('employee.created', 'employee.updated', 'employee.invited', 'employee.invitation_revoked')), 5, 'employee lifecycle changes are audited without private payloads');
+select is((select count(*)::integer from public.employee_events where employee_id = (select id from employee_ids where label = 'downtown') and action in ('employee.created', 'employee.updated', 'employee.invited', 'employee.invitation_revoked')), 6, 'employee lifecycle changes are audited without private payloads');
 
 -- BL-098: saving the rest of the record keeps the preferred name the person was given.
 update public.employee_profiles set preferred_name = 'Addie'
