@@ -9163,6 +9163,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-bottom: 1px solid #dfe6e2;
   padding: 20px 48px 20px 24px;
 }
+/* The header keeps 48px on the right for this button. */
+.schedule-unpublish-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: var(--theme-muted);
+}
 .schedule-unpublish-eyebrow {
   display: inline-flex;
   width: max-content;

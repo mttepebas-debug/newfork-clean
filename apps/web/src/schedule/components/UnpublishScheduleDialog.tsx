@@ -81,7 +81,7 @@ export function UnpublishScheduleDialog({
         <header>
           <button
             type="button"
-            className="schedule-dialog-close"
+            className="icon-button schedule-unpublish-close"
             aria-label="Close"
             onClick={() => onOpenChange(false)}
           >
