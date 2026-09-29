@@ -582,6 +582,7 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   fetchPendingOps: vi.fn().mockResolvedValue({ pending_ops: [] }),
   draftsKey: actual.draftsKey,
   scheduleReadKey: actual.scheduleReadKey,
+  scheduleReadScopeKey: actual.scheduleReadScopeKey,
   pendingOpsKey: actual.pendingOpsKey,
   fetchSchedulePublicationStatus: vi.fn().mockResolvedValue({
     week_start: scheduleFixture.week_start,
