@@ -14,10 +14,10 @@ from pg_proc p
 where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace);
 
 -- Reads the signed-in user from the JWT; at the end only app_private.rls_can()
--- (stage 4a), which this count leaves out.
+-- (stage 4a), which this count leaves out. FB-6.2.6 dropped can_access_employee (27 -> 25).
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'auth\.uid\(\)' and name <> 'rls_can'),
-  '<=', 27, 'functions that call auth.uid() only go down'
+  '<=', 25, 'functions that call auth.uid() only go down'
 );
 
 -- Pretends to be the caller by writing the JWT subject: the bridges that let a
@@ -33,11 +33,12 @@ select cmp_ok(
 -- Decides scope or rank on its own instead of asking the core. Target 0
 -- outside the core. FB-6.2.4: Employees' writes and the membership guard ask
 -- the core (59 -> 52); FB-6.2.5 the invitation's role rule and the owner's setup (52 -> 47);
--- FB-6.2.6 Workspace home's counts and the Schedule's week list, BL-155 (47 -> 45).
+-- FB-6.2.6 Workspace home's counts and the Schedule's week list, BL-155 (47 -> 45), and
+-- can_access_employee's two copies (45 -> 43).
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 45, 'functions with their own scope or rank logic only go down'
+  '<=', 43, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
