@@ -1,95 +1,72 @@
-# Koordinatör devri — 2026-09-28 akşam
+# Koordinatör devri — 2026-09-29 sabah
 
-Devreden: "Koordinatör — devir 2026-09-28" (`local_41428574-b1a9-44cb-9a7c-cd34afc9456a`), bağlamı doldu.
+Devreden: "Koordinatör — devir 2026-09-28 akşam" (`local_4ccace1a-f969-4d2b-8451-ef6b0738d10a`); bağlamı bir kez sıkıştırıldı, sıradaki iş yeni oturumda başlasın (kullanıcı kararı 2026-09-29: "Plan sırası").
 Devralan: bu dosyayı okuyan yeni koordinatör oturumu.
-Ölçüm anı (`nf-planlama`, 2026-09-28 akşam): `origin/main` `76704d9c`; kilitler boş (`node scripts/lock.mjs status`); rol oturumları `list_sessions` ile; worktree'ler `git worktree list` ile.
+Ölçüm anı (koordinatör, 2026-09-29): `origin/main` `b16ffc87` + bu devir commit'i; kilitler boş; main CI yeşil (run 36524238322 @ `228ff3b7`; sonrası yalnız docs/.claude).
 Kullanıcı telefondan (Remote Control) izliyor. Dil sade Türkçe. **Aynı anda tek iş** (CLAUDE.md §11.4); parçalı paralel yürütme serbest.
-Durumun tamamı: `docs/plan/ILERLEME-PLANI.md`. Kayıt tutan rol: `nf-planlama` (`local_c67b8d60-e3f5-49aa-aba8-bb7860234876`).
+Durumun tamamı: `docs/plan/ILERLEME-PLANI.md` (sürüm 6). Kayıt tutan rol: `nf-planlama`.
 
 ## 0. İlk işler (sırayla)
-1. Kendi oturum kimliğini al. `CLAUDE.md` §3 ve §12'deki koordinatör kimliğini güncellemek için kullanıcıdan onay iste. Onay **senin penceren**e yazılır; aktarılan onay geçmez.
-2. Remote Control'ün açık ve oturumun kenar çubuğunda sabitli olduğunu doğrula (kullanıcı kararı 2026-09-27).
-3. Yeni adresi rol oturumlarına bildir (§5 tablosu).
-4. Eski koordinatörü arşivlemeden önce kullanıcıya sor. Remote Control açıkken arşiv reddedilir.
-5. Ana klasör (`newfork-clean`) `e15544a9`'da, `origin/main`'in gerisinde. `git fetch` + fast-forward yap.
+1. Kendi oturum kimliğini al. `CLAUDE.md` §3 ve §12'deki koordinatör kimliğini güncellemek için kullanıcıdan onay iste (onay **senin penceren**e yazılır). Değişiklik `../newfork-wt/coord`'da: fetch → `checkout --detach origin/main` → düzenle → commit → `push HEAD:main`.
+2. Remote Control açık ve kenar çubuğunda sabitli mi, doğrula.
+3. Yeni adresi rol oturumlarına bildir (§5).
+4. Eski koordinatörü (`local_4ccace1a…`) arşivlemeden önce kullanıcıya sor.
+5. Ana klasör (`newfork-clean`) `228ff3b7`'de kaldı: içinde commit'lenmemiş bayat bir `nf-gorsel-qa` hafıza notu fast-forward'u engelliyor (§3a). Kullanıcı temizlemediyse hatırlat; worktree oturumu ana klasörün `.claude/`'una yazamıyor.
 
 ## 1. Durum
-- SEC-003 (hesap güvenliği) ve BL-199 (müdür Schedule'da vardiyaya not yazıyor) bitti. BL-199: `de80eda6`, main CI yeşil (run 36501225426), kapanış kaydı `76704d9c`.
-- FOUNDATION-B Aşama 6–7: **%33,5 (77/230)**, değişmedi.
-- BL-199'un bütün worktree ve dalları silindi. Reddedilen tasarım dallarının yedekleri §8'de.
-- Yerel DB = main (son migration `20260928060000`). Hosted bir adım geride (§3a).
+- **BL-218.3 bitti** (`be46cd22`): Management/Owner `system_key` ile tanınıyor; yalnız Management işli kişi Primary'siz kaydoluyor; Schedule yeni vardiya varsayılanı Owner değil. Hosted'a 5 migration (`20260928060000`–`100000`) kullanıcı gönderdi (OPS-03 sırası), advisors temiz. Kanıt: `tasks/BL-218.md` Notes / Result.
+- **Schedule sağ üst pencereler (stil B) main'de** (`5a92d2f2` + `228ff3b7`): kullanıcının "Schedule modals UI design mockups" oturumunun işi; PR mttepebas-debug/newfork-clean#1 açıklamayla kapatıldı.
+- Aşama 6–7: **%37,4 (86/230)**, program %53,2.
+- Main CI bir kez yük yüzünden kırmızıya düştü (vardiya notu e2e 60 sn sınırı); yalnız düşen iş yeniden koşunca yeşil. Kök neden koordinatörün CI koşarken yerel e2e koşturması → CLAUDE.md §3'e kural eklendi (koşan CI iki ağır işten biri sayılır).
+- Yerel DB = main (son migration `20260928100000`). Hosted = main.
 
-## 2. Sıradaki iş (kullanıcı onaylı: "Önce devir, sonra BL-218.3 ∥ FB-6.2.0")
-- **BL-218.3** → `nf-backend`, 5 puan. Dosyalar: `packages/shared`, `apps/api/src/schedule`, web `*-data`. Arkasında 120 puan / 29 satır var, doğrudan 4 satırı açıyor.
-- **FB-6.2.0** → `nf-planlama` ölçümü + bir `nf-test` koşusu (`roles_permissions_rls`, `employee_hub`), 1 puan. Arkasında 114 puan.
-- İkisi dosya paylaşmıyor, aynı anda gider. Tek ağır iş FB-6.2.0'ın `test:db` koşusu (`db.lock`).
-- Başlamadan önce tazelik ölçümü yapılır (CLAUDE.md §5 adım 0).
+## 2. Sıradaki iş (kullanıcı onaylı: "Plan sırası")
+- **FB-6.2.1** (`nf-db`): Çalışanlar → İzin → Ayarlar zincirinin önündeki tek hazır adım; arkasında 26 satır / 111 puan.
+- Aynı anda **BL-218.4** ya da **BL-218.5b** (`nf-arayuz`) yürüyebilir; dosya paylaşmıyorlar (ILERLEME §sıradaki iş).
+- Başlamadan önce tazelik ölçümü (CLAUDE.md §5 adım 0). `nf-db` ve `nf-backend` rol oturumlarının bağlamı dolu (%50 / %63): yeni iş için **yeni rol oturumu** aç (§12: Remote Control açık + sabitli, başlık "Rol: <rol> (<uzmanlık>)").
+- Ağır iş öncesi `gh run list --limit 3` (yeni kural).
 
 ## 3. Kullanıcıda bekleyenler
-**a) Hosted gönderim `20260928060000`** (BL-199 parça 2: iş arkadaşının notu çalışana gitmez).
-- Koordinatörün Bash/PowerShell'i proje `.claude/settings.json` deny kuralıyla engelli.
-- MCP `apply_migration` sürüm kaymasına yol açar, kullanılmaz.
-- Kullanıcı PC başında PowerShell'de sırayla çalıştırır:
-  1. `cd ..\newfork-wt\coord`
-  2. İki `db dump --linked` (şema ve veri) → `artifacts\koordinator\hosted-before-bl199*.sql`. **`coord`'da `artifacts\koordinator` klasörü yok** (`nf-planlama` ölçtü); dump'tan önce oluşturulmalı ya da yol ana klasöre verilmeli.
-  3. `db push --dry-run`: yalnız `20260928060000` görünmeli.
-  4. `db push`.
-- Sonra koordinatör MCP ile `list_migrations` ve `get_advisors` (security) çalıştırır.
-- `coord/supabase/.temp`'teki link dosyaları push'tan sonra silinir (bugün ikisi duruyor: `linked-project.json`, `pooler-url`).
+**a) Ana klasördeki bayat not.** Kullanıcı "sil" dedi; worktree oturumundan yazılamadı. Kullanıcıya verilen komutlar (ana klasörde): `git restore .claude/agent-memory/nf-gorsel-qa/MEMORY.md`, `rm .claude/agent-memory/nf-gorsel-qa/schedule-draft-menu-mobile-overflow.md`, `git merge --ff-only origin/main`. Yedek: eski koordinatörün scratchpad'i `gorsel-qa-memory-backup/`.
 
-**b) CLAUDE.md kural önerisi — cevap "tbd".** Dev sunucusu kapatılırken:
-- Bütün süreç ağacı kapatılır (`tsx watch` ve onu çalıştıran `cmd`).
-- Sahiplik, başlatma saatiyle kanıtlanır.
-- Sonunda worktree yolunda node/cmd kalmadığı doğrulanır.
-- Aynı hata 2026-09-28'de üç rolde tekrarladı. İlgili hafıza: `dev-server-stop-leaves-tsx-watcher`.
+**b) GitHub'daki `task/schedule-top-windows-b` dalı.** Kullanıcı "sil" dedi; yerel dal silindi, `git push origin --delete` izin almadı. İçerik main'de. Kullanıcı PR #1 sayfasından "Delete branch" ile silebilir.
 
-**c) Güvenlik.**
-- `C:\Users\TheWe\.claude\settings.json` satır 183'te bir allowlist girdisinde düz metin DB parolası vardı.
-- Kullanıcıya parolayı döndürmesi ve satırı silmesi önerildi. Yapıldığı **doğrulanmadı**.
-- Değeri hiçbir yere yazma, okuyup aktarma.
+**c) Kalan kararlar.**
+- `task/schedule-dialog-mockups` (`0b2f998c`, yalnız yerel DEV mockup, main'de yok): kullanıcı silmeyi seçmedi, **kalıyor**.
+- `coord/supabase/.temp` canlı bağlantı dosyaları: kullanıcı silmeyi seçmedi, **kalıyor** (bir sonraki hosted gönderim için hazır).
+- "Schedule modals UI design mockups" oturumu arşivlenebilir durumda; kullanıcı "Kalsın" dedi.
+- CLAUDE.md dev-sunucusu süreç ağacı kural önerisi hâlâ "tbd" (önceki devirden).
+- `C:\Users\TheWe\.claude\settings.json` düz metin DB parolası: döndürüldüğü **doğrulanmadı**; değeri hiçbir yere yazma.
 
-## 4. Aday işler (backlog'dan; sıradaki iş plandan gelir, bunlar öneri)
-- **BL-293** (leave: high / do: safe): Schedule hızlı düzenleyicisinde klavye odağı hover'dan ayırt edilemiyor; WCAG 2.4.7, doğrulandı.
-  - BL-290, BL-294 ve BL-295 aynı penceredeki alan stili; dördü tek tutarlılık işi olabilir.
-- **BL-296 + BL-288:** testler ortak yerel DB'nin genel durumunu sayıyor ve yerel kırmızıyı büyütüyor. Tek bir "yerel DB'ye dayanıklı test" işi olabilir.
-- **BL-283:** API parola doğrulamasına hesap başına deneme sınırı. Yayın öncesi şart (ILERLEME §8).
-- **Açık kararlar** (ILERLEME §5):
-  - K10: FB-6.3 S4, 47 puanı durduruyor; FB-6.3.1'e kadar gerekmez.
-  - K7: FB-6.1 ekran turu, 15 puan.
+## 4. Aday işler (backlog'dan; sıradaki iş plandan gelir)
+- **BL-316** (leave: high / do: safe): Schedule → Export taslak önizlemesi 500 — `schedule_availability_read_projection` anahtar listesinde `conflict_severity` yok, paylaşılan şema zorunlu tutuyor. Tek satırlık DB düzeltmesi; kullanıcıya bir sonraki boşlukta önerilebilir.
+- **BL-317**: workspace sahibi Employees listesinde görünmüyor — önce tazelik (SELECT), sonra ürün sorusu.
+- BL-318..BL-321: pencere tutarlılığı, telefonda iki olası taşma, vardiya notu e2e'sinin süre payı.
+- Önceki devirden: BL-293 (klavye odağı), BL-296+BL-288 (yerel DB'ye dayanıklı testler), BL-283 (parola deneme sınırı, yayın öncesi şart); kararlar K10, K7.
 
-## 5. Rol oturumları (hepsi Remote Control açık ve sabitli; `list_sessions` 2026-09-28 akşam)
-| Oturum | Kimlik | Worktree |
+## 5. Rol oturumları (2026-09-29)
+| Oturum | Kimlik | Not |
 |---|---|---|
-| Rol: nf-db — BL-218 | `local_0af84e96-6363-4f81-abc3-df35d326218b` | `.claude/worktrees/reverent-lovelace-d9960f` |
-| Rol: nf-backend | `local_cb173b54-84bd-4c7a-b3ca-782a326b4718` | `.claude/worktrees/eloquent-moser-2c64fc` |
-| Rol: nf-test | `local_0efbf957-db60-4531-916a-29d8d91d457d` | `.claude/worktrees/brave-moser-5b8232` |
-| Rol: nf-arayuz | `local_6a90e9ce-d597-4eeb-abe3-2c7fe7da8fec` | `.claude/worktrees/goofy-wescoff-7931db` |
-| Rol: nf-guvenlik | `local_8127d370-67c8-48a2-aaad-2723be2a5516` | `.claude/worktrees/optimistic-antonelli-f98d23` |
-| Rol: nf-gorsel-qa | `local_13e7e4de-946d-4dd3-b33c-6395b3e6e0be` | `.claude/worktrees/competent-rubin-877752` |
-| Rol: nf-planlama | `local_c67b8d60-e3f5-49aa-aba8-bb7860234876` | `.claude/worktrees/infallible-poincare-15d4f4` |
+| Rol: nf-db — BL-218 | `local_0af84e96-6363-4f81-abc3-df35d326218b` | worktree silindi, boş klasör `reverent-lovelace-d9960f` oturum kapanınca silinir; bağlam ~%50 → yenisi açılmalı |
+| Rol: nf-backend | `local_cb173b54-84bd-4c7a-b3ca-782a326b4718` | worktree silindi, boş klasör `eloquent-moser-2c64fc` + `claude/eloquent-moser-2c64fc` dalı (main'in atası); bağlam ~%63 → yenisi açılmalı |
+| Rol: nf-test | `local_0efbf957-db60-4531-916a-29d8d91d457d` | `brave-moser-5b8232` |
+| Rol: nf-arayuz | `local_6a90e9ce-d597-4eeb-abe3-2c7fe7da8fec` | `goofy-wescoff-7931db` |
+| Rol: nf-guvenlik | `local_8127d370-67c8-48a2-aaad-2723be2a5516` | `optimistic-antonelli-f98d23` |
+| Rol: nf-gorsel-qa | `local_13e7e4de-946d-4dd3-b33c-6395b3e6e0be` | `competent-rubin-877752` |
+| Rol: nf-planlama | `local_c67b8d60-e3f5-49aa-aba8-bb7860234876` | `infallible-poincare-15d4f4` |
 
-## 6. Temizlik (genel temizlikte bakılır; ölçüm, dokunulmadı)
-- **Eski worktree'ler:** `../newfork-wt/merge-0927c` (`[merge-0927c]`) ve `../newfork-wt/settings-merge` (`[settings-merge]`).
-- **`nf-planlama`'nın ölçümünde ayrıca görülenler** (koordinatörün "yalnız coord ve rollerin kalıcıları kaldı" sayımına girmiyor):
-  - Üç alt ajan worktree'si: `agent-a3704c99…`, `agent-ae216987…`, `agent-afa8bb7b…` (`[bl234]`).
-  - `interesting-elgamal-bff91f` ve `zen-cori-6c77ae` (ikisi de detached).
-  - `epic-albattani-e0c9f6`: kullanıcının `/code-review` oturumu.
-  - Silmeden önce içerikleri ve birleşme durumları doğrulanır.
-- **Arşiv adayı oturumlar** (kullanıcıya sor):
-  - "BL-199 vardiya notu kod incelemesi" (`local_1929f647…`, Remote Control açık)
-  - "Shift badge "not manager" indicator design" (`local_67b16d08…`)
-  - "Dev sunucusu kurulumu" (`local_e71c16e6…`)
-  - Önceki devirden: eski `nf-db` "BL-198" ve "Settings okumaları", "Code review", "ultrareview: bl252", "bl252-f6".
+## 6. Temizlik (ölçüm 2026-09-29, dokunulmadı)
+- Sahibi bu devirde bilinmeyen yeni worktree'ler: `../newfork-wt/schedule-empty-grid` (`task/schedule-empty-grid`, `6d490452`) ve `.claude/worktrees/dreamy-sinoussi-7c5a4a` (detached `2a8a672a`). Silmeden önce sahibini ve birleşme durumunu sor/ölç.
+- Önceki devirden duran: `../newfork-wt/merge-0927c`, `../newfork-wt/settings-merge`, alt ajan worktree'leri `agent-a3704c99…`, `agent-ae216987…`, `zen-cori-6c77ae`; 28 `worktree-agent-*` dalı.
+- Eski koordinatör worktree'si `interesting-elgamal-bff91f` (detached `be46cd22`) içinde commit'lenmemiş `nf-gorsel-qa` notu var; içeriği main'de (`b16ffc87`), oturum kapanınca worktree silinebilir.
 - **Eski `C:\Users\TheWe\newfork` oturumlarına dokunulmaz** (kullanıcı kararı).
 
 ## 7. Dersler (ayrıntı `~/.claude/OBSERVATIONS.md`)
-- Görsel kararda varyant üretmeden önce kullanıcıya ne istediğini sor. BL-199'da iki tur (13 tasarım) reddedildi, üçüncü tur kullanıcının kendi oturumunda seçildi.
-- Parçalı işte son main'den önce bütün aralığa tek inceleme koştur. `/code-review` ayrı oturumda, iki rol incelemesinin kaçırdığı 3 davranış hatasını buldu.
-- Parçalı paralel yürütme (DB ∥ UI ∥ test) iyi gitti. BL-199 aynı gün 12 puan kapandı.
-- Başka oturumda reddedilen bir işlem, kullanıcıya sorulmadan başka yoldan yapılmaz.
-- Karar satırına yalnız kullanıcının kendi cümlesi yazılır. Aktarımın özeti ayrı satırda "koordinatörün özeti" diye durur (önceki devirden, bu gün de uygulandı).
+- CI bu PC'de koşuyor: main'e push'tan sonra CI bitene kadar yerel ağır iş (e2e, tam kapı, görsel QA sunucuları) başlatma. Yük altında alınan süre ölçümü karşılaştırma değildir; boşta tekrar ölç. Bu devirde yanlış suçlama kullanıcıya söylendi, düzeltildi.
+- OPS-03 (hosted önce, main sonra) sorunsuz işledi: kullanıcı 5 komutu çalıştırdı, koordinatör MCP ile doğruladı.
+- Bir yol (restore/rm/remote delete) izin almadıysa aynı komutu tekrar deneme; silmesiz yol bul ya da kullanıcıya komutu ver.
+- Birleştirmeyi rol/kullanıcı worktree'sinde değil, ayrı geçici worktree'de yap (`newfork-wt/merge-*`); başkasının klasörüne dokunmadan temiz kalır.
 
-## 8. Artifacts (ana klasör `artifacts/koordinator/`, gitignore'da)
-- `bl-199-ui-rejected-designs.patch` ve `bl-199-ui-artifacts/`: reddedilen A/B/C tasarımları ve 10 fikir; `task/bl-199-ui`'nin yedeği.
-- `note-mark-r3-designs.patch` ve `bl-199-mark-artifacts/`: kullanıcının tasarım oturumunun 3. turu; `task/note-mark-r3`'ün yedeği.
-- `hosted-before-sec003.sql` ve `hosted-before-sec003-data.sql`: SEC-003 öncesi hosted yedeği.
+## 8. Artifacts
+- `newfork-wt/coord/artifacts/koordinator/hosted-before-bl218-schema.sql` ve `-data.sql`: BL-218.3 hosted gönderimi öncesi yedek (2026-09-28 21:30).
+- Ana klasör `artifacts/koordinator/`: önceki devirlerin yedekleri (BL-199 tasarımları, SEC-003 hosted yedeği).
