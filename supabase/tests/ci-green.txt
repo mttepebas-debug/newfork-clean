@@ -134,3 +134,4 @@ supabase/tests/time_off_partial_period_decisions.test.sql
 supabase/tests/refusals_say_why.test.sql
 supabase/tests/employees_on_the_core.test.sql
 supabase/tests/invitations_on_the_core.test.sql
+supabase/tests/preferred_names_on_the_core.test.sql
