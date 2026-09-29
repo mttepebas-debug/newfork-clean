@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
-import { signIn, type Person } from "../fixtures/world";
+import { roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
 
 // FOUNDATION-B 5.1: Shift Hub is the only way shifts change hands. Ali
 // (Kadikoy) and Deniz (Besiktas) swap two shifts at the same time; each
@@ -32,21 +32,22 @@ async function openSchedule(browser: Browser, person: Person, path: string): Pro
 }
 
 test("a two-location swap completes after both managers approve", async ({ browser }) => {
+  const week = roundWeek(1);
   const caseId = sql(`
-    select tests.publish_week('${run}', 1, '[
-      {"label": "ali-k", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
-      {"label": "deniz-b", "person": "deniz", "loc": "B", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
+    select tests.publish_week('${run}', ${week}, '[
+      {"label": "${roundLabel("ali-k")}", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
+      {"label": "${roundLabel("deniz-b")}", "person": "deniz", "loc": "B", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
     ]');
     select public.shift_exchanges_command_service(tests.user('${run}:ali'), tests.id('${run}'),
       jsonb_build_object('action', 'create', 'kind', 'swap',
-        'shift_id', tests.id('${run}:shift:ali-k'), 'requested_shift_id', tests.id('${run}:shift:deniz-b')),
+        'shift_id', tests.id('${run}:shift:${roundLabel("ali-k")}'), 'requested_shift_id', tests.id('${run}:shift:${roundLabel("deniz-b")}')),
       gen_random_uuid()) ->> 'case_id';`).split(/\r?\n/).at(-1)!;
   sql(`select public.shift_exchanges_command_service(tests.user('${run}:deniz'), tests.id('${run}'),
       jsonb_build_object('action', 'accept', 'case_id', c.id, 'application_id', a.id, 'expected_revision', c.revision),
       gen_random_uuid())
     from public.shift_exchange_cases c join public.shift_exchange_applications a on a.case_id = c.id
     where c.id = '${caseId}';`);
-  const day = sql(`select tests.week(1) + 1;`);
+  const day = sql(`select tests.week(${week}) + 1;`);
   const casePath = `/app/schedule/requests?tab=shift-changes&case=${caseId}&from=${day}&to=${day}`;
 
   const ayse = await openSchedule(browser, "ayse", casePath);
@@ -58,7 +59,7 @@ test("a two-location swap completes after both managers approve", async ({ brows
   await expect
     .poll(() => sql(`select count(*) from public.shift_exchange_votes where case_id = '${caseId}';`))
     .toBe("1");
-  expect(holder("ali-k")).toBe("Ali");
+  expect(holder(roundLabel("ali-k"))).toBe("Ali");
 
   const mehmet = await openSchedule(browser, "mehmet", casePath);
   await mehmet.getByRole("button", { name: "Review Deniz Person", exact: true }).click();
@@ -67,6 +68,6 @@ test("a two-location swap completes after both managers approve", async ({ brows
   // BL-180: on the shared CI machine (three self-hosted runners on one box)
   // the click-to-commit round trip can occasionally outrun the default 15s
   // poll window; this only widens the wait, the awaited value is unchanged.
-  await expect.poll(() => holder("ali-k"), { timeout: 30_000 }).toBe("Deniz");
-  expect(holder("deniz-b")).toBe("Ali");
+  await expect.poll(() => holder(roundLabel("ali-k")), { timeout: 30_000 }).toBe("Deniz");
+  expect(holder(roundLabel("deniz-b"))).toBe("Ali");
 });

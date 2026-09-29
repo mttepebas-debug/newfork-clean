@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { emailOf } from "../fixtures/world";
+import { emailOf, roundLabel } from "../fixtures/world";
 
 // BL-137: forgot password, end to end. The reset email goes out through
 // Resend, which a local or CI run has no key for, so Supabase's mail catcher
@@ -8,7 +8,6 @@ import { emailOf } from "../fixtures/world";
 // through the real screens.
 
 const sameAnswer = "If an account exists for this email, we sent a reset link.";
-const newPassword = "reset-pass-2026";
 
 async function recoveryTokenHash(email: string): Promise<string> {
   const url = process.env.E2E_SUPABASE_URL;
@@ -31,7 +30,7 @@ async function askForLink(page: Page, email: string) {
   await expect(page.getByText(sameAnswer)).toBeVisible();
 }
 
-async function saveNewPassword(page: Page, tokenHash: string) {
+async function saveNewPassword(page: Page, tokenHash: string, newPassword: string) {
   // The API puts the token in the fragment, which never reaches a server log.
   await page.goto(`/reset-password#token_hash=${encodeURIComponent(tokenHash)}`);
   await page.getByLabel("New password", { exact: true }).fill(newPassword);
@@ -44,6 +43,9 @@ test("a person resets a forgotten password with a one-time link and signs in wit
   browser,
 }) => {
   const email = emailOf("deniz");
+  // A reset may not reuse the current password, so each --repeat-each round
+  // picks its own (BL-203).
+  const newPassword = roundLabel("reset-pass-2026");
 
   await page.goto("/sign-in");
   await page.getByRole("link", { name: "Forgot password?", exact: true }).click();
@@ -54,11 +56,11 @@ test("a person resets a forgotten password with a one-time link and signs in wit
   await askForLink(page, `nobody-${Date.now()}@example.test`);
 
   const tokenHash = await recoveryTokenHash(email);
-  await saveNewPassword(page, tokenHash);
+  await saveNewPassword(page, tokenHash, newPassword);
   await expect(page).toHaveURL(/\/app\/employee-hub/);
 
   // The link works once.
-  await saveNewPassword(page, tokenHash);
+  await saveNewPassword(page, tokenHash, newPassword);
   await expect(page.getByText("This reset link has expired or was already used.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Request a new link", exact: true })).toBeVisible();
 

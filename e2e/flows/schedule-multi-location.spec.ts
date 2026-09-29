@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
-import { signIn, type Person, draftName } from "../fixtures/world";
+import { draftName, roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
 
 // FOUNDATION-B FB-6.1.12, flow 6: a manager scoped to Kadikoy cannot publish
 // Besiktas -- its grid never arrives, and the publish button only covers her
@@ -46,10 +46,10 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   // Ali works both locations; his Besiktas shift, already published, is what
   // the Kadikoy manager should see only as a ghost.
   sql(`
-    select tests.publish_week('${run}', 3, '[
-      {"label": "ali-b", "person": "ali", "loc": "B", "job": "cook", "day": 0, "start": "09:00", "end": "17:00", "label_names": ["On call"]}
+    select tests.publish_week('${run}', ${roundWeek(3)}, '[
+      {"label": "${roundLabel("ali-b")}", "person": "ali", "loc": "B", "job": "cook", "day": 0, "start": "09:00", "end": "17:00", "label_names": ["On call"]}
     ]');`);
-  const monday = sql(`select tests.week(3);`);
+  const monday = sql(`select tests.week(${roundWeek(3)});`);
 
   const ayse = await openPage(browser, "ayse", `/app/schedule?date=${monday}`);
 

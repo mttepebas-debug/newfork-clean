@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
-import { emailOf, signIn, type Person, draftName } from "../fixtures/world";
+import { draftName, emailOf, round, signIn, type Person } from "../fixtures/world";
 
 // BL-199: Ayse writes a note on Ali's shift in the Schedule's quick editor and
 // publishes the week; Ali opens the shift in Employee Hub and reads it under
@@ -64,7 +64,12 @@ async function saveAndPublish(ayse: Page, draftName: string, weekIsLive: boolean
 }
 
 test("a manager's shift note reaches the employee, and deleting it takes it away", async ({ browser }) => {
-  const monday = sql(`select (current_date + (8 - extract(isodow from current_date))::integer)::text;`);
+  // Two sign-ins and two publishes: 13.6 s on an idle PC (2026-09-29), 44-60 s
+  // when CI and local heavy jobs share it, with no single slow wait to cut
+  // (BL-321). Twice the loaded worst case, for this flow only.
+  test.setTimeout(120_000);
+  // Next week (Employee Hub shows today-2 .. today+42), one week later per round.
+  const monday = sql(`select (current_date + (8 - extract(isodow from current_date))::integer + 7 * ${round()})::text;`);
   const wednesday = sql(`select ('${monday}'::date + 2)::text;`);
   const notedCard = (page: Page) => page.locator('[data-shift-badge][data-has-note="true"]');
 

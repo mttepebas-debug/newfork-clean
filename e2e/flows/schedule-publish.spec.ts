@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
-import { signIn, type Person, draftName } from "../fixtures/world";
+import { draftName, roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
 
 // FOUNDATION-B FB-6.1.12, flow 5: a manager adds a shift, saves it as a named
 // draft, previews it and publishes it. The employee then sees the shift, and
@@ -22,15 +22,16 @@ async function openPage(browser: Browser, person: Person, path: string): Promise
 }
 
 test("a manager publishes a week and the employee sees the shift with its tag", async ({ browser }) => {
+  const tag = roundLabel("On call");
   // The "On call" tag has to exist in the workspace catalog before the quick
   // editor can offer it; only an admin/owner manages the catalog.
   const zeynep = await openPage(browser, "zeynep", "/app/settings/scheduling/shift-labels");
   await zeynep.getByRole("button", { name: "Add shift label", exact: true }).click();
-  await zeynep.getByLabel("Name").fill("On call");
+  await zeynep.getByLabel("Name").fill(tag);
   await zeynep.getByRole("button", { name: "Save shift label", exact: true }).click();
-  await expect(zeynep.getByRole("button", { name: "Edit On call", exact: true })).toBeVisible();
+  await expect(zeynep.getByRole("button", { name: `Edit ${tag}`, exact: true })).toBeVisible();
 
-  const monday = sql(`select tests.week(2);`);
+  const monday = sql(`select tests.week(${roundWeek(2)});`);
   const ayse = await openPage(browser, "ayse", `/app/schedule?date=${monday}`);
 
   await ayse.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
@@ -51,7 +52,7 @@ test("a manager publishes a week and the employee sees the shift with its tag", 
   await editor.getByLabel("Start time").fill("9:00 AM");
   await editor.getByLabel("End time").fill("5:00 PM");
   await editor.getByRole("combobox", { name: "Labels", exact: true }).click();
-  await editor.getByRole("option", { name: "On call", exact: true }).click();
+  await editor.getByRole("option", { name: tag, exact: true }).click();
   await editor.getByRole("button", { name: "Add shift", exact: true }).click();
   await expect(editor).toHaveCount(0);
 

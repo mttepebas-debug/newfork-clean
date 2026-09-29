@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
-import { signIn, type Person } from "../fixtures/world";
+import { roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
 
 // BL-198: an approved shift change is never undone by publishing a draft
 // that missed it. Ali (Kadikoy) and Deniz (Besiktas) swap and both managers
@@ -32,14 +32,15 @@ async function openSchedule(browser: Browser, person: Person, path: string): Pro
 }
 
 test("publishing a draft that undoes an approved swap is refused, not overwritten", async ({ browser }) => {
+  const week = roundWeek(WEEK);
   const caseId = sql(`
-    select tests.publish_week('${run}', ${WEEK}, '[
-      {"label": "ali-swap", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
-      {"label": "deniz-swap", "person": "deniz", "loc": "B", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
+    select tests.publish_week('${run}', ${week}, '[
+      {"label": "${roundLabel("ali-swap")}", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
+      {"label": "${roundLabel("deniz-swap")}", "person": "deniz", "loc": "B", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
     ]');
     select public.shift_exchanges_command_service(tests.user('${run}:ali'), tests.id('${run}'),
       jsonb_build_object('action', 'create', 'kind', 'swap',
-        'shift_id', tests.id('${run}:shift:ali-swap'), 'requested_shift_id', tests.id('${run}:shift:deniz-swap')),
+        'shift_id', tests.id('${run}:shift:${roundLabel("ali-swap")}'), 'requested_shift_id', tests.id('${run}:shift:${roundLabel("deniz-swap")}')),
       gen_random_uuid()) ->> 'case_id';`).split(/\r?\n/).at(-1)!;
   sql(`select public.shift_exchanges_command_service(tests.user('${run}:deniz'), tests.id('${run}'),
       jsonb_build_object('action', 'accept', 'case_id', c.id, 'application_id', a.id, 'expected_revision', c.revision),
@@ -60,15 +61,15 @@ test("publishing a draft that undoes an approved swap is refused, not overwritte
   // An older draft, saved from a screen that never saw the swap: Kadikoy's
   // slot the swap moved to Deniz still shows Ali, who had it before.
   sql(`
-    select tests.remember('${run}:session:stale', (public.acquire_schedule_edit_session_service(
-      tests.user('${run}:ayse'), tests.id('${run}'), tests.week(${WEEK}), 'blank', null) -> 'session' ->> 'id')::uuid);
-    select tests.add_shift(tests.user('${run}:ayse'), '${run}', tests.id('${run}:session:stale'), ${WEEK},
+    select tests.remember('${run}:session:${roundLabel("stale")}', (public.acquire_schedule_edit_session_service(
+      tests.user('${run}:ayse'), tests.id('${run}'), tests.week(${week}), 'blank', null) -> 'session' ->> 'id')::uuid);
+    select tests.add_shift(tests.user('${run}:ayse'), '${run}', tests.id('${run}:session:${roundLabel("stale")}'), ${week},
       '{"person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}');
     select public.save_schedule_edit_session_service(tests.user('${run}:ayse'), tests.id('${run}'),
-      tests.id('${run}:session:stale'), (select revision from public.schedule_edit_sessions where id = tests.id('${run}:session:stale')),
+      tests.id('${run}:session:${roundLabel("stale")}'), (select revision from public.schedule_edit_sessions where id = tests.id('${run}:session:${roundLabel("stale")}')),
       'Before the swap', null, null);`);
 
-  const monday = sql(`select tests.week(${WEEK});`);
+  const monday = sql(`select tests.week(${week});`);
   const ayse = await openSchedule(browser, "ayse", `/app/schedule?date=${monday}`);
 
   await ayse.getByRole("button", { name: "Published", exact: true }).click();
@@ -91,10 +92,10 @@ test("publishing a draft that undoes an approved swap is refused, not overwritte
   // approved swap, and the workspace has published no new version.
   const holder = sql(`select coalesce(p.first_name, '') from public.schedule_published_shifts s
     join public.employee_profiles p on p.id = s.employee_id
-    where s.id = tests.id('${run}:shift:ali-swap');`);
+    where s.id = tests.id('${run}:shift:${roundLabel("ali-swap")}');`);
   expect(holder).toBe("Deniz");
   const versionCount = sql(`select count(distinct version_number) from public.schedule_location_publications
     where workspace_id = tests.id('${run}') and location_id = tests.id('${run}:K')
-      and week_start = tests.week(${WEEK});`);
+      and week_start = tests.week(${week});`);
   expect(versionCount).toBe("1");
 });

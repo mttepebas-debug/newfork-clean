@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
-import { signIn, type Person, draftName } from "../fixtures/world";
+import { draftName, roundWeek, signIn, type Person } from "../fixtures/world";
 
 // BL-186: availability is a preference, never a block. A manager can still
 // write a shift onto hours an employee marked "unavailable" -- the cell just
@@ -35,8 +35,8 @@ test("a manager writes to Ali's marked-unavailable hours, confirms the warning o
   // still write him in there.
   sql(`select tests.availability('${run}', 'ali', 2, '18:00', '22:00');`);
 
-  const monday = sql(`select tests.week(4);`);
-  const tuesday = sql(`select tests.week(4) + 1;`);
+  const monday = sql(`select tests.week(${roundWeek(4)});`);
+  const tuesday = sql(`select tests.week(${roundWeek(4)}) + 1;`);
 
   const ayse = await openPage(browser, "ayse", `/app/schedule?date=${monday}`);
 

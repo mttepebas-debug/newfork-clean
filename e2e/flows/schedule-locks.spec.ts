@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { draftName, signIn, type Person } from "../fixtures/world";
+import { draftName, round, signIn, type Person } from "../fixtures/world";
 
 // FOUNDATION-B 3b (user decision 2026-09-24, option A): only a draft is
 // locked. Ayse edits her draft, and Zeynep, an admin, is told who has it.
@@ -10,8 +10,16 @@ async function openSchedule(browser: Browser, person: Person): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await signIn(page, person);
   await expect(page).toHaveURL(/\/app\/workspace/);
-  await page.goto("/app/schedule");
+  await page.goto(`/app/schedule?date=${roundDate()}`);
   return page;
+}
+
+// This week in round 0; a later week per --repeat-each round, since the
+// sessions a round leaves open would meet the next round (BL-203).
+function roundDate(): string {
+  const day = new Date();
+  day.setDate(day.getDate() + 7 * round());
+  return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
 }
 
 async function startBlankEdit(page: Page) {
