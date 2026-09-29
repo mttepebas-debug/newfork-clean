@@ -1,4 +1,5 @@
 supabase/tests/account_avatar_phone_contract.test.sql
+supabase/tests/account_notification_scope.test.sql
 supabase/tests/account_organization_history.test.sql
 supabase/tests/account_profile_storage_rls.test.sql
 supabase/tests/account_security_deletion_lifecycle.test.sql
