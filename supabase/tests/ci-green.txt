@@ -121,3 +121,4 @@ supabase/tests/invitation_acceptance_needs_a_confirmed_email.test.sql
 supabase/tests/shift_note_reaches_only_its_owner.test.sql
 supabase/tests/shift_note_survives_every_path.test.sql
 supabase/tests/reads_know_management_and_owner.test.sql
+supabase/tests/management_only_person_saves_without_primary.test.sql
