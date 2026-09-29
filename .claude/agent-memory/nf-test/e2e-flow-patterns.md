@@ -22,4 +22,4 @@ metadata:
 - **Yerel DB'de iz:** bildirimli yayın yapan her e2e ortak yerel DB'de bekleyen bildirim satırı bırakır
   (BL-296'yı büyütür); account-password-change kalıcı güvenlik kaydı bırakır (BL-288).
 
-İlgili: [[repeat-each-breaks-shared-world-specs]], [[failure-screenshots-include-leftover-pages]].
+İlgili: [[failure-screenshots-include-leftover-pages]].
