@@ -1,0 +1,140 @@
+/* Structure every mockup style shares (?ui=a|b|c). The flow is unchanged:
+   same steps, same buttons. Only what comes first and what stays in view. */
+:root {
+  --mock-icon-send: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z'/%3E%3Cpath d='m21.854 2.147-10.94 10.939'/%3E%3C/svg%3E");
+  --mock-icon-undo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 14 4 9l5-5'/%3E%3Cpath d='M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11'/%3E%3C/svg%3E");
+}
+
+/* Publish window: header, a body that scrolls, a footer that stays in view. */
+:root[data-ui-variant] [data-schedule-publish-surface] .schedule-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+:root[data-ui-variant] [data-schedule-publish-surface] .schedule-dialog > header {
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: 12px;
+}
+:root[data-ui-variant] .ui-mock-dialog-heading {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 4px;
+}
+:root[data-ui-variant] .ui-mock-dialog-heading h2,
+:root[data-ui-variant] .ui-mock-dialog-heading p {
+  margin: 0;
+}
+:root[data-ui-variant] .ui-mock-dialog-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+:root[data-ui-variant] [data-schedule-publish-surface] .schedule-publication-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--mock-pad, 18px) var(--mock-pad, 18px) 0;
+}
+:root[data-ui-variant] [data-schedule-publish-surface] .schedule-dialog-actions {
+  position: sticky;
+  z-index: 2;
+  bottom: 0;
+  flex-wrap: nowrap;
+  max-width: none;
+  margin: 0 calc(var(--mock-pad, 18px) * -1);
+}
+/* The open New Schedule ▾ trigger kept green text on the dark button. */
+:root[data-ui-variant] .schedule-draft-menu-trigger[aria-expanded="true"] {
+  border-color: var(--theme-action-hover);
+  background: var(--theme-action-hover);
+  color: var(--theme-on-accent);
+}
+:root[data-ui-variant] [data-schedule-publish-surface] .schedule-dialog-actions button {
+  transform: none;
+}
+:root[data-ui-variant] .schedule-publication-footer-summary {
+  min-width: 0;
+}
+:root[data-ui-variant] .ui-mock-publish-summary {
+  display: flex;
+}
+
+/* Pre-flight: what needs attention first, the per-location counts after.
+   The dialog's own summary repeated the panel's; one is enough. */
+:root[data-ui-variant] .schedule-publication-review {
+  display: flex;
+  flex-direction: column;
+}
+:root[data-ui-variant] .schedule-publication-review > .schedule-publication-preflight {
+  display: none;
+}
+:root[data-ui-variant] .schedule-publication-review > .schedule-publish-preflight-panel {
+  order: -1;
+}
+:root[data-ui-variant] .schedule-publish-notify-list {
+  max-height: 280px;
+}
+/* The notify checkboxes were browser blue; every other one is the app green. */
+:root[data-ui-variant] .schedule-publish-notify-list input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--theme-accent);
+}
+
+/* Published ▾: the destructive item reads as destructive. */
+:root[data-ui-variant] .schedule-action-menu-panel button {
+  gap: 10px;
+}
+:root[data-ui-variant] .schedule-action-menu-panel button::before {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  background: currentColor;
+  content: "";
+  mask: var(--mock-icon-send) center / contain no-repeat;
+}
+:root[data-ui-variant] .schedule-action-menu-panel button:last-child {
+  color: var(--theme-danger);
+}
+:root[data-ui-variant] .schedule-action-menu-panel button:last-child::before {
+  mask-image: var(--mock-icon-undo);
+}
+:root[data-ui-variant] .schedule-action-menu-panel button:last-child:hover {
+  background: var(--theme-danger-soft);
+}
+
+/* Publish while editing: the buttons had no style of their own. */
+:root[data-ui-variant] .schedule-save-menu-actions button,
+:root[data-ui-variant] .schedule-save-menu-footer button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+:root[data-ui-variant] .schedule-save-menu-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* New Schedule ▾: the published row's chip sits above its title. */
+:root[data-ui-variant] .schedule-draft-menu-row[data-published-fallback-row] {
+  grid-template-columns: minmax(0, 1fr) 28px 28px;
+  row-gap: 4px;
+}
+:root[data-ui-variant] .schedule-draft-menu-row[data-published-fallback-row] > .schedule-draft-menu-published-chip {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+}
+:root[data-ui-variant] .schedule-draft-menu-row[data-published-fallback-row] > div {
+  grid-column: 1;
+  grid-row: 2;
+}
+:root[data-ui-variant] .schedule-draft-menu-row[data-published-fallback-row] > button {
+  grid-row: 1 / span 2;
+}

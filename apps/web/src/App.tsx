@@ -25,6 +25,9 @@ const ResetPasswordPage = lazy(() => import("./views/ResetPasswordPage"));
 const EmployeeOnboardingPreview = import.meta.env.DEV
   ? lazy(() => import("./dev/EmployeeOnboardingPreview"))
   : () => null;
+const ScheduleDialogsPreview = import.meta.env.DEV
+  ? lazy(() => import("./dev/ScheduleDialogsPreview"))
+  : () => null;
 const PublicTrustLayout = lazy(() => import("./public/PublicTrustLayout"));
 const PrivacyPage = lazy(() =>
   import("./public/PublicTrustPages").then((module) => ({
@@ -179,6 +182,10 @@ export function App() {
                   <Route
                     path="/dev/employee-onboarding"
                     element={<EmployeeOnboardingPreview />}
+                  />
+                  <Route
+                    path="/dev/schedule-dialogs"
+                    element={<ScheduleDialogsPreview />}
                   />
                   <Route
                     path="/dev/schedule-shift-badge-lab"

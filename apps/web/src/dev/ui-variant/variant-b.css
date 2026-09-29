@@ -1,0 +1,569 @@
+/* Variant B: Linear / Notion. Dense and quiet: 13px text, medium weights,
+   gray hairlines, one colour (the green action). Row tools appear on hover
+   or keyboard focus; keyboard hints where a key really does something. */
+:root[data-ui-variant="b"] {
+  --mock-pad: 18px;
+  --mock-b-shadow: 0 0 0 1px rgb(15 23 42 / 6%), 0 16px 40px -12px rgb(15 23 42 / 28%);
+
+  /* ---------- Shared menu frame ---------- */
+  & :is(.schedule-draft-menu-panel, .schedule-save-draft-menu, .schedule-action-menu-panel) {
+    border: 0;
+    border-radius: 10px;
+    background: var(--theme-surface);
+    box-shadow: var(--mock-b-shadow);
+    font-size: 13px;
+  }
+
+  /* ---------- New Schedule ▾ ---------- */
+  & .schedule-draft-menu-panel {
+    width: min(360px, calc(100vw - 24px));
+    gap: 0;
+    padding: 6px 0 0;
+  }
+  & .schedule-draft-menu-start {
+    width: auto;
+    min-height: 34px;
+    margin: 0 6px;
+    gap: 10px;
+    border-radius: 6px;
+    padding: 0 10px;
+  }
+  & .schedule-draft-menu-start > span {
+    width: 18px;
+    height: 18px;
+    background: transparent;
+    color: var(--theme-muted-strong);
+  }
+  & .schedule-draft-menu-start strong {
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  & .schedule-draft-menu-start:hover {
+    background: var(--theme-surface-muted);
+  }
+  & .schedule-draft-menu-separator {
+    margin: 6px 0;
+    background: var(--theme-border-subtle);
+  }
+  & .schedule-draft-menu-heading {
+    padding: 2px 16px 4px;
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  & .schedule-draft-menu-heading small {
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  & .schedule-draft-menu-list {
+    gap: 0;
+    padding: 0 6px 6px;
+  }
+  & .schedule-draft-menu-row {
+    grid-template-columns: minmax(0, 1fr) 26px 26px;
+    min-height: 44px;
+    gap: 2px;
+    border-radius: 6px;
+    padding: 5px 4px 5px 10px;
+  }
+  & .schedule-draft-menu-row strong {
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  & .schedule-draft-menu-row small {
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  & .schedule-draft-menu-row:hover,
+  & .schedule-draft-menu-row:focus-visible {
+    background: var(--theme-surface-muted);
+  }
+  & .schedule-draft-menu-row[data-active="true"] {
+    background: var(--theme-surface-muted);
+    color: var(--theme-text);
+  }
+  & .schedule-draft-menu-row[data-active="true"] .schedule-draft-menu-title-line::after {
+    color: var(--theme-muted);
+    content: "Viewing";
+    font-size: 11px;
+    font-weight: 500;
+  }
+  & .schedule-draft-menu-row > button {
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    color: var(--theme-muted);
+    opacity: 0;
+  }
+  & .schedule-draft-menu-row:is(:hover, :focus-within) > button {
+    opacity: 1;
+  }
+  & .schedule-draft-menu-row > button:hover {
+    border-color: transparent;
+    background: var(--theme-border-subtle);
+  }
+  & .schedule-draft-menu-row[data-published-fallback-row],
+  & .schedule-draft-menu-row[data-published-draft-row="true"] {
+    grid-template-columns: minmax(0, 1fr) 26px 26px;
+    margin-top: 4px;
+    border: 0;
+    border-top: 1px solid var(--theme-border-subtle);
+    border-radius: 0 0 6px 6px;
+    padding-top: 9px;
+    background: transparent;
+  }
+  & .schedule-draft-menu-published-chip {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--theme-success);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  & .schedule-draft-menu-location-badges > span {
+    border: 0;
+    padding: 0 6px 0 0;
+    background: transparent;
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  & .schedule-draft-menu-panel::after {
+    display: block;
+    border-top: 1px solid var(--theme-border-subtle);
+    padding: 8px 16px;
+    background: var(--theme-surface-soft);
+    border-radius: 0 0 10px 10px;
+    color: var(--theme-muted);
+    content: "Enter  open    Esc  close";
+    font-size: 11px;
+    white-space: pre;
+  }
+
+  /* ---------- Publish while editing ---------- */
+  & .schedule-save-draft-menu {
+    width: min(380px, calc(100vw - 24px));
+    gap: 0;
+    padding: 0;
+  }
+  & .schedule-save-draft-menu label {
+    gap: 6px;
+    padding: 14px 14px 0;
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  & .schedule-save-draft-menu input {
+    min-height: 34px;
+    border: 1px solid var(--theme-border-strong);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  & :is(.schedule-save-menu-muted, .schedule-save-menu-warning, .schedule-save-menu-danger) {
+    padding: 6px 14px 0;
+    font-weight: 400;
+  }
+  & .schedule-save-menu-actions {
+    grid-template-columns: auto auto 1fr;
+    gap: 6px;
+    padding: 12px 14px;
+  }
+  & .schedule-save-menu-actions .schedule-save-menu-publish-action {
+    grid-column: auto;
+  }
+  & .schedule-save-menu-actions button {
+    min-height: 30px;
+    border: 1px solid var(--theme-border-strong);
+    border-radius: 6px;
+    padding: 0 10px;
+    background: var(--theme-surface);
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  & .schedule-save-menu-actions button:hover:not(:disabled) {
+    background: var(--theme-surface-muted);
+  }
+  & .schedule-save-menu-actions .schedule-save-menu-publish-action {
+    border-color: var(--theme-accent);
+    background: var(--theme-accent);
+    color: var(--theme-on-accent);
+  }
+  & .schedule-save-menu-actions .schedule-save-menu-publish-action:hover:not(:disabled) {
+    background: var(--theme-accent-strong);
+  }
+  & .schedule-save-menu-divider {
+    background: var(--theme-border-subtle);
+  }
+  & .schedule-save-menu-heading {
+    padding: 10px 14px 2px;
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: none;
+  }
+  & .schedule-save-menu-row {
+    margin: 0 6px;
+    border-radius: 6px;
+    padding: 5px 4px 5px 8px;
+  }
+  & .schedule-save-menu-row:hover {
+    background: var(--theme-surface-muted);
+  }
+  & .schedule-save-menu-row strong {
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  & .schedule-save-menu-row small {
+    color: var(--theme-muted);
+    font-size: 12px;
+  }
+  & .schedule-save-menu-row button {
+    width: 26px;
+    height: 26px;
+    min-height: 26px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--theme-muted);
+    opacity: 0;
+  }
+  & .schedule-save-menu-row:is(:hover, :focus-within) button {
+    opacity: 1;
+  }
+  & .schedule-save-menu-footer {
+    margin-top: 6px;
+    border-top: 1px solid var(--theme-border-subtle);
+    border-radius: 0 0 10px 10px;
+    padding: 8px 14px;
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-save-menu-footer::before {
+    margin-right: auto;
+    align-self: center;
+    color: var(--theme-muted);
+    content: "Enter  save    Esc  close";
+    font-size: 11px;
+    white-space: pre;
+  }
+  & .schedule-save-menu-footer button {
+    min-height: 28px;
+    border: 1px solid var(--theme-border-strong);
+    border-radius: 6px;
+    padding: 0 10px;
+    background: var(--theme-surface);
+    color: var(--theme-text);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  /* ---------- Published ▾ ---------- */
+  & .schedule-action-menu-panel {
+    min-width: 220px;
+    gap: 0;
+    padding: 4px;
+  }
+  & .schedule-action-menu-panel button {
+    min-height: 32px;
+    border-radius: 6px;
+    padding: 0 10px;
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  & .schedule-action-menu-panel button::before {
+    width: 14px;
+    height: 14px;
+    flex-basis: 14px;
+    background: var(--theme-muted);
+  }
+  & .schedule-action-menu-panel button:last-child {
+    color: var(--theme-danger);
+  }
+  & .schedule-action-menu-panel button:last-child::before {
+    background: var(--theme-danger);
+  }
+
+  /* ---------- Publish window ---------- */
+  & [data-schedule-publish-surface] .schedule-dialog-backdrop {
+    background: rgb(15 23 42 / 28%);
+  }
+  & [data-schedule-publish-surface] .schedule-dialog {
+    width: min(100%, 540px);
+    border: 0;
+    border-radius: 12px;
+    box-shadow: var(--mock-b-shadow);
+    font-size: 13px;
+  }
+  & [data-schedule-publish-surface] .schedule-dialog > header {
+    min-height: 0;
+    border-bottom: 0;
+    padding: 18px 12px 4px 18px;
+  }
+  & [data-schedule-publish-surface] .schedule-dialog > header .icon-button {
+    color: var(--theme-muted);
+  }
+  & .ui-mock-dialog-icon {
+    display: none;
+  }
+  & .ui-mock-dialog-heading h2 {
+    color: var(--theme-text);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  & .ui-mock-dialog-heading p {
+    color: var(--theme-muted);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.45;
+  }
+  & [data-schedule-publish-surface] .schedule-publication-form {
+    gap: 16px;
+    padding-top: 10px;
+  }
+  & .schedule-publication-steps {
+    order: -2;
+    gap: 6px;
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  & .schedule-publication-steps i {
+    display: none;
+  }
+  & .schedule-publication-steps span + span::before {
+    width: auto;
+    height: auto;
+    margin-right: 6px;
+    background: none;
+    color: var(--theme-border-strong);
+    content: "/";
+  }
+  & .schedule-publication-steps span[data-active="true"] {
+    color: var(--theme-text);
+    font-weight: 600;
+  }
+  & .ui-mock-publish-summary {
+    order: -1;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: -8px;
+    color: var(--theme-muted);
+    font-size: 12px;
+  }
+  & .ui-mock-publish-summary > span {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+  & .ui-mock-publish-summary strong {
+    color: var(--theme-text);
+    font-weight: 500;
+  }
+  & .ui-mock-publish-summary small {
+    font-size: 12px;
+    text-transform: lowercase;
+  }
+  & .ui-mock-publish-summary > span:first-child small {
+    display: none;
+  }
+  & .schedule-publication-form > label,
+  & .schedule-publication-locations legend,
+  & .schedule-publication-departments legend {
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  & .schedule-publication-form select {
+    min-height: 34px;
+    border: 1px solid var(--theme-border-strong);
+    border-radius: 6px;
+    color: var(--theme-text);
+    font-size: 13px;
+  }
+  & .schedule-publication-departments {
+    border: 0;
+    padding: 0;
+  }
+  & .schedule-publication-departments legend {
+    padding: 0 0 6px;
+  }
+  & .schedule-publication-departments label {
+    min-height: 28px;
+    border-color: var(--theme-border-subtle);
+    border-radius: 6px;
+    background: var(--theme-surface-soft);
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  & .schedule-publication-locations {
+    border: 0;
+    border-top: 1px solid var(--theme-border-subtle);
+    border-radius: 0;
+  }
+  & .schedule-publication-locations legend {
+    padding-bottom: 6px;
+  }
+  & .schedule-publication-location {
+    min-height: 0;
+    gap: 10px;
+    border-bottom-color: var(--theme-border-subtle);
+    padding: 10px 2px;
+  }
+  & .schedule-publication-location[data-selected="true"] {
+    background: transparent;
+  }
+  & .schedule-publication-location:hover {
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-publication-location input {
+    width: 14px;
+    height: 14px;
+  }
+  & .schedule-publication-location-body {
+    gap: 4px;
+  }
+  & .schedule-publication-location strong {
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  & .schedule-publication-location-name i {
+    width: 8px;
+    height: 8px;
+    flex-basis: 8px;
+  }
+  & .schedule-publication-live-chip,
+  & .schedule-publication-live-chip.muted {
+    padding: 0;
+    background: transparent;
+    color: var(--theme-muted) !important;
+    font-size: 12px;
+    font-weight: 400;
+  }
+  & .schedule-publication-location-delta small {
+    padding-left: 8px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  & .schedule-publication-location-warning {
+    width: auto;
+    border-left: 2px solid var(--theme-warning-border);
+    border-radius: 0;
+    padding: 2px 0 2px 8px;
+    background: transparent;
+    color: var(--theme-warning-text);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  & .schedule-publish-preflight-summary {
+    border: 0;
+    border-radius: 8px;
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-publish-finding-group,
+  & .schedule-publish-weekly-availability {
+    border: 0;
+    border-left: 2px solid var(--theme-border-strong);
+    border-radius: 0;
+    padding: 2px 0 2px 12px;
+    background: transparent;
+  }
+  & .schedule-publish-finding-group.risk,
+  & .schedule-publish-weekly-availability {
+    border-left-color: var(--theme-warning-border);
+  }
+  & .schedule-publish-finding-heading {
+    color: var(--theme-text) !important;
+    font-size: 13px;
+  }
+  & .schedule-publish-finding-row {
+    border: 0 !important;
+    padding: 4px 0 !important;
+    background: transparent !important;
+  }
+  & .schedule-publish-finding-row > strong {
+    font-weight: 500;
+  }
+  & .schedule-publish-risk-ack {
+    border-color: var(--theme-border-strong);
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  & .schedule-publication-diff > section {
+    border-radius: 6px;
+  }
+  & .schedule-publication-diff dl div {
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-publish-notify {
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+  & .schedule-publish-notify-list {
+    border-color: var(--theme-border-subtle);
+    border-radius: 8px;
+  }
+  & .schedule-publish-notify-list label {
+    min-height: 34px;
+  }
+  & .schedule-publish-notify-list strong,
+  & .schedule-publish-notify-heading > div:first-child > span {
+    font-weight: 500;
+  }
+  & .schedule-publish-notify-heading button {
+    border-color: var(--theme-border-strong);
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions {
+    gap: 8px;
+    margin-top: 4px;
+    border-top: 1px solid var(--theme-border-subtle);
+    padding: 12px 18px;
+    background: var(--theme-surface);
+  }
+  & .schedule-publication-footer-summary {
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions button {
+    min-height: 32px;
+    border: 1px solid var(--theme-border-strong);
+    border-radius: 6px;
+    padding: 0 12px;
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions button:hover {
+    border-color: var(--theme-border-strong);
+    background: var(--theme-surface-muted);
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions button.primary {
+    border-color: var(--theme-accent);
+    background: var(--theme-accent);
+    color: var(--theme-on-accent);
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions button.primary:hover {
+    background: var(--theme-accent-strong);
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}

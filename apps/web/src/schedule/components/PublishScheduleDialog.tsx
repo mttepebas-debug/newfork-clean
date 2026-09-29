@@ -13,9 +13,11 @@ import {
   Loader2,
   RefreshCw,
   Search,
+  Send,
   ShieldAlert,
   X,
 } from "lucide-react";
+import { useUiVariant } from "../../dev/ui-variant/uiVariant";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useToast } from "@newfork/ui";
 
@@ -58,6 +60,12 @@ const STEP_TITLES: Record<1 | 2 | 3, string> = {
   1: "Select locations to publish",
   2: "Pre-flight check",
   3: "Notify employees",
+};
+// DEV mockup (?ui=a|b|c): one line under the title saying what the step does.
+const STEP_DESCRIPTIONS: Record<1 | 2 | 3, string> = {
+  1: "Choose the draft and the locations that go live. Nothing is published until the last step.",
+  2: "Review what needs attention first, then what changes at each location.",
+  3: "Choose who gets a notification, then publish.",
 };
 
 type LocationPreviewSummary = SchedulePublicationPreview["locations"][number];
@@ -132,6 +140,7 @@ export function PublishScheduleDialog({
   ) => void;
 }) {
   const toast = useToast();
+  const uiVariant = useUiVariant();
   const noDepartmentKey = "__no_department__";
   const initialDraftId =
     (activeDraftId && drafts.some((draft) => draft.id === activeDraftId)
@@ -553,8 +562,8 @@ export function PublishScheduleDialog({
   };
 
   return (
-    <Dialog title={STEP_TITLES[wizardStep]} onClose={reviewingShift ? () => {} : () => { previewRequestIdRef.current += 1; onClose(); }}>
-      <div className="schedule-publication-form">
+    <Dialog title={STEP_TITLES[wizardStep]} description={uiVariant ? STEP_DESCRIPTIONS[wizardStep] : undefined} onClose={reviewingShift ? () => {} : () => { previewRequestIdRef.current += 1; onClose(); }}>
+      <div className="schedule-publication-form" data-step={wizardStep}>
         <div className="schedule-publication-steps" aria-label="Publish steps">
           {[
             { index: 1, label: "Locations" },
@@ -573,6 +582,28 @@ export function PublishScheduleDialog({
             </span>
           ))}
         </div>
+        {uiVariant && preview ? (
+          <div className="ui-mock-publish-summary" aria-label="What this publish does">
+            <span>
+              <strong>{drafts.find((draft) => draft.id === draftId)?.name ?? "Draft"}</strong>
+              <small>Draft</small>
+            </span>
+            <span>
+              <strong>{locationIds.length}</strong>
+              <small>{locationIds.length === 1 ? "Location" : "Locations"}</small>
+            </span>
+            <span>
+              <strong>
+                {preview.locations.reduce((total, location) => total + location.next_shift_count, 0)}
+              </strong>
+              <small>Shifts</small>
+            </span>
+            <span>
+              <strong>{affectedEmployeeIds.length}</strong>
+              <small>People affected</small>
+            </span>
+          </div>
+        ) : null}
         {wizardStep === 1 ? (
           <>
             {hasDrafts ? (
@@ -1006,10 +1037,12 @@ export function PublishScheduleDialog({
 
 function Dialog({
   title,
+  description,
   onClose,
   children,
 }: {
   readonly title: string;
+  readonly description?: string;
   readonly onClose: () => void;
   readonly children: ReactNode;
 }) {
@@ -1054,7 +1087,19 @@ function Dialog({
         aria-labelledby={titleId}
       >
         <header>
-          <h2 id={titleId}>{title}</h2>
+          {description ? (
+            <>
+              <span className="ui-mock-dialog-icon" aria-hidden>
+                <Send size={18} />
+              </span>
+              <div className="ui-mock-dialog-heading">
+                <h2 id={titleId}>{title}</h2>
+                <p>{description}</p>
+              </div>
+            </>
+          ) : (
+            <h2 id={titleId}>{title}</h2>
+          )}
           <button
             type="button"
             className="icon-button"

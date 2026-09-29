@@ -1,0 +1,40 @@
+/* DEV-only page: /dev/schedule-dialogs */
+.schedule-dialogs-preview {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 24px 32px 120px;
+  background: var(--theme-page);
+  color: var(--theme-text);
+}
+.schedule-dialogs-preview > header h1 {
+  margin: 0;
+  font-size: 18px;
+}
+.schedule-dialogs-preview > header p {
+  max-width: 64ch;
+  margin: 6px 0 0;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+}
+.schedule-dialogs-preview-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 36px;
+  margin-top: 24px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: var(--theme-surface);
+}
+.schedule-dialogs-preview-station {
+  position: relative;
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+.schedule-dialogs-preview-station > span {
+  color: var(--theme-muted-strong);
+  font-size: 11px;
+  font-weight: 700;
+}

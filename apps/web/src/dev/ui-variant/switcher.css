@@ -1,0 +1,33 @@
+/* DEV-only mockup style switch. Above every dialog so it works while one is open. */
+.ui-variant-switcher {
+  position: fixed;
+  z-index: 3000;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  gap: 2px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 8px;
+  padding: 3px;
+  background: var(--theme-surface);
+  box-shadow: 0 6px 18px rgb(15 23 42 / 16%);
+  font-size: 12px;
+}
+.ui-variant-switcher button {
+  min-height: 28px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--theme-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+.ui-variant-switcher button:hover {
+  background: var(--theme-surface-muted);
+}
+.ui-variant-switcher button[aria-pressed="true"] {
+  background: var(--theme-action);
+  color: var(--theme-on-accent);
+}
