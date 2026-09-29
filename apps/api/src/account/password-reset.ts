@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { sendResendEmail } from "../email/resend-email.js";
 
 // BL-137: "Forgot password?" on the sign-in screen. A person types an email;
 // if an account owns it, a one-hour, one-time reset link goes out through
@@ -115,21 +116,17 @@ export function createPasswordResetSender(options: {
     // The token rides in the fragment: a browser never sends it to a server,
     // so it cannot land in an access log.
     const link = `${options.appUrl.replace(/\/$/, "")}/reset-password#token_hash=${encodeURIComponent(tokenHash)}`;
-    const response = await fetch("https://api.resend.com/emails", {
+    await sendResendEmail({
+      apiKey: options.resendApiKey,
+      failure: "Password reset delivery failed",
       signal,
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${options.resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+      message: {
         from: options.emailFrom ?? "Newfork <security@newfork.app>",
-        to: [email],
+        to: email,
         subject: "Reset your Newfork password",
         html: `<p>Someone asked to reset the password for this Newfork account.</p><p><a href="${escapeHtml(link)}">Choose a new password</a></p><p>This link works once and expires in 1 hour. If you did not ask for it, you can ignore this email.</p>`,
-      }),
+      },
     });
-    if (!response.ok) throw new Error(`Password reset delivery failed (${response.status})`);
   };
 }
 

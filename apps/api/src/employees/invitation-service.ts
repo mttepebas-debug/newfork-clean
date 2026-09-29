@@ -8,6 +8,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { createUserVerifier } from "../auth/verify-user.js";
 import { HttpError, rpcFailure } from "../http-error.js";
+import { sendResendEmail } from "../email/resend-email.js";
 
 export interface PrepareEmployeeInvitationInput {
   readonly actorUserId: string;
@@ -320,22 +321,17 @@ export async function deliverInvitation(
       throw new Error("Employee invitation delivery is not configured");
     return;
   }
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${options.resendApiKey}`,
-      "Content-Type": "application/json",
-      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
-    },
-    body: JSON.stringify({
+  await sendResendEmail({
+    apiKey: options.resendApiKey,
+    failure: "Invitation delivery failed",
+    message: {
       from: options.emailFrom ?? "Newfork <onboarding@newfork.app>",
-      to: [email],
+      to: email,
       subject: "Join your Newfork workspace",
       html: `<p>You have been invited to your team's Newfork workspace.</p><p><a href="${escapeHtml(url)}">Accept invitation</a></p><p>This link expires in seven days.</p>`,
-    }),
+      idempotencyKey,
+    },
   });
-  if (!response.ok)
-    throw new Error(`Invitation delivery failed (${response.status})`);
 }
 
 async function revokePrepared(

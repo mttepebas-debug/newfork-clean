@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { rpcFailure } from "../http-error.js";
 import { createUserVerifier } from "../auth/verify-user.js";
 import { createPasswordVerifier } from "../auth/verify-password.js";
+import { sendResendEmail } from "../email/resend-email.js";
 
 export interface AccountSecurityState {
   readonly email: string;
@@ -361,17 +362,12 @@ export function createRecoveryEmailDelivery(options: {
     if (!options.resendApiKey) {
       throw new Error("Account recovery email delivery is not configured");
     }
-    const response = await fetch("https://api.resend.com/emails", {
-      signal: AbortSignal.timeout(30_000),
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${options.resendApiKey}`,
-        "Content-Type": "application/json",
-        "Idempotency-Key": input.idempotencyKey,
-      },
-      body: JSON.stringify({
+    await sendResendEmail({
+      apiKey: options.resendApiKey,
+      failure: "Account recovery email delivery failed",
+      message: {
         from: options.emailFrom ?? "Newfork <security@newfork.app>",
-        to: [input.email],
+        to: input.email,
         subject:
           input.kind === "last_24h"
             ? "Your Newfork account will be deleted within 24 hours"
@@ -379,10 +375,9 @@ export function createRecoveryEmailDelivery(options: {
               ? "Reminder: your Newfork account deletion is scheduled"
               : "Restore your Newfork account",
         html: `<p>Your Newfork account is scheduled for deletion after ${escapeHtml(input.restoreUntil)}.</p><p><a href="${escapeHtml(input.recoveryUrl)}">Restore account</a></p><p>This one-time link replaces any earlier recovery link.</p>`,
-      }),
+        idempotencyKey: input.idempotencyKey,
+      },
     });
-    if (!response.ok)
-      throw new Error(`Account recovery email delivery failed (${response.status})`);
   };
 }
 
