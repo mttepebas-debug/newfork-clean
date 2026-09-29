@@ -1,4 +1,5 @@
 import { Lock } from "lucide-react";
+import { useId } from "react";
 import { Link } from "react-router";
 import "./no-access.css";
 
@@ -16,13 +17,14 @@ export function NoAccessState({
   /** Where "Back to Home" goes. Pass a page the person can open. */
   readonly homeHref?: string;
 }) {
+  const titleId = useId();
   return (
-    <section className="no-access" aria-labelledby="no-access-title">
+    <section className="no-access" aria-labelledby={titleId}>
       <span className="no-access-icon" aria-hidden>
         <Lock size={22} />
       </span>
       <div className="no-access-copy">
-        <h2 id="no-access-title">You don't have access to {subject}</h2>
+        <h2 id={titleId}>You don't have access to {subject}</h2>
         <p>Your role or your locations don't include it.</p>
         <p className="no-access-help">Ask an admin for access.</p>
       </div>

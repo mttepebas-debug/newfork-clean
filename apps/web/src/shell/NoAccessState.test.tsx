@@ -43,4 +43,22 @@ describe("NoAccessState", () => {
     expect(screen.getAllByRole("link")).toHaveLength(1);
     expect(container.textContent).not.toMatch(/authz|out_of_scope|403|404/);
   });
+
+  it("names each card by its own heading when two share a page (BL-195)", () => {
+    render(
+      <MemoryRouter>
+        <NoAccessState subject="this schedule" />
+        <NoAccessState subject="these documents" />
+      </MemoryRouter>,
+    );
+    const schedule = screen.getByRole("region", {
+      name: "You don't have access to this schedule",
+    });
+    const documents = screen.getByRole("region", {
+      name: "You don't have access to these documents",
+    });
+    expect(schedule.getAttribute("aria-labelledby")).not.toBe(
+      documents.getAttribute("aria-labelledby"),
+    );
+  });
 });
