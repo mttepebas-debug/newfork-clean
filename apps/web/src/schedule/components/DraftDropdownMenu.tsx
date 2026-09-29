@@ -249,6 +249,11 @@ export function DraftDropdownMenu({
                       <div>
                         <span className="schedule-draft-menu-title-line">
                           <strong>{draft.name}</strong>
+                          {active ? (
+                            <span className="schedule-draft-menu-viewing">
+                              Viewing
+                            </span>
+                          ) : null}
                           {isPublishedDraft ? (
                             <span
                               className="schedule-draft-menu-published-chip"
@@ -448,6 +453,9 @@ export function DraftDropdownMenu({
               ) : null}
             </>
           ) : null}
+          <p className="schedule-menu-hint" aria-hidden="true">
+            <kbd>Enter</kbd> open <kbd>Esc</kbd> close
+          </p>
         </div>
       ) : null}
     </div>
