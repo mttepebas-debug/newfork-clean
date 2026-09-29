@@ -47,6 +47,17 @@
   color: var(--theme-muted);
   text-align: center;
 }
+/* Account's own list: filters that match nothing get a short box, and a
+   workspace that asked for nothing gets one line instead of an empty table. */
+.employee-documents-empty.is-compact {
+  min-height: 0;
+  padding: 20px 16px;
+}
+.employee-documents-none {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 13px;
+}
 .employee-documents-empty strong {
   color: var(--theme-text);
   font-size: 13px;

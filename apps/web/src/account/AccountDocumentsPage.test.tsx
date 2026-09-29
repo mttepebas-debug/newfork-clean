@@ -104,16 +104,15 @@ describe("AccountDocumentsPage", () => {
     );
   });
 
-  it("says so when a workspace is waiting for nothing", async () => {
+  it("shows no badge when a workspace is waiting for nothing", async () => {
     vi.mocked(listDocuments).mockResolvedValue([
       obligation("document", "completed"),
     ] as never);
     renderPage();
 
     await screen.findByText("Meyhouse");
-    await waitFor(() =>
-      expect(screen.getAllByText("Nothing waiting").length).toBe(2),
-    );
+    await waitFor(() => expect(listDocuments).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(/waiting/)).toBeNull();
   });
 
   it("never says organization", async () => {

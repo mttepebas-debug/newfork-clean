@@ -47,7 +47,11 @@ export function EmployeeDocumentsList(props: {
   kind?: "document" | "acknowledgement";
   employeeId?: string;
   initialRequirementId?: string | null;
+  /** Account's own list: one person, so no employee column, location filter
+   * or employee search. Everyone else keeps the full table. */
+  personal?: boolean;
 }) {
+  const personal = props.personal ?? false;
   const { context } = useAuth();
   const query = useQuery({
     queryKey: documentQueryKey(props.audience, props.userId),
@@ -61,7 +65,7 @@ export function EmployeeDocumentsList(props: {
   const [sort, setSort] = useState<{
     key: "employee_name" | "title" | "status";
     descending: boolean;
-  }>({ key: "employee_name", descending: false });
+  }>({ key: personal ? "title" : "employee_name", descending: false });
   const [openedInitial, setOpenedInitial] = useState(false);
   const [selected, setSelected] = useState<{
     id: string;
@@ -118,6 +122,9 @@ export function EmployeeDocumentsList(props: {
   const nextIndex =
     currentIndex >= 0 ? currentIndex + 1 : (selected?.ordinal ?? 0);
   const next = visible[nextIndex];
+  // Nothing asked of this person here: one line says so, no empty table.
+  const nothingAsked =
+    personal && !query.isLoading && !query.error && items.length === 0;
   const sortBy = (key: typeof sort.key) =>
     setSort((s) => ({ key, descending: s.key === key && !s.descending }));
   return (
@@ -128,6 +135,12 @@ export function EmployeeDocumentsList(props: {
           {blockers.map((item) => item.title).join(", ")}.
         </p>
       )}
+      {nothingAsked ? (
+        <p className="employee-documents-none">
+          Nothing has been asked of you here.
+        </p>
+      ) : null}
+      {nothingAsked ? null : <>
       <div className="catalog-toolbar">
         <div className="catalog-toolbar-status-row">
           <div className="catalog-status-tabs" aria-label="Document status">
@@ -155,7 +168,7 @@ export function EmployeeDocumentsList(props: {
           </div>
         </div>
         <div className="catalog-toolbar-filter-row">
-          <label>
+          {personal ? null : <label>
             <span className="sr-only">Location</span>
             <select
               className="toolbar-filter-select"
@@ -170,7 +183,7 @@ export function EmployeeDocumentsList(props: {
                 </option>
               ))}
             </select>
-          </label>
+          </label>}
           <label>
             <span className="sr-only">Document type</span>
             <select
@@ -187,7 +200,7 @@ export function EmployeeDocumentsList(props: {
               ))}
             </select>
           </label>
-          <label className="job-search toolbar-search">
+          {personal ? null : <label className="job-search toolbar-search">
             <Search size={16} aria-hidden />
             <input
               aria-label="Search employee documents"
@@ -195,7 +208,7 @@ export function EmployeeDocumentsList(props: {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </label>
+          </label>}
         </div>
       </div>
       <div className="employee-table-wrap">
@@ -208,7 +221,7 @@ export function EmployeeDocumentsList(props: {
                   ["title", "Document"],
                   ["status", "Status"],
                 ] as const
-              ).map(([key, label]) => (
+              ).filter(([key]) => !personal || key !== "employee_name").map(([key, label]) => (
                 <th
                   key={key}
                   aria-sort={
@@ -241,24 +254,36 @@ export function EmployeeDocumentsList(props: {
                   }
                 }}
               >
-                <td>
-                  {r.employee_name}
-                  <small className="document-location-label">
-                    {r.location_names.join(", ")}
-                  </small>
-                </td>
-                <td>{r.title}</td>
+                {personal ? (
+                  <td>
+                    {r.title}
+                    <small className="document-location-label">
+                      {r.location_names.join(", ")}
+                    </small>
+                  </td>
+                ) : (
+                  <>
+                    <td>
+                      {r.employee_name}
+                      <small className="document-location-label">
+                        {r.location_names.join(", ")}
+                      </small>
+                    </td>
+                    <td>{r.title}</td>
+                  </>
+                )}
                 <td>{labels[r.status]}</td>
               </tr>
             ))}
           </tbody>
         </table>
         {!query.isLoading && !query.error && !visible.length && (
-          <div className="employee-documents-empty">
+          <div className={personal ? "employee-documents-empty is-compact" : "employee-documents-empty"}>
             <strong>No documents match these filters.</strong>
           </div>
         )}
       </div>
+      </>}
       {query.isLoading && <p className="settings-state">Loading documents…</p>}
       {query.error && (isNoAccess(query.error) ? (
         <NoAccessState

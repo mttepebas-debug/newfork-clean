@@ -531,20 +531,19 @@
   margin: 2px 0 0;
 }
 
-.account-main .workspace-list,
 .account-main .workspace-closure-panel,
 .account-main .workspace-transfer-panel {
   border-radius: 8px;
   box-shadow: none;
 }
 
+/* Workspaces: a plain list under the page title, rows split by hairlines. */
 .account-main .workspace-list {
+  margin-top: 8px;
   border: 0;
-  background: var(--theme-surface-soft);
-}
-
-.account-main .workspace-list {
-  padding: 4px 18px;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 @media (max-width: 820px) {
@@ -700,19 +699,20 @@
 .account-main .workspace-row > div:first-child strong,
 .account-main .workspace-row > div:first-child span { overflow-wrap: anywhere; }
 .workspace-row-actions { flex: 0 0 auto; }
-/* The kit row brings its own side padding; this panel already has one. */
+/* The list has no panel, so the rows' text starts on the page title's line. */
 .account-main .workspace-list .pb-row { padding-inline: 0; }
-/* The current row's tint runs to the panel edge, so its text keeps the same left
-   line as the other rows instead of touching the edge of the band. */
+/* The workspace you are in is tinted; the tint reaches a little past the
+   column so its text keeps the same left line as the other rows. The hairlines
+   on either side stand back so the tint reads as one rounded band. */
 .account-main .workspace-list .pb-row[aria-current="true"] {
-  margin-inline: -18px;
-  padding-inline: 18px;
+  margin-inline: -12px;
+  padding-inline: 12px;
+  border-radius: 8px;
+  border-bottom-color: transparent;
 }
-/* The list does not clip (its menus overflow it), so the tint rounds its own
-   corners where it meets the list's rounded edge. */
-.account-main .workspace-list .pb-row[aria-current="true"]:first-child { border-radius: 8px 8px 0 0; }
-.account-main .workspace-list .pb-row[aria-current="true"]:last-child { border-radius: 0 0 8px 8px; }
-.account-main .workspace-list .pb-row[aria-current="true"]:only-child { border-radius: 8px; }
+.account-main .workspace-list .pb-row:has(+ .pb-row[aria-current="true"]) {
+  border-bottom-color: transparent;
+}
 /* Stacked on a narrow screen, the current row has no button to push the menu to
    the right edge, and its right-anchored popover would open off the left side. */
 .pb-row-actions .workspace-actions-menu { margin-left: auto; }
