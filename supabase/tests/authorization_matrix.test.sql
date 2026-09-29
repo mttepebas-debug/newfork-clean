@@ -794,8 +794,6 @@ create temporary table known_gap (
   reason text not null
 );
 insert into known_gap values
-  ('manager-cannot-invite', '{manager}', '{employee.create}', '{K,B}',
-   'a manager cannot add and invite an employee at their own location; employee_access.manage is required (stage 6, employees)'),
   ('preferred-name-not-on-core', null, '{employee.decide_preferred_name,employee.pending_names}', null,
    'answering a preferred name asks employees.manage only: no rank, a manager answers their own and a peer''s, anywhere (BL-099, FB-6.2.6)'),
   ('important-date-no-as-validation', null, '{important_date.write}', '{K,B,x:K}',

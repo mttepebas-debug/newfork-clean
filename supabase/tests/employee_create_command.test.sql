@@ -48,11 +48,11 @@ select throws_ok($$select public.create_employee_command_service(
 select throws_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000003', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000001', employee, employee_role) from create_fixture$$,
-  '42501', 'employee management access required', 'outsider cannot create or replay');
+  '42501', 'Not allowed', 'outsider cannot create or replay');
 select throws_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000002', employee, owner_role) from create_fixture$$,
-  '42501', 'owner role cannot be assigned by invitation', 'invalid invite role rolls back the create');
+  '42501', 'Not allowed', 'invalid invite role rolls back the create');
 select throws_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000003', employee || '{"is_remote":false}', null) from create_fixture$$,
@@ -112,10 +112,6 @@ values ('19000000-0000-4000-8000-000000000004', 'create-manager-actor@example.te
 update auth.users set email_confirmed_at = now() where id::text like '19000000-%' and email_confirmed_at is null;
 insert into public.workspace_memberships (workspace_id, user_id, role, all_locations)
 values ('29000000-0000-4000-8000-000000000001', '19000000-0000-4000-8000-000000000004', 'manager', false);
-insert into public.workspace_role_permissions (workspace_id, role_id, permission_key)
-select workspace_id, id, 'employee_access.manage' from public.workspace_roles
-where workspace_id = '29000000-0000-4000-8000-000000000001' and system_key = 'manager'
-on conflict do nothing;
 insert into public.workspace_roles (id, workspace_id, name, access_class)
 values ('59000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001', 'Custom Lead', 'manager');
 create temporary table role_results (label text, result jsonb);
