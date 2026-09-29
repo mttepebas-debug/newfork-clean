@@ -133,6 +133,7 @@ FB-6.1.0 hazır sayılmaz: K7'yi (ekran turu günü) bekliyor.
 |---|---|---|
 | Hosted e-posta teslimatı ölçülür (hangi SMTP, saatlik sınır; onay e-postası Supabase Auth'tan gidiyor) | SEC-003 pre-mortem, koordinatör 2026-09-28 | ölçülmedi |
 | BL-283 — API parola doğrulamasına hesap başına deneme sınırı | kullanıcı kararı 2026-09-28 | açık |
+| BL-279 — hesap kurtarma e-postasını yeniden gönderme sınırı; geçerli bağlantı ezilmez (backlog programı G5) | koordinatör kararı KK-11, 2026-09-29 | açık |
 | "Check your email" ekranı main'de | SEC-003 S.D | **bitti** (`721ea41f`) |
 | Hosted veritabanı main ile aynı: BL-199 migration'ı `20260928060000` (iş arkadaşının notu çalışana gitmesin) | BL-199 kapanışı, koordinatör 2026-09-28 | **bitti 2026-09-29** — kullanıcı `20260928060000`–`100000` beş migration'ı gönderdi; koordinatör `list_migrations` ile gördü, `get_advisors` security'de yeni uyarı yok |
 **Öneri (`nf-planlama`, kullanıcı kararı değil):** kod denetiminin kalan yüksek güvenlik maddeleri — BL-270 (admin → admin erişim kaldırma), BL-271 (çıkışta önbellek), BL-276 (eski yetki kapısı) — da yayından önce kapansın. Yerleri K23 ile sorulacak.
