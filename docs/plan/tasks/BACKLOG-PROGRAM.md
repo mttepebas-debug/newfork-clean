@@ -51,8 +51,8 @@ Sıralama kuralı: önce en yüksek "leave" (critical yok; high); aynı önemde 
 | 7 | **G7** | FB-6.2.1 kapsamı: yetki çekirdeği ailesi A'nın Çalışanlar dilimine düşen kısmı (KK-5, KK-12) | BL-129 BL-270 BL-317 BL-242 BL-130 BL-155 BL-133 BL-176 BL-243 BL-276 (BL-133, BL-176, BL-276 kısmen; + BL-099'un yetki kısmı, KK-11) | high / risky | R3 | `nf-db` (+ `nf-backend` BL-176/BL-243) | 2–3 gün |
 | 8 | **G8** | Silinmiş ve arşivli kayıtlar | BL-254 BL-132 (BL-188 bayat, kapandı) | medium / moderate | R3 (BL-132 `scope_set`) | `nf-db` (+ `nf-backend` okuma modeli) | 1 gün |
 | 9 | **G9** | İzin, takas ve kapsam kuralları | BL-127 BL-182 BL-220 BL-247 BL-200 BL-110 BL-109 (BL-183, BL-185 bayat, kapandı) | high / risky | R3 | `nf-db` (+ `nf-backend` BL-200, `nf-arayuz` BL-110 metinleri) | 2 gün |
-| 10 | **G10** | Schedule kayıt ve yayın kuralları (veri) | BL-174 BL-190 BL-191 BL-326 BL-325 BL-164 BL-167 BL-228 BL-229 BL-292 BL-298 BL-236 BL-211 BL-238 | medium / moderate | R3 (`*_service` sözleşmesi, BL-292) | `nf-db` (+ `nf-backend` BL-298 shared şema) | 2 gün |
-| 11 | **G11** | Hata sözleşmesi ve hata görünürlüğü | BL-134 BL-223 BL-172 BL-145 BL-156 BL-193 BL-213 BL-331 BL-324 BL-076 U31 U26 U37 U55 U51 U42 (kalan kalemler) | medium / moderate | R2 | `nf-backend` | 2 gün |
+| 10 | **G10** | Schedule kayıt ve yayın kuralları (veri) | BL-174 BL-191 BL-326 BL-325 BL-167 BL-228 BL-229 BL-292 BL-298 BL-236 BL-211 BL-238 (BL-190, BL-164 bayat, kapandı) | medium / moderate | R3 (`*_service` sözleşmesi, BL-292) | `nf-db` (+ `nf-backend` BL-298 shared şema) | 2 gün |
+| 11 | **G11** | Hata sözleşmesi ve hata görünürlüğü | BL-134 BL-223 BL-172 BL-145 BL-156 BL-193 BL-213 BL-331 BL-324 BL-076 U37 U51 U42 (kalan kalemler) (U31, U26, U55 bayat, kapandı) | medium / moderate | R2 | `nf-backend` | 2 gün |
 | 12 | **G12** | Yerel veritabanına dayanıklı pgTAP | BL-209 BL-217 BL-227 BL-245 BL-262 BL-288 BL-296 BL-173 BL-105 BL-226 BL-253 BL-248 BL-094 BL-070 BL-096 U32 | medium / safe (BL-070 high, bayat görünüyor) | R0 (yalnız test) | `nf-test` | 1,5 gün |
 | 13 | **G13** | Web ve e2e test kararlılığı, CI bekçileri | BL-120 BL-175 BL-321 BL-322 BL-195 BL-202 BL-203 BL-210 BL-328 BL-281 BL-196 BL-337 U12 U16 U18 U19 U36 | medium / safe | R0 (test, CI) | `nf-test` | 1,5 gün |
 | 14 | **G14** | Schedule üst çubuk, menüler ve pencereler — görsel | BL-305 BL-307 BL-308 BL-311 BL-312 BL-319 BL-320 BL-327 BL-333 BL-233 BL-204 BL-332 U08 BL-121 BL-318 | medium / safe | R1/R2 (birden çok Schedule yüzeyi) | `nf-arayuz` | 1 gün |
@@ -261,6 +261,12 @@ Hükümler BACKLOG.md'de maddelerin altında ("Tazelik 2026-09-29 (`7c63b997`, B
 | BL-071 | — | hiçbir dilim | önerilmez (bütün türe dokunan riskli iş) |
 | BL-099 (yetki kısmı, KK-11) | — | — | `authorize` + `no_self` hücresi (G6 ölçümü) |
 
+## G10–G12 tazeliği (2026-09-29, `39a9faa2` = `origin/main` `9adae6f8` + docs, kod okuması; üç salt okur alt ajan, `nf-planlama` bayat hükümlerini ve birer kanıtı elle doğruladı)
+Hükümler BACKLOG.md'de ("Tazelik 2026-09-29 (`39a9faa2`, BACKLOG-PROGRAM G…)"). **Dokunduğu dosyalar sütunu G10–G12 için hâlâ "tahmin"**: bağlam sınırı yüzünden bu oturumda işlenmedi (devir notu).
+- **G10 (14):** 9 geçerli, 2 değişmiş (BL-191, BL-167), BL-211 ölçülmedi (muhtemelen bayat, API logu gerekir), **BL-190 ve BL-164 bayat, kapandı**.
+- **G11 (16):** 10 geçerli, 3 değişmiş (BL-134, U51, U42 kalan kalemleri), **U31, U26, U55 bayat, kapandı**. Sayılar yeniden alındı: `throw new Error` 45 (eski 139), `message.includes` 72 (eski 93), kopya `requestError` 9.
+- **G12 (16):** 8 geçerli, 8 değişmiş (BL-245, BL-226, BL-253, BL-248, BL-094, BL-070, BL-096, U32), bayat yok. Yeşil liste 140 dosyanın 125'i. Yerel kırmızılık hiçbir maddede ölçülmedi.
+
 ## Sayım doğrulaması ve özet dizin
 - Tam dizin: `docs/plan/research/backlog-index-2026-09-29.md` (290 satır: kimlik, satır, grup, işaret, başlık, başlıktan sonraki ilk cümle; grubu bilinmeyen 0).
 - Elle sayım (bağımsız `awk`, betikten ayrı): "Schedule sağ üst taslak ve yayın düğmeleri" bölümünde 18 madde (BL-299…BL-320); betiğin dizini aynı bölüm için 18. Eşit.
@@ -280,6 +286,7 @@ Hükümler BACKLOG.md'de maddelerin altında ("Tazelik 2026-09-29 (`7c63b997`, B
   - **G0 bitti:** BACKLOG.md'de 33 G0 satırından 29'u + U46 + U42'nin iki P1 kalemi "Kapanan maddeler"e taşındı (kapanış sebebi yazılı olmayanlara kanıtlı "Kapandı 2026-09-29 (G0 …)" eklendi; BL-137 işareti "kapandı; açıkken …" biçimine çevrildi). Numarasızlardan U27 → **BL-336** (koşulu gerçekleşti: hosted "Confirm email" açık, K22), U52 → **BL-337** (20 uyarı, 2026-09-29 `npx eslint apps/web/src -f json` ile yeniden sayıldı). "FOUNDATION-B bağlantıları" bölümü dağıtıldı: BL-070, BL-094, BL-096, BL-099, BL-101'in altına bağlantı satırı; kapanmış maddelerinki (BL-091, BL-097 …) düştü. U66'nın altında yetim kalan K13 kararı kapanmış BL-230'un altına bağlandı (`f187c53d`'de ana satırı taşınırken geride kalmıştı). U11 kararı (telefonda Export yok) KARARLAR → Ekran kararları → Schedule'a yazıldı.
   - **Sayım (betik + bağımsız tarama, 2026-09-29):** açık bölümde üst düzey madde **258** = 290 − 31 kapanan G0 satırı − U46 (U27, U52 numaralanıp açık kaldı; U42 kalan kalemleriyle açık). Açık bölümde "kapandı" satırı kalmadı (tek istisna BL-332 "KAPANDI-bekliyor", KK-2 ile main'e girince taşınır). BACKLOG.md 555 → 553 satır.
   - `DONE.md`'ye satır yazılmadı: G0'daki kapanışlar eski işlerin kaydı ya da bayat maddeydi; yeni iş bitmedi.
+- 2026-09-29 (`task/backlog-program-3`, taban `9adae6f8`): G10–G12 tazeliği ölçüldü (yukarıdaki bölüm); 5 madde bayat, kapandı → açık madde 255 → **250**. BACKLOG.md 626 → 667 satır.
 - 2026-09-29 (`task/backlog-program-3`, taban `9adae6f8`): KK-12 (G7 dilimlere bölündü; G7 = FB-6.2.1 kapsamı, 10 madde; 7'si GF'ye, BL-071 GS'ye) ve KK-13 (BL-132 ilkesi) program dosyasına ve 20 maddenin altına işlendi; `FB-6.2.md:137`/`:29` sayı çelişkisi BL-155'e not düşüldü. Sayım commit öncesi betikle doğrulandı (255, kopya 0, eksik 0, fazla 0).
 - 2026-09-29 (`task/backlog-program-3`, taban `a81154b3`): KK-11 işlendi (BL-279 high, G5–G7 satırları, ILERLEME §8). G7–G9 tazeliği ölçüldü (yukarıdaki bölüm), dokunduğu dosyalar G7–G9 için "ölçüldü". BL-188, BL-183, BL-185 bayat, kapandı → açık madde 258 → **255**. BACKLOG.md 579 → 606 satır (27 tazelik satırı; 3 madde taşındı).
 - 2026-09-29 (`task/backlog-program-3`, taban `b5747bd4`): GK kararları (KK-6…KK-10) gruplara taşındı, GK'de yalnız BL-073; yeni GA satırı (BL-335) ve T0 turu; BL-338 açıldı (G17). BACKLOG.md'de 13 maddenin altına karar/durum satırı. **Sayım (betik, commit öncesi):** açık madde **258** = 257 + BL-338 (211 numaralı + 47 numarasız); programdaki gruplarda (G0 hariç G1–G24, GA, GK, GF, GY, GS) 258, kopya 0, eksik 0, fazla 0. BACKLOG.md 564 → 578 satır.
@@ -316,12 +323,12 @@ Satır numaraları `3a31d625` anındaki BACKLOG.md'ye göre; metnin başı arama
 | U23 | 67 | G0 (kapandı) | Owner onboarding'de lokasyon short name önerisi ve phone alanı yok → tasks/LOC-002. KAPAND |
 | U24 | 68 | G0 (kapandı) | Hosted'a location_phone migration'ı → tasks/LOC-002 (publication migration'ı UI-DOC-001 so |
 | U25 | 69 | G24 | Supabase CLI v2.109 → v2.117 güncellemesi (db push sırasında pg-delta sertifika ENOENT gür |
-| U26 | 70 | G11 | /v1/invitations/pending |
+| U26 | 70 | G11 (kapandı) | /v1/invitations/pending |
 | U27 | 71 | G16 | → **BL-336** (G0'da numaralandı): davet token'ı e-posta onayı boyunca saklanmıyor |
 | U28 | 72 | G0 (kapandı) | Vercel Authentication (newfork-clean-api, Production) smoke bitince yeniden açılacak (memo |
 | U29 | 73 | G15 | .employee-remove-access { color: #9b3442 } (styles.css 2359) ölü kural: "Remove access" kı |
 | U30 | 74 | G15 | SecurityPage "Cancel change" butonu kırmızı (danger) görünüyor; iptal eylemi için doğru to |
-| U31 | 75 | G11 | Onboarding getter geçersiz ya da erişilemeyen workspaceId için "unavailable" (P0002) veriy |
+| U31 | 75 | G11 (kapandı) | Onboarding getter geçersiz ya da erişilemeyen workspaceId için "unavailable" (P0002) veriy |
 | U32 | 76 | G12 | pgTAP borcu: BL-052 sonrası üç onboarding/document test dosyası kırmızı; employee_onboardi |
 | U33 | 77 | G0 (kapandı) | .workspace-row capitalize hatası KAPANDI: kural UI-PRE-001 D1'de silindi (6d9f0e7). |
 | U34 | 78 | G0 (kapandı) | Pending başlığının yüklenirken görünmesi KAPANDI: kit yükleme durumunda "Checking your acc |
@@ -345,7 +352,7 @@ Satır numaraları `3a31d625` anındaki BACKLOG.md'ye göre; metnin başı arama
 | U52 | 101 | G13 | → **BL-337** (G0'da numaralandı): 20 `exhaustive-deps` uyarısı, 2026-09-29'da yeniden sayıldı |
 | U53 | 102 | G16 | Workspaces listesinde SON satırın "…" menüsü kırpılıyor: .workspace-list { overflow: hidde |
 | U54 | 103 | G16 | Kurulumu bitmemiş business'ı "Discard" etmek 10 dakikadan eski oturumda API tarafından red |
-| U55 | 104 | G11 | AcceptInvitationPage "yanlış hesap" durumu sunucunun İngilizce cümlesine bağlı; API artık  |
+| U55 | 104 | G11 (kapandı) | AcceptInvitationPage "yanlış hesap" durumu sunucunun İngilizce cümlesine bağlı; API artık  |
 | U56 | 105 | G16 | Pending sayfası, kurulumu bitmemiş bir business'ı o business'ın SAHİBİ OLMAYAN üyesine hâl |
 | U57 | 106 | G16 | finalizeActivation reddedilirse employee onboarding sayfası asılı kalabiliyor; yalnız askı |
 | U58 | 107 | G16 | Workspaces sayfasının satır DIŞI metinleri hâlâ eski dilde ("Workspaces" başlığı, açıklama |
