@@ -313,7 +313,7 @@ describe("ProfilePage", () => {
 
     expect(
       await screen.findByText(
-        "Finish setting up your account here, then you can add your phone number and emergency contact.",
+        "Finish setting up your account here, then you can add your emergency contact.",
       ),
     ).toBeTruthy();
     expect(screen.queryByLabelText("Contact name")).toBeNull();

@@ -21,10 +21,7 @@ import {
   supabaseClient,
   uploadAccountAvatar,
 } from "../lib/supabase";
-import {
-  requestPreferredName,
-  saveOwnEmploymentContact,
-} from "../employees/employee-data";
+import { saveOwnEmploymentContact } from "../employees/employee-data";
 import { AccountPageHeader } from "./components";
 import {
   legalNameErrorMessage,
@@ -511,7 +508,7 @@ function EmploymentContacts() {
               <strong>{record.workspaceName}</strong>
               <p className="account-record-note">
                 Finish setting up your account here, then you can add your
-                phone number and emergency contact.
+                emergency contact.
               </p>
               <div className="account-button-row">
                 <Button
@@ -554,59 +551,29 @@ function EmploymentContactForm({
   const [contactPhone, setContactPhone] = useState(
     record.emergencyContactPhone,
   );
-  const [personalPhone, setPersonalPhone] = useState(record.phone ?? "");
-  const [preferred, setPreferred] = useState(record.preferredName);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  // What the workspace did with the name: took it, or held it for somebody to
-  // answer. A refusal is never reported, so this never says one happened.
-  const [nameOutcome, setNameOutcome] = useState<string | null>(null);
 
   const dirty =
     name !== record.emergencyContactName ||
     relationship !== record.emergencyContactRelationship ||
-    contactPhone !== record.emergencyContactPhone ||
-    personalPhone !== (record.phone ?? "") ||
-    preferred !== record.preferredName;
-  // The row will not accept half a contact, so neither does the form. A
-  // preferred name on its own is fine: it is not part of that row.
-  const contactTouched =
-    name !== record.emergencyContactName ||
-    relationship !== record.emergencyContactRelationship ||
-    contactPhone !== record.emergencyContactPhone ||
-    personalPhone !== (record.phone ?? "");
-  const ready =
-    !contactTouched ||
-    (name.trim().length > 0 && contactPhone.trim().length >= 7);
+    contactPhone !== record.emergencyContactPhone;
+  // The row will not accept half a contact, so neither does the form.
+  const ready = name.trim().length > 0 && contactPhone.trim().length >= 7;
 
   const save = async (): Promise<void> => {
     setBusy(true);
     setFailure(null);
     setSaved(false);
     try {
-      if (name.trim().length > 0)
-        await saveOwnEmploymentContact(record.workspaceId, record.employeeId, {
-          name,
-          relationship,
-          phone: contactPhone,
-          email: record.emergencyContactEmail,
-          personalPhone: personalPhone.trim(),
-        });
-      if (preferred !== record.preferredName) {
-        const outcome = await requestPreferredName(
-          record.workspaceId,
-          record.employeeId,
-          preferred.trim(),
-        );
-        setNameOutcome(
-          outcome === "waiting"
-            ? "Sent to this workspace to answer."
-            : outcome === "cleared"
-              ? "People here will see the name on file again."
-              : "People here will see it from now on.",
-        );
-      }
+      // personalPhone left out: the number the workspace has on file stays.
+      await saveOwnEmploymentContact(record.workspaceId, record.employeeId, {
+        name,
+        relationship,
+        phone: contactPhone,
+        email: record.emergencyContactEmail,
+      });
       setSaved(true);
       onSaved();
     } catch {
@@ -628,30 +595,6 @@ function EmploymentContactForm({
       }}
     >
       <strong>{record.workspaceName}</strong>
-      <div className="account-field-grid account-contact-grid">
-        <label className="account-field" htmlFor={field("preferred")}>
-          <span>
-            Name used here<span className="field-optional">optional</span>
-          </span>
-          <input
-            id={field("preferred")}
-            value={preferred}
-            maxLength={80}
-            onChange={(event) => setPreferred(event.target.value)}
-          />
-          <small>This workspace may need to approve it.</small>
-        </label>
-        <label className="account-field" htmlFor={field("own-phone")}>
-          <span>Your phone number</span>
-          <input
-            id={field("own-phone")}
-            value={personalPhone}
-            maxLength={30}
-            onChange={(event) => setPersonalPhone(event.target.value)}
-            placeholder="415 555 0142"
-          />
-        </label>
-      </div>
       <div className="account-field-grid account-contact-grid">
         <label className="account-field" htmlFor={field("contact-name")}>
           <span>Contact name</span>
@@ -691,7 +634,7 @@ function EmploymentContactForm({
       ) : null}
       {saved && !dirty ? (
         <p className="form-success" role="status">
-          {nameOutcome ?? "Saved"}
+          Saved
         </p>
       ) : null}
       <div className="account-button-row">
