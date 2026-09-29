@@ -184,3 +184,10 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Karşı argüman:** (b) küçük işletmede iki admin'in birbirinin işini düzeltmesi pratik. Owner her workspace'te var ve düzeltebilir; istisna çekirdekte admin'e özel bir satır ve ikinci bir kural demek.
 - **Geri alma:** düşük (çekirdekte tek satır + tek matris hücresi).
 - **Durum:** FB-6.2 Dal A'da uygulanıyor; KARARLAR "Ürün kuralları"na T5a kapanışında yazılır.
+
+### KK-25 (2026-09-29) BL-248'in testi silinir; BL-094 seed'e dokunmadan kapanır
+- **Karar 1 (BL-248):** (a). Belgesi engelli bir owner'ı elle kuran pgTAP hücresi silinir. Ürün bu durumu artık üretemiyor (owner devirde ve kayıtta belgeden muaf); bugünkü kurala uymayan kaydı kuran test, var olmayan bir ürünü anlatır.
+- **Karar 2 (BL-094):** (a). Madde kapanır; `seed.sql:275` demo haftası ileri alınmaz. Kalan test (`workspace_rls:931`) bugün CI'da yeşil; seed haftasını oynatmak demo'yu ve e2e'yi etkiler, kazancı yok.
+- **Dayanak:** CLAUDE.md §9 ve kullanıcının genel kuralı "eski veri korunmaz" (canlı veri yok; kurala uymayan kaydı kuran test silinir). G12 işçisinin ölçümü (`docs/plan/tasks/G12-kararlar.md`).
+- **Geri alma:** düşük.
+- **Durum:** BL-248 silmesi sonraki G12 turunda; BL-094 T4 kapanışında kapanır.
