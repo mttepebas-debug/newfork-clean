@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(26);
 
 -- BL-237: this file used to open an edit session from the real seeded
 -- Meyhouse workspace's PUBLISHED week and expect its real data's seven
@@ -24,10 +24,6 @@ select tests.publish_week('ses', 1, '[
   {"label": "s5", "person": "deniz", "loc": "K", "job": "cook", "day": 5, "start": "09:00", "end": "17:00"},
   {"label": "s6", "person": "alex", "loc": "K", "job": "cook", "day": 6, "start": "09:00", "end": "17:00"}
 ]');
--- tests.publish_week never archives the draft it published from (a publish
--- never does); this file counts drafts for the week later and only means to
--- count the one it saves itself.
-update public.schedule_drafts set archived_at = now() where workspace_id = tests.id('ses') and name like 'test world%' and archived_at is null;
 
 -- authenticated/service_role have no USAGE on the tests schema, so every id a
 -- role-switched statement needs is resolved here first, while still postgres.
@@ -203,8 +199,13 @@ select throws_ok(
   'PT409', 'edit lease expired', 'closed session cannot save again'
 );
 
+-- A publish never archives its draft (BL-253), so the week lists two: the
+-- draft tests.publish_week published from, and the one saved here.
 select is((select jsonb_array_length(public.list_schedule_drafts_service(owner_id, w, week1)->'drafts')
-  from ses_ids), 1, 'draft list returns the saved draft');
+  from ses_ids), 2, 'draft list keeps the published draft beside the saved one');
+select is((select count(*)::integer
+  from ses_ids, jsonb_array_elements(public.list_schedule_drafts_service(owner_id, w, week1)->'drafts') d
+  where d->>'id' = (select draft_id::text from edit_test_state)), 1, 'draft list returns the saved draft');
 
 with acquired as (
   select public.acquire_schedule_edit_session_service(owner_id, w, week1, 'blank', null) result from ses_ids
