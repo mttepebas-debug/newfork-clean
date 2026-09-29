@@ -1221,6 +1221,11 @@ export function SchedulePage({
   };
   const requestDiscardEditSession = () => {
     if (!context || !session || isDiscardingEditSession) return;
+    // Nothing to lose: leave edit mode without asking.
+    if (!hasUnsavedChanges) {
+      discardEditSession();
+      return;
+    }
     setDiscardConfirmOpen(true);
   };
 

@@ -1666,6 +1666,40 @@ describe("App", () => {
     confirmSpy.mockRestore();
   }, 20000);
 
+  it("leaves an unchanged schedule edit without asking to discard", async () => {
+    const discardMock = vi.mocked(discardScheduleEditSession);
+    discardMock.mockClear();
+    vi.mocked(getScheduleReadModel).mockResolvedValueOnce(
+      scheduleFixtureForWeek("2026-09-07"),
+    );
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...makeDefaultEditAcquireResult(),
+      session: {
+        ...makeDefaultEditAcquireResult().session,
+        week_start: "2026-09-07",
+        dirty: false,
+      },
+    });
+    window.history.pushState({}, "", "/app/schedule?date=2026-09-07");
+    render(<App />);
+
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Discard" }).at(-1)!);
+    await waitFor(() =>
+      expect(discardMock).toHaveBeenCalledWith(
+        scheduleFixture.workspace_id,
+        "77777777-7777-4777-8777-777777777777",
+      ),
+    );
+    expect(
+      screen.queryByRole("alertdialog", { name: "Discard unsaved changes?" }),
+    ).toBeNull();
+    await waitFor(() => expect(screen.queryByText("Editing draft")).toBeNull());
+  }, 20000);
+
   it("confirms retroactive draft saves before acknowledging past edits", async () => {
     const savedDraft = {
       id: "99999999-9999-4999-8999-999999999999",
