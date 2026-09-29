@@ -49,7 +49,7 @@ select throws_ok($$select pg_temp.tc_cancel('[]')$$,'22023',null,'empty cancella
 select throws_ok($$select pg_temp.tc_cancel(jsonb_build_array(jsonb_build_object('segment_id',gen_random_uuid(),'starts_at','2035-01-15T15:00:00Z','ends_at','2035-01-15T19:00:00Z')))$$,'22023',null,'unrelated parent segment rejected');
 select throws_ok($$select pg_temp.tc_cancel(jsonb_set(periods,'{0,ends_at}','"2035-01-15T23:00:00Z"')) from tc$$,'22023',null,'cancellation cannot include unapproved hours');
 select throws_ok($$select pg_temp.tc_cancel(periods||periods) from tc$$,'22023',null,'duplicate cancellation periods rejected');
-select is((select count(*)::int from public.time_off_cancellation_links),0,'failed submission leaves no orphan cancellation');
+select is((select count(*)::int from public.time_off_cancellation_links where workspace_id=(select w from tc)),0,'failed submission leaves no orphan cancellation');
 update tc set result=pg_temp.tc_cancel(periods,op);
 update tc set cancellation=(result->>'request_id')::uuid;
 select is(result->>'status','pending','cancellation waits for manager review') from tc;

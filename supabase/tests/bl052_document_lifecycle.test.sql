@@ -71,7 +71,7 @@ select throws_ok($$select public.get_employee_document_lifecycle_service('152000
 select ok(not has_table_privilege('authenticated','public.employee_document_submissions','SELECT'),'authenticated cannot directly bypass document RPC scope');
 select ok(not has_function_privilege('authenticated','public.review_employee_document_lifecycle_service(uuid,uuid,uuid,integer,uuid,text,text,text,jsonb)','EXECUTE'),'authenticated cannot forge a service actor');
 select ok((select relrowsecurity from pg_class where oid='public.employee_document_submission_files'::regclass),'file membership has RLS');
-select is((select count(*)::integer from public.employee_documents),2,'renewal rejection does not delete file history');
+select is((select count(*)::integer from public.employee_documents where workspace_id='25200000-0000-4000-8000-000000000001'),2,'renewal rejection does not delete file history');
 set local role authenticated;
 select set_config('request.jwt.claim.sub','15200000-0000-4000-8000-000000000002',true);
 select throws_ok($$select * from public.employee_document_submissions$$,'42501',null,'authenticated direct SELECT cannot bypass private API');
@@ -94,9 +94,9 @@ update public.employee_onboarding_requirements set lifecycle_settings=jsonb_set(
 select lives_ok($$select public.set_employee_document_exemption_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',(select lifecycle_revision from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'),true,'Not needed for this employee')$$,'reviewer can exempt with a reason');
 select is((select app_private.document_obligation_state(r,now()) from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),'exempt','exempt status is persistent');
 select ok((select deadline_at is null and document_suspended_at is null and not app_private.document_obligation_blocked(r,now()) from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),'exemption removes its countdown and blocker');
-select is((select count(*)::integer from public.employee_documents),2,'exemption preserves every file');
+select is((select count(*)::integer from public.employee_documents where workspace_id='25200000-0000-4000-8000-000000000001'),2,'exemption preserves every file');
 select lives_ok($$select public.set_employee_document_exemption_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',(select lifecycle_revision from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'),true,'Not needed for this employee')$$,'same-state retry is a no-op');
-select is((select count(*)::integer from public.onboarding_events where action='document.exempted'),1,'same-state retry adds no audit event');
+select is((select count(*)::integer from public.onboarding_events where workspace_id='25200000-0000-4000-8000-000000000001' and action='document.exempted'),1,'same-state retry adds no audit event');
 select lives_ok($$select public.set_employee_document_exemption_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',(select lifecycle_revision from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'),false,'Needed again')$$,'reviewer can remove exemption');
 select is((select deadline_at from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'),now()+interval '7 days','removing exemption restores exactly the full configured period');
 select throws_ok($$select public.set_employee_document_exemption_service('15200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',1,true,'Self exemption')$$,'42501',null,'employee cannot exempt self');
