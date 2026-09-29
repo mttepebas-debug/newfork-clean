@@ -21,6 +21,8 @@ select public.create_owner_workspace_service(
   '1c000000-0000-4000-8000-000000000001',
   'Preferred Name Co'
 ) as workspace_id;
+-- People join a workspace once its owner has finished setting it up.
+update public.workspaces set lifecycle_status = 'active' where id = (select workspace_id from preferred_target);
 
 insert into public.employee_profiles (id, workspace_id, user_id, employee_code, first_name, last_name, created_by)
 values (
@@ -175,7 +177,7 @@ select throws_ok(
     'Whatever'
   )$$,
   '42501',
-  'this record belongs to somebody else',
+  'Not allowed',
   'and nobody asks for somebody else''s preferred name, owner included'
 );
 

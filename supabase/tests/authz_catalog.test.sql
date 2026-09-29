@@ -33,11 +33,11 @@ select cmp_ok(
 -- Decides scope or rank on its own instead of asking the core. Target 0
 -- outside the core. FB-6.2.4: Employees' writes and the membership guard ask
 -- the core (59 -> 52); FB-6.2.5 the invitation's role rule and the owner's setup (52 -> 47);
--- FB-6.2.6 Workspace home's counts (47 -> 46).
+-- FB-6.2.6 Workspace home's counts and the Schedule's week list, BL-155 (47 -> 45).
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 46, 'functions with their own scope or rank logic only go down'
+  '<=', 45, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
@@ -82,11 +82,11 @@ select is(
 -- A 42501 that does not say which reason: every raise statement with 42501
 -- and no hint (BL-276). Measured 2026-09-29 on 20260929190000: 255 in 152
 -- functions; 253 after FB-6.2.3; 226 after FB-6.2.4; 205 after FB-6.2.5; 189 after FB-6.2.6's
--- jobs, 181 after its dashboard. Target 0.
+-- jobs, 181 after its dashboard, 177 after its refusals (BL-354). Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 181, 'refusals without an authz hint only go down'
+  '<=', 177, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or
