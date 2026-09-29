@@ -135,3 +135,5 @@ supabase/tests/refusals_say_why.test.sql
 supabase/tests/employees_on_the_core.test.sql
 supabase/tests/invitations_on_the_core.test.sql
 supabase/tests/preferred_names_on_the_core.test.sql
+supabase/tests/people_behind_the_catalog_ask_the_core.test.sql
+supabase/tests/refusals_answer_alike.test.sql
