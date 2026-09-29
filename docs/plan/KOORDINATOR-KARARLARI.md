@@ -177,3 +177,10 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Dayanak:** G1 işçisinin tazelik ölçümü (origin/main `4490f8e3`; `DraftDropdownMenu.test.tsx:177/230/284`). Sayaç: menünün adı "taslak"; yayın ayrı bir durum ve listede kendi rozetiyle görünüyor, iki kez sayılmamalı.
 - **Geri alma:** düşük (yalnız arayüz).
 - **Durum:** G1'de uygulanıyor.
+
+### KK-24 (2026-09-29) Admin başka admin'in çalışan kaydını düzenlemez
+- **Karar:** (a). Admin yalnız manager ve employee kayıtlarını ve kendi kaydını düzenler (Employees çekmecesi → Save: ad, lokasyon, iş, not); başka bir admin'in kaydını owner düzenler. Örnek: Zeynep (admin, Kadıköy) Kaan'ın (admin, Beşiktaş) işini değiştiremez; Kaan'ın kaydını owner değiştirir.
+- **Dayanak:** KARARLAR:40 "Admin: bütün lokasyonlar ve çalışanlar" bir kapsam kuralıdır (admin lokasyondan bağımsız herkesi görür), rütbe kuralı değil. Rütbe tarafında ilke her yerde aynı: eş rütbe yönetilmez (işten çıkarma, erişim kaldırma, rol değiştirme — BL-270; manager ↔ manager; admin atama/kaldırma owner'a özel). Çekirdek (`employee.save`, rank_below) bugün zaten "hayır" diyor; kod değişmez, matrisin beklentisi düzeltilir. Soru BL-129 ile matrise ikinci admin eklenince çıktı (FB-6.2 Dal A).
+- **Karşı argüman:** (b) küçük işletmede iki admin'in birbirinin işini düzeltmesi pratik. Owner her workspace'te var ve düzeltebilir; istisna çekirdekte admin'e özel bir satır ve ikinci bir kural demek.
+- **Geri alma:** düşük (çekirdekte tek satır + tek matris hücresi).
+- **Durum:** FB-6.2 Dal A'da uygulanıyor; KARARLAR "Ürün kuralları"na T5a kapanışında yazılır.
