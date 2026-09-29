@@ -103,6 +103,19 @@ describe("default-hours batch review", () => {
     expect(screen.queryByText(/expected array|Too small/i)).toBeNull();
     expect(screen.getByRole("button", { name: "Review 0 shifts" }).hasAttribute("disabled")).toBe(true);
   });
+  it("asks for a shift when every shift in range is unticked (BL-202)", () => {
+    setup(); fireEvent.click(screen.getByRole("checkbox"));
+    expect(screen.getByText("Choose at least one shift to review.")).toBeTruthy();
+    expect(screen.queryByText("Check the dates and shifts selected.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Review 0 shifts" }).hasAttribute("disabled")).toBe(true);
+  });
+  it("asks to check the selection when a chosen shift has no valid range (BL-202)", () => {
+    setup(); fireEvent.change(screen.getByLabelText("From"), { target: { value: "" } });
+    expect(screen.getByText("Check the dates and shifts selected.")).toBeTruthy();
+    expect(screen.queryByText("Choose at least one shift to review.")).toBeNull();
+    expect(screen.queryByText(/expected|invalid|Too small/i)).toBeNull();
+    expect(screen.getByRole("button", { name: "Review 1 shift" }).hasAttribute("disabled")).toBe(true);
+  });
   it("contains keyboard focus and closes on Escape", () => {
     const ui = setup();
     const close = screen.getByRole("button", { name: "Close" });
