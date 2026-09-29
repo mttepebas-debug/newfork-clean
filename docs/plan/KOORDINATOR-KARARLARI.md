@@ -265,3 +265,9 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Bedel:** shared `employeeDetailSchema`'ya yeni zorunlu anahtarlar → canlı DB'nin geride kalması (BL-405) bir migration daha büyür.
 - **Geri alma:** orta (okuma projeksiyonu + şema); S3/S4 kolay.
 - **Durum:** uygulanıyor (`.7b` + `.7b-db`).
+
+### KK-36 (2026-09-30) `.7b` S5: Workspace düzen kaydı çekirdeğe `.7b-db`'de sorar, rota kapısı ondan sonra kalkar
+- **Karar:** `PUT …/workspace/layout` rotasının kapısı `.7b`'de şimdilik durur. `save_workspace_layout_service` `.7b-db` migration'ında panonun kapısıyla aynı çekirdek eylemine sorar (ret ipuçlu); bugünkü davranış korunur (çalışan kendi düzenini bugün yazamıyorsa yine yazamaz). Sonra `.7b` rota kapısını kaldırır; BL-413'ün dördüncü rotası böylece kapanır.
+- **Dayanak:** rota kapısını servis çekirdeğe sormadan kaldırmak kuralı sessizce değiştirir; CLAUDE.md §9 route-yerel kapı yasağı servis çekirdekteyken yerine gelir.
+- **Geri alma:** kolay.
+- **Durum:** uygulanıyor (`.7b-db`, `.7b`).
