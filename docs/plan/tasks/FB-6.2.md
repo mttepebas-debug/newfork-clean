@@ -217,6 +217,11 @@ Bu dilim backlog programının G7 grubudur (`docs/plan/tasks/BACKLOG-PROGRAM.md`
 20. **BL-176/BL-243/BL-365:** `grep -c "permissions.includes\|hasPermission" apps/web/src/auth/PermissionRoute.tsx apps/web/src/auth/resolveLanding.ts apps/web/src/views/WorkspacePage.tsx` → 0; Schedule ve Availability çekmeceyi `can()` olmadan açmaz (vitest); çekmece kapsam dışı kişide `NoAccessState` gösterir (vitest), BL-195 erişim-yok e2e'si yeşil (`.10`).
 21. **Her yeni ya da değişen `*_service`** `authorization_coverage` ve matriste sınıflı (CLAUDE.md §9); API'de `authz.not_member` → 404, diğer `authz.*` → 403 (API testleri); yetki kodunda fail-open yok (`nf-guvenlik` onayında ayrı satır).
 
+## Done when — T5b ekleri (`nf-guvenlik` T5a incelemesi (ONAY @`9d376ce8`), koordinatör aktardı, 2026-09-29)
+22. **D2 (`.4`):** `membership_managed_locations`'a yalnız yönetici (manager) üyeliği satır yazabilir — bugün manager olmayan üyelik için satırı hiçbir şey engellemiyor; `communication_actor_has_capability_service` rol sınıfına bakmıyor. `.4`'te birlikte: admin komutu (manager şartıyla), S3 silmesi ve tercihen "yalnız manager" CHECK ya da tetikleyici; hücre: manager olmayan üyeliğe satır → ret.
+23. **D5:** yeni ya da yeniden yazılan `throws_ok` hücreleri yalnız 42501'i kontrol ediyor, hint'i değil. En az bir hücre bilinmeyen hedefle kapsam dışı hedefin aynı `authz.out_of_scope`'u aldığını kilitler (CLAUDE.md §9 "hayır" sözleşmesi).
+24. **D6 (`.5`):** `.5`'e kadar yönetici kendi açamayacağı lokasyonsuz taslak yaratabiliyor (`employee_create_command` `:152`; Dal A devir notunda da yazılı); `.5` bunu kapatır, hücreyle.
+
 ## Parçalama kararı (KK-27, 2026-09-29; öneri olduğu gibi kabul, bir ek)
 **Karar: iki dal, üç toplu tur.**
 - **Ek (KK-27):** Dal B `.7a`, G3 (`task/g3-stale-screens`) main'e girince başlar — G3 `EmployeeDrawer.tsx`'e dokunuyor (ölçüm `e66ba44b`), aynı dosyada iki oturum çalışmaz (CLAUDE.md §4). Dal A `.0b`–`.3` bittiğinde `.7a` hazır değilse **T5a onsuz main'e girer**, `.7a` T5b'ye kayar; yetki çekirdeği turu web kısmını beklemez.

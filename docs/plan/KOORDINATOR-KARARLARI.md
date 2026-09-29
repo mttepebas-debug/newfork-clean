@@ -81,6 +81,7 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Dayanak:** KARARLAR M2 ve "Çalışan kaydı"; Schedule'da planlanan kişinin Employees'te bulunamaması iki ekranı çelişkili yapar. Alt ajan ölçümü (yerel DB, salt okunur).
 - **Geri alma:** düşük (fonksiyon gövdeleri, forward migration).
 - **Durum:** FB-6.2 sırası gelince.
+- **Bilgi notu (D4, `nf-guvenlik` T5a incelemesi (ONAY @`9d376ce8`), koordinatör aktardı, 2026-09-29):** `employees.private.read` izni verilmiş özel bir yönetici rolü, T5a'dan sonra lokasyondaki eş yönetici, admin ve owner'ın özel iletişim bilgisini de görür (BL-317 ile eşler görünür oldu). Varsayılan manager rolünde bu izin yok; kural değişmedi, yalnız etkisi genişledi.
 
 ### KK-9 (2026-09-29) BL-121: haftalık saat özeti yalnız bilgi amaçlı, 40 saat sabit
 - **Karar:** (a). Izgaradaki kişi toplamı diğer lokasyonların yayınlanmış (ghost) vardiyalarını da sayar; yayın penceresinde "40+ scheduled hours" listesi. Metin tarafsız ("scheduled", yaklaşık ise "~"); "overtime/violation" denmez. Engel, onay, ayar, günlük/eyalet kuralı yok (onlar BL-067, MVP sonrası). Kapsam dışı lokasyonların taslakları toplama girmez. Yayın penceresinde ızgaradan farklı taslak seçilirse saat bloğu gizlenir. Migration yok. Program yeri: G14.
