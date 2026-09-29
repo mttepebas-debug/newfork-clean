@@ -162,6 +162,14 @@ içinde (hiçbir DB'ye uygulanmadı). Testler: yeni `people_behind_the_catalog_a
   kümesi eskiyle aynı; retler artık nedenini söylüyor. Tek fark hücre 5: yalnız yöneten yönetici (KK-29) çekirdekten geçer,
   FB-6.6'nın `service_actor_can_access_employee` satırında `P0002` alır (önce ipuçsuz 42501) — KK-33, FOUNDATION-B FB-6.6
   satırına not. Sayaçlar: auth.uid 25→24, jwt 26→25, kapsam/rütbe 43→42, ipuçsuz 42501 177→176.
+- **T5b-4 KK-32 ekleri (2026-09-30):** (1) `20260930171000_…`: `employee.request_preferred_name` `restricted_ok = true`;
+  onboarding'deki ve belge engelli kişi kendi kaydına ad talebi açar, askıdaki üyelik ve kapalı workspace yine ret
+  (`refusals_answer_alike` §4). (2) `20260930172000_…` (KK-34): `workspace.todos` → org / **read** / `workspace.read`
+  (yazma eylemi; M2 `org/write` yöneticiye `none` verdiği için read etiketli). To-do servisleri ve
+  `get_workspace_dashboard_service` çekirdeğe sorar; `authorize_workspace_todos` + `workspace_todo_actor_role` silindi
+  → `retired_objects_stay_gone`. Etiketin kapı atlatmadığı `people_behind_the_catalog_ask_the_core`'da: kapalı workspace,
+  onboarding'deki yönetici, belge engelli yönetici ret; çalışan `missing_permission`. D2 kapandı. Kapsam/rütbe sayacı 42→41.
+  `communication_operations` iki `throws_ok` metni çekirdeğin `Not allowed`'ına döndü (kod 42501 aynı).
 - Deneme düzeneği aynı (bkz. `.4` notu); scratchpad'deki `t.sh` = dalın uygulanmamış migration'ları + ek migration'lar +
   builder + test tek işlemde.
 
