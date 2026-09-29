@@ -150,7 +150,7 @@ select is((select count(*)::integer from public.notification_outbox where type_k
 select is((public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'todos'->0->>'body'),'Alex Kim - Food handler card','Workspace dashboard lists scoped document-expiry todo');
 select is((select count(*)::integer from public.workspace_todos where source_type='employee_document_expiry' and source_id='a9700000-0000-4000-8000-000000000004'),1,'document-expiry todo sync is deduped by source');
 select is((select count(*)::integer from public.notification_outbox where type_key='people.employee_document.expiring' and subject_id='a9700000-0000-4000-8000-000000000004'),1,'document-expiry notification sync is deduped by source');
-select throws_ok($$select public.create_workspace_todo_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Employee task','',null,null)$$,'42501','workspace todo management required','employee-only users cannot create Workspace todos');
+select throws_ok($$select public.create_workspace_todo_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Employee task','',null,null)$$,'42501','Not allowed','employee-only users cannot create Workspace todos');
 select is((public.create_workspace_todo_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Scoped follow-up','Review employee file','15000000-0000-4000-8000-000000000001',now()+interval '1 day')->>'employee_id'),'15000000-0000-4000-8000-000000000001','manager can create a manual todo for an employee in scope');
 with saved as (
  select public.create_workspace_todo_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Owner follow-up','',null,null) result
@@ -166,7 +166,7 @@ update public.employee_documents set expiry_date=current_date + 1 where id='a970
 update public.workspaces set lifecycle_status='deleted', closed_at=now(), closed_by='a8000000-0000-4000-8000-000000000001' where id='6ea5d512-bc7f-4cf3-aad4-2f0815de00fd';
 set local role service_role;
 select is((public.sync_expiring_document_todos_service('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->>'opened_or_refreshed')::integer,0,'closed workspaces do not create document-expiry todos');
-select throws_ok($$select public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$,'42501','manager workspace access required','employee-only users cannot open manager Workspace');
+select throws_ok($$select public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$,'42501','Not allowed','employee-only users cannot open manager Workspace');
 set local role postgres;
 select is((select count(*)::integer from public.audit_events event join communication_state state on event.target_id=state.announcement_id::text where event.action='announcement.published'),1,'announcement publication writes an audit event');
 

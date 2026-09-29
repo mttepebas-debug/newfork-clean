@@ -250,6 +250,11 @@ insert into retired (kind, name, step) values
 -- record" helper had no other caller.
 insert into retired (kind, name, step) values
   ('function', 'can_manage_employee_record', 'FB-6.2.6');
+-- FB-6.2 (KK-32, KK-34): the to-do list and Workspace home ask the core's
+-- workspace.todos; their own twin gate goes.
+insert into retired (kind, name, step) values
+  ('function', 'authorize_workspace_todos', 'FB-6.2.6'),
+  ('function', 'workspace_todo_actor_role', 'FB-6.2.6');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
