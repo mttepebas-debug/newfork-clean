@@ -3,7 +3,7 @@ import type {
   ScheduleExportSchedule,
 } from "@newfork/shared/schedule";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ScheduleExportSchedules,
@@ -59,6 +59,10 @@ function schedule(
   };
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("ScheduleExportSchedules", () => {
   it("renders scheduled email rows and status details", () => {
     render(
@@ -111,6 +115,14 @@ describe("ScheduleExportSchedules", () => {
   });
 
   it("creates a scheduled export from the form and clears editable fields", async () => {
+    // The new schedule takes the device's zone; pin it so the machine's
+    // own zone does not decide the result (U16).
+    const resolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+    vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (
+      this: Intl.DateTimeFormat,
+    ) {
+      return { ...resolvedOptions.call(this), timeZone: "America/Chicago" };
+    });
     const create = vi.fn().mockResolvedValue(undefined);
 
     render(
@@ -169,7 +181,7 @@ describe("ScheduleExportSchedules", () => {
         location_ids: ["11111111-1111-4111-8111-111111111111"],
         day_of_week: 0,
         send_hour: 7,
-        timezone: "America/Los_Angeles",
+        timezone: "America/Chicago",
       }),
     );
     // The form clears once the create call resolves, a tick after it is made.
