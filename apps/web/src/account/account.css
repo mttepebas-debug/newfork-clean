@@ -597,6 +597,16 @@
     min-height: 42px;
   }
 
+  /* Workspaces' row buttons and menu reach the 44px a thumb needs. */
+  .account-main .workspace-list .pb-btn.pb-btn {
+    min-height: 44px;
+  }
+
+  .account-main .workspace-actions-trigger {
+    width: 44px;
+    height: 44px;
+  }
+
   .account-field input,
   .account-field select {
     min-height: 44px;

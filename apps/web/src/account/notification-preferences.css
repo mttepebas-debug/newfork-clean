@@ -189,6 +189,16 @@
     padding-left: 12px;
   }
 
+  /* A thumb needs 44px: the whole cell answers the tap, the box grows a little. */
+  .notification-channel-toggle {
+    min-height: 44px;
+  }
+
+  .notification-channel-toggle input {
+    width: 20px;
+    height: 20px;
+  }
+
   .notification-preference-group-heading p,
   .notification-preference-card-heading p {
     font-size: 12px;
