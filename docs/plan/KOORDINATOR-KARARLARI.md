@@ -162,3 +162,9 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Dayanak:** izin kişinin kendi hakkı; onu vermeyi seçen kişinin kendisi (KK-20 ek). Takası onaylayan yönetici izne değil vardiyaya karar veriyor; izin yalnız sahibinin rızasıyla, rızanın kapsadığı saatlerde kısalıyor. İkinci bir onay kapısı, çok lokasyonlu takası iki ayrı yöneticiye bağlayıp akışı kilitlerdi. nf-guvenlik G9b incelemesi (ONAY @1127dedd) bunu bilgi olarak işaretledi, güvenlik açığı saymadı.
 - **Geri alma:** düşük (servis içinde tek kontrol eklemek).
 - **Durum:** uygulandı (G9b).
+
+### KK-22 (2026-09-29) G9b'nin görsel QA'sı main'e girdikten hemen sonra
+- **Karar:** G9b (izni kısaltıp atamak) R3; nf-guvenlik ONAY @1127dedd ve CI yeşili main'den ÖNCE şart kalır. Görsel QA (nf-gorsel-qa; Employee Hub → Shift Hub, Requests → Shift changes onayı, Requests → Time off → "Shorten time off") main'e girdikten hemen sonra, migration'ı uygulanmış ortak yerel DB'de yapılır; bulgu çıkarsa küçük düzeltme olarak ardından gelir.
+- **Dayanak:** yeni ekranlar yalnız G9b migration'ının getirdiği kayıtlarla görünür; migration ortak yerel DB'ye yalnız main penceresinde uygulanabilir (kullanıcı kararı 2026-09-26). Değişiklik mevcut saat seçicisini yeniden kullanıyor ve metin satırı ekliyor; görsel hata ucuz geri alınır, yetki/veri hatası değil. İzin kaydı yok diye QA'yı atlamak da, main penceresi dışında migration uygulamak da kuralı bozar.
+- **Geri alma:** düşük (yalnız sıra).
+- **Durum:** uygulanıyor.
