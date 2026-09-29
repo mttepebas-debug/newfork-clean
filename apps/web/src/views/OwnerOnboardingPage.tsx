@@ -1,4 +1,5 @@
 import {
+  managementJobIds,
   suggestLocationShortName,
   type Department,
   type EmployeeInput,
@@ -35,7 +36,11 @@ import {
 } from "../shell/prebiz/PreBiz";
 import { hubPath } from "../auth/resolveLanding";
 import { saveEmployee } from "../employees/employee-data";
-import { employeeCreateReadiness } from "../employees/employee-create-flow";
+import {
+  employeeCreateReadiness,
+  firstJobOutsideManagement,
+  onlyManagementJobs,
+} from "../employees/employee-create-flow";
 import {
   listAccountWorkspaces,
   queueOwnerOnboardingInvitationIntent,
@@ -201,6 +206,10 @@ export default function OwnerOnboardingPage() {
   const activeJobs = useMemo(
     () => jobs.filter((job) => !job.archived_at),
     [jobs],
+  );
+  const managementIds = useMemo(
+    () => managementJobIds(departments, jobs),
+    [departments, jobs],
   );
   // Saving bumps locationDraftEpoch, which remounts the fields and drops focus
   // on the body. The next location starts where the last one did.
@@ -1457,7 +1466,9 @@ export default function OwnerOnboardingPage() {
                     setEmployeeDraft({
                       ...employeeDraft,
                       job_ids: ids,
-                      primary_job_id: ids[0] ?? null,
+                      // Same rule as the Employees drawer (BL-218 .3b).
+                      primary_job_id: firstJobOutsideManagement(ids, managementIds),
+                      only_management_jobs: onlyManagementJobs(ids, managementIds),
                     })
                   }
                 />

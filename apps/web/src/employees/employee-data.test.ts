@@ -7,7 +7,7 @@ import {
   InvitationError,
   loadEmployeeReferenceData,
 } from "./employee-data";
-import { onlyManagementJobs } from "./employee-create-flow";
+import { firstJobOutsideManagement, onlyManagementJobs } from "./employee-create-flow";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
@@ -100,16 +100,21 @@ describe("Invitation answers (SEC-003 #9)", () => {
 });
 
 describe("somebody who only works Management jobs (BL-218 .3b)", () => {
-  const job = (id: string, management: boolean) => ({ id, name: id, archived: false, departmentId: null, management, owner: false });
-  const jobs = [job("manager", true), job("assistant", true), job("cook", false)];
+  const management = new Set(["manager", "assistant"]);
 
   it("names no primary job only when every job is under Management", () => {
-    expect(onlyManagementJobs(["manager"], jobs)).toBe(true);
-    expect(onlyManagementJobs(["manager", "assistant"], jobs)).toBe(true);
-    expect(onlyManagementJobs(["manager", "cook"], jobs)).toBe(false);
+    expect(onlyManagementJobs(["manager"], management)).toBe(true);
+    expect(onlyManagementJobs(["manager", "assistant"], management)).toBe(true);
+    expect(onlyManagementJobs(["manager", "cook"], management)).toBe(false);
     // No job at all is "missing a job", not "only Management".
-    expect(onlyManagementJobs([], jobs)).toBe(false);
+    expect(onlyManagementJobs([], management)).toBe(false);
     // Before the pick lists arrive nothing is known to be Management.
-    expect(onlyManagementJobs(["manager"], [])).toBe(false);
+    expect(onlyManagementJobs(["manager"], new Set())).toBe(false);
+  });
+
+  it("makes the first picked job outside Management the primary", () => {
+    expect(firstJobOutsideManagement(["manager", "cook", "server"], management)).toBe("cook");
+    expect(firstJobOutsideManagement(["manager", "assistant"], management)).toBeNull();
+    expect(firstJobOutsideManagement([], management)).toBeNull();
   });
 });

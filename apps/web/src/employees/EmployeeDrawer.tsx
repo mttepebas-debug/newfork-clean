@@ -66,7 +66,11 @@ import {
   getEmployeeOnboardingReview,
   reviewEmployeeOnboarding,
 } from "./onboarding-data";
-import { employeeCreateReadiness, onlyManagementJobs } from "./employee-create-flow";
+import {
+  employeeCreateReadiness,
+  firstJobOutsideManagement,
+  onlyManagementJobs,
+} from "./employee-create-flow";
 import { registerEmployeeHistoryGuard } from "./employee-history-guard";
 
 const sections = [
@@ -162,7 +166,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   // BL-218 .3b: somebody whose jobs are all under Management names no primary job.
   const ruledDraft: EmployeeInput = {
     ...draft,
-    only_management_jobs: onlyManagementJobs(draft.job_ids, references.data?.jobs ?? []),
+    only_management_jobs: onlyManagementJobs(
+      draft.job_ids,
+      new Set(references.data?.jobs.filter((job) => job.management).map((job) => job.id)),
+    ),
   };
   const readiness = employeeCreateReadiness(ruledDraft);
   const allowedSections = sections.filter(
@@ -2739,8 +2746,9 @@ function AssignmentPicker({
   searchable?: boolean;
 }) {
   const [search, setSearch] = useState("");
-  const isManagement = (id: string) =>
-    options.some((option) => option.id === id && option.management);
+  const management = new Set(
+    options.filter((option) => option.management).map((option) => option.id),
+  );
   const available = options.filter(
     (option) => !option.archived || selected.includes(option.id),
   );
@@ -2782,7 +2790,7 @@ function AssignmentPicker({
                   onChange(
                     ids,
                     checked && primary === option.id
-                      ? (ids.find((id) => !isManagement(id)) ?? null)
+                      ? firstJobOutsideManagement(ids, management)
                       : (primary ?? (option.management ? null : option.id)),
                   );
                 }}

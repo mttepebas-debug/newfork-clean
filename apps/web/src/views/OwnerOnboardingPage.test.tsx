@@ -795,6 +795,49 @@ describe("OwnerOnboardingPage", () => {
     expect(queueOwnerOnboardingInvitationIntent).toHaveBeenCalledTimes(1);
   });
 
+  describe("a Management job is never a team member's primary (BL-218)", () => {
+    const managementId = "12000000-0000-4000-8000-0000000000aa";
+    const managerJobId = "13000000-0000-4000-8000-0000000000aa";
+    async function addWithJobs(picks: string[]) {
+      vi.mocked(listLocations).mockResolvedValue([location]);
+      vi.mocked(listDepartments).mockResolvedValue([
+        department,
+        { ...department, id: managementId, name: "Management", system_key: "management" },
+      ]);
+      vi.mocked(listJobs).mockResolvedValue([
+        job,
+        { ...job, id: managerJobId, name: "Manager", department_id: managementId },
+      ]);
+      renderPage(4);
+      await screen.findByRole("heading", { name: "Add your team" });
+      fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Maya" } });
+      fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Reed" } });
+      fireEvent.click(screen.getByRole("checkbox", { name: "Main Dining" }));
+      for (const name of picks) fireEvent.click(screen.getByRole("checkbox", { name }));
+      fireEvent.click(screen.getByRole("button", { name: /add employee/i }));
+    }
+
+    it("makes the first job outside Management primary, whatever was ticked first", async () => {
+      await addWithJobs(["Manager", "Server"]);
+      await waitFor(() =>
+        expect(saveEmployee).toHaveBeenCalledWith(
+          workspaceId,
+          expect.objectContaining({ job_ids: [managerJobId, jobId], primary_job_id: jobId, only_management_jobs: false }),
+        ),
+      );
+    });
+
+    it("adds somebody who only manages with no primary job", async () => {
+      await addWithJobs(["Manager"]);
+      await waitFor(() =>
+        expect(saveEmployee).toHaveBeenCalledWith(
+          workspaceId,
+          expect.objectContaining({ job_ids: [managerJobId], primary_job_id: null, only_management_jobs: true }),
+        ),
+      );
+    });
+  });
+
   it("does not finish when the required foundation is missing", async () => {
     renderPage(4);
 

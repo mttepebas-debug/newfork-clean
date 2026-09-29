@@ -1,5 +1,4 @@
 import { employeeInputSchema, type EmployeeInput } from "@newfork/shared";
-import type { EmployeeJobOption } from "./employee-data";
 
 export function employeeCreateReadiness(draft: EmployeeInput) {
   const namesReady = Boolean(draft.first_name.trim() && draft.last_name.trim());
@@ -28,8 +27,18 @@ export function employeeCreateReadiness(draft: EmployeeInput) {
  */
 export function onlyManagementJobs(
   jobIds: readonly string[],
-  jobs: readonly EmployeeJobOption[],
+  management: ReadonlySet<string>,
 ): boolean {
-  const management = new Set(jobs.filter((job) => job.management).map((job) => job.id));
   return jobIds.length > 0 && jobIds.every((id) => management.has(id));
+}
+
+/**
+ * The primary job a picker falls back to: the first picked job outside
+ * Management, which is primary by its department and never marked (BL-218).
+ */
+export function firstJobOutsideManagement(
+  jobIds: readonly string[],
+  management: ReadonlySet<string>,
+): string | null {
+  return jobIds.find((id) => !management.has(id)) ?? null;
 }
