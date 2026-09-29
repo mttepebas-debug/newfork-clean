@@ -438,4 +438,28 @@ describe("organization settings routes", () => {
       expect(service[route.serviceMethod]).not.toHaveBeenCalled();
     }
   });
+
+  // BL-172: somebody without the right is told no before anything about the
+  // body they sent; the order used to be the other way round.
+  it.each([
+    ["PUT", "scheduling-settings/conflicts"],
+    ["PUT", "scheduling-settings"],
+    ["POST", "organization/entities/reorder"],
+    ["POST", "shift-types/reorder"],
+    ["POST", "shift-labels/reorder"],
+  ])("refuses %s %s before reading a broken body", async (method, path) => {
+    const service = organizationSettingsServiceMock();
+    const app = buildApp({
+      organizationSettingsService: service,
+      contextResolver: { resolve: async () => ({ ...context, permissions: ["workspace.read"] }) },
+    });
+    const response = await app.inject({
+      method: method as "PUT" | "POST",
+      url: `/v1/workspaces/${workspaceId}/${path}`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { nonsense: true },
+    });
+    expect(response.statusCode).toBe(403);
+    await app.close();
+  });
 });

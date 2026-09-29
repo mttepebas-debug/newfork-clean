@@ -47,9 +47,10 @@ export function registerOrganizationSettingsRoutes(
   app.put("/v1/workspaces/:workspaceId/scheduling-settings/conflicts", async (request, reply) => {
     const params = workspaceParams.safeParse(request.params);
     const body = scheduleConflictSettingsSchema.strict().safeParse(request.body);
-    if (!params.success || !body.success) return reply.status(400).send({ error: "Valid conflict settings required" });
+    if (!params.success) return reply.status(400).send({ error: "Valid conflict settings required" });
     const context = await authorize(request.headers.authorization, params.data.workspaceId, "schedule.conflict_rules.manage", options.contextResolver, reply);
     if (!context) return;
+    if (!body.success) return reply.status(400).send({ error: "Valid conflict settings required" });
     if (!options.service) return reply.status(503).send({ error: "Organization settings unavailable" });
     return reply.send(scheduleConflictSettingsSchema.parse(await options.service.updateSchedulingSettings({ actorUserId: context.userId, workspaceId: params.data.workspaceId, settings: body.data })));
   });
@@ -83,10 +84,8 @@ export function registerOrganizationSettingsRoutes(
     async (request, reply) => {
       const params = workspaceParams.safeParse(request.params);
       const body = schedulingSettingsInputSchema.safeParse(request.body);
-      if (!params.success || !body.success)
+      if (!params.success)
         return reply.status(400).send({ error: "Valid settings required" });
-      if (["conflict_rules", "conflict_rules_revision", "minimum_travel_minutes", "minimum_rest_minutes"].some(key => key in body.data))
-        return reply.status(400).send({ error: "Use Conflict handling to change conflict rules." });
       const context = await authorize(
         request.headers.authorization,
         params.data.workspaceId,
@@ -95,6 +94,10 @@ export function registerOrganizationSettingsRoutes(
         reply,
       );
       if (!context) return;
+      if (!body.success)
+        return reply.status(400).send({ error: "Valid settings required" });
+      if (["conflict_rules", "conflict_rules_revision", "minimum_travel_minutes", "minimum_rest_minutes"].some(key => key in body.data))
+        return reply.status(400).send({ error: "Use Conflict handling to change conflict rules." });
       if (!options.service)
         return reply
           .status(503)
@@ -114,7 +117,7 @@ export function registerOrganizationSettingsRoutes(
     async (request, reply) => {
       const params = workspaceParams.safeParse(request.params);
       const body = entityReorderBody.safeParse(request.body);
-      if (!params.success || !body.success)
+      if (!params.success)
         return reply.status(400).send({ error: "Valid order required" });
       const context = await authorize(
         request.headers.authorization,
@@ -124,6 +127,8 @@ export function registerOrganizationSettingsRoutes(
         reply,
       );
       if (!context) return;
+      if (!body.success)
+        return reply.status(400).send({ error: "Valid order required" });
       if (!options.service)
         return reply
           .status(503)
@@ -143,7 +148,7 @@ export function registerOrganizationSettingsRoutes(
     async (request, reply) => {
       const params = workspaceParams.safeParse(request.params);
       const body = shiftTypeReorderBody.safeParse(request.body);
-      if (!params.success || !body.success)
+      if (!params.success)
         return reply.status(400).send({ error: "Valid order required" });
       const context = await authorize(
         request.headers.authorization,
@@ -153,6 +158,8 @@ export function registerOrganizationSettingsRoutes(
         reply,
       );
       if (!context) return;
+      if (!body.success)
+        return reply.status(400).send({ error: "Valid order required" });
       if (!options.service)
         return reply
           .status(503)
@@ -171,7 +178,7 @@ export function registerOrganizationSettingsRoutes(
     async (request, reply) => {
       const params = workspaceParams.safeParse(request.params);
       const body = shiftLabelReorderBody.safeParse(request.body);
-      if (!params.success || !body.success)
+      if (!params.success)
         return reply.status(400).send({ error: "Valid order required" });
       const context = await authorize(
         request.headers.authorization,
@@ -181,6 +188,8 @@ export function registerOrganizationSettingsRoutes(
         reply,
       );
       if (!context) return;
+      if (!body.success)
+        return reply.status(400).send({ error: "Valid order required" });
       if (!options.service)
         return reply
           .status(503)

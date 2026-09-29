@@ -475,7 +475,7 @@ export function registerWorkspaceAccountRoutes(
       const body = ownerOnboardingInvitationIntentBody.safeParse(request.body);
       if (!accessToken)
         return reply.status(401).send({ error: "Bearer token required" });
-      if (!params.success || !body.success)
+      if (!params.success)
         return reply
           .status(400)
           .send({ error: "Valid invitation intent details required" });
@@ -498,6 +498,10 @@ export function registerWorkspaceAccountRoutes(
                 : "Workspace management required",
           });
       }
+      if (!body.success)
+        return reply
+          .status(400)
+          .send({ error: "Valid invitation intent details required" });
       if (!options.service)
         return reply
           .status(503)

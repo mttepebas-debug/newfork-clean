@@ -325,6 +325,23 @@ describe("workspace account routes", () => {
     expect(queueOwnerOnboardingInvitationIntent).not.toHaveBeenCalled();
   });
 
+  // U37: a caller without the right hears no before anything about the body.
+  it("refuses an invitation intent before reading a broken body", async () => {
+    const queueOwnerOnboardingInvitationIntent = vi.fn();
+    const app = buildApp({
+      contextResolver: { resolve: async () => ({ ...context, permissions: ["workspace.read"] }) },
+      workspaceAccountService: { queueOwnerOnboardingInvitationIntent } as unknown as WorkspaceAccountService,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId}/owner-onboarding/invitation-intents`,
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: { email: "not an email" },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(queueOwnerOnboardingInvitationIntent).not.toHaveBeenCalled();
+  });
+
   it("dispatches queued owner onboarding invitations after completion", async () => {
     const saveOwnerOnboarding = vi.fn(async () => undefined);
     const listOwnerOnboardingInvitationIntents = vi.fn(async () => [
