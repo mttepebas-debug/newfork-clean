@@ -1,2 +1,3 @@
 - [Backlog işaret sayımı](backlog-unmarked-entries.md) — kapananlar en altta; grep sayımı nasıl doğrulanır
 - [Worktree Bash koruması](worktree-bash-guard.md) — değişkenli/karmaşık komutta git reddedilir; uzun metin için scratchpad dosyası + betik
+- [Aktarılan bulguyu kaynakta doğrula](relayed-finding-check-source.md) — koordinatör özeti rapordaki bulgudan farklı olabilir; raporu oku, kodda ölç
