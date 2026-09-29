@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(33);
 
 -- BL-218 .3a. Management can be renamed, so the screens cannot find it by its
 -- name: the Schedule read and the Employees drawer's references say which
@@ -161,6 +161,34 @@ select is(
   pg_temp.keyed((select answer from mk_board) -> 'departments') || pg_temp.keyed((select answer from mk_board) -> 'jobs'),
   pg_temp.keyed(pg_temp.grid() -> 'departments') || pg_temp.keyed(pg_temp.grid() -> 'jobs'),
   'the team board names Management and Owner as the Schedule does');
+select ok(
+  (select bool_and(p.prosrc like '%app_private.schedule_departments_and_jobs(%'
+      and p.prosrc like '%app_private.stored_primary_job(%'
+      and p.prosrc not like '%is_primary%')
+   from pg_proc p
+   where p.oid in ('public.get_schedule_read_model_service(uuid,uuid,date)'::regprocedure,
+                   'public.get_employee_schedule_board_service(uuid,uuid,date)'::regprocedure)),
+  'the grid and the team board read Management, Owner and the stored primary from one place');
+
+-- Employees > the list's Job column: the stored primary job; failing that the
+-- first Management job in the catalog's order, then the first job (as the
+-- Schedule places the row). Emre is Remote, cooks and chose no primary.
+select tests.person('mk', 'emre', 'employee', null, null);
+select public.save_employee_service(
+  tests.user('mk:owner'), tests.id('mk'), e.id, e.first_name, e.middle_name, e.last_name, e.preferred_name,
+  e.invitation_email, e.start_date, e.internal_note, '{}'::uuid[], null,
+  array[tests.id('mk:job:cook')], null, true, false, e.revision)
+from public.employee_profiles e where e.id = tests.id('mk:emre');
+create function pg_temp.listed_job(w text, person text) returns text language sql as $$
+  select l.primary_job_name
+  from public.list_employees_service(tests.user(w || ':owner'), tests.id(w), false, '', 'all', 200, 0) l
+  where l.id = tests.id(person)
+$$;
+select is(pg_temp.listed_job('mk', 'mk:cemre'), 'Manager', 'the list shows Manager for somebody who only manages');
+select is(pg_temp.listed_job('mk', 'mk:bora'), 'Cook', 'and Cook for somebody who cooks (primary) and manages');
+select is(pg_temp.listed_job('mk', 'mk:deniz'), 'Host', 'and their Management job, Host, before Cook when nothing is primary');
+select is(pg_temp.listed_job('mk', 'mk:emre'), 'Cook', 'and Cook for a Remote cook with no primary job');
+select is(pg_temp.listed_job('mx', 'mx:owner'), 'Owner', 'and Owner for an owner who works only the Owner job');
 
 -- 3. The drawer's references carry each job's department and the departments --------
 

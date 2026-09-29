@@ -6,6 +6,8 @@
 --   no primary sat in one group on the manager's grid and in another on the
 --   employee's board;
 -- - departments and jobs carry system_key (Management, Owner).
+-- Both come from the helpers the Schedule read uses (20260928070000):
+-- app_private.schedule_departments_and_jobs and app_private.stored_primary_job.
 
 CREATE OR REPLACE FUNCTION public.get_employee_schedule_board_service(actor_user_id uuid, target_workspace_id uuid, target_date date)
  RETURNS jsonb
@@ -92,22 +94,6 @@ begin
       from allowed_locations location
       left join current_publications publication on publication.location_id = location.id
     ), '[]'::jsonb),
-    'departments', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', department.id, 'name', department.name, 'color', department.color,
-        'sort_order', department.sort_order, 'system_key', department.system_key
-      ) order by department.sort_order, department.name)
-      from public.departments department
-      where department.workspace_id = target_workspace_id and department.archived_at is null
-    ), '[]'::jsonb),
-    'jobs', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', job.id, 'name', job.name, 'color', job.color,
-        'sort_order', job.sort_order, 'department_id', job.department_id, 'system_key', job.system_key
-      ) order by job.sort_order, job.name)
-      from public.jobs job
-      where job.workspace_id = target_workspace_id and job.archived_at is null
-    ), '[]'::jsonb),
     'shift_types', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', shift_type.id, 'name', shift_type.name, 'color', shift_type.color,
@@ -132,11 +118,7 @@ begin
         'job_ids', coalesce((select jsonb_agg(assignment.job_id order by assignment.job_id)
           from public.employee_job_assignments assignment
           where assignment.employee_id = employee.id and assignment.ended_at is null), '[]'::jsonb),
-        -- The job given as primary, or null (employee_job_primary_idx: one at most).
-        'primary_job_id', (select assignment.job_id
-          from public.employee_job_assignments assignment
-          where assignment.employee_id = employee.id and assignment.ended_at is null
-            and assignment.is_primary)
+        'primary_job_id', app_private.stored_primary_job(employee.id)
       ) || case when employee.id = actor.id then jsonb_build_object('weekly_availability', coalesce((
           select jsonb_agg(own.projection order by own.location_id)
           from own_availability own
@@ -200,7 +182,7 @@ begin
       where closure.closed_date between resolved_week_start and resolved_week_start + 6
     ), '[]'::jsonb),
     'important_dates', '[]'::jsonb
-  ) into result;
+  ) || app_private.schedule_departments_and_jobs(target_workspace_id) into result;
 
   return result;
 end;
