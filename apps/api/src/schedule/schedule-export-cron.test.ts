@@ -12,6 +12,7 @@ import type {
   ScheduleReadService,
   ScheduledExportCronCandidate,
 } from "./schedule-service";
+import { HttpError } from "../http-error";
 
 const settings: ScheduleExportSettings = {
   format: "csv",
@@ -121,7 +122,7 @@ describe("scheduled schedule export cron", () => {
   it("renders PDF and XLSX attachments with their own content types", async () => {
     const attachments: {
       readonly filename: string;
-      readonly content: string;
+      readonly content: Buffer;
       readonly contentType: string;
     }[] = [];
     const service = scheduleServiceMock([
@@ -150,13 +151,13 @@ describe("scheduled schedule export cron", () => {
       "schedule-2026-08-17.xlsx",
     ]);
     expect(attachments[0]?.contentType).toBe("application/pdf");
-    expect(Buffer.from(attachments[0]!.content, "base64").subarray(0, 8).toString("utf8")).toBe(
+    expect(attachments[0]!.content.subarray(0, 8).toString("utf8")).toBe(
       "%PDF-1.4",
     );
     expect(attachments[1]?.contentType).toBe(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
-    expect(Buffer.from(attachments[1]!.content, "base64").subarray(0, 2).toString("utf8")).toBe(
+    expect(attachments[1]!.content.subarray(0, 2).toString("utf8")).toBe(
       "PK",
     );
   });
@@ -181,9 +182,76 @@ describe("scheduled schedule export cron", () => {
     );
   });
 
-  it("skips due exports when execution-time tenant revalidation fails", async () => {
-    const service = scheduleServiceMock([scheduleCandidate()]);
-    service.revalidateScheduledExportCandidate.mockResolvedValueOnce(false);
+  it("keeps going past an export whose time zone is not a real one (BL-272)", async () => {
+    const service = scheduleServiceMock([
+      scheduleCandidate({
+        id: "8a000000-0000-4000-8000-000000000009",
+        timezone: "Mars/Olympus_Mons",
+      }),
+      scheduleCandidate(),
+    ]);
+    const delivery = { send: vi.fn(async () => undefined) };
+
+    const result = await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery,
+    });
+
+    expect(result).toMatchObject({ checked: 2, sent: 1, failed: 1 });
+    expect(delivery.send).toHaveBeenCalledTimes(1);
+    expect(service.recordScheduledExportFailure).toHaveBeenCalledWith({
+      workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      scheduleId: "8a000000-0000-4000-8000-000000000009",
+      error: 'The time zone "Mars/Olympus_Mons" is not a real time zone.',
+      autoDisableAfter: 1,
+    });
+  });
+
+  it("keeps going when recording one export's failure fails too (BL-272)", async () => {
+    const service = scheduleServiceMock([
+      scheduleCandidate({ id: "8a000000-0000-4000-8000-000000000009" }),
+      scheduleCandidate(),
+    ]);
+    service.previewExport.mockRejectedValueOnce(new Error("render failed"));
+    service.recordScheduledExportFailure.mockRejectedValueOnce(
+      new Error("database unavailable"),
+    );
+
+    const result = await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: { send: vi.fn(async () => undefined) },
+    });
+
+    expect(result).toMatchObject({ checked: 2, sent: 1, failed: 1 });
+  });
+
+  it("records exports the database handed back in a shape the cron cannot read (BL-272)", async () => {
+    const service = scheduleServiceMock([scheduleCandidate()], [
+      {
+        id: "8a000000-0000-4000-8000-000000000009",
+        workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      },
+    ]);
+
+    const result = await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: { send: vi.fn(async () => undefined) },
+    });
+
+    expect(result).toMatchObject({ checked: 2, sent: 1, failed: 1 });
+    expect(service.recordScheduledExportFailure).toHaveBeenCalledWith({
+      workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      scheduleId: "8a000000-0000-4000-8000-000000000009",
+      error: "This scheduled export's saved settings can no longer be read. Edit and save it again.",
+      autoDisableAfter: 1,
+    });
+  });
+
+  it("stops an export whose every location was deleted and says why (BL-225, Q-C)", async () => {
+    const service = scheduleServiceMock([scheduleCandidate({ location_ids: [] })]);
     const delivery = { send: vi.fn() };
 
     const result = await runScheduledExportsCron({
@@ -192,37 +260,87 @@ describe("scheduled schedule export cron", () => {
       delivery,
     });
 
-    expect(result).toEqual({
-      checked: 1,
-      due: 1,
-      sent: 0,
-      failed: 0,
-      skipped: 1,
-    });
-    expect(service.revalidateScheduledExportCandidate).toHaveBeenCalledWith({
-      workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
-      requesterUserId: "00000000-0000-4000-8000-000000000001",
-      locationIds: ["11000000-0000-4000-8000-000000000001"],
-      now: new Date("2026-08-17T15:00:00.000Z"),
-    });
+    expect(result).toMatchObject({ due: 1, sent: 0, failed: 1 });
     expect(service.previewExport).not.toHaveBeenCalled();
     expect(delivery.send).not.toHaveBeenCalled();
-    expect(service.recordScheduledExportFailure).not.toHaveBeenCalled();
+    expect(service.recordScheduledExportFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: "Every location in this export was deleted.",
+        autoDisableAfter: 1,
+      }),
+    );
+  });
+
+  it("stops an export at once when its creator may no longer export those locations (BL-101)", async () => {
+    const service = scheduleServiceMock([scheduleCandidate()]);
+    service.previewExport.mockRejectedValueOnce(
+      new HttpError("Access denied", 403, {
+        pgCode: "42501",
+        reason: "authz.out_of_scope",
+      }),
+    );
+
+    const result = await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: { send: vi.fn() },
+    });
+
+    expect(result).toMatchObject({ due: 1, failed: 1 });
+    expect(service.recordScheduledExportFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error:
+          "The person who set up this export can no longer export these locations.",
+        autoDisableAfter: 1,
+      }),
+    );
+  });
+
+  it("never sends shift notes, even when the preset includes them (BL-330)", async () => {
+    const service = scheduleServiceMock([
+      scheduleCandidate({ settings: { ...settings, include_notes: true } }),
+    ]);
+    service.previewExport.mockResolvedValueOnce({
+      ...preview,
+      rows: [{ ...preview.rows[0]!, note: "Deniz: doctor at 9" }],
+    });
+    const attachments: Buffer[] = [];
+
+    await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: {
+        send: vi.fn(async (message) => {
+          attachments.push(message.attachment.content);
+        }),
+      },
+    });
+
+    expect(attachments).toHaveLength(1);
+    expect(attachments[0]!.toString("utf8")).toContain("Avery Stone");
+    expect(attachments[0]!.toString("utf8")).not.toContain("doctor at 9");
+    expect(service.recordScheduledExportSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({ include_notes: false }),
+      }),
+    );
   });
 });
 
-function scheduleServiceMock(candidates: ScheduledExportCronCandidate[]) {
+function scheduleServiceMock(
+  candidates: ScheduledExportCronCandidate[],
+  unreadable: { id: string; workspace_id: string }[] = [],
+) {
   return {
     listScheduledExportCronCandidates: vi.fn(async () => ({
       schedules: candidates,
+      unreadable,
     })),
-    revalidateScheduledExportCandidate: vi.fn(async () => true),
     previewExport: vi.fn(async () => preview),
     recordScheduledExportSuccess: vi.fn(async () => schedule),
     recordScheduledExportFailure: vi.fn(async () => schedule),
   } as unknown as ScheduleReadService & {
     listScheduledExportCronCandidates: ReturnType<typeof vi.fn>;
-    revalidateScheduledExportCandidate: ReturnType<typeof vi.fn>;
     previewExport: ReturnType<typeof vi.fn>;
     recordScheduledExportSuccess: ReturnType<typeof vi.fn>;
     recordScheduledExportFailure: ReturnType<typeof vi.fn>;

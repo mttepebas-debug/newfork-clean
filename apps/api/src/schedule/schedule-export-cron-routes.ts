@@ -37,14 +37,24 @@ export function registerScheduleExportCronRoutes(
             emailFrom: options.emailFrom ?? "schedule@newfork.local",
           })
         : null);
-    if (!delivery)
+    if (!delivery) {
+      // U63: without RESEND_API_KEY no scheduled export can leave; say so where the host logs it.
+      request.log.error(
+        "Scheduled exports cannot be emailed: RESEND_API_KEY is not set",
+      );
       return reply.status(503).send({ error: "Email delivery is not configured" });
+    }
 
     return reply.send(
       await runScheduledExportsCron({
         service: options.service,
         delivery,
         now: options.now?.(),
+        onUnrecordedFailure: (error, scheduleId) =>
+          request.log.error(
+            { err: error, scheduleId },
+            "Scheduled export failed and the failure could not be recorded",
+          ),
       }),
     );
   };

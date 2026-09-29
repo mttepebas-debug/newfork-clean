@@ -83,11 +83,12 @@ export const scheduledExportCronCandidateSchema = z.object({
   settings: scheduleExportSettingsSchema,
   name: z.string().trim().min(1).max(80),
   recipients: z.array(z.string().email()).min(1).max(10),
-  location_ids: z.array(z.string().uuid()).min(1).max(100),
+  // Only live locations (Q-C); empty when every one was deleted.
+  location_ids: z.array(z.string().uuid()).max(100),
   day_of_week: z.coerce.number().int().min(0).max(6),
   send_hour: z.coerce.number().int().min(0).max(23),
   timezone: z.string().trim().min(1).max(80),
-  week_start_day: z.enum(["sunday", "monday"]).default("monday"),
+  week_start_day: z.enum(["sunday", "monday"]),
   last_sent_at: z.string().datetime({ offset: true }).nullable(),
   consecutive_failures: z.coerce.number().int().nonnegative(),
 });
@@ -95,7 +96,11 @@ export type ScheduledExportCronCandidate = z.infer<
   typeof scheduledExportCronCandidateSchema
 >;
 const scheduledExportCronCandidateListSchema = z.object({
-  schedules: z.array(scheduledExportCronCandidateSchema),
+  schedules: z.array(z.unknown()),
+});
+const scheduledExportCronIdentitySchema = z.object({
+  id: z.string().uuid(),
+  workspace_id: z.string().uuid(),
 });
 const scheduleDraftDocumentConflictPreviewSchema = z.object({
   status: z.literal("ok"),
@@ -394,15 +399,11 @@ export interface ScheduleReadService {
     format: string;
     params: Record<string, unknown>;
   }): Promise<ScheduleRecentExportEvent>;
-  listScheduledExportCronCandidates(
-    now: Date,
-  ): Promise<{ schedules: ScheduledExportCronCandidate[] }>;
-  revalidateScheduledExportCandidate?(input: {
-    workspaceId: string;
-    requesterUserId: string;
-    locationIds: readonly string[];
-    now: Date;
-  }): Promise<boolean>;
+  listScheduledExportCronCandidates(now: Date): Promise<{
+    schedules: ScheduledExportCronCandidate[];
+    /** Rows that no longer parse; the cron switches them off and says so. */
+    unreadable: { id: string; workspace_id: string }[];
+  }>;
   recordScheduledExportSuccess(input: {
     workspaceId: string;
     scheduleId: string;
@@ -1219,91 +1220,20 @@ export function createScheduleReadService(options: {
         { target_now: now.toISOString() },
       );
       if (error) throw rpcFailure(error);
-      const result = scheduledExportCronCandidateListSchema.parse(data);
-      const workspaceIds = [
-        ...new Set(result.schedules.map((schedule) => schedule.workspace_id)),
-      ];
-      if (!workspaceIds.length) return result;
-      const { data: settings, error: settingsError } = await client
-        .from("workspace_scheduling_settings")
-        .select("workspace_id,week_start_day")
-        .in("workspace_id", workspaceIds);
-      if (settingsError) throw rpcFailure(settingsError);
-      const weekStartByWorkspace = new Map<string, "sunday" | "monday">(
-        (settings ?? []).map((row) => [
-          row.workspace_id,
-          row.week_start_day === "sunday" ? "sunday" : "monday",
-        ]),
-      );
-      return {
-        schedules: result.schedules.map((schedule) => ({
-          ...schedule,
-          week_start_day:
-            weekStartByWorkspace.get(schedule.workspace_id) ??
-            schedule.week_start_day,
-        })),
-      };
-    },
-    async revalidateScheduledExportCandidate(input) {
-      const { data: workspace, error: workspaceError } = await client
-        .from("workspaces")
-        .select("id,lifecycle_status,closure_effective_at")
-        .eq("id", input.workspaceId)
-        .maybeSingle();
-      if (workspaceError) throw rpcFailure(workspaceError);
-      if (!workspace) return false;
-      if (
-        workspace.lifecycle_status === "deleted" ||
-        (workspace.lifecycle_status === "closure_scheduled" &&
-          workspace.closure_effective_at &&
-          new Date(workspace.closure_effective_at).getTime() <=
-            input.now.getTime())
-      ) {
-        return false;
+      const schedules: ScheduledExportCronCandidate[] = [];
+      const unreadable: { id: string; workspace_id: string }[] = [];
+      // Row by row: one workspace's broken row must not stop the others (BL-272).
+      for (const row of scheduledExportCronCandidateListSchema.parse(data).schedules) {
+        const candidate = scheduledExportCronCandidateSchema.safeParse(row);
+        if (candidate.success) {
+          schedules.push(candidate.data);
+          continue;
+        }
+        // ponytail: a row without its own ids cannot exist (primary key), so it is not recorded.
+        const identity = scheduledExportCronIdentitySchema.safeParse(row);
+        if (identity.success) unreadable.push(identity.data);
       }
-
-      const { data: onboarding, error: onboardingError } = await client
-        .from("workspace_onboarding")
-        .select("status")
-        .eq("workspace_id", input.workspaceId)
-        .maybeSingle();
-      if (onboardingError) throw rpcFailure(onboardingError);
-      if (onboarding && onboarding.status !== "complete") return false;
-
-      const { data: membership, error: membershipError } = await client
-        .from("workspace_memberships")
-        .select("id,all_locations,status")
-        .eq("workspace_id", input.workspaceId)
-        .eq("user_id", input.requesterUserId)
-        .maybeSingle();
-      if (membershipError) throw rpcFailure(membershipError);
-      if (!membership || membership.status !== "active") return false;
-
-      const { data: canExport, error: permissionError } = await client.rpc(
-        "service_actor_has_permission",
-        {
-          actor_user_id: input.requesterUserId,
-          target_workspace_id: input.workspaceId,
-          permission_key: "schedule.export",
-        },
-      );
-      if (permissionError) throw rpcFailure(permissionError);
-      if (canExport !== true) return false;
-
-      if (membership.all_locations) return true;
-      const locationIds = [...new Set(input.locationIds)];
-      if (!locationIds.length) return true;
-      const { data: scopes, error: scopeError } = await client
-        .from("membership_location_scopes")
-        .select("location_id")
-        .eq("workspace_id", input.workspaceId)
-        .eq("membership_id", membership.id)
-        .in("location_id", locationIds);
-      if (scopeError) throw rpcFailure(scopeError);
-      return (
-        new Set((scopes ?? []).map((scope) => scope.location_id)).size ===
-        locationIds.length
-      );
+      return { schedules, unreadable };
     },
     async recordScheduledExportSuccess(input) {
       const { data, error } = await client.rpc(

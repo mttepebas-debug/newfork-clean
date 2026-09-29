@@ -1,3 +1,4 @@
+import { isValidIanaTimezone } from "@newfork/shared";
 import {
   prepareScheduleExport,
   renderScheduleCsv,
@@ -9,6 +10,8 @@ import type {
   ScheduleReadService,
   ScheduledExportCronCandidate,
 } from "./schedule-service";
+import { sendResendEmail } from "../email/resend-email.js";
+import { HttpError } from "../http-error.js";
 
 export const SCHEDULE_EXPORT_AUTO_DISABLE_FAILURES = 3;
 
@@ -19,7 +22,7 @@ export interface ScheduleExportDelivery {
     html: string;
     attachment: {
       filename: string;
-      content: string;
+      content: Buffer;
       contentType: string;
     };
   }): Promise<void>;
@@ -33,40 +36,67 @@ export interface ScheduledExportCronResult {
   skipped: number;
 }
 
+/**
+ * A failure that will fail the same way next week: the export is switched off
+ * at once and its screen says why, instead of retrying into silence (BL-225).
+ */
+class StoppedExport extends Error {}
+
+const UNREADABLE_EXPORT =
+  "This scheduled export's saved settings can no longer be read. Edit and save it again.";
+
 export async function runScheduledExportsCron(input: {
   service: ScheduleReadService;
   delivery: ScheduleExportDelivery;
   now?: Date;
+  /** Told when even recording a failure failed, so it is not lost. */
+  onUnrecordedFailure?: (error: unknown, scheduleId: string) => void;
 }): Promise<ScheduledExportCronResult> {
   const now = input.now ?? new Date();
   const candidates = await input.service.listScheduledExportCronCandidates(now);
   const result: ScheduledExportCronResult = {
-    checked: candidates.schedules.length,
+    checked: candidates.schedules.length + candidates.unreadable.length,
     due: 0,
     sent: 0,
     failed: 0,
     skipped: 0,
   };
 
-  for (const schedule of candidates.schedules) {
-    if (!isScheduledExportDue(schedule, now)) {
-      result.skipped += 1;
-      continue;
-    }
-
-    result.due += 1;
+  // One workspace's broken export never stops another's (BL-272).
+  const recordFailure = async (
+    schedule: { readonly id: string; readonly workspace_id: string },
+    error: unknown,
+  ) => {
+    result.failed += 1;
     try {
-      const stillAllowed =
-        !input.service.revalidateScheduledExportCandidate ||
-        (await input.service.revalidateScheduledExportCandidate({
-          workspaceId: schedule.workspace_id,
-          requesterUserId: schedule.created_by,
-          locationIds: schedule.location_ids,
-          now,
-        }));
-      if (!stillAllowed) {
+      await input.service.recordScheduledExportFailure({
+        workspaceId: schedule.workspace_id,
+        scheduleId: schedule.id,
+        error: (error as Error).message,
+        autoDisableAfter:
+          error instanceof StoppedExport
+            ? 1
+            : SCHEDULE_EXPORT_AUTO_DISABLE_FAILURES,
+      });
+    } catch (recordError) {
+      input.onUnrecordedFailure?.(recordError, schedule.id);
+    }
+  };
+
+  for (const unreadable of candidates.unreadable) {
+    await recordFailure(unreadable, new StoppedExport(UNREADABLE_EXPORT));
+  }
+
+  for (const schedule of candidates.schedules) {
+    try {
+      if (!isScheduledExportDue(schedule, now)) {
         result.skipped += 1;
         continue;
+      }
+      result.due += 1;
+      // The database already dropped deleted locations (Q-C).
+      if (!schedule.location_ids.length) {
+        throw new StoppedExport("Every location in this export was deleted.");
       }
 
       const weekStart = weekStartForTimezone(
@@ -74,21 +104,13 @@ export async function runScheduledExportsCron(input: {
         schedule.timezone,
         schedule.week_start_day,
       );
+      // Notes stay with a manual download; a scheduled email never carries them (BL-330).
+      const settings = { ...schedule.settings, include_notes: false };
       const preview = prepareScheduleExport(
-        await input.service.previewExport({
-          actorUserId: schedule.created_by,
-          workspaceId: schedule.workspace_id,
-          weekStart,
-          sourceType: "published",
-          sourceDraftId: null,
-          locationIds: schedule.location_ids,
-        }),
-        schedule.settings,
+        await previewAsCreator(input.service, schedule, weekStart),
+        settings,
       );
-      const rendered = await renderScheduledExportAttachment(
-        preview,
-        schedule.settings,
-      );
+      const rendered = await renderScheduledExportAttachment(preview, settings);
       const filename = `schedule-${weekStart}.${rendered.extension}`;
       const subject = `${schedule.workspace_name} schedule for ${weekStart}`;
       const html = `<p>${escapeHtml(schedule.name)} is attached.</p>`;
@@ -116,62 +138,85 @@ export async function runScheduledExportsCron(input: {
         workspaceId: schedule.workspace_id,
         scheduleId: schedule.id,
         sentAt: now,
-        format: schedule.settings.format,
+        format: settings.format,
         params: {
           week_start: weekStart,
-          layout: schedule.settings.layout,
+          layout: settings.layout,
           location_ids: schedule.location_ids,
+          include_notes: false,
           recipients: schedule.recipients.length,
           delivered,
         },
       });
       result.sent += 1;
     } catch (error) {
-      await input.service.recordScheduledExportFailure({
-        workspaceId: schedule.workspace_id,
-        scheduleId: schedule.id,
-        error: (error as Error).message,
-        autoDisableAfter: SCHEDULE_EXPORT_AUTO_DISABLE_FAILURES,
-      });
-      result.failed += 1;
+      await recordFailure(schedule, error);
     }
   }
 
   return result;
 }
 
+/**
+ * The export runs as the person who set it up; the authorization core decides
+ * inside the preview whether they still may (BL-101).
+ */
+async function previewAsCreator(
+  service: ScheduleReadService,
+  schedule: ScheduledExportCronCandidate,
+  weekStart: string,
+) {
+  try {
+    return await service.previewExport({
+      actorUserId: schedule.created_by,
+      workspaceId: schedule.workspace_id,
+      weekStart,
+      sourceType: "published",
+      sourceDraftId: null,
+      locationIds: schedule.location_ids,
+    });
+  } catch (error) {
+    if (error instanceof HttpError && error.reason?.startsWith("authz.")) {
+      throw new StoppedExport(
+        "The person who set up this export can no longer export these locations.",
+      );
+    }
+    throw error;
+  }
+}
+
 async function renderScheduledExportAttachment(
   preview: Parameters<typeof renderSchedulePrintHtml>[0],
   settings: Parameters<typeof renderSchedulePrintHtml>[1],
 ): Promise<{
-  readonly content: string;
+  readonly content: Buffer;
   readonly contentType: string;
   readonly extension: "csv" | "html" | "pdf" | "xlsx";
 }> {
   if (settings.format === "print") {
     return {
-      content: renderSchedulePrintHtml(preview, settings),
+      content: Buffer.from(renderSchedulePrintHtml(preview, settings), "utf8"),
       contentType: "text/html; charset=utf-8",
       extension: "html",
     };
   }
   if (settings.format === "pdf") {
     return {
-      content: renderSchedulePdf(preview, settings).toString("base64"),
+      content: renderSchedulePdf(preview, settings),
       contentType: "application/pdf",
       extension: "pdf",
     };
   }
   if (settings.format === "xlsx") {
     return {
-      content: (await renderScheduleWorkbook(preview, settings)).toString("base64"),
+      content: await renderScheduleWorkbook(preview, settings),
       contentType:
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       extension: "xlsx",
     };
   }
   return {
-    content: renderScheduleCsv(preview, settings),
+    content: Buffer.from(renderScheduleCsv(preview, settings), "utf8"),
     contentType: "text/csv; charset=utf-8",
     extension: "csv",
   };
@@ -189,6 +234,11 @@ export function isScheduledExportDue(
     now.getTime() - new Date(schedule.last_sent_at).getTime() < 20 * 60 * 60_000
   ) {
     return false;
+  }
+  if (!isValidIanaTimezone(schedule.timezone)) {
+    throw new StoppedExport(
+      `The time zone "${schedule.timezone}" is not a real time zone.`,
+    );
   }
   const parts = localDateTimeParts(now, schedule.timezone);
   return parts.weekday === schedule.day_of_week && parts.hour === schedule.send_hour;
@@ -212,31 +262,12 @@ export function createResendScheduleExportDelivery(input: {
   emailFrom: string;
 }): ScheduleExportDelivery {
   return {
-    async send(message) {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${input.resendApiKey}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          from: input.emailFrom,
-          to: [message.to],
-          subject: message.subject,
-          html: message.html,
-          attachments: [
-            {
-              filename: message.attachment.filename,
-              content: Buffer.from(message.attachment.content).toString("base64"),
-              content_type: message.attachment.contentType,
-            },
-          ],
-        }),
-      });
-      if (!response.ok) {
-        throw new Error(`Resend rejected schedule export: ${response.status}`);
-      }
-    },
+    send: (message) =>
+      sendResendEmail({
+        apiKey: input.resendApiKey,
+        failure: "Resend rejected schedule export",
+        message: { ...message, from: input.emailFrom },
+      }),
   };
 }
 

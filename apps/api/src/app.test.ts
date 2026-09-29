@@ -131,6 +131,7 @@ describe("api app", () => {
               consecutive_failures: 0,
             },
           ],
+          unreadable: [],
         }),
       }),
       scheduleExportCron: {
@@ -168,6 +169,26 @@ describe("api app", () => {
         }),
       }),
     );
+  });
+
+  it("refuses scheduled exports plainly when no email key is set (U63)", async () => {
+    const previous = process.env.RESEND_API_KEY;
+    delete process.env.RESEND_API_KEY;
+    try {
+      const app = buildApp({
+        scheduleService: scheduleServiceMock({}),
+        scheduleExportCron: { cronSecret: "cron-secret" },
+      });
+      const response = await app.inject({
+        method: "POST",
+        url: "/internal/cron/scheduled-exports",
+        headers: { authorization: "Bearer cron-secret" },
+      });
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({ error: "Email delivery is not configured" });
+    } finally {
+      if (previous !== undefined) process.env.RESEND_API_KEY = previous;
+    }
   });
 
   it("runs the notification outbox worker only with the cron secret", async () => {
@@ -3904,7 +3925,7 @@ function scheduleServiceMock(
       format: input.format,
       params: input.params,
     }),
-    listScheduledExportCronCandidates: async () => ({ schedules: [] }),
+    listScheduledExportCronCandidates: async () => ({ schedules: [], unreadable: [] }),
     recordScheduledExportSuccess: async (input) => ({
       ...scheduleExportScheduleMockModel(),
       workspace_id: input.workspaceId,

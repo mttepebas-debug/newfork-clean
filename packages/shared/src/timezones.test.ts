@@ -10,3 +10,20 @@ describe("location IANA timezone", () => {
     expect(availableIanaTimezones("invalid")).not.toContain("invalid");
   });
 });
+describe("scheduled export IANA timezone (BL-272)", () => {
+  it("refuses to save a scheduled export in a time zone that does not exist", async () => {
+    const { createScheduleExportScheduleInputSchema, updateScheduleExportScheduleInputSchema } = await import("./index");
+    const input = {
+      name: "Monday managers",
+      preset_id: "89000000-0000-4000-8000-000000000001",
+      recipients: ["manager@example.test"],
+      location_ids: ["11000000-0000-4000-8000-000000000001"],
+      day_of_week: 1,
+      send_hour: 8,
+      timezone: "America/Los_Angeles",
+    };
+    expect(createScheduleExportScheduleInputSchema.safeParse(input).success).toBe(true);
+    expect(createScheduleExportScheduleInputSchema.safeParse({ ...input, timezone: "Mars/Olympus_Mons" }).success).toBe(false);
+    expect(updateScheduleExportScheduleInputSchema.safeParse({ timezone: "Mars/Olympus_Mons" }).success).toBe(false);
+  });
+});

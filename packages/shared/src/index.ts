@@ -2257,7 +2257,7 @@ export const createScheduleExportScheduleInputSchema = z.object({
   location_ids: z.array(z.string().uuid()).min(1).max(100),
   day_of_week: z.coerce.number().int().min(0).max(6),
   send_hour: z.coerce.number().int().min(0).max(23),
-  timezone: z.string().trim().min(1).max(80),
+  timezone: z.string().trim().max(80).refine(isValidIanaTimezone, "Select a valid IANA time zone"),
 });
 export type CreateScheduleExportScheduleInput = z.infer<
   typeof createScheduleExportScheduleInputSchema

@@ -500,86 +500,65 @@ describe("createScheduleReadService realtime invalidation", () => {
     expect(mocks.send).not.toHaveBeenCalled();
   });
 
-  it("rejects scheduled export candidates for deleted workspaces before exporting", async () => {
-    const maybeSingle = vi.fn(async () => ({
-      data: {
-        id: workspaceId,
-        lifecycle_status: "deleted",
-        closure_effective_at: null,
+  it("reads each scheduled export on its own, so one unreadable row stops no one else (BL-272)", async () => {
+    const readable = {
+      id: "8a000000-0000-4000-8000-000000000001",
+      workspace_id: workspaceId,
+      workspace_name: "Meyhouse",
+      created_by: actorUserId,
+      preset_id: "89000000-0000-4000-8000-000000000001",
+      preset_name: "Payroll export",
+      settings: {
+        format: "csv",
+        layout: "weekly",
+        time_format: "12h",
+        include_unassigned: true,
+        include_notes: false,
+        include_scheduled_hours: true,
+        csv_delimiter: ",",
       },
+      name: "Monday managers",
+      recipients: ["manager@example.test"],
+      location_ids: [],
+      day_of_week: 1,
+      send_hour: 8,
+      timezone: "America/Los_Angeles",
+      week_start_day: "sunday",
+      last_sent_at: null,
+      consecutive_failures: 0,
+    };
+    const unreadable = {
+      ...readable,
+      id: "8a000000-0000-4000-8000-000000000002",
+      recipients: ["not an email"],
+    };
+    mocks.rpc.mockResolvedValueOnce({
+      data: { schedules: [unreadable, readable] },
       error: null,
-    }));
-    const eq = vi.fn(() => ({ maybeSingle }));
-    const select = vi.fn(() => ({ eq }));
-    mocks.from.mockReturnValueOnce({ select });
+    });
 
     const service = createScheduleReadService({
       url: "https://example.supabase.co",
       serviceRoleKey: "service-role",
     });
 
-    await expect(
-      service.revalidateScheduledExportCandidate?.({
-        workspaceId,
-        requesterUserId: actorUserId,
-        locationIds: [locationId],
-        now: new Date("2026-09-05T12:00:00.000Z"),
-      }),
-    ).resolves.toBe(false);
-
-    expect(mocks.from).toHaveBeenCalledTimes(1);
-    expect(mocks.from).toHaveBeenCalledWith("workspaces");
-    expect(select).toHaveBeenCalledWith(
-      "id,lifecycle_status,closure_effective_at",
+    const result = await service.listScheduledExportCronCandidates(
+      new Date("2026-09-05T12:00:00.000Z"),
     );
-    expect(eq).toHaveBeenCalledWith("id", workspaceId);
-  });
 
-  it("rejects scheduled export candidates for incomplete owner onboarding before exporting", async () => {
-    const workspaceMaybeSingle = vi.fn(async () => ({
-      data: {
-        id: workspaceId,
-        lifecycle_status: "active",
-        closure_effective_at: null,
-      },
-      error: null,
-    }));
-    const onboardingMaybeSingle = vi.fn(async () => ({
-      data: { status: "incomplete" },
-      error: null,
-    }));
-    const workspaceEq = vi.fn(() => ({ maybeSingle: workspaceMaybeSingle }));
-    const onboardingEq = vi.fn(() => ({
-      maybeSingle: onboardingMaybeSingle,
-    }));
-    const workspaceSelect = vi.fn(() => ({ eq: workspaceEq }));
-    const onboardingSelect = vi.fn(() => ({ eq: onboardingEq }));
-    mocks.from
-      .mockReturnValueOnce({ select: workspaceSelect })
-      .mockReturnValueOnce({ select: onboardingSelect });
-
-    const service = createScheduleReadService({
-      url: "https://example.supabase.co",
-      serviceRoleKey: "service-role",
-    });
-
-    await expect(
-      service.revalidateScheduledExportCandidate?.({
-        workspaceId,
-        requesterUserId: actorUserId,
-        locationIds: [locationId],
-        now: new Date("2026-09-05T12:00:00.000Z"),
-      }),
-    ).resolves.toBe(false);
-
-    expect(mocks.from).toHaveBeenCalledTimes(2);
-    expect(mocks.from).toHaveBeenNthCalledWith(1, "workspaces");
-    expect(mocks.from).toHaveBeenNthCalledWith(2, "workspace_onboarding");
-    expect(workspaceSelect).toHaveBeenCalledWith(
-      "id,lifecycle_status,closure_effective_at",
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "list_schedule_export_cron_candidates_service",
+      { target_now: "2026-09-05T12:00:00.000Z" },
     );
-    expect(onboardingSelect).toHaveBeenCalledWith("status");
-    expect(onboardingEq).toHaveBeenCalledWith("workspace_id", workspaceId);
+    expect(result.schedules.map((schedule) => schedule.id)).toEqual([readable.id]);
+    // Every location deleted: still listed, so the cron can say why it stopped.
+    expect(result.schedules[0]?.location_ids).toEqual([]);
+    expect(result.schedules[0]?.week_start_day).toBe("sunday");
+    expect(result.unreadable).toEqual([
+      { id: unreadable.id, workspace_id: workspaceId },
+    ]);
+    // The database hands over everything; no table is read with the service key.
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
   it("fails publish when the atomic publish and enqueue transaction is unavailable", async () => {
