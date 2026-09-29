@@ -215,6 +215,16 @@ describe("DraftDropdownMenu", () => {
       screen.getAllByRole("button", { name: /Edit live schedule/ }),
     ).toHaveLength(1);
     expect(screen.getByRole("button", { name: "View Plan A" })).toBe(rows[1]);
+    expect(
+      screen.getByRole("button", { name: "View Plan A" }).getAttribute(
+        "aria-describedby",
+      ),
+    ).toBeTruthy();
+    expect(
+      document.getElementById(
+        rows[1]?.getAttribute("aria-describedby") ?? "",
+      )?.textContent,
+    ).toContain("Published");
   });
 
   it("names a deleted live draft by the name it was published under", () => {

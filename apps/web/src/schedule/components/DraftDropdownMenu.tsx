@@ -14,7 +14,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { ConfirmButton } from "@newfork/ui";
-import { type JSX, useEffect, useRef, useState } from "react";
+import { type JSX, useEffect, useId, useRef, useState } from "react";
 
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../lib/scheduleActionButton";
 import { formatShortDateTime } from "../lib/scheduleDateTime";
@@ -97,6 +97,7 @@ export function DraftDropdownMenu({
 }: DraftDropdownMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const rowIdBase = useId();
   const label = triggerLabel.trim() || "New Schedule";
   const editDisabled = !canStartDraft || isStartingDraft;
   const publishedDraftId = publishedSchedule?.source_draft_id ?? null;
@@ -242,8 +243,10 @@ export function DraftDropdownMenu({
                       }
                       role="button"
                       tabIndex={0}
-                      // Its own name, so it does not borrow its buttons' ("Edit live schedule").
+                      // Its own name, so it does not borrow its buttons' ("Edit live schedule");
+                      // the status and meta line are read as its description.
                       aria-label={`View ${draft.name}`}
+                      aria-describedby={`${rowIdBase}-${draft.id}`}
                       onMouseEnter={() => onPrefetchDraft?.(draft.id)}
                       onFocus={() => onPrefetchDraft?.(draft.id)}
                       onClick={() => closeAfter(() => onPreviewDraft(draft.id))}
@@ -253,7 +256,7 @@ export function DraftDropdownMenu({
                         closeAfter(() => onPreviewDraft(draft.id));
                       }}
                     >
-                      <div>
+                      <div id={`${rowIdBase}-${draft.id}`}>
                         <span className="schedule-draft-menu-title-line">
                           <strong>{draft.name}</strong>
                           {active ? (
