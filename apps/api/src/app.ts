@@ -156,6 +156,7 @@ interface BuildAppOptions {
   readonly accountSecurityService?: AccountSecurityService | null;
   readonly passwordResetSender?: PasswordResetSender | null;
   readonly passwordResetClaim?: PasswordResetClaim | null;
+  readonly accountRecoveryResendClaim?: ((addressDigest: string) => Promise<boolean>) | null;
   readonly accountDeletionWorker?: AccountDeletionWorker | null;
   readonly accountDeletionCron?: {
     readonly cronSecret?: string;
@@ -504,7 +505,13 @@ export function buildApp(options: BuildAppOptions = {}) {
     }
   });
 
-  registerAccountSecurityRoutes(app, { service: accountSecurityService });
+  registerAccountSecurityRoutes(app, {
+    service: accountSecurityService,
+    claimRecoveryResend:
+      options.accountRecoveryResendClaim === undefined
+        ? createAccountRecoveryResendClaimFromEnvironment()
+        : options.accountRecoveryResendClaim,
+  });
   registerPasswordResetRoutes(app, {
     send:
       options.passwordResetSender === undefined
@@ -1020,6 +1027,24 @@ function createPasswordResetClaimFromEnvironment(): PasswordResetClaim | null {
     });
     if (error) throw new Error("Password reset limit could not be checked");
     return z.enum(["send", "quiet", "address_limited"]).parse(data);
+  };
+}
+
+function createAccountRecoveryResendClaimFromEnvironment():
+  | ((addressDigest: string) => Promise<boolean>)
+  | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  const client = createClient(url, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return async (addressDigest) => {
+    const { data, error } = await client.rpc("claim_account_recovery_resend_service", {
+      address_digest: addressDigest,
+    });
+    if (error) throw new Error("Account recovery resend limit could not be checked");
+    return z.boolean().parse(data);
   };
 }
 

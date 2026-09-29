@@ -31,7 +31,11 @@
 ## K3 — Kurtarma bağlantısı 15 dakikada bir yenilenir; cevap süresi sabit (KK-11, BL-279 (3))
 - **Karar:** `prepare_account_deletion_recovery_resend_service` son bağlantı 15 dakikadan yeniyse hiçbir şey
   yapmaz (null) → geçerli bağlantı ezilmez. Yeniden gönderme ucu her cevabı en az 1,5 sn'de verir; hesabın
-  var olup olmadığı süreden anlaşılmaz. Gönderim 1,5 sn'yi aşarsa fark görünür (nadir; `ponytail:` notu).
+  var olup olmadığı süreden anlaşılmaz.
+- **İnceleme düzeltmesi (nf-guvenlik ORTA, ONAY @1590a7b2 sonrası):** gönderim artık 1,2 sn'lik bütçeye bağlı ve
+  bütçede kesiliyor (`password-reset.ts` deseni; sinyal Resend'e kadar gidiyor) → yavaş gönderimde de cevap tabanda.
+  Çağıran adres başına saatte 10 yeniden gönderme isteği (`claim_account_recovery_resend_service`, `account.self`),
+  fazlası 429; adres sha256 özetiyle saklanıyor.
 - Eski yaşam döngüsü testi (`account_security_deletion_lifecycle`) anında yeniden gönderimi sınıyordu; bugünkü
   kurala göre son bağlantıyı 16 dakika eskiterek güncellendi.
 - **Geri alma:** düşük.

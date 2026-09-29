@@ -63,6 +63,7 @@ interface RecoveryEmailInput {
   readonly restoreUntil: string;
   readonly kind: "initial" | "day_7" | "last_24h" | "resend";
   readonly idempotencyKey: string;
+  readonly signal?: AbortSignal;
 }
 
 export type RecoveryEmailDelivery = (input: RecoveryEmailInput) => Promise<void>;
@@ -85,7 +86,8 @@ export interface AccountSecurityService {
   getAccountDeletionBlockers(accessToken: string): Promise<AccountDeletionBlocker[]>;
   requestAccountDeletion(accessToken: string, currentPassword: string): Promise<unknown>;
   restoreAccountDeletion(recoveryToken: string): Promise<{ status: "restored"; loginUrl: string }>;
-  resendAccountDeletionRecovery(email: string): Promise<void>;
+  /** `signal` cuts the send off when the route's time budget runs out. */
+  resendAccountDeletionRecovery(email: string, signal?: AbortSignal): Promise<void>;
 }
 
 const deletedAccountBanDuration = "876000h";
@@ -211,6 +213,7 @@ export function createAccountSecurityServiceWithClients(options: {
     payload: unknown,
     token: string,
     kind: RecoveryEmailInput["kind"],
+    signal?: AbortSignal,
   ) {
     const row = payload as {
       request_id: string;
@@ -223,6 +226,7 @@ export function createAccountSecurityServiceWithClients(options: {
       restoreUntil: row.restore_until,
       kind,
       idempotencyKey: `account-deletion-${row.request_id}-${kind}-${tokenDigest(token).slice(0, 16)}`,
+      signal,
     });
     await rpc("mark_account_deletion_email_sent_service", {
       target_request_id: row.request_id,
@@ -332,13 +336,13 @@ export function createAccountSecurityServiceWithClients(options: {
         loginUrl: `${options.appUrl.replace(/\/$/, "")}/sign-in`,
       };
     },
-    async resendAccountDeletionRecovery(email) {
+    async resendAccountDeletionRecovery(email, signal) {
       const token = recoveryToken();
       const result = await rpc("prepare_account_deletion_recovery_resend_service", {
         account_email: email.trim().toLowerCase(),
         recovery_token_digest: tokenDigest(token),
       });
-      if (result) await sendRecovery(result, token, "resend");
+      if (result) await sendRecovery(result, token, "resend", signal);
     },
   };
 }
@@ -363,6 +367,7 @@ export function createRecoveryEmailDelivery(options: {
     await sendResendEmail({
       apiKey: options.resendApiKey,
       failure: "Account recovery email delivery failed",
+      signal: input.signal,
       message: {
         from: options.emailFrom ?? "Newfork <security@newfork.app>",
         to: input.email,

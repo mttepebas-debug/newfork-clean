@@ -19,14 +19,15 @@
 --   already sent stays valid), ten per caller address an hour (429).
 -- * prepare_account_deletion_recovery_resend_service sends at most one new
 --   recovery link per fifteen minutes; inside that window the valid link is
---   left alone.
+--   left alone. claim_account_recovery_resend_service gives one caller ten
+--   resend requests an hour.
 --
 -- Example: someone who knows Ayse's email asks for her reset link ten times
 -- in a minute. One email goes out; the link in it keeps working.
 
 create table app_private.account_throttle_events (
   id bigint generated always as identity primary key,
-  kind text not null check (kind in ('password_failure', 'password_reset_email', 'password_reset_address')),
+  kind text not null check (kind in ('password_failure', 'password_reset_email', 'password_reset_address', 'recovery_resend_address')),
   -- A user id for password failures; a sha256 hex digest of the email or the
   -- caller address otherwise, so neither is stored.
   key_digest text not null,
@@ -123,6 +124,32 @@ end;
 $$;
 revoke all on function public.claim_password_reset_send_service(text, text) from public, anon, authenticated;
 grant execute on function public.claim_password_reset_send_service(text, text) to service_role;
+
+create function public.claim_account_recovery_resend_service(address_digest text)
+returns boolean
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+begin
+  if address_digest !~ '^[a-f0-9]{64}$' then
+    raise exception 'valid digest required' using errcode = '22023';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('recovery_resend:' || address_digest, 0));
+  delete from app_private.account_throttle_events e where e.at < now() - interval '1 day';
+  if (select count(*) from app_private.account_throttle_events e
+      where e.kind = 'recovery_resend_address' and e.key_digest = address_digest
+        and e.at > now() - interval '1 hour') >= 10 then
+    return false;
+  end if;
+  insert into app_private.account_throttle_events (kind, key_digest)
+  values ('recovery_resend_address', address_digest);
+  return true;
+end;
+$$;
+revoke all on function public.claim_account_recovery_resend_service(text) from public, anon, authenticated;
+grant execute on function public.claim_account_recovery_resend_service(text) to service_role;
 
 create or replace function public.prepare_account_deletion_recovery_resend_service(account_email text, recovery_token_digest text)
  returns jsonb

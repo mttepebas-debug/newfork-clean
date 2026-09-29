@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { notificationActionSchema } from "@newfork/shared";
 import { inboxQuery } from "../communications/communication-routes";
 import type { FastifyInstance, FastifyReply } from "fastify";
@@ -39,9 +40,17 @@ export function registerAccountSecurityRoutes(
     readonly service: AccountSecurityService | null;
     /** Every resend answer waits this long, so its time says nothing (BL-279). */
     readonly recoveryResendFloorMs?: number;
+    /** The resend's share of the floor; a send still running then is cut off. */
+    readonly recoveryResendBudgetMs?: number;
+    /**
+     * Whether this caller may ask for another resend (ten an hour), given a
+     * sha256 hex digest of its address. See claim_account_recovery_resend_service.
+     */
+    readonly claimRecoveryResend: ((addressDigest: string) => Promise<boolean>) | null;
   },
 ) {
   const resendFloorMs = options.recoveryResendFloorMs ?? 1_500;
+  const resendBudgetMs = options.recoveryResendBudgetMs ?? 1_200;
   app.get("/v1/account/notification-preferences", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
     if (!token) return reply.status(401).send({ error: "Bearer token required" });
@@ -217,16 +226,35 @@ export function registerAccountSecurityRoutes(
       const body = recoveryResendBody.safeParse(request.body);
       if (!body.success)
         return reply.status(400).send({ error: "Valid account email required" });
-      if (!options.service) return unavailable(reply);
+      if (!options.service || !options.claimRecoveryResend) return unavailable(reply);
       const service = options.service;
-      // ponytail: a send slower than the floor still shows; the database sends
-      // at most one link per fifteen minutes, so a slow send is rare.
-      await Promise.all([
-        service
-          .resendAccountDeletionRecovery(body.data.email)
-          .catch((error: unknown) => request.log.error(error)),
-        new Promise((resolve) => setTimeout(resolve, resendFloorMs)),
-      ]);
+      // Vercel sets x-real-ip to the caller's address; locally it is the socket.
+      const realIp = request.headers["x-real-ip"];
+      const address = (typeof realIp === "string" && realIp) || request.ip;
+      if (!(await options.claimRecoveryResend(sha256(address))))
+        return reply
+          .status(429)
+          .header("retry-after", "3600")
+          .send({ error: "Too many requests. Try again later." });
+
+      // As in password-reset.ts: the send gets a budget under the floor and is
+      // cut off at it, so every answer leaves at the floor, pending account or not.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), resendBudgetMs);
+      const cutOff = new Promise<never>((_resolve, reject) =>
+        controller.signal.addEventListener("abort", () =>
+          reject(new Error("Account recovery resend timed out")),
+        ),
+      );
+      const resend = Promise.race([
+        service.resendAccountDeletionRecovery(body.data.email, controller.signal),
+        cutOff,
+      ])
+        .catch((error: unknown) => {
+          request.log.error({ err: error }, "account recovery resend failed");
+        })
+        .finally(() => clearTimeout(timer));
+      await Promise.all([resend, new Promise((resolve) => setTimeout(resolve, resendFloorMs))]);
       return reply.status(202).send({ status: "accepted" });
     },
   );
@@ -263,4 +291,8 @@ function requestError(reply: FastifyReply, error: unknown) {
     return reply.status(status).send({ error: message });
   }
   return reply.status(400).send({ error: message });
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
 }

@@ -36,6 +36,7 @@ insert into service_class values
   ('assess_weekly_schedule_assignment_service', 'schedule.edit'),
   ('bulk_delete_schedule_edit_shifts_service', 'schedule.edit'),
   ('cancel_account_email_change_service', 'account.self'),
+  ('claim_account_recovery_resend_service', 'account.self'),
   ('claim_password_reset_send_service', 'account.self'),
   ('cancel_announcement_service', 'announcement.write'),
   ('cancel_workspace_closure_service', 'workspace.close'),

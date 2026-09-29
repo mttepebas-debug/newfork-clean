@@ -258,6 +258,21 @@ describe("account security service", () => {
     expect(order(auth.signOut as never)).toBeLessThan(order(deliverRecoveryEmail));
   });
 
+  it("hands the route's cut-off signal to the resent recovery email (G5 review)", async () => {
+    const { service, deliverRecoveryEmail } = serviceFixture({
+      resendResult: {
+        request_id: requestId,
+        email: "owner@example.test",
+        restore_until: "2026-10-13T12:00:00.000Z",
+      },
+    });
+    const signal = new AbortController().signal;
+    await service.resendAccountDeletionRecovery("Owner@Example.test", signal);
+    expect(deliverRecoveryEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "resend", signal }),
+    );
+  });
+
   it("restores from a one-time token without creating a session", async () => {
     const { service, auth, rpc } = serviceFixture();
     await expect(service.restoreAccountDeletion("recovery-token-value")).resolves.toEqual({

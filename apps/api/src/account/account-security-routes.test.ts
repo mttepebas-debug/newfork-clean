@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import type { AccountSecurityService } from "./account-security-service";
@@ -41,11 +42,17 @@ function service(overrides: Partial<AccountSecurityService> = {}): AccountSecuri
 async function appWith(
   accountSecurityService: AccountSecurityService | null,
   recoveryResendFloorMs = 0,
+  extra: {
+    recoveryResendBudgetMs?: number;
+    claimRecoveryResend?: (addressDigest: string) => Promise<boolean>;
+  } = {},
 ) {
   const app = Fastify();
   registerAccountSecurityRoutes(app, {
     service: accountSecurityService,
     recoveryResendFloorMs,
+    recoveryResendBudgetMs: extra.recoveryResendBudgetMs ?? 0,
+    claimRecoveryResend: extra.claimRecoveryResend ?? (async () => true),
   });
   await app.ready();
   return app;
@@ -186,6 +193,62 @@ describe("account security routes", () => {
     });
     expect(response.statusCode).toBe(202);
     expect(Date.now() - started).toBeGreaterThanOrEqual(75);
+    await app.close();
+  });
+
+  it("cuts a slow resend at its budget, so an account with a pending deletion answers like any other (G5 review)", async () => {
+    const signals: AbortSignal[] = [];
+    const resendAccountDeletionRecovery = vi.fn(
+      (email: string, signal?: AbortSignal) =>
+        new Promise<void>((resolve) => {
+          if (signal) signals.push(signal);
+          // Only the pending account's send is slow; the unknown email returns at once.
+          if (email === "unknown@example.test") resolve();
+        }),
+    );
+    const app = await appWith(service({ resendAccountDeletionRecovery }), 120, {
+      recoveryResendBudgetMs: 60,
+    });
+    const answers: { status: number; body: string; ms: number }[] = [];
+    for (const email of ["pending@example.test", "unknown@example.test"]) {
+      const started = Date.now();
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/account/security/deletion/recovery/resend",
+        payload: { email },
+      });
+      answers.push({ status: response.statusCode, body: response.body, ms: Date.now() - started });
+    }
+    expect(answers.map(({ status, body }) => ({ status, body }))).toEqual([
+      { status: 202, body: JSON.stringify({ status: "accepted" }) },
+      { status: 202, body: JSON.stringify({ status: "accepted" }) },
+    ]);
+    for (const { ms } of answers) {
+      expect(ms).toBeGreaterThanOrEqual(115);
+      expect(ms).toBeLessThan(400);
+    }
+    expect(signals[0]?.aborted).toBe(true);
+    await app.close();
+  });
+
+  it("refuses a caller over its hourly resend limit without looking up the email", async () => {
+    const resendAccountDeletionRecovery = vi.fn(async () => undefined);
+    const claimRecoveryResend = vi.fn(async () => false);
+    const app = await appWith(service({ resendAccountDeletionRecovery }), 0, {
+      claimRecoveryResend,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/account/security/deletion/recovery/resend",
+      headers: { "x-real-ip": "203.0.113.7" },
+      payload: { email: "owner@example.test" },
+    });
+    expect(response.statusCode).toBe(429);
+    expect(response.headers["retry-after"]).toBe("3600");
+    expect(claimRecoveryResend).toHaveBeenCalledWith(
+      createHash("sha256").update("203.0.113.7").digest("hex"),
+    );
+    expect(resendAccountDeletionRecovery).not.toHaveBeenCalled();
     await app.close();
   });
 

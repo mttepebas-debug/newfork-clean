@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(15);
 
 -- G5 (BL-283, BL-162, BL-279 (3), KK-11). Ayse's password is checked in the
 -- database, per account: five wrong guesses lock only her checks for fifteen
@@ -63,6 +63,13 @@ select is(pg_temp.resend()->>'user_id', tests.user('pw:can')::text, 'after fifte
 select is(
   (select recovery_token_digest from public.account_deletion_requests where user_id = tests.user('pw:can')),
   repeat('b', 64), 'and it replaces the old one');
+
+-- G5 review: one caller may ask for recovery resends ten times an hour.
+select is(
+  array(select public.claim_account_recovery_resend_service(encode(extensions.digest('198.51.100.9', 'sha256'), 'hex'))
+        from generate_series(1, 11)),
+  array[true, true, true, true, true, true, true, true, true, true, false],
+  'one caller gets ten recovery resends an hour, then is refused');
 
 select * from finish();
 rollback;
