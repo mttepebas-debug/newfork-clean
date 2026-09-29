@@ -38,7 +38,6 @@ import { filterScheduleModel, parseIds } from "../lib/scheduleFilterModel";
 import {
   calculateScheduleDayColumnMinWidth,
   countScheduleGridColumns,
-  countScheduleGridTotalColumns,
   createScheduleBadgeMeasurementVersion,
   createScheduleGridDays,
   createScheduleGridLocationGroups,
@@ -184,10 +183,6 @@ export function ScheduleGrid({
     locations: filtered.locations,
   });
   const columns = countScheduleGridColumns({ days, locationGroups });
-  const totalColumns = countScheduleGridTotalColumns({
-    columns,
-    showTotalHours,
-  });
   const {
     employeeRowGroups,
     fillerRowCount,
@@ -450,7 +445,6 @@ export function ScheduleGrid({
         showShiftTypePresets={showShiftTypePresets}
         showTotalHours={showTotalHours}
         showUnassignedRow={showUnassignedRow}
-        totalColumns={totalColumns}
         unassignedFrozen={unassignedFrozen}
         visibleShifts={filtered.shifts}
         visibleShiftTypes={filtered.shift_types}

@@ -305,9 +305,6 @@ describe("ScheduleGrid", () => {
       name: "Weekly published schedule",
     });
     const gridChildren = Array.from(grid.children);
-    const emptyRowIndex = gridChildren.findIndex((element) =>
-      element.classList.contains("schedule-empty-row"),
-    );
     const fillerIndex = gridChildren.findIndex(
       (element) =>
         element.getAttribute("data-schedule-filler-height-px") === "true",
@@ -317,12 +314,16 @@ describe("ScheduleGrid", () => {
         element.getAttribute("data-schedule-total-hours-row-label") === "true",
     );
 
-    expect(container.querySelector(".schedule-empty-row")?.textContent).toBe(
-      "No employees",
-    );
-    expect(emptyRowIndex).toBeGreaterThan(-1);
-    expect(fillerIndex).toBeGreaterThan(emptyRowIndex);
+    expect(screen.queryByText("No employees")).toBeNull();
+    expect(fillerIndex).toBeGreaterThan(-1);
     expect(totalIndex).toBeGreaterThan(fillerIndex);
+    const fillerDayCells = container.querySelectorAll(
+      "[data-schedule-filler-location-cell='true']",
+    );
+    expect(fillerDayCells.length).toBeGreaterThan(0);
+    for (const cell of fillerDayCells) {
+      expect(cell.getAttribute("data-schedule-grid-empty")).toBe("true");
+    }
     const weekTotal = container.querySelector(
       "[data-schedule-total-hours-week-cell='true']",
     );

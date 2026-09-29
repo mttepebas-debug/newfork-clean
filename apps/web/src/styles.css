@@ -5371,8 +5371,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   > .schedule-day-header[data-location-boundary="start"][data-today="true"] {
   box-shadow: inset 3px 0 var(--schedule-section-line-color);
 }
-.schedule-employee-cell,
-.schedule-empty-row {
+.schedule-employee-cell {
   min-height: var(--schedule-row-min-height, 94px);
   padding: 14px 13px;
   background: #fafbfa;
@@ -5544,6 +5543,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-total-cell.schedule-filler-cell {
   min-height: 0;
   background-color: #f2f5f2;
+}
+.schedule-filler-cell[data-schedule-grid-empty="true"] {
+  background-color: var(--theme-surface);
 }
 .schedule-grid-scroll[data-schedule-filler-state="active"]
   .schedule-filler-row-label,

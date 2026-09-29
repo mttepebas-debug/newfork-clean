@@ -137,7 +137,6 @@ function renderBody(
       showShiftTypePresets
       showTotalHours
       showUnassignedRow
-      totalColumns={2}
       unassignedFrozen
       visibleShifts={[]}
       visibleShiftTypes={model.shift_types.slice(0, 1)}
@@ -160,18 +159,18 @@ describe("ScheduleGridBody", () => {
     expect(screen.getByTestId("schedule-totals-row")).toBeTruthy();
   });
 
-  it("renders the no-employee body cells when rows are empty", () => {
+  it("renders only the filler row when there are no employees", () => {
     renderBody({
       employeeRowGroups: [],
       rows: [],
       showEmployeeGroups: false,
       showUnassignedRow: false,
       showTotalHours: false,
-      totalColumns: 3,
     });
 
-    expect(screen.getByText("No employees")).toBeTruthy();
-    expect(document.querySelectorAll(".schedule-cell")).toHaveLength(3);
+    expect(screen.queryByText("No employees")).toBeNull();
+    expect(document.querySelectorAll(".schedule-cell")).toHaveLength(0);
+    expect(screen.getAllByTestId("schedule-filler-row")).toHaveLength(1);
     expect(screen.queryByTestId("schedule-totals-row")).toBeNull();
   });
 });

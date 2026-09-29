@@ -11,10 +11,12 @@ type ScheduleGridLocation = ScheduleLocation & {
 export function ScheduleFillerRow({
   locations,
   days,
+  empty = false,
   showTotalHours,
 }: {
   readonly locations: readonly ScheduleGridLocation[];
   readonly days: readonly string[];
+  readonly empty?: boolean;
   readonly showTotalHours: boolean;
 }) {
   return (
@@ -35,6 +37,7 @@ export function ScheduleFillerRow({
               locationIndex > 0 && dayIndex === 0 ? "start" : undefined
             }
             data-schedule-filler-location-cell="true"
+            data-schedule-grid-empty={empty ? "true" : undefined}
             aria-hidden="true"
           />
         )),

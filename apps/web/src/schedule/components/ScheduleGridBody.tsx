@@ -76,7 +76,6 @@ export function ScheduleGridBody({
   showShiftTypePresets,
   showTotalHours,
   showUnassignedRow,
-  totalColumns,
   unassignedFrozen,
   visibleShifts,
   visibleShiftTypes,
@@ -156,7 +155,6 @@ export function ScheduleGridBody({
   readonly showShiftTypePresets: boolean;
   readonly showTotalHours: boolean;
   readonly showUnassignedRow: boolean;
-  readonly totalColumns: number;
   readonly unassignedFrozen: boolean;
   readonly visibleShifts: readonly ScheduleShift[];
   readonly visibleShiftTypes: ScheduleReadModel["shift_types"];
@@ -287,21 +285,12 @@ export function ScheduleGridBody({
             </Fragment>
           ))
         : rows.map(renderEmployeeRow)}
-      {!rows.length ? (
-        <>
-          <div className="schedule-empty-row schedule-grid-sticky">
-            No employees
-          </div>
-          {Array.from({ length: totalColumns }, (_, index) => (
-            <div className="schedule-cell" key={index} />
-          ))}
-        </>
-      ) : null}
       {Array.from({ length: fillerRowCount }, (_, rowIndex) => (
         <ScheduleFillerRow
           key={`schedule-filler-${rowIndex}`}
           locations={locations}
           days={days}
+          empty={!rows.length}
           showTotalHours={showTotalHours}
         />
       ))}

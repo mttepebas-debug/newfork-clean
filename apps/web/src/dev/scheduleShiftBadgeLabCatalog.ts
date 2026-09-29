@@ -543,15 +543,6 @@ export const labTargets: readonly LabTargetDefinition[] = [
     "Open-shift day cell in the unassigned row.",
   ),
   target(
-    "emptyGridCell",
-    "cells",
-    "No-employees grid cell",
-    ".schedule-empty-row ~ .schedule-cell",
-    allBoxGroups,
-    baseState,
-    "Anonymous day cell rendered when the grid has no employee rows.",
-  ),
-  target(
     "employeeName",
     "rows",
     "Employee name",
@@ -685,15 +676,6 @@ export const labTargets: readonly LabTargetDefinition[] = [
     allBoxGroups,
     baseState,
     "Total-column cell at the end of a role or preset row.",
-  ),
-  target(
-    "emptyRowLabel",
-    "rows",
-    "No employees label",
-    ".schedule-empty-row",
-    allBoxGroups,
-    baseState,
-    "Sticky No employees row label.",
   ),
   target(
     "fillerRowLabel",

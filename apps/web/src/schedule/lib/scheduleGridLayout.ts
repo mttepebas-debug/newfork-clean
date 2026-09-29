@@ -110,16 +110,6 @@ export function countScheduleGridColumns({
   return Math.max(1, locationGroups.length * days.length);
 }
 
-export function countScheduleGridTotalColumns({
-  columns,
-  showTotalHours,
-}: {
-  readonly columns: number;
-  readonly showTotalHours: boolean;
-}): number {
-  return columns + (showTotalHours ? 1 : 0);
-}
-
 /**
  * The narrowest day that shows every card title without splitting a word:
  * each card's longest word plus what the card and its cell take around the

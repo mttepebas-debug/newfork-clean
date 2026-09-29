@@ -6,7 +6,6 @@ import {
   countScheduleGridBodyRows,
   countScheduleGridColumns,
   countScheduleGridFillerRows,
-  countScheduleGridTotalColumns,
   createScheduleBadgeMeasurementVersion,
   createScheduleGridDays,
   createScheduleGridLocationGroups,
@@ -123,12 +122,6 @@ describe("scheduleGridLayout", () => {
         locationGroups: groups,
       }),
     ).toBe(4);
-    expect(
-      countScheduleGridTotalColumns({
-        columns: 4,
-        showTotalHours: true,
-      }),
-    ).toBe(5);
     expect(
       calculateScheduleDayColumnMinWidth({
         editing: true,
