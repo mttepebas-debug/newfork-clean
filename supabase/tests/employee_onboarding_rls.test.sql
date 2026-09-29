@@ -254,8 +254,9 @@ select is(public.save_employee_onboarding_profile_service(
   ), 1), 2, 'private profile save advances revision');
 select is((select status::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'profile'), 'completed', 'profile requirement completes');
 set local role postgres;
-select is((select phone from public.employee_private_profiles where employee_id = '47000000-0000-4000-8000-000000000001'), '3105550100', 'submitted workspace phone wins over the account suggestion');
-select is((select phone from public.user_profiles where user_id = '17000000-0000-4000-8000-000000000003'), '3105559999', 'onboarding does not overwrite an existing global account phone');
+-- BL-335 / KK-7: the legacy phone column is not the account phone; phone_e164 is.
+select is((select phone from public.employee_private_profiles where employee_id = '47000000-0000-4000-8000-000000000001'), '+13105550100', 'the record carries the account phone the onboarding number filled');
+select is((select phone_e164 from public.user_profiles where user_id = '17000000-0000-4000-8000-000000000003'), '+13105550100', 'onboarding fills an empty account phone in E.164');
 set local role service_role;
 select throws_ok(
   $$select public.save_employee_onboarding_profile_service(

@@ -194,8 +194,8 @@ select ok(
   'a personal phone is not invented to satisfy the row'
 );
 
--- Your own number, on your own record. Onboarding takes it once and nothing
--- gives it back; an owner is never asked for it at all.
+-- Your own number is your account's (BL-335 / KK-7). The owner's account has
+-- none yet, so the personal phone fills it and the record copies it.
 select public.save_own_employment_contact_service(
   '14000000-0000-4000-8000-000000000001',
   (select workspace_id from owner_record_target),
@@ -205,8 +205,8 @@ select public.save_own_employment_contact_service(
 select is(
   (select phone from public.employee_private_profiles
    where employee_id = (select id from owner_employee limit 1)),
-  '3105550102',
-  'a personal phone can be written after the fact'
+  '+13105550102',
+  'a personal phone reaches the record through the empty account it fills'
 );
 select throws_ok(
   $$select public.save_own_employment_contact_service(

@@ -16,10 +16,11 @@ select public.initialize_employee_onboarding_service('75000000-0000-4000-8000-00
 select is(public.save_employee_onboarding_profile_service('75000000-0000-4000-8000-000000000001',
  '{"legal_first_name":"Test","legal_last_name":"Person","phone":"4155550123","emergency_contact_name":"Example","emergency_contact_relationship":"Friend","emergency_contact_phone":"4155550100"}'::jsonb,1),2,
  'workspace phone is accepted independently');
-select is((select phone from public.employee_private_profiles where employee_id='75000000-0000-4000-8000-000000000301'),'4155550123','account phone never overrides submitted workspace phone');
-select is((select phone from public.user_profiles where user_id='75000000-0000-4000-8000-000000000001'),'3105559999','workspace save never changes global phone');
-update public.user_profiles set phone='3105550123' where user_id='75000000-0000-4000-8000-000000000001';
-select is((select phone from public.employee_private_profiles where employee_id='75000000-0000-4000-8000-000000000301'),'4155550123','later global phone edit leaves workspace phone unchanged');
+-- BL-335 / KK-7: the account is the phone's only source; the record copies it.
+select is((select phone_e164 from public.user_profiles where user_id='75000000-0000-4000-8000-000000000001'),'+14155550123','an account without an E.164 phone takes the onboarding number');
+select is((select phone from public.employee_private_profiles where employee_id='75000000-0000-4000-8000-000000000301'),'+14155550123','the record carries the account phone');
+update public.user_profiles set phone_e164='+13105550123' where user_id='75000000-0000-4000-8000-000000000001';
+select is((select phone from public.employee_private_profiles where employee_id='75000000-0000-4000-8000-000000000301'),'+13105550123','a later account phone edit reaches the record');
 update public.employee_private_profiles set avatar_object_path='75000000-0000-4000-8000-000000000101/75000000-0000-4000-8000-000000000301/75000000-0000-4000-8000-000000000401.png' where employee_id='75000000-0000-4000-8000-000000000301';
 select is(public.get_own_employee_avatar_path_service('75000000-0000-4000-8000-000000000001','75000000-0000-4000-8000-000000000101'),
  '75000000-0000-4000-8000-000000000101/75000000-0000-4000-8000-000000000301/75000000-0000-4000-8000-000000000401.png','self photo projection returns only own tenant path');
