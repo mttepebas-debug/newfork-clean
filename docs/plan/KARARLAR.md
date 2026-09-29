@@ -177,6 +177,10 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
 - Düzenleme kilidi yalnız taslakta; başkası düzenliyorsa "Draft is being
   edited" kimin düzenlediğini söyler. Taslak başladıktan sonra yayını değişen
   lokasyon Publish penceresinde uyarı satırı alır; engel değil.
+- Telefonda Export yok (kullanıcı kararı 2026-09-16): ≤720px'te Export
+  düğmesi gizli (`schedule/export-v2/export-v2.css:60`); dışa aktarma
+  masaüstünden yapılır. Karar o gün ≤760px için verildi, eşik UI-14 ile
+  720'ye indi.
 
 ### Schedule → Requests
 - İzin verisi, izin okuyabilen herkese iki sekmede de yüklenir: "Time off"
