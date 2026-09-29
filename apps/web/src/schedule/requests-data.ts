@@ -4,8 +4,13 @@ import {
   scheduleRequestsReadModelSchema,
   type TimeOffDecisionInput,
 } from "@newfork/shared/schedule";
-import { getTabWorkspaceId, supabaseClient } from "../lib/supabase";
-import { timeOffAssignmentPreviewSchema, type TimeOffAssignmentPreviewInput } from "@newfork/shared";
+import { apiRequest, getTabWorkspaceId, supabaseClient } from "../lib/supabase";
+import {
+  timeOffAssignmentPreviewSchema,
+  timeOffShortenResultSchema,
+  type TimeOffAssignmentPreviewInput,
+  type TimeOffShortenInput,
+} from "@newfork/shared";
 
 async function request(
   _workspaceId: string,
@@ -86,4 +91,11 @@ export async function previewTimeOffAssignment(workspaceId: string, requestId: s
   return timeOffAssignmentPreviewSchema.parse(await request(workspaceId, `/time-off/${requestId}/assignment-preview`, {
     method: "POST", body: JSON.stringify(decision),
   }));
+}
+
+/** BL-127: a manager gives back hours of approved time off; the core decides who may. */
+export async function shortenTimeOff(workspaceId: string, requestId: string, change: TimeOffShortenInput) {
+  if (!supabaseClient) throw new Error("Schedule request storage is not configured");
+  return timeOffShortenResultSchema.parse(await apiRequest(supabaseClient,
+    `/v1/workspaces/${workspaceId}/time-off/${requestId}/shorten`, { method: "POST", body: JSON.stringify(change) }));
 }
