@@ -122,6 +122,37 @@ select is(pg_temp.prepare_as('ayse', 'baris', 'employee'), '42501 authz.out_of_s
 select is(pg_temp.prepare_as('ayse', 'nobody', 'employee'), '42501 authz.out_of_scope', 'somebody unknown gets the same answer');
 select is(pg_temp.prepare_as('ayse', 'pelin', 'manager'), '42501 authz.rank', 'nor with a role at their own rank');
 
+-- Inviting again takes back the invitation waiting before it: only one the
+-- actor could take back themselves (nf-guvenlik O-2). The owner invites Pat
+-- as a manager; Ayse, a manager at the same location, may not replace it with
+-- an employee invitation of her own. Asked as the API asks (service_role).
+select tests.person('m', 'pat', 'manager', array['K'], array['cook'], 'pending');
+create function pg_temp.as_api(statement text) returns text language plpgsql as $$
+declare
+  code text;
+  reason text;
+begin
+  set local role service_role;
+  execute statement;
+  reset role;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint;
+  return code || ' ' || coalesce(reason, '');
+end;
+$$;
+select is(
+  pg_temp.as_api(format($f$select public.prepare_employee_invitation_service(%L, %L, %L, %L, %L, %L, now() + interval '7 days')$f$,
+    pg_temp.actor('ayse'), tests.id('m'), tests.id('m:pat'), 'pat.again@world.test',
+    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'employee'),
+    encode(extensions.digest(gen_random_uuid()::text, 'sha256'), 'hex'))),
+  '42501 authz.rank', 'a manager does not replace the owner''s manager invitation with one of her own'
+);
+select is(
+  (select array_agg(i.status::text) from public.employee_invitations i where i.employee_id = tests.id('m:pat')),
+  array['pending'], 'the owner''s invitation is still waiting'
+);
+
 -- Setting up the workspace is the owner's (BL-242): the four services of the
 -- owner's invitation list ask the core and say why they refuse.
 select is(pg_temp.refusal(format('select public.reset_owner_onboarding_service(%L, %L)', pg_temp.actor('zeynep'), tests.id('m'))),
