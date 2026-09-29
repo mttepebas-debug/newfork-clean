@@ -272,3 +272,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Ek (aynı gün, `nf-db` ölçümü):** çalışan sistem rolü her workspace'te `workspace.read` tutuyor, yani eski kapı çalışana düzen kaydettiriyordu; ama çalışan panoyu açamıyor, kayıt yalnız API'den mümkündü. Karar: servis `workspace.todos`'a sorar; çalışan kullanamadığı bu yazmayı kaybeder (`missing_permission`), kapalı workspace ve belge engeli ret (KK-34 D2 gibi). Yeni `workspace.layout` eylemi reddedildi (katalog + matris maliyeti, ekranı olmayan hak).
 - **Durum:** uygulanıyor (`.7b-db`, `.7b`).
+
+### KK-37 (2026-09-30) `.7b` görsel QA'sının çekmece kısmı main'den sonra; oturum havuzu bitiyor
+- **Karar (QA):** `.7b` + `.7b-db` main'e `nf-guvenlik` ONAY + dal CI yeşil ile girer; çekmecenin (Employment, Access, Profile) görsel QA'sı main'e girince yapılır. Neden: çekmece yeni migration'ın (`20260930180000`) alanlarını zorunlu okuyor; migration ortak yerel DB'ye yalnız main'e göndermeden hemen önce uygulanır (kullanıcı kararı 2026-09-26). Employee Hub kısmı migration'sız bakıldı. QA değişiklik isterse ayrı düzeltme dalı (KK-22 / G9b kalıbı).
+- **Durum (havuz):** "Bekle: … (N)" havuzunda yalnız (30) kaldı ve koordinatör devrine ayrıldı; bu oturumdan yeni oturum açılamıyor. `nf-planlama` %55'e kadar sürer, sonra alt ajanla. Kullanıcı dönüşünde havuzu yenilemeli.
+- **Geri alma:** kolay.
