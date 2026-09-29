@@ -4,6 +4,7 @@ import {
   ExchangeError,
   getExchangePreview,
 } from "./exchange-data";
+import { isNoAccess } from "../../lib/no-access";
 
 vi.mock("../../lib/supabase", () => ({
   supabaseClient: {},
@@ -82,4 +83,24 @@ describe("Exchange errors preserve decision semantics", () => {
       ).rejects.toMatchObject({ status, message });
     },
   );
+});
+
+// BL-213: the API says no with an authz key; the error keeps it, so the
+// screen can tell "you may not" from any other failure (isNoAccess).
+describe("Exchange errors keep the API's refusal key", () => {
+  it.each([
+    [403, "authz.out_of_scope"],
+    [404, "authz.not_member"],
+  ])("reads a %i with %s as no access", async (status, reason) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "Not allowed", reason, detail: "exchange.approve" }), { status }),
+      ),
+    );
+    const error = await getExchangePreview("workspace", "case", "application").catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(ExchangeError);
+    expect(error).toMatchObject({ status, reason, detail: "exchange.approve" });
+    expect(isNoAccess(error)).toBe(true);
+  });
 });

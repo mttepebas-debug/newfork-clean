@@ -4,9 +4,9 @@ import {
   acceptEmployeeInvitation,
   acceptPendingEmployeeInvitation,
   declinePendingEmployeeInvitation,
-  InvitationError,
   loadEmployeeReferenceData,
 } from "./employee-data";
+import { InvitationError } from "./invitation-error";
 import { firstJobOutsideManagement } from "./employee-create-flow";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";

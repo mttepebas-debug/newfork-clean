@@ -12,9 +12,9 @@ import { hubPath } from "../auth/resolveLanding";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import {
   acceptEmployeeInvitation,
-  InvitationError,
   previewEmployeeInvitation,
 } from "./employee-data";
+import { InvitationError } from "./invitation-error";
 
 /** Every way an invitation link can end, one screen each. */
 type Outcome =

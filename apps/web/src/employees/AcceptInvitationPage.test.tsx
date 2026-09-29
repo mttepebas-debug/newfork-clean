@@ -11,9 +11,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AcceptInvitationPage from "./AcceptInvitationPage";
 import {
   acceptEmployeeInvitation,
-  InvitationError,
   previewEmployeeInvitation,
 } from "./employee-data";
+import { InvitationError } from "./invitation-error";
 
 // Mutable, so a test can render the page signed out.
 const auth = vi.hoisted(() => ({
@@ -26,16 +26,10 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => auth,
 }));
 
-vi.mock("./employee-data", async () => {
-  const actual = await vi.importActual<typeof import("./employee-data")>(
-    "./employee-data",
-  );
-  return {
-    InvitationError: actual.InvitationError,
-    acceptEmployeeInvitation: vi.fn(),
-    previewEmployeeInvitation: vi.fn(),
-  };
-});
+vi.mock("./employee-data", () => ({
+  acceptEmployeeInvitation: vi.fn(),
+  previewEmployeeInvitation: vi.fn(),
+}));
 
 function LocationProbe() {
   const location = useLocation();

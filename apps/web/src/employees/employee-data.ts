@@ -20,7 +20,6 @@ import {
   type PreferredNameApproval,
   type PreferredNameOutcome,
   type AccountPendingInvitation,
-  type InvitationFailureCode,
   type InvitationPreview,
   type EmployeeDetail,
   type EmployeeInput,
@@ -34,6 +33,7 @@ import {
   newforkApiUrl,
   supabaseClient,
 } from "../lib/supabase";
+import { InvitationError } from "./invitation-error";
 
 export interface EmployeeOption {
   readonly id: string;
@@ -380,17 +380,6 @@ export async function removeEmployeeAccess(
     throw new Error(
       body.error ?? "Employee workspace access could not be removed",
     );
-  }
-}
-
-/** An invitation that could not be answered, carrying the server's word for why. */
-export class InvitationError extends Error {
-  readonly code: InvitationFailureCode;
-
-  constructor(code: InvitationFailureCode) {
-    super(code);
-    this.name = "InvitationError";
-    this.code = code;
   }
 }
 

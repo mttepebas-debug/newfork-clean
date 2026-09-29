@@ -8,18 +8,20 @@ import {
 } from "@newfork/shared";
 import { scheduleEditSessionSchema } from "@newfork/shared/schedule";
 import type { QueryClient } from "@tanstack/react-query";
+import { RequestError, requestFailure } from "../../lib/request-error";
 import {
   getApiAccessToken,
   newforkApiUrl,
   supabaseClient,
 } from "../../lib/supabase";
 
-export class ExchangeError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
+/** A Shift changes request the API refused: a RequestError, so isNoAccess reads its key. */
+export class ExchangeError extends RequestError {
+  declare readonly status: number;
+
+  constructor(message: string, status: number, reason?: string, detail?: string) {
+    super(message, reason, detail, status);
+    this.name = "ExchangeError";
   }
 }
 function errorMessage(data: unknown) {
@@ -71,8 +73,10 @@ async function request(
     },
   );
   const data: unknown = await response.json();
-  if (!response.ok)
-    throw new ExchangeError(errorMessage(data), response.status);
+  if (!response.ok) {
+    const refusal = requestFailure(data, response.status, "Unable to load shift changes");
+    throw new ExchangeError(errorMessage(data), response.status, refusal.reason, refusal.detail);
+  }
   return data;
 }
 export const getExchanges = async (
