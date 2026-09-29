@@ -4,9 +4,9 @@
 -- 1. private_contact was null both when the reader may not read private data
 --    and when there is simply nothing on file yet, so the screen hid the
 --    fields from an owner looking at somebody who had not finished onboarding.
---    Now null means only "may not read"; nothing on file reads as the empty
---    profile a new row starts as (no legal name, column defaults), which the
---    shared employeeDetailSchema already parses.
+--    Now null means only "may not read"; nothing on file reads as an empty
+--    profile (no name keys, nothing given, '' and false where the shared
+--    employeeDetailSchema needs a value), which that schema already parses.
 -- 2. allowed.invite said yes for a record whose account is already linked (or
 --    that is archived), which the invite command refuses (P0002). It now
 --    answers as the command does, so the drawer's Invite follows it.
@@ -78,15 +78,16 @@ begin
     'is_remote', employee.is_remote,
     'is_excluded_from_schedule', employee.is_excluded_from_schedule,
     -- null only when the reader may not read it. Somebody with nothing on file
-    -- yet reads as the empty profile a new row starts as: no legal name, the
-    -- column defaults, nothing given (7b QA finding 1).
+    -- yet reads as an empty profile: no names, nothing given, the defaults the
+    -- shared employeeDetailSchema needs (7b QA finding 1, shape agreed with
+    -- nf-backend).
     'private_contact', case
       when not reads_private then null
       else jsonb_strip_nulls(jsonb_build_object(
         'legal_first_name', private_profile.legal_first_name,
-        'legal_last_name', private_profile.legal_last_name
+        'legal_last_name', private_profile.legal_last_name,
+        'preferred_name', private_profile.preferred_name
       )) || jsonb_build_object(
-        'preferred_name', coalesce(private_profile.preferred_name, ''),
         'phone', private_profile.phone,
         'street_address', private_profile.street_address,
         'city', private_profile.city,

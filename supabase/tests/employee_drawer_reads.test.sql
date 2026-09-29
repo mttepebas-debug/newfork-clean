@@ -121,12 +121,12 @@ select is(pg_temp.detail('owner', 'emre') -> 'private_contact' ->> 'phone', '+14
   'with what he gave in onboarding');
 select is(pg_temp.detail('owner', 'pia') -> 'private_contact',
   jsonb_build_object(
-    'preferred_name', '', 'phone', null, 'street_address', null, 'city', null, 'region', null,
+    'phone', null, 'street_address', null, 'city', null, 'region', null,
     'postal_code', null, 'country_code', null, 'date_of_birth', null,
     'emergency_contact_name', null, 'emergency_contact_relationship', null,
     'emergency_contact_phone', null, 'emergency_contact_email', '',
     'share_phone_with_teammates', false, 'share_email_with_teammates', false),
-  'the owner reads an empty private profile for Pia, who has none on file yet: no legal name, nothing given');
+  'the owner reads an empty private profile for Pia, who has none on file yet: no names, nothing given');
 select is(pg_temp.detail('ayse', 'emre') -> 'private_contact', 'null'::jsonb,
   'a manager without private read reads null, though Emre''s profile is on file');
 select is(pg_temp.detail('ayse', 'pia') -> 'private_contact', 'null'::jsonb,
