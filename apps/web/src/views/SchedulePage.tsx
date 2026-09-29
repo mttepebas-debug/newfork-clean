@@ -131,6 +131,7 @@ import {
   removeDraft,
   type DraftsCacheSnapshot,
 } from "../schedule/lib/draftSaveFlow";
+import { followUpAfterUnpublish } from "../schedule/lib/scheduleUnpublishFollowUp";
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButton";
 import { templateAppliedDescription } from "../schedule/lib/templateApplyMessage";
 import { resolveScheduleShiftSelectionIds } from "../schedule/lib/scheduleShiftSelection";
@@ -3172,17 +3173,16 @@ export function SchedulePage({
               );
               setUnpublishOpen(false);
               invalidateScheduleCaches(null);
-              const refreshedDrafts = await refreshDrafts();
-              const previewDraftId =
-                (activeDraftId &&
-                refreshedDrafts.some((draft) => draft.id === activeDraftId)
-                  ? activeDraftId
-                  : refreshedDrafts[0]?.id) ?? null;
-              if (previewDraftId) {
-                await previewDraftFromMenu(previewDraftId);
-              } else {
-                setScheduleMode("preview", null);
-              }
+              await followUpAfterUnpublish({
+                activeDraftId,
+                refreshDrafts,
+                previewDraft: previewDraftFromMenu,
+                showPublished: () => setScheduleMode("preview", null),
+                onError: (error) =>
+                  setOperationError(
+                    `Schedule unpublished, but the view did not refresh: ${(error as Error).message}`,
+                  ),
+              });
               void refreshPublicationStatus();
               void query.refetch();
             } finally {
