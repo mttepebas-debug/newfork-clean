@@ -19,3 +19,15 @@ export function scheduleGates(context: ActiveWorkspaceContext | null | undefined
     manageLocations: can(context, "settings.locations.write"),
   };
 }
+
+/**
+ * Unpublish sits beside Publish: only someone who may publish this week
+ * gets it, and only while a location is live (BL-302). The draft menu used
+ * to offer it on liveness alone, so a manager who may only edit saw it.
+ */
+export function canUnpublishSchedule(
+  canPublishSchedule: boolean,
+  hasPublishedSchedule: boolean,
+): boolean {
+  return canPublishSchedule && hasPublishedSchedule;
+}
