@@ -198,3 +198,38 @@ içinde (hiçbir DB'ye uygulanmadı). Testler: yeni `people_behind_the_catalog_a
 - Test koşucusu notu: ortak DB'ye kalıcı iz bırakmadan koşmak için migration + `builder.sql` + test dosyası tek
   transaction'da, test dosyasının `rollback`'i hepsini geri alır. Migration'da `update` deferred belge tetikleyicisini
   kuyruğa alırsa `alter table` öncesi `set constraints public.document_assignment_changed immediate`.
+
+## Dal B `.7a` — 2026-09-30 (dal `task/fb62-core-b-7a`, `nf-backend` işçisi, taban `f349a877`)
+- Koordinatör kararları KK-31 (S1 (b), S2 (a), S3 (a)); aşağıdaki erteleme ve şartlar onlardan.
+- **Sözleşme:** `employeeDetailSchema.allowed` zorunlu (`save`, `terminate`, `archive`, `remove_access`,
+  `change_role`, `make_admin`; T5a `get_employee_detail_service`'in cevabı). Çekmece: Save / salt okunur ←
+  `allowed.save` (yeni kayıt: `can(employee.create)`); Terminate ← `allowed.terminate`, Restore ← `allowed.archive`;
+  rol seçici ← `allowed.change_role`, admin rolü ← `allowed.make_admin`, verilen rol verenin rütbesinin altında;
+  Remove access ← `allowed.remove_access`; fotoğraf silme ← `allowed.save`. Rol adına bakan kural (`role_name === "Owner"`)
+  bu düğmelerden kalktı. Bölümler: Availability ← `can(availability.team_read)`, Documents ← `can(documents.read)`;
+  onboarding okuması ← `can(employee.read)`; Employees "Add employee" ← `can(employee.create)`.
+- **Erişim-yok (BL-365):** detay okuması `isNoAccess` ise çekmece `NoAccessState` ("this employee") gösterir;
+  başka hata eskisi gibi satır. BL-195'in e2e yarısı `.10`'da.
+- **BL-243:** Schedule adı / belge çakışması ve Availability kişisi çekmeceyi yalnız `can(employee.read)` ile açar
+  (`scheduleGates.openEmployee`).
+- **BL-176 (`.7` kısmı):** `resolveLanding` ve `WorkspacePage` `can()`'e geçti (`hasPermission` silindi;
+  Workspace'in takas sayacı `exchange.read`). **PermissionRoute FB-6.8'e ertelendi (KK-31 S1):** Done when 20'nin
+  PermissionRoute satırı orada.
+- **API (KK-31 S3):** `employee-directory-routes.ts` okuma (liste, detay, fotoğraf GET) ve yazma (kaydet PUT, rol,
+  arşiv, işten çıkarma, erişim kaldırma, fotoğraf silme) rotalarında route-yerel izin kapısı yok; ret çekirdekten
+  `rpcFailure` ile (403 `authz.*`, 404 `authz.not_member`). **Şart: `.7a` main'e T5b `.4` ile aynı turda ya da sonra**
+  (yazma servisleri `.4`'te çekirdeğe geçiyor). Dokunulmayan kapılar: oluşturma (`/employees/create`, `POST /employees`),
+  tercih edilen ad (4 rota), acil durum kişisi — `.5`/`.6`/`.7b`.
+- **Bilerek kalan 5 `permissions.includes` (KK-31 S2):** çekmecede Access bölümü (`employee_access.read`), davet
+  düğmeleri (`employee_access.manage`, `.5`/`.7b`), onboarding paneli (`employees.private.manage`,
+  `employee_onboarding.review`, `employees.private.read` — FB-6.6). Done when 6 `.7b`/FB-6.6'da tamamlanır.
+- **Test tuzağı:** `can()` hedefsiz soruda `context.actions`'a bakar; gerçek `app_private.actor_actions` kişi-eylemlerini
+  (employee.read …) listeler (yerel DB'de owner ve yönetici için ölçüldü). Test bağlamında `actions` eksikse `can()`
+  düşer; App.test'in eylem listesi artık kişi-eylemlerini de içeriyor.
+- **Görülen, dokunulmayan:** (1) erişim-yok durumunda çekmecenin sol sütunu "Employee details / Code assigned on save"
+  ve bölüm sekmelerini göstermeye devam ediyor (görünüm `nf-arayuz`, `.8`); (2) Schedule'da adı `employee.read`
+  olmayan için hâlâ düğme görünümünde ama hiçbir şey açmıyor (`ScheduleEmployeeCard` sunumu, `nf-arayuz`);
+  (3) test dünyasının owner hesabı parola ile giriş yapamıyor (GoTrue 500 "Database error querying schema",
+  `e2e1790265977849.owner…`); ekran görüntüsünde owner için seed'in `owner@newfork.test`'i kullanıldı.
+- Ekran görüntüleri: `artifacts/nf-backend/fb62-7a/` (ana klasör; owner/admin/manager/employee, masaüstü + telefon,
+  yönetici → kapsam dışı Mehmet = erişim-yok).
