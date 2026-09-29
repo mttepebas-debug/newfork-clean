@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(21);
 
 -- FOUNDATION-B 5.3c: the draft conflict list (Publish -> review) and the weekly
 -- shift list behind Export read the weekly marks through the shared check,
@@ -41,6 +41,9 @@ $$;
 select is(jsonb_array_length(pg_temp.conflicts() -> 'conflicts'), 0, 'a draft on free hours has no availability conflict');
 select is(pg_temp.lunch() ->> 'time_basis', 'type_default', 'the weekly list keeps the shift type''s hours as the source');
 select is(pg_temp.lunch() -> 'availability_assessment' ->> 'coverage', 'full', 'and checks them against the marks');
+-- The shared contract requires the severity; without it the API refuses the
+-- read and a saved draft opens as an empty grid.
+select is(pg_temp.lunch() -> 'availability_assessment' ->> 'conflict_severity', 'allow', 'a draft shift carries its conflict severity');
 update dr set before_mark = pg_temp.conflicts();
 
 -- Ali marks Monday 13:00-15:00 after the draft was saved.
@@ -78,6 +81,7 @@ select lives_ok($$select public.publish_schedule_draft_service(tests.user('dr:ow
   (select coalesce(jsonb_agg(jsonb_build_object('finding_id', f ->> 'id')), '[]') from jsonb_array_elements(r.preview -> 'findings') f where f ->> 'severity' = 'soft'))
   from dr r join public.schedule_drafts d on d.id = r.draft$$, 'the manager acknowledges the warning and publishes');
 select is(pg_temp.lunch(false) -> 'availability_assessment' ->> 'operation', 'allowed', 'the published shift is allowed');
+select is(pg_temp.lunch(false) -> 'availability_assessment' ->> 'conflict_severity', 'allow', 'and carries its conflict severity');
 select is(pg_temp.lunch(false) ->> 'availability_responsibility_retained', 'true', 'and keeps its published responsibility');
 select is(pg_temp.lunch(false) -> 'warning_codes', '["availability"]'::jsonb, 'it shows today''s mark as a warning, as the grid does');
 select is(jsonb_array_length(pg_temp.conflicts() -> 'conflicts'), 0, 'the draft lists no conflict');
