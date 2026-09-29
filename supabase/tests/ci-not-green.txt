@@ -8,7 +8,6 @@ supabase/tests/notification_platform_core.test.sql  # red in CI run 36588987982 
 supabase/tests/notification_preference_resolver_and_producers.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): tests 2-4; aborts (exit 3) (BL-368)
 supabase/tests/notification_settings_admin.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): test 6 (BL-368)
 supabase/tests/onboarding_composite_tenant_constraints.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): test 7 (BL-368)
-supabase/tests/roles_permissions_rls.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): tests 3, 7, 30, 35, 46 (BL-368)
 supabase/tests/scheduling_settings_shift_types_rls.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): tests 12-13, 23 (BL-368)
 supabase/tests/weekly_exchange_changed_terms.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): aborts after 28 tests (exit 3) (BL-368)
 supabase/tests/weekly_team_availability.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): tests 2-3, 23-25 (BL-368)

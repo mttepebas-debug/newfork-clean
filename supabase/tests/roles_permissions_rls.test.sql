@@ -32,12 +32,15 @@ update role_test_state set admin_version=(select updated_at from public.workspac
 grant all on role_test_state to service_role,authenticated;
 select is((select count(*)::integer from public.workspace_roles where workspace_id='b1051002-0000-4000-8000-000000000001'),4,'four built-ins retain role identities');
 select ok(public.service_actor_has_permission('b1051001-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','roles.manage'),'Owner can manage roles');
-select ok(not public.service_actor_has_permission('b1051001-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001','roles.manage'),'Admin must be explicitly authorized');
+-- Admins edit Settings -> Roles by default (D2, user decision 2026-09-23;
+-- 20260924123013_authorization_core.sql); a manager does not.
+select ok(public.service_actor_has_permission('b1051001-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001','roles.manage'),'Admin manages roles by default (D2)');
+select ok(not public.service_actor_has_permission('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','roles.manage'),'Manager does not manage roles by default');
 select ok(public.service_actor_has_permission('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','employees.archive'),'Manager operational Edit includes archive');
 select ok(not exists(select 1 from public.workspace_role_permissions where role_id=(select manager_role from role_test_state) and (permission_key like 'settings.%' or permission_key in ('employee_access.manage','employees.private.read','employee_documents.read','notifications.settings.write'))),'Manager defaults exclude settings/access/private/documents');
 select ok(not (select all_locations from public.workspace_memberships where id='b1051003-0000-4000-8000-000000000003'),'Manager cannot inherit all-location scope');
 set local role service_role;
-select throws_ok($$select public.save_workspace_role_service('b1051001-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001',null,'Blocked','','manager',array['workspace.read'])$$,'42501',null,'Unauthorized Admin cannot create');
+select throws_ok($$select public.save_workspace_role_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001',null,'Blocked','','manager',array['workspace.read'])$$,'42501',null,'A member without role management cannot create a role');
 select throws_ok($$select public.save_workspace_role_service('b1051001-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001',(select owner_role from role_test_state),'Owner','','owner',array['workspace.read'],now())$$,'42501',null,'Owner role is immutable even to Owner');
 select lives_ok($$select public.save_workspace_role_service('b1051001-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001',(select admin_role from role_test_state),'Admin','','admin',(select admin_grants from role_test_state)||array['roles.manage'],(select admin_version from role_test_state))$$,'Owner explicitly authorizes Admin');
 select throws_ok($$select public.save_workspace_role_service('b1051001-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001',(select admin_role from role_test_state),'Admin','','admin',array['workspace.read'],now())$$,'42501',null,'Authorized Admin cannot edit own Admin role');
@@ -106,14 +109,26 @@ select set_config('request.jwt.claim.sub','b1051001-0000-4000-8000-000000000003'
 select ok(public.can_access_location('b1051002-0000-4000-8000-000000000001','b1051006-0000-4000-8000-000000000001') and not public.can_access_location('b1051002-0000-4000-8000-000000000001','b1051006-0000-4000-8000-000000000002'),'Manager has shared location but not outside location');
 set local role service_role;
 select is(public.get_employee_detail_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003')->'private_contact','null'::jsonb,'Operational Read redacts real private contact data');
-select lives_ok($$select public.save_employee_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003','Changed','Record','','',null,'Common record edit',array['b1051006-0000-4000-8000-000000000001','b1051006-0000-4000-8000-000000000002']::uuid[],'b1051006-0000-4000-8000-000000000001',array['b1051007-0000-4000-8000-000000000001']::uuid[],'b1051007-0000-4000-8000-000000000001',false,false,1)$$,'One shared location permits common employee record edit');
+select lives_ok($$select public.save_employee_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003','Changed','','Record','','',null,'Common record edit',array['b1051006-0000-4000-8000-000000000001','b1051006-0000-4000-8000-000000000002']::uuid[],'b1051006-0000-4000-8000-000000000001',array['b1051007-0000-4000-8000-000000000001']::uuid[],'b1051007-0000-4000-8000-000000000001',false,false,1)$$,'One shared location permits common employee record edit');
 select throws_ok($$select public.set_employee_archived_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000004',true,false)$$,'42501',null,'Manager cannot archive Owner');
 set local role authenticated;
 select throws_ok($$insert into public.important_dates(workspace_id,title,type,starts_on,ends_on) values('b1051002-0000-4000-8000-000000000001','Forbidden global date','event','2026-09-15','2026-09-15')$$,'42501',null,'Manager cannot create organization-wide Important Date');
 select lives_ok($$insert into public.important_dates(workspace_id,title,type,starts_on,ends_on,location_id,location_ids) values('b1051002-0000-4000-8000-000000000001','Shared date','event','2026-09-15','2026-09-15','b1051006-0000-4000-8000-000000000001',array['b1051006-0000-4000-8000-000000000001']::uuid[])$$,'Manager can create Important Date in assigned location');
 select throws_ok($$insert into public.jobs(workspace_id,name) values('b1051002-0000-4000-8000-000000000001','Unauthorized job')$$,'42501',null,'Manager defaults cannot edit organization catalog');
+set local role postgres;
+select is((select count(*)::integer from public.employee_location_assignments where employee_id='b1051004-0000-4000-8000-000000000003' and ended_at is null),2,'Common-record edit preserved outside location assignment');
+-- Ending employment is the owner's and admins'; a manager removes somebody
+-- from their own location only (KARARLAR "Ürün kuralları", FB-6.2 S1).
 set local role service_role;
-select lives_ok($$select public.terminate_employee_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003',(now() at time zone 'America/Los_Angeles'),'America/Los_Angeles','Local test termination','b1051008-0000-4000-8000-000000000001')$$,'Operational Edit can terminate common record across locations');
+select throws_ok($$select public.terminate_employee_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003',(now() at time zone 'America/Los_Angeles'),'America/Los_Angeles','Local test termination','b1051008-0000-4000-8000-000000000001')$$,'42501',null,'Manager cannot end employment');
+select throws_ok($$select public.remove_employee_from_location_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003','b1051006-0000-4000-8000-000000000002')$$,'42501',null,'Manager cannot remove somebody from a location that is not theirs');
+select lives_ok($$select public.remove_employee_from_location_service('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003','b1051006-0000-4000-8000-000000000001')$$,'Manager removes somebody from their own location');
+set local role postgres;
+select is((select array_agg(location_id) from public.employee_location_assignments where employee_id='b1051004-0000-4000-8000-000000000003' and ended_at is null),array['b1051006-0000-4000-8000-000000000002']::uuid[],'Removal ends only the manager''s location; the other one stays');
+select is((select status::text from public.workspace_memberships where workspace_id='b1051002-0000-4000-8000-000000000001' and user_id='b1051001-0000-4000-8000-000000000006'),'active','Removal from a location leaves the membership active');
+select set_config('request.jwt.claim.sub','',true);
+set local role service_role;
+select lives_ok($$select public.terminate_employee_service('b1051001-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003',(now() at time zone 'America/Los_Angeles'),'America/Los_Angeles','Local test termination','b1051008-0000-4000-8000-000000000001')$$,'Admin ends employment across locations');
 set local role postgres;
 -- Granular settings grants are independent from global scope and other settings.
 insert into public.workspace_role_permissions(workspace_id,role_id,permission_key)
@@ -137,8 +152,7 @@ set local role service_role;
 select lives_ok($$select public.delete_workspace_role_service('b1051001-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001',(select id from unused_role))$$,'Unused blank role is deletable');
 set local role postgres;
 select ok(not exists(select 1 from public.workspace_roles where id=(select id from unused_role)),'Unused role deletion persisted without reassignment');
-select is((select status::text from public.workspace_memberships where workspace_id='b1051002-0000-4000-8000-000000000001' and user_id='b1051001-0000-4000-8000-000000000006'),'suspended','Operational archive suspends linked employee without independent access grant');
-select is((select count(*)::integer from public.employee_location_assignments where employee_id='b1051004-0000-4000-8000-000000000003' and ended_at is null),2,'Common-record edit preserved outside location assignment');
+select is((select status::text from public.workspace_memberships where workspace_id='b1051002-0000-4000-8000-000000000001' and user_id='b1051001-0000-4000-8000-000000000006'),'suspended','Ending employment suspends the linked member without an independent access grant');
 select set_config('request.jwt.claim.sub','',true);
 set constraints all immediate;
 select * from finish();
