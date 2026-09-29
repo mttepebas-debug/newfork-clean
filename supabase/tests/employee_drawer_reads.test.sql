@@ -143,5 +143,30 @@ select is(pg_temp.managed(pg_temp.detail('owner', 'selin')), array['Besiktas'],
 select is(pg_temp.listed_manages('owner', 'selin'), array['Besiktas'],
   'nor listed as managed');
 
+-- "Only a manager manages where they do not work" is written once: the drawer's
+-- answer and the command ask the same helper (nf-guvenlik D4).
+select is(
+  array(select p.proname::text from pg_proc p
+    where p.proname in ('get_employee_detail_service', 'set_employee_managed_locations_service')
+      and pg_get_functiondef(p.oid) ~ 'app_private\.manages_without_working\('
+    order by p.proname),
+  array['get_employee_detail_service', 'set_employee_managed_locations_service'],
+  'the drawer and the command ask one helper whether somebody may manage without working there');
+select throws_ok(
+  format('select public.set_employee_managed_locations_service(%L, %L, %L, %L)',
+    tests.user('d:owner'), tests.id('d'), tests.id('d:emre'), array[tests.id('d:C')]),
+  '22023', null, 'the command refuses an employee, as the drawer''s answer says');
+
+-- A core action that is not there fails loudly; it never reads as allowed
+-- (nf-guvenlik D5, CLAUDE.md §9 fail-open). Last: the rows are not brought back.
+delete from app_private.authz_actions where key = 'employee.remove_from_location';
+select throws_ok(
+  format('select public.get_employee_detail_service(%L, %L, %L)', tests.user('d:owner'), tests.id('d'), tests.id('d:emre')),
+  '22023', null, 'without the removal action the drawer is refused, not read as removable');
+delete from app_private.authz_actions where key = 'employee.list';
+select throws_ok(
+  format('select * from public.list_employees_service(%L, %L)', tests.user('d:owner'), tests.id('d')),
+  '22023', null, 'without the list action the list is refused');
+
 select * from finish();
 rollback;

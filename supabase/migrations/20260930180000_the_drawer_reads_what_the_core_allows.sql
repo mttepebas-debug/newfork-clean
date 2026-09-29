@@ -18,6 +18,22 @@
 --    bare 42501. An employee, who cannot open the home, no longer saves its
 --    layout; a closed workspace and a document block refuse too; every
 --    refusal carries its authz.* hint.
+-- 4. Review (nf-guvenlik D4, D5): whether somebody may manage without working
+--    there is one helper the drawer and the command both ask; a core action
+--    row that is missing refuses (22023) instead of reading as allowed.
+
+-- Only a manager manages a location without working there: one answer for the
+-- drawer and for the command (nf-guvenlik D4).
+create function app_private.manages_without_working(w uuid, member uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((app_private.actor(member, w)).class = 'manager', false)
+$$;
+revoke all on function app_private.manages_without_working(uuid, uuid) from public, anon, authenticated;
 
 create or replace function public.get_employee_detail_service(actor_user_id uuid, target_workspace_id uuid, target_employee_id uuid)
 returns jsonb
@@ -38,6 +54,9 @@ begin
   reads_private := me.class = 'owner' or 'employees.private.read' = any (me.permissions);
   reads_access := me.class = 'owner' or 'employee_access.read' = any (me.permissions);
   select * into removal from app_private.authz_actions action where action.key = 'employee.remove_from_location';
+  if not found then
+    raise exception 'core action employee.remove_from_location is missing' using errcode = '22023';
+  end if;
 
   select jsonb_build_object(
     'id', employee.id,
@@ -198,7 +217,8 @@ begin
       select jsonb_object_agg(replace(replace(action.key, 'employee.', ''), '.', '_'),
         app_private.authz_check(me, action, null, employee.id, null) is null
         -- Only a manager manages where they do not work, as the command says.
-        and (action.key <> 'employee.set_managed_locations' or role.access_class is not distinct from 'manager'))
+        and (action.key <> 'employee.set_managed_locations'
+          or app_private.manages_without_working(target_workspace_id, employee.user_id)))
       from app_private.authz_actions action
       where action.key in ('employee.save', 'employee.terminate', 'employee.archive',
         'employee.remove_access', 'employee.change_role', 'employee.make_admin',
@@ -259,6 +279,9 @@ declare
   reason text;
 begin
   select * into rule_row from app_private.authz_actions action where action.key = 'employee.list';
+  if not found then
+    raise exception 'core action employee.list is missing' using errcode = '22023';
+  end if;
   -- May they list anybody at all; who, is answered row by row.
   reason := app_private.authz_check(me, rule_row, null, null, null);
   if reason is not null and reason <> 'out_of_scope' then
@@ -394,5 +417,72 @@ begin
     updated_at = now();
 
   return jsonb_build_object('status', 'saved');
+end;
+$$;
+
+create or replace function public.set_employee_managed_locations_service(
+  actor_user_id uuid,
+  target_workspace_id uuid,
+  target_employee_id uuid,
+  location_ids uuid[]
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  member public.workspace_memberships%rowtype;
+  wanted uuid[] := array(select distinct place from unnest(coalesce(location_ids, '{}'::uuid[])) place order by place);
+  held uuid[];
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.set_managed_locations',
+    target_person => target_employee_id);
+
+  select membership.* into member
+  from public.employee_profiles employee
+  join public.workspace_memberships membership
+    on membership.workspace_id = employee.workspace_id and membership.user_id = employee.user_id
+  where employee.id = target_employee_id and employee.workspace_id = target_workspace_id
+  for update of membership;
+  if member.id is null or not app_private.manages_without_working(target_workspace_id, member.user_id) then
+    raise exception 'Only a manager manages a location without working there'
+      using errcode = '22023', hint = 'employee.not_a_manager';
+  end if;
+
+  select coalesce(array_agg(managed.location_id order by managed.location_id), '{}') into held
+  from public.membership_managed_locations managed
+  where managed.membership_id = member.id;
+
+  -- A location added is a live one of this workspace; anything else is out of
+  -- reach, as an unknown id is.
+  if exists (
+    select 1 from unnest(wanted) place
+    where not place = any (held)
+      and not exists (
+        select 1 from public.locations location
+        where location.id = place and location.workspace_id = target_workspace_id
+          and location.deleted_at is null and location.archived_at is null)
+  ) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope',
+      detail = 'employee.set_managed_locations';
+  end if;
+
+  delete from public.membership_managed_locations
+  where membership_id = member.id and not location_id = any (wanted);
+  insert into public.membership_managed_locations (workspace_id, membership_id, location_id, added_by)
+  select target_workspace_id, member.id, place, actor_user_id
+  from unnest(wanted) place
+  where not place = any (held);
+
+  if wanted is distinct from held then
+    insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id, metadata)
+    values (target_workspace_id, actor_user_id, 'employee.managed_locations_changed', 'employee',
+      target_employee_id::text, jsonb_build_object(
+        'added', to_jsonb(array(select unnest(wanted) except select unnest(held))),
+        'removed', to_jsonb(array(select unnest(held) except select unnest(wanted)))));
+  end if;
+
+  return jsonb_build_object('employee_id', target_employee_id, 'location_ids', to_jsonb(wanted));
 end;
 $$;

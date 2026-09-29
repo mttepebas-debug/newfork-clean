@@ -226,7 +226,7 @@ insert into service_class values
   ('save_schedule_edit_session_service', 'schedule.edit'),
   ('save_signature_retention_policy_service', 'settings.documents.write'),
   ('save_signature_template_draft_service', 'settings.documents.write'),
-  ('save_workspace_layout_service', 'account.self'),
+  ('save_workspace_layout_service', 'workspace.todos'),
   ('save_workspace_role_service', 'settings.roles.write'),
   ('schedule_actor_can_manage_service', 'exempt:predicate'),
   ('schedule_actor_can_publish_service', 'exempt:predicate'),
