@@ -139,8 +139,8 @@ async function clickReadyNext(): Promise<void> {
 describe("PublishScheduleDialog", () => {
   const warnPreview = { ...preview, fingerprint: "b".repeat(64), findings: [publishFinding({ id: "warn-finding-0001", availability_state: "new", warning_policy: "warn", tier: "note" })] };
   const staleError = (next: SchedulePublicationPreview) => new ScheduleRequestError("stale publication preview", 409, { status: "preflight", preflight: next, preflight_block_reason: "stale_fingerprint" });
-  async function startPublication(onPublish: ReturnType<typeof vi.fn>, initial = preview) {
-    const h = render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(initial)} onPublish={onPublish} />);
+  async function startPublication(onPublish: ReturnType<typeof vi.fn>, initial = preview, onClose = vi.fn()) {
+    const h = render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={onClose} onPreview={vi.fn().mockResolvedValue(initial)} onPublish={onPublish} />);
     await clickReadyNext(); await clickReadyNext();
     fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Publish 1 location" })); });
@@ -205,6 +205,23 @@ describe("PublishScheduleDialog", () => {
     expect(screen.queryByTestId("schedule-publish-preview")).toBeNull();
     expect(onPreview).toHaveBeenCalledTimes(3);
     expect(onPreview.mock.calls[2]![0]).toBe(activeDraft.id);
+  });
+
+  // BL-301: closing mid-send would drop the result, so a failure went unseen.
+  it("stays open while a publication is sending and shows how it ended", async () => {
+    let reject!: (error: unknown) => void;
+    const onPublish = vi.fn().mockReturnValue(new Promise((_resolve, fail) => { reject = fail; }));
+    const onClose = vi.fn();
+    await startPublication(onPublish, preview, onClose);
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
+    for (const cancel of screen.queryAllByRole("button", { name: "Cancel" })) fireEvent.click(cancel);
+    expect(onClose).not.toHaveBeenCalled();
+
+    await act(async () => { reject(new Error("Connection lost")); });
+    expect(await screen.findByText(/Connection lost/)).toBeTruthy();
   });
 
   // BL-108: a live location with no shifts is still published.
@@ -275,14 +292,6 @@ describe("PublishScheduleDialog", () => {
     const h = await startPublication(onPublish);
     fireEvent.click(screen.getByRole("button", { name: /Publishing/ }));
     h.unmount();
-    await act(async () => reject(staleError(warnPreview)));
-    expect(onPublish).toHaveBeenCalledOnce(); expect(toast.warning).not.toHaveBeenCalled();
-  });
-  it("cancels a pending automatic continuation even before the parent unmounts", async () => {
-    let reject!: (error: unknown) => void;
-    const onPublish = vi.fn().mockReturnValue(new Promise((_resolve, fail) => { reject = fail; }));
-    await startPublication(onPublish);
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await act(async () => reject(staleError(warnPreview)));
     expect(onPublish).toHaveBeenCalledOnce(); expect(toast.warning).not.toHaveBeenCalled();
   });
