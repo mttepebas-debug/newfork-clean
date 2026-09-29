@@ -212,6 +212,10 @@ select is(
   null,
   'recovery resend does not reveal whether an email has a pending request'
 );
+-- G5 (KK-11): a new link at most once per fifteen minutes; age the last one.
+update public.account_deletion_requests
+set recovery_token_rotated_at = now() - interval '16 minutes'
+where user_id = '72000000-0000-4000-8000-000000000002' and status = 'pending';
 select is(
   public.prepare_account_deletion_recovery_resend_service(
     'DELETE-ME@example.test', repeat('4', 64)

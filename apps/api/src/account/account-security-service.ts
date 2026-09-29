@@ -42,7 +42,7 @@ interface AccountAuthGateway {
     currentPassword: string,
     newPassword: string,
   ): Promise<void>;
-  verifyPassword(email: string, password: string): Promise<void>;
+  verifyPassword(userId: string, password: string): Promise<void>;
   signOut(accessToken: string, scope: "others" | "global"): Promise<void>;
   setBan(userId: string, duration: string | "none"): Promise<void>;
 }
@@ -167,11 +167,7 @@ export function createAccountSecurityService(options: {
       );
     },
     // One password check for the whole API (SEC-003).
-    verifyPassword: createPasswordVerifier(() =>
-      createClient(options.url, options.anonKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      }),
-    ),
+    verifyPassword: createPasswordVerifier(adminClient),
     async signOut(accessToken, scope) {
       const result = await adminClient.auth.admin.signOut(accessToken, scope);
       if (result.error) throw new Error(result.error.message);
@@ -284,18 +280,18 @@ export function createAccountSecurityServiceWithClients(options: {
       await rpc("cancel_account_email_change_service", { actor_user_id: user.id });
     },
     async changePassword(accessToken, currentPassword, newPassword) {
-      const { user, email } = await requireUser(accessToken);
+      const { user } = await requireUser(accessToken);
       // Checked here, not left to GoTrue: it only checks current_password
       // when the project's "require current password" setting is on.
-      await options.authGateway.verifyPassword(email, currentPassword);
+      await options.authGateway.verifyPassword(user.id, currentPassword);
       await options.authGateway.updatePassword(accessToken, currentPassword, newPassword);
       try { await options.authGateway.signOut(accessToken, "others"); }
       finally { await recordSecurityEvent(user.id, "account.password_changed"); }
       await recordSecurityEvent(user.id, "account.sessions_revoked");
     },
     async signOutOtherSessions(accessToken, currentPassword) {
-      const { user, email } = await requireUser(accessToken);
-      await options.authGateway.verifyPassword(email, currentPassword);
+      const { user } = await requireUser(accessToken);
+      await options.authGateway.verifyPassword(user.id, currentPassword);
       await options.authGateway.signOut(accessToken, "others");
       await recordSecurityEvent(user.id, "account.sessions_revoked");
     },
@@ -306,8 +302,8 @@ export function createAccountSecurityServiceWithClients(options: {
       })) as AccountDeletionBlocker[];
     },
     async requestAccountDeletion(accessToken, currentPassword) {
-      const { user, email } = await requireUser(accessToken);
-      await options.authGateway.verifyPassword(email, currentPassword);
+      const { user } = await requireUser(accessToken);
+      await options.authGateway.verifyPassword(user.id, currentPassword);
       const blockers = (await rpc("get_account_deletion_blockers_service", {
         actor_user_id: user.id,
       })) as AccountDeletionBlocker[];
@@ -319,9 +315,11 @@ export function createAccountSecurityServiceWithClients(options: {
         actor_user_id: user.id,
         recovery_token_digest: tokenDigest(token),
       });
-      await sendRecovery(result, token, "initial");
+      // BL-279 (4): lock the account first; the recovery email can be resent,
+      // an account left open after the request cannot be taken back.
       await options.authGateway.setBan(user.id, deletedAccountBanDuration);
       await options.authGateway.signOut(accessToken, "global");
+      await sendRecovery(result, token, "initial");
       return result;
     },
     async restoreAccountDeletion(recoveryTokenValue) {

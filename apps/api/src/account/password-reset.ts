@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { sendResendEmail } from "../email/resend-email.js";
@@ -9,6 +10,18 @@ import { sendResendEmail } from "../email/resend-email.js";
 
 export type PasswordResetSender = (email: string, signal: AbortSignal) => Promise<void>;
 
+/**
+ * The database's answer to "may a reset email go?" (BL-162), given sha256 hex
+ * digests of the email and the caller's address: "send", "quiet" (one went in
+ * the last fifteen minutes; its link stays valid) or "address_limited" (ten
+ * from this caller in the last hour). Counted in the database, not per server
+ * instance. See claim_password_reset_send_service.
+ */
+export type PasswordResetClaim = (
+  emailDigest: string,
+  addressDigest: string,
+) => Promise<"send" | "quiet" | "address_limited">;
+
 interface RecoveryLinkAdmin {
   generateLink(params: { type: "recovery"; email: string }): PromiseLike<{
     data: { properties: { hashed_token: string } | null } | null;
@@ -18,9 +31,6 @@ interface RecoveryLinkAdmin {
 
 const requestBody = z.object({ email: z.string().trim().email().max(320) });
 
-const hour = 60 * 60 * 1000;
-const perEmailLimit = 3;
-const perAddressLimit = 10;
 // Every answer leaves at the floor. The send (generateLink + Resend) gets the
 // budget, which is under the floor, so an account's existence never shows as
 // time; a send still running at the budget is aborted and logged.
@@ -31,46 +41,26 @@ export function registerPasswordResetRoutes(
   app: FastifyInstance,
   options: {
     readonly send: PasswordResetSender | null;
+    readonly claim: PasswordResetClaim | null;
     readonly responseFloorMs?: number;
     readonly sendBudgetMs?: number;
-    readonly now?: () => number;
   },
 ) {
   const floorMs = options.responseFloorMs ?? defaultResponseFloorMs;
   const budgetMs = options.sendBudgetMs ?? defaultSendBudgetMs;
-  const now = options.now ?? Date.now;
-  // ponytail: per-instance memory. On Vercel each warm instance keeps its own
-  // counts, so the real ceiling is limit x instances; move to a DB-backed
-  // counter (nf-db) if abuse shows up.
-  const byEmail = new Map<string, { count: number; resetAt: number }>();
-  const byAddress = new Map<string, { count: number; resetAt: number }>();
-
-  function allow(
-    buckets: Map<string, { count: number; resetAt: number }>,
-    key: string,
-    limit: number,
-  ): boolean {
-    const at = now();
-    for (const [stale, bucket] of buckets) if (bucket.resetAt <= at) buckets.delete(stale);
-    const bucket = buckets.get(key) ?? { count: 0, resetAt: at + hour };
-    bucket.count += 1;
-    buckets.set(key, bucket);
-    return bucket.count <= limit;
-  }
-
   app.post("/v1/auth/password-reset", async (request, reply) => {
     const body = requestBody.safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: "Valid email required" });
-    if (!options.send)
+    if (!options.send || !options.claim)
       return reply.status(503).send({ error: "Password reset is not available" });
+    const send = options.send;
 
     const email = body.data.email.toLowerCase();
     // Vercel sets x-real-ip to the caller's address; locally it is the socket.
     const realIp = request.headers["x-real-ip"];
     const address = (typeof realIp === "string" && realIp) || request.ip;
-    const addressAllowed = allow(byAddress, address, perAddressLimit);
-    const emailAllowed = allow(byEmail, email, perEmailLimit);
-    if (!addressAllowed || !emailAllowed)
+    const claim = await options.claim(digest(email), digest(address));
+    if (claim === "address_limited")
       return reply
         .status(429)
         .header("retry-after", "3600")
@@ -86,7 +76,9 @@ export function registerPasswordResetRoutes(
         reject(new Error("Password reset delivery timed out")),
       ),
     );
-    const delivery = Promise.race([options.send(email, controller.signal), cutOff])
+    const delivery = (claim === "send"
+      ? Promise.race([send(email, controller.signal), cutOff])
+      : Promise.resolve())
       .catch((error: unknown) => {
         request.log.error({ err: error }, "password reset delivery failed");
       })
@@ -136,4 +128,8 @@ function escapeHtml(value: string): string {
     .replaceAll('"', "&quot;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+}
+
+function digest(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
 }

@@ -36,6 +36,7 @@ insert into service_class values
   ('assess_weekly_schedule_assignment_service', 'schedule.edit'),
   ('bulk_delete_schedule_edit_shifts_service', 'schedule.edit'),
   ('cancel_account_email_change_service', 'account.self'),
+  ('claim_password_reset_send_service', 'account.self'),
   ('cancel_announcement_service', 'announcement.write'),
   ('cancel_workspace_closure_service', 'workspace.close'),
   ('cancel_workspace_ownership_transfer_service', 'workspace.transfer_ownership'),
@@ -275,6 +276,7 @@ insert into service_class values
   ('weekly_preferences_preview_service', 'availability.own'),
   ('weekly_preferences_read_service', 'availability.own'),
   ('weekly_preferences_save_service', 'availability.own'),
+  ('verify_account_password_service', 'account.self'),
   ('weekly_team_read_service', 'availability.team_read'),
   ('withdraw_document_acknowledgement_service', 'documents.self');
 

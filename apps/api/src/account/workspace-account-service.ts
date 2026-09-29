@@ -137,11 +137,7 @@ export function createWorkspaceAccountService(options: {
   });
 
   const verifyUser = createUserVerifier(authClient);
-  const verifyPasswordFor = createPasswordVerifier(() =>
-    createClient(options.url, options.anonKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    }),
-  );
+  const verifyPasswordFor = createPasswordVerifier(rpcClient);
   return createWorkspaceAccountServiceWithClients({
     rpcClient,
     resolveActorUserId: async (accessToken) => {
@@ -151,8 +147,8 @@ export function createWorkspaceAccountService(options: {
     },
     verifyPassword: async (accessToken, password) => {
       const user = await verifyUser(accessToken);
-      if (!user?.email) throw new Error("Valid bearer session required");
-      await verifyPasswordFor(user.email, password);
+      if (!user) throw new Error("Valid bearer session required");
+      await verifyPasswordFor(user.id, password);
     },
   });
 }

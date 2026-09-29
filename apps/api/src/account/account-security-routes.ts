@@ -35,8 +35,13 @@ const recoveryResendBody = z.object({
 
 export function registerAccountSecurityRoutes(
   app: FastifyInstance,
-  options: { readonly service: AccountSecurityService | null },
+  options: {
+    readonly service: AccountSecurityService | null;
+    /** Every resend answer waits this long, so its time says nothing (BL-279). */
+    readonly recoveryResendFloorMs?: number;
+  },
 ) {
+  const resendFloorMs = options.recoveryResendFloorMs ?? 1_500;
   app.get("/v1/account/notification-preferences", async (request, reply) => {
     const token = bearerToken(request.headers.authorization);
     if (!token) return reply.status(401).send({ error: "Bearer token required" });
@@ -213,11 +218,15 @@ export function registerAccountSecurityRoutes(
       if (!body.success)
         return reply.status(400).send({ error: "Valid account email required" });
       if (!options.service) return unavailable(reply);
-      try {
-        await options.service.resendAccountDeletionRecovery(body.data.email);
-      } catch (error) {
-        request.log.error(error);
-      }
+      const service = options.service;
+      // ponytail: a send slower than the floor still shows; the database sends
+      // at most one link per fifteen minutes, so a slow send is rare.
+      await Promise.all([
+        service
+          .resendAccountDeletionRecovery(body.data.email)
+          .catch((error: unknown) => request.log.error(error)),
+        new Promise((resolve) => setTimeout(resolve, resendFloorMs)),
+      ]);
       return reply.status(202).send({ status: "accepted" });
     },
   );

@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import Fastify from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createPasswordResetSender,
   registerPasswordResetRoutes,
+  type PasswordResetClaim,
   type PasswordResetSender,
 } from "./password-reset";
 
@@ -27,14 +29,18 @@ function fakeAdmin() {
 
 async function appWith(
   send: PasswordResetSender | null,
-  extra: { responseFloorMs?: number; sendBudgetMs?: number; now?: () => number } = {},
+  extra: {
+    responseFloorMs?: number;
+    sendBudgetMs?: number;
+    claim?: PasswordResetClaim;
+  } = {},
 ) {
   const app = Fastify();
   registerPasswordResetRoutes(app, {
     send,
+    claim: extra.claim ?? (async () => "send"),
     responseFloorMs: extra.responseFloorMs ?? 0,
     sendBudgetMs: extra.sendBudgetMs ?? 0,
-    now: extra.now,
   });
   await app.ready();
   return app;
@@ -173,34 +179,37 @@ describe("password reset request", () => {
     await app.close();
   });
 
-  it("limits one email to three requests an hour, the same way whether or not it has an account", async () => {
-    let clock = 1_000_000;
+  it("asks the database whether to send, by digests of the email and the caller (BL-162)", async () => {
+    const claim = vi.fn<PasswordResetClaim>(async () => "send");
     const send = vi.fn(async () => undefined);
-    const app = await appWith(send, { now: () => clock });
-
-    for (const email of [known, unknown]) {
-      for (let attempt = 0; attempt < 3; attempt += 1)
-        expect((await post(app, email, `198.51.100.${attempt}`)).statusCode).toBe(202);
-      const limited = await post(app, email.toUpperCase(), "198.51.100.99");
-      expect(limited.statusCode).toBe(429);
-      expect(limited.json()).toEqual({
-        error: "Too many reset requests. Try again later.",
-      });
-    }
-    expect(send).toHaveBeenCalledTimes(6);
-
-    clock += 60 * 60 * 1000;
-    expect((await post(app, known)).statusCode).toBe(202);
+    const app = await appWith(send, { claim });
+    expect((await post(app, "Ayse@Example.test", "203.0.113.7")).statusCode).toBe(202);
+    expect(claim).toHaveBeenCalledWith(
+      createHash("sha256").update("ayse@example.test").digest("hex"),
+      createHash("sha256").update("203.0.113.7").digest("hex"),
+    );
+    expect(send).toHaveBeenCalledTimes(1);
     await app.close();
   });
 
-  it("limits one address to ten requests an hour across emails", async () => {
+  it("sends nothing while the last link is fresh, and answers exactly the same (BL-162)", async () => {
     const send = vi.fn(async () => undefined);
-    const app = await appWith(send, { now: () => 5_000 });
-    for (let index = 0; index < 10; index += 1)
-      expect((await post(app, `person${index}@example.test`)).statusCode).toBe(202);
-    expect((await post(app, "person10@example.test")).statusCode).toBe(429);
-    expect((await post(app, "person10@example.test", "192.0.2.1")).statusCode).toBe(202);
+    const app = await appWith(send, { claim: async () => "quiet" });
+    const response = await post(app, known);
+    expect(response.statusCode).toBe(202);
+    expect(response.json()).toEqual({ status: "accepted" });
+    expect(send).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("refuses a caller over its hourly limit without sending", async () => {
+    const send = vi.fn(async () => undefined);
+    const app = await appWith(send, { claim: async () => "address_limited" });
+    const limited = await post(app, known);
+    expect(limited.statusCode).toBe(429);
+    expect(limited.headers["retry-after"]).toBe("3600");
+    expect(limited.json()).toEqual({ error: "Too many reset requests. Try again later." });
+    expect(send).not.toHaveBeenCalled();
     await app.close();
   });
 });

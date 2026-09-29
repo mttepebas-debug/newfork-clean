@@ -18,6 +18,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   createPasswordResetSender,
   registerPasswordResetRoutes,
+  type PasswordResetClaim,
   type PasswordResetSender,
 } from "./account/password-reset";
 import {
@@ -154,6 +155,7 @@ interface BuildAppOptions {
   readonly contextResolver?: WorkspaceContextResolver | null;
   readonly accountSecurityService?: AccountSecurityService | null;
   readonly passwordResetSender?: PasswordResetSender | null;
+  readonly passwordResetClaim?: PasswordResetClaim | null;
   readonly accountDeletionWorker?: AccountDeletionWorker | null;
   readonly accountDeletionCron?: {
     readonly cronSecret?: string;
@@ -508,6 +510,10 @@ export function buildApp(options: BuildAppOptions = {}) {
       options.passwordResetSender === undefined
         ? createPasswordResetSenderFromEnvironment()
         : options.passwordResetSender,
+    claim:
+      options.passwordResetClaim === undefined
+        ? createPasswordResetClaimFromEnvironment()
+        : options.passwordResetClaim,
   });
   registerAccountDeletionRoutes(app, {
     worker: accountDeletionWorker,
@@ -997,6 +1003,23 @@ function createPasswordResetSenderFromEnvironment(): PasswordResetSender | null 
     emailFrom: process.env.ACCOUNT_SECURITY_FROM ?? process.env.EMPLOYEE_INVITE_FROM,
     production: process.env.NODE_ENV === "production",
   });
+}
+
+function createPasswordResetClaimFromEnvironment(): PasswordResetClaim | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return null;
+  const client = createClient(url, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return async (emailDigest, addressDigest) => {
+    const { data, error } = await client.rpc("claim_password_reset_send_service", {
+      email_digest: emailDigest,
+      address_digest: addressDigest,
+    });
+    if (error) throw new Error("Password reset limit could not be checked");
+    return z.enum(["send", "quiet", "address_limited"]).parse(data);
+  };
 }
 
 function createAccountDeletionWorkerFromEnvironment(): AccountDeletionWorker | null {

@@ -38,9 +38,15 @@ function service(overrides: Partial<AccountSecurityService> = {}): AccountSecuri
   };
 }
 
-async function appWith(accountSecurityService: AccountSecurityService | null) {
+async function appWith(
+  accountSecurityService: AccountSecurityService | null,
+  recoveryResendFloorMs = 0,
+) {
   const app = Fastify();
-  registerAccountSecurityRoutes(app, { service: accountSecurityService });
+  registerAccountSecurityRoutes(app, {
+    service: accountSecurityService,
+    recoveryResendFloorMs,
+  });
   await app.ready();
   return app;
 }
@@ -164,6 +170,22 @@ describe("account security routes", () => {
     });
     expect(response.statusCode).toBe(202);
     expect(response.json()).toEqual({ status: "accepted" });
+    await app.close();
+  });
+
+  it("answers a recovery resend no sooner than its floor, account or not (BL-279)", async () => {
+    const app = await appWith(
+      service({ resendAccountDeletionRecovery: vi.fn(async () => undefined) }),
+      80,
+    );
+    const started = Date.now();
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/account/security/deletion/recovery/resend",
+      payload: { email: "nobody@example.test" },
+    });
+    expect(response.statusCode).toBe(202);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(75);
     await app.close();
   });
 

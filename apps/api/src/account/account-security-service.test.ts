@@ -145,7 +145,7 @@ describe("account security service", () => {
     const { service, auth } = serviceFixture();
     await service.changePassword(accessToken, "old-password", "new-password");
     expect(auth.verifyPassword).toHaveBeenCalledWith(
-      "owner@example.test",
+      userId,
       "old-password",
     );
     expect(auth.updatePassword).toHaveBeenCalledWith(
@@ -176,7 +176,7 @@ describe("account security service", () => {
     const { service, auth } = serviceFixture();
     await service.signOutOtherSessions(accessToken, "current-password");
     expect(auth.verifyPassword).toHaveBeenCalledWith(
-      "owner@example.test",
+      userId,
       "current-password",
     );
     expect(auth.signOut).toHaveBeenCalledWith(accessToken, "others");
@@ -230,7 +230,7 @@ describe("account security service", () => {
     expect(auth.signOut).not.toHaveBeenCalled();
   });
 
-  it("persists only a digest, delivers the raw recovery link, then disables all sessions", async () => {
+  it("persists only a digest, locks the account and its sessions, then delivers the raw recovery link (BL-279)", async () => {
     const { service, auth, rpc, deliverRecoveryEmail } = serviceFixture();
     await expect(
       service.requestAccountDeletion(accessToken, "current-password"),
@@ -252,6 +252,10 @@ describe("account security service", () => {
     });
     expect(auth.setBan).toHaveBeenCalledWith(userId, "876000h");
     expect(auth.signOut).toHaveBeenCalledWith(accessToken, "global");
+    const order = (mock: { mock: { invocationCallOrder: number[] } }) =>
+      mock.mock.invocationCallOrder[0] ?? Infinity;
+    expect(order(auth.setBan as never)).toBeLessThan(order(deliverRecoveryEmail));
+    expect(order(auth.signOut as never)).toBeLessThan(order(deliverRecoveryEmail));
   });
 
   it("restores from a one-time token without creating a session", async () => {
@@ -283,10 +287,7 @@ describe("account security service against Supabase Auth", () => {
       data: { user: { id: userId, email: "owner@example.test" } },
       error: null,
     });
-    supabase.signInWithPassword.mockResolvedValue({
-      data: { session: null },
-      error: { message: "Invalid login credentials" },
-    });
+    supabase.rpc.mockResolvedValue({ data: { result: "incorrect" }, error: null });
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);
     const service = createAccountSecurityService({
@@ -303,10 +304,12 @@ describe("account security service against Supabase Auth", () => {
       statusCode: 403,
       reason: "session.password_incorrect",
     });
-    expect(supabase.signInWithPassword).toHaveBeenCalledWith({
-      email: "owner@example.test",
-      password: "wrong-password",
+    // BL-283: the database checks it and counts the miss for this account.
+    expect(supabase.rpc).toHaveBeenCalledWith("verify_account_password_service", {
+      target_user_id: userId,
+      candidate_password: "wrong-password",
     });
+    expect(supabase.signInWithPassword).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
     expect(supabase.adminSignOut).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
