@@ -324,5 +324,42 @@ select is(
     (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'admin'))),
   '42501 authz.missing_permission', 'a membership change nobody asked the core for is refused');
 
+-- nf-guvenlik Y1 (T5b .4): giving access back hands out the snapshot's role,
+-- so it asks what handing out that role asks, of the membership it reopens.
+-- An account a rehire restore detached is nobody's to reopen: the scenario
+-- that made an admin out of another admin's hand.
+select is(pg_temp.as_api(format('select public.set_employee_archived_service(%L, %L, %L, true, false)',
+    tests.user('m:owner'), tests.id('m'), tests.id('m:kaan'))), 'allowed', 'as the API: the owner archives an admin');
+select is(pg_temp.as_api(format('select public.set_employee_archived_service(%L, %L, %L, false, false)',
+    tests.user('m:owner'), tests.id('m'), tests.id('m:kaan'))), 'allowed', 'and brings the record back without its account');
+select is(pg_temp.as_api(format('select public.set_employee_archived_service(%L, %L, %L, true, false)',
+    tests.user('m:zeynep'), tests.id('m'), tests.id('m:kaan'))), 'allowed', 'another admin archives the unlinked record');
+select is(pg_temp.as_api(format('select public.set_employee_archived_service(%L, %L, %L, false, true)',
+    tests.user('m:zeynep'), tests.id('m'), tests.id('m:kaan'))), '22023 ',
+  'but cannot reopen an account the record is no longer linked to');
+select is(
+  (select m.status::text || ' ' || m.role::text from public.workspace_memberships m
+   where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:kaan')),
+  'suspended admin', 'the admin''s account stays closed');
+
+-- nf-guvenlik O1: the two flags let through only what their flows write.
+select is(
+  pg_temp.as_api(format($$select set_config('app.employee_invitation_accept', 'on', true), tests.sneak_role_change(%L, %L)$$,
+    (select m.id from public.workspace_memberships m where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:ali')),
+    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'admin'))),
+  '42501 authz.missing_permission', 'accepting an invitation does not change somebody''s role');
+select set_config('app.employee_invitation_accept', '', true);
+insert into public.workspace_ownership_transfers (workspace_id, initiated_by, target_user_id, previous_owner_membership_id, target_membership_id, status, expires_at)
+select tests.id('m'), tests.user('m:owner'), tests.user('m:zeynep'),
+  (select m.id from public.workspace_memberships m where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:owner')),
+  (select m.id from public.workspace_memberships m where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:zeynep')),
+  'pending', now() + interval '1 day';
+select is(
+  pg_temp.as_api(format($$select set_config('app.owner_transfer', 'on', true), tests.sneak_role_change(%L, %L)$$,
+    (select m.id from public.workspace_memberships m where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:zeynep')),
+    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'manager'))),
+  '42501 authz.missing_permission', 'a pending transfer lets its rows become owner and admin, nothing else');
+select set_config('app.owner_transfer', '', true);
+
 select * from finish();
 rollback;

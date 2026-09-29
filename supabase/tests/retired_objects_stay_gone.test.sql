@@ -238,7 +238,10 @@ insert into retired (kind, name, step) values
   ('function', 'terminate_employee', 'FB-6.2.4'),
   ('function', 'can_assign_employee_locations', 'FB-6.2.4'),
   ('column', 'employee_access_snapshots.all_locations', 'FB-6.2.4'),
-  ('column', 'employee_access_snapshots.location_ids', 'FB-6.2.4');
+  ('column', 'employee_access_snapshots.location_ids', 'FB-6.2.4'),
+  -- nobody writes memberships from the browser (no grant); these never ran
+  ('policy', 'workspace_memberships.memberships_update_manager', 'FB-6.2.4'),
+  ('policy', 'workspace_memberships.memberships_delete_manager', 'FB-6.2.4');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
