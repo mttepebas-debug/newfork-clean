@@ -217,3 +217,9 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Karşı argüman:** kullanıcı "yalnız yönetir"i yalnız görünürlük olarak kastetmiş olabilir; o zaman kişi eylemleri görmekle sınırlanır.
 - **Geri alma:** orta (çekirdekte kişi yerleri hesabı + matris hücreleri).
 - **Durum:** T5a'da uygulanmış hâli; kullanıcıya dönüşte sorulur.
+
+### KK-30 (2026-09-29) G1'in üç web maddesi önce, G7 Dal B (.7a) G1 main'e girince
+- **Karar:** G3 main'e girdi (`c63b0c45`); KK-26'daki G1 kalemleri (BL-193, BL-324, `followUpAfterUnpublish` onError) şimdi başlar. G7 Dal B `.7a` (KK-27) G1'in bu dalı main'e girince başlar.
+- **Dayanak:** `.7a` `SchedulePage.tsx`'e de dokunuyor (FB-6.2 Touches, "yalnız çekmeceyi açan kapı"); CLAUDE.md §4 aynı dosyada iki oturum çalışmaz. G1'in üç kalemi küçük (R1), `.7a` birkaç ekrana yayılıyor; küçük olan önce biter, bekleme kısa kalır. T5a `.7a`'yı beklemedi (KK-27); `.7a` T5b turuna girer.
+- **Geri alma:** kolay (yalnız sıra).
+- **Durum:** uygulanıyor.
