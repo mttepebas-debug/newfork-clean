@@ -34,6 +34,8 @@ import {
 const authMock = vi.hoisted(() => ({
   refresh: vi.fn(async () => null),
   signOut: vi.fn(async () => undefined),
+  /** The phone on the account; null for an account that has none yet. */
+  phone: "3105559999" as string | null,
 }));
 
 vi.mock("../auth/AuthContext", () => ({
@@ -42,7 +44,7 @@ vi.mock("../auth/AuthContext", () => ({
       userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
       email: "taylor@example.test",
       displayName: "Taylor Reed",
-      phone: "3105559999",
+      phone: authMock.phone,
       theme: "system",
     },
     refresh: authMock.refresh,
@@ -134,6 +136,7 @@ describe("EmployeeOnboardingPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.refresh.mockResolvedValue(null);
+    authMock.phone = "3105559999";
     vi.mocked(getMyOnboarding).mockResolvedValue(onboarding);
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
     vi.mocked(previewWeeklyPreferences).mockResolvedValue({ items: [] });
@@ -380,26 +383,14 @@ describe("EmployeeOnboardingPage", () => {
     ).toBeTruthy();
   });
 
-  it("suggests the account phone for an empty field but saves the employee's edit", async () => {
-    vi.mocked(saveMyOnboardingProfile).mockResolvedValue(2);
-    render(
-      <QueryClientProvider
-        client={
-          new QueryClient({ defaultOptions: { queries: { retry: false } } })
-        }
-      >
-        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile"]}>
-          <OnboardingRoute />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
+  // The account is the one source of the phone (BL-335): with a phone on the
+  // account the field only shows it and points to where it changes.
+  async function fillProfileAndSave(phone?: string) {
     fireEvent.change(await screen.findByLabelText("Legal first name"), {
       target: { value: "Taylor" },
     });
-    expect(screen.getByLabelText(/^Phone/)).toHaveProperty("value", "3105559999");
-    expect(screen.getByLabelText(/^Phone/)).toHaveProperty("readOnly", false);
-    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: "4155550135" } });
+    if (phone !== undefined)
+      fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: phone } });
     fireEvent.change(screen.getByLabelText("Legal last name"), {
       target: { value: "Reed" },
     });
@@ -432,7 +423,54 @@ describe("EmployeeOnboardingPage", () => {
       target: { value: "3105550101" },
     });
     fireEvent.click(screen.getByRole("button", { name: /save and continue/i }));
+  }
 
+  function renderProfileStep() {
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile"]}>
+          <OnboardingRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it("shows the account phone read-only and says where it changes", async () => {
+    vi.mocked(saveMyOnboardingProfile).mockResolvedValue(2);
+    renderProfileStep();
+
+    const phone = (await screen.findByLabelText(/^Phone/)) as HTMLInputElement;
+    expect(phone.value).toBe("3105559999");
+    expect(phone.readOnly).toBe(true);
+    expect(
+      screen.getByRole("link", { name: "Account › Profile" }).getAttribute("href"),
+    ).toBe("/account/profile");
+
+    await fillProfileAndSave();
+    await waitFor(() =>
+      expect(saveMyOnboardingProfile).toHaveBeenCalledWith(
+        onboarding.workspace_id,
+        expect.objectContaining({ phone: "3105559999" }),
+        1,
+      ),
+    );
+  });
+
+  it("takes a phone from the employee when the account has none", async () => {
+    authMock.phone = null;
+    vi.mocked(saveMyOnboardingProfile).mockResolvedValue(2);
+    renderProfileStep();
+
+    const phone = (await screen.findByLabelText(/^Phone/)) as HTMLInputElement;
+    expect(phone.value).toBe("");
+    expect(phone.readOnly).toBe(false);
+    expect(screen.queryByRole("link", { name: "Account › Profile" })).toBeNull();
+
+    await fillProfileAndSave("4155550135");
     await waitFor(() =>
       expect(saveMyOnboardingProfile).toHaveBeenCalledWith(
         onboarding.workspace_id,
@@ -443,6 +481,7 @@ describe("EmployeeOnboardingPage", () => {
   });
 
   it("prefills the legal name from the employer-provided employee record", async () => {
+    authMock.phone = null;
     vi.mocked(getMyOnboarding).mockResolvedValue({
       ...onboarding,
       profile: {

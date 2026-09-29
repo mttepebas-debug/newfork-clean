@@ -148,3 +148,13 @@ Branch `task/account-redesign`, worktree `../newfork-wt/account-redesign`.
 - **K-21. Notifications telefonda açma okları 44×44px.**
 - Kapsam dışı bırakılan (koordinatörün notu): Documents menü sayacı ile boş
   sayfa çelişkisi (backlog), Schedule Settings telefonda taşma (BL-333).
+- **K-22. Çalışanın ilk kurulumunda (onboarding) telefon hesaptan gelir
+  (BL-335 / KK-7, nf-guvenlik şartı).** Hesapta telefon varsa "Your details"
+  adımındaki Phone alanı salt okunur, hesabın numarasını gösterir ve altında
+  "Change it in Account › Profile." yazar ("Account › Profile" Profile'a
+  bağlantı). Kaydedilen profil de hesabın numarasını taşır. Adım açıkken hesap
+  değişse bile yeni numara gider. Hesapta telefon yoksa alan eskisi gibi
+  girilebilir; workspace kaydındaki numara varsa onunla dolu gelir ve girilen
+  numara hesaba yazılır. Ok işareti olarak "›" kullanıldı (Security'deki
+  "Account › Workspaces" ile aynı). Veri, ekranın zaten okuduğu
+  `useAuth().account.phone`'dan; yeni API ucu yok. Geri alma: kolay.
