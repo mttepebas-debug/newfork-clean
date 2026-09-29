@@ -118,7 +118,11 @@ export function ScheduleTemplatesDialog({
     : selectedDepartmentKeys;
   const hasExistingShifts = Boolean(session?.shifts.length);
   return (
-    <Dialog title="Schedule templates" onClose={onClose}>
+    <Dialog
+      title="Schedule templates"
+      description="Save a draft as a reusable week, then apply it to the schedule you are editing."
+      onClose={onClose}
+    >
       <div className="schedule-tool-dialog schedule-template-dialog">
         <section>
           <h3>Saved templates</h3>
@@ -130,15 +134,12 @@ export function ScheduleTemplatesDialog({
                 aria-pressed={template.id === selectedId}
                 onClick={() => choose(template)}
               >
-                <span>
-                  <strong>{template.name}</strong>
-                  <small>Revision {template.revision}</small>
-                </span>
-                <span>
-                  {template.shift_count} shifts
-                  <br />
-                  {template.open_slot_count} open
-                </span>
+                <strong>{template.name}</strong>
+                <small>
+                  {template.shift_count}{" "}
+                  {template.shift_count === 1 ? "shift" : "shifts"} ·{" "}
+                  {template.open_slot_count} open · Revision {template.revision}
+                </small>
               </button>
             ))}
             {!templates.length ? <p>No templates saved yet.</p> : null}
@@ -270,7 +271,7 @@ export function ScheduleTemplatesDialog({
             });
           }}
         >
-          <h3>Create from named draft</h3>
+          <h3>New template from a draft</h3>
           <label>
             Draft
             <select
@@ -327,15 +328,21 @@ export function ScheduleTemplatesDialog({
 
 function Dialog({
   title,
+  description,
   onClose,
   children,
 }: {
   readonly title: string;
+  readonly description: string;
   readonly onClose: () => void;
   readonly children: ReactNode;
 }) {
   return (
-    <div className="schedule-dialog-layer" role="presentation">
+    <div
+      className="schedule-dialog-layer"
+      role="presentation"
+      data-schedule-quiet-dialog
+    >
       <button
         type="button"
         className="schedule-dialog-backdrop"
@@ -347,9 +354,13 @@ function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="schedule-template-dialog-title"
+        aria-describedby="schedule-template-dialog-description"
       >
         <header>
-          <h2 id="schedule-template-dialog-title">{title}</h2>
+          <div className="schedule-quiet-dialog-heading">
+            <h2 id="schedule-template-dialog-title">{title}</h2>
+            <p id="schedule-template-dialog-description">{description}</p>
+          </div>
           <button
             type="button"
             className="icon-button"

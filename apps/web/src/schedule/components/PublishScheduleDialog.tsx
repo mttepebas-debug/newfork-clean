@@ -1014,7 +1014,7 @@ function Dialog({
     <div
       className="schedule-dialog-layer"
       role="presentation"
-      data-schedule-publish-surface
+      data-schedule-quiet-dialog
     >
       <button
         type="button"
@@ -1038,7 +1038,7 @@ function Dialog({
         aria-describedby={`${titleId}-description`}
       >
         <header>
-          <div className="schedule-publication-heading">
+          <div className="schedule-quiet-dialog-heading">
             <h2 id={titleId}>{title}</h2>
             <p id={`${titleId}-description`}>{description}</p>
           </div>

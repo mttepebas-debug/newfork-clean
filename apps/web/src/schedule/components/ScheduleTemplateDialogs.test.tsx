@@ -102,6 +102,22 @@ function renderDialog(
 }
 
 describe("ScheduleTemplatesDialog", () => {
+  it("says what the window is for and lists each template on one meta line", () => {
+    renderDialog();
+
+    const dialog = screen.getByRole("dialog", { name: "Schedule templates" });
+    expect(dialog.getAttribute("aria-describedby")).toBe(
+      "schedule-template-dialog-description",
+    );
+    expect(
+      document.getElementById("schedule-template-dialog-description")
+        ?.textContent,
+    ).toMatch(/^Save a draft as a reusable week/);
+    expect(
+      dialog.closest("[data-schedule-quiet-dialog]"),
+    ).toBeTruthy();
+  });
+
   it("deletes a template on the second click, without the browser's confirm box", async () => {
     const confirm = vi.spyOn(window, "confirm");
     const props = renderDialog();
