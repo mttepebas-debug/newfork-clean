@@ -139,6 +139,7 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Dayanak:** ikisi de G6'nın dosya ailesinde (bildirim üretici kaydı, şablon), küçük ve güvenli; ayrı tur açmak test turunu çoğaltır (kullanıcı: testler toplu).
 - **Geri alma:** düşük.
 - **Durum:** Karar 2 yürüyor; Karar 1 G7'de.
+- **Bilgi notu (D-b, `nf-guvenlik` FB-6.2 T5b raporu (`artifacts/nf-guvenlik/fb62-t5b/RAPOR.md`), koordinatör aktardı, 2026-09-29):** "kimse yoksa beklemez" kuralı genel çalışıyor: owner'ın kendisi `document_blocked` olursa bir admin'in tercih edilen ad talebine karar verebilecek kimse kalmaz ve talep kendiliğinden geçer. Kenar durum; kural değişmedi, yalnız etkisi owner dışına da uzanıyor.
 
 ### KK-18 (2026-09-29) G2 onaylı; G4'ün saatlik cron sorusu kullanıcıya; boşalan işçilere G5 ve G22; ikinci inceleme oturumu
 - **G2:** R1; koordinatör diff okuması tamam (`task/g2-quick-editor` @a0ac7ea9; 4 dosya, emoji kesme düzeltmesi + odak/kenar/boyut CSS'i, 42 test). Komşu etki kabul: Schedule'ın eski stil pencerelerinde klavye odak halkası artık görünüyor (erişilebilirlik kazancı). Toplu turda main'e.
