@@ -180,6 +180,11 @@ export function SaveDraftMenu({
 
   useEffect(() => {
     onOpenChange?.(open);
+    // BL-181: the page shares this state with the Published menu; a menu
+    // that leaves the screen open (a save ends the session) reports closed.
+    return () => {
+      if (open) onOpenChange?.(false);
+    };
   }, [onOpenChange, open]);
 
   useEffect(() => {
@@ -243,7 +248,8 @@ export function SaveDraftMenu({
 
   return (
     <div className="schedule-save-menu-anchor">
-      <span onClick={openMenu}>{trigger}</span>
+      {/* BL-310: a second press closes; it does not reset the typed name. */}
+      <span onClick={() => (open ? setOpen(false) : openMenu())}>{trigger}</span>
       {open ? (
         <div
           className="schedule-save-draft-menu"

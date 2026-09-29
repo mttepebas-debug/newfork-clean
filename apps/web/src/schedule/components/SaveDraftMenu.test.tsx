@@ -41,6 +41,47 @@ describe("SaveDraftMenu", () => {
     expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
   });
 
+  // BL-310: a second press on Publish closes the menu, it does not reopen it
+  // over the typed name.
+  it("closes on a second press of its trigger instead of resetting the name", () => {
+    render(
+      <SaveDraftMenu
+        drafts={[draftA]}
+        activeDraftId={draftA.id}
+        activeDraftName={draftA.name}
+        trigger={<button type="button">Save draft</button>}
+        onSaveDraft={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: "Save draft" });
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByLabelText("Draft name"), { target: { value: "Plan B" } });
+    fireEvent.click(trigger);
+
+    expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
+  });
+
+  // BL-181: the page shares this open state with the Published menu; leaving
+  // the screen open must not leave that menu open after a save.
+  it("reports itself closed when it leaves the screen open", () => {
+    const onOpenChange = vi.fn();
+    const { unmount } = render(
+      <SaveDraftMenu
+        drafts={[draftA]}
+        activeDraftId={draftA.id}
+        activeDraftName={draftA.name}
+        trigger={<button type="button">Save draft</button>}
+        onSaveDraft={vi.fn()}
+        onOpenChange={onOpenChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
+
+    unmount();
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
   it("opens with draft actions and saves the active draft", async () => {
     const onSave = vi.fn();
 
@@ -176,7 +217,7 @@ describe("SaveDraftMenu", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    // Still open from the first press; a second press would close it (BL-310).
     expect(
       screen
         .getByRole("button", { name: "Save and publish" })
