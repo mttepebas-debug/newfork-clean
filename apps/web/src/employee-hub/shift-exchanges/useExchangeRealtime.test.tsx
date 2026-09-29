@@ -98,6 +98,18 @@ describe("joining only a channel the person may join", () => {
     expect(realtime.channels).toHaveLength(1);
     unmount();
   });
+
+  // BL-152: the refused channel must not take the 60 s fallback with it.
+  it("keeps the 60 second fallback for someone the core refuses the channel", async () => {
+    const { client, rerender, unmount } = setup();
+    rerender({ workspace: "workspace", actions: [] });
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    act(() => vi.advanceTimersByTime(60_000));
+    await tick(250);
+    expect(invalidate).toHaveBeenCalled();
+    expect(realtime.channels).toHaveLength(1);
+    unmount();
+  });
 });
 
 describe("workspace staffing and exchange invalidation", () => {

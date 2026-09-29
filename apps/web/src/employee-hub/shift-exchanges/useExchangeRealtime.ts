@@ -10,17 +10,18 @@ import { refreshExchangeSurfaces } from "./exchange-data";
  * The channel opens only for someone the core lets join it (its policy asks
  * exchange.offer_own): a refused private join holds every other join on the
  * shared socket for ~5 s, the person's own notifications included (BL-115).
+ * The 60 s fallback and the online/visible refreshes need no channel, so
+ * everyone in the workspace keeps them (BL-152).
  */
 export function useExchangeRealtime(
   context: ActiveWorkspaceContext | null | undefined,
 ) {
   const client = useQueryClient();
-  const workspace = can(context, "exchange.offer_own")
-    ? context?.workspace.id
-    : undefined;
+  const workspace = context?.workspace.id;
+  const mayJoinChannel = can(context, "exchange.offer_own");
   useEffect(() => {
-    if (!workspace || !supabaseClient) return;
-    const supabase = supabaseClient;
+    if (!workspace) return;
+    const supabase = mayJoinChannel ? supabaseClient : null;
     let disposed = false;
     let pending = false;
     let refreshing = false;
@@ -53,7 +54,7 @@ export function useExchangeRealtime(
       queued = window.setTimeout(() => void flush(), 250);
     };
     const channel = supabase
-      .channel(`shift-exchanges:${workspace}`, { config: { private: true } })
+      ?.channel(`shift-exchanges:${workspace}`, { config: { private: true } })
       .on("broadcast", { event: "changed" }, (event) => {
         if (event.payload?.workspace_id === workspace) refresh();
       })
@@ -69,7 +70,7 @@ export function useExchangeRealtime(
       clearInterval(timer);
       window.removeEventListener("online", refresh);
       document.removeEventListener("visibilitychange", refresh);
-      void supabase.removeChannel(channel);
+      if (supabase && channel) void supabase.removeChannel(channel);
     };
-  }, [client, workspace]);
+  }, [client, mayJoinChannel, workspace]);
 }
