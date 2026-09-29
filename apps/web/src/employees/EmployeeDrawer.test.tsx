@@ -18,6 +18,7 @@ import {
 } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import {
   getDocument,
@@ -130,7 +131,14 @@ const context = {
     "employees.private.manage",
     "employee_access.read",
   ],
-  actions: [],
+  actions: [
+    "employee.read",
+    "employee.list",
+    "employee.create",
+    "availability.team_read",
+    "documents.read",
+    "onboarding.review",
+  ],
   onboarding: { status: "complete", currentStep: 2 },
   documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
@@ -183,11 +191,31 @@ const detail = {
     completed_documents: 0,
   },
   events: [],
+  allowed: {
+    save: true,
+    terminate: true,
+    archive: true,
+    remove_access: true,
+    change_role: true,
+    make_admin: true,
+  },
 } satisfies EmployeeDetail;
 
+// What the server answers for the owner's own record: save, nothing else.
+const ownRecordAllowed = {
+  save: true,
+  terminate: false,
+  archive: false,
+  remove_access: false,
+  change_role: false,
+  make_admin: false,
+};
+
 const refresh = vi.fn();
+// The signed-in reader; a test that needs another sets it first.
+let currentContext: ActiveWorkspaceContext = context;
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({ context, refresh }),
+  useAuth: () => ({ context: currentContext, refresh }),
 }));
 vi.mock("./onboarding-data", () => ({
   getEmployeeOnboardingReview: vi.fn(),
@@ -211,6 +239,23 @@ vi.mock("./employee-data", () => ({
 }));
 
 let renderedDetail: EmployeeDetail = detail;
+// Roles the drawer may offer; a test that needs others sets this first.
+let inviteRolesFixture: {
+  id: string;
+  name: string;
+  systemKey: "employee" | "manager" | "admin";
+  accessClass: "employee" | "manager" | "admin";
+}[] = [];
+// When set, the detail read fails with this instead of answering.
+let detailFailure: Error | null = null;
+beforeEach(() => {
+  inviteRolesFixture = [
+    { id: employeeRoleId, name: "Employee", systemKey: "employee", accessClass: "employee" },
+    { id: managerRoleId, name: "Manager", systemKey: "manager", accessClass: "manager" },
+  ];
+  detailFailure = null;
+  currentContext = context;
+});
 
 // The drawer copies the loaded employee into its form one effect after the
 // data arrives. A click in that first frame lands on an empty form and wipes
@@ -245,7 +290,8 @@ function renderDrawer(
   }) => void,
 ) {
   renderedDetail = detailFixture;
-  vi.mocked(getEmployeeDetail).mockResolvedValue(detailFixture);
+  if (detailFailure) vi.mocked(getEmployeeDetail).mockRejectedValue(detailFailure);
+  else vi.mocked(getEmployeeDetail).mockResolvedValue(detailFixture);
   vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
     locations: detailFixture.locations.map((location) => ({
       ...location,
@@ -260,20 +306,7 @@ function renderDrawer(
       management: false,
       owner: false,
     })),
-    inviteRoles: [
-      {
-        id: employeeRoleId,
-        name: "Employee",
-        systemKey: "employee",
-        accessClass: "employee",
-      },
-      {
-        id: managerRoleId,
-        name: "Manager",
-        systemKey: "manager",
-        accessClass: "manager",
-      },
-    ],
+    inviteRoles: inviteRolesFixture,
   });
   vi.mocked(prepareEmployeeInvitation).mockResolvedValue({
     id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
@@ -322,9 +355,11 @@ function renderDrawer(
     );
   }
   const view = render(
-    <QueryClientProvider client={client}>
-      <Harness />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={client}>
+        <Harness />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
   return { client, onClose, onSectionChange, ...view };
 }
@@ -733,6 +768,7 @@ describe("EmployeeDrawer", () => {
       role_name: "Owner",
       user_id: context.userId,
       display_status: "active",
+      allowed: ownRecordAllowed,
     });
 
     expect(await screen.findByLabelText("Workspace role")).toHaveProperty(
@@ -1578,5 +1614,126 @@ describe("employee assignment document impact", () => {
         employeeId,
       ),
     );
+  });
+});
+
+// FB-6.2 .7a: the buttons open from what the server says this reader may do
+// to this record (detail.allowed), whatever the reader's permissions say.
+describe("EmployeeDrawer record actions follow the server", () => {
+  const none = {
+    save: false,
+    terminate: false,
+    archive: false,
+    remove_access: false,
+    change_role: false,
+    make_admin: false,
+  };
+  const linked = {
+    ...detail,
+    role_id: employeeRoleId,
+    role_name: "Employee",
+    user_id: "16000000-0000-4000-8000-000000000005",
+    display_status: "active" as const,
+  };
+
+  it("opens the record read-only when saving is not allowed", async () => {
+    renderDrawer("profile", { ...detail, allowed: none });
+    expect(await screen.findByLabelText("First name")).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: /^(Save|Done)$/ })).toBeNull();
+  });
+
+  it("hides Terminate when the server does not allow it", async () => {
+    renderDrawer("profile", { ...detail, allowed: { ...detail.allowed, terminate: false } });
+    await screen.findByLabelText("First name");
+    expect(screen.queryByRole("button", { name: "Terminate employee" })).toBeNull();
+  });
+
+  it("hides Restore when archiving is not allowed", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      archived_at: "2026-09-01T12:00:00.000Z",
+      display_status: "archived",
+      allowed: { ...detail.allowed, archive: false },
+    });
+    await screen.findByLabelText("First name");
+    expect(screen.queryByRole("button", { name: "Restore employee" })).toBeNull();
+  });
+
+  it("hides Remove access when the server does not allow it", async () => {
+    renderDrawer("access", { ...linked, allowed: { ...detail.allowed, remove_access: false } });
+    const role = await screen.findByLabelText("Workspace role");
+    await waitFor(() => expect(role).toHaveProperty("disabled", false));
+    expect(screen.queryByRole("button", { name: "Remove access" })).toBeNull();
+  });
+
+  it("locks the workspace role when changing it is not allowed", async () => {
+    renderDrawer("access", { ...linked, allowed: { ...detail.allowed, change_role: false } });
+    expect(await screen.findByLabelText("Workspace role")).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Remove access" })).toBeTruthy();
+  });
+
+  it("offers an admin role only when making an admin is allowed", async () => {
+    inviteRolesFixture = [
+      { id: employeeRoleId, name: "Employee", systemKey: "employee", accessClass: "employee" },
+      { id: "a0000000-0000-4000-8000-00000000000a", name: "Admin", systemKey: "admin", accessClass: "admin" },
+    ];
+    renderDrawer("access", { ...linked, allowed: { ...detail.allowed, make_admin: false } });
+    const select = await screen.findByLabelText("Workspace role");
+    await waitFor(() => expect(within(select).getByRole("option", { name: "Employee" })).toBeTruthy());
+    expect(within(select).queryByRole("option", { name: "Admin" })).toBeNull();
+  });
+
+  it("shows the no-access card, not the server's sentence, for a person out of reach", async () => {
+    detailFailure = new RequestError("Not allowed", "authz.out_of_scope", "employee.read", 403);
+    renderDrawer("profile");
+    expect(await screen.findByRole("heading", { name: "You don't have access to this employee" })).toBeTruthy();
+    expect(screen.queryByText("Not allowed")).toBeNull();
+  });
+
+  it("keeps any other failure as the drawer's error line", async () => {
+    detailFailure = new RequestError("Employee directory service is not configured", undefined, undefined, 503);
+    renderDrawer("profile");
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /You don't have access/ })).toBeNull();
+  });
+});
+
+// FB-6.2 .7a: which sections open is the core's answer (context.actions),
+// not the permission list.
+describe("EmployeeDrawer sections follow the core", () => {
+  function sectionTab(name: string) {
+    return screen.queryByRole("button", { name });
+  }
+
+  it("opens Availability and Documents when the core lets the reader do them", async () => {
+    currentContext = { ...context, permissions: ["employees.read", "employees.manage"] };
+    renderDrawer("profile");
+    await screen.findByLabelText("First name");
+    expect(sectionTab("Availability")).toBeTruthy();
+    expect(sectionTab("Documents")).toBeTruthy();
+  });
+
+  it("keeps Availability and Documents shut when the core does not", async () => {
+    currentContext = {
+      ...context,
+      actions: context.actions.filter(
+        (action) => action !== "availability.team_read" && action !== "documents.read",
+      ),
+    };
+    renderDrawer("profile");
+    await screen.findByLabelText("First name");
+    expect(sectionTab("Availability")).toBeNull();
+    expect(sectionTab("Documents")).toBeNull();
+  });
+
+  it("does not ask for the onboarding review when the core says the reader reads nobody", async () => {
+    currentContext = {
+      ...context,
+      actions: context.actions.filter((action) => action !== "employee.read"),
+    };
+    vi.mocked(getEmployeeOnboardingReview).mockClear();
+    renderDrawer("profile");
+    await screen.findByLabelText("First name");
+    expect(getEmployeeOnboardingReview).not.toHaveBeenCalled();
   });
 });

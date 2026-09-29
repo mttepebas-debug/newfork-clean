@@ -23,6 +23,7 @@ import {
 } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import { CatalogPageHeader } from "../views/CatalogPageHeader";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { EmployeeDrawer } from "./EmployeeDrawer";
@@ -85,7 +86,7 @@ export default function EmployeesPage() {
   const creating = params.get("mode") === "create";
   const parsedSection = employeeSectionSchema.safeParse(params.get("section"));
   const section = parsedSection.success ? parsedSection.data : "profile";
-  const canManage = context?.permissions.includes("employees.manage") ?? false;
+  const canCreate = can(context, "employee.create");
   const [columnState, setColumnState] = useState(() => loadColumnState());
   const [sort, setSort] = useState<{
     key: EmployeeColumnKey;
@@ -247,7 +248,7 @@ export default function EmployeesPage() {
         titleId="employees-title"
         description="Manage employee profiles, assignments, invitations, and workspace access."
         action={
-          !archived && canManage ? (
+          !archived && canCreate ? (
             <Button
               onClick={() =>
                 setParams(

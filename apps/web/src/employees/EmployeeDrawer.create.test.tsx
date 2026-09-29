@@ -39,6 +39,7 @@ vi.mock("../auth/AuthContext", () => ({
       workspace: { id: "11000000-0000-4000-8000-000000000001" },
       membership: { role: "owner" },
       permissions: ["employees.manage", "employee_access.manage"],
+      actions: ["employee.create"],
     },
   }),
 }));
@@ -123,6 +124,14 @@ describe("employee create flow", () => {
         job_count: 1,
         role_name: null,
         private_contact: null,
+        allowed: {
+          save: true,
+          terminate: true,
+          archive: true,
+          remove_access: true,
+          change_role: true,
+          make_admin: true,
+        },
         onboarding: {
           status: "not_requested",
           required_documents: 0,

@@ -34,7 +34,7 @@ const context = {
     allLocations: true,
   },
   permissions: ["employees.read", "employees.manage"],
-  actions: [],
+  actions: ["employee.list", "employee.read", "employee.create"],
   onboarding: { status: "complete", currentStep: 2 },
   documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
@@ -85,7 +85,8 @@ const employees = [
   },
 ] satisfies EmployeeSummary[];
 
-vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
+let currentContext: ActiveWorkspaceContext = context;
+vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context: currentContext }) }));
 vi.mock("./employee-data", () => ({ listEmployees: vi.fn() }));
 vi.mock("./EmployeeDrawer", () => ({
   EmployeeDrawer: () => <div role="dialog">Employee drawer</div>,
@@ -93,6 +94,7 @@ vi.mock("./EmployeeDrawer", () => ({
 
 function renderPage(initialEntry = "/app/employees") {
   window.localStorage.clear();
+  currentContext = context;
   vi.mocked(listEmployees).mockResolvedValue(employees);
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -208,5 +210,25 @@ describe("no access (FB-6.1.9)", () => {
     expect(await screen.findByRole("heading", { name: "You don't have access to employees" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+});
+
+// FB-6.2 .7a: "Add employee" is the core's answer, not the permission list.
+describe("EmployeesPage add employee", () => {
+  it("offers Add employee when the core lets the reader create somebody", async () => {
+    renderPage();
+    currentContext = { ...context, permissions: ["employees.read"] };
+    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add employee" })).toBeTruthy();
+  });
+
+  it("hides Add employee when the core does not, whatever the permissions", async () => {
+    renderPage();
+    currentContext = {
+      ...context,
+      actions: context.actions.filter((action) => action !== "employee.create"),
+    };
+    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add employee" })).toBeNull();
   });
 });

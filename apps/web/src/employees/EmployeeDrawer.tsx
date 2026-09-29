@@ -39,6 +39,10 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
+import { noAccessHomePath } from "../auth/resolveLanding";
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import {
   getEmployeeDetail,
@@ -133,7 +137,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       workspaceId &&
       props.employeeId &&
       !props.creating &&
-      context?.permissions.includes("employees.read"),
+      can(context, "employee.read"),
     ),
   });
   const [draft, setDraft] = useState<EmployeeInput>(emptyDraft);
@@ -166,10 +170,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const readiness = employeeCreateReadiness(draft);
   const allowedSections = sections.filter(
     ([key]) =>
-      (key !== "availability" ||
-        context?.permissions.includes("availability.read")) &&
-      (key !== "documents" ||
-        context?.permissions.includes("employee_documents.read")) &&
+      (key !== "availability" || can(context, "availability.team_read")) &&
+      (key !== "documents" || can(context, "documents.read")) &&
       (key !== "access" ||
         context?.permissions.includes("employee_access.read") ||
         context?.permissions.includes("employee_access.manage")),
@@ -286,14 +288,22 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     return () => document.removeEventListener("keydown", close);
   }, [props.onClose, terminationOpen]);
 
-  const canManage = context?.permissions.includes("employees.manage") ?? false;
-  const canArchive =
-    context?.permissions.includes("employees.archive") ?? false;
+  // What this reader may do to this record is the server's answer
+  // (detail.allowed); a new record asks whether they may create one at all.
+  const allowed = detail.data?.allowed;
+  const canSave = props.creating
+    ? can(context, "employee.create")
+    : (allowed?.save ?? false);
+  // ponytail: invitations stay on the access permission until the invitation
+  // services ask the core (FB-6.2 .5/.7b); the core has no action for it yet.
   const canManageAccess =
     context?.permissions.includes("employee_access.manage") ?? false;
   const archived = Boolean(detail.data?.archived_at);
-  const targetIsOwner = detail.data?.role_name === "Owner";
-  const readOnly = archived || !canManage || targetIsOwner;
+  // Terminating an active record, restoring an archived one.
+  const canChangeLifecycle = archived
+    ? (allowed?.archive ?? false)
+    : (allowed?.terminate ?? false);
+  const readOnly = archived || !canSave;
   const createMutation = useMutation({
     mutationFn: (command: EmployeeCreateCommand) =>
       createEmployee(workspaceId, command),
@@ -958,7 +968,12 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 {detail.isLoading && !props.creating ? (
                   <p className="employee-panel-state">Loading employee...</p>
                 ) : null}
-                {detail.error ? (
+                {isNoAccess(detail.error) ? (
+                  <NoAccessState
+                    subject="this employee"
+                    homeHref={noAccessHomePath(context, "/app/employees")}
+                  />
+                ) : detail.error ? (
                   <p className="employee-panel-state error" role="alert">
                     {errorMessage(detail.error)}
                   </p>
@@ -994,6 +1009,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       () => removeAccessMutation.mutate(),
                       removeAccessMutation.isPending,
                       context?.membership.role ?? "employee",
+                      allowed,
                       (roleId) => roleMutation.mutate(roleId),
                       roleMutation.isPending,
                       Boolean(
@@ -1202,7 +1218,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           ) : activeSection === "availability" ? null : (
             <footer className="employee-drawer-footer">
               <div>
-                {!props.creating && canArchive && !targetIsOwner ? (
+                {!props.creating && canChangeLifecycle ? (
                   <button
                     type="button"
                     className={`employee-lifecycle-button${archived ? " restore" : ""}`}
@@ -1578,6 +1594,7 @@ function renderSection(
   onRemoveAccess: () => void,
   removingAccess: boolean,
   actorRole: WorkspaceRole,
+  allowed: EmployeeDetail["allowed"] | undefined,
   onRoleChange: (roleId: string) => void,
   changingRole: boolean,
   /** The viewer is looking at their own record, and they own the workspace. */
@@ -1646,6 +1663,8 @@ function renderSection(
           !canManageAccess ||
           detail?.role_name === "Owner"
         }
+        archived={Boolean(detail?.archived_at)}
+        allowed={allowed}
         onRetryInvitation={onRetryInvitation}
         retryingInvitation={retryingInvitation}
         onRevokeInvitation={onRevokeInvitation}
@@ -2146,13 +2165,19 @@ function AccessSection({
   actorRole,
   onRoleChange,
   changingRole,
+  archived,
+  allowed,
 }: {
   draft: EmployeeInput;
   detail: EmployeeDetail | undefined;
   roles: readonly InviteRoleOption[];
   inviteRoleId: string;
   onAddEmail: () => void;
+  /** The invitation controls: the access permission, never an archived record. */
   readOnly: boolean;
+  archived: boolean;
+  /** What the server says this reader may do to the record. */
+  allowed: EmployeeDetail["allowed"] | undefined;
   onRetryInvitation: () => void;
   retryingInvitation: boolean;
   onRevokeInvitation: () => void;
@@ -2168,8 +2193,10 @@ function AccessSection({
   const invitation = detail?.invitation ?? null;
   const email = draft.invitation_email.trim();
   const assignableRoles = roles.filter((role) =>
-    canAssignRole(actorRole, role.accessClass),
+    canAssignRole(actorRole, role.accessClass, allowed),
   );
+  const canChangeRole = !archived && (allowed?.change_role ?? false);
+  const canRemoveAccess = !archived && (allowed?.remove_access ?? false);
   const inviteRoleName = assignableRoles.find(
     (role) => role.id === inviteRoleId,
   )?.name;
@@ -2305,7 +2332,7 @@ function AccessSection({
                 aria-label="Workspace role"
                 value={currentRoleId}
                 disabled={
-                  readOnly || changingRole || assignableRoles.length === 0
+                  !canChangeRole || changingRole || assignableRoles.length === 0
                 }
                 onChange={(event) => onRoleChange(event.target.value)}
               >
@@ -2323,7 +2350,7 @@ function AccessSection({
               </select>
               <small>Owner access is managed separately.</small>
             </label>
-            {!readOnly && detail?.role_name !== "Owner" ? (
+            {canRemoveAccess ? (
               <ConfirmButton
                 className="employee-remove-access danger-button"
                 type="button"
@@ -2417,7 +2444,7 @@ function AccessSection({
         <EmployeeAvatarControl
           workspaceId={detail?.workspace_id ?? ""}
           employeeId={detail?.id ?? ""}
-          readOnly={readOnly}
+          readOnly={archived || !(allowed?.save ?? false)}
         />
       </section>
     </div>
@@ -2501,14 +2528,26 @@ function EmployeeAvatarControl({
   );
 }
 
+const roleRank: Record<WorkspaceRole, number> = {
+  owner: 4,
+  admin: 3,
+  manager: 2,
+  employee: 1,
+};
+
+/**
+ * May this role be given to the record? Whether the reader may change the
+ * record's role at all, and make an admin, is the server's answer; a role is
+ * only ever given below the giver's own rank.
+ */
 function canAssignRole(
   actorRole: WorkspaceRole,
   targetAccessClass: WorkspaceRole,
+  allowed: EmployeeDetail["allowed"] | undefined,
 ) {
-  if (targetAccessClass === "owner") return false;
-  if (actorRole === "owner") return true;
-  if (actorRole === "admin") return targetAccessClass !== "admin";
-  return false;
+  if (!allowed || targetAccessClass === "owner") return false;
+  if (targetAccessClass === "admin") return allowed.make_admin;
+  return allowed.change_role && roleRank[targetAccessClass] < roleRank[actorRole];
 }
 
 function InviteRoleField({

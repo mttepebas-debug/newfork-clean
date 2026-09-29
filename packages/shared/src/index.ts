@@ -2624,6 +2624,17 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
     completed_documents: z.coerce.number().int().nonnegative(),
   }),
   events: z.array(employeeEventSchema),
+  // What the reader may do to this record, answered by the authorization core
+  // (get_employee_detail_service). The drawer opens its buttons from this,
+  // never from a role name.
+  allowed: z.object({
+    save: z.boolean(),
+    terminate: z.boolean(),
+    archive: z.boolean(),
+    remove_access: z.boolean(),
+    change_role: z.boolean(),
+    make_admin: z.boolean(),
+  }),
 });
 export type EmployeeDetail = z.infer<typeof employeeDetailSchema>;
 
