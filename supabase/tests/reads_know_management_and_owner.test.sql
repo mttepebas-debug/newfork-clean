@@ -1,13 +1,14 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(27);
 
 -- BL-218 .3a. Management can be renamed, so the screens cannot find it by its
 -- name: the Schedule read and the Employees drawer's references say which
 -- department is Management and which job is Owner (system_key). The Schedule
 -- read's primary_job_id is the job a person was actually given as primary,
 -- or null: a job under Management is primary by its department and never
--- stored as primary, so it never comes back here either.
+-- stored as primary, so it never comes back here either. The team board an
+-- employee reads (Employee Hub) follows the same rule.
 -- Example: the owner works Owner and Cook and chose no primary; Schedule reads
 -- no primary job for them, not whichever job id sorts first.
 
@@ -18,11 +19,16 @@ $$;
 create function pg_temp.owner_job() returns uuid language sql as $$
   select j.id from public.jobs j where j.workspace_id = tests.id('mk') and j.system_key = 'owner'
 $$;
--- A second Management job and a Kitchen job, as the owner adds them in Settings > Jobs.
+-- A second Management job, a Kitchen job and a job with no department, as the
+-- owner adds them in Settings > Jobs.
 select tests.as_browser(tests.user('mk:owner'), format(
-  $sql$insert into public.jobs (id, workspace_id, name, department_id) values (%L, %L, 'Manager', %L), (%L, %L, 'Host', %L)$sql$,
+  $sql$insert into public.jobs (id, workspace_id, name, department_id)
+       values (%L, %L, 'Manager', %L), (%L, %L, 'Host', %L), (%L, %L, 'Dishwasher', null)$sql$,
   tests.remember('mk:job:manager', gen_random_uuid()), tests.id('mk'), pg_temp.management(),
-  tests.remember('mk:job:host', gen_random_uuid()), tests.id('mk'), tests.id('mk:kitchen')));
+  tests.remember('mk:job:host', gen_random_uuid()), tests.id('mk'), tests.id('mk:kitchen'),
+  tests.remember('mk:job:dishwasher', gen_random_uuid()), tests.id('mk')));
+-- Another workspace with its own Kitchen, Management, Cook, Owner...
+select tests.world('mx');
 -- An archived and a deleted department: the drawer lists departments as it
 -- lists jobs, the archived one included, the deleted one not.
 insert into public.departments (id, workspace_id, name, archived_at)
@@ -68,6 +74,16 @@ $$;
 create function pg_temp.references() returns jsonb language sql as $$
   select public.read_employee_references_service(tests.user('mk:owner'), tests.id('mk'))
 $$;
+-- How many departments and jobs of the other workspace (mx) an answer lists.
+create function pg_temp.from_mx(answer jsonb) returns integer language sql as $$
+  select (select count(*)::integer from jsonb_array_elements(answer -> 'departments') x
+      join public.departments d on d.id = (x ->> 'id')::uuid where d.workspace_id = tests.id('mx'))
+    + (select count(*)::integer from jsonb_array_elements(answer -> 'jobs') x
+      join public.jobs j on j.id = (x ->> 'id')::uuid where j.workspace_id = tests.id('mx'))
+$$;
+create function pg_temp.dishwasher(answer jsonb) returns jsonb language sql as $$
+  select x -> 'department_id' from jsonb_array_elements(answer -> 'jobs') x where x ->> 'name' = 'Dishwasher'
+$$;
 
 -- 1. The Schedule read names Management and Owner by key ------------------------------
 
@@ -77,8 +93,11 @@ select is(pg_temp.keys(pg_temp.grid() -> 'jobs' -> 0), array['color', 'departmen
   'a Schedule job carries its system key');
 select is(pg_temp.keyed(pg_temp.grid() -> 'departments'), array['Kitchen=null', 'Management=management'],
   'Schedule knows which department is Management');
-select is(pg_temp.keyed(pg_temp.grid() -> 'jobs'), array['Cook=null', 'Host=null', 'Manager=null', 'Owner=owner', 'Server=null'],
+select is(pg_temp.keyed(pg_temp.grid() -> 'jobs'), array['Cook=null', 'Dishwasher=null', 'Host=null', 'Manager=null', 'Owner=owner', 'Server=null'],
   'and which job is Owner');
+select is(pg_temp.dishwasher(pg_temp.grid()), 'null'::jsonb, 'a job with no department reads as such');
+select is(pg_temp.from_mx(pg_temp.grid()), 0,
+  'no department or job of another workspace reaches the Schedule read, though it has its own Kitchen and Management');
 update public.departments set name = 'Leadership' where id = pg_temp.management();
 select is(pg_temp.keyed(pg_temp.grid() -> 'departments'), array['Kitchen=null', 'Leadership=management'],
   'renamed to Leadership, it is still Management');
@@ -115,6 +134,34 @@ select is(
    where j.department_id = pg_temp.management()),
   0, 'no primary job the Schedule reads is a Management job');
 
+-- The team board an employee reads (Employee Hub > Schedule) says the same.
+create function pg_temp.primaries(answer jsonb, among uuid[]) returns text[] language sql as $$
+  select array_agg((e ->> 'display_name') || ':' || coalesce(j.name, 'none') order by e ->> 'display_name')
+  from jsonb_array_elements(answer -> 'employees') e
+  left join public.jobs j on j.id = (e ->> 'primary_job_id')::uuid
+  where (e ->> 'id')::uuid = any (among)
+$$;
+create temp table mk_board as
+  select public.get_employee_schedule_board_service(tests.user('mk:bora'), tests.id('mk'), tests.week(0)) as answer;
+select is(
+  pg_temp.primaries((select answer from mk_board), array[tests.id('mk:deniz'), tests.id('mk:cemre')]),
+  array['Cemre Person:none', 'Deniz Person:none'],
+  'on the team board Cemre and Deniz have no primary job either');
+select is(
+  pg_temp.primaries((select answer from mk_board),
+    array(select (e ->> 'id')::uuid from mk_board, jsonb_array_elements(answer -> 'employees') e)),
+  pg_temp.primaries(pg_temp.grid(),
+    array(select (e ->> 'id')::uuid from mk_board, jsonb_array_elements(answer -> 'employees') e)),
+  'everybody on the team board has the primary job the manager''s Schedule reads');
+select is(pg_temp.keys((select answer from mk_board) -> 'departments' -> 0), array['color', 'id', 'name', 'sort_order', 'system_key'],
+  'a team board department carries its system key');
+select is(pg_temp.keys((select answer from mk_board) -> 'jobs' -> 0), array['color', 'department_id', 'id', 'name', 'sort_order', 'system_key'],
+  'a team board job carries its system key');
+select is(
+  pg_temp.keyed((select answer from mk_board) -> 'departments') || pg_temp.keyed((select answer from mk_board) -> 'jobs'),
+  pg_temp.keyed(pg_temp.grid() -> 'departments') || pg_temp.keyed(pg_temp.grid() -> 'jobs'),
+  'the team board names Management and Owner as the Schedule does');
+
 -- 3. The drawer's references carry each job's department and the departments --------
 
 -- The answer's and a job's keys are checked in employee_references_ask_the_core.
@@ -122,14 +169,17 @@ select is(pg_temp.keys(pg_temp.references() -> 'departments' -> 0), array['archi
   'a department carries what the grouped Jobs picker shows');
 select is(pg_temp.keyed(pg_temp.references() -> 'departments'), array['Bar=null', 'Kitchen=null', 'Leadership=management'],
   'the departments: Management by key, the archived one included, the deleted one not');
-select is(pg_temp.keyed(pg_temp.references() -> 'jobs'), array['Cook=null', 'Host=null', 'Manager=null', 'Owner=owner', 'Server=null'],
+select is(pg_temp.keyed(pg_temp.references() -> 'jobs'), array['Cook=null', 'Dishwasher=null', 'Host=null', 'Manager=null', 'Owner=owner', 'Server=null'],
   'the drawer knows which job is Owner');
 select is(
   (select array_agg((x ->> 'name') || '@' || coalesce(d.name, 'none') order by x ->> 'name')
    from jsonb_array_elements(pg_temp.references() -> 'jobs') x
    left join public.departments d on d.id = (x ->> 'department_id')::uuid),
-  array['Cook@Kitchen', 'Host@Leadership', 'Manager@Leadership', 'Owner@Leadership', 'Server@Kitchen'],
+  array['Cook@Kitchen', 'Dishwasher@none', 'Host@Leadership', 'Manager@Leadership', 'Owner@Leadership', 'Server@Kitchen'],
   'each job says which department it sits under');
+select is(pg_temp.dishwasher(pg_temp.references()), 'null'::jsonb, 'a job with no department reads as such in the drawer');
+select is(pg_temp.from_mx(pg_temp.references()), 0,
+  'no department or job of another workspace reaches the drawer''s references');
 select is(
   (select count(*)::integer from jsonb_array_elements(pg_temp.references() -> 'jobs') x
    where (x ->> 'department_id')::uuid is not null
