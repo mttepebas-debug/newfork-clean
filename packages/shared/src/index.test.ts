@@ -8,12 +8,14 @@ import {
   appActionUrlSchema,
   canAccessWorkspace,
   departmentInputSchema,
+  departmentSchema,
   documentTypeInputSchema,
   employeeOnboardingSchema,
   employeeOnboardingProfileSchema,
   healthResponseSchema,
   importantDateInputSchema,
   jobInputSchema,
+  jobSchema,
   locationInputSchema,
   notificationInboxSchema,
   normalizeAccountPhone,
@@ -1499,6 +1501,25 @@ describe("organization basics schemas", () => {
       color: "#4478A8",
       department_id: null,
     });
+  });
+
+  it("keeps the system key that tells Management and the Owner job apart (BL-218)", () => {
+    const department = {
+      id: "10000000-0000-4000-8000-000000000001",
+      workspace_id: workspaceId,
+      name: "Leadership",
+      color: "#4478A8",
+      sort_order: 0,
+      archived_at: null,
+    };
+    const job = { ...department, id: "20000000-0000-4000-8000-000000000001", department_id: department.id, name: "Owner" };
+    expect(departmentSchema.parse({ ...department, system_key: "management" }).system_key).toBe("management");
+    expect(jobSchema.parse({ ...job, system_key: "owner" }).system_key).toBe("owner");
+    expect(jobSchema.parse({ ...job, system_key: null }).system_key).toBeNull();
+    // A read that drops the key would let Settings → Jobs treat Management as an ordinary team.
+    expect(() => departmentSchema.parse(department)).toThrow();
+    expect(() => jobSchema.parse(job)).toThrow();
+    expect(() => jobSchema.parse({ ...job, system_key: "management" })).toThrow();
   });
 });
 

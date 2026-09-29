@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ActiveWorkspaceContext } from "@newfork/shared";
+import { managementAndOwnerRefusals, type ActiveWorkspaceContext } from "@newfork/shared";
 import { registerJobsManagementRoutes } from "./jobs-management-routes";
 import { createJobsManagementService } from "./jobs-management-service";
 
@@ -164,6 +164,38 @@ describe("jobs management HTTP boundary", () => {
     });
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({ error: "Employee changed" });
+  });
+  it("answers deleting the Owner job with 400, its key and a readable sentence (BL-218)", async () => {
+    const { app, rpc } = setup();
+    rpc.mockResolvedValue({
+      data: null,
+      error: { code: "23514", message: "Management and Owner are kept; rename them instead", hint: "catalog.system_record" },
+    });
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/v1/workspaces/${workspaceId}/organization/jobs/${jobId}`,
+      headers: { authorization: "Bearer verified" },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: managementAndOwnerRefusals["catalog.system_record"],
+      reason: "catalog.system_record",
+    });
+  });
+  it.each([
+    ["employee.owner_job", "The owner keeps the Owner job"],
+    ["employee.management_primary", "A Management job is primary by its department and is not marked primary"],
+  ] as const)("answers an assignment change's %s refusal with 400, its key and a readable sentence (BL-218)", async (hint, raised) => {
+    const { app, rpc } = setup();
+    rpc.mockResolvedValue({ data: null, error: { code: "23514", message: raised, hint } });
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/workspaces/${workspaceId}/organization/jobs/${jobId}/assignments`,
+      headers: { authorization: "Bearer verified" },
+      payload: { changes },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: managementAndOwnerRefusals[hint], reason: hint });
   });
   it("rejects duplicate employee operations before storage", async () => {
     const { app, rpc } = setup();

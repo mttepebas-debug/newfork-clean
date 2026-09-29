@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { HttpError, rpcFailure, statusForPostgresCode } from "./http-error.js";
+import { HttpError, managementAndOwnerRefusal, rpcFailure, statusForPostgresCode } from "./http-error.js";
 
 describe("statusForPostgresCode", () => {
   it("maps the codes the RPCs raise on purpose", () => {
@@ -151,5 +151,49 @@ describe("rpcFailure keeps database internals out", () => {
 
     expect(failure.detail).toBeUndefined();
     expect(failure.message).toBe("Resolve shift hours or approved time off before saving");
+  });
+});
+
+describe("the Management and Owner refusals (BL-218)", () => {
+  // What the database raises, and what the person trying it reads instead.
+  const refusals = [
+    [
+      "catalog.system_record",
+      "Management and Owner are kept; rename them instead",
+      "Management and the Owner job come with every workspace. You can rename them, but you can't archive or delete them, and the Owner job stays in Management.",
+    ],
+    [
+      "employee.owner_job",
+      "The owner keeps the Owner job",
+      "The workspace owner always holds the Owner job, so it can't be removed from them.",
+    ],
+    [
+      "employee.management_primary",
+      "A Management job is primary by its department and is not marked primary",
+      "A Management job can't be marked primary. Choose a job from another department as primary, or leave it empty if they only work in Management.",
+    ],
+    [
+      "employee.owner_locations",
+      "The owner works at every location",
+      "The workspace owner works at every location, so a location can't be removed from them.",
+    ],
+  ] as const;
+
+  it.each(refusals)("answers %s with 400, its key and a sentence a person can read", (hint, raised, sentence) => {
+    const failure = rpcFailure({ message: raised, code: "23514", hint });
+    expect(failure.statusCode).toBe(400);
+    expect(failure.reason).toBe(hint);
+    expect(failure.message).toBe(sentence);
+  });
+
+  it("types only these refusals for the services that still throw plain errors", () => {
+    expect(
+      managementAndOwnerRefusal({ message: "The owner keeps the Owner job", code: "23514", hint: "employee.owner_job" }),
+    ).toMatchObject({ statusCode: 400, reason: "employee.owner_job" });
+    // The core's no keeps its own 403 path; it is not one of these.
+    expect(
+      managementAndOwnerRefusal({ message: "Only the workspace owner works the Owner job", code: "42501", hint: "authz.owner_only" }),
+    ).toBeNull();
+    expect(managementAndOwnerRefusal({ message: "boom", code: "23514" })).toBeNull();
   });
 });

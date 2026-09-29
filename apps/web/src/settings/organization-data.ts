@@ -1,10 +1,11 @@
-import { requestFailure } from "../lib/request-error";
+import { RequestError, requestFailure } from "../lib/request-error";
 import {
   departmentInputSchema,
   defaultScheduleLogoPlacement,
   jobInputSchema,
   jobSchema,
   locationInputSchema,
+  managementAndOwnerSentence,
   organizationLogoMaxBytes,
   organizationLogoMimeTypes,
   importantDateInputSchema,
@@ -39,8 +40,12 @@ function client(): SupabaseClient {
   return supabaseClient;
 }
 
-function message(error: { message: string } | null): void {
-  if (error) throw new Error(error.message);
+function message(error: { message: string; hint?: string | null } | null): void {
+  if (!error) return;
+  // Settings → Jobs writes straight to the tables, so the database's refusal to
+  // let go of Management or the Owner job lands here, not at the API (BL-218).
+  const sentence = managementAndOwnerSentence(error.hint);
+  throw sentence ? new RequestError(sentence, error.hint ?? undefined) : new Error(error.message);
 }
 
 const logoBucket = "workspace-logos";
@@ -344,14 +349,14 @@ export async function saveJob(
         .eq("id", id)
         .eq("workspace_id", workspaceId)
         .select(
-          "id,workspace_id,department_id,name,color,sort_order,archived_at",
+          "id,workspace_id,department_id,name,color,sort_order,archived_at,system_key",
         )
         .single()
     : client()
         .from("jobs")
         .insert({ ...values, workspace_id: workspaceId })
         .select(
-          "id,workspace_id,department_id,name,color,sort_order,archived_at",
+          "id,workspace_id,department_id,name,color,sort_order,archived_at,system_key",
         )
         .single();
   const { data, error } = await query;

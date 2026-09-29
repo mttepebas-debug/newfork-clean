@@ -14,6 +14,7 @@ import {
   type JobAssignmentChange,
   type JobAssignmentQuery,
 } from "@newfork/shared";
+import { managementAndOwnerRefusal } from "../http-error";
 
 export interface JobsRpcClient {
   rpc(
@@ -21,7 +22,7 @@ export interface JobsRpcClient {
     args: Record<string, unknown>,
   ): PromiseLike<{
     data: unknown;
-    error: { message: string; code?: string } | null;
+    error: { message: string; code?: string; hint?: string | null } | null;
   }>;
 }
 type Actor = { actorUserId: string; workspaceId: string };
@@ -37,7 +38,10 @@ export function createJobsManagementService(client: JobsRpcClient) {
       ...args,
     });
     if (error)
-      throw Object.assign(new Error(error.message), { code: error.code });
+      throw (
+        managementAndOwnerRefusal(error) ??
+        Object.assign(new Error(error.message), { code: error.code })
+      );
     return data;
   }
   function readArgs(

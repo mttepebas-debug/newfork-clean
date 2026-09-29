@@ -39,6 +39,24 @@ describe("Settings reads (FB-6.1.9)", () => {
     await built.close();
   });
 
+  it("hands Settings → Jobs the system key that marks Management and the Owner job (BL-218)", async () => {
+    const management = {
+      id: "30000000-0000-4000-8000-000000000001", workspace_id: workspaceId, name: "Leadership",
+      color: "#4478A8", sort_order: 0, archived_at: null, system_key: "management",
+    };
+    const owner = {
+      ...management, id: "40000000-0000-4000-8000-000000000001", department_id: management.id,
+      name: "Owner", system_key: "owner",
+    };
+    const cook = { ...owner, id: "40000000-0000-4000-8000-000000000002", department_id: null, name: "Cook", system_key: null };
+    const rpc = vi.fn(async () => ({ data: { departments: [management], jobs: [owner, cook] }, error: null }));
+    const built = app(settingsReadsService({ rpc }));
+    const response = await get(built, `${workspaceId}/settings/jobs`);
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ departments: [management], jobs: [owner, cook] });
+    await built.close();
+  });
+
   it("answers the core's no with 403 and its reason", async () => {
     const built = app({ read: vi.fn(async () => { throw refusal("authz.missing_permission"); }) } as SettingsReadsService);
     const response = await get(built, `${workspaceId}/settings/roles`);

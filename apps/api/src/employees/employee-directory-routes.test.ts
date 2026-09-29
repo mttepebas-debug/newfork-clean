@@ -1,7 +1,11 @@
-import type { ActiveWorkspaceContext } from "@newfork/shared";
+import { managementAndOwnerRefusals, type ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
-import type { EmployeeDirectoryService } from "./employee-directory-service";
+import { HttpError } from "../http-error";
+import {
+  createEmployeeDirectoryServiceWithClient,
+  type EmployeeDirectoryService,
+} from "./employee-directory-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const otherWorkspaceId = "16fe2550-8960-480c-9874-cbc76a8e56a9";
@@ -445,5 +449,47 @@ describe("employee directory routes", () => {
     expect(updateRole).not.toHaveBeenCalled();
     expect(setArchived).not.toHaveBeenCalled();
     expect(terminate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["employee.owner_job", "The owner keeps the Owner job"],
+    ["employee.management_primary", "A Management job is primary by its department and is not marked primary"],
+    ["employee.owner_locations", "The owner works at every location"],
+  ] as const)("answers the save's %s refusal with 400, its key and a readable sentence (BL-218)", async (hint, raised) => {
+    const rpc = vi.fn(async () => ({ data: null, error: { code: "23514", message: raised, hint } }));
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+    });
+    const response = await app.inject({
+      method: "PUT",
+      url: `/v1/workspaces/${workspaceId}/employees/${employeeId}`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: employeeInput,
+    });
+    expect(rpc).toHaveBeenCalledWith("save_employee_service", expect.anything());
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: managementAndOwnerRefusals[hint], reason: hint });
+    await app.close();
+  });
+
+  it("keeps a create's refusal key and sentence on the way out (BL-218)", async () => {
+    const sentence = managementAndOwnerRefusals["employee.management_primary"];
+    const create = vi.fn(async () => {
+      throw new HttpError(sentence, 400, { reason: "employee.management_primary" });
+    });
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      employeeCreateService: { create },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId}/employees/create`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { request_id: "91000000-0000-4000-8000-000000000001", employee: employeeInput, invite_role_id: null },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: sentence, reason: "employee.management_primary" });
+    await app.close();
   });
 });

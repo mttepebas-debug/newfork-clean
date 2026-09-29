@@ -1,3 +1,5 @@
+import { managementAndOwnerSentence } from "@newfork/shared";
+
 /**
  * HTTP status carried by the error instead of guessed from its English message.
  *
@@ -119,14 +121,29 @@ export function rpcFailure(
   // original stays on `cause` for the log.
   if (status >= 500)
     return new HttpError("Internal server error", status, { pgCode: error.code, cause: error });
+  // BL-218: these few refusals already have the sentence a person reads.
   const message =
-    !reason && postgresSentence.test(error.message)
+    managementAndOwnerSentence(reason) ??
+    (!reason && postgresSentence.test(error.message)
       ? (plainSentence[status] ?? "Request could not be completed")
-      : error.message;
+      : error.message);
   return new HttpError(message, status, {
     pgCode: error.code,
     reason,
     detail,
     cause: error,
   });
+}
+
+/**
+ * The Management and Owner refusals (BL-218) as typed errors, for the services
+ * that still throw plain Errors (BL-134): their route helpers match on wording
+ * and would drop the key. Null for anything else, which keeps its old path.
+ */
+export function managementAndOwnerRefusal(error: {
+  readonly message: string;
+  readonly code?: string;
+  readonly hint?: string | null;
+}): HttpError | null {
+  return managementAndOwnerSentence(error.hint) ? rpcFailure(error) : null;
 }

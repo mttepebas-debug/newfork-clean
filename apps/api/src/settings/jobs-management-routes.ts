@@ -13,6 +13,7 @@ import {
   resolveWorkspaceAuthorization,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
+import { HttpError } from "../http-error";
 import type { JobsManagementService } from "./jobs-management-service";
 
 const paramsSchema = z.object({
@@ -347,6 +348,13 @@ export function registerJobsManagementRoutes(
 function failure(reply: FastifyReply, error: unknown) {
   const message =
     error instanceof Error ? error.message : "Could not save changes";
+  // A typed refusal keeps its status and machine key (BL-218); the rest of
+  // this helper reads untyped throws.
+  if (error instanceof HttpError)
+    return reply.status(error.statusCode).send({
+      error: error.message,
+      ...(error.reason ? { reason: error.reason } : {}),
+    });
   const code = error instanceof Error && "code" in error ? error.code : null;
   return reply
     .status(

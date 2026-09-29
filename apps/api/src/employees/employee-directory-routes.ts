@@ -12,6 +12,7 @@ import {
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
+import { HttpError } from "../http-error";
 import type { EmployeeDirectoryService } from "./employee-directory-service";
 import type { EmployeeCreateService } from "./employee-create-service";
 
@@ -727,6 +728,13 @@ async function authorize(
 function requestError(reply: FastifyReply, error: unknown) {
   const message =
     error instanceof Error ? error.message : "Employee operation failed";
+  // A typed refusal keeps its status and machine key (BL-218); the rest of
+  // this helper reads untyped throws.
+  if (error instanceof HttpError)
+    return reply.status(error.statusCode).send({
+      error: error.message,
+      ...(error.reason ? { reason: error.reason } : {}),
+    });
   if (
     message.includes("access required") ||
     message.includes("access denied") ||

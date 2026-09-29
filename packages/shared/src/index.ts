@@ -840,6 +840,8 @@ export const departmentSchema = z.object({
   color: colorSchema,
   sort_order: z.number().int().nonnegative(),
   archived_at: z.string().datetime({ offset: true }).nullable(),
+  // Set by workspace setup on the one department that is Management (BL-218).
+  system_key: z.enum(["management"]).nullable(),
 });
 export type Department = z.infer<typeof departmentSchema>;
 
@@ -851,8 +853,32 @@ export const jobSchema = z.object({
   color: colorSchema,
   sort_order: z.number().int().nonnegative(),
   archived_at: z.string().datetime({ offset: true }).nullable(),
+  // Set by workspace setup on the one job that is Owner (BL-218).
+  system_key: z.enum(["owner"]).nullable(),
 });
 export type Job = z.infer<typeof jobSchema>;
+
+/**
+ * What a person reads when the database keeps Management, the Owner job or the
+ * owner's own assignments (BL-218), keyed by the hint it raises (23514). The
+ * API answers with these and the web uses them for the writes it still makes
+ * straight to the tables (Settings → Jobs archive and save).
+ */
+export const managementAndOwnerRefusals = {
+  "catalog.system_record":
+    "Management and the Owner job come with every workspace. You can rename them, but you can't archive or delete them, and the Owner job stays in Management.",
+  "employee.owner_job":
+    "The workspace owner always holds the Owner job, so it can't be removed from them.",
+  "employee.management_primary":
+    "A Management job can't be marked primary. Choose a job from another department as primary, or leave it empty if they only work in Management.",
+  "employee.owner_locations":
+    "The workspace owner works at every location, so a location can't be removed from them.",
+} as const;
+/** The sentence for one of those hints; undefined for any other hint. */
+export function managementAndOwnerSentence(hint: string | null | undefined): string | undefined {
+  const sentences: Readonly<Record<string, string>> = managementAndOwnerRefusals;
+  return hint && Object.hasOwn(sentences, hint) ? sentences[hint] : undefined;
+}
 
 export const locationInputSchema = locationSchema.pick({
   name: true,

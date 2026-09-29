@@ -124,6 +124,7 @@ const department = {
   color: "#3C7A68",
   sort_order: 0,
   archived_at: null,
+  system_key: null,
 } satisfies Department;
 
 const job = {
@@ -134,6 +135,7 @@ const job = {
   color: "#4478A8",
   sort_order: 0,
   archived_at: null,
+  system_key: null,
 } satisfies Job;
 
 function contextForStep(currentStep: 1 | 2 | 3 | 4): ActiveWorkspaceContext {

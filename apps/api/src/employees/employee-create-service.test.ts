@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { managementAndOwnerRefusals } from "@newfork/shared";
 import { createEmployeeCreateService } from "./employee-create-service";
 const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -109,6 +110,23 @@ describe("employee create service", () => {
         .invitation?.deliveryStatus,
     ).toBe("sent");
     expect(fetch).not.toHaveBeenCalled();
+  });
+  it("keeps the Management primary refusal's key and sentence (BL-218)", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: null,
+      error: {
+        code: "23514",
+        message: "A Management job is primary by its department and is not marked primary",
+        hint: "employee.management_primary",
+      },
+    });
+    await expect(
+      createEmployeeCreateService(options).create(id, id, { ...command, invite_role_id: null }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      reason: "employee.management_primary",
+      message: managementAndOwnerRefusals["employee.management_primary"],
+    });
   });
   it("does not send anything for Save even when email is populated", async () => {
     mocks.rpc.mockResolvedValueOnce({
