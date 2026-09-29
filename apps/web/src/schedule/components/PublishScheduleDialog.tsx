@@ -184,6 +184,9 @@ export function PublishScheduleDialog({
   const [error, setError] = useState<string | null>(null);
   const previewRequestIdRef = useRef(0);
   const publishingRef = useRef(false);
+  // BL-301: while a publication is sending the window stays; closing it
+  // would drop the answer, and a failure would go unseen.
+  const [sending, setSending] = useState(false);
   useEffect(() => () => { previewRequestIdRef.current += 1; }, []);
   const lastDocumentReviewVersionRef = useRef(documentReviewVersion);
   const previousAffectedIdsRef = useRef<readonly string[] | null>(null);
@@ -453,6 +456,7 @@ export function PublishScheduleDialog({
   const publish = async () => {
     if (!preview || publishBlocked || !availabilityConfirmed || publishingRef.current) return;
     publishingRef.current = true;
+    setSending(true);
     const requestId = ++previewRequestIdRef.current;
     const isCurrent = () => requestId === previewRequestIdRef.current;
     setPending(true);
@@ -540,12 +544,13 @@ export function PublishScheduleDialog({
       }
     } finally {
       publishingRef.current = false;
+      setSending(false);
       if (isCurrent()) setPending(false);
     }
   };
 
   return (
-    <Dialog title={STEP_TITLES[wizardStep]} description={STEP_DESCRIPTIONS[wizardStep]} onClose={reviewingShift ? () => {} : () => { previewRequestIdRef.current += 1; onClose(); }}>
+    <Dialog title={STEP_TITLES[wizardStep]} description={STEP_DESCRIPTIONS[wizardStep]} onClose={reviewingShift || sending || isPublishing ? () => {} : () => { previewRequestIdRef.current += 1; onClose(); }}>
       <div className="schedule-publication-form">
         <div className="schedule-publication-steps" aria-label="Publish steps">
           {[
@@ -936,7 +941,7 @@ export function PublishScheduleDialog({
               Back
             </button>
           ) : null}
-          <button type="button" disabled={reviewingShift} onClick={() => { previewRequestIdRef.current += 1; onClose(); }}>
+          <button type="button" disabled={reviewingShift || sending || isPublishing} onClick={() => { previewRequestIdRef.current += 1; onClose(); }}>
             Cancel
           </button>
           {wizardStep === 2 ? (
