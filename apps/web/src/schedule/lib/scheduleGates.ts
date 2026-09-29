@@ -17,6 +17,9 @@ export function scheduleGates(context: ActiveWorkspaceContext | null | undefined
     // RLS opens on settings.general.manage: settings.organization.write.
     manageLogo: can(context, "settings.organization.write"),
     manageLocations: can(context, "settings.locations.write"),
+    // A person's name opens their Employees record, which only a reader the
+    // core lets read employees may open (BL-243).
+    openEmployee: can(context, "employee.read"),
   };
 }
 

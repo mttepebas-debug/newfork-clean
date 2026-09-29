@@ -21,8 +21,10 @@ const jordan = "15000000-0000-4000-8000-000000000002";
 const sam = "15000000-0000-4000-8000-000000000003";
 const dinner = "15000000-0000-4000-8000-000000000004";
 
+// What the core lets the reader do; a test that needs less sets it first.
+let actions: string[] = ["employee.read"];
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({ context: { workspace: { id: workspace }, actions: [] } }),
+  useAuth: () => ({ context: { workspace: { id: workspace }, actions } }),
 }));
 vi.mock("../availability/availability-data", () => ({
   loadWeeklyTeam: vi.fn(),
@@ -103,6 +105,7 @@ function renderPage(path = "/app/availability") {
   return client;
 }
 beforeEach(() => {
+  actions = ["employee.read"];
   vi.resetAllMocks();
   vi.mocked(loadWeeklyTeam).mockResolvedValue(fixture());
 });
@@ -238,5 +241,19 @@ describe("no access (FB-6.1.9)", () => {
     expect(await screen.findByRole("heading", { name: "You don't have access to team availability" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+});
+
+// BL-243: the drawer reads the person's record, so it opens only for a reader
+// the core lets read employees.
+describe("weekly team availability without employee reading", () => {
+  it("does not open the employee drawer, by click or by link", async () => {
+    actions = [];
+    renderPage(`/app/availability?employeeId=${alex}&section=availability`);
+    await screen.findByText("Alex Kim");
+    expect(
+      screen.getByRole("button", { name: "Alex Kim Monday: 09:00 - 17:00" }),
+    ).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("dialog", { name: "Employee" })).toBeNull();
   });
 });

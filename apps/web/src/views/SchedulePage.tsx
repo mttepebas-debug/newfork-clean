@@ -2647,6 +2647,7 @@ export function SchedulePage({
             : undefined
         }
         onOpenEmployeeCard={(employeeId) => {
+          if (!gates.openEmployee) return;
           if (dismissOpenSurfaceBeforeGridActivation()) return;
           setEditor(null);
           setShiftMenu(null);
@@ -3157,6 +3158,7 @@ export function SchedulePage({
             })
           }
           onReviewDocumentConflict={(conflict) => {
+            if (!gates.openEmployee) return;
             setEmployeeCardId(conflict.employee_id);
             setEmployeeCardSection("documents");
           }}
@@ -3232,7 +3234,7 @@ export function SchedulePage({
           }}
         />
       ) : null}
-      {employeeCardId ? (
+      {employeeCardId && gates.openEmployee ? (
         <EmployeeDrawer
           employeeId={employeeCardId}
           creating={false}

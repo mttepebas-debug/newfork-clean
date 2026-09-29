@@ -8,6 +8,7 @@ import { CalendarCheck, RotateCcw, Search } from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import { loadWeeklyTeam } from "../availability/availability-data";
 import { formatTime } from "../schedule/lib/scheduleDateTime";
 import { CatalogSortButton } from "./CatalogSortButton";
@@ -76,9 +77,15 @@ export function AvailabilityPage() {
       ),
     [locationId, model?.employees, sort, submission, term],
   );
-  const selectedEmployee = model?.employees.find(
-    (employee) => employee.id === search.get("employeeId") && employee.can_open,
-  );
+  // The drawer reads the person's record: only for a reader the core lets
+  // read employees (BL-243).
+  const opensEmployees = can(context, "employee.read");
+  const selectedEmployee = opensEmployees
+    ? model?.employees.find(
+        (employee) =>
+          employee.id === search.get("employeeId") && employee.can_open,
+      )
+    : undefined;
   const parsedSection = employeeSectionSchema.safeParse(search.get("section"));
   const updateParams = (
     values: Record<string, string | null>,
@@ -238,7 +245,7 @@ export function AvailabilityPage() {
                     <button
                       type="button"
                       className="weekly-team-person"
-                      disabled={!employee.can_open}
+                      disabled={!opensEmployees || !employee.can_open}
                       onClick={() => openEmployee(employee.id)}
                     >
                       <strong>{employee.display_name}</strong>
@@ -262,7 +269,7 @@ export function AvailabilityPage() {
                         <button
                           type="button"
                           className="weekly-team-day"
-                          disabled={!employee.can_open}
+                          disabled={!opensEmployees || !employee.can_open}
                           aria-label={
                             employee.display_name +
                             " " +

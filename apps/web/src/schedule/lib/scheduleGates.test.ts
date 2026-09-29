@@ -53,6 +53,7 @@ describe("scheduleGates", () => {
           "schedule.templates",
           "settings.organization.write",
           "settings.locations.write",
+          "employee.read",
         ]),
       ),
     ).toEqual({
@@ -62,6 +63,7 @@ describe("scheduleGates", () => {
       templates: true,
       manageLogo: true,
       manageLocations: true,
+      openEmployee: true,
     });
   });
 
@@ -73,6 +75,7 @@ describe("scheduleGates", () => {
       templates: false,
       manageLogo: false,
       manageLocations: false,
+      openEmployee: false,
     });
     expect(scheduleGates(null).edit).toBe(false);
   });
