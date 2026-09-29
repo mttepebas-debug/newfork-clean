@@ -50,7 +50,7 @@ Sıralama kuralı: önce en yüksek "leave" (critical yok; high); aynı önemde 
 | 6 | **G6** | Bildirim teslimi | BL-099 BL-119 BL-342 BL-343 (BL-342/BL-343 KK-17 ile G6'ya eklendi) | high / moderate | R3 (bildirim `*_service`) | `nf-db` | 0,5 gün — **bitti** (dal `task/g6-notification-delivery`, + BL-342/BL-343; `nf-guvenlik` incelemesi @`62782c12`; KK-16, KK-17) |
 | 7 | **G7** | FB-6.2.1 kapsamı: yetki çekirdeği ailesi A'nın Çalışanlar dilimine düşen kısmı (KK-5, KK-12) | BL-129 BL-270 BL-317 BL-242 BL-130 BL-155 BL-133 BL-176 BL-243 BL-276 (BL-133, BL-176, BL-276 kısmen; + BL-099'un yetki kısmı, KK-11) | high / risky | R3 | `nf-db` (+ `nf-backend` BL-176/BL-243) | 2–3 gün |
 | 8 | **G8** | Silinmiş ve arşivli kayıtlar | BL-254 BL-132 (BL-188 bayat, kapandı) | medium / moderate | R3 (BL-132 `scope_set`) | `nf-db` (+ `nf-backend` okuma modeli) | 1 gün |
-| 9 | **G9** | İzin, takas ve kapsam kuralları | BL-127 BL-182 BL-220 BL-247 BL-200 BL-110 BL-109 (BL-183, BL-185 bayat, kapandı) | high / risky | R3 | `nf-db` (+ `nf-backend` BL-200, `nf-arayuz` BL-110 metinleri) | 2 gün — **başladı** (G6 işçisinde, G6'dan sonra) |
+| 9 | **G9** | İzin, takas ve kapsam kuralları | BL-127 BL-182 BL-220 BL-247 BL-200 BL-110 BL-109 (BL-183, BL-185 bayat, kapandı) | high / risky | R3 | `nf-db` (+ `nf-backend` BL-200, `nf-arayuz` BL-110 metinleri) | 2 gün — **ikiye bölündü (KK-19):** G9a **bitti** (BL-247, BL-220, BL-109; `task/g9-timeoff-exchange` @`78fa6fc3`, inceleme sürüyor); G9b **başladı** (BL-182 + BL-127; `task/g9b-shorten-time-off`; kısaltma anı = yönetici onayı); BL-200 (önce uygulamada ölçüm, `nf-backend`) ve BL-110 kalanı (Schedule turundan sonra) G9'da açık |
 | 10 | **G10** | Schedule kayıt ve yayın kuralları (veri) | BL-174 BL-191 BL-326 BL-325 BL-167 BL-228 BL-229 BL-292 BL-298 BL-236 BL-211 BL-238 (BL-190, BL-164 bayat, kapandı) | medium / moderate | R3 (`*_service` sözleşmesi, BL-292) | `nf-db` (+ `nf-backend` BL-298 shared şema) | 2 gün |
 | 11 | **G11** | Hata sözleşmesi ve hata görünürlüğü | BL-134 BL-223 BL-172 BL-145 BL-156 BL-193 BL-213 BL-331 BL-324 BL-076 U37 U51 U42 (kalan kalemler) (U31, U26, U55 bayat, kapandı) | medium / moderate | R2 | `nf-backend` | 2 gün |
 | 12 | **G12** | Yerel veritabanına dayanıklı pgTAP | BL-209 BL-217 BL-227 BL-245 BL-262 BL-288 BL-296 BL-173 BL-105 BL-226 BL-253 BL-248 BL-094 BL-070 BL-096 U32 BL-344 | medium / safe (BL-070 high, bayat görünüyor) | R0 (yalnız test) | `nf-test` | 1,5 gün |
@@ -60,7 +60,7 @@ Sıralama kuralı: önce en yüksek "leave" (critical yok; high); aynı önemde 
 | 16 | **G16** | Giriş öncesi, hesap ve workspace ekranları | BL-285 BL-289 BL-286 BL-144 BL-151 BL-122 BL-072 BL-284 BL-336 BL-339 U48 U49 U53 U54 U56 U57 U58 BL-348 BL-351 | medium / safe | R1 (BL-284, K24 cevabına göre R3 olabilir) | `nf-arayuz` (+ `nf-backend` U56/U57/BL-284) | 1,5 gün |
 | 17 | **G17** | Çalışanlar ve kişi kaydı | BL-314 BL-315 BL-244 BL-079 BL-153 BL-338 BL-352 | medium / risky | R3 (BL-079 görünen adın tek kaynağı) | `nf-db` + `nf-backend` | 1,5 gün |
 | 18 | **G18** | Belgeler (Documents) | U59 U60 U43 U44 BL-118 BL-341 | medium / moderate | R2 | `nf-backend` + `nf-arayuz` | 1 gün |
-| 19 | **G19** | Zaman ve tarih | BL-277 | medium / safe | R2 | `nf-backend` | 0,5 gün — **bitti** (dal `task/g19-today-helper` @`b0488ea9`, R2 bağımsız inceleme sürüyor; tarayıcı-yerel kısım BL-353, G14) |
+| 19 | **G19** | Zaman ve tarih | BL-277 | medium / safe | R2 | `nf-backend` | 0,5 gün — **bitti, onaylı** (dal `task/g19-today-helper`, R2 ONAY @`62ffbf1d`; toplu turu bekliyor; tarayıcı-yerel kısım BL-353, G14) |
 | 20 | **G20** | Performans | BL-275 U13 U20 | medium / moderate | R2 | `nf-arayuz` + `nf-backend` | 1 gün |
 | 21 | **G21** | Müsaitlik | BL-135 BL-086 BL-088 (BL-343 KK-17 ile G6'ya taşındı) | medium / safe | R2 | `nf-backend` + `nf-arayuz` | 1 gün |
 | 22 | **G22** | İpucu ve not köşesi | BL-207 BL-297 | low / moderate | R2 (ortak Tooltip) | `nf-arayuz` | 0,5 gün — **bitti, onaylı** (dal `task/g22-tooltip-note-corner`, R2 ONAY @`9d3791e5`; toplu turu bekliyor) |
@@ -303,6 +303,7 @@ Hükümler BACKLOG.md'de ("Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G…)
 - (6) Account'ta iki telefon alanı → **BL-335** (yeni, veri kararı), GK.
 
 ## Notes / Result
+- 2026-09-29 (`task/backlog-program-5`): KK-19 — G9 ikiye bölündü (G9a bitti, G9b başladı); BL-200 ve BL-110 altına durum notu. G19 onaylı (@`62ffbf1d`). Açık madde değişmedi (**259**).
 - 2026-09-29 (`task/backlog-program-5`): G19 bitti (inceleme sürüyor), G13 başladı. BL-277'nin tarayıcı-yerel kısmı BL-353 (G14) olarak açıldı → açık madde 258 → **259**.
 - 2026-09-29 (`task/backlog-program-5`, taban `c46aebb2`): G5 bitti (inceleme sırada). BL-351 (kurtarma/davet token'ı adres çubuğunda, G16), BL-352 (davet sırrı düz metin ve silinmiyor, G17) açıldı → açık madde 256 → **258**. "Hosted bekleyen" listesi açıldı (BL-101 cron, U63, BL-161).
 - 2026-09-29 (`task/backlog-program-5`, taban `8526fac0`): G22 onaylı (R2 ONAY @`9d3791e5`), toplu turu bekliyor. İncelemenin engel olmayan iki notu BL-350 (G13) → açık madde 255 → **256**.
