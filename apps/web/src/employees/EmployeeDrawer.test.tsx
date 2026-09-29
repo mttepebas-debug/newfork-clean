@@ -210,6 +210,21 @@ vi.mock("./employee-data", () => ({
   updateEmployeeRole: vi.fn(),
 }));
 
+let renderedDetail: EmployeeDetail = detail;
+
+// The drawer copies the loaded employee into its form one effect after the
+// data arrives. A click in that first frame lands on an empty form and wipes
+// the person's jobs and locations (BL-322), so wait until the Employment
+// section is up and its form holds them.
+async function employeeLoaded() {
+  await waitFor(() => {
+    screen.getByLabelText("Exclude from schedule");
+    for (const item of [...renderedDetail.jobs, ...renderedDetail.locations]) {
+      expect((screen.getByLabelText(item.name) as HTMLInputElement).checked).toBe(true);
+    }
+  });
+}
+
 function renderDrawer(
   section: EmployeeSection = "access",
   detailFixture: EmployeeDetail = detail,
@@ -229,6 +244,7 @@ function renderDrawer(
     readonly requirementId: string;
   }) => void,
 ) {
+  renderedDetail = detailFixture;
   vi.mocked(getEmployeeDetail).mockResolvedValue(detailFixture);
   vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
     locations: detailFixture.locations.map((location) => ({
@@ -419,7 +435,8 @@ describe("EmployeeDrawer", () => {
 
   it("holds Save when an edit clears the last location, unless remote or excluded", async () => {
     renderDrawer("employment");
-    fireEvent.click(await screen.findByLabelText("Main Dining"));
+    await employeeLoaded();
+    fireEvent.click(screen.getByLabelText("Main Dining"));
     const save = screen.getByRole("button", { name: "Save changes" });
     // The server refuses this shape; before, Save stayed enabled and failed
     // after the round trip.
@@ -1152,7 +1169,8 @@ describe("EmployeeDrawer", () => {
       jobs: [],
     });
 
-    fireEvent.click(await screen.findByLabelText("Exclude from schedule"));
+    await employeeLoaded();
+    fireEvent.click(screen.getByLabelText("Exclude from schedule"));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() =>
@@ -1198,7 +1216,8 @@ describe("EmployeeDrawer", () => {
     it("does not make the job just unticked the primary", async () => {
       denizReferences();
       renderDrawer("employment", deniz);
-      fireEvent.click(await screen.findByLabelText("Cook"));
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Cook"));
       fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
       await waitFor(() =>
         expect(saveEmployee).toHaveBeenCalledWith(
@@ -1243,7 +1262,8 @@ describe("EmployeeDrawer", () => {
     it("saves somebody who only manages at one location with no primary job", async () => {
       withManagementJob();
       renderDrawer("employment");
-      fireEvent.click(await screen.findByLabelText("Floor Manager"));
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Floor Manager"));
       fireEvent.click(screen.getByLabelText("Server"));
       // No primary to pick for a Management job.
       expect(within(jobRow("Floor Manager")).queryByLabelText("Primary")).toBeNull();
@@ -1265,7 +1285,8 @@ describe("EmployeeDrawer", () => {
     it("keeps the primary on the job outside Management for somebody who does both", async () => {
       withManagementJob();
       renderDrawer("employment");
-      fireEvent.click(await screen.findByLabelText("Floor Manager"));
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Floor Manager"));
       expect(within(jobRow("Floor Manager")).queryByLabelText("Primary")).toBeNull();
       expect((within(jobRow("Server")).getByLabelText("Primary") as HTMLInputElement).checked).toBe(true);
       fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
@@ -1289,7 +1310,8 @@ describe("EmployeeDrawer", () => {
       location_count: 2,
       locations: [{ ...detail.locations[0]!, primary: false }, second],
     });
-    fireEvent.click(await screen.findByLabelText("Patio"));
+    await employeeLoaded();
+    fireEvent.click(screen.getByLabelText("Patio"));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() =>
       expect(saveEmployee).toHaveBeenCalledWith(
