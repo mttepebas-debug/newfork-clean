@@ -603,9 +603,12 @@ export async function declinePendingEmployeeInvitation(
 export async function previewEmployeeInvitation(
   tokenValue: string,
 ): Promise<InvitationPreview | null> {
-  const response = await fetch(
-    `${newforkApiUrl}/v1/invitations/preview?token=${encodeURIComponent(tokenValue)}`,
-  );
+  // The token rides in the body: an address with it lands in request logs (BL-279).
+  const response = await fetch(`${newforkApiUrl}/v1/invitations/preview`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token: tokenValue }),
+  });
   const body = (await response.json().catch(() => null)) as unknown;
   // A token no invitation carries is its own state, not an error to show.
   if (response.status === 404) return null;

@@ -255,7 +255,7 @@ const invitationBodySchema = z.object({
 const invitationAcceptanceSchema = z.object({
   token: z.string().trim().min(32).max(256),
 });
-const invitationPreviewQuerySchema = z.object({
+const invitationPreviewBodySchema = z.object({
   token: z.string().trim().min(32).max(256),
 });
 const invitationActionParamsSchema = z.object({
@@ -825,8 +825,9 @@ export function buildApp(options: BuildAppOptions = {}) {
     }
   });
 
-  app.get("/v1/invitations/preview", async (request, reply) => {
-    const query = invitationPreviewQuerySchema.safeParse(request.query);
+  // BL-279 (2): the token rides in the body; an address with it lands in request logs.
+  app.post("/v1/invitations/preview", async (request, reply) => {
+    const query = invitationPreviewBodySchema.safeParse(request.body);
     if (!query.success)
       return reply
         .status(400)

@@ -156,12 +156,23 @@ describe("invitation endpoints", () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it("answers 404 for a token no invitation carries", async () => {
+  it("never takes the token in the address, where request logs keep it (BL-279)", async () => {
     const service = serviceThrowing(new Error("unused"));
     const response = await appWith({
       ...service,
       preview: async () => null,
     }).inject({ method: "GET", url: `/v1/invitations/preview?token=${token}` });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json().code).not.toBe("invitation_not_found");
+  });
+
+  it("answers 404 for a token no invitation carries", async () => {
+    const service = serviceThrowing(new Error("unused"));
+    const response = await appWith({
+      ...service,
+      preview: async () => null,
+    }).inject({ method: "POST", url: "/v1/invitations/preview", payload: { token } });
 
     expect(response.statusCode).toBe(404);
     expect(response.json().code).toBe("invitation_not_found");
@@ -177,7 +188,7 @@ describe("invitation endpoints", () => {
         emailHint: "em***@example.test",
         expiresAt: "2026-08-24T12:00:00.000Z",
       }),
-    }).inject({ method: "GET", url: `/v1/invitations/preview?token=${token}` });
+    }).inject({ method: "POST", url: "/v1/invitations/preview", payload: { token } });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
