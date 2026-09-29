@@ -137,6 +137,85 @@ select is(
   '42501 authz.missing_permission', 'an employee opens no manager Workspace home'
 );
 
+-- The to-do list and Workspace home have one gate, the core's workspace.todos
+-- (KK-32, nf-guvenlik D1/D2): the owner, an admin and a manager keep the list
+-- as before; a closed workspace and a missing required document now refuse
+-- the home too.
+select is(app_private.authz_reason(tests.user('m:ayse'), tests.id('m'), 'workspace.todos'), null,
+  'the core lets a manager keep the workspace''s to-do list, as the service always did');
+select is(app_private.authz_reason(tests.user('m:emre'), tests.id('m'), 'workspace.todos'), 'missing_permission',
+  'and not an employee');
+select is(
+  (select count(*)::integer from pg_proc p
+   where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
+     and p.prosrc ~ '(authorize_workspace_todos|workspace_todo_actor_role)\s*\('),
+  0, 'nobody asks the to-do list''s own gate any more'
+);
+select is(
+  (select count(*)::integer from pg_proc p
+   where p.oid in ('public.create_workspace_todo_service(uuid,uuid,text,text,uuid,timestamptz)'::regprocedure,
+                   'public.resolve_workspace_todo_service(uuid,uuid,uuid)'::regprocedure,
+                   'public.get_workspace_dashboard_service(uuid,uuid)'::regprocedure)
+     and p.prosrc ~ 'app_private\.authorize\([^;]*''workspace\.todos'''),
+  3, 'writing, resolving and opening Workspace home ask the core''s workspace.todos'
+);
+
+select tests.world('c');
+select tests.person('c', 'cem', 'manager', array['K'], array['cook']);
+update public.workspaces set lifecycle_status = 'suspended' where id = tests.id('c');
+select is(
+  pg_temp.refusal(format('select public.get_workspace_dashboard_service(%L, %L)', tests.user('c:cem'), tests.id('c'))),
+  '42501 authz.workspace_closed', 'a manager of a closed workspace opens no Workspace home (D2)'
+);
+select is(
+  pg_temp.refusal(format('select public.create_workspace_todo_service(%L, %L, %L, %L, null, null)',
+    tests.user('c:cem'), tests.id('c'), 'Follow up', '')),
+  '42501 authz.workspace_closed', 'nor writes a to-do there'
+);
+
+-- workspace.todos is labelled read (KK-34); the label must give no write gate
+-- away: a member still onboarding is refused as well.
+select tests.world('r');
+select tests.person('r', 'nur', 'manager', array['K'], array['cook'], 'onboarding');
+select is(
+  pg_temp.refusal(format('select public.get_workspace_dashboard_service(%L, %L)', tests.user('r:nur'), tests.id('r'))),
+  '42501 authz.not_active', 'a manager still finishing their onboarding opens no Workspace home'
+);
+select is(
+  pg_temp.refusal(format('select public.create_workspace_todo_service(%L, %L, %L, %L, null, null)',
+    tests.user('r:nur'), tests.id('r'), 'Follow up', '')),
+  '42501 authz.not_active', 'nor writes a to-do'
+);
+
+select tests.world('d');
+select tests.person('d', 'dora', 'manager', array['K'], array['cook']);
+-- ponytail: the deadline is moved into the past by hand, as in schedule_asks_the_core.
+create temporary table required_document (id uuid, preview jsonb);
+insert into required_document (id)
+select public.save_document_type_lifecycle_service(tests.user('d:owner'), tests.id('d'), null, null, jsonb_build_object(
+  'title', 'Food handler card', 'description', 'Card', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+update required_document set preview = public.preview_document_publication_service(tests.user('d:owner'), tests.id('d'), id);
+select public.set_document_publication_service(tests.user('d:owner'), tests.id('d'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from required_document;
+select tests.settle();
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('d:dora');
+select is(
+  pg_temp.refusal(format('select public.get_workspace_dashboard_service(%L, %L)', tests.user('d:dora'), tests.id('d'))),
+  '42501 authz.document_blocked', 'a manager missing a required document opens no Workspace home (D2)'
+);
+select is(
+  pg_temp.refusal(format('select public.create_workspace_todo_service(%L, %L, %L, %L, null, null)',
+    tests.user('d:dora'), tests.id('d'), 'Follow up', '')),
+  '42501 authz.document_blocked', 'nor writes a to-do'
+);
+
 -- 3. Deleting a job or a location ------------------------------------------------------
 
 select is(
