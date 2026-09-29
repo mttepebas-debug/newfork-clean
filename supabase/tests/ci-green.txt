@@ -128,3 +128,17 @@ supabase/tests/management_only_person_saves_without_primary.test.sql
 supabase/tests/the_account_phone_is_the_only_phone.test.sql
 supabase/tests/scheduled_export_sends_only_live_locations.test.sql
 supabase/tests/account_checks_count_in_the_database.test.sql
+supabase/tests/bl052_document_access.test.sql
+supabase/tests/bl052_document_definitions.test.sql
+supabase/tests/bl052_document_employee_assignment_preview.test.sql
+supabase/tests/employee_hub.test.sql
+supabase/tests/employee_onboarding_rls.test.sql
+supabase/tests/notification_platform_core.test.sql
+supabase/tests/notification_preference_resolver_and_producers.test.sql
+supabase/tests/notification_settings_admin.test.sql
+supabase/tests/onboarding_composite_tenant_constraints.test.sql
+supabase/tests/roles_permissions_rls.test.sql
+supabase/tests/scheduling_settings_shift_types_rls.test.sql
+supabase/tests/time_off_partial_period_decisions.test.sql
+supabase/tests/weekly_exchange_changed_terms.test.sql
+supabase/tests/weekly_team_availability.test.sql
