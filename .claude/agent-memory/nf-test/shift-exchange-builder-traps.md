@@ -21,13 +21,8 @@ reproducing what `supabase/tests/shift_exchanges_v1.test.sql` (AT27) does.
   short-circuit evaluation of the `nullif(...) is not null and ...` guard.
   Work around with `perform set_config('newfork.schedule_publish_scope', '{}', true);`
   right before the approve call.
-- **The `note` field has no UI anywhere in Schedule editing** (`ShiftQuickEditor`
-  only has Job / Labels / Start-End / Break / "Show times on badge" —
-  no free-text note box). It only surfaces to the *employee* via
-  `apps/web/src/employee-hub/ShiftSheet.tsx:100` (`{shift.note && <p>{shift.note}</p>}`).
-  To reproduce a pgTAP scenario that has a manager's shift note, you must set
-  `schedule_edit_session_shifts.note` / `schedule_published_shifts.note` directly
-  by SQL and say so in the report — there is no click-path for it today.
+- A shift note has a Schedule UI since BL-199 (editor note field); the old "no note field in Schedule
+  UI" trap is gone (corrected 2026-09-29). Employees see it in `apps/web/src/employee-hub/ShiftSheet.tsx`.
 - `tests.enable_shift_hub(w)` (in `supabase/test-support/builder.sql`) is **dead**:
   it does `update workspaces set shift_exchanges_enabled = true`, but that column
   no longer exists on `public.workspaces` (checked on `origin/main` 2026-09-26,
