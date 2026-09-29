@@ -1,68 +1,57 @@
-# Koordinatör devri — 2026-09-29 öğleden sonra
+# Koordinatör devri — 2026-09-29 akşam
 
-Devreden: "Koordinatör — devir 2026-09-28 akşam" (`local_4ccace1a-f969-4d2b-8451-ef6b0738d10a`); bağlamı doldu.
-Devralan: bu dosyayı okuyan yeni koordinatör oturumu.
-Ölçüm anı (koordinatör, 2026-09-29): `origin/main` `4c205f9b` + bu devir commit'i; kilitler boş; main CI yeşil (4c205f9b run 36545445726). Canlı DB = main (son migration `20260929110000`).
-Kullanıcı telefondan (Remote Control) izliyor. Dil sade Türkçe. **Aynı anda tek iş** (CLAUDE.md §11.4).
-**Yeni kurallar bu devirde:** `DELEGASYON.md` (risk sınıfı R0–R3; her işe güvenlik/görsel QA pası yok, yalnız gerektiğinde), CLAUDE.md §3 (koşan CI iki ağır işten biri sayılır; yük altında düşen test boşta yeniden koşulur), `REUSE.md` → `docs/plan/KARARLAR.md` (sayfa envanteri kalktı, "Ekran kararları" bölümü var). Durumun tamamı: `docs/plan/ILERLEME-PLANI.md`.
+Devreden: "Koordinatör el değiştirmesi" (`local_243f826b-1906-491b-b1fc-1a1bdbb4316d`); bağlamı %76.
+Devralan: bu dosyayı okuyan yeni koordinatör oturumu (havuzdan).
+Ölçüm anı: `origin/main` = bu devir commit'i (üstü `12d74178`); main CI son kod koşusu yeşil (4c205f9b); kilitler boş; yerel Supabase açık (9 container); Docker açık.
+**Kullanıcı PC başında değil, yönetim koordinatörde.** Kurallar: `docs/plan/KOORDINATOR-KARARLARI.md` başı (karar ver, KK-n olarak logla, kullanıcı dönünce raporla; geri alınamaz/hosted/ücretli olan park) ve kullanıcı hafızası `user-away-mode`, `single-track-and-computed-plan`.
 
 ## 0. İlk işler (sırayla)
-1. Kendi oturum kimliğini al; `CLAUDE.md` §3 ve §12'deki koordinatör kimliğini değiştirmek için kullanıcıdan onay iste (onay senin pencerene). Değişiklik `../newfork-wt/coord`'da.
-2. Remote Control açık ve kenar çubuğunda sabitli mi, doğrula. Yeni adresi rol oturumlarına bildir (§5).
-3. Eski koordinatörü arşivlemeden önce kullanıcıya sor.
-4. **Ana klasör (`newfork-clean`) `7fcf31e0`'de geride.** İçinde commit'lenmemiş bir `nf-guvenlik` hafıza değişikliği ve izlenmeyen `checklist-role-button-row-borrowed-name.md` fast-forward'u engelliyor; içerikleri main'de (`054e6804`). Kullanıcıya verilen PowerShell komutları (çalıştırıldığı doğrulanmadı): `cd C:\Users\TheWe\Documents\Codex\newfork-clean` → `git restore .claude/agent-memory/nf-guvenlik/MEMORY.md` → `Remove-Item .claude/agent-memory/nf-guvenlik/checklist-role-button-row-borrowed-name.md` → `git merge --ff-only origin/main` → `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build` → 5555 sunucusunu yeniden başlat. Worktree oturumu ana klasörün `.claude/`'una yazamaz (kullanıcı hafızası `worktree-session-base-claude-dir`).
+1. Kendi `local_` kimliğini al (`get_session self`). Bütün rol ve işçi oturumlarına yeni adresi `mcp__ccd_session_mgmt__send_message` ile bildir (liste §4). **CLAUDE.md §3/§12'deki koordinatör kimliği güncellenmedi** — CLAUDE.md değişikliği kullanıcı onayı ister (§8); kullanıcı dönünce sor, o zamana kadar rollere adresi mesajla ver.
+2. Eski koordinatörü (`local_243f826b…`) arşivle: telefon bağlantısını kapat, sabitlemeyi kaldır, `archive_session`. Worktree'si yok (ana klasörde çalıştı); `newfork-wt/coord` ve `newfork-wt/merge-account` senin kullanacağın worktree'ler.
+3. **Rapor kanalı:** rollerin `SendMessage` raporları koordinatörde onay bekleyip düşüyor. Her görev mesajına "raporu `mcp__ccd_session_mgmt__send_message` (session_id: <senin id>) ile gönder" satırı yaz. Rapor gecikirse `list_events` ile oturum kaydından oku (hafıza `coordinator-session-address`).
 
-## 1. Açık konu: Schedule "gerilemeleri" (kullanıcı cevabı bekleniyor)
-- Kullanıcı 2026-09-29'da beş belirti bildirdi: (1) view modunda Unassigned satırı pasif değil, (2) sürüklerken yeşil/kırmızı hedef yok, (3) Ctrl+V yapıştırma modu, (4) boşa tık/Escape kademeli iptal, (5) pencere açıkken boşa tık arkaya geçiyor. Sonra (6) vardiya atayınca "Saving", Add shift'te "Checking availability" uzun bekliyor ("daha büyük bir sorun").
-- `nf-arayuz` alt ajanı taze kurulumda (5612/5613, güncel kod, taze paketler) 2–5'i **üretemedi**; kod değişmedi, 805 Schedule testi yeşil. Kanıt: `artifacts/nf-arayuz/schedule-regressions/`.
-- Koordinatör ölçümü (6): müsaitlik kontrolü 0,06 sn, Schedule okuması 0,1 sn (owner@newfork.test, 5556); DB'de takılan sorgu yok, CI yok.
-- En güçlü aday: kullanıcının 5555 Schedule sekmesi 2026-09-28 23:40'tan beri açık ve gece boyunca çok sayıda HMR aldı (5555'in import'larında `?t=` damgası). Ayrıca ana klasörde `packages/ui/dist` 2026-09-21'den beri derlenmemişti (bir oturum yeniden derledi; bu yalnız sil düğmesinin görünmemesini açıklıyordu). `@newfork/shared` web'e `exports` ile **src**'den okunuyor; `@newfork/ui` dist'ten.
-- Kullanıcıya soruldu, cevap bekleniyor: (a) sekmeyi kapatıp yeniden açınca / Ctrl+Shift+R sonrası belirtiler (ve yavaşlık) sürüyor mu — sürerse tarayıcı ağ isteklerine bak, tam adımlarıyla kırmızı test + düzeltme; (b) belirti 1'in anlamı: (önerilen) Settings menüsündeki "Hide/Show Unassigned Shifts Row" ve "Freeze/Unfreeze" satırları view modunda pasif olsun (`ScheduleTopBar.tsx:632-656`, git geçmişinde hiç pasif değildi → yeni kural) mı, yoksa view'da Unassigned satırındaki açık vardiya kartına tıklayınca odaklanmasın (`ShiftCard.tsx:223`) mı.
-- Yerel veride deneme taslağı: Meyhouse, 28 Eyl haftası "SR regression test" (silme kullanıcı onayıyla).
+## 1. Toplu tur T1 — main'e girmek üzere (en önemli açık iş)
+- Dal: `task/batch-t1` @`2f2c4eb0` (origin'de), worktree `newfork-wt/merge-account` (node_modules kurulu). İçerik origin/main `9cc8281e` üstüne cherry-pick: Account yeniden tasarımı (11 commit, `…3b2a4b00`), BL-335 telefon tetikleyicisi (`4acf7166`), BL-332 Settings menüsü, G2 (`3367b0ed`,`a0ac7ea9`), G22 (`a1cb41c3`,`9d3791e5`), G19 (`342b6548`,`b0488ea9`,`62ffbf1d`), G6 (`6b681623`,`62782c12`,`bd77d44e`), G9a (`933d01d2`,`1306a77e`), App testi düzeltmesi (`2f2c4eb0`).
+- Onaylar: Account güvenlik ONAY @a3a7b3e9 + görsel QA ONAY @a3a7b3e9; BL-335 ONAY (DB @4acf7166 + web @3b2a4b00); G6 ONAY @62782c12 (+D1 hücresi); G9a ONAY @78fa6fc3; G2 R1 koordinatör onayı; G22 ONAY @9d3791e5, G19 ONAY @b0488ea9 (bağımsız alt ajan).
+- CI (run 36569993744 @1306a77e): **db yeşil**; check 1 kırmızı (`App.test.tsx` BL-332 eski kural — `2f2c4eb0` ile düzeldi, yerelde yeşil); e2e 1 kırmızı: `owner-legal-name-setup.spec.ts:101` "Legal name" başlığı yeni Profile'da yok → **nf-arayuz düzeltiyor** (`merge/account` üstüne push edecek; sha'yı send_message ile verecek — gelmezse `list_events` ile oku). Sonraki koşu (2f2c4eb0) bilerek iptal edildi.
+- **Yapılacak:** nf-arayuz'un e2e commit'ini `task/batch-t1`'e cherry-pick et → `git fetch && git rebase origin/main` (main'de yalnız docs ilerledi) → push (CI `task/**`'ta tetiklenir; `batch/**` tetiklemez) → CI yeşil → `node scripts/lock.mjs take main "<rol/oturum>, …"` + `take db …` → dört migration'ı ortak yerel DB'ye kalıcı uygula (`20260929120000_the_account_phone_is_the_only_phone`, `20260929160000_a_preferred_name_notice_reaches_its_deciders`, `20260929161000_an_approved_name_is_told_and_availability_has_its_producer`, `20260929180000_time_off_doors_close_with_the_workspace`; `npx supabase migration up --local`) → `git push origin HEAD:main` (fast-forward) → kilitleri bırak → main CI'ı izle (`account_notification_scope` ci-green'e girdi; ilk main CI asıl kanıt).
+- Sonra: nf-planlama'ya "T1 main'de" de (kapanış satırları + DONE.md + devir §3'ün dört işi: G16/Account maddeleri tazeliği, BL-345, BL-277, BL-350). Birleşen dalları ve worktree'leri temizle (`task/account-redesign`, `merge/account`, `task/settings-view-passive`, `task/bl335-phone`, `task/g2-quick-editor`, `task/g22-tooltip-note-corner`, `task/g19-today-helper`, `task/g6-notification-delivery`; merge'i `git cherry` ile doğrula; uzak dal silme izni yok → kullanıcı listesine). Untitled session (`local_d6998ed6…`, Account'un eski sahibi) ve nf-arayuz'un Account işi kapanır.
 
-## 2. Bu devirde biten işler (hepsi main'de, CI yeşil)
-- BL-218.3 (`be46cd22`); Schedule pencereleri stil B (`228ff3b7`); boş ızgara (`37500b36`); Discard değişiklik yokken uyarısız (`127e81a6`); BL-316 kayıtlı taslak açılıyor + Export önizleme (`d3642367`, migration `20260929100000`); Schedule pencereleri 2. tur: silme düğmesi hep görünür, yayındaki taslak adıyla, Templates sade (`7fcf31e0`..`ca1b3df2`, migration `20260929110000`); Unpublish penceresinin X düğmesi (`4c205f9b`). Canlı DB'ye gönderimleri kullanıcı yaptı, advisors temiz.
-- Kayıtlar: BL-316..BL-329 backlog'da; `tasks/BL-218.md` kapanışı; ILERLEME sürüm 6 (Aşama 6–7 %37,4).
+## 2. Sıradaki toplu tur T2 (onaylı ya da incelemede)
+- **G4** zamanlanmış dışa aktarma: ONAY @6013d5a7 ("İnceleme: G4, G5" oturumu). Dal `task/g4-scheduled-export`.
+- **G5** parola/hesap güvenliği: dal `task/g5-account-security` @1590a7b2 (G4'ün üstünde); **inceleme kararı bekleniyor** ("İnceleme: G4, G5", `local_a7a832aa…`). Ultrareview önerisi kullanıcıya (G4, G5, G6 riskli yüzey).
+- G4 K7: saatlik cron (Vercel planı) kullanıcı kararı — "Hosted bekleyen" listesinde (program dosyası).
 
-## 3. Sıradaki iş (plan sırası, kullanıcı onaylı)
-- **FB-6.2.1** (`nf-db`) ∥ **BL-218.4 / .5b** (`nf-arayuz`). Önce tazelik ölçümü; DELEGASYON: FB-6.2.1 R3 (izin/RLS) → `nf-guvenlik` zorunlu.
-- `nf-db` ve `nf-backend` rol oturumlarının bağlamı dolu → yeni rol oturumu aç (§12).
-- Ama önce §1'in cevabı: sorun sürüyorsa o öne geçer.
-
-## 4. Kullanıcıda bekleyenler ve yazılmamış backlog adayları
-- §0.4 ana klasör komutları.
-- GitHub'daki eski dallar (içerikleri main'de; oturumların uzak silme izni yok): `task/schedule-top-windows-b`, `task/schedule-empty-grid`, `task/schedule-windows-2`, `task/kararlar`, `task/reuse-inventory`, `task/discard-no-changes` (varsa).
-- `task/schedule-dialog-mockups` (`0b2f998c`, yalnız yerel DEV mockup): kullanıcı silmeyi seçmedi, kalıyor.
-- Kural önerileri kullanıcı tarafından kapatıldı (2026-09-29, soru "dismiss"): "ana klasör ff sonrası paketler derlensin", "alt ajan hafızası ana klasöre yazılmasın". Tekrar önermeden önce bir kez sor. Sorun sürüyor: ana klasörde açılan oturumların alt ajanları hafızayı oraya yazıyor; koordinatör coord üzerinden main'e taşıyor.
-- Backlog'a yazılmamış adaylar ("Schedule modals" oturumundan, 2026-09-29): (1) `App.test.tsx` "protects workspace routes and opens the authenticated shell" yükte bugün üçüncü kez zaman aşımı (tek başına geçiyor; BL-321/322 ailesi); (2) Unpublish "Week" kartı başlığın 48px sağ boşluğu yüzünden ~24px dar (önceden de); (3) Unpublish X ikonu 16px/13px, Templates ve Publish'te 18/18; (4) `icon-button` 38x36, telefonda 44x44 altında (bileşen geneli). Account oturumundan: kullanılmayan `list_my_workspace_identities_service` yolu; iki telefon alanı (veri kararı).
-- `C:\Users\TheWe\.claude\settings.json` düz metin DB parolası: döndürüldüğü doğrulanmadı; değeri hiçbir yere yazma.
-- Dev sunucusu süreç ağacı kural önerisi hâlâ "tbd".
-
-## 5. Açık oturumlar (2026-09-29)
-| Oturum | Kimlik | Durum |
+## 3. Yürüyen işler (işçiler)
+| Oturum | İş | Durum |
 |---|---|---|
-| Account yeniden tasarımı (kullanıcının) | `local_d6998ed6-8330-4d52-b1c1-5fb638741686` | `task/account-redesign` @db9473e7, `newfork-wt/account-redesign`; Profile kullanıcı onayı bekliyor; inceleme yok. DELEGASYON R2 (tek Save tüm workspace kayıtlarına yazıyor; kısmi kayıt riski) → main'den önce tek bağımsız inceleme + tam kapı + e2e (`owner-legal-name-setup.spec.ts` uyarlandı, koşulmadı). |
-| Schedule modals UI design mockups | `local_ca938d6b-6ed9-4dc3-bc63-cd304d037651` | işleri bitti; arşivlenebilir (kullanıcı önce "Kalsın" demişti) |
-| Schedule draft viewing bug | `local_a08786a5-8912-476e-8be4-cd04194b3dd4` | arşivlenebilir |
-| Schedule edit discard behavior | `local_20c856d7-7a69-47ae-ad04-b57a42c3c3af` | worktree `newfork-wt/discard-no-changes` + dal kaldı (o oturumda silme reddedildi; içerik main'de) |
-| Envanter dosyası konumu | `local_c2d52413-b7e3-4a59-bec8-adce48a584ee` | işi main'de (`bec513cc`); yerel dal/worktree temizliği ona söylendi |
-| Rol: nf-db / nf-backend | `local_0af84e96…` / `local_cb173b54…` | bağlam dolu, yenisi açılmalı; boş klasörleri (`reverent-lovelace-d9960f`, `eloquent-moser-2c64fc`) oturum kapanınca silinir |
-| Diğer roller | nf-test `local_0efbf957…`, nf-arayuz `local_6a90e9ce…`, nf-guvenlik `local_8127d370…`, nf-gorsel-qa `local_13e7e4de…`, nf-planlama `local_c67b8d60…` | boşta |
+| İşçi: G9b (`local_f510f0b1…`) | BL-182 + BL-127 izni kısaltıp atamak (KK-19, KK-20) | yazıyor; dal `task/g9b-shorten-time-off` (G9a üstünde) |
+| İşçi: G13 (`local_a7b847f2…`) | test ve CI kararlılığı | yazıyor; dal `task/g13-test-stability` |
+| İşçi: G6→G9 (`local_288cb6cc…`) | boşta (bağlam ~%45) | düzeltme gelirse |
+| İşçi: G2→G22→G19 (`local_9c375e52…`) | boşta (~%50) | düzeltme gelirse |
+| İşçi: G4→G5 (`local_ba38fd87…`) | boşta (~%47) | G5 inceleme düzeltmesi gelirse |
 
-## 6. Temizlik (ölçüm 2026-09-29, dokunulmadı)
-- Sahibi bilinmeyen: `.claude/worktrees/dreamy-sinoussi-7c5a4a` (detached `2a8a672a`).
-- Eski: `newfork-wt/merge-0927c`, `newfork-wt/settings-merge`, `agent-a3704c99…`, `agent-ae216987…`, `zen-cori-6c77ae`; ~28 `worktree-agent-*` dalı.
-- Eski koordinatör worktree'si `interesting-elgamal-bff91f` (detached `be46cd22`) içinde commit'lenmemiş `nf-gorsel-qa` notu var (içeriği main'de); oturum kapanınca silinebilir.
-- **Eski `C:\Users\TheWe\newfork` oturumlarına dokunulmaz** (kullanıcı kararı).
+Paralel iş kuralı: kullanıcı paralel işçilere izin verdi (KK-15/16/18); dosya kümeleri ayrık olmalı (program dosyasında ölçülü "dokunduğu dosyalar"). Sıradaki çakışmasız adaylar: G7 = FB-6.2.1 (T1 main'e girince; KK-5/12/17), G8 (G4 main'e girince), G10, G17, G18, G21, G11. G14/G15/G16/G20 Schedule/Account dosyaları T1'le serbest kalınca.
 
-## 7. Dersler (ayrıntı `~/.claude/OBSERVATIONS.md`)
-- Kullanıcının "bozuldu" dediği şeyi önce taze kurulumda üret; uzun süre açık sekme + HMR ve derlenmemiş `packages/ui/dist` yanlış teşhise götürdü (bu devirde iki kez).
-- CI bu PC'de: push sonrası CI bitmeden yerel ağır iş başlatma (CLAUDE.md §3); yük altındaki süre ölçümü karşılaştırma değildir.
-- Ekran davranışı değişen işte etkilenen e2e merge'den önce koşulur; "Schedule modals" oturumu atladı, main iki senaryoda kırmızıya düştü (`0b4b5271` ile düzeldi).
-- İzin almayan bir yol (restore/rm/remote delete, başka oturumda reddedilen işlem) tekrar denenmez; kullanıcıya komut verilir.
-- Kullanıcıya PowerShell biçiminde komut ver (çoklu dosya virgülle); Git Bash biçimi PowerShell'de çalışmıyor.
-- Birleştirme ayrı geçici worktree'de (`newfork-wt/merge-*`) temiz gider.
+## 4. Oturumlar (newfork-clean)
+Roller (hepsi sabitli, telefondan izlenebilir): nf-planlama `local_86b620a0…` (yeni; dal `task/backlog-program-6`), nf-guvenlik `local_2a1c91fd…` (yeni), nf-arayuz `local_6a90e9ce…` (~%47; e2e düzeltmesi), nf-db `local_3dc69041…`, nf-backend `local_7a9cd29c…`, nf-test `local_50c331df…`, nf-gorsel-qa `local_13e7e4de…` (bağlamı yüksek olabilir), "İnceleme: G4, G5" `local_a7a832aa…`. Boş havuz: "Bekle: handoff raporu gelene kadar idle (N)", kalan numaralar 11–30 (boşta; telefon bağlantıları açık). Devir kalıbı: en küçük numaraya `send_message` ile rol dosyası + devir notu + koordinatör adresi; başlık "Rol: …", sabitle, Remote Control; eskiyi (RC kapat, sabitlemeyi kaldır) arşivle.
 
-## 8. Artifacts
-- `newfork-wt/coord/artifacts/koordinator/hosted-before-bl218-*.sql`; kullanıcının `newfork-wt/hosted-backup-2026-09-29-*.sql` yedekleri.
-- `artifacts/nf-arayuz/schedule-regressions/`: Schedule belirtilerinin taze kurulumdaki ekran görüntüleri.
+## 5. Kayıtlar
+- Kararlar: `docs/plan/KOORDINATOR-KARARLARI.md` KK-1…KK-20.
+- Program: `docs/plan/tasks/BACKLOG-PROGRAM.md` (grup sırası, ölçülü dosyalar, toplu turlar, "Hosted bekleyen" listesi, GK — yalnız BL-073 kullanıcıya kaldı). Açık madde 261 (en yüksek BL-355).
+- Tazelik: G1–G24 ölçüldü; G16 ve Account'a değen maddeler T1 main'e girince.
+
+## 6. Kullanıcıya dönüşte sorulacaklar (tek listede)
+1. CLAUDE.md'deki koordinatör kimliğinin güncellenmesi (§8).
+2. Hosted bekleyen: saatlik cron/Vercel planı (BL-101), `RESEND_API_KEY` (U63), hosted en kısa parola 8 (BL-161).
+3. BL-073 (hesap düğmesi ile workspace değiştirici) — görsel varyant.
+4. Ultrareview önerisi: G4, G5, G6 (riskli yüzey).
+5. Uzak dal silme izni yok: GitHub'daki `batch/t1` ve birleşen `task/*` dalları kullanıcıya liste.
+6. Ana klasör (`newfork-clean`) `7fcf31e0`'de geride; güncellemesi izin kuralıyla reddediliyor (nf-guvenlik MEMORY.md yerel eski sürüm + izlenmeyen checklist; içerikleri main'de) — kullanıcı PowerShell'de: `git restore .claude/agent-memory/nf-guvenlik/MEMORY.md`, `Remove-Item .claude/agent-memory/nf-guvenlik/checklist-role-button-row-borrowed-name.md`, `git merge --ff-only origin/main`, `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build`.
+
+## 7. Dersler (bu devir)
+- Rapor kanalı (§0.3) bir saat kaybettirdi: raporlar sessizce düştü.
+- İşçi dallarına her push CI'ı tetikler (`task/**`) ve bu PC'nin runner'larını doldurur; gereksiz koşuları iptal et, toplu dalı `task/batch-*` adıyla gönder (CI orada tam kapı: check + db + e2e, seed'den temiz DB).
+- Toplu tur öncesi etkilenen ekranın bütün testlerini (App.test gibi entegrasyon testleri dahil) ve etkilenen e2e'yi düşün; odaklı test yetmedi (BL-332 App.test, Account e2e).
+- GateGuard kancası silme/reset komutlarında "üç bilgi" istiyor; `git reset --hard` ve `switch -C` işçilerde reddediliyor, `rebase` geçiyor. Uzak dal silme reddediliyor.
+- Alt ajan incelemecilerin (feature-dev:code-reviewer) git aracı yok: diff'i scratchpad'e yazıp yolunu ver.
