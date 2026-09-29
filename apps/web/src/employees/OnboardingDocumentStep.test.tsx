@@ -167,6 +167,15 @@ describe("OnboardingDocumentStep", () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce());
   });
 
+  // BL-278 (3): the account badge counts documents still to act on.
+  it("refreshes the account badge once the document is submitted", async () => {
+    const invalidate = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+    page();
+    fireEvent.click(await screen.findByRole("button", { name: /submit and continue/i }));
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["account-attention"] }));
+    invalidate.mockRestore();
+  });
+
   it("will not submit a document that tracks expiry until the date is there", async () => {
     vi.mocked(getDocument).mockResolvedValue(withDraft({ tracks_expiry: true }));
     page();

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, type InitialEntry, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspacesPage from "./WorkspacesPage";
@@ -158,10 +158,10 @@ function LocationProbe() {
   return <output aria-label="Current path">{location.pathname}</output>;
 }
 
-function renderPage(entry: InitialEntry = "/account/workspaces") {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+function renderPage(
+  entry: InitialEntry = "/account/workspaces",
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[entry]}>
@@ -198,6 +198,21 @@ async function openWorkspaceActions(name = "Meyhouse") {
 }
 
 describe("WorkspacesPage", () => {
+  // BL-149: somebody else changed this person's role; coming back to the tab
+  // shows it instead of the role from when the page opened.
+  it("shows a role changed elsewhere when the tab regains focus", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([{ ...ownerWorkspace, role: "manager" }]);
+    renderPage();
+    const row = await screen.findByRole("button", { name: "Open Meyhouse" });
+    expect(row.closest("[role=listitem]")?.textContent).toContain("Manager");
+
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([{ ...ownerWorkspace, role: "admin" }]);
+    act(() => { focusManager.setFocused(false); focusManager.setFocused(true); });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open Meyhouse" }).closest("[role=listitem]")?.textContent).toContain("Admin"));
+    focusManager.setFocused(undefined);
+  });
+
   it.each(["admin", "manager", "employee"] as const)("hides create for %s without another owned workspace", async role => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([{ ...ownerWorkspace, role }]);
     renderPage();
@@ -870,6 +885,17 @@ describe("WorkspacesPage", () => {
       ),
     );
     expect(refresh).toHaveBeenCalled();
+  });
+
+  // BL-278 (3): the account badge counts transfers waiting on this person.
+  it("refreshes the account badge after answering a transfer", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([{ ...ownerWorkspace, role: "admin", pendingOwnershipTransfer: { id: transferId, role: "target", expiresAt: "2026-09-12T12:00:00.000Z" } }]);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["account-attention", "user-1"], { documents: 0, workspaces: 1 });
+    renderPage(undefined, client);
+    fireEvent.click(await screen.findByRole("button", { name: "Reject owner transfer for Meyhouse" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reject transfer" }));
+    await waitFor(() => expect(client.getQueryState(["account-attention", "user-1"])?.isInvalidated).toBe(true));
   });
 
   async function openScheduledClosure() {

@@ -11,6 +11,7 @@ import { InvitationRow } from "../employees/InvitationRow";
 import { BusinessRow, StatusBadge, roleLabel } from "../shell/prebiz/PreBiz";
 import { RequestError } from "../lib/request-error";
 import { AccountPageHeader, unfinishedSetup } from "./components";
+import { accountWorkspacesKey } from "./legal-name-data";
 import {
   createOwnerWorkspace,
   cancelWorkspaceClosure,
@@ -33,10 +34,7 @@ export default function WorkspacesPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
   const [workspaceName, setWorkspaceName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createOpen, setCreateOpen] = useState(
     () => (location.state as { openCreate?: boolean } | null)?.openCreate === true,
@@ -83,6 +81,50 @@ export default function WorkspacesPage() {
   const [blockingTransferId, setBlockingTransferId] = useState<string | null>(
     null,
   );
+  // Keyed by the account and its active workspace, not by the context object:
+  // a fresh sign-in (the password check before a transfer or a closure)
+  // rebuilds the context, and reloading then wiped the refusal the person had
+  // not read yet. Sharing the query cache means focus, other screens'
+  // invalidations and a role changed elsewhere reach this list (BL-149).
+  const contextWorkspaceId = context?.workspace.id ?? null;
+  const latestContext = useRef(context);
+  latestContext.current = context;
+  const workspacesKey = [
+    ...accountWorkspacesKey,
+    account?.userId ?? null,
+    contextWorkspaceId,
+  ] as const;
+  const fetchWorkspaces = async (): Promise<WorkspaceSummary[]> => {
+    if (supabaseClient) return listAccountWorkspaces(supabaseClient);
+    const current = latestContext.current;
+    return current ? [workspaceSummaryFromContext(current)] : [];
+  };
+  const workspacesQuery = useQuery({
+    queryKey: workspacesKey,
+    queryFn: fetchWorkspaces,
+  });
+  const workspaces = workspacesQuery.data ?? [];
+  const loading = workspacesQuery.isPending;
+  const loaded = workspacesQuery.isSuccess;
+  const listError = workspacesQuery.isError
+    ? workspacesQuery.error instanceof Error
+      ? workspacesQuery.error.message
+      : "Workspaces could not be loaded"
+    : null;
+  const setWorkspaces = (
+    update: WorkspaceSummary[] | ((current: WorkspaceSummary[]) => WorkspaceSummary[]),
+  ): void => {
+    queryClient.setQueryData<WorkspaceSummary[]>(workspacesKey, (current) =>
+      typeof update === "function" ? update(current ?? []) : update,
+    );
+  };
+
+  const reloadWorkspaces = async (): Promise<void> => {
+    setWorkspaces(await fetchWorkspaces());
+    // The account badge counts the invitations and transfers answered here.
+    await queryClient.invalidateQueries({ queryKey: ["account-attention"] });
+  };
+
   const accessibleWorkspaces = workspaces.filter(workspace => workspace.status === "active" &&
     ((workspace.lifecycleStatus ?? "active") === "active" ||
       (workspace.lifecycleStatus === "closure_scheduled" && !!workspace.closureEffectiveAt && Date.parse(workspace.closureEffectiveAt) > Date.now())));
@@ -172,55 +214,6 @@ export default function WorkspacesPage() {
     }, 300);
     return () => { active = false; window.clearTimeout(timer); };
   }, [transferTarget, candidateQuery]);
-
-  // Reload when the account or its active workspace changes, not when the
-  // context object is merely rebuilt: a fresh sign-in (the password check before
-  // a transfer or a closure) rebuilds it, and reloading then wiped the refusal
-  // the person had not read yet.
-  const contextWorkspaceId = context?.workspace.id ?? null;
-  const latestContext = useRef(context);
-  latestContext.current = context;
-  useEffect(() => {
-    if (!supabaseClient) {
-      const current = latestContext.current;
-      setWorkspaces(current ? [workspaceSummaryFromContext(current)] : []);
-      setLoaded(true);
-      return;
-    }
-    let active = true;
-    setLoading(true);
-    setLoaded(false);
-    setWorkspaces([]);
-    setError(null);
-    void (async () => {
-      try {
-        const items = await listAccountWorkspaces(supabaseClient);
-        if (!active) return;
-        setWorkspaces(items);
-        setLoaded(true);
-      } catch (loadError: unknown) {
-        if (active)
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Workspaces could not be loaded",
-          );
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [contextWorkspaceId, account?.userId]);
-
-  const reloadWorkspaces = async (): Promise<void> => {
-    if (!supabaseClient) {
-      setWorkspaces(context ? [workspaceSummaryFromContext(context)] : []);
-      return;
-    }
-    setWorkspaces(await listAccountWorkspaces(supabaseClient));
-  };
 
   const createWorkspace = async (
     event: FormEvent<HTMLFormElement>,
@@ -462,10 +455,10 @@ export default function WorkspacesPage() {
 
   // What went wrong belongs next to the thing that went wrong, not at the end
   // of the page. Only one of these is ever on screen at a time.
-  const errorNotice = error ? (
+  const errorNotice = error ?? listError ? (
     <div className="workspace-error-notice">
       <p className="form-error" role="alert">
-        {error}
+        {error ?? listError}
       </p>
       {/* The refusal named the transfer, so the way out is a button rather
           than directions to a menu. */}

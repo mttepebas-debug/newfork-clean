@@ -141,6 +141,8 @@ function DocumentDetailContent({
       cache.invalidateQueries({
         queryKey: ["my-employee-onboarding", props.audience.workspaceId],
       }),
+      // The account badge counts documents still to act on.
+      cache.invalidateQueries({ queryKey: ["account-attention"] }),
     ]);
   const review = useMutation({
     mutationFn: (decision: "approve" | "reject") =>

@@ -298,6 +298,8 @@ function expectRefreshed(invalidate: ReturnType<typeof page>["invalidate"]) {
   expect(invalidate).toHaveBeenCalledWith({
     queryKey: ["my-employee-onboarding", "workspace"],
   });
+  // BL-278 (3): the account badge counts documents still to act on.
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ["account-attention"] });
 }
 // The employee's side of the same document: nothing submitted yet, one draft.
 function withDraft() {

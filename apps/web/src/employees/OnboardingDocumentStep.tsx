@@ -135,6 +135,8 @@ function DocumentBody({
       cache.invalidateQueries({
         queryKey: ["my-employee-onboarding", audience.workspaceId],
       }),
+      // The account badge counts documents still to act on.
+      cache.invalidateQueries({ queryKey: ["account-attention"] }),
     ]);
 
   const upload = useMutation({
