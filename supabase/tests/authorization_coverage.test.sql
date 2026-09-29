@@ -247,6 +247,7 @@ insert into service_class values
   ('shift_exchanges_command_service', 'exchange.command'),
   ('shift_exchanges_maintain_service', 'exempt:worker'),
   ('shift_exchanges_read_service', 'exchange.read'),
+  ('shorten_time_off_service', 'time_off.decide'),
   ('store_employee_invitation_delivery_secret_service', 'employee.invite'),
   ('submit_employee_document_lifecycle_service', 'documents.self'),
   ('submit_employee_onboarding_service', 'onboarding.self'),
