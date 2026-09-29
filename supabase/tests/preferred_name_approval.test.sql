@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(26);
 
 -- A preferred name was storable in name only: the column existed and a check
 -- constraint held it at the empty string. A workspace now chooses between
@@ -266,6 +266,11 @@ select is(pg_temp.delivered_to(tests.id('pn:ali'), 'people.preferred_name.approv
 select public.decide_employee_preferred_name_service(tests.user('pn:owner'), tests.id('pn'), pg_temp.pending(tests.id('pn:deniz')), false);
 select is((select count(*)::integer from pg_temp.notice(tests.id('pn:deniz'), 'people.preferred_name.approved')), 0,
   'a refused name tells Deniz nothing');
+-- Nobody is told about their own decision: the owner answers their own request.
+select public.request_employee_preferred_name_service(tests.user('pn:owner'), tests.id('pn'), tests.id('pn:owner'), 'Olly');
+select public.decide_employee_preferred_name_service(tests.user('pn:owner'), tests.id('pn'), pg_temp.pending(tests.id('pn:owner')), true);
+select is((select count(*)::integer from pg_temp.notice(tests.id('pn:owner'), 'people.preferred_name.approved')), 0,
+  'the owner approving their own name is not told about it');
 
 -- On auto nobody answers, but the same people are told.
 select public.set_employee_name_settings_service(tests.user('pn:owner'), tests.id('pn'), 'auto');
