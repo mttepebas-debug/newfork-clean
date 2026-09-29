@@ -56,7 +56,7 @@ Risk: kapsam büyük (~10 ekran) → dilimleme şart; THEME-005 ile 6 ortak dosy
   - D2'ye devreden, drawer içinde bilinçli dokunulmayanlar: ham hata metni, ham sürüm/durum değerleri, stilsiz dosya seçici, aynı ekranda iki yeşil.
 - 2026-09-18 ek: worker branch'i 2632880'e rebase etti ve kullanıcının açık onayıyla (yalnız kendi task branch'i) `--force-with-lease` ile push etti. Merge yerel branch'ten yapıldığı için koordinatör tarafında etkisi yok.
 - 2026-09-18 **D1 MERGE EDİLDİ** (Faz 1 ile birlikte; main 6d9f0e7, 18 commit, 24 dosya +2055/−693):
-  - Kit tek yol oldu: `?shell` anahtarı ve eski dallar silindi. `shell/prebiz/PreBiz.tsx` + `prebiz.css` (çerçeve, hesap bloğu, `BusinessRow`, rozet, `.pb-btn`). REUSE UI-11 ve UI-12 girdileri yazıldı.
+  - Kit tek yol oldu: `?shell` anahtarı ve eski dallar silindi. `shell/prebiz/PreBiz.tsx` + `prebiz.css` (çerçeve, hesap bloğu, `BusinessRow`, rozet, `.pb-btn`). KARARLAR UI-11 ve UI-12 girdileri yazıldı.
   - Ekranlar: pending, no-organization (+ business'ı olan hesabı yönlendiren guard), switcher (davetler / sürenler / business'lar, o anki "Current"), accept-invite (dört durum, ham mesaj yok), onboarding erken dönüşleri, `account/workspaces` SATIRI (rozetler; Open/Continue ve başlıktaki Create yeşil — kullanıcı kararı).
   - `window.confirm` D1 ekranlarında sıfır; yıkıcı eylemler `ConfirmButton`. Sözlük: kullanıcı metninde "workspace"/"organization" yok; yeni taslak adı "New business".
   - Ölü CSS temizliği (23 satır, her sınıf grep'le sayıldı). F5 backlog maddeleri (capitalize, başlığın yüklenirken görünmesi) kapandı.

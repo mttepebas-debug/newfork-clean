@@ -25,7 +25,7 @@ In scope:
 - Tüm css dosyalarında yalnızca dark'a özel kurallar silinir (`:root[data-theme="dark"] ...`, `@media (prefers-color-scheme: dark)`). Light ile paylaşılan seçici listelerinden yalnızca dark parçası çıkarılır.
 - Shared şema ve DB kolonu geriye uyumlu kalır: kayıtlı "dark" ya da "system" değerleri okunabilir ama light olarak uygulanır. Migration yok. Save payload'u artık tema göndermiyorsa API sözleşmesi bozulmamalı.
 - İlgili testler güncellenir (theme.test, AuthContext.test, Preferences testleri).
-- REUSE UI-05 girdisi için önerilen metin rapora yazılır (koordinatör günceller).
+- KARARLAR UI-05 girdisi için önerilen metin rapora yazılır (koordinatör günceller).
 
 Out of scope:
 - Light renklerin yeniden tasarımı ve token işi (THEME-002).
@@ -58,5 +58,5 @@ Risk:
   - web typecheck PASS, build PASS, 19 dosya / 149 test PASS.
 - Görsel önce/sonra karşılaştırması yapılamadı (dev server'lar kapalıydı). Light kurallarının aynı kaldığı kod düzeyinde kanıtlandığı için merge edildi. Kullanıcı 6 sayfaya bir kez göz atacak.
 - Bulgular: account.css'teki `account-theme-*` kuralları artık kullanılmıyor (THEME-002'de silinebilir). localStorage'daki eski "newfork.theme" anahtarı zararsız.
-- REUSE UI-05 güncellendi.
+- KARARLAR UI-05 güncellendi.
 - 2026-09-16: kullanıcı 6 sayfayı görsel olarak kontrol etti, sorun yok. Task kapandı.

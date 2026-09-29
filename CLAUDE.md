@@ -18,7 +18,7 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
   `*_service` ya da test fixture'ına dokunmaz" kuralı şu anlama gelir: bunlara yalnız `nf-db`,
   `nf-backend` ve `nf-test` dokunur.
 - Ürün kuralları (roller, kapsam modeli M2, izin oylaması, takas/pickup uygunluğu, kısıtlı kişi):
-  `docs/plan/REUSE.md` → "Ürün kuralları". Orada cevabı olmayan ürün kararı TAHMİN EDİLMEZ;
+  `docs/plan/KARARLAR.md` → "Ürün kuralları". Orada cevabı olmayan ürün kararı TAHMİN EDİLMEZ;
   soru olarak kullanıcıya gider.
 - Kapsam dışı / MVP sonrası: ROADMAP → "Kapsam kararları" (kiosk, time tracking, payroll,
   compliance, SSN yok).
@@ -40,10 +40,11 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 - Tuzaklar: `pnpm.cmd test` yeşili CI yeşili değildir; `typecheck` ve `lint` ayrı kapı. Yeni
   worktree'de `pnpm.cmd install` yapılmadan vitest `@vitejs/plugin-react`'i bulamaz.
 - CI (`.github/workflows/ci.yml`): check + db (`supabase/tests/ci-green.txt` yalnız büyür) + e2e.
-  Kullanıcının bilgisayarında üç self-hosted runner'da koşar (REUSE OPS-01).
+  Kullanıcının bilgisayarında üç self-hosted runner'da koşar (KARARLAR OPS-01).
 - main'de CI kırmızıysa: main'e push donar (yalnız düzelten gönderir). Koordinatör kırmızıyı ayırır
   (bölüm 11.9) ve düzeltmeyi kıran işin rolüne verir.
-- Ekran kararları ve bilinen tuhaflıklar: `REUSE.md` → "Sayfa envanteri". Yeni bir şey yazmadan önce ara.
+- Kararlar ve ortak parçalar: `docs/plan/KARARLAR.md` (UI/DATA/OPS listesi, ürün kuralları, ekran
+  kararları). Yeni bir şey yazmadan önce ara; ekranın kendisi için kodu oku.
 
 ## 3. Koordinatör, roller, iletişim ve onay zinciri
 - **Koordinatör:** Claude Code masaüstü uygulamasındaki "Koordinatör" oturumu
@@ -186,7 +187,7 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
   (`pnpm.cmd supabase:start`) serbest; durdurmak koordinatörün izniyle.
 - Yerel hesap `owner@newfork.test`, parola `supabase/seed.sql` içinde.
 - Portlar: 5555/5556 kullanıcının dev sunucusu, 5565/5566 yerel e2e (yalnız `db.lock` sahibi),
-  5590/5591, 5600/5601, 5610/5611 CI runner'larının e2e portları (REUSE OPS-01). Bunları başka amaçla
+  5590/5591, 5600/5601, 5610/5611 CI runner'larının e2e portları (KARARLAR OPS-01). Bunları başka amaçla
   kullanma. Rol ve oturum başına (web / api):
 
   | Rol | Port | Rol | Port |
@@ -203,7 +204,7 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 
 ## 8. Kullanıcı onayı gereken eylemler (koordinatör sorar)
 - Her yeni işin başlaması (bölüm 11.3).
-- REUSE'da cevabı olmayan ürün kararı. Görsel/UX tercihi (varyantlar hazırlanır, kullanıcı seçer).
+- KARARLAR'da cevabı olmayan ürün kararı. Görsel/UX tercihi (varyantlar hazırlanır, kullanıcı seçer).
 - Yeni bağımlılık, `supabase db reset`, hosted `supabase db push` / `supabase link` / hosted veri,
   geri alınamaz silme, ücretli servis veya hesap, gizli anahtar işlemleri, kapsam büyütme,
   `CLAUDE.md` ve `.claude/agents/**` değişikliği.
@@ -235,7 +236,7 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 - Erişilebilirlik: WCAG 2.1 AA kontrast, klavye, görünür odak.
 - Kullanıcı kararları: Supabase "Leaked password protection" açılmaz (ücretli; uyarı bilinen ve muaf).
   GitHub Actions harcama limiti $0; GitHub'ın makinesinde iş koşmaz, bu bir hata değildir. Realtime
-  "Allow public access" kapalı; her canlı kanal private (REUSE DATA-07).
+  "Allow public access" kapalı; her canlı kanal private (KARARLAR DATA-07).
 
 ## 10. Rapor formatı
 Rol ajanından ve işçi oturumundan koordinatöre (Türkçe, kod okumayan biri için):
@@ -299,10 +300,9 @@ Kısa yaz, ham araç çıktısı yapıştırma.
    içinde önem sırasıyla; her madde ne olduğu, neden önemli, neden beklediği ve iki işaret
    (`BL-081 (leave: high / do: risky)`); ikisi çelişiyorsa bir satırla söylenir. Yeni BL numarasından
    önce `origin/main`'deki en yüksek numaraya bakılır. Kapanan maddeye "Kapandı <tarih> (`<commit>`)"
-   ve ölçülen sonuç; `docs/plan/DONE.md`'ye etki cümlesiyle satır. İkinci kez gerekecek bilgi `REUSE.md`'ye
-   (kural, kodda nerede, ne işe yarar). Sayfa envanteri yalnız ekran için verilen kararları ve bilinen
-   tuhaflıkları tutar (dosya yolu, bileşen listesi, kod özeti yazılmaz); bölüm ancak bir karar varsa
-   yazılır, kural değişince aynı işte düzeltilir (kullanıcı kararı 2026-09-29). Ortak bir değer bir ekranda değişirse önce kural yazılır,
+   ve ölçülen sonuç; `docs/plan/DONE.md`'ye etki cümlesiyle satır. İkinci kez gerekecek bilgi `KARARLAR.md`'ye
+   (kural, kodda nerede, ne işe yarar). Bir ekran için verilen karar KARARLAR "Ekran kararları"na
+   yazılır; kod özeti yazılmaz, kuralı değiştiren iş maddeyi aynı işte düzeltir. Ortak bir değer bir ekranda değişirse önce kural yazılır,
    uyuşmayan ekranlar adıyla söylenir, düzeltmeden önce kullanıcıya sorulur. Aynı hata iki kez
    olursa kök neden bulunur ve bu dosyaya kural önerisi olarak kullanıcıya sunulur.
 8. **İlerleme planı.** Aktif programın ilerleme kaydı kendi task dosyasında (şu an

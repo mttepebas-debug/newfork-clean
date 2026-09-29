@@ -1,4 +1,6 @@
-# Reuse haritası
+# Kararlar
+
+Kullanıcının kararları ve ortak parçalar tek yerde. Eski adı `REUSE.md` (2026-09-29'a kadar); kodda, migration'larda ve eski belgelerde geçen "REUSE" bu dosyadır.
 
 Yeni UI ya da akış yazmadan önce buradaki girdiye bak. Ölçü ve CSS değerlerini buraya kopyalama; kaynak dosyayı aç. `(rescue)` işaretli kaynaklar RESCUE-001 tamamlanana kadar yalnızca `wip/rescue-2026-09-16` branch'inde bulunur.
 
@@ -113,437 +115,89 @@ Kaynak: `docs/plan/research/fb61-dis-degerlendirme-2026-09-25.md` bölüm B, do�
 - Yetki çekirdeği (Aşama 4a, migration `20260924123013_authorization_core.sql`): bir giriş noktasının ilk ifadesi `perform app_private.authorize(actor, w, '<işlem>', target_locations => ..., target_person => ...)`; okuma modeli `location_id = any (app_private.scope_set(actor, w, '<işlem>'))`; RLS `app_private.rls_can(w, '<işlem>', ...)`. Kural `app_private.authz_actions` satırında (izin, owner'a özel, rütbe, kapsam sınıfı), manager'ın erişimi `authz_scope_rules`'ta (model M2). Yeni işlem: önce `authz_actions` satırı ve matriste hücresi (`authorization_matrix.test.sql`), sonra giriş noktası. Kural TypeScript'te yeniden yazılmaz.
 - Kapsam dışı bırakılanlar (sonra sıfırdan tasarlanacak): Line Up, bildirim platformu. Silinenler: kiosk, zaman takibi, eski availability sistemi, eski Requests → Shift changes takas akışı.
 
-## Sayfa envanteri
+## Ekran kararları
 
-Bir ekranın bölümü yalnız koddan çıkarılamayan şeyi tutar (kullanıcı kararı
-2026-09-29):
+Yalnız koddan çıkarılamayanlar: kullanıcının bir ekran için verdiği karar ve
+bilerek öyle bırakılan ya da bilinip bekletilen davranış. Kod özeti, dosya
+yolu, bileşen listesi yazılmaz; kod okunur. Bir iş buradaki bir maddeyi
+değiştiriyorsa madde aynı işte düzeltilir; "iş girince yazılır" notu
+bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
 
-1. **Kararlar** — kullanıcının o ekran için verdiği karar, tarihi ve nedeni
-   ("hayalet kartlar tek gri, 2026-09-26"; "yalnız bu dört pencere seçildi").
-   Bir sonraki oturum bunu "düzeltmeye" kalkmasın diye.
-2. **Bilinen tuhaflıklar** — kodda görünüp yanlış sanılacak, ama bilerek öyle
-   olan ya da bilinip bekletilen davranış.
+### Giriş ekranları (Sign in, Forgot password, Reset password)
+- Sign in'de ikinci düğme (giriş ↔ hesap oluşturma) hiç yeşil değil, beyaz:
+  ekrandan çıkışın ikinci yolu. `?from=` yalnız aynı origin'deki `/` ile
+  başlayan yola gider, gerisi `/app`.
+- Forgot password hesap olsun olmasın aynı metni gösterir ve sunucu her
+  cevabı sabit ~1,5 sn'de verir: bir e-postanın kayıtlı olduğu ne metinden ne
+  süreden anlaşılmaz. Hız sınırı e-posta başına saatte 3, IP başına 10.
+  Bekleyen: sayaç bellekte, kalıcı değil (BL-162).
+- Reset password belirteci bağlantının `#` parçasında taşınır (sunucuya
+  gitmez, log'a düşmez) ve sayfa açılınca değil "Save password"da harcanır
+  (e-posta tarayıcısının önden açması tüketmesin). Parola en az 8.
+  Bekleyen: Supabase'in kendi sınırı 6, doğrudan çağıran 6 ile geçebilir
+  (BL-161).
 
-Dosya yolu, bileşen listesi, CSS sınıfı ve kodun anlattığı akış yazılmaz: kod
-okunur, bu kısım en hızlı eskiyendir. Karar verilmemiş ekranın bölümü yoktur;
-bölüm, o ekran için ilk karar verildiğinde yazılır.
+### Account
+- Profile: "Remove" fotoğrafı yalnız taslaktan kaldırır; "Save changes"e
+  basılana kadar silinmez, Discard geri getirir.
+- Security: bekleyen e-posta değişikliğini geri çeken düğme kırmızı ve adı
+  bilerek "Cancel change" — yalnız "Cancel" pencereyi kapat gibi okunur
+  (kullanıcı kararı 2026-09-22).
+- Workspaces: çalışılan workspace'in satırı tonlu; ayrı "Current" rozeti yok
+  (kullanıcı kararı).
 
-**Güncel tutma:** bir iş, bir ekranın bölümündeki kararı ya da tuhaflığı
-değiştiriyorsa (başka ekranın işi olsa da) o bölüm aynı iş içinde düzeltilir.
-"X işi main'e girince yeniden yazılır" notu bırakılmaz; iş girdiği commit'te
-yazılır. Eski bölümlerde kalan kod özetleri, bölüme dokunulduğunda silinir.
+### Employee Hub
+- Shift Hub telefondaki alt çubukta "Requests" adını taşır.
+- Tanınmayan alt yol (eski `lineup` bağlantıları dahil) More sayfasını açar.
 
-Aşağıdaki tablo ekranların listesidir. `belgelenmedi` yazan satırın henüz
-kararı yazılmadı.
-Rota sütunu boş olanlar iç içe rota tablolarından geliyor; o sayfa sırası
-gelince çözülür.
-
-| Alan | Sayfa | Rota | Dosya (`apps/web/src/`) | Durum |
-|---|---|---|---|---|
-| hesap | AccountDocumentsPage | `documents` | `account/AccountDocumentsPage.tsx` | belgelenmedi |
-| hesap | AccountRecoveryPage | `/account-recovery` | `account/AccountRecoveryPage.tsx` | belgelenmedi |
-| hesap | NotificationPreferencesPage | `preferences/notifications` | `account/NotificationPreferencesPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| hesap | PreferencesPage | `preferences` | `account/PreferencesPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| hesap | ProfilePage | `profile` | `account/ProfilePage.tsx` | kısmi 2026-09-22 (butonlar) |
-| hesap | SecurityPage | `security` | `account/SecurityPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| hesap | WorkspacesPage | `workspaces` | `account/WorkspacesPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| kabuk | WorkspaceHubPage | | `shell/WorkspaceHubPage.tsx` | belgelenmedi |
-| kabuk | WorkspaceStatusPage | `/workspaces/status/:workspaceId` | `shell/WorkspaceStatusPage.tsx` | belgelenmedi |
-| giris | SignInPage | `/sign-in` | `views/SignInPage.tsx` | belgelendi 2026-09-26 |
-| giris | ForgotPasswordPage | `/forgot-password` | `views/ForgotPasswordPage.tsx` | belgelendi 2026-09-26 (BL-137; görsel cila bekliyor) |
-| giris | ResetPasswordPage | `/reset-password` | `views/ResetPasswordPage.tsx` | belgelendi 2026-09-26 (BL-137; görsel cila bekliyor) |
-| giris | AcceptInvitationPage | `/accept-invite`, `/invite/accept` | `employees/AcceptInvitationPage.tsx` | belgelenmedi |
-| kamuya acik | PrivacyPage / TermsPage / ContactPage / AccessibilityPage / PrivacyChoicesPage | `/privacy`, `/terms`, `/contact`, `/accessibility`, `/your-privacy-choices` | `public/PublicTrustPages.tsx` | belgelenmedi |
-| kurulum | OwnerOnboardingPage | `/welcome/:workspaceId/*` | `views/OwnerOnboardingPage.tsx` | belgelenmedi |
-| kurulum | EmployeeOnboardingPage | `/onboarding` | `employees/EmployeeOnboardingPage.tsx` | belgelenmedi |
-| calisanlar | EmployeesPage | `employees` | `employees/EmployeesPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| calisanlar | EmployeeHubPage | `employee-hub/*` | `views/EmployeeHubPage.tsx` | belgelendi 2026-09-24 |
-| calisanlar | EmployeeDocumentsPage | `employees/documents` | `documents/EmployeeDocumentsPage.tsx` | belgelenmedi |
-| plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | belgelendi 2026-09-29 |
-| plan | ScheduleRequestsPage | `schedule/requests` | `views/ScheduleRequestsPage.tsx` | belgelendi 2026-09-24 |
-| plan | ScheduleTemplatesPage | `schedule/templates` | `views/ScheduleTemplatesPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| plan | AvailabilityPage | `availability` | `views/AvailabilityPage.tsx` | belgelenmedi |
-| isyeri | WorkspacePage | `workspace` | `views/WorkspacePage.tsx` | belgelenmedi |
-| iletisim | AnnouncementsPage | `announcements` | `views/AnnouncementsPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| iletisim | NotificationsPage | `inbox`, `notifications` | `views/NotificationsPage.tsx` | belgelenmedi |
-| ayarlar | GeneralSettingsPage | `general` | `settings/GeneralSettingsPage.tsx` | belgelenmedi |
-| ayarlar | LocationsSettingsPage | `locations` | `settings/LocationsSettingsPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| ayarlar | JobsSettingsPage | `jobs` | `settings/JobsSettingsPage.tsx` | belgelenmedi |
-| ayarlar | RolesSettingsPage | `roles`, `roles/:roleId` | `settings/RolesSettingsPage.tsx` | belgelendi 2026-09-24 |
-| ayarlar | SchedulingSettingsPage | `scheduling` | `settings/SchedulingSettingsPage.tsx` | belgelendi 2026-09-22 |
-| ayarlar | ShiftTypesSettingsPage | `scheduling/shift-types` | `settings/ShiftTypesSettingsPage.tsx` | belgelenmedi |
-| ayarlar | ShiftLabelsSettingsPage | `scheduling/shift-labels` | `settings/ShiftLabelsSettingsPage.tsx` | belgelenmedi |
-| ayarlar | ShiftCatalogSettingsPage | | `settings/ShiftCatalogSettingsPage.tsx` | belgelenmedi |
-| ayarlar | ConflictHandlingSettingsPage | `scheduling/conflicts` | `settings/ConflictHandlingSettingsPage.tsx` | belgelendi 2026-09-24 |
-| ayarlar | ImportantDatesSettingsPage | `important-dates` | `settings/ImportantDatesSettingsPage.tsx` | belgelenmedi |
-| ayarlar | DocumentsSettingsPage | `documents` | `settings/DocumentsSettingsPage.tsx` | belgelenmedi |
-| ayarlar | SignatureTemplatesSettingsPage | | `settings/SignatureTemplatesSettingsPage.tsx` | belgelenmedi |
-| ayarlar | NotificationSettingsPage | `notifications` | `settings/NotificationSettingsPage.tsx` | belgelendi 2026-09-24 |
-| ayarlar | SupportSettingsPage | `support` | `settings/SupportSettingsPage.tsx` | kısmi 2026-09-22 (butonlar) |
-| gelistirme | ScheduleShiftDesignPage | `/dev/schedule-shift-design` | `dev/ScheduleShiftDesignPage.tsx` | belgelenmedi |
-| gelistirme | ScheduleShiftBadgeLabPage | `schedule-badge-lab` | `dev/ScheduleShiftBadgeLabPage.tsx` | belgelenmedi |
-
-Bir sayfanın bölümü yazılırken başlık `### <Sayfa adı>` olur, tablodaki
-durumu `belgelendi <tarih>` yapılır, ve bölüm iki başlık taşır: **Kararlar**
-ve **Bilinen tuhaflıklar** (yukarıdaki kural).
-
-### SignInPage
-
-**Ne işe yarar.** `/sign-in`: içeri girme, yeni hesap ya da yeni workspace
-açma, davetle katılan biri için çalışan hesabı açma
-(`apps/web/src/views/SignInPage.tsx:1`).
-
-**Kullandığı ortak parçalar.** `PreBizFrame` (`shell/prebiz/PreBiz.tsx`) çerçeve
-ve başlık; `.sign-in-form` ve `.onboarding-field` alan düzeni; `.pb-btn` /
-`.pb-btn-primary` / `.pb-btn-secondary` / `.pb-btn-block` düğmeler
-(`SignInPage.tsx:74-136`).
-
-**Kendine özgü kurallar.**
-- Giriş modunda parola alanının altında "Forgot password?" bağlantısı
-  `/forgot-password`'a gider; yalnız hesap oluşturma modunda gizli
-  (`SignInPage.tsx:103-105`).
-- İkinci düğme (giriş/hesap oluşturma arasında geçiş) hiçbir zaman yeşil
-  değil — ekrandan çıkışın ikinci yolu olduğu için beyaz (`SignInPage.tsx:124-135`).
-- `?from=` hedefi yalnız aynı origin'e ve `/` ile başlayan bir yola izin
-  verir; başka bir şey `/app`'e döner (`safeSignInDestination`,
-  `SignInPage.tsx:149-159`).
-
-**Bilinen tuhaflıklar.** Yok.
-
-### ForgotPasswordPage
-
-**Ne işe yarar.** `/forgot-password`: parolasını unutan kişi e-postasını
-yazar, bir sıfırlama bağlantısı ister (BL-137,
-`apps/web/src/views/ForgotPasswordPage.tsx:1`).
-
-**Kullandığı ortak parçalar.** `PreBizFrame`, `.sign-in-form`,
-`.onboarding-field`, `.pb-btn pb-btn-primary pb-btn-block`
-(`ForgotPasswordPage.tsx:33-73`); API `requestPasswordReset`
-(`apps/web/src/lib/supabase.ts:626`).
-
-**Kendine özgü kurallar.**
-- Ekran hesap var olsun olmasın aynı metni gösterir: "If an account exists
-  for this email, we sent a reset link." — bir e-postanın Newfork'ta kayıtlı
-  olup olmadığı dışarıdan anlaşılmaz (`ForgotPasswordPage.tsx:44`).
-- Sunucu tarafında her cevap sabit 1,5 saniyede çıkar
-  (`defaultResponseFloorMs`, `apps/api/src/account/password-reset.ts:26,93`);
-  gönderim en çok 1,2 saniye beklenir (`defaultSendBudgetMs`, aynı dosya
-  satır 27), böylece hesabın var olup olmadığı yanıt süresinden de
-  anlaşılmaz.
-- Hız sınırı e-posta başına saatte 3, IP adresi başına saatte 10 istek
-  (`password-reset.ts:21-22`); aşılırsa 429 + `retry-after: 3600`
-  (`password-reset.ts:72-76`).
-
-**Bilinen tuhaflıklar.** BL-162: hız sınırı sunucu örneğinin belleğinde
-tutuluyor (Vercel'de örnek başına sayaç); kalıcı DB sayacı bekliyor.
-
-### ResetPasswordPage
-
-**Ne işe yarar.** `/reset-password`: e-postadaki bağlantıyla gelen kişi yeni
-parolasını belirler ve içeri girer (BL-137,
-`apps/web/src/views/ResetPasswordPage.tsx:1`).
-
-**Kullandığı ortak parçalar.** `PreBizFrame`, `.sign-in-form`,
-`.onboarding-field`, `.pb-btn pb-btn-primary pb-btn-block`
-(`ResetPasswordPage.tsx:76-125`); API `openPasswordResetSession` /
-`saveNewPassword` / `abandonPasswordResetSession`
-(`apps/web/src/lib/supabase.ts:639,651,659`).
-
-**Kendine özgü kurallar.**
-- Belirteç bağlantının `#token_hash=` parçasında (fragment) taşınır — bu bir
-  tarayıcının sunucuya hiç göndermediği kısımdır, log'a düşmez — ve sayfa
-  ilk render'dan sonra adres çubuğundan temizlenir (`ResetPasswordPage.tsx:20-32`).
-- Belirteç sayfa açılışında değil "Save password"a basılınca harcanır: bir
-  e-posta tarayıcısının bağlantıyı önden açması belirteci tüketmez
-  (`ResetPasswordPage.tsx:40-55`).
-- Belirteç bir kez harcanınca oturum açılır; parola reddedilirse ikinci
-  deneme aynı oturumla sürer. Sayfadan kaydetmeden ayrılınca (unmount) o
-  oturum kapatılır (`abandonPasswordResetSession`, `ResetPasswordPage.tsx:33-38`).
-- Yeni parola en az 8 karakter (`ResetPasswordPage.tsx:89,102`).
-- Belirteç yoksa, süresi geçmişse ya da zaten harcanmışsa ekran "Reset link
-  not valid" gösterir ve yeni bağlantı istemeye yönlendirir
-  (`ResetPasswordPage.tsx:68-74`).
-
-**Bilinen tuhaflıklar.** BL-161: Supabase'in kendi asgari parola uzunluğu 6
-(`supabase/config.toml:188`), web ekranları 8 istiyor; `updateUser`
-doğrudan Supabase'e gittiği için Supabase'i doğrudan çağıran biri 6
-karakterle geçebilir (yalnız kendi hesabına).
-
-### ProfilePage, PreferencesPage, NotificationPreferencesPage (kısmi: butonlar)
-
-**Ne işe yarar.** Account → Profile / Preferences / Notifications: hesabın
-her workspace'te geçen ayarları. Her sayfa kendi "Save" ve "Discard"
-düğmesiyle; Discard kaydedilmemiş değişikliği geri alır.
-
-**Kendine özgü kurallar.** Discard beyaz (UI-09). Profile'da fotoğraf
-"Upload/Replace" yeşil; "Remove" kırmızı iki tık (UI-12, "Confirm remove")
-ama yalnız taslağı temizler: fotoğraf "Save changes"e basılana kadar
-silinmez, Discard geri getirir.
-
-### SecurityPage (kısmi: butonlar)
-
-**Ne işe yarar.** Account → Security: e-posta, parola, diğer oturumları
-kapatma, hesabı silme.
-
-**Kendine özgü kurallar.** "Resend" ve "Sign out other sessions" yeşil.
-Bekleyen e-posta değişikliğini geri çeken "Cancel change" kırmızı ve adı
-bilerek "Cancel change" (yalnız "Cancel", pencereyi kapat gibi okunur;
-kullanıcı kararı 2026-09-22).
-
-### WorkspacesPage (kısmi: butonlar)
-
-**Ne işe yarar.** Account → Workspaces: hesabın bağlı olduğu workspace'ler,
-açma, oluşturma, sahiplik devri, kapatma.
-
-**Kendine özgü kurallar.** Şu an çalışılan workspace'in satırı tonlu ve
-`aria-current`; ayrı "Current" rozeti yok (kullanıcı kararı). "Open" her
-satırda yeşil ve tıklanabilir. Formlardaki Cancel, "Keep this workspace",
-"Reject owner transfer" beyaz.
-
-### EmployeesPage (kısmi: çalışan çekmecesi butonları)
-
-**Ne işe yarar.** Employees listesi; satıra tıklayınca çalışan çekmecesi
-(Profile, Employment, Availability, Documents, Access, History).
-
-**Kendine özgü kurallar.** Çekmece altı: Cancel beyaz, Invite ve Save
-yeşil. Access'te "Remove access", "Revoke" ve "Remove photo" kırmızı iki tık
-("Confirm remove access", "Confirm revoke", "Confirm remove"). Send
-reminder, Retry, Reset PIN, Copy, "Save emergency contact", "Open document"
-yeşil; "Keep editing", "Leave it", "Request changes" beyaz.
-
-**Kendine özgü kurallar (devam).** "Request changes" notu UI-13 penceresinde
-yazılır; not boşken buton kapalı. Documents'ta açılan belge çekmecesi
-kaydedilmemiş değişiklikle kapatılınca "Discard unsaved changes?" (UI-13)
-sorar.
-
-### EmployeeHubPage
-
-**Ne işe yarar.** `/app/employee-hub/*`: yalnız `employee` rolündeki üyenin
-arayüzü (`PermissionRoute` `workspace.read`, `roles={["employee"]}`). Alt
-sayfa URL'den okunur: kök "Home" panosu (`EmployeeDashboard`; `?shift=<id>`
-`ShiftSheet`'i açar: "Find cover or swap", "Open in my schedule"), `schedule`
-(`EmployeeScheduleBoard`), `shift-hub` (`ShiftExchangeHub` çalışan görünümü),
-`my-availability` ("Availability" / "Time Off Requests" sekmeleri,
-`?section=time-off`), `more` (`EmployeeMorePage`). Menü AppShell'de: kenar
-çubuğunda Home, Schedule, Shift Hub, My Availability; mobil alt çubukta Home,
-Schedule, Requests, More.
-
-**Kullandığı ortak parçalar.** `CatalogPageHeader` (UI-01; metinler
-`pageCopy`'de), `getEmployeeHub` (`employee-hub-data.ts` →
-`get_employee_hub_service`, shared `employeeHubReadModelSchema`),
-`WeeklyPreferencesPanel` (`audience="employee"`), `AvailabilityDraftScope` +
-`useAvailabilityNavigationGuard` ("Stay here" / "Discard and leave"), shared
-`employeeTimeOffInputSchema`. ConfirmButton / ConfirmDialog kullanmaz.
-
-**Kendine özgü kurallar.** Veri penceresi bugünden 2 gün önce ile 42 gün
-sonrası arası, 60 sn'de bir yenilenir; `schedule?date=` yalnız o günü okur;
-`more` hiç veri yüklemez. İzin formu en fazla 31 gün alır. Form açıkken
-lokasyonun saat dilimi değişirse gönderim durur ("Use current location time
-zone"). Aynı içerik yeniden gönderilirse aynı `request_id` kullanılır.
-
-**Bilinen tuhaflıklar.** Shift Hub mobilde "Requests" adını taşır. Tanınmayan
-alt yol (eski `lineup` bağlantıları dahil) genel "Employee Hub" başlığıyla
-More sayfasını açar. `#<id>` hash'i veri gelince o öğeye kaydırır. Line-up alt
-sayfası ve bağlantıları ("See today's Line-up", "View Line-up", More'daki
-"Line-up") 5.6'da kalktı.
-
-### SchedulePage
-
-**Kararlar.**
-- *Silme ve üstüne yazma iki tık* (UI-12): taslak menüsünde taslak ve şablon
-  silme, Save draft menüsünde taslağın üstüne yazma, şablon penceresinde
-  "Delete". Yayınlanmış taslağın satırında üstüne yazma düğmesi yok.
-- *Vardiya kartı* (2026-09-26): gerçek ve hayalet kart aynı düzen; satır
+### Schedule
+- Silme ve üstüne yazma iki tık (UI-12): taslak/şablon silme, taslağın
+  üstüne yazma, şablon penceresinde "Delete". Yayınlanmış taslağın satırında
+  üstüne yazma düğmesi yok.
+- Vardiya kartı (2026-09-26): gerçek ve hayalet kart aynı düzen; satır
   sırası tip-iş, label (düz metin, kutucuk yok), saat. Bütün hayaletler tek
   ölü gri, ince seyrek tarama, saydamlık yok (metin ≥5:1); hayaletin
   lokasyonu yalnız köşedeki iğnenin baloncuğunda. Gerçek kartta iğne yok.
   "All locations – Together" görünümünde gerçek kartta lokasyon satırı
   başlığın altında, ikonsuz kalır. Dışa aktarma lokasyonu yazıyla gösterir.
-- *Sağ üst pencereler "stil B"* (2026-09-28): New Schedule ▾, Publish (Save
+- Sağ üst pencereler "stil B" (2026-09-28): New Schedule ▾, Publish (Save
   draft menüsü), Published ▾, Publish penceresi ve Templates penceresi sade
   liste stilinde — 13px metin, gri ince çizgiler, tek yeşil aksiyon; satır
   araçları (Edit, Delete, Unpublish) yalnız hover ya da klavye odağında,
   dokunmatikte hep açık. ≤720px'te düğme satırı sarılır, kaydırılmaz
   (kaydırılan kutu menüleri kırpıyordu). Yeni bir sağ üst menü ya da yayın
-  penceresi bu stilden kurulur.
-- *Müsaitlik bir tercih, engel değil* (2026-09-26, BL-186; kural "Ürün
-  kuralları → Müsaitlik"): çalışanın işareti ve yöneticinin gizli
-  hatırlatması hiçbir yolda vardiya yazmayı durdurmaz; hücrede taralı alan ve
-  uyarı, onay yayınlayandan. Ayar yok.
-- Başka yöneticinin taslak adıyla kaydedince "Overwrite "<ad>"?" sorulur;
-  Cancel derse başka ad seçmesi istenir.
-- Düzenleme kilidi yalnız taslakta. Başkası düzenliyorsa "Draft is being
-  edited" kimin düzenlediğini söyler ("View schedule" beyaz, "Try again"
-  yeşil). Taslak başladıktan sonra yayını değişen lokasyon Publish
-  penceresinde uyarı satırı alır; engel değil, yayınlayan karar verir.
-- Yayınlanmış vardiyanın müsaitlik uyarısı yayın anındaki kayıttan gelir;
-  sonradan girilen işaret yayınlanmış işi geriye dönük uyarıya çevirmez.
+  penceresi bu stilden kurulur. Export, Unpublish, Save draft penceresi ve
+  onay pencereleri (UI-13) hâlâ eski ağır stilde; tutarlılık ayrı iş
+  (BL-318).
+- Müsaitlik bir tercih, engel değil (2026-09-26, BL-186; "Ürün kuralları →
+  Müsaitlik"): hücrede taralı alan ve uyarı, onay yayınlayandan, ayar yok.
+  Yayınlanmış vardiyanın uyarısı yayın anındaki kayıttan gelir; sonradan
+  girilen işaret yayınlanmış işi geriye dönük uyarıya çevirmez.
+- Başka yöneticinin taslak adıyla kaydedince "Overwrite "<ad>"?" sorulur.
+- Düzenleme kilidi yalnız taslakta; başkası düzenliyorsa "Draft is being
+  edited" kimin düzenlediğini söyler. Taslak başladıktan sonra yayını değişen
+  lokasyon Publish penceresinde uyarı satırı alır; engel değil.
 
-**Bilinen tuhaflıklar.**
-- Export, Unpublish, Save draft penceresi ve onay pencereleri (UI-13) hâlâ
-  eski ağır stilde: kullanıcı stil B'yi yalnız sağ üst yüzeyler için seçti,
-  tutarlılık ayrı iş (BL-318).
+### Schedule → Requests
+- İzin verisi, izin okuyabilen herkese iki sekmede de yüklenir: "Time off"
+  sekmesindeki sayı kaybolmasın diye.
+- "Shift changes" sekmesinde sayı rozeti yok; Shift Hub sayıyı kendi
+  başlığında söyler. İnceleme çekmecesindeki "Select a request" yer tutucusu
+  hiç görünmez.
 
-### ScheduleRequestsPage
-
-**Ne işe yarar.** Schedule → Requests (`/app/schedule/requests`): yöneticinin
-izin talepleri kuyruğu ("Time off") ve takas/cover onayları ("Shift changes").
-İzin tarafı `get_schedule_requests_service`'ten gelir; "Shift changes"
-sekmesi Shift Hub'ın yönetici görünümüdür (`ShiftExchangeHub manager`).
-
-**Kullandığı ortak parçalar.** `CatalogPageHeader` (iki görünümde aynı başlık
-ve sekmeler), `CatalogDrawer` (izin inceleme çekmecesi), `ShiftExchangeHub`.
-
-**Kendine özgü kurallar.** Sekme URL'de (`?tab=time-off|shift-changes`);
-yalnız izin okuyabilen izin görünümünü, yalnız takas okuyabilen Shift Hub'ı
-görür. `?case=<id>` Shift Hub'da o vakayı açar (yönetici bildirimleri buraya
-bağlanır). İzin verisi izin okuyabilen herkese iki sekmede de yüklenir, "Time
-off" sekmesindeki sayı kaybolmasın diye. Eski takas kuyruğu ve
-"View earlier requests" 5.1b'de kalktı.
-
-**Bilinen tuhaflıklar.** İnceleme çekmecesindeki "Select a request" yer
-tutucusu hiç görünmez (çekmece yalnız bir talep seçilince açılır). "Shift
-changes" sekmesinde sayı rozeti yok; Shift Hub kendi başlığında sayıyı söyler.
-
-### ScheduleTemplatesPage (kısmi: butonlar)
-
-**Kendine özgü kurallar.** Satırdaki çöp kutusu ikonlu iki tık; silahlıyken
-onay ikonu ve "Confirm delete template <ad>" adı/ipucu.
-
-### AnnouncementsPage (kısmi: butonlar)
-
-**Kendine özgü kurallar.** Düzenleyicide "Delete" iki tık ("Confirm
-delete"). Listede satır menüsünün "Delete"i düzenleyiciyi silahlı açar
-(`?delete=1`, `useConfirmClick(fn, true)`); 3,2 sn içinde basılmazsa söner.
-Silahlıyken Publish gizlenir, Save kapanır.
-
-### LocationsSettingsPage (kısmi: butonlar)
-
-**Kendine özgü kurallar.** Lokasyon çekmecesinde "Delete location" iki tık
-("Confirm delete"), ayrı panel yok. Jobs, Shift types ve Shift labels'ta
-silme uyarı paneli açar (etki listesi); o panel bilerek kalıyor.
-
-### RolesSettingsPage
-
-**Ne işe yarar.** Settings → Roles & permissions (`/app/settings/roles`,
-`roles/:roleId`, yeni rol için `roles/new`): her rolün neyi görüp
-değiştirebileceği. Görmek `roles.read` ister; düzenlemek `roles.manage` ile
-owner ya da admin üyeliği ister (`canManage`), yerleşik rolde ayrıca
-`role.editable`. Owner listede görünmez; seçim yoksa Manager açılır. Roller
-"Workspace roles" sekme şeridindedir; 3'ten fazla özel rol "Custom roles +N"
-menüsünde toplanır, mobilde "Role" seçicisi çıkar.
-
-**Kullandığı ortak parçalar.** UI-03 `SettingsHeader` ("New role"), UI-09
-buton rolleri ("Copy role" ve "Cancel" beyaz, "Save changes" yeşil), shared
-`role-permissions.ts` (`permissionGroupsForRole`, `toggleRolePermissions`,
-`personalRolePermissions`, `employeeEligiblePermissions`) ve
-`workspaceRoleInputSchema`, `roles-data.ts` (`loadRoleWorkspace`,
-`saveWorkspaceRole`, `deleteWorkspaceRole`), kaydedilmemiş değişiklik için
-`useAvailabilityNavigationGuard` / `leaveAvailability` ("Discard role
-changes?").
-
-**Kendine özgü kurallar.** İzin tablosu açılıp kapanan gruplardan oluşur; grup
-ve alan başına "Read" / "Edit" kutuları, alan açıklaması Info ikonunda. Bir
-izni açmak bağımlılıklarını da açar (`rolePermissionDependencies`; ör.
-Publishing → Schedule). "Employee experience" rolü yalnız "Personal access"
-alanlarını görür. "Experience" yalnız rol oluşturulurken seçilir; "Starting
-point" boş rol ya da var olan bir rolün kopyası. Kayıt `expected_updated_at`
-ile gider; başarısız kayıtta taslak korunur.
-
-**Bilinen tuhaflıklar.** "Delete role" (yalnız özel rollerde) `ConfirmButton`
-değil, kendi iki tık kopyası: 3,2 sn silahlı "Confirm delete"; üye ya da davet
-referansı varsa "Role has dependencies" der ve sayıları veren ipucu silahlı
-kalır (UI-12'deki "tek eski kopya"). Gezinme koruması availability modülünden
-ödünç. 5.6'dan beri Schedule grubunda "Line Up" satırı yok.
-
-### NotificationSettingsPage
-
-**Ne işe yarar.** Settings → Notifications (`/app/settings/notifications`):
-workspace'in bildirim politikası. Her bildirim türü bir kart: açık/kapalı,
-izinli kanallar, sıklık. Politika kapsamı seçilebilir (Organization, bir rol
-ya da bir lokasyon); kişisel tercihler (Account → Notifications) bu kuralları
-yalnız daraltabilir.
-
-**Kullandığı ortak parçalar.** UI-03 (`SettingsHeader`). Kart başlığı ve
-açıklaması shared `notification-display.ts`'ten (`adminDescription`), tür
-listesi sunucudaki bildirim kataloğundan gelir; katalogdan silinen tür
-listeden de kalkar (5.3c'de "Availability requests to review").
-
-**Kendine özgü kurallar.** Düzenleme `notifications.settings.write` ister;
-her kayıt ve sıfırlama gerekçe ister (en az 3 karakter, denetim geçmişi
-için). "Safe test" `notifications.test_send` ister. Zorunlu türün
-(`mandatory_in_app`) açık/kapalı kutusu kilitli.
-
-**Bilinen tuhaflıklar.** Bildirim platformu ayrı bir proje olarak baştan
-tasarlanacak (FOUNDATION-B kapsam dışı); bu sayfa o zamana kadar olduğu
-gibi kalıyor.
-
-### SupportSettingsPage (kısmi: butonlar)
-
-**Kendine özgü kurallar.** "Email support" ve "Copy diagnostics" yeşil.
-
-### ConflictHandlingSettingsPage
-
-**Ne işe yarar.** Settings → Conflict handling
-(`/app/settings/scheduling/conflicts`): vardiya yazarken çıkan çakışmaların
-bütün işletmede nasıl ele alınacağı. Her kural için bir seçim: Required
-documents, Conditional documents during grace / after grace, Approved time off, Closed location or shift type, Minimum travel
-ve Minimum rest (ikisinin dakikası da burada). Kaydetmek
-`schedule.conflict_rules.manage` ister (`PUT
-/v1/workspaces/:id/scheduling-settings/conflicts`).
-
-**Kullandığı ortak parçalar.** UI-03 `SettingsHeader`, `SettingsChoiceRow`,
-shared `scheduleConflictSettingsSchema` ve `DEFAULT_SCHEDULE_CONFLICT_RULES`,
-UI-09 buton rolleri ("Save conflict rules" yeşil).
-
-**Kendine özgü kurallar.** Kademeler: Warn (uyarı gösterir, vardiya yazılır),
-Require confirmation (yönetici "vazgeç" ya da "yine de koy" seçer, kayıtlı),
-Block. Müsaitlik burada yok: BL-186'dan (2026-09-26) beri tercih, ayarı
-kalktı ("Ürün kuralları → Müsaitlik").
-Approved time off yalnız Require confirmation / Block (Aşama 6'da yalnız Block
-kalacak). Conditional after grace, grace kuralından yumuşak olamaz (şema
-reddeder). Kayıt `conflict_rules_revision` ile gider; arada başkası
-kaydettiyse Save kapanır, "Reload rules" güncelini getirir. Kayıttan sonra
-Schedule ızgarası ve haftalık tercih ayarları tazelenir.
-
-**Bilinen tuhaflıklar.** "Reload rules" de yeşil aksiyon düğmesi. Seçim
-etiketleri İngilizce "Warn / Require confirmation / Block"; kullanıcı
-kararındaki "Uyar / Yumuşak / Sert" bunlara karşılık gelir.
-
-### SchedulingSettingsPage
-
-**Ne işe yarar.** Settings → Scheduling (`/app/settings/scheduling`). İki
-bölüm, iki ayrı kaydetme:
-
-- **Schedule basics**: haftanın ilk günü (Sunday / Monday), "Publish by"
-  hedef günü ve saat biçimi (12 / 24 saat). "Save rules" ile kaydedilir
-  (`update_scheduling_settings_service`). Conflict kuralları bu kayda
-  girmez; onlar Conflict handling sayfasının.
-- **Availability and staffing** (`availability/WeeklyPreferenceSettings.tsx`):
-  müsaitlik giriş modu ("Time range" / "Shift type") ve "Required during
-  onboarding". Kendi Save / Discard düğmeleri ve kendi revizyonu var
-  (`weekly_preference_settings_save_service`).
-
-**Kullandığı ortak parçalar.** UI-03 (`SettingsHeader`). Mod değişince
-çalışanların kayıtlı haftaları DATA-05 ile dönüştürülür.
-
-**Kendine özgü kurallar.**
-- Düzenleme `settings.schedule_rules.manage` izni ister. İzni olmayan
-  Schedule basics'i salt okunur görür; Availability and staffing bölümünü
-  hiç görmez.
-- "Shift type" moduna geçiş, saati eksik aktif bir vardiya tipi varken
-  kapalı; eksik tipler Shift types sayfasına (`?edit=<id>`) linklenir.
-- Mod değişimi (AVAIL-001, 2026-09-22): kaydedince workspace'teki her
-  kayıtlı hafta (çalışanın kendi haftası ve yöneticinin "Manager reminders"
-  haftası) yeni moda çevrilir, eski hali geçmiş tablosuna yazılır, sonra
-  haftası çevrilen çalışanlara "Check your availability" bildirimi gider.
-  Mod seçilir seçilmez not gösterilir: "Saved weeks will be converted to
-  the new entry mode. Employees will be notified to check theirs."
-- Başka biri ayarı bu arada değiştirdiyse taslak korunur, kaydetme kapanır;
-  "Discard and reload" ile en son hal yüklenir.
-
-**Bilinen tuhaflıklar.**
-- `?checklist=setup` ile açılınca (owner kurulum listesinden) hafta başı ve
-  saat biçimi boş gelir; ikisi seçilmeden kaydedilemez.
-- Veri yüklenmeden önce form sabit varsayılanlarla (Monday, 12-hour)
-  çizilir.
+### Settings
+- Locations: lokasyon silme iki tık, panel yok. Jobs, Shift types ve Shift
+  labels'ta silme etki listesi paneli açar; o panel bilerek kalıyor.
+- Roles: "Delete role" `ConfirmButton` değil, kendi iki tık kopyası
+  (bağımlılık uyarısı silahlı kalıyor; UI-12'deki "tek eski kopya").
+- Notifications: bildirim platformu ayrı bir proje olarak baştan
+  tasarlanacak; bu sayfa o zamana kadar olduğu gibi kalır.
+- Conflict handling: müsaitlik burada yok (BL-186). Approved time off yalnız
+  Require confirmation / Block; FOUNDATION-B Aşama 6'da yalnız Block kalacak.
+  Ekrandaki "Warn / Require confirmation / Block", kullanıcı kararlarındaki
+  "Uyar / Yumuşak / Sert"e karşılık gelir.
+- Scheduling: müsaitlik giriş modu değişince (AVAIL-001, 2026-09-22) her
+  kayıtlı hafta yeni moda çevrilir (DATA-05), eski hali geçmişe yazılır,
+  haftası çevrilen çalışana "Check your availability" bildirimi gider.
+  `?checklist=setup` ile açılınca hafta başı ve saat biçimi boş gelir,
+  ikisi seçilmeden kaydedilemez.

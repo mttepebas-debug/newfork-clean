@@ -3,7 +3,7 @@ Status: draft (2026-09-27). B2 tarafı soru istemiyor, `.1` hazır; B4 tarafı k
 Session: -   Branch: task/fb-6.1b   Worktree: newfork-wt/fb-6.1b   DB: lock (`.1` migration + pgTAP, `.3` e2e)
 Reviewer: `nf-guvenlik` (her adım); `.2` ekran değiştirdiği için ayrıca `nf-gorsel-qa`.
 
-Kaynak: REUSE "Taslak ve lokasyon" B2, B4 (kullanıcı kararı 2026-09-25); `docs/plan/research/fb61-dis-degerlendirme-2026-09-25.md` bölüm B; `FB-6.1.md` Out of scope ve K-3; FOUNDATION-B dilim tablosu; BACKLOG BL-159.
+Kaynak: KARARLAR "Taslak ve lokasyon" B2, B4 (kullanıcı kararı 2026-09-25); `docs/plan/research/fb61-dis-degerlendirme-2026-09-25.md` bölüm B; `FB-6.1.md` Out of scope ve K-3; FOUNDATION-B dilim tablosu; BACKLOG BL-159.
 
 ## Tazelik (2026-09-27, `origin/main` `394434c4`, yerel DB yalnız SELECT)
 Dilim açıldığında (09-25) B2'nin kaydetme tarafı "tasarım ister" diye yazılmıştı. Bugün ölçülünce çoğu zaten yapılmış çıktı; dilim küçüldü.
@@ -23,12 +23,12 @@ Dilim açıldığında (09-25) B2'nin kaydetme tarafı "tasarım ister" diye yaz
 
 ## Açık sorular (B4; kullanıcıya, önerilen ilk)
 - **S1 — Anahtar açıkken hangi yayınlanmış vardiyalar görünsün?**
-  - (a) **(Önerilen)** O haftanın bütün yayınlanmış vardiyaları: hem taslağın kendi lokasyonlarının yayındaki planı (boş planın yerine geçeceği şey) hem de ızgaradaki kişilerin başka lokasyonlardaki vardiyaları. Tam referans; REUSE örneğini de kapsar.
-  - (b) Yalnız başka lokasyonlardakiler (REUSE örneğinin harfiyen okuması: Beşiktaş planını yaparken Kadıköy'ünkiler).
+  - (a) **(Önerilen)** O haftanın bütün yayınlanmış vardiyaları: hem taslağın kendi lokasyonlarının yayındaki planı (boş planın yerine geçeceği şey) hem de ızgaradaki kişilerin başka lokasyonlardaki vardiyaları. Tam referans; KARARLAR örneğini de kapsar.
+  - (b) Yalnız başka lokasyonlardakiler (KARARLAR örneğinin harfiyen okuması: Beşiktaş planını yaparken Kadıköy'ünkiler).
   - (c) Yalnız taslağın kendi lokasyonlarının yayındaki planı.
 - **S2 — Anahtar ne zaman var?**
   - (a) **(Önerilen)** Her plan düzenlemesinde. Boş başlatılıp kaydedilen bir taslak sonra yeniden açıldığında da anahtar kaybolmaz. Taslakta zaten satırı olan yayınlanmış vardiya ikinci kez soluk gösterilmez.
-  - (b) Yalnız boş başlatılan düzenlemede (REUSE'un harfiyen okuması). Kaydedip yeniden açınca anahtar gider, çünkü taslak artık "boş başladı" bilgisini taşımıyor; taşısın istenirse DB'ye bir alan eklenir.
+  - (b) Yalnız boş başlatılan düzenlemede (KARARLAR'un harfiyen okuması). Kaydedip yeniden açınca anahtar gider, çünkü taslak artık "boş başladı" bilgisini taşımıyor; taşısın istenirse DB'ye bir alan eklenir.
   - (c) Boş başlatılan taslaklarda, kaydedilip yeniden açılınca da. Taslağa "boş başladı" işareti gerekir (`nf-db`, küçük migration).
 - **S3 — Anahtarın başlangıç durumu:**
   - (a) **(Önerilen)** Kapalı başlar, kişinin son seçimi o tarayıcıda hatırlanır.

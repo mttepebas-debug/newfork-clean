@@ -20,10 +20,10 @@ Kime: `nf-strateji` lead'i (Genel Koordinatör). Program durumu için ayrıca
   (`gh api repos/mttepebas-debug/newfork-clean/actions/runners`).
 
 ## 2. Bu dönemde verilen kullanıcı kararları (kayıtları)
-- CI GitHub'dan kullanıcının bilgisayarına taşındı (BL-107, BL-112; REUSE OPS-01). Actions harcama
+- CI GitHub'dan kullanıcının bilgisayarına taşındı (BL-107, BL-112; KARARLAR OPS-01). Actions harcama
   limiti $0.
 - Aşama 4 kararları (plan kilidi A, izinler 1A–6A, eski kapılar ekran ekran) ve Aşama 5 silme onayları
-  FOUNDATION-B.md ve REUSE "Ürün kuralları"nda.
+  FOUNDATION-B.md ve KARARLAR "Ürün kuralları"nda.
 - BL-080 (owner'ın resmî adı): sihirbaz 1. adım, zorunlu, kopyalama yok, sonradan değişiklik denetim
   kaydıyla → Aşama 6 Belgeler dilimi (BACKLOG'da).
 - Leaked password protection açılmayacak (ücretli). Realtime public erişim kapalı (BL-114 ile kanallar

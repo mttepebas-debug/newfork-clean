@@ -7,7 +7,7 @@ Hazırlayan `nf-planlama` (BL-059, koordinatörün görevi). Web araştırması 
 - Kurulum tamamlanınca 14 günlük deneme satırı yazılıyor (`supabase/migrations/20260925180000_the_owner_gives_a_legal_name.sql:356-381`, `interval '14 days'`, sağlayıcı `internal`). Yerel DB'de 98 satır, hepsi `trialing`.
 - **Deneme bitince hiçbir şey olmuyor:** `apps/api`, `apps/web`, `packages/shared`'de bu tabloyu okuyan kod yok (grep 2026-09-27). Kilitleme, uyarı, ödeme ekranı yok.
 - **İkinci deneme engeli yok:** aynı owner'ın yeni workspace'i de 14 gün alıyor; ROADMAP "Kapsam kararları" bunu yasaklıyor ("daha önce trial kullanmış owner yeni workspace açınca tekrar trial alamaz").
-- Ürün kuralı: billing yalnız owner'ın (REUSE "Roller ve kapsam" `:36`); faturalama sahipliği devirle geçiyor (`sync_workspace_entitlement_billing_owner_trigger`).
+- Ürün kuralı: billing yalnız owner'ın (KARARLAR "Roller ve kapsam" `:36`); faturalama sahipliği devirle geçiyor (`sync_workspace_entitlement_billing_owner_trigger`).
 - Stripe kodu, hesabı, anahtarı yok.
 
 ## 2. Rakipler (ABD, resmi fiyat sayfaları, 2026-09-27)

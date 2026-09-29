@@ -25,7 +25,7 @@ In scope:
 3. **Düzeltmeler:**
    - Topbar filtre ve Settings dropdown z-index'i.
    - Ana sayfalarda metin/arka plan kontrastı WCAG AA (Schedule, Employees, Settings, Account, Employee Hub, Announcements, Requests). Düşük kontrast bulunan yerler düzeltilir.
-4. **REUSE UI-05:** yeni token sözleşmesi için önerilen metin rapora yazılır.
+4. **KARARLAR UI-05:** yeni token sözleşmesi için önerilen metin rapora yazılır.
 
 - Kullanılmayan `account-theme-*` kuralları silinir.
 

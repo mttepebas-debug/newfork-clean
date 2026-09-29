@@ -3,9 +3,9 @@
 Kime: `nf-strateji` lead'i (planlama + inceleme'ye dağıtmak için)
 Kimden: kullanıcının açtığı tekil oturum (takım dışı), kullanıcının isteğiyle
 Tarih: 2026-09-25
-Kaynaklar: `origin/main` `97661f1` (`docs/plan/tasks/FB-6.1.md`, `REUSE.md`), `nf-muhendislik/artifacts/strateji/FB-6.1/2a-niyet-listesi.md`, yerel DB `supabase_db_newfork-clean` (yalnız `SELECT`). Hiçbir dosya, branch ya da DB satırı değiştirilmedi.
+Kaynaklar: `origin/main` `97661f1` (`docs/plan/tasks/FB-6.1.md`, `KARARLAR.md`), `nf-muhendislik/artifacts/strateji/FB-6.1/2a-niyet-listesi.md`, yerel DB `supabase_db_newfork-clean` (yalnız `SELECT`). Hiçbir dosya, branch ya da DB satırı değiştirilmedi.
 
-Bu rapor iki bölüm: (A) Strateji lead'inin kullanıcıya verdiği durum özetinin ve FB-6.1 planının doğrulaması, (B) kullanıcının bu turda verdiği **yeni ürün kararları** ve bir **backlog adayı**. B bölümündeki 1–4 numaralı kurallar kullanıcı kararıdır; tahmin değildir, REUSE "Ürün kuralları"na yazılmalıdır.
+Bu rapor iki bölüm: (A) Strateji lead'inin kullanıcıya verdiği durum özetinin ve FB-6.1 planının doğrulaması, (B) kullanıcının bu turda verdiği **yeni ürün kararları** ve bir **backlog adayı**. B bölümündeki 1–4 numaralı kurallar kullanıcı kararıdır; tahmin değildir, KARARLAR "Ürün kuralları"na yazılmalıdır.
 
 ---
 
@@ -31,11 +31,11 @@ Gereken düzeltme (biri seçilmeli):
 
 ### A2 — Export sorusu kullanıcıya gereksiz gitti
 
-`REUSE.md` "Ürün kuralları" → M2: *"Vardiya işlemleri (yazma, yayın, devir onayı, dışa aktarma) yalnız vardiyanın lokasyonunda."* (kullanıcı kararı, 2026-09-23). 2a listesinin Q3'ü de bu satıra dayanıyor. Q3 (a) — `location_ids ⊆ scope_set(actor,'schedule.export')`, değilse `authz.out_of_scope` — REUSE'un doğrudan sonucudur, soru olarak açık tutulmamalı. `scheduled_schedule_exports.location_ids` kolonu var, kontrol doğrudan uygulanabilir.
+`KARARLAR.md` "Ürün kuralları" → M2: *"Vardiya işlemleri (yazma, yayın, devir onayı, dışa aktarma) yalnız vardiyanın lokasyonunda."* (kullanıcı kararı, 2026-09-23). 2a listesinin Q3'ü de bu satıra dayanıyor. Q3 (a) — `location_ids ⊆ scope_set(actor,'schedule.export')`, değilse `authz.out_of_scope` — KARARLAR'un doğrudan sonucudur, soru olarak açık tutulmamalı. `scheduled_schedule_exports.location_ids` kolonu var, kontrol doğrudan uygulanabilir.
 
-### A3 — K7 ve 2a/Q1–Q4 REUSE'la çelişiyordu (kullanıcı şimdi karar verdi, bkz. B)
+### A3 — K7 ve 2a/Q1–Q4 KARARLAR'la çelişiyordu (kullanıcı şimdi karar verdi, bkz. B)
 
-2a/Q1 önerisi (a) "manager herhangi bir taslağı yönetebilir" Q3'teki "hayır" ile tutarsız: Beşiktaş'ın planını indiremeyen Kadıköy müdürü aynı haftanın taslağını silebiliyordu. REUSE M2'nin son cümlesi ("Başka lokasyonu etkileyen karar o lokasyonun onayını ya da admin/owner'ı ister") (b)'yi gösteriyordu. K7'nin "kendi yetki alanı kadarını görür" ifadesi kısıtlayıcı okunuyor ama taslağa `scope_set(actor)` uygulamak pratikte "en az bir lokasyonu olan her manager" demek.
+2a/Q1 önerisi (a) "manager herhangi bir taslağı yönetebilir" Q3'teki "hayır" ile tutarsız: Beşiktaş'ın planını indiremeyen Kadıköy müdürü aynı haftanın taslağını silebiliyordu. KARARLAR M2'nin son cümlesi ("Başka lokasyonu etkileyen karar o lokasyonun onayını ya da admin/owner'ı ister") (b)'yi gösteriyordu. K7'nin "kendi yetki alanı kadarını görür" ifadesi kısıtlayıcı okunuyor ama taslağa `scope_set(actor)` uygulamak pratikte "en az bir lokasyonu olan her manager" demek.
 
 **2a'nın Q1 öncülü de yanlış:** "taslak workspace+hafta nesnesi, satırda lokasyon yok" deniyor, oysa `public.schedule_drafts.location_ids uuid[]` ve `public.schedule_edit_sessions.location_ids uuid[]` var. Yani "taslağın lokasyonları ⊆ actor'ın kapsamı" kontrolü bugünkü şemayla yazılabilir. `schedule_templates`'te lokasyon kolonu yok (lokasyon template'in shift'lerinde).
 
@@ -54,13 +54,13 @@ Gereken düzeltme (biri seçilmeli):
 | B10 | Doğru | `97661f1` main'de, `Status: draft`. |
 | K3, K4, K5 | Doğru | K4 zaten Done when 4'te. |
 | K6 | Dikkat | `schedule_grid_read_budget` zaten `ci-green.txt`'te ve `< 50` ile geçiyor. ">40 ms ise hedef 'kötüleşme yok' olur" kuralı CLAUDE.md §9'daki ≤50 ms çıtasını gevşetebilir; gevşetme kullanıcı onayı ister. |
-| K8 | Doğru ama yeni değil | REUSE "Teknik sözleşmeler"de zaten yazılı. |
+| K8 | Doğru ama yeni değil | KARARLAR "Teknik sözleşmeler"de zaten yazılı. |
 
 ---
 
 ## B. Kullanıcının yeni ürün kararları (2026-09-25)
 
-REUSE "Ürün kuralları" → "Roller ve kapsam" altına yazılmalı; `authorization_matrix`'te hücre karşılıkları olmalı. Örnekler: Ayşe = yalnız Kadıköy müdürü, Ali = Kadıköy + Beşiktaş'ta çalışan kişi, taslak T = Kadıköy + Beşiktaş.
+KARARLAR "Ürün kuralları" → "Roller ve kapsam" altına yazılmalı; `authorization_matrix`'te hücre karşılıkları olmalı. Örnekler: Ayşe = yalnız Kadıköy müdürü, Ali = Kadıköy + Beşiktaş'ta çalışan kişi, taslak T = Kadıköy + Beşiktaş.
 
 **B1 — Taslakta manager yalnız kendi lokasyonlarını görür ve düzenler.** Ayşe T'yi açınca yalnız Kadıköy ızgarasını görür. Ali'nin Beşiktaş vardiyası, Ayşe'nin ızgarasında Ali'nin satırında yalnız **ghost** (lokasyon adı + saat, salt okunur) olarak görünür. Beşiktaş ızgarası hiç gelmez.
 
@@ -95,8 +95,8 @@ Neden büyük: M2'ye taslak bazlı, süreli bir **yetki istisnası** ekler. `aut
 
 ## D. Strateji'den beklenen
 1. A1'i planın `.2` / `.4` sırasına işlemek ((a) ya da (b)).
-2. Export sorusunu REUSE'a dayanarak kapatmak (A2).
-3. B1–B4'ü REUSE'a yazmak. Q4 teyidini ve B2 açık sorusunu kullanıcıya zincirle götürmek.
+2. Export sorusunu KARARLAR'a dayanarak kapatmak (A2).
+3. B1–B4'ü KARARLAR'a yazmak. Q4 teyidini ve B2 açık sorusunu kullanıcıya zincirle götürmek.
 4. B5 / B6 / K6 düzeltmelerini düzeltme listesine eklemek (mevcut 10 maddeye).
 5. C'yi BACKLOG'a yazmak.
 
@@ -111,10 +111,10 @@ Bu raporun ölçülebilir iddiaları ayrı bir okuma ajanıyla yeniden ölçüld
 | A1 sayıları (58 ad / 60 oid, 101 çağrı, 30 fonksiyon / 34 çağrı null'lu, 28 yalnız gerçek lokasyonlu) | DOĞRU | "28 → 67 çağrı" yanlış: 28 fonksiyonun çağrısı **42**; 67 bütün gerçek lokasyonlu çağrıların toplamı. "17 + 13" ada göre **16 + 14** (oid'e göre 17 + 14). |
 | A1 sıra sorunu | DOĞRU, daha ağır | Yardımcılar `pg_depend` kaydı olmadan çağrılıyor: silme sessiz geçer, 28 fonksiyon çalışırken kırılır. 28'in yalnız ~6'sı `.4`'ün katlama listesinde; ~22'si izin (5) ve takas (6) fonksiyonları ile katlanmayan Schedule servisleri. **(b) seçeneği yetmez.** Ya (a) 28'in hepsi FB-6.1'de taşınır, ya silme bütün çağıranlar taşınana kadar FB-6.1 dışına ertelenir. `.2`'nin "43 / 38" hedefi Duyurular yardımcısının 9 çağrı / 8 fonksiyonunu da içeriyor. |
 | "112 çağrı / 63 fonksiyon" (FB-6.1.md:68, :133) | KISMEN | 112 = dört yardımcı (101 + 11). 63 yeniden üretilemedi (dört yardımcı: 66 ad / 68 oid). |
-| A2 export | DOĞRU | REUSE.md:37 birebir; `scheduled_schedule_exports.location_ids uuid[]` var. Soru kapanır. |
+| A2 export | DOĞRU | KARARLAR.md:37 birebir; `scheduled_schedule_exports.location_ids uuid[]` var. Soru kapanır. |
 | A3 şema | DOĞRU | `schedule_drafts.location_ids`, `schedule_edit_sessions.location_ids` uuid[]; `schedule_templates`'te lokasyon kolonu yok. 2a/Q1 öncülü doğrulanamadı (kaynak dosya artık yok). |
 | B5 | DOĞRU | Dört dosya yok; web'de `can(` / `isNoAccess` 0. FB-6.0-can ön koşul. |
 | B6 | DOĞRU | `schedule-conflicts.ts:20`; bugün `approved_time_off` 5 eşleşme (ayar sayfası, conflicts, 3 test). Kriter ayar sayfasıyla sınırlanmalı. |
 | K6 | DOĞRU | `ci-green.txt:57`, eşik `< 50`. ">40 ms ise kötüleşme yok" kuralının kaynağı yok; ≤50 ms gevşetilmez. |
-| B2 notu | KISMEN | `publish_schedule_draft_service` `target_location_ids` alıyor, `save_schedule_edit_session_service` almıyor: doğru. **`schedule_edit_locks` tablo değil**, test dosyası; kilit `schedule_edit_sessions` üzerinde taslak başına (`schedule_edit_sessions_active_draft_idx`). Açık soru REUSE.md:48 ("iki kişi aynı taslağı aynı anda düzenleyemez") ile yeniden kurulmalı. |
-| B1–B4 (kullanıcı kararları) | — | B1 REUSE:37/:39 ile uyumlu, "başka lokasyon ızgarası gelmez" yeni. B2 kaydetme kısmı yeni. B3 yeni; M2'nin "onay ya da admin/owner" cümlesini silme için daraltır. **B4 REUSE:39 ile çelişir** ("ghost vardiyayla çakışma uyarısı"): REUSE'a iki ayrı mod olarak yazılmalı. |
+| B2 notu | KISMEN | `publish_schedule_draft_service` `target_location_ids` alıyor, `save_schedule_edit_session_service` almıyor: doğru. **`schedule_edit_locks` tablo değil**, test dosyası; kilit `schedule_edit_sessions` üzerinde taslak başına (`schedule_edit_sessions_active_draft_idx`). Açık soru KARARLAR.md:48 ("iki kişi aynı taslağı aynı anda düzenleyemez") ile yeniden kurulmalı. |
+| B1–B4 (kullanıcı kararları) | — | B1 KARARLAR:37/:39 ile uyumlu, "başka lokasyon ızgarası gelmez" yeni. B2 kaydetme kısmı yeni. B3 yeni; M2'nin "onay ya da admin/owner" cümlesini silme için daraltır. **B4 KARARLAR:39 ile çelişir** ("ghost vardiyayla çakışma uyarısı"): KARARLAR'a iki ayrı mod olarak yazılmalı. |

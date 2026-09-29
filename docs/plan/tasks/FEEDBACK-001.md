@@ -7,7 +7,7 @@ In scope: `/dev/feedback` vitrini; toast / inline / banner / sayfa hiyerarşisi 
 Out of scope: API hata sınıfı göçü (BACKLOG tipli hata maddesi).
 Done when:
 - Aşama 1: `/dev/feedback` 39 toast'u gerçek metinle tetikliyor, bugünkü durumları gösteriyor; katalog testi yeşil; `dist` içinde vitrin yok.
-- Aşama 2: hiyerarşi kuralı `docs/design-canvas.md` ve REUSE UI-10'da yazılı.
+- Aşama 2: hiyerarşi kuralı `docs/design-canvas.md` ve KARARLAR UI-10'da yazılı.
 - Aşama 3: kullanıcı varyantları seçti, kaybedenler silindi.
 - Aşama 4: ortak bileşenler main'de, eski ad hoc sınıflar silinmiş, tam kapı yeşil.
 Touches: `apps/web/src/dev/**`, `App.tsx`; sonraki aşamalarda `packages/ui`, `apps/web/src/shell`, `apps/web/src/lib/request-error.ts`, realtime hook'ları, sayfa CSS'leri.

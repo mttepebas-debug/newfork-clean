@@ -58,7 +58,7 @@ branch kalmaz.
 ## Out of scope
 - Ürün işi. FB-6.1 bu düzen kurulduktan sonra ilk gerçek iş olarak gelir.
 - Yerleşik agent teams denemesi.
-- `CLAUDE.md` dışındaki kural dosyalarının (REUSE, BACKLOG) yeniden düzeni.
+- `CLAUDE.md` dışındaki kural dosyalarının (KARARLAR, BACKLOG) yeniden düzeni.
 
 ## Done when
 1. Agent Teams AI süreçleri kapalı: `Get-Process claude-multimodel` 0 döner.

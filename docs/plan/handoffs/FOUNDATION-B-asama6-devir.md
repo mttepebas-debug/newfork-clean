@@ -63,7 +63,7 @@ Planın maddesi: FOUNDATION-B.md → Aşama 6 → "1. Schedule". Aşağıdaki du
   - Çalışanların onboarding inceleme kuralı değişmez.
 - **BL-118 — owner kendi belgesini gönüllü yükleyebilir.** Bugün `lifecycle_exempt`, owner'ı zorunlu belgelerden muaf tutarken yükleme yolunu da kapatıyor.
 - **`employee_onboarding_rls`:** eski yükleme, imza ve indirme çağrıları 5.5d'de silinen fonksiyonlara gidiyor; yeni belge yoluna göre yeniden yazılır.
-- Bu kararlar dilimde REUSE "Ürün kuralları"na işlenir.
+- Bu kararlar dilimde KARARLAR "Ürün kuralları"na işlenir.
 
 ## 5. Açık ürün sorusu
 
@@ -93,7 +93,7 @@ Planın maddesi: FOUNDATION-B.md → Aşama 6 → "1. Schedule". Aşağıdaki du
   - `ci-green.txt` yalnız büyür. Bir satır ancak dosyası silinmişse çıkabilir; CI bunu denetler.
   - typecheck ve lint ayrı kapılardır; `pnpm test` yeşil diye CI yeşil olmaz.
   - Docs-only push CI tetiklemez. Kod push'undan sonra main CI'ı izle (`gh run list --branch main`).
-- **CI runner'ları** kullanıcının PC'sinde, 3 WSL runner (REUSE OPS-01):
+- **CI runner'ları** kullanıcının PC'sinde, 3 WSL runner (KARARLAR OPS-01):
   - Yalıtım runner adından gelir (`scripts/ci-supabase-apart.sh`).
   - Bir runner, yalıtımı main'e girmeden havuza eklenmez.
   - `wsl --terminate` Docker entegrasyonunu bozar.
@@ -108,7 +108,7 @@ Planın maddesi: FOUNDATION-B.md → Aşama 6 → "1. Schedule". Aşağıdaki du
 - **Küçük araç tuzakları:**
   - `npx supabase migration new` dosyayı yarattıktan sonra asılı kalabilir. Dosya oluştuysa süreci durdur.
   - `git worktree remove`, `node_modules` yüzünden "Directory not empty" verir. PowerShell `Remove-Item -Recurse -Force <yol>`, sonra `git worktree prune`.
-- **Ölü kod yöntemi:** REUSE OPS-02.
+- **Ölü kod yöntemi:** KARARLAR OPS-02.
   - Test referansları sayılmaz.
   - Yalnız ölülerin çağırdığı da ölüdür; tekrar tekrar ayıkla.
   - Silmeyi rollback'li transaction'da, cascade'siz dene.

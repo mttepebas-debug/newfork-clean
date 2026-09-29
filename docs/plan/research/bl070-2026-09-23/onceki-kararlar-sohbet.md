@@ -8,7 +8,7 @@
 | 2 | tenant_owned_composite_foreign_keys | REPO 8 + TEST 3 | 8 FK'ye workspace_id; 3 istisna (time_off_cancellation_periods.request_id, onboarding req submitted/approved doc) gerekçeli |
 | 3 | bl052_document_access | TEST | ikinci engel için published document_types satırı. Deneme 14/14 |
 | 3b | (ürün kararı) | REPO | taslak belgenin etkisi sıfır: 3 atama yolu (initialize_employee_onboarding_service, document_reconcile_employee, apply_lifecycle_definition) yalnız published seçer; guard_document_requirement_publication taslakta sessiz null yerine hata verir |
-| 3c | REUSE.md | DOC | "belge gereksinimi yalnız published tanıma" notu |
+| 3c | KARARLAR.md | DOC | "belge gereksinimi yalnız published tanıma" notu |
 | 4 | bl052_document_definitions | TEST | tanımı publish et; revision'ı varsayma, oku |
 | 5 | bl052_document_employee_assignment_preview | TEST | tanımı publish et. Deneme 9/9 |
 | 6 | onboarding_composite_tenant_constraints | TEST | 7 geçerli gün. Deneme 8/8 |

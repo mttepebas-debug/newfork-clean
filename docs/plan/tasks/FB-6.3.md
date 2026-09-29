@@ -2,7 +2,7 @@
 Status: draft — S1–S3 cevaplı, S4 TBD; P1–P3 verildi (2026-09-27). Başlamadan önce: FB-6.2 main'de, BL-183 main'de; `.0` taze ölçüm.
 Session: -   Branch: task/FB-6.3   Worktree: newfork-wt/FB-6.3   DB: lock (migration + test:db + e2e)
 
-Program: `docs/plan/tasks/FOUNDATION-B.md` → Aşama 6 → dilim tablosu, satır FB-6.3. Ürün kuralları: `docs/plan/REUSE.md` → "İzin (time off)" (`:68-71`) ve "Rütbe" (`:44`). Kalıp: `FB-6.1.md`, `FB-6.2.md`.
+Program: `docs/plan/tasks/FOUNDATION-B.md` → Aşama 6 → dilim tablosu, satır FB-6.3. Ürün kuralları: `docs/plan/KARARLAR.md` → "İzin (time off)" (`:68-71`) ve "Rütbe" (`:44`). Kalıp: `FB-6.1.md`, `FB-6.2.md`.
 Önkoşullar: **FB-6.2** (kişi kapsamı, birincil lokasyon, lokasyonsuz kişi — FB-6.2 S1); **BL-183** (A şeridi; aynı bildirim fonksiyonuna dokunuyor, Ç-a).
 Reviewer: `nf-guvenlik` (her kod adımı); ekran değiştiren adımlarda (`.5`, `.6`) ayrıca `nf-gorsel-qa`. Onay biçimi `ONAY @<sha>`.
 
@@ -26,7 +26,7 @@ Reviewer: `nf-guvenlik` (her kod adımı); ekran değiştiren adımlarda (`.5`, 
 **Sonuç:** Dilim tablosundaki büyüklük (0,5–1 kişi-hafta) **düşük**: oylama yeni bir karar motoru (oy kaydı, karar anında oy veren hesabı, kısmi oy durumu, bildirim) ve talepten lokasyonun kalkması saat dilimi kuralını açıyor (S3). Buna karşılık rütbe işi (BL-177) ve yardımcıların ikisi zaten bitti, sayaç etkisi küçük. Yeni tahmin **1–1,5 kişi-hafta** (ölçülmemiş; FB-6.1/6.2 bitince yeniden).
 
 ## Goal
-İzin kişinin talebidir: formda lokasyon seçilmez, talep bir lokasyona bağlı değildir. Karar REUSE'daki oylamayla verilir: o gün yayınlı vardiyası olan her lokasyonun müdürü oy verir, hepsi onaylayınca kesinleşir, biri reddederse red; yayınlı vardiya yoksa birincil lokasyonun müdürü; admin/owner her durumda tek başına; birincil lokasyonun müdürü yoksa (ya da kişi lokasyonsuzsa) talep admin/owner'a düşer. Kararın her giriş noktası `app_private.authorize()` / `scope_set()`'ten geçer.
+İzin kişinin talebidir: formda lokasyon seçilmez, talep bir lokasyona bağlı değildir. Karar KARARLAR'daki oylamayla verilir: o gün yayınlı vardiyası olan her lokasyonun müdürü oy verir, hepsi onaylayınca kesinleşir, biri reddederse red; yayınlı vardiya yoksa birincil lokasyonun müdürü; admin/owner her durumda tek başına; birincil lokasyonun müdürü yoksa (ya da kişi lokasyonsuzsa) talep admin/owner'a düşer. Kararın her giriş noktası `app_private.authorize()` / `scope_set()`'ten geçer.
 Örnek: Ali Pazartesi Kadıköy'de, Salı Beşiktaş'ta yayınlı vardiyalı; Pazartesi–Salı izin ister. Kadıköy müdürü Ayşe onaylar, talep "Beşiktaş'ın onayı bekleniyor" der; Beşiktaş müdürü Mehmet onaylayınca izin kesinleşir. Mehmet reddetseydi talep reddedilirdi. Admin ikisini beklemeden tek başına karar verebilir.
 
 ## In scope
@@ -49,7 +49,7 @@ Reviewer: `nf-guvenlik` (her kod adımı); ekran değiştiren adımlarda (`.5`, 
 
 ## Açık sorular — S1–S3 cevaplandı 2026-09-27 (kullanıcı, `nf-planlama` penceresi); S4 açık (TBD)
 - **S1 — Çok günlü talepte oylama günlere göre mi, talebin bütününe mi?** Ali'nin Pazartesi (Kadıköy) + Salı (Beşiktaş) talebi.
-  - (a) **(Önerilen)** Talebin bütünü: iki günün bütün oy verenleri (Ayşe ve Mehmet) onaylayınca kesinleşir, biri reddederse bütün talep reddedilir. Gerekçe: REUSE'un "hepsi onaylayınca kesinleşir, biri reddederse red" cümlesiyle birebir; çalışan için tek sonuç. Admin/owner gerekirse yine gün gün (kısmi) karar verebilir — bu özellik bugün var (`time_off_decision_pieces`).
+  - (a) **(Önerilen)** Talebin bütünü: iki günün bütün oy verenleri (Ayşe ve Mehmet) onaylayınca kesinleşir, biri reddederse bütün talep reddedilir. Gerekçe: KARARLAR'un "hepsi onaylayınca kesinleşir, biri reddederse red" cümlesiyle birebir; çalışan için tek sonuç. Admin/owner gerekirse yine gün gün (kısmi) karar verebilir — bu özellik bugün var (`time_off_decision_pieces`).
   - (b) Gün gün: Pazartesi'yi yalnız Ayşe, Salı'yı yalnız Mehmet karar verir; Pazartesi onaylı, Salı reddedilmiş olabilir.
   - **Cevap: (a) talebin bütünü.**
 - **S2 — Aynı lokasyonda birden çok müdür varsa lokasyonun oyunu kim verir?**
@@ -65,7 +65,7 @@ Reviewer: `nf-guvenlik` (her kod adımı); ekran değiştiren adımlarda (`.5`, 
   - (b) Yalnız ilk izni onaylamış olanlar.
   - **Cevap: TBD** — kullanıcı sonra karar verecek. Etki: iptal kararı (`.3`'ün iptal kısmı ve iptal eylemi hücreleri) cevaba kadar bekler; bugünkü iptal akışı değiştirilmez.
 
-Kuraldan çıkan, soru olmayan sonuçlar (REUSE'dan): kişi lokasyonsuzsa (FB-6.2 S1) ya da birincil lokasyonunun müdürü yoksa talep admin/owner'a düşer; oy verenler her kararda yeniden hesaplanır — arada yayınlanan yeni bir lokasyonun vardiyası o lokasyonun oyunu da gerektirir, artık yayınlı vardiyası olmayan lokasyonun verdiği oy sayılmaz.
+Kuraldan çıkan, soru olmayan sonuçlar (KARARLAR'dan): kişi lokasyonsuzsa (FB-6.2 S1) ya da birincil lokasyonunun müdürü yoksa talep admin/owner'a düşer; oy verenler her kararda yeniden hesaplanır — arada yayınlanan yeni bir lokasyonun vardiyası o lokasyonun oyunu da gerektirir, artık yayınlı vardiyası olmayan lokasyonun verdiği oy sayılmaz.
 
 ## Planlama kararları — verildi 2026-09-27 (koordinatör; üçü de öneri gibi)
 - **P1 — BL-127 ve BL-182 nerede?** **Karar: öneri gibi** — "izin kısalır" mekanizması FB-6.4'te bir kez yazılır (BL-182), BL-127 hemen ardından. İkisi de onaylı iznin bir kısmını kısaltan aynı mekanizmayı ister. **Öneri:** mekanizma bir kez, FB-6.4'te (takas, BL-182) yazılır; BL-127 onun üstüne FB-6.4'ten hemen sonra ayrı küçük iş. Elenen: FB-6.3'e katmak (oylama motoruyla birlikte dilimi ikiye katlar).
@@ -123,7 +123,7 @@ Kuraldan çıkan, soru olmayan sonuçlar (REUSE'dan): kişi lokasyonsuzsa (FB-6.
 1. **Çok lokasyonlu çalışanın izni haftalarca "bekliyor"da kaldı.** Gizli varsayım: her lokasyonun müdürü zamanında oy verir. Kanıt: kural "hepsi onaylayınca kesinleşir"; bir müdür tatildeyse talep asılı kalır. **Düzeltme:** bekleyen oy için hatırlatma ve admin/owner'ın tek başına karar yetkisi ekranda görünür ("Decide as admin"); sürenin kendisi ürün kararı değilse backlog adayı.
 2. **Oylama çalışana anlaşılmadı.** "Onaylandı mı?" sorusuna ekran "kısmen" dedi. **Düzeltme:** `.6` varyantlarında çalışana tek durum ("Waiting for Beşiktaş manager"), müdüre ayrıntı.
 3. **Saat dilimi sessizce kaydı.** Lokasyon kalkınca saat dilimi tahmin edilirse iki şehirde çalışan kişinin izni bir saat kayar. **Düzeltme:** S3 kullanıcı kararı; talep anında dilim kayda yazılır, ekranda gösterilir.
-4. **Daha basit alternatif:** oylamayı yazmadan "birincil lokasyonun müdürü karar verir, diğerlerine bildirim" — REUSE ile çelişir (kullanıcı kararı oylama), öneri değil; ama S1 (a) ile oylama zaten tek sonuçlu ve basit tutuluyor.
+4. **Daha basit alternatif:** oylamayı yazmadan "birincil lokasyonun müdürü karar verir, diğerlerine bildirim" — KARARLAR ile çelişir (kullanıcı kararı oylama), öneri değil; ama S1 (a) ile oylama zaten tek sonuçlu ve basit tutuluyor.
 5. **Geri alınabilirlik:** lokasyon kolonunun silinmesi şema değişikliği; canlı veri yok (CLAUDE.md §9), yerel talep satırı 0. Risk düşük.
 
 ## Skills
@@ -131,5 +131,5 @@ Plan: `superpowers:writing-plans`; yürütme: `superpowers:executing-plans`. SQL
 
 ## Notes / Result
 - 2026-09-27 (koordinatör, kayıt `nf-planlama`): P1–P3 öneri gibi — "izin kısalır" FB-6.4'te (BL-182), BL-127 ardından; K-1 silmesi FB-6.4'te; BL-134'ün schedule-requests parçası `.5`'te.
-- 2026-09-27 (`nf-planlama`): kullanıcı S1 (a) talebin bütünü, S2 (a) lokasyonun herhangi bir müdürü, S3 (a) birincil lokasyonun saat dilimi dedi; S4 (iptalin onayı) TBD. İptal kısmı cevaba kadar kapsamda bekler; REUSE "İzin" güncellendi.
+- 2026-09-27 (`nf-planlama`): kullanıcı S1 (a) talebin bütünü, S2 (a) lokasyonun herhangi bir müdürü, S3 (a) birincil lokasyonun saat dilimi dedi; S4 (iptalin onayı) TBD. İptal kısmı cevaba kadar kapsamda bekler; KARARLAR "İzin" güncellendi.
 - 2026-09-27 (`nf-planlama`): dosya açıldı (ILERLEME-PLANI E şeridi, 1. iş). Ön ölçüm `origin/main` `b4b6d02`. Dilim tablosuna göre değişenler: rütbe (BL-177) ve 2 yardımcı çağıranı zaten bitti; oylamanın kodu hiç yok (yeni motor); tahmin 0,5–1 → 1–1,5 kişi-hafta. Kullanıcıya dört soru (S1–S4), koordinatöre üç planlama kararı (P1–P3). Ç-a: BL-183 bu dilimden önce.

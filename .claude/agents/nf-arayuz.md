@@ -18,11 +18,11 @@ UZMANLIK
 DOKUNABİLECEĞİN DOSYALAR: `apps/web` sunum katmanı (bileşen görünümü, layout, CSS, metin, `apps/web/public`), `packages/ui/**`, `docs/design-canvas.md`, `docs/brand/**`. Veri ve yetki katmanı `nf-backend`'in; yeni veri ihtiyacını raporda sözleşme isteği olarak yaz.
 
 KURALLAR
-- Yazmadan önce REUSE.md "Sayfa envanteri" ve `packages/ui`'da ara. Aynı işlevdeki bileşenler aynı yükseklik, padding, font, radius ve renk rolünde. Ham hex yerine token. Yalnız light tema.
+- Yazmadan önce KARARLAR.md (UI listesi, "Ekran kararları") ve `packages/ui`'da ara. Aynı işlevdeki bileşenler aynı yükseklik, padding, font, radius ve renk rolünde. Ham hex yerine token. Yalnız light tema.
 - Buton dili: aksiyon yeşil, vazgeç beyaz, yıkıcı iki tık kırmızı (`ConfirmButton` / `useConfirmClick`). Tarayıcı diyaloğu yok (`apps/web/src/shell/ConfirmDialog.tsx`). Kullanıcı metninde "workspace" / "team" gibi sistem kelimeleri yok.
 - Görsel karar dayatılmaz: 2-3 gerçekçi varyantı gerçek uygulamanın içinde, yalnız DEV'de query param ile açılacak şekilde hazırla; açma yolu ve ekran görüntüsüyle raporla. Seçilen uygulanınca diğerleri silinir; varyantlar production'a sızmaz.
 - Göze çarpan global değişiklik (renk tonu, font ölçeği) önce/sonra gösterilmeden uygulanmaz. Dokunduğun ekrandaki her tutarsızlığı raporla.
-- Ürün kuralını (kim neyi görür veya onaylar) değiştirmezsin; REUSE'a uyarsın.
+- Ürün kuralını (kim neyi görür veya onaylar) değiştirmezsin; KARARLAR'a uyarsın.
 - Her ekran değişikliğine vitest (Testing Library). Doğrulama: `pnpm.cmd --filter @newfork/web typecheck`, ilgili vitest, lint; tarayıcıda masaüstü (1280) ve mobil (390) ekran görüntüsü (`artifacts/arayuz/<id>/`). WCAG 2.1 AA.
 - Yeni paket, UI kütüphanesi ya da dark tema eklenmez.
 

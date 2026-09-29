@@ -6,7 +6,7 @@
 - [no_self ile rank_below farkı](checklist-no-self-vs-rank-below.md) — no_self owner/admin kendi satırını da keser; "kayıt kuralıyla aynı" = yalnız rank_below
 - [NOT NULL gevşetmesi okuyucuları](checklist-not-null-relax-readers.md) — kolon null olabilince jsonb döndüren fonksiyon + shared zod şeması 500 verir; mock'lar yakalamaz
 - [TODO altındaki red testi](checklist-todo-refusal-live-lock.md) — todo() başarısızlığı saymaz; bugünkü reddi kod+metinle TODO dışında kilitle, seed'e dayanma
-- Shared şema ile DB sırası: nullable→optional (DB anahtarı göndermemeye başlarsa) `=== null` okuyucuları undefined'da "evet" der, `!= null` ara, şema DB'den önce gider (BL-139). Tersi: şemaya zorunlu (nullable da olsa) yeni anahtar eklenirse API `.parse` eski DB'de 500 verir, migration önce gider — REUSE OPS-03 (2026-09-29 schedule-windows-2).
+- Shared şema ile DB sırası: nullable→optional (DB anahtarı göndermemeye başlarsa) `=== null` okuyucuları undefined'da "evet" der, `!= null` ara, şema DB'den önce gider (BL-139). Tersi: şemaya zorunlu (nullable da olsa) yeni anahtar eklenirse API `.parse` eski DB'de 500 verir, migration önce gider — KARARLAR OPS-03 (2026-09-29 schedule-windows-2).
 - [Zincir katlama incelemesi](checklist-fold-review.md) — gövde diff -w, koruma yeşil dosyada mı, önce/sonra probe; tests.week gelecekte
 - [Oturumsuz e-posta ucu](checklist-public-auth-email-endpoint.md) — sızıntı sırası, Vercel'de beklenmeyen gönderim donar, recovery token_hash tek başına oturum
 - [Boş kablolama testleri](checklist-vacuous-wiring-tests.md) — düzeltmenin ana satırı silinse hangi test düşer; mock'lanan modül ve uzun taban tuzakları
