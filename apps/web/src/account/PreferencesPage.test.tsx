@@ -32,6 +32,18 @@ describe("PreferencesPage", () => {
     };
   });
 
+  it("shows Discard and opens Save only while a choice differs from the stored one", () => {
+    render(<PreferencesPage />);
+    expect(screen.queryByRole("button", { name: "Discard" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    fireEvent.change(dateFormat(), { target: { value: "YYYY-MM-DD" } });
+    expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
+    fireEvent.change(dateFormat(), { target: { value: "system" } });
+    expect(screen.queryByRole("button", { name: "Discard" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+  });
+
   it("offers no appearance choice", () => {
     render(<PreferencesPage />);
     expect(screen.queryByRole("radio")).toBeNull();
@@ -56,7 +68,7 @@ describe("PreferencesPage", () => {
   it("keeps the stored theme value when saving formats", async () => {
     render(<PreferencesPage />);
     fireEvent.change(dateFormat(), { target: { value: "YYYY-MM-DD" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save preferences" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(updateAccount).toHaveBeenCalledWith("Owner User", "dark", null, {
         timeFormat: "system",

@@ -127,9 +127,9 @@ export default function NotificationPreferencesPage() {
   };
 
   return <section className="account-page notification-preferences" aria-labelledby="notification-title">
-    <AccountPageHeader title="Notification Preferences" titleId="notification-title"
-      description="Choose updates for each workspace. Save all your changes together." />
-    {(data?.workspaces.length ?? 0) > 1 ? <label className="form-field"><span>Workspace</span>
+    <AccountPageHeader title="Notifications" titleId="notification-title"
+      description="Choose which updates reach you, workspace by workspace." />
+    {(data?.workspaces.length ?? 0) > 1 ? <label className="account-field notification-workspace-picker"><span>Workspace</span>
       <select aria-label="Workspace" value={workspaceId} disabled={dirtyKeys.length > 0 || mutation.isPending}
         onChange={event => { setWorkspaceId(event.target.value); setSaved(false); }}>
         {(data?.workspaces ?? [{ id: context?.workspace.id ?? "", name: context?.workspace.name ?? "" }]).map(workspace =>
@@ -215,9 +215,11 @@ export default function NotificationPreferencesPage() {
     </div>
     {saved ? <p role="status" className="form-success">Notification preferences saved</p> : null}
     <div className="account-form-actions">
-      <Button type="button" className="secondary-button" disabled={!dirtyKeys.length || mutation.isPending}
-        onClick={() => { setDrafts(baseline); setSaved(false); }}>Discard</Button>
-      <Button type="button" disabled={!dirtyKeys.length || !data?.can_write || mutation.isPending} onClick={save}>Save changes</Button>
+      {dirtyKeys.length ? <Button type="button" className="secondary-button" disabled={mutation.isPending}
+        onClick={() => { setDrafts(baseline); setSaved(false); }}>Discard</Button> : null}
+      <Button type="button" disabled={!dirtyKeys.length || !data?.can_write || mutation.isPending} onClick={save}>
+        {mutation.isPending ? "Saving" : "Save"}
+      </Button>
     </div>
   </section>;
 }

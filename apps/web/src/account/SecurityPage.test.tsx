@@ -47,7 +47,7 @@ describe("SecurityPage", () => {
     HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
     HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
     render(<SecurityPage />);
-    expect(await screen.findByText("Primary email · not verified")).toBeTruthy();
+    expect(await screen.findByText("Not verified")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Delete account" }));
     const dialog = screen.getByRole("dialog", { name: "Delete your account?" });
     expect(within(dialog).getByText(/kept for 14 days/)).toBeTruthy();
@@ -110,7 +110,7 @@ describe("SecurityPage", () => {
     vi.mocked(requestSecureAccountDeletion).mockRejectedValue(refusal);
     render(<SecurityPage />);
     const section = (name: string) => screen.getByRole("heading", { name, hidden: true }).closest("section, dialog") as HTMLElement;
-    await screen.findByText("Primary email · not verified");
+    await screen.findByText("Not verified");
     if (where === "Password") {
       const form = section("Password");
       fireEvent.change(within(form).getByLabelText("Current password"), { target: { value: "wrong" } });
