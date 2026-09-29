@@ -119,3 +119,29 @@ test("the same role with a different session is a different identity", () => {
   assert.equal(result.ok, false);
   assert.equal(fs.existsSync(dbLock), true);
 });
+
+test("take rejects an identity whose role or session half is empty (BL-196)", () => {
+  for (const arg of ["nf-db/, migration", "/fb61-11, migration", "nf-db/ , migration", "/, x"]) {
+    const result = take("db", arg);
+    assert.equal(result.ok, false, `accepted "${arg}"`);
+    assert.equal(fs.existsSync(dbLock), false);
+  }
+});
+
+test("a plain-text lock's age comes from the file mtime and turns stale after 2h (BL-196)", () => {
+  fs.writeFileSync(dbLock, "nf-db/manual, migration deneme");
+  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  fs.utimesSync(dbLock, threeHoursAgo, threeHoursAgo);
+
+  const old = status().find((l) => l.name === "db");
+  assert.equal(old.identity, "nf-db/manual");
+  assert.equal(old.ageMinutes, 180);
+  assert.equal(old.stale, true);
+
+  const fresh = new Date(Date.now() - 30 * 60 * 1000);
+  fs.utimesSync(dbLock, fresh, fresh);
+  const recent = status().find((l) => l.name === "db");
+  assert.equal(recent.ageMinutes, 30);
+  assert.equal(recent.stale, false);
+  assert.equal(fs.existsSync(dbLock), true);
+});

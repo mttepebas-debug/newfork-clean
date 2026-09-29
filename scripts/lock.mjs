@@ -64,7 +64,8 @@ function ageMinutes(file, startedAt) {
 
 export function take(name, arg) {
   const { identity, purpose } = splitIdentity(arg);
-  if (!identity || !identity.includes("/")) {
+  const [role, session] = identity.split("/").map((part) => part.trim());
+  if (!role || !session) {
     return {
       ok: false,
       message: `kimlik "${identity}" geçersiz: "rol/oturum" biçiminde olmalı (ör. "nf-test/fb61-11")`,
