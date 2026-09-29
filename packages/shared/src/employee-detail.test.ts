@@ -66,6 +66,32 @@ describe("employee detail private contact", () => {
     expect(detail.private_contact?.emergency_contact_phone).toBeNull();
   });
 
+  // FB-6.2 .7b visual QA: somebody who may read private fields, looking at a
+  // person with no private record yet, gets this object; null means they may
+  // not read them at all (KK-35 S3).
+  it("reads the empty private contact of a person with no private record yet", () => {
+    const detail = employeeDetailSchema.parse({
+      ...owner,
+      private_contact: {
+        phone: null,
+        street_address: null,
+        city: null,
+        region: null,
+        postal_code: null,
+        country_code: null,
+        date_of_birth: null,
+        emergency_contact_name: null,
+        emergency_contact_relationship: null,
+        emergency_contact_phone: null,
+        emergency_contact_email: "",
+        share_phone_with_teammates: false,
+        share_email_with_teammates: false,
+      },
+    });
+    expect(detail.private_contact).not.toBeNull();
+    expect(detail.private_contact?.legal_first_name).toBeUndefined();
+  });
+
   it("still refuses an empty contact name where one is given", () => {
     expect(() =>
       employeeDetailSchema.parse({

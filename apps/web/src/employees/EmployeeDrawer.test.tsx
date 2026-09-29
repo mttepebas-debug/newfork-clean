@@ -260,12 +260,15 @@ let inviteRolesFixture: {
 }[] = [];
 // When set, the detail read fails with this instead of answering.
 let detailFailure: Error | null = null;
+// Locations the drawer may pick beyond the record's own; a test sets it first.
+let extraReferenceLocations: { id: string; name: string; archived: boolean }[] = [];
 beforeEach(() => {
   inviteRolesFixture = [
     { id: employeeRoleId, name: "Employee", systemKey: "employee", accessClass: "employee" },
     { id: managerRoleId, name: "Manager", systemKey: "manager", accessClass: "manager" },
   ];
   detailFailure = null;
+  extraReferenceLocations = [];
   currentContext = context;
 });
 
@@ -305,7 +308,7 @@ function renderDrawer(
   if (detailFailure) vi.mocked(getEmployeeDetail).mockRejectedValue(detailFailure);
   else vi.mocked(getEmployeeDetail).mockResolvedValue(detailFixture);
   vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
-    locations: detailFixture.locations.map((location) => ({
+    locations: [...detailFixture.locations, ...extraReferenceLocations].map((location) => ({
       ...location,
       timezone: "America/Los_Angeles",
     })),
@@ -1843,20 +1846,24 @@ describe("EmployeeDrawer locations and access follow the server", () => {
   });
 
   it("edits a manager's managed locations whole when the server lets the reader", async () => {
-    vi.mocked(setEmployeeManagedLocations).mockResolvedValue({ locationIds: [mainDining, patio.id] });
+    const garden = "11000000-0000-4000-8000-000000000003";
+    vi.mocked(setEmployeeManagedLocations).mockResolvedValue({ locationIds: [patio.id, garden] });
+    extraReferenceLocations = [
+      { id: patio.id, name: "Patio", archived: false },
+      { id: garden, name: "Garden Room", archived: false },
+    ];
     renderDrawer("employment", {
       ...detail,
-      locations: [...detail.locations, patio],
       managed_locations: [{ id: patio.id, name: "Patio" }],
       allowed: { ...detail.allowed, set_managed_locations: true },
     });
     const group = await screen.findByRole("group", { name: "Manages without working there" });
-    const patioBox = within(group).getByLabelText("Patio") as HTMLInputElement;
+    const patioBox = (await within(group).findByLabelText("Patio")) as HTMLInputElement;
     expect(patioBox.checked).toBe(true);
-    fireEvent.click(within(group).getByLabelText("Main Dining"));
+    fireEvent.click(within(group).getByLabelText("Garden Room"));
     fireEvent.click(within(group).getByRole("button", { name: "Save managed locations" }));
     await waitFor(() =>
-      expect(setEmployeeManagedLocations).toHaveBeenCalledWith(workspaceId, employeeId, [patio.id, mainDining]),
+      expect(setEmployeeManagedLocations).toHaveBeenCalledWith(workspaceId, employeeId, [patio.id, garden]),
     );
   });
 
@@ -1890,5 +1897,66 @@ describe("EmployeeDrawer locations and access follow the server", () => {
     renderDrawer("profile", { ...detail, private_contact: null }, profileReview);
     await screen.findByLabelText("E-mail");
     expect(screen.queryByText("Legal name review")).toBeNull();
+  });
+});
+
+// FB-6.2 .7b visual QA (0806cc62): what an invitation, a manager's managed
+// locations and the private fields offer follows the record, not only the
+// server's allowed answer.
+describe("EmployeeDrawer .7b visual QA fixes", () => {
+  const mainDining = "11000000-0000-4000-8000-000000000001";
+  const patio = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false, removable: false };
+
+  it("offers no invitation to somebody whose account is already linked", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      user_id: "e1000000-0000-4000-8000-000000000001",
+      display_status: "active",
+      invitation: null,
+      allowed: { ...detail.allowed, invite: true },
+    });
+    await screen.findByLabelText("E-mail");
+    expect(screen.queryByRole("button", { name: "Invite" })).toBeNull();
+  });
+
+  it("still offers the invitation to somebody with no linked account", async () => {
+    renderDrawer("profile", { ...detail, user_id: null, allowed: { ...detail.allowed, invite: true } });
+    expect(await screen.findByRole("button", { name: "Invite" })).toBeTruthy();
+  });
+
+  it("never offers a location they work at as one they manage without working there", async () => {
+    extraReferenceLocations = [{ id: patio.id, name: patio.name, archived: false }];
+    renderDrawer("employment", {
+      ...detail,
+      managed_locations: [],
+      allowed: { ...detail.allowed, set_managed_locations: true },
+    });
+    const group = await screen.findByRole("group", { name: "Manages without working there" });
+    await within(group).findByLabelText("Patio");
+    expect(within(group).queryByLabelText("Main Dining")).toBeNull();
+  });
+
+  it("shows the private fields when the server says they may be read but none are on file", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      // The server's answer for a reader who may read them and a person with
+      // no private record yet (nf-db, QA fix 1).
+      private_contact: {
+        phone: null,
+        street_address: null,
+        city: null,
+        region: null,
+        postal_code: null,
+        country_code: null,
+        date_of_birth: null,
+        emergency_contact_name: null,
+        emergency_contact_relationship: null,
+        emergency_contact_phone: null,
+        emergency_contact_email: "",
+        share_phone_with_teammates: false,
+        share_email_with_teammates: false,
+      },
+    });
+    expect(await screen.findByText("Date of birth")).toBeTruthy();
   });
 });

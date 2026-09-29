@@ -1329,6 +1329,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 {!props.creating &&
                 !readOnly &&
                 canManageAccess &&
+                // A linked account has nobody left to invite (visual QA .7b).
+                !detail.data?.user_id &&
                 draft.invitation_email ? (
                   <Button
                     type="button"
@@ -2204,7 +2206,11 @@ function EmploymentSection({
         <ManagedLocations
           key={detail.managed_locations.map((location) => location.id).join()}
           managed={detail.managed_locations}
-          options={references?.locations ?? []}
+          // Where they work is never also where they only manage.
+          options={(references?.locations ?? []).filter(
+            (option) =>
+              !detail.locations.some((location) => location.id === option.id),
+          )}
           editable={detail.allowed.set_managed_locations}
           saving={locationActions.savingManaged}
           onSave={locationActions.onSaveManaged}
