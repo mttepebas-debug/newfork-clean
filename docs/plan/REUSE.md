@@ -145,7 +145,7 @@ gelince çözülür.
 | calisanlar | EmployeesPage | `employees` | `employees/EmployeesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | calisanlar | EmployeeHubPage | `employee-hub/*` | `views/EmployeeHubPage.tsx` | belgelendi 2026-09-24 |
 | calisanlar | EmployeeDocumentsPage | `employees/documents` | `documents/EmployeeDocumentsPage.tsx` | belgelenmedi |
-| plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | kısmi 2026-09-24 (butonlar, müsaitlik) |
+| plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | kısmi 2026-09-29 (butonlar, müsaitlik, sağ üst menüler) |
 | plan | ScheduleRequestsPage | `schedule/requests` | `views/ScheduleRequestsPage.tsx` | belgelendi 2026-09-24 |
 | plan | ScheduleTemplatesPage | `schedule/templates` | `views/ScheduleTemplatesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | plan | AvailabilityPage | `availability` | `views/AvailabilityPage.tsx` | belgelenmedi |
@@ -353,6 +353,24 @@ gösterir. Gerçek kartta iğne yok. "All locations – Together" görünümünd
 gerçek kartta lokasyon satırı kalır: başlığın altında, ikonsuz (kullanıcı
 kararı 2026-09-26). Not 2026-09-26 (`aff7ca8`):
 `Tooltip.tsx` ve `--schedule-ghost-*` henüz main'de değil, branch `ghost-11b`.
+
+Sağ üst menüler ve Publish penceresi (kullanıcı kararı 2026-09-28, "stil B";
+main `228ff3b7`, 2026-09-29): New Schedule ▾ (taslak menüsü), düzenlerken
+Publish (Save draft menüsü), Published ▾ ve Publish penceresi "sade liste"
+stilindedir — 13px metin, 500/600 ağırlık, gri ince çizgiler, tek yeşil
+aksiyon; satır araçları (Edit, Delete, Unpublish) yalnız satır hover ya da
+klavye odağındayken (`:focus-within`) görünür, dokunmatikte
+(`@media (hover: none)`) hep açıktır. ≤720px'te düğme satırı kaydırılmaz,
+sarılır (kaydırılan kutu menüleri kırpıyordu) ve menüler satır genişliğinde
+açılır. Yeni bir sağ üst menü ya da yayın penceresi bu stilden kurulur.
+Kodda: `apps/web/src/schedule/components/DraftDropdownMenu.tsx`,
+`SaveDraftMenu.tsx`, `PublishScheduleDialog.tsx`, Published ▾ menüsü
+`apps/web/src/views/SchedulePage.tsx` içinde (`.schedule-action-menu`),
+stiller `apps/web/src/styles.css` (`.schedule-draft-menu-*`,
+`.schedule-action-menu-panel`, 720px bloğu). **Bu stile uymayan komşular:**
+Export, Templates, Unpublish, SaveDraftDialog ve ConfirmDialog/UI-13 onay
+pencereleri hâlâ eski ağır stilde — kullanıcı yalnız bu dört yüzeyi seçti,
+tutarlılık ayrı iş (BL-318).
 
 Başka yöneticinin taslak adıyla kaydedince UI-13 penceresi sorar:
 "Overwrite "<ad>"?"; Cancel derse hata satırı başka ad seçmesini söyler.

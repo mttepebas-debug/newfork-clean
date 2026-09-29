@@ -1,7 +1,7 @@
-# İlerleme planı — hesaplı (sürüm 5, 2026-09-28)
+# İlerleme planı — hesaplı (sürüm 6, 2026-09-29)
 
 Hazırlayan: `nf-planlama` (`local_c67b8d60-…`). Koordinatör: "Koordinatör — devir 2026-09-28", `local_41428574-b1a9-44cb-9a7c-cd34afc9456a`.
-Ölçüm: `origin/main` `de80eda6`, 2026-09-28 (BL-199 kapandı, main CI yeşil run 36501225426; `10c11be5`'ten bu yana main'e yalnız BL-199 ve plan commit'leri girdi, FOUNDATION-B tablosu değişmedi); önceki ölçüm `10c11be5` (SEC-003 kod kısmı `721ea41f`, main CI yeşil run 36445247470; hosted gönderim aynı gün, koordinatör); SEC-003 commit'leri `34fc2075`, `3eeb4c11` (`nf-db`), `6887fbbc` (`nf-backend`), `d0751603`, `0d03389e`, `74e2d363` (`nf-test`) — hepsi `git cat-file` ile doğrulandı; durumlar koordinatörün 2026-09-28 güncellemesiyle. Hesap betiği: satırlar, bağımlılıklar ve puanlar bu dosyadaki tablolardır; sayıları elle değil betikle ürettim, tablo değişince aynı yolla yeniden hesaplanır.
+Ölçüm: `origin/main` `228ff3b7`, 2026-09-29 (BL-218.3 kapandı: `.3-i`, `.3a`, `.3b`, `.3-ii` main'de `be46cd22`, main CI run 36522159307 yeşil — e2e işi bir kez yeniden koşturuldu, `tasks/BL-218.md` → Notes; üstüne hedef dışı Schedule sağ üst pencereler `228ff3b7`, FOUNDATION-B tablosunu değiştirmez). Önceki ölçüm `de80eda6`, 2026-09-28 (BL-199 kapandı, main CI yeşil run 36501225426; `10c11be5`'ten bu yana main'e yalnız BL-199 ve plan commit'leri girdi, FOUNDATION-B tablosu değişmedi); önceki ölçüm `10c11be5` (SEC-003 kod kısmı `721ea41f`, main CI yeşil run 36445247470; hosted gönderim aynı gün, koordinatör); SEC-003 commit'leri `34fc2075`, `3eeb4c11` (`nf-db`), `6887fbbc` (`nf-backend`), `d0751603`, `0d03389e`, `74e2d363` (`nf-test`) — hepsi `git cat-file` ile doğrulandı; durumlar koordinatörün 2026-09-28 güncellemesiyle. Hesap betiği: satırlar, bağımlılıklar ve puanlar bu dosyadaki tablolardır; sayıları elle değil betikle ürettim, tablo değişince aynı yolla yeniden hesaplanır.
 
 **Güncelleme kuralı (3 satır):**
 1. Tablo her main birleşmesinde, her karar cevabında ve işi durduran her bulguda yeniden hesaplanır (durum, yüzde, sıra, karar ağırlığı).
@@ -23,8 +23,8 @@ Durum: bitti (main'de) · incelemede (commit var, ONAY ya da birleştirme bekliy
 | Hedef | Biten / toplam | Yüzde | Not |
 |---|---|---|---|
 | SEC-003 hesap güvenliği paketi | 26 / 26 | **%100 — bitti** (2026-09-28, `10c11be5` + hosted) | Hedef kapandı; yayın öncesi şartlar §8'de. |
-| **FOUNDATION-B — Aşama 6–7** (**aktif**, 2026-09-28'den) | 77 / 230 | **%33,5** (2026-09-28, `10c11be5`; değişmedi) | Bitenlerin 61 puanı FB-6.1'in 14 adımının geriye dönük puanı (tahmin). Açık dilimlerden FB-6.4–6.8 ve Aşama 7 görev dosyasız (tahmin, 44 puan). |
-| FOUNDATION-B — program geneli (bilgi) | 155 / 308 | %50,3 (tahmin) | Aşama 1–5 bitti; plandaki süre orta noktaları × 8 = 78 puan sayıldı. Eski "~%58" formülünün yerine geçer; ikisi farklı ölçü, karşılaştırılmaz. |
+| **FOUNDATION-B — Aşama 6–7** (**aktif**, 2026-09-28'den) | 86 / 230 | **%37,4** (2026-09-29, `228ff3b7`; önceki %33,5 FB-6.2.0'ın 1 puanını saymıyordu, betik 78 buldu; BL-218.3 +8) | Bitenlerin 61 puanı FB-6.1'in 14 adımının geriye dönük puanı (tahmin). Açık dilimlerden FB-6.4–6.8 ve Aşama 7 görev dosyasız (tahmin, 44 puan). |
+| FOUNDATION-B — program geneli (bilgi) | 164 / 308 | %53,2 (tahmin, 2026-09-29) | Aşama 1–5 bitti; plandaki süre orta noktaları × 8 = 78 puan sayıldı. Eski "~%58" formülünün yerine geçer; ikisi farklı ölçü, karşılaştırılmaz. |
 
 ## 2. İş tablosu — SEC-003 (bitti 2026-09-28; kayıt için)
 Kaynak: `tasks/SEC-003.md`, koordinatör girdisi 2026-09-28, dallar yukarıda.
@@ -41,7 +41,7 @@ Kaynak: `tasks/SEC-003.md`, koordinatör girdisi 2026-09-28, dallar yukarıda.
 | S.F | Hosted: BL-265 — `20260928040000` + `20260928050000` gönderimi (D1 sayımı 0/0, koordinatör 2026-09-28; "Confirm email" kullanıcı tarafından açıldı, K22 kapandı). **Yayın öncesi şart:** hosted e-posta teslimatı (SMTP, saatlik sınır) ölçülür ve S.D'nin "e-postanı doğrula" ekranı main'de; **BL-283** API parola doğrulamasına hesap başına deneme sınırı (kullanıcı kararı 2026-09-28; SEC-003 kapsamı dışında, yüzdeye girmez) — hepsi web/API yayınından önce | S.E | — | 2 | bitti (hosted 2026-09-28) | koordinatör + kullanıcı (gönderim onayı) | hosted |
 
 ## 3. İş tablosu — FOUNDATION-B Aşama 6–7 (aktif hedef)
-Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-218.md`, `FB-6.2.md`, `FB-6.3.md`; durumlar `origin/main` `1d349d2a`.
+Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-218.md`, `FB-6.2.md`, `FB-6.3.md`; durumlar `origin/main` `228ff3b7` (2026-09-29).
 | ID | Ne (kişi için) | Bağlı olduğu | Karar | Puan | Durum | Rol | Ana dosyalar |
 |---|---|---|---|---|---|---|---|
 | F.can | Web'de tek yetki yardımcısı `can()` (FB-6.0-can) | — | — | 5 (tahmin) | bitti | `nf-backend` | — |
@@ -51,19 +51,19 @@ Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-21
 | FB-6.1.14 | FB-6.1 kapanışı | FB-6.1.13 | — | 2 | bekliyor | koordinatör | `tasks/FB-6.1.md` |
 | BL-218.1 | Management/Owner kırmızı testleri | — | — | 3 | bitti | `nf-db` | — |
 | BL-218.2 | Management/Owner veritabanı kuralları | — | — | 8 | bitti | `nf-db` | — |
-| BL-218.3-i | Settings → Jobs okumasında sistem kimliği (`system_key`) ve DB'nin dört yeni "hayır"ı için okunur İngilizce hata cümleleri (DB'siz) | — | Böl, aynı anda yürüt | 2 | hazır | `nf-backend` | `packages/shared`, `apps/api/src/settings`, `apps/web/src/settings/organization-data.ts`, API hata eşlemesi |
-| BL-218.3a | Takvim ve çekmece referans okumasına departman/iş `system_key`, katı `primary_job_id`, işlere departman; pgTAP, ızgara <50 ms (`.5a`'nın DB yarısı dahil) | — | Böl, aynı anda yürüt | 3 | hazır | `nf-db` | `supabase/migrations` (`get_schedule_read_model_service`, `read_employee_references_service`) |
-| BL-218.3-ii | Takvim ve referans tipleri, API geçirme, Management'ı bulan saf yardımcı; yalnız Owner işi olan owner'da yeni vardiyanın varsayılan işi | BL-218.3a | Böl, aynı anda yürüt | 3 | bekliyor | `nf-backend` | `packages/shared`, `apps/api/src/schedule`, `apps/web/src/schedule/*-data`, `shiftEditorState.ts`, `apps/web/src/employees/*-data` |
-| BL-218.4 | Kurulum sihirbazında "en az 1" metni; Settings → Jobs'ta kilitli Owner satırı | BL-218.3-i | — | 3 | bekliyor | `nf-arayuz` | `OwnerOnboardingPage.tsx`, Settings → Jobs |
+| BL-218.3-i | Settings → Jobs okumasında sistem kimliği (`system_key`) ve DB'nin dört yeni "hayır"ı için okunur İngilizce hata cümleleri (DB'siz) | — | Böl, aynı anda yürüt | 2 | bitti 2026-09-29 (`73cd561c`; main `be46cd22`) | `nf-backend` | `packages/shared`, `apps/api/src/settings`, `apps/web/src/settings/organization-data.ts`, API hata eşlemesi |
+| BL-218.3a | Takvim ve çekmece referans okumasına departman/iş `system_key`, katı `primary_job_id`, işlere departman; pgTAP, ızgara <50 ms (`.5a`'nın DB yarısı dahil) | — | Böl, aynı anda yürüt | 3 | bitti 2026-09-29 (`ab483d2a` … `22a1a547`; `.3b` kayıt kuralı `37d8c046`, `11899af4` dahil; hosted 5 migration kullanıcıda gönderildi) | `nf-db` | `supabase/migrations` (`get_schedule_read_model_service`, `read_employee_references_service`) |
+| BL-218.3-ii | Takvim ve referans tipleri, API geçirme, Management'ı bulan saf yardımcı; yalnız Owner işi olan owner'da yeni vardiyanın varsayılan işi | BL-218.3a | Böl, aynı anda yürüt | 3 | bitti 2026-09-29 (`fc7ec76e`, `ef4f640c`, `be46cd22`) | `nf-backend` | `packages/shared`, `apps/api/src/schedule`, `apps/web/src/schedule/*-data`, `shiftEditorState.ts`, `apps/web/src/employees/*-data` |
+| BL-218.4 | Kurulum sihirbazında "en az 1" metni; Settings → Jobs'ta kilitli Owner satırı | BL-218.3-i | — | 3 | hazır | `nf-arayuz` | `OwnerOnboardingPage.tsx`, Settings → Jobs |
 | BL-218.5a | Employees çekmecesinin iş listesi için departman ve Owner bilgisi (okuma) | — | Böl, aynı anda yürüt | 0 | kapandı 2026-09-28: DB yarısı `.3a`'ya, `nf-backend` yarısı `.3-ii`'ye katıldı (3 puan oraya taşındı) | — | — |
-| BL-218.5b | Çekmecede iş listesi departmana göre gruplu, Owner kilitli (DEV varyantları) | BL-218.3-ii | — | 3 | bekliyor | `nf-arayuz` | `EmployeeDrawer.tsx` |
-| BL-218.6 | Takvim'de "By department", Management grubu, iki satır, tek sayım | BL-218.3-ii | — | 5 | bekliyor | `nf-arayuz` (+ `nf-backend`) | `apps/web/src/schedule/**` |
+| BL-218.5b | Çekmecede iş listesi departmana göre gruplu, Owner kilitli (DEV varyantları) | BL-218.3-ii | — | 3 | hazır | `nf-arayuz` | `EmployeeDrawer.tsx` |
+| BL-218.6 | Takvim'de "By department", Management grubu, iki satır, tek sayım | BL-218.3-ii | — | 5 | hazır | `nf-arayuz` (+ `nf-backend`) | `apps/web/src/schedule/**` |
 | BL-218.7 | e2e: kurulum → çekmece → By department | BL-218.4, .5b, .6 | — | 3 | bekliyor | `nf-test` | `e2e/flows/**` |
 | FB-6.1b.1 | Açık düzenleme tutmadığı lokasyona vardiya ekleyemez (BL-159) | — | — | 3 | hazır | `nf-db` | `supabase/migrations` (`apply_schedule_template_service`) |
 | FB-6.1b.2 | Boş yeni taslakta "yayınlanmışları soluk göster" anahtarı (DEV varyantları) | — | — | 3 | hazır | `nf-arayuz` | `SchedulePage.tsx`, schedule CSS |
 | FB-6.1b.3 | e2e iki senaryo | FB-6.1b.1, .2 | — | 3 | bekliyor | `nf-test` | `e2e/flows/**` |
 | FB-6.2.0 | Çalışanlar dilimi taze ölçüm (FB-6.1 işlevsel kısmı ve BL-139 main'de) | — | — | 1 | bitti 2026-09-28 (`756af40c` ölçüm; `nf-test` koşusu `2fed2144`: `employee_hub` 13/13, `roles_permissions_rls` 42/47) | `nf-planlama` (+ `nf-test` koşu) | `tasks/FB-6.2.md` |
-| FB-6.2.1 | Yetki matrisi: ikinci admin, "yalnız yönetir", lokasyondan çıkarma | FB-6.2.0 | — | 3 | bekliyor | `nf-db` | `supabase/tests/authorization_matrix.test.sql` |
+| FB-6.2.1 | Yetki matrisi: ikinci admin, "yalnız yönetir", lokasyondan çıkarma | FB-6.2.0 | — | 3 | hazır | `nf-db` | `supabase/tests/authorization_matrix.test.sql` |
 | FB-6.2.2 | Veri modeli: "yalnız yönetir", "kendi lokasyonundan çıkar" komutu | FB-6.2.1 | — | 5 | bekliyor | `nf-db` | `supabase/migrations` |
 | FB-6.2.3 | Çalışan okuma ve listesi çekirdeğe | FB-6.2.2 | — | 3 | bekliyor | `nf-db` | `supabase/migrations` |
 | FB-6.2.4 | Çalışan yazmaları çekirdeğe (kaydet, çıkar, arşiv, erişim, rol) | FB-6.2.3, BL-218.3 | — | 5 | bekliyor | `nf-db` | `supabase/migrations` |
@@ -95,11 +95,15 @@ Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-21
 Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca gelen bütün satırlar) → (ii) doğrudan açtığı satır sayısı → (iii) küçük puan.
 | Sıra | ID | Hedef | (i) arkasında (satır) | (ii) doğrudan açtığı | (iii) puan |
 |---|---|---|---|---|---|
-| **1** | **BL-218.3** | FOUNDATION-B (aktif) | 120 (29) | 4 | 5 |
-| 2 | FB-6.2.0 | FOUNDATION-B (aktif) | 114 (27) | 1 | 1 |
+| **1** | **FB-6.2.1** | FOUNDATION-B (aktif) | 111 (26) | 1 | 3 |
+| 2 | BL-218.4 | FOUNDATION-B (aktif) | 11 (2) | 1 | 3 |
+| 2 | BL-218.5b | FOUNDATION-B (aktif) | 11 (2) | 1 | 3 |
 | — | FB-6.1b.1 | FOUNDATION-B | 11 (2) | 1 | 3 |
 | — | FB-6.1b.2 | FOUNDATION-B | 11 (2) | 1 | 3 |
-**Gerekçe (yeniden hesap 2026-09-28, SEC-003 bitti):** Aktif hedef artık FOUNDATION-B. Hesapta ilk sırada **BL-218.3**: FB-6.2.4 onu beklediği için Çalışanlar, İzin, Ayarlar dilimleri ve Aşama 7 (29 satır, 120 puan) arkasında; doğrudan 4 satırı açıyor. İkinci **FB-6.2.0**: neredeyse aynı zinciri (114) tek puanlık bir ölçümle başlatıyor, BL-218.3 ile dosya paylaşmıyor. FB-6.1b.1 ve .2'nin arkasında yalnız 11 puan var. **Durum 2026-09-28 (yeniden hesap, BL-199 kapandı `de80eda6`):** BL-199 hedef dışıydı ve yüzdeye girmiyordu; FOUNDATION-B tablosunda satır değişmedi, bu yüzden sayılar aynı (120 / 114). **Sıradaki iş hesaptan: BL-218.3 ∥ FB-6.2.0** — ikisi dosya paylaşmıyor, aynı anda gidebilir (§6). Backlog'dan kritik madde yok; yüksek olup kolaylaşan BL-293 (Schedule hızlı düzenleyicisinde klavye odağı) koordinatörce önerilecek.
+| — | BL-218.6 | FOUNDATION-B | 11 (2) | 1 | 5 |
+FB-6.1.0 hazır sayılmaz: K7'yi (ekran turu günü) bekliyor.
+**Gerekçe (yeniden hesap 2026-09-29, BL-218.3 bitti `be46cd22`):** Hesapta tek başına öne çıkan **FB-6.2.1** (yetki matrisi: ikinci admin, "yalnız yönetir", lokasyondan çıkarma): Çalışanlar, İzin, Ayarlar dilimleri ve Aşama 7 (26 satır, 111 puan) arkasında. FB-6.2.0 bitmişti (`756af40c`), BL-218.3 de kapanınca FB-6.2 zincirinin önünde bekleyen tek şey FB-6.2.1–.3; FB-6.2.4 artık yalnız FB-6.2.3'ü bekliyor. Geri kalan beş hazır satırın hepsi 11 puan açıyor (BL-218.7 → A7 ya da FB-6.1b.3 → A7); eşitlikte küçük puan önde: BL-218.4 ve BL-218.5b (3), BL-218.6 (5) en sonda. **Sıradaki iş hesaptan: FB-6.2.1 ∥ BL-218.4 / BL-218.5b** — dosya paylaşmıyorlar (§6). Backlog'dan kritik madde yok; yeni yüksek madde BL-316 (Schedule → Export önizlemesi 500, BL-218.3'ten önce de vardı) koordinatörce önerilecek.
+**Önceki gerekçe (yeniden hesap 2026-09-28, SEC-003 bitti; kayıt için):** Aktif hedef artık FOUNDATION-B. Hesapta ilk sırada **BL-218.3**: FB-6.2.4 onu beklediği için Çalışanlar, İzin, Ayarlar dilimleri ve Aşama 7 (29 satır, 120 puan) arkasında; doğrudan 4 satırı açıyor. İkinci **FB-6.2.0**: neredeyse aynı zinciri (114) tek puanlık bir ölçümle başlatıyor, BL-218.3 ile dosya paylaşmıyor. FB-6.1b.1 ve .2'nin arkasında yalnız 11 puan var. **Durum 2026-09-28 (yeniden hesap, BL-199 kapandı `de80eda6`):** BL-199 hedef dışıydı ve yüzdeye girmiyordu; FOUNDATION-B tablosunda satır değişmedi, bu yüzden sayılar aynı (120 / 114). **Sıradaki iş hesaptan: BL-218.3 ∥ FB-6.2.0** — ikisi dosya paylaşmıyor, aynı anda gidebilir (§6). Backlog'dan kritik madde yok; yüksek olup kolaylaşan BL-293 (Schedule hızlı düzenleyicisinde klavye odağı) koordinatörce önerilecek.
 
 ## 5. Kararlar (açık; sorma sırası = durdurduğu puan)
 | Sıra | K | Soru | Durdurduğu satırlar | Toplam puan |
@@ -110,13 +114,15 @@ Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca g
 **Not:** K10'un satırları FB-6.2 bittikten sonra başlar. Ağırlık en yüksek olsa da cevap FB-6.3.1'e kadar gerekmez. **K22 kapandı 2026-09-28:** kullanıcı hosted panelde "Confirm email"i ve "Require current password / Secure password change"i açtığını yazdı (koordinatör penceresi); S.F artık yalnız S.E'yi bekliyor. Aktif hedefi (SEC-003) durduran açık karar kalmadı. **Kararlar tablosu dışında açık onay:** S.F için hosted gönderim onayı (kullanıcının kendi "evet"i; CLAUDE.md §8) — koordinatör soruyor.
 
 ## 6. Paralel yerleşim (aynı anda en çok 2 ağır iş)
-- **Şimdi (2026-09-28, BL-199 kapandı):** sıradaki iki hazır satır BL-218.3 ve FB-6.2.0; aşağıdaki satıra göre aynı anda gidebilir.
+- **Şimdi (2026-09-29, BL-218.3 kapandı):** FB-6.2.1 (`nf-db`; `supabase/tests/authorization_matrix.test.sql`, `db.lock`) ile BL-218.4 / BL-218.5b (`nf-arayuz`; `OwnerOnboardingPage.tsx`, Settings → Jobs, `EmployeeDrawer.tsx`) dosya paylaşmıyor, aynı anda gidebilir. BL-218.5b ile BL-218.6 ikisi de `nf-arayuz` ve ekran işi: aynı rol sırayla. FB-6.1b.1 FB-6.2.1–.6 ile aynı `supabase` ailesinde, aynı anda değil. **Ağır iş sınırı (2026-09-29 dersi):** CI e2e koşarken yerel e2e ve görsel QA sunucuları üst üste binince main CI e2e'si yanlış kırmızı verdi (BL-321); yerel e2e, main CI bitmeden başlatılmaz.
+- **Eski (2026-09-28, BL-199 kapandı):** sıradaki iki hazır satır BL-218.3 ve FB-6.2.0; aşağıdaki satıra göre aynı anda gidebilir.
 - **İlk iki hazır satır:** BL-218.3 (`nf-backend`; `packages/shared`, `apps/api/src/schedule`, web schedule/employees veri dosyaları) ile FB-6.2.0 (`nf-planlama` ölçümü + bir `nf-test` koşusu, `roles_permissions_rls` ve `employee_hub`) **dosya paylaşmıyor**; ikisi aynı anda gidebilir. Ağır iş yalnız FB-6.2.0'ın `test:db` koşusu (`db.lock`).
 - FB-6.1b.1, BL-218.3a ve FB-6.2.1–6.2.6 aynı `supabase/migrations` ailesine yazar: aynı anda tek `nf-db` adımı. BL-218.3-i (`nf-backend`) ile BL-218.3a (`nf-db`) dosya paylaşmaz, aynı anda gider (kullanıcı kararı 2026-09-28); BL-218.3-ii `.3a`'nın sözleşmesini bekler.
 - SEC-003'ün paralel yerleşim notları (S.A/S.B ortak dosyası) iş kapandığı için düştü.
 
 ## 7. Hedef dışı (tek satırlık özet)
-- **BL-199** (müdür Schedule'da vardiyaya not yazamıyor): **bitti 2026-09-28, 12/12 puan** — main `de80eda6`, main CI yeşil run 36501225426 (check, db, e2e success — `nf-planlama` `gh run view` ile doğruladı); görev dosyası `tasks/BL-199.md` → Result. Açık: hosted gönderim `20260928060000` kullanıcıda (§8); iki eski dalın (`task/bl-199-ui`, `task/note-mark-r3`) silinmesi kullanıcıya soruluyor. Hedeflerin dışındaydı; yüzdelere girmez.
+- **Schedule sağ üst pencereler (stil B)** (kullanıcının tekil oturumu, kullanıcı kararı 2026-09-28): **bitti 2026-09-29** — main `5a92d2f2` + `228ff3b7`, tam kapı yeşil (288 test dosyası), Schedule e2e 8/8, ONAY `nf-guvenlik` + `nf-gorsel-qa` @258003e1. Hedef dışı, yüzdeye girmez. Yan bulgular BL-318..320, BL-311 ve BL-299 notları.
+- **BL-199** (müdür Schedule'da vardiyaya not yazamıyor): **bitti 2026-09-28, 12/12 puan** — main `de80eda6`, main CI yeşil run 36501225426 (check, db, e2e success — `nf-planlama` `gh run view` ile doğruladı); görev dosyası `tasks/BL-199.md` → Result. Hosted gönderim `20260928060000` yapıldı 2026-09-29 (§8); iki eski dalın (`task/bl-199-ui`, `task/note-mark-r3`) silinmesi kullanıcıya soruluyor. Hedeflerin dışındaydı; yüzdelere girmez.
 - **MVP'nin kalan fazları:** F0 (OPS-010, SEC-001), FJ (~%80), F1 (~%55), F2 (~%20), F3 (~%20), F4 (~%5, K15), F5 (~%30), F6 (başlamadı). Hepsi 2026-09-26 tahmini, ölçülmedi. FOUNDATION-B bitince sıra `ROADMAP.md`'den gelir.
 - **Kod denetimi (BL-266..282):** SEC-003 dışındakiler backlog'da. Yerleri K23 ile kullanıcıya soruluyor.
 - **Temizlik (koordinatör):** 43 birleşmemiş görünen dal, 34 worktree (sürüm 3 ölçümü). Arşiv adayı oturumlar: eski `nf-db` "BL-198" ve "Settings okumaları", "Code review", "ultrareview: bl252", "bl252-f6".
@@ -128,5 +134,5 @@ Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca g
 | Hosted e-posta teslimatı ölçülür (hangi SMTP, saatlik sınır; onay e-postası Supabase Auth'tan gidiyor) | SEC-003 pre-mortem, koordinatör 2026-09-28 | ölçülmedi |
 | BL-283 — API parola doğrulamasına hesap başına deneme sınırı | kullanıcı kararı 2026-09-28 | açık |
 | "Check your email" ekranı main'de | SEC-003 S.D | **bitti** (`721ea41f`) |
-| Hosted veritabanı main ile aynı: BL-199 migration'ı `20260928060000` (iş arkadaşının notu çalışana gitmesin) | BL-199 kapanışı, koordinatör 2026-09-28 | kullanıcıda, bekliyor |
+| Hosted veritabanı main ile aynı: BL-199 migration'ı `20260928060000` (iş arkadaşının notu çalışana gitmesin) | BL-199 kapanışı, koordinatör 2026-09-28 | **bitti 2026-09-29** — kullanıcı `20260928060000`–`100000` beş migration'ı gönderdi; koordinatör `list_migrations` ile gördü, `get_advisors` security'de yeni uyarı yok |
 **Öneri (`nf-planlama`, kullanıcı kararı değil):** kod denetiminin kalan yüksek güvenlik maddeleri — BL-270 (admin → admin erişim kaldırma), BL-271 (çıkışta önbellek), BL-276 (eski yetki kapısı) — da yayından önce kapansın. Yerleri K23 ile sorulacak.
