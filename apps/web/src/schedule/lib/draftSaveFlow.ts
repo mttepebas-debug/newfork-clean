@@ -30,6 +30,15 @@ export function upsertSavedDraft(
   };
 }
 
+export function removeDraft(
+  current: DraftsCacheSnapshot | undefined,
+  draftId: string,
+): DraftsCacheSnapshot {
+  return {
+    drafts: (current?.drafts ?? []).filter((item) => item.id !== draftId),
+  };
+}
+
 interface PendingOpsCacheSnapshot {
   readonly pending_ops: readonly unknown[];
 }
