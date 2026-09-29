@@ -146,11 +146,12 @@ select lives_ok($$select public.accept_employee_invitation_service('19000000-000
 set local role postgres;
 select is((select all_locations from public.workspace_memberships where user_id='19000000-0000-4000-8000-000000000005'), false, 'acceptance preserves empty managed scope');
 set local role service_role;
-select lives_ok($$insert into role_results select 'own-draft', public.create_employee_command_service(
+-- A record with no location is in nobody's reach but admin and owner (M2), so
+-- a manager does not open one (FB-6.2.4, review D6).
+select throws_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000004', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000008', employee || '{"invitation_email":"create-manager-own@example.test"}', null) from create_fixture$$,
-  'scoped manager can create a remote draft');
-select throws_ok($$select public.get_employee_detail_service('19000000-0000-4000-8000-000000000004', '29000000-0000-4000-8000-000000000001', (result->>'id')::uuid) from role_results where label='own-draft'$$, '42501', null, 'a manager does not open a record with no location: it is in nobody''s reach but admin and owner (M2)');
+  '42501', null, 'a manager does not create a record with no location');
 select throws_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000004', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000009', employee, '59000000-0000-4000-8000-000000000001') from create_fixture$$,

@@ -203,6 +203,10 @@ insert into target values
   ('nr:ayse',    'name_request', 'm', '{K}',   'manager',  'ayse'),
   ('nr:zeynep',  'name_request', 'm', '{K}',   'admin',    'zeynep'),
   ('nr:kaan',    'name_request', 'm', '{B}',   'admin',    'kaan'),
+  -- a manager, for what only a manager has: locations managed without working there
+  ('mgr:ayse',   'manager',   'm', '{K}',   'manager',  'ayse'),
+  ('mgr:mehmet', 'manager',   'm', '{B}',   'manager',  'mehmet'),
+  ('mgr:selin',  'manager',   'm', '{B}',   'manager',  'selin'),
   ('xena',       'person',    'x', '{K}',   'employee', 'xena'),
   ('K',          'location',  'm', '{K}',   null,       null),
   ('B',          'location',  'm', '{B}',   null,       null),
@@ -237,6 +241,7 @@ select t.label,
     when t.label = 'olcay' then tests.id('m:owner')
     when t.label = 'xena' then tests.id('x:xena')
     when t.kind = 'person' then tests.id('m:' || t.label)
+    when t.kind = 'manager' then tests.id('m:' || t.holder)
     when t.label in ('K', 'B') then tests.id('m:' || t.label)
     when t.label = 'x:K' then tests.id('x:K')
     when t.label = 'workspace' then tests.id('m')
@@ -418,7 +423,10 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('employee.decide_preferred_name', 'name_request', 'employees.manage', false, false,
    $$select public.decide_employee_preferred_name_service($1, $2, $3, true)$$),
   ('employee.pending_names', 'name_request', 'employees.manage', false, true,
-   $$select exists (select 1 from public.list_pending_preferred_names_service($1, $2) r where r.request_id = $3)$$);
+   $$select exists (select 1 from public.list_pending_preferred_names_service($1, $2) r where r.request_id = $3)$$),
+  -- which locations a manager manages without working there (KARARLAR "yalnız yönetir")
+  ('employee.set_managed_locations', 'manager', 'employees.manage', false, false,
+   $$select public.set_employee_managed_locations_service($1, $2, $3, array[tests.id('m:K')]) is not null$$);
 
 -- The Employees drawer's pickers (BL-231): the locations the actor reaches.
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
@@ -502,6 +510,7 @@ insert into core_action (key, core_key, blank) values
   ('employee.remove_from_location', 'employee.remove_from_location', 'null'),
   ('employee.decide_preferred_name', 'employee.decide_preferred_name', 'null'),
   ('employee.pending_names', 'employee.decide_preferred_name', 'null'),
+  ('employee.set_managed_locations', 'employee.set_managed_locations', 'null'),
   ('workspace.close', 'workspace.close', 'null'),
   ('workspace.transfer_ownership', 'workspace.transfer_ownership', 'null'),
   ('time_off.decide', 'time_off.decide', 'null'),
@@ -651,6 +660,17 @@ begin
     end if;
     return case when t.class = 'employee' and shares then 'allow' else 'deny' end;
 
+  when 'employee.set_managed_locations' then
+    -- An admin or the owner gives a manager locations to manage without working
+    -- there (KARARLAR "yalnız yönetir"); a manager never gives them, nor takes
+    -- their own.
+    if is_self then return 'deny'; end if;
+    if p.class = 'owner' then return 'allow'; end if;
+    if p.class = 'admin' then
+      return case when pg_temp.rank(t.class) < pg_temp.rank('admin') then 'allow' else 'deny' end;
+    end if;
+    return 'deny';
+
   when 'employee.make_admin' then
     -- Owner only (checked above); nobody changes their own role.
     return case when is_self or t.class = 'owner' then 'deny' else 'allow' end;
@@ -774,18 +794,8 @@ create temporary table known_gap (
   reason text not null
 );
 insert into known_gap values
-  ('manager-cannot-change-employee-role', '{manager}', '{employee.make_employee}', null,
-   'a manager cannot move somebody between employee roles at their own location; decided allowed on 2026-09-24, 6A (stage 6, employees)'),
   ('manager-cannot-invite', '{manager}', '{employee.create}', '{K,B}',
    'a manager cannot add and invite an employee at their own location; employee_access.manage is required (stage 6, employees)'),
-  ('admin-own-record', '{admin}', '{employee.save}', '{self,zeynep,kaan}',
-   'an admin cannot save their own employee record, P0002 (stage 6, employees)'),
-  ('admin-removes-admin-access', '{admin}', '{employee.remove_access}', '{zeynep,kaan}',
-   'an admin takes another admin''s access away: remove_employee_access_service does not ask the rank (BL-270, FB-6.2.4)'),
-  ('managed-only-cannot-save', '{selin}', '{employee.save}', null,
-   'a manager who only manages a location cannot save the records there: save_employee asks the older can_manage_employee_record (FB-6.2.4)'),
-  ('terminate-needs-location', null, '{employee.terminate}', '{selin}',
-   'ending the employment of somebody who works nowhere fails on the worksite time zone, 22023 (FB-6.2.4)'),
   ('preferred-name-not-on-core', null, '{employee.decide_preferred_name,employee.pending_names}', null,
    'answering a preferred name asks employees.manage only: no rank, a manager answers their own and a peer''s, anywhere (BL-099, FB-6.2.6)'),
   ('important-date-no-as-validation', null, '{important_date.write}', '{K,B,x:K}',
@@ -864,6 +874,8 @@ begin
   else
     select * into t from target where label = target_label;
     case t.kind
+    when 'manager' then
+      person := target_uuid;
     when 'person' then
       if m.by_account then
         account := (select e.user_id from public.employee_profiles e where e.id = target_uuid);

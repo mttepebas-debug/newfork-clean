@@ -160,17 +160,165 @@ select ok(
   'the two browser-era read bridges are gone'
 );
 
--- BL-270: a membership row changed with nobody signed in used to pass the
--- role-change trigger untouched (it returned early when auth.uid() was null).
--- Last: while it passes, the change sticks.
-select todo('BL-270: the membership trigger asks the core in FB-6.2.4', 1);
+-- FB-6.2.4: writing asks the core. A refusal says why, and somebody unknown
+-- gets the same answer as somebody out of reach (review D5).
+select tests.person('m', 'kaan', 'admin', array['B'], array['server']);
+select tests.person('m', 'ece', 'employee', array['K'], array['cook']);
+select tests.role('m', 'line cook', 'employee', array(
+  select rp.permission_key from public.workspace_role_permissions rp
+  join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('m') and r.system_key = 'employee'));
+create function pg_temp.save_as(actor text, person text, locs text[]) returns text language sql as $$
+  select pg_temp.refusal(format($f$select public.save_employee_service(%L, %L, e.id, e.first_name, e.middle_name,
+      e.last_name, e.preferred_name, e.invitation_email, e.start_date, e.internal_note, %L::uuid[], %L::uuid,
+      array(select j.job_id from public.employee_job_assignments j where j.employee_id = e.id and j.ended_at is null),
+      (select j.job_id from public.employee_job_assignments j where j.employee_id = e.id and j.ended_at is null and j.is_primary),
+      false, false, e.revision) from public.employee_profiles e where e.id = %L$f$,
+    tests.user(case actor when 'olcay' then 'm:owner' else 'm:' || actor end), tests.id('m'),
+    array(select tests.id('m:' || l) from unnest(locs) l), tests.id('m:' || locs[1]),
+    coalesce((select i.id from tests.ids i where i.label = 'm:' || person), gen_random_uuid())))
+$$;
+select is(pg_temp.save_as('zeynep', 'kaan', array['B']), '42501 authz.rank',
+  'an admin does not save another admin''s record (KK-24)');
+select is(pg_temp.save_as('zeynep', 'zeynep', array['K']), 'allowed', 'an admin saves their own record');
+select is(pg_temp.save_as('ayse', 'veli', array['B']), '42501 authz.out_of_scope',
+  'a manager does not save a record out of reach');
+select is(pg_temp.save_as('ayse', 'nobody', array['K']), '42501 authz.out_of_scope',
+  'somebody unknown gets the same answer');
+select is(pg_temp.save_as('ayse', 'ece', array['K', 'B']), '42501 authz.out_of_scope',
+  'a manager does not add a location they do not manage');
+select is(pg_temp.save_as('selin', 'veli', array['B']), 'allowed',
+  'a manager saves a record where they only manage');
+
+-- A manager moves somebody between employee roles at their own locations
+-- (6A), and gives nobody a role at or above their own.
+create function pg_temp.role_as(actor text, person text, role_key text) returns text language sql as $$
+  select pg_temp.refusal(format('select public.update_employee_membership_role_service(%L, %L, %L, %L)',
+    tests.user(case actor when 'olcay' then 'm:owner' else 'm:' || actor end), tests.id('m'), tests.id('m:' || person),
+    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m')
+       and (r.system_key::text = role_key or r.name = role_key))))
+$$;
+select is(pg_temp.role_as('ayse', 'ece', 'line cook'), 'allowed', 'a manager moves an employee to another employee role');
+select is(pg_temp.role_as('ayse', 'ece', 'manager'), '42501 authz.rank', 'a manager does not make anybody a manager');
+select is(pg_temp.role_as('zeynep', 'kaan', 'manager'), '42501 authz.rank', 'an admin does not change another admin''s role');
+select is(pg_temp.role_as('zeynep', 'ece', 'admin'), '42501 authz.owner_only', 'only the owner makes an admin');
+
+-- BL-270: taking another admin's access away is the owner's.
+select is(
+  pg_temp.refusal(format('select public.remove_employee_access_service(%L, %L, %L)',
+    tests.user('m:zeynep'), tests.id('m'), tests.id('m:kaan'))),
+  '42501 authz.rank', 'an admin does not take another admin''s access away');
+
+-- Ending employment of somebody with no location left (S1): nothing to match
+-- the worksite time zone against, so any valid one is taken.
+select lives_ok(
+  format($$select public.terminate_employee_service(%L, %L, %L, localtimestamp, 'Europe/Istanbul', 'no location left', gen_random_uuid())$$,
+    tests.user('m:owner'), tests.id('m'), tests.id('m:emre')),
+  'the owner ends the employment of somebody with no location left');
+
+-- "Yalnız yönetir": an admin gives a manager locations to manage; only a
+-- manager has them.
+select is(
+  pg_temp.refusal(format('select public.set_employee_managed_locations_service(%L, %L, %L, %L::uuid[])',
+    tests.user('m:zeynep'), tests.id('m'), tests.id('m:ayse'), array[tests.id('m:B')])),
+  'allowed', 'an admin gives a manager a location to manage');
+select is(
+  array(select m.location_id from public.membership_managed_locations m
+    join public.workspace_memberships w on w.id = m.membership_id where w.user_id = tests.user('m:ayse')),
+  array[tests.id('m:B')], 'the manager manages it now');
+select ok(
+  exists (select 1 from public.audit_events a where a.workspace_id = tests.id('m')
+    and a.action = 'employee.managed_locations_changed' and a.actor_user_id = tests.user('m:zeynep')
+    and a.metadata -> 'added' @> to_jsonb(array[tests.id('m:B')])),
+  'and it is in the audit log');
+select is(
+  pg_temp.refusal(format('select public.set_employee_managed_locations_service(%L, %L, %L, %L::uuid[])',
+    tests.user('m:zeynep'), tests.id('m'), tests.id('m:ece'), array[tests.id('m:B')])),
+  '22023 employee.not_a_manager', 'an employee manages nothing');
+select is(
+  pg_temp.refusal(format('select public.set_employee_managed_locations_service(%L, %L, %L, %L::uuid[])',
+    tests.user('m:ayse'), tests.id('m'), tests.id('m:selin'), array[tests.id('m:K')])),
+  '42501 authz.out_of_scope', 'a manager gives nobody a location to manage');
 select throws_ok(
-  format($$update public.workspace_memberships
-    set role = 'admin', role_id = (select r.id from public.workspace_roles r where r.workspace_id = %L and r.system_key = 'admin')
-    where workspace_id = %L and user_id = %L$$, tests.id('m'), tests.id('m'), tests.user('m:emre')),
-  '42501', null,
-  'a membership change with nobody signed in is refused'
+  format($$insert into public.membership_managed_locations (workspace_id, membership_id, location_id, added_by)
+    select %L, m.id, %L, %L from public.workspace_memberships m where m.workspace_id = %L and m.user_id = %L$$,
+    tests.id('m'), tests.id('m:B'), tests.user('m:owner'), tests.id('m'), tests.user('m:ece')),
+  '23503', null, 'no managed location is stored for somebody who is not a manager (review D2)');
+
+-- S3: a manager whose role falls below manager stops managing in the same
+-- step, and the audit log says what went.
+select is(pg_temp.role_as('olcay', 'selin', 'employee'), 'allowed', 'the owner makes a manager an employee');
+select ok(
+  not exists (select 1 from public.membership_managed_locations m
+    join public.workspace_memberships w on w.id = m.membership_id where w.user_id = tests.user('m:selin')),
+  'their managed locations are gone');
+select ok(
+  exists (select 1 from public.audit_events a where a.workspace_id = tests.id('m')
+    and a.action = 'membership.role_changed' and a.metadata -> 'managed_locations_removed' @> to_jsonb(array[tests.id('m:B')])),
+  'and the audit log names them');
+
+select ok(
+  to_regprocedure('public.save_employee(uuid, uuid, text, text, text, text, text, date, text, uuid[], uuid, uuid[], uuid, boolean, boolean, integer)') is null
+  and to_regprocedure('public.set_employee_archived(uuid, uuid, boolean, boolean)') is null
+  and to_regprocedure('public.terminate_employee(uuid, uuid, timestamp, text, text, uuid)') is null,
+  'the browser-era write bridges are gone'
 );
+
+-- The writers work as the API calls them: as service_role, where the
+-- membership guard is not the database owner's console (BL-270). Values are
+-- looked up here; service_role reads no table.
+create function pg_temp.as_api(statement text) returns text language plpgsql as $$
+declare
+  code text;
+  reason text;
+begin
+  set local role service_role;
+  execute statement;
+  reset role;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint;
+  return code || ' ' || coalesce(reason, '');
+end;
+$$;
+select tests.person('m', 'oya', 'employee', array['K'], array['cook'], 'onboarding');
+select is(pg_temp.as_api(format($$select public.save_employee_onboarding_profile_service(%L, jsonb_build_object(
+      'legal_first_name', 'Oya', 'legal_last_name', 'Person', 'phone', '4155550123', 'emergency_contact_name', 'Contact',
+      'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '4155550100'), %s, %L)$$,
+    tests.user('m:oya'), (select c.revision from public.employee_onboarding_cases c where c.employee_id = tests.id('m:oya')), tests.id('m'))),
+  'allowed', 'as the API: an invited employee fills in their profile');
+select is(pg_temp.as_api(format('select public.submit_employee_onboarding_service(%L, %s, %L)',
+    tests.user('m:oya'), (select c.revision from public.employee_onboarding_cases c where c.employee_id = tests.id('m:oya')), tests.id('m'))),
+  'allowed', 'as the API: and finishes onboarding');
+select is(
+  (select m.status::text from public.workspace_memberships m where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:oya')),
+  'active', 'finishing onboarding opened the account');
+select is(pg_temp.as_api(format('select public.update_employee_membership_role_service(%L, %L, %L, %L)', tests.user('m:owner'), tests.id('m'),
+    tests.id('m:ece'), (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'manager'))),
+  'allowed', 'as the API: the owner changes a role');
+select is(pg_temp.as_api(format('select public.set_employee_archived_service(%L, %L, %L, true, false)',
+    tests.user('m:owner'), tests.id('m'), tests.id('m:ece'))),
+  'allowed', 'as the API: the owner archives a record');
+select is(pg_temp.as_api(format('select public.set_employee_archived_service(%L, %L, %L, false, true)',
+    tests.user('m:owner'), tests.id('m'), tests.id('m:ece'))),
+  'allowed', 'as the API: and brings it back with its access');
+select is(
+  (select m.status::text || ' ' || m.role::text from public.workspace_memberships m
+   where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:ece')),
+  'active manager', 'the restored account has its role back');
+
+-- BL-270: a membership change nobody asked the core for is refused, even with
+-- nobody signed in. The database owner's own console is not a caller (it could
+-- switch the trigger off); an application caller is.
+create function tests.sneak_role_change(member uuid, new_role uuid) returns void language sql security definer set search_path = '' as $$
+  update public.workspace_memberships set role_id = new_role where id = member
+$$;
+grant execute on function tests.sneak_role_change(uuid, uuid) to service_role;
+select is(
+  pg_temp.as_api(format('select tests.sneak_role_change(%L, %L)',
+    (select m.id from public.workspace_memberships m where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:ali')),
+    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'admin'))),
+  '42501 authz.missing_permission', 'a membership change nobody asked the core for is refused');
 
 select * from finish();
 rollback;

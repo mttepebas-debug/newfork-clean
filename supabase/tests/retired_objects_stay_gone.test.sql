@@ -229,6 +229,16 @@ insert into retired (kind, name, step) values
   ('function', 'get_employee_detail', 'FB-6.2.3'),
   ('function', 'list_employees', 'FB-6.2.3'),
   ('policy', 'workspace_memberships.memberships_select_workspace', 'FB-6.2.3');
+-- FB-6.2.4: Employees writes ask the core; the browser-era write bridges, the
+-- location helper only saving used, and the access snapshot's location copy
+-- (nothing read it; a restored role reaches where its class says) go.
+insert into retired (kind, name, step) values
+  ('function', 'save_employee', 'FB-6.2.4'),
+  ('function', 'set_employee_archived', 'FB-6.2.4'),
+  ('function', 'terminate_employee', 'FB-6.2.4'),
+  ('function', 'can_assign_employee_locations', 'FB-6.2.4'),
+  ('column', 'employee_access_snapshots.all_locations', 'FB-6.2.4'),
+  ('column', 'employee_access_snapshots.location_ids', 'FB-6.2.4');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
