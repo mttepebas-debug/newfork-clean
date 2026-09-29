@@ -36,6 +36,11 @@ Dal `task/g9b-shorten-time-off` (taban `task/g9-timeoff-exchange` @78fa6fc3). Mi
    seçiciyle seçer; anında geçerli olur; sonra vardiyayı Schedule'da normal yazar (engel kalkmıştır). Uç
    `POST /v1/workspaces/:id/time-off/:requestId/shorten` (`apps/api/src/time-off/`, route'ta kapı yok, çekirdek karar
    verir). `apps/api/src/schedule/**` ve `SchedulePage.tsx` bu turda yasaktı.
+   Klasör kararı (KK-20 şart 2): schedule klasörü dışında izinle ilgili tek API dosyası Employee Hub'ın
+   çalışan uçları (`employee-hub-routes.ts`, çalışanın kendi izni); yöneticinin izin uçları yalnız
+   `schedule-requests-routes.ts`'te. Bu yüzden `apps/api/src/time-off/` açıldı. **Birleşme Schedule turundan
+   sonra:** kısaltma ucu `schedule-requests-routes` ile tek izin rotası altında toplanır (ikiz sistem kalmasın;
+   backlog maddesi aşağıda).
 
 ## Kanıt
 - Kırmızı: migration'sız 4. hücreden düşüyor ("Ali may take the shift inside his own leave": have NULL).
@@ -48,6 +53,15 @@ Dal `task/g9b-shorten-time-off` (taban `task/g9-timeoff-exchange` @78fa6fc3). Mi
 - e2e `e2e/flows/shift-hub-time-off.spec.ts` yazıldı, koşturulmadı (toplu tur).
 
 ## Yolda bulunanlar (backlog adayı)
+- **Madde metni (KK-20 şart 3):** "Schedule → hücre: yönetici onaylı izinli kişiyi vardiyaya yazmaya
+  çalıştığında engelin yanında 'Shorten time off and assign' eylemi. Tek adımda iznin vardiya saatlerini
+  `app_private.shorten_time_off` ile kısaltır ve atamayı yapar (yetki `time_off.decide` + `schedule.edit`);
+  çalışana ve izni onaylayana bildirim. Neden önemli: bugün iki adım (Requests'te kısalt, Schedule'da ata).
+  Neden bekliyor: `SchedulePage.tsx` Schedule turunda. İşaret: leave: medium / do: moderate."
+- **Madde metni (KK-20 şart 2):** "İzin API'si iki klasörde: yöneticinin kısaltma ucu `apps/api/src/time-off/`,
+  diğer yönetici izin uçları `apps/api/src/schedule/schedule-requests-routes.ts`. Schedule turundan sonra tek
+  izin rotası altında birleştir; eski route-yerel izin kapılarını (`permissions.includes`) da çekirdeğe taşı.
+  İşaret: leave: low / do: moderate."
 - Schedule hücresinde "izni kısalt ve ata" kısayolu: yönetici onaylı izinli kişiyi yazmaya çalıştığında engelin
   yanında aynı ortak parçayı çağıran eylem. Schedule turunda (`SchedulePage.tsx` bu turda yasaktı).
 - Sistemin yazdığı iptal satırı Requests → Time off → Closed listesinde "Cancellation" olarak görünür (doğru geçmiş,
