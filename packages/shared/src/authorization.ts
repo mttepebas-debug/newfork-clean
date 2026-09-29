@@ -34,6 +34,7 @@ export const authzActionKeys = [
   "employee.remove_from_location",
   "employee.request_preferred_name",
   "employee.save",
+  "employee.set_managed_locations",
   "employee.terminate",
   "exchange.apply_own",
   "exchange.approve",
@@ -118,6 +119,7 @@ export const targetedAuthzActions = {
   "employee.remove_access": { person: true, permission: "employees.manage" },
   "employee.remove_from_location": { person: true, permission: "employees.manage" },
   "employee.save": { person: true, permission: "employees.manage" },
+  "employee.set_managed_locations": { person: true, permission: "employees.manage" },
   "employee.terminate": { person: true, permission: "employees.archive" },
   "exchange.approve": { person: true, permission: "schedule.shift_change_requests.manage" },
   "exchange.offer_own": { person: true, permission: null, own: true },
@@ -267,7 +269,9 @@ export function expected<A extends TargetedAuthzAction>(
     case "employee.terminate":
     case "employee.archive":
     case "employee.remove_access":
-      // Admin and owner only.
+    case "employee.set_managed_locations":
+      // Admin and owner only (a manager's locations managed without working
+      // there are the admin's to give).
       if (isSelf) return false;
       if (actor.role === "owner") return true;
       return actor.role === "admin" && targetRank < rankOf.admin;

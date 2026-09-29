@@ -183,8 +183,12 @@ select is(pg_temp.save_as('zeynep', 'kaan', array['B']), '42501 authz.rank',
 select is(pg_temp.save_as('zeynep', 'zeynep', array['K']), 'allowed', 'an admin saves their own record');
 select is(pg_temp.save_as('ayse', 'veli', array['B']), '42501 authz.out_of_scope',
   'a manager does not save a record out of reach');
-select is(pg_temp.save_as('ayse', 'nobody', array['K']), '42501 authz.out_of_scope',
-  'somebody unknown gets the same answer');
+select is(
+  pg_temp.refusal(format($$select public.save_employee_service(%L, %L, %L, 'Nobody', '', 'Person', '', '', null, '',
+      %L::uuid[], %L, %L::uuid[], %L, false, false, 1)$$,
+    tests.user('m:ayse'), tests.id('m'), gen_random_uuid(), array[tests.id('m:K')], tests.id('m:K'),
+    array[tests.id('m:job:cook')], tests.id('m:job:cook'))),
+  '42501 authz.out_of_scope', 'somebody unknown gets the same answer');
 select is(pg_temp.save_as('ayse', 'ece', array['K', 'B']), '42501 authz.out_of_scope',
   'a manager does not add a location they do not manage');
 select is(pg_temp.save_as('selin', 'veli', array['B']), 'allowed',
@@ -238,7 +242,7 @@ select is(
 select is(
   pg_temp.refusal(format('select public.set_employee_managed_locations_service(%L, %L, %L, %L::uuid[])',
     tests.user('m:ayse'), tests.id('m'), tests.id('m:selin'), array[tests.id('m:K')])),
-  '42501 authz.out_of_scope', 'a manager gives nobody a location to manage');
+  '42501 authz.rank', 'a manager gives no peer a location to manage');
 select throws_ok(
   format($$insert into public.membership_managed_locations (workspace_id, membership_id, location_id, added_by)
     select %L, m.id, %L, %L from public.workspace_memberships m where m.workspace_id = %L and m.user_id = %L$$,

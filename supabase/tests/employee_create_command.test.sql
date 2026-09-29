@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(41);
+select plan(40);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data)
 values ('19000000-0000-4000-8000-000000000001', 'create-owner@example.test', '{}', '{}'),
@@ -155,7 +155,7 @@ select throws_ok($$select public.create_employee_command_service(
 select throws_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000004', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000009', employee, '59000000-0000-4000-8000-000000000001') from create_fixture$$,
-  '42501', 'role assignment access denied', 'manager cannot grant manager-class custom role');
+  '42501', 'Not allowed', 'a manager who works nowhere creates nobody, whatever the role (M2)');
 set local role postgres;
 select set_config('request.jwt.claim.sub', '19000000-0000-4000-8000-000000000004', true);
 select ok(not public.can_access_employee('29000000-0000-4000-8000-000000000001', (select (result->>'id')::uuid from role_results where label='custom')), 'creator exception does not expose another managers remote draft');

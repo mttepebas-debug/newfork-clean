@@ -17,23 +17,25 @@ where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace);
 -- (stage 4a), which this count leaves out.
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'auth\.uid\(\)' and name <> 'rls_can'),
-  '<=', 32, 'functions that call auth.uid() only go down'
+  '<=', 27, 'functions that call auth.uid() only go down'
 );
 
 -- Pretends to be the caller by writing the JWT subject: the bridges that let a
 -- service_role call reuse a browser-era function. Target 0. FB-6.2.3 took
--- Employees' two read bridges (43 -> 41).
+-- Employees' two read bridges (43 -> 41), FB-6.2.4 the four write bridges and
+-- the onboarding activation's (41 -> 36).
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'set_config\(\s*''request\.jwt\.claim'),
-  '<=', 41, 'functions that write request.jwt.claim only go down'
+  '<=', 36, 'functions that write request.jwt.claim only go down'
 );
 
 -- Decides scope or rank on its own instead of asking the core. Target 0
--- outside the core.
+-- outside the core. FB-6.2.4: Employees' writes and the membership guard ask
+-- the core (59 -> 52).
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 59, 'functions with their own scope or rank logic only go down'
+  '<=', 52, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
@@ -77,11 +79,11 @@ select is(
 
 -- A 42501 that does not say which reason: every raise statement with 42501
 -- and no hint (BL-276). Measured 2026-09-29 on 20260929190000: 255 in 152
--- functions; 253 after FB-6.2.3. Target 0.
+-- functions; 253 after FB-6.2.3; 226 after FB-6.2.4. Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 253, 'refusals without an authz hint only go down'
+  '<=', 226, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or

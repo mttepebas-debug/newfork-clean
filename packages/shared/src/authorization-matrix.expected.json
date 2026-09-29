@@ -1,5 +1,5 @@
 {
- "sourceSha256": "3d703e3f493f62985261444bef5c229eb353ec987260534f54984410e2778e83",
+ "sourceSha256": "ce66df60255d98dcc0ca276f095ad8684b229fce04858587d66009d75f6e839e",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -28,6 +28,7 @@
   "employee.remove_from_location",
   "employee.request_preferred_name",
   "employee.save",
+  "employee.set_managed_locations",
   "employee.terminate",
   "exchange.apply_own",
   "exchange.approve",
@@ -436,6 +437,36 @@
    ],
    "class": "admin",
    "holder": "kaan"
+  },
+  {
+   "label": "mgr:ayse",
+   "kind": "manager",
+   "tenant": "m",
+   "locs": [
+    "K"
+   ],
+   "class": "manager",
+   "holder": "ayse"
+  },
+  {
+   "label": "mgr:mehmet",
+   "kind": "manager",
+   "tenant": "m",
+   "locs": [
+    "B"
+   ],
+   "class": "manager",
+   "holder": "mehmet"
+  },
+  {
+   "label": "mgr:selin",
+   "kind": "manager",
+   "tenant": "m",
+   "locs": [
+    "B"
+   ],
+   "class": "manager",
+   "holder": "selin"
   },
   {
    "label": "none",
@@ -885,6 +916,13 @@
    "targetKind": "person",
    "permission": "employees.manage",
    "coreKey": "employee.save",
+   "blank": "null"
+  },
+  {
+   "key": "employee.set_managed_locations",
+   "targetKind": "manager",
+   "permission": "employees.manage",
+   "coreKey": "employee.set_managed_locations",
    "blank": "null"
   },
   {
@@ -15528,6 +15566,312 @@
    "employee.save",
    "zeynep",
    "zeynep",
+   "allow"
+  ],
+  [
+   "employee.set_managed_locations",
+   "ali",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "ali",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "ali",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "aydan",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "aydan",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "aydan",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "ayse",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "ayse",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "ayse",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "can",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "can",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "can",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "emre",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "emre",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "emre",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "kaan",
+   "mgr:ayse",
+   "allow"
+  ],
+  [
+   "employee.set_managed_locations",
+   "kaan",
+   "mgr:mehmet",
+   "allow"
+  ],
+  [
+   "employee.set_managed_locations",
+   "kaan",
+   "mgr:selin",
+   "allow"
+  ],
+  [
+   "employee.set_managed_locations",
+   "mehmet",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "mehmet",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "mehmet",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "nil",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "nil",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "nil",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "nur",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "nur",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "nur",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "olcay",
+   "mgr:ayse",
+   "allow"
+  ],
+  [
+   "employee.set_managed_locations",
+   "olcay",
+   "mgr:mehmet",
+   "allow"
+  ],
+  [
+   "employee.set_managed_locations",
+   "olcay",
+   "mgr:selin",
+   "allow"
+  ],
+  [
+   "employee.set_managed_locations",
+   "pelin",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "pelin",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "pelin",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "remzi",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "remzi",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "remzi",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "sami",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "sami",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "sami",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "selin",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "selin",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "selin",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "veli",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "veli",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "veli",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "xavier",
+   "mgr:ayse",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "xavier",
+   "mgr:mehmet",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "xavier",
+   "mgr:selin",
+   "deny"
+  ],
+  [
+   "employee.set_managed_locations",
+   "zeynep",
+   "mgr:ayse",
+   "allow"
+  ],
+  [
+   "employee.set_managed_locations",
+   "zeynep",
+   "mgr:mehmet",
+   "allow"
+  ],
+  [
+   "employee.set_managed_locations",
+   "zeynep",
+   "mgr:selin",
    "allow"
   ],
   [
