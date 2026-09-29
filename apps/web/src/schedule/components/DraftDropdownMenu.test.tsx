@@ -192,6 +192,8 @@ describe("DraftDropdownMenu", () => {
         onEditDraft={vi.fn()}
         onStartBlankDraft={vi.fn()}
         onDeleteDraft={vi.fn()}
+        canEditPublishedSchedule
+        onEditPublishedSchedule={vi.fn()}
       />,
     );
 
@@ -207,6 +209,12 @@ describe("DraftDropdownMenu", () => {
       rows[1]?.querySelector(".schedule-draft-menu-title-line")?.textContent,
     ).toBe("Plan APublished");
     expect(document.querySelector("[data-published-fallback-row]")).toBeNull();
+    // A row names itself instead of borrowing its buttons' names, so a
+    // partial match (as the e2e flows use) finds the one button.
+    expect(
+      screen.getAllByRole("button", { name: /Edit live schedule/ }),
+    ).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "View Plan A" })).toBe(rows[1]);
   });
 
   it("names a deleted live draft by the name it was published under", () => {

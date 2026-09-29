@@ -242,6 +242,8 @@ export function DraftDropdownMenu({
                       }
                       role="button"
                       tabIndex={0}
+                      // Its own name, so it does not borrow its buttons' ("Edit live schedule").
+                      aria-label={`View ${draft.name}`}
                       onMouseEnter={() => onPrefetchDraft?.(draft.id)}
                       onFocus={() => onPrefetchDraft?.(draft.id)}
                       onClick={() => closeAfter(() => onPreviewDraft(draft.id))}
