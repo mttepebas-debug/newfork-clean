@@ -43,7 +43,7 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
   Kullanıcının bilgisayarında üç self-hosted runner'da koşar (REUSE OPS-01).
 - main'de CI kırmızıysa: main'e push donar (yalnız düzelten gönderir). Koordinatör kırmızıyı ayırır
   (bölüm 11.9) ve düzeltmeyi kıran işin rolüne verir.
-- Sayfa ve bileşen envanteri: `REUSE.md` → "Sayfa envanteri". Yeni bir şey yazmadan önce ara.
+- Ekran kararları ve bilinen tuhaflıklar: `REUSE.md` → "Sayfa envanteri". Yeni bir şey yazmadan önce ara.
 
 ## 3. Koordinatör, roller, iletişim ve onay zinciri
 - **Koordinatör:** Claude Code masaüstü uygulamasındaki "Koordinatör" oturumu
@@ -300,8 +300,9 @@ Kısa yaz, ham araç çıktısı yapıştırma.
    (`BL-081 (leave: high / do: risky)`); ikisi çelişiyorsa bir satırla söylenir. Yeni BL numarasından
    önce `origin/main`'deki en yüksek numaraya bakılır. Kapanan maddeye "Kapandı <tarih> (`<commit>`)"
    ve ölçülen sonuç; `docs/plan/DONE.md`'ye etki cümlesiyle satır. İkinci kez gerekecek bilgi `REUSE.md`'ye
-   (kural, kodda nerede, ne işe yarar). Sayfa envanteri: dokunulan ekranın bölümü yoksa yazılır,
-   varsa yalnız değişen kısım güncellenir. Ortak bir değer bir ekranda değişirse önce kural yazılır,
+   (kural, kodda nerede, ne işe yarar). Sayfa envanteri yalnız ekran için verilen kararları ve bilinen
+   tuhaflıkları tutar (dosya yolu, bileşen listesi, kod özeti yazılmaz); bölüm ancak bir karar varsa
+   yazılır, kural değişince aynı işte düzeltilir (kullanıcı kararı 2026-09-29). Ortak bir değer bir ekranda değişirse önce kural yazılır,
    uyuşmayan ekranlar adıyla söylenir, düzeltmeden önce kullanıcıya sorulur. Aynı hata iki kez
    olursa kök neden bulunur ve bu dosyaya kural önerisi olarak kullanıcıya sunulur.
 8. **İlerleme planı.** Aktif programın ilerleme kaydı kendi task dosyasında (şu an
