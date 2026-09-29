@@ -34,8 +34,9 @@ jobs:
       # ponytail: concurrency=1 only in CI to avoid load flakiness; local scripts unchanged
       - run: pnpm run lint --concurrency=1
       - run: pnpm run typecheck --concurrency=1
-      # U18: two packages at once; api and web carry load-sized timeouts (U19).
-      - run: pnpm run test --concurrency=2
+      # U18 measured 2026-09-29: --concurrency=2 took 2m26s against 1m44s-1m54s
+      # at 1 (check, db and e2e share one PC), so it stays at 1.
+      - run: pnpm run test --concurrency=1
       - run: pnpm run build --concurrency=1
 
   # Database tests (pgTAP) run against a fresh local Supabase: migrations + seed.sql only
