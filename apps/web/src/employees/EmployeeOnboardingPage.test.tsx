@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  configure,
   cleanup,
   fireEvent,
   render,
@@ -20,6 +21,10 @@ import {
   previewWeeklyPreferences,
   saveWeeklyPreferences,
 } from "../availability/availability-data";
+// Whole-repo runs share the cores with three other packages; Testing
+// Library's 1 s default for findBy/waitFor is what ran out there (U19).
+configure({ asyncUtilTimeout: 5000 });
+
 vi.mock("../availability/availability-data", () => ({
   loadWeeklyPreferences: vi.fn(),
   previewWeeklyPreferences: vi.fn(),

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type {
   ActiveWorkspaceContext,
   ScheduleRequestsReadModel,
@@ -96,6 +96,10 @@ const fixture = {
     },
   ],
 } satisfies ScheduleRequestsReadModel;
+
+// Whole-repo runs share the cores with three other packages; Testing
+// Library's 1 s default for findBy/waitFor is what ran out there (U19).
+configure({ asyncUtilTimeout: 5000 });
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context: activeContext }),
