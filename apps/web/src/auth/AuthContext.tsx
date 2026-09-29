@@ -96,14 +96,20 @@ export function AuthProvider({
   const [error, setError] = useState<string | null>(null);
   const contextFingerprintRef = useRef("none");
   const resolvedUserIdRef = useRef<string | null>(null);
+  // Whose answers the query cache holds; survives failed resolutions.
+  const cacheOwnerRef = useRef<string | null>(null);
 
-  // A new login must not see the previous account's cached invitations or
-  // workspaces.
+  // Every cached answer belongs to one person. On a shared tablet the next
+  // login must not see the previous person's phone, invitations or schedule.
+  const clearAccountCache = useCallback((): void => {
+    queryClient?.clear();
+    cacheOwnerRef.current = null;
+  }, [queryClient]);
+
   const resetAccountScope = useCallback((): void => {
     window.sessionStorage.removeItem(sessionExpiredStorageKey);
-    queryClient?.removeQueries({ queryKey: ["account-pending-invitations"] });
-    queryClient?.removeQueries({ queryKey: ["account-workspaces"] });
-  }, [queryClient]);
+    clearAccountCache();
+  }, [clearAccountCache]);
 
   const resolveAuthenticatedSession = useCallback(
     async (
@@ -112,6 +118,10 @@ export function AuthProvider({
     ): Promise<ActiveWorkspaceContext | null> => {
       if (!supabaseClient) return null;
       if (!options.silent) setReady(false);
+      if (cacheOwnerRef.current !== activeSession.user.id) {
+        if (cacheOwnerRef.current !== null) clearAccountCache();
+        cacheOwnerRef.current = activeSession.user.id;
+      }
       try {
         const [resolvedContext, resolvedAccount] = await Promise.all([
           resolveWorkspaceContext(supabaseClient),
@@ -168,7 +178,7 @@ export function AuthProvider({
         setReady(true);
       }
     },
-    [queryClient],
+    [clearAccountCache, queryClient],
   );
 
   useEffect(() => {
@@ -198,6 +208,7 @@ export function AuthProvider({
         if (nextSession) {
           void resolveAuthenticatedSession(nextSession, { silent });
         } else {
+          clearAccountCache();
           resolvedUserIdRef.current = null;
           setAccount(null);
           setContext(null);
@@ -211,7 +222,7 @@ export function AuthProvider({
       active = false;
       subscription.subscription.unsubscribe();
     };
-  }, [resolveAuthenticatedSession]);
+  }, [clearAccountCache, resolveAuthenticatedSession]);
 
   const refresh =
     useCallback(async (): Promise<ActiveWorkspaceContext | null> => {

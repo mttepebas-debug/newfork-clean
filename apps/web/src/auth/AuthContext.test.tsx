@@ -255,6 +255,61 @@ describe("AuthProvider", () => {
     expect(screen.queryByLabelText("Decision note")).not.toBe(input);
   });
 
+  // BL-271: a shared tablet must not show the previous person's cached answers.
+  describe("drops the previous person's cached answers", () => {
+    const contextFor = (userId: string) => ({ userId, workspace: { id: "org", name: "Team" }, membership: { role: "employee", status: "active", allLocations: true }, permissions: ["workspace.read"], onboarding: { status: "complete", currentStep: 2, revision: 1 }, documentAccess: { restricted: false }, locationScope: { allLocations: true, locationIds: [] } });
+    const sessionFor = (userId: string) => ({ user: { id: userId, email: `${userId}@example.test`, user_metadata: {} } });
+
+    function seedCache(): QueryClient {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      queryClient.setQueryData(["account-employment-records"], [{ phone: "+1 555 0100" }]);
+      queryClient.setQueryData(["account-workspace-identities"], [{ legalName: "Ayşe Demir" }]);
+      return queryClient;
+    }
+
+    async function renderSignedIn(queryClient: QueryClient) {
+      supabaseMock.getSession.mockResolvedValue({ data: { session: sessionFor("ayse") }, error: null } as never);
+      supabaseMock.resolveWorkspaceContext.mockImplementation(async () => contextFor("ayse"));
+      let listener: (event: string, session: unknown) => void = () => {};
+      supabaseMock.onAuthStateChange.mockImplementation((callback) => { listener = callback; return { data: { subscription: { unsubscribe: supabaseMock.unsubscribe } } }; });
+      let auth: ReturnType<typeof useAuth> | null = null;
+      function Probe() { auth = useAuth(); return null; }
+      render(<AuthProvider queryClient={queryClient}><Probe /></AuthProvider>);
+      await waitFor(() => expect(auth?.context?.userId).toBe("ayse"));
+      return { emit: (event: string, session: unknown) => listener(event, session), signOut: () => auth!.signOut() };
+    }
+
+    it("on sign out", async () => {
+      const queryClient = seedCache();
+      const { signOut } = await renderSignedIn(queryClient);
+      await act(async () => { await signOut(); });
+      expect(queryClient.getQueryData(["account-employment-records"])).toBeUndefined();
+      expect(queryClient.getQueryData(["account-workspace-identities"])).toBeUndefined();
+    });
+
+    it("when another tab signs out", async () => {
+      const queryClient = seedCache();
+      const { emit } = await renderSignedIn(queryClient);
+      await act(async () => { emit("SIGNED_OUT", null); });
+      expect(queryClient.getQueryData(["account-employment-records"])).toBeUndefined();
+    });
+
+    it("when a different person signs in", async () => {
+      const queryClient = seedCache();
+      const { emit } = await renderSignedIn(queryClient);
+      supabaseMock.resolveWorkspaceContext.mockImplementation(async () => contextFor("mehmet"));
+      await act(async () => { emit("SIGNED_IN", sessionFor("mehmet")); });
+      expect(queryClient.getQueryData(["account-employment-records"])).toBeUndefined();
+      expect(queryClient.getQueryData(["account-workspace-identities"])).toBeUndefined();
+    });
+
+    it("but keeps them when the same person's session refreshes", async () => {
+      const queryClient = seedCache();
+      const { emit } = await renderSignedIn(queryClient);
+      await act(async () => { emit("TOKEN_REFRESHED", sessionFor("ayse")); });
+      expect(queryClient.getQueryData(["account-employment-records"])).toEqual([{ phone: "+1 555 0100" }]);
+    });
+  });
 });
 
 describe("AuthProvider sign-up (SEC-003 #9)", () => {
