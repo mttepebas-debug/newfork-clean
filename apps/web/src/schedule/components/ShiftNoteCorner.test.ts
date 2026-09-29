@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { placeNoteCard } from "./ShiftNoteCorner";
@@ -39,4 +41,17 @@ describe("placeNoteCard", () => {
     expect(placeNoteCard(shiftAt(500, 0), 60, screen).left).toBe(144);
     expect(placeNoteCard(shiftAt(500, 1250), 60, screen).left).toBe(1280 - 144);
   });
+});
+
+// BL-297: the note corner and the Tooltip time their bubbles in one place,
+// so a change to the close delay reaches both.
+describe("hover bubble timing", () => {
+  it.each(["src/schedule/components/ShiftNoteCorner.tsx", "src/shell/Tooltip.tsx"])(
+    "%s uses the shared useHoverBubble and keeps no timers of its own",
+    (file) => {
+      const source = readFileSync(file, "utf8");
+      expect(source).toContain("useHoverBubble(");
+      expect(source).not.toMatch(/setTimeout|clearTimeout|CLOSE_DELAY_MS/);
+    },
+  );
 });
