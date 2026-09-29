@@ -103,8 +103,11 @@ test("a new owner gives their legal name at setup, sees it in Account > Profile,
   await expect(page.getByLabel("Legal last name")).toHaveValue("Rivera");
 
   await page.getByLabel("Legal first name").fill("Jordana");
-  await page.getByRole("button", { name: "Save legal name" }).click();
-  await expect(page.getByText("Legal name saved")).toBeVisible();
+  // One Save for the whole page, and it stays off until the phone is given.
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await page.getByLabel("Phone number").fill("415 555 0142");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByText("Profile saved")).toBeVisible();
 
   expect(legalNameFor(email)).toBe("Jordana Rivera");
 });

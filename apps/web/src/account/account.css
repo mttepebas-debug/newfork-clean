@@ -209,7 +209,7 @@
 
 .account-profile-form {
   gap: 20px;
-  border-bottom: 1px solid var(--theme-border-subtle);
+  border-bottom: 0;
 }
 
 .account-section-block:last-child {
@@ -249,7 +249,22 @@
 .account-profile-head {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 24px;
+}
+
+/* The avatar with the file rules right under it, both on the same centre line. */
+.account-photo {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: center;
+  gap: 10px;
+}
+
+.account-photo-formats {
+  display: grid;
+  margin: 0;
+  gap: 1px;
+  text-align: center;
 }
 
 .account-profile-identity {
@@ -290,21 +305,17 @@
   font-size: 13px;
 }
 
-.account-photo-actions .field-help {
-  margin: 0 0 0 4px;
-}
-
 .account-avatar-large {
   display: grid;
-  width: 76px;
-  height: 76px;
-  flex: 0 0 76px;
+  width: 104px;
+  height: 104px;
+  flex: 0 0 104px;
   place-items: center;
   border-radius: 50%;
   background: var(--theme-accent-soft);
   color: var(--theme-accent-strong);
   object-fit: cover;
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 700;
 }
 
@@ -326,6 +337,12 @@
   padding: 0;
   font-size: 16px;
   font-weight: 700;
+}
+
+/* The second group in a form: a hairline says where the first one ends. */
+.account-fieldset-divided {
+  padding-top: 24px;
+  border-top: 1px solid var(--theme-border-subtle);
 }
 
 .account-fieldset-hint {
