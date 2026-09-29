@@ -8,6 +8,8 @@ import { ConfirmButton } from "@newfork/ui";
 import { Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { useCloseOnEscape } from "../lib/useCloseOnEscape";
+
 export const TEMPLATE_NO_DEPARTMENT_KEY = "__no_department__";
 
 export function ScheduleTemplatesDialog({
@@ -337,6 +339,7 @@ function Dialog({
   readonly onClose: () => void;
   readonly children: ReactNode;
 }) {
+  useCloseOnEscape(onClose);
   return (
     <div
       className="schedule-dialog-layer"

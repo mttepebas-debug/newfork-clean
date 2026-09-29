@@ -127,6 +127,49 @@ describe("UnpublishScheduleDialog", () => {
     );
   });
 
+  it("stays open while an unpublish is sending (BL-301)", () => {
+    const onOpenChange = vi.fn();
+    render(
+      <UnpublishScheduleDialog
+        open
+        weekLabel="Aug 17 - Aug 23, 2026"
+        locations={locations}
+        statuses={statuses}
+        isUnpublishing
+        onOpenChange={onOpenChange}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close unpublish dialog" }),
+    );
+    fireEvent.keyDown(screen.getByLabelText(/Main Dining/), { key: "Escape" });
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("closes on Escape even when a location checkbox has focus (BL-329)", () => {
+    const onOpenChange = vi.fn();
+    render(
+      <UnpublishScheduleDialog
+        open
+        weekLabel="Aug 17 - Aug 23, 2026"
+        locations={locations}
+        statuses={statuses}
+        onOpenChange={onOpenChange}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    const checkbox = screen.getByLabelText(/Main Dining/);
+    checkbox.focus();
+    fireEvent.keyDown(checkbox, { key: "Escape" });
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it("keeps the reference fallback action when no live status picker is available", async () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined);
 

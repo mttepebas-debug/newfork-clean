@@ -3,6 +3,7 @@ import { CalendarDays, CheckCircle2, EyeOff, Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { LocationPublicationChipStatus } from "../lib/scheduleFilterModel";
+import { useCloseOnEscape } from "../lib/useCloseOnEscape";
 
 export function UnpublishScheduleDialog({
   open,
@@ -30,6 +31,13 @@ export function UnpublishScheduleDialog({
     (location) => statusByLocation.get(location.id)?.status === "published",
   );
   const hasLocationPicker = liveLocations.length > 0;
+  const busy = pending || isUnpublishing;
+  // BL-301: while an unpublish is sending the window stays; every way out
+  // (Cancel, X, backdrop, Escape) goes through here.
+  const close = () => {
+    if (!busy) onOpenChange(false);
+  };
+  useCloseOnEscape(open ? close : null);
 
   useEffect(() => {
     if (!open) {
@@ -49,7 +57,6 @@ export function UnpublishScheduleDialog({
         : [...current, locationId],
     );
   };
-  const busy = pending || isUnpublishing;
   const confirmDisabled =
     busy || (hasLocationPicker && selectedLocationIds.length === 0);
   const confirm = async () => {
@@ -70,7 +77,8 @@ export function UnpublishScheduleDialog({
         type="button"
         aria-label="Close unpublish dialog"
         className="schedule-unpublish-backdrop"
-        onClick={() => onOpenChange(false)}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={close}
       />
       <section
         className="schedule-unpublish-dialog"
@@ -83,7 +91,7 @@ export function UnpublishScheduleDialog({
             type="button"
             className="icon-button schedule-unpublish-close"
             aria-label="Close"
-            onClick={() => onOpenChange(false)}
+            onClick={close}
           >
             <X size={16} aria-hidden />
           </button>
@@ -173,7 +181,7 @@ export function UnpublishScheduleDialog({
             ref={cancelButtonRef}
             type="button"
             disabled={busy}
-            onClick={() => onOpenChange(false)}
+            onClick={close}
           >
             Cancel
           </button>
