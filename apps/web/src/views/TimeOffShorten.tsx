@@ -9,6 +9,7 @@ import {
   TimeOffCancellationHours,
   type CancellationChoice,
 } from "../employee-hub/TimeOffCancellationHours";
+import "../employee-hub/time-off.css";
 
 /**
  * BL-127: Requests → Time off → an approved request → Shorten time off. The
@@ -49,7 +50,7 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
   }
   if (!periods)
     return <button type="button" className="nf-button secondary" onClick={begin}><Scissors size={16} /> Shorten time off</button>;
-  return <form className="time-off-shorten" onSubmit={event => { event.preventDefault(); mutation.mutate(); }}>
+  return <form className="time-off-cancellation" onSubmit={event => { event.preventDefault(); mutation.mutate(); }}>
     <fieldset disabled={mutation.isPending}>
       <legend>Shorten {request.employee_name}'s time off</legend>
       <p>Choose the approved hours to give back, then add {request.employee_name} to the schedule for them. This takes effect now; {request.employee_name} and whoever approved the time off are told.</p>
@@ -68,10 +69,8 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
       {choices.length && selectionError ? <p role="alert">{selectionError}</p> : null}
       {unfinished ? <p>Apply or discard the hours being edited first.</p> : null}
       {mutation.error ? <p role="alert">{mutation.error.message}</p> : null}
-      <div className="request-decisions">
-        <button type="submit" className="nf-button" disabled={!choices.length || Boolean(selectionError) || unfinished}>Give back these hours</button>
-        <button type="button" className="nf-button secondary" onClick={() => setPeriods(null)}>Keep time off</button>
-      </div>
+      <button type="submit" disabled={!choices.length || Boolean(selectionError) || unfinished}>Give back these hours</button>
+      <button type="button" onClick={() => setPeriods(null)}>Keep time off</button>
     </fieldset>
   </form>;
 }
