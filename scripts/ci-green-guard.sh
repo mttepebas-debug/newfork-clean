@@ -34,8 +34,9 @@ if [ -n "$base" ]; then
       fail "$f was removed from ci-green.txt but still exists"
     fi
   done
+  # Compare paths, not lines: rewording a reason is not adding a file.
   if git cat-file -e "$base:$pending" 2>/dev/null; then
-    for f in $(git diff -U0 "$base" -- "$pending" | sed -n 's/^+\(supabase\/tests\/[^[:space:]]*\).*$/\1/p'); do
+    for f in $(comm -13 <(git show "$base:$pending" | list /dev/stdin) <(list "$pending")); do
       fail "$f was added to ci-not-green.txt; a test goes green, it does not join the red list"
     done
   fi
