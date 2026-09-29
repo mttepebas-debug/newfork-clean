@@ -11,6 +11,7 @@ metadata:
 - Reconcile also expects one outbox row per time-off event (submitted/decided) via `notify_schedule_request_event_service`; suppressing a notice there must be mirrored in reconcile's `request_events` or it reports drift.
 - End-to-end in pgTAP: set the row `status='leased', lease_owner=..., lease_expires_at=now()+interval '1 minute'`, then `process_notification_outbox_service(worker, id)`; the notice lands in `public.notifications`.
 - Recipients by the core (no inline scope): active members with `(app_private.actor(u,w)).class = 'manager'` and `authz_reason(u, w, '<action>', array[location]) is null`.
+- Person-scoped audience (G6, 2026-09-29): active members with `authz_reason(u, w, '<person action>', null, target_employee) is null` (scope + rank + no_self in one call). Leave `location_ids` out of the payload: the resolver would re-check with the legacy `membership_location_scopes`. The Employees drawer opens on `?employeeId=`, not `?employee=`.
 - Trap: `tests.time_off` picks the person's latest request by `created_at`; two requests in one transaction share `now()`, so it can remember the first. Find the second by its `schedule_time_off_segments.segment_date`.
 
 **Why:** BL-183, 2026-09-27.
