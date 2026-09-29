@@ -157,7 +157,10 @@ import {
   validDate,
   validIds,
 } from "../schedule/lib/scheduleFilterModel";
-import { scheduleGates } from "../schedule/lib/scheduleGates";
+import {
+  canUnpublishSchedule,
+  scheduleGates,
+} from "../schedule/lib/scheduleGates";
 import {
   addDays,
   currentWeekStart,
@@ -2285,16 +2288,11 @@ export function SchedulePage({
             onEditPublishedSchedule={() => void editDraftFromMenu(null)}
             onDeleteDraft={(draft) => void deleteDraftFromMenu(draft)}
             onUnpublishSchedule={
-              hasPublishedSchedule
+              canUnpublishSchedule(canPublishSchedule, hasPublishedSchedule)
                 ? () => {
                     setUnpublishOpen(true);
                   }
                 : undefined
-            }
-            unpublishDisabledReason={
-              hasPublishedSchedule
-                ? null
-                : "No published schedule can be unpublished."
             }
           />
         </>

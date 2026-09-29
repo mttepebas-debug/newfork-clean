@@ -1,7 +1,7 @@
 import type { ActiveWorkspaceContext, AuthzAction } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
 
-import { scheduleGates } from "./scheduleGates";
+import { canUnpublishSchedule, scheduleGates } from "./scheduleGates";
 
 function contextWith(actions: AuthzAction[]): ActiveWorkspaceContext {
   const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -75,5 +75,16 @@ describe("scheduleGates", () => {
       manageLocations: false,
     });
     expect(scheduleGates(null).edit).toBe(false);
+  });
+
+  it("offers Unpublish only to someone who may publish, and only when something is live (BL-302)", () => {
+    const manager = scheduleGates(contextWith(["schedule.edit"]));
+    const publisher = scheduleGates(
+      contextWith(["schedule.edit", "schedule.publish"]),
+    );
+
+    expect(canUnpublishSchedule(manager.publish, true)).toBe(false);
+    expect(canUnpublishSchedule(publisher.publish, true)).toBe(true);
+    expect(canUnpublishSchedule(publisher.publish, false)).toBe(false);
   });
 });

@@ -47,7 +47,6 @@ interface DraftDropdownMenuProps {
   readonly onDeleteDraft?: (draft: ScheduleDraftSummary) => void;
   readonly onUnpublishSchedule?: () => void;
   readonly isUnpublishing?: boolean;
-  readonly unpublishDisabledReason?: string | null;
   readonly templates?: readonly ScheduleTemplateSummary[];
   readonly onApplyTemplate?: (template: ScheduleTemplateSummary) => void;
   readonly onRenameTemplate?: (template: ScheduleTemplateSummary) => void;
@@ -81,7 +80,6 @@ export function DraftDropdownMenu({
   onDeleteDraft,
   onUnpublishSchedule,
   isUnpublishing = false,
-  unpublishDisabledReason = null,
   templates = [],
   onApplyTemplate,
   onRenameTemplate,
@@ -163,8 +161,8 @@ export function DraftDropdownMenu({
       <button
         type="button"
         aria-label="Unpublish schedule"
-        disabled={isUnpublishing || Boolean(unpublishDisabledReason)}
-        title={unpublishDisabledReason ?? "Unpublish schedule"}
+        disabled={isUnpublishing}
+        title="Unpublish schedule"
         onClick={(event) => {
           event.stopPropagation();
           closeAfter(onUnpublishSchedule);
