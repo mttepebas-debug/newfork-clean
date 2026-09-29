@@ -1904,7 +1904,6 @@ describe("EmployeeDrawer locations and access follow the server", () => {
 // locations and the private fields offer follows the record, not only the
 // server's allowed answer.
 describe("EmployeeDrawer .7b visual QA fixes", () => {
-  const mainDining = "11000000-0000-4000-8000-000000000001";
   const patio = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false, removable: false };
 
   it("offers no invitation to somebody whose account is already linked", async () => {
