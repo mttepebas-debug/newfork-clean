@@ -305,4 +305,54 @@ describe("ScheduleTopBar", () => {
     fireEvent.click(alphabeticalAfterSort);
     expect(onEmployeeSortModeChange).toHaveBeenCalledWith("alphabetical");
   });
+
+  it("keeps the Unassigned Shifts Row settings passive outside edit mode", () => {
+    const onToggleUnassignedShifts = vi.fn();
+    const onToggleUnassignedFrozen = vi.fn();
+    const { rerender } = renderTopBar({
+      unassignedRowSettingsDisabled: true,
+      onToggleUnassignedShifts,
+      onToggleUnassignedFrozen,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const showHide = screen.getByRole("button", {
+      name: "Hide Unassigned Shifts Row",
+    });
+    const freeze = screen.getByRole("button", {
+      name: /freeze Unassigned Shifts Row/i,
+    });
+    expect(showHide).toHaveProperty("disabled", true);
+    expect(freeze).toHaveProperty("disabled", true);
+    fireEvent.click(showHide);
+    fireEvent.click(freeze);
+    expect(onToggleUnassignedShifts).not.toHaveBeenCalled();
+    expect(onToggleUnassignedFrozen).not.toHaveBeenCalled();
+
+    rerender(
+      <MemoryRouter>
+        <ScheduleTopBar
+          {...buildTopBarProps({
+            unassignedRowSettingsDisabled: false,
+            onToggleUnassignedShifts,
+            onToggleUnassignedFrozen,
+          })}
+        />
+      </MemoryRouter>,
+    );
+    if (!screen.queryByRole("button", { name: "Hide Unassigned Shifts Row" })) {
+      fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    }
+    fireEvent.click(
+      screen.getByRole("button", { name: "Hide Unassigned Shifts Row" }),
+    );
+    if (!screen.queryByRole("button", { name: /freeze Unassigned Shifts Row/i })) {
+      fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    }
+    fireEvent.click(
+      screen.getByRole("button", { name: /freeze Unassigned Shifts Row/i }),
+    );
+    expect(onToggleUnassignedShifts).toHaveBeenCalledTimes(1);
+    expect(onToggleUnassignedFrozen).toHaveBeenCalledTimes(1);
+  });
 });

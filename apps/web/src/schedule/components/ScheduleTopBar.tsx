@@ -56,6 +56,8 @@ interface ScheduleTopBarProps {
   readonly onToggleUnassignedShifts?: () => void;
   readonly unassignedFrozen?: boolean;
   readonly onToggleUnassignedFrozen?: () => void;
+  /** The Unassigned Shifts Row can only be hidden or frozen while editing. */
+  readonly unassignedRowSettingsDisabled?: boolean;
   readonly dropdownDismissSignal?: number;
   readonly onDropdownOpenChange?: (open: boolean) => void;
   readonly showShiftType: boolean;
@@ -112,6 +114,7 @@ export function ScheduleTopBar({
   onToggleUnassignedShifts,
   unassignedFrozen,
   onToggleUnassignedFrozen,
+  unassignedRowSettingsDisabled = false,
   dropdownDismissSignal,
   onDropdownOpenChange,
   showShiftType,
@@ -302,6 +305,7 @@ export function ScheduleTopBar({
               onToggleRoleSeparators={onToggleRoleSeparators}
               onToggleUnassignedShifts={onToggleUnassignedShifts}
               onToggleUnassignedFrozen={onToggleUnassignedFrozen}
+              unassignedRowSettingsDisabled={unassignedRowSettingsDisabled}
               onToggleUseDefaultTimesForScheduling={
                 onToggleUseDefaultTimesForScheduling
               }
@@ -547,6 +551,7 @@ function SettingsMenuPanel({
   onToggleRoleSeparators,
   onToggleUnassignedShifts,
   onToggleUnassignedFrozen,
+  unassignedRowSettingsDisabled,
   onToggleUseDefaultTimesForScheduling,
 }: {
   readonly employeeSortMode: ScheduleEmployeeSortMode;
@@ -568,6 +573,7 @@ function SettingsMenuPanel({
   readonly onToggleRoleSeparators: () => void;
   readonly onToggleUnassignedShifts?: () => void;
   readonly onToggleUnassignedFrozen?: () => void;
+  readonly unassignedRowSettingsDisabled: boolean;
   readonly onToggleUseDefaultTimesForScheduling?: () => void;
 }) {
   return (
@@ -635,6 +641,7 @@ function SettingsMenuPanel({
           icon={showUnassignedShifts ? <Eye size={15} /> : <EyeOff size={15} />}
           label={showHideLabel(Boolean(showUnassignedShifts), "Unassigned Shifts Row")}
           onClick={onToggleUnassignedShifts}
+          disabled={unassignedRowSettingsDisabled}
         />
       ) : null}
       {onToggleUnassignedFrozen ? (
@@ -652,6 +659,7 @@ function SettingsMenuPanel({
           }
           label={`${unassignedFrozen ? "Unfreeze" : "Freeze"} Unassigned Shifts Row`}
           onClick={onToggleUnassignedFrozen}
+          disabled={unassignedRowSettingsDisabled}
         />
       ) : null}
       {onToggleUseDefaultTimesForScheduling ? (
