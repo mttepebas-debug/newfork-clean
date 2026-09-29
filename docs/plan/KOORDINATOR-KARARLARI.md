@@ -256,3 +256,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** KK-32 D1 (yönetici to-do yazmaya devam eder, ikiz kapı kalkar); en küçük çekirdek değişikliği; `nf-db` önerisi.
 - **Geri alma:** kolay (tek satır); çekirdek eylem başına kapsam desteği kazanırsa satır `write`'a döner.
 - **Durum:** uygulanıyor (T5b-4).
+
+### KK-35 (2026-09-30) FB-6.2 `.7b`'nin dört sorusu: okuma migration'ı nf-db'den, özel alan sunucu cevabından, hub `can()` ile
+- **S1 (a) + S2 (a):** `nf-db` tek bir yalnız-okuma migration'ı yazar (çekirdek üzerinden): `get_employee_detail_service` cevabına `managed_locations: [{id, name}]`, `locations[]` içine `removable` (çekirdek, o lokasyonla `employee.remove_from_location`), `allowed`'a `set_managed_locations`, `invite`, `onboarding_review`; liste servisine yönetilen lokasyon adları ("Manages" etiketi için). Mevcut listeyi göstermeyen editör, var olan "yalnız yönetir" lokasyonlarını sildirir; lokasyon bazlı çıkarma kuralını web türetemez (iki kaynak). `nf-backend` API/web'i bu biçime bağlar; iki dal aynı toplu turda main'e girer.
+- **S3 (a):** `employees.private.read` için çekirdeğe yeni eylem yazılmaz; sunucu yetkisizde `private_contact`'ı zaten null döndürüyor, web ona bakar. Öteki dört `permissions.includes` `allowed`'dan (S2 a).
+- **S4 (a):** `employee-hub/*` rotası `can(employee_hub.read)` ile açılır, rol listesi kalkar; çalışan kaydı olmayan kişi hub'da erişim-yok kartı + "Back to workspace" görür. Bağlama `has_employee_record` eklenmez. Menü öğesi `.8`'de.
+- **Dayanak:** CLAUDE.md §9 (ikiz sistem ve route-yerel kapı yok, sunucu tek kaynak); en küçük çekirdek değişikliği; `nf-backend` önerileri.
+- **Bedel:** shared `employeeDetailSchema`'ya yeni zorunlu anahtarlar → canlı DB'nin geride kalması (BL-405) bir migration daha büyür.
+- **Geri alma:** orta (okuma projeksiyonu + şema); S3/S4 kolay.
+- **Durum:** uygulanıyor (`.7b` + `.7b-db`).
