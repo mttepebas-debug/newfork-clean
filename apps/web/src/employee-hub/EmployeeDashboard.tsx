@@ -21,15 +21,14 @@ import {
   formatTime,
   formatTimeRange,
 } from "../schedule/lib/scheduleDateTime";
+import { dateInZone, validZone } from "../lib/today";
 import {
-  dateInZone,
   greeting,
   nextShift,
   shiftDate,
   shiftInstant,
   shiftState,
   shiftZone,
-  validZone,
 } from "./dashboard-model";
 import { CardHeading } from "./DashboardPrimitives";
 import {

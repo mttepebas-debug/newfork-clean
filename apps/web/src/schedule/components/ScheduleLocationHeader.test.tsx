@@ -75,6 +75,33 @@ describe("ScheduleLocationHeader", () => {
     expect(screen.queryByText("Published")).toBeNull();
   });
 
+  // BL-277: Sunday 11 pm in Los Angeles is Monday in UTC. A week starting
+  // Wednesday is three days out there, so no publish warning yet.
+  it("counts the days to the week in the location's own time zone", () => {
+    vi.useFakeTimers({ now: new Date("2026-10-05T06:00:00Z"), toFake: ["Date"] });
+    try {
+      render(
+        <ScheduleLocationHeader
+          location={{
+            ...unifiedLocation,
+            id: "loc-1",
+            name: "Main Dining",
+            timezone: "America/Los_Angeles",
+            sourceIds: ["loc-1"],
+            sourceNames: [{ id: "loc-1", name: "Main Dining" }],
+          }}
+          locationIndex={0}
+          daysLength={7}
+          weekStartDate="2026-10-07"
+          onToggleLocationFilter={vi.fn()}
+        />,
+      );
+      expect(screen.getByLabelText("Unpublished").dataset.deadline).toBe("false");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("warns unpublished headers when the schedule week is about to start", () => {
     render(
       <ScheduleLocationHeader

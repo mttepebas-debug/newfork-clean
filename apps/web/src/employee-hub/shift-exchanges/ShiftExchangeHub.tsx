@@ -1,3 +1,4 @@
+import { todayIn } from "../../lib/today";
 import { CatalogDrawer } from "../../settings/CatalogDrawer";
 import type {
   ExchangeApplication,
@@ -272,7 +273,7 @@ export function ShiftExchangeHub({
   const [online, setOnline] = useState(navigator.onLine);
   const detailRef = useRef<HTMLElement>(null);
   const { mutation, notice, setNotice } = useExchangeAction(workspaceId);
-  const from = params.get("from") ?? new Date().toISOString().slice(0, 10);
+  const from = params.get("from") ?? todayIn();
   const to = params.get("to") ?? addDays(from, 42);
   const focusedCase = params.get("case") ?? undefined;
   const query = useQuery({

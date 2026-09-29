@@ -1,3 +1,4 @@
+import { todayIn } from "../../lib/today";
 import type { KeyboardEvent, MouseEvent } from "react";
 
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
@@ -11,7 +12,8 @@ export function ScheduleLocationHeader({
   locationIndex,
   daysLength,
   weekStartDate,
-  currentDate = todayIso(),
+  // A group of several locations has no zone of its own: the device's calendar.
+  currentDate = todayIn(location.timezone),
   onToggleLocationFilter,
 }: {
   readonly location: ScheduleGridLocationGroup;
@@ -134,10 +136,6 @@ function getUnpublishedStatusLabel(
 
 function daysUntilWeekStart(weekStartDate: string, today: string): number {
   return Math.ceil((toUtcDay(weekStartDate) - toUtcDay(today)) / MS_PER_DAY);
-}
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function toUtcDay(iso: string): number {
