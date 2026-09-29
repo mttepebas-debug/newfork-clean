@@ -6,12 +6,17 @@ import {
 import { Button, ConfirmButton } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
   listOwnEmploymentRecords,
-  listWorkspaceIdentities,
   removeAccountAvatar,
   supabaseClient,
   uploadAccountAvatar,
@@ -33,7 +38,22 @@ import { useAvailabilityNavigationGuard } from "../availability/availability-nav
 import { AvatarCropDialog } from "./AvatarCropDialog";
 import { validateAvatarFile } from "./avatar-crop";
 import { AccountAvatar } from "./AccountAvatar";
-import { roleLabel } from "../shell/prebiz/PreBiz";
+
+/**
+ * What the page's one Save needs from each legal name form. The legal name is
+ * written per owned workspace and the rest of the profile to the account, so
+ * the forms keep their own draft and report it up instead of saving alone.
+ */
+type LegalNameHandle = {
+  readonly dirty: boolean;
+  readonly ready: boolean;
+  readonly save: () => Promise<void>;
+  readonly reset: () => void;
+};
+type RegisterLegalName = (
+  workspaceId: string,
+  handle: LegalNameHandle | null,
+) => void;
 
 export default function ProfilePage() {
   const { account, updateAccount } = useAuth();
@@ -48,6 +68,37 @@ export default function ProfilePage() {
   const [dirty, setDirty] = useState(false);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [draftFile, setDraftFile] = useState<File | null>(null);
+  const legalForms = useRef(new Map<string, LegalNameHandle>());
+  const [legalState, setLegalState] = useState<
+    Record<string, { readonly dirty: boolean; readonly ready: boolean }>
+  >({});
+  const registerLegalName = useCallback<RegisterLegalName>(
+    (workspaceId, handle) => {
+      if (handle) legalForms.current.set(workspaceId, handle);
+      else legalForms.current.delete(workspaceId);
+      setLegalState((current) => {
+        const before = current[workspaceId];
+        if (
+          handle &&
+          before?.dirty === handle.dirty &&
+          before.ready === handle.ready
+        )
+          return current;
+        if (!handle && !before) return current;
+        const next = { ...current };
+        if (handle) next[workspaceId] = { dirty: handle.dirty, ready: handle.ready };
+        else delete next[workspaceId];
+        return next;
+      });
+    },
+    [],
+  );
+  const legalDirty = Object.values(legalState).some((form) => form.dirty);
+  const legalReady = Object.values(legalState).every(
+    (form) => !form.dirty || form.ready,
+  );
+  const formDirty = dirty || legalDirty;
+
   useEffect(() => {
     if (!draftFile) return;
     const url = URL.createObjectURL(draftFile);
@@ -64,7 +115,7 @@ export default function ProfilePage() {
   }, [account, dirty]);
 
   const navigationDialog = useAvailabilityNavigationGuard({
-    dirty, busy: saving || Boolean(cropFile), onDiscard: () => discard(),
+    dirty: formDirty, busy: saving || Boolean(cropFile), onDiscard: () => discard(),
     labels: { saving: "Saving profile", discard: "Discard profile changes?", saved: "Profile saved",
       unsaved: "Your unsaved profile changes will be lost." },
   });
@@ -89,16 +140,14 @@ export default function ProfilePage() {
     setPhone(account.phone ?? "");
     setAvatarObjectPath(account.avatarObjectPath);
     setAvatarUrl(account.avatarUrl);
+    for (const form of legalForms.current.values()) form.reset();
     setDirty(false);
     setSaved(false);
     setError(null);
   };
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSaving(true);
-    setSaved(false);
-    setError(null);
+  /** Saves the account part; returns what went wrong, or null. */
+  const saveProfile = async (): Promise<string | null> => {
     let profileSaved = false;
     try {
       const normalizedPhone = normalizeAccountPhone(phone);
@@ -116,18 +165,39 @@ export default function ProfilePage() {
       setAvatarObjectPath(nextAvatar.avatarObjectPath);
       setAvatarUrl(nextAvatar.avatarUrl);
       setDirty(false);
-      setSaved(true);
       if (supabaseClient && previousAvatarPath && previousAvatarPath !== nextAvatar.avatarObjectPath) {
         await removeAccountAvatar(supabaseClient, account.userId, previousAvatarPath);
       }
+      return null;
     } catch (saveError: unknown) {
       // A failed save response may follow a committed profile write. Do not
       // delete the new object on that ambiguous outcome and break its reference.
-      setError(profileSaved ? "Profile saved, but the previous photo could not be removed."
-        : saveError instanceof Error ? saveError.message : "Profile could not be saved");
-    } finally {
-      setSaving(false);
+      return profileSaved ? "Profile saved, but the previous photo could not be removed."
+        : saveError instanceof Error ? saveError.message : "Profile could not be saved";
     }
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    const failures: string[] = [];
+    if (dirty) {
+      const failure = await saveProfile();
+      if (failure) failures.push(failure);
+    }
+    for (const form of legalForms.current.values()) {
+      if (!form.dirty) continue;
+      try {
+        await form.save();
+      } catch (legalError: unknown) {
+        failures.push(legalNameErrorMessage(legalError));
+      }
+    }
+    if (failures.length > 0) setError(failures.join(" "));
+    else setSaved(true);
+    setSaving(false);
   };
 
   const selectAvatar = (file: File | undefined) => {
@@ -156,98 +226,97 @@ export default function ProfilePage() {
       <AccountPageHeader
         title="Profile"
         titleId="profile-title"
-        description="Your personal details, and the record each workspace keeps of you."
+        description="Your name, photo and phone, and who to call in an emergency."
       />
-      <form className="account-section-block" aria-labelledby="account-details-title" onSubmit={submit}>
-        <div className="account-section-copy">
-          <h2 id="account-details-title">Personal details</h2>
-          <p>Your photo, display name and phone number follow you into every workspace. Changing them does not rewrite an existing employee legal name.</p>
-        </div>
-        <div className="account-section-body">
-          <div className="account-avatar-row">
-            <AccountAvatar globalUrl={avatarUrl} className="account-avatar-large" name={displayName} />
-            <div className="account-avatar-controls">
-              <div className="account-button-row">
-                <Button id="profile-photo-upload-trigger" type="button" disabled={saving} onClick={() => fileInput.current?.click()}>
-                  <Camera size={15} aria-hidden /> {avatarUrl ? "Replace" : "Upload"}
-                </Button>
-                <ConfirmButton
-                  className="danger-button"
-                  disabled={saving || (!avatarObjectPath && !draftFile)}
-                  confirmLabel="Confirm remove"
-                  onConfirm={() => {
-                    setDraftFile(null);
-                    setAvatarObjectPath(null);
-                    setAvatarUrl(null);
-                    markDirty();
-                  }}
-                >
-                  <Trash2 size={15} aria-hidden /> Remove
-                </ConfirmButton>
-              </div>
-              <span className="field-help">Profile photo · JPG, PNG or WebP · up to 5 MB</span>
-            </div>
-            <input
-              ref={fileInput}
-              className="visually-hidden"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              aria-label="Choose profile photo"
-              disabled={saving}
-              onChange={(event) => selectAvatar(event.target.files?.[0])}
-            />
-          </div>
-          <div className="account-field-grid">
-            <label className="account-field" htmlFor="account-display-name">
-              <span>Display name</span>
-              <input
-                id="account-display-name"
-                aria-label="Display name"
-                value={displayName}
-                maxLength={100}
-                onChange={(event) => {
-                  setDisplayName(event.target.value);
-                  markDirty();
-                }}
-                required
-              />
-            </label>
-            <label className="account-field" htmlFor="account-phone-number">
-              <span>
-                Phone number<span className="field-optional">optional</span>
-              </span>
-              {/* Without a leading +, the number is read as a US/Canada number. */}
-              <input
-                id="account-phone-number"
-                aria-label="Phone number"
-                type="tel"
-                value={phone}
-                maxLength={30}
-                onChange={(event) => {
-                  setPhone(event.target.value);
-                  markDirty();
-                }}
-                placeholder="415 555 0142"
-              />
-              <small>Outside the US or Canada, start with + and the country code.</small>
-            </label>
-          </div>
-          {error ? <p className="form-error" role="alert">{error}</p> : null}
-          {saved ? <p className="form-success" role="status">Profile saved</p> : null}
-          <div className="account-form-actions">
-            {dirty ? (
-              <Button type="button" className="secondary-button" disabled={saving} onClick={() => void discard()}>
-                Discard
+      <form className="account-profile-form" aria-label="Personal details" onSubmit={submit}>
+        <div className="account-profile-head">
+          <AccountAvatar globalUrl={avatarUrl} className="account-avatar-large" name={displayName} />
+          <div className="account-profile-identity">
+            <strong>{displayName.trim() || account.displayName}</strong>
+            <span>{account.email}</span>
+            <div className="account-photo-actions">
+              <Button id="profile-photo-upload-trigger" type="button" disabled={saving} onClick={() => fileInput.current?.click()}>
+                <Camera size={15} aria-hidden /> {avatarUrl ? "Replace" : "Upload"}
               </Button>
-            ) : null}
-            <Button type="submit" disabled={!dirty || saving || !displayName.trim()}>
-              {saving ? "Saving" : "Save changes"}
-            </Button>
+              {avatarObjectPath || draftFile ? <ConfirmButton
+                className="danger-button"
+                disabled={saving}
+                confirmLabel="Confirm remove"
+                onConfirm={() => {
+                  setDraftFile(null);
+                  setAvatarObjectPath(null);
+                  setAvatarUrl(null);
+                  markDirty();
+                }}
+              >
+                <Trash2 size={15} aria-hidden /> Remove
+              </ConfirmButton> : null}
+              <span className="field-help">JPG, PNG or WebP · up to 5 MB</span>
+            </div>
           </div>
+          <input
+            ref={fileInput}
+            className="visually-hidden"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            aria-label="Choose profile photo"
+            disabled={saving}
+            onChange={(event) => selectAvatar(event.target.files?.[0])}
+          />
+        </div>
+
+        <OwnerLegalNames register={registerLegalName} onEdit={() => setSaved(false)} />
+
+        <div className="account-field-grid account-profile-grid">
+          <label className="account-field" htmlFor="account-display-name">
+            <span>Preferred name</span>
+            <input
+              id="account-display-name"
+              aria-label="Preferred name"
+              value={displayName}
+              maxLength={100}
+              onChange={(event) => {
+                setDisplayName(event.target.value);
+                markDirty();
+              }}
+              required
+            />
+            <small>What people see across Newfork.</small>
+          </label>
+          <label className="account-field account-field-span-2" htmlFor="account-phone-number">
+            <span>
+              Phone number<span className="field-optional">optional</span>
+            </span>
+            {/* Without a leading +, the number is read as a US/Canada number. */}
+            <input
+              id="account-phone-number"
+              aria-label="Phone number"
+              type="tel"
+              value={phone}
+              maxLength={30}
+              onChange={(event) => {
+                setPhone(event.target.value);
+                markDirty();
+              }}
+              placeholder="415 555 0142"
+            />
+            <small>Outside the US or Canada, start with + and the country code.</small>
+          </label>
+        </div>
+
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        {saved ? <p className="form-success" role="status">Profile saved</p> : null}
+        <div className="account-form-actions">
+          {formDirty ? (
+            <Button type="button" className="secondary-button" disabled={saving} onClick={() => void discard()}>
+              Discard
+            </Button>
+          ) : null}
+          <Button type="submit" disabled={!formDirty || saving || !displayName.trim() || !legalReady}>
+            {saving ? "Saving" : "Save changes"}
+          </Button>
         </div>
       </form>
-      <OwnerLegalNames />
-      <WorkspaceIdentities />
       <EmploymentContacts />
     </section>
   );
@@ -258,31 +327,35 @@ export default function ProfilePage() {
  * signatures read. Given at the first step of setup; changed here, and each
  * change goes to the audit log. Shown only where this account is the owner.
  */
-function OwnerLegalNames() {
+function OwnerLegalNames({
+  register,
+  onEdit,
+}: {
+  readonly register: RegisterLegalName;
+  readonly onEdit: () => void;
+}) {
   const workspaces = useAccountWorkspaces();
   const owned = ownedWorkspaces(workspaces.data);
   if (owned.length === 0) return null;
 
   return (
-    <section className="account-section-block" aria-labelledby="account-legal-name-title">
-      <div className="account-section-copy">
-        <h2 id="account-legal-name-title">Legal name</h2>
-        <p>
-          The name as it appears on your ID. Documents and signatures use it;
-          every change is recorded.
-        </p>
-      </div>
-      <div className="account-section-body">
-        {owned.map((workspace) => (
-          <OwnerLegalNameBlock
-            key={workspace.id}
-            workspaceId={workspace.id}
-            workspaceName={workspace.name}
-            showName={owned.length > 1}
-          />
-        ))}
-      </div>
-    </section>
+    <fieldset className="account-fieldset">
+      <legend>Legal name</legend>
+      <p className="account-fieldset-hint">
+        As it appears on your ID. Documents and signatures use it; every change
+        is recorded.
+      </p>
+      {owned.map((workspace) => (
+        <OwnerLegalNameBlock
+          key={workspace.id}
+          workspaceId={workspace.id}
+          workspaceName={workspace.name}
+          showName={owned.length > 1}
+          register={register}
+          onEdit={onEdit}
+        />
+      ))}
+    </fieldset>
   );
 }
 
@@ -290,13 +363,17 @@ function OwnerLegalNameBlock({
   workspaceId,
   workspaceName,
   showName,
+  register,
+  onEdit,
 }: {
   readonly workspaceId: string;
   readonly workspaceName: string;
   readonly showName: boolean;
+  readonly register: RegisterLegalName;
+  readonly onEdit: () => void;
 }) {
   const legalName = useOwnLegalName(workspaceId);
-  // Kept above the form, which starts over when the saved name comes back.
+  // Kept above the fields, which start over when the saved name comes back.
   const save = useSaveOwnLegalName(workspaceId);
   if (legalName.isPending) return null;
   // A failed read is not a failed save: the save wording would send the owner
@@ -308,27 +385,33 @@ function OwnerLegalNameBlock({
       </p>
     );
   return (
-    <OwnerLegalNameForm
-      // A saved name comes back from the server and starts a clean form.
+    <OwnerLegalNameFields
+      // A saved name comes back from the server and starts a clean draft.
       key={JSON.stringify(legalName.data)}
       workspaceId={workspaceId}
       workspaceName={showName ? workspaceName : null}
       initial={legalName.data ?? { firstName: "", middleName: "", lastName: "" }}
-      save={save}
+      saveName={save.mutateAsync}
+      register={register}
+      onEdit={onEdit}
     />
   );
 }
 
-function OwnerLegalNameForm({
+function OwnerLegalNameFields({
   workspaceId,
   workspaceName,
   initial,
-  save,
+  saveName,
+  register,
+  onEdit,
 }: {
   readonly workspaceId: string;
   readonly workspaceName: string | null;
   readonly initial: OwnerLegalName;
-  readonly save: ReturnType<typeof useSaveOwnLegalName>;
+  readonly saveName: (name: OwnerLegalName) => Promise<void>;
+  readonly register: RegisterLegalName;
+  readonly onEdit: () => void;
 }) {
   const [draft, setDraft] = useState(initial);
   const dirty =
@@ -336,6 +419,22 @@ function OwnerLegalNameForm({
     draft.middleName !== initial.middleName ||
     draft.lastName !== initial.lastName;
   const ready = draft.firstName.trim() !== "" && draft.lastName.trim() !== "";
+
+  useEffect(() => {
+    register(workspaceId, {
+      dirty,
+      ready,
+      save: () =>
+        saveName({
+          firstName: draft.firstName.trim(),
+          middleName: draft.middleName.trim(),
+          lastName: draft.lastName.trim(),
+        }),
+      reset: () => setDraft(initial),
+    });
+  }, [dirty, draft, initial, ready, register, saveName, workspaceId]);
+  useEffect(() => () => register(workspaceId, null), [register, workspaceId]);
+
   const field = (suffix: string) => `legal-name-${workspaceId}-${suffix}`;
   const input = (part: keyof OwnerLegalName, label: string, suffix: string) => (
     <label className="account-field" htmlFor={field(suffix)}>
@@ -350,9 +449,11 @@ function OwnerLegalNameForm({
         aria-label={`Legal ${label.toLowerCase()}`}
         value={draft[part]}
         maxLength={80}
-        required={part !== "middleName"}
+        // Only asked for once this name is being changed: an untouched empty
+        // one must not stop the rest of the profile from saving.
+        required={part !== "middleName" && dirty}
         onChange={(event) => {
-          save.reset();
+          onEdit();
           setDraft({ ...draft, [part]: event.target.value });
         }}
       />
@@ -360,84 +461,14 @@ function OwnerLegalNameForm({
   );
 
   return (
-    <form
-      className="account-employment-record"
-      onSubmit={(event) => {
-        event.preventDefault();
-        save.mutate({
-          firstName: draft.firstName.trim(),
-          middleName: draft.middleName.trim(),
-          lastName: draft.lastName.trim(),
-        });
-      }}
-    >
+    <div className="account-legal-name">
       {workspaceName ? <strong>{workspaceName}</strong> : null}
       <div className="account-field-grid account-legal-name-grid">
         {input("firstName", "First name", "first")}
         {input("middleName", "Middle name", "middle")}
         {input("lastName", "Last name", "last")}
       </div>
-      {save.isError ? (
-        <p className="form-error" role="alert">
-          {legalNameErrorMessage(save.error)}
-        </p>
-      ) : null}
-      {save.isSuccess ? (
-        <p className="form-success" role="status">
-          Legal name saved
-        </p>
-      ) : null}
-      <div className="account-button-row">
-        <Button type="submit" disabled={save.isPending || !dirty || !ready}>
-          {save.isPending ? "Saving" : "Save legal name"}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-/**
- * The account is one thing; each workspace keeps its own record of the person.
- * Editing the name above changes what teammates see; it does not touch the name
- * a workspace files them under, and until now nothing said so.
- */
-function WorkspaceIdentities() {
-  const identities = useQuery({
-    queryKey: ["account-workspace-identities"],
-    queryFn: () =>
-      supabaseClient ? listWorkspaceIdentities(supabaseClient) : [],
-  });
-
-  if (identities.isLoading || (identities.data ?? []).length === 0) return null;
-
-  return (
-    <section className="account-section-block" aria-labelledby="account-identities-title">
-      <div className="account-section-copy">
-        <h2 id="account-identities-title">How you appear in each workspace</h2>
-        <p>
-          Your account is yours. Each workspace keeps its own record of you, and
-          a manager there can correct it.
-        </p>
-      </div>
-      <div className="account-section-body">
-        <ul className="account-identity-list">
-          {(identities.data ?? []).map((identity) => (
-            <li key={identity.workspaceId}>
-              <span className="account-identity-where">
-                <strong>{identity.workspaceName}</strong>
-                <span>{roleLabel[identity.role]}</span>
-              </span>
-              <span className="account-identity-who">
-                {identity.employeeName ?? "No record yet"}
-                {identity.employeeCode ? (
-                  <small>{identity.employeeCode}</small>
-                ) : null}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
+    </div>
   );
 }
 
@@ -468,12 +499,8 @@ function EmploymentContacts() {
       aria-labelledby="account-employment-title"
     >
       <div className="account-section-copy">
-        <h2 id="account-employment-title">Who to reach</h2>
-        <p>
-          Kept by each workspace separately, and yours to correct. A preferred
-          name is what people there call you; the name on documents and
-          signatures stays the one the workspace has on file.
-        </p>
+        <h2 id="account-employment-title">Emergency contact</h2>
+        <p>Kept by each workspace separately, and yours to correct.</p>
       </div>
       <div className="account-section-body">
         {(records.data ?? []).map((record) =>
@@ -601,20 +628,18 @@ function EmploymentContactForm({
       }}
     >
       <strong>{record.workspaceName}</strong>
-      <div className="account-field-grid">
+      <div className="account-field-grid account-contact-grid">
         <label className="account-field" htmlFor={field("preferred")}>
-          <span>Preferred name</span>
+          <span>
+            Name used here<span className="field-optional">optional</span>
+          </span>
           <input
             id={field("preferred")}
             value={preferred}
             maxLength={80}
             onChange={(event) => setPreferred(event.target.value)}
-            placeholder="Optional"
           />
-          <small>
-            What people here call you. Documents and signatures use the name on
-            file.
-          </small>
+          <small>This workspace may need to approve it.</small>
         </label>
         <label className="account-field" htmlFor={field("own-phone")}>
           <span>Your phone number</span>
@@ -626,8 +651,10 @@ function EmploymentContactForm({
             placeholder="415 555 0142"
           />
         </label>
+      </div>
+      <div className="account-field-grid account-contact-grid">
         <label className="account-field" htmlFor={field("contact-name")}>
-          <span>Emergency contact</span>
+          <span>Contact name</span>
           <input
             id={field("contact-name")}
             value={name}
@@ -647,7 +674,7 @@ function EmploymentContactForm({
           />
         </label>
         <label className="account-field" htmlFor={field("contact-phone")}>
-          <span>Emergency phone</span>
+          <span>Contact phone</span>
           <input
             id={field("contact-phone")}
             value={contactPhone}

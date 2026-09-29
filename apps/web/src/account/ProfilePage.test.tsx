@@ -8,7 +8,6 @@ import {
   getOwnLegalName,
   listAccountWorkspaces,
   listOwnEmploymentRecords,
-  listWorkspaceIdentities,
   saveOwnLegalName,
 } from "../lib/supabase";
 import { RequestError } from "../lib/request-error";
@@ -35,7 +34,6 @@ vi.mock("../lib/supabase", () => ({
   supabaseClient: {},
   uploadAccountAvatar: vi.fn(),
   removeAccountAvatar: vi.fn(async () => undefined),
-  listWorkspaceIdentities: vi.fn(async () => []),
   listAccountWorkspaces: vi.fn(async () => []),
   listOwnEmploymentRecords: vi.fn(async () => []),
   getOwnLegalName: vi.fn(async () => null),
@@ -73,15 +71,15 @@ function renderProfile() {
 describe("ProfilePage", () => {
   it("keeps the draft on Stay and leaves only after explicit discard", async () => {
     renderProfile();
-    fireEvent.change(screen.getByLabelText("Display name"), { target: { value: "Unsaved name" } });
+    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Unsaved name" } });
     const navigate = vi.fn();
     act(() => requestAvailabilityNavigation(navigate));
     fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
-    expect(screen.getByLabelText("Display name")).toHaveProperty("value", "Unsaved name");
+    expect(screen.getByLabelText("Preferred name")).toHaveProperty("value", "Unsaved name");
     expect(navigate).not.toHaveBeenCalled();
     act(() => requestAvailabilityNavigation(navigate));
     fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
-    await waitFor(() => expect(screen.getByLabelText("Display name")).toHaveProperty("value", "Owner User"));
+    await waitFor(() => expect(screen.getByLabelText("Preferred name")).toHaveProperty("value", "Owner User"));
     expect(navigate).toHaveBeenCalledOnce();
     expect(updateAccount).not.toHaveBeenCalled();
   });
@@ -109,7 +107,7 @@ describe("ProfilePage", () => {
     expect(screen.queryByLabelText("Email address")).toBeNull();
     const submitButton = screen.getByRole("button", { name: "Save changes" });
     expect(submitButton).toHaveProperty("disabled", true);
-    fireEvent.change(screen.getByLabelText("Display name"), {
+    fireEvent.change(screen.getByLabelText("Preferred name"), {
       target: { value: "Owner Updated" },
     });
     fireEvent.click(submitButton);
@@ -203,47 +201,6 @@ describe("ProfilePage", () => {
     expect(removeAccountAvatar).not.toHaveBeenCalled();
   });
 
-  // The account is global and each workspace keeps its own record of the person.
-  // Nothing on screen said so, so editing the name above looked like it changed
-  // what a workspace has on file.
-  it("shows the record each workspace keeps beside the account's own name", async () => {
-    vi.mocked(listWorkspaceIdentities).mockResolvedValue([
-      {
-        workspaceId: "51000000-0000-4000-8000-000000000001",
-        workspaceName: "Meyhouse",
-        role: "owner",
-        employeeName: "Mert Tepebas",
-        employeeCode: "E-0001",
-      },
-      {
-        workspaceId: "51000000-0000-4000-8000-000000000002",
-        workspaceName: "Ridgeline",
-        role: "employee",
-        employeeName: null,
-        employeeCode: null,
-      },
-    ]);
-    renderProfile();
-
-    expect(
-      await screen.findByRole("heading", {
-        name: "How you appear in each workspace",
-      }),
-    ).toBeTruthy();
-    expect(screen.getByText("Mert Tepebas")).toBeTruthy();
-    expect(screen.getByText("E-0001")).toBeTruthy();
-    expect(screen.getByText("No record yet")).toBeTruthy();
-    expect(screen.getByText("Employee")).toBeTruthy();
-  });
-
-  it("says nothing at all when the account belongs nowhere", async () => {
-    vi.mocked(listWorkspaceIdentities).mockResolvedValue([]);
-    renderProfile();
-
-    await screen.findByLabelText("Display name");
-    expect(screen.queryByText("How you appear in each workspace")).toBeNull();
-  });
-
   it("does not overwrite unsaved profile edits during account refresh", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -256,7 +213,7 @@ describe("ProfilePage", () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.change(screen.getByLabelText("Display name"), {
+    fireEvent.change(screen.getByLabelText("Preferred name"), {
       target: { value: "Draft Owner" },
     });
     account = { ...account, displayName: "Server Owner" };
@@ -268,7 +225,7 @@ describe("ProfilePage", () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByLabelText("Display name")).toHaveProperty(
+    expect(screen.getByLabelText("Preferred name")).toHaveProperty(
       "value",
       "Draft Owner",
     );
@@ -287,7 +244,7 @@ describe("ProfilePage", () => {
     const first = await screen.findByLabelText("Legal first name");
     await waitFor(() => expect(first).toHaveProperty("value", "Mert"));
     expect(getOwnLegalName).toHaveBeenCalledWith(expect.anything(), ownedWorkspaceId);
-    const save = screen.getByRole("button", { name: "Save legal name" });
+    const save = screen.getByRole("button", { name: "Save changes" });
     expect(save).toHaveProperty("disabled", true);
     fireEvent.change(screen.getByLabelText("Legal middle name"), {
       target: { value: "Ali" },
@@ -301,7 +258,9 @@ describe("ProfilePage", () => {
         lastName: "Tepebas",
       }),
     );
-    expect(await screen.findByText("Legal name saved")).toBeTruthy();
+    expect(await screen.findByText("Profile saved")).toBeTruthy();
+    // One Save covers both, and only what changed is written.
+    expect(updateAccount).not.toHaveBeenCalled();
   });
 
   it("does not show a legal name to somebody who owns nothing", async () => {
@@ -328,7 +287,7 @@ describe("ProfilePage", () => {
     const last = await screen.findByLabelText("Legal last name");
     await waitFor(() => expect(last).toHaveProperty("value", "Tepebas"));
     fireEvent.change(last, { target: { value: "Tepebaş" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save legal name" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Only the owner can change this legal name.",
@@ -357,7 +316,7 @@ describe("ProfilePage", () => {
         "Finish setting up your account here, then you can add your phone number and emergency contact.",
       ),
     ).toBeTruthy();
-    expect(screen.queryByLabelText("Emergency contact")).toBeNull();
+    expect(screen.queryByLabelText("Contact name")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Continue setup for Meyhouse" }));
     expect(await screen.findByText("Setup screen")).toBeTruthy();
   });
