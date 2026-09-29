@@ -31,10 +31,11 @@ Kontrol (son commit sonrası): odaklı vitest — DraftDropdownMenu 17/17, SaveD
 
 Gruplar: 1+2 aynı Escape işleyicisi; 1+3+5 aynı pencere; 4+5 aynı `refreshDrafts` akışı.
 
-## Koordinatöre sorulan, cevap bekleyen (2026-09-29, send_message)
-- **S1** BL-309 yeniden kapsam: (a) ölü "Saved by" dalı + ikizleri topla (önerilen) / (b) bayat kapat, ikizler backlog. Ek ürün sorusu: taslak sayacı (`DraftDropdownMenu.tsx:112`) yayın satırını sayıyor mu, saymalı mı.
-- **S2** BL-302/303/323 test yeri: (a) mantığı `schedule/lib/` altına küçük saf fonksiyonlara çıkar + test (liste dışı 2-3 dosya, önerilen) / (b) sayfada düzelt, kanıt e2e.
-- **S3** BL-306 yalnız davranış (ConfirmButton + simge), stil G14.
+## Koordinatör cevapları (2026-09-29, local_54c1c741)
+- **S1 → (a).** Yalnız ölü "Saved by" dalını sil; `publishedTitle`/`publishedMeta`/`updatedByLabel` ve `shortDate` ikizlerini tek yere topla (`formatShortDateTime`'ı kullan). Kaynak-taslak özelliğine dokunma (KK-10 düzeltme notunu koordinatör yazıyor). **Taslak sayacı (`DraftDropdownMenu.tsx:112`), KK-23:** yalnız düzenlenebilir taslakları sayar, yayın satırını saymaz; yayının kaynağı olan taslak hâlâ taslak olarak duruyorsa o bir taslak sayılır. Önce kırmızı test.
+- **S2 → (a).** `schedule/lib/` altında saf fonksiyonlar ve testleri: `scheduleGates.ts` (BL-302 koşulu), "sonuç hâlâ geçerli mi" yardımcısı (BL-323), BL-303 başarı sonrası adımı; `SchedulePage.tsx` onları çağırır. 2-3 yeni dosya onaylı.
+- **S3 → evet.** BL-306'da davranış (ConfirmButton "Confirm unpublish" + uyarı simgesi) G1'de, stil B görseli G14'te.
+- Push yok; bitince tek push. Bağlam %60'a yaklaşınca yine devir notu.
 
 ## Kalan kanıt
 Ekran görüntüsü alınmadı (masaüstü + telefon, `artifacts/nf-arayuz/g1/`, 5630/5631). Taslak ya da yayın akışı veri yazmadan gösterilemiyorsa `/dev/schedule-shift-design` yetmez; yerel Meyhouse'ta bu hafta taslak yok, taslak açmak veri yazmak demek — koordinatöre sorulmalı.
