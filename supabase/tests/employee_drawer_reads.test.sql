@@ -24,6 +24,10 @@ select tests.manages('d', 'selin', 'C');
 select tests.person('d', 'ayse', 'manager', array['B'], array['cook']);
 select tests.person('d', 'zeynep', 'admin', array['K'], array['server']);
 select tests.person('d', 'emre', 'employee', array['K', 'B'], array['cook']);
+-- Invited, not accepted yet: no account on the record and no private profile.
+select tests.person('d', 'pia', 'employee', array['B'], array['cook'], 'pending');
+select tests.person('d', 'ola', 'employee', array['B'], array['cook'], 'pending');
+update public.employee_profiles set archived_at = now() where id = tests.id('d:ola');
 select tests.world('dx');
 
 create function pg_temp.detail(reader text, person text) returns jsonb language sql as $$
@@ -87,16 +91,46 @@ select is(
   array['archive', 'change_role', 'invite', 'make_admin', 'onboarding_review', 'remove_access',
     'save', 'set_managed_locations', 'terminate'],
   'allowed answers the drawer''s nine record actions');
-select is(pg_temp.may(pg_temp.detail('owner', 'selin'), array['set_managed_locations', 'invite', 'onboarding_review']),
-  array[true, true, true], 'the owner may set where Selin manages, invite her and review her onboarding');
+select is(pg_temp.may(pg_temp.detail('owner', 'selin'), array['set_managed_locations', 'onboarding_review']),
+  array[true, true], 'the owner may set where Selin manages and review her onboarding');
 select is(pg_temp.may(pg_temp.detail('zeynep', 'selin'), array['set_managed_locations']),
   array[true], 'an admin may set where a manager manages');
 select is(pg_temp.may(pg_temp.detail('ayse', 'selin'), array['set_managed_locations', 'invite', 'onboarding_review']),
   array[false, false, false], 'a manager may do none of the three to a fellow manager');
 select is(pg_temp.may(pg_temp.detail('owner', 'emre'), array['set_managed_locations']),
   array[false], 'nobody sets managed locations for somebody who is not a manager');
+-- Invite answers as the command does (prepare_employee_invitation_service):
+-- only a live record with no account on it is invitable (7b QA finding 2).
+select is(pg_temp.may(pg_temp.detail('owner', 'pia'), array['invite']),
+  array[true], 'the owner may invite somebody who has no account yet');
+select is(pg_temp.may(pg_temp.detail('ayse', 'pia'), array['invite']),
+  array[true], 'a manager may invite an employee at their location who has no account yet');
+select is(pg_temp.may(pg_temp.detail('owner', 'selin'), array['invite']),
+  array[false], 'nobody invites somebody whose account is already linked');
 select is(pg_temp.may(pg_temp.detail('ayse', 'emre'), array['invite']),
-  array[true], 'a manager may invite an employee at their location');
+  array[false], 'a manager does not invite an employee who already has an account');
+select is(pg_temp.may(pg_temp.detail('owner', 'ola'), array['invite']),
+  array[false], 'nobody invites an archived record');
+
+-- 4. private_contact: "may read, nothing on file" and "may not read" differ ------
+-- (7b QA finding 1). The owner reads private data; a manager does not by default.
+
+select is(jsonb_typeof(pg_temp.detail('owner', 'emre') -> 'private_contact'), 'object',
+  'the owner reads Emre''s private profile, which is on file');
+select is(pg_temp.detail('owner', 'emre') -> 'private_contact' ->> 'phone', '+14155550123',
+  'with what he gave in onboarding');
+select is(pg_temp.detail('owner', 'pia') -> 'private_contact',
+  jsonb_build_object(
+    'preferred_name', '', 'phone', null, 'street_address', null, 'city', null, 'region', null,
+    'postal_code', null, 'country_code', null, 'date_of_birth', null,
+    'emergency_contact_name', null, 'emergency_contact_relationship', null,
+    'emergency_contact_phone', null, 'emergency_contact_email', '',
+    'share_phone_with_teammates', false, 'share_email_with_teammates', false),
+  'the owner reads an empty private profile for Pia, who has none on file yet: no legal name, nothing given');
+select is(pg_temp.detail('ayse', 'emre') -> 'private_contact', 'null'::jsonb,
+  'a manager without private read reads null, though Emre''s profile is on file');
+select is(pg_temp.detail('ayse', 'pia') -> 'private_contact', 'null'::jsonb,
+  'and null for Pia too: "may not read" is one answer whatever is on file');
 select is(pg_temp.may(pg_temp.detail('selin', 'selin'), array['set_managed_locations', 'invite', 'onboarding_review']),
   array[false, false, false], 'a manager may do none of the three to their own record');
 
