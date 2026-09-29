@@ -56,8 +56,8 @@ Sıralama kuralı: önce en yüksek "leave" (critical yok; high); aynı önemde 
 | 12 | **G12** | Yerel veritabanına dayanıklı pgTAP | BL-209 BL-217 BL-227 BL-245 BL-262 BL-288 BL-296 BL-173 BL-105 BL-226 BL-253 BL-248 BL-094 BL-070 BL-096 U32 | medium / safe (BL-070 high, bayat görünüyor) | R0 (yalnız test) | `nf-test` | 1,5 gün |
 | 13 | **G13** | Web ve e2e test kararlılığı, CI bekçileri | BL-120 BL-175 BL-321 BL-322 BL-195 BL-202 BL-203 BL-210 BL-328 BL-281 BL-196 BL-337 U12 U16 U18 U19 (U36 bayat, kapandı) | medium / safe | R0 (test, CI) | `nf-test` | 1,5 gün |
 | 14 | **G14** | Schedule üst çubuk, menüler ve pencereler — görsel | BL-305 BL-308 BL-311 BL-312 BL-319 BL-320 BL-327 BL-333 BL-233 BL-204 BL-332 U08 BL-121 BL-318 (BL-307 bayat, kapandı) | medium / safe | R1/R2 (birden çok Schedule yüzeyi) | `nf-arayuz` | 1 gün |
-| 15 | **G15** | Görsel tutarlılık: ham hex, beyaz düğme, onay pencereleri | BL-256 BL-257 BL-258 BL-259 BL-260 BL-194 BL-287 BL-215 BL-241 BL-249 BL-334 U21 U29 U30 U39 U40 U41 BL-255 BL-147 BL-169 (BL-154 bayat, kapandı) | medium / moderate | R2 (birden çok ekran) | `nf-arayuz` | 2 gün |
-| 16 | **G16** | Giriş öncesi, hesap ve workspace ekranları | BL-285 BL-289 BL-286 BL-144 BL-151 BL-122 BL-072 BL-284 BL-336 U48 U49 U53 U54 U56 U57 U58 | medium / safe | R1 (BL-284, K24 cevabına göre R3 olabilir) | `nf-arayuz` (+ `nf-backend` U56/U57/BL-284) | 1,5 gün |
+| 15 | **G15** | Görsel tutarlılık: ham hex, beyaz düğme, onay pencereleri | BL-256 BL-257 BL-258 BL-259 BL-260 BL-194 BL-287 BL-215 BL-241 BL-249 BL-334 U21 U29 U30 U39 U40 U41 BL-255 BL-147 BL-169 BL-340 (BL-154 bayat, kapandı) | medium / moderate | R2 (birden çok ekran) | `nf-arayuz` | 2 gün |
+| 16 | **G16** | Giriş öncesi, hesap ve workspace ekranları | BL-285 BL-289 BL-286 BL-144 BL-151 BL-122 BL-072 BL-284 BL-336 BL-339 U48 U49 U53 U54 U56 U57 U58 | medium / safe | R1 (BL-284, K24 cevabına göre R3 olabilir) | `nf-arayuz` (+ `nf-backend` U56/U57/BL-284) | 1,5 gün |
 | 17 | **G17** | Çalışanlar ve kişi kaydı | BL-314 BL-315 BL-244 BL-079 BL-153 BL-338 | medium / risky | R3 (BL-079 görünen adın tek kaynağı) | `nf-db` + `nf-backend` | 1,5 gün |
 | 18 | **G18** | Belgeler (Documents) | U59 U60 U43 U44 BL-118 | medium / moderate | R2 | `nf-backend` + `nf-arayuz` | 1 gün |
 | 19 | **G19** | Zaman ve tarih | BL-277 | medium / safe | R2 | `nf-backend` | 0,5 gün |
@@ -286,7 +286,7 @@ Hükümler BACKLOG.md'de ("Tazelik 2026-09-29 (`67c88bc0`, BACKLOG-PROGRAM G…)
 - (6) Account'ta iki telefon alanı → **BL-335** (yeni, veri kararı), GK.
 
 ## Notes / Result
-- 2026-09-29 (`task/backlog-program-4`, taban `67c88bc0`): G10–G12 dokunduğu dosyalar işlendi (devir notu listeleri). G13–G15 tazeliği ölçüldü (yukarıdaki bölüm), dokunduğu dosyalar G13–G15 için "ölçüldü". U36, BL-307, BL-154 bayat, kapandı → açık madde 250 → **247**.
+- 2026-09-29 (`task/backlog-program-4`, taban `67c88bc0`): G10–G12 dokunduğu dosyalar işlendi (devir notu listeleri). G13–G15 tazeliği ölçüldü (yukarıdaki bölüm), dokunduğu dosyalar G13–G15 için "ölçüldü". U36, BL-307, BL-154 bayat, kapandı → açık madde 250 → **247**. Koordinatör eki: BL-339 (Preferences "System" biçimi, G16) ve BL-340 (pasif düğme görünümü, G15) açıldı → **249**. BACKLOG.md'de KK-7 karar satırı BL-338'in altından BL-335'in altına taşındı (main'de yanlış yerdeydi).
 - 2026-09-29 (`task/backlog-program-2`, `nf-planlama` devralan oturum; taban `origin/main` `8b98e37d`):
   - **GK:** her maddeye Öneri + vizyon Gerekçesi yazıldı; dört madde KRİTİK (BL-238, BL-335, BL-317, BL-121). U42 ve U46 bayat çıktı, GK'den çıktı (kanıt GK bölümünün sonunda). GK artık 13 madde.
   - **KK-1** "İş sırası" başında ve ILERLEME §9'da; **KK-4, KK-5** Risk, İş sırası, bağımlılık tablosu ve T3/T5 satırlarında.
