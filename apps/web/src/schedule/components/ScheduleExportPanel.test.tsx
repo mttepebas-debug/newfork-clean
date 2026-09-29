@@ -182,7 +182,7 @@ describe("ScheduleExportPanel", () => {
     );
     expect(onPreview).not.toHaveBeenCalled();
     expect(
-      screen.getByTitle("Schedule export preview").getAttribute("srcdoc"),
+      (await screen.findByTitle("Schedule export preview")).getAttribute("srcdoc"),
     ).toContain("Printable schedule");
   });
 
