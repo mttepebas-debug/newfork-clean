@@ -4731,6 +4731,13 @@ describe("App", () => {
         name: "Unpublish 1 locations",
       }),
     );
+    // BL-306: the first click only arms the button.
+    expect(previewScheduleUnpublish).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(unpublishDialog).getByRole("button", {
+        name: "Confirm unpublish",
+      }),
+    );
 
     await waitFor(() =>
       expect(unpublishSchedule).toHaveBeenCalledWith(
