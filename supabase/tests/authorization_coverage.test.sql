@@ -186,6 +186,7 @@ insert into service_class values
   ('remove_employee_access_service', 'employee.remove_access'),
   ('remove_employee_avatar_service', 'employee.save'),
   ('remove_employee_document_draft_file_service', 'documents.self'),
+  ('remove_employee_from_location_service', 'employee.remove_from_location'),
   ('remove_schedule_pending_op_service', 'schedule.edit'),
   ('rename_schedule_template_service', 'schedule.templates'),
   ('renew_account_deletion_work_service', 'exempt:worker'),
