@@ -18,15 +18,8 @@ import {
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createUserVerifier } from "../auth/verify-user.js";
+import { HttpError, rpcFailure } from "../http-error.js";
 
-export class DocumentLifecycleError extends Error {
-  constructor(
-    message: string,
-    readonly code: string,
-  ) {
-    super(message);
-  }
-}
 export interface DocumentAudience {
   workspaceId: string;
   selfOnly: boolean;
@@ -176,10 +169,7 @@ export function createDocumentLifecycleServiceWithClient(
   async function currentUser(token: string) {
     const user = await verifyUser(token);
     if (!user)
-      throw new DocumentLifecycleError(
-        "A current authenticated account is required",
-        "401",
-      );
+      throw new HttpError("A current authenticated account is required", 401);
     return user;
   }
   async function actor(token: string) {
@@ -190,7 +180,7 @@ export function createDocumentLifecycleServiceWithClient(
     args: Record<string, unknown>,
   ): Promise<unknown> {
     const { data, error } = await client.rpc(name, args);
-    if (error) throw new DocumentLifecycleError(error.message, error.code);
+    if (error) throw rpcFailure(error);
     return data;
   }
   async function detailFor(
@@ -269,10 +259,7 @@ export function createDocumentLifecycleServiceWithClient(
         !Number.isFinite(authenticatedAt) ||
         Date.now() - authenticatedAt > 30 * 60 * 1000
       )
-        throw new DocumentLifecycleError(
-          "Sign in again before acknowledging this policy",
-          "22023",
-        );
+        throw new HttpError("Sign in again before acknowledging this policy", 400);
       await detailFor(
         user.id,
         { workspaceId, selfOnly: true },
@@ -318,21 +305,15 @@ export function createDocumentLifecycleServiceWithClient(
       );
       const format = fileFormat(filename);
       if (!format || !detail.obligation.accepted_formats.includes(format))
-        throw new DocumentLifecycleError(
-          "This file format is not accepted",
-          "22023",
-        );
+        throw new HttpError("This file format is not accepted", 400);
       if (
         !Number.isSafeInteger(sizeBytes) ||
         sizeBytes < 1 ||
         sizeBytes > employeeOnboardingDocumentMaxBytes
       )
-        throw new DocumentLifecycleError(
-          "File must be at most 10 MiB",
-          "22023",
-        );
+        throw new HttpError("File must be at most 10 MiB", 400);
       if (detail.obligation.publication_paused || ["removed", "exempt", "paused"].includes(detail.obligation.status))
-        throw new DocumentLifecycleError("This obligation is closed", "22023");
+        throw new HttpError("This obligation is closed", 400);
       const prefix = buildEmployeeOnboardingDocumentPrefix({
         workspaceId,
         employeeId: detail.obligation.employee_id,
@@ -343,10 +324,7 @@ export function createDocumentLifecycleServiceWithClient(
         .from(employeeOnboardingDocumentBucket)
         .createSignedUploadUrl(path);
       if (error)
-        throw new DocumentLifecycleError(
-          "Private upload is unavailable",
-          "503",
-        );
+        throw new HttpError("Private upload is unavailable", 503);
       return { path, token: data.token };
     },
     async confirmUpload(token, workspaceId, requirementId, input) {
@@ -368,16 +346,13 @@ export function createDocumentLifecycleServiceWithClient(
         !input.path.startsWith(`${prefix}/`) ||
         !detail.obligation.accepted_formats.includes(format)
       )
-        throw new DocumentLifecycleError("Invalid private upload", "22023");
+        throw new HttpError("Invalid private upload", 400);
       // Read the stored object, never trust the client-reported byte count or MIME.
       const { data, error } = await client.storage
         .from(employeeOnboardingDocumentBucket)
         .download(input.path);
       if (error || !data)
-        throw new DocumentLifecycleError(
-          "Uploaded file could not be verified",
-          "22023",
-        );
+        throw new HttpError("Uploaded file could not be verified", 400);
       if (
         data.size !== input.sizeBytes ||
         data.size < 1 ||
@@ -388,10 +363,7 @@ export function createDocumentLifecycleServiceWithClient(
           format,
         )
       )
-        throw new DocumentLifecycleError(
-          "File content does not match its declared format or size",
-          "22023",
-        );
+        throw new HttpError("File content does not match its declared format or size", 400);
       return numeric(
         await rpc("save_employee_document_draft_file_service", {
           actor_user_id: actorUserId,
@@ -494,10 +466,7 @@ export function createDocumentLifecycleServiceWithClient(
         .from(employeeOnboardingDocumentBucket)
         .createSignedUrl(path, expiresIn, { download: true });
       if (error)
-        throw new DocumentLifecycleError(
-          "Private download is unavailable",
-          "503",
-        );
+        throw new HttpError("Private download is unavailable", 503);
       return { url: data.signedUrl, expiresIn };
     },
   };

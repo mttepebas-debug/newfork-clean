@@ -1,6 +1,5 @@
 import { employeeOnboardingProfileSchema } from "@newfork/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
-import { HttpError } from "../http-error.js";
 import { z } from "zod";
 import type { WorkspaceContextResolver } from "../auth/workspace-context";
 import type { EmployeeOnboardingService } from "./onboarding-service";
@@ -194,20 +193,7 @@ async function serviceReply(
   reply: FastifyReply,
   action: () => Promise<unknown>,
 ) {
-  try {
-    return reply.send(await action());
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Onboarding request failed";
-    // A typed status comes from the SQLSTATE the RPC raised; the guess below
-    // only covers untyped throws (missing configuration, storage, KMS).
-    if (error instanceof HttpError)
-      return reply.status(error.statusCode).send({ error: message });
-    const status = /unavailable|configured|readiness|KMS|storage/i.test(message)
-      ? 503
-      : 409;
-    return reply.status(status).send({ error: message });
-  }
+  return reply.send(await action());
 }
 
 function bearerToken(authorization: string | undefined): string {

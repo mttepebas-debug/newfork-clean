@@ -154,8 +154,8 @@ export function createEmployeeInvitationService(
           target_employee_id: input.employeeId,
         },
       );
-      if (error || !data)
-        throw new Error(error?.message ?? "Failed invitation not found");
+      if (error) throw rpcFailure(error);
+      if (!data) throw new HttpError("Failed invitation not found", 404);
       const row = data as {
         id?: unknown;
         email?: unknown;
@@ -293,7 +293,7 @@ export function createEmployeeInvitationService(
 
 async function resolveActor(client: SupabaseClient, accessToken: string) {
   const user = await createUserVerifier(client)(accessToken);
-  if (!user) throw new Error("Valid authenticated account required");
+  if (!user) throw new HttpError("Valid authenticated account required", 401);
   return user;
 }
 
@@ -307,7 +307,7 @@ async function initializeEmployeeOnboarding(
       target_user_id: userId,
     },
   );
-  if (initialized.error) throw new Error(initialized.error.message);
+  if (initialized.error) throw rpcFailure(initialized.error);
 }
 
 export async function deliverInvitation(

@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { HttpError } from "../http-error.js";
 
 export type UserVerifier = (accessToken: string) => Promise<User | null>;
 
@@ -30,10 +31,7 @@ export function createUserVerifier(client: AuthClient): UserVerifier {
               error.status === 429 ||
               error.name === "AuthRetryableFetchError")
           ) {
-            throw Object.assign(
-              new Error("Your session could not be checked. Please try again."),
-              { statusCode: 503 },
-            );
+            throw new HttpError("Your session could not be checked. Please try again.", 503);
           }
           return error ? null : (data.user ?? null);
         })

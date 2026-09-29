@@ -1,8 +1,8 @@
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { registerDocumentLifecycleRoutes } from "./document-lifecycle-routes";
+import { replyWithError, rpcFailure } from "../http-error";
 import {
-  DocumentLifecycleError,
   documentBytesMatchFormat,
   type DocumentLifecycleService,
 } from "./document-lifecycle-service";
@@ -30,6 +30,7 @@ function setup() {
     download: vi.fn(),
   } satisfies DocumentLifecycleService;
   const app = Fastify();
+  app.setErrorHandler(replyWithError);
   registerDocumentLifecycleRoutes(app, service);
   return { app, service };
 }
@@ -79,7 +80,7 @@ describe("document routes", () => {
     expect((await app.inject(request)).statusCode).toBe(400);
     expect(service.review).not.toHaveBeenCalled();
     service.review.mockRejectedValue(
-      new DocumentLifecycleError("document changed; refresh required", "PT409"),
+      rpcFailure({ message: "document changed; refresh required", code: "PT409" }),
     );
     const response = await app.inject({
       ...request,
@@ -113,7 +114,7 @@ describe("document routes", () => {
   it("does not convert forbidden or absent private records into successful responses", async () => {
     const { app, service } = setup();
     service.list.mockRejectedValue(
-      new DocumentLifecycleError("employee document access required", "42501"),
+      rpcFailure({ message: "employee document access required", code: "42501" }),
     );
     expect(
       (
@@ -123,6 +124,22 @@ describe("document routes", () => {
         })
       ).statusCode,
     ).toBe(403);
+    await app.close();
+  });
+
+  // G11: to somebody who is not a member the workspace is not there (404, with
+  // the key the web's isNoAccess reads); this path used to answer 503.
+  it("answers a non-member with 404 and authz.not_member", async () => {
+    const { app, service } = setup();
+    service.list.mockRejectedValue(
+      rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.not_member" }),
+    );
+    const response = await app.inject({
+      url: `/v1/workspaces/${workspace}/employee-documents`,
+      headers: { authorization: "Bearer test" },
+    });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ reason: "authz.not_member" });
     await app.close();
   });
 });

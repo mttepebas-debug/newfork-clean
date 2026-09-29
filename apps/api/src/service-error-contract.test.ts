@@ -12,6 +12,7 @@ import { createJobsManagementService } from "./settings/jobs-management-service"
 import { createOrganizationSettingsService } from "./settings/organization-settings-service";
 import { createSignatureSettingsService } from "./settings/signature-settings-service";
 import { createShiftExchangesService } from "./shift-exchanges/shift-exchanges-service";
+import { createDocumentLifecycleServiceWithClient } from "./employees/document-lifecycle-service";
 
 // BL-134: whatever the database says goes through rpcFailure, so a refusal
 // keeps its status and machine key and Postgres's own sentence never reaches
@@ -47,6 +48,10 @@ const newEmployee = {
     primary_job_id: null, is_remote: true, expected_revision: null,
   },
 };
+const documentsClient = {
+  rpc: () => Promise.resolve({ data: null, error: database.error }),
+  auth: { getUser: () => Promise.resolve({ data: { user: { id: actor } }, error: null }) },
+} as never;
 const jobsClient = {
   rpc: () => Promise.resolve({ data: null, error: database.error }),
 } as never;
@@ -64,6 +69,7 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
   ["organization settings", () => createOrganizationSettingsService(options).readSchedulingSettings(input)],
   ["signature settings", () => createSignatureSettingsService(options).approveRetentionPolicy({ actorUserId: actor, workspaceId: workspace, policyId: id })],
   ["shift exchanges", () => createShiftExchangesService(options).read(actor, workspace, false)],
+  ["employee documents", () => createDocumentLifecycleServiceWithClient(documentsClient).list("token", { workspaceId: workspace, selfOnly: false })],
 ];
 
 describe.each(calls)("%s service", (_name, call) => {

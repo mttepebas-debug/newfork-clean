@@ -9,7 +9,7 @@ import {
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { createUserVerifier } from "../auth/verify-user.js";
-import { rpcFailure } from "../http-error.js";
+import { HttpError, rpcFailure } from "../http-error.js";
 import { z } from "zod";
 
 export interface EmployeeOnboardingService {
@@ -157,7 +157,7 @@ const leaveResultSchema = z
 
 async function authenticatedUser(client: SupabaseClient, accessToken: string) {
   const user = await createUserVerifier(client)(accessToken);
-  if (!user) throw new Error("Valid authenticated account required");
+  if (!user) throw new HttpError("Valid authenticated account required", 401);
   return user;
 }
 

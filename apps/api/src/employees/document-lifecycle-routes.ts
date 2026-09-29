@@ -9,7 +9,6 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { bearerToken } from "../auth/workspace-context";
 import {
-  DocumentLifecycleError,
   type DocumentLifecycleService,
 } from "./document-lifecycle-service";
 
@@ -43,26 +42,7 @@ export function registerDocumentLifecycleRoutes(
         return reply
           .status(400)
           .send({ error: "Valid document details required" });
-      if (error instanceof DocumentLifecycleError) {
-        const status =
-          error.code === "42501"
-            ? 403
-            : error.code === "P0002"
-              ? 404
-              : error.code === "PT409"
-                ? 409
-                : error.code === "22023"
-                  ? 400
-                  : error.code === "401"
-                    ? 401
-                    : 503;
-        return reply
-          .status(status)
-          .send({ error: error.message, code: error.code });
-      }
-      return reply
-        .status(503)
-        .send({ error: "Document service is unavailable" });
+      throw error;
     }
   }
   for (const selfOnly of [true, false]) {

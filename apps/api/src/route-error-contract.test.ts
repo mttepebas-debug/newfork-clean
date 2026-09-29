@@ -60,6 +60,7 @@ function appFailingWith(error: unknown) {
     rolesService: service,
     signatureSettingsService: service,
     workspaceAccountService: service,
+    onboardingService: service,
   };
   return buildApp(options);
 }
@@ -77,6 +78,7 @@ const requests: ReadonlyArray<readonly [string, "GET" | "DELETE", string]> = [
   ["roles", "DELETE", `${w}/roles/${id}`],
   ["signature settings", "GET", `${w}/signature-templates/target-options`],
   ["workspace account", "GET", "/v1/account/workspaces"],
+  ["employee onboarding", "GET", "/v1/me/onboarding"],
 ];
 
 describe.each(requests)("%s route", (_name, method, url) => {

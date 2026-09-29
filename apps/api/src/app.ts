@@ -238,11 +238,11 @@ function invitationFailure(error: unknown): {
         },
       };
     default:
+      // Not the invitation's failure (a crash, a lost connection): the
+      // global handler answers it as one, with nothing of it on the screen.
+      if (!(error instanceof HttpError) || error.statusCode >= 500) throw error;
       return {
-        status:
-          error instanceof HttpError && error.statusCode < 500
-            ? error.statusCode
-            : 409,
+        status: error.statusCode,
         body: {
           error: "This invitation could not be answered",
           code: "invitation_unavailable",

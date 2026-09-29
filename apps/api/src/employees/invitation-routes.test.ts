@@ -147,6 +147,37 @@ describe("invitation endpoints", () => {
     expect(response.json().code).toBe("already_member");
   });
 
+  // G11: a failure that is not the invitation's (a crash, an expired
+  // session) used to come back as 409 "could not be answered".
+  it.each(["/v1/invitations/accept", "/v1/invitations/pending"])(
+    "answers a server failure on %s with 500 and nothing of it",
+    async (url) => {
+      const response = await appWith(
+        serviceThrowing(new Error("connect ECONNREFUSED 10.0.0.4:5432")),
+      ).inject({
+        method: url.endsWith("pending") ? "GET" : "POST",
+        url,
+        headers: { authorization: "Bearer employee-token" },
+        ...(url.endsWith("pending") ? {} : { payload: { token } }),
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.payload).not.toContain("ECONNREFUSED");
+    },
+  );
+
+  it("answers an expired session with 401, not 409", async () => {
+    const response = await appWith(
+      serviceThrowing(new HttpError("Valid authenticated account required", 401)),
+    ).inject({
+      method: "GET",
+      url: "/v1/invitations/pending",
+      headers: { authorization: "Bearer expired-token" },
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
   it("answers 401 for an admin link request with no credentials", async () => {
     const response = await appWith(serviceThrowing(new Error("unused"))).inject({
       method: "GET",
