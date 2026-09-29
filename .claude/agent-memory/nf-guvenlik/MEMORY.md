@@ -25,3 +25,4 @@
 - [role=button satırın ödünç adı](checklist-role-button-row-borrowed-name.md) — adsız satır iç düğme adlarını alır; Playwright kısmi eşleşme e2e strict mode kırar
 - [Sunucuda parola kontrolü ve hız sınırı](checklist-server-password-check-rate-limit.md) — API'den signInWithPassword tek IP kovasını paylaşır (30/5dk); hesap başı sayaç var mı, 429 "yanlış parola"ya mı dönüyor
 - [Kardeş uçlarda aynı koruma](checklist-sibling-endpoints-same-guard.md) — bir uca eklenen şart (kabul) aynı kaydı aynı anahtarla bulan liste/ret/sayım uçlarında da var mı; yazanlar Orta
+- [Devir 2026-09-29](handoff-2026-09-29.md) — açık tekrar incelemeler (BL-335 onboarding alanı, G6 6b681623..62782c12), çalışan rapor kanalı send_message, deneme kuralı; kapanınca sil
