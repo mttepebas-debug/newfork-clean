@@ -141,11 +141,12 @@ security definer
 set search_path = ''
 as $$
 begin
-  -- The database owner working directly (migrations, seed, test fixtures) is
-  -- not an application caller: every API and browser call runs under a role.
+  -- The database owner working directly (migrations, seed, test fixtures,
+  -- with no role set or set back to postgres) is not an application caller:
+  -- every API and browser call runs as service_role or authenticated.
   -- ponytail: the console could disable this trigger anyway; a caller that
-  -- runs as the owner without a role would pass too (none exists today).
-  if current_setting('role') = 'none' then
+  -- runs as the owner would pass too (none exists today).
+  if current_setting('role') in ('none', 'postgres') then
     return new;
   end if;
 

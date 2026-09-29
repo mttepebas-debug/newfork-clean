@@ -312,7 +312,7 @@ select throws_ok(
     array['46000000-0000-4000-8000-000000000001']::uuid[], '46000000-0000-4000-8000-000000000001',
     array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, false, 1
   )$$,
-  'P0002', 'employee not found', 'manager cannot edit a linked manager employee drawer'
+  '42501', 'Not allowed', 'manager cannot edit a linked manager employee drawer'
 );
 select lives_ok(
   $$select public.update_employee_membership_role_service(
@@ -337,7 +337,7 @@ select throws_ok(
     '76000000-0000-4000-8000-000000000001',
     (select id from directory_role_ids where label = 'admin')
   )$$,
-  '42501', 'admin role assignment requires owner access', 'admin cannot assign admin access'
+  '42501', 'Not allowed', 'admin cannot assign admin access'
 );
 select throws_ok(
   $$select public.update_employee_membership_role_service(
@@ -346,7 +346,7 @@ select throws_ok(
     '76000000-0000-4000-8000-000000000001',
     (select id from directory_role_ids where label = 'owner')
   )$$,
-  '42501', 'owner role cannot be assigned by role change', 'owner access cannot be assigned through drawer role change'
+  '42501', 'Not allowed', 'owner access cannot be assigned through drawer role change'
 );
 select throws_ok(
   $$select public.update_employee_membership_role_service(
@@ -410,7 +410,7 @@ select throws_ok(
     array['46000000-0000-4000-8000-000000000002']::uuid[], '46000000-0000-4000-8000-000000000002',
     array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, false, 2
   )$$,
-  '42501', 'invalid or inaccessible employee location', 'manager cannot move an employee outside assigned location scope'
+  '42501', 'Not allowed', 'manager cannot move an employee outside assigned location scope'
 );
 set local role postgres;
 select is((select revision from public.employee_profiles where id = (select id from employee_ids where label = 'downtown')), 2, 'employee update increments revision');
@@ -425,9 +425,9 @@ select throws_ok(
   )$$,
   '40001', 'employee revision conflict', 'stale employee update fails closed'
 );
-select lives_ok(
+select throws_ok(
   $$select public.set_employee_archived_service('16000000-0000-4000-8000-000000000002', '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'), true, false)$$,
-  'manager archives an employee inside their own scope'
+  '42501', 'Not allowed', 'a manager does not archive: ending employment and archiving are admin and owner (KARARLAR)'
 );
 -- Put it back: the rest of the suite works on this same record, and the point
 -- above was the capability rather than the state it leaves behind.
@@ -459,7 +459,7 @@ insert into public.employee_location_assignments (
 set local role service_role;
 select throws_ok(
   $$select public.set_employee_archived_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', '76000000-0000-4000-8000-000000000004', true, false)$$,
-  'P0002', 'employee not found', 'an owner cannot reach another owner''s record to archive it'
+  '42501', 'Not allowed', 'an owner cannot reach another owner''s record to archive it'
 );
 set local role postgres;
 delete from public.employee_location_assignments where employee_id = '76000000-0000-4000-8000-000000000004';
@@ -499,7 +499,7 @@ select lives_ok(
   )$$,
   'admin edits an employee-class record'
 );
-select throws_ok(
+select lives_ok(
   $$select public.save_employee_service(
     '16000000-0000-4000-8000-000000000002',
     '26000000-0000-4000-8000-000000000001', '76000000-0000-4000-8000-000000000001',
@@ -507,7 +507,7 @@ select throws_ok(
     array['46000000-0000-4000-8000-000000000001']::uuid[], '46000000-0000-4000-8000-000000000001',
     array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, false, 3
   )$$,
-  'P0002', 'employee not found', 'admin cannot edit peer-admin employee records through the drawer write path'
+  'an admin saves their own record (user decision 2026-09-24; the manager fixture is an admin here)'
 );
 select lives_ok(
   $$select public.prepare_employee_invitation_service(
@@ -745,7 +745,7 @@ select throws_ok(
 set local role service_role;
 select throws_ok(
   $$select public.save_employee_service('16000000-0000-4000-8000-000000000003', '26000000-0000-4000-8000-000000000001', null, 'Cross','', 'Tenant', '', '', null, '', '{}'::uuid[], null, '{}'::uuid[], null, false, false, null)$$,
-  '42501', 'employee management access required', 'cross-tenant employee creation is denied'
+  '42501', 'Not allowed', 'cross-tenant employee creation is denied'
 );
 
 set local role postgres;
@@ -931,7 +931,7 @@ select throws_ok(
     '26000000-0000-4000-8000-000000000001',
     '76000000-0000-4000-8000-000000000001'
   )$$,
-  '42501', 'self access removal is not permitted', 'employee access removal cannot unlink the acting account'
+  '42501', 'Not allowed', 'employee access removal cannot unlink the acting account'
 );
 select lives_ok(
   $$select public.remove_employee_access_service(
@@ -952,7 +952,7 @@ update public.employee_profiles set user_id = '16000000-0000-4000-8000-000000000
 set local role service_role;
 select throws_ok(
   $$select public.set_employee_archived_service('16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'), true, false)$$,
-  'P0002', 'employee not found', 'a linked user cannot reach their own record to archive it'
+  '42501', 'Not allowed', 'a linked user cannot reach their own record to archive it'
 );
 set local role postgres;
 select is((select count(*)::integer from public.employee_events where employee_id = (select id from employee_ids where label = 'downtown') and action in ('employee.created', 'employee.updated', 'employee.invited', 'employee.invitation_revoked')), 5, 'employee lifecycle changes are audited without private payloads');

@@ -627,7 +627,7 @@ select throws_ok(
     true,
     (select revision + 1 from owner_employee_ids limit 1)
   )$$,
-  'P0002',
+  '42501',
   null,
   'an admin still cannot edit the owner employee record'
 );
@@ -639,7 +639,7 @@ select throws_ok(
     true,
     false
   )$$,
-  'P0002',
+  '42501',
   null,
   'owner employee record cannot be archived through ordinary lifecycle'
 );

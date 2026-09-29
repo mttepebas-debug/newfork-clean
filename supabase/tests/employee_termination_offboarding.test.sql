@@ -166,7 +166,7 @@ select throws_ok(
     '2026-09-01 12:00', 'America/Los_Angeles', 'Cross tenant attempt',
     'ba000000-0000-4000-8000-000000000004'
   )$$,
-  '42501', 'employee archive access required', 'cross-tenant termination is denied'
+  '42501', 'Not allowed', 'cross-tenant termination is denied'
 );
 
 select * from finish();

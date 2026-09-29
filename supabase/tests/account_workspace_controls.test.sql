@@ -93,7 +93,17 @@ select ok(not has_function_privilege('authenticated','public.create_owner_worksp
 reset role;
 select set_config('app.owner_transfer','on',true);
 select set_config('request.jwt.claim.sub','a5500000-0000-4000-8000-000000000004',true);
-select throws_ok($q$update public.workspace_memberships set role='owner' where user_id='a5500000-0000-4000-8000-000000000004' and workspace_id='a5500000-0000-4000-8000-000000000101'$q$,'42501','membership role change is not permitted','transfer flag cannot promote unrelated employee');
+-- As an application caller (service_role): the database owner's own console
+-- is not guarded (BL-270).
+create function tests.promote_to_owner(member_user uuid, w uuid) returns void language sql security definer set search_path = '' as $f$
+  update public.workspace_memberships
+  set role_id = (select r.id from public.workspace_roles r where r.workspace_id = w and r.system_key = 'owner')
+  where user_id = member_user and workspace_id = w
+$f$;
+grant execute on function tests.promote_to_owner(uuid, uuid) to service_role;
+set local role service_role;
+select throws_ok($q$select tests.promote_to_owner('a5500000-0000-4000-8000-000000000004','a5500000-0000-4000-8000-000000000101')$q$,'42501','membership change is not permitted','transfer flag cannot promote unrelated employee');
+reset role;
 select set_config('request.jwt.claim.sub','',true);
 insert into auth.users(id,email,email_confirmed_at) values
 ('a5500000-0000-4000-8000-000000000400','bounded-admin-0@example.test',now()),
