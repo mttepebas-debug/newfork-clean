@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { todayIn } from "./today";
 
@@ -14,10 +14,20 @@ describe("todayIn", () => {
     expect(todayIn("Europe/Istanbul", sundayNightInLosAngeles)).toBe("2026-10-05");
   });
 
+  // The device is set to Los Angeles, so a fallback to UTC would read Monday.
   it("falls back to the device's calendar without a usable zone", () => {
-    const device = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    for (const zone of [undefined, "", "Not/AZone"]) {
-      expect(todayIn(zone, sundayNightInLosAngeles)).toBe(todayIn(device, sundayNightInLosAngeles));
+    const resolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+    const device = vi
+      .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+      .mockImplementation(function (this: Intl.DateTimeFormat) {
+        return { ...resolvedOptions.call(this), timeZone: "America/Los_Angeles" };
+      });
+    try {
+      for (const zone of [undefined, "", "Not/AZone"]) {
+        expect(todayIn(zone, sundayNightInLosAngeles), String(zone)).toBe("2026-10-04");
+      }
+    } finally {
+      device.mockRestore();
     }
   });
 
