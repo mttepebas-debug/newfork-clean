@@ -251,6 +251,8 @@ export function DraftDropdownMenu({
                       onFocus={() => onPrefetchDraft?.(draft.id)}
                       onClick={() => closeAfter(() => onPreviewDraft(draft.id))}
                       onKeyDown={(event) => {
+                        // BL-300: a key on the row's own buttons is theirs.
+                        if (event.target !== event.currentTarget) return;
                         if (event.key !== "Enter" && event.key !== " ") return;
                         event.preventDefault();
                         closeAfter(() => onPreviewDraft(draft.id));
@@ -395,6 +397,7 @@ export function DraftDropdownMenu({
                           }
                         }}
                         onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) return;
                           if (event.key !== "Enter" && event.key !== " ") {
                             return;
                           }
@@ -559,6 +562,7 @@ function PublishedFallbackRow({
       aria-label="View published schedule"
       onClick={onPreview}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
         onPreview();
