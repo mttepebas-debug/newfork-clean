@@ -14,9 +14,10 @@ const context = {
   permissions: [],
   actions: [],
 } as unknown as ActiveWorkspaceContext;
+const period = { segment_id: "98050000-0000-4000-8000-000000000002", starts_at: "2030-01-09T15:00:00Z", ends_at: "2030-01-09T19:00:00Z" };
 const change = {
   expected_revision: 2,
-  periods: [{ segment_id: "98050000-0000-4000-8000-000000000002", starts_at: "2030-01-09T15:00:00Z", ends_at: "2030-01-09T19:00:00Z" }],
+  periods: [period],
   note: "Covering a sick call",
   operation_id: "98050000-0000-4000-8000-000000000003",
 };
@@ -70,7 +71,7 @@ describe("A manager shortens approved time off (BL-127)", () => {
     const shorten = vi.fn();
     const built = app({ shorten });
     for (const body of [{ ...change, periods: [] }, { ...change, operation_id: "x" },
-      { ...change, periods: [{ ...change.periods[0], ends_at: change.periods[0].starts_at }] }]) {
+      { ...change, periods: [{ ...period, ends_at: period.starts_at }] }]) {
       expect((await post(built, body)).statusCode).toBe(400);
     }
     expect(shorten).not.toHaveBeenCalled();

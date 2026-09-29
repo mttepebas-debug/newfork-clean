@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ScheduleRequestsPage } from "./ScheduleRequestsPage";
 import { PermissionRoute } from "../auth/PermissionRoute";
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
-import { decideTimeOff, getScheduleRequests, previewTimeOffAssignment } from "../schedule/requests-data";
+import { decideTimeOff, getScheduleRequests, previewTimeOffAssignment, shortenTimeOff } from "../schedule/requests-data";
 
 import { RequestError } from "../lib/request-error";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -116,6 +116,11 @@ vi.mock("../schedule/requests-data", () => ({
     status: "partially_approved",
     request_id: "97200000-0000-4000-8000-000000000001",
     revision: 2,
+  }),
+  shortenTimeOff: vi.fn().mockResolvedValue({
+    status: "partially_approved",
+    request_id: "97200000-0000-4000-8000-000000000001",
+    revision: 3,
   }),
 }));
 
@@ -290,6 +295,28 @@ describe("ScheduleRequestsPage", () => {
     fireEvent.keyDown(dialog, { key: "Escape" });
     expect(screen.getByRole("dialog", { name: "Review request" }).contains(document.activeElement)).toBe(true);
     expect(decideTimeOff).not.toHaveBeenCalled();
+  });
+  it("lets a manager give back hours of approved time off (BL-127)", async () => {
+    const future = { start_at: "2099-08-17T14:00:00.000Z", end_at: "2099-08-17T18:00:00.000Z" };
+    vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_off_requests: [{ ...fixture.time_off_requests[0]!, status: "approved", revision: 2,
+      segments: [{ ...fixture.time_off_requests[0]!.segments[0]!, status: "approved", time_timezone: "UTC", effective_intervals: [future] }] }] });
+    renderPage(); await openTimeOffRequest();
+    fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
+    expect(screen.getByText(/This takes effect now/)).toBeTruthy();
+    const send = screen.getByRole("button", { name: "Give back these hours" }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Give back period 1" }));
+    fireEvent.click(send);
+    await waitFor(() => expect(shortenTimeOff).toHaveBeenCalledOnce());
+    expect(vi.mocked(shortenTimeOff).mock.calls[0]!.slice(0, 2)).toEqual([workspaceId, "97200000-0000-4000-8000-000000000001"]);
+    expect(vi.mocked(shortenTimeOff).mock.calls[0]![2]).toMatchObject({ expected_revision: 2,
+      periods: [{ segment_id: "97300000-0000-4000-8000-000000000001", starts_at: future.start_at, ends_at: future.end_at }] });
+    expect(await screen.findByText(/Alex Kim's time off is shorter/)).toBeTruthy();
+  });
+  it("offers no shortening while time off is still pending", async () => {
+    renderPage(); await openTimeOffRequest();
+    await screen.findByRole("button", { name: "Partial" });
+    expect(screen.queryByRole("button", { name: "Shorten time off" })).toBeNull();
   });
   it("does not offer reopen or revoke for completed cancellations", async () => {
     vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_off_requests: [{ ...fixture.time_off_requests[0]!, request_type: "time_off_cancellation", status: "approved" }] });

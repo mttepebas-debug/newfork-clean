@@ -1,0 +1,77 @@
+import { useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Scissors } from "lucide-react";
+import type { TimeOffRequest } from "@newfork/shared";
+import { shortenTimeOff } from "../schedule/requests-data";
+import { formatTimeOffInstant } from "../employee-hub/time-off-split";
+import {
+  cancellationSelectionError,
+  TimeOffCancellationHours,
+  type CancellationChoice,
+} from "../employee-hub/TimeOffCancellationHours";
+
+/**
+ * BL-127: Requests → Time off → an approved request → Shorten time off. The
+ * manager gives back hours of the leave (e.g. to put Ali on Saturday's
+ * 10:00–2:00 shift); it takes effect at once, and Ali and whoever approved the
+ * leave are told. Same hour picker as the employee's cancellation.
+ */
+export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
+  request: TimeOffRequest; workspaceId: string; timeFormat: "12h" | "24h"; onDone: (message: string) => void;
+}) {
+  const [periods, setPeriods] = useState<CancellationChoice[] | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [editing, setEditing] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+  const retry = useRef({ signature: "", key: crypto.randomUUID() });
+  const choices = periods?.filter(period => selected.includes(period.key)) ?? [];
+  const chosen = choices.map(({ segment_id, starts_at, ends_at }) => ({ segment_id, starts_at, ends_at }));
+  const signature = JSON.stringify({ chosen, note, revision: request.revision });
+  const selectionError = cancellationSelectionError(choices, retry.current.signature === signature);
+  const unfinished = editing.some(key => selected.includes(key));
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (signature !== retry.current.signature) retry.current = { signature, key: crypto.randomUUID() };
+      return shortenTimeOff(workspaceId, request.id, {
+        expected_revision: request.revision, periods: chosen, note, operation_id: retry.current.key,
+      });
+    },
+    onSuccess: () => {
+      setPeriods(null);
+      onDone(`${request.employee_name}'s time off is shorter. They and whoever approved it were told.`);
+    },
+  });
+  function begin() {
+    const open = request.segments.flatMap(p => p.time_timezone ? (p.effective_intervals ?? [])
+      .filter(span => Date.parse(span.end_at) > Date.now()).map(span => ({ key: crypto.randomUUID(), segment_id: p.id,
+        starts_at: span.start_at, ends_at: span.end_at, original_start: span.start_at, original_end: span.end_at, zone: p.time_timezone! })) : []);
+    setPeriods(open); setSelected([]); setEditing([]); setNote(""); mutation.reset();
+  }
+  if (!periods)
+    return <button type="button" className="nf-button secondary" onClick={begin}><Scissors size={16} /> Shorten time off</button>;
+  return <form className="time-off-shorten" onSubmit={event => { event.preventDefault(); mutation.mutate(); }}>
+    <fieldset disabled={mutation.isPending}>
+      <legend>Shorten {request.employee_name}'s time off</legend>
+      <p>Choose the approved hours to give back, then add {request.employee_name} to the schedule for them. This takes effect now; {request.employee_name} and whoever approved the time off are told.</p>
+      {!periods.length ? <p>No future approved hours remain.</p> : null}
+      {periods.map((period, i) => <div className="time-off-cancellation-period" key={period.key}>
+        <label>
+          <input type="checkbox" aria-label={`Give back period ${i + 1}`} checked={selected.includes(period.key)}
+            onChange={event => setSelected(current => event.target.checked ? [...current, period.key] : current.filter(key => key !== period.key))} />
+          {formatTimeOffInstant(period.starts_at, period.zone, timeFormat)} – {formatTimeOffInstant(period.ends_at, period.zone, timeFormat)}
+        </label>
+        <TimeOffCancellationHours period={period} index={i} timeFormat={timeFormat}
+          onChange={value => setPeriods(current => current?.map(p => p.key === period.key ? value : p) ?? current)}
+          onEditing={active => setEditing(current => active ? [...new Set([...current, period.key])] : current.filter(key => key !== period.key))} />
+      </div>)}
+      <label>Note for {request.employee_name}<textarea maxLength={1000} value={note} onChange={event => setNote(event.target.value)} /></label>
+      {choices.length && selectionError ? <p role="alert">{selectionError}</p> : null}
+      {unfinished ? <p>Apply or discard the hours being edited first.</p> : null}
+      {mutation.error ? <p role="alert">{mutation.error.message}</p> : null}
+      <div className="request-decisions">
+        <button type="submit" className="nf-button" disabled={!choices.length || Boolean(selectionError) || unfinished}>Give back these hours</button>
+        <button type="button" className="nf-button secondary" onClick={() => setPeriods(null)}>Keep time off</button>
+      </div>
+    </fieldset>
+  </form>;
+}

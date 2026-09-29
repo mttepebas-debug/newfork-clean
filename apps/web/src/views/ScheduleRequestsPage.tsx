@@ -19,11 +19,12 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { formatAvailabilityClock } from "../availability/AvailabilityClockInput";
 import { TimeOffPartialDecision } from "../employee-hub/TimeOffPartialDecision";
 import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
+import { TimeOffShorten } from "./TimeOffShorten";
 import { formatTimeOffInstant } from "../employee-hub/time-off-split";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { Navigate, useSearchParams } from "react-router";
@@ -482,6 +483,15 @@ function ScheduleRequestsPageContent() {
                 onDecision={(action) =>
                   setDecision({ request: selected, action })
                 }
+                shorten={
+                  <TimeOffShorten
+                    key={`${selected.id}:${selected.revision}`}
+                    request={selected}
+                    workspaceId={context!.workspace.id}
+                    timeFormat={query.data.time_format ?? "12h"}
+                    onDone={(message) => void refreshed(message)}
+                  />
+                }
               />
             ) : (
               <div className="requests-empty detail-empty">
@@ -591,11 +601,13 @@ function TimeOffDetail({
   canManage,
   onClose,
   onDecision,
+  shorten,
 }: {
   request: TimeOffRequest;
   timeFormat: "12h" | "24h";
   canManage: boolean;
   onClose: () => void;
+  shorten?: ReactNode;
   onDecision: (
     action:
       "approve" | "deny" | "partial_approve" | "return_to_pending" | "revoke",
@@ -719,6 +731,11 @@ function TimeOffDetail({
                   <X size={16} /> Revoke
                 </button>
               ) : null}
+              {!cancellation &&
+              (request.status === "approved" ||
+                request.status === "partially_approved")
+                ? shorten
+                : null}
             </>
           )}
         </div>
