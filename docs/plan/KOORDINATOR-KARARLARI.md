@@ -170,3 +170,10 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Dayanak:** yeni ekranlar yalnız G9b migration'ının getirdiği kayıtlarla görünür; migration ortak yerel DB'ye yalnız main penceresinde uygulanabilir (kullanıcı kararı 2026-09-26). Değişiklik mevcut saat seçicisini yeniden kullanıyor ve metin satırı ekliyor; görsel hata ucuz geri alınır, yetki/veri hatası değil. İzin kaydı yok diye QA'yı atlamak da, main penceresi dışında migration uygulamak da kuralı bozar.
 - **Geri alma:** düşük (yalnız sıra).
 - **Durum:** uygulanıyor.
+
+### KK-23 (2026-09-29) KK-10'daki BL-309 düzeltmesi; taslak sayacı yalnız taslakları sayar
+- **Karar 1 (KK-10 düzeltmesi):** BL-309'un "ölü kaynak-taslak kodu silinir" kısmının dayanağı kalktı: `73483adf` yayının kaynak taslağını API'ye ekledi (shared şema + `20260929110000`), taslak satırındaki "Published" rozeti ve yayındaki taslağın silinme engeli çalışıyor ve testli. Silinecek olan yalnız gerçekten ölü "Saved by …" dalı (taslak listesi kaydedenin adını taşımıyor, hep "Unknown"); iki dosyadaki ikiz yardımcılar (`publishedTitle`, `publishedMeta`, `updatedByLabel`, `shortDate` ↔ `formatShortDateTime`) tek yere toplanır. G1'de.
+- **Karar 2:** Schedule → taslak menüsündeki sayaç yalnız düzenlenebilir taslakları sayar; yayın satırı sayılmaz. Yayının kaynağı olan taslak hâlâ taslak olarak duruyorsa o bir taslak olarak sayılır.
+- **Dayanak:** G1 işçisinin tazelik ölçümü (origin/main `4490f8e3`; `DraftDropdownMenu.test.tsx:177/230/284`). Sayaç: menünün adı "taslak"; yayın ayrı bir durum ve listede kendi rozetiyle görünüyor, iki kez sayılmamalı.
+- **Geri alma:** düşük (yalnız arayüz).
+- **Durum:** G1'de uygulanıyor.
