@@ -270,4 +270,5 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Karar:** `PUT …/workspace/layout` rotasının kapısı `.7b`'de şimdilik durur. `save_workspace_layout_service` `.7b-db` migration'ında panonun kapısıyla aynı çekirdek eylemine sorar (ret ipuçlu); bugünkü davranış korunur (çalışan kendi düzenini bugün yazamıyorsa yine yazamaz). Sonra `.7b` rota kapısını kaldırır; BL-413'ün dördüncü rotası böylece kapanır.
 - **Dayanak:** rota kapısını servis çekirdeğe sormadan kaldırmak kuralı sessizce değiştirir; CLAUDE.md §9 route-yerel kapı yasağı servis çekirdekteyken yerine gelir.
 - **Geri alma:** kolay.
+- **Ek (aynı gün, `nf-db` ölçümü):** çalışan sistem rolü her workspace'te `workspace.read` tutuyor, yani eski kapı çalışana düzen kaydettiriyordu; ama çalışan panoyu açamıyor, kayıt yalnız API'den mümkündü. Karar: servis `workspace.todos`'a sorar; çalışan kullanamadığı bu yazmayı kaybeder (`missing_permission`), kapalı workspace ve belge engeli ret (KK-34 D2 gibi). Yeni `workspace.layout` eylemi reddedildi (katalog + matris maliyeti, ekranı olmayan hak).
 - **Durum:** uygulanıyor (`.7b-db`, `.7b`).
