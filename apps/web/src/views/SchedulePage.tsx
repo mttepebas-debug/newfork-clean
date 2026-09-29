@@ -131,6 +131,7 @@ import {
   removeDraft,
   type DraftsCacheSnapshot,
 } from "../schedule/lib/draftSaveFlow";
+import { isSameEditSession } from "../schedule/lib/scheduleMutationContext";
 import { followUpAfterUnpublish } from "../schedule/lib/scheduleUnpublishFollowUp";
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButton";
 import { templateAppliedDescription } from "../schedule/lib/templateApplyMessage";
@@ -1419,11 +1420,13 @@ export function SchedulePage({
     try {
       const next = await action();
       if (throwOnError && mutationContext !== currentMutationContext.current) return null;
+      if (!isSameEditSession(mutationContext, currentMutationContext.current)) return null;
       if (previousSession) rememberUndoSnapshot(previousSession);
       setSession(next);
       return next;
     } catch (error) {
       if (throwOnError && mutationContext !== currentMutationContext.current) return null;
+      if (!isSameEditSession(mutationContext, currentMutationContext.current)) return null;
       if (throwOnError) throw error;
       const caught = error as Error;
       onError?.(caught);
