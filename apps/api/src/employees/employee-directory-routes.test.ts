@@ -12,6 +12,7 @@ const otherWorkspaceId = "16fe2550-8960-480c-9874-cbc76a8e56a9";
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const employeeId = "15000000-0000-4000-8000-000000000001";
 const otherEmployeeId = "15000000-0000-4000-8000-000000000002";
+const locationId = "11000000-0000-4000-8000-000000000001";
 
 const context: ActiveWorkspaceContext = {
   userId,
@@ -83,25 +84,70 @@ describe("employee directory routes", () => {
     expect(create).toHaveBeenCalledWith(userId, workspaceId, command);
     await app.close();
   });
-  it("requires access management only when the create command includes an invitation", async () => {
-    const create = vi.fn();
-    const app = buildApp({
-      contextResolver: { resolve: async () => context },
-      employeeCreateService: { create },
+  // FB-6.2 .7b (BL-414): creating somebody, with or without an invitation,
+  // asks the core in the database (employee.create at the record's locations,
+  // can_invite_with_role for the role); the route keeps no permission gate.
+  describe("creating asks the core", () => {
+    const manager = {
+      ...context,
+      membership: { ...context.membership, role: "manager" as const, allLocations: false },
+      permissions: ["workspace.read", "employees.read"] as ActiveWorkspaceContext["permissions"],
+      locationScope: { allLocations: false, locationIds: [] },
+    } satisfies ActiveWorkspaceContext;
+    const command = {
+      request_id: "91000000-0000-4000-8000-000000000001",
+      employee: employeeInput,
+      invite_role_id: "92000000-0000-4000-8000-000000000001",
+    };
+
+    it("hands a create with an invitation to the database without the access permission", async () => {
+      const create = vi.fn(async () => ({ id: employeeId, invitation: null }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => manager },
+        employeeCreateService: { create },
+      });
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${workspaceId}/employees/create`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: command,
+      });
+      expect(response.statusCode, response.body).toBe(201);
+      expect(create).toHaveBeenCalledWith(userId, workspaceId, command);
+      await app.close();
     });
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${workspaceId}/employees/create`,
-      headers: { authorization: "Bearer valid-token" },
-      payload: {
-        request_id: "91000000-0000-4000-8000-000000000001",
-        employee: employeeInput,
-        invite_role_id: "92000000-0000-4000-8000-000000000001",
-      },
+
+    it.each([
+      ["create command", `/v1/workspaces/${workspaceId}/employees/create`, command],
+      ["new record", `/v1/workspaces/${workspaceId}/employees`, employeeInput],
+    ] as const)("answers the core's rank refusal on the %s with 403 and its reason", async (_name, url, payload) => {
+      const refusal = new HttpError("Not allowed", 403, { reason: "authz.rank", detail: "employee.invite" });
+      const app = buildApp({
+        contextResolver: { resolve: async () => manager },
+        employeeCreateService: { create: vi.fn(async () => { throw refusal; }) },
+        employeeDirectoryService: { save: vi.fn(async () => { throw refusal; }) } as unknown as EmployeeDirectoryService,
+      });
+      const response = await app.inject({ method: "POST", url, headers: { authorization: "Bearer valid-token" }, payload });
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({ reason: "authz.rank" });
+      await app.close();
     });
-    expect(response.statusCode).toBe(403);
-    expect(create).not.toHaveBeenCalled();
-    await app.close();
+
+    it.each([
+      ["create command", `/v1/workspaces/${workspaceId}/employees/create`, command],
+      ["new record", `/v1/workspaces/${workspaceId}/employees`, employeeInput],
+    ] as const)("answers somebody who is not a member on the %s with 404 authz.not_member", async (_name, url, payload) => {
+      const create = vi.fn();
+      const app = buildApp({
+        contextResolver: { resolve: async () => null },
+        employeeCreateService: { create },
+      });
+      const response = await app.inject({ method: "POST", url, headers: { authorization: "Bearer valid-token" }, payload });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
+      expect(create).not.toHaveBeenCalled();
+      await app.close();
+    });
   });
   it("forwards employee directory reads through the authenticated API boundary", async () => {
     const list = vi.fn(async () => []);
@@ -540,6 +586,8 @@ describe("employee directory routes", () => {
       ["termination", "terminate_employee_service", "POST", `/v1/workspaces/${workspaceId}/employees/${employeeId}/termination`, termination],
       ["access removal", "remove_employee_access_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/access`, undefined],
       ["photo removal", "remove_employee_avatar_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/avatar`, undefined],
+      ["removal from a location", "remove_employee_from_location_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/locations/${locationId}`, undefined],
+      ["managed locations", "set_employee_managed_locations_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`, { locationIds: [locationId] }],
     ] as const;
     const noPermissions = { ...context, permissions: ["workspace.read"] as ActiveWorkspaceContext["permissions"] };
 
@@ -556,6 +604,93 @@ describe("employee directory routes", () => {
       expect(rpc).toHaveBeenCalledWith(rpcName, expect.objectContaining({ actor_user_id: userId, target_workspace_id: workspaceId, target_employee_id: employeeId }));
       expect(response.statusCode).toBe(403);
       expect(response.json()).toMatchObject({ reason: "authz.rank" });
+      await app.close();
+    });
+
+    // S1: a manager takes somebody off one location; the record stays, even
+    // with no location left, and the screen hears what happened.
+    it("removes somebody from one location and answers what is left", async () => {
+      const rpc = vi.fn(async () => ({
+        data: { employee_id: employeeId, location_id: locationId, released_shift_count: 2, locations_left: 0 },
+        error: null,
+      }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => noPermissions },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/locations/${locationId}`,
+        headers: { authorization: "Bearer valid-token" },
+      });
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json()).toEqual({ releasedShiftCount: 2, locationsLeft: 0 });
+      expect(rpc).toHaveBeenCalledWith("remove_employee_from_location_service", {
+        actor_user_id: userId,
+        target_workspace_id: workspaceId,
+        target_employee_id: employeeId,
+        target_location_id: locationId,
+      });
+      await app.close();
+    });
+
+    it("replaces a manager's managed locations with the list given", async () => {
+      const second = "11000000-0000-4000-8000-000000000002";
+      const rpc = vi.fn(async () => ({ data: { employee_id: employeeId, location_ids: [locationId, second] }, error: null }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => noPermissions },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({
+        method: "PUT",
+        url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: { locationIds: [locationId, second] },
+      });
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json()).toEqual({ locationIds: [locationId, second] });
+      expect(rpc).toHaveBeenCalledWith("set_employee_managed_locations_service", {
+        actor_user_id: userId,
+        target_workspace_id: workspaceId,
+        target_employee_id: employeeId,
+        location_ids: [locationId, second],
+      });
+      await app.close();
+    });
+
+    it("answers managed locations for somebody who is not a manager with 400 and its reason", async () => {
+      const rpc = vi.fn(async () => ({
+        data: null,
+        error: { code: "22023", message: "Only a manager manages a location without working there", hint: "employee.not_a_manager", details: null },
+      }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => context },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({
+        method: "PUT",
+        url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: { locationIds: [] },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ reason: "employee.not_a_manager" });
+      await app.close();
+    });
+
+    it.each([
+      ["a bad location id", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/locations/not-a-uuid`, undefined],
+      ["a list that is not location ids", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`, { locationIds: ["x"] }],
+      ["no list at all", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`, {}],
+    ] as const)("answers %s with 400 before asking anybody", async (_name, method, url, payload) => {
+      const rpc = vi.fn();
+      const app = buildApp({
+        contextResolver: { resolve: async () => context },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({ method, url, headers: { authorization: "Bearer valid-token" }, payload });
+      expect(response.statusCode).toBe(400);
+      expect(rpc).not.toHaveBeenCalled();
       await app.close();
     });
 

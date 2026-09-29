@@ -6,6 +6,11 @@ import {
   declinePendingEmployeeInvitation,
   getEmployeeDetail,
   loadEmployeeReferenceData,
+  prepareEmployeeInvitation,
+  removeEmployeeFromLocation,
+  retryEmployeeInvitation,
+  revokeEmployeeInvitation,
+  setEmployeeManagedLocations,
 } from "./employee-data";
 import { isNoAccess } from "../lib/no-access";
 import { InvitationError } from "./invitation-error";
@@ -132,5 +137,66 @@ describe("somebody who only works Management jobs (BL-218 .3b)", () => {
     expect(firstJobOutsideManagement(["manager", "cook", "server"], management)).toBe("cook");
     expect(firstJobOutsideManagement(["manager", "assistant"], management)).toBeNull();
     expect(firstJobOutsideManagement([], management)).toBeNull();
+  });
+});
+
+// FB-6.2 .7b (BL-414): the core decides who may invite; its "no" reaches the
+// drawer with its reason, so isNoAccess() and the screen can tell it apart.
+describe("Invitations the core refuses", () => {
+  const employeeId = "15000000-0000-4000-8000-000000000001";
+  it.each([
+    ["sending", () => prepareEmployeeInvitation(workspaceId, employeeId, "pat@example.test", null)],
+    ["resending", () => retryEmployeeInvitation(workspaceId, employeeId)],
+    ["cancelling", () => revokeEmployeeInvitation(workspaceId, employeeId)],
+  ] as const)("passes the core's no on %s with its reason", async (_name, call) => {
+    respond(403, { error: "Not allowed", reason: "authz.rank", detail: "employee.invite" });
+    const failure = await call().catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(RequestError);
+    expect(failure).toMatchObject({ reason: "authz.rank", detail: "employee.invite", status: 403 });
+    expect(isNoAccess(failure)).toBe(true);
+  });
+});
+
+// FB-6.2 S1 and S2: taking somebody off one location, and a manager's
+// locations managed without working there.
+describe("Locations a person is taken off or manages", () => {
+  const employeeId = "15000000-0000-4000-8000-000000000001";
+  const locationId = "11000000-0000-4000-8000-000000000001";
+
+  it("takes somebody off one location and says what is left", async () => {
+    const fetchMock = respond(200, { releasedShiftCount: 2, locationsLeft: 0 });
+    await expect(removeEmployeeFromLocation(workspaceId, employeeId, locationId)).resolves.toEqual({
+      releasedShiftCount: 2,
+      locationsLeft: 0,
+    });
+    expect(fetchMock.mock.calls[0]![0]).toBe(
+      `http://api.test/v1/workspaces/${workspaceId}/employees/${employeeId}/locations/${locationId}`,
+    );
+    expect(fetchMock.mock.calls[0]![1]).toMatchObject({ method: "DELETE" });
+  });
+
+  it("passes the core's no on a removal with its reason", async () => {
+    respond(403, { error: "Not allowed", reason: "authz.out_of_scope", detail: "employee.remove_from_location" });
+    const failure = await removeEmployeeFromLocation(workspaceId, employeeId, locationId).catch((error: unknown) => error);
+    expect(failure).toMatchObject({ reason: "authz.out_of_scope", status: 403 });
+    expect(isNoAccess(failure)).toBe(true);
+  });
+
+  it("gives a manager's managed locations whole and reads back what was kept", async () => {
+    const fetchMock = respond(200, { locationIds: [locationId] });
+    await expect(setEmployeeManagedLocations(workspaceId, employeeId, [locationId])).resolves.toEqual({
+      locationIds: [locationId],
+    });
+    expect(fetchMock.mock.calls[0]![0]).toBe(
+      `http://api.test/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`,
+    );
+    expect(fetchMock.mock.calls[0]![1]).toMatchObject({ method: "PUT", body: JSON.stringify({ locationIds: [locationId] }) });
+  });
+
+  it("keeps the reason when the person is not a manager", async () => {
+    respond(400, { error: "Only a manager manages a location without working there", reason: "employee.not_a_manager" });
+    const failure = await setEmployeeManagedLocations(workspaceId, employeeId, []).catch((error: unknown) => error);
+    expect(failure).toMatchObject({ reason: "employee.not_a_manager", status: 400 });
+    expect(isNoAccess(failure)).toBe(false);
   });
 });

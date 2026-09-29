@@ -37,7 +37,7 @@ import {
 } from "./account/workspace-retention-worker";
 import {
   createSupabaseWorkspaceContextResolver,
-  resolveWorkspaceAuthorization,
+  resolveActor,
   type WorkspaceContextResolver,
 } from "./auth/workspace-context";
 import {
@@ -528,6 +528,10 @@ export function buildApp(options: BuildAppOptions = {}) {
       options.workspaceRetentionCron?.cronSecret ?? process.env.CRON_SECRET,
   });
 
+  // Sending, resending, cancelling an invitation and copying its link. No
+  // gate here: each service asks the core (employee.invite with the person,
+  // can_invite_with_role for the role; FB-6.2 .5), and its "no" reaches the
+  // drawer as 404 or 403 with its reason (BL-414).
   app.post(
     "/v1/workspaces/:workspaceId/employees/:employeeId/invitations",
     async (request, reply) => {
@@ -538,46 +542,24 @@ export function buildApp(options: BuildAppOptions = {}) {
           .status(400)
           .send({ error: "Valid employee invitation details required" });
       }
-      if (!contextResolver || !invitationService) {
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        contextResolver,
+      );
+      if (!invitationService)
         return reply
           .status(503)
           .send({ error: "Employee invitation service is not configured" });
-      }
-      const authorization = await resolveWorkspaceAuthorization({
-        authorization: request.headers.authorization,
-        workspaceId: params.data.workspaceId,
-        permission: "employee_access.manage",
-        resolver: contextResolver,
-      });
-      if (!authorization.context) {
-        return reply
-          .status(authorization.denied === "workspace_not_found" ? 404 : 403)
-          .send({
-            error:
-              authorization.denied === "workspace_not_found"
-                ? "Workspace not found"
-                : "Employee access management required",
-          });
-      }
-      try {
-        return reply.send(
-          await invitationService.prepare({
-            actorUserId: authorization.context.userId,
-            workspaceId: params.data.workspaceId,
-            employeeId: params.data.employeeId,
-            email: body.data.email,
-            roleId: body.data.roleId ?? null,
-          }),
-        );
-      } catch (error) {
-        request.log.error(error);
-        return reply.status(409).send({
-          error:
-            error instanceof Error
-              ? error.message
-              : "Invitation could not be prepared",
-        });
-      }
+      return reply.send(
+        await invitationService.prepare({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+          email: body.data.email,
+          roleId: body.data.roleId ?? null,
+        }),
+      );
     },
   );
 
@@ -587,43 +569,22 @@ export function buildApp(options: BuildAppOptions = {}) {
       const params = invitationParamsSchema.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid employee required" });
-      if (!contextResolver || !invitationService) {
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        contextResolver,
+      );
+      if (!invitationService)
         return reply
           .status(503)
           .send({ error: "Employee invitation service is not configured" });
-      }
-      const authorization = await resolveWorkspaceAuthorization({
-        authorization: request.headers.authorization,
-        workspaceId: params.data.workspaceId,
-        permission: "employee_access.manage",
-        resolver: contextResolver,
-      });
-      if (!authorization.context)
-        return reply
-          .status(authorization.denied === "workspace_not_found" ? 404 : 403)
-          .send({
-            error:
-              authorization.denied === "workspace_not_found"
-                ? "Workspace not found"
-                : "Employee access management required",
-          });
-      try {
-        return reply.send(
-          await invitationService.retry({
-            actorUserId: authorization.context.userId,
-            workspaceId: params.data.workspaceId,
-            employeeId: params.data.employeeId,
-          }),
-        );
-      } catch (error) {
-        request.log.error(error);
-        return reply.status(409).send({
-          error:
-            error instanceof Error
-              ? error.message
-              : "Invitation delivery could not be retried",
-        });
-      }
+      return reply.send(
+        await invitationService.retry({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+        }),
+      );
     },
   );
 
@@ -633,94 +594,48 @@ export function buildApp(options: BuildAppOptions = {}) {
       const params = invitationParamsSchema.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid employee required" });
-      if (!contextResolver || !invitationService) {
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        contextResolver,
+      );
+      if (!invitationService)
         return reply
           .status(503)
           .send({ error: "Employee invitation service is not configured" });
-      }
-      const authorization = await resolveWorkspaceAuthorization({
-        authorization: request.headers.authorization,
+      await invitationService.revoke({
+        actorUserId: context.userId,
         workspaceId: params.data.workspaceId,
-        permission: "employee_access.manage",
-        resolver: contextResolver,
+        employeeId: params.data.employeeId,
       });
-      if (!authorization.context)
-        return reply
-          .status(authorization.denied === "workspace_not_found" ? 404 : 403)
-          .send({
-            error:
-              authorization.denied === "workspace_not_found"
-                ? "Workspace not found"
-                : "Employee access management required",
-          });
-      try {
-        await invitationService.revoke({
-          actorUserId: authorization.context.userId,
-          workspaceId: params.data.workspaceId,
-          employeeId: params.data.employeeId,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        request.log.error(error);
-        return reply.status(409).send({
-          error:
-            error instanceof Error
-              ? error.message
-              : "Invitation could not be revoked",
-        });
-      }
+      return reply.status(204).send();
     },
   );
 
-  // The invitation's own link, for an admin who has to pass it along by hand
-  // because email did not arrive. Same permission as sending one.
+  // The invitation's own link, for whoever sent it to pass along by hand
+  // because email did not arrive.
   app.get(
     "/v1/workspaces/:workspaceId/employees/:employeeId/invitations/link",
     async (request, reply) => {
       const params = invitationParamsSchema.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid employee required" });
-      if (!contextResolver || !invitationService) {
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        contextResolver,
+      );
+      if (!invitationService)
         return reply
           .status(503)
           .send({ error: "Employee invitation service is not configured" });
-      }
-      // No credentials at all is a different answer from "not yours": the
-      // workspace helper folds both into 404 to avoid confirming a workspace
-      // exists, which is right for a stranger and wrong for a caller that
-      // simply forgot to sign in.
-      if (!bearerToken(request.headers.authorization))
-        return reply
-          .status(401)
-          .send({ error: "Authenticated account required" });
-      const authorization = await resolveWorkspaceAuthorization({
-        authorization: request.headers.authorization,
-        workspaceId: params.data.workspaceId,
-        permission: "employee_access.manage",
-        resolver: contextResolver,
-      });
-      if (!authorization.context)
-        return reply
-          .status(authorization.denied === "workspace_not_found" ? 404 : 403)
-          .send({
-            error:
-              authorization.denied === "workspace_not_found"
-                ? "Workspace not found"
-                : "Employee access management required",
-          });
-      try {
-        return reply.send(
-          await invitationService.link({
-            actorUserId: authorization.context.userId,
-            workspaceId: params.data.workspaceId,
-            employeeId: params.data.employeeId,
-          }),
-        );
-      } catch (error) {
-        request.log.warn({ err: error }, "invitation link unavailable");
-        const failure = invitationFailure(error);
-        return reply.status(failure.status).send(failure.body);
-      }
+      return reply.send(
+        await invitationService.link({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+        }),
+      );
     },
   );
 

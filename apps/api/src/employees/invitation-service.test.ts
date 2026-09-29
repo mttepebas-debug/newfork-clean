@@ -141,7 +141,12 @@ describe("createEmployeeInvitationService", () => {
         email: "employee@example.test",
         roleId,
       }),
-    ).rejects.toThrow("Invitation delivery failed (503)");
+    ).rejects.toMatchObject({
+      // The invitation stands and is marked failed; the inviter hears a
+      // sentence of ours with a status the drawer shows, not the provider's.
+      message: "Invitation delivery failed",
+      statusCode: 409,
+    });
 
     expect(mocks.rpc).toHaveBeenCalledTimes(3);
     expect(mocks.rpc).toHaveBeenNthCalledWith(

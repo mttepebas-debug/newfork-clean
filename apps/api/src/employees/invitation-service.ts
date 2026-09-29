@@ -137,7 +137,7 @@ export function createEmployeeInvitationService(
               ? deliveryError.message
               : "Invitation delivery failed",
         });
-        throw deliveryError;
+        throw deliveryFailed(deliveryError);
       }
       return {
         id: String(data),
@@ -196,7 +196,7 @@ export function createEmployeeInvitationService(
               ? deliveryError.message
               : "Invitation delivery failed",
         });
-        throw deliveryError;
+        throw deliveryFailed(deliveryError);
       }
       return {
         id: row.id,
@@ -308,6 +308,12 @@ async function initializeEmployeeOnboarding(
     },
   );
   if (initialized.error) throw rpcFailure(initialized.error);
+}
+
+// The invitation stands and is marked failed (the drawer offers to resend);
+// the inviter hears our sentence, never the email provider's.
+function deliveryFailed(cause: unknown): HttpError {
+  return new HttpError("Invitation delivery failed", 409, { cause });
 }
 
 export async function deliverInvitation(

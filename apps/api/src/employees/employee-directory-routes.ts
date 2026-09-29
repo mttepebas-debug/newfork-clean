@@ -1,6 +1,7 @@
 import {
   employeeInputSchema,
   employeeCreateCommandSchema,
+  employeeManagedLocationsSchema,
   employeeRoleUpdateInputSchema,
   type Permission,
 } from "@newfork/shared";
@@ -28,6 +29,9 @@ const ownEmploymentContactBody = z.object({
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 const employeeParams = workspaceParams.extend({
   employeeId: z.string().uuid(),
+});
+const employeeLocationParams = employeeParams.extend({
+  locationId: z.string().uuid(),
 });
 const queryBoolean = z
   .union([z.boolean(), z.enum(["true", "false"])])
@@ -76,27 +80,15 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(400)
           .send({ error: "Valid employee details required" });
-      const context = await authorize(
+      // No gate here: the command asks the core in the database (employee.create
+      // at the record's locations; can_invite_with_role for an invitation's
+      // role), and its "no" reaches the drawer as 404 or 403 (FB-6.2 .7b).
+      // The owner setting up a draft workspace is let through by the core.
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.manage",
         options.contextResolver,
-        reply,
-        "Employee management required",
-        { allowIncompleteOnboarding: true },
       );
-      if (!context) return;
-      if (body.data.invite_role_id) {
-        const access = await authorize(
-          request.headers.authorization,
-          params.data.workspaceId,
-          "employee_access.manage",
-          options.contextResolver,
-          reply,
-          "Employee access required",
-        );
-        if (!access) return;
-      }
       if (!options.createService)
         return reply
           .status(503)
@@ -255,6 +247,65 @@ export function registerEmployeeDirectoryRoutes(
         employeeId: params.data.employeeId,
       });
       return reply.status(204).send();
+    },
+  );
+
+  // Taking somebody off one location they work at (FB-6.2 S1): the record
+  // stays, with no location if it was the only one. No gate here: the service
+  // asks the core (employee.remove_from_location at that location).
+  app.delete(
+    "/v1/workspaces/:workspaceId/employees/:employeeId/locations/:locationId",
+    async (request, reply) => {
+      const params = employeeLocationParams.safeParse(request.params);
+      if (!params.success)
+        return reply.status(400).send({ error: "Valid employee and location required" });
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        options.contextResolver,
+      );
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee directory service is not configured" });
+      return reply.send(
+        await options.service.removeFromLocation({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+          locationId: params.data.locationId,
+        }),
+      );
+    },
+  );
+
+  // The locations a manager manages without working there (FB-6.2 S2), given
+  // whole. No gate here: the service asks the core
+  // (employee.set_managed_locations: admin and owner).
+  app.put(
+    "/v1/workspaces/:workspaceId/employees/:employeeId/managed-locations",
+    async (request, reply) => {
+      const params = employeeParams.safeParse(request.params);
+      const body = employeeManagedLocationsSchema.safeParse(request.body);
+      if (!params.success || !body.success)
+        return reply.status(400).send({ error: "Valid managed locations required" });
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        options.contextResolver,
+      );
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee directory service is not configured" });
+      return reply.send(
+        await options.service.setManagedLocations({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+          locationIds: body.data.locationIds,
+        }),
+      );
     },
   );
 
@@ -463,16 +514,12 @@ export function registerEmployeeDirectoryRoutes(
       return reply
         .status(400)
         .send({ error: "Valid employee details required" });
-    const context = await authorize(
+    // No gate here: the service asks the core (FB-6.2 .7b).
+    const context = await resolveActor(
       request.headers.authorization,
       params.data.workspaceId,
-      "employees.manage",
       options.contextResolver,
-      reply,
-      "Employee management required",
-      { allowIncompleteOnboarding: true },
     );
-    if (!context) return;
     if (!options.service)
       return reply
         .status(503)

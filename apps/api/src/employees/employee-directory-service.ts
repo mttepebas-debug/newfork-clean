@@ -1,6 +1,7 @@
 import {
   employeeDetailSchema,
   employeeInputSchema,
+  employeeLocationRemovalSchema,
   employeeReferenceDataSchema,
   type EmployeeReferenceDataRecord,
   employeeRoleUpdateInputSchema,
@@ -10,6 +11,8 @@ import {
   preferredNameOutcomeSchema,
   type EmployeeDetail,
   type EmployeeInput,
+  type EmployeeLocationRemoval,
+  type EmployeeManagedLocations,
   type EmployeeRoleUpdateInput,
   type EmployeeSummary,
   type PendingPreferredName,
@@ -94,6 +97,20 @@ export interface EmployeeDirectoryService {
     readonly workspaceId: string;
     readonly employeeId: string;
   }): Promise<void>;
+  /** Takes somebody off one location; the record stays (FB-6.2 S1). */
+  removeFromLocation(input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+    readonly employeeId: string;
+    readonly locationId: string;
+  }): Promise<EmployeeLocationRemoval>;
+  /** Replaces the locations a manager manages without working there (S2). */
+  setManagedLocations(input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+    readonly employeeId: string;
+    readonly locationIds: readonly string[];
+  }): Promise<EmployeeManagedLocations>;
   /** How this workspace answers a preferred name. */
   getPreferredNameApproval(input: {
     readonly actorUserId: string;
@@ -377,6 +394,35 @@ export function createEmployeeDirectoryServiceWithClient(
         target_workspace_id: input.workspaceId,
         target_employee_id: input.employeeId,
       });
+    },
+    async removeFromLocation(input) {
+      const answer = z
+        .object({ released_shift_count: z.number(), locations_left: z.number() })
+        .parse(
+          await rpc("remove_employee_from_location_service", {
+            actor_user_id: input.actorUserId,
+            target_workspace_id: input.workspaceId,
+            target_employee_id: input.employeeId,
+            target_location_id: input.locationId,
+          }),
+        );
+      return employeeLocationRemovalSchema.parse({
+        releasedShiftCount: answer.released_shift_count,
+        locationsLeft: answer.locations_left,
+      });
+    },
+    async setManagedLocations(input) {
+      const answer = z
+        .object({ location_ids: z.array(z.string().uuid()) })
+        .parse(
+          await rpc("set_employee_managed_locations_service", {
+            actor_user_id: input.actorUserId,
+            target_workspace_id: input.workspaceId,
+            target_employee_id: input.employeeId,
+            location_ids: input.locationIds,
+          }),
+        );
+      return { locationIds: answer.location_ids };
     },
   };
 }

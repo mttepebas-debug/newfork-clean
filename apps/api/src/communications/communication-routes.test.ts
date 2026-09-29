@@ -1,4 +1,5 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
+import { HttpError } from "../http-error";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
 import type { CommunicationService } from "./communication-service";
@@ -199,7 +200,7 @@ describe("communication routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      expect(response.json()).toEqual({ error: "Workspace not found" });
+      expect(response.json()).toMatchObject({ error: "Workspace not found" });
       expect(service[route.serviceMethod]).not.toHaveBeenCalled();
     }
   });
@@ -343,5 +344,45 @@ describe("communication routes", () => {
     expect(service.setOwnerSetupChecklistClosed).toHaveBeenCalledWith(
       expect.objectContaining({ actorUserId: userId, workspaceId }),
     );
+  });
+
+  // BL-413: Workspace home, its to-dos and whether they may be written are the
+  // core's (workspace.todos, KK-34); the routes keep no permission or role
+  // gate of their own. Somebody the core refuses hears its reason.
+  describe("Workspace home asks the core", () => {
+    const employee = {
+      ...activeContext,
+      membership: { ...activeContext.membership, role: "employee" as const, allLocations: false },
+      permissions: ["workspace.read"] as ActiveWorkspaceContext["permissions"],
+    } satisfies ActiveWorkspaceContext;
+    const todoId = "a9700000-0000-4000-8000-000000000011";
+    const routes = [
+      ["home", "getWorkspace", "GET", `/v1/workspaces/${workspaceId}/workspace`, undefined],
+      ["new to-do", "createWorkspaceTodo", "POST", `/v1/workspaces/${workspaceId}/workspace/todos`, { title: "Follow up", body: "", employee_id: null, due_at: null }],
+      ["to-do resolution", "resolveWorkspaceTodo", "POST", `/v1/workspaces/${workspaceId}/workspace/todos/${todoId}/resolve`, undefined],
+    ] as const;
+
+    it.each(routes)("hands the %s to the database, whose refusal answers 403 with its reason", async (_name, method, verb, url, payload) => {
+      const service = communicationServiceMock();
+      vi.mocked(service[method]).mockRejectedValue(
+        new HttpError("Not allowed", 403, { reason: "authz.missing_permission", detail: "workspace.todos" }),
+      );
+      const app = buildApp({ contextResolver: { resolve: async () => employee }, communicationService: service });
+      const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer employee-token" }, payload });
+      expect(service[method]).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: userId, workspaceId }));
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({ reason: "authz.missing_permission", detail: "workspace.todos" });
+      await app.close();
+    });
+
+    it.each(routes)("answers somebody who is not a member on the %s with 404 authz.not_member", async (_name, method, verb, url, payload) => {
+      const service = communicationServiceMock();
+      const app = buildApp({ contextResolver: { resolve: async () => null }, communicationService: service });
+      const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer stranger-token" }, payload });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
+      expect(service[method]).not.toHaveBeenCalled();
+      await app.close();
+    });
   });
 });

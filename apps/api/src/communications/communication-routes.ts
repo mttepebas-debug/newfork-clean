@@ -10,6 +10,7 @@ import {
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
+  resolveActor,
   resolveWorkspaceAuthorization,
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
@@ -244,19 +245,13 @@ export function registerCommunicationRoutes(
     const params = workspaceParams.safeParse(request.params);
     if (!params.success)
       return reply.status(400).send({ error: "Valid workspace required" });
-    const context = await authorize(
+    // No gate here: the dashboard asks the core (workspace.todos, KK-34), and
+    // its "no" reaches the screen as 404 or 403 with its reason (BL-413).
+    const context = await resolveActor(
       request.headers.authorization,
       params.data.workspaceId,
-      "workspace.read",
       options.contextResolver,
-      reply,
-      "Manager workspace access required",
     );
-    if (!context) return;
-    if (context.membership.role === "employee")
-      return reply
-        .status(403)
-        .send({ error: "Manager workspace access required" });
     if (!options.service) return unavailable(reply);
     return reply.send(await options.service.getWorkspace(actor(context)));
   });
@@ -302,19 +297,13 @@ export function registerCommunicationRoutes(
         return reply
           .status(400)
           .send({ error: "Valid workspace todo required" });
-      const context = await authorize(
+      // No gate here: the service asks the core (workspace.todos, KK-34;
+      // BL-413).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "workspace.read",
         options.contextResolver,
-        reply,
-        "Manager workspace access required",
       );
-      if (!context) return;
-      if (context.membership.role === "employee")
-        return reply
-          .status(403)
-          .send({ error: "Manager workspace access required" });
       if (!options.service) return unavailable(reply);
       return reply.status(201).send(
         await options.service.createWorkspaceTodo({
@@ -333,19 +322,13 @@ export function registerCommunicationRoutes(
         return reply
           .status(400)
           .send({ error: "Valid workspace todo required" });
-      const context = await authorize(
+      // No gate here: the service asks the core (workspace.todos, KK-34;
+      // BL-413).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "workspace.read",
         options.contextResolver,
-        reply,
-        "Manager workspace access required",
       );
-      if (!context) return;
-      if (context.membership.role === "employee")
-        return reply
-          .status(403)
-          .send({ error: "Manager workspace access required" });
       if (!options.service) return unavailable(reply);
       return reply.send(
         await options.service.resolveWorkspaceTodo({

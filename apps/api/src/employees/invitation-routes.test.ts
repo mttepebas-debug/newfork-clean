@@ -1,6 +1,7 @@
 import { HttpError, rpcFailure } from "../http-error.js";
 import type { EmployeeInvitationService } from "./invitation-service.js";
-import { describe, expect, it } from "vitest";
+import type { ActiveWorkspaceContext } from "@newfork/shared";
+import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app.js";
 
 /**
@@ -207,6 +208,91 @@ describe("invitation endpoints", () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json().code).toBe("invitation_not_found");
+  });
+
+  // FB-6.2 .7b (BL-414): whether somebody may invite is the core's
+  // (employee.invite, can_invite_with_role); the routes keep no permission of
+  // their own. A manager with no employee_access.manage reaches the database,
+  // and its "no" comes back with its reason.
+  describe("workspace invitation routes ask the core", () => {
+    const workspaceId = "1131ca31-392f-4ea0-bdc2-e1235e1496b1";
+    const employeeId = "fe201916-aa0e-480b-9144-1e1c8da20a31";
+    const managerId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
+    const manager: ActiveWorkspaceContext = {
+      userId: managerId,
+      workspace: {
+        id: workspaceId,
+        name: "Meyhouse",
+        logo_url: null,
+        logo_file_name: null,
+        logo_updated_at: null,
+        schedule_logo_placement: { scale: 1, offset_x: 0, offset_y: 0 },
+      },
+      membership: {
+        id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
+        userId: managerId,
+        workspaceId,
+        role: "manager",
+        status: "active",
+        allLocations: false,
+      },
+      permissions: ["workspace.read", "employees.read", "employees.manage"],
+      actions: ["employee.invite"],
+      onboarding: { status: "complete", currentStep: 4 },
+      documentAccess: { restricted: false },
+      locationScope: { allLocations: false, locationIds: [] },
+    };
+    const base = `/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`;
+    const routes = [
+      ["send", "prepare", "POST", base, { email: "pat@example.test" }],
+      ["retry", "retry", "POST", `${base}/retry`, undefined],
+      ["revoke", "revoke", "DELETE", base, undefined],
+      ["link", "link", "GET", `${base}/link`, undefined],
+    ] as const;
+
+    it.each(routes)("hands the %s to the database without the access permission", async (_name, method, verb, url, payload) => {
+      const called = vi.fn(async () => ({ id: employeeId, expiresAt: "2026-10-07T00:00:00.000Z", url: "x" }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => manager },
+        invitationService: { ...serviceThrowing(new Error("unused")), [method]: called },
+      });
+      const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer manager-token" }, payload });
+      expect(response.statusCode, response.body).toBeLessThan(300);
+      expect(called).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: managerId, workspaceId, employeeId }));
+      await app.close();
+    });
+
+    it.each(routes)("answers the core's rank refusal on the %s with 403 and its reason", async (_name, _method, verb, url, payload) => {
+      const app = buildApp({
+        contextResolver: { resolve: async () => manager },
+        invitationService: serviceThrowing(
+          rpcFailure({ code: "42501", message: "Not allowed", hint: "authz.rank", details: "employee.invite" }),
+        ),
+      });
+      const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer manager-token" }, payload });
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({ reason: "authz.rank", detail: "employee.invite" });
+      await app.close();
+    });
+
+    it.each(routes)("answers somebody who is not a member on the %s with 404 authz.not_member", async (_name, _method, verb, url, payload) => {
+      const app = appWith(serviceThrowing(new Error("unused")));
+      const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer stranger-token" }, payload });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
+      await app.close();
+    });
+
+    it("never hands the database's own sentence to the caller", async () => {
+      const app = buildApp({
+        contextResolver: { resolve: async () => manager },
+        invitationService: serviceThrowing(new Error('duplicate key value violates unique constraint "employee_invitations_pkey"')),
+      });
+      const response = await app.inject({ method: "POST", url: base, headers: { authorization: "Bearer manager-token" }, payload: { email: "pat@example.test" } });
+      expect(response.statusCode).toBe(500);
+      expect(response.payload).not.toContain("duplicate key");
+      await app.close();
+    });
   });
 
   it("answers 200 and names the state of an invitation that is not open", async () => {

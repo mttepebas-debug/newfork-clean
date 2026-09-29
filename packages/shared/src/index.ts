@@ -2645,6 +2645,25 @@ export type EmployeeRoleUpdateInput = z.infer<
   typeof employeeRoleUpdateInputSchema
 >;
 
+/**
+ * Taking somebody off one location (FB-6.2 S1): their shifts there from now on
+ * are left open and the record stays, with no location if it was the only one.
+ */
+export const employeeLocationRemovalSchema = z.object({
+  releasedShiftCount: z.number().int().nonnegative(),
+  locationsLeft: z.number().int().nonnegative(),
+});
+export type EmployeeLocationRemoval = z.infer<typeof employeeLocationRemovalSchema>;
+
+/**
+ * The locations a manager manages without working there (FB-6.2 S2), given
+ * whole: the list replaces what was there.
+ */
+export const employeeManagedLocationsSchema = z.object({
+  locationIds: z.array(z.string().uuid()).max(500),
+});
+export type EmployeeManagedLocations = z.infer<typeof employeeManagedLocationsSchema>;
+
 export const employeeInputSchema = z
   .object({
     first_name: z.string().trim().min(1).max(80),

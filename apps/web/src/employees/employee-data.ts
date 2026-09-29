@@ -4,6 +4,10 @@ import {
   employeeDetailSchema,
   employeeInputSchema,
   employeeCreateCommandSchema,
+  employeeLocationRemovalSchema,
+  employeeManagedLocationsSchema,
+  type EmployeeLocationRemoval,
+  type EmployeeManagedLocations,
   employeeCreateResultSchema,
   employeeReferenceDataSchema,
   type EmployeeCreateCommand,
@@ -260,62 +264,56 @@ export async function prepareEmployeeInvitation(
   email: string,
   roleId?: string | null,
 ): Promise<PreparedInvitation> {
-  const token = await getApiAccessToken(client());
-  const headers = new Headers({ Authorization: `Bearer ${token}` });
-  headers.set("Content-Type", "application/json");
-  const tabWorkspaceId = getTabWorkspaceId();
-  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
-  const response = await fetch(
-    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`,
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ email, roleId: roleId ?? null }),
-    },
-  );
-  const body = (await response.json()) as PreparedInvitation & {
-    error?: string;
-  };
-  if (!response.ok) throw new Error(body.error ?? "Employee invitation failed");
-  return body;
+  return (await request(workspaceId, `/${employeeId}/invitations`, {
+    method: "POST",
+    body: JSON.stringify({ email, roleId: roleId ?? null }),
+  })) as PreparedInvitation;
 }
 
 export async function retryEmployeeInvitation(
   workspaceId: string,
   employeeId: string,
 ): Promise<PreparedInvitation> {
-  const token = await getApiAccessToken(client());
-  const headers = new Headers({ Authorization: `Bearer ${token}` });
-  const tabWorkspaceId = getTabWorkspaceId();
-  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
-  const response = await fetch(
-    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations/retry`,
-    { method: "POST", headers },
-  );
-  const body = (await response.json()) as PreparedInvitation & {
-    error?: string;
-  };
-  if (!response.ok)
-    throw new Error(body.error ?? "Invitation delivery retry failed");
-  return body;
+  return (await request(workspaceId, `/${employeeId}/invitations/retry`, {
+    method: "POST",
+  })) as PreparedInvitation;
 }
 
 export async function revokeEmployeeInvitation(
   workspaceId: string,
   employeeId: string,
 ): Promise<void> {
-  const token = await getApiAccessToken(client());
-  const headers = new Headers({ Authorization: `Bearer ${token}` });
-  const tabWorkspaceId = getTabWorkspaceId();
-  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
-  const response = await fetch(
-    `${newforkApiUrl}/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`,
-    { method: "DELETE", headers },
+  await request(workspaceId, `/${employeeId}/invitations`, { method: "DELETE" });
+}
+
+/**
+ * Takes somebody off one location (FB-6.2 S1): their shifts there from now on
+ * are left open; the record stays, with no location if it was the only one.
+ */
+export async function removeEmployeeFromLocation(
+  workspaceId: string,
+  employeeId: string,
+  locationId: string,
+): Promise<EmployeeLocationRemoval> {
+  return employeeLocationRemovalSchema.parse(
+    await request(workspaceId, `/${employeeId}/locations/${locationId}`, {
+      method: "DELETE",
+    }),
   );
-  if (!response.ok) {
-    const body = (await response.json()) as { error?: string };
-    throw new Error(body.error ?? "Invitation revoke failed");
-  }
+}
+
+/** A manager's locations managed without working there (S2), given whole. */
+export async function setEmployeeManagedLocations(
+  workspaceId: string,
+  employeeId: string,
+  locationIds: readonly string[],
+): Promise<EmployeeManagedLocations> {
+  return employeeManagedLocationsSchema.parse(
+    await request(workspaceId, `/${employeeId}/managed-locations`, {
+      method: "PUT",
+      body: JSON.stringify({ locationIds }),
+    }),
+  );
 }
 
 export interface EmployeeAvatarStatus {
