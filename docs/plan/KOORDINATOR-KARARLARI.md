@@ -203,3 +203,9 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Dayanak:** öneri (nf-planlama, `4490f8e3` tabanı) ve pre-mortem; Dal A zaten bu sırayla yürüyor (HANDOFF 2026-09-29 gece §2). CLAUDE.md §4 aynı dosyada iki oturum çalışmaz. Yetki çekirdeği turu web kısmını beklemek için durmamalı.
 - **Geri alma:** kolay (yalnız sıra ve tur sınırı).
 - **Durum:** uygulanıyor.
+
+### KK-28 (2026-09-29) Ortak yerel DB'de Main Dining'in saat dilimi seed değerine döndürüldü
+- **Karar:** nf-planlama'nın seçenek (1)'i: yerel `public.locations` `11000000-0000-4000-8000-000000000001` (Main Dining) `timezone` `America/New_York` → `America/Los_Angeles` (`seed.sql:283`). Tek UPDATE, `db.lock` altında, koordinatör yaptı.
+- **Dayanak:** BL-209 (kayma 2026-09-22'den beri); `shift_exchanges_v1` AT20/AT21 yerelde bu yüzden kırmızıydı, CI temiz DB'den kurduğu için yeşil. Kayma her yerel koşuda yanlış alarm veriyordu (FB-6.2 Dal A raporu). Canlı veri yok; yerel DB kurala uymuyorsa düzeltilen veridir.
+- **Yedek / geri alma:** eski değer `America/New_York` (`updated_at 2026-09-22 22:56:18.979668+00`); geri almak aynı UPDATE'in tersi. Kalıcı çare BL-217'nin kalanı (dosyayı test dünyasına taşımak).
+- **Durum:** uygulandı 2026-09-29 gece; dosyanın yerelde yeşile döndüğü nf-planlama ölçümüyle BL-209'a yazılır.
