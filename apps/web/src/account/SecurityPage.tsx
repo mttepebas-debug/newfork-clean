@@ -1,5 +1,5 @@
 import { Button } from "@newfork/ui";
-import { KeyRound, LogOut, Mail, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -115,10 +115,10 @@ export default function SecurityPage() {
       <section className="account-section-block">
         <div className="account-section-copy"><h2>Email address</h2><p>The address you use to sign in and receive recovery messages.</p></div>
         <div className="account-section-body">
-          <div className="account-info-row">
-            <div><strong>{security?.email ?? account.email}</strong><span>Primary email · {security ? security.emailVerified ? "verified" : "not verified" : "checking verification"}</span></div>
-            <Mail size={18} aria-hidden />
-          </div>
+          <p className="account-current-value">
+            <strong>{security?.email ?? account.email}</strong>
+            <span>{security ? security.emailVerified ? "Verified" : "Not verified" : "Checking verification"}</span>
+          </p>
           {security?.pendingEmail ? (
             <div className="account-notice">
               <strong>Verify {security.pendingEmail}</strong>
@@ -144,39 +144,44 @@ export default function SecurityPage() {
 
       <section className="account-section-block">
         <div className="account-section-copy"><h2>Password</h2><p>Use at least 8 characters and avoid reused passwords.</p></div>
-        <form className="account-section-body account-field-grid" onSubmit={submitPassword}>
-          <label className="account-field account-field-wide"><span>Current password</span><input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
-          <label className="account-field"><span>New password</span><input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
-          <label className="account-field"><span>Confirm password</span><input type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
-          <Button className="account-field-wide" type="submit" disabled={busy !== null || !currentPassword || newPassword.length < 8 || newPassword !== confirmPassword}><KeyRound size={15} aria-hidden /> Change password</Button>
-          <FormAlert className="form-error account-field-wide" message={errorIn("password")} />
+        <form className="account-section-body" onSubmit={submitPassword}>
+          <div className="account-field-grid account-field-grid-3">
+            <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
+            <label className="account-field"><span>New password</span><input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
+            <label className="account-field"><span>Confirm password</span><input type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
+          </div>
+          <FormAlert className="form-error" message={errorIn("password")} />
+          <div className="account-form-actions">
+            <Button type="submit" disabled={busy !== null || !currentPassword || newPassword.length < 8 || newPassword !== confirmPassword}>Change password</Button>
+          </div>
         </form>
       </section>
 
       <section className="account-section-block">
         <div className="account-section-copy"><h2>Active sessions</h2><p>Keep this browser signed in and revoke every other session.</p></div>
         <div className="account-section-body">
-          <div className="account-info-row"><div><strong>This device</strong><span>Current browser session</span></div><span className="account-pill">Current</span></div>
           <form className="account-inline-form" onSubmit={(event) => { event.preventDefault(); void run("sessions", async () => {
             await signOutOtherAccountSessions(supabaseClient!, sessionPassword);
             setSessionPassword("");
           }, "Other sessions signed out"); }}>
             <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={sessionPassword} onChange={(event) => setSessionPassword(event.target.value)} required /></label>
-            <Button type="submit" disabled={busy !== null || !sessionPassword}><LogOut size={15} aria-hidden /> Sign out other sessions</Button>
+            <Button type="submit" disabled={busy !== null || !sessionPassword}>Sign out other sessions</Button>
           </form>
           <FormAlert className="form-error" message={errorIn("sessions")} />
         </div>
       </section>
 
-      <section className="account-section-block account-danger-section" aria-labelledby="delete-account-title">
+      <section className="account-section-block" aria-labelledby="delete-account-title">
         <div className="account-section-copy"><h2 id="delete-account-title">Delete account</h2><p>A 14-day recovery window starts after your current password is verified.</p></div>
         <div className="account-section-body">
           {blockers.length > 0 ? (
-            <div className="account-danger-notice"><strong>Your account is still in use</strong><p>{deletionBlockerSummary(blockers)}</p></div>
+            <div className="account-blocked-notice"><strong>Your account is still in use</strong><p>{deletionBlockerSummary(blockers)}</p></div>
           ) : (
             <p className="field-help">Pending invitations will be cancelled and their workspace managers notified.</p>
           )}
-          <Button className="danger-button" type="button" disabled={busy !== null || !security || blockers.length > 0} onClick={() => setConfirmDeletion(true)}><Trash2 size={15} aria-hidden /> Delete account</Button>
+          <div className="account-form-actions">
+            <Button className="danger-button" type="button" disabled={busy !== null || !security || blockers.length > 0} onClick={() => setConfirmDeletion(true)}><Trash2 size={15} aria-hidden /> Delete account</Button>
+          </div>
           <dialog ref={deletionDialog} className="account-confirmation-dialog" aria-labelledby="deletion-confirmation-title" onCancel={(event) => {
             if (busy === "delete") event.preventDefault();
             else { setConfirmDeletion(false); setDeletionPassword(""); }
@@ -190,7 +195,7 @@ export default function SecurityPage() {
           }, "Account deletion requested"); }}>
             <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={deletionPassword} onChange={(event) => setDeletionPassword(event.target.value)} required /></label>
             <FormAlert className="form-error" message={errorIn("delete")} />
-            <div className="account-button-row">
+            <div className="account-form-actions">
               <Button type="button" className="secondary-button" disabled={busy === "delete"} onClick={() => { setConfirmDeletion(false); setDeletionPassword(""); setFailure(null); }}>Cancel</Button>
               <Button className="danger-button" type="submit" disabled={busy !== null || blockers.length > 0 || !deletionPassword}>Confirm account deletion</Button>
             </div>

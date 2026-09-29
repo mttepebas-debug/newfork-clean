@@ -153,7 +153,7 @@ describe("notification preferences page", () => {
     const toggle = await screen.findByRole("checkbox", { name: "Schedule In-app" });
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Schedule Email" })).toHaveProperty("checked", false));
     fireEvent.click(toggle);
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveNotificationPreferences).toHaveBeenLastCalledWith(workspaceId, { updates: [expect.objectContaining({
       channel_preferences: { in_app: "disabled", push: "disabled" }, cadence: "immediate", quiet_hours: { enabled: true, start: "22:00", end: "07:00" },
     })] }));
@@ -169,7 +169,7 @@ describe("notification preferences page", () => {
     const master = await screen.findByRole("checkbox", { name: "Schedule In-app" });
     await waitFor(() => expect(master).toHaveProperty("checked", false));
     fireEvent.click(master);
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveNotificationPreferences).toHaveBeenLastCalledWith(workspaceId, {
       updates: [expect.objectContaining({ preference_scope: "type", scope_key: "schedule.published",
         channel_preferences: { in_app: "enabled" }, expected_version: null })],
@@ -192,7 +192,7 @@ describe("notification preferences page", () => {
     expect(master).toHaveProperty("indeterminate", false);
     expect(screen.getByRole("checkbox", { name: "In-app for Time-off request updates" })).toHaveProperty("checked", true);
     expect(screen.getAllByRole("button", { name: /Save/ })).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveNotificationPreferences).toHaveBeenLastCalledWith(workspaceId, {
       updates: [expect.objectContaining({ scope_key: "requests.time_off.status_changed", channel_preferences: { in_app: "enabled" } })],
     }));
@@ -255,7 +255,7 @@ describe("notification preferences page", () => {
     renderPage();
 
     expect(
-      await screen.findByRole("heading", { name: "Notification Preferences" }),
+      await screen.findByRole("heading", { name: "Notifications" }),
     ).toBeTruthy();
     expect(await screen.findByRole("heading", { name: "Schedule" })).toBeTruthy();
     expandGroup();
@@ -281,7 +281,7 @@ describe("notification preferences page", () => {
     fireEvent.click(inApp);
     fireEvent.click(inApp);
     fireEvent.click(
-      screen.getByRole("button", { name: "Save changes" }),
+      screen.getByRole("button", { name: "Save" }),
     );
 
     await waitFor(() =>
