@@ -794,8 +794,6 @@ create temporary table known_gap (
   reason text not null
 );
 insert into known_gap values
-  ('preferred-name-not-on-core', null, '{employee.decide_preferred_name,employee.pending_names}', null,
-   'answering a preferred name asks employees.manage only: no rank, a manager answers their own and a peer''s, anywhere (BL-099, FB-6.2.6)'),
   ('important-date-no-as-validation', null, '{important_date.write}', '{K,B,x:K}',
    'an important date at a location out of reach or in another workspace is refused as 23514 "Choose a location in this workspace", not as a permission no: the browser insert runs its trigger before row security (stage 6, announcements)'),
   ('restricted-no-notifications', '{aydan}', '{notifications.read_own}', null,
