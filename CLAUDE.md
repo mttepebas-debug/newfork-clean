@@ -76,7 +76,10 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 - **Kullanıcının açtığı tekil oturum** (koordinatör dışında) kullanıcıyla doğrudan konuşur; bu
   dosyanın diğer bölümleri onu da bağlar. Çıktısı bir işi etkiliyorsa koordinatöre de bildirilir.
 - Aynı dosyaya iki rol aynı anda konmaz. Aynı anda en çok iki ağır iş (tam test, e2e, build) koşar:
-  bilgisayar tek.
+  bilgisayar tek. CI runner'ları da bu bilgisayarda: koşan bir CI işi (main ya da dal) bu ikiden
+  biri sayılır. Yerel tam kapı, e2e ya da `test:db` başlamadan önce `gh run list --limit 3` ile
+  bakılır; CI koşuyorsa beklenir. Yük altında düşen test kodun kusuru sayılmadan önce boşta
+  yeniden koşturulur (kullanıcı kararı 2026-09-29).
 
 ## 4. Dosya sahipliği (aynı dosyada iki rol aynı anda çalışmaz)
 - `nf-db`: `supabase/**` (testler dahil; `nf-test` de `supabase/tests/**` yazabilir, aynı işte ikisi
