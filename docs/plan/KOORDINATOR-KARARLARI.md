@@ -197,3 +197,9 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Dayanak:** G3 dalı `SchedulePage.tsx` ve `schedule-data.ts`'e dokunuyor (`e66ba44b`, ölçüm 2026-09-29); CLAUDE.md §4 "aynı dosyada iki rol aynı anda çalışmaz". G1 işçisi boşta; bekleme hattı durdurmuyor.
 - **Geri alma:** kolay (yalnız sıra).
 - **Durum:** uygulanıyor; G1 işçisine 2026-09-29 gece bildirildi.
+
+### KK-27 (2026-09-29) FB-6.2 (G7) parçalama önerisi kabul; T5a Dal B'yi beklemez
+- **Karar:** `FB-6.2.md` → "Parçalama önerisi" olduğu gibi kabul: Dal A (`nf-db`, sıralı `.0b`–`.6`), Dal B (`nf-backend`, `.7a` bugünkü çekirdek eylemleriyle; `.7b` Dal A `.5` main'e girince), toplu turlar T5a / T5b / T5c. Tek ek: Dal B `.7a` G3 (`task/g3-stale-screens`) main'e girince başlar (G3 `EmployeeDrawer.tsx`'e dokunuyor, ölçüm `e66ba44b`); Dal A `.0b`–`.3` bittiğinde `.7a` hazır değilse T5a onsuz main'e girer, `.7a` T5b'ye kayar.
+- **Dayanak:** öneri (nf-planlama, `4490f8e3` tabanı) ve pre-mortem; Dal A zaten bu sırayla yürüyor (HANDOFF 2026-09-29 gece §2). CLAUDE.md §4 aynı dosyada iki oturum çalışmaz. Yetki çekirdeği turu web kısmını beklemek için durmamalı.
+- **Geri alma:** kolay (yalnız sıra ve tur sınırı).
+- **Durum:** uygulanıyor.
