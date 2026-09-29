@@ -13,7 +13,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
   listOwnEmploymentRecords,
@@ -25,7 +25,7 @@ import {
   requestPreferredName,
   saveOwnEmploymentContact,
 } from "../employees/employee-data";
-import { AccountPageHeader } from "./components";
+import { AccountPageHeader, unfinishedSetup } from "./components";
 import {
   legalNameErrorMessage,
   onboardingUnfinished,
@@ -138,13 +138,21 @@ export default function ProfilePage() {
   );
 
   // A workspace whose person has not finished onboarding has no private record
-  // yet, so the database would refuse a contact on it.
+  // yet, so the database would refuse a contact on it. A workspace its owner is
+  // still setting up keeps its employee routes shut, so it would be refused too.
   const recordList = records.data ?? [];
-  const contactRecords = recordList.filter(
-    (record) => !onboardingUnfinished(workspaces.data, record.workspaceId),
-  );
   const unfinishedRecords = recordList.filter((record) =>
     onboardingUnfinished(workspaces.data, record.workspaceId),
+  );
+  const setupRecords = recordList.filter((record) => {
+    const workspace = workspaces.data?.find(
+      (item) => item.id === record.workspaceId,
+    );
+    return workspace ? unfinishedSetup(workspace) : false;
+  });
+  const contactRecords = recordList.filter(
+    (record) =>
+      !unfinishedRecords.includes(record) && !setupRecords.includes(record),
   );
   const hasContactForm = contactRecords.length > 0;
   // The name a person goes by: what a workspace already holds for them, else
@@ -489,7 +497,9 @@ export default function ProfilePage() {
           </label>
         </div>
 
-        {hasContactForm || unfinishedRecords.length > 0 ? (
+        {hasContactForm ||
+        unfinishedRecords.length > 0 ||
+        setupRecords.length > 0 ? (
           <fieldset className="account-fieldset account-fieldset-divided">
             <legend>Emergency contact</legend>
             {hasContactForm ? (
@@ -529,6 +539,16 @@ export default function ProfilePage() {
                 </label>
               </div>
             ) : null}
+            {setupRecords.map((record) => (
+              <div key={record.workspaceId} className="account-employment-record">
+                <strong>{record.workspaceName}</strong>
+                <p className="account-record-note">
+                  Finish setting up this workspace, then you can add your
+                  emergency contact. Continue it in{" "}
+                  <Link to="/account/workspaces">Account › Workspaces</Link>.
+                </p>
+              </div>
+            ))}
             {unfinishedRecords.map((record) => (
               <div key={record.workspaceId} className="account-employment-record">
                 <strong>{record.workspaceName}</strong>

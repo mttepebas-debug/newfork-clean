@@ -1,4 +1,17 @@
+import type { WorkspaceSummary } from "@newfork/shared";
 import type { ReactNode } from "react";
+
+/**
+ * An owner's workspace whose setup is not finished: it is continued, not
+ * opened, and its employee routes stay shut until it is.
+ */
+export function unfinishedSetup(workspace: WorkspaceSummary): boolean {
+  return (
+    workspace.role === "owner" &&
+    workspace.status === "active" &&
+    workspace.onboarding.status !== "complete"
+  );
+}
 
 export function AccountPageHeader({
   title,

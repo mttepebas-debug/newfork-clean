@@ -10,7 +10,7 @@ import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { InvitationRow } from "../employees/InvitationRow";
 import { BusinessRow, StatusBadge, roleLabel } from "../shell/prebiz/PreBiz";
 import { RequestError } from "../lib/request-error";
-import { AccountPageHeader } from "./components";
+import { AccountPageHeader, unfinishedSetup } from "./components";
 import {
   createOwnerWorkspace,
   cancelWorkspaceClosure,
@@ -1116,14 +1116,6 @@ const lifecycleReasons: Readonly<Record<string, string>> = {
  * password. The server reads the same three fields (workspace-account-routes
  * isUnfinishedSetup) and has the last word.
  */
-function unfinishedSetup(workspace: WorkspaceSummary): boolean {
-  return (
-    workspace.role === "owner" &&
-    workspace.status === "active" &&
-    workspace.onboarding.status !== "complete"
-  );
-}
-
 /**
  * The same answers keyed by the English the database raises, for a refusal that
  * has not been given a key yet. Nothing new belongs here: every refusal these

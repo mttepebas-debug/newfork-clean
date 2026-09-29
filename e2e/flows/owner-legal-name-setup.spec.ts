@@ -98,15 +98,26 @@ test("a new owner gives their legal name at setup, sees it in Account > Profile,
   expect(legalNameFor(email)).toBe("Jordan Rivera");
 
   await page.goto("/account/profile");
-  await expect(page.getByRole("heading", { name: "Legal name" })).toBeVisible();
-  await expect(page.getByLabel("Legal first name")).toHaveValue("Jordan");
-  await expect(page.getByLabel("Legal last name")).toHaveValue("Rivera");
+  // The legal name is one group of fields on the Profile form, named by its legend.
+  const legalName = page.getByRole("group", { name: "Legal name", exact: true });
+  await expect(legalName).toBeVisible();
+  await expect(legalName.getByLabel("Legal first name", { exact: true })).toHaveValue("Jordan");
+  await expect(legalName.getByLabel("Legal last name", { exact: true })).toHaveValue("Rivera");
 
-  await page.getByLabel("Legal first name").fill("Jordana");
-  // One Save for the whole page, and it stays off until the phone is given.
-  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
-  await page.getByLabel("Phone number").fill("415 555 0142");
-  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await legalName.getByLabel("Legal first name", { exact: true }).fill("Jordana");
+  // The workspace is still being set up, so its emergency contact waits for
+  // that: a note in its place, not a form the workspace would refuse.
+  const contact = page.getByRole("group", { name: "Emergency contact", exact: true });
+  await expect(contact.getByText(/Finish setting up this workspace/)).toBeVisible();
+  await expect(contact.getByLabel("Contact name", { exact: true })).toHaveCount(0);
+
+  // One Save for the whole page. It stays off, and says why, until the phone is given.
+  const save = page.getByRole("button", { name: "Save", exact: true });
+  await expect(save).toBeDisabled();
+  await expect(page.getByText("To save, fill in phone number.", { exact: true })).toBeVisible();
+  await page.getByLabel("Phone number", { exact: true }).fill("415 555 0142");
+  await expect(save).toBeEnabled();
+  await save.click();
   await expect(page.getByText("Profile saved")).toBeVisible();
 
   expect(legalNameFor(email)).toBe("Jordana Rivera");
