@@ -26,6 +26,10 @@ select throws_ok(
 );
 reset role;
 
+-- BL-288: the table is shared with every earlier run, so this run's event
+-- carries its own resource id and only that row is read back.
+select set_config('bl288.resource', 'foreign-id-' || gen_random_uuid(), true);
+
 set local role service_role;
 select ok(
   app_private.record_security_audit_event_service(
@@ -34,26 +38,30 @@ select ok(
     'tenant.foreign_id_attempt',
     'employees.api',
     'employee',
-    'foreign-id',
+    current_setting('bl288.resource'),
     '{"route":"/v1/workspaces/:workspaceId/employees/:employeeId"}'
   ) is not null,
   'service role can append a restricted security audit event'
 );
 reset role;
 
+create temp table this_run as
+select * from app_private.security_audit_events
+where resource_id_hash = encode(extensions.digest(current_setting('bl288.resource'), 'sha256'), 'hex');
 select is(
-  (select count(*)::integer from app_private.security_audit_events),
+  (select count(*)::integer from this_run),
   1,
   'one restricted security audit event is stored'
 );
 select is(
-  (select resource_id_hash = encode(extensions.digest('foreign-id', 'sha256'), 'hex') from app_private.security_audit_events limit 1),
-  true,
+  (select count(*)::integer from this_run where resource_type = 'employee' and event_type = 'tenant.foreign_id_attempt'),
+  1,
   'raw resource ids are stored only as hashes'
 );
-select isnt(
-  (select resource_id_hash from app_private.security_audit_events limit 1),
-  'foreign-id',
+select is(
+  (select count(*)::integer from app_private.security_audit_events
+   where resource_id_hash = current_setting('bl288.resource')),
+  0,
   'raw resource ids are not stored in the restricted audit event'
 );
 
