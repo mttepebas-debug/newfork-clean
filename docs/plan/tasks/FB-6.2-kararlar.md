@@ -66,7 +66,56 @@ alt adımlar arasında taşınan işler ve T5b'yi devralanın bilmesi gerekenler
   dosyanın `rollback`'i hepsini geri alır. `-At` şart (yoksa satırlar boşlukla başlar). `db.lock` partiler hâlinde
   (30 dosya ≈ 3–4 dk).
 
-## T5b'ye kalan (.5–.6)
+## T5b `.5` ve `.6`'nın ad onayı — 2026-09-30 (dal `task/fb62-core-a-t5b-2`, taban `098a7611`)
+Commit'ler: `7c51a5da`, `0daa29b4`, `8154f47b` kırmızı; `0855d86a` `.5` migration; `a731ba31` kırmızı; `7da01f9e` ad
+onayı migration'ı. Migration'lar `20260930140000_invitations_ask_the_core.sql`, `20260930150000_preferred_names_ask_the_core.sql`.
+- **`.5` (BL-242, `manager-cannot-invite` kapandı).** Kararlar (`nf-guvenlik`'e):
+  - Tek rol kuralı `app_private.can_invite_with_role`: verilen rolün rütbesi verenin rütbesinin altında
+    (`authz_rank`), owner rolü kimsenin değil; ayrıca `employee.create` verenin kendi yerlerinde (`actor().manages`)
+    çekirdekten geçmeli (hiçbir yerde çalışmayan/yönetmeyen yönetici kimseyi eklemez). `employee_access.manage`
+    artık sorulmuyor. Okuyanlar: create komutu (yalnız tekrar denemede), hazırlama, bağlantı kopyalama, tekrar
+    deneme, jeton saklama, teslim işaretleme, iptal, çekmecenin rol seçicisi (`read_employee_references_service`).
+  - Gönderilmiş davete dokunan her servis (kopyala, tekrar dene, jeton sakla, teslim işaretle, iptal)
+    `employee.invite`'ı davetin kişisiyle sorar **ve** davetin rolünü verebilir olmayı ister: yönetici,
+    lokasyonundaki bir admin davetinin bağlantısını alamaz (`authz.rank`). Kimliğiyle bilinen davet bilinmiyorsa
+    `target_person => null` → `authz.out_of_scope` (kapsam dışıyla aynı cevap).
+  - Teslim işaretleme ve iptal kapsama alındı (görev listesinde yoktu): API her gönderimden sonra işaretliyor;
+    eski izne bağlı kalsaydı yöneticinin daveti yarım kalırdı.
+  - Owner kurulumunun dört servisi `workspace.setup` ile. **Bulunan açık:** liste ve işaretleme servisleri
+    `actor_role <> 'owner'` ile soruyordu; üyeliği olmayan kişide `null <> 'owner'` null → ret yok, liste açılıyordu.
+    Artık `authz.not_member`.
+  - Küçük davranış farkları: create komutunda `command_id` boşsa 22023 (önce 42501); bağlantı kopyalama olay
+    özeti "Invitation link copied" (önce "... by an administrator").
+  - Eski kuralı sabitleyen hücreler bugünkü kurala çekildi: `employee_directory_rls` (yönetici davet hazırlar,
+    olay sayısı 5→6), `employee_references_ask_the_core` (yönetici employee rolleri okur),
+    `employee_create_command` (ret metinleri, yöneticiye verilen `employee_access.manage` satırı silindi).
+- **`.6` ad onayı (BL-099 yetki yarısı, KK-17, `preferred-name-not-on-core` kapandı).** Onay `employee.decide_preferred_name`'i
+  talebin kişisiyle, **kilitten önce** sorar (önce kilitsiz okuma, sonra `for update`); başka workspace'in ve bilinmeyen
+  talep `authz.out_of_scope`. Liste satır satır `authz_check`. KK-17 kuralla: talepte önce karar verebilecekler
+  hesaplanır, kimse yoksa (owner'ın kendi talebi) talep beklemez. `preferred_name_approval`'daki "owner kendi adını
+  onaylar" hücresi buna çekildi.
+- Sayaçlar (geri alınan deneme, `7da01f9e`): jwt 36→32, kapsam/rütbe 52→47, ipuçsuz 42501 226→205; `auth.uid()` 27,
+  politika 10, `_base` 13, ertelenmiş 10 değişmedi. Tavanlar bu değerlerde.
+- Tam `test:db` (149 dosya, her biri `.4`+`.5`+ad migration'ı + builder + test tek işlemde, geri alındı): yeşil listedeki
+  137 dosyanın hepsi yeşil (yeni iki dosya listeye eklendi). Kırmızı 12 dosya yeşil listede değil ve sonuçları dalın
+  önceki hâliyle (`.4`) birebir aynı: dalın getirdiği kırmızı 0. Matris 7986 ok, kalan 74 TODO başka adımların açıkları.
+- **API (Dal B `.7b`):** `apps/api/src/app.ts` davet rotaları (`:549`, `:598`, `:644`, `:699` civarı) hâlâ
+  `employee_access.manage` iznini kapı olarak soruyor; yönetici daveti API'de `.7b`'ye kadar 403 alır. Veritabanı hazır.
+
+## T5b'ye kalan (.6'nın geri kalanı) — 2026-09-30 ölçümü (`.4` uygulanmış geri alınan işlemde)
+- **P1 + üç yardımcının silinmesi.** `can_access_employee` (public + app_private) çağıranları: `delete_catalog_entity_service`,
+  `delete_job_with_assignments_service`, `app_private.job_assignment_candidates`, `organization_job_counts_service`,
+  `update_job_assignments_service`. `can_manage_employee_record` çağıranları (`.5` sonrası): aynı dört iş katalogu
+  fonksiyonu + `review_employee_onboarding_before_availability_service` (yalnız o satır değişir, FB-6.6'nın).
+  Pano: `get_workspace_dashboard_service`, `create_workspace_todo_service`, `resolve_workspace_todo_service`
+  (`service_actor_can_access_employee` çağırıyorlar). BL-187 `delete_catalog_entity_service` taşınırken kapanır.
+  `employee_create_command.test.sql` son satırı `can_access_employee`'yi çağırıyor: silinirken değiştirilmeli.
+- **BL-155, BL-354, BL-133, `service_actor_can_access_employee` çağıran listesini sabitleyen kontrol** — ölçüm
+  `FB-6.2.md` G7 tablosunda; dokunulmadı.
+- **Yolda bulunan:** `request_employee_preferred_name_service` başkasının kaydında 42501 + `employee.not_yours`
+  (authz dışı ipucu) veriyor; "hayır" sözleşmesine göre `authz.*` olmalı. İş açılmadı.
+
+## (eski) T5b'ye kalan (.5–.6) — `.5` ve ad onayı yukarıda kapandı
 - `.5`: davet (`manager-cannot-invite`), BL-242. `create_employee_command_service` hâlâ `service_actor_has_permission`
   (`employees.manage` + `employee_access.manage`) ve `can_invite_with_role`; dört davet köprüsü
   (`prepare_employee_invitation_service`, `load_employee_invitation_link_service`, `load_employee_invitation_retry_service`,
