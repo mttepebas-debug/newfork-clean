@@ -10,6 +10,7 @@ import {
   getSaveDraftFailureMessage,
   invalidateScheduleCommitCaches,
   parseSaveDraftNameConflict,
+  removeDraft,
   upsertSavedDraft,
   type DraftsCacheSnapshot,
 } from "./draftSaveFlow";
@@ -67,6 +68,24 @@ describe("draftSaveFlow", () => {
         draft("draft-old", "2026-08-17T11:00:00.000Z"),
       ],
     });
+  });
+
+  it("drops a deleted draft from the cached list and keeps the rest in order (BL-313)", () => {
+    const current: DraftsCacheSnapshot = {
+      drafts: [
+        draft("draft-a", "2026-08-17T12:00:00.000Z"),
+        draft("draft-b", "2026-08-17T11:00:00.000Z"),
+        draft("draft-c", "2026-08-17T10:00:00.000Z"),
+      ],
+    };
+
+    expect(removeDraft(current, "draft-b")).toEqual({
+      drafts: [
+        draft("draft-a", "2026-08-17T12:00:00.000Z"),
+        draft("draft-c", "2026-08-17T10:00:00.000Z"),
+      ],
+    });
+    expect(removeDraft(undefined, "draft-b")).toEqual({ drafts: [] });
   });
 
   it("clears pending op caches for both single-location and multi-location draft keys", () => {

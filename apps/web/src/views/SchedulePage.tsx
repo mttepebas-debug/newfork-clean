@@ -128,6 +128,8 @@ import {
   getSaveDraftFailureMessage,
   invalidateScheduleCommitCaches,
   parseSaveDraftNameConflict,
+  removeDraft,
+  type DraftsCacheSnapshot,
 } from "../schedule/lib/draftSaveFlow";
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButton";
 import { templateAppliedDescription } from "../schedule/lib/templateApplyMessage";
@@ -217,6 +219,8 @@ type SaveRecoveryState = {
   readonly retrying: boolean;
 } | null;
 
+const NO_DRAFTS: readonly ScheduleDraftSummary[] = [];
+
 const SCHEDULE_TOP_ACTION_SURFACE_SELECTOR = [
   "[data-schedule-top-action-trigger]",
   ".schedule-draft-menu",
@@ -278,7 +282,6 @@ export function SchedulePage({
   }, [mutationContext]);
   const [defaultHoursOpen, setDefaultHoursOpen] = useState(false);
   useEffect(() => setDefaultHoursOpen(false), [context?.workspace.id, session?.id]);
-  const [drafts, setDrafts] = useState<readonly ScheduleDraftSummary[]>([]);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [editor, setEditor] = useState<ScheduleShiftEditorState | null>(null);
   const [, setEditorDirty] = useState(false);
@@ -611,6 +614,8 @@ export function SchedulePage({
     query.data?.week_start ?? selectedDate,
     { enabled: Boolean(context && query.data) },
   );
+  // BL-313: the cached list is the only copy; every change writes the cache.
+  const drafts = draftsQuery.data?.drafts ?? NO_DRAFTS;
   const clearMissingDraftPreview = useCallback(() => {
     setScheduleMode("preview", null);
     setOperationError(null);
@@ -891,7 +896,6 @@ export function SchedulePage({
       context.workspace.id,
       query.data.week_start,
     );
-    setDrafts(result.drafts);
     updateDraftCache(result.drafts);
     return result.drafts;
   };
@@ -918,11 +922,13 @@ export function SchedulePage({
     setOperationError(null);
     try {
       await deleteScheduleDraft(context.workspace.id, draft.id);
-      setDrafts((items) => {
-        const next = items.filter((item) => item.id !== draft.id);
-        updateDraftCache(next);
-        return next;
-      });
+      if (query.data) {
+        queryClient.setQueryData(
+          draftsKey(context.workspace.id, query.data.week_start),
+          (current: DraftsCacheSnapshot | undefined) =>
+            removeDraft(current, draft.id),
+        );
+      }
       invalidateScheduleCaches(draft.id);
       toast.success("Draft deleted", {
         dedupeKey: `schedule-draft-deleted:${draft.id}`,
@@ -943,7 +949,6 @@ export function SchedulePage({
         context.workspace.id,
         query.data.week_start,
       );
-      setDrafts(result.drafts);
       updateDraftCache(result.drafts);
       void refreshPublicationStatus();
       if (!result.drafts.length) {
@@ -979,7 +984,6 @@ export function SchedulePage({
         listScheduleDrafts(context.workspace.id, query.data.week_start),
       ]);
       setTemplates(templateResult.templates);
-      setDrafts(draftResult.drafts);
       updateDraftCache(draftResult.drafts);
       setTemplatesOpen(true);
     } catch (error) {
@@ -1031,10 +1035,6 @@ export function SchedulePage({
   useEffect(() => {
     setPendingOps(pendingOpsQuery.data?.pending_ops ?? []);
   }, [pendingOpsQuery.data]);
-
-  useEffect(() => {
-    if (draftsQuery.data) setDrafts(draftsQuery.data.drafts);
-  }, [draftsQuery.data]);
 
   useEffect(() => {
     if (location.pathname !== `${scheduleBasePath}/export`) exportDeepLinkConsumed.current = false;
@@ -1252,11 +1252,6 @@ export function SchedulePage({
         weekStart: saved.week_start,
         previousDraftId: session.source_draft_id ?? null,
         draft: saved,
-      });
-      setDrafts((items) => {
-        const next = [...items.filter((item) => item.id !== saved.id), saved];
-        updateDraftCache(next);
-        return next;
       });
       setSession(null);
       setScheduleMode("preview", saved.id);
