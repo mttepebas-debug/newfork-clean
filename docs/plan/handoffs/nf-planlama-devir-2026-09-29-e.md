@@ -1,16 +1,16 @@
 # nf-planlama devri — 2026-09-29 (beşinci, gece geç)
 
-Devreden: `Rol: nf-planlama` (worktree `.claude/worktrees/vigilant-chatterjee-21d6f9`), bağlam ~%48. Koordinatör: **`local_d6769157-30b6-4346-9d29-7b8eaa14a711`** ("Koordinatör — devir 2026-09-29 gece"); kanal `mcp__ccd_session_mgmt__send_message` (SendMessage düşüyor). Adres değişirse son mesajdaki adrese yaz. Kullanıcı PC başında değil; soru koordinatöre.
+Devreden: `Rol: nf-planlama` (worktree `.claude/worktrees/vigilant-chatterjee-21d6f9`), bağlam ~%48. Koordinatör: **`local_d6d4a08d-2501-451d-a79d-c66d80185709`** ("Koordinatör — devir 2026-09-30"; önceki `local_d6769157` arşivde; uzun rapor worktree'de `artifacts/nf-planlama/<iş>/RAPOR.md`'ye, mesaj tek satır); kanal `mcp__ccd_session_mgmt__send_message` (SendMessage düşüyor). Adres değişirse son mesajdaki adrese yaz. Kullanıcı PC başında değil; soru koordinatöre.
 
 ## 1. Dal ve git
 - Her paket: `git fetch` → önceki dalın main'de olduğunu `git cherry origin/main <dal>` (boş ya da hep "-") ile doğrula → `git switch -c task/backlog-program-N origin/main` → önceki yerel dalı sil (GateGuard "facts" ister: silinen yalnız dal referansı, geri alma `git branch <dal> <sha>`, talimat alıntısı). Commit, **push yok**; sha'yı koordinatöre gönder. Koordinatör çoğu zaman fast-forward ile alıyor (sha aynı kalıyor).
-- Son dal: `task/backlog-program-17` (bu devrin commit'i). Sıradaki: `-18`.
+- Son dal: `task/backlog-program-17` (`fab584d9`, main'de `fe9e0f1a`). `-18` (`afd5cca8`, `27610637`) aynı içeriğin ikinci yazımı, alınmadı; ikisi de silinebilir. Sıradaki: `-19`.
 - Yalnız `docs/plan/**` yazılır. Kod, `CLAUDE.md`, `.claude/**` yok.
 
 ## 2. Program durumu (`docs/plan/tasks/BACKLOG-PROGRAM.md`)
 - Açık madde **221** (numaralı 192 + numarasız 29); en yüksek **BL-401**. Sayım betiği aşağıda (§4), her değişiklikten sonra.
 - Bu oturumda main'e girenler ve kapanışları: G11 (T5, `470fb948`; 12 madde + U42), G3 (`c63b0c45`; 5 madde), G1 KK-26 (`f349a877`; BL-193, BL-324, BL-394), BL-209 (KK-28 yerel onarım + ölçüm), FB-6.2 T5a (`b6c8d766`), G9b görsel QA (KK-22; düzeltme `f478b348`).
-- **Canlı yer tutucu:** yalnız G9 satırında `main CI: <run>` (G9b QA düzeltmesi `f478b348`). Koordinatör numarayı verecek; `gh run view <run> --json headSha,conclusion,jobs` ile doğrula, sonra doldur.
+- **Canlı yer tutucu yok** (G9: main CI 36609840368, `07973fb8`). Yeni main CI numarası gelince `gh run view <run> --json headSha,conclusion,jobs` ile doğrula, sonra yaz.
 - Yürüyenler (koordinatör bildirir): FB-6.2 T5b (`nf-db`, dallar `task/fb62-core-a-t5b*`; O-2, D-a, D-c `t5b-3`'te), Dal B `.7a` (`nf-backend`, KK-30/KK-31; main'e T5b `.4` ile aynı turda ya da sonra). T5b main'e girince: G7 satırı + BL-387/BL-388/BL-401'in yeniden ölçümü (BL-387'nin 21 fonksiyon listesi T5a/T5b'nin yeniden tanımladıklarıyla değişir).
 
 ## 3. Kalıplar (bu oturumda işe yarayanlar)
