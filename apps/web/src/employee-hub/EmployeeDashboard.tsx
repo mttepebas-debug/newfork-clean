@@ -68,7 +68,9 @@ export function EmployeeDashboard({
     enabled: Boolean(context?.userId),
     refetchInterval: 60_000,
   });
-  const activeExchanges = exchanges.isError ? [] : exchanges.data?.cases.filter((item) => item.status === "open") ?? [];
+  // A failed check with nothing cached is unknown, not "nothing waiting".
+  const exchangesUnknown = exchanges.isError && !exchanges.data;
+  const activeExchanges = exchanges.data?.cases.filter((item) => item.status === "open") ?? [];
   const exchangeActions = activeExchanges.filter((item) => item.applications.some((a) => a.employee_id === model.employee.id && a.status === "invited"));
   const needsAction = [
     ...exchangeActions.map((item) => ({ id: item.id, title: item.kind === "swap" ? "Respond to a shift swap" : "A teammate asked for cover", detail: `${item.shift.scheduled_date} · ${item.shift.location_name} · ${item.shift.job_name}`, href: `${base}/shift-hub?case=${item.id}&hub_view=requests` })),
@@ -258,12 +260,18 @@ export function EmployeeDashboard({
             </span>
             <div>
               <strong>
-                {needsAction.length ? "Waiting on you" : "You’re all caught up"}
+                {needsAction.length
+                  ? "Waiting on you"
+                  : exchangesUnknown
+                    ? "Requests couldn’t be checked"
+                    : "You’re all caught up"}
               </strong>
               <p>
                 {needsAction.length
                   ? "A quick response keeps things moving."
-                  : "No requests need your response."}
+                  : exchangesUnknown
+                    ? "This section couldn’t be loaded."
+                    : "No requests need your response."}
               </p>
             </div>
           </div>

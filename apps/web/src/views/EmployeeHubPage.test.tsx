@@ -295,6 +295,14 @@ describe("EmployeeHubPage", () => {
     ).toBeTruthy();
     expect(getEmployeeHub).not.toHaveBeenCalled();
   });
+  // BL-278 (7): a failed request check must not read as "nothing waiting".
+  it("does not say all caught up when the requests could not be checked", async () => {
+    vi.mocked(getExchanges).mockRejectedValue(new Error("Offline"));
+    renderPage();
+    expect(await screen.findByText("Requests couldn’t be checked")).toBeTruthy();
+    expect(screen.queryByText("You’re all caught up")).toBeNull();
+  });
+
   it("keeps the daily hub usable if both communication panels fail", async () => {
     context.permissions = [
       ...context.permissions,

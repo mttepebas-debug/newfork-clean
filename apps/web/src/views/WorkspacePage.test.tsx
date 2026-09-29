@@ -23,6 +23,7 @@ import {
 } from "../communications/communications-data";
 
 import { RequestError } from "../lib/request-error";
+import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 
@@ -82,6 +83,11 @@ let completedChecklistItemIds: OwnerSetupChecklistItemId[] = [];
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context: currentContext }),
+}));
+
+vi.mock("../employee-hub/shift-exchanges/exchange-data", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../employee-hub/shift-exchanges/exchange-data")>()),
+  getExchanges: vi.fn(),
 }));
 
 vi.mock("../communications/communications-data", () => ({
@@ -174,6 +180,16 @@ describe("WorkspacePage setup checklist", () => {
     expect(await screen.findByRole("heading", { name: "You don't have access to this workspace" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+
+  // BL-278 (7): a failed check must not show zero shift changes waiting.
+  it("does not show zero shift changes when they could not be checked", async () => {
+    currentContext = { ...context, permissions: [...context.permissions, "schedule.shift_change_requests.read"] };
+    vi.mocked(getExchanges).mockRejectedValue(new Error("Offline"));
+    renderPage();
+    const label = await screen.findByText("Shift changes");
+    await waitFor(() => expect(vi.mocked(getExchanges)).toHaveBeenCalled());
+    await waitFor(() => expect(label.previousElementSibling?.textContent).toBe("—"));
   });
 
   it("shows a visit-based setup checklist to owner roles", async () => {
