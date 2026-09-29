@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(13);
 
 -- BL-218 .3b. A job under Management is primary by its department and is
 -- never stored as primary. So somebody whose only jobs are under Management
@@ -108,6 +108,23 @@ select is(pg_temp.refusal(format(
 )), 'allowed', 'Add employee with only Manager, a location and no primary job creates the record');
 
 -- 5. The rule sits in the database ------------------------------------------------------
+
+-- Another workspace's Management job is not a Management job here: saving with
+-- it is refused as a made-up job is, so the answer says nothing about it.
+select tests.world('mq');
+create function pg_temp.save_job_ids(jobs uuid[]) returns text language sql as $$
+  select pg_temp.refusal(format(
+    'select public.save_employee_service(%L, %L, %L, %L, %L, %L, %L, %L, %L, %L, %L, %L, %L, null, false, false, %s)',
+    tests.user('mp:owner'), tests.id('mp'), e.id, e.first_name, e.middle_name, e.last_name, e.preferred_name,
+    e.invitation_email, e.start_date, e.internal_note,
+    array[tests.id('mp:K')], tests.id('mp:K'), jobs, e.revision
+  ))
+  from public.employee_profiles e where e.id = tests.id('mp:ayse')
+$$;
+select is(
+  pg_temp.save_job_ids(array[(select id from public.jobs where workspace_id = tests.id('mq') and system_key = 'owner')]),
+  pg_temp.save_job_ids(array[gen_random_uuid()]),
+  'another workspace''s Owner job (under its Management) is refused like a made-up job');
 
 select matches(pg_temp.refusal(format(
   'select tests.as_browser(%L, %L)', tests.user('mp:owner'),

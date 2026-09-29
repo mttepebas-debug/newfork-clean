@@ -57,9 +57,16 @@ begin
       raise exception 'employee requires a location and job unless remote or excluded from schedule'
         using errcode = '22023', hint = 'employee.job_required';
     end if;
+    -- Only this workspace's Management counts: another workspace's job reads as
+    -- unknown here, so the answer says nothing about it.
     if primary_job_id is null and exists (
       select 1 from unnest(job_ids) selected(job_id)
-      where not app_private.is_management_job(selected.job_id)
+      where not exists (
+        select 1 from public.jobs job
+        join public.departments department on department.id = job.department_id
+        where job.id = selected.job_id and job.workspace_id = target_workspace_id
+          and department.system_key = 'management'
+      )
     ) then
       raise exception 'employee requires a primary job outside Management'
         using errcode = '22023', hint = 'employee.primary_job_required';
