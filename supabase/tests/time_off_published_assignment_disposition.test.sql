@@ -1,22 +1,27 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
-create temp table tad as select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid w,
- 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'::uuid manager,'af9b0000-0000-4000-8000-000000000001'::uuid actor,
- '15000000-0000-4000-8000-000000000001'::uuid emp,'11000000-0000-4000-8000-000000000001'::uuid loc,
- '22000000-0000-4000-8000-000000000004'::uuid shift,gen_random_uuid() request,gen_random_uuid() segment,gen_random_uuid() op,
+-- BL-217: its own world, not the seed workspace; the time zone is the
+-- location's own (BL-209: a hand-edited seed location broke this locally).
+select tests.world('tad');
+select tests.person('tad', 'mgr', 'manager', array['K'], array['cook']);
+select tests.person('tad', 'emp', 'employee', array['K'], array['cook']);
+select tests.publish_week('tad', 1, '[
+  {"label": "s", "person": "emp", "loc": "K", "job": "cook", "day": 1, "start": "15:00", "end": "23:00"},
+  {"label": "other", "person": "mgr", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "13:00"}
+]');
+create temp table tad as select tests.id('tad') w, tests.user('tad:mgr') manager, tests.user('tad:emp') actor,
+ tests.id('tad:emp') emp, tests.id('tad:K') loc, tests.id('tad:shift:s') shift, tests.id('tad:shift:other') other_shift,
+ (select timezone from public.locations where id = tests.id('tad:K')) tz,
+ gen_random_uuid() request,gen_random_uuid() segment,gen_random_uuid() op,
  null::jsonb preview,null::jsonb result,null::jsonb decisions,null::jsonb original;
-insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
-select actor,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','timeoff-assignment@example.test','','{}','{}',now(),now() from tad;
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from tad;
-update public.employee_profiles set user_id=(select actor from tad) where id=(select emp from tad);
 update tad set original=(select to_jsonb(ps) from public.schedule_published_shifts ps where id=tad.shift);
 insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,reason,created_by,period_version)
 select request,w,emp,loc,'Time off during a published shift',actor,2 from tad;
 insert into public.schedule_time_off_segments(id,workspace_id,request_id,segment_date,start_time,end_time,time_timezone,starts_at,ends_at,ends_next_day,fold_choices)
 select t.segment,t.w,t.request,(p->>'segment_date')::date,(p->>'start_time')::time,(p->>'end_time')::time,p->>'time_timezone',
  (p->>'starts_at')::timestamptz,(p->>'ends_at')::timestamptz,(p->>'ends_next_day')::boolean,p->'fold_choices'
- from tad t cross join lateral (select public.time_off_resolve_period(jsonb_build_object('segment_date',t.original->>'scheduled_date','start_time','15:00','end_time','23:00'),'America/Los_Angeles') p) resolved;
+ from tad t cross join lateral (select public.time_off_resolve_period(jsonb_build_object('segment_date',t.original->>'scheduled_date','start_time','15:00','end_time','23:00'),t.tz) p) resolved;
 update tad set decisions=jsonb_build_array(jsonb_build_object('segment_id',segment,'pieces',
  (select jsonb_build_array(
   jsonb_build_object('starts_at',s.starts_at,'ends_at',s.starts_at+interval '1 hour','status','denied'),
@@ -33,7 +38,7 @@ select throws_ok($$select public.resolve_schedule_time_off_request_service(manag
 select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint','[]') from tad$$,'22023',null,'every affected assignment needs an explicit choice');
 select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,'stale',jsonb_build_array(jsonb_build_object('shift_id',shift,'action','release_entire_shift'))) from tad$$,'40001',null,'stale preview cannot release an assignment');
 select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',shift,'action','keep'))) from tad$$,'22023',null,'approval cannot leave the conflicting shift assigned');
-select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id','22000000-0000-4000-8000-000000000001','action','release_entire_shift'))) from tad$$,'22023',null,'cannot release an unrelated shift');
+select throws_ok($$select public.decide_time_off_with_assignments_service(manager,w,request,1,'partial_approve','',decisions,op,preview->>'fingerprint',jsonb_build_array(jsonb_build_object('shift_id',other_shift,'action','release_entire_shift'))) from tad$$,'22023',null,'cannot release an unrelated shift');
 select is((select count(*)::int from public.time_off_decision_pieces where request_id=(select request from tad)),0,'failed final approval rolls back the leave decision');
 select is((select count(*)::int from public.time_off_assignment_releases where request_id=(select request from tad)),0,'failed final approval writes no release history');
 select is((select employee_id from public.schedule_published_shifts where id=(select shift from tad)),emp,'failed final approval keeps the employee responsible') from tad;
