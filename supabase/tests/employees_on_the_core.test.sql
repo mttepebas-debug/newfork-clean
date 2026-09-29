@@ -101,6 +101,65 @@ select ok(
   'the rule is a check on the table'
 );
 
+-- FB-6.2.3: reading and listing ask the core. A manager sees everyone who
+-- works at their locations, the owner and their peers included (M2, KK-8).
+select tests.person('m', 'veli', 'employee', array['B'], array['cook']);
+create function pg_temp.refusal(statement text) returns text language plpgsql as $$
+declare
+  code text;
+  reason text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint;
+  return code || ' ' || coalesce(reason, '');
+end;
+$$;
+
+select ok(
+  exists (select 1 from public.list_employees_service(tests.user('m:ayse'), tests.id('m'), false, '', 'all', 200, 0) e
+          where e.id = tests.id('m:owner')),
+  'a manager lists the owner who works at their location'
+);
+select is(
+  public.get_employee_detail_service(tests.user('m:ayse'), tests.id('m'), tests.id('m:owner')) #>> '{allowed,save}',
+  'false', 'the owner''s record opens read-only for a manager: the rank rule says so'
+);
+select is(
+  public.get_employee_detail_service(tests.user('m:owner'), tests.id('m'), tests.id('m:ali')) #>> '{allowed,save}',
+  'true', 'the owner may save an employee''s record'
+);
+select is(
+  pg_temp.refusal(format('select public.get_employee_detail_service(%L, %L, %L)', tests.user('m:ayse'), tests.id('m'), tests.id('m:veli'))),
+  '42501 authz.out_of_scope', 'somebody out of reach is refused as out of scope'
+);
+select is(
+  pg_temp.refusal(format('select public.get_employee_detail_service(%L, %L, %L)', tests.user('m:ayse'), tests.id('m'), gen_random_uuid())),
+  '42501 authz.out_of_scope', 'somebody unknown gets the same answer'
+);
+select is(
+  pg_temp.refusal(format('select public.get_employee_avatar_path_service(%L, %L, %L)', tests.user('m:ayse'), tests.id('m'), tests.id('m:veli'))),
+  '42501 authz.out_of_scope', 'a photo is read by the same rule'
+);
+select is(
+  pg_temp.refusal(format('select * from public.list_employees_service(%L, %L)', tests.user('m:ali'), tests.id('m'))),
+  '42501 authz.missing_permission', 'an employee does not list the team'
+);
+select is(
+  pg_temp.refusal(format('select * from public.list_employees_service(%L, %L)', gen_random_uuid(), tests.id('m'))),
+  '42501 authz.not_member', 'somebody who is not a member does not list anyone'
+);
+select is(
+  tests.as_browser(tests.user('m:ali'), format('select 1 from public.workspace_memberships where workspace_id = %L', tests.id('m'))),
+  1, 'from the browser an employee reads their own membership row only'
+);
+select ok(
+  to_regprocedure('public.get_employee_detail(uuid, uuid)') is null
+  and to_regprocedure('public.list_employees(uuid, boolean, text, text, integer, integer)') is null,
+  'the two browser-era read bridges are gone'
+);
+
 -- BL-270: a membership row changed with nobody signed in used to pass the
 -- role-change trigger untouched (it returned early when auth.uid() was null).
 -- Last: while it passes, the change sticks.

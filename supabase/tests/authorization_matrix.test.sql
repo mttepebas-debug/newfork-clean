@@ -268,6 +268,9 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.get_employee_detail_service($1, $2, $3) is not null$$),
   ('employee.list', 'person', 'employees.read', false, true,
    $$select exists (select 1 from public.list_employees_service($1, $2, false, '', 'all', 500, 0) e where e.id = $3)$$),
+  -- the path of their photo; nobody in the world has one, so an answer is the path or null
+  ('employee.avatar', 'person', 'employees.read', false, false,
+   $$select coalesce(public.get_employee_avatar_path_service($1, $2, $3), 'none')$$),
   ('employee.save', 'person', 'employees.manage', false, false,
    $$select public.save_employee_service($1, $2, $3,
        e.first_name, e.middle_name, e.last_name, e.preferred_name, e.invitation_email, e.start_date, e.internal_note,
@@ -461,6 +464,7 @@ create temporary table core_action (
 insert into core_action (key, core_key, blank) values
   ('employee.read', 'employee.read', 'null'),
   ('employee.list', 'employee.list', 'null'),
+  ('employee.avatar', 'employee.read', 'null'),
   ('employee.save', 'employee.save', 'null'),
   ('availability.team_write', 'availability.team_write', 'null'),
   ('availability.team_read', 'availability.team_read', 'null'),
@@ -576,7 +580,7 @@ begin
   covers := t.locs is not null and cardinality(t.locs) > 0 and t.locs <@ reach;
 
   case action_key
-  when 'employee.read', 'employee.list' then
+  when 'employee.read', 'employee.list', 'employee.avatar' then
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when shares then 'allow' else 'deny' end;
 
@@ -770,8 +774,6 @@ create temporary table known_gap (
   reason text not null
 );
 insert into known_gap values
-  ('manager-hidden-peers', '{manager}', '{employee.read,employee.list}', '{self,ayse,zeynep,olcay}',
-   'M2: a manager sees everyone who works at their locations; today their own record and managers, admins and the owner are hidden (stage 6, employees)'),
   ('manager-cannot-change-employee-role', '{manager}', '{employee.make_employee}', null,
    'a manager cannot move somebody between employee roles at their own location; decided allowed on 2026-09-24, 6A (stage 6, employees)'),
   ('manager-cannot-invite', '{manager}', '{employee.create}', '{K,B}',
@@ -790,8 +792,6 @@ insert into known_gap values
    'an important date at a location out of reach or in another workspace is refused as 23514 "Choose a location in this workspace", not as a permission no: the browser insert runs its trigger before row security (stage 6, announcements)'),
   ('restricted-no-notifications', '{aydan}', '{notifications.read_own}', null,
    'somebody who has not finished onboarding cannot open their own notifications (stage 6, onboarding)'),
-  ('membership-rows-open', '{manager,employee}', '{read.membership}', null,
-   'any member can read every membership row in the workspace from the browser: every role and status, across locations (stage 6, employees)'),
   ('legacy-blank-location', null,
    '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish,legacy.communication_capability}', '{none}',
    'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2. 56 callers pass null for "anywhere"; each moves to scope_set() with its domain and the helpers go (stage 6)'),

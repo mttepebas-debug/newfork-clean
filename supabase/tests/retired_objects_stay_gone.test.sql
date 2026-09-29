@@ -223,6 +223,12 @@ insert into retired (kind, name, step) values
 insert into retired (kind, name, step) values
   ('function', 'request_account_deletion_service', 'SEC-003'),
   ('function', 'restore_account_deletion_request_service', 'SEC-003');
+-- FB-6.2.3: Employees reads ask the core; the browser-era bridges and the
+-- open membership policy go.
+insert into retired (kind, name, step) values
+  ('function', 'get_employee_detail', 'FB-6.2.3'),
+  ('function', 'list_employees', 'FB-6.2.3'),
+  ('policy', 'workspace_memberships.memberships_select_workspace', 'FB-6.2.3');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
