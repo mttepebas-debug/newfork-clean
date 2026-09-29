@@ -4,3 +4,4 @@
 - [Meyhouse fixture is owner-only](schedule-fixture-owner-only-no-manager-employee-login.md) — no manager/employee login for the ghost-shift/availability schedule data; e2e builder needed for other roles (DB write, out of scope)
 - [Onboarding wizard needs a fresh workspace](onboarding-wizard-needs-fresh-workspace.md) — /onboarding redirects to /app/workspace once a workspace is fully set up (Meyhouse); "Add your team" step can only be seen by creating a new owner workspace, out of scope for a read-only QA pass.
 - [Playwright double-goto blanks mobile screenshot](playwright-double-goto-blanks-mobile.md) — retry with reload/click before reporting a mobile blank-page as a real bug
+- [Schedule quiet-dialog pattern](schedule-quiet-dialog-pattern.md) — shared attr for Publish/Templates; safe QA open paths

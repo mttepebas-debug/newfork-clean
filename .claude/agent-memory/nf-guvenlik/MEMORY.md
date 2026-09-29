@@ -6,7 +6,7 @@
 - [no_self ile rank_below farkı](checklist-no-self-vs-rank-below.md) — no_self owner/admin kendi satırını da keser; "kayıt kuralıyla aynı" = yalnız rank_below
 - [NOT NULL gevşetmesi okuyucuları](checklist-not-null-relax-readers.md) — kolon null olabilince jsonb döndüren fonksiyon + shared zod şeması 500 verir; mock'lar yakalamaz
 - [TODO altındaki red testi](checklist-todo-refusal-live-lock.md) — todo() başarısızlığı saymaz; bugünkü reddi kod+metinle TODO dışında kilitle, seed'e dayanma
-- Nullable→optional (ya da DB anahtarı hiç göndermemeye başlarsa): `=== null` / `!== null` okuyucuları undefined'da "evet" der; `!= null` ara. Shared şema DB'den önce ya da onunla aynı gönderimde gitmeli (BL-139, 2026-09-26).
+- Shared şema ile DB sırası: nullable→optional (DB anahtarı göndermemeye başlarsa) `=== null` okuyucuları undefined'da "evet" der, `!= null` ara, şema DB'den önce gider (BL-139). Tersi: şemaya zorunlu (nullable da olsa) yeni anahtar eklenirse API `.parse` eski DB'de 500 verir, migration önce gider — REUSE OPS-03 (2026-09-29 schedule-windows-2).
 - [Zincir katlama incelemesi](checklist-fold-review.md) — gövde diff -w, koruma yeşil dosyada mı, önce/sonra probe; tests.week gelecekte
 - [Oturumsuz e-posta ucu](checklist-public-auth-email-endpoint.md) — sızıntı sırası, Vercel'de beklenmeyen gönderim donar, recovery token_hash tek başına oturum
 - [Boş kablolama testleri](checklist-vacuous-wiring-tests.md) — düzeltmenin ana satırı silinse hangi test düşer; mock'lanan modül ve uzun taban tuzakları
@@ -21,3 +21,4 @@
 - [Mesaj metni sızıntısı + kırmızı ayrımı](checklist-message-text-leak-and-red-split.md) — reason metni ghost alanlarıyla kıyasla; testi migration'sız da koştur
 - [Korunan kaydın bütün kolonları](checklist-protected-record-all-columns.md) — sistem satırı: department_id gibi anlam taşıyan kolon ve ended_at da korunmalı; fark bazlı save listeden düşeni bitirir
 - [Rebase sonrası anlam çakışması](checklist-rebase-semantic-conflict.md) — metin temiz rebase bile kırmızı çıkarabilir; tabana giren migration'larla dalın kendi testlerini bir kez koş
+- İzin listeli projeksiyon: shared şemaya zorunlu anahtar eklenince DB'de `jsonb_each(..) where key=any(array[..])` süzgeçlerini de ara; yeni alan sessizce düşer, API .parse 500 (BL-316, schedule_availability_read_projection 2026-09-29).
