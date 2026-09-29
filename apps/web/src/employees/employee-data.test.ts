@@ -4,8 +4,10 @@ import {
   acceptEmployeeInvitation,
   acceptPendingEmployeeInvitation,
   declinePendingEmployeeInvitation,
+  getEmployeeDetail,
   loadEmployeeReferenceData,
 } from "./employee-data";
+import { isNoAccess } from "../lib/no-access";
 import { InvitationError } from "./invitation-error";
 import { firstJobOutsideManagement } from "./employee-create-flow";
 
@@ -71,6 +73,30 @@ describe("Employees reference data (BL-231)", () => {
     const failure = await loadEmployeeReferenceData(workspaceId).catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(RequestError);
     expect(failure).toMatchObject({ reason: "authz.out_of_scope", status: 403 });
+  });
+});
+
+// FB-6.2 .7a: the detail read's refusals reach the drawer as the API's "no"
+// (isNoAccess), for somebody out of reach and for somebody not a member.
+describe("Employee detail refusals", () => {
+  const employeeId = "15000000-0000-4000-8000-000000000001";
+
+  it.each([
+    [403, "authz.out_of_scope"],
+    [403, "authz.missing_permission"],
+    [404, "authz.not_member"],
+  ] as const)("passes %s %s on as the API's no", async (status, reason) => {
+    respond(status, { error: status === 404 ? "Workspace not found" : "Not allowed", reason, requestId: "r1" });
+    const failure = await getEmployeeDetail(workspaceId, employeeId).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(RequestError);
+    expect(failure).toMatchObject({ reason, status });
+    expect(isNoAccess(failure)).toBe(true);
+  });
+
+  it("does not take a bare refusal without a reason for the API's no", async () => {
+    respond(403, { error: "Employee read required" });
+    const failure = await getEmployeeDetail(workspaceId, employeeId).catch((error: unknown) => error);
+    expect(isNoAccess(failure)).toBe(false);
   });
 });
 

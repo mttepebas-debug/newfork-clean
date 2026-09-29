@@ -1690,6 +1690,15 @@ describe("EmployeeDrawer record actions follow the server", () => {
     expect(screen.queryByText("Not allowed")).toBeNull();
   });
 
+  it("shows the no-access card, not the server's sentence, to somebody not a member", async () => {
+    detailFailure = new RequestError("Workspace not found", "authz.not_member", undefined, 404);
+    renderDrawer("profile");
+    expect(await screen.findByRole("heading", { name: "You don't have access to this employee" })).toBeTruthy();
+    expect(screen.queryByText("Workspace not found")).toBeNull();
+    expect(screen.queryByText("Employee read required")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^(Save|Done|Terminate employee)$/ })).toBeNull();
+  });
+
   it("keeps any other failure as the drawer's error line", async () => {
     detailFailure = new RequestError("Employee directory service is not configured", undefined, undefined, 503);
     renderDrawer("profile");
