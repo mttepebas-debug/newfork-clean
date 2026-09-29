@@ -212,15 +212,13 @@ export function registerEmployeeDirectoryRoutes(
       const params = employeeParams.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid employee required" });
-      const context = await authorize(
+      // No gate here: the service asks the core, and its "no" reaches the
+      // drawer as 404 or 403 with its reason (FB-6.2 .4, KK-31).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employee_access.manage",
         options.contextResolver,
-        reply,
-        "Employee access required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -240,15 +238,13 @@ export function registerEmployeeDirectoryRoutes(
       const params = employeeParams.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid employee required" });
-      const context = await authorize(
+      // No gate here: the service asks the core, and its "no" reaches the
+      // drawer as 404 or 403 with its reason (FB-6.2 .4, KK-31).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employee_access.manage",
         options.contextResolver,
-        reply,
-        "Employee access required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -499,15 +495,13 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(400)
           .send({ error: "Valid employee details required" });
-      const context = await authorize(
+      // No gate here: the service asks the core, and its "no" reaches the
+      // drawer as 404 or 403 with its reason (FB-6.2 .4, KK-31).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.manage",
         options.contextResolver,
-        reply,
-        "Employee management required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -532,15 +526,13 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(400)
           .send({ error: "Valid employee role required" });
-      const context = await authorize(
+      // No gate here: the service asks the core, and its "no" reaches the
+      // drawer as 404 or 403 with its reason (FB-6.2 .4, KK-31).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employee_access.manage",
         options.contextResolver,
-        reply,
-        "Employee access required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -564,15 +556,13 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(400)
           .send({ error: "Valid archive state required" });
-      const context = await authorize(
+      // No gate here: the service asks the core, and its "no" reaches the
+      // drawer as 404 or 403 with its reason (FB-6.2 .4, KK-31).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.archive",
         options.contextResolver,
-        reply,
-        "Employee archive required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -597,15 +587,13 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(400)
           .send({ error: "Valid termination details required" });
-      const context = await authorize(
+      // No gate here: the service asks the core, and its "no" reaches the
+      // drawer as 404 or 403 with its reason (FB-6.2 .4, KK-31).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.archive",
         options.contextResolver,
-        reply,
-        "Employee archive required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)

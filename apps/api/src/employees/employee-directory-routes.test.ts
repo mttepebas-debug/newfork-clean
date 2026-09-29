@@ -184,37 +184,7 @@ describe("employee directory routes", () => {
     });
   });
 
-  it("requires archive permission before terminating an employee", async () => {
-    const terminate = vi.fn();
-    const app = buildApp({
-      contextResolver: {
-        resolve: async () => ({
-          ...context,
-          permissions: ["employees.read", "employees.manage"],
-        }),
-      },
-      employeeDirectoryService: {
-        terminate,
-      } as unknown as EmployeeDirectoryService,
-    });
-
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/termination`,
-      headers: { authorization: "Bearer valid-token" },
-      payload: {
-        effectiveLocal: "2026-09-02T09:00",
-        worksiteTimezone: "America/Los_Angeles",
-        reason: "Seasonal role ended",
-        idempotencyKey: "a6200000-0000-4000-8000-000000000001",
-      },
-    });
-
-    expect(response.statusCode).toBe(403);
-    expect(terminate).not.toHaveBeenCalled();
-  });
-
-  it("forwards linked employee role updates through the access permission boundary", async () => {
+  it("forwards linked employee role updates from path and context identity", async () => {
     const updateRole = vi.fn(async () => undefined);
     const roleId = "26000000-0000-4000-8000-000000000002";
     const app = buildApp({
@@ -548,6 +518,56 @@ describe("employee directory routes", () => {
         headers: { authorization: "Bearer valid-token" },
       });
       expect(response.statusCode).toBe(400);
+      expect(rpc).not.toHaveBeenCalled();
+      await app.close();
+    });
+  });
+
+  // FB-6.2 .7a (KK-31 S3): the record's writes ask the core in the database;
+  // the route keeps no permission gate. A rank or scope refusal reaches the
+  // drawer as 403 with its reason, never "Employee management required".
+  describe("writes ask the core", () => {
+    const termination = {
+      effectiveLocal: "2026-09-02T09:00",
+      worksiteTimezone: "America/Los_Angeles",
+      reason: "Seasonal role ended",
+      idempotencyKey: "a6200000-0000-4000-8000-000000000001",
+    };
+    const writes = [
+      ["save", "save_employee_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}`, employeeInput],
+      ["role change", "update_employee_membership_role_service", "PATCH", `/v1/workspaces/${workspaceId}/employees/${employeeId}/role`, { role_id: "26000000-0000-4000-8000-000000000002" }],
+      ["archive", "set_employee_archived_service", "PATCH", `/v1/workspaces/${workspaceId}/employees/${employeeId}/archive`, { archived: true, restoreAccess: false }],
+      ["termination", "terminate_employee_service", "POST", `/v1/workspaces/${workspaceId}/employees/${employeeId}/termination`, termination],
+      ["access removal", "remove_employee_access_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/access`, undefined],
+      ["photo removal", "remove_employee_avatar_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/avatar`, undefined],
+    ] as const;
+    const noPermissions = { ...context, permissions: ["workspace.read"] as ActiveWorkspaceContext["permissions"] };
+
+    it.each(writes)("hands the %s to the database, whose rank refusal answers 403 with its reason", async (_name, rpcName, method, url, payload) => {
+      const rpc = vi.fn(async () => ({
+        data: null,
+        error: { code: "42501", message: "Not allowed", hint: "authz.rank", details: "employee.save" },
+      }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => noPermissions },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({ method, url, headers: { authorization: "Bearer valid-token" }, payload });
+      expect(rpc).toHaveBeenCalledWith(rpcName, expect.objectContaining({ actor_user_id: userId, target_workspace_id: workspaceId, target_employee_id: employeeId }));
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({ reason: "authz.rank" });
+      await app.close();
+    });
+
+    it.each(writes)("answers somebody who is not a member on the %s with 404 authz.not_member", async (_name, _rpcName, method, url, payload) => {
+      const rpc = vi.fn();
+      const app = buildApp({
+        contextResolver: { resolve: async () => null },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({ method, url, headers: { authorization: "Bearer valid-token" }, payload });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
       expect(rpc).not.toHaveBeenCalled();
       await app.close();
     });
