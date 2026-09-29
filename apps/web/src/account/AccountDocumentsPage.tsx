@@ -127,13 +127,12 @@ function WorkspaceDocuments({
     >
       <div className="account-section-copy account-documents-group-head">
         <h2>{workspace.name}</h2>
+        {/* A quiet workspace needs no badge; only work waiting gets one. */}
         {waiting > 0 ? (
           <span className="pb-badge pb-badge-progress">
             {waiting === 1 ? "1 waiting on you" : `${waiting} waiting on you`}
           </span>
-        ) : (
-          <span className="pb-badge pb-badge-success">Nothing waiting</span>
-        )}
+        ) : null}
       </div>
       <EmployeeDocumentsList
         audience={audience}
@@ -141,6 +140,7 @@ function WorkspaceDocuments({
         canReview={false}
         kind={kind}
         initialRequirementId={initialRequirementId}
+        personal
       />
     </section>
   );
