@@ -4,6 +4,7 @@ import {
   Bell,
   CalendarDays,
   Home,
+  LayoutDashboard,
   LayoutGrid,
   LogOut,
   Megaphone,
@@ -13,6 +14,7 @@ import {
 import { Link, NavLink, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { CurrentUserAvatar } from "../account/AccountAvatar";
+import { v8 } from "../dev/fb628-variants";
 import "./employee-dashboard.css";
 
 export function EmployeeMobileNav() {
@@ -52,6 +54,14 @@ export function EmployeeMobileNav() {
 export function EmployeeMorePage() {
   const { context, signOut } = useAuth();
   const links = [
+    // FB-6.2.8 A (DEV): the way back for owner, admin and manager.
+    {
+      label: "Management view",
+      detail: "Back to running the workspace",
+      to: "/app/workspace",
+      icon: LayoutDashboard,
+      enabled: v8() === "a" && context?.membership.role !== "employee",
+    },
     {
       label: "My availability",
       detail: "When you’re available to work",

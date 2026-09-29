@@ -1,0 +1,355 @@
+/* FB-6.2.8 Employees DEV variants (?v8=a|b|c). Tokens only. */
+
+/* Remove from <location>: soft red at rest, solid red once armed (two clicks),
+   the Account photo rule (account.css). */
+.nf-button.danger-button.v8-remove:not(.is-armed) {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+.nf-button.danger-button.v8-remove:not(.is-armed):not(:disabled):hover {
+  background: var(--theme-danger-surface);
+  box-shadow: inset 0 0 0 1px var(--theme-danger-border);
+}
+.nf-button.v8-remove {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.nf-button.v8-remove-compact {
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .nf-button.v8-remove,
+  .nf-button.v8-remove-compact {
+    min-height: 40px;
+  }
+}
+
+/* Terminate, switched off for a manager. */
+.employee-lifecycle-button.v8-terminate-passive:disabled {
+  padding: 0 8px;
+  color: var(--theme-muted-strong);
+  cursor: not-allowed;
+}
+.employee-lifecycle-button.v8-terminate-passive:disabled:hover {
+  background: transparent;
+}
+
+/* A: Remove on the location's row. */
+.employee-assignment-picker > div[data-locked="true"] {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.employee-assignment-picker > div[data-locked="true"] input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+.v8-terminate-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: -6px 0 0;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.v8-terminate-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+/* B: Remove in the bottom bar. */
+.v8-footer-remove {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 720px) {
+  .employee-drawer-footer.v8-footer-b {
+    flex-wrap: wrap;
+    height: auto;
+    flex-basis: auto;
+  }
+  .employee-drawer-footer.v8-footer-b > div:first-child {
+    display: flex;
+    width: 100%;
+  }
+}
+
+/* C: one card per location, then what ending employment takes. */
+.v8-work-cards {
+  display: grid;
+  gap: 10px;
+}
+.v8-work-cards ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v8-work-card {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  color: var(--theme-muted-strong);
+}
+.v8-work-card-name {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.v8-work-card-name strong {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v8-work-card-name small,
+.v8-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--theme-selected);
+  color: var(--theme-accent-deep);
+  font-size: 11px;
+  font-weight: 800;
+}
+.v8-end-employment {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--theme-border-strong);
+  border-radius: 8px;
+  background: var(--theme-surface-soft);
+}
+.v8-end-employment > div {
+  flex: 1;
+  min-width: 0;
+}
+.v8-end-employment strong {
+  color: var(--theme-text);
+  font-size: 13px;
+}
+.v8-end-employment p {
+  margin: 2px 0 0;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  line-height: 1.45;
+}
+@media (max-width: 720px) {
+  .v8-work-card {
+    flex-wrap: wrap;
+  }
+  .v8-work-card .v8-remove {
+    width: 100%;
+  }
+  .v8-end-employment {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* 2b: the admin's "manages without working there" field. */
+.v8-managed {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  background: var(--theme-surface-soft);
+}
+.v8-managed-head {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+.v8-managed > small,
+.v8-managed-help {
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.v8-managed-help {
+  display: block;
+  margin: 0 7px 6px;
+}
+.nf-button.v8-managed-save {
+  min-height: 30px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+.v8-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.v8-pill {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 999px;
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+.v8-pill[data-selected="true"] {
+  border-color: var(--theme-accent);
+  background: var(--theme-selected);
+  color: var(--theme-accent-deep);
+}
+.v8-pill input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--theme-accent);
+}
+.v8-pill:has(input:focus-visible) {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.v8-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v8-chip {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 999px;
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.v8-chip button {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  margin-right: -5px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--theme-muted-strong);
+  cursor: pointer;
+}
+.v8-chip button:hover {
+  background: var(--theme-surface-muted);
+  color: var(--theme-danger-strong);
+}
+.v8-chip-empty {
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.v8-managed-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  color: var(--theme-accent-deep);
+}
+.v8-managed-add select {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--theme-muted);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font-size: 13px;
+}
+.v8-managed-c-save {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 7px 2px;
+}
+
+/* 2a: the list's location cell. */
+.v8-chip-warning,
+.v8-tag-warning {
+  border-color: var(--theme-warning-border);
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+.v8-loc-a,
+.v8-loc-c {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.v8-loc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v8-loc-managed {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--theme-text-secondary);
+}
+.v8-loc-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--theme-warning-text);
+  font-weight: 700;
+}
+.v8-loc-missing-quiet {
+  color: var(--theme-muted);
+}
+.v8-phone-only {
+  display: none;
+}
+@media (max-width: 720px) {
+  .v8-phone-only {
+    display: flex;
+  }
+}
+.v8-identity-chips {
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+.v8-identity-missing {
+  color: var(--theme-warning-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+.v8-identity-managed {
+  overflow: hidden;
+  color: var(--theme-accent-deep);
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
