@@ -140,14 +140,21 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  old_class public.workspace_role;
+  new_class public.workspace_role;
 begin
-  -- The database owner working directly (migrations, seed, test fixtures,
-  -- with no role set or set back to postgres) is not an application caller:
-  -- every API and browser call runs as service_role or authenticated.
-  -- ponytail: the console could disable this trigger anyway; a caller that
-  -- runs as the owner would pass too (none exists today).
-  if current_setting('role') in ('none', 'postgres') then
+  -- The database owner working directly (migrations, seed, test fixtures:
+  -- signed in as postgres, with no role set or set back to it) is not an
+  -- application caller: every API and browser call signs in as another user
+  -- and runs as service_role or authenticated.
+  -- ponytail: the console could disable this trigger anyway.
+  if session_user = 'postgres' and current_setting('role') in ('none', 'postgres') then
     return new;
+  end if;
+  new_class := (select role.access_class from public.workspace_roles role where role.id = new.role_id);
+  if tg_op = 'UPDATE' then
+    old_class := (select role.access_class from public.workspace_roles role where role.id = old.role_id);
   end if;
 
   -- Taking access away grants nothing; neither does a change that leaves the
@@ -165,19 +172,32 @@ begin
     return new;
   end if;
 
-  -- Joining by invitation, checked by the accept flow.
-  if coalesce(current_setting('app.employee_invitation_accept', true), '') = 'on' then
+  -- Joining by invitation, checked by the accept flow: a new pending account,
+  -- or a suspended one reopened pending, never the owner's (nf-guvenlik O1).
+  if coalesce(current_setting('app.employee_invitation_accept', true), '') = 'on'
+     and app_private.authz_rank(new_class) < app_private.authz_rank('owner')
+     and new.status = 'pending_activation'::public.membership_status
+     and (tg_op = 'INSERT'
+          or (old.workspace_id = new.workspace_id and old.user_id = new.user_id
+              and old.status = 'suspended'::public.membership_status)) then
     return new;
   end if;
 
   -- The accepted ownership transfer's two rows, validated and locked by the
-  -- transfer service.
+  -- transfer service: the target admin becomes owner and the owner admin, both
+  -- staying active, for the account the transfer names (nf-guvenlik O1).
   if tg_op = 'UPDATE' and coalesce(current_setting('app.owner_transfer', true), '') = 'on'
+     and new.workspace_id = old.workspace_id and new.user_id = old.user_id
+     and new.status = 'active'::public.membership_status and old.status = 'active'::public.membership_status
      and exists (
        select 1 from public.workspace_ownership_transfers transfer
+       join public.workspace_memberships target
+         on target.id = transfer.target_membership_id and target.workspace_id = transfer.workspace_id
        where transfer.workspace_id = new.workspace_id and transfer.status = 'pending'
          and transfer.expires_at > now()
-         and new.id in (transfer.target_membership_id, transfer.previous_owner_membership_id)
+         and target.user_id = transfer.target_user_id
+         and ((transfer.target_membership_id = new.id and old_class = 'admin' and new_class = 'owner')
+           or (transfer.previous_owner_membership_id = new.id and old_class = 'owner' and new_class = 'admin'))
      ) then
     return new;
   end if;
@@ -466,6 +486,43 @@ begin
 end;
 $$;
 
+-- Handing out a role: the role service, and giving access back, which hands
+-- out the role the account had (nf-guvenlik Y1). An admin's role is the
+-- owner's to give (and nobody's the owner's: that is a transfer); any other,
+-- whoever may change this person's role; and nobody gives a role at or above
+-- their own (a manager moves people between employee roles only, 6A).
+create function app_private.authorize_role_grant(
+  actor uuid,
+  w uuid,
+  next_role_id uuid,
+  target_person uuid default null,
+  target_user uuid default null
+)
+returns void
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  next_class public.workspace_role := (
+    select role.access_class from public.workspace_roles role where role.id = next_role_id and role.workspace_id = w
+  );
+begin
+  perform app_private.authorize(actor, w,
+    case when app_private.authz_rank(next_class) >= app_private.authz_rank('admin')
+      then 'employee.make_admin' else 'employee.change_role' end,
+    target_person => target_person, target_user => target_user);
+  if next_class is null then
+    raise exception 'target role not found' using errcode = 'P0002';
+  end if;
+  if app_private.authz_rank(next_class) >= app_private.authz_rank((app_private.actor(actor, w)).class) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.change_role';
+  end if;
+end;
+$$;
+revoke all on function app_private.authorize_role_grant(uuid, uuid, uuid, uuid, uuid) from public;
+
 drop function public.set_employee_archived(uuid, uuid, boolean, boolean);
 
 create or replace function public.set_employee_archived_service(
@@ -483,19 +540,48 @@ as $$
 declare
   employee_user_id uuid;
   member public.workspace_memberships%rowtype;
+  reopened public.workspace_memberships%rowtype;
   snapshot public.employee_access_snapshots%rowtype;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.archive', target_person => target_employee_id);
-  -- Giving the account back is the twin of taking it away: the same rule.
-  if not should_archive and restore_access then
-    perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.remove_access',
-      target_person => target_employee_id);
-  end if;
 
   select user_id into employee_user_id
   from public.employee_profiles
   where id = target_employee_id and workspace_id = target_workspace_id
   for update;
+
+  if not should_archive and restore_access then
+    select * into snapshot
+    from public.employee_access_snapshots
+    where employee_id = target_employee_id and restored_at is null
+    order by captured_at desc
+    limit 1
+    for update;
+    if snapshot.id is null then
+      raise exception 'restorable access snapshot not found' using errcode = 'P0002';
+    end if;
+    select * into reopened
+    from public.workspace_memberships
+    where id = snapshot.membership_id and workspace_id = target_workspace_id;
+    -- Only the account still linked to the record is reopened: once a rehire
+    -- restore detached it, reopening would hand its role to an account no
+    -- record stands for (nf-guvenlik Y1).
+    if employee_user_id is null or reopened.user_id is distinct from employee_user_id then
+      raise exception 'employee has no linked workspace account' using errcode = '22023';
+    end if;
+    if not exists (
+      select 1 from public.workspace_roles
+      where id = snapshot.role_id and workspace_id = target_workspace_id
+    ) then
+      raise exception 'snapshotted role is no longer available' using errcode = '22023';
+    end if;
+    -- Giving the account back is the twin of taking it away, and hands out the
+    -- role it had: both asked of the membership it reopens.
+    perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.remove_access',
+      target_user => reopened.user_id);
+    perform app_private.authorize_role_grant(actor_user_id, target_workspace_id, snapshot.role_id,
+      target_user => reopened.user_id);
+  end if;
 
   select * into member
   from public.workspace_memberships
@@ -522,22 +608,6 @@ begin
   where id = target_employee_id;
 
   if not should_archive and restore_access then
-    select * into snapshot
-    from public.employee_access_snapshots
-    where employee_id = target_employee_id and restored_at is null
-    order by captured_at desc
-    limit 1
-    for update;
-    if snapshot.id is null then
-      raise exception 'restorable access snapshot not found' using errcode = 'P0002';
-    end if;
-    if not exists (
-      select 1 from public.workspace_roles
-      where id = snapshot.role_id and workspace_id = target_workspace_id
-    ) then
-      raise exception 'snapshotted role is no longer available' using errcode = '22023';
-    end if;
-
     perform set_config('app.membership_change', snapshot.membership_id::text, true);
     update public.workspace_memberships
     set role_id = snapshot.role_id, status = 'active'::public.membership_status, updated_at = now()
@@ -826,7 +896,6 @@ security definer
 set search_path = ''
 as $$
 declare
-  me app_private.actor_state;
   target_employee public.employee_profiles%rowtype;
   target_membership public.workspace_memberships%rowtype;
   existing_role public.workspace_roles%rowtype;
@@ -834,25 +903,11 @@ declare
   managed_before uuid[];
   managed_removed uuid[];
 begin
+  perform app_private.authorize_role_grant(actor_user_id, target_workspace_id, target_role_id,
+    target_person => target_employee_id);
   select role.* into next_role
   from public.workspace_roles role
   where role.id = target_role_id and role.workspace_id = target_workspace_id;
-
-  -- An admin's role is the owner's to give (and nobody's the owner's: that is
-  -- a transfer); any other, whoever may change this person's role.
-  perform app_private.authorize(actor_user_id, target_workspace_id,
-    case when app_private.authz_rank(next_role.access_class) >= app_private.authz_rank('admin')
-      then 'employee.make_admin' else 'employee.change_role' end,
-    target_person => target_employee_id);
-  if next_role.id is null then
-    raise exception 'target role not found' using errcode = 'P0002';
-  end if;
-  -- Nobody gives a role at or above their own (a manager moves people between
-  -- employee roles only, 6A).
-  me := app_private.actor(actor_user_id, target_workspace_id);
-  if app_private.authz_rank(next_role.access_class) >= app_private.authz_rank(me.class) then
-    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.change_role';
-  end if;
 
   select employee.* into target_employee
   from public.employee_profiles employee
@@ -962,3 +1017,9 @@ begin
   return avatar_path;
 end;
 $$;
+
+-- 4. Browser write policies nobody can use ------------------------------------------
+-- The browser has no update or delete grant on memberships; these two never
+-- ran, and read like a second rule for who changes a membership.
+drop policy memberships_update_manager on public.workspace_memberships;
+drop policy memberships_delete_manager on public.workspace_memberships;
