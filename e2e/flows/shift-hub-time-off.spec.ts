@@ -18,7 +18,8 @@ function sql(query: string): string {
 async function open(browser: Browser, person: Person, path: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await signIn(page, person);
-  await expect(page).toHaveURL(/\/app\/workspace/);
+  // An employee lands in Employee Hub, a manager in the workspace (sign-in-lands).
+  await expect(page).toHaveURL(/\/app\/(employee-hub|workspace)/);
   await page.goto(path);
   return page;
 }
