@@ -21,7 +21,10 @@ import {
   supabaseClient,
   uploadAccountAvatar,
 } from "../lib/supabase";
-import { saveOwnEmploymentContact } from "../employees/employee-data";
+import {
+  requestPreferredName,
+  saveOwnEmploymentContact,
+} from "../employees/employee-data";
 import { AccountPageHeader } from "./components";
 import {
   legalNameErrorMessage,
@@ -43,7 +46,8 @@ import { AccountAvatar } from "./AccountAvatar";
  */
 type LegalNameHandle = {
   readonly dirty: boolean;
-  readonly ready: boolean;
+  /** First and last name are both there; the middle name may stay empty. */
+  readonly filled: boolean;
   readonly save: () => Promise<void>;
   readonly reset: () => void;
 };
@@ -52,22 +56,47 @@ type RegisterLegalName = (
   handle: LegalNameHandle | null,
 ) => void;
 
+type Contact = {
+  readonly name: string;
+  readonly relationship: string;
+  readonly phone: string;
+};
+
+/** The same contact is kept on every workspace record; the first filled one leads. */
+function leadingContact(records: readonly EmploymentContactRecord[]): Contact {
+  const lead = records.find((record) => record.emergencyContactName) ?? records[0];
+  return {
+    name: lead?.emergencyContactName ?? "",
+    relationship: lead?.emergencyContactRelationship ?? "",
+    phone: lead?.emergencyContactPhone ?? "",
+  };
+}
+
 export default function ProfilePage() {
   const { account, updateAccount } = useAuth();
+  const cache = useQueryClient();
+  const navigate = useNavigate();
   const fileInput = useRef<HTMLInputElement>(null);
-  const [displayName, setDisplayName] = useState(account?.displayName ?? "");
+  const workspaces = useAccountWorkspaces();
+  const records = useQuery({
+    queryKey: ["account-employment-records"],
+    queryFn: () =>
+      supabaseClient ? listOwnEmploymentRecords(supabaseClient) : [],
+  });
+  const [preferredDraft, setPreferredDraft] = useState<string | null>(null);
+  const [contactDraft, setContactDraft] = useState<Contact | null>(null);
   const [phone, setPhone] = useState(account?.phone ?? "");
   const [avatarObjectPath, setAvatarObjectPath] = useState(account?.avatarObjectPath ?? null);
   const [avatarUrl, setAvatarUrl] = useState(account?.avatarUrl ?? null);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [draftFile, setDraftFile] = useState<File | null>(null);
   const legalForms = useRef(new Map<string, LegalNameHandle>());
   const [legalState, setLegalState] = useState<
-    Record<string, { readonly dirty: boolean; readonly ready: boolean }>
+    Record<string, { readonly dirty: boolean; readonly filled: boolean }>
   >({});
   const registerLegalName = useCallback<RegisterLegalName>(
     (workspaceId, handle) => {
@@ -78,23 +107,55 @@ export default function ProfilePage() {
         if (
           handle &&
           before?.dirty === handle.dirty &&
-          before.ready === handle.ready
+          before.filled === handle.filled
         )
           return current;
         if (!handle && !before) return current;
         const next = { ...current };
-        if (handle) next[workspaceId] = { dirty: handle.dirty, ready: handle.ready };
+        if (handle) next[workspaceId] = { dirty: handle.dirty, filled: handle.filled };
         else delete next[workspaceId];
         return next;
       });
     },
     [],
   );
-  const legalDirty = Object.values(legalState).some((form) => form.dirty);
-  const legalReady = Object.values(legalState).every(
-    (form) => !form.dirty || form.ready,
+
+  // A workspace whose person has not finished onboarding has no private record
+  // yet, so the database would refuse a contact on it.
+  const recordList = records.data ?? [];
+  const contactRecords = recordList.filter(
+    (record) => !onboardingUnfinished(workspaces.data, record.workspaceId),
   );
-  const formDirty = dirty || legalDirty;
+  const unfinishedRecords = recordList.filter((record) =>
+    onboardingUnfinished(workspaces.data, record.workspaceId),
+  );
+  const hasContactForm = contactRecords.length > 0;
+  // The name a person goes by: what a workspace already holds for them, else
+  // the name the account was made with.
+  const preferredOnFile =
+    contactRecords.find((record) => record.preferredName)?.preferredName ??
+    account?.displayName ??
+    "";
+  const preferred = preferredDraft ?? preferredOnFile;
+  const contactOnFile = leadingContact(contactRecords);
+  const contact = contactDraft ?? contactOnFile;
+
+  const legalDirty = Object.values(legalState).some((form) => form.dirty);
+  const legalFilled = Object.values(legalState).every((form) => form.filled);
+  const preferredDirty = preferred !== preferredOnFile;
+  const contactDirty =
+    contact.name !== contactOnFile.name ||
+    contact.relationship !== contactOnFile.relationship ||
+    contact.phone !== contactOnFile.phone;
+  const formDirty = dirty || legalDirty || preferredDirty || contactDirty;
+  // Only the preferred name and the middle name may stay empty.
+  const complete =
+    legalFilled &&
+    phone.trim() !== "" &&
+    (!hasContactForm ||
+      (contact.name.trim() !== "" &&
+        contact.relationship.trim() !== "" &&
+        contact.phone.trim().length >= 7));
 
   useEffect(() => {
     if (!draftFile) return;
@@ -105,7 +166,6 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!account || dirty) return;
-    setDisplayName(account.displayName);
     setPhone(account.phone ?? "");
     setAvatarObjectPath(account.avatarObjectPath);
     setAvatarUrl(account.avatarUrl);
@@ -121,7 +181,7 @@ export default function ProfilePage() {
 
   const markDirty = () => {
     setDirty(true);
-    setSaved(false);
+    setSaved(null);
   };
 
   const closeCropDialog = () => {
@@ -133,13 +193,14 @@ export default function ProfilePage() {
 
   const discard = () => {
     setDraftFile(null);
-    setDisplayName(account.displayName);
+    setPreferredDraft(null);
+    setContactDraft(null);
     setPhone(account.phone ?? "");
     setAvatarObjectPath(account.avatarObjectPath);
     setAvatarUrl(account.avatarUrl);
     for (const form of legalForms.current.values()) form.reset();
     setDirty(false);
-    setSaved(false);
+    setSaved(null);
     setError(null);
   };
 
@@ -154,9 +215,13 @@ export default function ProfilePage() {
         if (!supabaseClient) throw new Error("Account photo storage is not configured");
         nextAvatar = await uploadAccountAvatar(supabaseClient, account.userId, draftFile);
       }
-      await updateAccount(displayName, account.theme, normalizedPhone, {
-        ...nextAvatar,
-      });
+      // Emptying the preferred name leaves the account's own name as it is.
+      await updateAccount(
+        preferred.trim() || account.displayName,
+        account.theme,
+        normalizedPhone,
+        { ...nextAvatar },
+      );
       profileSaved = true;
       setDraftFile(null);
       setAvatarObjectPath(nextAvatar.avatarObjectPath);
@@ -174,13 +239,40 @@ export default function ProfilePage() {
     }
   };
 
+  /** Sends the preferred name to every workspace; returns how many hold it for an answer. */
+  const savePreferredName = async (): Promise<number> => {
+    let waiting = 0;
+    for (const record of contactRecords) {
+      if (record.preferredName === preferred.trim()) continue;
+      const outcome = await requestPreferredName(
+        record.workspaceId,
+        record.employeeId,
+        preferred.trim(),
+      );
+      if (outcome === "waiting") waiting += 1;
+    }
+    return waiting;
+  };
+
+  const saveContact = async (): Promise<void> => {
+    for (const record of contactRecords)
+      // personalPhone left out: the number a workspace has on file stays.
+      await saveOwnEmploymentContact(record.workspaceId, record.employeeId, {
+        name: contact.name,
+        relationship: contact.relationship,
+        phone: contact.phone,
+        email: record.emergencyContactEmail,
+      });
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
-    setSaved(false);
+    setSaved(null);
     setError(null);
     const failures: string[] = [];
-    if (dirty) {
+    let waiting = 0;
+    if (dirty || preferredDirty) {
       const failure = await saveProfile();
       if (failure) failures.push(failure);
     }
@@ -192,8 +284,31 @@ export default function ProfilePage() {
         failures.push(legalNameErrorMessage(legalError));
       }
     }
+    if (preferredDirty && failures.length === 0) {
+      try {
+        waiting = await savePreferredName();
+        setPreferredDraft(null);
+      } catch {
+        failures.push("Your preferred name could not be sent to your workspaces.");
+      }
+    }
+    if (contactDirty) {
+      try {
+        await saveContact();
+        setContactDraft(null);
+      } catch {
+        failures.push("Your emergency contact could not be saved. Try again.");
+      }
+    }
+    if (contactDirty || preferredDirty)
+      await cache.invalidateQueries({ queryKey: ["account-employment-records"] });
     if (failures.length > 0) setError(failures.join(" "));
-    else setSaved(true);
+    else
+      setSaved(
+        waiting > 0
+          ? "Profile saved. A manager needs to approve your preferred name."
+          : "Profile saved",
+      );
     setSaving(false);
   };
 
@@ -214,6 +329,11 @@ export default function ProfilePage() {
     }
   };
 
+  const editContact = (part: keyof Contact, value: string) => {
+    setSaved(null);
+    setContactDraft({ ...contact, [part]: value });
+  };
+
   return (
     <section className="account-page" aria-labelledby="profile-title">
       {navigationDialog}
@@ -225,11 +345,17 @@ export default function ProfilePage() {
         titleId="profile-title"
         description="Your name, photo and phone, and who to call in an emergency."
       />
-      <form className="account-profile-form" aria-label="Personal details" onSubmit={submit}>
+      <form className="account-profile-form" aria-label="Profile" onSubmit={submit}>
         <div className="account-profile-head">
-          <AccountAvatar globalUrl={avatarUrl} className="account-avatar-large" name={displayName} />
+          <div className="account-photo">
+            <AccountAvatar globalUrl={avatarUrl} className="account-avatar-large" name={account.displayName} />
+            <span className="field-help account-photo-formats">
+              <span>JPG, PNG or WebP</span>
+              <span>up to 5 MB</span>
+            </span>
+          </div>
           <div className="account-profile-identity">
-            <strong>{displayName.trim() || account.displayName}</strong>
+            <strong>{account.displayName}</strong>
             <span>{account.email}</span>
             <div className="account-photo-actions">
               <Button id="profile-photo-upload-trigger" type="button" disabled={saving} onClick={() => fileInput.current?.click()}>
@@ -248,7 +374,6 @@ export default function ProfilePage() {
               >
                 <Trash2 size={15} aria-hidden /> Remove
               </ConfirmButton> : null}
-              <span className="field-help">JPG, PNG or WebP · up to 5 MB</span>
             </div>
           </div>
           <input
@@ -262,28 +387,27 @@ export default function ProfilePage() {
           />
         </div>
 
-        <OwnerLegalNames register={registerLegalName} onEdit={() => setSaved(false)} />
+        <OwnerLegalNames register={registerLegalName} onEdit={() => setSaved(null)} />
 
         <div className="account-field-grid account-profile-grid">
-          <label className="account-field" htmlFor="account-display-name">
-            <span>Preferred name</span>
+          <label className="account-field" htmlFor="account-preferred-name">
+            <span>
+              Preferred name<span className="field-optional">optional</span>
+            </span>
             <input
-              id="account-display-name"
+              id="account-preferred-name"
               aria-label="Preferred name"
-              value={displayName}
-              maxLength={100}
+              value={preferred}
+              maxLength={80}
               onChange={(event) => {
-                setDisplayName(event.target.value);
-                markDirty();
+                setPreferredDraft(event.target.value);
+                setSaved(null);
               }}
-              required
             />
-            <small>What people see across Newfork.</small>
+            <small>Shown everywhere except documents. A manager approves it.</small>
           </label>
           <label className="account-field account-field-span-2" htmlFor="account-phone-number">
-            <span>
-              Phone number<span className="field-optional">optional</span>
-            </span>
+            <span>Phone number</span>
             {/* Without a leading +, the number is read as a US/Canada number. */}
             <input
               id="account-phone-number"
@@ -296,25 +420,86 @@ export default function ProfilePage() {
                 markDirty();
               }}
               placeholder="415 555 0142"
+              required
             />
             <small>Outside the US or Canada, start with + and the country code.</small>
           </label>
         </div>
 
+        {hasContactForm || unfinishedRecords.length > 0 ? (
+          <fieldset className="account-fieldset account-fieldset-divided">
+            <legend>Emergency contact</legend>
+            {hasContactForm ? (
+              <div className="account-field-grid account-contact-grid">
+                <label className="account-field" htmlFor="account-contact-name">
+                  <span>Contact name</span>
+                  <input
+                    id="account-contact-name"
+                    value={contact.name}
+                    maxLength={120}
+                    onChange={(event) => editContact("name", event.target.value)}
+                    placeholder="Morgan Reyes"
+                    required
+                  />
+                </label>
+                <label className="account-field" htmlFor="account-contact-relationship">
+                  <span>Relationship</span>
+                  <input
+                    id="account-contact-relationship"
+                    value={contact.relationship}
+                    maxLength={80}
+                    onChange={(event) => editContact("relationship", event.target.value)}
+                    placeholder="Spouse"
+                    required
+                  />
+                </label>
+                <label className="account-field" htmlFor="account-contact-phone">
+                  <span>Contact phone</span>
+                  <input
+                    id="account-contact-phone"
+                    value={contact.phone}
+                    maxLength={30}
+                    onChange={(event) => editContact("phone", event.target.value)}
+                    placeholder="415 555 0199"
+                    required
+                  />
+                </label>
+              </div>
+            ) : null}
+            {unfinishedRecords.map((record) => (
+              <div key={record.workspaceId} className="account-employment-record">
+                <strong>{record.workspaceName}</strong>
+                <p className="account-record-note">
+                  Finish setting up your account here, then you can add your
+                  emergency contact.
+                </p>
+                <div className="account-button-row">
+                  <Button
+                    type="button"
+                    aria-label={`Continue setup for ${record.workspaceName}`}
+                    onClick={() => navigate(`/welcome/${record.workspaceId}`)}
+                  >
+                    Continue setup
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </fieldset>
+        ) : null}
+
         {error ? <p className="form-error" role="alert">{error}</p> : null}
-        {saved ? <p className="form-success" role="status">Profile saved</p> : null}
+        {saved ? <p className="form-success" role="status">{saved}</p> : null}
         <div className="account-form-actions">
           {formDirty ? (
             <Button type="button" className="secondary-button" disabled={saving} onClick={() => void discard()}>
               Discard
             </Button>
           ) : null}
-          <Button type="submit" disabled={!formDirty || saving || !displayName.trim() || !legalReady}>
-            {saving ? "Saving" : "Save changes"}
+          <Button type="submit" disabled={!formDirty || saving || !complete}>
+            {saving ? "Saving" : "Save"}
           </Button>
         </div>
       </form>
-      <EmploymentContacts />
     </section>
   );
 }
@@ -415,12 +600,12 @@ function OwnerLegalNameFields({
     draft.firstName !== initial.firstName ||
     draft.middleName !== initial.middleName ||
     draft.lastName !== initial.lastName;
-  const ready = draft.firstName.trim() !== "" && draft.lastName.trim() !== "";
+  const filled = draft.firstName.trim() !== "" && draft.lastName.trim() !== "";
 
   useEffect(() => {
     register(workspaceId, {
       dirty,
-      ready,
+      filled,
       save: () =>
         saveName({
           firstName: draft.firstName.trim(),
@@ -429,7 +614,7 @@ function OwnerLegalNameFields({
         }),
       reset: () => setDraft(initial),
     });
-  }, [dirty, draft, initial, ready, register, saveName, workspaceId]);
+  }, [dirty, draft, initial, filled, register, saveName, workspaceId]);
   useEffect(() => () => register(workspaceId, null), [register, workspaceId]);
 
   const field = (suffix: string) => `legal-name-${workspaceId}-${suffix}`;
@@ -446,9 +631,7 @@ function OwnerLegalNameFields({
         aria-label={`Legal ${label.toLowerCase()}`}
         value={draft[part]}
         maxLength={80}
-        // Only asked for once this name is being changed: an untouched empty
-        // one must not stop the rest of the profile from saving.
-        required={part !== "middleName" && dirty}
+        required={part !== "middleName"}
         onChange={(event) => {
           onEdit();
           setDraft({ ...draft, [part]: event.target.value });
@@ -466,182 +649,5 @@ function OwnerLegalNameFields({
         {input("lastName", "Last name", "last")}
       </div>
     </div>
-  );
-}
-
-/**
- * Who to call, and the number to reach you on. Onboarding asks for both once
- * and never comes back to them; an owner is never asked at all, because an
- * owner never runs onboarding.
- *
- * One block per workspace, because that is where the record lives. A phone
- * number changes and a person moves house, and until now the only way to
- * correct either was to ask a manager.
- */
-function EmploymentContacts() {
-  const cache = useQueryClient();
-  const navigate = useNavigate();
-  const workspaces = useAccountWorkspaces();
-  const records = useQuery({
-    queryKey: ["account-employment-records"],
-    queryFn: () =>
-      supabaseClient ? listOwnEmploymentRecords(supabaseClient) : [],
-  });
-
-  if (records.isLoading || (records.data ?? []).length === 0) return null;
-
-  return (
-    <section
-      className="account-section-block"
-      aria-labelledby="account-employment-title"
-    >
-      <div className="account-section-copy">
-        <h2 id="account-employment-title">Emergency contact</h2>
-        <p>Kept by each workspace separately, and yours to correct.</p>
-      </div>
-      <div className="account-section-body">
-        {(records.data ?? []).map((record) =>
-          // Nothing to keep a contact on until onboarding writes the record;
-          // the database would refuse the save.
-          onboardingUnfinished(workspaces.data, record.workspaceId) ? (
-            <div key={record.workspaceId} className="account-employment-record">
-              <strong>{record.workspaceName}</strong>
-              <p className="account-record-note">
-                Finish setting up your account here, then you can add your
-                emergency contact.
-              </p>
-              <div className="account-button-row">
-                <Button
-                  type="button"
-                  aria-label={`Continue setup for ${record.workspaceName}`}
-                  onClick={() => navigate(`/welcome/${record.workspaceId}`)}
-                >
-                  Continue setup
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <EmploymentContactForm
-              key={record.workspaceId}
-              record={record}
-              onSaved={() =>
-                cache.invalidateQueries({
-                  queryKey: ["account-employment-records"],
-                })
-              }
-            />
-          ),
-        )}
-      </div>
-    </section>
-  );
-}
-
-function EmploymentContactForm({
-  record,
-  onSaved,
-}: {
-  readonly record: EmploymentContactRecord;
-  readonly onSaved: () => void;
-}) {
-  const [name, setName] = useState(record.emergencyContactName);
-  const [relationship, setRelationship] = useState(
-    record.emergencyContactRelationship,
-  );
-  const [contactPhone, setContactPhone] = useState(
-    record.emergencyContactPhone,
-  );
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-
-  const dirty =
-    name !== record.emergencyContactName ||
-    relationship !== record.emergencyContactRelationship ||
-    contactPhone !== record.emergencyContactPhone;
-  // The row will not accept half a contact, so neither does the form.
-  const ready = name.trim().length > 0 && contactPhone.trim().length >= 7;
-
-  const save = async (): Promise<void> => {
-    setBusy(true);
-    setFailure(null);
-    setSaved(false);
-    try {
-      // personalPhone left out: the number the workspace has on file stays.
-      await saveOwnEmploymentContact(record.workspaceId, record.employeeId, {
-        name,
-        relationship,
-        phone: contactPhone,
-        email: record.emergencyContactEmail,
-      });
-      setSaved(true);
-      onSaved();
-    } catch {
-      setFailure("That could not be saved. Try again.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const field = (suffix: string) =>
-    `employment-${record.workspaceId}-${suffix}`;
-
-  return (
-    <form
-      className="account-employment-record"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void save();
-      }}
-    >
-      <strong>{record.workspaceName}</strong>
-      <div className="account-field-grid account-contact-grid">
-        <label className="account-field" htmlFor={field("contact-name")}>
-          <span>Contact name</span>
-          <input
-            id={field("contact-name")}
-            value={name}
-            maxLength={120}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Morgan Reyes"
-          />
-        </label>
-        <label className="account-field" htmlFor={field("relationship")}>
-          <span>Relationship</span>
-          <input
-            id={field("relationship")}
-            value={relationship}
-            maxLength={80}
-            onChange={(event) => setRelationship(event.target.value)}
-            placeholder="Spouse"
-          />
-        </label>
-        <label className="account-field" htmlFor={field("contact-phone")}>
-          <span>Contact phone</span>
-          <input
-            id={field("contact-phone")}
-            value={contactPhone}
-            maxLength={30}
-            onChange={(event) => setContactPhone(event.target.value)}
-            placeholder="415 555 0199"
-          />
-        </label>
-      </div>
-      {failure ? (
-        <p className="form-error" role="alert">
-          {failure}
-        </p>
-      ) : null}
-      {saved && !dirty ? (
-        <p className="form-success" role="status">
-          Saved
-        </p>
-      ) : null}
-      <div className="account-button-row">
-        <Button type="submit" disabled={busy || !dirty || !ready}>
-          {busy ? "Saving" : "Save"}
-        </Button>
-      </div>
-    </form>
   );
 }
