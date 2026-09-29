@@ -41,27 +41,28 @@ Sıralama kuralı: önce en yüksek "leave" (critical yok; high); aynı önemde 
 
 | Sıra | Grup | Tema | Maddeler | En yüksek leave / do | Risk sınıfı | Yazacak rol | Süre (tahmin) |
 |---|---|---|---|---|---|---|---|
-| 1 | **G1** | Schedule taslak ve yayın pencereleri — davranış hataları | BL-299 BL-300 BL-301 BL-302 BL-303 BL-306 BL-310 BL-323 BL-181 BL-329 BL-313 BL-108 | high / safe | R1 (BL-302 ekranda izin gösterimi; veri sözleşmesi değişmez) | `nf-arayuz` | 1 gün |
+| 0 | **GA** | Account ardı: telefonun tek kaynağı hesap (KK-7) | BL-335 | low / moderate | R3 (kullanıcı adına kiracı tablosuna yazan tetikleyici) | `nf-db` | 0,5–1 gün |
+| 1 | **G1** | Schedule taslak ve yayın pencereleri — davranış hataları | BL-299 BL-300 BL-301 BL-302 BL-303 BL-306 BL-310 BL-323 BL-181 BL-329 BL-313 BL-108 BL-309 | high / safe | R1 (BL-302 ekranda izin gösterimi; veri sözleşmesi değişmez) | `nf-arayuz` | 1 gün |
 | 2 | **G2** | Schedule hızlı düzenleyici — alanlar ve klavye odağı | BL-293 BL-290 BL-294 BL-295 BL-291 | high / safe | R1 | `nf-arayuz` | 0,5 gün |
 | 3 | **G3** | Bayat ekranlar ve ekran önbelleği | BL-271 BL-273 BL-278 BL-149 BL-152 | high / safe | R2 (birden çok ekranın veri katmanı; BL-271 oturum) | `nf-backend` | 1 gün |
-| 4 | **G4** | Zamanlanmış dışa aktarma ve e-posta teslimatı | BL-101 BL-272 BL-225 BL-163 U63 (BL-157 bayat, kapandı) | high / moderate | R3 (BL-101 yetki çekirdeğine dokunuyor; belirsiz → üst sınıf) | `nf-backend` + `nf-db` | 1–1,5 gün |
+| 4 | **G4** | Zamanlanmış dışa aktarma ve e-posta teslimatı | BL-101 BL-272 BL-225 BL-163 U63 (BL-157 bayat, kapandı) BL-330 | high / moderate | R3 (BL-101 yetki çekirdeğine dokunuyor; belirsiz → üst sınıf) | `nf-backend` + `nf-db` | 1–1,5 gün |
 | 5 | **G5** | Parola, oturum ve hesap güvenliği | BL-283 BL-162 BL-161 BL-279 | high / moderate | R3 (parola/oturum) | `nf-db` + `nf-backend` | 1,5 gün |
 | 6 | **G6** | Bildirim teslimi | BL-099 BL-119 | high / moderate | R3 (bildirim `*_service`) | `nf-db` | 0,5 gün |
-| 7 | **G7** | Yetki çekirdeği ailesi A (rütbe, eski kapı, UI izin anahtarı) — FB-6.2.1 kapsamında (KK-5) | BL-270 BL-276 BL-179 BL-189 BL-155 BL-224 BL-242 BL-261 BL-264 BL-129 BL-130 BL-133 BL-176 BL-243 BL-178 BL-232 BL-071 | high / risky | R3 | `nf-db` (+ `nf-backend` BL-176/BL-232/BL-243) | 3–4 gün |
+| 7 | **G7** | Yetki çekirdeği ailesi A (rütbe, eski kapı, UI izin anahtarı) — FB-6.2.1 kapsamında (KK-5) | BL-270 BL-276 BL-179 BL-189 BL-155 BL-224 BL-242 BL-261 BL-264 BL-129 BL-130 BL-133 BL-176 BL-243 BL-178 BL-232 BL-071 BL-317 | high / risky | R3 | `nf-db` (+ `nf-backend` BL-176/BL-232/BL-243) | 3–4 gün |
 | 8 | **G8** | Silinmiş ve arşivli kayıtlar | BL-188 BL-254 BL-132 | high / risky | R3 | `nf-db` (+ `nf-backend` okuma modeli) | 1 gün |
 | 9 | **G9** | İzin, takas ve kapsam kuralları | BL-127 BL-182 BL-183 BL-220 BL-247 BL-200 BL-110 BL-109 BL-185 | high / risky | R3 | `nf-db` (+ `nf-arayuz` BL-185 metni) | 2 gün |
-| 10 | **G10** | Schedule kayıt ve yayın kuralları (veri) | BL-174 BL-190 BL-191 BL-326 BL-325 BL-164 BL-167 BL-228 BL-229 BL-292 BL-298 BL-236 BL-211 | medium / moderate | R3 (`*_service` sözleşmesi, BL-292) | `nf-db` (+ `nf-backend` BL-298 shared şema) | 2 gün |
+| 10 | **G10** | Schedule kayıt ve yayın kuralları (veri) | BL-174 BL-190 BL-191 BL-326 BL-325 BL-164 BL-167 BL-228 BL-229 BL-292 BL-298 BL-236 BL-211 BL-238 | medium / moderate | R3 (`*_service` sözleşmesi, BL-292) | `nf-db` (+ `nf-backend` BL-298 shared şema) | 2 gün |
 | 11 | **G11** | Hata sözleşmesi ve hata görünürlüğü | BL-134 BL-223 BL-172 BL-145 BL-156 BL-193 BL-213 BL-331 BL-324 BL-076 U31 U26 U37 U55 U51 U42 (kalan kalemler) | medium / moderate | R2 | `nf-backend` | 2 gün |
 | 12 | **G12** | Yerel veritabanına dayanıklı pgTAP | BL-209 BL-217 BL-227 BL-245 BL-262 BL-288 BL-296 BL-173 BL-105 BL-226 BL-253 BL-248 BL-094 BL-070 BL-096 U32 | medium / safe (BL-070 high, bayat görünüyor) | R0 (yalnız test) | `nf-test` | 1,5 gün |
 | 13 | **G13** | Web ve e2e test kararlılığı, CI bekçileri | BL-120 BL-175 BL-321 BL-322 BL-195 BL-202 BL-203 BL-210 BL-328 BL-281 BL-196 BL-337 U12 U16 U18 U19 U36 | medium / safe | R0 (test, CI) | `nf-test` | 1,5 gün |
-| 14 | **G14** | Schedule üst çubuk, menüler ve pencereler — görsel | BL-305 BL-307 BL-308 BL-311 BL-312 BL-319 BL-320 BL-327 BL-333 BL-233 BL-204 BL-332 U08 | medium / safe | R1/R2 (birden çok Schedule yüzeyi) | `nf-arayuz` | 1 gün |
-| 15 | **G15** | Görsel tutarlılık: ham hex, beyaz düğme, onay pencereleri | BL-256 BL-257 BL-258 BL-259 BL-260 BL-194 BL-287 BL-215 BL-154 BL-241 BL-249 BL-334 U21 U29 U30 U39 U40 U41 | medium / moderate | R2 (birden çok ekran) | `nf-arayuz` | 2 gün |
+| 14 | **G14** | Schedule üst çubuk, menüler ve pencereler — görsel | BL-305 BL-307 BL-308 BL-311 BL-312 BL-319 BL-320 BL-327 BL-333 BL-233 BL-204 BL-332 U08 BL-121 BL-318 | medium / safe | R1/R2 (birden çok Schedule yüzeyi) | `nf-arayuz` | 1 gün |
+| 15 | **G15** | Görsel tutarlılık: ham hex, beyaz düğme, onay pencereleri | BL-256 BL-257 BL-258 BL-259 BL-260 BL-194 BL-287 BL-215 BL-154 BL-241 BL-249 BL-334 U21 U29 U30 U39 U40 U41 BL-255 BL-147 BL-169 | medium / moderate | R2 (birden çok ekran) | `nf-arayuz` | 2 gün |
 | 16 | **G16** | Giriş öncesi, hesap ve workspace ekranları | BL-285 BL-289 BL-286 BL-144 BL-151 BL-122 BL-072 BL-284 BL-336 U48 U49 U53 U54 U56 U57 U58 | medium / safe | R1 (BL-284, K24 cevabına göre R3 olabilir) | `nf-arayuz` (+ `nf-backend` U56/U57/BL-284) | 1,5 gün |
-| 17 | **G17** | Çalışanlar ve kişi kaydı | BL-314 BL-315 BL-244 BL-079 BL-153 | medium / risky | R3 (BL-079 görünen adın tek kaynağı) | `nf-db` + `nf-backend` | 1,5 gün |
+| 17 | **G17** | Çalışanlar ve kişi kaydı | BL-314 BL-315 BL-244 BL-079 BL-153 BL-338 | medium / risky | R3 (BL-079 görünen adın tek kaynağı) | `nf-db` + `nf-backend` | 1,5 gün |
 | 18 | **G18** | Belgeler (Documents) | U59 U60 U43 U44 BL-118 | medium / moderate | R2 | `nf-backend` + `nf-arayuz` | 1 gün |
 | 19 | **G19** | Zaman ve tarih | BL-277 | medium / safe | R2 | `nf-backend` | 0,5 gün |
 | 20 | **G20** | Performans | BL-275 U13 U20 | medium / moderate | R2 | `nf-arayuz` + `nf-backend` | 1 gün |
-| 21 | **G21** | Müsaitlik | BL-135 BL-086 | medium / safe | R2 | `nf-backend` + `nf-arayuz` | 1 gün |
+| 21 | **G21** | Müsaitlik | BL-135 BL-086 BL-088 | medium / safe | R2 | `nf-backend` + `nf-arayuz` | 1 gün |
 | 22 | **G22** | İpucu ve not köşesi | BL-207 BL-297 | low / moderate | R2 (ortak Tooltip) | `nf-arayuz` | 0,5 gün |
 | 23 | **G23** | Ölü kod ve ikiz yollar | BL-280 BL-282 BL-168 BL-206 U14 U15 | medium / moderate | R2 | `nf-backend` | 1 gün |
 | 24 | **G24** | Geliştirme ortamı ve araçlar | BL-002 BL-003 BL-083 BL-304 BL-125 U04 U07 U17 U25 U38 U45 U47 U64 | medium / moderate | R0/R1 | koordinatör + `nf-test` | 1 gün |
@@ -72,6 +73,7 @@ Sıralama kuralı: önce en yüksek "leave" (critical yok; high); aynı önemde 
 ### Dokunduğu dosyalar, bağımlılık ve sıra gerekçesi
 | Grup | Dokunduğu dizin / dosyalar (G1–G3 ölçüldü; diğerleri **tahmin**, madde metninden) | Bağımlılık | Gerekçe (tek satır) |
 |---|---|---|---|
+| GA | tahmin (KK-7): yeni migration (`user_profiles.phone_e164` → `employee_private_profiles.phone` SECURITY DEFINER tetikleyici; onboarding'de telefonun hesaba yazılması; bir kerelik doldurma), pgTAP | Account yeniden tasarımı (KK-1); aynı test turunda, hemen ardından (KK-3, KK-7) | Account yeniden tasarımı workspace başına telefon alanını ekrandan kaldırıyor; tek başına girerse numarayı kimse düzeltemez. |
 | G1 | ölçüldü: `apps/web/src/schedule/components/{PublishScheduleDialog,UnpublishScheduleDialog,DraftDropdownMenu,SaveDraftMenu,ScheduleTemplateDialogs}.tsx`, `apps/web/src/views/SchedulePage.tsx`, `apps/web/src/schedule/lib/{draftSaveFlow,scheduleInteractionTargets}.ts` (CSS yok) | Account yeniden tasarımından sonra (KK-1); stil B mockup dalını beklemez (KK-4) | En yüksek "leave" ve ucuz: BL-299 yanlış taslağı yayınlıyor, BL-300 klavyeyle çalışmıyor; hepsi aynı beş dosyada. |
 | G2 | ölçüldü: `apps/web/src/styles.css` (hızlı düzenleyici, Start/End, mola, Count, eylem düğmeleri, Save draft alanları), `apps/web/src/schedule/components/ShiftQuickEditor.tsx` | yok | BL-293 WCAG 2.4.7 ihlali (doğrulandı); beşi aynı CSS bloğunda, yarım günlük iş. |
 | G3 | ölçüldü: `apps/web/src/auth/{AuthContext.tsx,tenant-query-cache.ts}`, `apps/web/src/schedule/schedule-data.ts`, `ScheduleRequestsPage.tsx`, `EmployeeDrawer.tsx`, `EmployeeDashboard.tsx`, `WorkspacePage.tsx`, `account/WorkspacesPage.tsx`, `account/AccountLayout.tsx`, `shell/AppShell.tsx`, `useExchangeRealtime.ts`, 5 Settings/Availability dosyası (BL-278 (1)), `SchedulePage.tsx` (BL-278 (5)(6)) | G1'den sonra (ikisi `SchedulePage.tsx`'e dokunuyor) | BL-271 ortak tablette öncekinin telefonunu gösteriyor (gizlilik), BL-273 izin kararından sonra Schedule eski kalıyor; ikisi ucuz. |
@@ -88,7 +90,7 @@ Sıralama kuralı: önce en yüksek "leave" (critical yok; high); aynı önemde 
 | G14 | tahmin: `apps/web/src/styles.css` (Schedule üst çubuk ve pencere kuralları), aynı pencere bileşenleri | Stil B main'de (`228ff3b7`), mockup dalını beklemez (KK-4); BL-332 koordinatör dalında, toplu turda girer (KK-2) | Stil B ile çakışmasın diye G1'den ayrıldı; kontrast (BL-307) ve telefonda taşma (BL-333) burada. |
 | G15 | tahmin: `apps/web/src/styles.css`, sayfa CSS'leri (`settings/*.css`, `views/requests-catalog.css`, `account/*.css`) | K20 (BL-255) cevabı beyaz düğme kısmını etkiler | KARARLAR UI-09 ve UI-13 kuralları hazır; kural var, yalnız uygulanmamış. |
 | G16 | tahmin: `apps/web/src/shell/prebiz/*`, `apps/web/src/views/{SignInPage,ForgotPasswordPage}.tsx`, `apps/web/src/account/*` | K24 (BL-284) | Kayıt olan kişinin ilk gördüğü ekranlar; küçük ve güvenli. |
-| G17 | tahmin: `supabase/migrations` (çalışan kaydı), `apps/web/src/employees/*`, `scheduleEmployeeSort.ts` | BL-317 kararı (Karar grubu) aynı ekranda | Görünen adın iki kaynağı (BL-079) kişiyi yanlış adla gösterebilir. |
+| G17 | tahmin: `supabase/migrations` (çalışan kaydı), `apps/web/src/employees/*`, `scheduleEmployeeSort.ts` | BL-317 → G7 / FB-6.2 (KK-8), aynı ekran; BL-338 seed/fixture + pgTAP | Görünen adın iki kaynağı (BL-079) kişiyi yanlış adla gösterebilir. |
 | G18 | tahmin: `DocumentReviewDrawer` ve belge rotaları | yok | U59 bir hata (yükleme sonrası çekmece yeniden kuruluyor); 8 mutasyon testsiz (U60). |
 | G19 | tahmin: `apps/web/src/lib` (tarih yardımcısı) ve birkaç ekran | API tarafı K19'a bağlı (BL-238); bu madde beklemez | "Bugün" üç ayrı yoldan hesaplanıyor; tek yardımcıya bağlamak ucuz. |
 | G20 | tahmin: `apps/web/src/views/SchedulePage.tsx`, `export-v2/*` | G1 ve G3'ten sonra (`SchedulePage.tsx`) | Izgara her çizimde bütün modeli yeniden kuruyor (≤50 ms çıtası, CLAUDE.md §9). |
@@ -103,6 +105,7 @@ Her tur: `pnpm.cmd lint`, `typecheck`, `test`, `build`; turda migration varsa `t
 
 | Tur | Art arda biten gruplar | Ek kapı |
 |---|---|---|
+| T0 | GA, Account yeniden tasarımıyla aynı tur (KK-3, KK-7) | `test:db` + pgTAP; `nf-guvenlik` (R3) KK-3 incelemesine eklenir |
 | T1 | G1, sonra G2 (G0 docs araya girebilir) | e2e: Schedule (`e2e/flows/schedule-*.spec.ts`); ekran görüntüsü masaüstü + telefon (R1) |
 | T2 | G3, sonra G4 | `test:db` (G4 migration); e2e: Schedule, Requests, Account; `nf-guvenlik` (G4 R3) |
 | T3 | G5, sonra G14 | `test:db`; e2e: giriş/Account, Schedule; `nf-guvenlik` (G5 R3) |
@@ -114,18 +117,34 @@ Her tur: `pnpm.cmd lint`, `typecheck`, `test`, `build`; turda migration varsa `t
 | T9 | G11, sonra G17 | `test:db`; e2e: Employees |
 | T10 | G18–G19, G20–G21, G22–G23 ikişer, en son G24 | tur başına tam kapı |
 
-## Karar bekleyen (GK) — öneri ve vizyon gerekçesi
+## Karar bekleyen (GK) — karara bağlandı 2026-09-29 (KK-6…KK-10); yalnız BL-073 bekliyor
+| Madde | Karar | Grup |
+|---|---|---|
+| BL-238 | KK-6 (a), belirleyici vardiyanın lokasyonunun saat dilimi | G10 |
+| BL-335 | KK-7 (a), tek kaynak hesap, sunucu tarafında kopya | GA (Account ardı) |
+| BL-317 | KK-8 (a), M2'nin uygulanması | G7 / FB-6.2 |
+| BL-121 | KK-9 (a), yalnız bilgi, 40 sabit | G14 |
+| BL-255, BL-147, BL-169 | KK-10 (a) | G15 |
+| BL-309 | KK-10 (a) | G1 |
+| BL-318 | KK-10 (a) | G14 |
+| BL-330 | KK-10 (a) | G4 |
+| BL-088 | KK-10 (a) | G21 |
+| BL-126 | KK-10 (a), MVP sonrası | GS |
+| **BL-073** | **kullanıcıya kalır** (görsel; varyant hazırlanır) | GK |
+
+Aşağıdaki öneri ve gerekçeler kararların dayanağı olarak kalır (KK-10 buraya atıf yapıyor); her maddenin kararı BACKLOG.md'de maddenin altında.
+
 Kullanıcı yokken koordinatör karara bağlar ve `KOORDINATOR-KARARLARI.md`'ye loglar (kullanıcı talimatı 2026-09-29). Her maddede seçenekler, **Öneri** (vizyona en uygun) ve tek satır **Gerekçe**. Vizyon ölçütü: ROADMAP MVP sonucu, KARARLAR.md, SaaS mantığı; çok kiracılı, çok lokasyonlu, çok rollü; çalışan birden çok lokasyonda; yönetici hem yönetir hem vardiya alır; lokasyonlar farklı saat dilimlerinde. **KRİTİK** = uygulamanın yönünü değiştirir (şema, yetki modeli, fiyat, kapsam); koordinatör bunları alt ajanlarla tartışır. Cevap gelince madde parantezdeki gruba geçer. (2026-09-29, `nf-planlama`, `origin/main` `8b98e37d`.)
 
 **KRİTİK dört madde:** BL-238 (zaman modeli), BL-335 (şema + kiracılar arası yazma), BL-317 (yetki: kim kimi görür), BL-121 (kapsam: ROADMAP'in "MVP sonrası" satırına değiyor).
 
 - **BL-238 (K19) — KRİTİK (zaman modeli; bütün Schedule yazma servislerinin "geçmiş hafta" kontrolü)** — Birden çok saat dilimli workspace'te "bu hafta" ne zaman biter? Bugün sunucu UTC'ye bakıyor; Pazar akşamı Pasifik'te yönetici haftayı düzenleyemiyor.
-  - (a) Her lokasyonun kendi saat dilimi — yönetici hangi lokasyondaysa onun Pazar gece yarısı
+  - (a) Her lokasyonun kendi saat dilimi — vardiyanın lokasyonunun Pazar gece yarısı (KK-6 düzeltmesi: yöneticinin değil)
   - (b) Workspace'in tek saat dilimi
   - (c) UTC kalsın, ekranda uyarı
   - **Öneri: (a).** Hafta kilidi lokasyon başına değerlendirilir: iki lokasyonlu taslakta New York'un haftası Los Angeles'ınkinden 3 saat önce kapanır, her hücre kendi lokasyonunun saatine bakar.
   - **Gerekçe:** lokasyonlar farklı saat dilimlerinde (vizyon) ve saat dilimi zaten lokasyonda tutuluyor (`public.locations.timezone`; yeni sütun gerekmez); KARARLAR'da emsal var — izin saatleri birincil lokasyonun saat dilimiyle sabitlenir (FB-6.3 S1–S3). (b) çok eyaletli zinciri tek saate zorlar, (c) hatayı yalnız görünür yapar.
-  - **Tartışılacak:** taslak birden çok lokasyonu kapsarken "taslağın haftası geçmiş mi" sorusu lokasyon başına mı, en erken kapananla mı; Pazar kuralı (ILERLEME §7) bu kararla kalkar. Cevaptan sonra: G10.
+  - **Tartışılacak:** taslak birden çok lokasyonu kapsarken "taslağın haftası geçmiş mi" sorusu lokasyon başına mı, en erken kapananla mı; Pazar kuralı (ILERLEME §7) bu kararla kalkar. Karar: KK-6 → G10.
 - **BL-255 (K20)** — İkinci beyaz düğme sistemi (`.job-secondary-button`) ortak beyaz düğmeye birleşsin mi? 16 ekranın görünümü değişir.
   - (a) Evet, önce/sonra görüntüsüyle onaydan sonra
   - (b) Hayır, iki görünüm kalsın
@@ -144,7 +163,7 @@ Kullanıcı yokken koordinatör karara bağlar ve `KOORDINATOR-KARARLARI.md`'ye 
   - (c) Görünmez
   - **Öneri: (a), düzenleme kuralları aynen** (admin owner'ın kaydını düzenlemez, manager düzenlemez; KARARLAR "Çalışan kaydı").
   - **Gerekçe:** owner da vardiya alır (yönetici hem yönetir hem çalışır; KARARLAR "Owner'ın çalışan kaydı": bütün lokasyonlarda çalışabilir) ve Schedule'da zaten görünüyor; yöneticinin planladığı kişiyi Employees'te bulamaması iki ekranı çelişkili yapar. Owner bütün lokasyonlara otomatik atandığı için her lokasyonun listesinde çıkar.
-  - **Tartışılacak:** owner satırının bugün filtreyle mi kapsamla (`scope_set`) mı düştüğü ölçülmedi; kapsamdansa çekirdek değişir (R3). Cevaptan sonra: G17.
+  - **Tartışılacak:** owner satırının bugün filtreyle mi kapsamla (`scope_set`) mı düştüğü ölçülmedi; kapsamdansa çekirdek değişir (R3). Karar: KK-8 → G7 / FB-6.2 (kaydı olmayan owner'lar BL-338, G17).
 - **BL-330** — Zamanlanmış dışa aktarma, "include notes" açıksa vardiya notlarını yöneticinin yazdığı herhangi bir e-posta adresine götürüyor.
   - (a) Zamanlanmış dışa aktarmada notlar hiç gitmesin (elle indirmede kalsın)
   - (b) Bugünkü gibi kalsın (yöneticinin kendi seçimi)
@@ -155,7 +174,7 @@ Kullanıcı yokken koordinatör karara bağlar ve `KOORDINATOR-KARARLARI.md`'ye 
   - (b) MVP sonrası
   - **Öneri: (a), yalnız bilgi olarak** — önizlemede kişi başı haftalık saat ve 40 saati geçen satırda uyarı; engel, ayar ve kural yok. Sınır koyma (BL-067 saat limitleri) MVP sonrasında kalır.
   - **Gerekçe:** ABD restoranında haftalık 40 saat fazla mesai eşiği (FLSA) planlamanın en sık sorusu, bordroda fark etmek pahalı; ücretli self-serve lansmanda temel beklenti. Ama ROADMAP "MVP sonrası: BL-067 saat limitleri, geniş compliance" diyor: çizgi "göster" ile "sınırla" arasında çekilmeli, bu yüzden KRİTİK.
-  - **Not:** madde "FB-6.1 `.4` yayın zincirinde yer bırakmak bedava" diyordu; `.4` bitti, artık yeni migration ister. Cevaptan sonra: G10.
+  - **Not:** madde "FB-6.1 `.4` yayın zincirinde yer bırakmak bedava" diyordu; `.4` bitti, artık yeni migration ister. Karar: KK-9 (migration yok) → G14.
 - **BL-073** — Hesap düğmesi ile workspace değiştirici tek kontrol olsun mu (canvas önerisi)?
   - (a) Ekran turunda (K7) canvas görseliyle gösterilsin, karar orada
   - (b) Hayır
@@ -169,7 +188,7 @@ Kullanıcı yokken koordinatör karara bağlar ve `KOORDINATOR-KARARLARI.md`'ye 
   - (b) İkisi ayrı kalsın, ekranda farkı açıklansın
   - **Öneri: (a), tek kaynak hesap.** Kişi hesabını bağladıktan sonra çalışan kaydındaki telefon hesaptan okunur, çekmecede salt okunur; hesabı henüz olmayan (davet bekleyen) kişide yöneticinin girdiği numara kullanılır, katılınca hesaba taşınır.
   - **Gerekçe:** çalışan birden çok workspace'te çalışabilir (vizyon); telefon kişinin kendi verisi, işverenin değil. (a)'nın "yansır" (kopyala) biçimi Account yeniden tasarımının K-P2 desenine (acil durum kişisi: tek form, hepsine yazılır) uyar ama A workspace'indeki müdürün düzenlemesi B'dekini ezmez, yine ayrışır; tek kaynak bunu kökten kapatır.
-  - **Tartışılacak:** tek kaynak şema ve yetki değişikliği (çekmecedeki telefon alanı, manager'ın "bütün kaydı düzenler" kuralının istisnası); ucuz ara adım K-P2 gibi kopyala. Account yeniden tasarımıyla (KK-1) aynı ekran: onun kararıyla birlikte. Cevaptan sonra: G16.
+  - **Tartışılacak:** tek kaynak şema ve yetki değişikliği (çekmecedeki telefon alanı, manager'ın "bütün kaydı düzenler" kuralının istisnası); ucuz ara adım K-P2 gibi kopyala. Account yeniden tasarımıyla (KK-1) aynı ekran: onun kararıyla birlikte. Karar: KK-7 → GA.
 - **BL-126** — Taslakta lokasyonlar arası ortak çalışma daveti olsun mu?
   - (a) MVP sonrası
   - (b) Şimdi (yetki, realtime ve taslak kilidini etkiler)
@@ -190,7 +209,7 @@ Kullanıcı yokken koordinatör karara bağlar ve `KOORDINATOR-KARARLARI.md`'ye 
 ## Bu programda yürümeyen gruplar
 - **GF — FOUNDATION-B planına bağlı (bu programda yürümez):** BL-187 BL-218 BL-159. Zaten FOUNDATION-B adımlarına bağlandı; ILERLEME'den yürür.
 - **GY — Yol haritası fazları ve duraklatılmış programlar (bu programda yürümez):** BL-007 BL-008 BL-027 BL-034 BL-038 BL-041 BL-042 BL-043 BL-044 BL-045 BL-046 BL-047 BL-048 BL-051 BL-053 BL-054 BL-055 BL-056 BL-057 BL-058 BL-059 BL-067 BL-117 U02 U03. Faz sırası kullanıcı kararı olmadan değişmez (CLAUDE.md §1).
-- **GS — MVP sonrası (bu programda yürümez):** BL-009 BL-030 BL-060 BL-062 BL-050 BL-123 U05 U06. Kapsam dışı (ROADMAP "Kapsam kararları").
+- **GS — MVP sonrası (bu programda yürümez):** BL-009 BL-030 BL-060 BL-062 BL-050 BL-123 BL-126 (KK-10) U05 U06. Kapsam dışı (ROADMAP "Kapsam kararları").
 
 ## Bayat görünenler (sırası gelince doğrulanır; G0'dakiler hariç)
 G0'da bayat diye kapananlar (BL-137, U28, U35, U42'nin iki P1 kalemi, U46, U50) "Kapanan maddeler"de.
@@ -230,6 +249,7 @@ Hükümler BACKLOG.md'de maddelerin altında ("Tazelik 2026-09-29 (`ade5c270`, B
   - **G0 bitti:** BACKLOG.md'de 33 G0 satırından 29'u + U46 + U42'nin iki P1 kalemi "Kapanan maddeler"e taşındı (kapanış sebebi yazılı olmayanlara kanıtlı "Kapandı 2026-09-29 (G0 …)" eklendi; BL-137 işareti "kapandı; açıkken …" biçimine çevrildi). Numarasızlardan U27 → **BL-336** (koşulu gerçekleşti: hosted "Confirm email" açık, K22), U52 → **BL-337** (20 uyarı, 2026-09-29 `npx eslint apps/web/src -f json` ile yeniden sayıldı). "FOUNDATION-B bağlantıları" bölümü dağıtıldı: BL-070, BL-094, BL-096, BL-099, BL-101'in altına bağlantı satırı; kapanmış maddelerinki (BL-091, BL-097 …) düştü. U66'nın altında yetim kalan K13 kararı kapanmış BL-230'un altına bağlandı (`f187c53d`'de ana satırı taşınırken geride kalmıştı). U11 kararı (telefonda Export yok) KARARLAR → Ekran kararları → Schedule'a yazıldı.
   - **Sayım (betik + bağımsız tarama, 2026-09-29):** açık bölümde üst düzey madde **258** = 290 − 31 kapanan G0 satırı − U46 (U27, U52 numaralanıp açık kaldı; U42 kalan kalemleriyle açık). Açık bölümde "kapandı" satırı kalmadı (tek istisna BL-332 "KAPANDI-bekliyor", KK-2 ile main'e girince taşınır). BACKLOG.md 555 → 553 satır.
   - `DONE.md`'ye satır yazılmadı: G0'daki kapanışlar eski işlerin kaydı ya da bayat maddeydi; yeni iş bitmedi.
+- 2026-09-29 (`task/backlog-program-3`, taban `b5747bd4`): GK kararları (KK-6…KK-10) gruplara taşındı, GK'de yalnız BL-073; yeni GA satırı (BL-335) ve T0 turu; BL-338 açıldı (G17). BACKLOG.md'de 13 maddenin altına karar/durum satırı. **Sayım (betik, commit öncesi):** açık madde **258** = 257 + BL-338 (211 numaralı + 47 numarasız); programdaki gruplarda (G0 hariç G1–G24, GA, GK, GF, GY, GS) 258, kopya 0, eksik 0, fazla 0. BACKLOG.md 564 → 578 satır.
 - 2026-09-29 (`task/backlog-program-3`, taban `ade5c270`): G4–G6 tazeliği ölçüldü (yukarıdaki bölüm), dokunduğu dosyalar sütunu G4–G6 için "ölçüldü". BL-157 bayat, kapandı → açık madde 258 → **257**. BACKLOG.md 553 → 564 satır (11 tazelik satırı; BL-157 taşındı).
 - 2026-09-29: taslak `nf-planlama`. Gruplama, BACKLOG.md'den betikle çıkarılan özet dizinden (kimlik, işaret, başlık, anılan dosyalar) ve karar içeren maddelerde ilgili cümleden yapıldı; 298 KB'lık dosya baştan sona okunmadı. İlk 3 grubun tazeliği üç salt okur alt ajanla ölçüldü; `nf-planlama` hükümleri gözden geçirip BACKLOG.md'ye yazdı.
 
