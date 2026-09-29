@@ -112,3 +112,9 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Dayanak:** bugün arşivli lokasyon çekirdekte kapsamda sayılıyor ama Schedule'da görünmüyor — iki ekran çelişkili; kullanıcı kararı Q-C silinmiş lokasyon için aynı yönde. SaaS mantığı: arşiv = pasif, yeni iş almaz, geçmişi korunur.
 - **Geri alma:** orta (yetki çekirdeği fonksiyonları, forward migration).
 - **Durum:** G8'de (nf-db, R3).
+
+### KK-14 (2026-09-29) U43: eski belge kayıtları doldurulmaz; kural veritabanına konur
+- **Karar:** Documents'ta migration öncesi yayımlanmış kayıtların `published_at`'i boş (listede "-"). Geriye dönük doldurma yazılmaz. G18'de (nf-db) veritabanı bu şekli reddeder: yayımlanmış belgede `published_at` zorunlu (CHECK). Yerel veride kurala uymayan satırlar DB yeniden kurulurken gider; bunun için ürüne tolerans kodu yazılmaz.
+- **Dayanak:** kullanıcı kuralı "eski veri korunmaz" (CLAUDE.md §9, global kurallar): canlı veri yok; kurala uymayan kayıt, ona tolerans gösteren kod ve onu kuran test silinir.
+- **Geri alma:** düşük.
+- **Durum:** G18'de.
