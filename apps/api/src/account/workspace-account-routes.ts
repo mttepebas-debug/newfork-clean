@@ -1,5 +1,4 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
-import { HttpError } from "../http-error.js";
 import { z } from "zod";
 import { ownerLegalNameSchema } from "@newfork/shared";
 import {
@@ -85,11 +84,7 @@ export function registerWorkspaceAccountRoutes(
       return reply
         .status(503)
         .send({ error: "Workspace account service is not configured" });
-    try {
-      return reply.send(await options.service.listWorkspaces(accessToken));
-    } catch (error) {
-      return requestError(reply, error);
-    }
+    return reply.send(await options.service.listWorkspaces(accessToken));
   });
 
   app.get("/v1/account/attention", async (request, reply) => {
@@ -100,11 +95,7 @@ export function registerWorkspaceAccountRoutes(
       return reply
         .status(503)
         .send({ error: "Workspace account service is not configured" });
-    try {
-      return reply.send(await options.service.countAttention(accessToken));
-    } catch (error) {
-      return requestError(reply, error);
-    }
+    return reply.send(await options.service.countAttention(accessToken));
   });
 
   // Your own employment record, one per workspace you are in. Nothing here is
@@ -117,11 +108,7 @@ export function registerWorkspaceAccountRoutes(
       return reply
         .status(503)
         .send({ error: "Workspace account service is not configured" });
-    try {
-      return reply.send(await options.service.listEmploymentRecords(accessToken));
-    } catch (error) {
-      return requestError(reply, error);
-    }
+    return reply.send(await options.service.listEmploymentRecords(accessToken));
   });
 
   // The owner's legal name (BL-080). No gate here: the database core decides
@@ -139,16 +126,12 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      try {
-        return reply.send({
-          legalName: await options.service.getOwnLegalName(
-            accessToken,
-            params.data.workspaceId,
-          ),
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send({
+        legalName: await options.service.getOwnLegalName(
+          accessToken,
+          params.data.workspaceId,
+        ),
+      });
     },
   );
 
@@ -168,16 +151,12 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      try {
-        await options.service.saveOwnLegalName(
-          accessToken,
-          params.data.workspaceId,
-          body.data,
-        );
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.saveOwnLegalName(
+        accessToken,
+        params.data.workspaceId,
+        body.data,
+      );
+      return reply.status(204).send();
     },
   );
 
@@ -192,13 +171,9 @@ export function registerWorkspaceAccountRoutes(
       return reply
         .status(503)
         .send({ error: "Workspace account service is not configured" });
-    try {
-      return reply.status(201).send({
-        id: await options.service.createWorkspace(accessToken, body.data.name),
-      });
-    } catch (error) {
-      return requestError(reply, error);
-    }
+    return reply.status(201).send({
+      id: await options.service.createWorkspace(accessToken, body.data.name),
+    });
   });
 
   app.post(
@@ -214,15 +189,11 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      try {
-        await options.service.selectWorkspace(
-          accessToken,
-          params.data.workspaceId,
-        );
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.selectWorkspace(
+        accessToken,
+        params.data.workspaceId,
+      );
+      return reply.status(204).send();
     },
   );
 
@@ -268,19 +239,15 @@ export function registerWorkspaceAccountRoutes(
         )
           return reply;
       }
-      try {
-        return reply.send(
-          await options.service.requestClosure(accessToken, {
-            workspaceId: params.data.workspaceId,
-            mode: body.data.mode,
-            typedWorkspaceName: body.data.typedWorkspaceName ?? null,
-            acknowledged: body.data.acknowledged,
-            effectiveAt: body.data.effectiveAt ?? null,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.requestClosure(accessToken, {
+          workspaceId: params.data.workspaceId,
+          mode: body.data.mode,
+          typedWorkspaceName: body.data.typedWorkspaceName ?? null,
+          acknowledged: body.data.acknowledged,
+          effectiveAt: body.data.effectiveAt ?? null,
+        }),
+      );
     },
   );
 
@@ -297,16 +264,12 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      try {
-        return reply.send(
-          await options.service.cancelClosure(
-            accessToken,
-            params.data.workspaceId,
-          ),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.cancelClosure(
+          accessToken,
+          params.data.workspaceId,
+        ),
+      );
     },
   );
 
@@ -335,16 +298,12 @@ export function registerWorkspaceAccountRoutes(
         )
       )
         return reply;
-      try {
-        return reply.send(
-          await options.service.initiateOwnershipTransfer(accessToken, {
-            workspaceId: params.data.workspaceId,
-            targetUserId: body.data.targetUserId,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.initiateOwnershipTransfer(accessToken, {
+          workspaceId: params.data.workspaceId,
+          targetUserId: body.data.targetUserId,
+        }),
+      );
     },
   );
 
@@ -376,17 +335,13 @@ export function registerWorkspaceAccountRoutes(
         )
           return reply;
       }
-      try {
-        return reply.send(
-          await options.service.respondOwnershipTransfer(accessToken, {
-            workspaceId: params.data.workspaceId,
-            transferId: body.data.transferId,
-            action: body.data.action,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.respondOwnershipTransfer(accessToken, {
+          workspaceId: params.data.workspaceId,
+          transferId: body.data.transferId,
+          action: body.data.action,
+        }),
+      );
     },
   );
 
@@ -398,9 +353,7 @@ export function registerWorkspaceAccountRoutes(
     if (!params.success || !query.success) return reply.status(400).send({ error: "Enter 2 to 80 characters to search" });
     if (!options.service) return reply.status(503).send({ error: "Workspace account service is not configured" });
     reply.header("Cache-Control", "no-store");
-    try {
-      return reply.send(await options.service.searchOwnershipCandidates(accessToken, params.data.workspaceId, query.data.q));
-    } catch (error) { return requestError(reply, error); }
+    return reply.send(await options.service.searchOwnershipCandidates(accessToken, params.data.workspaceId, query.data.q));
   });
 
   app.post("/v1/account/workspaces/:workspaceId/ownership-transfer/cancel", async (request, reply) => {
@@ -410,9 +363,7 @@ export function registerWorkspaceAccountRoutes(
     if (!accessToken) return reply.status(401).send({ error: "Bearer token required" });
     if (!params.success || !body.success) return reply.status(400).send({ error: "Valid ownership transfer required" });
     if (!options.service) return reply.status(503).send({ error: "Workspace account service is not configured" });
-    try {
-      return reply.send(await options.service.cancelOwnershipTransfer(accessToken, params.data.workspaceId, body.data.transferId));
-    } catch (error) { return requestError(reply, error); }
+    return reply.send(await options.service.cancelOwnershipTransfer(accessToken, params.data.workspaceId, body.data.transferId));
   });
 
   // How each workspace has this account on file. Read-only, and only the
@@ -465,58 +416,54 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      try {
-        await options.service.saveOwnerOnboarding(accessToken, {
-          workspaceId: params.data.workspaceId,
-          workspaceName: body.data.workspaceName,
-          nextStep: body.data.nextStep,
-          complete: body.data.complete,
-          expectedRevision: body.data.expectedRevision ?? null,
-          ownerFirstName: body.data.ownerFirstName ?? null,
-          ownerMiddleName: body.data.ownerMiddleName ?? null,
-          ownerLastName: body.data.ownerLastName ?? null,
-        });
-        if (body.data.complete && options.invitationService) {
-          const intents =
-            await options.service.listOwnerOnboardingInvitationIntents(
+      await options.service.saveOwnerOnboarding(accessToken, {
+        workspaceId: params.data.workspaceId,
+        workspaceName: body.data.workspaceName,
+        nextStep: body.data.nextStep,
+        complete: body.data.complete,
+        expectedRevision: body.data.expectedRevision ?? null,
+        ownerFirstName: body.data.ownerFirstName ?? null,
+        ownerMiddleName: body.data.ownerMiddleName ?? null,
+        ownerLastName: body.data.ownerLastName ?? null,
+      });
+      if (body.data.complete && options.invitationService) {
+        const intents =
+          await options.service.listOwnerOnboardingInvitationIntents(
+            accessToken,
+            params.data.workspaceId,
+          );
+        for (const intent of intents) {
+          try {
+            await options.invitationService.prepare({
+              actorUserId: authorization.context.userId,
+              workspaceId: params.data.workspaceId,
+              employeeId: intent.employeeId,
+              email: intent.email,
+              roleId: null,
+            });
+            await options.service.markOwnerOnboardingInvitationIntentDispatched(
               accessToken,
-              params.data.workspaceId,
-            );
-          for (const intent of intents) {
-            try {
-              await options.invitationService.prepare({
-                actorUserId: authorization.context.userId,
+              {
                 workspaceId: params.data.workspaceId,
                 employeeId: intent.employeeId,
-                email: intent.email,
-                roleId: null,
-              });
-              await options.service.markOwnerOnboardingInvitationIntentDispatched(
-                accessToken,
-                {
-                  workspaceId: params.data.workspaceId,
-                  employeeId: intent.employeeId,
-                },
-              );
-            } catch (dispatchError) {
-              request.log.error(dispatchError);
-              await options.service
-                .markOwnerOnboardingInvitationIntentDispatched(accessToken, {
-                  workspaceId: params.data.workspaceId,
-                  employeeId: intent.employeeId,
-                  error:
-                    dispatchError instanceof Error
-                      ? dispatchError.message
-                      : "Owner onboarding invitation dispatch failed",
-                })
-                .catch((markError: unknown) => request.log.error(markError));
-            }
+              },
+            );
+          } catch (dispatchError) {
+            request.log.error(dispatchError);
+            await options.service
+              .markOwnerOnboardingInvitationIntentDispatched(accessToken, {
+                workspaceId: params.data.workspaceId,
+                employeeId: intent.employeeId,
+                error:
+                  dispatchError instanceof Error
+                    ? dispatchError.message
+                    : "Owner onboarding invitation dispatch failed",
+              })
+              .catch((markError: unknown) => request.log.error(markError));
           }
         }
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
       }
+      return reply.status(204).send();
     },
   );
 
@@ -555,16 +502,12 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      try {
-        await options.service.queueOwnerOnboardingInvitationIntent(accessToken, {
-          workspaceId: params.data.workspaceId,
-          employeeId: body.data.employeeId,
-          email: body.data.email,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.queueOwnerOnboardingInvitationIntent(accessToken, {
+        workspaceId: params.data.workspaceId,
+        employeeId: body.data.employeeId,
+        email: body.data.email,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -600,15 +543,11 @@ export function registerWorkspaceAccountRoutes(
         return reply
           .status(503)
           .send({ error: "Workspace account service is not configured" });
-      try {
-        await options.service.resetOwnerOnboarding(
-          accessToken,
-          params.data.workspaceId,
-        );
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.resetOwnerOnboarding(
+        accessToken,
+        params.data.workspaceId,
+      );
+      return reply.status(204).send();
     },
   );
 }
@@ -662,39 +601,6 @@ async function refusedPassword(
     });
     return true;
   }
-  try {
-    await service.verifyPassword(accessToken, password);
-    return false;
-  } catch (error) {
-    requestError(reply, error);
-    return true;
-  }
-}
-
-function requestError(reply: FastifyReply, error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "Workspace operation failed";
-  // A typed status wins: it comes from the SQLSTATE the RPC raised, not from
-  // the wording of its message. The matching below stays for untyped throws.
-  // The reason is a machine key from the RPC's `hint`. It travels with the
-  // message so a screen can say its own sentence without reading ours.
-  if (error instanceof HttpError)
-    return reply.status(error.statusCode).send({
-      error: message,
-      ...(error.reason ? { reason: error.reason } : {}),
-      ...(error.detail ? { detail: error.detail } : {}),
-    });
-  if (
-    message.includes("access required") ||
-    message.includes("not available") ||
-    message.includes("session required") ||
-    message.includes("authentication required") ||
-    message.includes("must be resolved")
-  )
-    return reply.status(403).send({ error: message });
-  if (message.includes("not found"))
-    return reply.status(404).send({ error: message });
-  if (message.includes("revision conflict"))
-    return reply.status(409).send({ error: message });
-  return reply.status(400).send({ error: message });
+  await service.verifyPassword(accessToken, password);
+  return false;
 }

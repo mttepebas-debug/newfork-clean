@@ -100,7 +100,7 @@ describe("owner legal name routes (BL-080)", () => {
         ...(method === "PUT" ? { payload: name } : {}),
       });
       expect(response.statusCode).toBe(status);
-      expect(response.json()).toEqual({ error: "not allowed", reason: hint });
+      expect(response.json()).toEqual({ error: "not allowed", reason: hint, requestId: expect.any(String) });
     }
   });
 
@@ -130,6 +130,7 @@ describe("owner legal name routes (BL-080)", () => {
     expect(refused.statusCode).toBe(400);
     expect(refused.json()).toEqual({
       error: "a legal name needs a first and a last name",
+      requestId: expect.any(String),
     });
   });
 });
@@ -155,6 +156,7 @@ describe("ownership transfer to somebody without a legal name (BL-080)", () => {
     expect(response.json()).toEqual({
       error: "the new owner has no legal name on file yet",
       reason: "transfer.target_legal_name_missing",
+      requestId: expect.any(String),
     });
   });
 });

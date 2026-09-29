@@ -12,6 +12,7 @@ import {
   type WeeklyPreferenceSettingsSave,
 } from "@newfork/shared";
 import { z } from "zod";
+import { HttpError, rpcFailure } from "../http-error";
 
 export function createAvailabilityService(options: {
   url: string;
@@ -23,17 +24,13 @@ export function createAvailabilityService(options: {
   const verifyUser = createUserVerifier(client);
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
-    if (error)
-      throw Object.assign(new Error(error.message), { code: error.code });
+    if (error) throw rpcFailure(error);
     return data;
   }
   async function onboardingIdentity(token: string, workspaceId?: string) {
     const user = await verifyUser(token);
     if (!user)
-      throw Object.assign(
-        new Error("Sign in to review onboarding availability"),
-        { code: "42501" },
-      );
+      throw new HttpError("Sign in to review onboarding availability", 401);
     const context = z
       .object({
         workspace_id: z.string().uuid(),
@@ -51,7 +48,7 @@ export function createAvailabilityService(options: {
   async function weeklyOnboardingIdentity(token: string, command?: WeeklyPreferenceSave, workspaceId?: string) {
     const identity = await onboardingIdentity(token, workspaceId);
     if (command && (command.employee_id !== identity.employee_id || command.source !== "employee"))
-      throw Object.assign(new Error("Only your own onboarding preferences can be changed"), { code: "42501" });
+      throw new HttpError("Only your own onboarding preferences can be changed", 403, { reason: "authz.out_of_scope" });
     return identity;
   }
   return {

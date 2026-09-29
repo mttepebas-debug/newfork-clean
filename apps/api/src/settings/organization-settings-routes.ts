@@ -42,8 +42,7 @@ export function registerOrganizationSettingsRoutes(
     const context = await authorize(request.headers.authorization, params.data.workspaceId, "schedule.conflict_rules.manage", options.contextResolver, reply);
     if (!context) return;
     if (!options.service) return reply.status(503).send({ error: "Organization settings unavailable" });
-    try { return reply.send(scheduleConflictSettingsSchema.parse(await options.service.readSchedulingSettings({ workspaceId: params.data.workspaceId }))); }
-    catch (error) { return requestError(reply, error); }
+    return reply.send(scheduleConflictSettingsSchema.parse(await options.service.readSchedulingSettings({ workspaceId: params.data.workspaceId })));
   });
   app.put("/v1/workspaces/:workspaceId/scheduling-settings/conflicts", async (request, reply) => {
     const params = workspaceParams.safeParse(request.params);
@@ -52,8 +51,7 @@ export function registerOrganizationSettingsRoutes(
     const context = await authorize(request.headers.authorization, params.data.workspaceId, "schedule.conflict_rules.manage", options.contextResolver, reply);
     if (!context) return;
     if (!options.service) return reply.status(503).send({ error: "Organization settings unavailable" });
-    try { return reply.send(scheduleConflictSettingsSchema.parse(await options.service.updateSchedulingSettings({ actorUserId: context.userId, workspaceId: params.data.workspaceId, settings: body.data }))); }
-    catch (error) { return requestError(reply, error); }
+    return reply.send(scheduleConflictSettingsSchema.parse(await options.service.updateSchedulingSettings({ actorUserId: context.userId, workspaceId: params.data.workspaceId, settings: body.data })));
   });
   app.get(
     "/v1/workspaces/:workspaceId/scheduling-settings",
@@ -72,15 +70,11 @@ export function registerOrganizationSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Organization settings service is not configured" });
-      try {
-        const settings = await options.service.readSchedulingSettings({
-            workspaceId: params.data.workspaceId,
-          });
-        const { conflict_rules, conflict_rules_revision, minimum_rest_minutes, minimum_travel_minutes, ...general } = settings;
-        return reply.send(general);
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      const settings = await options.service.readSchedulingSettings({
+          workspaceId: params.data.workspaceId,
+        });
+      const { conflict_rules, conflict_rules_revision, minimum_rest_minutes, minimum_travel_minutes, ...general } = settings;
+      return reply.send(general);
     },
   );
 
@@ -105,17 +99,13 @@ export function registerOrganizationSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Organization settings service is not configured" });
-      try {
-        const settings = await options.service.updateSchedulingSettings({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            settings: body.data,
-          });
-        const { conflict_rules, conflict_rules_revision, minimum_rest_minutes, minimum_travel_minutes, ...general } = settings;
-        return reply.send(general);
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      const settings = await options.service.updateSchedulingSettings({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          settings: body.data,
+        });
+      const { conflict_rules, conflict_rules_revision, minimum_rest_minutes, minimum_travel_minutes, ...general } = settings;
+      return reply.send(general);
     },
   );
 
@@ -138,17 +128,13 @@ export function registerOrganizationSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Organization settings service is not configured" });
-      try {
-        await options.service.reorderEntities({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          entityType: body.data.entityType,
-          orderedIds: body.data.orderedIds,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.reorderEntities({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        entityType: body.data.entityType,
+        orderedIds: body.data.orderedIds,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -171,16 +157,12 @@ export function registerOrganizationSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Organization settings service is not configured" });
-      try {
-        await options.service.reorderShiftTypes({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          orderedIds: body.data.orderedIds,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.reorderShiftTypes({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        orderedIds: body.data.orderedIds,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -203,16 +185,12 @@ export function registerOrganizationSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Organization settings service is not configured" });
-      try {
-        await options.service.reorderShiftLabels({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          orderedIds: body.data.orderedIds,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.reorderShiftLabels({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        orderedIds: body.data.orderedIds,
+      });
+      return reply.status(204).send();
     },
   );
 }
@@ -254,28 +232,4 @@ async function authorize(
         : "Workspace management required",
   });
   return null;
-}
-
-function requestError(reply: FastifyReply, error: unknown) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : "Organization settings operation failed";
-  if (error instanceof Error && "code" in error && error.code === "PT409")
-    return reply.status(409).send({ error: message });
-  if (
-    message.includes("access required") ||
-    message.includes("access denied") ||
-    message.includes("denied")
-  )
-    return reply.status(403).send({ error: message });
-  if (message.includes("not found"))
-    return reply.status(404).send({ error: message });
-  if (
-    message.includes("duplicates") ||
-    message.includes("must include") ||
-    message.includes("unsupported")
-  )
-    return reply.status(409).send({ error: message });
-  return reply.status(400).send({ error: message });
 }

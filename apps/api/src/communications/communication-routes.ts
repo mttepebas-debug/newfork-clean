@@ -89,13 +89,9 @@ export function registerCommunicationRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.getAnnouncements(actor(context)),
-        );
-      } catch (error) {
-        return communicationError(reply, error);
-      }
+      return reply.send(
+        await options.service.getAnnouncements(actor(context)),
+      );
     },
   );
 
@@ -116,18 +112,14 @@ export function registerCommunicationRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.status(body.data.announcement_id ? 200 : 201).send(
-          await options.service.saveAnnouncement({
-            ...actor(context),
-            announcementId: body.data.announcement_id,
-            expectedRevision: body.data.expected_revision,
-            announcement: body.data.announcement,
-          }),
-        );
-      } catch (error) {
-        return communicationError(reply, error);
-      }
+      return reply.status(body.data.announcement_id ? 200 : 201).send(
+        await options.service.saveAnnouncement({
+          ...actor(context),
+          announcementId: body.data.announcement_id,
+          expectedRevision: body.data.expected_revision,
+          announcement: body.data.announcement,
+        }),
+      );
     },
   );
 
@@ -151,20 +143,16 @@ export function registerCommunicationRoutes(
         );
         if (!context) return;
         if (!options.service) return unavailable(reply);
-        try {
-          const input = {
-            ...actor(context),
-            announcementId: params.data.announcementId,
-            expectedRevision: body.data.expected_revision,
-          };
-          return reply.send(
-            action === "publish"
-              ? await options.service.publishAnnouncement(input)
-              : await options.service.cancelAnnouncement(input),
-          );
-        } catch (error) {
-          return communicationError(reply, error);
-        }
+        const input = {
+          ...actor(context),
+          announcementId: params.data.announcementId,
+          expectedRevision: body.data.expected_revision,
+        };
+        return reply.send(
+          action === "publish"
+            ? await options.service.publishAnnouncement(input)
+            : await options.service.cancelAnnouncement(input),
+        );
       },
     );
   }
@@ -185,16 +173,12 @@ export function registerCommunicationRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.acknowledgeAnnouncement({
-            ...actor(context),
-            announcementId: params.data.announcementId,
-          }),
-        );
-      } catch (error) {
-        return communicationError(reply, error);
-      }
+      return reply.send(
+        await options.service.acknowledgeAnnouncement({
+          ...actor(context),
+          announcementId: params.data.announcementId,
+        }),
+      );
     },
   );
 
@@ -215,22 +199,18 @@ export function registerCommunicationRoutes(
       );
       if (!ownContext) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.getNotifications({
-            ...actor(ownContext),
-            category: query.data.category,
-            severity: query.data.severity,
-            readState:
-              query.data.read_state ??
-              (query.data.unread_only ? "unread" : null),
-            cursor: query.data.cursor,
-            limit: query.data.limit,
-          }),
-        );
-      } catch (error) {
-        return communicationError(reply, error);
-      }
+      return reply.send(
+        await options.service.getNotifications({
+          ...actor(ownContext),
+          category: query.data.category,
+          severity: query.data.severity,
+          readState:
+            query.data.read_state ??
+            (query.data.unread_only ? "unread" : null),
+          cursor: query.data.cursor,
+          limit: query.data.limit,
+        }),
+      );
     },
   );
 
@@ -251,16 +231,12 @@ export function registerCommunicationRoutes(
       );
       if (!ownContext) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.actOnNotification({
-            ...actor(ownContext),
-            action: body.data,
-          }),
-        );
-      } catch (error) {
-        return communicationError(reply, error);
-      }
+      return reply.send(
+        await options.service.actOnNotification({
+          ...actor(ownContext),
+          action: body.data,
+        }),
+      );
     },
   );
 
@@ -282,11 +258,7 @@ export function registerCommunicationRoutes(
         .status(403)
         .send({ error: "Manager workspace access required" });
     if (!options.service) return unavailable(reply);
-    try {
-      return reply.send(await options.service.getWorkspace(actor(context)));
-    } catch (error) {
-      return communicationError(reply, error);
-    }
+    return reply.send(await options.service.getWorkspace(actor(context)));
   });
 
   app.put(
@@ -312,16 +284,12 @@ export function registerCommunicationRoutes(
           .status(403)
           .send({ error: "Manager workspace access required" });
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.saveWorkspaceLayout({
-            ...actor(context),
-            layout: body.data,
-          }),
-        );
-      } catch (error) {
-        return communicationError(reply, error);
-      }
+      return reply.send(
+        await options.service.saveWorkspaceLayout({
+          ...actor(context),
+          layout: body.data,
+        }),
+      );
     },
   );
 
@@ -348,16 +316,12 @@ export function registerCommunicationRoutes(
           .status(403)
           .send({ error: "Manager workspace access required" });
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.status(201).send(
-          await options.service.createWorkspaceTodo({
-            ...actor(context),
-            todo: body.data,
-          }),
-        );
-      } catch (error) {
-        return communicationError(reply, error);
-      }
+      return reply.status(201).send(
+        await options.service.createWorkspaceTodo({
+          ...actor(context),
+          todo: body.data,
+        }),
+      );
     },
   );
 
@@ -383,16 +347,12 @@ export function registerCommunicationRoutes(
           .status(403)
           .send({ error: "Manager workspace access required" });
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.resolveWorkspaceTodo({
-            ...actor(context),
-            todoId: params.data.todoId,
-          }),
-        );
-      } catch (error) {
-        return communicationError(reply, error);
-      }
+      return reply.send(
+        await options.service.resolveWorkspaceTodo({
+          ...actor(context),
+          todoId: params.data.todoId,
+        }),
+      );
     },
   );
 
@@ -412,13 +372,9 @@ export function registerCommunicationRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.getOwnerSetupChecklistProgress(actor(context)),
-        );
-      } catch (error) {
-        return communicationError(reply, error);
-      }
+      return reply.send(
+        await options.service.getOwnerSetupChecklistProgress(actor(context)),
+      );
     },
   );
 
@@ -445,24 +401,20 @@ export function registerCommunicationRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        if (body.data.itemId !== undefined) {
-          return reply.send(
-            await options.service.markOwnerSetupChecklistItem({
-              ...actor(context),
-              itemId: body.data.itemId,
-            }),
-          );
-        }
+      if (body.data.itemId !== undefined) {
         return reply.send(
-          await options.service.setOwnerSetupChecklistClosed({
+          await options.service.markOwnerSetupChecklistItem({
             ...actor(context),
-            closed: body.data.closed ?? false,
+            itemId: body.data.itemId,
           }),
         );
-      } catch (error) {
-        return communicationError(reply, error);
       }
+      return reply.send(
+        await options.service.setOwnerSetupChecklistClosed({
+          ...actor(context),
+          closed: body.data.closed ?? false,
+        }),
+      );
     },
   );
 }
@@ -513,15 +465,4 @@ function unavailable(reply: FastifyReply) {
   return reply
     .status(503)
     .send({ error: "Communication service is not configured" });
-}
-function communicationError(reply: FastifyReply, error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "Communication operation failed";
-  if (message.includes("required") || message.includes("access denied"))
-    return reply.status(403).send({ error: message });
-  if (message.includes("not found"))
-    return reply.status(404).send({ error: message });
-  if (message.includes("stale") || message.includes("no longer"))
-    return reply.status(409).send({ error: message });
-  return reply.status(400).send({ error: message });
 }

@@ -13,7 +13,6 @@ import {
   resolveWorkspaceAuthorization,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
-import { HttpError } from "../http-error";
 import type { JobsManagementService } from "./jobs-management-service";
 
 const paramsSchema = z.object({
@@ -69,13 +68,9 @@ export function registerJobsManagementRoutes(
       reply,
     );
     if (!actor) return;
-    try {
-      return reply
-        .status(201)
-        .send(await options.service!.createDepartment(actor, body.data));
-    } catch (error) {
-      return failure(reply, error);
-    }
+    return reply
+      .status(201)
+      .send(await options.service!.createDepartment(actor, body.data));
   });
   app.get(`${base}/job-counts`, async (request, reply) => {
     const params = paramsSchema.safeParse(request.params);
@@ -88,11 +83,7 @@ export function registerJobsManagementRoutes(
       reply,
     );
     if (!actor) return;
-    try {
-      return await options.service!.counts(actor);
-    } catch (error) {
-      return failure(reply, error);
-    }
+    return await options.service!.counts(actor);
   });
   app.delete(`${base}/jobs/:jobId`, async (request, reply) => {
     const params = paramsSchema.safeParse(request.params);
@@ -105,11 +96,7 @@ export function registerJobsManagementRoutes(
       reply,
     );
     if (!actor) return;
-    try {
-      return await options.service!.deleteJob(actor, params.data.jobId);
-    } catch (error) {
-      return failure(reply, error);
-    }
+    return await options.service!.deleteJob(actor, params.data.jobId);
   });
   for (const targets of [false, true])
     app.get(
@@ -126,13 +113,9 @@ export function registerJobsManagementRoutes(
           reply,
         );
         if (!actor) return;
-        try {
-          return targets
-            ? await options.service!.newJobTargets(actor, query.data)
-            : await options.service!.newJobEmployees(actor, query.data);
-        } catch (error) {
-          return failure(reply, error);
-        }
+        return targets
+          ? await options.service!.newJobTargets(actor, query.data)
+          : await options.service!.newJobEmployees(actor, query.data);
       },
     );
   app.post(`${base}/jobs`, async (request, reply) => {
@@ -149,15 +132,11 @@ export function registerJobsManagementRoutes(
       reply,
     );
     if (!actor) return;
-    try {
-      return reply
-        .status(201)
-        .send(
-          await options.service!.createJobWithAssignments(actor, body.data),
-        );
-    } catch (error) {
-      return failure(reply, error);
-    }
+    return reply
+      .status(201)
+      .send(
+        await options.service!.createJobWithAssignments(actor, body.data),
+      );
   });
   for (const kind of [
     "departments",
@@ -187,16 +166,12 @@ export function registerJobsManagementRoutes(
         reply,
       );
       if (!actor) return;
-      try {
-        return await options.service!.deleteCatalogEntity(
-          actor,
-          kind,
-          params.data.entityId,
-          body.data.jobs,
-        );
-      } catch (error) {
-        return failure(reply, error);
-      }
+      return await options.service!.deleteCatalogEntity(
+        actor,
+        kind,
+        params.data.entityId,
+        body.data.jobs,
+      );
     });
   }
   app.patch(`${base}/departments/:departmentId`, async (request, reply) => {
@@ -218,15 +193,11 @@ export function registerJobsManagementRoutes(
       reply,
     );
     if (!actor) return;
-    try {
-      return await options.service!.updateDepartment(
-        actor,
-        params.data.departmentId,
-        body.data,
-      );
-    } catch (error) {
-      return failure(reply, error);
-    }
+    return await options.service!.updateDepartment(
+      actor,
+      params.data.departmentId,
+      body.data,
+    );
   });
   app.post(`${base}/departments/:departmentId/jobs`, async (request, reply) => {
     const params = z
@@ -247,19 +218,15 @@ export function registerJobsManagementRoutes(
       reply,
     );
     if (!actor) return;
-    try {
-      return reply
-        .status(201)
-        .send(
-          await options.service!.createDepartmentJobs(
-            actor,
-            params.data.departmentId,
-            body.data.jobs,
-          ),
-        );
-    } catch (error) {
-      return failure(reply, error);
-    }
+    return reply
+      .status(201)
+      .send(
+        await options.service!.createDepartmentJobs(
+          actor,
+          params.data.departmentId,
+          body.data.jobs,
+        ),
+      );
   });
   for (const targets of [false, true]) {
     app.get(
@@ -278,21 +245,17 @@ export function registerJobsManagementRoutes(
           reply,
         );
         if (!actor) return;
-        try {
-          return targets
-            ? await options.service!.targets(
-                actor,
-                params.data.jobId,
-                query.data,
-              )
-            : await options.service!.employees(
-                actor,
-                params.data.jobId,
-                query.data,
-              );
-        } catch (error) {
-          return failure(reply, error);
-        }
+        return targets
+          ? await options.service!.targets(
+              actor,
+              params.data.jobId,
+              query.data,
+            )
+          : await options.service!.employees(
+              actor,
+              params.data.jobId,
+              query.data,
+            );
       },
     );
   }
@@ -310,15 +273,11 @@ export function registerJobsManagementRoutes(
       reply,
     );
     if (!actor) return;
-    try {
-      return await options.service!.saveJobDetails(
-        actor,
-        params.data.jobId,
-        body.data,
-      );
-    } catch (error) {
-      return failure(reply, error);
-    }
+    return await options.service!.saveJobDetails(
+      actor,
+      params.data.jobId,
+      body.data,
+    );
   });
   app.patch(`${base}/jobs/:jobId/assignments`, async (request, reply) => {
     const params = paramsSchema.safeParse(request.params);
@@ -334,37 +293,10 @@ export function registerJobsManagementRoutes(
       reply,
     );
     if (!actor) return;
-    try {
-      return await options.service!.saveAssignments(
-        actor,
-        params.data.jobId,
-        body.data.changes,
-      );
-    } catch (error) {
-      return failure(reply, error);
-    }
+    return await options.service!.saveAssignments(
+      actor,
+      params.data.jobId,
+      body.data.changes,
+    );
   });
-}
-function failure(reply: FastifyReply, error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "Could not save changes";
-  // A typed refusal keeps its status and machine key (BL-218); the rest of
-  // this helper reads untyped throws.
-  if (error instanceof HttpError)
-    return reply.status(error.statusCode).send({
-      error: error.message,
-      ...(error.reason ? { reason: error.reason } : {}),
-    });
-  const code = error instanceof Error && "code" in error ? error.code : null;
-  return reply
-    .status(
-      code === "42501"
-        ? 403
-        : code === "P0002"
-          ? 404
-          : ["PT409", "23505", "40001"].includes(String(code))
-            ? 409
-            : 400,
-    )
-    .send({ error: message });
 }

@@ -473,7 +473,7 @@ describe("employee directory routes", () => {
     });
     expect(rpc).toHaveBeenCalledWith("save_employee_service", expect.anything());
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ error: managementAndOwnerRefusals[hint], reason: hint });
+    expect(response.json()).toEqual({ error: managementAndOwnerRefusals[hint], reason: hint, requestId: expect.any(String) });
     await app.close();
   });
 
@@ -510,7 +510,7 @@ describe("employee directory routes", () => {
       payload: { request_id: "91000000-0000-4000-8000-000000000001", employee: employeeInput, invite_role_id: null },
     });
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ error: sentence, reason: "employee.management_primary" });
+    expect(response.json()).toEqual({ error: sentence, reason: "employee.management_primary", requestId: expect.any(String) });
     await app.close();
   });
 });

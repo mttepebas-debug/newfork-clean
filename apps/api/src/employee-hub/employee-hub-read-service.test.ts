@@ -39,8 +39,8 @@ describe("employee hub weekly read boundary", () => {
     expect(result.locations[0]?.timezone).toBe("America/Los_Angeles");
   });
   it("does not hide errors in the canonical employee read", async () => {
-    rpc.mockResolvedValue({ data: null, error: { message: "Employee access denied" } });
-    await expect(service.get(input)).rejects.toThrow("Employee access denied");
+    rpc.mockResolvedValue({ data: null, error: { message: "Employee access denied", code: "42501" } });
+    await expect(service.get(input)).rejects.toMatchObject({ statusCode: 403, message: "Employee access denied" });
   });
   it("rejects malformed data", async () => {
     rpc.mockResolvedValue({ data: { ...model, requests: [{ ...leave, revision: -1 }] }, error: null });

@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { replyWithError } from "../http-error";
 import { managementAndOwnerRefusals, type ActiveWorkspaceContext } from "@newfork/shared";
 import { registerJobsManagementRoutes } from "./jobs-management-routes";
 import { createJobsManagementService } from "./jobs-management-service";
@@ -36,6 +37,7 @@ function setup(permissions = context.permissions) {
     error: null,
   });
   const app = Fastify();
+  app.setErrorHandler(replyWithError);
   apps.push(app);
   const resolver = {
     resolve: vi.fn(async () => ({ ...context, permissions })),
@@ -163,7 +165,7 @@ describe("jobs management HTTP boundary", () => {
       payload: { changes },
     });
     expect(response.statusCode).toBe(409);
-    expect(response.json()).toEqual({ error: "Employee changed" });
+    expect(response.json()).toEqual({ error: "Employee changed", requestId: expect.any(String) });
   });
   it("answers deleting the Owner job with 400, its key and a readable sentence (BL-218)", async () => {
     const { app, rpc } = setup();
@@ -180,6 +182,7 @@ describe("jobs management HTTP boundary", () => {
     expect(response.json()).toEqual({
       error: managementAndOwnerRefusals["catalog.system_record"],
       reason: "catalog.system_record",
+      requestId: expect.any(String),
     });
   });
   it.each([
@@ -195,7 +198,7 @@ describe("jobs management HTTP boundary", () => {
       payload: { changes },
     });
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ error: managementAndOwnerRefusals[hint], reason: hint });
+    expect(response.json()).toEqual({ error: managementAndOwnerRefusals[hint], reason: hint, requestId: expect.any(String) });
   });
   it("rejects duplicate employee operations before storage", async () => {
     const { app, rpc } = setup();

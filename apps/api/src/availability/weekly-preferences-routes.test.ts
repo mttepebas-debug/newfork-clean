@@ -4,6 +4,7 @@ import {
   type ActiveWorkspaceContext,
 } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
+import { replyWithError, rpcFailure } from "../http-error";
 import { registerWeeklyPreferenceRoutes } from "./weekly-preferences-routes";
 
 const workspace = "ad410000-0000-4000-8000-000000000001";
@@ -19,6 +20,7 @@ const command = {
 };
 function setup() {
   const app = Fastify();
+  app.setErrorHandler(replyWithError);
   const service = {
     readWeeklySettings: vi.fn(),
     saveWeeklySettings: vi.fn(),
@@ -77,7 +79,7 @@ describe("weekly preference routes", () => {
       const { app, service } = setup();
       try {
         service.readWeeklyTeam.mockRejectedValue(
-          Object.assign(new Error("private database detail"), { code }),
+          rpcFailure({ message: "private database detail", code }),
         );
         const response = await app.inject({
           method: "GET",
@@ -136,13 +138,13 @@ describe("weekly preference routes", () => {
   it.each([
     ["42501", 403],
     ["40001", 409],
-    ["22023", 422],
+    ["22023", 400],
   ] as const)(
     "maps settings failure %s without accepting changes",
     async (code, status) => {
       const { app, service } = setup();
       service.saveWeeklySettings.mockRejectedValue(
-        Object.assign(new Error("Settings rejected"), { code }),
+        rpcFailure({ message: "Settings rejected", code }),
       );
       try {
         const result = await app.inject({
@@ -277,13 +279,13 @@ describe("weekly preference routes", () => {
     ["42501", 403],
     ["PT409", 409],
     ["40001", 409],
-    ["22023", 422],
-    ["23514", 422],
+    ["22023", 400],
+    ["23514", 400],
     ["XX000", 500],
   ])("maps %s errors without claiming success", async (code, status) => {
     const { app, service } = setup();
     service.saveWeekly.mockRejectedValue(
-      Object.assign(new Error("database-private-detail"), { code }),
+      rpcFailure({ message: "database-private-detail", code }),
     );
     try {
       const response = await app.inject({

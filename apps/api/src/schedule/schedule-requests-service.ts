@@ -7,6 +7,7 @@ import {
 } from "@newfork/shared/schedule";
 import { createClient } from "@supabase/supabase-js";
 import { timeOffAssignmentPreviewSchema, type TimeOffAssignmentPreview, type TimeOffAssignmentPreviewInput } from "@newfork/shared";
+import { rpcFailure } from "../http-error";
 
 export interface ScheduleRequestsService {
   previewTimeOffAssignment(input: { actorUserId: string; workspaceId: string; requestId: string; decision: TimeOffAssignmentPreviewInput }): Promise<TimeOffAssignmentPreview>;
@@ -41,7 +42,7 @@ export function createScheduleRequestsService(options: {
   });
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
-    if (error) throw new Error(error.message);
+    if (error) throw rpcFailure(error);
     return data;
   }
   return {

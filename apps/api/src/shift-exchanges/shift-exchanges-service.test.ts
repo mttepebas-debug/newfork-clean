@@ -61,7 +61,7 @@ describe("post-commit shift exchange inbox delivery", () => {
       data: null,
       error: { code: "PT409", message: "Changed assignment" },
     });
-    await expect(command()).rejects.toMatchObject({ code: "PT409" });
+    await expect(command()).rejects.toMatchObject({ statusCode: 409, pgCode: "PT409" });
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
   it.each([

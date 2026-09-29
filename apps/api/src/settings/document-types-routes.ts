@@ -46,25 +46,21 @@ export function registerDocumentTypesRoutes(
           return reply
             .status(503)
             .send({ error: "Document type service is not configured" });
-        try {
-          const input = { actorUserId: context.userId, ...params.data };
-          if (action === "publication-preview")
-            return await options.service.publicationPreview(input);
-          const command = documentPublishCommandSchema.safeParse(request.body);
-          if (!command.success)
-            return reply
-              .status(400)
-              .send({
-                error: "A current publication preview and reason are required",
-              });
-          return await options.service.publish({
-            ...input,
-            ...command.data,
-            targetStatus: action === "publish" ? "published" : "draft",
-          });
-        } catch (error) {
-          return requestError(reply, error);
-        }
+        const input = { actorUserId: context.userId, ...params.data };
+        if (action === "publication-preview")
+          return await options.service.publicationPreview(input);
+        const command = documentPublishCommandSchema.safeParse(request.body);
+        if (!command.success)
+          return reply
+            .status(400)
+            .send({
+              error: "A current publication preview and reason are required",
+            });
+        return await options.service.publish({
+          ...input,
+          ...command.data,
+          targetStatus: action === "publish" ? "published" : "draft",
+        });
       },
     );
   app.get(
@@ -85,14 +81,10 @@ export function registerDocumentTypesRoutes(
         return reply
           .status(503)
           .send({ error: "Document type service is not configured" });
-      try {
-        return await options.service.targetOptions({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return await options.service.targetOptions({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+      });
     },
   );
   app.post(
@@ -116,17 +108,13 @@ export function registerDocumentTypesRoutes(
         return reply
           .status(503)
           .send({ error: "Document type service is not configured" });
-      try {
-        return reply.status(201).send({
-          id: await options.service.save({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            documentType: body.data,
-          }),
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.status(201).send({
+        id: await options.service.save({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          documentType: body.data,
+        }),
+      });
     },
   );
 
@@ -151,18 +139,14 @@ export function registerDocumentTypesRoutes(
         return reply
           .status(503)
           .send({ error: "Document type service is not configured" });
-      try {
-        return reply.send({
-          id: await options.service.save({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            documentTypeId: params.data.documentTypeId,
-            documentType: body.data,
-          }),
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send({
+        id: await options.service.save({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          documentTypeId: params.data.documentTypeId,
+          documentType: body.data,
+        }),
+      });
     },
   );
 
@@ -187,17 +171,13 @@ export function registerDocumentTypesRoutes(
         return reply
           .status(503)
           .send({ error: "Document type service is not configured" });
-      try {
-        await options.service.setArchived({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          documentTypeId: params.data.documentTypeId,
-          archived: body.data.archived,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.setArchived({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        documentTypeId: params.data.documentTypeId,
+        archived: body.data.archived,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -220,16 +200,12 @@ export function registerDocumentTypesRoutes(
         return reply
           .status(503)
           .send({ error: "Document type service is not configured" });
-      try {
-        await options.service.reorder({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          orderedIds: body.data.orderedIds,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.reorder({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        orderedIds: body.data.orderedIds,
+      });
+      return reply.status(204).send();
     },
   );
 }
@@ -255,25 +231,4 @@ async function authorize(
         : "Document management required",
   });
   return null;
-}
-
-function requestError(reply: FastifyReply, error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "Document type operation failed";
-  if (
-    message.includes("access required") ||
-    message.includes("access denied") ||
-    message.includes("denied")
-  )
-    return reply.status(403).send({ error: message });
-  if (message.includes("not found"))
-    return reply.status(404).send({ error: message });
-  if (
-    message.toLowerCase().includes("published") ||
-    message.includes("exists") ||
-    message.includes("stale") ||
-    message.includes("changed; refresh")
-  )
-    return reply.status(409).send({ error: message });
-  return reply.status(400).send({ error: message });
 }

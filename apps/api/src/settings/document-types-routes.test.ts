@@ -1,5 +1,6 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
+import { rpcFailure } from "../http-error";
 import { buildApp } from "../app";
 import type { DocumentTypesService } from "./document-types-service";
 
@@ -283,7 +284,7 @@ describe("document publication routes", () => {
   });
   it("rejects missing publication revision and surfaces stale impact as conflict", async () => {
     const publish = vi.fn(async () => {
-      throw new Error("Document publication impact changed; refresh preview");
+      throw rpcFailure({ message: "Document publication impact changed; refresh preview", code: "PT409" });
     });
     const app = buildApp({
       contextResolver: { resolve: async () => context },

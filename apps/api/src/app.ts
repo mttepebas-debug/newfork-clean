@@ -2,12 +2,12 @@ import {
   activeWorkspaceContextSchema,
   healthResponseSchema,
 } from "@newfork/shared";
-import Fastify, { type FastifyError } from "fastify";
+import Fastify from "fastify";
 import { createDocumentLifecycleService } from "./employees/document-lifecycle-service";
 import { registerDocumentLifecycleRoutes } from "./employees/document-lifecycle-routes";
 import { registerTimezoneSuggestionRoutes } from "./settings/timezone-suggestion";
 import { z } from "zod";
-import { HttpError } from "./http-error.js";
+import { HttpError, replyWithError } from "./http-error.js";
 import { registerAccountDeletionRoutes } from "./account/account-deletion-routes";
 import {
   createAccountDeletionWorker,
@@ -156,7 +156,7 @@ function isAllowedOrigin(
   );
 }
 
-interface BuildAppOptions {
+export interface BuildAppOptions {
   readonly contextResolver?: WorkspaceContextResolver | null;
   readonly accountSecurityService?: AccountSecurityService | null;
   readonly passwordResetSender?: PasswordResetSender | null;
@@ -293,25 +293,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   // An unhandled throw used to return a bare 500 that vanished without a trace.
   // Log it against the request id and hand the same id to the caller so a bug
   // report can be matched to a log line. Internals never reach the response.
-  app.setErrorHandler((error: FastifyError, request, reply) => {
-    const statusCode = error.statusCode ?? 500;
-    if (statusCode >= 500) request.log.error({ err: error }, "request failed");
-    else request.log.warn({ err: error, statusCode }, "request rejected");
-    if (statusCode >= 500)
-      return reply
-        .status(statusCode)
-        .send({ error: "Internal server error", requestId: request.id });
-    // Same shape as the route helpers' requestError: a refusal keeps its
-    // machine key (authz.* for the authorization core's no), so isNoAccess on
-    // the web reads it whichever path the error took.
-    const typed = error instanceof HttpError ? error : undefined;
-    return reply.status(statusCode).send({
-      error: error.message,
-      ...(typed?.reason ? { reason: typed.reason } : {}),
-      ...(typed?.detail ? { detail: typed.detail } : {}),
-      requestId: request.id,
-    });
-  });
+  app.setErrorHandler(replyWithError);
 
   app.setNotFoundHandler((_request, reply) =>
     reply.status(404).send({ error: "Not found" }),

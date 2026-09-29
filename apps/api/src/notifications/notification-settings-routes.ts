@@ -39,11 +39,7 @@ export function registerNotificationSettingsRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(await options.service.get(actor(context)));
-      } catch (error) {
-        return settingsError(reply, error);
-      }
+      return reply.send(await options.service.get(actor(context)));
     },
   );
 
@@ -63,13 +59,9 @@ export function registerNotificationSettingsRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.save({ ...actor(context), policy: body.data }),
-        );
-      } catch (error) {
-        return settingsError(reply, error);
-      }
+      return reply.send(
+        await options.service.save({ ...actor(context), policy: body.data }),
+      );
     },
   );
 
@@ -89,13 +81,9 @@ export function registerNotificationSettingsRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.reset({ ...actor(context), reset: body.data }),
-        );
-      } catch (error) {
-        return settingsError(reply, error);
-      }
+      return reply.send(
+        await options.service.reset({ ...actor(context), reset: body.data }),
+      );
     },
   );
 
@@ -115,13 +103,9 @@ export function registerNotificationSettingsRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.preview({ ...actor(context), test: body.data }),
-        );
-      } catch (error) {
-        return settingsError(reply, error);
-      }
+      return reply.send(
+        await options.service.preview({ ...actor(context), test: body.data }),
+      );
     },
   );
 
@@ -138,11 +122,7 @@ export function registerNotificationSettingsRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(await options.service.getUserPreferences(actor(context)));
-      } catch (error) {
-        return settingsError(reply, error);
-      }
+      return reply.send(await options.service.getUserPreferences(actor(context)));
     },
   );
 
@@ -160,16 +140,12 @@ export function registerNotificationSettingsRoutes(
       );
       if (!context) return;
       if (!options.service) return unavailable(reply);
-      try {
-        return reply.send(
-          await options.service.saveUserPreferences({
-            ...actor(context),
-            patch: body.data,
-          }),
-        );
-      } catch (error) {
-        return settingsError(reply, error);
-      }
+      return reply.send(
+        await options.service.saveUserPreferences({
+          ...actor(context),
+          patch: body.data,
+        }),
+      );
     },
   );
 }
@@ -222,14 +198,4 @@ function invalid(reply: FastifyReply) {
 }
 function unavailable(reply: FastifyReply) {
   return reply.status(503).send({ error: "Notification settings service is not configured" });
-}
-function settingsError(reply: FastifyReply, error: unknown) {
-  const message = error instanceof Error ? error.message : "Notification settings operation failed";
-  if (message.includes("required") || message.includes("access denied"))
-    return reply.status(403).send({ error: message });
-  if (message.includes("not found")) return reply.status(404).send({ error: message });
-  if (message.includes("stale") || message.includes("conflict"))
-    return reply.status(409).send({ error: message });
-  if (message.includes("rate limit")) return reply.status(429).send({ error: message });
-  return reply.status(400).send({ error: message });
 }

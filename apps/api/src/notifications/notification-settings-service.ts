@@ -16,6 +16,7 @@ import {
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import type { z } from "zod";
+import { rpcFailure } from "../http-error";
 
 interface ActorInput {
   readonly actorUserId: string;
@@ -67,7 +68,7 @@ export function createNotificationSettingsServiceWithClient(
 ): NotificationSettingsService {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
-    if (error) throw new Error(error.message);
+    if (error) throw rpcFailure(error);
     return data;
   }
   const actorArgs = (input: ActorInput) => ({

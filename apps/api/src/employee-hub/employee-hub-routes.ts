@@ -46,22 +46,18 @@ export function registerEmployeeHubRoutes(
         return reply
           .status(503)
           .send({ error: "Employee Hub service is not configured" });
-      try {
-        const input = {
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-        };
-        return reply.send(
-          task?.success
-            ? await options.service.changePersonalTask({
-                ...input,
-                task: task.data,
-              })
-            : await options.service.getPersonalTasks(input),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      const input = {
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+      };
+      return reply.send(
+        task?.success
+          ? await options.service.changePersonalTask({
+              ...input,
+              task: task.data,
+            })
+          : await options.service.getPersonalTasks(input),
+      );
     },
   });
   app.get(
@@ -84,17 +80,13 @@ export function registerEmployeeHubRoutes(
         return reply
           .status(503)
           .send({ error: "Employee Hub service is not configured" });
-      try {
-        return reply.send(
-          await options.service.getScheduleBoard({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            targetDate: query.data.date,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.getScheduleBoard({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          targetDate: query.data.date,
+        }),
+      );
     },
   );
   app.get(
@@ -117,17 +109,13 @@ export function registerEmployeeHubRoutes(
         return reply
           .status(503)
           .send({ error: "Employee Hub service is not configured" });
-      try {
-        return reply.send(
-          await options.service.get({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            ...query.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.get({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          ...query.data,
+        }),
+      );
     },
   );
   app.post(
@@ -150,17 +138,13 @@ export function registerEmployeeHubRoutes(
         return reply
           .status(503)
           .send({ error: "Employee Hub service is not configured" });
-      try {
-        return reply.send(
-          await options.service.submitTimeOff({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            request: body.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.submitTimeOff({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          request: body.data,
+        }),
+      );
     },
   );
   app.post(
@@ -183,17 +167,13 @@ export function registerEmployeeHubRoutes(
         return reply
           .status(503)
           .send({ error: "Employee Hub service is not configured" });
-      try {
-        return reply.send(
-          await options.service.actOnRequest({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            action: body.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.actOnRequest({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          action: body.data,
+        }),
+      );
     },
   );
 }
@@ -212,26 +192,4 @@ async function authorize(
   if (result.context) return result.context;
   reply.status(404).send({ error: "Workspace not found" });
   return null;
-}
-function requestError(reply: FastifyReply, error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "Employee Hub operation failed";
-  if (
-    message.includes("access denied") ||
-    message.includes("denied") ||
-    message.includes("membership required") ||
-    message.includes("profile required")
-  )
-    return reply.status(403).send({ error: message });
-  if (message.includes("not found"))
-    return reply.status(404).send({ error: message });
-  if (
-    message.includes("stale") ||
-    message.includes("refresh") ||
-    message.includes("period is published") ||
-    message.includes("exists") ||
-    message.includes("no longer")
-  )
-    return reply.status(409).send({ error: message });
-  return reply.status(400).send({ error: message });
 }

@@ -12,6 +12,7 @@ import {
   type EmployeeTimeOffInput,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
+import { rpcFailure } from "../http-error";
 
 export interface EmployeeHubService {
   getPersonalTasks(input: {
@@ -55,7 +56,7 @@ export function createEmployeeHubService(options: {
   });
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
-    if (error) throw new Error(error.message);
+    if (error) throw rpcFailure(error);
     return data;
   }
   async function schedulingTimeFormat(workspaceId: string) {
@@ -64,7 +65,7 @@ export function createEmployeeHubService(options: {
       .select("time_format")
       .eq("workspace_id", workspaceId)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw rpcFailure(error);
     return data?.time_format === "24h" ? "24h" : "12h";
   }
   return {
@@ -122,7 +123,7 @@ export function createEmployeeHubService(options: {
           "id",
           parsed.locations.map((location) => location.id),
         );
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return {
         ...parsed,
         locations: parsed.locations.map((location) => ({

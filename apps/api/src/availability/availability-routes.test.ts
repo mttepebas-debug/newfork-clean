@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
+import { replyWithError, rpcFailure } from "../http-error";
 import { registerAvailabilityRoutes } from "./availability-routes";
 
 const workspace = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -9,6 +10,7 @@ const actor = "ab920000-0000-4000-8000-000000000001";
 const key = "ab930000-0000-4000-8000-000000000001";
 function setup(workspaceId = workspace) {
   const app = Fastify();
+  app.setErrorHandler(replyWithError);
   const service = {
     readWeekly: vi.fn(), readWeeklyTeam: vi.fn(), previewWeekly: vi.fn(), saveWeekly: vi.fn(),
     readWeeklySettings: vi.fn(), saveWeeklySettings: vi.fn(),
@@ -88,9 +90,7 @@ describe("availability routes", () => {
   it("returns a scoped assessment denial without treating it as unknown capacity", async () => {
     const { app, service } = setup();
     service.assessShift.mockRejectedValue(
-      Object.assign(new Error("Schedule location access denied"), {
-        code: "42501",
-      }),
+      rpcFailure({ message: "Schedule location access denied", code: "42501" }),
     );
     try {
       const response = await app.inject({
@@ -113,6 +113,7 @@ describe("availability routes", () => {
       expect(response.statusCode).toBe(403);
       expect(response.json()).toEqual({
         error: "Schedule location access denied",
+        requestId: expect.any(String),
       });
     } finally {
       await app.close();

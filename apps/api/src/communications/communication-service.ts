@@ -19,6 +19,7 @@ import {
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { HttpError, rpcFailure } from "../http-error";
 
 const savedResultSchema = z.object({
   status: z.literal("saved"),
@@ -120,7 +121,7 @@ export function createCommunicationServiceWithClient(
 ): CommunicationService {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
-    if (error) throw new Error(error.message);
+    if (error) throw rpcFailure(error);
     return data;
   }
   const actorArgs = (input: { actorUserId: string; workspaceId: string | null }) => ({
@@ -284,6 +285,6 @@ function decodeNotificationCursor(cursor: string | null) {
       JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")),
     );
   } catch {
-    throw new Error("invalid notification cursor");
+    throw new HttpError("invalid notification cursor", 400);
   }
 }

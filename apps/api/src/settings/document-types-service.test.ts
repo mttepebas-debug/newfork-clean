@@ -34,9 +34,9 @@ it("uses a migration-versioned draft Save with fixed active and future assignmen
 it("fails closed instead of falling back to pre-publication Save when the migration is missing", async () => {
   const rpc = vi.fn(async () => ({
     data: null,
-    error: { message: "Function unavailable" },
+    error: { message: "Could not find the function public.save_document_type_service", code: "PGRST202" },
   }));
   const service = createDocumentTypesServiceWithClient({ rpc });
-  await expect(service.save(input)).rejects.toThrow("Function unavailable");
+  await expect(service.save(input)).rejects.toMatchObject({ statusCode: 500 });
   expect(rpc).toHaveBeenCalledTimes(1);
 });

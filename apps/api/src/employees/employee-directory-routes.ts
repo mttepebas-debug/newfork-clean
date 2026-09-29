@@ -12,7 +12,6 @@ import {
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
-import { HttpError } from "../http-error";
 import type { EmployeeDirectoryService } from "./employee-directory-service";
 import type { EmployeeCreateService } from "./employee-create-service";
 
@@ -66,8 +65,7 @@ export function registerEmployeeDirectoryRoutes(
     });
     if (!context) return reply.status(404).send({ error: "Workspace unavailable" });
     if (!options.service?.getOwnAvatar) return reply.status(503).send({ error: "Account photo service is not configured" });
-    try { return reply.send(await options.service.getOwnAvatar({ actorUserId: context.userId, workspaceId: context.workspace.id })); }
-    catch (error) { return requestError(reply, error); }
+    return reply.send(await options.service.getOwnAvatar({ actorUserId: context.userId, workspaceId: context.workspace.id }));
   });
   app.post(
     "/v1/workspaces/:workspaceId/employees/create",
@@ -103,19 +101,15 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee create service is not configured" });
-      try {
-        return reply
-          .status(201)
-          .send(
-            await options.createService.create(
-              context.userId,
-              params.data.workspaceId,
-              body.data,
-            ),
-          );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply
+        .status(201)
+        .send(
+          await options.createService.create(
+            context.userId,
+            params.data.workspaceId,
+            body.data,
+          ),
+        );
     },
   );
   // What the Employees drawer picks from (BL-231). No gate here: the service
@@ -153,17 +147,13 @@ export function registerEmployeeDirectoryRoutes(
       return reply
         .status(503)
         .send({ error: "Employee directory service is not configured" });
-    try {
-      return reply.send(
-        await options.service.list({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          ...query.data,
-        }),
-      );
-    } catch (error) {
-      return requestError(reply, error);
-    }
+    return reply.send(
+      await options.service.list({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        ...query.data,
+      }),
+    );
   });
 
   app.get(
@@ -185,17 +175,13 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        return reply.send(
-          await options.service.get({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            employeeId: params.data.employeeId,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.get({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+        }),
+      );
     },
   );
 
@@ -218,17 +204,13 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        return reply.send(
-          await options.service.getAvatar({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            employeeId: params.data.employeeId,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.getAvatar({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+        }),
+      );
     },
   );
 
@@ -251,16 +233,12 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        await options.service.removeAvatar({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          employeeId: params.data.employeeId,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.removeAvatar({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        employeeId: params.data.employeeId,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -283,16 +261,12 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        await options.service.removeAccess({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          employeeId: params.data.employeeId,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.removeAccess({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        employeeId: params.data.employeeId,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -318,16 +292,12 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        return reply.send({
-          approval: await options.service.getPreferredNameApproval({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-          }),
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send({
+        approval: await options.service.getPreferredNameApproval({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+        }),
+      });
     },
   );
 
@@ -355,16 +325,12 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        await options.service.setPreferredNameApproval({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          approval: body.data.approval,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.setPreferredNameApproval({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        approval: body.data.approval,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -392,18 +358,14 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        return reply.send({
-          outcome: await options.service.requestPreferredName({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            employeeId: params.data.employeeId,
-            preferredName: body.data.preferredName,
-          }),
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send({
+        outcome: await options.service.requestPreferredName({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+          preferredName: body.data.preferredName,
+        }),
+      });
     },
   );
 
@@ -426,16 +388,12 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        return reply.send(
-          await options.service.listPendingPreferredNames({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.listPendingPreferredNames({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+        }),
+      );
     },
   );
 
@@ -461,17 +419,13 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        await options.service.decidePreferredName({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          requestId: params.data.requestId,
-          approve: body.data.approve,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.decidePreferredName({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        requestId: params.data.requestId,
+        approve: body.data.approve,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -500,21 +454,17 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        await options.service.saveOwnEmploymentContact({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          employeeId: params.data.employeeId,
-          name: body.data.name,
-          relationship: body.data.relationship ?? "",
-          phone: body.data.phone,
-          email: body.data.email ?? "",
-          personalPhone: body.data.personalPhone ?? null,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.saveOwnEmploymentContact({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        employeeId: params.data.employeeId,
+        name: body.data.name,
+        relationship: body.data.relationship ?? "",
+        phone: body.data.phone,
+        email: body.data.email ?? "",
+        personalPhone: body.data.personalPhone ?? null,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -539,17 +489,13 @@ export function registerEmployeeDirectoryRoutes(
       return reply
         .status(503)
         .send({ error: "Employee directory service is not configured" });
-    try {
-      return reply.status(201).send({
-        id: await options.service.save({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          employee: body.data,
-        }),
-      });
-    } catch (error) {
-      return requestError(reply, error);
-    }
+    return reply.status(201).send({
+      id: await options.service.save({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        employee: body.data,
+      }),
+    });
   });
 
   app.put(
@@ -574,18 +520,14 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        return reply.send({
-          id: await options.service.save({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            employeeId: params.data.employeeId,
-            employee: body.data,
-          }),
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send({
+        id: await options.service.save({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+          employee: body.data,
+        }),
+      });
     },
   );
 
@@ -611,17 +553,13 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        await options.service.updateRole({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          employeeId: params.data.employeeId,
-          role: body.data,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.updateRole({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        employeeId: params.data.employeeId,
+        role: body.data,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -647,18 +585,14 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        await options.service.setArchived({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          employeeId: params.data.employeeId,
-          archived: body.data.archived,
-          restoreAccess: body.data.restoreAccess,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.setArchived({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        employeeId: params.data.employeeId,
+        archived: body.data.archived,
+        restoreAccess: body.data.restoreAccess,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -684,18 +618,14 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(503)
           .send({ error: "Employee directory service is not configured" });
-      try {
-        return reply.send(
-          await options.service.terminate({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            employeeId: params.data.employeeId,
-            termination: body.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.terminate({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+          termination: body.data,
+        }),
+      );
     },
   );
 }
@@ -723,32 +653,4 @@ async function authorize(
   }
   reply.status(403).send({ error: permissionMessage });
   return null;
-}
-
-function requestError(reply: FastifyReply, error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "Employee operation failed";
-  // A typed refusal keeps its status and machine key (BL-218); the rest of
-  // this helper reads untyped throws.
-  if (error instanceof HttpError)
-    return reply.status(error.statusCode).send({
-      error: error.message,
-      ...(error.reason ? { reason: error.reason } : {}),
-    });
-  if (
-    message.includes("access required") ||
-    message.includes("access denied") ||
-    message.includes("denied") ||
-    message.includes("not permitted")
-  )
-    return reply.status(403).send({ error: message });
-  if (message.includes("not found"))
-    return reply.status(404).send({ error: message });
-  if (
-    message.includes("revision conflict") ||
-    message.includes("stale") ||
-    message.includes("idempotency")
-  )
-    return reply.status(409).send({ error: message });
-  return reply.status(400).send({ error: message });
 }

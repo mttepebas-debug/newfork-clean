@@ -5,7 +5,7 @@ import {
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { managementAndOwnerRefusal } from "../http-error";
+import { rpcFailure } from "../http-error";
 import {
   deliverInvitation,
   storeDeliverySecret,
@@ -46,7 +46,7 @@ export function createEmployeeCreateService(
           invite_role_id: command.invite_role_id,
         },
       );
-      if (error) throw managementAndOwnerRefusal(error) ?? new Error(error.message);
+      if (error) throw rpcFailure(error);
       const result = storedResult.parse(data);
       if (!result.invitation_id) return { id: result.id, invitation: null };
       let deliveryStatus = result.delivery_status ?? "pending";

@@ -1,5 +1,6 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
+import { rpcFailure } from "../http-error";
 import { buildApp } from "../app";
 import type { OrganizationSettingsService } from "./organization-settings-service";
 
@@ -114,7 +115,7 @@ describe("organization settings routes", () => {
   });
   it("returns stale conflict revision as 409 without silently retrying", async () => {
     const service = organizationSettingsServiceMock();
-    vi.mocked(service.updateSchedulingSettings).mockRejectedValue(Object.assign(new Error("Conflict rules changed. Reload the current rules before saving."), { code: "PT409" }));
+    vi.mocked(service.updateSchedulingSettings).mockRejectedValue(rpcFailure({ message: "Conflict rules changed. Reload the current rules before saving.", code: "PT409" }));
     const app = buildApp({ organizationSettingsService: service, contextResolver: { resolve: async () => ({ ...context, permissions: ["schedule.conflict_rules.manage"] }) } });
     const response = await app.inject({ method: "PUT", url: `/v1/workspaces/${workspaceId}/scheduling-settings/conflicts`, headers: { authorization: "Bearer valid-token" }, payload: conflicts });
     expect(response.statusCode).toBe(409); expect(service.updateSchedulingSettings).toHaveBeenCalledTimes(1);
@@ -123,9 +124,7 @@ describe("organization settings routes", () => {
   it("returns a retryable 409 when a settings transaction conflicts with staffing", async () => {
     const service = organizationSettingsServiceMock();
     vi.mocked(service.updateSchedulingSettings).mockRejectedValue(
-      Object.assign(new Error("The schedule is being updated"), {
-        code: "PT409",
-      }),
+      rpcFailure({ message: "The schedule is being updated", code: "PT409" }),
     );
     const app = buildApp({
       contextResolver: { resolve: async () => context },
@@ -142,7 +141,7 @@ describe("organization settings routes", () => {
       },
     });
     expect(response.statusCode).toBe(409);
-    expect(response.json()).toEqual({ error: "The schedule is being updated" });
+    expect(response.json()).toEqual({ error: "The schedule is being updated", requestId: expect.any(String) });
     await app.close();
   });
   it("loads scheduling settings through the API boundary for workspace members", async () => {

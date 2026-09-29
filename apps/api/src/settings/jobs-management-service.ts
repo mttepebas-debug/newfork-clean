@@ -14,7 +14,7 @@ import {
   type JobAssignmentChange,
   type JobAssignmentQuery,
 } from "@newfork/shared";
-import { managementAndOwnerRefusal } from "../http-error";
+import { rpcFailure } from "../http-error";
 
 export interface JobsRpcClient {
   rpc(
@@ -37,11 +37,7 @@ export function createJobsManagementService(client: JobsRpcClient) {
       target_workspace_id: actor.workspaceId,
       ...args,
     });
-    if (error)
-      throw (
-        managementAndOwnerRefusal(error) ??
-        Object.assign(new Error(error.message), { code: error.code })
-      );
+    if (error) throw rpcFailure(error);
     return data;
   }
   function readArgs(

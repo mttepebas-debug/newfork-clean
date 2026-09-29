@@ -1,4 +1,5 @@
 import { managementAndOwnerSentence } from "@newfork/shared";
+import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
 
 /**
  * HTTP status carried by the error instead of guessed from its English message.
@@ -80,8 +81,20 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // does neither, with one known exception: Schedule's past-edit refusals raise a
 // JSON payload as the message. It is swapped here like the rest; the Schedule
 // routes read the payload back from `cause` (schedule-routes.ts pastEditPayload).
+// Shift changes raise their eligibility reasons as a JSON list of sentences
+// on purpose (reasonList); that list stays too.
 // Widen this if another built-in message shape shows up in a 4xx.
 const postgresSentence = /"|^permission denied for /;
+
+function reasonList(message: string): boolean {
+  if (!message.startsWith("[")) return false;
+  try {
+    const parsed: unknown = JSON.parse(message);
+    return Array.isArray(parsed) && parsed.every((item) => typeof item === "string");
+  } catch {
+    return false;
+  }
+}
 const plainSentence: Record<number, string> = {
   400: "Request could not be completed",
   403: "Not allowed",
@@ -124,7 +137,7 @@ export function rpcFailure(
   // BL-218: these few refusals already have the sentence a person reads.
   const message =
     managementAndOwnerSentence(reason) ??
-    (!reason && postgresSentence.test(error.message)
+    (!reason && postgresSentence.test(error.message) && !reasonList(error.message)
       ? (plainSentence[status] ?? "Request could not be completed")
       : error.message);
   return new HttpError(message, status, {
@@ -135,15 +148,27 @@ export function rpcFailure(
   });
 }
 
+
 /**
- * The Management and Owner refusals (BL-218) as typed errors, for the services
- * that still throw plain Errors (BL-134): their route helpers match on wording
- * and would drop the key. Null for anything else, which keeps its old path.
+ * The one answer to a failed request (the app's error handler): the status the
+ * error carries, its machine key and detail beside the sentence, and the
+ * request id. Nothing above 499 says what went wrong; the log does.
  */
-export function managementAndOwnerRefusal(error: {
-  readonly message: string;
-  readonly code?: string;
-  readonly hint?: string | null;
-}): HttpError | null {
-  return managementAndOwnerSentence(error.hint) ? rpcFailure(error) : null;
+export function replyWithError(
+  error: FastifyError | Error,
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const statusCode = "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : 500;
+  if (statusCode >= 500) request.log.error({ err: error }, "request failed");
+  else request.log.warn({ err: error, statusCode }, "request rejected");
+  if (statusCode >= 500)
+    return reply.status(statusCode).send({ error: "Internal server error", requestId: request.id });
+  const typed = error instanceof HttpError ? error : undefined;
+  return reply.status(statusCode).send({
+    error: error.message,
+    ...(typed?.reason ? { reason: typed.reason } : {}),
+    ...(typed?.detail ? { detail: typed.detail } : {}),
+    requestId: request.id,
+  });
 }

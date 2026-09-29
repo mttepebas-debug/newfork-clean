@@ -18,7 +18,7 @@ import {
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { managementAndOwnerRefusal, rpcFailure } from "../http-error";
+import { rpcFailure } from "../http-error";
 
 export interface EmployeeTerminationInput {
   readonly effectiveLocal: string;
@@ -192,7 +192,7 @@ export function createEmployeeDirectoryServiceWithClient(
 ): EmployeeDirectoryService {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
-    if (error) throw managementAndOwnerRefusal(error) ?? new Error(error.message);
+    if (error) throw rpcFailure(error);
     return data;
   }
 

@@ -9,6 +9,7 @@ import {
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
+import { HttpError } from "../http-error";
 import type { AvailabilityService } from "./availability-service";
 
 type WeeklyService = Pick<
@@ -64,17 +65,9 @@ export function registerWeeklyPreferenceRoutes(
           params.data.workspaceId,
         );
       } catch (error) {
-        const status = weeklyErrorStatus(error);
-        if (status === 500)
-          request.log.error({ err: error }, "Team availability read failed");
-        return reply.status(status).send({
-          error:
-            status === 500
-              ? "Team availability could not be loaded."
-              : error instanceof Error
-                ? error.message
-                : "Team availability is unavailable.",
-        });
+        if (error instanceof HttpError && error.statusCode < 500) throw error;
+        request.log.error({ err: error }, "Team availability read failed");
+        return reply.status(500).send({ error: "Team availability could not be loaded." });
       }
     },
   );
@@ -139,20 +132,9 @@ export function registerWeeklyPreferenceRoutes(
                 params.data.workspaceId,
               );
         } catch (error) {
-          const status = weeklyErrorStatus(error);
-          if (status === 500)
-            request.log.error(
-              { err: error },
-              "Weekly preference settings failed",
-            );
-          return reply.status(status).send({
-            error:
-              status === 500
-                ? "Availability settings could not be confirmed. Retry the same save."
-                : error instanceof Error
-                  ? error.message
-                  : "Availability settings could not be processed.",
-          });
+          if (error instanceof HttpError && error.statusCode < 500) throw error;
+          request.log.error({ err: error }, "Weekly preference settings failed");
+          return reply.status(500).send({ error: "Availability settings could not be confirmed. Retry the same save." });
         }
       },
     });
@@ -260,39 +242,12 @@ export function registerWeeklyPreferenceRoutes(
                   key.data,
                 );
           } catch (error) {
-            const status = weeklyErrorStatus(error);
-            if (status === 500)
-              request.log.error(
-                { err: error },
-                "Weekly preference operation failed",
-              );
-            return reply.status(status).send({
-              error:
-                status === 500
-                  ? "Availability could not be processed. Your changes have not been confirmed; retry the same save."
-                  : error instanceof Error
-                    ? error.message
-                    : "Availability could not be processed.",
-            });
+            if (error instanceof HttpError && error.statusCode < 500) throw error;
+            request.log.error({ err: error }, "Weekly preference operation failed");
+            return reply.status(500).send({ error: "Availability could not be processed. Your changes have not been confirmed; retry the same save." });
           }
         },
       });
     }
   }
-}
-
-function weeklyErrorStatus(error: unknown) {
-  const code =
-    error && typeof error === "object" && "code" in error
-      ? String(error.code)
-      : "";
-  return code === "42501"
-    ? 403
-    : code === "P0002"
-      ? 404
-      : ["40001", "PT409"].includes(code)
-        ? 409
-        : ["22023", "22007", "22P02", "23514"].includes(code)
-          ? 422
-          : 500;
 }

@@ -25,6 +25,7 @@ const passwordRequired = {
 const passwordIncorrect = {
   error: "Current password is incorrect",
   reason: "session.password_incorrect",
+  requestId: expect.any(String),
 };
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const employeeId = "97f65b16-a7ad-4f50-990e-d89030ac4701";
@@ -76,7 +77,7 @@ describe("workspace account routes", () => {
   });
 
   it.each(["create", "search", "cancel"])("propagates DB owner denial for %s", async operation => {
-    const denied = vi.fn(async () => { throw new Error("workspace owner access required"); });
+    const denied = vi.fn(async () => { throw rpcFailure({ message: "workspace owner access required", code: "42501", hint: "workspace.owner_required" }); });
     const app = buildApp({ workspaceAccountService: { createWorkspace: denied, searchOwnershipCandidates: denied, cancelOwnershipTransfer: denied } as unknown as WorkspaceAccountService });
     const response = await app.inject({
       method: operation === "search" ? "GET" : "POST",
@@ -89,11 +90,11 @@ describe("workspace account routes", () => {
 
   it("returns 403 when a pending invitation blocks workspace creation", async () => {
     const message = "pending invitation must be resolved first";
-    const createWorkspace = vi.fn(async () => { throw new Error(message); });
+    const createWorkspace = vi.fn(async () => { throw rpcFailure({ message, code: "42501" }); });
     const app = buildApp({ workspaceAccountService: { createWorkspace } as unknown as WorkspaceAccountService });
     const response = await app.inject({ method: "POST", url: "/v1/account/workspaces", headers: { authorization: `Bearer ${accessToken}` }, payload: { name: "Invitee business" } });
     expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({ error: message });
+    expect(response.json()).toEqual({ error: message, requestId: expect.any(String) });
   });
 
   it("rejects a transfer without asking for the password", async () => {
@@ -219,7 +220,7 @@ describe("workspace account routes", () => {
 
   it("returns conflict when owner onboarding revision is stale", async () => {
     const saveOwnerOnboarding = vi.fn(async () => {
-      throw new Error("owner onboarding revision conflict");
+      throw rpcFailure({ message: "owner onboarding revision conflict", code: "40001" });
     });
     const app = buildApp({
       contextResolver: { resolve: async () => context },
@@ -243,6 +244,7 @@ describe("workspace account routes", () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: "owner onboarding revision conflict",
+      requestId: expect.any(String),
     });
     expect(saveOwnerOnboarding).toHaveBeenCalledWith(accessToken, {
       workspaceId,
@@ -578,6 +580,7 @@ describe("workspace account routes", () => {
     expect(response.json()).toEqual({
       error: "pending ownership transfer must be resolved before workspace closure",
       reason: "workspace.closure.transfer_pending",
+      requestId: expect.any(String),
     });
   });
 

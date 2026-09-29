@@ -142,12 +142,12 @@ export function createWorkspaceAccountService(options: {
     rpcClient,
     resolveActorUserId: async (accessToken) => {
       const user = await verifyUser(accessToken);
-      if (!user) throw new Error("Valid bearer session required");
+      if (!user) throw new HttpError("Valid bearer session required", 401);
       return user.id;
     },
     verifyPassword: async (accessToken, password) => {
       const user = await verifyUser(accessToken);
-      if (!user) throw new Error("Valid bearer session required");
+      if (!user) throw new HttpError("Valid bearer session required", 401);
       await verifyPasswordFor(user.id, password);
     },
   });

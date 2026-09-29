@@ -1,7 +1,7 @@
 import { timeOffDecisionInputSchema } from "@newfork/shared/schedule";
 import type { Permission } from "@newfork/shared";
 import { timeOffAssignmentPreviewInputSchema } from "@newfork/shared";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { WorkspaceContextResolver } from "../auth/workspace-context";
 import type { ScheduleRequestsService } from "./schedule-requests-service";
@@ -37,9 +37,7 @@ export function registerScheduleRequestsRoutes(
       if (context === "workspace_mismatch") return reply.status(404).send({ error: "Workspace not found" });
       if (!context) return reply.status(403).send({ error: "Time off management access required" });
       if (!options.service) return reply.status(503).send({ error: "Schedule request service is not configured" });
-      try {
-        return reply.send(await options.service.previewTimeOffAssignment({ actorUserId: context.userId, workspaceId: context.workspace.id, requestId: params.data.requestId, decision: body.data }));
-      } catch (error) { return requestError(reply, error); }
+      return reply.send(await options.service.previewTimeOffAssignment({ actorUserId: context.userId, workspaceId: context.workspace.id, requestId: params.data.requestId, decision: body.data }));
     },
   );
   app.get(
@@ -70,21 +68,17 @@ export function registerScheduleRequestsRoutes(
         return reply
           .status(503)
           .send({ error: "Schedule request service is not configured" });
-      try {
-        return reply.send(
-          await options.service.get({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            timeOffQueue: query.data.time_off_queue,
-            locationId: query.data.location_id ?? null,
-            search: query.data.search,
-            timeOffCursor: query.data.time_off_cursor ?? null,
-            limit: query.data.limit,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.get({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          timeOffQueue: query.data.time_off_queue,
+          locationId: query.data.location_id ?? null,
+          search: query.data.search,
+          timeOffCursor: query.data.time_off_cursor ?? null,
+          limit: query.data.limit,
+        }),
+      );
     },
   );
 
@@ -110,17 +104,13 @@ export function registerScheduleRequestsRoutes(
         return reply
           .status(503)
           .send({ error: "Schedule request service is not configured" });
-      try {
-        return reply.send(
-          await options.service.markTimeOffViewed({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            requestId: params.data.requestId,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.markTimeOffViewed({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          requestId: params.data.requestId,
+        }),
+      );
     },
   );
 
@@ -149,18 +139,14 @@ export function registerScheduleRequestsRoutes(
         return reply
           .status(503)
           .send({ error: "Schedule request service is not configured" });
-      try {
-        return reply.send(
-          await options.service.resolveTimeOff({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            requestId: params.data.requestId,
-            decision: body.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.resolveTimeOff({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          requestId: params.data.requestId,
+          decision: body.data,
+        }),
+      );
     },
   );
 
@@ -186,21 +172,17 @@ export function registerScheduleRequestsRoutes(
       return reply
         .status(503)
         .send({ error: "Schedule request service is not configured" });
-    try {
-      return reply.send(
-        await options.service.get({
-          actorUserId: context.userId,
-          workspaceId: context.workspace.id,
-          timeOffQueue: query.data.time_off_queue,
-          locationId: query.data.location_id ?? null,
-          search: query.data.search,
-          timeOffCursor: query.data.time_off_cursor ?? null,
-          limit: query.data.limit,
-        }),
-      );
-    } catch (error) {
-      return requestError(reply, error);
-    }
+    return reply.send(
+      await options.service.get({
+        actorUserId: context.userId,
+        workspaceId: context.workspace.id,
+        timeOffQueue: query.data.time_off_queue,
+        locationId: query.data.location_id ?? null,
+        search: query.data.search,
+        timeOffCursor: query.data.time_off_cursor ?? null,
+        limit: query.data.limit,
+      }),
+    );
   });
 
   app.post("/schedule/requests/time-off/:requestId/viewed", async (request, reply) => {
@@ -218,17 +200,13 @@ export function registerScheduleRequestsRoutes(
       return reply
         .status(503)
         .send({ error: "Schedule request service is not configured" });
-    try {
-      return reply.send(
-        await options.service.markTimeOffViewed({
-          actorUserId: context.userId,
-          workspaceId: context.workspace.id,
-          requestId: params.data.requestId,
-        }),
-      );
-    } catch (error) {
-      return requestError(reply, error);
-    }
+    return reply.send(
+      await options.service.markTimeOffViewed({
+        actorUserId: context.userId,
+        workspaceId: context.workspace.id,
+        requestId: params.data.requestId,
+      }),
+    );
   });
 
   app.post(
@@ -253,18 +231,14 @@ export function registerScheduleRequestsRoutes(
         return reply
           .status(503)
           .send({ error: "Schedule request service is not configured" });
-      try {
-        return reply.send(
-          await options.service.resolveTimeOff({
-            actorUserId: context.userId,
-            workspaceId: context.workspace.id,
-            requestId: params.data.requestId,
-            decision: body.data,
-          }),
-        );
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send(
+        await options.service.resolveTimeOff({
+          actorUserId: context.userId,
+          workspaceId: context.workspace.id,
+          requestId: params.data.requestId,
+          decision: body.data,
+        }),
+      );
     },
   );
 }
@@ -319,21 +293,4 @@ async function authorizeAny(
   return permissions.some((permission) => context.permissions.includes(permission))
     ? context
     : null;
-}
-
-function requestError(reply: FastifyReply, error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "Request operation failed";
-  if (message.includes("access denied") || message.includes("scope denied"))
-    return reply.status(403).send({ error: message });
-  if (message.includes("not found"))
-    return reply.status(404).send({ error: message });
-  if (
-    message.includes("stale") ||
-    message.includes("conflict") ||
-    message.includes("not pending") ||
-    message.includes("transition")
-  )
-    return reply.status(409).send({ error: message });
-  return reply.status(400).send({ error: message });
 }

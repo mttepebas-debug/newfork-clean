@@ -5,6 +5,7 @@ import {
   type SchedulingSettings,
   type SchedulingSettingsInput,
 } from "@newfork/shared";
+import { rpcFailure } from "../http-error";
 
 export interface OrganizationSettingsService {
   readonly jobs?: JobsManagementService;
@@ -66,7 +67,7 @@ export function createOrganizationSettingsServiceWithClient(
 ): OrganizationSettingsService {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { error } = await client.rpc(name, args);
-    if (error) throw new Error(error.message);
+    if (error) throw rpcFailure(error);
   }
 
   return {
@@ -79,7 +80,7 @@ export function createOrganizationSettingsServiceWithClient(
         )
         .eq("workspace_id", input.workspaceId)
         .single();
-      if (error) throw new Error(error.message);
+      if (error) throw rpcFailure(error);
       return schedulingSettingsSchema.parse(data);
     },
     async updateSchedulingSettings(input) {
@@ -88,7 +89,7 @@ export function createOrganizationSettingsServiceWithClient(
         target_workspace_id: input.workspaceId,
         settings: input.settings,
       });
-      if (error) throw Object.assign(new Error(error.message), { code: error.code });
+      if (error) throw rpcFailure(error);
       return schedulingSettingsSchema.parse(data);
     },
     async reorderEntities(input) {

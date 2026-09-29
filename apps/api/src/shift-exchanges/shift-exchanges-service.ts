@@ -8,6 +8,7 @@ import {
   type ExchangeCommand,
 } from "@newfork/shared";
 import { scheduleEditSessionSchema } from "@newfork/shared/schedule";
+import { rpcFailure } from "../http-error";
 
 export function createShiftExchangesService(options: {
   url: string;
@@ -18,8 +19,7 @@ export function createShiftExchangesService(options: {
   });
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
-    if (error)
-      throw Object.assign(new Error(error.message), { code: error.code });
+    if (error) throw rpcFailure(error);
     return data;
   }
   return {

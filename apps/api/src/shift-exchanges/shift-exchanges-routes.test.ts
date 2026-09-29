@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
+import { replyWithError, rpcFailure } from "../http-error";
 import { registerShiftExchangesRoutes } from "./shift-exchanges-routes";
 import type { ShiftExchangesService } from "./shift-exchanges-service";
 
@@ -17,6 +18,7 @@ const context = {
 } as ActiveWorkspaceContext;
 function setup(resolved: ActiveWorkspaceContext | null = context) {
   const app = Fastify();
+  app.setErrorHandler(replyWithError);
   const service: ShiftExchangesService = {
     recoverSchedule: vi.fn().mockResolvedValue({ changes: [] }),
     read: vi.fn().mockResolvedValue({ cases: [] }),
@@ -192,7 +194,7 @@ describe("Shift exchange authorization boundary", () => {
   it("returns conflict for a stale decision and does not report success", async () => {
     const { app, service } = setup();
     vi.mocked(service.command).mockRejectedValue(
-      Object.assign(new Error("Review the latest details"), { code: "40001" }),
+      rpcFailure({ message: "Review the latest details", code: "40001" }),
     );
     const response = await app.inject({
       method: "POST",

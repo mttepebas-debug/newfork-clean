@@ -1,6 +1,7 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
+import { rpcFailure } from "../http-error";
 import { registerNotificationSettingsRoutes } from "./notification-settings-routes";
 import type { NotificationSettingsService } from "./notification-settings-service";
 
@@ -151,7 +152,7 @@ describe("notification settings routes", () => {
   it("returns a conflict when the policy version is stale", async () => {
     const app = build({
       save: async () => {
-        throw new Error("notification policy stale version");
+        throw rpcFailure({ message: "notification policy stale version", code: "40001" });
       },
     } as unknown as NotificationSettingsService);
     const response = await app.inject({

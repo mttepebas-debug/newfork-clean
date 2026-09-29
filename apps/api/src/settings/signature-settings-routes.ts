@@ -38,7 +38,7 @@ export function registerSignatureSettingsRoutes(
         const version = z.string().uuid().parse(params.data.versionId);
         if (operation === "preview") return await options.service.preview(context.userId, params.data.workspaceId, version);
         return await options.service.apply(context.userId, params.data.workspaceId, version, documentApplyCommandSchema.parse(request.body));
-      } catch (error) { if (error instanceof z.ZodError) return reply.status(400).send({ error: "Valid policy application required" }); return requestError(reply, error); }
+      } catch (error) { if (error instanceof z.ZodError) return reply.status(400).send({ error: "Valid policy application required" }); throw error; }
     }});
   }
 
@@ -63,17 +63,13 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Signature settings service is not configured" });
-      try {
-        return reply.status(201).send({
-          id: await options.service.saveRetentionPolicy({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            policy: body.data,
-          }),
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.status(201).send({
+        id: await options.service.saveRetentionPolicy({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          policy: body.data,
+        }),
+      });
     },
   );
 
@@ -98,18 +94,14 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Signature settings service is not configured" });
-      try {
-        return reply.send({
-          id: await options.service.saveRetentionPolicy({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            policyId: params.data.policyId,
-            policy: body.data,
-          }),
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send({
+        id: await options.service.saveRetentionPolicy({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          policyId: params.data.policyId,
+          policy: body.data,
+        }),
+      });
     },
   );
 
@@ -133,16 +125,12 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Signature settings service is not configured" });
-      try {
-        await options.service.approveRetentionPolicy({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          policyId: params.data.policyId,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.approveRetentionPolicy({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        policyId: params.data.policyId,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -166,16 +154,12 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Signature settings service is not configured" });
-      try {
-        await options.service.unapproveRetentionPolicy({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          policyId: params.data.policyId,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.unapproveRetentionPolicy({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        policyId: params.data.policyId,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -200,17 +184,13 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Signature settings service is not configured" });
-      try {
-        await options.service.setRetentionPolicyArchived({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          policyId: params.data.policyId,
-          archived: body.data.archived,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.setRetentionPolicyArchived({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        policyId: params.data.policyId,
+        archived: body.data.archived,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -235,17 +215,13 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Signature settings service is not configured" });
-      try {
-        return reply.status(201).send({
-          id: await options.service.saveTemplateDraft({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            template: body.data,
-          }),
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.status(201).send({
+        id: await options.service.saveTemplateDraft({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          template: body.data,
+        }),
+      });
     },
   );
 
@@ -270,18 +246,14 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Signature settings service is not configured" });
-      try {
-        return reply.send({
-          id: await options.service.saveTemplateDraft({
-            actorUserId: context.userId,
-            workspaceId: params.data.workspaceId,
-            templateId: params.data.templateId,
-            template: body.data,
-          }),
-        });
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      return reply.send({
+        id: await options.service.saveTemplateDraft({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          templateId: params.data.templateId,
+          template: body.data,
+        }),
+      });
     },
   );
 
@@ -305,16 +277,12 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Signature settings service is not configured" });
-      try {
-        await options.service.publishTemplate({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          templateId: params.data.templateId,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.publishTemplate({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        templateId: params.data.templateId,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -338,16 +306,12 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Signature settings service is not configured" });
-      try {
-        await options.service.unpublishTemplate({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          templateId: params.data.templateId,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.unpublishTemplate({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        templateId: params.data.templateId,
+      });
+      return reply.status(204).send();
     },
   );
 
@@ -372,17 +336,13 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(503)
           .send({ error: "Signature settings service is not configured" });
-      try {
-        await options.service.setTemplateArchived({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          templateId: params.data.templateId,
-          archived: body.data.archived,
-        });
-        return reply.status(204).send();
-      } catch (error) {
-        return requestError(reply, error);
-      }
+      await options.service.setTemplateArchived({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        templateId: params.data.templateId,
+        archived: body.data.archived,
+      });
+      return reply.status(204).send();
     },
   );
 }
@@ -408,27 +368,4 @@ async function authorize(
         : "Acknowledgement template management required",
   });
   return null;
-}
-
-function requestError(reply: FastifyReply, error: unknown) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : "Signature settings operation failed";
-  if (
-    message.includes("access required") ||
-    message.includes("access denied") ||
-    message.includes("denied")
-  )
-    return reply.status(403).send({ error: message });
-  if (message.includes("not found"))
-    return reply.status(404).send({ error: message });
-  if (
-    message.includes("approved") ||
-    message.includes("immutable") ||
-    message.includes("required") ||
-    message.includes("exists")
-  )
-    return reply.status(409).send({ error: message });
-  return reply.status(400).send({ error: message });
 }

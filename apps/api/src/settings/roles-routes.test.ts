@@ -1,5 +1,6 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
+import { rpcFailure } from "../http-error";
 import { buildApp } from "../app";
 import type { RolesService } from "./roles-service";
 
@@ -230,7 +231,7 @@ describe("roles routes", () => {
       contextResolver: { resolve: async () => context },
       rolesService: {
         save: vi.fn(async () => {
-          throw new Error(message);
+          throw rpcFailure({ message, code: "PT409" });
         }),
         delete: vi.fn(),
       },
@@ -242,6 +243,6 @@ describe("roles routes", () => {
       payload: { ...roleInput, expected_updated_at: version },
     });
     expect(response.statusCode).toBe(409);
-    expect(response.json()).toEqual({ error: message });
+    expect(response.json()).toEqual({ error: message, requestId: expect.any(String) });
   });
 });

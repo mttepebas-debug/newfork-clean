@@ -30,6 +30,6 @@ describe("shared scheduling travel policy", () => {
     const service = createOrganizationSettingsServiceWithClient({ from: vi.fn(), rpc: vi.fn(async () => ({
       data: null, error: { message: "The schedule is being updated", code: "PT409" },
     })) });
-    await expect(service.updateSchedulingSettings({ actorUserId, workspaceId, settings })).rejects.toMatchObject({ code: "PT409" });
+    await expect(service.updateSchedulingSettings({ actorUserId, workspaceId, settings })).rejects.toMatchObject({ statusCode: 409, pgCode: "PT409" });
   });
 });

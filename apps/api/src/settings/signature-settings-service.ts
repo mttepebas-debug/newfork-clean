@@ -7,6 +7,7 @@ import {
   type SignatureTemplateDraftInput,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
+import { rpcFailure } from "../http-error";
 
 export interface SignatureSettingsService {
   targetOptions(actor: string, workspace: string): Promise<DocumentTargetOptions>;
@@ -80,7 +81,7 @@ export function createSignatureSettingsServiceWithClient(
 ): SignatureSettingsService {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
-    if (error) throw new Error(error.message);
+    if (error) throw rpcFailure(error);
     return data;
   }
 

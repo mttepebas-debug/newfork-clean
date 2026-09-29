@@ -45,7 +45,7 @@ describe("weekly preferences onboarding identity", () => {
         operation === "preview"
           ? service.onboardingPreviewWeekly("validated-token", input)
           : service.onboardingSaveWeekly("validated-token", input, workspace);
-      await expect(result).rejects.toMatchObject({ code: "42501" });
+      await expect(result).rejects.toMatchObject({ statusCode: 403, reason: "authz.out_of_scope" });
       expect(rpc).toHaveBeenCalledTimes(1);
     },
   );
@@ -62,7 +62,7 @@ describe("weekly preferences onboarding identity", () => {
         operation === "preview"
           ? service.onboardingPreviewWeekly("validated-token", input)
           : service.onboardingSaveWeekly("validated-token", input, workspace);
-      await expect(result).rejects.toMatchObject({ code: "42501" });
+      await expect(result).rejects.toMatchObject({ statusCode: 403, reason: "authz.out_of_scope" });
       expect(rpc).toHaveBeenCalledTimes(1);
     },
   );
@@ -100,7 +100,7 @@ describe("weekly preferences onboarding identity", () => {
     });
     await expect(
       service.onboardingReadWeekly("expired-token"),
-    ).rejects.toMatchObject({ code: "42501" });
+    ).rejects.toMatchObject({ statusCode: 401 });
     expect(rpc).not.toHaveBeenCalled();
   });
 });

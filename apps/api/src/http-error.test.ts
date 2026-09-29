@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { HttpError, managementAndOwnerRefusal, rpcFailure, statusForPostgresCode } from "./http-error.js";
+import { HttpError, rpcFailure, statusForPostgresCode } from "./http-error.js";
 
 describe("statusForPostgresCode", () => {
   it("maps the codes the RPCs raise on purpose", () => {
@@ -152,6 +152,22 @@ describe("rpcFailure keeps database internals out", () => {
     expect(failure.detail).toBeUndefined();
     expect(failure.message).toBe("Resolve shift hours or approved time off before saving");
   });
+
+  // Shift changes raise their eligibility reasons as a JSON list of sentences
+  // (PT409); the screen shows them one per line. A list is on purpose.
+  it("keeps a list of reasons a Shift change was refused with", () => {
+    const reasons = '["Ali is not qualified for Bartender", "Overlaps Tuesday 9:00 AM"]';
+    const failure = rpcFailure({ message: reasons, code: "PT409" });
+
+    expect(failure.statusCode).toBe(409);
+    expect(failure.message).toBe(reasons);
+  });
+
+  it("swaps a quoted sentence that only looks like a list", () => {
+    const failure = rpcFailure({ message: '[{"relation": "employees"}]', code: "P0001" });
+
+    expect(failure.message).toBe("Request could not be completed");
+  });
 });
 
 describe("the Management and Owner refusals (BL-218)", () => {
@@ -212,14 +228,4 @@ describe("the Management and Owner refusals (BL-218)", () => {
     expect(failure.message).toBe(sentence);
   });
 
-  it("types only these refusals for the services that still throw plain errors", () => {
-    expect(
-      managementAndOwnerRefusal({ message: "The owner keeps the Owner job", code: "23514", hint: "employee.owner_job" }),
-    ).toMatchObject({ statusCode: 400, reason: "employee.owner_job" });
-    // The core's no keeps its own 403 path; it is not one of these.
-    expect(
-      managementAndOwnerRefusal({ message: "Only the workspace owner works the Owner job", code: "42501", hint: "authz.owner_only" }),
-    ).toBeNull();
-    expect(managementAndOwnerRefusal({ message: "boom", code: "23514" })).toBeNull();
-  });
 });

@@ -5,6 +5,7 @@ import {
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
+import { HttpError } from "../http-error";
 import type { AvailabilityService } from "./availability-service";
 import { registerWeeklyPreferenceRoutes } from "./weekly-preferences-routes";
 
@@ -53,33 +54,9 @@ export function registerAvailabilityRoutes(
           input.data.session_id,
         );
       } catch (error) {
-        const code =
-          error && typeof error === "object" && "code" in error
-            ? String(error.code)
-            : "";
-        const status =
-          code === "42501"
-            ? 403
-            : ["40001", "PT409"].includes(code)
-              ? 409
-              : ["22023", "22007", "22P02", "23514"].includes(code)
-                ? 422
-                : 500;
-        if (status === 500)
-          request.log.error(
-            { err: error },
-            "Shift availability assessment failed",
-          );
-        return reply
-          .status(status)
-          .send({
-            error:
-              status === 500
-                ? "Availability could not be checked. Please retry."
-                : error instanceof Error
-                  ? error.message
-                  : "Unable to check availability",
-          });
+        if (error instanceof HttpError && error.statusCode < 500) throw error;
+        request.log.error({ err: error }, "Shift availability assessment failed");
+        return reply.status(500).send({ error: "Availability could not be checked. Please retry." });
       }
     },
   );

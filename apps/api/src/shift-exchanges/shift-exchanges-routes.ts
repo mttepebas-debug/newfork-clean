@@ -5,6 +5,7 @@ import {
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
+import { HttpError } from "../http-error";
 import type { ShiftExchangesService } from "./shift-exchanges-service";
 
 const paramsSchema = z.object({ workspaceId: z.string().uuid() });
@@ -64,33 +65,9 @@ export function registerShiftExchangesRoutes(
           key?.success ? key.data : undefined,
         );
       } catch (error) {
-        const code =
-          error && typeof error === "object" && "code" in error
-            ? String(error.code)
-            : "";
-        const status =
-          code === "42501"
-            ? 403
-            : code === "PT409" || code === "40001"
-              ? 409
-              : code === "22023"
-                ? 400
-                : 500;
-        if (status === 500)
-          request.log.error(
-            { err: error },
-            "Schedule exchange recovery failed",
-          );
-        return reply
-          .status(status)
-          .send({
-            error:
-              status === 500
-                ? "Unable to review the approved assignments. Your edits are still here."
-                : error instanceof Error
-                  ? error.message
-                  : "Schedule recovery failed",
-          });
+        if (error instanceof HttpError && error.statusCode < 500) throw error;
+        request.log.error({ err: error }, "Schedule exchange recovery failed");
+        return reply.status(500).send({ error: "Unable to review the approved assignments. Your edits are still here." });
       }
     },
   });
@@ -160,32 +137,9 @@ export function registerShiftExchangesRoutes(
           query.data.case_id,
         );
       } catch (error) {
-        const code =
-          error && typeof error === "object" && "code" in error
-            ? String(error.code)
-            : "";
-        const status =
-          code === "42501"
-            ? 403
-            : code === "P0002"
-              ? 404
-              : code === "PT409" || code === "40001" || code === "23505"
-                ? 409
-                : code === "55000"
-                  ? 423
-                  : code === "P0001" || code === "22023"
-                    ? 422
-                    : 500;
-        if (status === 500)
-          request.log.error({ err: error }, "Shift exchange failed");
-        return reply.status(status).send({
-          error:
-            status === 500
-              ? "Shift changes are unavailable. Please retry."
-              : error instanceof Error
-                ? error.message
-                : "Unable to update this request",
-        });
+        if (error instanceof HttpError && error.statusCode < 500) throw error;
+        request.log.error({ err: error }, "Shift exchange failed");
+        return reply.status(500).send({ error: "Shift changes are unavailable. Please retry." });
       }
     },
   });
