@@ -43,7 +43,7 @@ select is((select count(*)::int from public.time_off_decision_pieces where works
 select is((select revision from public.schedule_time_off_requests where id=(select request from tpd)),1,'rejected pieces do not advance revision');
 select is((select count(*)::int from public.schedule_time_off_events where request_id=(select request from tpd)),1,'rejected pieces do not write a decision event');
 select throws_ok($$select public.resolve_schedule_time_off_request_service(actor,w,request,1,'approve') from tpd$$,'42501',null,'employee cannot decide own request');
-select throws_ok($$select public.resolve_time_off_period_decision_service(manager,gen_random_uuid(),request,1,'approve','','[]',gen_random_uuid()) from tpd$$,'P0002',null,'a different workspace cannot resolve this request');
+select throws_ok($$select public.resolve_time_off_period_decision_service(manager,gen_random_uuid(),request,1,'approve','','[]',gen_random_uuid()) from tpd$$,'42501','Not allowed','a different workspace cannot resolve this request: out of scope, as an unknown one (BL-354)');
 select throws_ok($$select public.resolve_schedule_time_off_request_service(manager,w,request,null,'approve') from tpd$$,'40001','stale time off request','null revision cannot bypass optimistic concurrency');
 -- A manager whose employee profile owns the request also needs another reviewer.
 update public.workspace_memberships set role='admin',role_id=(select id from public.workspace_roles where workspace_id=(select w from tpd) and access_class='admin' limit 1) where user_id=(select actor from tpd) and workspace_id=(select w from tpd);
