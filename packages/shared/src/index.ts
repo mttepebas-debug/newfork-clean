@@ -1587,6 +1587,8 @@ export const schedulePublicationLocationStatusSchema = z.object({
   draft_shift_count: z.coerce.number().int().nonnegative(),
   published_at: z.string().datetime({ offset: true }).nullable(),
   published_by_name: z.string().trim().min(1).max(161).nullable(),
+  source_draft_id: z.string().uuid().nullable(),
+  source_draft_name: z.string().nullable(),
 });
 export const schedulePublicationStatusSchema = z.object({
   week_start: z.string().date(),

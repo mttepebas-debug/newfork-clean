@@ -103,6 +103,11 @@ export function DraftDropdownMenu({
   const hasPublishedDraftRow =
     !!publishedDraftId && drafts.some((draft) => draft.id === publishedDraftId);
   const showPublishedFallbackRow = !!publishedSchedule && !hasPublishedDraftRow;
+  // The live draft closes the list, in the same place as the fallback row.
+  const orderedDrafts = [
+    ...drafts.filter((draft) => draft.id !== publishedDraftId),
+    ...drafts.filter((draft) => draft.id === publishedDraftId),
+  ];
   const visibleDraftCount = drafts.length + (showPublishedFallbackRow ? 1 : 0);
   const triggerDisabled =
     visibleDraftCount === 0 && (!canManageDrafts || editDisabled);
@@ -217,7 +222,7 @@ export function DraftDropdownMenu({
           <div className="schedule-draft-menu-list">
             {visibleDraftCount ? (
               <>
-                {drafts.map((draft) => {
+                {orderedDrafts.map((draft) => {
                   const active = activeDraftId === draft.id;
                   const isPublishedDraft = publishedDraftId === draft.id;
                   const deleteDisabled =
@@ -314,7 +319,7 @@ export function DraftDropdownMenu({
                                 ? "Currently being edited"
                                 : undefined
                           }
-                          confirmLabel={<CheckCircle2 size={14} />}
+                          confirmLabel="Delete?"
                           onClick={(event) => event.stopPropagation()}
                           onConfirm={() => onDeleteDraft(draft)}
                         >
@@ -427,7 +432,7 @@ export function DraftDropdownMenu({
                             unstyled
                             aria-label={`Delete template ${template.name}`}
                             confirmName={`Confirm delete template ${template.name}`}
-                            confirmLabel={<CheckCircle2 size={14} />}
+                            confirmLabel="Delete?"
                             onClick={(event) => event.stopPropagation()}
                             onConfirm={() => onDeleteTemplate(template)}
                           >
@@ -453,9 +458,6 @@ export function DraftDropdownMenu({
               ) : null}
             </>
           ) : null}
-          <p className="schedule-menu-hint" aria-hidden="true">
-            <kbd>Enter</kbd> open <kbd>Esc</kbd> close
-          </p>
         </div>
       ) : null}
     </div>
@@ -557,12 +559,14 @@ function PublishedFallbackRow({
         onPreview();
       }}
     >
-      <span className="schedule-draft-menu-published-chip">
-        <CheckCircle2 size={12} />
-        Published
-      </span>
       <div>
-        <strong>{publishedTitle(publishedSchedule)}</strong>
+        <span className="schedule-draft-menu-title-line">
+          <strong>{publishedTitle(publishedSchedule)}</strong>
+          <span className="schedule-draft-menu-published-chip">
+            <CheckCircle2 size={12} />
+            Published
+          </span>
+        </span>
         <small>{publishedMeta(publishedSchedule)}</small>
         <PublishedLocationBadges statuses={publishedLocationStatuses} />
       </div>

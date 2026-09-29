@@ -2268,6 +2268,9 @@ export function SchedulePage({
                     published_at: publishedScheduleSummary.published_at,
                     published_by_name:
                       publishedScheduleSummary.published_by_name,
+                    source_draft_id: publishedScheduleSummary.source_draft_id,
+                    source_draft_name:
+                      publishedScheduleSummary.source_draft_name,
                   }
                 : null
             }
@@ -2314,6 +2317,8 @@ export function SchedulePage({
               ? {
                   published_at: publishedScheduleSummary.published_at,
                   published_by_name: publishedScheduleSummary.published_by_name,
+                  source_draft_id: publishedScheduleSummary.source_draft_id,
+                  source_draft_name: publishedScheduleSummary.source_draft_name,
                 }
               : null
           }

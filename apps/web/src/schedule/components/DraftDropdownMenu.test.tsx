@@ -5,6 +5,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { DraftDropdownMenu } from "./DraftDropdownMenu";
 
@@ -32,6 +33,8 @@ const publishedLocation = {
   draft_shift_count: 4,
   published_at: "2026-08-17T12:45:00Z",
   published_by_name: "Mina Yilmaz",
+  source_draft_id: null,
+  source_draft_name: null,
 };
 
 const template = {
@@ -151,11 +154,87 @@ describe("DraftDropdownMenu", () => {
       within(dialog).getByRole("button", { name: "Delete Plan A" }),
     );
     expect(onDeleteDraft).not.toHaveBeenCalled();
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: "Confirm delete Plan A" }),
-    );
+    const armed = within(dialog).getByRole("button", {
+      name: "Confirm delete Plan A",
+    });
+    expect(armed.textContent).toBe("Delete?");
+    fireEvent.click(armed);
 
     expect(onDeleteDraft).toHaveBeenCalledWith(draftA);
+    expect(within(dialog).queryByText("Enter")).toBeNull();
+  });
+
+  it("keeps the row tools on screen, not only on hover", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    const rowTools = styles.match(
+      /\.schedule-draft-menu-row > button,\s*\.schedule-draft-menu-template-row > button\s*\{([^}]*)\}/,
+    )?.[1];
+
+    expect(rowTools).toContain("color: var(--theme-muted)");
+    expect(rowTools).not.toContain("opacity");
+  });
+
+  it("names the live draft and lists it last, after the other drafts", () => {
+    const planB = { ...draftA, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Plan B" };
+
+    render(
+      <DraftDropdownMenu
+        drafts={[draftA, planB]}
+        activeDraftId={null}
+        triggerLabel="New Schedule"
+        publishedSchedule={{
+          source_draft_id: draftA.id,
+          source_draft_name: draftA.name,
+          published_at: "2026-08-17T12:45:00Z",
+          published_by_name: "Mina Yilmaz",
+        }}
+        onPreviewDraft={vi.fn()}
+        onEditDraft={vi.fn()}
+        onStartBlankDraft={vi.fn()}
+        onDeleteDraft={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Draft selector: New Schedule" }),
+    );
+    const rows = Array.from(document.querySelectorAll("[data-draft-row]"));
+    expect(rows.map((row) => row.querySelector("strong")?.textContent)).toEqual(
+      ["Plan B", "Plan A"],
+    );
+    expect(rows[1]?.getAttribute("data-published-draft-row")).toBe("true");
+    expect(
+      rows[1]?.querySelector(".schedule-draft-menu-title-line")?.textContent,
+    ).toBe("Plan APublished");
+    expect(document.querySelector("[data-published-fallback-row]")).toBeNull();
+  });
+
+  it("names a deleted live draft by the name it was published under", () => {
+    render(
+      <DraftDropdownMenu
+        drafts={[]}
+        activeDraftId={null}
+        triggerLabel="New Schedule"
+        publishedSchedule={{
+          source_draft_id: draftA.id,
+          source_draft_name: "Week 34 final",
+          published_at: "2026-08-17T12:45:00Z",
+          published_by_name: "Mina Yilmaz",
+        }}
+        onPreviewDraft={vi.fn()}
+        onEditDraft={vi.fn()}
+        onStartBlankDraft={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Draft selector: New Schedule" }),
+    );
+    const row = document.querySelector("[data-published-fallback-row]");
+    expect(
+      row?.querySelector(".schedule-draft-menu-title-line")?.textContent,
+    ).toBe("Week 34 finalPublished");
+    expect(screen.queryByText("Published schedule")).toBeNull();
   });
 
   it("prefetches drafts on open and highlights the trigger", () => {

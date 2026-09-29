@@ -4002,6 +4002,8 @@ function schedulePublicationStatusMockModel() {
         draft_shift_count: 1,
         published_at: "2026-08-17T12:00:00.000Z",
         published_by_name: null,
+        source_draft_id: null,
+        source_draft_name: null,
       },
     ],
   };

@@ -418,6 +418,8 @@ function resetScheduleApiMocks() {
         draft_shift_count: 0,
         published_at: "2026-08-17T12:00:00Z",
         published_by_name: "Development Owner",
+        source_draft_id: null,
+        source_draft_name: null,
       },
     ],
   });
@@ -1034,6 +1036,8 @@ describe("App", () => {
         draft_shift_count: 0,
         published_at: null,
         published_by_name: null,
+        source_draft_id: null,
+        source_draft_name: null,
       })),
     });
 
@@ -1109,6 +1113,8 @@ describe("App", () => {
         draft_shift_count: 0,
         published_at: null,
         published_by_name: null,
+        source_draft_id: null,
+        source_draft_name: null,
       })),
     });
 
@@ -4511,6 +4517,8 @@ describe("App", () => {
           draft_shift_count: 0,
           published_at: null,
           published_by_name: null,
+          source_draft_id: null,
+          source_draft_name: null,
         },
       ],
     });

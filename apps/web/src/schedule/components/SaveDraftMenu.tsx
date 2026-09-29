@@ -362,9 +362,6 @@ export function SaveDraftMenu({
             </p>
           )}
           <div className="schedule-save-menu-footer">
-            <p className="schedule-menu-hint" aria-hidden="true">
-              <kbd>Enter</kbd> save <kbd>Esc</kbd> close
-            </p>
             <button type="button" onClick={() => setOpen(false)}>
               Close
             </button>
