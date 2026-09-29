@@ -114,6 +114,51 @@ Kırmızı `d5d2610f`, düzeltme `67e24b14` — `20260930130000` dosyasının i�
   testlerin `as_api` kalıbını da muaf sayardı). `memberships_update_manager` / `memberships_delete_manager` silindi,
   `retired_objects_stay_gone`'da.
 
+## T5b `.6` kalanı + O-2 — 2026-09-30 (dal `task/fb62-core-a-t5b-3`, taban `5b2fb0d7`)
+Migration'lar: `20260930160000_jobs_ask_the_core`, `…161000_the_dashboard_asks_the_core`,
+`…162000_refusals_answer_alike`, `…163000_the_old_person_helper_goes`; O-2 ve D-c düzeltmesi `20260930140000`'in
+içinde (hiçbir DB'ye uygulanmadı). Testler: yeni `people_behind_the_catalog_ask_the_core`, `refusals_answer_alike`
+(ikisi `ci-green.txt`'te), `invitations_on_the_core`'a O-2 hücresi.
+- **P1 iş katalogu (5):** Assign çekmecesi ve iş sayıları `employee.list` ile (M2: yönetici lokasyonundaki owner/admin'i
+  salt okunur görür, "yalnız yönetir" kişisi KK-29'la görünür); iş atama kişi kişi `employee.save` (rütbe altı; admin
+  başka admin'in işini değiştirmez, KK-24). `app_private.job_assignment_candidates` imzası `(actor, w, job)` oldu;
+  okuyan iki servis (`read_job_assignments_service`, `read_new_…`) de jwt yazmıyor. Yardımcı:
+  `app_private.authorize_employee_list` (liste kalıbı, `list_employees_service` ile aynı).
+- **BL-187 kapandı:** lokasyon silme `settings.locations.write` (org/write: owner/admin; yönetici `authz.missing_permission`
+  ya da izni varsa `out_of_scope`). Kişi kişi kontrol **kaldırıldı**: silen, orada çalışan herkesin (kendisi ve başka
+  admin dahil) atamasını bitirir (Ç3 "owner/admin her lokasyonu siler"). İş silme `settings.jobs.write` + işteki herkes
+  için `employee.save` (eskisi gibi). Vardiya tipi/etiket silme `settings.jobs.write` kuralını
+  `settings.shift_catalog.manage` izniyle kullanıyor (ayrı eylem FB-6.8'de; `ponytail:` notu migration'da).
+- **P1 pano (3):** to-do kişisi `employee.read`; Workspace home sayıları `scope_set('schedule.read' / 'requests.read')`
+  (yalnız yönettiği lokasyon da sayılır; izni olmayan sayıyı 0 görür). Kapı ipuçlu (`app_private.authorize_workspace_todos`).
+- **BL-155:** hafta listesi `scope_set('schedule.read')`, arşivli lokasyon eskisi gibi dışarıda.
+- **BL-354:** Hub kapısı `not_member`/`not_active`/`workspace_closed`/kaydı yoksa `out_of_scope`. Karar, önizleme,
+  kısaltma: `app_private.authorize_time_off_request` kilitten önce; bilinmeyen/başka workspace'in talebi kapsam dışıyla
+  **aynı** cevap (`Not allowed` / `authz.out_of_scope` / detail `time_off.decide`). `time_off_partial_period_decisions`
+  hücresi (başka workspace P0002) buna çekildi.
+- **Ad talebi (D-a):** `employee.request_preferred_name` (own) ile; başkasının/bilinmeyen kayıt `out_of_scope`, askıdaki
+  üyelik `not_active`, kapalı workspace `workspace_closed`, belge engeli `document_blocked` (kuralın `restricted_ok=false`'u:
+  onboarding'deki kişi de talep açamaz — davranış farkı, ürün kuralı çekirdekte böyle). `preferred_name_approval`
+  dünyası taslak workspace'te çalışan kuruyordu (ürün üretemez) → workspace `active` yapıldı; ret metni `Not allowed`.
+- **O-2 kapandı:** hazırlama, iptal edeceği her bekleyen davet için `can_invite_with_role(davetin rolü)`; biri bile
+  verilemiyorsa 42501 `authz.rank` (detail `employee.invite`). **D-c:** jeton saklama ve teslim işaretleme önce kilitsiz
+  okur, çekirdeğe sorar, sonra `for update`.
+- **Silinen:** `can_access_employee` (public + app_private) → `retired_objects_stay_gone`; `browser_privileges` izin
+  listesinden çıktı; `employee_create_command` son satırı `authz_reason`'a. `authz_catalog`'a 10. kontrol:
+  `service_actor_can_access_employee`'yi yalnız 15 belge/onboarding fonksiyonu çağırır (liste yalnız küçülür).
+- Sayaçlar (geri alınan deneme, ortak DB): `auth.uid()` 27→25, jwt 32→26, kapsam/rütbe 47→43, ipuçsuz 42501 205→177;
+  politika 10, `_base` 13, ertelenmiş 10 değişmedi. Tavanlar bu değerlerde.
+- **Kalan (sıradaki işçiye):** koordinatör kararı (a) 2026-09-30: `review_employee_onboarding_before_availability_service`'in
+  iki satırı (`set_config` jwt + `can_manage_employee_record`) → `app_private.authorize(actor, w, 'onboarding.review',
+  target_person => target_employee_id)`; `can_manage_employee_record` silinir + `retired_objects_stay_gone`. **Şart:** önce
+  kilitleyen hücre (owner/admin/o lokasyonun yöneticisi başlatır; başka lokasyonun yöneticisi, çalışan, yabancı workspace,
+  bilinmeyen kişi hayır, `authz.*` ipucuyla); eski yardımcıyla farklı cevap veren hücre çıkarsa **dur ve koordinatöre
+  bildir**. Dikkat: eski kural manager'a yalnız `access_class='employee'` hedefi veriyordu; `onboarding.review` rank_below +
+  no_self — owner kendi kaydı ve admin→admin farkı olabilir, ölç. `invitations_on_the_core.test.sql` `can_manage_employee_record`'u
+  anıyor (kontrol et). Fonksiyonun geri kalanı FB-6.6'da. Böylece Done when 3 tamamlanır.
+- Deneme düzeneği aynı (bkz. `.4` notu); scratchpad'deki `t.sh` = dalın uygulanmamış migration'ları + ek migration'lar +
+  builder + test tek işlemde.
+
 ## T5b'ye kalan (.6'nın geri kalanı) — 2026-09-30 ölçümü (`.4` uygulanmış geri alınan işlemde)
 - **P1 + üç yardımcının silinmesi.** `can_access_employee` (public + app_private) çağıranları: `delete_catalog_entity_service`,
   `delete_job_with_assignments_service`, `app_private.job_assignment_candidates`, `organization_job_counts_service`,
