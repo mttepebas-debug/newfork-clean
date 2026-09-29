@@ -1530,6 +1530,61 @@ describe("App", () => {
     ).toBe("true");
   }, 20000);
 
+  // BL-278 (5): the previous week's publication status, answering late, must
+  // not replace the status of the week now on screen.
+  it("keeps the publication status of the week on screen when an older week answers late", async () => {
+    const statusFor = (weekStart: string, status: "published" | "unpublished") => ({
+      week_start: weekStart,
+      week_end: weekStart,
+      week_start_day: "monday" as const,
+      schedule_deadline_day: "sunday" as const,
+      is_anchor_only: false,
+      locations: scheduleFixture.locations.map((location) => ({
+        id: location.id,
+        name: location.name,
+        color: "#2563EB",
+        timezone: location.timezone,
+        status,
+        reason: status === "published" ? ("active_publication_and_shifts" as const) : ("missing_publication" as const),
+        publication_includes_location: status === "published",
+        published_shift_count: status === "published" ? 1 : 0,
+        draft_shift_count: 0,
+        published_at: status === "published" ? "2026-08-17T12:00:00Z" : null,
+        published_by_name: status === "published" ? "Development Owner" : null,
+        source_draft_id: null,
+        source_draft_name: null,
+      })),
+    });
+    const lateAnswers: Array<() => void> = [];
+    vi.mocked(getScheduleReadModel).mockImplementation(async (_workspace, date) =>
+      scheduleFixtureForWeek(date >= "2026-08-24" ? "2026-08-24" : "2026-08-17"),
+    );
+    vi.mocked(fetchSchedulePublicationStatus).mockImplementation((_workspace, weekStart) =>
+      weekStart === "2026-08-17"
+        ? new Promise((resolve) => lateAnswers.push(() => resolve(statusFor("2026-08-17", "published"))))
+        : Promise.resolve(statusFor("2026-08-24", "unpublished")),
+    );
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    testAuth.role = "owner";
+    render(<App />);
+
+    await waitFor(() => expect(lateAnswers.length).toBeGreaterThan(0));
+    fireEvent.click(await screen.findByRole("button", { name: "Next week" }));
+    await waitFor(() =>
+      expect(fetchSchedulePublicationStatus).toHaveBeenCalledWith(expect.anything(), "2026-08-24"),
+    );
+    const tones = () =>
+      [...document.querySelectorAll("[data-publication-tone]")].map((node) => node.getAttribute("data-publication-tone"));
+    await waitFor(() => expect(tones()).toContain("none"));
+
+    await act(async () => {
+      lateAnswers.forEach((answer) => answer());
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(tones().every((tone) => tone === "none")).toBe(true);
+  }, 20000);
+
   it("keeps active edit filters while navigating schedule days", async () => {
     const workingFixture = scheduleFixtureForWeek("2026-09-07");
     vi.mocked(getScheduleReadModel)

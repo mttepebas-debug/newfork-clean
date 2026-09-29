@@ -962,17 +962,27 @@ export function SchedulePage({
     }
   };
 
+  // Only the newest request may set the status: an older week answering late
+  // must not replace the week on screen (BL-278).
+  const publicationRequestIdRef = useRef(0);
   const refreshPublicationStatus = useCallback(async () => {
+    const requestId = ++publicationRequestIdRef.current;
     if (!context || !query.data) {
       setPublicationStatus(null);
-      return null;
+      return;
     }
-    const status = await fetchSchedulePublicationStatus(
-      context.workspace.id,
-      query.data.week_start,
-    );
-    setPublicationStatus(status);
-    return status;
+    try {
+      const status = await fetchSchedulePublicationStatus(
+        context.workspace.id,
+        query.data.week_start,
+      );
+      if (requestId === publicationRequestIdRef.current)
+        setPublicationStatus(status);
+    } catch (error) {
+      if (requestId === publicationRequestIdRef.current)
+        setPublicationStatus(null);
+      throw error;
+    }
   }, [context, query.data]);
 
   const openTemplates = async () => {
@@ -1027,10 +1037,11 @@ export function SchedulePage({
 
   useEffect(() => {
     if (!context || !query.data || gridEditSession) {
+      publicationRequestIdRef.current += 1;
       setPublicationStatus(null);
       return;
     }
-    void refreshPublicationStatus().catch(() => setPublicationStatus(null));
+    void refreshPublicationStatus().catch(() => undefined);
   }, [context, gridEditSession, query.data, refreshPublicationStatus]);
 
   useEffect(() => {
