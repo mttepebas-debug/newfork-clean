@@ -169,3 +169,40 @@ describe("noAccessHomePath", () => {
     expect(noAccessHomePath(null, "/app/schedule")).toBe(hubPath);
   });
 });
+
+// BL-176: the page a workspace opens on is the core's answer (context.actions),
+// not the permission list.
+describe("the page inside the workspace", () => {
+  const managerDoing = (actions: string[]) =>
+    ({
+      workspace: { id: ready.id, name: ready.name },
+      membership: { role: "manager" },
+      permissions: ["workspace.read", "schedule.read"],
+      actions,
+    }) as unknown as ActiveWorkspaceContext;
+  const managerWorkspace = workspace({ ...ready, role: "manager" });
+
+  it("opens Workspace when the core lets them read it", () => {
+    expect(
+      resolveLanding({
+        workspaces: [managerWorkspace],
+        context: managerDoing(["workspace.read", "schedule.read"]),
+      }).path,
+    ).toBe("/app/workspace");
+  });
+
+  it("opens Schedule when the core lets them read only that", () => {
+    expect(
+      resolveLanding({
+        workspaces: [managerWorkspace],
+        context: managerDoing(["schedule.read"]),
+      }).path,
+    ).toBe("/app/schedule");
+  });
+
+  it("opens the hub when the core lets them read neither, whatever the permissions", () => {
+    expect(
+      resolveLanding({ workspaces: [managerWorkspace], context: managerDoing([]) }).path,
+    ).toBe(hubPath);
+  });
+});

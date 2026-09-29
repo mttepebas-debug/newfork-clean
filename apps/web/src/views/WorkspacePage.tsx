@@ -24,6 +24,7 @@ import {
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import { safeAppActionUrl } from "../communications/action-url";
 import {
   createWorkspaceTodo,
@@ -65,7 +66,7 @@ export function WorkspacePage() {
   const exchanges = useQuery({
     queryKey: ["shift-exchanges", workspaceId, context?.userId, true],
     queryFn: () => getExchanges(workspaceId, true),
-    enabled: Boolean(workspaceId && context?.permissions.includes("schedule.shift_change_requests.read")),
+    enabled: Boolean(workspaceId && can(context, "exchange.read")),
     refetchInterval: 60_000,
   });
   const saveMutation = useMutation({

@@ -1,6 +1,5 @@
 import type {
   ActiveWorkspaceContext,
-  Permission,
   WorkspaceRole,
   WorkspaceSummary,
 } from "@newfork/shared";
@@ -62,17 +61,16 @@ export function workspaceLandingPathForRole(role: WorkspaceRole): string {
   return role === "employee" ? "/app/employee-hub" : "/app/workspace";
 }
 
-/** The page inside a workspace this role and these permissions can open. */
+/** The page inside a workspace this person can open, by the core's answer. */
 export function appLandingPath(
   context: ActiveWorkspaceContext | null,
 ): string {
   if (!context) return hubPath;
   if (context.membership.role === "employee")
     return workspaceLandingPathForRole(context.membership.role);
-  if (hasPermission(context.permissions, "workspace.read"))
+  if (can(context, "workspace.read"))
     return workspaceLandingPathForRole(context.membership.role);
-  if (hasPermission(context.permissions, "schedule.read"))
-    return "/app/schedule";
+  if (can(context, "schedule.read")) return "/app/schedule";
   return hubPath;
 }
 
@@ -162,11 +160,4 @@ function mostRecentlyUsed(
 function usedAt(workspace: WorkspaceSummary): number {
   if (workspace.lastUsedAt) return Date.parse(workspace.lastUsedAt);
   return workspace.isActive ? 1 : 0;
-}
-
-function hasPermission(
-  permissions: readonly Permission[],
-  permission: Permission,
-): boolean {
-  return permissions.includes(permission);
 }

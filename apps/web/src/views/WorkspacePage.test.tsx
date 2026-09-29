@@ -184,12 +184,21 @@ describe("WorkspacePage setup checklist", () => {
 
   // BL-278 (7): a failed check must not show zero shift changes waiting.
   it("does not show zero shift changes when they could not be checked", async () => {
-    currentContext = { ...context, permissions: [...context.permissions, "schedule.shift_change_requests.read"] };
+    currentContext = { ...context, actions: [...context.actions, "exchange.read"] };
     vi.mocked(getExchanges).mockRejectedValue(new Error("Offline"));
     renderPage();
     const label = await screen.findByText("Shift changes");
     await waitFor(() => expect(vi.mocked(getExchanges)).toHaveBeenCalled());
     await waitFor(() => expect(label.previousElementSibling?.textContent).toBe("—"));
+  });
+
+  // BL-176: whether shift changes are counted is the core's answer.
+  it("does not ask for shift changes on the permission alone", async () => {
+    currentContext = { ...context, permissions: [...context.permissions, "schedule.shift_change_requests.read"] };
+    vi.mocked(getExchanges).mockClear();
+    renderPage();
+    await screen.findByText("Shift changes");
+    expect(vi.mocked(getExchanges)).not.toHaveBeenCalled();
   });
 
   it("shows a visit-based setup checklist to owner roles", async () => {
