@@ -95,6 +95,7 @@ supabase/tests/the_schedule_uses_the_preferred_name.test.sql
 supabase/tests/time_off_cancellation_requests.test.sql
 supabase/tests/time_off_decision_identity_guard.test.sql
 supabase/tests/time_off_decisions_go_one_rank_up.test.sql
+supabase/tests/time_off_doors_close_with_the_workspace.test.sql
 supabase/tests/time_off_physical_request_counts.test.sql
 supabase/tests/time_off_published_assignment_disposition.test.sql
 supabase/tests/time_off_requested_periods.test.sql
