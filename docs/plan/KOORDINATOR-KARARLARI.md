@@ -223,3 +223,10 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **Dayanak:** `.7a` `SchedulePage.tsx`'e de dokunuyor (FB-6.2 Touches, "yalnız çekmeceyi açan kapı"); CLAUDE.md §4 aynı dosyada iki oturum çalışmaz. G1'in üç kalemi küçük (R1), `.7a` birkaç ekrana yayılıyor; küçük olan önce biter, bekleme kısa kalır. T5a `.7a`'yı beklemedi (KK-27); `.7a` T5b turuna girer.
 - **Geri alma:** kolay (yalnız sıra).
 - **Durum:** uygulanıyor.
+
+### KK-31 (2026-09-29) FB-6.2 Dal B .7a'nın üç sorusu: PermissionRoute ertelenir, eşdeğersiz izinler taşınmaz, API rota kapıları kalkar
+- **S1 (b):** `.7a` yalnız `resolveLanding` ve WorkspacePage'i `can()`'e çevirir; `PermissionRoute` (App.tsx'te 30+ rota, Settings ve Announcements dahil) FB-6.8'e ertelenir; Done when 20'nin o satırı FB-6.8'in. Dayanak: dört rotanın (`announcements.read`, `settings.general.read`, `settings.schedule_rules.read`, bildirim ayarları bileşimi) çekirdekte eşdeğer eylemi yok; "en yakın eylem" ekranla sunucuyu ayrıştırır (FB-6.2 pre-mortem 3); karışık izin+eylem kapısı ikiz sistem olur (CLAUDE.md §9).
+- **S2 (a):** Çekmecenin 12 `permissions.includes`'undan eşdeğeri olan 7'si çevrilir; eşdeğeri olmayan 5'i (`employee_access.read/manage`, `employees.private.manage/read`, route-yerel `employee_onboarding.review`) `.7b` / FB-6.6'ya kalır. Done when 6 `.7b`'de tamamlanır.
+- **S3 (a):** `apps/api/src/employees/employee-directory-routes.ts`'teki route-yerel izin kapıları okuma ve yazma rotalarından kalkar; ret çekirdekten `authz.*` ile gelir (403/404 sözleşmesi). Davet/oluşturma rotaları `.5`/`.7b`'de. Şart: `.7a` main'e T5b `.4` ile aynı turda ya da sonra girer (yazma rotaları `.4`'ün çekirdek kurallarına dayanıyor).
+- **Geri alma:** S1/S2 kolay (sıra); S3 orta (kapılar geri eklenebilir, ama yasak kalıp).
+- **Durum:** uygulanıyor.
