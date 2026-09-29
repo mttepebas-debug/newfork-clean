@@ -1,6 +1,5 @@
 import { StickyNote } from "lucide-react";
 import {
-  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -10,10 +9,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { useHoverBubble } from "../../shell/useHoverBubble";
+
 // A beat before opening, so crossing the grid does not flash notes.
 const OPEN_DELAY_MS = 250;
-// Time to move the pointer from the corner onto the note (WCAG 1.4.13, hoverable).
-const CLOSE_DELAY_MS = 150;
 // Half of the note card's widest width (272px).
 const CARD_HALF_WIDTH = 136;
 // Space between the shift card and its note, and between the note and the screen edge.
@@ -33,22 +32,10 @@ export function isShiftNoteOpen(): boolean {
  * as the card's description, and a tap keeps doing what it does today.
  */
 export function useShiftNoteCorner(note: string, suppressed: boolean) {
-  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const { anchor, openSoon, close, closeSoon, cancel } = useHoverBubble();
   // Measured before paint, so a long note is placed where it fits.
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardHeight, setCardHeight] = useState(0);
-  const openTimer = useRef<number | null>(null);
-  const closeTimer = useRef<number | null>(null);
-  const clearTimers = useCallback(() => {
-    if (openTimer.current !== null) window.clearTimeout(openTimer.current);
-    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-    openTimer.current = null;
-    closeTimer.current = null;
-  }, []);
-  const closeSoon = useCallback(() => {
-    clearTimers();
-    closeTimer.current = window.setTimeout(() => setAnchor(null), CLOSE_DELAY_MS);
-  }, [clearTimers]);
   // Once open, the shift card is the bridge to its note (WCAG 1.4.13): the
   // pointer crosses it to a note below without the note closing on the way.
   const inside = (element: Element | null, target: EventTarget | null) =>
@@ -59,7 +46,6 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
   const showing = anchor !== null && note !== "";
   useEffect(() => {
     if (!showing) return;
-    const close = () => setAnchor(null);
     // Escape closes the note and nothing else: caught on window's capture
     // pass, before the Schedule's own Escape clears filters or the week.
     const onKey = (event: KeyboardEvent) => {
@@ -78,13 +64,11 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
       window.removeEventListener("keydown", onKey, true);
       window.removeEventListener("scroll", close, true);
     };
-  }, [showing]);
+  }, [close, showing]);
 
   useEffect(() => {
-    if (note) return;
-    clearTimers();
-    setAnchor(null);
-  }, [clearTimers, note]);
+    if (!note) close();
+  }, [close, note]);
 
   useLayoutEffect(() => {
     setCardHeight(anchor ? (cardRef.current?.offsetHeight ?? 0) : 0);
@@ -92,12 +76,8 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
 
   // A drag moves the card away from its note.
   useEffect(() => {
-    if (!suppressed) return;
-    clearTimers();
-    setAnchor(null);
-  }, [clearTimers, suppressed]);
-
-  useEffect(() => clearTimers, [clearTimers]);
+    if (suppressed) close();
+  }, [close, suppressed]);
 
   if (!note) return { corner: null, card: null, badgeHandlers: noBadgeHandlers };
 
@@ -109,13 +89,9 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
       onPointerEnter={(event) => {
         // A pressed button means a drag, of this card or another, is passing.
         if (event.pointerType !== "mouse" || event.buttons !== 0 || suppressed) return;
-        clearTimers();
         const badge =
           event.currentTarget.closest("[data-shift-badge]") ?? event.currentTarget;
-        openTimer.current = window.setTimeout(
-          () => setAnchor(badge.getBoundingClientRect()),
-          OPEN_DELAY_MS,
-        );
+        openSoon(() => badge.getBoundingClientRect(), OPEN_DELAY_MS);
       }}
       onPointerLeave={(event) => {
         if (event.pointerType !== "mouse") return;
@@ -124,12 +100,10 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
         closeSoon();
       }}
       onPointerMove={(event) => {
-        if (event.buttons === 0) return;
-        clearTimers();
-        setAnchor(null);
+        if (event.buttons !== 0) close();
       }}
       // A press before the note opened must not open it afterwards.
-      onPointerDown={clearTimers}
+      onPointerDown={cancel}
     />
   );
 
@@ -149,7 +123,7 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
           data-side={place.side}
           style={{ left: place.left, top: place.top }}
           aria-hidden="true"
-          onPointerEnter={clearTimers}
+          onPointerEnter={cancel}
           onPointerLeave={closeSoon}
           onPointerDown={keepInside}
           onMouseDown={keepInside}
@@ -169,7 +143,7 @@ export function useShiftNoteCorner(note: string, suppressed: boolean) {
 
   const badgeHandlers: NoteBadgeHandlers = {
     onPointerEnter: (event: PointerEvent<HTMLElement>) => {
-      if (anchor && event.pointerType === "mouse") clearTimers();
+      if (anchor && event.pointerType === "mouse") cancel();
     },
     onPointerLeave: (event: PointerEvent<HTMLElement>) => {
       if (!anchor || event.pointerType !== "mouse") return;

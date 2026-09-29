@@ -1,11 +1,9 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import "./tooltip.css";
-
-// Time to move the pointer from the trigger onto the bubble (WCAG 1.4.13, hoverable).
-const CLOSE_DELAY_MS = 150;
+import { useHoverBubble } from "./useHoverBubble";
 
 /**
  * A small bubble over a button. It opens on hover, on keyboard focus and on a
@@ -26,34 +24,17 @@ export function Tooltip({
 }) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
-  const closeTimer = useRef<number | null>(null);
   const pointerPressed = useRef(false);
-  const [anchor, setAnchor] = useState<DOMRect | null>(null);
-
-  const cancelClose = () => {
-    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-    closeTimer.current = null;
-  };
-  const show = () => {
-    cancelClose();
-    setAnchor(trigger.current?.getBoundingClientRect() ?? null);
-  };
-  const hide = () => {
-    cancelClose();
-    setAnchor(null);
-  };
-  const hideSoon = () => {
-    cancelClose();
-    closeTimer.current = window.setTimeout(hide, CLOSE_DELAY_MS);
+  const { anchor, open, close, closeSoon, cancel } = useHoverBubble();
+  const show = () => open(trigger.current?.getBoundingClientRect() ?? null);
+  // BL-207: a press that ends without a click (dragged off, cancelled) must
+  // not keep the next keyboard focus from opening the bubble.
+  const endPress = () => {
+    pointerPressed.current = false;
   };
 
   useEffect(() => {
     if (!anchor) return;
-    const close = () => {
-      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-      setAnchor(null);
-    };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
@@ -63,9 +44,7 @@ export function Tooltip({
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", close, true);
     };
-  }, [anchor]);
-
-  useEffect(() => cancelClose, []);
+  }, [anchor, close]);
 
   return (
     <button
@@ -75,18 +54,27 @@ export function Tooltip({
       aria-label={label}
       aria-describedby={anchor ? id : undefined}
       onMouseEnter={show}
-      onMouseLeave={hideSoon}
+      onMouseLeave={closeSoon}
       onPointerDown={() => {
         pointerPressed.current = true;
       }}
+      // A touch leaves before its focus and click arrive; only a mouse
+      // leaving mid-press has dragged off.
+      onPointerLeave={(event) => {
+        if (event.pointerType === "mouse") endPress();
+      }}
+      onPointerCancel={endPress}
       onFocus={() => {
         // A press also focuses; let the click decide so a tap can toggle.
         if (!pointerPressed.current) show();
       }}
-      onBlur={hide}
+      onBlur={() => {
+        endPress();
+        close();
+      }}
       onClick={() => {
-        pointerPressed.current = false;
-        if (anchor) hide();
+        endPress();
+        if (anchor) close();
         else show();
       }}
     >
@@ -101,8 +89,8 @@ export function Tooltip({
                 left: anchor.left + anchor.width / 2,
                 top: anchor.top - 6,
               }}
-              onMouseEnter={cancelClose}
-              onMouseLeave={hideSoon}
+              onMouseEnter={cancel}
+              onMouseLeave={closeSoon}
             >
               {content}
             </span>,
