@@ -6,6 +6,8 @@ Kullanıcının (ürün sahibi Mert) yazılı yeni talimatı bu dosyadan önce g
 uzmanlığın ve sınırların `.claude/agents/<rolün>.md` dosyasındadır. Oturum başında ve bağlam
 sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 
+İşi kimin yapacağı ve kimin inceleyeceği (risk sınıfı R0–R3): @DELEGASYON.md
+
 ## 1. Ürün ve vizyon
 - Newfork: ABD'deki restoranlar için çok kiracılı (multi-tenant) vardiya planlama SaaS'ı.
   Hedef: self-serve, ücretli ABD lansmanı. Arayüz dili İngilizce (ABD).
@@ -65,6 +67,8 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
   yapar, raporunu verir ve kapanır. Uzun kod işleri (saatler süren, çok adımlı, kullanıcının izlemek
   isteyebileceği) **işçi oturumunda** koşar: koordinatör bir görev kartı çıkarır, kullanıcı tek
   tıkla açar; oturum ilgili rol dosyasını okuyup o rolün kurallarıyla çalışır (bölüm 12).
+  Hangisinin gerektiği — ya da hiçbirinin gerekmediği, koordinatörün kendisinin yapacağı —
+  `DELEGASYON.md`'deki risk sınıfına göre karar verilir; roller yalnız gerektiğinde çağrılır.
 - **Onay zinciri:** yeni iş kullanıcı onaylamadan başlamaz (bölüm 11.3). Rol ajanı ve işçi oturumu
   yalnız koordinatörün görev mesajındaki kapsamda çalışır; görev mesajı hedef, kapsam (içi / dışı),
   Done when, dokunulacak dosyalar ve skill'leri taşır.
@@ -94,6 +98,8 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 - `nf-planlama`: `docs/plan/**`.
 - Koordinatör: `CLAUDE.md`, `.claude/**`, `docs/adr/**`, kök config'ler, `vercel.json`
   (`CLAUDE.md` ve `.claude/agents/**` kullanıcı onayıyla değişir) ve her şeyin main'e alınması.
+  R0–R1 işlerde (`DELEGASYON.md`) koordinatör her dosyayı kendi worktree'sinde yazabilir; o sırada
+  aynı dosyada bir rol çalışmıyorsa.
 - Task dosyasının "Touches" alanı kimin hangi dosyaya dokunacağını yazar. Aynı dilimde veri ve
   sunum varsa sıra: `nf-backend` / `nf-db` işlevsel kısmı (veri + çalışan ekran) bitirir ve
   sözleşmeyi (tip, hook, durumlar) raporunda yazılı verir; koordinatör onu main'e alır; `nf-arayuz`
@@ -112,10 +118,12 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 2. Plan: `nf-planlama` `docs/plan/tasks/<ID>.md` açar (`_TEMPLATE.md`: Goal / In scope /
    Out of scope / Done when / Touches / Test plan / Risk + "Reviewer:" satırı). "Done when" ölçülebilir.
 3. Kapsam (kökteki `kapsam-yonetimi.md`): yolda çıkan yeni fikir mevcut işe eklenmez (bölüm 11.4).
-4. Uygulama: ilgili rol. Hata için önce onu yakalayan kırmızı test, sonra düzeltme. Yeni davranış =
-   yeni test.
-5. İnceleme: `nf-guvenlik` (her kod işi); ekran değiştiyse ayrıca `nf-gorsel-qa`. Onay
-   `ONAY @<commit-sha>` biçiminde. Değişiklik istenirse aynı rol ajanına düzeltme için yeniden yazılır.
+4. Uygulama: risk sınıfına göre koordinatör ya da ilgili rol (`DELEGASYON.md`). Hata için önce onu
+   yakalayan kırmızı test, sonra düzeltme. Yeni davranış = yeni test.
+5. İnceleme: risk sınıfının istediği kadar (`DELEGASYON.md` §3): R0 yok; R1 koordinatörün kendi
+   okuması + ekran görüntüsü; R2 tek bağımsız inceleme; R3 `nf-guvenlik` zorunlu (ekran değiştiyse
+   `nf-gorsel-qa` da). Onay `ONAY @<commit-sha>` biçiminde. Değişiklik istenirse aynı rol ajanına
+   düzeltme için yeniden yazılır.
    **Ultrareview hatırlatması** (kullanıcı kararı 2026-09-28): kod işi bitip main'e alınmadan önce
    iş riskli bir yüzeye dokunuyorsa kullanıcıya ultrareview önerilir. Riskli yüzey şunlardır: yetki,
    RLS, grant, migration, `*_service`, katılım/davet, sahiplik devri, veri silme. Ayrıca birçok dosyaya
@@ -145,7 +153,8 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
   kullanıcı akışı, API veya ekran davranışı değiştiyse etkilenen e2e senaryoları (DB kilidiyle).
 - main'e gönderme (yalnız koordinatör; rol ajanı ve işçi oturumu push etmez, işçi oturumuna
   koordinatör açıkça izin verirse o oturum aynı adımları izler):
-  1. `nf-guvenlik` onayı (ekran değiştiyse `nf-gorsel-qa` onayı da) var (`ONAY @<sha>`).
+  1. Risk sınıfının istediği inceleme tamam (`DELEGASYON.md` §3; R3'te `nf-guvenlik`
+     `ONAY @<sha>`). Sınıf ve karar raporda tek satır.
   2. `main.lock` al (bölüm 7).
   3. `git fetch origin && git rebase origin/main`. Çatışma çözüldüyse incelemeyi yenile.
   4. Rebase sonrası tam kapı yeşil.
@@ -313,7 +322,8 @@ Kısa yaz, ham araç çıktısı yapıştırma.
     yalnız sohbette yaşayan bilgi task dosyasına yazılır. Her iş bitişinde bakım satırında bağlam
     doluluğu yazılır; yarıyı geçince bir sonraki sınırda devir raporu (`docs/plan/HANDOFF.md`) ve
     yeni koordinatör oturumu önerilir (kullanıcı kararı 2026-09-26). Uzun kod işleri rol
-    oturumlarında (bölüm 12) yürür; alt ajan yalnız kısa işte (inceleme, görsel QA, ölçüm, keşif).
+    oturumlarında (bölüm 12) yürür; alt ajan yalnız kısa işte (inceleme, görsel QA, ölçüm, keşif);
+    kısa ve düşük riskli iş koordinatörde kalır (`DELEGASYON.md`).
 11. **Rol hafızası.** Rollerin öğrendikleri `.claude/agent-memory/<rol>/`'da (git'te). Koordinatör
     ayda bir farkı okur; yanlış ya da eskimiş kaydı sildirir.
 
