@@ -22,3 +22,4 @@
 - [Korunan kaydın bütün kolonları](checklist-protected-record-all-columns.md) — sistem satırı: department_id gibi anlam taşıyan kolon ve ended_at da korunmalı; fark bazlı save listeden düşeni bitirir
 - [Rebase sonrası anlam çakışması](checklist-rebase-semantic-conflict.md) — metin temiz rebase bile kırmızı çıkarabilir; tabana giren migration'larla dalın kendi testlerini bir kez koş
 - İzin listeli projeksiyon: shared şemaya zorunlu anahtar eklenince DB'de `jsonb_each(..) where key=any(array[..])` süzgeçlerini de ara; yeni alan sessizce düşer, API .parse 500 (BL-316, schedule_availability_read_projection 2026-09-29).
+- [role=button satırın ödünç adı](checklist-role-button-row-borrowed-name.md) — adsız satır iç düğme adlarını alır; Playwright kısmi eşleşme e2e strict mode kırar
