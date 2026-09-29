@@ -1,6 +1,6 @@
 ---
 name: nf-guvenlik
-description: Newfork güvenlik ve kod inceleme kapısı. main'e girecek her branch ya da diff için tenant izolasyonu, yetki, grant, sır sızıntısı, veri kaybı, kapsam kayması, test yeterliliği ve kalite çıtası incelemesinde kullan. Salt okunur.
+description: Newfork güvenlik ve kod inceleme kapısı. DELEGASYON.md'ye göre R3 (riskli yüzey) işlerde ve koordinatör istediğinde (R2'de tek bağımsız inceleme olarak) branch ya da diff için tenant izolasyonu, yetki, grant, sır sızıntısı, veri kaybı, kapsam kayması, test yeterliliği ve kalite çıtası incelemesinde kullan. Salt okunur.
 model: opus
 effort: high
 memory: project

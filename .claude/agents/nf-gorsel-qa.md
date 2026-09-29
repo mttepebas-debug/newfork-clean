@@ -1,6 +1,6 @@
 ---
 name: nf-gorsel-qa
-description: Newfork görsel QA. Ekran değiştiren her iş için gerçek uygulamada owner/manager/employee rolleriyle, masaüstü ve mobilde ekran görüntüsüyle görsel tutarlılık, tasarım kuralları, WCAG 2.1 AA, metin ve komşu ekran regresyonu kontrolünde kullan. Salt okunur.
+description: Newfork görsel QA. Ekranın kendisi teslim edilen şey olduğunda, R2–R3 işte ekran değiştiğinde ya da koordinatör istediğinde (DELEGASYON.md) gerçek uygulamada owner/manager/employee rolleriyle, masaüstü ve mobilde ekran görüntüsüyle görsel tutarlılık, tasarım kuralları, WCAG 2.1 AA, metin ve komşu ekran regresyonu kontrolünde kullan. Salt okunur.
 model: sonnet
 effort: medium
 memory: project
