@@ -1,3 +1,4 @@
+import { todayIn } from "../lib/today";
 import { employeeTimeOffInputSchema, type EmployeeHubReadModel } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, CalendarOff, RefreshCw } from "lucide-react";
@@ -76,7 +77,8 @@ export function EmployeeHubPage() {
   const path = location.pathname.split("/employee-hub/")[1] ?? "";
   const independentPage = path === "more";
   const now = useHubClock();
-  const today = now.toISOString().slice(0, 10);
+  // The hub's date range is asked before its locations load: the device's calendar.
+  const today = todayIn(undefined, now);
   const selectedScheduleDate = path === "schedule"
     ? scheduleDateFromSearch(location.search)
     : null;
@@ -264,7 +266,7 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
       ? [{ id: type.id, name: type.name, start_time: type.start_time, end_time: type.end_time }] : []);
   const latestZone = model.locations.find((item) => item.id === location)?.timezone;
   const staleZone = Boolean(zone && latestZone && zone !== latestZone);
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: zone ?? "UTC", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const today = todayIn(zone);
   const selectedDates = dateRange(start,end || start);
   const rangeTooLong = selectedDates.length > 31;
   const periods = selectedDates.flatMap(segment_date => {

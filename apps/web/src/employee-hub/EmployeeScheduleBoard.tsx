@@ -1,3 +1,4 @@
+import { todayIn } from "../lib/today";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -51,7 +52,8 @@ export function EmployeeScheduleBoard({
   const pointerDismissRef = useRef<(event: PointerEvent) => void>(noop);
   const clickGuardRef = useRef<(event: MouseEvent) => void>(noop);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // The board opens before its locations load: the device's calendar.
+  const today = todayIn();
   const selectedDate = isCalendarDay(params.get("date"))
     ? (params.get("date") as string)
     : today;

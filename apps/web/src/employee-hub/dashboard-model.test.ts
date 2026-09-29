@@ -1,7 +1,7 @@
 import type { EmployeeHubReadModel, EmployeeHubShift } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
+import { dateInZone } from "../lib/today";
 import {
-  dateInZone,
   nextShift,
   shiftInstant,
   shiftState,

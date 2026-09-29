@@ -1,3 +1,4 @@
+import { todayIn } from "../lib/today";
 import { LifecycleAssignmentFields } from "../documents/DocumentLifecycleFields";
 import { DocumentDefinitionApply } from "../documents/DocumentDefinitionApply";
 import { CatalogDrawer } from "./CatalogDrawer";
@@ -70,7 +71,7 @@ function defaultTemplateDraft(
     content_text: "",
     intent_statement: "I acknowledge that I received and reviewed this policy.",
     locale: "en-US",
-    effective_date: new Date().toISOString().slice(0, 10),
+    effective_date: todayIn(),
     required_at_onboarding: true,
     blocks_activation: true,
     retention_policy_id: retentionPolicyId,

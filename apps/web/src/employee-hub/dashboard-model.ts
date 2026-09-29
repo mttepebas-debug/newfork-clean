@@ -1,28 +1,6 @@
 import type { EmployeeHubReadModel, EmployeeHubShift } from "@newfork/shared";
+import { dateInZone, validZone } from "../lib/today";
 import { addDays } from "../schedule/lib/scheduleDateTime";
-
-export function dateInZone(now: Date, timezone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  return ["year", "month", "day"]
-    .map((type) => parts.find((part) => part.type === type)!.value)
-    .join("-");
-}
-export function validZone(zone?: string): string {
-  try {
-    if (zone) {
-      new Intl.DateTimeFormat("en", { timeZone: zone });
-      return zone;
-    }
-  } catch {
-    /* Use an explicitly labeled device zone if metadata is unavailable. */
-  }
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
 export function shiftZone(
   model: EmployeeHubReadModel,
   shift: EmployeeHubShift,

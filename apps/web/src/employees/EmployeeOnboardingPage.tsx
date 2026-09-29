@@ -1,3 +1,4 @@
+import { todayIn } from "../lib/today";
 import {
   employeeOnboardingProfileSchema,
   type EmployeeOnboarding,
@@ -754,7 +755,7 @@ function ProfileStep({
           type="date"
           value={profile.date_of_birth}
           onChange={(value) => setProfile({ ...profile, date_of_birth: value })}
-          max={new Date().toISOString().slice(0, 10)}
+          max={todayIn()}
         />
         <TextField
           label="Street address"
