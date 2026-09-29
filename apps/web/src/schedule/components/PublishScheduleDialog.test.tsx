@@ -172,6 +172,20 @@ describe("PublishScheduleDialog", () => {
     expect(screen.getAllByText("1 risk")).toHaveLength(1);
   });
 
+  it("never labels another draft's counts with the newly chosen draft's name", async () => {
+    const onPreview = vi.fn()
+      .mockResolvedValueOnce(preview)
+      .mockRejectedValueOnce(new Error("Preview failed"));
+    render(<PublishScheduleDialog drafts={[draft, activeDraft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={onPreview} onPublish={vi.fn()} />);
+    await waitFor(() => expect(document.querySelector(".schedule-publication-summary")?.textContent).toContain("Service week"));
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Saved draft"), { target: { value: activeDraft.id } });
+    });
+    await waitFor(() => expect(onPreview).toHaveBeenCalledTimes(2));
+    expect(document.querySelector(".schedule-publication-summary")).toBeNull();
+  });
+
   it("continues a changed warn-only publication once with current evidence and unchanged recipients", async () => {
     const onPublish = vi.fn().mockRejectedValueOnce(staleError(warnPreview)).mockResolvedValue({});
     await startPublication(onPublish);
