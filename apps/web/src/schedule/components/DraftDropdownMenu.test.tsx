@@ -552,6 +552,32 @@ describe("DraftDropdownMenu", () => {
     expect(onSaveAsTemplate).not.toHaveBeenCalled();
   });
 
+  // BL-300: Enter on a row's own button belongs to that button, not the row.
+  it("leaves Enter on a row's Edit or Delete button to that button", () => {
+    const onPreviewDraft = vi.fn();
+    render(
+      <DraftDropdownMenu
+        drafts={[draftA]}
+        activeDraftId={null}
+        triggerLabel="New Schedule"
+        onPreviewDraft={onPreviewDraft}
+        onEditDraft={vi.fn()}
+        onStartBlankDraft={vi.fn()}
+        onDeleteDraft={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Draft selector: New Schedule" }));
+
+    for (const name of ["Edit Plan A", "Delete Plan A"]) {
+      const notPrevented = fireEvent.keyDown(screen.getByRole("button", { name }), { key: "Enter" });
+      expect(notPrevented, name).toBe(true);
+    }
+    expect(onPreviewDraft).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "View Plan A" }), { key: "Enter" });
+    expect(onPreviewDraft).toHaveBeenCalledWith(draftA.id);
+  });
+
   it("closes on Escape and resets inline delete confirmation", () => {
     render(
       <DraftDropdownMenu
