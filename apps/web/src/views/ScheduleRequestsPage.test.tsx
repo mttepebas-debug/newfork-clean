@@ -129,10 +129,10 @@ vi.mock("../schedule/requests-data", () => ({
 }));
 
 function LocationProbe() { const location = useLocation(); return <output aria-label="Current URL">{location.pathname + location.search}</output>; }
-function renderPage(initialPath = "/app/schedule/requests") {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+function renderPage(
+  initialPath = "/app/schedule/requests",
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[initialPath]}>
@@ -326,6 +326,21 @@ describe("ScheduleRequestsPage", () => {
     vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_off_requests: [{ ...fixture.time_off_requests[0]!, request_type: "time_off_cancellation", status: "approved" }] });
     renderPage(); await openTimeOffRequest(); await screen.findByText(/Cancellation of approved leave/);
     expect(screen.queryByRole("button", { name: "Revoke" })).toBeNull(); expect(screen.queryByRole("button", { name: "Return to pending" })).toBeNull();
+  });
+  // BL-273: an approved leave can release shifts; Schedule and the dashboard must not stay stale.
+  it("refreshes the Schedule grid and the workspace dashboard after a decision", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["schedule-read", workspaceId, "2026-10-05"], { shifts: [] });
+    client.setQueryData(["workspace-dashboard", workspaceId], { pending: 1 });
+    renderPage(undefined, client);
+    await openTimeOffRequest();
+    fireEvent.click(screen.getByRole("button", { name: "Partial" }));
+    fireEvent.change(screen.getAllByRole("combobox").at(-1)!, { target: { value: "denied" } });
+    await waitFor(() => expect((screen.getByRole("button", { name: "Save Partial Decision" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "Save Partial Decision" }));
+    await waitFor(() => expect(decideTimeOff).toHaveBeenCalled());
+    await waitFor(() => expect(client.getQueryState(["schedule-read", workspaceId, "2026-10-05"])?.isInvalidated).toBe(true));
+    expect(client.getQueryState(["workspace-dashboard", workspaceId])?.isInvalidated).toBe(true);
   });
   it("submits explicit partial decisions", async () => {
     renderPage();

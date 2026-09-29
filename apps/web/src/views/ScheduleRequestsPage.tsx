@@ -27,6 +27,7 @@ import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssig
 import { TimeOffShorten } from "./TimeOffShorten";
 import { formatTimeOffInstant } from "../employee-hub/time-off-split";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
+import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { Navigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
@@ -184,7 +185,9 @@ function ScheduleRequestsPageContent() {
     setDecision(null);
     setNotice(message);
     setSelectedId("");
-    await client.invalidateQueries({ queryKey: ["schedule-requests"] });
+    // A decision or a shortened leave can release shifts: every surface that
+    // shows them (Schedule grid, dashboard, hub, notifications) refreshes.
+    await refreshExchangeSurfaces(client, context!.workspace.id);
   }
   async function submit(
     current: Decision,
@@ -212,12 +215,6 @@ function ScheduleRequestsPageContent() {
           current.action === "partial_approve" ? segmentDecisions : [],
       });
       await refreshed("Decision saved. The queue is current.");
-      await Promise.all([
-        client.invalidateQueries({
-          queryKey: ["employee-hub", context!.workspace.id],
-        }),
-        client.invalidateQueries({ queryKey: ["schedule"] }),
-      ]);
       return null;
     } catch (error) {
       const message =
