@@ -33,4 +33,5 @@ Dal `task/g11-error-contract` (worktree `.claude/worktrees/exciting-fermi-8887dd
 - `/v1/me/onboarding/ssn` rotası duruyor; ROADMAP "SSN yok" diyor — G11 dışı, raporda.
 
 ## Kalan
-- BL-193, BL-324, SchedulePage onError: "başla" bekliyor.
+- BL-193, BL-324, SchedulePage onError: KK-26 ile G1'in kalan web işine verildi; G3 main'e girince başlar (2026-09-29).
+- Kapanış: G11'in 11 maddesi 2026-09-29 kapandı (`470fb948`, T5); açık kalanlar BL-374, BL-375, BL-383, BL-384, BL-385 ve U42'nin iki fırsatçı kalemi (BACKLOG-PROGRAM G11 satırı).
