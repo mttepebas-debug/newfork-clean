@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(22);
 
 -- BL-231. The Employees drawer (Employees > a person, or Add employee) reads
 -- its pickers through one entry point: the locations the actor reaches (M2),
@@ -89,10 +89,14 @@ select is(pg_temp.names(pg_temp.read('r:ayse'), 'locations'), array['Kadikoy'],
   'a manager reads the locations they work at');
 select is(pg_temp.names(pg_temp.read('r:ayse'), 'jobs'), array['Cook', 'Old', 'Owner', 'Server'],
   'and every job');
-select is(pg_temp.invite_classes('r:ayse'), '{}'::text[],
-  'a manager who may not grant access reads no role to invite with');
+-- A manager invites to their own location with employee roles only; granting
+-- access is no longer asked (FB-6.2.5, BL-242).
+select is(pg_temp.invite_classes('r:ayse'), array['employee'],
+  'a manager invites with employee roles only');
 select is(pg_temp.invite_classes('r:lale'), array['employee'],
-  'a manager who may grant access invites with employee roles only');
+  'so does a manager whose role may also grant access');
+select is(pg_temp.invite_classes('r:nur'), '{}'::text[],
+  'a manager who works nowhere adds nobody, so reads no role to invite with');
 select is(pg_temp.names(pg_temp.read('r:lale'), 'locations'), array['Besiktas'],
   'and reads only Besiktas, where they work');
 
