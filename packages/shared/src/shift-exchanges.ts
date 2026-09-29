@@ -21,8 +21,16 @@ export const exchangeEligibilitySchema = z.object({
     "verification_required",
   ]),
   reasons: z.array(z.string()),
+  // BL-182: taking this shift gives back the employee's own approved time off
+  // for these hours; it shortens when a manager approves the transfer.
+  shortens_time_off: z.boolean().optional(),
   availability_warning: z
-    .object({ fingerprint: z.string().regex(/^[a-f0-9]{64}$/) })
+    .object({
+      fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+      time_off_intervals: z
+        .array(z.object({ start_at: z.string(), end_at: z.string() }))
+        .optional(),
+    })
     .nullable()
     .optional(),
 });

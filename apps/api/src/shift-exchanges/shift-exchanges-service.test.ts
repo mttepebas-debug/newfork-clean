@@ -121,3 +121,27 @@ describe("post-commit shift exchange inbox delivery", () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("approved time off in an exchange (BL-182)", () => {
+  it("keeps the shortening flag and the agreed hours on the way to the screen", async () => {
+    const eligibility = {
+      status: "eligible",
+      reasons: ["Position and location match", "No assignment blockers"],
+      shortens_time_off: true,
+    };
+    mocks.rpc.mockResolvedValueOnce({
+      data: {
+        allowed: true,
+        fingerprint: "abc",
+        reasons: [],
+        receiver: eligibility,
+        giver: null,
+        requires_other_manager: false,
+        other_applications: 0,
+      },
+      error: null,
+    });
+    const preview = await service().preview(actor, workspace, caseId, caseId);
+    expect(preview.receiver.shortens_time_off).toBe(true);
+  });
+});

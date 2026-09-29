@@ -176,6 +176,41 @@ describe("Shift Hub outcome contracts", () => {
     );
   });
 
+  it("tells an employee that a shift inside their approved time off shortens it (BL-182)", async () => {
+    const fingerprint = "b".repeat(64);
+    model.cases = [];
+    model.opportunities = [
+      {
+        case_id: null,
+        shift: { ...shift, employee_id: null, employee_name: null },
+        eligibility: {
+          status: "eligible",
+          reasons: [],
+          shortens_time_off: true,
+          availability_warning: {
+            fingerprint,
+            time_off_intervals: [
+              { start_at: "2030-01-09T15:00:00Z", end_at: "2030-01-09T19:00:00Z" },
+            ],
+          },
+        },
+      },
+    ];
+    mount("/app/employee-hub/shift-hub?hub_view=available");
+    const request = await screen.findByRole("button", { name: "Request anyway" });
+    expect(screen.getByText("During your time off")).toBeTruthy();
+    expect(screen.getByText(/your time off is shortened for these hours/)).toBeTruthy();
+    expect(screen.queryByText(/Conflicts with your availability/)).toBeNull();
+    fireEvent.click(request);
+    await waitFor(() =>
+      expect(changeExchange).toHaveBeenCalledWith(
+        "workspace",
+        { action: "apply", shift_id: "shift", availability_fingerprint: fingerprint },
+        expect.any(String),
+      ),
+    );
+  });
+
   it("requires an explicit Accept anyway action for an invited employee own conflict", async () => {
     const fingerprint = "b".repeat(64);
     const request = model.cases[0]!;
@@ -1227,6 +1262,27 @@ describe("Shift Hub outcome contracts", () => {
       ).disabled,
     ).toBe(true);
     expect(screen.queryByLabelText(/override/i)).toBeNull();
+  });
+  it("tells the manager that approving shortens the taker's approved time off (BL-182)", async () => {
+    model.employee_id = null;
+    model.cases[0]!.is_owner = false;
+    vi.mocked(getExchangePreview).mockResolvedValue({
+      allowed: true,
+      fingerprint: "current",
+      reasons: [],
+      receiver: { status: "eligible", reasons: [], shortens_time_off: true },
+      giver: null,
+      requires_other_manager: false,
+      other_applications: 0,
+    });
+    mount("/app/schedule/requests?case=case", true);
+    fireEvent.click(await screen.findByRole("button", { name: "Review Casey" }));
+    expect(
+      await screen.findByText(/Casey agreed to work during approved time off/),
+    ).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Approve transfer to Casey" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
   });
   it("explains each side of an ineligible swap using the fresh manager preview", async () => {
     model.cases[0]!.kind = "swap";
