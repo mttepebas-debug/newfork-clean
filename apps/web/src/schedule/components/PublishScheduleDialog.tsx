@@ -251,8 +251,12 @@ export function PublishScheduleDialog({
     ],
     [preview],
   );
+  // The summary line describes the preview it was built from; while another
+  // draft's preview is loading (or failed) it stays hidden rather than mixing
+  // the new name with the old counts.
+  const summaryPreview = preview?.draft_id === draftId ? preview : null;
   const nextShiftCount =
-    preview?.locations.reduce((total, location) => total + location.next_shift_count, 0) ?? 0;
+    summaryPreview?.locations.reduce((total, location) => total + location.next_shift_count, 0) ?? 0;
   const notifyEmployees = useMemo(() => {
     const needle = employeeSearch.trim().toLocaleLowerCase();
     return affectedEmployeeIds
@@ -546,6 +550,7 @@ export function PublishScheduleDialog({
           ].map(({ index, label }) => (
             <span
               key={index}
+              aria-current={wizardStep === index ? "step" : undefined}
               data-active={wizardStep === index}
               data-complete={wizardStep > index}
             >
@@ -556,12 +561,12 @@ export function PublishScheduleDialog({
             </span>
           ))}
         </div>
-        {preview ? (
+        {summaryPreview ? (
           <p className="schedule-publication-summary">
-            <strong>{drafts.find((draft) => draft.id === draftId)?.name ?? "Draft"}</strong>
+            <strong>{drafts.find((draft) => draft.id === summaryPreview.draft_id)?.name ?? "Draft"}</strong>
             <span>
-              <strong>{locationIds.length}</strong>{" "}
-              {locationIds.length === 1 ? "location" : "locations"}
+              <strong>{summaryPreview.locations.length}</strong>{" "}
+              {summaryPreview.locations.length === 1 ? "location" : "locations"}
             </span>
             <span>
               <strong>{nextShiftCount}</strong>{" "}

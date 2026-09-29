@@ -3683,6 +3683,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-draft-menu-row:focus-visible {
   background: var(--theme-surface-muted);
 }
+/* The row is a div role="button"; the global button focus ring misses it,
+   and its gray alone looks like the "Viewing" row. */
+.schedule-draft-menu-row:focus-visible,
+.schedule-draft-menu-template-row:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
 .schedule-draft-menu-start > span {
   display: inline-flex;
   width: 18px;
@@ -3848,6 +3855,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .schedule-draft-menu-row > button,
   .schedule-draft-menu-template-row > button {
     opacity: 1;
+  }
+  .schedule-draft-menu-row > button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
   }
 }
 .schedule-draft-menu-row > button:hover,
@@ -4725,7 +4736,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-save-menu-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 6px;
   border-top: 1px solid var(--theme-border-subtle);
@@ -4747,6 +4758,30 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-save-menu-footer button:hover {
   background: var(--theme-surface-muted);
+}
+.schedule-save-menu-footer > .schedule-menu-hint {
+  margin-right: auto;
+}
+/* No keyboard on a touch screen, so no keyboard hints. */
+@media (hover: none) {
+  .schedule-menu-hint {
+    display: none;
+  }
+}
+/* On a phone the action buttons fill a row of their own; a menu anchored to
+   its button's right edge ran off the left of the screen. Anchor it to the
+   whole row instead. */
+@media (max-width: 720px) {
+  .schedule-draft-menu,
+  .schedule-save-menu-anchor {
+    position: static;
+  }
+  .schedule-draft-menu-panel,
+  .schedule-save-draft-menu {
+    left: 0;
+    right: 0;
+    width: auto;
+  }
 }
 .schedule-operation-error {
   border-color: #dfb5ae;
@@ -10689,9 +10724,14 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .schedule-command-group,
   .schedule-action-group {
     width: 100%;
+  }
+  .schedule-command-group {
     overflow-x: auto;
   }
+  /* A scrolling row clips the menus that open from it (New Schedule,
+     Publish while editing, Published); wrap the buttons instead. */
   .schedule-action-group {
+    flex-wrap: wrap;
     margin-left: 0;
   }
   .schedule-export-panel {
