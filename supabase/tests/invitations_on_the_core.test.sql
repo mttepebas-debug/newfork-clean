@@ -56,19 +56,6 @@ select is(pg_temp.invite_as('zeynep', 'K', 'admin'), '42501 authz.rank', 'an adm
 select is(pg_temp.invite_as('olcay', 'K', 'admin'), 'allowed', 'the owner invites an admin');
 select is(pg_temp.invite_as('olcay', 'K', 'owner'), '42501 authz.rank', 'nobody is invited as the owner');
 
--- An existing record is invited by the same rules, whoever prepares it.
-create function pg_temp.prepare_as(actor text, person text, role_key text) returns text language sql as $$
-  select pg_temp.refusal(format($f$select public.prepare_employee_invitation_service(%L, %L, %L, %L, %L, %L, now() + interval '7 days')$f$,
-    pg_temp.actor(actor), tests.id('m'), coalesce((select i.id from tests.ids i where i.label = 'm:' || person), gen_random_uuid()),
-    person || '.again@world.test',
-    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key::text = role_key),
-    encode(extensions.digest(gen_random_uuid()::text, 'sha256'), 'hex')))
-$$;
-select is(pg_temp.prepare_as('ayse', 'pelin', 'employee'), 'allowed', 'a manager sends an invitation again to an employee at their location');
-select is(pg_temp.prepare_as('ayse', 'baris', 'employee'), '42501 authz.out_of_scope', 'but not to somebody at another location');
-select is(pg_temp.prepare_as('ayse', 'nobody', 'employee'), '42501 authz.out_of_scope', 'somebody unknown gets the same answer');
-select is(pg_temp.prepare_as('ayse', 'pelin', 'manager'), '42501 authz.rank', 'nor with a role at their own rank');
-
 -- After an invitation is sent: copying its link, retrying its delivery and
 -- keeping its token for a retry are for whoever could have sent it.
 create function pg_temp.link_as(actor text, person text) returns text language sql as $$
@@ -102,6 +89,39 @@ select is(pg_temp.link_as('ayse', 'nil'), '42501 authz.rank', 'nor copies its li
 select is(pg_temp.retry_as('ayse', 'nil'), '42501 authz.rank', 'nor retries its delivery');
 select is(pg_temp.keep_token_as('olcay', 'nil'), 'allowed', 'the owner keeps it');
 
+-- Marking a delivery and taking an invitation back follow the same rule: the
+-- API marks every invitation it sends, a manager's included.
+create function pg_temp.mark_as(actor text, person text) returns text language sql as $$
+  select pg_temp.refusal(format('select public.mark_employee_invitation_delivery_service(%L, %L, %L, %L)',
+    pg_temp.actor(actor), tests.id('m'),
+    coalesce((select i.id from tests.ids i where i.label = 'm:' || person || ':invitation'), gen_random_uuid()), 'sent'))
+$$;
+create function pg_temp.revoke_as(actor text, person text) returns text language sql as $$
+  select pg_temp.refusal(format('select public.revoke_employee_invitation_service(%L, %L, %L)',
+    pg_temp.actor(actor), tests.id('m'), coalesce((select i.id from tests.ids i where i.label = 'm:' || person), gen_random_uuid())))
+$$;
+select is(pg_temp.mark_as('ayse', 'baris'), '42501 authz.out_of_scope', 'a manager marks no delivery for another location');
+select is(pg_temp.mark_as('ayse', 'nobody'), '42501 authz.out_of_scope', 'an unknown invitation gets the same answer');
+select is(pg_temp.mark_as('ayse', 'nil'), '42501 authz.rank', 'nor an admin''s invitation');
+select is(pg_temp.revoke_as('ayse', 'baris'), '42501 authz.out_of_scope', 'a manager takes back no invitation at another location');
+select is(pg_temp.revoke_as('ayse', 'nobody'), '42501 authz.out_of_scope', 'somebody unknown gets the same answer');
+select is(pg_temp.revoke_as('ayse', 'nil'), '42501 authz.rank', 'nor an admin''s invitation');
+select is(pg_temp.revoke_as('ayse', 'pelin'), 'allowed', 'a manager takes back an invitation at their location');
+
+-- An existing record is invited again by the same rules, whoever prepares it
+-- (after the one above was taken back).
+create function pg_temp.prepare_as(actor text, person text, role_key text) returns text language sql as $$
+  select pg_temp.refusal(format($f$select public.prepare_employee_invitation_service(%L, %L, %L, %L, %L, %L, now() + interval '7 days')$f$,
+    pg_temp.actor(actor), tests.id('m'), coalesce((select i.id from tests.ids i where i.label = 'm:' || person), gen_random_uuid()),
+    person || '.again@world.test',
+    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key::text = role_key),
+    encode(extensions.digest(gen_random_uuid()::text, 'sha256'), 'hex')))
+$$;
+select is(pg_temp.prepare_as('ayse', 'pelin', 'employee'), 'allowed', 'a manager sends an invitation again to an employee at their location');
+select is(pg_temp.prepare_as('ayse', 'baris', 'employee'), '42501 authz.out_of_scope', 'but not to somebody at another location');
+select is(pg_temp.prepare_as('ayse', 'nobody', 'employee'), '42501 authz.out_of_scope', 'somebody unknown gets the same answer');
+select is(pg_temp.prepare_as('ayse', 'pelin', 'manager'), '42501 authz.rank', 'nor with a role at their own rank');
+
 -- Setting up the workspace is the owner's (BL-242): the four services of the
 -- owner's invitation list ask the core and say why they refuse.
 select is(pg_temp.refusal(format('select public.reset_owner_onboarding_service(%L, %L)', pg_temp.actor('zeynep'), tests.id('m'))),
@@ -131,7 +151,8 @@ select is(
    where p.pronamespace = 'public'::regnamespace
      and p.proname in ('prepare_employee_invitation_service', 'load_employee_invitation_link_service',
                        'load_employee_invitation_retry_service', 'store_employee_invitation_delivery_secret_service',
-                       'create_employee_command_service')
+                       'create_employee_command_service', 'mark_employee_invitation_delivery_service',
+                       'revoke_employee_invitation_service')
      and (p.prosrc ~ 'request\.jwt\.claim' or p.prosrc ~ 'can_manage_employee_record' or p.prosrc ~ 'service_actor_has_permission')),
   0, 'the invitation services pretend to be nobody and ask no old gate'
 );
