@@ -7,6 +7,35 @@ Kaynak: `docs/plan/handoffs/FOUNDATION-B-asama6-devir.md` §3 madde 2. Ürün ku
 Önkoşullar: **FB-6.1 main'de** (kalıp, ratchet tavanları ve `.11`'in katalog düşüşü önce yerleşir); **BL-139 main'de** (branch `bl139`, `app_private.authz_check`'e dokunuyor — bu dilim de aynı fonksiyonun kişi dalına dokunacak; ikisi aynı anda yazılmaz).
 Reviewer: `nf-guvenlik` (her kod adımı); ekranı değiştiren adımlarda (`.8`, `.9`) ayrıca `nf-gorsel-qa`. Onay biçimi: `ONAY @<commit-sha>`.
 
+## Tazelik ölçümü FB-6.2.0 (2026-09-28)
+**Tazelik 2026-09-28 (`origin/main` `2fed2144`): geçerli — iki önkoşul main'de, dilim başlayabilir; tablonun yedi sayısı değişti (aşağıda).** Önkoşullar: FB-6.1'in işlevsel kısmı (`.1`–`.12`) main'de (son adım `.12` `dd937fd`, `tasks/FB-6.1.md:127`; açık kalan `.0`/`.13`/`.14` görsel tur ve kapanış, işlevsel değil); BL-139 main'de (`f0ca450`, `DONE.md:56`; `weekly_preference_manager_scope` artık `service_actor_can_access_employee` çağırmıyor).
+Ölçüm: `nf-planlama`, 2026-09-28 akşam. Kod sayıları `origin/main` `2fed2144` üzerinde `grep`; DB sayıları yerel DB'de yalnız SELECT (369 migration, son `20260928060000` = main'deki son dosya), `pg_proc.prosrc` ad eşleşmesi ve `authz_catalog.test.sql`'in kendi desenleri. `roles_permissions_rls` ve `employee_hub` pgTAP koşusu ayrı `nf-test` ajanında; sonuç gelince bu tabloya "kırmızı kontroller" satırı olarak yazılır.
+
+| Ne | 2026-09-26 | 2026-09-28 | Hüküm | Kanıt / kaynak |
+|---|---|---|---|---|
+| Kişi yardımcıları | 4 ad / 5 oid | **4 ad / 5 oid** (`app_private.can_access_employee`, `public.can_access_employee`, `can_assign_employee_locations`, `can_manage_employee_record`, `service_actor_can_access_employee`) | geçerli | `pg_proc` ad sorgusu |
+| Kişi köprüleri (6) + davet köprüleri (4) | 6 + 4 | **6 + 4**, onunun da gövdesi `request.jwt.claim` yazıyor; 2 onboarding köprüsü de duruyor (FB-6.6) | geçerli | `pg_proc.prosrc` |
+| `can_access_employee` çağıranı | 7 | **7** (2 Çalışanlar + 5 iş katalogu) | geçerli | ad bazlı `prosrc` |
+| `can_manage_employee_record` çağıranı | 12 | **12** | geçerli | aynı |
+| `can_assign_employee_locations` çağıranı | 1 | **1** (`save_employee`) | geçerli | aynı |
+| `service_actor_can_access_employee` çağıranı | 22 | **21** — müsaitlik çağıranı BL-139 ile düştü; kalan: 3 Çalışanlar (`get_employee_avatar_path_service`, `remove_employee_avatar_service`, `remove_employee_access_service`) + 3 pano + 15 belge/onboarding | **değişmiş** (beklendiği gibi) | aynı |
+| RLS politikasında yardımcı çağrısı | 0 | **0** | geçerli | `pg_policies` |
+| `decide:` hücresi | 0 | **0** (dosyada 3 eşleşme var: `:15` yorum, `:843`, `:855` işleyici; hücre değil) | geçerli | `grep -n "'decide:" supabase/tests/authorization_matrix.test.sql` |
+| `employee.*` eylemleri | 12 | **13** — yeni `employee.references.read` (`20260928010000`); `employee.remove_from_location` hâlâ **yok**, `employee.decide_preferred_name` var | **değişmiş** | `app_private.authz_actions.key` |
+| Bu dilimin `known_gap` satırları | 6 | **5** — `owner-record-no-primary` BL-218 `.2`'de silindi (`e64f5758`); kalan `manager-hidden-peers`, `manager-cannot-change-employee-role`, `manager-cannot-invite`, `admin-own-record`, `membership-rows-open` (`authorization_matrix.test.sql:689-713`). Dosyada toplam `known_gap` **9** | **değişmiş** | `grep`, `git log -S` |
+| Kırmızı `roles_permissions_rls` | yeşil listede değil | **hâlâ yeşil listede değil**; koşu `nf-test`'te | geçerli, koşu bekleniyor | `supabase/tests/ci-green.txt` |
+| Yeşil listede olmayan dosya | 23 (94 satır) | **15** (122 satır / 137 dosya): `account_notification_scope`, `bl052_document_access`, `bl052_document_definitions`, `bl052_document_employee_assignment_preview`, `employee_hub`, `employee_onboarding_rls`, `notification_platform_core`, `notification_preference_resolver_and_producers`, `notification_settings_admin`, `onboarding_composite_tenant_constraints`, `roles_permissions_rls`, `scheduling_settings_shift_types_rls`, `time_off_partial_period_decisions`, `weekly_exchange_changed_terms`, `weekly_team_availability` | **değişmiş** | `ls` − `ci-green.txt` |
+| Katalog sayaçları (toplam / tavan) | `auth.uid()` 33, jwt 43, kapsam 61 (tavan 63), `_base` ?, politika 11, ertelenmiş ? | **32 / 32**, **43 / 43**, **59 / 59**, **13 / 13**, **11 / 11**, **10 / 10** — altısı da tam tavanda, gevşeklik 0 | **değişmiş** | `authz_catalog.test.sql:18-60` desenleri, yerel DB |
+| Bu dilimin sayaç payı | `auth.uid()` 8, jwt 14, kapsam 14 | `auth.uid()` **8** (`can_access_employee` ×2, `can_assign_employee_locations`, `can_manage_employee_record`, `enforce_membership_role_change`, `save_employee`, `set_employee_archived`, `terminate_employee`), jwt **14** (10 köprü + 4 iş katalogu), kapsam/rütbe **13** (`can_access_employee` ×2, `can_assign_employee_locations`, `can_manage_employee_record`, `service_actor_can_access_employee`, `enforce_membership_role_change`, `get_workspace_dashboard_service`, `prepare_employee_invitation_service`, `remove_employee_access_service`, `save_employee`, `set_employee_archived`, `terminate_employee`, `update_employee_membership_role_service`), `auth.uid` politikası **1** (`memberships_select_workspace`) | **değişmiş** (kapsam 14 → 13) | 35 adlık dilim listesi üzerinde aynı desenler |
+| Web `permissions.includes` | 12 | **12** (`EmployeeDrawer.tsx` 11, `EmployeesPage.tsx` 1) | geçerli | `grep -c` |
+| "Çalışan görünümüne geç" | yok | **yok** — `employee-hub/*` yalnız `roles={["employee"]}` (`apps/web/src/App.tsx:419-423`) | geçerli | `grep` |
+| "Yalnız yönetir" tablosu | yok | **yok** (`to_regclass('public.membership_managed_locations')` boş) | geçerli | SELECT |
+| Employee rolünde `all_locations = true` | 35 / 37 | **363 / 364** (test dünyaları birikiyor) | geçerli (sayı büyüdü, kural aynı) | SELECT |
+| Tercih edilen ad onayı çekirdeğe soruyor mu | hayır | **hayır**: `decide_employee_preferred_name_service`, `list_pending_preferred_names_service` gövdesinde `app_private.authorize` yok, `employees.manage` var | geçerli | `prosrc` |
+| Davet e2e (akış 2) | yok (4 spec) | **yok** — `e2e/flows/` 12 spec, hiçbiri davet değil | geçerli | `ls e2e/flows` |
+
+**Done when'e etkisi:** Done when 2'deki `known_gap` hedefi ve Done when 4'ün tavanları yukarıdaki sayılarla yeniden yazıldı (aşağıda). Done when 12'nin `owner-record-no-primary` kısmı BL-218 `.2`'de kapandı; kalan "owner kaydı birincilsiz kaydedilir" davranışını `.4` bozmamalı (hücre matriste yeşil kalır).
+
 ## Tazelik ölçümü (2026-09-26)
 Ölçüm: `nf-planlama`, `origin/main` `39028dc`; yerel DB yalnız SELECT (342 migration, main'dekiyle birebir aynı). Planın sayıları 2026-09-23..25 tarihli devir notundan.
 
@@ -91,9 +120,9 @@ Reviewer: `nf-guvenlik` (her kod adımı); ekranı değiştiren adımlarda (`.8`
 ## Done when
 Her madde bir sayı ya da komutla ölçülür.
 1. `roles_permissions_rls` (ve `.0`'da bu dilime ait çıkarsa `employee_hub`) `supabase test db` → 0 not ok ve `ci-green.txt`'te.
-2. `authorization_matrix`: `grep -c "'decide:" ` → 0; `employee.remove_from_location` satırı var ve kuralı S1'e göre; `known_gap`'ten altı satır silinmiş (11 → 5; FB-6.1 sonrası sayıya göre yeniden hesaplanır); ikinci admin kişisiyle admin-admin hücreleri (BL-129) ve `employee.decide_preferred_name` hücreleri var, TS ikizi (`dump:authz-matrix`) güncel.
+2. `authorization_matrix`: `grep -c "'decide:" ` → 0; `employee.remove_from_location` satırı var ve kuralı S1'e göre; `known_gap`'ten bu dilimin kalan beş satırı silinmiş (toplam 9 → 4; ölçüm 2026-09-28 `2fed2144`, altıncı satır `owner-record-no-primary` BL-218 `.2`'de kapandı); ikinci admin kişisiyle admin-admin hücreleri (BL-129) ve `employee.decide_preferred_name` hücreleri var, TS ikizi (`dump:authz-matrix`) güncel.
 3. Veritabanında `can_access_employee` (2 oid), `can_manage_employee_record`, `can_assign_employee_locations` yok ve `retired_objects_stay_gone`'da (P1 kabulüyle); `service_actor_can_access_employee`'nin çağıranları yalnız belge/onboarding fonksiyonları (sabitleyen pgTAP kontrolü; liste yalnız küçülür).
-4. On köprü veritabanında yok ve `retired_objects_stay_gone`'da; `authz_catalog` tavanları: `request.jwt.claim` 43 → ≤33 (P1 ile ≤29), `auth.uid()` 33 → ≤26, kendi kapsam/rütbe mantığı ölçülen değer − bu dilimin payı, `auth.uid` politikası 11 → ≤10. Kesin değerler `.0`'ın fonksiyon listesinden; tavanlar yalnız azalır.
+4. On köprü veritabanında yok ve `retired_objects_stay_gone`'da; `authz_catalog` tavanları (FB-6.2.0 ölçümü, 2026-09-28 `2fed2144`, yerel DB): `request.jwt.claim` 43 → ≤33 (P1 ile ≤29), `auth.uid()` 32 → ≤24, kendi kapsam/rütbe mantığı 59 → ≤47 (payın 13'ünden `service_actor_can_access_employee` FB-6.6'ya kalır: 59 − 12), `auth.uid` politikası 11 → ≤10. Tavanlar yalnız azalır; bir adım sayıyı başka yoldan artırırsa hedef yeniden hesaplanmaz, adım düzeltilir.
 5. Employee rolünde `all_locations = true` üyelik 0 ve CHECK kısıtı var.
 6. `grep -c "permissions.includes" apps/web/src/employees/EmployeeDrawer.tsx apps/web/src/employees/EmployeesPage.tsx` → 0.
 7. Yönetim arayüzünde "Çalışan görünümüne geç" çalışıyor: kendi çalışan kaydı olan owner/admin/manager üst menüden çalışan arayüzüne geçip geri dönüyor (e2e).

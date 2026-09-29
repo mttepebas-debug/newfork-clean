@@ -51,7 +51,7 @@ Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-21
 | FB-6.1.14 | FB-6.1 kapanışı | FB-6.1.13 | — | 2 | bekliyor | koordinatör | `tasks/FB-6.1.md` |
 | BL-218.1 | Management/Owner kırmızı testleri | — | — | 3 | bitti | `nf-db` | — |
 | BL-218.2 | Management/Owner veritabanı kuralları | — | — | 8 | bitti | `nf-db` | — |
-| BL-218.3 | Owner ve Management'ı Takvim ve Employees çekmecesine taşıyan veri sözleşmesi (tip, API, web veri) | — | — | 5 | hazır | `nf-backend` | `packages/shared`, `apps/api/src/schedule`, `apps/web/src/schedule/*-data`, `apps/web/src/employees/*-data` |
+| BL-218.3 | Owner ve Management'ı Takvim ve Employees çekmecesine taşıyan veri sözleşmesi (tip, API, web veri) | — | — | 5 | kısmen hazır (tazelik 2026-09-28 `2fed2144`: katalog tipi ve yeni hata metinleri DB'siz başlar; Takvim ve çekmece parçası önce bir `nf-db` okuma adımı ister, öneri `.3a` — `tasks/BL-218.md` "`.3` tazelik") | `nf-backend` | `packages/shared`, `apps/api/src/schedule`, `apps/web/src/schedule/*-data`, `apps/web/src/employees/*-data` |
 | BL-218.4 | Kurulum sihirbazında "en az 1" metni; Settings → Jobs'ta kilitli Owner satırı | BL-218.3 | — | 3 | bekliyor | `nf-arayuz` | `OwnerOnboardingPage.tsx`, Settings → Jobs |
 | BL-218.5a | Employees çekmecesinin iş listesi için departman ve Owner bilgisi (okuma) | BL-218.3 | — | 3 | bekliyor | `nf-db` + `nf-backend` | `read_employee_references_service`, employees data |
 | BL-218.5b | Çekmecede iş listesi departmana göre gruplu, Owner kilitli (DEV varyantları) | BL-218.5a | — | 3 | bekliyor | `nf-arayuz` | `EmployeeDrawer.tsx` |
@@ -60,7 +60,7 @@ Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-21
 | FB-6.1b.1 | Açık düzenleme tutmadığı lokasyona vardiya ekleyemez (BL-159) | — | — | 3 | hazır | `nf-db` | `supabase/migrations` (`apply_schedule_template_service`) |
 | FB-6.1b.2 | Boş yeni taslakta "yayınlanmışları soluk göster" anahtarı (DEV varyantları) | — | — | 3 | hazır | `nf-arayuz` | `SchedulePage.tsx`, schedule CSS |
 | FB-6.1b.3 | e2e iki senaryo | FB-6.1b.1, .2 | — | 3 | bekliyor | `nf-test` | `e2e/flows/**` |
-| FB-6.2.0 | Çalışanlar dilimi taze ölçüm (FB-6.1 işlevsel kısmı ve BL-139 main'de) | — | — | 1 | hazır | `nf-planlama` (+ `nf-test` koşu) | `tasks/FB-6.2.md` |
+| FB-6.2.0 | Çalışanlar dilimi taze ölçüm (FB-6.1 işlevsel kısmı ve BL-139 main'de) | — | — | 1 | ölçüm bitti 2026-09-28 (`2fed2144`, geçerli); `roles_permissions_rls` + `employee_hub` koşusu `nf-test`'te | `nf-planlama` (+ `nf-test` koşu) | `tasks/FB-6.2.md` |
 | FB-6.2.1 | Yetki matrisi: ikinci admin, "yalnız yönetir", lokasyondan çıkarma | FB-6.2.0 | — | 3 | bekliyor | `nf-db` | `supabase/tests/authorization_matrix.test.sql` |
 | FB-6.2.2 | Veri modeli: "yalnız yönetir", "kendi lokasyonundan çıkar" komutu | FB-6.2.1 | — | 5 | bekliyor | `nf-db` | `supabase/migrations` |
 | FB-6.2.3 | Çalışan okuma ve listesi çekirdeğe | FB-6.2.2 | — | 3 | bekliyor | `nf-db` | `supabase/migrations` |
