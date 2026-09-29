@@ -1,6 +1,6 @@
 # G4 — Zamanlanmış dışa aktarma: işçi oturumunun kararları
 
-İşçi: G4 (nf-backend + nf-db), dal `task/g4-scheduled-export`, taban `origin/main` `4e980348`, 2026-09-29.
+İşçi: G4 (nf-backend + nf-db), dal `task/g4-scheduled-export`, taban `origin/main` `d70cf9fb`, 2026-09-29.
 Kapsam: BL-101, BL-272, BL-225 (+KK-13), BL-330 (KK-10 a), BL-163, U63 kod kısmı.
 
 ## K1 — Yetki: ikiz kapı silindi, çekirdek tek kapı (BL-101)
