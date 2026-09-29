@@ -168,7 +168,7 @@ describe("ScheduleGridBody", () => {
       showTotalHours: false,
     });
 
-    expect(screen.queryByText("No employees")).toBeNull();
+    expect(screen.getByText("No employees").className).toBe("sr-only");
     expect(document.querySelectorAll(".schedule-cell")).toHaveLength(0);
     expect(screen.getAllByTestId("schedule-filler-row")).toHaveLength(1);
     expect(screen.queryByTestId("schedule-totals-row")).toBeNull();

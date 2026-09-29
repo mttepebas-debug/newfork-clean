@@ -285,6 +285,7 @@ export function ScheduleGridBody({
             </Fragment>
           ))
         : rows.map(renderEmployeeRow)}
+      {!rows.length ? <p className="sr-only">No employees</p> : null}
       {Array.from({ length: fillerRowCount }, (_, rowIndex) => (
         <ScheduleFillerRow
           key={`schedule-filler-${rowIndex}`}

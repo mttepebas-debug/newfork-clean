@@ -141,6 +141,14 @@ describe("schedule sticky layout styles", () => {
       "var(--schedule-filler-row-guide-height)",
     );
     expect(totalFillerRule).toContain("min-height: 0");
+    // A background shorthand on the total cell would wipe the guide lines.
+    expect(cssRule(".schedule-total-cell")).toContain(
+      "background-color: #f6f8f6",
+    );
+    expect(cssRule(".schedule-total-cell")).not.toMatch(/background:/);
+    expect(
+      cssRule('.schedule-filler-cell[data-schedule-grid-empty="true"]'),
+    ).toContain("background-color: var(--theme-surface)");
     expect(activeFillerRule).toContain("border-bottom-width: 1px");
   });
 

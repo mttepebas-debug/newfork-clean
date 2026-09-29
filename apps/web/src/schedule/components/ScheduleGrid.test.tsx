@@ -282,6 +282,18 @@ describe("ScheduleGrid", () => {
     ).toBeNull();
   });
 
+  it("keeps the blank band below employees in its muted colour", () => {
+    const { container } = renderGrid();
+
+    const fillerDayCells = container.querySelectorAll(
+      "[data-schedule-filler-location-cell='true']",
+    );
+    expect(fillerDayCells.length).toBeGreaterThan(0);
+    expect(
+      container.querySelector("[data-schedule-grid-empty]"),
+    ).toBeNull();
+  });
+
   it("hides preset shift badges when role separators are disabled", () => {
     const { container } = renderGrid({ showRoleSeparators: false });
 
@@ -314,7 +326,7 @@ describe("ScheduleGrid", () => {
         element.getAttribute("data-schedule-total-hours-row-label") === "true",
     );
 
-    expect(screen.queryByText("No employees")).toBeNull();
+    expect(screen.getByText("No employees").className).toBe("sr-only");
     expect(fillerIndex).toBeGreaterThan(-1);
     expect(totalIndex).toBeGreaterThan(fillerIndex);
     const fillerDayCells = container.querySelectorAll(
