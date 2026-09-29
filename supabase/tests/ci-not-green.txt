@@ -1,6 +1,5 @@
 # pgTAP files that do not run in CI yet, one per line: <path>  # reason.
 # The list only shrinks: a test leaves it by going green (scripts/ci-green-guard.sh).
-supabase/tests/account_notification_scope.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
 supabase/tests/bl052_document_access.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
 supabase/tests/bl052_document_definitions.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
 supabase/tests/bl052_document_employee_assignment_preview.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
