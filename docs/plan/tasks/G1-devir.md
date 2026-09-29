@@ -39,3 +39,24 @@ Gruplar: 1+2 aynı Escape işleyicisi; 1+3+5 aynı pencere; 4+5 aynı `refreshDr
 
 ## Kalan kanıt
 Ekran görüntüsü alınmadı (masaüstü + telefon, `artifacts/nf-arayuz/g1/`, 5630/5631). Taslak ya da yayın akışı veri yazmadan gösterilemiyorsa `/dev/schedule-shift-design` yetmez; yerel Meyhouse'ta bu hafta taslak yok, taslak açmak veri yazmak demek — koordinatöre sorulmalı.
+
+## Sonuç (2026-09-29 akşam, devralan oturum)
+
+Kalan 8 madde bitti; dal origin/main `248d02b6` üstüne rebase edildi (ilk 6 maddenin commit'leri yeni sha'larla: `bd72b123`, `2380835d`, `739afff1`, `fffdef48`).
+
+| Madde | Commit | Ne değişti |
+|---|---|---|
+| BL-301 (Unpublish) + BL-329 | `cd1c97f4` | Unpublish gönderilirken Cancel, X, arka plan ve Escape kapatmaz. Publish'in capture-fazlı Escape'i `schedule/lib/useCloseOnEscape.ts`'e taşındı; Templates ve Unpublish da kullanıyor, alanda odak varken Escape pencereyi kapatır. |
+| BL-306 | `b3398559` | Unpublish `ConfirmButton` ("Confirm unpublish"); silahlı düğmede Escape yalnız silahı indirir. Sonuç satırları uyarı/bilgi simgesiyle, "geri alınamaz" kırmızı. Stil B G14'te. |
+| BL-313 | `4a43273c` | Sayfanın `drafts` kopyası silindi; liste yalnız `draftsQuery` önbelleği, silme `removeDraft` ile. |
+| BL-302 | `d28be711` | `canUnpublishSchedule` (scheduleGates): taslak menüsündeki Unpublish yalnız yayınlayabilene. Hiç görünmeyen `unpublishDisabledReason` silindi. |
+| BL-303 | `b596345e` | `schedule/lib/scheduleUnpublishFollowUp.ts`: başarı sonrası yenileme/önizleme hatası sayfada hata olarak görünür. |
+| BL-323 | `597e6f48` | `schedule/lib/scheduleMutationContext.ts` `isSameEditSession`: Discard sonrası dönen sonuç oturumu geri getirmez (revizyon değil, oturum kimliği). |
+| BL-309 + KK-23 | `f059d891` | Sayaç yalnız taslak sayar; ölü "Saved by" dalı silindi; ikiz etiketler `schedule/lib/draftMenuLabels.ts`'te. |
+
+Kontrol (son commit sonrası): dalın 9 test dosyası 98/98; `typecheck` temiz; dalın dosyalarında eslint 0 hata (9 uyarı, hepsi eski). Ekran görüntüleri: `artifacts/nf-arayuz/g1/` (ana klasör), 9 masaüstü + 3 telefon.
+
+Yolda bulunan (bu işte dokunulmadı):
+- Vardiyasız yayın API'de `unpublished / no_published_shifts` dönüyor; Schedule onu yayında saymıyor, Unpublish da sunulmuyor. Böyle bir yayın arayüzden geri alınamıyor. Yerel Meyhouse'ta 2026-09-28 haftası Garden Room için bu türden bir "current" yayın bu oturumun ekran görüntüsü çalışmasından kaldı.
+- Yayın durumu cevabında `published_by_name` owner için boş geliyor; menülerde "Published by Unknown" görünür.
+- Aynı capture-Escape deseni `ScheduleSaveRecoverySheet.tsx:36` ve `ScheduleTopBar.tsx:204`'te ayrı kopyalar olarak duruyor.
