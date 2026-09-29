@@ -33,6 +33,6 @@ Devreden: `Rol: nf-planlama` (worktree `.claude/worktrees/gracious-shtern-2970cc
 - Python çıktısında `∩` Windows konsolunda hata verir: `PYTHONIOENCODING=utf-8`.
 
 ## 6. Güncelleme (2026-09-30, `task/backlog-program-29`, son paket)
-- `.7b` + `.7b-db` main'de (T5c, `0806cc62`); BL-413, BL-414 kapandı; Done when 6 → 0. **Main CI 36625278415 yer tutucusu `<run>`**: BL-413/BL-414 kapanış satırları (BACKLOG), G7 satırı ve Notes (BACKLOG-PROGRAM), FB-6.2 Notes — numara gelince `gh run view 36625278415 --json headSha,conclusion,jobs` ile doğrula, `<run>`'ı değiştir (yalnız bu paketin satırları; eski Notes metinlerindeki `<run>` sözleri geçmiş kaydı).
+- `.7b` + `.7b-db` main'de (T5c, `0806cc62`); BL-413, BL-414 kapandı; Done when 6 → 0. **Main CI 36625278415 yer tutucusu 36625278415**: BL-413/BL-414 kapanış satırları (BACKLOG), G7 satırı ve Notes (BACKLOG-PROGRAM), FB-6.2 Notes — numara gelince `gh run view 36625278415 --json headSha,conclusion,jobs` ile doğrula, 36625278415'ı değiştir (yalnız bu paketin satırları; eski Notes metinlerindeki 36625278415 sözleri geçmiş kaydı).
 - Açık madde **229**, en yüksek **BL-422** (BL-419…BL-422 `.7b` incelemesinden: B2 karar gerekli, B3 BL-401 ile birlikte, B4 rol adı, Hub owner metni `.8`). Ultrareview (`.7b`) "Kullanıcıya dönüşte"de.
 - Sırada: `.7b` görsel QA (KK-37, main sonrası), `.8`, `.10`, `.11`. Sıradaki dal `task/backlog-program-30`.
