@@ -115,12 +115,26 @@ Kaynak: `docs/plan/research/fb61-dis-degerlendirme-2026-09-25.md` bölüm B, do�
 
 ## Sayfa envanteri
 
-Repodaki her ekranın kendi bölümü olacak: ne yaptığı, hangi ortak parçaları
-kullandığı, kendine özgü kuralları, bilinen tuhaflıkları. Hepsi bir oturuşta
-yazılmıyor — **bir task hangi sayfaya dokunuyorsa o sayfanın bölümü o task
-içinde yazılır ya da güncellenir.**
+Bir ekranın bölümü yalnız koddan çıkarılamayan şeyi tutar (kullanıcı kararı
+2026-09-29):
 
-Aşağıdaki tablo iskelettir. `belgelenmedi` yazan satırın henüz bölümü yok.
+1. **Kararlar** — kullanıcının o ekran için verdiği karar, tarihi ve nedeni
+   ("hayalet kartlar tek gri, 2026-09-26"; "yalnız bu dört pencere seçildi").
+   Bir sonraki oturum bunu "düzeltmeye" kalkmasın diye.
+2. **Bilinen tuhaflıklar** — kodda görünüp yanlış sanılacak, ama bilerek öyle
+   olan ya da bilinip bekletilen davranış.
+
+Dosya yolu, bileşen listesi, CSS sınıfı ve kodun anlattığı akış yazılmaz: kod
+okunur, bu kısım en hızlı eskiyendir. Karar verilmemiş ekranın bölümü yoktur;
+bölüm, o ekran için ilk karar verildiğinde yazılır.
+
+**Güncel tutma:** bir iş, bir ekranın bölümündeki kararı ya da tuhaflığı
+değiştiriyorsa (başka ekranın işi olsa da) o bölüm aynı iş içinde düzeltilir.
+"X işi main'e girince yeniden yazılır" notu bırakılmaz; iş girdiği commit'te
+yazılır. Eski bölümlerde kalan kod özetleri, bölüme dokunulduğunda silinir.
+
+Aşağıdaki tablo ekranların listesidir. `belgelenmedi` yazan satırın henüz
+kararı yazılmadı.
 Rota sütunu boş olanlar iç içe rota tablolarından geliyor; o sayfa sırası
 gelince çözülür.
 
@@ -145,7 +159,7 @@ gelince çözülür.
 | calisanlar | EmployeesPage | `employees` | `employees/EmployeesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | calisanlar | EmployeeHubPage | `employee-hub/*` | `views/EmployeeHubPage.tsx` | belgelendi 2026-09-24 |
 | calisanlar | EmployeeDocumentsPage | `employees/documents` | `documents/EmployeeDocumentsPage.tsx` | belgelenmedi |
-| plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | kısmi 2026-09-29 (butonlar, müsaitlik, sağ üst menüler) |
+| plan | SchedulePage | `schedule` | `views/SchedulePage.tsx` | belgelendi 2026-09-29 |
 | plan | ScheduleRequestsPage | `schedule/requests` | `views/ScheduleRequestsPage.tsx` | belgelendi 2026-09-24 |
 | plan | ScheduleTemplatesPage | `schedule/templates` | `views/ScheduleTemplatesPage.tsx` | kısmi 2026-09-22 (butonlar) |
 | plan | AvailabilityPage | `availability` | `views/AvailabilityPage.tsx` | belgelenmedi |
@@ -170,9 +184,8 @@ gelince çözülür.
 | gelistirme | ScheduleShiftBadgeLabPage | `schedule-badge-lab` | `dev/ScheduleShiftBadgeLabPage.tsx` | belgelenmedi |
 
 Bir sayfanın bölümü yazılırken başlık `### <Sayfa adı>` olur, tablodaki
-durumu `belgelendi <tarih>` yapılır, ve bölüm şunları söyler: sayfa ne işe
-yarar, yukarıdaki reuse girdilerinden hangilerini kullanır, kendine özgü
-kuralları neler, bilinen tuhaflıkları var mı.
+durumu `belgelendi <tarih>` yapılır, ve bölüm iki başlık taşır: **Kararlar**
+ve **Bilinen tuhaflıklar** (yukarıdaki kural).
 
 ### SignInPage
 
@@ -334,69 +347,42 @@ More sayfasını açar. `#<id>` hash'i veri gelince o öğeye kaydırır. Line-u
 sayfası ve bağlantıları ("See today's Line-up", "View Line-up", More'daki
 "Line-up") 5.6'da kalktı.
 
-### SchedulePage (kısmi: taslak ve şablon menüleri, müsaitlik)
+### SchedulePage
 
-**Kendine özgü kurallar.** Taslak menüsünde taslak ve şablon silme, Save
-draft menüsünde taslağın üstüne yazma: ikonlu iki tık (UI-12, `unstyled` +
-`confirmName`; satır tıklanabilir olduğu için `stopPropagation`). Şablon
-penceresinde "Delete" iki tık ("Confirm delete"). Yayınlanmış taslağın
-satırında üstüne yazma düğmesi yok.
+**Kararlar.**
+- *Silme ve üstüne yazma iki tık* (UI-12): taslak menüsünde taslak ve şablon
+  silme, Save draft menüsünde taslağın üstüne yazma, şablon penceresinde
+  "Delete". Yayınlanmış taslağın satırında üstüne yazma düğmesi yok.
+- *Vardiya kartı* (2026-09-26): gerçek ve hayalet kart aynı düzen; satır
+  sırası tip-iş, label (düz metin, kutucuk yok), saat. Bütün hayaletler tek
+  ölü gri, ince seyrek tarama, saydamlık yok (metin ≥5:1); hayaletin
+  lokasyonu yalnız köşedeki iğnenin baloncuğunda. Gerçek kartta iğne yok.
+  "All locations – Together" görünümünde gerçek kartta lokasyon satırı
+  başlığın altında, ikonsuz kalır. Dışa aktarma lokasyonu yazıyla gösterir.
+- *Sağ üst pencereler "stil B"* (2026-09-28): New Schedule ▾, Publish (Save
+  draft menüsü), Published ▾, Publish penceresi ve Templates penceresi sade
+  liste stilinde — 13px metin, gri ince çizgiler, tek yeşil aksiyon; satır
+  araçları (Edit, Delete, Unpublish) yalnız hover ya da klavye odağında,
+  dokunmatikte hep açık. ≤720px'te düğme satırı sarılır, kaydırılmaz
+  (kaydırılan kutu menüleri kırpıyordu). Yeni bir sağ üst menü ya da yayın
+  penceresi bu stilden kurulur.
+- *Müsaitlik bir tercih, engel değil* (2026-09-26, BL-186; kural "Ürün
+  kuralları → Müsaitlik"): çalışanın işareti ve yöneticinin gizli
+  hatırlatması hiçbir yolda vardiya yazmayı durdurmaz; hücrede taralı alan ve
+  uyarı, onay yayınlayandan. Ayar yok.
+- Başka yöneticinin taslak adıyla kaydedince "Overwrite "<ad>"?" sorulur;
+  Cancel derse başka ad seçmesi istenir.
+- Düzenleme kilidi yalnız taslakta. Başkası düzenliyorsa "Draft is being
+  edited" kimin düzenlediğini söyler ("View schedule" beyaz, "Try again"
+  yeşil). Taslak başladıktan sonra yayını değişen lokasyon Publish
+  penceresinde uyarı satırı alır; engel değil, yayınlayan karar verir.
+- Yayınlanmış vardiyanın müsaitlik uyarısı yayın anındaki kayıttan gelir;
+  sonradan girilen işaret yayınlanmış işi geriye dönük uyarıya çevirmez.
 
-Vardiya kartı düzeni (kullanıcı kararı 2026-09-26): Gerçek ve hayalet kart
-aynı bileşen düzenini kullanır (`apps/web/src/schedule/components/ShiftCard.tsx`:
-`ShiftCard` / `GhostShiftCard`). Satır sırası: 1) tip-iş, 2) label düz metin
-(kutucuk yok), 3) saat. Hayalet: bütün hayaletler tek ölü gri
-(`--schedule-ghost-*`), ince seyrek tarama, saydamlık yok (metin ≥5:1);
-lokasyon yalnız köşedeki iğnenin baloncuğunda (`apps/web/src/shell/Tooltip.tsx`).
-Köşe ikonu olan kart başlığa sağdan yer ayırır. Dışa aktarma lokasyonu yazıyla
-gösterir. Gerçek kartta iğne yok. "All locations – Together" görünümünde
-gerçek kartta lokasyon satırı kalır: başlığın altında, ikonsuz (kullanıcı
-kararı 2026-09-26). Not 2026-09-26 (`aff7ca8`):
-`Tooltip.tsx` ve `--schedule-ghost-*` henüz main'de değil, branch `ghost-11b`.
-
-Sağ üst menüler ve Publish penceresi (kullanıcı kararı 2026-09-28, "stil B";
-main `228ff3b7`, 2026-09-29): New Schedule ▾ (taslak menüsü), düzenlerken
-Publish (Save draft menüsü), Published ▾ ve Publish penceresi "sade liste"
-stilindedir — 13px metin, 500/600 ağırlık, gri ince çizgiler, tek yeşil
-aksiyon; satır araçları (Edit, Delete, Unpublish) yalnız satır hover ya da
-klavye odağındayken (`:focus-within`) görünür, dokunmatikte
-(`@media (hover: none)`) hep açıktır. ≤720px'te düğme satırı kaydırılmaz,
-sarılır (kaydırılan kutu menüleri kırpıyordu) ve menüler satır genişliğinde
-açılır. Yeni bir sağ üst menü ya da yayın penceresi bu stilden kurulur.
-Kodda: `apps/web/src/schedule/components/DraftDropdownMenu.tsx`,
-`SaveDraftMenu.tsx`, `PublishScheduleDialog.tsx`, Published ▾ menüsü
-`apps/web/src/views/SchedulePage.tsx` içinde (`.schedule-action-menu`),
-stiller `apps/web/src/styles.css` (`.schedule-draft-menu-*`,
-`.schedule-action-menu-panel`, 720px bloğu). **Bu stile uymayan komşular:**
-Export, Templates, Unpublish, SaveDraftDialog ve ConfirmDialog/UI-13 onay
-pencereleri hâlâ eski ağır stilde — kullanıcı yalnız bu dört yüzeyi seçti,
-tutarlılık ayrı iş (BL-318).
-
-Başka yöneticinin taslak adıyla kaydedince UI-13 penceresi sorar:
-"Overwrite "<ad>"?"; Cancel derse hata satırı başka ad seçmesini söyler.
-
-Düzenleme kilidi (3b): yalnız taslak kilitlenir. Başkası taslağı
-düzenliyorsa "Draft is being edited" penceresi kimin düzenlediğini söyler;
-"View schedule" beyaz, "Try again" yeşil. Yayın penceresinin ilk adımında,
-taslak başladıktan sonra yayını değişen lokasyonun altında uyarı satırı
-(kim, ne zaman; engel değil, yayınlayan karar verir).
-
-Müsaitlik (FOUNDATION-B 5.3, 2026-09-24): tek kaynak çalışanın haftalık
-işaretleri (`employee_weekly_preferences`) ve yöneticinin gizli
-hatırlatmaları (`manager_weekly_reminders`). Izgaradaki taralı hücreler
-okuma modelindeki `employees[].weekly_availability`'den çizilir; yayınlanmış
-vardiyanın uyarısı yayın anındaki kayıttan gelir, sonradan girilen işaret
-yayınlanmış işi geriye dönük uyarıya çevirmez. Add/Edit shift kaydederken
-"Checking availability…" ile sunucudaki ortak kontrolü sorar; ayar
-(Settings → Conflict handling → Employee availability) Warn ise vardiya
-uyarıyla yazılır, Require confirmation ise çakışma penceresi "Place shift" /
-"Add anyway" kararını ister, Block ise yazılmaz; yöneticinin hatırlatmasına
-çarpan vardiya ayardan bağımsız hep onay ister. Onay gerekçe yazdırmaz,
-kararın parmak iziyle kaydedilir (eski "Override reason" kutusu, "custom
-work" sınıflandırması ve "Keep draft" yok). Sürükle-bırak/yapıştırma
-incelemesi ve "Review current default hours" aynı kuralla çalışır. Çalışan
-kartında yalnız "Weekly availability preferences" simgesi var.
-**BL-186 ile değişecek (kural 2026-09-26, "Müsaitlik"):** müsaitlik yazmayı hiç durdurmaz; Warn/confirm/Block dalları ve "Place shift" / "Add anyway" penceresi müsaitlik için kalkar, hücrede yalnız uyarı, Publish'te onay. Bu paragraf iş main'e girince yeniden yazılır.
+**Bilinen tuhaflıklar.**
+- Export, Unpublish, Save draft penceresi ve onay pencereleri (UI-13) hâlâ
+  eski ağır stilde: kullanıcı stil B'yi yalnız sağ üst yüzeyler için seçti,
+  tutarlılık ayrı iş (BL-318).
 
 ### ScheduleRequestsPage
 
@@ -501,8 +487,7 @@ gibi kalıyor.
 **Ne işe yarar.** Settings → Conflict handling
 (`/app/settings/scheduling/conflicts`): vardiya yazarken çıkan çakışmaların
 bütün işletmede nasıl ele alınacağı. Her kural için bir seçim: Required
-documents, Conditional documents during grace / after grace, Employee
-availability, Approved time off, Closed location or shift type, Minimum travel
+documents, Conditional documents during grace / after grace, Approved time off, Closed location or shift type, Minimum travel
 ve Minimum rest (ikisinin dakikası da burada). Kaydetmek
 `schedule.conflict_rules.manage` ister (`PUT
 /v1/workspaces/:id/scheduling-settings/conflicts`).
@@ -513,9 +498,8 @@ UI-09 buton rolleri ("Save conflict rules" yeşil).
 
 **Kendine özgü kurallar.** Kademeler: Warn (uyarı gösterir, vardiya yazılır),
 Require confirmation (yönetici "vazgeç" ya da "yine de koy" seçer, kayıtlı),
-Block. Employee availability 5.3b'den beri üç kademe, "Allow" yok; yöneticinin
-gizli hatırlatması bu seçimden bağımsız her zaman Require confirmation.
-**BL-186 ile değişecek:** "Employee availability" satırı kalkar (kural 2026-09-26, "Müsaitlik").
+Block. Müsaitlik burada yok: BL-186'dan (2026-09-26) beri tercih, ayarı
+kalktı ("Ürün kuralları → Müsaitlik").
 Approved time off yalnız Require confirmation / Block (Aşama 6'da yalnız Block
 kalacak). Conditional after grace, grace kuralından yumuşak olamaz (şema
 reddeder). Kayıt `conflict_rules_revision` ile gider; arada başkası
