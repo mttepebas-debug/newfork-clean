@@ -12,3 +12,4 @@
 - [e2e flow patterns](e2e-flow-patterns.md) — Employee Hub fetches today-2..+42; Schedule card opens on double click/Enter; second publish via Published menu; Auth mail in Mailpit; hit the API directly for sensitive server checks
 - [Negative cell + mutation proof](negative-cell-and-mutation-proof.md) — an "X absent" cell first proves success + presence; break the service in a rolled-back transaction to prove the cell catches
 - [Tool limits](tool-limits.md) — ci.yml edit refused as Modify Shared Resources unless the user allows it in that window; MSYS_NO_PATHCONV=1 for git show origin/main:<path>
+- [Web test load traps](web-test-load-traps.md) — yükte düşen web/api testi: RTL 1 sn findBy, tembel rota ilk yükü, effect'le dolan form, api config; Git Bash TZ'yi node'a geçirmiyor

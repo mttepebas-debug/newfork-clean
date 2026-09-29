@@ -43,7 +43,16 @@ gerekçesiyle. Ürün kararı yok.
 10. **BL-328 — bütün metin adlarına `exact: true`; regex adlar kaldı.** Başı `^` ile bağlı regex'ler
     zaten tam; bağsız iki regex (`/shows as unavailable for this shift/`, `/On call/`) uzun rozet
     adlarının içinden seçiyor, bilerek kısmi. `owner-legal-name-setup.spec.ts` dokunma listesinde.
-11. **BL-203 — spec'lerin yazdığı taslak adlarına rastgele ek (`draftName`).**
+11. **BL-203 / BL-210 — her tekrar turu kendi haftası ve etiketleriyle.** Taslak adı tek engel
+    değildi: ikinci tur ilk turun yayınladığı haftaya, açık bıraktığı düzenleme oturumlarına,
+    aynı vardiya etiketlerine, aynı etiket adına ve aynı yeni parolaya çarpıyordu.
+    `e2e/fixtures/world.ts`: `draftName`, `round`, `roundWeek`, `roundLabel`; 0. tur eskisiyle
+    aynı. Ölçüm: `pnpm e2e --repeat-each=2` 36/36 yeşil (2026-09-29 06:32–06:36, yerel, `db.lock`).
+    İlk denemede iki ikinci-tur hatası (parola sıfırlama, kilit) bu kararın gerekçesi.
+14. **BL-321 — yalnız bu senaryoya 120 sn.** İz (trace): ~140 adım, en uzunu ~2 sn (Schedule
+    açılışı, Employee Hub not penceresi); tek bir yavaş bekleme yok. Boşta 13,6 sn (06:21),
+    9,6–10,3 sn (06:26–06:36); yükte 44–60 sn. Bölmek ortak kurulumu (iki giriş, yayın) iki kez
+    ödetir. Sınır, yükteki en kötünün iki katı.
 12. **U18 — denendi, geri alındı.** Dal CI'ı 36570931085 (`38a6e086`, 12:54–12:57 UTC) test adımı
     `--concurrency=2` ile 2 dk 26 sn; main'de `--concurrency=1` ile 1 dk 44 sn – 1 dk 54 sn (koşular
     36541702828, 36542728375, 36545445726; 08:17–08:55 UTC). check, db ve e2e aynı PC'de koştuğu

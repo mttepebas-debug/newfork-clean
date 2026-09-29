@@ -21,5 +21,9 @@ metadata:
   `/auth/v1/token?grant_type=password` (E2E_API_URL, E2E_ANON_KEY). Örnek: `ownership-transfer-password.spec.ts`.
 - **Yerel DB'de iz:** bildirimli yayın yapan her e2e ortak yerel DB'de bekleyen bildirim satırı bırakır
   (BL-296'yı büyütür); account-password-change kalıcı güvenlik kaydı bırakır (BL-288).
+- **Tekrar koşusu (`--repeat-each`)** çalışır (BL-203, 2026-09-29): dünya koşu başına tek olduğu için
+  her tur kendi haftasını, builder etiketini, taslak adını ve yeni parolasını `e2e/fixtures/world.ts`
+  `round`/`roundWeek`/`roundLabel`/`draftName` ile alır. Yeni spec aynı kalıbı izlemezse ikinci turda
+  düşer; `pnpm e2e --repeat-each=2` ile dene.
 
 İlgili: [[failure-screenshots-include-leftover-pages]].
