@@ -39,6 +39,7 @@ select tests.person('m', 'can', 'manager', array['K', 'B'], array['cook']);
 select tests.person('m', 'nur', 'manager', null, null);
 -- Manages Besiktas without working there (KARARLAR "yalnız yönetir", FB-6.2 S2).
 select tests.person('m', 'selin', 'manager', null, null);
+select tests.manages('m', 'selin', 'B');
 select tests.role('m', 'shift lead', 'manager', array(
   select rp.permission_key
   from public.workspace_role_permissions rp
@@ -585,7 +586,7 @@ begin
     -- nor a peer's or a senior's, and edits the whole record of somebody who
     -- also works at another location.
     if p.class = 'owner' then return 'allow'; end if;
-    -- Nor another admin's (FB-6.2, asked 2026-09-29: peers do not manage peers).
+    -- Nor another admin's: peers do not manage peers (KK-24, 2026-09-29).
     if p.class = 'admin' then
       return case when t.class = 'owner' or (t.class = 'admin' and not is_self) then 'deny' else 'allow' end;
     end if;
@@ -779,6 +780,8 @@ insert into known_gap values
    'an admin cannot save their own employee record, P0002 (stage 6, employees)'),
   ('admin-removes-admin-access', '{admin}', '{employee.remove_access}', '{zeynep,kaan}',
    'an admin takes another admin''s access away: remove_employee_access_service does not ask the rank (BL-270, FB-6.2.4)'),
+  ('managed-only-cannot-save', '{selin}', '{employee.save}', null,
+   'a manager who only manages a location cannot save the records there: save_employee asks the older can_manage_employee_record (FB-6.2.4)'),
   ('terminate-needs-location', null, '{employee.terminate}', '{selin}',
    'ending the employment of somebody who works nowhere fails on the worksite time zone, 22023 (FB-6.2.4)'),
   ('preferred-name-not-on-core', null, '{employee.decide_preferred_name,employee.pending_names}', null,

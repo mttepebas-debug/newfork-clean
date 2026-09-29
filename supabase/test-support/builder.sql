@@ -617,6 +617,25 @@ begin
 end;
 $$;
 
+-- A manager made by tests.person manages a location without working there
+-- (KARARLAR "yalnız yönetir", FB-6.2 S2).
+-- ponytail: written directly, as the owner; the admin's command comes with FB-6.2.4.
+create or replace function tests.manages(w text, person_label text, loc text)
+returns void
+language plpgsql
+set search_path = ''
+as $$
+begin
+  insert into public.membership_managed_locations (workspace_id, membership_id, location_id, added_by)
+  select tests.id(w), m.id, tests.id(w || ':' || loc), tests.user(w || ':owner')
+  from public.workspace_memberships m
+  where m.workspace_id = tests.id(w) and m.user_id = tests.user(w || ':' || person_label);
+  if not found then
+    raise exception 'tests.manages: % has no membership in world %', person_label, w;
+  end if;
+end;
+$$;
+
 -- The opposite: the member no longer works at the location (every location
 -- when location is null). Their active assignments there end now.
 create or replace function tests.stops_working_at(membership uuid, location uuid default null)
