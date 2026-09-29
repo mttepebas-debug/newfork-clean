@@ -63,12 +63,12 @@ $$;
 
 -- 1. The answer's shape -----------------------------------------------------------------
 
-select is(pg_temp.keys(pg_temp.read('r:owner')), array['invite_roles', 'jobs', 'locations'],
-  'one answer carries locations, jobs and the roles to invite with');
+select is(pg_temp.keys(pg_temp.read('r:owner')), array['departments', 'invite_roles', 'jobs', 'locations'],
+  'one answer carries locations, departments, jobs and the roles to invite with');
 select is(pg_temp.keys(pg_temp.read('r:owner') -> 'locations' -> 0), array['archived_at', 'id', 'name', 'timezone'],
   'a location carries what the pickers and Terminate show');
-select is(pg_temp.keys(pg_temp.read('r:owner') -> 'jobs' -> 0), array['archived_at', 'id', 'name'],
-  'a job carries what the Jobs picker shows');
+select is(pg_temp.keys(pg_temp.read('r:owner') -> 'jobs' -> 0), array['archived_at', 'department_id', 'id', 'name', 'system_key'],
+  'a job carries what the Jobs picker shows, grouped by department (BL-218 .3a)');
 select is(pg_temp.keys(pg_temp.read('r:owner') -> 'invite_roles' -> 0), array['access_class', 'id', 'name', 'system_key'],
   'a role carries what the invitation picker shows');
 
