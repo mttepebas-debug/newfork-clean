@@ -35,19 +35,11 @@ import { validateAvatarFile } from "./avatar-crop";
 import { AccountAvatar } from "./AccountAvatar";
 import { roleLabel } from "../shell/prebiz/PreBiz";
 
-const callingCodes = [
-  { value: "1", label: "US/CA +1" },
-  { value: "44", label: "GB +44" },
-  { value: "61", label: "AU +61" },
-  { value: "90", label: "TR +90" },
-] as const;
-
 export default function ProfilePage() {
   const { account, updateAccount } = useAuth();
   const fileInput = useRef<HTMLInputElement>(null);
   const [displayName, setDisplayName] = useState(account?.displayName ?? "");
   const [phone, setPhone] = useState(account?.phone ?? "");
-  const [callingCode, setCallingCode] = useState("1");
   const [avatarObjectPath, setAvatarObjectPath] = useState(account?.avatarObjectPath ?? null);
   const [avatarUrl, setAvatarUrl] = useState(account?.avatarUrl ?? null);
   const [saving, setSaving] = useState(false);
@@ -109,7 +101,7 @@ export default function ProfilePage() {
     setError(null);
     let profileSaved = false;
     try {
-      const normalizedPhone = normalizeAccountPhone(phone, callingCode);
+      const normalizedPhone = normalizeAccountPhone(phone);
       const previousAvatarPath = account.avatarObjectPath;
       let nextAvatar = { avatarObjectPath, avatarUrl };
       if (draftFile) {
@@ -164,58 +156,49 @@ export default function ProfilePage() {
       <AccountPageHeader
         title="Profile"
         titleId="profile-title"
-        description="Personal details used across Newfork. Workspace employee records stay independent after onboarding."
+        description="Your personal details, and the record each workspace keeps of you."
       />
-      <form onSubmit={submit}>
-        <section className="account-section-block">
-          <div className="account-section-copy">
-            <h2>Profile photo</h2>
-            <p>Add a recognizable image for account menus and collaboration surfaces.</p>
-          </div>
-          <div className="account-section-body">
-            <div className="account-avatar-row">
-              <AccountAvatar globalUrl={avatarUrl} className="account-avatar-large" name={displayName} />
-              <div>
-                <div className="account-button-row">
-                  <Button id="profile-photo-upload-trigger" type="button" disabled={saving} onClick={() => fileInput.current?.click()}>
-                    <Camera size={15} aria-hidden /> {avatarUrl ? "Replace" : "Upload"}
-                  </Button>
-                  <ConfirmButton
-                    className="danger-button"
-                    disabled={saving || (!avatarObjectPath && !draftFile)}
-                    confirmLabel="Confirm remove"
-                    onConfirm={() => {
-                      setDraftFile(null);
-                      setAvatarObjectPath(null);
-                      setAvatarUrl(null);
-                      markDirty();
-                    }}
-                  >
-                    <Trash2 size={15} aria-hidden /> Remove
-                  </ConfirmButton>
-                </div>
-                <span className="field-help">JPG, PNG or WebP · up to 5 MB</span>
+      <form className="account-section-block" aria-labelledby="account-details-title" onSubmit={submit}>
+        <div className="account-section-copy">
+          <h2 id="account-details-title">Personal details</h2>
+          <p>Your photo, display name and phone number follow you into every workspace. Changing them does not rewrite an existing employee legal name.</p>
+        </div>
+        <div className="account-section-body">
+          <div className="account-avatar-row">
+            <AccountAvatar globalUrl={avatarUrl} className="account-avatar-large" name={displayName} />
+            <div className="account-avatar-controls">
+              <div className="account-button-row">
+                <Button id="profile-photo-upload-trigger" type="button" disabled={saving} onClick={() => fileInput.current?.click()}>
+                  <Camera size={15} aria-hidden /> {avatarUrl ? "Replace" : "Upload"}
+                </Button>
+                <ConfirmButton
+                  className="danger-button"
+                  disabled={saving || (!avatarObjectPath && !draftFile)}
+                  confirmLabel="Confirm remove"
+                  onConfirm={() => {
+                    setDraftFile(null);
+                    setAvatarObjectPath(null);
+                    setAvatarUrl(null);
+                    markDirty();
+                  }}
+                >
+                  <Trash2 size={15} aria-hidden /> Remove
+                </ConfirmButton>
               </div>
-              <input
-                ref={fileInput}
-                className="visually-hidden"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                aria-label="Choose profile photo"
-                disabled={saving}
-                onChange={(event) => selectAvatar(event.target.files?.[0])}
-              />
+              <span className="field-help">Profile photo · JPG, PNG or WebP · up to 5 MB</span>
             </div>
+            <input
+              ref={fileInput}
+              className="visually-hidden"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Choose profile photo"
+              disabled={saving}
+              onChange={(event) => selectAvatar(event.target.files?.[0])}
+            />
           </div>
-        </section>
-
-        <section className="account-section-block">
-          <div className="account-section-copy">
-            <h2>Personal details</h2>
-            <p>Your display name is global. Changing it does not rewrite an existing employee legal name.</p>
-          </div>
-          <div className="account-section-body account-field-grid">
-            <label className="account-field account-field-wide" htmlFor="account-display-name">
+          <div className="account-field-grid">
+            <label className="account-field" htmlFor="account-display-name">
               <span>Display name</span>
               <input
                 id="account-display-name"
@@ -228,50 +211,39 @@ export default function ProfilePage() {
                 }}
                 required
               />
-              <small>Shown throughout Newfork.</small>
             </label>
-            <label className="account-field account-field-wide">
-              <span>Phone number</span>
-              <span className="account-phone-field">
-                <select
-                  aria-label="Country calling code"
-                  value={callingCode}
-                  onChange={(event) => {
-                    setCallingCode(event.target.value);
-                    markDirty();
-                  }}
-                >
-                  {callingCodes.map((item) => (
-                    <option key={item.label} value={item.value}>{item.label}</option>
-                  ))}
-                </select>
-                <input
-                  id="account-phone-number"
-                  aria-label="Phone number"
-                  type="tel"
-                  value={phone}
-                  maxLength={30}
-                  onChange={(event) => {
-                    setPhone(event.target.value);
-                    markDirty();
-                  }}
-                  placeholder="415 555 0142"
-                />
+            <label className="account-field" htmlFor="account-phone-number">
+              <span>
+                Phone number<span className="field-optional">optional</span>
               </span>
-              <small>Optional. Saved in international format and used only for your global account.</small>
+              {/* Without a leading +, the number is read as a US/Canada number. */}
+              <input
+                id="account-phone-number"
+                aria-label="Phone number"
+                type="tel"
+                value={phone}
+                maxLength={30}
+                onChange={(event) => {
+                  setPhone(event.target.value);
+                  markDirty();
+                }}
+                placeholder="415 555 0142"
+              />
+              <small>Outside the US or Canada, start with + and the country code.</small>
             </label>
           </div>
-        </section>
-
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
-        {saved ? <p className="form-success" role="status">Profile saved</p> : null}
-        <div className="account-form-actions">
-          <Button type="button" className="secondary-button" disabled={!dirty || saving} onClick={() => void discard()}>
-            Discard
-          </Button>
-          <Button type="submit" disabled={!dirty || saving || !displayName.trim()}>
-            {saving ? "Saving" : "Save changes"}
-          </Button>
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
+          {saved ? <p className="form-success" role="status">Profile saved</p> : null}
+          <div className="account-form-actions">
+            {dirty ? (
+              <Button type="button" className="secondary-button" disabled={saving} onClick={() => void discard()}>
+                Discard
+              </Button>
+            ) : null}
+            <Button type="submit" disabled={!dirty || saving || !displayName.trim()}>
+              {saving ? "Saving" : "Save changes"}
+            </Button>
+          </div>
         </div>
       </form>
       <OwnerLegalNames />
