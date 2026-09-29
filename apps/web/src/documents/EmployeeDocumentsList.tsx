@@ -212,7 +212,10 @@ export function EmployeeDocumentsList(props: {
         </div>
       </div>
       <div className="employee-table-wrap">
-        <table className="employee-table" aria-label="Employee documents">
+        <table
+          className={personal ? "employee-table document-personal-table" : "employee-table"}
+          aria-label="Employee documents"
+        >
           <thead>
             <tr>
               {(

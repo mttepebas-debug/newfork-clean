@@ -110,3 +110,41 @@ Branch `task/account-redesign`, worktree `../newfork-wt/account-redesign`.
   sekmesinin adı (ürün metni, bu işin kapsamı değil); pasif düğme kontrastı
   (ortak Button, tüm uygulama; WCAG pasif kontrolü saymaz → backlog adayı);
   Workspaces telefonda alt alta dizilen satır (ortak satır kiti, K-8).
+
+## Düzeltme turu (2026-09-29, `merge/account` üzerinde; nf-guvenlik ve nf-gorsel-qa bulguları)
+
+- **K-15. Profile'da Save neden kapalı: tek satır, eksikler adıyla.** Save'in
+  hemen üstünde "To save, fill in phone number and relationship." gibi tek
+  satır; Save `aria-describedby` ile ona bağlı. Zorunlu alanlar görsel
+  yıldızla işaretlenmedi: azınlık olan isteğe bağlılar zaten "optional"
+  yazıyor (Middle name, Preferred name), zorunlu kutular `required` taşıyor
+  (ekran okuyucu söyler); altı alana yıldız gürültü olurdu. Satır, hiçbir şey
+  değişmemişken de eksik varsa görünür (yeni hesap neyin gerektiğini baştan
+  görür). Geri alma: kolay (`ProfilePage.tsx` `missing`).
+- **K-16. Profile'da kısmi kayıt her workspace için ayrı izlenir** (nf-guvenlik
+  bulgusu). Acil durum kişisi ve preferred name her kayıtla tek tek
+  karşılaştırılır; yalnız farklı olanlara gönderilir; düşen workspace
+  mesajda adıyla geçer ("…could not be saved in Ridgeline. Try again."),
+  Save açık kalır ve yeniden deneme yalnız düşeni gönderir. Yöneticinin
+  onayını bekleyen preferred name isteği kayıtta görünmediği için "gönderildi"
+  bilgisi oturumda tutulur. Yan etki: kayıtlar baştan farklı kişiler
+  tutuyorsa (K-P2) kullanıcı değiştirip geri alsa da Save açık kalır; kaydetmek
+  hepsini eşitler. Geri alma: orta.
+- **K-17. Account'ta düğme boyu: form, satır içi ve başlık düğmeleri alan
+  boyunda.** Save, Discard, Change email, Change password, Sign out other
+  sessions, Delete account, Create workspace: 40px (telefonda 44px), yanındaki
+  alanla aynı. Profile'daki fotoğraf düğmeleri (Upload, Remove) avatarın
+  yanında kompakt kalır (kullanıcı onaylı), Workspaces satır düğmeleri satır
+  kitini izler (telefonda 44px). Geri alma: kolay (`account.css`).
+- **K-18. Documents telefonda yana kaydırmasız.** Kişisel tablonun en küçük
+  genişliği (780px) kalktı, belge adı üç noktayla kesilmek yerine alt satıra
+  kayar; "Document type" seçicisi diğer Account alanlarıyla aynı boy ve
+  kenarda. Yalnız `personal` tablo; yöneticinin ekranı aynı. Geri alma: kolay.
+- **K-19. Workspaces'te açık satırın "Owner" satırı `--theme-text-secondary`.**
+  Ton zemininde `--theme-muted` 4,39:1 idi; yeni renk 5,76:1 (hesaplandı).
+- **K-20. Bölüm açıklamaları 13px.** Legal name altındaki açıklama 12px'ti,
+  diğer bölüm açıklamalarıyla eşitlendi. Alan altı yardım yazıları (input
+  altındaki `small`) 12px kalır: ayrı rol.
+- **K-21. Notifications telefonda açma okları 44×44px.**
+- Kapsam dışı bırakılan (koordinatörün notu): Documents menü sayacı ile boş
+  sayfa çelişkisi (backlog), Schedule Settings telefonda taşma (BL-333).

@@ -62,6 +62,17 @@ type Contact = {
   readonly phone: string;
 };
 
+/** "a", "a and b", "a, b and c". */
+function listWords(words: readonly string[]): string {
+  return words.length < 2
+    ? (words[0] ?? "")
+    : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+}
+
+function workspaceNames(records: readonly EmploymentContactRecord[]): string {
+  return listWords(records.map((record) => record.workspaceName));
+}
+
 /** The same contact is kept on every workspace record; the first filled one leads. */
 function leadingContact(records: readonly EmploymentContactRecord[]): Contact {
   const lead = records.find((record) => record.emergencyContactName) ?? records[0];
@@ -85,6 +96,12 @@ export default function ProfilePage() {
   });
   const [preferredDraft, setPreferredDraft] = useState<string | null>(null);
   const [contactDraft, setContactDraft] = useState<Contact | null>(null);
+  // Workspaces that already took the preferred name being typed. A request a
+  // manager still has to approve leaves the record as it was, so the record
+  // alone cannot say it was sent.
+  const [preferredSent, setPreferredSent] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [phone, setPhone] = useState(account?.phone ?? "");
   const [avatarObjectPath, setAvatarObjectPath] = useState(account?.avatarObjectPath ?? null);
   const [avatarUrl, setAvatarUrl] = useState(account?.avatarUrl ?? null);
@@ -142,20 +159,40 @@ export default function ProfilePage() {
 
   const legalDirty = Object.values(legalState).some((form) => form.dirty);
   const legalFilled = Object.values(legalState).every((form) => form.filled);
-  const preferredDirty = preferred !== preferredOnFile;
-  const contactDirty =
-    contact.name !== contactOnFile.name ||
-    contact.relationship !== contactOnFile.relationship ||
-    contact.phone !== contactOnFile.phone;
+  // Each workspace is compared on its own, so one that refused the last Save
+  // keeps Save open and is the only one sent again.
+  const preferredBehind =
+    preferredDraft === null
+      ? []
+      : contactRecords.filter(
+          (record) =>
+            record.preferredName !== preferred.trim() &&
+            !preferredSent.has(record.workspaceId),
+        );
+  const preferredDirty =
+    preferredDraft !== null &&
+    (preferred !== preferredOnFile || preferredBehind.length > 0);
+  const contactBehind =
+    contactDraft === null
+      ? []
+      : contactRecords.filter(
+          (record) =>
+            record.emergencyContactName !== contact.name ||
+            record.emergencyContactRelationship !== contact.relationship ||
+            record.emergencyContactPhone !== contact.phone,
+        );
+  const contactDirty = contactBehind.length > 0;
   const formDirty = dirty || legalDirty || preferredDirty || contactDirty;
   // Only the preferred name and the middle name may stay empty.
-  const complete =
-    legalFilled &&
-    phone.trim() !== "" &&
-    (!hasContactForm ||
-      (contact.name.trim() !== "" &&
-        contact.relationship.trim() !== "" &&
-        contact.phone.trim().length >= 7));
+  // What is still missing, by the labels on screen; Save waits for all of it.
+  const missing = [
+    legalFilled ? null : "legal name",
+    phone.trim() === "" ? "phone number" : null,
+    hasContactForm && contact.name.trim() === "" ? "contact name" : null,
+    hasContactForm && contact.relationship.trim() === "" ? "relationship" : null,
+    hasContactForm && contact.phone.trim().length < 7 ? "contact phone" : null,
+  ].filter((part): part is string => part !== null);
+  const complete = missing.length === 0;
 
   useEffect(() => {
     if (!draftFile) return;
@@ -194,6 +231,7 @@ export default function ProfilePage() {
   const discard = () => {
     setDraftFile(null);
     setPreferredDraft(null);
+    setPreferredSent(new Set());
     setContactDraft(null);
     setPhone(account.phone ?? "");
     setAvatarObjectPath(account.avatarObjectPath);
@@ -239,30 +277,47 @@ export default function ProfilePage() {
     }
   };
 
-  /** Sends the preferred name to every workspace; returns how many hold it for an answer. */
-  const savePreferredName = async (): Promise<number> => {
+  /**
+   * Sends the preferred name to each workspace that does not have it yet.
+   * Says how many hold it for a manager's answer and which ones refused.
+   */
+  const savePreferredName = async () => {
     let waiting = 0;
-    for (const record of contactRecords) {
-      if (record.preferredName === preferred.trim()) continue;
-      const outcome = await requestPreferredName(
-        record.workspaceId,
-        record.employeeId,
-        preferred.trim(),
-      );
-      if (outcome === "waiting") waiting += 1;
+    const sent: string[] = [];
+    const refused: EmploymentContactRecord[] = [];
+    for (const record of preferredBehind) {
+      try {
+        const outcome = await requestPreferredName(
+          record.workspaceId,
+          record.employeeId,
+          preferred.trim(),
+        );
+        if (outcome === "waiting") waiting += 1;
+        sent.push(record.workspaceId);
+      } catch {
+        refused.push(record);
+      }
     }
-    return waiting;
+    return { waiting, sent, refused };
   };
 
-  const saveContact = async (): Promise<void> => {
-    for (const record of contactRecords)
-      // personalPhone left out: the number a workspace has on file stays.
-      await saveOwnEmploymentContact(record.workspaceId, record.employeeId, {
-        name: contact.name,
-        relationship: contact.relationship,
-        phone: contact.phone,
-        email: record.emergencyContactEmail,
-      });
+  /** Writes the contact to each workspace that differs; returns the ones that refused. */
+  const saveContact = async (): Promise<EmploymentContactRecord[]> => {
+    const refused: EmploymentContactRecord[] = [];
+    for (const record of contactBehind) {
+      try {
+        // personalPhone left out: the number a workspace has on file stays.
+        await saveOwnEmploymentContact(record.workspaceId, record.employeeId, {
+          name: contact.name,
+          relationship: contact.relationship,
+          phone: contact.phone,
+          email: record.emergencyContactEmail,
+        });
+      } catch {
+        refused.push(record);
+      }
+    }
+    return refused;
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -285,20 +340,26 @@ export default function ProfilePage() {
       }
     }
     if (preferredDirty && failures.length === 0) {
-      try {
-        waiting = await savePreferredName();
+      const outcome = await savePreferredName();
+      waiting = outcome.waiting;
+      if (outcome.refused.length === 0) {
         setPreferredDraft(null);
-      } catch {
-        failures.push("Your preferred name could not be sent to your workspaces.");
+        setPreferredSent(new Set());
+      } else {
+        // The draft stays, so Save stays open for the ones that refused.
+        setPreferredSent((current) => new Set([...current, ...outcome.sent]));
+        failures.push(
+          `Your preferred name could not be sent to ${workspaceNames(outcome.refused)}. Try again.`,
+        );
       }
     }
     if (contactDirty) {
-      try {
-        await saveContact();
-        setContactDraft(null);
-      } catch {
-        failures.push("Your emergency contact could not be saved. Try again.");
-      }
+      const refused = await saveContact();
+      if (refused.length === 0) setContactDraft(null);
+      else
+        failures.push(
+          `Your emergency contact could not be saved in ${workspaceNames(refused)}. Try again.`,
+        );
     }
     if (contactDirty || preferredDirty)
       await cache.invalidateQueries({ queryKey: ["account-employment-records"] });
@@ -401,6 +462,8 @@ export default function ProfilePage() {
               maxLength={80}
               onChange={(event) => {
                 setPreferredDraft(event.target.value);
+                // A new name goes to every workspace again.
+                setPreferredSent(new Set());
                 setSaved(null);
               }}
             />
@@ -489,13 +552,23 @@ export default function ProfilePage() {
 
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {saved ? <p className="form-success" role="status">{saved}</p> : null}
+        {/* Why Save is off: the missing fields, by name. */}
+        {missing.length > 0 ? (
+          <p className="account-form-missing" id="profile-missing">
+            To save, fill in {listWords(missing)}.
+          </p>
+        ) : null}
         <div className="account-form-actions">
           {formDirty ? (
             <Button type="button" className="secondary-button" disabled={saving} onClick={() => void discard()}>
               Discard
             </Button>
           ) : null}
-          <Button type="submit" disabled={!formDirty || saving || !complete}>
+          <Button
+            type="submit"
+            disabled={!formDirty || saving || !complete}
+            aria-describedby={missing.length > 0 ? "profile-missing" : undefined}
+          >
             {saving ? "Saving" : "Save"}
           </Button>
         </div>

@@ -430,6 +430,93 @@ describe("ProfilePage", () => {
     expect(updateAccount).toHaveBeenCalledWith("Ay", "system", "+14155550142", expect.anything());
     expect(await screen.findByText(/manager needs to approve/)).toBeTruthy();
   });
+
+  it("keeps Save open when one workspace refuses, names it, and sends only that one again", async () => {
+    const second = "51000000-0000-4000-8000-000000000002";
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      workspace("employee"),
+      { ...workspace("employee"), id: second, name: "Ridgeline" },
+    ]);
+    const before = [
+      contactRecord(ownedWorkspaceId, {
+        emergencyContactName: "Morgan",
+        emergencyContactRelationship: "Spouse",
+        emergencyContactPhone: "4155550199",
+      }),
+      contactRecord(second, {
+        workspaceName: "Ridgeline",
+        emergencyContactName: "Morgan",
+        emergencyContactRelationship: "Spouse",
+        emergencyContactPhone: "4155550199",
+      }),
+    ];
+    vi.mocked(listOwnEmploymentRecords).mockResolvedValue(before);
+    // Meyhouse takes both; Ridgeline refuses both the first time.
+    vi.mocked(saveOwnEmploymentContact).mockImplementation(async (workspaceId) => {
+      if (workspaceId === second) throw new Error("Emergency contact could not be saved");
+    });
+    vi.mocked(requestPreferredName).mockImplementation(async (workspaceId) => {
+      if (workspaceId === second) throw new Error("refused");
+      return "published";
+    });
+    renderProfile();
+    await screen.findByDisplayValue("Morgan");
+
+    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Ay" } });
+    fireEvent.change(screen.getByLabelText("Contact name"), { target: { value: "Sam" } });
+    // After the Save, Meyhouse holds the new values and Ridgeline the old ones.
+    vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
+      { ...before[0]!, preferredName: "Ay", emergencyContactName: "Sam" },
+      before[1]!,
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("could not be sent to Ridgeline");
+    expect(alert.textContent).toContain("could not be saved in Ridgeline");
+    expect(alert.textContent).not.toContain("Meyhouse");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false),
+    );
+    expect(screen.getByLabelText("Contact name")).toHaveProperty("value", "Sam");
+    expect(screen.getByLabelText("Preferred name")).toHaveProperty("value", "Ay");
+
+    vi.mocked(saveOwnEmploymentContact).mockClear();
+    vi.mocked(requestPreferredName).mockClear();
+    vi.mocked(saveOwnEmploymentContact).mockResolvedValue(undefined);
+    vi.mocked(requestPreferredName).mockResolvedValue("published");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(saveOwnEmploymentContact).toHaveBeenCalledTimes(1));
+    expect(saveOwnEmploymentContact).toHaveBeenCalledWith(
+      second,
+      `emp-${second}`,
+      expect.objectContaining({ name: "Sam" }),
+    );
+    expect(requestPreferredName).toHaveBeenCalledTimes(1);
+    expect(requestPreferredName).toHaveBeenCalledWith(second, `emp-${second}`, "Ay");
+  });
+
+  it("says which required fields are missing while Save is off", async () => {
+    vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
+      contactRecord(ownedWorkspaceId, {
+        emergencyContactName: "Morgan",
+        emergencyContactRelationship: "Spouse",
+        emergencyContactPhone: "4155550199",
+      }),
+    ]);
+    renderProfile();
+    await screen.findByDisplayValue("Morgan");
+    expect(screen.queryByText(/To save, fill in/)).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Relationship"), { target: { value: "" } });
+    expect(screen.getByText("To save, fill in phone number and relationship.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(
+      screen.getByRole("button", { name: "Save" }).getAttribute("aria-describedby"),
+    ).toBe("profile-missing");
+  });
 });
 
 function choosePhoto() {
