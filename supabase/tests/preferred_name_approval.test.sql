@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(25);
 
 -- A preferred name was storable in name only: the column existed and a check
 -- constraint held it at the empty string. A workspace now chooses between
@@ -244,6 +244,28 @@ select public.request_employee_preferred_name_service(tests.user('pn:zeynep'), t
 select is(pg_temp.recipients(tests.id('pn:zeynep'), 'people.preferred_name.review_required'),
   pg_temp.users(array['owner']),
   'an admin''s own request asks the owner only: not herself, not a manager ranked below her');
+
+-- BL-342: an approval tells the person, on their own account only; a refusal
+-- stays silent.
+create function pg_temp.pending(target_employee uuid) returns uuid language sql as $$
+  select r.id from public.employee_preferred_name_requests r where r.employee_id = target_employee and r.status = 'pending'
+$$;
+select public.decide_employee_preferred_name_service(tests.user('pn:ayse'), tests.id('pn'), pg_temp.pending(tests.id('pn:ali')), true);
+select is(pg_temp.recipients(tests.id('pn:ali'), 'people.preferred_name.approved'), pg_temp.users(array['ali']),
+  'Ayse approves Ali''s name: the notice goes to Ali only');
+select is(
+  (select jsonb_build_object('title', o.payload ->> 'title', 'body', o.payload ->> 'body',
+     'preview', o.payload ->> 'safe_preview', 'url', o.payload ->> 'action_url')
+   from pg_temp.notice(tests.id('pn:ali'), 'people.preferred_name.approved') o),
+  jsonb_build_object('title', 'Preferred name approved', 'body', 'You now go by "Al".',
+    'preview', 'Your preferred name was approved.', 'url', '/app'),
+  'saying which name is now theirs');
+select pg_temp.deliver(tests.id('pn:ali'), 'people.preferred_name.approved');
+select is(pg_temp.delivered_to(tests.id('pn:ali'), 'people.preferred_name.approved'), pg_temp.users(array['ali']),
+  'and Ali finds it in his notifications');
+select public.decide_employee_preferred_name_service(tests.user('pn:owner'), tests.id('pn'), pg_temp.pending(tests.id('pn:deniz')), false);
+select is((select count(*)::integer from pg_temp.notice(tests.id('pn:deniz'), 'people.preferred_name.approved')), 0,
+  'a refused name tells Deniz nothing');
 
 -- On auto nobody answers, but the same people are told.
 select public.set_employee_name_settings_service(tests.user('pn:owner'), tests.id('pn'), 'auto');

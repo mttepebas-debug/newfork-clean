@@ -40,7 +40,32 @@ test `supabase/tests/preferred_name_approval.test.sql`.
    tanımlandı (imza ve dönüş aynı, kapsam sınıfı `employee.request_preferred_name` aynı);
    API dosyalarına dokunulmadı.
 
+## Ek görev (KK-17): BL-342 ve BL-343
+Migration `supabase/migrations/20260929161000_an_approved_name_is_told_and_availability_has_its_producer.sql`.
+
+10. **Onayda kişiye bildirim (BL-342).** Yönetici adı onaylayınca yeni tür
+    `people.preferred_name.approved` yalnız kişinin kendi hesabına gider: başlık "Preferred name
+    approved", gövde `You now go by "Al".`, önizleme "Your preferred name was approved."
+    Ret sessiz kalır. Kişi kendi talebini kendisi onaylarsa (bugün sahip eski kapıyla
+    yapabiliyor) kendine bildirim yazılmaz. `decide_employee_preferred_name_service` yeniden
+    tanımlandı; yetki kapısına dokunulmadı (G7).
+11. **Onay bildiriminin bağlantısı `/app`.** Kişinin adını gördüğü yer Account → Profile
+    (`/account/profile`), ama bildirim bağlantısı `/app` ile başlamak zorunda (katalog CHECK'i ve
+    gelen kutusu `/app` dışını katalog rotasına çeviriyor). `/app` kişiyi kendi ana ekranına
+    götürür. Profile'a doğrudan açmak için web'de `/app/account/documents` gibi bir yönlendirme
+    gerekir; Account dosyaları bu turda yasak, ayrı iş.
+12. **`availability.status_changed` üretici kaydı (BL-343).** Üretici
+    `weekly_preference_settings_save_service` (giriş modu değişince "Check your availability"),
+    `source_migration` onu son tanımlayan `20260924204854_old_availability_is_gone.sql`.
+    `account_notification_scope.test.sql` 36/36 yeşil, `ci-green.txt`'e eklendi.
+
+Kanıt (geri alınan işlem, db.lock nf-db/isci-g6, 05:03–05:07): iki migration olmadan
+preferred_name_approval 3 kırmızı (onay hücreleri), account_notification_scope 1 kırmızı; ikisiyle
+25/25 ve 36/36. 48 etkilenen + çekirdek dosya: migration'sız koşuya göre yalnız düzelme, yeni
+kırmızı yok; DB sayaçları önce/sonra aynı.
+
 ## Kapanış önerisi (main'e alınınca)
+- BL-342 ve BL-343: kapanır.
 - BL-099 teslim kısmı: kapanır. Yetki kısmı (decide/list → `authorize`, `no_self`) G7'de açık.
 - BL-119: kapanır; test artık gelen kutusuna düşen satırı ve alıcı listesini sayıyor.
 
@@ -48,9 +73,7 @@ test `supabase/tests/preferred_name_approval.test.sql`.
 - **G7 için:** "manager" modunda sahibin kendi ad talebi, G7 `no_self` getirince kimsenin
   onaylayamayacağı bir bekleyen talep olur (bugün sahip eski kapıyla kendi talebini onaylıyor).
   G7'de ya sahip talebi otomatik geçmeli ya da ürün kararı sorulmalı.
-- **Onayda bildirim yok:** yönetici onaylayınca kişiye bir şey söylenmiyor (ret bilerek sessiz).
-  Ürün kararı; BL-099 tazeliğinde not edilmiş.
-- `account_notification_scope.test.sql` (ci-green'de değil): kalan tek kırmızı
-  `availability.status_changed` üreticisiz (bu işten önce de vardı).
+- (BL-342 ve BL-343 olarak bu dalda kapandı; yukarıda.)
+- Account → Profile'a doğrudan açan bildirim bağlantısı için web yönlendirmesi yok (karar 11).
 - `bl052_document_onboarding.test.sql` 25. hücre bir kez 2≠1 verdi, 6 tekrarda yeşil:
   kararsız (tek işlemde sabit `now()` sıralaması olabilir).
