@@ -3,7 +3,7 @@ import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import type { AccountSecurityService } from "./account-security-service";
 import { registerAccountSecurityRoutes } from "./account-security-routes";
-import { HttpError } from "../http-error.js";
+import { HttpError, replyWithError } from "../http-error.js";
 
 const accessToken = "route-access-token";
 
@@ -48,6 +48,7 @@ async function appWith(
   } = {},
 ) {
   const app = Fastify();
+  app.setErrorHandler(replyWithError);
   registerAccountSecurityRoutes(app, {
     service: accountSecurityService,
     recoveryResendFloorMs,
@@ -74,6 +75,28 @@ describe("account security routes", () => {
     const response = await app.inject({ method: "GET", url: "/v1/account/security" });
     expect(response.statusCode).toBe(401);
     expect(response.json()).toEqual({ error: "Bearer token required" });
+    await app.close();
+  });
+
+  // U51: the status comes from the error, not from words in it; an untyped
+  // failure says nothing of itself (it used to be a 400 carrying its text).
+  it("answers an untyped failure with 500 and nothing of it", async () => {
+    const app = await appWith(
+      service({ getSecurityState: vi.fn(async () => { throw new Error("relation auth.sessions does not exist"); }) }),
+    );
+    const response = await app.inject({ method: "GET", url: "/v1/account/security", headers: { authorization: `Bearer ${accessToken}` } });
+    expect(response.statusCode).toBe(500);
+    expect(response.payload).not.toContain("auth.sessions");
+    await app.close();
+  });
+
+  it("keeps a refusal's reason and detail", async () => {
+    const app = await appWith(
+      service({ getSecurityState: vi.fn(async () => { throw new HttpError("Not allowed", 403, { reason: "authz.out_of_scope", detail: "notifications.read_own" }); }) }),
+    );
+    const response = await app.inject({ method: "GET", url: "/v1/account/security", headers: { authorization: `Bearer ${accessToken}` } });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ reason: "authz.out_of_scope", detail: "notifications.read_own" });
     await app.close();
   });
 
@@ -116,6 +139,7 @@ describe("account security routes", () => {
     expect(response.json()).toEqual({
       error: "Current password is incorrect",
       reason: "session.password_incorrect",
+      requestId: expect.any(String),
     });
     await app.close();
   });

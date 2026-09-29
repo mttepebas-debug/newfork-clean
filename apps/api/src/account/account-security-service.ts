@@ -3,7 +3,7 @@ import { createCommunicationServiceWithClient, type CommunicationService } from 
 import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
-import { rpcFailure } from "../http-error.js";
+import { HttpError, rpcFailure } from "../http-error.js";
 import { createUserVerifier } from "../auth/verify-user.js";
 import { createPasswordVerifier } from "../auth/verify-password.js";
 import { sendResendEmail } from "../email/resend-email.js";
@@ -128,8 +128,9 @@ export function createAccountSecurityService(options: {
       error_description?: string;
     } & AccountAuthUser;
     if (!response.ok) {
-      throw new Error(
+      throw new HttpError(
         payload.message ?? payload.error_description ?? "Account authentication request failed",
+        response.status >= 500 ? 503 : 400,
       );
     }
     return payload;
@@ -139,7 +140,7 @@ export function createAccountSecurityService(options: {
   const authGateway: AccountAuthGateway = {
     async getUser(accessToken) {
       const user = await verifyUser(accessToken);
-      if (!user) throw new Error("Valid bearer session required");
+      if (!user) throw new HttpError("Valid bearer session required", 401);
       return user;
     },
     updateEmail(accessToken, email) {
@@ -205,7 +206,7 @@ export function createAccountSecurityServiceWithClients(options: {
   async function requireUser(accessToken: string) {
     const user = await options.authGateway.getUser(accessToken);
     const email = user.email?.trim().toLowerCase();
-    if (!email) throw new Error("Account email is required");
+    if (!email) throw new HttpError("Account email is required", 400);
     return { user, email };
   }
 
@@ -263,7 +264,7 @@ export function createAccountSecurityServiceWithClients(options: {
     async requestEmailChange(accessToken, newEmail) {
       const normalized = newEmail.trim().toLowerCase();
       const current = await requireUser(accessToken);
-      if (normalized === current.email) throw new Error("New email must be different");
+      if (normalized === current.email) throw new HttpError("New email must be different", 400);
       const user = await options.authGateway.updateEmail(accessToken, normalized);
       await recordSecurityEvent(current.user.id, "account.email_change_requested");
       return {
@@ -276,7 +277,7 @@ export function createAccountSecurityServiceWithClients(options: {
     async resendEmailChange(accessToken) {
       const { user } = await requireUser(accessToken);
       const pendingEmail = user.new_email?.trim().toLowerCase();
-      if (!pendingEmail) throw new Error("Pending email change not found");
+      if (!pendingEmail) throw new HttpError("Pending email change not found", 400);
       await options.authGateway.resendEmailChange(pendingEmail);
     },
     async cancelEmailChange(accessToken) {
@@ -312,7 +313,7 @@ export function createAccountSecurityServiceWithClients(options: {
         actor_user_id: user.id,
       })) as AccountDeletionBlocker[];
       if (blockers.length > 0)
-        throw new Error(`Account deletion blocked: ${JSON.stringify(blockers)}`);
+        throw new HttpError(`Account deletion blocked: ${JSON.stringify(blockers)}`, 409);
 
       const token = recoveryToken();
       const result = await rpc("request_account_deletion_v2_service", {
