@@ -265,19 +265,13 @@ export function registerCommunicationRoutes(
         return reply
           .status(400)
           .send({ error: "Valid workspace layout required" });
-      const context = await authorize(
+      // No gate here: the layout save asks the core (workspace.todos, the
+      // home's own gate; KK-36, BL-413).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "workspace.read",
         options.contextResolver,
-        reply,
-        "Manager workspace access required",
       );
-      if (!context) return;
-      if (context.membership.role === "employee")
-        return reply
-          .status(403)
-          .send({ error: "Manager workspace access required" });
       if (!options.service) return unavailable(reply);
       return reply.send(
         await options.service.saveWorkspaceLayout({
