@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(30);
+select plan(32);
 
 -- BL-182 + BL-127 (KARARLAR "Takas ... uygunluk", KK-19): approved time off
 -- is a hard stop for a manager's own scheduling, but its hours can be given
@@ -56,6 +56,18 @@ $$;
 create function pg_temp.recipients(request uuid) returns uuid[] language sql as $$
   select array(select distinct r::uuid from pg_temp.outbox($1, 'requests.time_off.shortened') o
     cross join lateral jsonb_array_elements_text(o.payload -> 'recipient_user_ids') r order by 1)
+$$;
+
+-- The core's "no": its code and its authz.* reason (hint).
+create function pg_temp.refusal(statement text) returns text language plpgsql as $$
+declare code text; reason text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint;
+  return concat_ws(' ', code, nullif(reason, ''));
+end;
 $$;
 
 select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed'), 'Ali''s approved Wednesday covers Emre''s shift');
@@ -150,9 +162,25 @@ create function pg_temp.shorten(person text, periods jsonb, key uuid default gen
   select public.shorten_time_off_service(tests.user('sto:' || person), tests.id('sto'), tests.id('sto:ali:time_off:2'),
     (select rev from cut), periods, 'Covering a sick call', key)
 $$;
-select throws_ok($$select pg_temp.shorten('ali', (select periods from cut))$$, '42501', null, 'Ali cannot shorten his own leave this way');
-select throws_ok($$select pg_temp.shorten('emre', (select periods from cut))$$, '42501', null, 'another employee cannot');
-select throws_ok($$select pg_temp.shorten('can', (select periods from cut))$$, '42501', null, 'a manager who does not manage Ali cannot');
+select is(pg_temp.refusal($$select pg_temp.shorten('ali', (select periods from cut))$$), '42501 authz.missing_permission', 'Ali cannot shorten his own leave this way');
+select is(pg_temp.refusal($$select pg_temp.shorten('emre', (select periods from cut))$$), '42501 authz.missing_permission', 'another employee cannot');
+select is(pg_temp.refusal($$select pg_temp.shorten('can', (select periods from cut))$$), '42501 authz.out_of_scope', 'a manager who does not manage Ali cannot');
+-- Ayse's own approved leave (the owner approved it): she cannot shorten it herself.
+select tests.time_off('sto', 'ayse', 3);
+select tests.remember('sto:ayse:time_off:3', (select s.request_id from public.schedule_time_off_segments s
+  join public.schedule_time_off_requests r on r.id = s.request_id
+  where r.employee_id = tests.id('sto:ayse') and r.request_type = 'time_off' and s.segment_date = tests.week(3) + 2));
+select public.resolve_schedule_time_off_request_service(tests.user('sto:owner'), tests.id('sto'), tests.id('sto:ayse:time_off:3'),
+  (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('sto:ayse:time_off:3')), 'approve', '');
+select tests.settle();
+select is(pg_temp.refusal(format($$select public.shorten_time_off_service(%L, %L, %L, %s, %L, '', gen_random_uuid())$$,
+    tests.user('sto:ayse'), tests.id('sto'), tests.id('sto:ayse:time_off:3'),
+    (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('sto:ayse:time_off:3')),
+    (select jsonb_build_array(jsonb_build_object('segment_id', s.id,
+      'starts_at', to_jsonb((tests.week(3) + 2 + time '10:00') at time zone s.time_timezone),
+      'ends_at', to_jsonb((tests.week(3) + 2 + time '14:00') at time zone s.time_timezone)))
+     from public.schedule_time_off_segments s where s.request_id = tests.id('sto:ayse:time_off:3')))),
+  '42501 authz.rank', 'a manager cannot shorten her own approved time off');
 select throws_ok($$select pg_temp.shorten('ayse', jsonb_build_array((select periods from cut) -> 0 || jsonb_build_object('ends_at',
     to_jsonb(upper((select span from cut)) + interval '1 day'))))$$, '22023', null, 'only approved hours can be given back');
 select ok(pg_temp.leave(tests.id('sto:ali:time_off:2')) @> (select span from cut), 'refused attempts change nothing');
@@ -163,6 +191,14 @@ select is(pg_temp.shorten('ayse', (select periods from cut), (select key from cu
   'a retry of the same command answers the same');
 select is(pg_temp.recipients(tests.id('sto:ali:time_off:2')), array(select x from unnest(array[tests.user('sto:ali'), tests.user('sto:mert')]) x order by 1),
   'Ali and Mert, who approved the leave, hear about it; Ayse does not');
+-- Ali's notice reaches his notification list.
+update public.notification_outbox set status = 'leased', lease_owner = 'g9b-test', lease_expires_at = now() + interval '1 minute'
+where id in (select o.id from pg_temp.outbox(tests.id('sto:ali:time_off:2'), 'requests.time_off.shortened') o);
+select public.process_notification_outbox_service('g9b-test', o.id)
+from pg_temp.outbox(tests.id('sto:ali:time_off:2'), 'requests.time_off.shortened') o;
+select is((select count(*)::integer from public.notifications n where n.workspace_id = tests.id('sto')
+    and n.recipient_user_id = tests.user('sto:ali') and n.title = 'Your time off was shortened'),
+  1, 'Ali finds "Your time off was shortened" in his notifications');
 
 select * from finish();
 rollback;
