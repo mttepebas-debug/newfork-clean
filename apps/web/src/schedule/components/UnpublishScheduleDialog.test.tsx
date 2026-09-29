@@ -120,6 +120,8 @@ describe("UnpublishScheduleDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     fireEvent.click(screen.getByLabelText(/Main Dining/));
     fireEvent.click(screen.getByRole("button", { name: "Unpublish 1 locations" }));
+    expect(onConfirm).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm unpublish" }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
     await waitFor(() =>
@@ -189,7 +191,52 @@ describe("UnpublishScheduleDialog", () => {
     expect(confirm).toHaveProperty("disabled", false);
 
     fireEvent.click(confirm);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm unpublish" }));
 
     await waitFor(() => expect(onConfirm).toHaveBeenCalledWith([]));
+  });
+
+  it("asks twice before unpublishing; Escape on the armed button disarms it (BL-306)", () => {
+    const onOpenChange = vi.fn();
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    render(
+      <UnpublishScheduleDialog
+        open
+        weekLabel="Aug 17 - Aug 23, 2026"
+        locations={locations}
+        statuses={[]}
+        onOpenChange={onOpenChange}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish" }));
+    const armed = screen.getByRole("button", { name: "Confirm unpublish" });
+    fireEvent.keyDown(armed, { key: "Escape" });
+
+    expect(screen.getByRole("button", { name: "Unpublish" })).toBeTruthy();
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("marks the consequences as warnings, not as green checks (BL-306)", () => {
+    const { container } = render(
+      <UnpublishScheduleDialog
+        open
+        weekLabel="Aug 17 - Aug 23, 2026"
+        locations={locations}
+        statuses={statuses}
+        onOpenChange={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    const effects = container.querySelector(".schedule-unpublish-effects")!;
+    expect(effects.querySelector(".lucide-circle-check")).toBeNull();
+    const undo = screen
+      .getByText("This cannot be undone. Republish to restore.")
+      .closest("div")!;
+    expect(undo.getAttribute("data-destructive")).toBe("true");
+    expect(undo.querySelector(".lucide-triangle-alert")).toBeTruthy();
   });
 });

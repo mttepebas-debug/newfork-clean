@@ -1,5 +1,6 @@
 import type { ScheduleLocation } from "@newfork/shared/schedule";
-import { CalendarDays, CheckCircle2, EyeOff, Loader2, X } from "lucide-react";
+import { ConfirmButton } from "@newfork/ui";
+import { AlertTriangle, CalendarDays, EyeOff, Info, Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { LocationPublicationChipStatus } from "../lib/scheduleFilterModel";
@@ -157,16 +158,17 @@ export function UnpublishScheduleDialog({
               destructive
             />
             <UnpublishEffect
-              icon={<CheckCircle2 size={15} aria-hidden />}
+              icon={<AlertTriangle size={15} aria-hidden />}
               text="Active cover and swap requests for removed shifts will be closed."
             />
             <UnpublishEffect
-              icon={<CheckCircle2 size={15} aria-hidden />}
+              icon={<Info size={15} aria-hidden />}
               text="No schedule-change notification is sent."
             />
             <UnpublishEffect
-              icon={<CheckCircle2 size={15} aria-hidden />}
+              icon={<AlertTriangle size={15} aria-hidden />}
               text="This cannot be undone. Republish to restore."
+              destructive
             />
           </div>
           {error ? (
@@ -185,17 +187,24 @@ export function UnpublishScheduleDialog({
           >
             Cancel
           </button>
-          <button
-            type="button"
+          <ConfirmButton
+            unstyled
             className="danger"
             disabled={confirmDisabled}
-            onClick={() => void confirm()}
+            confirmLabel={
+              <>
+                <EyeOff size={15} aria-hidden />
+                Confirm unpublish
+              </>
+            }
+            confirmName="Confirm unpublish"
+            onConfirm={() => void confirm()}
           >
             {busy ? <Loader2 size={15} aria-hidden /> : <EyeOff size={15} aria-hidden />}
             {hasLocationPicker
               ? `Unpublish ${selectedLocationIds.length} locations`
               : "Unpublish"}
-          </button>
+          </ConfirmButton>
         </footer>
       </section>
     </div>

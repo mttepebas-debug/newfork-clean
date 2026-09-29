@@ -9,6 +9,13 @@ export function useCloseOnEscape(onClose: (() => void) | null): void {
     if (!onClose) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      // An armed two-click button takes Escape first: it disarms, the window stays.
+      if (
+        event.target instanceof Element &&
+        event.target.closest("[data-confirming='true']")
+      ) {
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
