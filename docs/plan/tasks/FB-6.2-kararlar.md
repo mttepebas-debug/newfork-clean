@@ -102,6 +102,18 @@ onayı migration'ı. Migration'lar `20260930140000_invitations_ask_the_core.sql`
 - **API (Dal B `.7b`):** `apps/api/src/app.ts` davet rotaları (`:549`, `:598`, `:644`, `:699` civarı) hâlâ
   `employee_access.manage` iznini kapı olarak soruyor; yönetici daveti API'de `.7b`'ye kadar 403 alır. Veritabanı hazır.
 
+## `.4` güvenlik düzeltmesi — 2026-09-30 (`nf-guvenlik` DEĞİŞİKLİK İSTENİYOR @`098a7611`)
+Kırmızı `d5d2610f`, düzeltme `67e24b14` — `20260930130000` dosyasının içinde (hiçbir DB'ye uygulanmamıştı).
+- Y1: erişimi geri verme, snapshot'taki rolü rol servisiyle aynı kurala sorar (`app_private.authorize_role_grant`,
+  rol servisi de onu çağırıyor; ikinci kopya yok), hedef geri açılan üyeliğin kullanıcısı (`target_user`); kaydın
+  hesabı ayrılmışsa ya da üyeliğin kullanıcısı değilse 22023 "employee has no linked workspace account".
+- O1: davet kabulü bayrağı yalnız yeni `pending_activation` satırı ya da `suspended → pending_activation` (owner değil);
+  devir bayrağı yalnız bekleyen devrin iki satırında admin→owner / owner→admin, ikisi de aktif, devrin hedef hesabı
+  için. Rol sınıfı `role_id`'den okunuyor (kapsam sayacı artmasın diye `.role` karşılaştırması yok).
+- Düşük: muafiyet `session_user = 'postgres' and current_setting('role') in ('none','postgres')` (yalnız `session_user`
+  testlerin `as_api` kalıbını da muaf sayardı). `memberships_update_manager` / `memberships_delete_manager` silindi,
+  `retired_objects_stay_gone`'da.
+
 ## T5b'ye kalan (.6'nın geri kalanı) — 2026-09-30 ölçümü (`.4` uygulanmış geri alınan işlemde)
 - **P1 + üç yardımcının silinmesi.** `can_access_employee` (public + app_private) çağıranları: `delete_catalog_entity_service`,
   `delete_job_with_assignments_service`, `app_private.job_assignment_candidates`, `organization_job_counts_service`,
