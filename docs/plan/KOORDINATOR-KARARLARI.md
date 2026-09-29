@@ -231,3 +231,14 @@ altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların ke
 - **S3 (a):** `apps/api/src/employees/employee-directory-routes.ts`'teki route-yerel izin kapıları okuma ve yazma rotalarından kalkar; ret çekirdekten `authz.*` ile gelir (403/404 sözleşmesi). Davet/oluşturma rotaları `.5`/`.7b`'de. Şart: `.7a` main'e T5b `.4` ile aynı turda ya da sonra girer (yazma rotaları `.4`'ün çekirdek kurallarına dayanıyor).
 - **Geri alma:** S1/S2 kolay (sıra); S3 orta (kapılar geri eklenebilir, ama yasak kalıp).
 - **Durum:** uygulanıyor.
+
+### KK-32 (2026-09-30) FB-6.2 T5b-3'ün üç davranış farkı ve to-do ikizi
+Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-ishizaka-ecfaf0/artifacts/nf-guvenlik/fb62-t5b-3/RAPOR.md`).
+- **(a) Admin, başka admin'in çalıştığı lokasyonu silebilir — kalır.** KK-24 bir kaydı düzenleme kuralı; lokasyon silmek organizasyon işlemi, atamanın bitmesi yan sonuç. Admin zaten bütün lokasyonlara erişiyor; owner her canlı lokasyonda tutuluyor. Engellemek küçük işletmede lokasyonu silinemez yapar. Silme onayının etkilenen kişileri adıyla listelemesi ayrı iş (backlog, `nf-arayuz`).
+- **(b) `employee.request_preferred_name` için `restricted_ok = true`.** Kişi yalnız kendi kaydına talep açıyor, kararı üst rütbe veriyor; onboarding'deki ya da belgesi eksik kişiye kapıyı kapatmak güvenlik kazandırmıyor, Account → Profile'daki tek Save'i o workspace'te düşürüyor. Kapalı workspace ve askıdaki üyelik reddedilmeye devam eder. T5b-4'te yapılır.
+- **(c) Pano sayıları izne bağlı — kalır** (fail-closed). İzni olmayana widget'ı hiç göstermemek ayrı ekran işi (backlog, `nf-arayuz`).
+- **(D1) To-do: yönetici yazmaya devam eder; ikiz kapı kalkar.** Bugünkü davranış (owner/admin/manager to-do yazar) ürün için doğru: yönetici kendi lokasyonunu yönetir. Çekirdekteki `workspace.todos` satırı yöneticiye açılır, `authorize_workspace_todos` ve `workspace_todo_actor_role` silinir, servisler çekirdeğe sorar (`retired_objects_stay_gone`). D2 (kapalı workspace'te pano kapısı) aynı işte kapanır. T5b-4'te yapılır; ikiz sistem main'e girmez (CLAUDE.md §9).
+- **(D3, D4)** backlog (düşük): bilinmeyen izin talebinde önce üyelik sorulsun; hafta listesinde taslak varlığı P0002.
+- **Dayanak:** CLAUDE.md §9 (ikiz sistem yok, fail-closed), KARARLAR ürün kuralları (M2), `nf-guvenlik` önerileri.
+- **Geri alma:** (a)(c) kolay; (b) tek satır; (D1) orta (çekirdek satırı + servis; yönetici to-do'yu kaybetmesi istenirse satır geri kapanır).
+- **Durum:** uygulanıyor (T5b-4).
