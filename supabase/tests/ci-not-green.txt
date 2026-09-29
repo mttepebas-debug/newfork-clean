@@ -1,16 +1,2 @@
 # pgTAP files that do not run in CI yet, one per line: <path>  # reason.
 # The list only shrinks: a test leaves it by going green (scripts/ci-green-guard.sh).
-supabase/tests/bl052_document_access.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/bl052_document_definitions.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/bl052_document_employee_assignment_preview.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/employee_hub.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/employee_onboarding_rls.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/notification_platform_core.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/notification_preference_resolver_and_producers.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/notification_settings_admin.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/onboarding_composite_tenant_constraints.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/roles_permissions_rls.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/scheduling_settings_shift_types_rls.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/time_off_partial_period_decisions.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/weekly_exchange_changed_terms.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
-supabase/tests/weekly_team_availability.test.sql  # never listed; CI status unknown (BL-281, 2026-09-29)
