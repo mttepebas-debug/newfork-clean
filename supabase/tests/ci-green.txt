@@ -66,6 +66,7 @@ supabase/tests/schedule_edit_start_ignores_column_shadowed_source_draft.test.sql
 supabase/tests/schedule_grid_read_budget.test.sql
 supabase/tests/schedule_one_function_per_job.test.sql
 supabase/tests/schedule_publication.test.sql
+supabase/tests/schedule_publication_status_names_source_draft.test.sql
 supabase/tests/schedule_publish_carries_labels.test.sql
 supabase/tests/schedule_read_model_rls.test.sql
 supabase/tests/schedule_reads_weekly_availability.test.sql

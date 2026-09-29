@@ -1,7 +1,8 @@
 -- The New Schedule menu marks the draft a week was published from and names it.
--- The status already answers only for locations the caller may edit, so the
--- draft's name reaches no one who could not open that draft; it stays readable
--- after the draft itself is deleted (archived).
+-- The status answers only for locations the caller may both read and edit, so
+-- the name reaches only managers of a location that draft was published to
+-- (who may still not see the draft itself when it was built for other
+-- locations). It stays readable after the draft is deleted (archived).
 CREATE OR REPLACE FUNCTION public.get_schedule_publication_status_service(actor_user_id uuid, target_workspace_id uuid, target_week_start date)
  RETURNS jsonb
  LANGUAGE sql

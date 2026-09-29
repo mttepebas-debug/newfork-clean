@@ -2595,6 +2595,61 @@ describe("App", () => {
     });
   });
 
+  it("marks the draft a week was published from in the New Schedule menu", async () => {
+    const draft = (id: string, name: string) => ({
+      id,
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: scheduleFixture.week_start,
+      name,
+      revision: 1,
+      created_by: "77777777-7777-4777-8777-777777777777",
+      updated_by: "77777777-7777-4777-8777-777777777777",
+      created_at: "2026-08-17T12:00:00Z",
+      updated_at: "2026-08-17T12:00:00Z",
+    });
+    const live = draft("99999999-9999-4999-8999-999999999981", "Week plan v1");
+    const other = draft("99999999-9999-4999-8999-999999999982", "Week plan v2");
+    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [live, other] });
+    const status = await vi.mocked(fetchSchedulePublicationStatus)(
+      scheduleFixture.workspace_id,
+      scheduleFixture.week_start,
+    );
+    vi.mocked(fetchSchedulePublicationStatus).mockResolvedValue({
+      ...status,
+      locations: status.locations.map((location) => ({
+        ...location,
+        source_draft_id: live.id,
+        source_draft_name: live.name,
+      })),
+    });
+    window.history.pushState({}, "", "/app/schedule");
+    render(<App />);
+    await signInAs("owner");
+    fireEvent.click(
+      await screen.findByRole(
+        "button",
+        { name: "Draft selector: New Schedule" },
+        { timeout: 5000 },
+      ),
+    );
+
+    const menu = await screen.findByRole("dialog");
+    await waitFor(() =>
+      expect(
+        Array.from(menu.querySelectorAll("[data-draft-row] strong")).map(
+          (name) => name.textContent,
+        ),
+      ).toEqual(["Week plan v2", "Week plan v1"]),
+    );
+    const liveRow = menu.querySelector("[data-published-draft-row]");
+    expect(liveRow?.querySelector("strong")?.textContent).toBe("Week plan v1");
+    expect(liveRow?.textContent).toContain("Published");
+    expect(
+      within(menu).getByRole("button", { name: "Delete Week plan v1" }),
+    ).toHaveProperty("disabled", true);
+    expect(menu.querySelector("[data-published-fallback-row]")).toBeNull();
+  });
+
   it("says who is editing a draft somebody else has open", async () => {
     const acquireMock = vi.mocked(acquireScheduleEditSession);
     const kitchenPlan = {

@@ -9481,59 +9481,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 12px;
   line-height: 1.5;
 }
-.schedule-template-dialog {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
-}
-.schedule-template-dialog > section,
-.schedule-template-dialog > form,
-.schedule-template-actions {
-  display: grid;
-  gap: 10px;
-}
-.schedule-template-dialog > form {
-  padding-left: 16px;
-  border-left: 1px solid var(--theme-border);
-}
-.schedule-template-list {
-  display: grid;
-  gap: 6px;
-  max-height: 220px;
-  overflow: auto;
-}
-.schedule-template-list > button {
-  display: flex;
-  min-height: 54px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  border: 1px solid #d5ddda;
-  border-radius: 5px;
-  padding: 8px 10px;
-  background: var(--theme-surface);
-  color: #27342e;
-  text-align: left;
-}
-.schedule-template-list > button[aria-pressed="true"] {
-  border-color: #287b65;
-  background: #edf7f3;
-}
-.schedule-template-list span {
-  display: grid;
-  gap: 2px;
-  color: #64716b;
-  font-size: 10px;
-}
-.schedule-template-list small {
-  color: #6b7872;
-}
-.schedule-template-list p {
-  margin: 8px 0;
-  color: #6b7872;
-  font-size: 12px;
-}
-.schedule-template-actions label,
-.schedule-template-dialog > form > label,
 .schedule-export-grid label {
   display: grid;
   gap: 5px;
@@ -9541,10 +9488,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 11px;
   font-weight: 750;
 }
-.schedule-template-actions input,
-.schedule-template-actions select,
-.schedule-template-dialog form input,
-.schedule-template-dialog form select,
 .schedule-export-grid select,
 .schedule-preset-row input {
   width: 100%;
@@ -9556,80 +9499,43 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: #25312c;
   font: inherit;
 }
-.schedule-template-actions > div {
-  display: flex;
-  gap: 6px;
-}
-.schedule-template-departments {
-  display: grid;
-  gap: 8px;
-  border: 1px solid #d6dfda;
-  border-radius: 7px;
-  padding: 10px;
-  background: #f8fbf9;
-}
-.schedule-template-departments > div:first-child {
-  display: grid;
-  gap: 2px;
-}
-.schedule-template-departments strong {
-  color: #24352f;
-  font-size: 0.76rem;
-  text-transform: uppercase;
-}
-.schedule-template-departments span,
-.schedule-template-departments p {
-  margin: 0;
-  color: #66756e;
-  font-size: 0.74rem;
-}
-.schedule-template-departments p {
-  color: var(--theme-danger);
-  font-weight: 700;
-}
-.schedule-template-departments > div:last-of-type {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.schedule-template-departments label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #c9d4ce;
-  border-radius: 999px;
-  padding: 5px 9px;
-  background: var(--theme-surface);
-  color: #24352f;
-  font-size: 0.76rem;
-  font-weight: 700;
-}
 /* Templates window (Schedule, Templates button) in the quiet dialog style: one
    column, list rows like the New Schedule menu, the Close strip pinned below. */
-[data-schedule-quiet-dialog] .schedule-template-dialog {
+.schedule-template-dialog {
   flex: 1 1 auto;
   grid-template-columns: minmax(0, 1fr);
+  align-items: start;
   min-height: 0;
   gap: 16px;
   overflow-y: auto;
   padding: 10px 18px 0;
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog h3 {
+.schedule-template-dialog h3 {
   color: var(--theme-muted);
   font-size: 12px;
   font-weight: 500;
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog > form {
+.schedule-template-dialog > section,
+.schedule-template-dialog > form,
+.schedule-template-actions {
+  display: grid;
+  gap: 10px;
+}
+.schedule-template-dialog > form {
   border-top: 1px solid var(--theme-border-subtle);
   border-left: 0;
   padding: 14px 0 0;
 }
-[data-schedule-quiet-dialog] .schedule-template-list {
+.schedule-template-list {
+  display: grid;
+  max-height: 220px;
   gap: 0;
   margin: 0 -8px;
+  overflow: auto;
 }
-[data-schedule-quiet-dialog] .schedule-template-list > button {
+.schedule-template-dialog .schedule-template-list > button {
   display: grid;
+  text-align: left;
   min-height: 44px;
   justify-content: stretch;
   gap: 2px;
@@ -9641,59 +9547,64 @@ button.workspace-switcher-item:hover:not(:disabled) {
   cursor: pointer;
   font: inherit;
 }
-[data-schedule-quiet-dialog] .schedule-template-list > button:hover {
+.schedule-template-dialog .schedule-template-list > button:hover {
   background: var(--theme-surface-muted);
 }
-[data-schedule-quiet-dialog] .schedule-template-list > button:focus-visible {
+.schedule-template-dialog .schedule-template-list > button:focus-visible {
   outline: 2px solid var(--theme-focus);
   outline-offset: -2px;
 }
-[data-schedule-quiet-dialog] .schedule-template-list > button[aria-pressed="true"] {
+.schedule-template-dialog .schedule-template-list > button[aria-pressed="true"] {
   background: var(--theme-surface-muted);
 }
-[data-schedule-quiet-dialog] .schedule-template-list strong {
+.schedule-template-list strong {
   overflow: hidden;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-[data-schedule-quiet-dialog] .schedule-template-list small,
-[data-schedule-quiet-dialog] .schedule-template-list p,
-[data-schedule-quiet-dialog] .schedule-template-apply-summary {
+.schedule-template-list small,
+.schedule-template-list p,
+.schedule-template-apply-summary {
   margin: 0;
   color: var(--theme-muted);
   font-size: 12px;
   line-height: 1.45;
 }
-[data-schedule-quiet-dialog] .schedule-template-list p {
+.schedule-template-list p {
   padding: 4px 8px;
 }
-[data-schedule-quiet-dialog] .schedule-template-actions label,
-[data-schedule-quiet-dialog] .schedule-template-dialog > form > label:not(.schedule-check) {
+.schedule-template-actions label,
+.schedule-template-dialog > form > label:not(.schedule-check) {
+  display: grid;
+  gap: 5px;
   color: var(--theme-muted);
   font-size: 12px;
   font-weight: 500;
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog input:not([type="checkbox"]),
-[data-schedule-quiet-dialog] .schedule-template-dialog select {
+.schedule-template-dialog input:not([type="checkbox"]),
+.schedule-template-dialog select {
+  width: 100%;
   min-height: 32px;
   border: 1px solid var(--theme-muted);
   border-radius: 6px;
   padding: 5px 9px;
+  background: var(--theme-surface);
   color: var(--theme-text);
+  font: inherit;
   font-size: 13px;
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog input[type="checkbox"] {
+.schedule-template-dialog input[type="checkbox"] {
   accent-color: var(--theme-accent);
 }
 /* .schedule-check sets these with !important, so only !important overrides them. */
-[data-schedule-quiet-dialog] .schedule-template-dialog .schedule-check {
+.schedule-template-dialog .schedule-check {
   gap: 6px !important;
   color: var(--theme-text) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog :is(.schedule-template-actions, form) button {
+.schedule-template-dialog :is(.schedule-template-actions, form) button {
   min-height: 32px;
   border: 1px solid var(--theme-muted);
   border-radius: 6px;
@@ -9703,72 +9614,84 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 13px;
   font-weight: 500;
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog :is(.schedule-template-actions, form) button:hover {
+.schedule-template-dialog :is(.schedule-template-actions, form) button:hover {
   background: var(--theme-surface-muted);
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog button.danger-text {
+.schedule-template-dialog button.danger-text {
   color: var(--theme-danger);
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog button.danger-text.is-armed {
+.schedule-template-dialog button.danger-text.is-armed {
   border-color: var(--theme-danger);
   background: var(--theme-danger);
   color: var(--theme-on-accent);
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog button.primary-command {
+.schedule-template-dialog button.primary-command {
   justify-self: end;
   border-color: var(--theme-accent);
   background: var(--theme-accent);
   color: var(--theme-on-accent);
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog button.primary-command:hover {
+.schedule-template-dialog button.primary-command:hover {
   border-color: var(--theme-accent-strong);
   background: var(--theme-accent-strong);
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog button:disabled {
+.schedule-template-dialog button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
-[data-schedule-quiet-dialog] .schedule-template-actions > div,
-[data-schedule-quiet-dialog] .schedule-template-apply-actions {
+.schedule-template-actions > div,
+.schedule-template-apply-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
-[data-schedule-quiet-dialog] .schedule-template-actions svg {
+.schedule-template-actions svg {
   vertical-align: -2px;
 }
-[data-schedule-quiet-dialog] .schedule-template-departments {
+.schedule-template-departments {
+  display: grid;
   gap: 6px;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  background: transparent;
 }
-[data-schedule-quiet-dialog] .schedule-template-departments strong {
+.schedule-template-departments > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+.schedule-template-departments > div:last-of-type {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.schedule-template-departments strong {
   color: var(--theme-muted);
   font-size: 12px;
   font-weight: 500;
-  text-transform: none;
 }
-[data-schedule-quiet-dialog] .schedule-template-departments span {
+.schedule-template-departments span {
+  margin: 0;
   color: var(--theme-muted);
   font-size: 12px;
 }
-[data-schedule-quiet-dialog] .schedule-template-departments p {
+.schedule-template-departments p {
+  margin: 0;
   border-left: 2px solid var(--theme-danger);
   padding-left: 8px;
   color: var(--theme-danger);
   font-size: 12px;
   font-weight: 500;
 }
-[data-schedule-quiet-dialog] .schedule-template-departments label {
-  border-color: var(--theme-border-subtle);
+.schedule-template-departments label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--theme-border-subtle);
   border-radius: 6px;
+  padding: 5px 9px;
+  background: var(--theme-surface);
   color: var(--theme-text);
   font-size: 12px;
   font-weight: 500;
 }
-[data-schedule-quiet-dialog] .schedule-template-dialog > .schedule-overwrite-warning {
+.schedule-template-dialog > .schedule-overwrite-warning {
   margin: 0;
   border: 0;
   border-left: 2px solid var(--theme-danger);
