@@ -693,9 +693,7 @@ export function SchedulePage({
       context,
       query.data,
       queryClient,
-      selectedDate,
       session?.source_draft_id,
-      view,
     ],
   );
   const presenceLocationId = useMemo(() => {
