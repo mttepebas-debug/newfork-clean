@@ -30,6 +30,9 @@ interface RetentionRpcClient {
       };
     };
   };
+  storage: {
+    from(bucket: "employee-onboarding"): OnboardingBucket;
+  };
   rpc(
     functionName: "mark_workspace_retention_purge_completed_service",
     args: Record<string, unknown>,
@@ -37,6 +40,47 @@ interface RetentionRpcClient {
     data: unknown;
     error: { message: string } | null;
   }>;
+}
+
+interface OnboardingBucket {
+  list(
+    prefix: string,
+    options: { limit: number; offset: number },
+  ): PromiseLike<{
+    data: { name: string; id: string | null }[] | null;
+    error: { message: string } | null;
+  }>;
+  remove(paths: string[]): PromiseLike<{ error: { message: string } | null }>;
+}
+
+// Storage lists one folder at a time; a folder entry has no id.
+const listPage = 1000;
+
+async function workspaceFilePaths(bucket: OnboardingBucket, prefix: string): Promise<string[]> {
+  const paths: string[] = [];
+  for (let offset = 0; ; offset += listPage) {
+    const { data, error } = await bucket.list(prefix, { limit: listPage, offset });
+    if (error) throw new Error(error.message);
+    for (const entry of data ?? []) {
+      const path = `${prefix}/${entry.name}`;
+      if (entry.id) paths.push(path);
+      else paths.push(...(await workspaceFilePaths(bucket, path)));
+    }
+    if ((data ?? []).length < listPage) return paths;
+  }
+}
+
+/**
+ * BL-279 (1): a purged workspace's onboarding files (IDs, contracts) leave the
+ * bucket, not only the record. Paths are workspace_id/employee_id/... .
+ */
+async function deleteWorkspaceFiles(client: RetentionRpcClient, workspaceId: string) {
+  const bucket = client.storage.from("employee-onboarding");
+  const paths = await workspaceFilePaths(bucket, workspaceId);
+  for (let start = 0; start < paths.length; start += listPage) {
+    const { error } = await bucket.remove(paths.slice(start, start + listPage));
+    if (error) throw new Error(error.message);
+  }
 }
 
 export interface WorkspaceRetentionBatchResult {
@@ -95,6 +139,13 @@ export function createWorkspaceRetentionWorkerWithClient(
       };
 
       for (const job of jobs) {
+        try {
+          await deleteWorkspaceFiles(client, job.workspace_id);
+        } catch {
+          // Left pending: the next run deletes what is left, then marks it.
+          result.failed += 1;
+          continue;
+        }
         const response = await client.rpc(
           "mark_workspace_retention_purge_completed_service",
           {
