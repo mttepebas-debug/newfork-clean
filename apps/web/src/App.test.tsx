@@ -4189,7 +4189,7 @@ describe("App", () => {
     });
   });
 
-  it("toggles the unassigned shifts row without hiding scheduled employees", async () => {
+  it("keeps the unassigned shifts row settings passive in view mode without hiding scheduled employees", async () => {
     const unassignedModel = {
       ...scheduleFixture,
       employees: [
@@ -4252,14 +4252,21 @@ describe("App", () => {
       ),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Settings/ }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Unfreeze Unassigned Shifts Row" }),
-    );
+    // KARARLAR > Schedule: the Unassigned Shifts Row settings only work while
+    // editing (BL-332); in view mode they are passive and the row stays as is.
+    const unfreeze = screen.getByRole("button", {
+      name: "Unfreeze Unassigned Shifts Row",
+    });
+    expect(unfreeze).toHaveProperty("disabled", true);
+    expect(
+      screen.getByRole("button", { name: "Hide Unassigned Shifts Row" }),
+    ).toHaveProperty("disabled", true);
+    fireEvent.click(unfreeze);
     expect(
       container.querySelector(
         ".schedule-employee-cell[data-unassigned='true'][data-unassigned-frozen='true']",
       ),
-    ).toBeNull();
+    ).toBeTruthy();
     expect(screen.getAllByText("Alex Rivera").length).toBeGreaterThan(0);
     const employeeRowLabels = () =>
       Array.from(
@@ -4274,11 +4281,6 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: "Show Unscheduled" }),
     ).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Hide Unassigned Shifts Row" }),
-    );
-
-    expect(screen.queryByText("Unassigned")).toBeNull();
     expect(screen.getAllByText("Alex Rivera").length).toBeGreaterThan(0);
     readModelMock.mockResolvedValue(scheduleFixture);
   });
