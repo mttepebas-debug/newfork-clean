@@ -34,7 +34,8 @@ jobs:
       # ponytail: concurrency=1 only in CI to avoid load flakiness; local scripts unchanged
       - run: pnpm run lint --concurrency=1
       - run: pnpm run typecheck --concurrency=1
-      - run: pnpm run test --concurrency=1
+      # U18: two packages at once; api and web carry load-sized timeouts (U19).
+      - run: pnpm run test --concurrency=2
       - run: pnpm run build --concurrency=1
 
   # Database tests (pgTAP) run against a fresh local Supabase: migrations + seed.sql only
@@ -54,16 +55,14 @@ jobs:
       # (toomanyrequests, signed in or not); Amazon's public registry carries the
       # same Supabase images. Every later step pulls from there, pg_prove included.
       - run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=public.ecr.aws" >> "$GITHUB_ENV"
+      # BL-281: a branch is judged against where it left main, not against its
+      # previous push (that push's run may have been cancelled).
       - name: Green list only grows
         run: |
-          base="${{ github.event.pull_request.base.sha || github.event.before }}"
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base" ] && [ "${{ github.ref }}" = refs/heads/main ]; then base="${{ github.event.before }}"; fi
           case "$base" in ""|0000000000000000000000000000000000000000) base=$(git merge-base HEAD origin/main) ;; esac
-          removed=$(git diff -U0 "$base" HEAD -- supabase/tests/ci-green.txt | sed -n 's/^-\(supabase\/tests\/.*\)$/\1/p')
-          status=0
-          for file in $removed; do
-            if [ -e "$file" ]; then echo "::error::$file was removed from ci-green.txt but still exists"; status=1; fi
-          done
-          exit $status
+          bash scripts/ci-green-guard.sh "$base"
       # BL-112: check, db and e2e can run at once; isolation is keyed to
       # which runner this job landed on (RUNNER_NAME), not the job's name.
       - name: Keep CI's Supabase apart from the shared local stack
