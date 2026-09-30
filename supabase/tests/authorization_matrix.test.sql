@@ -37,9 +37,10 @@ select tests.person('m', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('m', 'mehmet', 'manager', array['B'], array['cook']);
 select tests.person('m', 'can', 'manager', array['K', 'B'], array['cook']);
 select tests.person('m', 'nur', 'manager', null, null);
--- Manages Besiktas without working there (KARARLAR "yalnız yönetir", FB-6.2 S2).
-select tests.person('m', 'selin', 'manager', null, null);
-select tests.manages('m', 'selin', 'B');
+-- Manages Besiktas without taking shifts there: assigned to it and excluded
+-- from the Schedule (EMP-001). Can, above, is the manager of two locations.
+select tests.person('m', 'derya', 'manager', array['B'], array['cook']);
+select tests.excluded('m', 'derya');
 select tests.role('m', 'shift lead', 'manager', array(
   select rp.permission_key
   from public.workspace_role_permissions rp
@@ -129,14 +130,13 @@ create temporary table persona (
   class text not null,
   status text not null,
   locs text[] not null,
-  permissions_removed text[] not null default '{}',
-  manages text[] not null default '{}'  -- a manager's locations they manage without working there
+  permissions_removed text[] not null default '{}'
 );
 insert into persona values
   ('olcay',  'm', 'owner',    'active',     '{K,B}', '{}'),
   ('zeynep', 'm', 'admin',    'active',     '{K}',   '{}'),
   ('kaan',   'm', 'admin',    'active',     '{B}',   '{}'),
-  ('selin',  'm', 'manager',  'active',     '{}',    '{}'),
+  ('derya',  'm', 'manager',  'active',     '{B}',   '{}'),
   ('ayse',   'm', 'manager',  'active',     '{K}',   '{}'),
   ('mehmet', 'm', 'manager',  'active',     '{B}',   '{}'),
   ('can',    'm', 'manager',  'active',     '{K,B}', '{}'),
@@ -150,7 +150,6 @@ insert into persona values
   ('remzi',  'm', 'employee', 'removed',    '{B}',   '{}'),
   ('aydan',  'm', 'manager',  'restricted', '{K}',   '{}'),
   ('xavier', 'x', 'owner',    'active',     '{K,B}', '{}');
-update persona set manages = '{B}' where label = 'selin';
 -- The manager role an owner starts with holds none of the Settings read
 -- permissions below (important_dates.read aside); an owner may grant them to a
 -- manager-type role (settings_reads_ask_the_core.test.sql).
@@ -185,8 +184,8 @@ insert into target values
   ('ayse',       'person',    'm', '{K}',   'manager',  'ayse'),
   ('zeynep',     'person',    'm', '{K}',   'admin',    'zeynep'),
   ('kaan',       'person',    'm', '{B}',   'admin',    'kaan'),
-  -- where a person is reached: where they work and, for a manager, where they manage
-  ('selin',      'person',    'm', '{B}',   'manager',  'selin'),
+  -- a manager kept off the Schedule is reached where they are assigned, like anybody
+  ('derya',      'person',    'm', '{B}',   'manager',  'derya'),
   ('olcay',      'person',    'm', '{K,B}', 'owner',    'olcay'),
   -- one person at one location
   ('pl:emre@K',  'placement', 'm', '{K}',   'employee', 'emre'),
@@ -203,10 +202,6 @@ insert into target values
   ('nr:ayse',    'name_request', 'm', '{K}',   'manager',  'ayse'),
   ('nr:zeynep',  'name_request', 'm', '{K}',   'admin',    'zeynep'),
   ('nr:kaan',    'name_request', 'm', '{B}',   'admin',    'kaan'),
-  -- a manager, for what only a manager has: locations managed without working there
-  ('mgr:ayse',   'manager',   'm', '{K}',   'manager',  'ayse'),
-  ('mgr:mehmet', 'manager',   'm', '{B}',   'manager',  'mehmet'),
-  ('mgr:selin',  'manager',   'm', '{B}',   'manager',  'selin'),
   ('xena',       'person',    'x', '{K}',   'employee', 'xena'),
   ('K',          'location',  'm', '{K}',   null,       null),
   ('B',          'location',  'm', '{B}',   null,       null),
@@ -241,7 +236,6 @@ select t.label,
     when t.label = 'olcay' then tests.id('m:owner')
     when t.label = 'xena' then tests.id('x:xena')
     when t.kind = 'person' then tests.id('m:' || t.label)
-    when t.kind = 'manager' then tests.id('m:' || t.holder)
     when t.label in ('K', 'B') then tests.id('m:' || t.label)
     when t.label = 'x:K' then tests.id('x:K')
     when t.label = 'workspace' then tests.id('m')
@@ -423,10 +417,7 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('employee.decide_preferred_name', 'name_request', 'employees.manage', false, false,
    $$select public.decide_employee_preferred_name_service($1, $2, $3, true)$$),
   ('employee.pending_names', 'name_request', 'employees.manage', false, true,
-   $$select exists (select 1 from public.list_pending_preferred_names_service($1, $2) r where r.request_id = $3)$$),
-  -- which locations a manager manages without working there (KARARLAR "yalnız yönetir")
-  ('employee.set_managed_locations', 'manager', 'employees.manage', false, false,
-   $$select public.set_employee_managed_locations_service($1, $2, $3, array[tests.id('m:K')]) is not null$$);
+   $$select exists (select 1 from public.list_pending_preferred_names_service($1, $2) r where r.request_id = $3)$$);
 
 -- The Employees drawer's pickers (BL-231): the locations the actor reaches.
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
@@ -510,7 +501,6 @@ insert into core_action (key, core_key, blank) values
   ('employee.remove_from_location', 'employee.remove_from_location', 'null'),
   ('employee.decide_preferred_name', 'employee.decide_preferred_name', 'null'),
   ('employee.pending_names', 'employee.decide_preferred_name', 'null'),
-  ('employee.set_managed_locations', 'employee.set_managed_locations', 'null'),
   ('workspace.close', 'workspace.close', 'null'),
   ('workspace.transfer_ownership', 'workspace.transfer_ownership', 'null'),
   ('time_off.decide', 'time_off.decide', 'null'),
@@ -561,7 +551,7 @@ begin
   select * into p from persona where label = actor_label;
   select * into a from action where key = action_key;
   if target_label = 'self' then
-    t := row('self', 'person', p.tenant, p.locs || p.manages, p.class, actor_label)::target;
+    t := row('self', 'person', p.tenant, p.locs, p.class, actor_label)::target;
   else
     select * into t from target where label = target_label;
   end if;
@@ -582,9 +572,9 @@ begin
   if a.owner_only and p.class <> 'owner' then return 'deny'; end if;
   if p.class = 'employee' then return 'deny'; end if;
 
-  -- A manager's reach: where they work and where they only manage (KARARLAR
-  -- "yalnız yönetir"). An empty list reaches nowhere.
-  reach := p.locs || p.manages;
+  -- A manager's reach: the locations they are assigned to, and nothing else
+  -- (EMP-001). An empty list reaches nowhere.
+  reach := p.locs;
   shares := t.locs is not null and t.locs && reach;
   covers := t.locs is not null and cardinality(t.locs) > 0 and t.locs <@ reach;
 
@@ -659,17 +649,6 @@ begin
       return case when pg_temp.rank(t.class) < pg_temp.rank('admin') then 'allow' else 'deny' end;
     end if;
     return case when t.class = 'employee' and shares then 'allow' else 'deny' end;
-
-  when 'employee.set_managed_locations' then
-    -- An admin or the owner gives a manager locations to manage without working
-    -- there (KARARLAR "yalnız yönetir"); a manager never gives them, nor takes
-    -- their own.
-    if is_self then return 'deny'; end if;
-    if p.class = 'owner' then return 'allow'; end if;
-    if p.class = 'admin' then
-      return case when pg_temp.rank(t.class) < pg_temp.rank('admin') then 'allow' else 'deny' end;
-    end if;
-    return 'deny';
 
   when 'employee.make_admin' then
     -- Owner only (checked above); nobody changes their own role.
@@ -801,7 +780,7 @@ insert into known_gap values
   ('legacy-blank-location', null,
    '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish,legacy.communication_capability}', '{none}',
    'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2. 56 callers pass null for "anywhere"; each moves to scope_set() with its domain and the helpers go (stage 6)'),
-  ('time-off-needs-location', '{nur,selin}', '{time_off.request_own}', null,
+  ('time-off-needs-location', '{nur}', '{time_off.request_own}', null,
    'asking for time off still needs a location, so a person with none cannot ask; time off belongs to the person (stage 6, time off)');
 
 create temporary table known_hit (id text primary key);
@@ -870,8 +849,6 @@ begin
   else
     select * into t from target where label = target_label;
     case t.kind
-    when 'manager' then
-      person := target_uuid;
     when 'person' then
       if m.by_account then
         account := (select e.user_id from public.employee_profiles e where e.id = target_uuid);

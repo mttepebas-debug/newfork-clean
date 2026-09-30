@@ -239,7 +239,6 @@ insert into service_class values
   ('set_document_publication_service', 'settings.documents.write'),
   ('set_document_type_archived_service', 'settings.documents.write'),
   ('set_employee_archived_service', 'employee.archive'),
-  ('set_employee_managed_locations_service', 'employee.set_managed_locations'),
   ('set_employee_document_exemption_service', 'documents.review'),
   ('set_employee_document_timezone_service', 'documents.review'),
   ('set_employee_name_settings_service', 'settings.people'),

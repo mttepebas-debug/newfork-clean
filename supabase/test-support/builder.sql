@@ -620,24 +620,21 @@ begin
 end;
 $$;
 
--- A manager made by tests.person manages a location without working there
--- (KARARLAR "yalnız yönetir", FB-6.2 S2), given by the owner through the
--- admin's command.
-create or replace function tests.manages(w text, person_label text, loc text)
+-- Somebody made by tests.person is kept off the Schedule ("Exclude from
+-- schedule" in the Employees drawer): they stay assigned where they are, open
+-- no grid row and are nobody's candidate. A manager who manages a location
+-- without taking shifts is assigned there and excluded (EMP-001).
+-- ponytail: the flag is set by hand; saving the whole record through
+-- save_employee_service would need every field the builder does not keep.
+drop function if exists tests.manages(text, text, text);
+create or replace function tests.excluded(w text, person_label text)
 returns void
-language plpgsql
+language sql
 set search_path = ''
 as $$
-begin
-  perform public.set_employee_managed_locations_service(
-    tests.user(w || ':owner'), tests.id(w), tests.id(w || ':' || person_label),
-    array(
-      select managed.location_id from public.membership_managed_locations managed
-      join public.workspace_memberships member on member.id = managed.membership_id
-      where member.workspace_id = tests.id(w) and member.user_id = tests.user(w || ':' || person_label)
-    ) || tests.id(w || ':' || loc));
-  perform tests.settle();
-end;
+  update public.employee_profiles
+  set is_excluded_from_schedule = true, revision = revision + 1, updated_at = now()
+  where id = tests.id(w || ':' || person_label);
 $$;
 
 -- The opposite: the member no longer works at the location (every location

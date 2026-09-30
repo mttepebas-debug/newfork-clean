@@ -14,9 +14,10 @@ select tests.person('m', 'kaan', 'admin', array['B'], array['server']);
 select tests.person('m', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('m', 'deniz', 'manager', array['K'], array['cook']);
 select tests.person('m', 'mehmet', 'manager', array['B'], array['cook']);
--- Manages Besiktas without working there (KARARLAR "yalnız yönetir", KK-29).
-select tests.person('m', 'selin', 'manager', null, null);
-select tests.manages('m', 'selin', 'B');
+-- Manages Besiktas without taking shifts: assigned there and excluded from the
+-- Schedule (EMP-001).
+select tests.person('m', 'selin', 'manager', array['B'], array['cook']);
+select tests.excluded('m', 'selin');
 -- A manager who accepted but has not finished their own onboarding.
 select tests.person('m', 'nur', 'manager', array['K'], array['cook'], 'onboarding');
 select tests.person('m', 'emre', 'employee', array['K'], array['cook']);
@@ -47,12 +48,8 @@ select is(pg_temp.review('owner', tests.id('m:zeynep')), 'passes', 'and an admin
 select is(pg_temp.review('zeynep', tests.id('m:ayse')), 'passes', 'an admin reviews a manager''s');
 select is(pg_temp.review('ayse', tests.id('m:emre')), 'passes',
   'a manager reviews an employee at their location');
--- FB-6.6 known gap (KK-33): the core lets a manager who only manages Besiktas
--- (KK-29) through, but the service's own service_actor_can_access_employee
--- line, FB-6.6's, does not know them yet and answers P0002. Access stays as
--- it was; FB-6.6 turns this cell into 'passes'.
-select is(pg_temp.review('selin', tests.id('m:veli')), 'P0002 ',
-  'a manager who only manages Besiktas is still stopped by the service''s own person check (FB-6.6, KK-33)');
+select is(pg_temp.review('selin', tests.id('m:veli')), 'passes',
+  'and so does a manager who is excluded from the Schedule, at the location they are assigned to');
 
 select is(pg_temp.review('ayse', tests.id('m:veli')), '42501 authz.out_of_scope',
   'not somebody at another location');

@@ -13,9 +13,10 @@ select tests.person('m', 'zeynep', 'admin', array['K'], array['server']);
 select tests.person('m', 'kaan', 'admin', array['B'], array['server']);
 select tests.person('m', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('m', 'mehmet', 'manager', array['B'], array['cook']);
--- Manages Besiktas without working there (KARARLAR "yalnız yönetir", KK-29).
-select tests.person('m', 'selin', 'manager', null, null);
-select tests.manages('m', 'selin', 'B');
+-- Manages Besiktas without taking shifts: assigned there and excluded from the
+-- Schedule (EMP-001).
+select tests.person('m', 'selin', 'manager', array['B'], array['cook']);
+select tests.excluded('m', 'selin');
 select tests.person('m', 'emre', 'employee', array['K'], array['cook']);
 select tests.person('m', 'veli', 'employee', array['B'], array['cook']);
 select tests.world('x');
@@ -57,7 +58,7 @@ $$;
 select is(pg_temp.assign('ayse', tests.id('m:emre')), 'allowed',
   'a manager puts an employee at their location on a job');
 select is(pg_temp.assign('selin', tests.id('m:veli')), 'allowed',
-  'a manager who only manages Besiktas puts somebody there on a job');
+  'a manager excluded from the Schedule puts somebody at their location on a job');
 select is(pg_temp.assign('ayse', tests.id('m:veli')), '42501 authz.out_of_scope',
   'not somebody at another location');
 select is(pg_temp.assign('ayse', tests.id('m:owner')), '42501 authz.rank',
@@ -76,7 +77,7 @@ select is(pg_temp.listed('ayse', 'owner'), 'reads',
 select is(pg_temp.listed('ayse', 'zeynep'), 'reads', 'and the admin there, read-only');
 select is(pg_temp.listed('ayse', 'veli'), 'hidden', 'nobody from another location');
 select is(pg_temp.listed('mehmet', 'selin'), 'reads',
-  'a manager who only manages Besiktas is there for Besiktas''s other manager (KK-29)');
+  'a manager excluded from the Schedule is there for their location''s other manager');
 select is(pg_temp.listed('owner', 'zeynep'), 'manages', 'the owner changes an admin''s jobs');
 select is(pg_temp.listed('zeynep', 'kaan'), 'reads', 'an admin reads another admin''s');
 select is(
@@ -101,7 +102,7 @@ $$;
 select is(pg_temp.todo('ayse', tests.id('m:owner')), 'allowed',
   'a manager writes a to-do about the owner at their location (M2)');
 select is(pg_temp.todo('mehmet', tests.id('m:selin')), 'allowed',
-  'about a manager who only manages Besiktas, for Besiktas''s other manager (KK-29)');
+  'about a manager excluded from the Schedule, for their location''s other manager');
 select is(pg_temp.todo('ayse', tests.id('m:veli')), '42501 authz.out_of_scope',
   'not about somebody at another location');
 select is(pg_temp.todo('ayse', gen_random_uuid()), '42501 authz.out_of_scope',
@@ -130,7 +131,7 @@ select ok(
 select tests.time_off('m', 'veli');
 select is(
   (public.get_workspace_dashboard_service(tests.user('m:selin'), tests.id('m')) #>> '{metrics,pending_time_off_count}')::integer,
-  1, 'a manager who only manages Besiktas counts its pending time off on Workspace home'
+  1, 'a manager excluded from the Schedule counts their location''s pending time off on Workspace home'
 );
 select is(
   pg_temp.refusal(format('select public.get_workspace_dashboard_service(%L, %L)', tests.user('m:emre'), tests.id('m'))),

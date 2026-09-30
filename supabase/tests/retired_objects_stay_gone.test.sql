@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(15);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -255,6 +255,17 @@ insert into retired (kind, name, step) values
 insert into retired (kind, name, step) values
   ('function', 'authorize_workspace_todos', 'FB-6.2.6'),
   ('function', 'workspace_todo_actor_role', 'FB-6.2.6');
+-- EMP-001: a manager manages the locations they are assigned to. "Manages
+-- without working there" goes whole: its table, the command, the core action,
+-- the role trigger and the key only its foreign key used.
+insert into retired (kind, name, step) values
+  ('table', 'membership_managed_locations', 'EMP-001'),
+  ('function', 'set_employee_managed_locations_service', 'EMP-001'),
+  ('function', 'manages_without_working', 'EMP-001'),
+  ('function', 'managed_locations_follow_role', 'EMP-001'),
+  ('trigger', 'workspace_memberships.managed_locations_follow_role', 'EMP-001'),
+  ('action', 'employee.set_managed_locations', 'EMP-001'),
+  ('constraint', 'workspace_memberships_id_workspace_id_role_key', 'EMP-001');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -339,6 +350,14 @@ select ok(
     where conname = 'weekly_preference_commitment_decisions_kind_check' and pg_get_constraintdef(oid) like '%lineup_offer%'
   ),
   'the Line Up offer request kind stays gone'
+);
+select is(
+  array(select r.name from retired r join app_private.authz_actions a on a.key = r.name where r.kind = 'action' order by 1),
+  '{}'::text[], 'retired core actions stay gone'
+);
+select is(
+  array(select r.name from retired r join pg_constraint c on c.conname = r.name where r.kind = 'constraint' order by 1),
+  '{}'::text[], 'retired constraints stay gone'
 );
 select is(
   array(select r.name from retired r where r.kind = 'checklist' and r.name = any (app_private.owner_setup_checklist_item_ids()) order by 1),

@@ -71,18 +71,15 @@ select throws_ok(
   'nobody is removed from a location they do not work at'
 );
 
--- S2: a manager who only manages Besiktas reaches it everywhere the core asks,
--- and is never a row on its Schedule (FB-6.2.2).
-select tests.person('m', 'selin', 'manager', null, null);
-select tests.manages('m', 'selin', 'B');
+-- EMP-001: a manager manages the locations they are assigned to, and nothing
+-- else. One who manages Besiktas without taking shifts is assigned there and
+-- excluded from the Schedule.
+select tests.person('m', 'selin', 'manager', array['B'], array['cook']);
+select tests.excluded('m', 'selin');
 select is(app_private.scope_set(tests.user('m:selin'), tests.id('m'), 'schedule.edit'), array[tests.id('m:B')],
-  'a manager reaches the location they manage');
-select ok(
-  not exists (select 1 from jsonb_array_elements(
-      public.get_schedule_read_model_service(tests.user('m:owner'), tests.id('m'), tests.week(1)) -> 'employees') e
-    where (e ->> 'id')::uuid = tests.id('m:selin') and e::text like '%' || tests.id('m:B') || '%'),
-  'managing Besiktas does not put them on Besiktas''s schedule'
-);
+  'a manager reaches the location they are assigned to, excluded from the Schedule or not');
+select is(app_private.scope_set(tests.user('m:ayse'), tests.id('m'), 'schedule.edit'), array[tests.id('m:K')],
+  'and no other location');
 
 -- An employee's membership never reaches every location (FB-6.2, Done when 5).
 select is(
@@ -192,7 +189,7 @@ select is(
 select is(pg_temp.save_as('ayse', 'ece', array['K', 'B']), '42501 authz.out_of_scope',
   'a manager does not add a location they do not manage');
 select is(pg_temp.save_as('selin', 'veli', array['B']), 'allowed',
-  'a manager saves a record where they only manage');
+  'a manager excluded from the Schedule saves a record at the location they are assigned to');
 
 -- A manager moves somebody between employee roles at their own locations
 -- (6A), and gives nobody a role at or above their own.
@@ -220,46 +217,16 @@ select lives_ok(
     tests.user('m:owner'), tests.id('m'), tests.id('m:emre')),
   'the owner ends the employment of somebody with no location left');
 
--- "Yalnız yönetir": an admin gives a manager locations to manage; only a
--- manager has them.
-select is(
-  pg_temp.refusal(format('select public.set_employee_managed_locations_service(%L, %L, %L, %L::uuid[])',
-    tests.user('m:zeynep'), tests.id('m'), tests.id('m:ayse'), array[tests.id('m:B')])),
-  'allowed', 'an admin gives a manager a location to manage');
-select is(
-  array(select m.location_id from public.membership_managed_locations m
-    join public.workspace_memberships w on w.id = m.membership_id where w.user_id = tests.user('m:ayse')),
-  array[tests.id('m:B')], 'the manager manages it now');
-select ok(
-  exists (select 1 from public.audit_events a where a.workspace_id = tests.id('m')
-    and a.action = 'employee.managed_locations_changed' and a.actor_user_id = tests.user('m:zeynep')
-    and a.metadata -> 'added' @> to_jsonb(array[tests.id('m:B')])),
-  'and it is in the audit log');
-select is(
-  pg_temp.refusal(format('select public.set_employee_managed_locations_service(%L, %L, %L, %L::uuid[])',
-    tests.user('m:zeynep'), tests.id('m'), tests.id('m:ece'), array[tests.id('m:B')])),
-  '22023 employee.not_a_manager', 'an employee manages nothing');
-select is(
-  pg_temp.refusal(format('select public.set_employee_managed_locations_service(%L, %L, %L, %L::uuid[])',
-    tests.user('m:ayse'), tests.id('m'), tests.id('m:selin'), array[tests.id('m:K')])),
-  '42501 authz.rank', 'a manager gives no peer a location to manage');
-select throws_ok(
-  format($$insert into public.membership_managed_locations (workspace_id, membership_id, location_id, added_by)
-    select %L, m.id, %L, %L from public.workspace_memberships m where m.workspace_id = %L and m.user_id = %L$$,
-    tests.id('m'), tests.id('m:B'), tests.user('m:owner'), tests.id('m'), tests.user('m:ece')),
-  '23503', null, 'no managed location is stored for somebody who is not a manager (review D2)');
-
--- S3: a manager whose role falls below manager stops managing in the same
--- step, and the audit log says what went.
+-- A role change is written to the audit log with the two roles, and nothing
+-- about locations: a role holds none of its own (EMP-001).
 select is(pg_temp.role_as('olcay', 'selin', 'employee'), 'allowed', 'the owner makes a manager an employee');
-select ok(
-  not exists (select 1 from public.membership_managed_locations m
-    join public.workspace_memberships w on w.id = m.membership_id where w.user_id = tests.user('m:selin')),
-  'their managed locations are gone');
-select ok(
-  exists (select 1 from public.audit_events a where a.workspace_id = tests.id('m')
-    and a.action = 'membership.role_changed' and a.metadata -> 'managed_locations_removed' @> to_jsonb(array[tests.id('m:B')])),
-  'and the audit log names them');
+select is(
+  (select array(select k from jsonb_object_keys(a.metadata) k order by k)
+   from public.audit_events a
+   where a.workspace_id = tests.id('m') and a.action = 'membership.role_changed'
+     and a.metadata ->> 'employee_id' = tests.id('m:selin')::text),
+  array['employee_id', 'from_access_class', 'from_role_id', 'to_access_class', 'to_role_id'],
+  'the audit log names the two roles and nothing else');
 
 select ok(
   to_regprocedure('public.save_employee(uuid, uuid, text, text, text, text, text, date, text, uuid[], uuid, uuid[], uuid, boolean, boolean, integer)') is null

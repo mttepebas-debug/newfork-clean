@@ -104,7 +104,7 @@ select is(
     'documents.read', 'documents.review', 'documents.self', 'employee.archive', 'employee.change_role',
     'employee.create', 'employee.decide_preferred_name', 'employee.invite', 'employee.list',
     'employee.make_admin', 'employee.read', 'employee.references.read', 'employee.remove_access',
-    'employee.remove_from_location', 'employee.request_preferred_name', 'employee.save', 'employee.set_managed_locations',
+    'employee.remove_from_location', 'employee.request_preferred_name', 'employee.save',
     'employee.terminate',
     'employee_hub.read', 'employee_hub.self', 'exchange.apply_own', 'exchange.approve', 'exchange.offer_own',
     'exchange.read', 'important_date.write', 'membership.read', 'notifications.read_own', 'onboarding.review',

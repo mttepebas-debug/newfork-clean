@@ -9,9 +9,10 @@ select * from no_plan();
 
 select tests.world('m');
 select tests.person('m', 'ayse', 'manager', array['K'], array['cook']);
--- Manages Besiktas without working there (KARARLAR "yalnız yönetir").
-select tests.person('m', 'selin', 'manager', null, null);
-select tests.manages('m', 'selin', 'B');
+-- Manages Besiktas without taking shifts: assigned there and excluded from the
+-- Schedule (EMP-001).
+select tests.person('m', 'selin', 'manager', array['B'], array['cook']);
+select tests.excluded('m', 'selin');
 select tests.person('m', 'emre', 'employee', array['K'], array['cook']);
 select tests.person('m', 'veli', 'employee', array['B'], array['cook']);
 select tests.person('m', 'sami', 'employee', array['K'], array['cook'], 'suspended');
@@ -52,7 +53,7 @@ create function pg_temp.week_shifts(actor text) returns uuid[] language sql as $
 $$;
 
 select ok(tests.id('m:veli') = any(pg_temp.week_shifts('selin')),
-  'a manager who only manages Besiktas lists its week');
+  'a manager excluded from the Schedule lists the week of the location they are assigned to');
 select ok(not tests.id('m:veli') = any(pg_temp.week_shifts('ayse')),
   'a manager at Kadikoy does not list Besiktas''s');
 select ok(tests.id('m:emre') = any(pg_temp.week_shifts('ayse')), 'but lists their own location''s');
