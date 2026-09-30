@@ -1,60 +1,71 @@
-# Koordinatör devri — 2026-09-30 öğle
+# Koordinatör devri — 2026-09-30 gece (kullanıcı uyurken)
 
-Devreden: "Koordinatör — devir 2026-09-30 sabah" (`local_460271c1-c51e-4537-bb02-a601c501bbbf`); bağlamı yarıyı geçti, kullanıcı devri onayladı (2026-09-30).
-Devralan: havuzdan "Bekle … (34)" (`local_2022ee49-1224-4076-a443-4fcce3142f85`); yeni başlık "Koordinatör — devir 2026-09-30 öğle".
-Ölçüm anı: `origin/main` = bu devir commit'i (altındaki son kod `c5c5af9d`; main CI 36703531479 check + db + e2e yeşil). Kilitler boş. Koşan CI yok.
-**Kullanıcı PC başında.** Ürün ve görsel kararlar ona sorulur (tek tık, önerilen ilk sırada). Kod okumaz: her teknik adın yanında ekran adı, kişiye etkisi, somut örnek (CLAUDE.md §11.2).
+Devreden: "Koordinatör" (`local_2022ee49-1224-4076-a443-4fcce3142f85`); bağlamı %61, iş sınırında devrediyor.
+Devralan: havuzdan "Bekle … (42)" (`local_c575161a-0a35-45af-ae96-d4e74880bc97`); yeni başlık "Koordinatör".
+Ölçüm anı: `origin/main` = bu devir commit'i (altındaki son kod `ddb2e359`; main CI 36724425552 check + db + e2e yeşil). Ortak yerel DB'nin son migration'ı `20261001020000`. `main.lock` boş; `db.lock` `nf-db/emp-001-c1`'de (tam paket denemesi).
 
-**Güncel pano `docs/plan/ILERLEME-PLANI.md` §0** (durum, açık işler önem sırasıyla, kullanıcıda bekleyenler). Onu "Rol: nf-planlama (Kayıt ve ilerleme)" oturumu tutar (KARARLAR OPS-04); kayıtları kendin yazma, ona "BESLEME #n" gönder (sıradaki numara #8). Bu dosya yalnız panoda olmayanı taşır.
+**Kullanıcı UYUYOR.** Talimatı (2026-09-30 akşamı, koordinatörün penceresinde): "Dün gece yaptığımız gibi sen session'ları ilerlet. Benim adıma verdiğin bütün kararları not al. Ama bu sefer kararın sonucunu app'te hangi özellik nasıl çalıştı / değişti diye nokta atışı anlat." ve "Session mesajları sana ulaşmama ihtimaline karşı sürekli git sen onları check et." Hafıza: `user-away-mode` (2026-09-30 güncellemeleri).
 
-## 0. İlk işler (sırayla)
-1. `get_session self` ile kimliğini doğrula, başlık "Koordinatör — devir 2026-09-30 öğle", sabitle. Rol oturumlarına yeni adres bu devirde bildirildi.
-2. **Üç bitmiş iş raporunu oku ve main'e al** (üçü de commit'li, push edilmedi; "bitti" mesajları eski koordinatöre ulaşmadı, klasörden okundu):
-   - EMP-001 A2 (Access sekmesindeki iki açıklama kalktı): `task/emp-001-a2` @`54025360`, worktree `goofy-wescoff-7931db`, rapor `artifacts/nf-arayuz/emp-001-a2/RAPOR.md`. R1: diff'i ve ekran görüntülerini sen oku.
-   - G14 dilim a: `task/g14-a` @`515b29de` (`c5c5af9d` üstünde), worktree `nostalgic-mestorf-5b3bba`, rapor `artifacts/nf-arayuz/g14-a/RAPOR.md`. Bağımsız kod incelemesi APPROVE (alt ajan, 2026-09-30).
-   - G14 dilim b: `task/g14-b` (a'nın üstünde 8 commit, son `d72c3b35`), rapor `artifacts/nf-arayuz/g14-b/RAPOR.md`. İnceleme YAPILMADI: R2 → tek `/code-review` (ya da salt okunur inceleme alt ajanı) + `nf-gorsel-qa` (`local_9ff804a0…`). Rapor yazıldıktan sonra işçiye bir ek gitti: kurtarma penceresindeki "Discard" iki tık kırmızı (kullanıcı, BL-440) — yapıldı mı ölç. U08 (936px düzeni) kullanıcı cevabını bekliyor (§2).
-   - Gönderim önerisi (tek CI turu): `newfork-wt/merge-account`'ta `task/batch-t6` = `origin/main` + A2 + g14-a (+ inceleme biterse g14-b) → push → dal CI yeşil → `main.lock` → main → main CI izle. Kalıp: eski HANDOFF §4 (`git show 169ec0a9:docs/plan/HANDOFF.md`).
-3. **EMP-001 B1 raporu:** `task/emp-001-b` @`d261e51b`, worktree `dreamy-sinoussi-7c5a4a`, rapor `artifacts/nf-db/emp-001-b1/RAPOR.md` ("B2 için sözleşme" ve "nf-guvenlik için" bölümleri). Rapordan SONRA `nf-db`'ye bir ek gitti (BL-443: altı rotanın fonksiyonları çekirdekten soruyor mu; gerekirse B1 migration'ına) — cevabını bekle/oku. Sonra **B2 + B3'ü `nf-backend`'e ver** (`local_7a9cd29c…`): aynı dalın üstünde (`git switch -c task/emp-001-b2 task/emp-001-b`), görev dosyası `docs/plan/tasks/EMP-001.md` Touches B2/B3 + B1 sözleşmesi + BL-443 (altı rota dosya içi `authorize(…, "employees.read")` kapısından çekirdeğe; kullanıcı kararı: söküm dilimiyle birlikte) + "kendi lokasyonundan çıkar" e2e'si `nf-test`'e. B1+B2+B3 TEK dal, TEK `nf-guvenlik` incelemesi (R3, zorunlu), ekran değiştiği için `nf-gorsel-qa`, TEK birleştirme penceresi (ayrı girerse çekmece 500 verir). Migration ortak yerel DB'ye yalnız main'e alınmadan hemen önce, `nf-guvenlik` ONAY'ından sonra. **Kullanıcıya ultrareview öner** (o dalın worktree oturumunda `/code-review ultra`; yalnız kullanıcı başlatır).
-4. Sonra: B4 (rol "Save changes" ile; çekmece hiçbir durumda uyarmaz; `nf-backend`) → C1–C4 → G8a (`nf-db`, B1'den sonra) → G8b.
-5. Eski koordinatörü (`local_460271c1…`, başlığı "(eski) …") arşivle: telefon bağlantısını kapat (kullanıcı onayladı: devir), sabitlemeyi kaldır, `archive_session`. Worktree'si `magical-jepsen-eae462` (temiz, iş yok).
-6. Kayıt oturumu (`local_c9e94ca2…`) bağlamı ~%45: bir sonraki iş sınırında yenile (kalıp: `ILERLEME-PLANI.md` §0d; yenisini açar açmaz eskisinin adına "(eski)" ekle — aynı adda iki oturum kullanıcıyı karıştırdı).
+**Güncel pano `docs/plan/ILERLEME-PLANI.md` §0.** Kayıt oturumu tutar; kayıtları kendin yazma, ona "BESLEME #n" gönder (sıradaki #13; #12 işleniyor). Bu dosya yalnız panoda olmayanı taşır.
 
-## 1. Bu devirde olanlar (ayrıntı panoda ve görev dosyalarında)
-- FB-6.2 / G7 KAPANDI (`.10` e2e `9f1cc3b3`; kapanış kaydı `c6c53155`). Bir parça açık çıktı ve EMP-001 B'ye verildi: BL-443.
-- EMP-001 (Employees çekmecesi yenilikleri; kullanıcının 15 maddesi + S1–S5, K1–K7 kararları, `docs/plan/tasks/EMP-001.md`): A main'de (`152d908f`…`037c5aea`), A2 ve B1 commit'li.
-- G14 (Schedule masaüstü; kullanıcı EMP-001 yürürken yan yana ikinci iş istedi; `docs/plan/tasks/G14.md`): a ve b commit'li; c = BL-204 (müsaitlik uyarısı) kullanıcıyla konuşma bekliyor.
-- Kayıt oturumu kuralı (OPS-04) ve "varsayılan tek grup; kullanıcı isterse dosyaları kesişmeyen ikinci iş yan yana" kuralı kayıtta.
-- Arşivlenen oturumlar: önceki koordinatör `local_d6d4a08d…`, "İnceleme: G4, G5, G11", ilk kayıt oturumu `local_d09b11f8…`. Save dalı (`task/fb62-8-save`) kullanıcı kararıyla silindi; commit'leri yerelde `keep/fb62-8-save-pattern` (B4 için örnek kalıp, iş bitince silinir).
+## 0. Gece çalışma düzeni (kullanıcı yokken)
+1. **Yokla, mesajı bekleme.** 10–12 dakikada bir arka plan zamanlayıcısı (`sleep 720` arka planda) ile uyan; her yürüyen oturumun klasörüne bak: `git -C <worktree> log --oneline -1`, `git status -s | wc -l`, `find <worktree>/artifacts -name 'RAPOR*.md' -mmin -14`; `list_sessions` ile çalışıyor mu. Boşta + yeni commit/rapor = bitmiş iş; raporu klasörden oku. Bu gece yedi "bitti" mesajı ulaşmadı.
+2. **Kararlar.** Ürün/UX kararını kullanıcının vizyonuna ve KARARLAR'a göre sen verirsin; her kararı beslemeyle `KOORDINATOR-KARARLARI.md`'ye yazdır (KK-n) ve kullanıcıya her seferinde "Uygulamada etkisi"yle anlat: ekran adı ve yolu, kim ne yapınca önce ne oluyordu / şimdi ne oluyor, isimli örnek, geri alma. Park: geri alınamaz silme, hosted (canlı DB gönderimi), ücretli, `supabase db reset`, `CLAUDE.md` / `.claude/agents/**`.
+3. **Bütçe.** Haftalık kullanım sınırı %82 (uygulamanın kullanım kartı, 2026-09-30 gece; `get_usage`). Koordinatör kararı: **%90'da yeni iş başlatılmaz**; bu gece G18'den sonra yeni backlog grubu açılmaz; kalan pay EMP-001 C'ye ve QA düzeltmelerine. Her iki yoklamada bir ölç. Rol görev mesajlarına "dosyaları satır aralığıyla oku, tam testi bir kez koş" yaz.
+4. **Hatlar.** Birinci hat EMP-001 (Employees çekmecesi; C dilimleri). İkinci hat G18 bitti (a, b, c main'de); G14 bitti (dilim c = BL-204 kullanıcı konuşması bekliyor, tasarımına GİRME).
+5. **Oturum yenileme.** Bağlamı yarıyı geçen rol, iş sınırında havuzdan ("Bekle … (43)"–"(50)" boş) yeni oturuma devredilir: eskisinin adına "(eski)" ekle, yenisine rol başlığını ver, sabitle, Remote Control aç, devir + görev mesajı gönder. "undelivered … can still pick it up later" sonucu gelirse `get_session` ile bak; çalışıyorsa mesaj alınmıştır, yeniden gönderme.
 
-## 2. Kullanıcıda bekleyenler (tam liste pano §0c)
-1. **BL-204 konuşması:** sözlü anlatım ve ekran görüntüleri verildi (34 görüntü: `.claude/worktrees/trusting-edison-227b8b/artifacts/nf-gorsel-qa/g14-bugun/`). Kullanıcı neyi değiştirmek istediğini anlatacak; mockup ONDAN SONRA (kullanıcının sırası: anlatım → görüntü → konuşma → mockup). Meyhouse yerel workspace'inde QA verisi duruyor (raporda "Kurulan veri"); konuşma bitince `nf-gorsel-qa`'ya geri aldır.
-2. **U08:** 936px pencerede Schedule üst çubuğu yedi satır, sağ grup süzgecin üstüne biniyor. Soruldu: "G14 dilim b'de düzeltilsin mi?" (öneri: evet). Cevap gelmedi.
-3. **BL-437:** zamanlanmış dışa aktarma arayüzden kurulamıyor — ekrana taşınsın mı, özellik silinsin mi.
-4. **CLAUDE.md onayı** (pano §0c'de a–d): koordinatör kimliği, kayıt oturumu kuralı, "push'tan önce paketin bütün vitest'i", "tek hat" cümlesinin yeni kuralla uyumu.
-5. **Yüksek önemli hata, sıra önerisi:** belge çekmecesinde dosya yükleyince son kullanma tarihi ve ek alanlar siliniyor (G18, U59). Kullanıcıya söylendi; sıradaki iş seçilirken öne alınması önerildi.
-6. Silme komutları (yalnız kullanıcı çalıştırır; ilk satır `Set-Location C:\Users\TheWe\Documents\Codex\newfork-clean`): uzak dal listesi panoda (40 + `task/emp-001-a`, `task/fb62-10`); eski ajan klasörleri BL-433 (önce notlar kurtarılır).
+## 1. İlk işler (sırayla)
+1. `get_session self`; başlık "Koordinatör", sabitli, Remote Control açık (devreden ayarlar; doğrula). 12 dakikalık yoklama zamanlayıcısını kur.
+2. **Yürüyen dört işi topla** (klasörden; mesaj gelmeyebilir):
+   - **EMP-001 C1** (`nf-db`, `local_8918dfd6-f929-4312-857e-58362641f3a4`, worktree `optimistic-dewdney-c78421`, dal `task/emp-001-c1`, commit `6cad44d6` + devamı): rapor `artifacts/nf-db/emp-001-c1/RAPOR.md` ("C2 için sözleşme", "nf-guvenlik için"). Koordinatör kararları verildi: `get_employee_detail_service` cevabına `is_workspace_owner`; var olan workspace'lere de "Manager" işi eklenir; liste satırındaki iş adı sırası. Migration adı `20261001020000`'dan büyük olmalı.
+   - **Acil durum kişisi mesajı** (`nf-backend`, `local_2464b099-317e-437f-ac12-5a506804d03d`, worktree `optimistic-blackburn-f4a88f`, dal `task/emp-001-contact-refusal`): Account → Profile → "Emergency contact"te erişimi alınmış üye "Try again." yerine okunur cümle görecek (web, dar). R1: diff'i sen oku.
+   - **EMP-001 A3** (`nf-arayuz`, `local_6a90e9ce-d597-4eeb-abe3-2c7fe7da8fec`, worktree `goofy-wescoff-7931db`, dal `task/emp-001-a3`): Access → "Profile photo" grubunun iki açıklaması kalkar (BL-446). R1: diff + ekran görüntüsü.
+   - **Kayıt oturumu** (`local_6fe24435-0391-4db7-bf3c-d448e03044da`, worktree `modest-zhukovsky-87381b`): BESLEME #12'yi işliyor.
+   A3 + mesaj düzeltmesi bitince: `newfork-wt/merge-account`'ta tek toplu dal (`task/batch-t10` = `origin/main` + ikisi) → tam kapı → push → dal CI yeşil → `main.lock` → main → main CI izle → kullanıcının ana klasörünü `git -C newfork-clean merge --ff-only origin/main`.
+3. **C2'yi ver** (`nf-backend`): C1 sözleşmesiyle, `task/emp-001-c2` dalı `task/emp-001-c1` üstünde; `docs/plan/tasks/EMP-001.md` Touches C2, Done when 20–26'nın shared/API/veri tarafı. Sonra **C3** (`nf-arayuz`; bağlamı %53 → yeni oturuma devret) ve **C4** (`nf-test`, e2e). C1 + C2 + C3 + C4 TEK dal, TEK `nf-guvenlik` incelemesi (R3, zorunlu), ekran değiştiği için `nf-gorsel-qa`, TEK birleştirme penceresi. Alan EKLEYEN iş olduğu için OPS-03 sırası geçerli mi, `nf-guvenlik`'e sor (söküm alan SİLDİĞİ için main önce girmişti; KK kaydı var).
+4. **Görsel QA borcu** (`nf-gorsel-qa`, `local_2a24338f-ba49-4311-acbe-4f916b5ae06d`, bağlam ~%34): B4 (rolün Save ile kaydı; rol taslağı varken "Terminate employee" pasif ama soluk görünmüyor — koordinatör gözlemi) ve A3 main'e girince tek turda baktır.
+5. **Kullanıcı uyanınca sabah raporu** (§3'teki liste).
 
-## 3. Oturumlar
+## 2. Bu gece main'e girenler (hepsi CI yeşil; ayrıntı panoda ve KK-38…)
+| İş | Commit | Ekranda |
+|---|---|---|
+| EMP-001 A2 + G14 dilim a | `d411d7a8` | Access'in iki açıklaması kalktı; Schedule tekil/çoğul, "bugün" rozeti lokasyonun saatinde |
+| G14 dilim b | `0e6d0cfc` | Pasif Publish nedenini söyler; okuma hatasında hafta okları; kurtarma penceresinde Discard iki tık ve ilk fare tıkı çalışır |
+| EMP-001 B (söküm) | `9733f42c` | "Manages without working there" yok; Remote olmayan her müdürün en az bir lokasyonu olur (kullanıcı kararı K4 "her müdür") |
+| EMP-001 B4 + G18 a, b, c | `ddb2e359` | Rol "Save changes" ile; çekmece sormadan kapanır; çıkarma sonrası çekmece kapanır + bildirim; Documents sayacı yalnız belgeleri sayar; belge çekmecesinde yazılan silinmez |
+İncelemeler: G14 b (alt ajan kod incelemesi + QA ONAY @`7e19a76b`), söküm (`nf-guvenlik` ONAY @`dd230072`, QA ONAY @`9733f42c`), B4 (alt ajan ONAY @`54a73953`), G18 c (`nf-guvenlik` ONAY @`c8cac1e6`), G18 a+b (işçinin bağımsız alt ajanı). Söküm sonrası yerel `test:db`: 155 dosya, kırmızı 11 = `ci-not-green.txt`.
+Yedekler (yerel DB): `newfork-wt/coord/artifacts/emp-001-b/membership_managed_locations-2026-09-30.sql` (silinen tablo, 1 kayıt), `newfork-wt/coord/artifacts/g18-c/count_account_attention_service-before.sql`.
+
+## 3. Sabah raporunda kullanıcıya gidecekler
+1. **Canlı veritabanına gönderim (yalnız kullanıcı; OPS-03):** üç migration — `20261001000000`, `20261001010000`, `20261001020000` (+ C birleşirse onunkiler). Sıra: yedek (`db dump --linked`) → `db push --dry-run` → `db push` → koordinatör `list_migrations` + `get_advisors` (security).
+2. **Kullanıcı adına verilen kararlar:** KK-38'den itibaren `docs/plan/KOORDINATOR-KARARLARI.md` (her maddede "Uygulamada etkisi"); kayıt oturumu #12 ile son altıyı yazıyor. Kullanıcıya sohbette her biri anlatıldı; sabah tek tabloda özetle.
+3. **Teyit / karar soruları (tek tık, önerilen ilk):** (a) BL-204 müsaitlik uyarısı konuşması (kullanıcı anlatacak; mockup sonra); (b) söküm sonrası "müdür atandığı her lokasyonu yönetir, ara sıra çalıştığı yer dahil" — böyle kalsın mı (öneri: evet); (c) OPS-03'e "alan silen işte sıra ters" cümlesi; (d) BL-118 owner kendi belgesini yükleyebilsin mi (öneri: şimdi değil); (e) belge çekmecesinin öteki yazılan alanları (erteleme / uzatma / ret nedeni) da korunsun mu; (f) Access'teki ret cümlesi "Choose a location, or turn on Remote" diyor ama ikisi Employment sekmesinde — metin; (g) `CLAUDE.md`: koordinatör kimliği yine değişti (bu devir) + bekleyen üç kural maddesi (kayıt oturumu kuralı, push öncesi bütün vitest, "tek hat" cümlesi) — `CLAUDE.md`'ye kullanıcı onayı olmadan DOKUNMA; (h) eski oturumların arşivi (Remote Control kapatmak gerekiyor; her seferinde sorulur): "(eski) Koordinatör — sabah", bu oturum, "(eski)" / "(eski 2)" nf-db, nf-backend, nf-gorsel-qa, iki kayıt oturumu; arşivden önce `find <worktree>/artifacts -type f` ile bak, atıf alan raporu `newfork-wt/coord/artifacts/`'a taşı; (i) uzak dal silme komutu (pano §0c); (j) `~/.claude/OBSERVATIONS.md` 30 maddeye ulaştı (her beşinci maddede kullanıcıya gönderilir); (k) ultrareview: söküm birleştiği için bu işte çalıştırılamaz — C dalı hazır olunca öner.
+4. **Bakım satırı:** haftalık kullanım yüzdesi, bağlam, kilitler.
+
+## 4. Oturumlar
 | Oturum | Kimlik | Durum |
 |---|---|---|
-| Rol: nf-planlama (Kayıt ve ilerleme) | `local_c9e94ca2-949d-472e-83f8-59ec0628259b` | BESLEME bekliyor; bağlam ~%45 |
-| Rol: nf-db | `local_3dc69041-ac51-4271-a880-e0189d739b77` | B1 commit'li; BL-443 ekini işliyor |
-| Rol: nf-backend | `local_7a9cd29c-c02c-407d-91c3-00b3179b8112` | boşta → B2 + B3 |
-| Rol: nf-arayuz | `local_6a90e9ce-d597-4eeb-abe3-2c7fe7da8fec` | A2 commit'li; boşta |
-| İşçi: G14 Schedule masaüstü | `local_353f164f-9df7-449c-9c1f-f747f3685d99` | b commit'li; Discard ekini işliyor; U08 bekliyor |
-| Rol: nf-test | `local_50c331df-d410-4f84-8521-486025aa57c1` | boşta → "kendi lokasyonundan çıkar" e2e (B ile), C4 |
-| Rol: nf-guvenlik | `local_7753c716-a240-468b-bf54-cefdaf951d66` | boşta → B incelemesi |
-| Rol: nf-gorsel-qa | `local_9ff804a0-8e33-477b-a569-6e95cab8ccee` | boşta → G14 b, EMP-001 B/C |
-| Havuz | "Bekle … (35)"…"(50)" | boş |
-| Kullanıcının kendi oturumları | "Employee drawer UI improvements", "Dev sunucusu başlat", "…30 Tane Boş Session Aç" | dokunma |
+| Rol: nf-planlama (Kayıt) | `local_6fe24435-0391-4db7-bf3c-d448e03044da` | #12 işliyor; iki beslemede %50'yi geçiyorlar — az ve toplu besle, yalnız pano §0 + §0d okut |
+| Rol: nf-db | `local_8918dfd6-f929-4312-857e-58362641f3a4` | C1 |
+| Rol: nf-backend | `local_2464b099-317e-437f-ac12-5a506804d03d` | acil durum mesajı → C2 |
+| Rol: nf-arayuz | `local_6a90e9ce-d597-4eeb-abe3-2c7fe7da8fec` | A3; bağlam %53 → C3'ten önce yenile |
+| Rol: nf-test | `local_50c331df-d410-4f84-8521-486025aa57c1` | boşta → C4 |
+| Rol: nf-guvenlik | `local_7753c716-a240-468b-bf54-cefdaf951d66` | boşta → C incelemesi |
+| Rol: nf-gorsel-qa | `local_2a24338f-ba49-4311-acbe-4f916b5ae06d` | boşta → B4 + A3 |
+| İşçi: G18 Belgeler | `local_713bf34a-f838-4b6c-881d-eaba5c50eca5` | bitti, boşta |
+| İşçi: G14 Schedule | `local_353f164f-9df7-449c-9c1f-f747f3685d99` | bitti, boşta |
+| Eskiler ("(eski)", "(eski 2)") | adlarından | durdu; arşiv sabaha |
+| Kullanıcının oturumları | "Employee drawer UI improvements", "Dev sunucusu başlat", "…30 Tane Boş Session Aç" | dokunma |
+Worktree'lerin: `newfork-wt/coord` (docs ve `CLAUDE.md`; `git switch --detach origin/main` ile başla), `newfork-wt/merge-account` (toplu dallar; node_modules kurulu).
 
-Worktree'lerin: `newfork-wt/coord` (docs; `git checkout --detach origin/main` ile başla; `artifacts/from-youthful-montalcini-5c90e3/` üç yedek rapor), `newfork-wt/merge-account` (toplu dallar; node_modules kurulu).
-
-## 4. Dersler (bu devir)
-- **"Bitti" mesajı koordinatöre ulaşmayabiliyor** (bugün beş kez: nf-test, nf-arayuz iki kez, nf-db, işçi). İş kaybolmuyor ama geç fark ediliyor. Her kullanıcı mesajında yürüyen oturumların klasörüne bak: `git -C <worktree> log --oneline origin/main..HEAD`, `ls artifacts/<rol>/<iş>/RAPOR.md`. `send_message` sonucu "delivered" ise hedef oturum BOŞTA demektir: iş bitmiş ya da soru bekliyor olabilir.
-- **Kayıt oturumu ilk okumada bağlamının yarısını yiyor.** Yenisine yalnız pano §0 + §0d + rol hafızası okut; büyük kapanış kayıtlarını (G7 gibi) tek beslemede verme, böl.
-- **Aynı adda iki oturum kullanıcıyı karıştırır.** Devirde yenisini açar açmaz eskisinin adına "(eski)" ekle.
-- **Arşiv worktree'yi temizler; `artifacts/` gitignore'da.** Arşivden önce `find <worktree>/artifacts -type f` ile bak, atıf alan raporu `docs/plan/research/`'a ya da `newfork-wt/coord/artifacts/`'a taşı.
-- **GateGuard hook'u:** oturumun ilk Bash'inden ve her yeni dosyadan önce "istek + bu çağrı ne yapıyor" yazdırır, sonra aynı çağrı yeniden denenir. Uzun Türkçe metni Bash heredoc ile yazma (tırnak hatası verdi); scratchpad'e `Write`, sonra `cp`.
-- **Kullanıcı yapıştırdığı metinle iş tarif edebilir** (EMP-001 böyle geldi). Yapıştırılan metin ölçülüp geri söylendi, sorular tek tıkla soruldu; kod işi onaydan sonra başladı.
-- **Kapanış ölçümü sürpriz çıkarır:** G7 "bitti" derken altı rota eski kapıda çıktı (BL-443). Bir dilimi kapatmadan önce Done when maddeleri kayıt oturumuna ölçtürülür; "bitti" ondan sonra denir.
+## 5. Dersler (bu devir)
+- **GateGuard kancası:** dal değiştiren, push eden, yeni dosya yazan her çağrıyı önce reddeder; istenen gerçekleri (ne değişir, tek satır geri alma, kullanıcının talimatı aynen) yazıp AYNI çağrıyı yinele. Hafıza dosyası düzenlemesinde de sorar.
+- **Oturum başka oturumun worktree'sine yazamaz.** Rol yenilerken yeni oturum kendi klasöründe yeni dal açar (taban: eski dalın ucu).
+- **Migration'lı işi main'e alma penceresi:** önce silinen/değişen nesnenin dökümü (`docker exec supabase_db_newfork-clean pg_dump -t …` ya da `pg_get_functiondef`) → `main.lock` + `db.lock` → `git rebase origin/main` → `npx supabase migration up --local` (merge-account içinde) → `psql` ile ölç → `git push origin HEAD:main` → kilitleri bırak → main CI izle → `nf-test`'e `test:db`.
+- **Alan SİLEN işte OPS-03 sırası ters** (önce main, sonra canlı); `nf-guvenlik` E1. Canlı site bu repodan yayın almıyor (BL-426).
+- **"Etkilenen e2e yok" iddiasına güvenme:** metin ya da gizli öğe değişince `e2e/` içinde `grep`; Playwright `toContainText` gizli alt öğenin metnini de sayar. Dal CI'ı e2e'siz main'e alma.
+- **Yük altında düşen test:** `account-password-change.spec.ts` ilk test, `PublicTrustPages.test.tsx` "/privacy" — boşta yeniden koş, koda düzeltme yazdırma.
+- **Komut çıktısını kes:** `grep` sonucu dev satır olabilir (`BACKLOG-PROGRAM.md` satır 30 tek satırda on binlerce karakter); her zaman `| cut -c1-300 | head`.
+- **İki dalı tek main CI turuna indir:** koşan toplu dalın üstüne ikinci dalı yığıp (t8 → t9) yalnız üsttekini main'e al.
+- **Rol "bitti" dedikten sonra gelen kuyruk mesajı** (rebase, ek kontrol) işlenir; commit kimlikleri değişir — toplu dala alırken `git cherry` / patch-id ile bak.
