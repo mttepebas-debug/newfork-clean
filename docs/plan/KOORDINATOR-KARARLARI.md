@@ -288,14 +288,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** iki ekran aynı ucu çağırıyor (koddan ölçüldü, `origin/main` `2eaf490b`): Account → Profile → "Emergency contact" grubu (`apps/web/src/account/ProfilePage.tsx:504`, kayıt `:318`) ve Employees → kişinin kendi kaydının çekmecesi (`apps/web/src/employees/EmployeeDrawer.tsx:3218`). Aktif çalışan için değişen yok: Ayşe Account → Profile'da acil durum kişisini "Mehmet, eşi, telefonu" diye yazar, kaydeder, kaydolur. Değişen: workspace'te askıya alınmış ya da çıkarılmış kişi. Önce bu kişi kendi acil durum kişisini değiştirebiliyordu; şimdi "erişim yok" cevabı alır, kayıt değişmez (bugünkü kodda reddedilen kayıt Account → Profile'da "Your emergency contact could not be saved in <workspace adı>. Try again." satırını gösteriyor, `ProfilePage.tsx:369`; dal main'e girince ekranda yeniden bakılır). Ayrıca başkasının kaydına ya da var olmayan bir kişiye yazma denemesi artık aynı cevabı alır; önce biri "bulunamadı", öteki "yetki yok" diyordu ve kimin var olduğu anlaşılıyordu.
 - **Dayanak:** `CLAUDE.md` §9 (fail-open kapatılır; bilinmeyen ve kapsam dışı hedef aynı cevabı alır).
 - **Geri alma:** kolay (tek eylem satırı).
-- **Durum:** main'de (`9aa200eb`, `de5205d6`; 2026-09-30); canlı veritabanına gönderim bekliyor. **Ölçüm (alt ajan, kod okuması; ekranda denenmedi):** API, erişimi alınmış üyeye ve kapalı workspace'e çekirdeğe sormadan 404 `authz.not_member` veriyor (`apps/api/src/auth/workspace-context.ts:60-62`); bu durumda Account → Profile büyük olasılıkla "… could not be saved … Try again." diyor, yeni "can no longer be changed" cümlesi değil. Kayıt yine reddediliyor; yalnız cümle farklı olabilir. KK-45'e bakınız.
+- **Durum:** main'de (`9aa200eb`, `de5205d6`; 2026-09-30); canlıda 2026-09-30 (kullanıcı gönderdi, OPS-03; besleme #16). **Ölçüm (alt ajan, kod okuması; ekranda denenmedi):** API, erişimi alınmış üyeye ve kapalı workspace'e çekirdeğe sormadan 404 `authz.not_member` veriyor (`apps/api/src/auth/workspace-context.ts:60-62`); bu durumda Account → Profile büyük olasılıkla "… could not be saved … Try again." diyor, yeni "can no longer be changed" cümlesi değil. Kayıt yine reddediliyor; yalnız cümle farklı olabilir. KK-45'e bakınız.
 
 ### KK-39 (2026-09-30) Tercih edilen ad onay ayarı yetki çekirdeğine bağlanır (BL-443)
 - **Karar:** "Preferred names" onay ayarını okuma ve yazma çekirdeğe sorar; yeni okuma eylemi `settings.people.read` (izin `employees.read`), yazma var olan `settings.people`.
 - **Uygulamada etkisi:** Settings → General → "Preferred names" (`apps/web/src/settings/GeneralSettingsPage.tsx:237`; koddan ölçüldü). Görünürde değişen yok: owner Mert ayarı açar ya da kapatır, önceki gibi kaydolur; Employees çekmecesinde tercih edilen ad alanı aynı çalışır. Yetkisi olmayan kişi önce de reddediliyordu, şimdi de reddedilir; yalnız hata cevabı öteki ekranlarla aynı biçime gelir ("hayır" nedenini söyler).
 - **Dayanak:** `CLAUDE.md` §9 (route-yerel yetki kapısı kalkar; her uç yetki çekirdeği üzerinden).
 - **Geri alma:** kolay.
-- **Durum:** main'de (`9aa200eb` veritabanı, `ee2f1e6f` rotalar; 2026-09-30); canlı veritabanına gönderim bekliyor.
+- **Durum:** main'de (`9aa200eb` veritabanı, `ee2f1e6f` rotalar; 2026-09-30); canlıda 2026-09-30 (kullanıcı gönderdi, OPS-03; besleme #16).
 
 ### KK-40 (2026-09-30) Bağlamı dolan iki rol oturumu kart beklenmeden boş oturumlara devredildi
 - **Karar:** `nf-db` rol oturumu (bağlam %63) ve kayıt oturumu (%50) havuzdaki boş oturumlara devredildi; yenileri `local_75ba0d8c-210e-4971-808f-45d621e68993` (`nf-db`) ve `local_6c8429c0-01e9-4088-87de-3dc56a4c6eea` (kayıt).
@@ -323,7 +323,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** yerelde Employees → kişi → çekmece → Employment'ta "Manages without working there" listesi yok, Employees listesinde "Manages <lokasyon>" çipi yok ("No location" duruyor), müdür kuralı geçerli (koddan ölçüldü: `apps/web/src`'te iki metin de 0 eşleşme). Canlı sitede görünen değişiklik yok: site bu repodan yayın almıyor (BL-426). Canlı veritabanı iki migration geride (koordinatörün aktardığı). Bedel: bu iş için ultrareview çalıştırılamaz, dal birleşti.
 - **Dayanak:** `nf-guvenlik` E1: iş alan siliyor; migration önce giderse yayındaki eski kod kırılır ("Employees listesi ve çekmecesi 500 verir"). KARARLAR OPS-03'ün "önce canlı migration" sırası alan ekleyen iş içindir. Kullanıcıya soru: OPS-03'e bu cümle eklensin mi (`ILERLEME-PLANI.md` §0c).
 - **Geri alma:** orta (migration'lar yerelde uygulandı; geri dönüş yeni migration ister).
-- **Durum:** main'de `9733f42c`; main CI 36720132559 check + db + e2e yeşil; canlı gönderim kullanıcıda.
+- **Durum:** main'de `9733f42c`; main CI 36720132559 check + db + e2e yeşil; canlıda 2026-09-30 (kullanıcı gönderdi; besleme #16).
 
 ### KK-44 (2026-09-30) Kayıt yolunda lokasyonsuz müdüre veritabanı genel cümleyi verir
 - **Karar:** Remote ve "Exclude from schedule" kapalıyken lokasyonsuz kaydedilen kişide veritabanı önce genel "lokasyon zorunlu" cevabını verir; müdüre özel cümle Remove, rol ve davet yollarında (ve işaretli müdürün kaydında) çıkar.
@@ -372,7 +372,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** dilim a — belge çekmecesi (Account → Documents, Employees → Documents, Employees çekmecesi → Documents): dosya yükleyince, dosya silince ya da erteleme kaydedince yazılan son kullanma tarihi ve ek alanlar silinmez; örnek: Ayşe ehliyetinin son kullanma tarihini yazar, ikinci dosyayı yükler, tarih yerinde kalır (önce siliniyordu). Dilim c — hesap menüsünde "Documents"ın yanındaki sayı belge olmayan adımları saymaz; bugün çalışan kaydı olan herkes en az 2 görüyor, bekleyen belgesi olmayan 0 görecek. Dilim b yalnız test.
 - **Dayanak:** kullanıcı 2026-09-30'da ikinci hattı açmıştı (EMP-001 yanında G14); G18 programda sıradaki hazır grup ve EMP-001 B4 ile dosyaları kesişmiyor (koordinatörün değerlendirmesi).
 - **Geri alma:** kolay (K1 sonradan yazılabilir).
-- **Durum:** main'de (`f71538ee`, `247947ee`, `2ca7559d`; main CI 36724425552 yeşil; besleme #12). U59, U60, BL-341 kapandı. Ölçüm notu: Documents sayısı belgelerin yanında onaylanacak politikaları da sayar; çekmecede yazılan, çekmece kapanınca düşer. Canlı veritabanına gönderim açık.
+- **Durum:** main'de (`f71538ee`, `247947ee`, `2ca7559d`; main CI 36724425552 yeşil; besleme #12). U59, U60, BL-341 kapandı. Ölçüm notu: Documents sayısı belgelerin yanında onaylanacak politikaları da sayar; çekmecede yazılan, çekmece kapanınca düşer. Canlı veritabanına gönderim 2026-09-30'da yapıldı (kullanıcı; besleme #16).
 
 ### KK-51 (2026-09-30) Haftalık kullanım sınırı %80'de; %90'da yeni iş başlatılmaz
 - **Karar:** uygulamanın kullanım kartı 2026-09-30 gecesi %80 gösterdi (koordinatörün aktardığı); %90'da yeni iş açılmayacak.
@@ -407,7 +407,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** Settings → Jobs → "All" görünümünde "Management" departmanının altında "Owner"ın yanında "Manager" çıkar; "Jobs" sekmesinde de listelenir (`apps/web/src/settings/JobsSettingsPage.tsx:513-515`; yerel Meyhouse dahil). Employees çekmecesi → Employment → Jobs listesinde Management grubunda seçilebilir olur. Örnek: owner Mert Settings → Jobs'u açar, Management altında bugün yalnız "Owner" var (`supabase/migrations/20260927160000_management_and_owner_are_kept.sql:49-52`; ölçüldü), C1'den sonra "Manager" da görünür; silerse bir daha kendiliğinden gelmez.
 - **Dayanak:** S2 (Manager sıradan iştir); yeni ve eski workspace aynı görünsün. Canlı veri yok.
 - **Geri alma:** orta (migration eklediği işi geri almaz; iş elle silinir).
-- **Durum:** main'de (`362712f0`; var olan workspace'lere ekleme `supabase/migrations/20261002000000_manager_is_an_ordinary_job.sql:693-697`, yeni kurulum `:40-43`, silinince geri gelmez testi `supabase/tests/management_owner_job.test.sql:156`; alt ajan ölçtü). Yerelde "Manager" işi 0 → 299 (koordinatörün aktardığı). Canlıda gönderim bekliyor.
+- **Durum:** main'de (`362712f0`; var olan workspace'lere ekleme `supabase/migrations/20261002000000_manager_is_an_ordinary_job.sql:693-697`, yeni kurulum `:40-43`, silinince geri gelmez testi `supabase/tests/management_owner_job.test.sql:156`; alt ajan ölçtü). Yerelde "Manager" işi 0 → 299 (koordinatörün aktardığı). Canlıda gönderim bekliyor. Canlıda 2026-09-30: "Manager" işi 3/3 Management departmanında (koordinatör ölçtü, MCP salt okuma; besleme #16).
 
 ### KK-56 (2026-09-30) Employees listesindeki iş adının sırası: birincil, yoksa Owner işi, yoksa ilk iş (EMP-001 C1)
 - **Karar:** listede kişinin yanında görünen iş adı: kayıtlı birincil iş; yoksa Owner işi; yoksa ilk iş. Eskisi ikinci adımda "ilk Management işi"ydi.
@@ -477,7 +477,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** canlı sitede değişen yok (site bu repodan yayın almıyor, BL-426). İki şart kayda geçti: **Ş1** — bu migration canlıya gönderilmeden Vercel bu repoya bağlanmaz; bağlanırsa canlıda her çalışan çekmecesi 500 verir. **Ş2** — canlı veritabanı main'in gerisinde; "canlı = main" kaydı (BL-405) geçici olarak doğru değil. Ölçüm: canlı dört migration geride (rapor "bir" diyor; önceki üçü de gönderilmedi).
 - **Dayanak:** kullanıcı uyuyor; canlı gönderim yalnız kullanıcının (`CLAUDE.md` §8); canlı site eski repodan yayın aldığı için kırılan ekran yok.
 - **Geri alma:** gerekmez; gönderim yapılınca kapanır.
-- **Durum:** geçerli; gönderim kullanıcıda (`ILERLEME-PLANI.md` §0c satır 19).
+- **Durum:** kapandı 2026-09-30: kullanıcı dört migration'ı canlıya gönderdi; canlı = main (kayıt oturumu ölçtü, Supabase MCP salt okuma). Ş1 ve Ş2 kalktı; birincil işi olmayan tek kayıt yalnız Owner işi olan bir owner (kurala uygun; koordinatör ölçtü).
 
 ### KK-66 (2026-09-30) Migration'lı işte görsel QA main'den önce, `main.lock` penceresinde
 - **Karar:** EMP-001 C'nin görsel QA'sı, migration ortak yerel veritabanına uygulandıktan sonra ve push'tan önce, aynı `main.lock` penceresinde yapıldı.
@@ -485,3 +485,10 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** `CLAUDE.md` §7 (branch'in migration'ı yerele yalnız main'e alınmadan hemen önce, `main.lock` ile aynı pencerede uygulanır); `DELEGASYON.md` §3 (R3'te ekran değiştiyse görsel QA).
 - **Geri alma:** gerekmez.
 - **Durum:** yapıldı.
+
+### KK-67 (2026-09-30) G8a kapsamı A seçeneğiyle genişledi: arşivli lokasyon altı yerde canlı sayılmaz
+- **Karar:** tek yüklem `app_private.location_is_live(...)`; altı yer onu kullanır: `scope_set`, `actor()`'ün owner/admin dalı ve `works`, `authz_check` hedef denetimi ve kişi `places`'i, `app_private.actor_actions`, `live_location_ids`; üstüne `locations` üzerinde CHECK kısıtı. Reddedilen B: yalnız görev dosyasındaki dört yer.
+- **Uygulamada etkisi:** Mert Settings → Locations'ta "Moda"yı arşivleyince Moda müdürü Ayşe Moda'nın Schedule'ını, şablonlarını ve Employees yazmalarını açamaz; Moda onun lokasyon listesinden düşer (silinmiş lokasyondaki gibi). Kadıköy müdürü "Kadıköy + Moda" şablonunu görür. Arşivden çıkınca hepsi geri gelir. B seçilseydi Ayşe Moda'yı yönetmeye devam ederdi ve KK-13'ün (a) hücresi kırmızı kalırdı.
+- **Dayanak:** KK-13 (arşivli lokasyon yazma ve kapsamda silinmiş gibi sayılır); `nf-db` tazeliği 2026-09-30 (`e56d1989`): `actor()`'ün müdür dalı artık `works`'e eşit ve atamalardan geliyor, arşive bakmıyor; `actor_actions` örnek lokasyonu ve `authz_check`'in kişi `places`'i süzgeçsiz.
+- **Geri alma:** yeni migration ile (uygulanmış migration değişmez); main'e girmeden dal bırakılabilir.
+- **Durum:** geçerli; G8a `nf-db`'de (`task/g8a`, taban `e56d1989`; kayıt anında dalda yeni commit yok).

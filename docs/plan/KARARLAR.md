@@ -141,6 +141,12 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   Bekleyen: Supabase'in kendi sınırı 6, doğrudan çağıran 6 ile geçebilir
   (BL-161).
 
+### Kurulum sihirbazı (owner onboarding)
+- 4. adım "Add your team" → Jobs: "Owner" işi işaretsiz, kilitli ve adı soluk;
+  nedeni ekran okuyucuya okunur. Cümle ve kilit görünümü Employees
+  çekmecesindekiyle aynı: Owner işini yalnız workspace owner'ı taşır (kullanıcı
+  kararı 2026-09-30, BL-489, `bc7c5ebc`).
+
 ### Account
 - Profile: "Remove" fotoğrafı yalnız taslaktan kaldırır; "Save changes"e
   basılana kadar silinmez, Discard geri getirir.
@@ -149,7 +155,7 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   (kullanıcı kararı 2026-09-22).
 - Workspaces: çalışılan workspace'in satırı tonlu; ayrı "Current" rozeti yok
   (kullanıcı kararı).
-- Documents, belge çekmecesi (Account → Documents, Employees → Documents, Employees çekmecesi → Documents; koordinatör kararı KK-50, G18 dilim a; `f71538ee`): çekmecede yazılan son kullanma tarihi ve ek alanlar dosya yükleyince, taslak dosya silince ve erteleme kaydedince silinmez; taslak gönderilene kadar çekmecede durur. Yazılan, taslak sürümün kimliğine bağlıdır (başka taslak gelirse onun kayıtlı değeri görünür) ve sunucuda saklanmaz: çekmece kapanınca ya da sayfa yenilenince gider; kapatırken "Discard unsaved changes?" sorulur. Öteki yazılan alanlar (erteleme, uzatma ve ret nedeni, dosya kararları) bu kuralın dışında; kullanıcı sorusu BL-467.
+- Documents, belge çekmecesi (Account → Documents, Employees → Documents, Employees çekmecesi → Documents; koordinatör kararı KK-50, G18 dilim a; `f71538ee`): çekmecede yazılan son kullanma tarihi ve ek alanlar dosya yükleyince, taslak dosya silince ve erteleme kaydedince silinmez; taslak gönderilene kadar çekmecede durur. Yazılan, taslak sürümün kimliğine bağlıdır (başka taslak gelirse onun kayıtlı değeri görünür) ve sunucuda saklanmaz: çekmece kapanınca ya da sayfa yenilenince gider; kapatırken "Discard unsaved changes?" sorulur. Kullanıcı kararı 2026-09-30 (BL-467, `e56d1989`): öteki yazılanlar da aynı kuralla korunur — ret gerekçesi, düzeltme ve dosya kararları, erteleme ve uzatma nedeni ve günleri, imzalayan adı, "okudum" işareti, saat dilimi; her biri yazıldığı şeye (belge, incelenen sürüm, politika metni, taslak) bağlıdır; komut başarılı olunca o formun alanları temizlenir.
 
 ### Employee Hub
 - Shift Hub telefondaki alt çubukta "Requests" adını taşır.
