@@ -24,6 +24,27 @@ select public.create_owner_workspace_service(
   'Own Record Co'
 ) as workspace_id;
 
+-- Setup finishes, so the workspace is open to its staff: until then only the
+-- owner acts in it, and nobody else is there yet.
+insert into public.locations (workspace_id, name, street_address, city, region, postal_code, timezone, short_name)
+values ((select workspace_id from own_record_target), 'Main', '1 St', 'Austin', 'TX', '78701', 'America/Chicago', 'MN');
+insert into public.departments (workspace_id, name)
+values ((select workspace_id from own_record_target), 'Kitchen');
+insert into public.jobs (workspace_id, name, department_id)
+values (
+  (select workspace_id from own_record_target),
+  'Server',
+  (select id from public.departments where workspace_id = (select workspace_id from own_record_target) limit 1)
+);
+select public.update_owner_onboarding_service(
+  '1a000000-0000-4000-8000-000000000001',
+  (select workspace_id from own_record_target),
+  'Own Record Co', 4::smallint, true,
+  (select revision from public.workspace_onboarding
+   where workspace_id = (select workspace_id from own_record_target)),
+  'Robin', '', 'Vance'
+);
+
 insert into public.employee_profiles (id, workspace_id, user_id, employee_code, first_name, last_name, created_by)
 values (
   '1b000000-0000-4000-8000-000000000001',
@@ -90,7 +111,7 @@ select throws_ok(
     'Ada Okafor', 'Sister', '4155550144', ''
   )$$,
   '42501',
-  'this record belongs to somebody else',
+  'Not allowed',
   'and the owner cannot write it on their behalf'
 );
 

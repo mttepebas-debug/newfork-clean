@@ -105,7 +105,7 @@ select is(
     'employee.create', 'employee.decide_preferred_name', 'employee.invite', 'employee.list',
     'employee.make_admin', 'employee.read', 'employee.references.read', 'employee.remove_access',
     'employee.remove_from_location', 'employee.request_preferred_name', 'employee.save',
-    'employee.terminate',
+    'employee.save_own_contact', 'employee.terminate',
     'employee_hub.read', 'employee_hub.self', 'exchange.apply_own', 'exchange.approve', 'exchange.offer_own',
     'exchange.read', 'important_date.write', 'membership.read', 'notifications.read_own', 'onboarding.review',
     'onboarding.self', 'requests.read', 'schedule.edit', 'schedule.export', 'schedule.publish', 'schedule.read',
@@ -113,7 +113,8 @@ select is(
     'settings.catalog.read', 'settings.conflict_rules.write', 'settings.documents.read', 'settings.documents.write',
     'settings.important_dates.read', 'settings.jobs.read', 'settings.jobs.write', 'settings.locations.read',
     'settings.locations.write', 'settings.notifications.read', 'settings.notifications.write',
-    'settings.organization.write', 'settings.people', 'settings.roles.read', 'settings.roles.write',
+    'settings.organization.write', 'settings.people', 'settings.people.read', 'settings.roles.read',
+    'settings.roles.write',
     'settings.scheduling.write', 'settings.shift_catalog.read', 'settings.signature_templates.read',
     'time_off.decide', 'time_off.request_own', 'workspace.accept_ownership', 'workspace.close',
     'workspace.create', 'workspace.read', 'workspace.setup', 'workspace.todos', 'workspace.transfer_ownership'

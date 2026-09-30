@@ -57,6 +57,16 @@ select tests.person('m', 'pelin', 'employee', array['K'], array['cook'], 'pendin
 select tests.person('m', 'remzi', 'employee', array['B'], array['cook'], 'removed');
 select tests.person('m', 'aydan', 'manager', array['K'], array['cook'], 'onboarding');
 select tests.person('x', 'xena', 'employee', array['K'], array['cook']);
+-- Aydan has typed her legal name and not finished onboarding: the emergency
+-- contact form asks for one on file.
+select public.save_employee_onboarding_profile_service(
+  tests.user('m:aydan'),
+  jsonb_build_object(
+    'legal_first_name', 'Aydan', 'legal_last_name', 'Person',
+    'phone', '4155550123', 'emergency_contact_name', 'Contact',
+    'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '4155550100'),
+  (select c.revision from public.employee_onboarding_cases c where c.employee_id = tests.id('m:aydan')),
+  tests.id('m'));
 select tests.time_off('m', 'emre');
 select tests.time_off('m', 'veli');
 select tests.time_off('m', 'ali');
@@ -108,7 +118,7 @@ select tests.remember('m:pl:' || x.holder || '@' || x.loc, (
   select a.id from public.employee_location_assignments a
   where a.employee_id = tests.id(case x.holder when 'olcay' then 'm:owner' else 'm:' || x.holder end)
     and a.location_id = tests.id('m:' || x.loc) and a.ended_at is null))
-from (values ('emre', 'K'), ('ali', 'K'), ('ali', 'B'), ('veli', 'B'), ('ayse', 'K'), ('zeynep', 'K'), ('olcay', 'K')) x(holder, loc);
+from (values ('emre', 'K'), ('ali', 'K'), ('ali', 'B'), ('veli', 'B'), ('can', 'K'), ('zeynep', 'K'), ('olcay', 'K')) x(holder, loc);
 -- Preferred names waiting for a manager's answer. Label m:nr:<holder>.
 insert into public.employee_name_settings (workspace_id, preferred_name_approval)
 values (tests.id('m'), 'manager')
@@ -192,7 +202,9 @@ insert into target values
   ('pl:ali@K',   'placement', 'm', '{K}',   'employee', 'ali'),
   ('pl:ali@B',   'placement', 'm', '{B}',   'employee', 'ali'),
   ('pl:veli@B',  'placement', 'm', '{B}',   'employee', 'veli'),
-  ('pl:ayse@K',  'placement', 'm', '{K}',   'manager',  'ayse'),
+  -- a manager with a second location: their only one is not taken (K4, EMP-001),
+  -- which is the record's rule and not a permission
+  ('pl:can@K',   'placement', 'm', '{K}',   'manager',  'can'),
   ('pl:zeynep@K', 'placement', 'm', '{K}',  'admin',    'zeynep'),
   ('pl:olcay@K', 'placement', 'm', '{K}',   'owner',    'olcay'),
   -- a preferred name waiting for an answer; locs: where its person works
@@ -425,6 +437,14 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select exists (select 1 from jsonb_array_elements(public.read_employee_references_service($1, $2) -> 'locations') l
      where (l ->> 'id')::uuid = $3)$$);
 
+-- The preferred-name setting, read and written (BL-443). Reading it is about
+-- the workspace, for whoever reads employees; writing it is a Settings write.
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
+  ('settings.people', 'workspace', null, false, false,
+   $$select true from (select public.set_employee_name_settings_service($1, $2, 'manager') offset 0) done$$),
+  ('settings.people.read', 'workspace', 'employees.read', false, false,
+   $$select public.get_employee_name_settings_service($1, $2) is not null$$);
+
 -- The consistency layer: the older helpers that each answer "may this person
 -- manage this location?" on their own. They must all give the same answer as
 -- the rule, a blank location included. Stage 4 replaces them with the core.
@@ -448,7 +468,11 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.submit_employee_time_off_service($1, $2,
        (select l.location_id from public.employee_location_assignments l join public.employee_profiles e on e.id = l.employee_id
         where e.user_id = $1 and e.workspace_id = $2 and l.ended_at is null order by l.is_primary desc limit 1),
-       'probe', array[tests.week(1) + 3]) is not null$$, true, false);
+       'probe', array[tests.week(1) + 3]) is not null$$, true, false),
+  -- one's own emergency contact, on one's own record only (BL-443, BL-444)
+  ('employee.save_own_contact', 'person', null, false, false,
+   $$select true from (select public.save_own_employment_contact_service($1, $2, $3,
+       'Probe Contact', 'Friend', '4155550100') offset 0) done$$, true, true);
 
 -- The same actions as the core names them. blank: how a blank location reaches
 -- the core, as the entry point receives it: 'null' ({NULL}, no location) or
@@ -514,7 +538,10 @@ insert into core_action (key, core_key, blank) values
   ('legacy.communication_capability', 'announcement.write', 'null'),
   ('notifications.read_own', 'notifications.read_own', 'null'),
   ('exchange.offer_own', 'exchange.offer_own', 'null'),
-  ('time_off.request_own', 'time_off.request_own', 'null');
+  ('time_off.request_own', 'time_off.request_own', 'null'),
+  ('settings.people', 'settings.people', 'null'),
+  ('settings.people.read', 'settings.people.read', 'null'),
+  ('employee.save_own_contact', 'employee.save_own_contact', 'null');
 update core_action set by_account = true where key = 'read.membership';
 
 select is(
@@ -564,9 +591,10 @@ begin
   if action_key = 'read.membership' and is_self then
     return case when p.status = 'invited' then 'deny' else 'allow' end;
   end if;
+  -- One's own action is never done on somebody else's, in whatever state.
+  if a.member and t.holder is not null and not is_self then return 'deny'; end if;
   if p.status = 'restricted' and a.restricted_ok then return 'allow'; end if;
   if p.status <> 'active' then return 'deny'; end if;
-  if a.member and t.holder is not null and not is_self then return 'deny'; end if;
   if a.member then return 'allow'; end if;
   if a.permission is not null and a.permission = any (p.permissions_removed) then return 'deny'; end if;
   if a.owner_only and p.class <> 'owner' then return 'deny'; end if;
@@ -680,9 +708,15 @@ begin
     return case when cardinality(reach) > 0 then 'allow' else 'deny' end;
 
   when 'settings.organization.write', 'settings.locations.write', 'settings.jobs.write',
-       'settings.roles.write', 'settings.scheduling.write', 'settings.conflict_rules.write' then
+       'settings.roles.write', 'settings.scheduling.write', 'settings.conflict_rules.write',
+       'settings.people' then
     -- Managers read the catalog; they never write organization settings (D1).
     return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
+
+  when 'settings.people.read' then
+    -- Whether a preferred name waits for an answer is about the workspace, not a
+    -- location: whoever reads employees (checked above) reads it (BL-443).
+    return 'allow';
 
   when 'settings.locations.read', 'employee.references.read' then
     -- Owner and admins read every location, a manager only where they work

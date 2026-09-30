@@ -13,12 +13,12 @@
 --    key and allowed's answer about setting them, the list loses the column
 --    (dropped and made again: its columns change). The role service no longer
 --    writes which managed locations went with a role.
--- 4. K4: excluded from the Schedule still needs no location, except a manager:
---    with none they would manage nothing. One helper says so on every way
---    there: saving the record, "Remove from <location>" on their last one,
---    making a location-less excluded person a manager, inviting one as a
---    manager. 22023, hint employee.manager_location_required. An excluded
---    employee and a Remote person are as before.
+-- 4. K4: a manager keeps a location, excluded from the Schedule or not: with
+--    none they would manage nothing. One helper says so on every way there:
+--    saving the record, "Remove from <location>" on their last one, making
+--    somebody with no location a manager, inviting one as a manager. 22023,
+--    hint employee.manager_location_required. An excluded employee and a
+--    Remote person, manager or not, need none, as before.
 -- 5. What goes: the command, the helper the drawer and the command shared, the
 --    core action (74 -> 73), the role trigger and its function, the table, and
 --    the key on workspace_memberships only the table's foreign key used. No
@@ -378,13 +378,14 @@ AS $function$
  );
 $function$;
 
--- 4. K4: an excluded manager keeps a location ---------------------------------------------
+-- 4. K4: a manager keeps a location -------------------------------------------------------
 --
+-- Every manager who is not Remote, excluded from the Schedule or not.
 -- Called after the write, so it reads what the record would be. becoming: the
 -- role somebody is being invited into, when they have no membership yet.
 -- The class comes from the core's actor(), not from a copy of the role tables.
 
-create function app_private.keep_excluded_manager_at_a_location(
+create function app_private.keep_manager_at_a_location(
   w uuid,
   target_employee uuid,
   becoming public.workspace_role default null
@@ -402,8 +403,7 @@ begin
   select * into record
   from public.employee_profiles employee
   where employee.id = target_employee and employee.workspace_id = w;
-  if record.id is null or record.archived_at is not null
-     or not record.is_excluded_from_schedule or record.is_remote then
+  if record.id is null or record.archived_at is not null or record.is_remote then
     return;
   end if;
 
@@ -423,12 +423,12 @@ begin
     select 1 from public.employee_location_assignments assignment
     where assignment.employee_id = record.id and assignment.ended_at is null
   ) then
-    raise exception 'a manager excluded from the schedule needs a location to manage'
+    raise exception 'a manager needs a location to manage'
       using errcode = '22023', hint = 'employee.manager_location_required';
   end if;
 end;
 $$;
-revoke all on function app_private.keep_excluded_manager_at_a_location(uuid, uuid, public.workspace_role)
+revoke all on function app_private.keep_manager_at_a_location(uuid, uuid, public.workspace_role)
   from public, anon, authenticated;
 
 -- 3. The Employees reads and the role service ------------------------------------------------
@@ -806,8 +806,8 @@ begin
   set role_id = next_role.id, updated_at = now()
   where id = target_membership.id and workspace_id = target_workspace_id;
 
-  -- K4: nobody excluded from the Schedule and without a location becomes a manager.
-  perform app_private.keep_excluded_manager_at_a_location(target_workspace_id, target_employee.id);
+  -- K4: nobody without a location becomes a manager, unless Remote.
+  perform app_private.keep_manager_at_a_location(target_workspace_id, target_employee.id);
 
   update public.employee_profiles
   set revision = revision + 1, updated_at = now()
@@ -841,7 +841,7 @@ begin
 end;
 $function$;
 
--- 4 (cont.). The ways to a location-less excluded manager ---------------------------------------
+-- 4 (cont.). The ways to a manager with no location ---------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.save_employee_service(actor_user_id uuid, target_workspace_id uuid, target_employee_id uuid, employee_first_name text, employee_middle_name text, employee_last_name text, employee_preferred_name text, employee_invitation_email text, employee_start_date date, employee_internal_note text, location_ids uuid[], primary_location_id uuid, job_ids uuid[], primary_job_id uuid, employee_is_remote boolean, employee_is_excluded_from_schedule boolean, expected_revision integer)
  RETURNS uuid
@@ -1022,7 +1022,7 @@ begin
 
   -- K4: excluded from the Schedule needs no location, except a manager, who
   -- manages only where they are assigned.
-  perform app_private.keep_excluded_manager_at_a_location(target_workspace_id, saved_id);
+  perform app_private.keep_manager_at_a_location(target_workspace_id, saved_id);
   return saved_id;
 end;
 $function$;
@@ -1072,9 +1072,9 @@ begin
     );
   end if;
 
-  -- K4: an excluded manager's last location is not taken; the record of
-  -- anybody else stays, with no location if this was the only one.
-  perform app_private.keep_excluded_manager_at_a_location(target_workspace_id, target_employee_id);
+  -- K4: a manager's last location is not taken; the record of anybody else
+  -- stays, with no location if this was the only one.
+  perform app_private.keep_manager_at_a_location(target_workspace_id, target_employee_id);
 
   -- Their published shifts there from now on are left open, as when
   -- employment ends; their shifts elsewhere stay.
@@ -1199,8 +1199,8 @@ begin
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.invite';
   end if;
 
-  -- K4: nobody excluded from the Schedule and without a location is invited as a manager.
-  perform app_private.keep_excluded_manager_at_a_location(target_workspace_id, target_employee_id, invite_role.access_class);
+  -- K4: nobody without a location is invited as a manager, unless Remote.
+  perform app_private.keep_manager_at_a_location(target_workspace_id, target_employee_id, invite_role.access_class);
 
   select coalesce(array_agg(location_id order by location_id), '{}') into assigned_location_ids
   from public.employee_location_assignments

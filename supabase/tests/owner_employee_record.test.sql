@@ -249,7 +249,7 @@ select throws_ok(
     'Morgan', 'Spouse', '3105550101', ''
   )$$,
   '42501',
-  'this record belongs to somebody else',
+  'Not allowed',
   'an owner cannot write an emergency contact onto somebody else'
 );
 
