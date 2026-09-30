@@ -77,7 +77,7 @@ Kaynak: `docs/plan/research/fb61-dis-degerlendirme-2026-09-25.md` bölüm B, do�
 - Dışa aktarma sorusu (FB-6.1 2a/Q3) bu bölümle değil M2 ile kapalıdır: dışa aktarılan lokasyonlar ⊆ `scope_set(actor, w, 'schedule.export')`, değilse `authz.out_of_scope`.
 - **Q-A — Zamanlanmış dışa aktarma kayıtlarını kim görür (kullanıcı kararı, 2026-09-25).** Kaydın (`scheduled_schedule_exports.location_ids`) bütün lokasyonları manager'ın kapsamındaysa görür; değilse görmez (alıcı e-postaları dahil). Admin'in Kadıköy + Beşiktaş gönderimini yalnız Kadıköy müdürü Ayşe görmez. Son dışa aktarmalar listesi de aynı kural. ~~Kaydın bir lokasyonu sonradan silindiyse kayıt manager'a görünmez, yalnız admin/owner'a (2026-09-25 kararı)~~ — **yerine geçti 2026-09-26** (Q-C: silinmiş lokasyon sayılmaz). Lokasyon dizisi boş ya da bilinmeyen kayıt da manager'a görünmez. Düzenleme/silme zaten yalnız kişinin kendi kaydında. Uygulama: FB-6.1 `.2`.
 - **Q-B — Lokasyonu sonradan silinmiş taslak ya da şablon (kullanıcı kararı, 2026-09-25).** Silinmiş lokasyon B3/K-2 hesabından düşülür; kalan lokasyonların hepsi manager'ın kapsamındaysa manager siler/yeniden adlandırır, değilse admin/owner. Örnek: Kadıköy + Beşiktaş taslağında Beşiktaş kapatıldıysa Ayşe (Kadıköy) taslağı silebilir. Uygulama: FB-6.1 `.2` / `.4`.
-- **Q-C — Silinmiş lokasyon şablon ve zamanlanmış dışa aktarma yetkisinde hiçbir kuralda sayılmaz (kullanıcı kararı, 2026-09-26).** Q-B'yi okuma, listeleme ve uygulamaya genişletir; Q-A'nın silinmiş lokasyon hükmünün yerine geçer. Örnek: "Standard week" şablonu Kadıköy + Beşiktaş; Beşiktaş varken Kadıköy müdürü Ayşe şablonu görmez (bugünkü gibi); Beşiktaş silinince Ayşe şablonu görür, adını değiştirir, uygular, siler. Zamanlanmış dışa aktarma kaydı aynı: silinmiş lokasyonlar düşülür, kalanların hepsi kapsamdaysa manager görür. Uygulamada ayrı bir "kapalı lokasyon" durumu yok; kapatma = silme (`locations.deleted_at`). Kural her işlemde aynı tek yerden uygulanır. Uygulama: BL-188.
+- **Q-C — Silinmiş lokasyon şablon ve zamanlanmış dışa aktarma yetkisinde hiçbir kuralda sayılmaz (kullanıcı kararı, 2026-09-26).** Q-B'yi okuma, listeleme ve uygulamaya genişletir; Q-A'nın silinmiş lokasyon hükmünün yerine geçer. Örnek: "Standard week" şablonu Kadıköy + Beşiktaş; Beşiktaş varken Kadıköy müdürü Ayşe şablonu görmez (bugünkü gibi); Beşiktaş silinince Ayşe şablonu görür, adını değiştirir, uygular, siler. Zamanlanmış dışa aktarma kaydı aynı: silinmiş lokasyonlar düşülür, kalanların hepsi kapsamdaysa manager görür. Arşivli lokasyon da aynı sayılır (KK-13, KK-67; G8a, main `3c07c15d`, 2026-09-30): arşivli ya da silinmiş lokasyon hiçbir kuralda canlı değildir; arşivden çıkınca geri gelir. Settings → Locations arşivli lokasyonu lokasyonları değiştirebilene gösterir (Restore için). Kural her işlemde aynı tek yerden uygulanır. Uygulama: BL-188.
 
 **İzin (time off)**
 - İzin kişiye aittir; talep formunda lokasyon seçilmez.
@@ -142,6 +142,10 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   (BL-161).
 
 ### Kurulum sihirbazı (owner onboarding)
+- 3. adım "What jobs do people work?": yalnız Management departmanı varken
+  "Your structure" altında "<Management adı> comes with every workspace. Add a
+  department for the jobs your team works." yazar; Continue kapalıdır (kullanıcı
+  kararı 2026-09-30, BL-480 varyant B, `37912a90`).
 - 4. adım "Add your team" → Jobs: "Owner" işi işaretsiz, kilitli ve adı soluk;
   nedeni ekran okuyucuya okunur. Cümle ve kilit görünümü Employees
   çekmecesindekiyle aynı: Owner işini yalnız workspace owner'ı taşır (kullanıcı

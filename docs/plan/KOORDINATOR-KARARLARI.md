@@ -492,3 +492,10 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** KK-13 (arşivli lokasyon yazma ve kapsamda silinmiş gibi sayılır); `nf-db` tazeliği 2026-09-30 (`e56d1989`): `actor()`'ün müdür dalı artık `works`'e eşit ve atamalardan geliyor, arşive bakmıyor; `actor_actions` örnek lokasyonu ve `authz_check`'in kişi `places`'i süzgeçsiz.
 - **Geri alma:** yeni migration ile (uygulanmış migration değişmez); main'e girmeden dal bırakılabilir.
 - **Durum:** geçerli; G8a `nf-db`'de (`task/g8a`, taban `e56d1989`; kayıt anında dalda yeni commit yok).
+
+### KK-68 (2026-09-30) G8a'da sıra: önce canlı veritabanı, sonra main
+- **Karar:** G8a'nın migration'ı (`20261003000000_an_archived_location_counts_nowhere.sql`) kullanıcı tarafından canlıya main'den önce gönderildi, kod sonra main'e alındı (`3c07c15d`).
+- **Uygulamada etkisi:** canlıda hiçbir ekran kırılmadı; main canlıya yayın aldığında veritabanı hazırdı. Sabahki EMP-001 C'deki ~2 saatlik kırılma (KK-65 düzeltmesi) tekrarlanmadı.
+- **Dayanak:** KARARLAR OPS-03 (kodu yeni bir veritabanı alanına ya da kuralına dayanan işte önce canlı migration, sonra main); KK-65 düzeltmesi; BL-426 bayat (main zaten canlıya çıkıyor).
+- **Geri alma:** gerekmez. Yedekler `newfork-wt/coord/artifacts/g8a/` (canlı `hosted-*.sql`, yerel `schema-before-20261003000000.sql`).
+- **Durum:** yapıldı (koordinatörün aktardığı; migration dosyası main'de, ölçüldü).
