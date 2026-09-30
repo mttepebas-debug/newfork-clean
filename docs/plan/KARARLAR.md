@@ -211,6 +211,14 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   Unassigned Shifts Row" yalnız düzenleme kipinde açık (2026-09-29, kullanıcı
   kararı); view kipinde "Role Seperators" gibi soluk ve tıklanamaz. Diğer
   görünüm ayarları iki kipte de açık.
+- "Bugün" hangi saat dilimiyle (kullanıcı kararı 2026-09-30, G14 S1): tek
+  lokasyonun sütunu o lokasyonun saat dilimini kullanır; sayfanın genel
+  "bugün"ü, mini takvim ve Settings → Important dates cihazın takvimini
+  kullanır; hiçbiri UTC'yi kullanmaz. Tek yardımcı `apps/web/src/lib/today.ts`
+  `todayIn`; lokasyon sütunu `ScheduleLocationHeader.tsx`'te. Neden: New
+  York'taki müdür Los Angeles sütununda doğru günü işaretli görür, açılış
+  haftası değişmez. Kalan dört yer G14 dilim a'da bu yardımcıya bağlanıyor
+  (BL-353).
 
 ### Schedule → Requests
 - İzin verisi, izin okuyabilen herkese iki sekmede de yüklenir: "Time off"
