@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(42);
 
 -- G8a / BL-132 (KK-13). An archived location counts in the authorization core
 -- as a deleted one does: nobody's scope holds it, no target on it is reached,
@@ -100,6 +100,39 @@ select ok(
 select is(pg_temp.browser('owner', 'select 1 from public.locations where id = %L'), 1,
   'the owner still sees the archived Besiktas in Settings > Locations');
 select is(pg_temp.browser('zeynep', 'select 1 from public.locations where id = %L'), 1, 'so does the admin');
+-- and through the app's own read of Settings > Locations (ultrareview finding 2)
+create function pg_temp.settings_list(person text) returns text[] language sql as $$
+  select array(select l ->> 'short_name' from jsonb_array_elements(
+    public.list_settings_locations_service(tests.user('ar:' || person), tests.id('ar'))) l order by 1)
+$$;
+select is(pg_temp.settings_list('owner'), array['BJK', 'KDK'], 'Settings > Locations lists the archived Besiktas to the owner, to restore it');
+select is(pg_temp.settings_list('zeynep'), array['BJK', 'KDK'], 'and to the admin');
+select is(
+  pg_temp.refusal(format('select public.list_settings_locations_service(%L, %L)', tests.user('ar:kaan'), tests.id('ar')))
+    || ' ' || pg_temp.refusal(format('select public.list_settings_locations_service(%L, %L)', tests.user('ar:emre'), tests.id('ar'))),
+  '42501 42501', 'a manager and an employee do not read Settings > Locations at all');
+-- Another workspace's archived location is not listed.
+select tests.world('ax');
+update public.locations set archived_at = now() where id = tests.id('ax:B');
+select is(
+  (select count(*)::integer from jsonb_array_elements(
+     public.list_settings_locations_service(tests.user('ar:owner'), tests.id('ar'))) l
+   where (l ->> 'workspace_id')::uuid <> tests.id('ar')),
+  0, 'another workspace''s archived location is not listed');
+select is(pg_temp.browser('zeynep', 'update public.locations set archived_at = null, updated_at = now() where id = %L')
+    || ' ' || pg_temp.browser('zeynep', 'update public.locations set archived_at = now(), updated_at = now() where id = %L'),
+  '1 1', 'the admin can restore it too (and archive it again)');
+-- A scheduled export takes no archived location it did not hold (ultrareview finding 1).
+select public.create_schedule_export_preset_service(tests.user('ar:kaan'), tests.id('ar'), 'Weekly', '{}'::jsonb);
+insert into public.scheduled_schedule_exports
+  (workspace_id, preset_id, name, recipients, location_ids, day_of_week, send_hour, created_by, updated_by)
+values (tests.id('ar'), (select p.id from public.schedule_export_presets p where p.workspace_id = tests.id('ar')),
+  'Kadikoy', '["kaan@example.test"]'::jsonb, array[tests.id('ar:K')], 1, 9, tests.user('ar:kaan'), tests.user('ar:kaan'));
+select is(pg_temp.refusal(format('select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)',
+    tests.user('ar:kaan'), tests.id('ar'),
+    (select e.id from public.scheduled_schedule_exports e where e.workspace_id = tests.id('ar')),
+    jsonb_build_object('location_ids', jsonb_build_array(tests.id('ar:K'), tests.id('ar:B'))))),
+  '42501', 'Kaan cannot add the archived Besiktas, which he does not manage, to his scheduled export');
 
 -- 3. The owner restores Besiktas -----------------------------------------------------------
 

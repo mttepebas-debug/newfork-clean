@@ -795,3 +795,119 @@ begin
   return saved_id;
 end;
 $function$;
+
+-- Settings > Locations still lists an archived location to whoever may change
+-- locations, so it can be restored (ultrareview finding 2).
+
+CREATE OR REPLACE FUNCTION public.list_settings_locations_service(actor_user_id uuid, target_workspace_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  listed uuid[] := app_private.scope_set(actor_user_id, target_workspace_id, 'settings.locations.read');
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.locations.read',
+    target_locations => listed);
+  -- An archived location counts nowhere (G8a), but whoever may change
+  -- locations still finds it here, to restore it.
+  if app_private.authz_reason(actor_user_id, target_workspace_id, 'settings.locations.write', null, null, null) is null then
+    listed := listed || coalesce((
+      select array_agg(location.id)
+      from public.locations location
+      where location.workspace_id = target_workspace_id and location.deleted_at is null
+        and not app_private.location_is_live(location)
+    ), '{}');
+  end if;
+  return app_private.settings_locations(target_workspace_id, listed);
+end;
+$function$;
+
+-- A scheduled export rule is not given an archived location it was not asked
+-- about (ultrareview finding 1).
+
+CREATE OR REPLACE FUNCTION public.update_schedule_export_schedule_service(actor_user_id uuid, target_workspace_id uuid, target_schedule_id uuid, target_payload jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  existing public.scheduled_schedule_exports%rowtype;
+  updated public.scheduled_schedule_exports%rowtype;
+  next_location_ids uuid[];
+  next_preset_id uuid;
+  preset_name text;
+  reset_failure_state boolean := false;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.export',
+    target_locations => app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.export'));
+
+  select * into existing
+    from public.scheduled_schedule_exports s
+   where s.id = target_schedule_id
+     and s.workspace_id = target_workspace_id
+     and s.created_by = actor_user_id
+   for update;
+
+  if not found then
+    raise exception 'scheduled export not found' using errcode='P0002';
+  end if;
+
+  -- The locations it will export once saved.
+  next_location_ids := case
+    when target_payload ? 'location_ids' then
+      array(select jsonb_array_elements_text(target_payload->'location_ids')::uuid)
+    else existing.location_ids
+  end;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.export',
+    -- A location already on the rule and no longer live is not asked about;
+    -- every location added is, so an archived one cannot be slipped in.
+    target_locations => array(
+      select distinct requested.id from unnest(next_location_ids) requested(id)
+      where requested.id = any (public.live_location_ids(target_workspace_id, next_location_ids))
+         or not requested.id = any (coalesce(existing.location_ids, '{}'::uuid[]))));
+
+  next_preset_id := coalesce((target_payload->>'preset_id')::uuid, existing.preset_id);
+  if not exists (
+    select 1
+      from public.schedule_export_presets p
+     where p.id = next_preset_id
+       and p.workspace_id = target_workspace_id
+       and p.created_by = actor_user_id
+  ) then
+    raise exception 'schedule export preset not found' using errcode='P0002';
+  end if;
+
+  reset_failure_state :=
+    target_payload ? 'enabled' and (target_payload->>'enabled')::boolean = true;
+
+  update public.scheduled_schedule_exports
+     set preset_id = next_preset_id,
+         name = coalesce(btrim(target_payload->>'name'), existing.name),
+         recipients = coalesce(target_payload->'recipients', existing.recipients),
+         location_ids = next_location_ids,
+         day_of_week = coalesce((target_payload->>'day_of_week')::smallint, existing.day_of_week),
+         send_hour = coalesce((target_payload->>'send_hour')::smallint, existing.send_hour),
+         timezone = coalesce(btrim(target_payload->>'timezone'), existing.timezone),
+         enabled = coalesce((target_payload->>'enabled')::boolean, existing.enabled),
+         updated_by = actor_user_id,
+         updated_at = now(),
+         consecutive_failures = case when reset_failure_state then 0 else consecutive_failures end,
+         last_error = case when reset_failure_state then null else last_error end,
+         auto_disabled_at = case when reset_failure_state then null else auto_disabled_at end
+   where id = target_schedule_id
+     and workspace_id = target_workspace_id
+   returning * into updated;
+
+  select p.name into preset_name
+    from public.schedule_export_presets p
+   where p.id = updated.preset_id;
+
+  return public.schedule_export_schedule_json(updated, preset_name);
+exception
+  when unique_violation then
+    raise exception 'scheduled export name conflict' using errcode='23505';
+end;
+$function$;
