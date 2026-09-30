@@ -39,5 +39,14 @@ metadata:
 - **Ortak dünyaya kişi eklemek** (ikinci Kadikoy yöneticisi, davetsiz kayıtlar) sonraki spec'lerin dünyasını
   değiştirir; 2026-09-30'da tam takım 25/25 yeşildi ama kişi sayan bir spec eklenirse kendi dünyasını
   kurmalı (`ownership-transfer-password.spec.ts` kalıbı).
+- **İki tıklı kırmızı düğme (`ConfirmButton`, 2026-09-30):** ilk tık kurar, adı değişir ("Remove from
+  Kadikoy" → "Confirm remove from Kadikoy"), 3,2 sn sonra ya da odak gidince söner. İki ayrı
+  `getByRole("button", { name, exact: true })` ile tıkla; `exact` şart, çünkü ad eşleşmesi büyük/küçük harfe
+  bakmayan alt dizgi ve ilk ad ikincinin içinde (`e2e/flows/remove-from-location.spec.ts`).
+- **`toContainText` gizli alt öğeyi de okur** (textContent). Ortak Tooltip gizli açıklama taşıyınca (G14
+  dilim b) "kartta X yazmıyor" satırı düşer; görüneni ölçmek için `{ useInnerText: true }`.
+- **Spec içinden ekran görüntüsü yolu** koşunun çalışma dizinine göredir (worktree kökü), spec dosyasına
+  göre değil: `artifacts/...` yaz, `../artifacts/...` worktree'nin dışına düşer.
+- **API'ye doğrudan istek** için `tokenOf(person)` artık `e2e/fixtures/world.ts`'te.
 
 İlgili: [[failure-screenshots-include-leftover-pages]].
