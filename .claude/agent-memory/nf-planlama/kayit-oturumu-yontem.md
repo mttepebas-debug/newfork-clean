@@ -55,3 +55,5 @@ grupsuz yalnız BL-426.
   istenen gerçekler yazılıp aynı çağrı yinelenir. Betik dosyasını yeniden kullanmak (üstüne yazmak) yeni reddi önler.
 - `git rev-parse --short A B` "Needed a single revision" verir; tek tek çağır. Git Bash'te `rev` yok.
 - Worktree geride kaldıysa uygulamanın taban dalıyla eşitleme aracı fast-forward yapar; ağaç temiz olmalı.
+
+**Duzenleme yardimcilari:** `besleme_lib.py` (bu klasorde; 2026-09-30, besleme #9-#11'de yazildi). Besleme betigi scratchpad'de yazilir, repo kokunden kosulur: `sys.path.insert(0, '.claude/agent-memory/nf-planlama')`, `from besleme_lib import Doc, save_all`. Her capa `assert` ile tam bir kez bulunur, hepsi gecince `save_all()` yazar; CRLF korunur. Yardimcilar: `once`, `set_line`, `edit_line`, `after_line`, `before_line`, `append_sub`, `append_end`, `close_entry` (BACKLOG maddesini kapatip sona tasir), `replace_block`, `set_cell`, `add_to_cell`, `append_last_cell`.
