@@ -400,21 +400,21 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** Employees → owner'ın çekmecesi. Görünen fark yok. Bugün çekmece "Owner" rol adına bakıyor (`apps/web/src/employees/EmployeeDrawer.tsx:1120`, `:2337`, `:3116`; ölçüldü): rolün kilidi, kilidin ekran okuyucudaki nedeni ve owner'ın kendi acil durum kişisi alanı bu karşılaştırmaya bağlı. Örnek: Owner rolünün adı bir gün değişirse owner Mert kendi çekmecesinde acil durum kişisi alanını kaybederdi; C'den sonra kaybetmez.
 - **Dayanak:** `CLAUDE.md` §9 (karar rol adına değil sunucunun cevabına bakar); BL-421.
 - **Geri alma:** kolay (cevaba eklenen tek alan).
-- **Durum:** dalda (`task/emp-001-c1` @`4dd1f56b`, main'in üstünde 2 commit — ölçüldü; alan main'de yok).
+- **Durum:** main'de (`f9119e6f`, `1161a3af`; main CI 36735509711 yeşil; besleme #14'te ölçüldü: çekmecede `role_name === "Owner"` 0 satır; BL-421 kapandı).
 
 ### KK-55 (2026-09-30) Var olan workspace'lere de "Manager" işi eklenir (EMP-001 C1)
 - **Karar:** S2 yalnız yeni kurulumu söylüyordu; C1 migration'ı var olan her workspace'in Management departmanına da "Manager" işini ekler. Silinirse geri gelmez.
 - **Uygulamada etkisi:** Settings → Jobs → "All" görünümünde "Management" departmanının altında "Owner"ın yanında "Manager" çıkar; "Jobs" sekmesinde de listelenir (`apps/web/src/settings/JobsSettingsPage.tsx:513-515`; yerel Meyhouse dahil). Employees çekmecesi → Employment → Jobs listesinde Management grubunda seçilebilir olur. Örnek: owner Mert Settings → Jobs'u açar, Management altında bugün yalnız "Owner" var (`supabase/migrations/20260927160000_management_and_owner_are_kept.sql:49-52`; ölçüldü), C1'den sonra "Manager" da görünür; silerse bir daha kendiliğinden gelmez.
 - **Dayanak:** S2 (Manager sıradan iştir); yeni ve eski workspace aynı görünsün. Canlı veri yok.
 - **Geri alma:** orta (migration eklediği işi geri almaz; iş elle silinir).
-- **Durum:** dalda (`task/emp-001-c1` @`4dd1f56b`; `0022b9cd`, migration `20261002000000_manager_is_an_ordinary_job.sql`; main'de değil — dal ölçüldü, migration'ın içeriği okunmadı).
+- **Durum:** main'de (`362712f0`; var olan workspace'lere ekleme `supabase/migrations/20261002000000_manager_is_an_ordinary_job.sql:693-697`, yeni kurulum `:40-43`, silinince geri gelmez testi `supabase/tests/management_owner_job.test.sql:156`; alt ajan ölçtü). Yerelde "Manager" işi 0 → 299 (koordinatörün aktardığı). Canlıda gönderim bekliyor.
 
 ### KK-56 (2026-09-30) Employees listesindeki iş adının sırası: birincil, yoksa Owner işi, yoksa ilk iş (EMP-001 C1)
 - **Karar:** listede kişinin yanında görünen iş adı: kayıtlı birincil iş; yoksa Owner işi; yoksa ilk iş. Eskisi ikinci adımda "ilk Management işi"ydi.
 - **Uygulamada etkisi:** Employees → liste → kişinin satırındaki iş adı (`apps/web/src/employees/EmployeesPage.tsx:657`; iş yoksa "Unassigned"). Bugünkü sıra veritabanında: birincil → ilk Management işi → ilk iş (`supabase/migrations/20261001000000_a_manager_manages_where_they_are_assigned.sql:710-711`; ölçüldü). Örnek: birincil işi seçilmemiş, "Server" ve "Manager" işleri olan Ayşe bugün listede "Manager" görünür (Management işi öne geçiyor); C1'den sonra sıradaki ilk işi görünür. Owner Mert'in satırında "Owner" kalır.
 - **Dayanak:** S2: Manager artık sıradan iş, öne geçmez; Owner işi birincil sayılmadığı için owner'ın satırı boş kalmasın.
 - **Geri alma:** kolay.
-- **Durum:** dalda (`task/emp-001-c1` @`4dd1f56b`; `0022b9cd`, migration `20261002000000_manager_is_an_ordinary_job.sql`; main'de değil — dal ölçüldü, migration'ın içeriği okunmadı).
+- **Durum:** main'de (`362712f0`; sıra `supabase/migrations/20261002000000_manager_is_an_ordinary_job.sql:452-453`: birincil, yoksa Owner işi, yoksa ilk iş; alt ajan ölçtü).
 
 ### KK-57 (2026-09-30) Bu gece G18'den sonra yeni backlog grubu açılmıyor
 - **Karar:** haftalık kullanım %82 (koordinatörün aktardığı); kalan pay EMP-001 C'ye ve QA düzeltmelerine.
@@ -435,11 +435,53 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** ekranda değişen yok. Schedule → "Job/Position" sıralaması, kurulum sihirbazının iş sayımı ve Employees çekmecesindeki iş gruplaması "hangi iş Management'ta" bilgisini tek yerden okur (koordinatörün aktardığı; kod dalda, ölçülmedi). Örnek: Management'a yeni bir iş eklenince üç ekran da onu aynı anda Management sayar; biri eski listeye bakıp ayrışmaz.
 - **Dayanak:** `CLAUDE.md` §9 "ikiz sistem yok". `tasks/EMP-001.md` Done when 26'nın ikinci `grep`'i buna göre yeniden yazıldı.
 - **Geri alma:** kolay.
-- **Durum:** yazılıyor (`task/emp-001-c2`, `nf-backend`; besleme #13'te dalda kendi commit'i yok — ölçüldü).
+- **Durum:** main'de (`1161a3af`, `a469905e`; `managementJobIds` `packages/shared/src/index.ts:899`, kullananlar `OwnerOnboardingPage.tsx:214` ve `scheduleEmployeeSort.ts:19`; silinen iki ad `apps packages`'ta 0; tek Owner yardımcısı `employee-create-flow.ts:34` — alt ajan ölçtü).
 
 ### KK-60 (2026-09-30) EMP-001 C'nin güvenlik incelemesi dört dilim birleşince tek turda
 - **Karar:** `nf-guvenlik` incelemesi C1 bitince değil, C1 + C2 + C3 + C4 tek dalda birleşince yapılır (önceki koordinatörün düzeni sürüyor).
 - **Uygulamada etkisi:** yok. "Manager" işi ve owner çekmecesi değişiklikleri kullanıcıya tek seferde, incelenmiş olarak gelir; o güne kadar Settings → Jobs'ta ve Employees çekmecesinde bugünkü hâl görünür.
 - **Dayanak:** `DELEGASYON.md` §3 (R3: `nf-guvenlik` zorunlu; sınıf main'e girecek toplam değişikliğe göre) ve §6 (aynı diff'e iki inceleme yok).
 - **Geri alma:** C1'e ayrı inceleme istemek.
-- **Durum:** geçerli; C1 incelenmeden dalda bekliyor (`task/emp-001-c1` @`4dd1f56b`).
+- **Durum:** düzeltildi (besleme #14): inceleme dalın sonunda tek tur yerine iki turda yapıldı — birinci tur C1 + C2 bitince (ONAY @`661831da`), ikinci tur C3 + C4 farkı ve yeniden tabanlama için (ONAY @`62cfd10c`; `range-diff` 7/7 aynı). Uygulamada etkisi: ekranda yok; veritabanı kuralı C3 yazılmadan önce incelenmiş oldu. Rapor `.claude/worktrees/friendly-blackwell-4012e6/artifacts/nf-guvenlik/emp-001-c/RAPOR.md`.
+
+### KK-61 (2026-09-30) Görsel QA bulgusu C3'e eklendi: kaydedilmemiş değişiklik varken "Terminate employee" kilitli görünür
+- **Karar:** `nf-gorsel-qa`'nın B4 turundaki "düzeltilmeli" bulgusu (D1) ayrı maddeye bırakılmadı, C3'te düzeltildi.
+- **Uygulamada etkisi:** Employees → kişi → çekmece → alt çubuk. Önce: rol ya da bir alan değiştirilip kaydedilmeden "Terminate employee" tıklanmıyordu ama kırmızı ve etkin görünüyordu. Şimdi: gri, kilit simgeli, imleç "yasak"; neden ("Save your changes before terminating the employee") ekran okuyucuya bağlı (`apps/web/src/employees/EmployeeDrawer.tsx:1331-1333`, `EmployeeLocationParts.tsx:64-71`; alt ajan ölçtü). Örnek: Mert Ayşe'nin rolünü değiştirir; Terminate artık basılamaz göründüğü için boşuna tıklamaz. BL-466 kapandı.
+- **Dayanak:** `DELEGASYON.md` §3 (inceleme bulgusu main'den önce); aynı alt çubuk C3'ün elindeydi.
+- **Geri alma:** kolay (`04a97650`'deki o parça).
+- **Durum:** main'de (`04a97650`; görsel QA ONAY @`62cfd10c`).
+
+### KK-62 (2026-09-30) Nedenle kilitlenen satırda ad da soluk
+- **Karar:** Employees çekmecesinde bir nedenle kilitlenen kutucuğun adı da soluk yazılır; ortak görünüm kuralı olarak KARARLAR'a yazıldı.
+- **Uygulamada etkisi:** Employees → çekmece → Employment. Önce: kilitli "Owner" kutucuğunda yalnız kutu griydi, ad normaldi ve tıklanabilir gibi duruyordu. Şimdi: Owner işinde ve owner'ın lokasyonlarında ad da soluk (`--theme-muted-strong`; kontrast 5,55:1 — koordinatörün aktardığı); "Remove" düğmeli lokasyon satırı değişmedi (`apps/web/src/employees/employee-location-parts.css:35-36`, `EmployeeDrawer.tsx:3023-3032`; alt ajan ölçtü).
+- **Dayanak:** `CLAUDE.md` §9 (aynı işlev aynı görünüm; WCAG AA kontrast).
+- **Geri alma:** kolay (tek CSS kuralı).
+- **Durum:** main'de (`05c2625a`). İki kilitli görünümün birleşmesi açık: BL-483.
+
+### KK-63 (2026-09-30) Owner'ın kaydında Locations başlığında "Required" etiketi gösterilmez
+- **Karar:** owner'ın bütün lokasyon kutucukları kilitli olduğu için başlıktaki "Required" kalkar; başka herkeste durur.
+- **Uygulamada etkisi:** Employees → owner'ın kaydı → çekmece → Employment → Locations: başlığın yanında "Required" yok (`apps/web/src/employees/EmployeeDrawer.tsx:2204-2205`; testler `EmployeeDrawer.test.tsx:1438`, `:1444`; alt ajan ölçtü). Jobs başlığında owner için hâlâ yazıyor (BL-482).
+- **Dayanak:** seçilecek bir şey yokken "zorunlu" demek yanıltır.
+- **Geri alma:** kolay.
+- **Durum:** main'de (`05c2625a`).
+
+### KK-64 (2026-09-30) `ScheduleRow`'un kullanılmayan `departments` bağlantısı silindi
+- **Karar:** C3 sırasında bulunan ölü bağlantı aynı dalda silindi.
+- **Uygulamada etkisi:** yok (teknik). `apps/web/src/schedule/components/ScheduleRow.tsx` içinde `departments` 0 eşleşme (alt ajan ölçtü).
+- **Dayanak:** `CLAUDE.md` §9 (ölü kod kalmaz).
+- **Geri alma:** gerekmez.
+- **Durum:** main'de (`05c2625a`).
+
+### KK-65 (2026-09-30) EMP-001 C'de main önce girdi; canlı veritabanına gönderim sabaha kaldı
+- **Karar:** `20261002000000` migration'ı canlıya gönderilmeden kod main'e alındı (`nf-guvenlik` raporu §4: "bu iş için main önce girebilir").
+- **Uygulamada etkisi:** canlı sitede değişen yok (site bu repodan yayın almıyor, BL-426). İki şart kayda geçti: **Ş1** — bu migration canlıya gönderilmeden Vercel bu repoya bağlanmaz; bağlanırsa canlıda her çalışan çekmecesi 500 verir. **Ş2** — canlı veritabanı main'in gerisinde; "canlı = main" kaydı (BL-405) geçici olarak doğru değil. Ölçüm: canlı dört migration geride (rapor "bir" diyor; önceki üçü de gönderilmedi).
+- **Dayanak:** kullanıcı uyuyor; canlı gönderim yalnız kullanıcının (`CLAUDE.md` §8); canlı site eski repodan yayın aldığı için kırılan ekran yok.
+- **Geri alma:** gerekmez; gönderim yapılınca kapanır.
+- **Durum:** geçerli; gönderim kullanıcıda (`ILERLEME-PLANI.md` §0c satır 19).
+
+### KK-66 (2026-09-30) Migration'lı işte görsel QA main'den önce, `main.lock` penceresinde
+- **Karar:** EMP-001 C'nin görsel QA'sı, migration ortak yerel veritabanına uygulandıktan sonra ve push'tan önce, aynı `main.lock` penceresinde yapıldı.
+- **Uygulamada etkisi:** ekranı kimse görmeden main'e girmedi: `nf-gorsel-qa` ONAY @`62cfd10c` toplu dalda (`origin/task/batch-t11`), gerçek uygulamada verildi (rapordan; alt ajan okudu). Bulduğu bir "düzeltilmeli" (sihirbazda Continue'nun nedeni, BL-480) main'i tutmadı, kullanıcıya soruldu.
+- **Dayanak:** `CLAUDE.md` §7 (branch'in migration'ı yerele yalnız main'e alınmadan hemen önce, `main.lock` ile aynı pencerede uygulanır); `DELEGASYON.md` §3 (R3'te ekran değiştiyse görsel QA).
+- **Geri alma:** gerekmez.
+- **Durum:** yapıldı.
