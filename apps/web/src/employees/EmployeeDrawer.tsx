@@ -2340,6 +2340,12 @@ function AccessSection({
   );
   const canChangeRole = !archived && (allowed?.change_role ?? false);
   const canRemoveAccess = !archived && (allowed?.remove_access ?? false);
+  // Why the owner's role cannot be picked; read out, not printed under it.
+  const ownerRoleReasonId = useId();
+  const ownerRoleReason =
+    detail?.role_name === "Owner"
+      ? "Owner access is managed separately."
+      : undefined;
   const inviteRoleName = assignableRoles.find(
     (role) => role.id === inviteRoleId,
   )?.name;
@@ -2441,7 +2447,6 @@ function AccessSection({
         <header>
           <div>
             <h3>Account access</h3>
-            <p>Invitation, onboarding, and workspace role.</p>
           </div>
           <KeyRound size={18} aria-hidden />
         </header>
@@ -2469,10 +2474,11 @@ function AccessSection({
 
         {linked ? (
           <div className="employee-linked-access-controls">
-            <label className="employee-field">
+            <label className="employee-field" title={ownerRoleReason}>
               <span>Workspace role</span>
               <select
                 aria-label="Workspace role"
+                aria-describedby={ownerRoleReason ? ownerRoleReasonId : undefined}
                 value={currentRoleId}
                 disabled={
                   !canChangeRole || changingRole || assignableRoles.length === 0
@@ -2491,7 +2497,11 @@ function AccessSection({
                   </option>
                 ))}
               </select>
-              <small>Owner access is managed separately.</small>
+              {ownerRoleReason ? (
+                <span id={ownerRoleReasonId} className="sr-only">
+                  {ownerRoleReason}
+                </span>
+              ) : null}
             </label>
             {canRemoveAccess ? (
               <ConfirmButton

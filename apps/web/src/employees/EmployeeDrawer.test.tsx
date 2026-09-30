@@ -2112,6 +2112,35 @@ describe("EmployeeDrawer EMP-001 look", () => {
     expect(email).toHaveProperty("readOnly", false);
   });
 
+  it("says why the owner's role is locked to a screen reader only", async () => {
+    renderDrawer("access", {
+      ...detail,
+      role_id: ownerRoleId,
+      role_name: "Owner",
+      user_id: context.userId,
+      display_status: "active",
+      allowed: ownRecordAllowed,
+    });
+    const role = await screen.findByLabelText("Workspace role");
+    expect(role).toHaveProperty("disabled", true);
+    expect(described(role)).toEqual({ text: "Owner access is managed separately.", hidden: true });
+    expect(screen.queryByText("Invitation, onboarding, and workspace role.")).toBeNull();
+  });
+
+  it("prints no note under anybody else's role", async () => {
+    renderDrawer("access", {
+      ...detail,
+      role_id: employeeRoleId,
+      role_name: "Employee",
+      user_id: "16000000-0000-4000-8000-000000000005",
+      display_status: "active",
+    });
+    const role = await screen.findByLabelText("Workspace role");
+    expect(screen.queryByText("Owner access is managed separately.")).toBeNull();
+    expect(role.getAttribute("aria-describedby")).toBeNull();
+    expect(screen.queryByText("Invitation, onboarding, and workspace role.")).toBeNull();
+  });
+
   it("lists jobs under their departments, Management last", async () => {
     const kitchen = "dd000000-0000-4000-8000-0000000000c1";
     const floor = "dd000000-0000-4000-8000-0000000000c2";

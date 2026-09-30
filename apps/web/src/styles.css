@@ -2136,7 +2136,6 @@
   gap: 14px;
 }
 .employee-remove-access {
-  margin-bottom: 20px;
   color: #9b3442;
 }
 .employee-summary-panel {
@@ -2484,7 +2483,6 @@
   }
   .employee-remove-access {
     width: 100%;
-    margin-bottom: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
