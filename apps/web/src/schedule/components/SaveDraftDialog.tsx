@@ -112,7 +112,7 @@ function Dialog({
             aria-label="Close dialog"
             onClick={onClose}
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </header>
         {children}

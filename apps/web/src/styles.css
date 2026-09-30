@@ -9216,9 +9216,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
   display: grid;
   gap: 12px;
   border-bottom: 1px solid #dfe6e2;
-  padding: 20px 48px 20px 24px;
+  padding: 20px 24px;
 }
-/* The header keeps 48px on the right for this button. */
+/* Sits in the corner, above the Week card; the short title never reaches it. */
 .schedule-unpublish-close {
   position: absolute;
   top: 12px;

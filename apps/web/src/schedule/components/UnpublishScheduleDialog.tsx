@@ -95,7 +95,7 @@ export function UnpublishScheduleDialog({
             aria-label="Close"
             onClick={close}
           >
-            <X size={16} aria-hidden />
+            <X size={18} aria-hidden />
           </button>
           <div className="schedule-unpublish-eyebrow">
             <EyeOff size={14} aria-hidden />

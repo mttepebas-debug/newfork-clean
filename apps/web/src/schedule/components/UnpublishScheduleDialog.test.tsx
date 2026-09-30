@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { UnpublishScheduleDialog } from "./UnpublishScheduleDialog";
@@ -240,6 +242,21 @@ describe("UnpublishScheduleDialog", () => {
     expect(screen.getByRole("button", { name: "Unpublish" })).toBeTruthy();
     expect(onConfirm).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  // BL-305: the Week card was 24px narrower than the boxes under it, and the
+  // four Schedule windows closed with an X in two sizes.
+  it("lines the Week card up with the boxes below and closes like the other windows", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    const padding = (selector: string) =>
+      new RegExp(`\n${selector} \{[^}]*?padding: ([^;]+);`).exec(styles)?.[1];
+    expect(padding("\.schedule-unpublish-dialog > header")).toBe("20px 24px");
+    expect(padding("\.schedule-unpublish-body")).toBe("20px 24px");
+
+    const closeSizes = ["UnpublishScheduleDialog", "SaveDraftDialog", "PublishScheduleDialog", "ScheduleTemplateDialogs"].map(
+      (file) => /<X size=\{(\d+)\}/.exec(readFileSync(`src/schedule/components/${file}.tsx`, "utf8"))?.[1],
+    );
+    expect(closeSizes).toEqual(["18", "18", "18", "18"]);
   });
 
   it("marks the consequences as warnings, not as green checks (BL-306)", () => {
