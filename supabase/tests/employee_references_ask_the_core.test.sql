@@ -74,8 +74,8 @@ select is(pg_temp.keys(pg_temp.read('r:owner') -> 'invite_roles' -> 0), array['a
 
 -- 2. What the owner reads ---------------------------------------------------------------
 
-select is(pg_temp.names(pg_temp.read('r:owner'), 'locations'), array['Arnavutkoy', 'Besiktas', 'Kadikoy'],
-  'the owner reads every location, the archived one included, the deleted one not');
+select is(pg_temp.names(pg_temp.read('r:owner'), 'locations'), array['Besiktas', 'Kadikoy'],
+  'the owner reads every live location: neither the archived one (G8a, KK-13) nor the deleted one');
 select is(pg_temp.names(pg_temp.read('r:owner'), 'jobs'), array['Cook', 'Manager', 'Old', 'Owner', 'Server'],
   'and every job, the archived one included, the deleted one not');
 select is(pg_temp.invite_classes('r:owner'), array['admin', 'employee', 'manager', 'manager'],
