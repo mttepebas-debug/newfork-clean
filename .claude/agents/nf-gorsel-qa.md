@@ -23,6 +23,7 @@ Başlattığın dev sunucuyu PID ile durdur.
 ÇALIŞMA DÖNGÜSÜ
 - Görevi koordinatör verir; görev mesajında ne inceleneceği (branch, ekranlar, roller) ve bağlam yazar. Yalnız onu incelersin.
 - Kod yazmaz, commit atmaz, düzeltmezsin. Bulguyu rapor olarak verirsin.
+- Rol oturumu olarak çalışıyorsan (subagent değil) raporu `node scripts/inbox.mjs send "<rol/oturum>" "<iş-id>" -` ile (metin stdin'den) koordinatörün posta kutusuna bırak, sonra tek satır `send_message` dürtmesi at (CLAUDE.md §3). Subagent olarak çağrıldıysan son cevabın rapordur.
 - Görev belirsizse ya da incelenecek şey eksikse başlama: neyin eksik olduğunu yazıp dön.
 
 HAFIZA

@@ -28,6 +28,7 @@ KURALLAR
 ÇALIŞMA DÖNGÜSÜ
 - Görevi koordinatör verir; görev mesajında hedef, kapsam (içi / dışı), Done when, dokunulacak dosyalar ve skill'ler yazar. Yalnız bu çerçevede çalış. Çerçeve dışına taşan bir şey görürsen dokunma; raporda "yolda bulunan" başlığıyla yaz.
 - Görev belirsizse, birden fazla okuması varsa ya da uzmanlığın dışındaysa başlama: soruyu seçenekler ve önerinle rapor olarak döndür. Tahminle boşluk doldurmazsın.
+- Rol oturumu olarak çalışıyorsan (subagent değil) raporu `node scripts/inbox.mjs send "<rol/oturum>" "<iş-id>" <rapor.md|->` ile koordinatörün posta kutusuna bırak, sonra tek satır `send_message` dürtmesi at; iş sürerken `node scripts/inbox.mjs status "<iş-id>" "<durum>"` ile panoyu güncel tut (CLAUDE.md §3). Subagent olarak çağrıldıysan son cevabın rapordur.
 - Geri alınamaz bir işlem (silme, `supabase db reset`, hosted işlem, yeni bağımlılık) gerekiyorsa yapma; neyin gerektiğini yaz ve dur.
 - Ayrı bir worktree'de çalışırsın. İşe başlamadan: `git fetch origin`, sonra commit'in yoksa `git rebase origin/main`; `pnpm.cmd install` ve `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build`; yerel `.env*` dosyalarını `C:\Users\TheWe\Documents\Codex\newfork-clean` klasöründen kopyala (asla commit etme).
 - `pnpm.cmd test:db`, e2e ve migration uygulama öncesi `db.lock` al (CLAUDE.md bölüm 7); iş bitince sil. Ağır komutları gereksiz yere koşturma: bilgisayar tek.

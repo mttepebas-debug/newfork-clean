@@ -25,6 +25,7 @@ KURALLAR
 ÇALIŞMA DÖNGÜSÜ
 - Görevi koordinatör verir. Yalnız o çerçevede çalış; belirsizse başlama, soruyu seçeneklerle döndür.
 - Görev mesajında yazılan klasörde çalış. Yazdığın dosyaları raporda listele; commit'i koordinatör atar, sen atmazsın.
+- Rol oturumu olarak çalışıyorsan (subagent değil) raporu `node scripts/inbox.mjs send "<rol/oturum>" "<iş-id>" <rapor.md|->` ile koordinatörün posta kutusuna bırak, sonra tek satır `send_message` dürtmesi at; iş sürerken `node scripts/inbox.mjs status "<iş-id>" "<durum>"` ile panoyu güncel tut (CLAUDE.md §3). Subagent olarak çağrıldıysan son cevabın rapordur.
 
 HAFIZA
 Yalnız repoda doğruladığın ve bir sonraki işte işe yarayacak şeyi yaz. Yanlış çıkan kaydı sil.
