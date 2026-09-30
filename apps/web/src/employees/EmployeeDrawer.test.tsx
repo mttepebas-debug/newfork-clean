@@ -1871,43 +1871,128 @@ describe("EmployeeDrawer locations and access follow the server", () => {
     expect(screen.queryByText(/Only an admin or the owner/)).toBeNull();
   });
 
-  // FB-6.2.8 C: the field is shaped like Locations and saves only a change.
-  it("offers Save for managed locations only once something changed", async () => {
-    extraReferenceLocations = [{ id: patio.id, name: "Patio", archived: false }];
-    renderDrawer("employment", {
-      ...detail,
-      managed_locations: [],
-      allowed: { ...detail.allowed, set_managed_locations: true },
-    });
-    const group = await screen.findByRole("group", { name: "Manages without working there" });
-    await within(group).findByLabelText("Patio");
-    expect(within(group).queryByRole("button", { name: "Save managed locations" })).toBeNull();
-    fireEvent.click(within(group).getByLabelText("Patio"));
-    expect(within(group).getByRole("button", { name: "Save managed locations" })).toBeTruthy();
-    fireEvent.click(within(group).getByLabelText("Patio"));
-    expect(within(group).queryByRole("button", { name: "Save managed locations" })).toBeNull();
-  });
-
-  it("edits a manager's managed locations whole when the server lets the reader", async () => {
+  // FB-6.2.8 (2026-09-30): the field has no Save of its own; the drawer's
+  // Save changes saves it, with or without the rest of the record.
+  describe("managed locations are saved by Save changes", () => {
     const garden = "11000000-0000-4000-8000-000000000003";
-    vi.mocked(setEmployeeManagedLocations).mockResolvedValue({ locationIds: [patio.id, garden] });
-    extraReferenceLocations = [
-      { id: patio.id, name: "Patio", archived: false },
-      { id: garden, name: "Garden Room", archived: false },
-    ];
-    renderDrawer("employment", {
+    const manager = {
       ...detail,
       managed_locations: [{ id: patio.id, name: "Patio" }],
       allowed: { ...detail.allowed, set_managed_locations: true },
+    };
+    const saveChanges = () => screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
+    async function managedGroup() {
+      const group = await screen.findByRole("group", { name: "Manages without working there" });
+      await within(group).findByLabelText("Garden Room");
+      await employeeLoaded();
+      return group;
+    }
+    beforeEach(() => {
+      extraReferenceLocations = [
+        { id: patio.id, name: "Patio", archived: false },
+        { id: garden, name: "Garden Room", archived: false },
+      ];
+      vi.mocked(saveEmployee).mockClear();
+      vi.mocked(setEmployeeManagedLocations).mockReset();
+      vi.mocked(setEmployeeManagedLocations).mockResolvedValue({ locationIds: [patio.id, garden] });
     });
-    const group = await screen.findByRole("group", { name: "Manages without working there" });
-    const patioBox = (await within(group).findByLabelText("Patio")) as HTMLInputElement;
-    expect(patioBox.checked).toBe(true);
-    fireEvent.click(within(group).getByLabelText("Garden Room"));
-    fireEvent.click(within(group).getByRole("button", { name: "Save managed locations" }));
-    await waitFor(() =>
-      expect(setEmployeeManagedLocations).toHaveBeenCalledWith(workspaceId, employeeId, [patio.id, garden]),
-    );
+
+    it("turns Save changes on for a managed location alone, and off again when it is put back", async () => {
+      renderDrawer("employment", manager);
+      const group = await managedGroup();
+      expect((within(group).getByLabelText("Patio") as HTMLInputElement).checked).toBe(true);
+      expect(saveChanges().disabled).toBe(true);
+      fireEvent.click(within(group).getByLabelText("Garden Room"));
+      expect(saveChanges().disabled).toBe(false);
+      // No Save of the field's own.
+      expect(within(group).queryByRole("button")).toBeNull();
+      fireEvent.click(within(group).getByLabelText("Garden Room"));
+      expect(saveChanges().disabled).toBe(true);
+    });
+
+    it("saves the managed locations whole, and leaves the record alone, when only they changed", async () => {
+      renderDrawer("employment", manager);
+      const group = await managedGroup();
+      fireEvent.click(within(group).getByLabelText("Garden Room"));
+      vi.mocked(getEmployeeDetail).mockResolvedValue({
+        ...manager,
+        managed_locations: [...manager.managed_locations, { id: garden, name: "Garden Room" }],
+      });
+      fireEvent.click(saveChanges());
+      expect(await screen.findByRole("button", { name: "Done" })).toBeTruthy();
+      expect(setEmployeeManagedLocations).toHaveBeenCalledTimes(1);
+      expect(setEmployeeManagedLocations).toHaveBeenCalledWith(workspaceId, employeeId, [patio.id, garden]);
+      expect(saveEmployee).not.toHaveBeenCalled();
+    });
+
+    it("saves the record and the managed locations when both changed", async () => {
+      renderDrawer("employment", manager);
+      const group = await managedGroup();
+      fireEvent.click(screen.getByLabelText("Remote"));
+      fireEvent.click(within(group).getByLabelText("Patio"));
+      fireEvent.click(saveChanges());
+      expect(await screen.findByRole("button", { name: "Done" })).toBeTruthy();
+      expect(saveEmployee).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({ is_remote: true }),
+        employeeId,
+      );
+      expect(setEmployeeManagedLocations).toHaveBeenCalledWith(workspaceId, employeeId, []);
+    });
+
+    it("says why and keeps what was picked when the managed locations fail, and sends the record once", async () => {
+      vi.mocked(setEmployeeManagedLocations).mockRejectedValueOnce(
+        new RequestError("Only a manager manages a location without working there", "employee.not_a_manager", undefined, 400),
+      );
+      renderDrawer("employment", manager);
+      const group = await managedGroup();
+      fireEvent.click(screen.getByLabelText("Remote"));
+      fireEvent.click(within(group).getByLabelText("Garden Room"));
+      // What the server holds once the record itself has landed.
+      vi.mocked(getEmployeeDetail).mockResolvedValue({ ...manager, is_remote: true });
+      fireEvent.click(saveChanges());
+      expect((await screen.findByRole("alert")).textContent).toBe(
+        "Only a manager manages a location without working there",
+      );
+      await waitFor(() => expect(saveChanges().disabled).toBe(false));
+      expect((within(group).getByLabelText("Garden Room") as HTMLInputElement).checked).toBe(true);
+      expect((screen.getByLabelText("Remote") as HTMLInputElement).checked).toBe(true);
+      expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+
+      fireEvent.click(saveChanges());
+      expect(await screen.findByRole("button", { name: "Done" })).toBeTruthy();
+      expect(setEmployeeManagedLocations).toHaveBeenCalledTimes(2);
+      expect(setEmployeeManagedLocations).toHaveBeenLastCalledWith(workspaceId, employeeId, [patio.id, garden]);
+      expect(saveEmployee).toHaveBeenCalledTimes(1);
+    });
+
+    it("sends nothing about managed locations when the record itself is refused", async () => {
+      vi.mocked(saveEmployee).mockRejectedValueOnce(
+        new RequestError("Employee could not be saved", undefined, undefined, 500),
+      );
+      renderDrawer("employment", manager);
+      const group = await managedGroup();
+      fireEvent.click(screen.getByLabelText("Remote"));
+      fireEvent.click(within(group).getByLabelText("Garden Room"));
+      fireEvent.click(saveChanges());
+      expect((await screen.findByRole("alert")).textContent).toBe("Employee could not be saved");
+      expect(setEmployeeManagedLocations).not.toHaveBeenCalled();
+      await waitFor(() => expect(saveChanges().disabled).toBe(false));
+      expect((within(group).getByLabelText("Garden Room") as HTMLInputElement).checked).toBe(true);
+      expect((screen.getByLabelText("Remote") as HTMLInputElement).checked).toBe(true);
+    });
+
+    it("still saves them on a record the reader may not otherwise edit", async () => {
+      renderDrawer("employment", { ...manager, allowed: { ...manager.allowed, save: false } });
+      const group = await managedGroup();
+      expect((screen.getByLabelText("Remote") as HTMLInputElement).disabled).toBe(true);
+      fireEvent.click(within(group).getByLabelText("Garden Room"));
+      fireEvent.click(saveChanges());
+      await waitFor(() =>
+        expect(setEmployeeManagedLocations).toHaveBeenCalledWith(workspaceId, employeeId, [patio.id, garden]),
+      );
+      expect(saveEmployee).not.toHaveBeenCalled();
+    });
   });
 
   it("shows managed locations read-only to a reader the server does not let edit them", async () => {

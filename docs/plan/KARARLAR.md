@@ -169,8 +169,13 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   çıkaramadığı kişiyi nereden alacağını ekranda görür.
 - "Manages without working there" (kullanıcı kararı 2026-09-30, varyant C):
   Locations listesiyle aynı biçimde kutucuk listesi ve "Optional" etiketi,
-  altında tek satır açıklama; Save yalnız bir şey değişince çıkar. Düzenleme
-  izni olmayan okuyucu yalnız lokasyon adlarını görür, kutucuk görmez.
+  altında tek satır açıklama. Düzenleme izni olmayan okuyucu yalnız lokasyon
+  adlarını görür, kutucuk görmez. **Alanın kendi Save'i yok (kullanıcı kararı
+  2026-09-30):** kutucuktaki değişiklik çekmecenin sağ altındaki "Save
+  changes"i açar ve onunla kaydedilir. Neden: çekmecede tek kaydetme yeri.
+  Kayıt ile bu alan iki ayrı komuttur (önce kayıt, sonra alan); alan düşerse
+  hata satırı çıkar, işaretlenen kutucuklar durur, yeniden "Save changes"
+  yalnız alanı gönderir.
 - Liste, lokasyon sütunu (kullanıcı kararı 2026-09-30, varyant A): "No
   location" (uyarı tonu) ve "Manages <lokasyon>" aynı çip biçiminde. Telefonda
   lokasyon sütunu olmadığı için aynı çipler kişinin adının altında.

@@ -1,7 +1,7 @@
 import type { EmployeeDetail, EmployeeSummary } from "@newfork/shared";
-import { Button, ConfirmButton } from "@newfork/ui";
+import { ConfirmButton } from "@newfork/ui";
 import { Info, Lock, MapPin } from "lucide-react";
-import { useId, useState } from "react";
+import { useId } from "react";
 import "./employee-location-parts.css";
 
 /*
@@ -84,30 +84,33 @@ export function TerminateNote({
 
 type Option = { readonly id: string; readonly name: string; readonly archived?: boolean };
 
-/** The admin's "manages without working there" list, shaped like Locations above it. */
+/**
+ * The admin's "manages without working there" list, shaped like Locations
+ * above it. It has no Save of its own: the drawer holds what is picked and its
+ * Save changes saves it.
+ */
 export function ManagedLocationsField({
   managed,
+  picked,
   options,
   editable,
-  saving,
-  onSave,
+  disabled,
+  onChange,
 }: {
   readonly managed: EmployeeDetail["managed_locations"];
+  readonly picked: readonly string[];
   readonly options: readonly Option[];
   readonly editable: boolean;
-  readonly saving: boolean;
-  readonly onSave: (locationIds: readonly string[]) => void;
+  readonly disabled: boolean;
+  readonly onChange: (locationIds: readonly string[]) => void;
 }) {
-  const saved = managed.map((location) => location.id);
-  const [picked, setPicked] = useState<readonly string[]>(saved);
   const labelId = useId();
   const helpId = useId();
-  const dirty = picked.length !== saved.length || picked.some((id) => !saved.includes(id));
   const offered = options.filter((option) => !option.archived || picked.includes(option.id));
   return (
     <fieldset
       className="employee-assignment-picker employee-managed-field"
-      disabled={saving}
+      disabled={disabled}
       aria-labelledby={labelId}
       aria-describedby={helpId}
     >
@@ -127,10 +130,10 @@ export function ManagedLocationsField({
                   type="checkbox"
                   checked={picked.includes(option.id)}
                   onChange={(event) =>
-                    setPicked((current) =>
+                    onChange(
                       event.target.checked
-                        ? [...current, option.id]
-                        : current.filter((id) => id !== option.id),
+                        ? [...picked, option.id]
+                        : picked.filter((id) => id !== option.id),
                     )
                   }
                 />
@@ -139,17 +142,6 @@ export function ManagedLocationsField({
             </div>
           ))}
           {offered.length === 0 ? <p>No other locations.</p> : null}
-          {dirty ? (
-            <div className="employee-managed-save">
-              <Button
-                type="button"
-                aria-label="Save managed locations"
-                onClick={() => onSave(picked)}
-              >
-                {saving ? "Saving" : "Save"}
-              </Button>
-            </div>
-          ) : null}
         </>
       ) : (
         <ul className="employee-managed-readonly">

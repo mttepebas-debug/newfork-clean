@@ -244,6 +244,22 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       Boolean(documentPreview.error));
   const baselineKey = JSON.stringify(baseline);
   const dirty = draftEditedRef.current && JSON.stringify(draft) !== baselineKey;
+  // Where a manager manages without working there (S2): picked here, saved by
+  // Save changes with its own command. Untouched, it follows the record.
+  const [managedPicked, setManagedPicked] = useState<readonly string[] | null>(
+    null,
+  );
+  const managedSaved =
+    detail.data?.managed_locations.map((location) => location.id) ?? [];
+  const managedNow = managedPicked ?? managedSaved;
+  const managedDirty =
+    (detail.data?.allowed.set_managed_locations ?? false) &&
+    (managedNow.length !== managedSaved.length ||
+      managedNow.some((id) => !managedSaved.includes(id)));
+  const anyDirty = dirty || managedDirty;
+  // Enter on an untouched form has always sent the record; only a change to
+  // the managed locations alone leaves it out.
+  const sendRecord = dirty || !managedDirty;
 
   useEffect(() => {
     const subjectChanged = lastDraftSubjectKeyRef.current !== draftSubjectKey;
@@ -260,6 +276,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     lastDraftSubjectKeyRef.current = draftSubjectKey;
     if (subjectChanged) {
       setError(null);
+      setManagedPicked(null);
       if (props.employeeId !== createdIdRef.current || props.creating) {
         setDevelopmentUrl(null);
         setCreateResult(null);
@@ -323,6 +340,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     ? (allowed?.archive ?? false)
     : (allowed?.terminate ?? false);
   const readOnly = archived || !canSave;
+  // Save changes is there for whoever may save the record or, on a record
+  // they may not, the managed locations.
+  const canSubmit = !readOnly || (allowed?.set_managed_locations ?? false);
   // A manager who may take them off a location but not end their employment
   // still sees Terminate, switched off, with the reason (FB-6.2.8).
   const managerCannotTerminate =
@@ -361,17 +381,39 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     },
   });
   const saveMutation = useMutation({
-    mutationFn: () =>
-      saveEmployee(workspaceId, draft, props.employeeId ?? undefined),
+    // The record, then the managed locations: two commands. The record that
+    // landed is no longer dirty, so when the second one fails a retry sends
+    // only the managed locations (given whole, safe to send again).
+    mutationFn: async () => {
+      let savedId = props.employeeId ?? "";
+      if (sendRecord) {
+        savedId = await saveEmployee(
+          workspaceId,
+          draft,
+          props.employeeId ?? undefined,
+        );
+        draftEditedRef.current = false;
+        allowNextDraftRefreshRef.current = true;
+      }
+      if (managedDirty) {
+        try {
+          await setEmployeeManagedLocations(workspaceId, savedId, managedNow);
+        } catch (cause) {
+          // The form takes up what did land before the error is shown.
+          await refreshRecord();
+          throw cause;
+        }
+      }
+      return savedId;
+    },
     onSuccess: async (savedId) => {
-      draftEditedRef.current = false;
-      allowNextDraftRefreshRef.current = true;
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
         queryClient.invalidateQueries({
           queryKey: ["employee-detail", workspaceId, savedId],
         }),
       ]);
+      setManagedPicked(null);
       setError(null);
       if (props.creating) props.onCreated(savedId);
       else props.onSectionChange("profile");
@@ -511,16 +553,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     },
     onError: (cause) => setError(errorMessage(cause)),
   });
-  // A manager's locations managed without working there (S2), given whole.
-  const managedLocationsMutation = useMutation({
-    mutationFn: (locationIds: readonly string[]) =>
-      setEmployeeManagedLocations(workspaceId, props.employeeId ?? "", locationIds),
-    onSuccess: async () => {
-      setError(null);
-      await refreshRecord();
-    },
-    onError: (cause) => setError(errorMessage(cause)),
-  });
   const roleMutation = useMutation({
     mutationFn: (roleId: string) =>
       updateEmployeeRole(workspaceId, props.employeeId ?? "", roleId),
@@ -586,7 +618,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     removeAccessMutation.isPending;
   const done =
     !props.creating &&
-    !dirty &&
+    !anyDirty &&
     (createResult !== null || saveMutation.isSuccess);
   // The server sends only the roles this person may invite with (BL-231).
   const inviteRoles = [...(references.data?.inviteRoles ?? [])]
@@ -773,7 +805,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (busy || uncertainCreate || readOnly) return;
+    if (busy || uncertainCreate || !canSubmit) return;
     if (done) {
       requestClose();
       return;
@@ -784,12 +816,17 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       } else startCreate(false);
       return;
     }
-    const parsed = employeeInputSchema.safeParse(draft);
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Check the employee details");
-      return;
+    if (sendRecord) {
+      if (readOnly) return;
+      const parsed = employeeInputSchema.safeParse(draft);
+      if (!parsed.success) {
+        setError(
+          parsed.error.issues[0]?.message ?? "Check the employee details",
+        );
+        return;
+      }
+      if (documentPreviewBlocked) return;
     }
-    if (documentPreviewBlocked) return;
     saveMutation.mutate();
   };
 
@@ -1079,9 +1116,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                         removingLocationId: removeFromLocationMutation.isPending
                           ? (removeFromLocationMutation.variables ?? null)
                           : null,
-                        onSaveManaged: (locationIds) =>
-                          managedLocationsMutation.mutate(locationIds),
-                        savingManaged: managedLocationsMutation.isPending,
+                        managedPicked: managedNow,
+                        onManagedChange: setManagedPicked,
+                        managedDisabled: busy,
                       },
                       props.creating,
                     )
@@ -1291,10 +1328,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     disabled={
                       archiveMutation.isPending ||
                       terminationMutation.isPending ||
-                      (!archived && dirty)
+                      (!archived && anyDirty)
                     }
                     title={
-                      !archived && dirty
+                      !archived && anyDirty
                         ? "Save profile changes before terminating the employee"
                         : undefined
                     }
@@ -1367,7 +1404,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                         setInviteRoleAttempt((current) => current + 1);
                         return;
                       }
-                      if (dirty) {
+                      if (anyDirty) {
                         try {
                           await saveMutation.mutateAsync();
                         } catch {
@@ -1383,13 +1420,13 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       : "Invite"}
                   </Button>
                 ) : null}
-                {!readOnly ? (
+                {canSubmit ? (
                   <Button
                     type="submit"
                     disabled={
                       busy ||
                       documentPreviewBlocked ||
-                      (!dirty && !done) ||
+                      (!anyDirty && !done) ||
                       // Same gate the create flow already has. Without it,
                       // clearing the last location or job left Save enabled and
                       // the server refused it after the round trip.
@@ -2118,8 +2155,10 @@ interface EmployeeLocationActions {
   readonly onRemove: (locationId: string) => void;
   /** The location being taken off right now, if any. */
   readonly removingLocationId: string | null;
-  readonly onSaveManaged: (locationIds: readonly string[]) => void;
-  readonly savingManaged: boolean;
+  /** Picked in the form; Save changes saves them. */
+  readonly managedPicked: readonly string[];
+  readonly onManagedChange: (locationIds: readonly string[]) => void;
+  readonly managedDisabled: boolean;
 }
 
 function EmploymentSection({
@@ -2222,16 +2261,16 @@ function EmploymentSection({
       (detail.allowed.set_managed_locations ||
         detail.managed_locations.length > 0) ? (
         <ManagedLocationsField
-          key={detail.managed_locations.map((location) => location.id).join()}
           managed={detail.managed_locations}
+          picked={locationActions.managedPicked}
           // Where they work is never also where they only manage.
           options={(references?.locations ?? []).filter(
             (option) =>
               !detail.locations.some((location) => location.id === option.id),
           )}
           editable={detail.allowed.set_managed_locations}
-          saving={locationActions.savingManaged}
-          onSave={locationActions.onSaveManaged}
+          disabled={locationActions.managedDisabled}
+          onChange={locationActions.onManagedChange}
         />
       ) : null}
       <AssignmentPicker

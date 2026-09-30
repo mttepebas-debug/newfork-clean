@@ -61,16 +61,6 @@
   font-size: 12px;
   line-height: 1.4;
 }
-.employee-managed-save {
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 7px 2px;
-}
-.employee-managed-save .nf-button {
-  min-height: 30px;
-  padding: 4px 12px;
-  font-size: 12px;
-}
 .employee-managed-readonly {
   display: grid;
   gap: 6px;
