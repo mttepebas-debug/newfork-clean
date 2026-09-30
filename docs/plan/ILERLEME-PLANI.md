@@ -6,7 +6,7 @@ Tutan: "Rol: nf-planlama (Kayıt ve ilerleme)" oturumu (KARARLAR OPS-04). Son g�
 ### 0a. Durum ne (en çok 5 satır)
 1. **Ne bitti:** Employees ekranının yetki işi (FB-6.2) kapanışa geldi; son adım olan uçtan uca testler (`.10`) main'de. Yönetici yalnız kendi lokasyonundaki kişileri görüyor ve oraya davet gönderebiliyor; bu akışlar her gönderimde otomatik deneniyor.
 2. **Kanıt:** `9f1cc3b3` + `352faab7` main'de; main CI 36696339068 check + db + e2e yeşil (`gh run view`, 2026-09-30). Kilitler boş.
-3. **Neredeyiz:** FOUNDATION-B Aşama 6–7 %53,9 (124 / 230 puan, tahmin ağırlıklı). Backlog'da 239 açık madde: kritik yok, 4'ü "high" (BL-238, BL-101, BL-276, BL-426). Yürüyen iş: EMP-001 dilim A — Employees → çekmece → Profile sekmesinin sadeleşmesi (`nf-arayuz`).
+3. **Neredeyiz:** FOUNDATION-B Aşama 6–7 %53,9 (124 / 230 puan, tahmin ağırlıklı). Backlog'da 239 açık madde: kritik yok, 5'i "high" (BL-238, BL-101, BL-276, BL-426 ve belge çekmecesinde dosya yükleyince yazılanın silinmesi). Yürüyen iş: EMP-001 dilim A — Employees → çekmece → Profile sekmesinin sadeleşmesi (`nf-arayuz`).
 4. **Sıradaki:** EMP-001 A bitince FB-6.2 `.11` kapanışı (koordinatör) → EMP-001 B ("yalnız yönetir"in sökülmesi) ve C → G8a (arşivli lokasyon kuralı) → G8b. Yan yana ikinci iş seçildi: G14 — Schedule üst çubuğu, menüleri ve pencerelerinin görsel düzeltmeleri, yalnız masaüstü, 11 madde. Şu an maddelerin tazeliği ölçülüyor ve plan taslağı (`tasks/G14.md`) yazılıyor; kod başlamadı.
 5. **Bekleyen karar:** G14 planının onayı (ölçüm bitince sunulacak) ve BL-204 konuşması (Schedule hücresindeki müsaitlik uyarısı nasıl görünsün). Tam liste §0c.
 
@@ -30,7 +30,7 @@ Sayım: 2026-09-30, `bccdb4df`, betikle (`BACKLOG.md` açık bölümü; yöntem 
 | 15 | G15 | Görsel tutarlılık | Ortak ikon düğmesi telefonda 44×44 dokunma hedefinin altında (BL-334) | 25 | medium / moderate | Kısmen — çok ekran; Employees çekmecesine değen kalemler (BL-259) EMP-001'den sonra |
 | 16 | G16 | Giriş öncesi, hesap ve workspace ekranları | Kurulumdan çıkan owner boş ızgarayla karşılaşıyor (BL-122) | 16 | medium / moderate | Evet; BL-355 (3) kullanıcı kararı |
 | 17 | G17 | Çalışanlar ve kişi kaydı | Telefonda Employees çekmecesinde "Terminate employee" hiç görünmüyor (BL-407) | 16 | medium / risky | Hayır — EMP-001 ile aynı dosyalar; BL-431 ve BL-432 EMP-001 B4 ile kapanır |
-| 18 | G18 | Belgeler | Menü "2 bekleyen" diyor, Documents sayfası "sizden bir şey istenmedi" diyor (BL-341) | 6 | medium / moderate | Evet |
+| 18 | G18 | Belgeler | Belge çekmecesinde dosya yükleyince kişinin yazdığı son kullanma tarihi ve ek alanlar siliniyor (numarasız madde, program adı U59) | 6 | high / moderate | Evet |
 | 20 | G20 | Performans | Schedule ızgarası her çizimde bütün modeli yeniden kuruyor (BL-275) | 3 | medium / moderate | Evet |
 | 21 | G21 | Müsaitlik | Yöneticiler arası ortak müsaitlik notu (BL-135) | 3 | medium / safe | Evet |
 | 23 | G23 | Ölü kod ve ikiz yollar | SSN kalıntıları duruyor; ROADMAP "SSN yok" diyor (BL-382) | 12 | medium / moderate | Evet; BL-382 silme onayı kullanıcıda |
@@ -38,10 +38,10 @@ Sayım: 2026-09-30, `bccdb4df`, betikle (`BACKLOG.md` açık bölümü; yöntem 
 | — | GK | Karar bekleyen | Hesap düğmesi ile workspace değiştirici tek kontrol olsun mu (BL-073) | 1 | low | Kullanıcı kararı (varyantlar hazırlanacak) |
 | — | Hosted | Canlı yayın | Vercel projesi eski repoya bağlı; main'e giren hiçbir şey canlıya çıkmıyor (BL-426) | 1 | high / risky | Kullanıcı kararı: şimdilik dokunulmuyor |
 | — | GF | FOUNDATION-B dilimlerine bağlı | İlgili dilimle kapanır: FB-6.1b, FB-6.3 izin, FB-6.4 takas, FB-6.6 belgeler, FB-6.8 ayarlar | 9 | medium (üçü risky) | Dilim sırasıyla |
-| — | GY | Yol haritası fazları | MVP fazlarının işleri: onboarding yedi adım, Billing/Stripe, landing, Requests, bildirimler | 25 | 24'ü işaretsiz | Faz sırası kullanıcı kararı olmadan değişmez |
-| — | GS | MVP sonrası | Kiosk, time tracking, payroll | 10 | 6'sı işaretsiz | Kapsam dışı |
+| — | GY | Yol haritası fazları | MVP fazlarının işleri: onboarding yedi adım, Billing/Stripe, landing, Requests, bildirimler | 25 | medium / risky (BL-059, BL-041) | Faz sırası kullanıcı kararı olmadan değişmez |
+| — | GS | MVP sonrası | Kiosk, time tracking, payroll | 10 | low / risky (BL-060) | Kapsam dışı |
 
-Kayıt borcu: açık 239 maddenin 53'ünde iki işaret yok (çoğu GY ve GS; `BACKLOG-PROGRAM.md` "Sayım"). İşaretlemek ayrı bir kayıt işi; koordinatör isterse yapılır.
+İşaretler (2026-09-30): 239 açık maddenin 238'i işaretli; 12'sinde bir işaret "belirsiz" (nedeni maddenin altında; liste `BACKLOG-PROGRAM.md` "Sayım"). Tek işaretsiz madde U08 (G14 ölçümünde). Dağılım: leave — high 5, medium 76, low 155, belirsiz 2; do — safe 143, moderate 68, risky 16, belirsiz 11; işaretsiz 1 (U08).
 
 ### 0c. Kullanıcıda bekleyenler (karar, onay, komut)
 Soruların uzun metni (seçenekler, öneri) `tasks/BACKLOG-PROGRAM.md` "Kullanıcıya dönüşte" ve "Hosted bekleyen" bölümlerinde.
