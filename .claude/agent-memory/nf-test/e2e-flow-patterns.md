@@ -25,5 +25,19 @@ metadata:
   her tur kendi haftasını, builder etiketini, taslak adını ve yeni parolasını `e2e/fixtures/world.ts`
   `round`/`roundWeek`/`roundLabel`/`draftName` ile alır. Yeni spec aynı kalıbı izlemezse ikinci turda
   düşer; `pnpm e2e --repeat-each=2` ile dene.
+- **Employees listesi (FB-6.2.10, 2026-09-30):** satıra `row.click()` ortaya, yani lokasyon/iş hücresine
+  düşer ve çekmece **Employment** bölümünde açılır; Profile için adın üstüne tıkla
+  (`row.getByText(name, { exact: true })`). Durum metni tam eşleşmeyle okunur: "Not Invited" de
+  "Invited" içerir. Çekmecenin adı kişinin adıdır (`getByRole("dialog", { name })`).
+- **Davet bağlantısı:** üretim dışında çekmece "Open acceptance link" verir (`developmentUrl`). Oturumsuz
+  açan kişi giriş ekranına değil "Create your employee account" ekranına düşer; hesabı olan
+  "I already have an account" ile girer, sonra "Accept invitation". Hesabı olup workspace'i olmayan kişi:
+  `tests.new_user` + `tests.password` (`e2e/flows/invite.spec.ts`).
+- **Davet edilmemiş kayıt** builder'da yok: `create_employee_command_service(..., null)` ve boş
+  `invitation_email` ile kurulur. `tests.person` adı `initcap(etiket) || ' Person'` yapar; etikette tire
+  olursa ikinci parça da büyür, harf+rakam etiket kullan.
+- **Ortak dünyaya kişi eklemek** (ikinci Kadikoy yöneticisi, davetsiz kayıtlar) sonraki spec'lerin dünyasını
+  değiştirir; 2026-09-30'da tam takım 25/25 yeşildi ama kişi sayan bir spec eklenirse kendi dünyasını
+  kurmalı (`ownership-transfer-password.spec.ts` kalıbı).
 
 İlgili: [[failure-screenshots-include-leftover-pages]].
