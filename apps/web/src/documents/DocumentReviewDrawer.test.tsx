@@ -1058,3 +1058,227 @@ describe("download, document time zone and deadline extension", () => {
     expect(screen.queryByRole("button", { name: "Extend deadline" })).toBeNull();
   });
 });
+
+// BL-467: everything else typed into the drawer survives a new revision the
+// same way (another command, someone else's change), until its own command
+// uses it or the thing it was typed for is replaced.
+describe("typed fields beyond the draft", () => {
+  const manager = { workspaceId: "workspace", selfOnly: false };
+  const value = (label: string) =>
+    (screen.getByLabelText(label) as HTMLInputElement).value;
+  let base: () => DocumentDetail = detail;
+  // Someone else's change: the same document comes back one revision later.
+  async function bump(
+    cache: QueryClient,
+    change: (doc: DocumentDetail) => void,
+  ) {
+    const calls = vi.mocked(getDocument).mock.calls.length;
+    vi.mocked(getDocument).mockImplementation(async () => {
+      const doc = base();
+      doc.obligation.revision = 2;
+      change(doc);
+      return doc;
+    });
+    await cache.invalidateQueries();
+    await waitFor(() =>
+      expect(vi.mocked(getDocument).mock.calls.length).toBeGreaterThan(calls),
+    );
+  }
+  const close = () =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close document details" }),
+    );
+
+  it("keeps the rejection reason, correction period and file decisions through a new revision", async () => {
+    base = () => {
+      const doc = detail();
+      doc.obligation.remaining_seconds = 3600;
+      return doc;
+    };
+    vi.mocked(getDocument).mockResolvedValue(base());
+    const { cache, onClose } = page();
+    await screen.findByRole("button", { name: "Reject" });
+    fireEvent.change(screen.getByLabelText("Rejection reason"), {
+      target: { value: "Unreadable" },
+    });
+    fireEvent.change(screen.getByLabelText("Correction period"), {
+      target: { value: "remaining" },
+    });
+    fireEvent.change(screen.getByLabelText("Decision for certificate.pdf"), {
+      target: { value: "discard" },
+    });
+    fireEvent.change(screen.getByLabelText("Note for certificate.pdf"), {
+      target: { value: "Blurry" },
+    });
+    await bump(cache, () => undefined);
+    await waitFor(() => expect(value("Rejection reason")).toBe("Unreadable"));
+    expect(value("Correction period")).toBe("remaining");
+    expect(value("Decision for certificate.pdf")).toBe("discard");
+    expect(value("Note for certificate.pdf")).toBe("Blurry");
+    close();
+    expect(await screen.findByText("Discard unsaved changes?")).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    await waitFor(() =>
+      expect(reviewDocument).toHaveBeenCalledWith(manager, "requirement", {
+        revision: 2,
+        submission_id: "submission",
+        decision: "reject",
+        reason: "Unreadable",
+        correction_period: "remaining",
+        files: [{ id: "file", decision: "discard", note: "Blurry" }],
+      }),
+    );
+  });
+  it("drops the review typed for a version once another version is under review", async () => {
+    base = detail;
+    vi.mocked(getDocument).mockResolvedValue(base());
+    const { cache } = page();
+    fireEvent.change(await screen.findByLabelText("Rejection reason"), {
+      target: { value: "Unreadable" },
+    });
+    await bump(cache, (doc) => {
+      doc.obligation.submitted_id = "resubmitted";
+      doc.submissions[0]!.id = "resubmitted";
+    });
+    await waitFor(() => expect(value("Rejection reason")).toBe(""));
+  });
+  it("keeps an unsaved deferral reason through an upload", async () => {
+    base = () => {
+      const doc = withDraft();
+      doc.initial_deferral = { allowed: true, reason: null };
+      return doc;
+    };
+    vi.mocked(getDocument).mockResolvedValue(base());
+    vi.mocked(uploadDocument).mockResolvedValue({});
+    page(true);
+    fireEvent.change(await screen.findByLabelText("Reason"), {
+      target: { value: "Embassy appointment moved" },
+    });
+    const after = base();
+    after.obligation.revision = 2;
+    after.submissions[0]!.files.push({
+      ...after.submissions[0]!.files[0]!,
+      id: "back",
+      filename: "back.pdf",
+    });
+    vi.mocked(getDocument).mockResolvedValue(after);
+    fireEvent.change(screen.getByLabelText("Upload document"), {
+      target: {
+        files: [new File(["pdf"], "back.pdf", { type: "application/pdf" })],
+      },
+    });
+    await screen.findByRole("button", { name: "back.pdf" });
+    expect(value("Reason")).toBe("Embassy appointment moved");
+  });
+  it("keeps the extension typed through a time zone change, and clears it once the extension is saved", async () => {
+    base = () => {
+      const doc = missing();
+      doc.obligation.deadline_at = new Date(Date.now() + 86_400_000).toISOString();
+      doc.timezone_settings = {
+        value: "America/Chicago",
+        configured_value: "America/Chicago",
+        employee_revision: 4,
+        can_manage: true,
+      };
+      return doc;
+    };
+    vi.mocked(getDocument).mockResolvedValue(base());
+    vi.mocked(setDocumentTimezone).mockResolvedValue({});
+    vi.mocked(extendDocumentDeadline).mockResolvedValue({});
+    const { cache, onClose } = page();
+    await screen.findByRole("button", { name: "Extend deadline" });
+    fireEvent.change(screen.getByLabelText("Additional days"), {
+      target: { value: "5" },
+    });
+    fireEvent.change(screen.getByLabelText("Extension reason"), {
+      target: { value: "Clinic closed this week" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), {
+      target: { value: "America/Denver" },
+    });
+    // The time zone is its own command; the extension waits on screen.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save document time zone" }),
+    );
+    await waitFor(() => expect(setDocumentTimezone).toHaveBeenCalled());
+    await bump(cache, (doc) => {
+      doc.timezone_settings!.configured_value = "America/Denver";
+      doc.timezone_settings!.employee_revision = 5;
+    });
+    await waitFor(() => expect(value("Additional days")).toBe("5"));
+    expect(value("Extension reason")).toBe("Clinic closed this week");
+    fireEvent.click(screen.getByRole("button", { name: "Extend deadline" }));
+    await waitFor(() =>
+      expect(extendDocumentDeadline).toHaveBeenCalledWith(
+        manager,
+        "requirement",
+        { revision: 2, additional_days: 5, reason: "Clinic closed this week" },
+      ),
+    );
+    // Used up: the form is back to its start and nothing is left to discard.
+    await waitFor(() => expect(value("Extension reason")).toBe(""));
+    expect(value("Additional days")).toBe("1");
+    close();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+  it("keeps a chosen document time zone through a new revision", async () => {
+    base = () => {
+      const doc = detail();
+      doc.timezone_settings = {
+        value: null,
+        configured_value: null,
+        employee_revision: 4,
+        can_manage: true,
+      };
+      return doc;
+    };
+    vi.mocked(getDocument).mockResolvedValue(base());
+    const { cache } = page();
+    fireEvent.change(await screen.findByRole("combobox", { name: "Time zone" }), {
+      target: { value: "America/Denver" },
+    });
+    await bump(cache, () => undefined);
+    await waitFor(() =>
+      expect(
+        (screen.getByRole("combobox", { name: "Time zone" }) as HTMLSelectElement)
+          .value,
+      ).toBe("America/Denver"),
+    );
+  });
+  it("keeps the ticked intent and typed name through a new revision of the same policy text", async () => {
+    base = policyDetail;
+    vi.mocked(getDocument).mockResolvedValue(base());
+    const { cache } = page(true);
+    fireEvent.click(await screen.findByRole("checkbox", { name: intent }));
+    fireEvent.change(screen.getByLabelText("Type your full name"), {
+      target: { value: "Test Employee" },
+    });
+    await bump(cache, () => undefined);
+    await waitFor(() => expect(value("Type your full name")).toBe("Test Employee"));
+    expect(screen.getByRole("checkbox", { name: intent })).toHaveProperty(
+      "checked",
+      true,
+    );
+  });
+  it("drops the signature once the policy text itself changed", async () => {
+    base = policyDetail;
+    vi.mocked(getDocument).mockResolvedValue(base());
+    const { cache } = page(true);
+    fireEvent.click(await screen.findByRole("checkbox", { name: intent }));
+    fireEvent.change(screen.getByLabelText("Type your full name"), {
+      target: { value: "Test Employee" },
+    });
+    await bump(cache, (doc) => {
+      doc.policy!.content_text = "Be kind, and be on time.";
+      doc.policy!.content_digest = "b".repeat(64);
+    });
+    await screen.findByText("Be kind, and be on time.");
+    expect(screen.getByRole("checkbox", { name: intent })).toHaveProperty(
+      "checked",
+      false,
+    );
+    expect(screen.queryByLabelText("Type your full name")).toBeNull();
+  });
+});

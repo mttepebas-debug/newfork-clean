@@ -5,7 +5,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@newfork/ui";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { errorText } from "../settings/GeneralSettingsPage";
@@ -32,12 +32,24 @@ import {
   sameSignerName,
 } from "./document-rules";
 
-// What a person typed into a draft's own fields. Nothing stores it before
-// Submit, so it is kept here against the one draft version it was typed for.
-type TypedDraftFields = {
-  draftId: string;
+// What a person typed into the drawer. Nothing stores it before its own
+// command runs, so each value is kept here against what it was typed for:
+// the draft, the version under review, the policy text or the document.
+type TypedValues = {
   expiry: string;
   metadata: Record<string, string | number | null>;
+  reason: string;
+  correction: "full" | "remaining";
+  files: DocumentReviewCommand["files"];
+  deferralReason: string;
+  extensionDays: number;
+  extensionReason: string;
+  policyRead: boolean;
+  signerName: string;
+  timezone: string;
+};
+type TypedFields = {
+  [K in keyof TypedValues]?: { for: string; value: TypedValues[K] };
 };
 
 type DrawerProps = {
@@ -57,8 +69,8 @@ export function DocumentReviewDrawer(props: DrawerProps) {
 
 function DocumentDrawer(props: DrawerProps) {
   // Held above the content, which every revision rebuilds: uploading, removing
-  // a file and deferring all bump the revision while the draft stays the same.
-  const [typed, setTyped] = useState<TypedDraftFields | null>(null);
+  // a file, deferring or someone else's change all bump the revision.
+  const [typed, setTyped] = useState<TypedFields>({});
   const query = useQuery({
     queryKey: documentQueryKey(
       props.audience,
@@ -106,8 +118,8 @@ function DocumentDetailContent({
   ...props
 }: DrawerProps & {
   detail: DocumentDetail;
-  typed: TypedDraftFields | null;
-  onTyped: (fields: TypedDraftFields) => void;
+  typed: TypedFields;
+  onTyped: Dispatch<SetStateAction<TypedFields>>;
 }) {
   const cache = useQueryClient();
   const obligation = detail.obligation;
@@ -115,36 +127,84 @@ function DocumentDetailContent({
     (s) => s.id === obligation.submitted_id,
   );
   const draft = detail.submissions.find((s) => s.state === "draft");
-  const [policyRead, setPolicyRead] = useState(false);
+  // A typed value counts while what it was typed for is still here; typed for
+  // another draft (a correction opened after a rejection), another version
+  // under review or other policy text, it gives way to the saved value.
+  function typedField<K extends keyof TypedValues>(
+    key: K,
+    typedFor: string | undefined,
+    saved: TypedValues[K],
+  ) {
+    const entry = props.typed[key];
+    const value =
+      typedFor !== undefined && entry?.for === typedFor ? entry.value : saved;
+    const set = (next: TypedValues[K]) =>
+      props.onTyped(
+        (all) =>
+          ({ ...all, [key]: { for: typedFor!, value: next } }) as TypedFields,
+      );
+    return [value, set] as const;
+  }
+  // A command that went through used what it sent; its form starts again.
+  const forget = (...keys: (keyof TypedValues)[]) =>
+    props.onTyped((all) => {
+      const rest = { ...all };
+      for (const key of keys) delete rest[key];
+      return rest;
+    });
+  const policyText = detail.policy?.content_digest;
+  const [policyRead, setPolicyRead] = typedField(
+    "policyRead",
+    policyText,
+    false,
+  );
+  const [signerName, setSignerName] = typedField("signerName", policyText, "");
   const [failedUpload, setFailedUpload] = useState<File | null>(null);
-  const [signerName, setSignerName] = useState("");
   const [signatureRequestId] = useState(() => crypto.randomUUID());
-  const [deferralReason, setDeferralReason] = useState(
+  const [deferralReason, setDeferralReason] = typedField(
+    "deferralReason",
+    obligation.id,
     detail.initial_deferral?.reason ?? "",
   );
-  const [extensionDays, setExtensionDays] = useState(1);
-  const [extensionReason, setExtensionReason] = useState("");
-  const [reason, setReason] = useState("");
+  const [extensionDays, setExtensionDays] = typedField(
+    "extensionDays",
+    obligation.id,
+    1,
+  );
+  const [extensionReason, setExtensionReason] = typedField(
+    "extensionReason",
+    obligation.id,
+    "",
+  );
+  const [reason, setReason] = typedField("reason", current?.id, "");
   // Where the reviewer was going when unsaved changes stopped them.
   const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
-  const [correction, setCorrection] = useState<"full" | "remaining">("full");
-  const [files, setFiles] = useState<DocumentReviewCommand["files"]>(
-    (current?.files ?? []).map((f) => ({
-      id: f.id,
-      decision: f.decision,
-      note: f.note,
-    })),
+  const [correction, setCorrection] = typedField(
+    "correction",
+    current?.id,
+    "full",
   );
-  // Typed for another draft (a correction opened after a rejection) is not
-  // this draft's: the draft's own saved values show instead.
-  const kept = draft && props.typed?.draftId === draft.id ? props.typed : null;
-  const expiry = kept?.expiry ?? draft?.expiry_date ?? "";
-  const metadata = kept?.metadata ?? draft?.metadata ?? {};
-  const type = (fields: Partial<Omit<TypedDraftFields, "draftId">>) =>
-    props.onTyped({ draftId: draft!.id, expiry, metadata, ...fields });
+  const savedFiles = (current?.files ?? []).map((f) => ({
+    id: f.id,
+    decision: f.decision,
+    note: f.note,
+  }));
+  const [files, setFiles] = typedField("files", current?.id, savedFiles);
+  const [expiry, setExpiry] = typedField(
+    "expiry",
+    draft?.id,
+    draft?.expiry_date ?? "",
+  );
+  const [metadata, setMetadata] = typedField(
+    "metadata",
+    draft?.id,
+    draft?.metadata ?? {},
+  );
   const [notice, setNotice] = useState("");
   const [exemptionLocked, setExemptionLocked] = useState(false);
-  const [referenceTimezone, setReferenceTimezone] = useState(
+  const [referenceTimezone, setReferenceTimezone] = typedField(
+    "timezone",
+    obligation.id,
     detail.timezone_settings?.configured_value ?? "",
   );
   const refresh = () =>
@@ -177,6 +237,7 @@ function DocumentDetailContent({
     onSuccess: async () => {
       setNotice("Decision saved");
       await refresh();
+      forget("reason", "correction", "files");
     },
   });
   const upload = useMutation({
@@ -196,7 +257,10 @@ function DocumentDetailContent({
         expiry_date: expiry || null,
         metadata,
       }),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      forget("expiry", "metadata");
+    },
   });
   const download = useMutation({
     mutationFn: ({
@@ -213,7 +277,10 @@ function DocumentDetailContent({
         employee_revision: detail.timezone_settings!.employee_revision,
         timezone: referenceTimezone,
       }),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      forget("timezone");
+    },
   });
   const defer = useMutation({
     mutationFn: () =>
@@ -221,7 +288,10 @@ function DocumentDetailContent({
         revision: obligation.revision,
         reason: deferralReason,
       }),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      forget("deferralReason");
+    },
   });
   const acknowledge = useMutation({
     mutationFn: () =>
@@ -231,7 +301,10 @@ function DocumentDetailContent({
         content_digest: detail.policy!.content_digest,
         idempotency_key: signatureRequestId,
       }),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      forget("policyRead", "signerName");
+    },
   });
   const withdraw = useMutation({
     mutationFn: () =>
@@ -258,7 +331,10 @@ function DocumentDetailContent({
         additional_days: extensionDays,
         reason: extensionReason,
       }),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      forget("extensionDays", "extensionReason");
+    },
   });
   const busy =
     extension.isPending ||
@@ -292,14 +368,7 @@ function DocumentDetailContent({
     reason !== "" ||
     expiry !== (draft?.expiry_date ?? "") ||
     JSON.stringify(metadata) !== JSON.stringify(draft?.metadata ?? {}) ||
-    JSON.stringify(files) !==
-      JSON.stringify(
-        (current?.files ?? []).map((f) => ({
-          id: f.id,
-          decision: f.decision,
-          note: f.note,
-        })),
-      );
+    JSON.stringify(files) !== JSON.stringify(savedFiles);
   const navigate = (action: () => void) => {
     if (busy) return;
     if (dirty) setPendingLeave(() => action);
@@ -525,8 +594,8 @@ function DocumentDetailContent({
                         value={files.find((f) => f.id === file.id)?.decision}
                         disabled={busy}
                         onChange={(e) =>
-                          setFiles((items) =>
-                            items.map((f) =>
+                          setFiles(
+                            files.map((f) =>
                               f.id === file.id
                                 ? {
                                     ...f,
@@ -547,8 +616,8 @@ function DocumentDetailContent({
                         maxLength={500}
                         value={files.find((f) => f.id === file.id)?.note ?? ""}
                         onChange={(e) =>
-                          setFiles((items) =>
-                            items.map((f) =>
+                          setFiles(
+                            files.map((f) =>
                               f.id === file.id
                                 ? { ...f, note: e.target.value }
                                 : f,
@@ -659,7 +728,7 @@ function DocumentDetailContent({
                         type="date"
                         required={obligation.tracks_expiry}
                         value={expiry}
-                        onChange={(e) => type({ expiry: e.target.value })}
+                        onChange={(e) => setExpiry(e.target.value)}
                       />
                     </label>
                     {obligation.settings.extra_fields.map((field) => (
@@ -673,11 +742,9 @@ function DocumentDetailContent({
                           required={field.required}
                           value={String(metadata[field.key] ?? "")}
                           onChange={(e) =>
-                            type({
-                              metadata: {
-                                ...metadata,
-                                [field.key]: e.target.value,
-                              },
+                            setMetadata({
+                              ...metadata,
+                              [field.key]: e.target.value,
                             })
                           }
                         />
