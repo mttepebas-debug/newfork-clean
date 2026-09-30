@@ -15,6 +15,7 @@ import type {
 import {
   defaultDocumentLifecycleSettings,
   emptyWeeklyPreference,
+  managementAndOwnerRefusals,
 } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
@@ -57,7 +58,6 @@ import {
   revokeEmployeeInvitation,
   saveEmployee,
   setEmployeeArchived,
-  setEmployeeManagedLocations,
   terminateEmployee,
   updateEmployeeRole,
 } from "./employee-data";
@@ -179,7 +179,6 @@ const detail = {
       removable: true,
     },
   ],
-  managed_locations: [],
   jobs: [
     {
       id: "22000000-0000-4000-8000-000000000001",
@@ -202,7 +201,6 @@ const detail = {
     remove_access: true,
     change_role: true,
     make_admin: true,
-    set_managed_locations: false,
     invite: true,
     onboarding_review: true,
   },
@@ -216,7 +214,6 @@ const ownRecordAllowed = {
   remove_access: false,
   change_role: false,
   make_admin: false,
-  set_managed_locations: false,
   invite: false,
   onboarding_review: false,
 };
@@ -245,7 +242,6 @@ vi.mock("./employee-data", () => ({
   revokeEmployeeInvitation: vi.fn(),
   saveEmployee: vi.fn(),
   setEmployeeArchived: vi.fn(),
-  setEmployeeManagedLocations: vi.fn(),
   terminateEmployee: vi.fn(),
   updateEmployeeRole: vi.fn(),
 }));
@@ -1658,7 +1654,6 @@ describe("EmployeeDrawer record actions follow the server", () => {
     remove_access: false,
     change_role: false,
     make_admin: false,
-    set_managed_locations: false,
     invite: false,
     onboarding_review: false,
   };
@@ -1781,9 +1776,9 @@ describe("EmployeeDrawer sections follow the core", () => {
   });
 });
 
-// FB-6.2 .7b (KK-35): the drawer takes somebody off a location, edits a
-// manager's managed locations, invites and reviews onboarding only where the
-// server says so; no permission key is read on screen.
+// FB-6.2 .7b (KK-35): the drawer takes somebody off a location, invites and
+// reviews onboarding only where the server says so; no permission key is read
+// on screen.
 describe("EmployeeDrawer locations and access follow the server", () => {
   const mainDining = "11000000-0000-4000-8000-000000000001";
   const patio = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false, removable: false };
@@ -1871,51 +1866,68 @@ describe("EmployeeDrawer locations and access follow the server", () => {
     expect(screen.queryByText(/Only an admin or the owner/)).toBeNull();
   });
 
-  // FB-6.2.8 C: the field is shaped like Locations and saves only a change.
-  it("offers Save for managed locations only once something changed", async () => {
+  // EMP-001: a manager manages only where they are assigned, so Employment
+  // asks where they work and what they do, and nothing else.
+  it("lists a manager's locations and jobs and no third list", async () => {
     extraReferenceLocations = [{ id: patio.id, name: "Patio", archived: false }];
-    renderDrawer("employment", {
-      ...detail,
-      managed_locations: [],
-      allowed: { ...detail.allowed, set_managed_locations: true },
-    });
-    const group = await screen.findByRole("group", { name: "Manages without working there" });
-    await within(group).findByLabelText("Patio");
-    expect(within(group).queryByRole("button", { name: "Save managed locations" })).toBeNull();
-    fireEvent.click(within(group).getByLabelText("Patio"));
-    expect(within(group).getByRole("button", { name: "Save managed locations" })).toBeTruthy();
-    fireEvent.click(within(group).getByLabelText("Patio"));
-    expect(within(group).queryByRole("button", { name: "Save managed locations" })).toBeNull();
+    renderDrawer("employment", { ...detail, role_id: managerRoleId, role_name: "Manager" });
+    await employeeLoaded();
+    expect(document.querySelectorAll("fieldset.employee-assignment-picker")).toHaveLength(2);
+    expect(screen.getAllByLabelText("Patio")).toHaveLength(1);
   });
 
-  it("edits a manager's managed locations whole when the server lets the reader", async () => {
-    const garden = "11000000-0000-4000-8000-000000000003";
-    vi.mocked(setEmployeeManagedLocations).mockResolvedValue({ locationIds: [patio.id, garden] });
-    extraReferenceLocations = [
-      { id: patio.id, name: "Patio", archived: false },
-      { id: garden, name: "Garden Room", archived: false },
-    ];
-    renderDrawer("employment", {
+  // EMP-001 K4 (user decision 2026-09-30): a manager who is not Remote has at
+  // least one location, excluded from the schedule or not.
+  describe("a manager needs a location (K4)", () => {
+    const sentence = managementAndOwnerRefusals["employee.manager_location_required"];
+    // The file does not clear its mocks; these tests count saves.
+    beforeEach(() => vi.mocked(saveEmployee).mockClear());
+    const managerAt =(patch: Partial<EmployeeDetail>) => ({
       ...detail,
-      managed_locations: [{ id: patio.id, name: "Patio" }],
-      allowed: { ...detail.allowed, set_managed_locations: true },
+      role_id: managerRoleId,
+      role_name: "Manager",
+      // A location the reader may not Remove is the one the form can untick.
+      locations: [{ ...detail.locations[0]!, removable: false }],
+      ...patch,
     });
-    const group = await screen.findByRole("group", { name: "Manages without working there" });
-    const patioBox = (await within(group).findByLabelText("Patio")) as HTMLInputElement;
-    expect(patioBox.checked).toBe(true);
-    fireEvent.click(within(group).getByLabelText("Garden Room"));
-    fireEvent.click(within(group).getByRole("button", { name: "Save managed locations" }));
-    await waitFor(() =>
-      expect(setEmployeeManagedLocations).toHaveBeenCalledWith(workspaceId, employeeId, [patio.id, garden]),
-    );
-  });
 
-  it("shows managed locations read-only to a reader the server does not let edit them", async () => {
-    renderDrawer("employment", { ...detail, managed_locations: [{ id: patio.id, name: "Patio" }] });
-    const group = await screen.findByRole("group", { name: "Manages without working there" });
-    expect(within(group).getByText("Patio")).toBeTruthy();
-    expect(within(group).queryByRole("checkbox")).toBeNull();
-    expect(within(group).queryByRole("button")).toBeNull();
+    it("holds Save when a manager excluded from the schedule loses the last location, until Remote", async () => {
+      renderDrawer("employment", managerAt({ is_excluded_from_schedule: true }));
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Main Dining"));
+      const save = screen.getByRole("button", { name: "Save changes" });
+      expect(save).toHaveProperty("disabled", true);
+      expect(screen.getByText(sentence)).toBeTruthy();
+      expect(within(screen.getByRole("group", { name: /^Locations/ })).getByText("Required")).toBeTruthy();
+      fireEvent.click(screen.getByLabelText("Remote"));
+      expect(save).toHaveProperty("disabled", false);
+      expect(saveEmployee).not.toHaveBeenCalled();
+    });
+
+    it("tells a manager on the schedule the same, never to turn on Exclude from schedule", async () => {
+      renderDrawer("employment", managerAt({}));
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Main Dining"));
+      expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+      expect(screen.getByText(sentence)).toBeTruthy();
+      fireEvent.click(screen.getByLabelText("Exclude from schedule"));
+      expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+      expect(screen.getByText(sentence)).toBeTruthy();
+    });
+
+    it("lets an employee excluded from the schedule lose the last location, as before", async () => {
+      renderDrawer("employment", {
+        ...detail,
+        role_id: employeeRoleId,
+        role_name: "Employee",
+        is_excluded_from_schedule: true,
+        locations: [{ ...detail.locations[0]!, removable: false }],
+      });
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Main Dining"));
+      expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", false);
+      expect(screen.queryByText(sentence)).toBeNull();
+    });
   });
 
   it("offers no invitation when the server says the reader may not invite, whatever their permissions", async () => {
@@ -1943,11 +1955,9 @@ describe("EmployeeDrawer locations and access follow the server", () => {
   });
 });
 
-// FB-6.2 .7b visual QA (0806cc62): what an invitation, a manager's managed
-// locations and the private fields offer follows the record, not only the
-// server's allowed answer.
+// FB-6.2 .7b visual QA (0806cc62): what an invitation and the private fields
+// offer follows the record, not only the server's allowed answer.
 describe("EmployeeDrawer .7b visual QA fixes", () => {
-  const patio = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false, removable: false };
 
   it("offers no invitation to somebody whose account is already linked", async () => {
     renderDrawer("profile", {
@@ -1964,18 +1974,6 @@ describe("EmployeeDrawer .7b visual QA fixes", () => {
   it("still offers the invitation to somebody with no linked account", async () => {
     renderDrawer("profile", { ...detail, user_id: null, allowed: { ...detail.allowed, invite: true } });
     expect(await screen.findByRole("button", { name: "Invite" })).toBeTruthy();
-  });
-
-  it("never offers a location they work at as one they manage without working there", async () => {
-    extraReferenceLocations = [{ id: patio.id, name: patio.name, archived: false }];
-    renderDrawer("employment", {
-      ...detail,
-      managed_locations: [],
-      allowed: { ...detail.allowed, set_managed_locations: true },
-    });
-    const group = await screen.findByRole("group", { name: "Manages without working there" });
-    await within(group).findByLabelText("Patio");
-    expect(within(group).queryByLabelText("Main Dining")).toBeNull();
   });
 
   it("shows the private fields when the server says they may be read but none are on file", async () => {

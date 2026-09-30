@@ -1,4 +1,4 @@
-/* Employees: where somebody works and manages (FB-6.2.8). Tokens only. */
+/* Employees: where somebody works (FB-6.2.8). Tokens only. */
 
 /* Remove on a location's row: soft red at rest, solid red once armed (two
    clicks), the Account photo rule (account.css). */
@@ -51,39 +51,6 @@
 .employee-terminate-note svg {
   flex: 0 0 auto;
   margin-top: 1px;
-}
-
-/* "Manages without working there", shaped like Locations. */
-.employee-managed-help {
-  display: block;
-  margin: 0 7px 6px;
-  color: var(--theme-muted-strong);
-  font-size: 12px;
-  line-height: 1.4;
-}
-.employee-managed-save {
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 7px 2px;
-}
-.employee-managed-save .nf-button {
-  min-height: 30px;
-  padding: 4px 12px;
-  font-size: 12px;
-}
-.employee-managed-readonly {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0 7px;
-  list-style: none;
-}
-.employee-managed-readonly li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--theme-text);
-  font-size: 14px;
 }
 
 /* The list's location cell and the phone's chips under the name. */

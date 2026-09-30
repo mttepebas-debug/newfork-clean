@@ -54,7 +54,7 @@ function actorOf(p: Persona): AuthzActor {
     workspaceId: asked,
     role: p.class as WorkspaceRole,
     status: p.tenant === asked ? (p.status as AuthzActor["status"]) : "none",
-    locationIds: [...p.locs, ...p.manages],
+    locationIds: p.locs,
     permissions: everyPermission.filter((key) => !p.permissionsRemoved.includes(key)),
   };
 }
@@ -67,7 +67,7 @@ function targetOf(
   if (label === "self") {
     return {
       workspaceId: asked,
-      locations: [...p.locs, ...p.manages],
+      locations: p.locs,
       person: { role: p.class as WorkspaceRole, isSelf: true },
     };
   }

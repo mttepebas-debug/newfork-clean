@@ -1,7 +1,6 @@
 import {
   employeeInputSchema,
   employeeCreateCommandSchema,
-  employeeManagedLocationsSchema,
   employeeRoleUpdateInputSchema,
   type Permission,
 } from "@newfork/shared";
@@ -279,39 +278,8 @@ export function registerEmployeeDirectoryRoutes(
     },
   );
 
-  // The locations a manager manages without working there (FB-6.2 S2), given
-  // whole. No gate here: the service asks the core
-  // (employee.set_managed_locations: admin and owner).
-  app.put(
-    "/v1/workspaces/:workspaceId/employees/:employeeId/managed-locations",
-    async (request, reply) => {
-      const params = employeeParams.safeParse(request.params);
-      const body = employeeManagedLocationsSchema.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply.status(400).send({ error: "Valid managed locations required" });
-      const context = await resolveActor(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-      );
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Employee directory service is not configured" });
-      return reply.send(
-        await options.service.setManagedLocations({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          employeeId: params.data.employeeId,
-          locationIds: body.data.locationIds,
-        }),
-      );
-    },
-  );
-
   // How this workspace answers a preferred name, and the asking and answering
-  // of one. Reading the setting needs only employee access; changing it is a
-  // workspace setting, and answering a request is employee management.
+  // of one.
   app.get(
     "/v1/workspaces/:workspaceId/preferred-name-approval",
     async (request, reply) => {
@@ -384,15 +352,13 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(400)
           .send({ error: "A preferred name is at most 80 characters" });
-      const context = await authorize(
+      // No gate here: the service asks the core (employee.request_preferred_name
+      // on the person's own record; BL-443).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.read",
         options.contextResolver,
-        reply,
-        "Employee access required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -414,15 +380,13 @@ export function registerEmployeeDirectoryRoutes(
       const params = workspaceParams.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid workspace required" });
-      const context = await authorize(
+      // No gate here: the service asks the core
+      // (employee.decide_preferred_name; BL-443).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.manage",
         options.contextResolver,
-        reply,
-        "Employee management access required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -445,15 +409,13 @@ export function registerEmployeeDirectoryRoutes(
       const body = z.object({ approve: z.boolean() }).safeParse(request.body);
       if (!params.success || !body.success)
         return reply.status(400).send({ error: "Valid decision required" });
-      const context = await authorize(
+      // No gate here: the service asks the core
+      // (employee.decide_preferred_name; BL-443).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.manage",
         options.contextResolver,
-        reply,
-        "Employee management access required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)

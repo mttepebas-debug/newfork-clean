@@ -28,7 +28,6 @@ describe("employee detail private contact", () => {
     user_id: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
     internal_note: "",
     locations: [],
-    managed_locations: [],
     jobs: [],
     invitation: null,
     onboarding: { status: "not_requested", required_documents: 0, completed_documents: 0 },
@@ -40,7 +39,6 @@ describe("employee detail private contact", () => {
       remove_access: false,
       change_role: false,
       make_admin: false,
-      set_managed_locations: false,
       invite: false,
       onboarding_review: false,
     },
@@ -129,7 +127,6 @@ describe("employee detail allowed actions", () => {
     user_id: null,
     internal_note: "",
     locations: [],
-    managed_locations: [],
     jobs: [],
     invitation: null,
     onboarding: { status: "not_requested", required_documents: 0, completed_documents: 0 },
@@ -141,7 +138,6 @@ describe("employee detail allowed actions", () => {
       remove_access: true,
       change_role: false,
       make_admin: false,
-      set_managed_locations: false,
       invite: true,
       onboarding_review: true,
     },
@@ -155,7 +151,6 @@ describe("employee detail allowed actions", () => {
       remove_access: true,
       change_role: false,
       make_admin: false,
-      set_managed_locations: false,
       invite: true,
       onboarding_review: true,
     });
@@ -167,8 +162,9 @@ describe("employee detail allowed actions", () => {
   });
 });
 
-// FB-6.2 .7b (KK-35): where the reader may take somebody off, and the
-// locations a manager manages without working there, come from the server.
+// FB-6.2 .7b (KK-35): where the reader may take somebody off comes from the
+// server. EMP-001: a manager manages only where they are assigned, so the
+// record and the list row carry no "managed" locations.
 describe("employee detail locations", () => {
   const kadikoy = "11000000-0000-4000-8000-000000000001";
   const besiktas = "11000000-0000-4000-8000-000000000002";
@@ -176,10 +172,10 @@ describe("employee detail locations", () => {
     id: "97f65b16-a7ad-4f50-990e-d89030ac4701",
     workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
     employee_code: "NF-003",
-    first_name: "Selin",
+    first_name: "Derya",
     last_name: "Ak",
     preferred_name: "",
-    display_name: "Selin Ak",
+    display_name: "Derya Ak",
     invitation_email: null,
     start_date: null,
     primary_location_id: kadikoy,
@@ -195,30 +191,32 @@ describe("employee detail locations", () => {
     user_id: null,
     internal_note: "",
     locations: [{ id: kadikoy, name: "Kadikoy", primary: true, archived: false, removable: false }],
-    managed_locations: [{ id: besiktas, name: "Besiktas" }],
     jobs: [],
     invitation: null,
     onboarding: { status: "not_requested", required_documents: 0, completed_documents: 0 },
     events: [],
     allowed: {
       save: false, terminate: false, archive: false, remove_access: false, change_role: false,
-      make_admin: false, set_managed_locations: true, invite: false, onboarding_review: false,
+      make_admin: false, invite: false, onboarding_review: false,
     },
   };
 
-  it("carries which location they may be taken off and what they manage", () => {
-    const detail = employeeDetailSchema.parse(record);
-    expect(detail.locations[0]?.removable).toBe(false);
-    expect(detail.managed_locations).toEqual([{ id: besiktas, name: "Besiktas" }]);
-    expect(detail.allowed.set_managed_locations).toBe(true);
+  it("carries which location they may be taken off", () => {
+    expect(employeeDetailSchema.parse(record).locations[0]?.removable).toBe(false);
   });
 
-  it("refuses a location without the answer, and a detail without managed locations", () => {
+  it("refuses a location without the answer", () => {
     expect(() =>
       employeeDetailSchema.parse({ ...record, locations: [{ id: kadikoy, name: "Kadikoy", primary: true, archived: false }] }),
     ).toThrow();
-    const { managed_locations: _managed, ...withoutManaged } = record;
-    expect(() => employeeDetailSchema.parse(withoutManaged)).toThrow();
+  });
+
+  // The same eight keys get_employee_detail_service answers with
+  // (supabase/tests/employee_drawer_reads.test.sql keeps that list).
+  it("answers for eight record actions, the ones the database sends", () => {
+    expect(Object.keys(employeeDetailSchema.shape.allowed.shape).sort()).toEqual([
+      "archive", "change_role", "invite", "make_admin", "onboarding_review", "remove_access", "save", "terminate",
+    ]);
   });
 
   it("keeps jobs without a removal answer", () => {
@@ -226,9 +224,8 @@ describe("employee detail locations", () => {
     expect(employeeDetailSchema.parse({ ...record, jobs: [job] }).jobs).toEqual([job]);
   });
 
-  it("lists a row with the names of the locations they only manage", () => {
-    const { locations: _l, managed_locations: _m, jobs: _j, invitation: _i, onboarding: _o, events: _e, allowed: _a, user_id: _u, internal_note: _n, ...row } = record;
-    expect(employeeSummarySchema.parse({ ...row, managed_location_names: ["Besiktas"] }).managed_location_names).toEqual(["Besiktas"]);
-    expect(() => employeeSummarySchema.parse(row)).toThrow();
+  it("lists a row as the database sends it", () => {
+    const { locations: _l, jobs: _j, invitation: _i, onboarding: _o, events: _e, allowed: _a, user_id: _u, internal_note: _n, ...row } = record;
+    expect(employeeSummarySchema.parse(row).display_name).toBe("Derya Ak");
   });
 });

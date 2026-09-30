@@ -10,7 +10,6 @@ import {
   removeEmployeeFromLocation,
   retryEmployeeInvitation,
   revokeEmployeeInvitation,
-  setEmployeeManagedLocations,
 } from "./employee-data";
 import { isNoAccess } from "../lib/no-access";
 import { InvitationError } from "./invitation-error";
@@ -157,9 +156,8 @@ describe("Invitations the core refuses", () => {
   });
 });
 
-// FB-6.2 S1 and S2: taking somebody off one location, and a manager's
-// locations managed without working there.
-describe("Locations a person is taken off or manages", () => {
+// FB-6.2 S1: taking somebody off one location.
+describe("Locations a person is taken off", () => {
   const employeeId = "15000000-0000-4000-8000-000000000001";
   const locationId = "11000000-0000-4000-8000-000000000001";
 
@@ -182,21 +180,4 @@ describe("Locations a person is taken off or manages", () => {
     expect(isNoAccess(failure)).toBe(true);
   });
 
-  it("gives a manager's managed locations whole and reads back what was kept", async () => {
-    const fetchMock = respond(200, { locationIds: [locationId] });
-    await expect(setEmployeeManagedLocations(workspaceId, employeeId, [locationId])).resolves.toEqual({
-      locationIds: [locationId],
-    });
-    expect(fetchMock.mock.calls[0]![0]).toBe(
-      `http://api.test/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`,
-    );
-    expect(fetchMock.mock.calls[0]![1]).toMatchObject({ method: "PUT", body: JSON.stringify({ locationIds: [locationId] }) });
-  });
-
-  it("keeps the reason when the person is not a manager", async () => {
-    respond(400, { error: "Only a manager manages a location without working there", reason: "employee.not_a_manager" });
-    const failure = await setEmployeeManagedLocations(workspaceId, employeeId, []).catch((error: unknown) => error);
-    expect(failure).toMatchObject({ reason: "employee.not_a_manager", status: 400 });
-    expect(isNoAccess(failure)).toBe(false);
-  });
 });

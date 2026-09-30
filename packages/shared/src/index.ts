@@ -877,6 +877,10 @@ export const managementAndOwnerRefusals = {
   "employee.location_required":
     "Choose at least one location and mark one as primary, or turn on Remote or Exclude from schedule.",
   "employee.job_required": "Choose at least one job, or turn on Remote or Exclude from schedule.",
+  // EMP-001 K4: a manager manages where they are assigned, so one who is not
+  // Remote is assigned somewhere, excluded from the schedule or not.
+  "employee.manager_location_required":
+    "A manager needs at least one location to manage. Choose a location, or turn on Remote.",
   "employee.primary_job_required": "Mark one of the jobs outside Management as primary.",
 } as const;
 /** The sentence for one of those hints; undefined for any other hint. */
@@ -2514,9 +2518,6 @@ export const employeeSummarySchema = z.object({
   display_status: employeeDisplayStatusSchema,
   archived_at: z.string().datetime({ offset: true }).nullable(),
   revision: z.coerce.number().int().positive(),
-  // The locations a manager manages without working there ("Manages", FB-6.2
-  // S2), as far as the reader reaches; [] for everybody else.
-  managed_location_names: z.array(z.string()),
 });
 export type EmployeeSummary = z.infer<typeof employeeSummarySchema>;
 
@@ -2554,7 +2555,7 @@ export const employeeEventSchema = z.object({
 });
 export type EmployeeEvent = z.infer<typeof employeeEventSchema>;
 
-export const employeeDetailSchema = employeeSummarySchema.omit({ managed_location_names: true }).extend({
+export const employeeDetailSchema = employeeSummarySchema.extend({
   user_id: z.string().uuid().nullable(),
   account_email: z.string().email().nullable().optional(),
   internal_note: z.string().max(1000),
@@ -2590,9 +2591,6 @@ export const employeeDetailSchema = employeeSummarySchema.omit({ managed_locatio
   // removable: may the reader take them off this location
   // (employee.remove_from_location there; FB-6.2 S1).
   locations: z.array(employeeAssignmentSchema.extend({ removable: z.boolean() })),
-  // Where a manager manages without working there (S2), as far as the reader
-  // reaches; [] for everybody else.
-  managed_locations: z.array(z.object({ id: z.string().uuid(), name: z.string() })),
   jobs: z.array(employeeAssignmentSchema),
   invitation: z
     .object({
@@ -2642,8 +2640,6 @@ export const employeeDetailSchema = employeeSummarySchema.omit({ managed_locatio
     remove_access: z.boolean(),
     change_role: z.boolean(),
     make_admin: z.boolean(),
-    // Only for a manager; false for everybody else.
-    set_managed_locations: z.boolean(),
     invite: z.boolean(),
     onboarding_review: z.boolean(),
   }),
@@ -2667,15 +2663,6 @@ export const employeeLocationRemovalSchema = z.object({
 });
 export type EmployeeLocationRemoval = z.infer<typeof employeeLocationRemovalSchema>;
 
-/**
- * The locations a manager manages without working there (FB-6.2 S2), given
- * whole: the list replaces what was there.
- */
-export const employeeManagedLocationsSchema = z.object({
-  locationIds: z.array(z.string().uuid()).max(500),
-});
-export type EmployeeManagedLocations = z.infer<typeof employeeManagedLocationsSchema>;
-
 export const employeeInputSchema = z
   .object({
     first_name: z.string().trim().min(1).max(80),
@@ -2698,17 +2685,28 @@ export const employeeInputSchema = z
      * form from refusing first.
      */
     is_owner_record: z.boolean().optional(),
+    /**
+     * A manager's record (EMP-001 K4). The form says so from the role it
+     * shows; the server reads the role for itself, so this too only keeps the
+     * form from sending what the database would refuse.
+     */
+    is_manager_record: z.boolean().optional(),
     expected_revision: z.number().int().positive().nullable(),
   })
   .superRefine((value, issue) => {
-    const assignmentOptional =
-      value.is_remote === true ||
-      value.is_excluded_from_schedule === true ||
-      value.is_owner_record === true;
-    if (assignmentOptional) return;
+    if (value.is_remote === true || value.is_owner_record === true) return;
+    const managerNowhere = value.is_manager_record === true && value.location_ids.length === 0;
+    if (managerNowhere) {
+      issue.addIssue({
+        code: "custom",
+        message: managementAndOwnerRefusals["employee.manager_location_required"],
+        path: ["location_ids"],
+      });
+    }
+    if (value.is_excluded_from_schedule === true) return;
     // Whether a primary job is needed depends on which jobs sit under
     // Management; the database decides (employee.primary_job_required, BL-218).
-    if (value.location_ids.length === 0 || value.primary_location_id === null) {
+    if (!managerNowhere && (value.location_ids.length === 0 || value.primary_location_id === null)) {
       issue.addIssue({
         code: "custom",
         message: managementAndOwnerRefusals["employee.location_required"],

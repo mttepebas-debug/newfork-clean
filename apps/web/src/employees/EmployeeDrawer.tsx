@@ -69,7 +69,6 @@ import {
   revokeEmployeeInvitation,
   saveEmployee,
   setEmployeeArchived,
-  setEmployeeManagedLocations,
   terminateEmployee,
   updateEmployeeRole,
   type EmployeeTerminationInput,
@@ -86,7 +85,6 @@ import {
 } from "./employee-create-flow";
 import { registerEmployeeHistoryGuard } from "./employee-history-guard";
 import {
-  ManagedLocationsField,
   PassiveTerminate,
   RemoveFromLocationButton,
   TerminateNote,
@@ -183,7 +181,17 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const pendingNavigationRef = useRef<(() => void) | null>(null);
   const allowNavigationRef = useRef(false);
   const previousSectionRef = useRef(props.section);
-  const readiness = employeeCreateReadiness(draft);
+  // EMP-001 K4: a manager who is not Remote has a location. The record says
+  // its role by id; the class comes from the roles the reader may give, which
+  // cover every record they may save. The database decides either way.
+  const roleClass = (roleId: string | null | undefined) =>
+    references.data?.inviteRoles.find((role) => role.id === roleId)?.accessClass;
+  const managerRecord =
+    !props.creating && roleClass(detail.data?.role_id) === "manager";
+  const ruledDraft: EmployeeInput = managerRecord
+    ? { ...draft, is_manager_record: true }
+    : draft;
+  const readiness = employeeCreateReadiness(ruledDraft);
   const allowedSections = sections.filter(
     ([key]) =>
       (key !== "availability" || can(context, "availability.team_read")) &&
@@ -519,16 +527,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     },
     onError: (cause) => setError(errorMessage(cause)),
   });
-  // A manager's locations managed without working there (S2), given whole.
-  const managedLocationsMutation = useMutation({
-    mutationFn: (locationIds: readonly string[]) =>
-      setEmployeeManagedLocations(workspaceId, props.employeeId ?? "", locationIds),
-    onSuccess: async () => {
-      setError(null);
-      await refreshRecord();
-    },
-    onError: (cause) => setError(errorMessage(cause)),
-  });
   const roleMutation = useMutation({
     mutationFn: (roleId: string) =>
       updateEmployeeRole(workspaceId, props.employeeId ?? "", roleId),
@@ -769,6 +767,19 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       (invite && !inviteReady)
     )
       return;
+    // An invitation as a manager makes them one (K4).
+    if (invite && roleClass(inviteRoleId) === "manager") {
+      const asManager = employeeInputSchema.safeParse({
+        ...draft,
+        is_manager_record: true,
+      });
+      if (!asManager.success) {
+        setError(
+          asManager.error.issues[0]?.message ?? "Check the employee details",
+        );
+        return;
+      }
+    }
     const command: EmployeeCreateCommand = {
       request_id: crypto.randomUUID(),
       employee: employeeInputSchema.parse(draft),
@@ -792,7 +803,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       } else startCreate(false);
       return;
     }
-    const parsed = employeeInputSchema.safeParse(draft);
+    const parsed = employeeInputSchema.safeParse(ruledDraft);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the employee details");
       return;
@@ -1084,9 +1095,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                         removingLocationId: removeFromLocationMutation.isPending
                           ? (removeFromLocationMutation.variables ?? null)
                           : null,
-                        onSaveManaged: (locationIds) =>
-                          managedLocationsMutation.mutate(locationIds),
-                        savingManaged: managedLocationsMutation.isPending,
+                        managerRecord,
                       },
                       props.creating,
                     )
@@ -2123,13 +2132,13 @@ function ProfileSection({
   );
 }
 
-/** Taking somebody off a location and a manager's managed locations (FB-6.2 S1, S2). */
+/** Taking somebody off a location (FB-6.2 S1), and whether they need one. */
 interface EmployeeLocationActions {
   readonly onRemove: (locationId: string) => void;
   /** The location being taken off right now, if any. */
   readonly removingLocationId: string | null;
-  readonly onSaveManaged: (locationIds: readonly string[]) => void;
-  readonly savingManaged: boolean;
+  /** A manager's record: a location is required unless Remote (EMP-001 K4). */
+  readonly managerRecord: boolean;
 }
 
 function EmploymentSection({
@@ -2199,7 +2208,10 @@ function EmploymentSection({
       </div>
       <AssignmentPicker
         label="Locations"
-        required={!draft.is_remote && !draft.is_excluded_from_schedule}
+        required={
+          !draft.is_remote &&
+          (!draft.is_excluded_from_schedule || locationActions.managerRecord)
+        }
         options={references?.locations ?? []}
         selected={draft.location_ids}
         primary={draft.primary_location_id}
@@ -2227,22 +2239,6 @@ function EmploymentSection({
       />
       {explainTerminate && detail && !detail.allowed.terminate && !detail.archived_at ? (
         <TerminateNote detail={detail} removable={removable} />
-      ) : null}
-      {detail &&
-      (detail.allowed.set_managed_locations ||
-        detail.managed_locations.length > 0) ? (
-        <ManagedLocationsField
-          key={detail.managed_locations.map((location) => location.id).join()}
-          managed={detail.managed_locations}
-          // Where they work is never also where they only manage.
-          options={(references?.locations ?? []).filter(
-            (option) =>
-              !detail.locations.some((location) => location.id === option.id),
-          )}
-          editable={detail.allowed.set_managed_locations}
-          saving={locationActions.savingManaged}
-          onSave={locationActions.onSaveManaged}
-        />
       ) : null}
       <AssignmentPicker
         label="Jobs"
@@ -2288,10 +2284,6 @@ function EmploymentSection({
   );
 }
 
-/**
- * A manager's locations managed without working there (FB-6.2 S2): no shifts,
- * no Schedule row there. The list is given whole; the server keeps it.
- */
 function AccessSection({
   draft,
   detail,

@@ -20,6 +20,7 @@ import {
   jobSchema,
   locationInputSchema,
   managementAndOwnerRefusals,
+  managementAndOwnerSentence,
   managementJobIds,
   notificationInboxSchema,
   normalizeAccountPhone,
@@ -1554,6 +1555,52 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
     expect(employeeInputSchema.safeParse({ ...managerOnly, job_ids: [] }).error?.issues[0]?.message).toBe(
       managementAndOwnerRefusals["employee.job_required"],
     );
+  });
+
+  // EMP-001 K4 (user decision 2026-09-30): a manager who is not Remote has at
+  // least one location, excluded from the schedule or not. The form says who is
+  // a manager (is_manager_record); the database decides for itself.
+  describe("a manager needs a location (K4)", () => {
+    const nowhere = { ...managerOnly, location_ids: [], primary_location_id: null, job_ids: [] };
+    const sentence = managementAndOwnerRefusals["employee.manager_location_required"];
+    const messages = (value: object) =>
+      employeeInputSchema.safeParse(value).error?.issues.map((issue) => [issue.path.join("."), issue.message]);
+
+    it("has a sentence a person reads, which sends nobody to Exclude from schedule", () => {
+      expect(managementAndOwnerSentence("employee.manager_location_required")).toBe(sentence);
+      expect(sentence).toMatch(/manager/i);
+      expect(sentence).not.toMatch(/Exclude from schedule/);
+    });
+
+    it("refuses a manager excluded from the schedule with no location", () => {
+      expect(messages({ ...nowhere, is_excluded_from_schedule: true, is_manager_record: true })).toEqual([
+        ["location_ids", sentence],
+      ]);
+    });
+
+    it("refuses a manager on the schedule with no location in the same words", () => {
+      expect(messages({ ...managerOnly, location_ids: [], primary_location_id: null, is_manager_record: true })).toEqual([
+        ["location_ids", sentence],
+      ]);
+    });
+
+    it("lets a Remote manager have no location", () => {
+      expect(employeeInputSchema.safeParse({ ...nowhere, is_remote: true, is_manager_record: true }).success).toBe(true);
+    });
+
+    it("lets an excluded employee have no location, as before", () => {
+      expect(employeeInputSchema.safeParse({ ...nowhere, is_excluded_from_schedule: true }).success).toBe(true);
+      expect(
+        employeeInputSchema.safeParse({ ...nowhere, is_excluded_from_schedule: true, is_manager_record: false }).success,
+      ).toBe(true);
+    });
+
+    it("lets an excluded manager with a location save without a job", () => {
+      expect(
+        employeeInputSchema.safeParse({ ...managerOnly, job_ids: [], is_excluded_from_schedule: true, is_manager_record: true })
+          .success,
+      ).toBe(true);
+    });
   });
 });
 

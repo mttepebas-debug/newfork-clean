@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { BrowserRouter, useLocation, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { EmployeeSection } from "@newfork/shared";
+import { managementAndOwnerRefusals, type EmployeeSection } from "@newfork/shared";
 import { EmployeeDrawer } from "./EmployeeDrawer";
 import {
   createEmployee,
@@ -132,7 +132,6 @@ describe("employee create flow", () => {
           remove_access: true,
           change_role: true,
           make_admin: true,
-          set_managed_locations: false,
           invite: true,
           onboarding_review: true,
         },
@@ -150,7 +149,6 @@ describe("employee create flow", () => {
             removable: true,
           },
         ],
-        managed_locations: [],
         jobs: [{ id: ids.job, name: "Server", primary: true, archived: false }],
         archived_at: null,
         display_status: "not_invited",
@@ -408,6 +406,30 @@ describe("employee create flow", () => {
         expect.objectContaining({ invite_role_id: ids.custom }),
       ),
     );
+  });
+  // EMP-001 K4: a manager who is not Remote has a location, excluded from the
+  // schedule or not. Shift Lead is a manager role.
+  it("holds an invitation as a manager for somebody excluded from the schedule with no location", async () => {
+    setup();
+    fillNames();
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "ada@example.test" },
+    });
+    await screen.findByRole("option", { name: "Shift Lead" });
+    fireEvent.change(screen.getByLabelText("Invite role"), {
+      target: { value: ids.custom },
+    });
+    next();
+    fireEvent.click(screen.getByLabelText("Exclude from schedule"));
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      managementAndOwnerRefusals["employee.manager_location_required"],
+    );
+    expect(createEmployee).not.toHaveBeenCalled();
+    // Without the invitation nobody becomes a manager, so the record saves.
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(createEmployee).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(createEmployee).mock.calls[0]![1].invite_role_id).toBeNull();
   });
   it("does not silently replace a deleted selected role", async () => {
     const { client } = setup();

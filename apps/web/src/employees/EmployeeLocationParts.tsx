@@ -1,14 +1,12 @@
 import type { EmployeeDetail, EmployeeSummary } from "@newfork/shared";
-import { Button, ConfirmButton } from "@newfork/ui";
+import { ConfirmButton } from "@newfork/ui";
 import { Info, Lock, MapPin } from "lucide-react";
-import { useId, useState } from "react";
 import "./employee-location-parts.css";
 
 /*
- * Where somebody works and manages, on the Employees screen (FB-6.2.8):
- * Remove on the location's own row, a manager's Terminate shown switched off
- * with the reason, the admin's "manages without working there" list, and the
- * list's location cell with "No location" and "Manages" chips.
+ * Where somebody works, on the Employees screen (FB-6.2.8): Remove on the
+ * location's own row, a manager's Terminate shown switched off with the
+ * reason, and the list's location cell with its "No location" chip.
  */
 
 type Location = EmployeeDetail["locations"][number];
@@ -82,99 +80,17 @@ export function TerminateNote({
   );
 }
 
-type Option = { readonly id: string; readonly name: string; readonly archived?: boolean };
-
-/** The admin's "manages without working there" list, shaped like Locations above it. */
-export function ManagedLocationsField({
-  managed,
-  options,
-  editable,
-  saving,
-  onSave,
-}: {
-  readonly managed: EmployeeDetail["managed_locations"];
-  readonly options: readonly Option[];
-  readonly editable: boolean;
-  readonly saving: boolean;
-  readonly onSave: (locationIds: readonly string[]) => void;
-}) {
-  const saved = managed.map((location) => location.id);
-  const [picked, setPicked] = useState<readonly string[]>(saved);
-  const labelId = useId();
-  const helpId = useId();
-  const dirty = picked.length !== saved.length || picked.some((id) => !saved.includes(id));
-  const offered = options.filter((option) => !option.archived || picked.includes(option.id));
-  return (
-    <fieldset
-      className="employee-assignment-picker employee-managed-field"
-      disabled={saving}
-      aria-labelledby={labelId}
-      aria-describedby={helpId}
-    >
-      <legend>
-        <span id={labelId}>Manages without working there</span>
-        <span className="employee-field-requirement">Optional</span>
-      </legend>
-      <small id={helpId} className="employee-managed-help">
-        Manager access where they don't work: no shifts and no Schedule row there.
-      </small>
-      {editable ? (
-        <>
-          {offered.map((option) => (
-            <div key={option.id}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={picked.includes(option.id)}
-                  onChange={(event) =>
-                    setPicked((current) =>
-                      event.target.checked
-                        ? [...current, option.id]
-                        : current.filter((id) => id !== option.id),
-                    )
-                  }
-                />
-                <span>{option.name}</span>
-              </label>
-            </div>
-          ))}
-          {offered.length === 0 ? <p>No other locations.</p> : null}
-          {dirty ? (
-            <div className="employee-managed-save">
-              <Button
-                type="button"
-                aria-label="Save managed locations"
-                onClick={() => onSave(picked)}
-              >
-                {saving ? "Saving" : "Save"}
-              </Button>
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <ul className="employee-managed-readonly">
-          {managed.map((location) => (
-            <li key={location.id}>
-              <MapPin size={15} aria-hidden />
-              {location.name}
-            </li>
-          ))}
-        </ul>
-      )}
-    </fieldset>
-  );
-}
-
 function hasNoLocation(employee: EmployeeSummary): boolean {
   return employee.location_count === 0 && !employee.primary_location_name;
 }
 
-/** The Employees list's location cell: primary location, then "Manages" chips. */
+/** The Employees list's location cell: primary location, or the "No location" chip. */
 export function EmployeeLocationCell({ employee }: { readonly employee: EmployeeSummary }) {
-  const managed = employee.managed_location_names;
   return (
     <span className="employee-cell-with-icon employee-location-cell">
-      {!hasNoLocation(employee) ? (
+      {hasNoLocation(employee) ? (
+        <span className="employee-chip employee-chip-warning">No location</span>
+      ) : (
         <>
           <MapPin size={15} aria-hidden />
           <span className="employee-location-name">
@@ -182,27 +98,17 @@ export function EmployeeLocationCell({ employee }: { readonly employee: Employee
           </span>
           {employee.location_count > 1 ? <small>+{employee.location_count - 1}</small> : null}
         </>
-      ) : managed.length === 0 ? (
-        <span className="employee-chip employee-chip-warning">No location</span>
-      ) : null}
-      {managed.map((name) => (
-        <span key={name} className="employee-chip">Manages {name}</span>
-      ))}
+      )}
     </span>
   );
 }
 
-/** The same chips under the person's name, on the phone only (no location column there). */
+/** The same chip under the person's name, on the phone only (no location column there). */
 export function EmployeeLocationChips({ employee }: { readonly employee: EmployeeSummary }) {
-  const managed = employee.managed_location_names;
-  const noLocation = hasNoLocation(employee) && managed.length === 0;
-  if (!noLocation && managed.length === 0) return null;
+  if (!hasNoLocation(employee)) return null;
   return (
     <span className="employee-location-chips">
-      {noLocation ? <span className="employee-chip employee-chip-warning">No location</span> : null}
-      {managed.map((name) => (
-        <span key={name} className="employee-chip">Manages {name}</span>
-      ))}
+      <span className="employee-chip employee-chip-warning">No location</span>
     </span>
   );
 }

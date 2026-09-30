@@ -441,6 +441,7 @@ describe("employee directory routes", () => {
     ["employee.location_required", "employee requires a location and job unless remote or excluded from schedule"],
     ["employee.job_required", "employee requires a location and job unless remote or excluded from schedule"],
     ["employee.primary_job_required", "employee requires a primary job outside Management"],
+    ["employee.manager_location_required", "a manager needs a location to manage"],
   ] as const)("answers the save's %s refusal with 400, its key and a readable sentence (BL-218)", async (hint, raised) => {
     const code = hint.endsWith("_required") ? "22023" : "23514";
     const rpc = vi.fn(async () => ({ data: null, error: { code, message: raised, hint } }));
@@ -587,7 +588,6 @@ describe("employee directory routes", () => {
       ["access removal", "remove_employee_access_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/access`, undefined],
       ["photo removal", "remove_employee_avatar_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/avatar`, undefined],
       ["removal from a location", "remove_employee_from_location_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/locations/${locationId}`, undefined],
-      ["managed locations", "set_employee_managed_locations_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`, { locationIds: [locationId] }],
     ] as const;
     const noPermissions = { ...context, permissions: ["workspace.read"] as ActiveWorkspaceContext["permissions"] };
 
@@ -634,54 +634,8 @@ describe("employee directory routes", () => {
       await app.close();
     });
 
-    it("replaces a manager's managed locations with the list given", async () => {
-      const second = "11000000-0000-4000-8000-000000000002";
-      const rpc = vi.fn(async () => ({ data: { employee_id: employeeId, location_ids: [locationId, second] }, error: null }));
-      const app = buildApp({
-        contextResolver: { resolve: async () => noPermissions },
-        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
-      });
-      const response = await app.inject({
-        method: "PUT",
-        url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`,
-        headers: { authorization: "Bearer valid-token" },
-        payload: { locationIds: [locationId, second] },
-      });
-      expect(response.statusCode, response.body).toBe(200);
-      expect(response.json()).toEqual({ locationIds: [locationId, second] });
-      expect(rpc).toHaveBeenCalledWith("set_employee_managed_locations_service", {
-        actor_user_id: userId,
-        target_workspace_id: workspaceId,
-        target_employee_id: employeeId,
-        location_ids: [locationId, second],
-      });
-      await app.close();
-    });
-
-    it("answers managed locations for somebody who is not a manager with 400 and its reason", async () => {
-      const rpc = vi.fn(async () => ({
-        data: null,
-        error: { code: "22023", message: "Only a manager manages a location without working there", hint: "employee.not_a_manager", details: null },
-      }));
-      const app = buildApp({
-        contextResolver: { resolve: async () => context },
-        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
-      });
-      const response = await app.inject({
-        method: "PUT",
-        url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`,
-        headers: { authorization: "Bearer valid-token" },
-        payload: { locationIds: [] },
-      });
-      expect(response.statusCode).toBe(400);
-      expect(response.json()).toMatchObject({ reason: "employee.not_a_manager" });
-      await app.close();
-    });
-
     it.each([
       ["a bad location id", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/locations/not-a-uuid`, undefined],
-      ["a list that is not location ids", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`, { locationIds: ["x"] }],
-      ["no list at all", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`, {}],
     ] as const)("answers %s with 400 before asking anybody", async (_name, method, url, payload) => {
       const rpc = vi.fn();
       const app = buildApp({
@@ -694,7 +648,81 @@ describe("employee directory routes", () => {
       await app.close();
     });
 
+    // EMP-001: a manager manages only where they are assigned, so nothing is
+    // left to give. The route is gone, not refused.
+    it("has no route for managed locations", async () => {
+      const rpc = vi.fn();
+      const app = buildApp({
+        contextResolver: { resolve: async () => context },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({
+        method: "PUT",
+        url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/managed-locations`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: { locationIds: [locationId] },
+      });
+      expect(response.statusCode).toBe(404);
+      expect(rpc).not.toHaveBeenCalled();
+      await app.close();
+    });
+
     it.each(writes)("answers somebody who is not a member on the %s with 404 authz.not_member", async (_name, _rpcName, method, url, payload) => {
+      const rpc = vi.fn();
+      const app = buildApp({
+        contextResolver: { resolve: async () => null },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({ method, url, headers: { authorization: "Bearer valid-token" }, payload });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
+      expect(rpc).not.toHaveBeenCalled();
+      await app.close();
+    });
+  });
+
+  // BL-443 (EMP-001): these routes asked a permission of their own. They ask
+  // nobody now: the database function asks the core, and its "no" reaches the
+  // screen as 403 with its reason, or 404 to somebody who is not a member.
+  describe("preferred names and the emergency contact ask the core", () => {
+    const requestId = "57000000-0000-4000-8000-000000000001";
+    const routes = [
+      ["a preferred name", "request_employee_preferred_name_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/preferred-name`, { preferredName: "Ada" }, "published", 200],
+      ["the pending preferred names", "list_pending_preferred_names_service", "GET", `/v1/workspaces/${workspaceId}/preferred-names/pending`, undefined, [], 200],
+      ["a preferred name's answer", "decide_employee_preferred_name_service", "POST", `/v1/workspaces/${workspaceId}/preferred-names/${requestId}/decision`, { approve: true }, null, 204],
+    ] as const;
+    // No permission at all: the old gates stopped this person before the database was asked.
+    const noPermissions = { ...context, permissions: [] as ActiveWorkspaceContext["permissions"] };
+
+    it.each(routes)("hands %s to the database whatever permissions the caller holds", async (_name, rpcName, method, url, payload, answer, status) => {
+      const rpc = vi.fn(async () => ({ data: answer, error: null }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => noPermissions },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({ method, url, headers: { authorization: "Bearer valid-token" }, payload });
+      expect(response.statusCode, response.body).toBe(status);
+      expect(rpc).toHaveBeenCalledWith(rpcName, expect.objectContaining({ actor_user_id: userId, target_workspace_id: workspaceId }));
+      await app.close();
+    });
+
+    it.each(routes)("answers the core's no on %s with 403 and its reason", async (_name, rpcName, method, url, payload) => {
+      const rpc = vi.fn(async () => ({
+        data: null,
+        error: { code: "42501", message: "Not allowed", hint: "authz.missing_permission", details: "employee.decide_preferred_name" },
+      }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => noPermissions },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({ method, url, headers: { authorization: "Bearer valid-token" }, payload });
+      expect(rpc).toHaveBeenCalledWith(rpcName, expect.anything());
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({ error: "Not allowed", reason: "authz.missing_permission" });
+      await app.close();
+    });
+
+    it.each(routes)("answers somebody who is not a member on %s with 404 authz.not_member", async (_name, _rpcName, method, url, payload) => {
       const rpc = vi.fn();
       const app = buildApp({
         contextResolver: { resolve: async () => null },

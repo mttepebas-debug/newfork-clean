@@ -5,9 +5,7 @@ import {
   employeeInputSchema,
   employeeCreateCommandSchema,
   employeeLocationRemovalSchema,
-  employeeManagedLocationsSchema,
   type EmployeeLocationRemoval,
-  type EmployeeManagedLocations,
   employeeCreateResultSchema,
   employeeReferenceDataSchema,
   type EmployeeCreateCommand,
@@ -298,20 +296,6 @@ export async function removeEmployeeFromLocation(
   return employeeLocationRemovalSchema.parse(
     await request(workspaceId, `/${employeeId}/locations/${locationId}`, {
       method: "DELETE",
-    }),
-  );
-}
-
-/** A manager's locations managed without working there (S2), given whole. */
-export async function setEmployeeManagedLocations(
-  workspaceId: string,
-  employeeId: string,
-  locationIds: readonly string[],
-): Promise<EmployeeManagedLocations> {
-  return employeeManagedLocationsSchema.parse(
-    await request(workspaceId, `/${employeeId}/managed-locations`, {
-      method: "PUT",
-      body: JSON.stringify({ locationIds }),
     }),
   );
 }

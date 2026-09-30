@@ -34,7 +34,6 @@ export const authzActionKeys = [
   "employee.remove_from_location",
   "employee.request_preferred_name",
   "employee.save",
-  "employee.set_managed_locations",
   "employee.terminate",
   "exchange.apply_own",
   "exchange.approve",
@@ -119,7 +118,6 @@ export const targetedAuthzActions = {
   "employee.remove_access": { person: true, permission: "employees.manage" },
   "employee.remove_from_location": { person: true, permission: "employees.manage" },
   "employee.save": { person: true, permission: "employees.manage" },
-  "employee.set_managed_locations": { person: true, permission: "employees.manage" },
   "employee.terminate": { person: true, permission: "employees.archive" },
   "exchange.approve": { person: true, permission: "schedule.shift_change_requests.manage" },
   "exchange.offer_own": { person: true, permission: null, own: true },
@@ -172,8 +170,8 @@ export interface AuthzActor {
    */
   readonly status: "active" | "restricted" | "suspended" | "invited" | "removed" | "none";
   /**
-   * Where they work and where they only manage. A manager's reach; an empty
-   * list reaches nowhere.
+   * Where they are assigned. A manager's reach; an empty list reaches
+   * nowhere.
    */
   readonly locationIds: readonly string[];
   readonly permissions: readonly string[];
@@ -229,7 +227,7 @@ export function expected<A extends TargetedAuthzAction>(
   const high = actor.role === "owner" || actor.role === "admin";
   const places = target?.locations;
   const listed = Array.isArray(places) ? (places as readonly string[]) : null;
-  // A manager's reach: where they work or manage.
+  // A manager's reach: where they are assigned.
   const shares = listed !== null && listed.some((id) => actor.locationIds.includes(id));
   const covers =
     listed !== null && listed.length > 0 && listed.every((id) => actor.locationIds.includes(id));
@@ -269,9 +267,7 @@ export function expected<A extends TargetedAuthzAction>(
     case "employee.terminate":
     case "employee.archive":
     case "employee.remove_access":
-    case "employee.set_managed_locations":
-      // Admin and owner only (a manager's locations managed without working
-      // there are the admin's to give).
+      // Admin and owner only.
       if (isSelf) return false;
       if (actor.role === "owner") return true;
       return actor.role === "admin" && targetRank < rankOf.admin;

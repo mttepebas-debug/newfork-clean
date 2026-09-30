@@ -12,6 +12,11 @@
 // world is not built (expected() never reads it).
 //
 //   pnpm.cmd --filter @newfork/shared dump:authz-matrix
+//
+// A branch whose migration is not on the local database yet (it is applied
+// only when the branch reaches main) names it in AUTHZ_MATRIX_PRELUDE, paths
+// from the repository root separated by ";". It runs first, inside the same
+// rolled-back transaction, so the core answers as it will after the migration.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -25,6 +30,12 @@ const sqlPath = resolve(root, "supabase/tests/authorization_matrix.test.sql");
 const outPath = resolve(here, "../src/authorization-matrix.expected.json");
 const container = process.env.SUPABASE_DB_CONTAINER ?? "supabase_db_newfork-clean";
 
+const prelude = (process.env.AUTHZ_MATRIX_PRELUDE ?? "")
+  .split(";")
+  .filter(Boolean)
+  .map((file) => readFileSync(resolve(root, file), "utf8"))
+  .join("\n");
+
 const rules = matrixRuleSections(readFileSync(sqlPath, "utf8"));
 const runnable = rules
   // These two need the test world; expected() does not.
@@ -35,12 +46,13 @@ const runnable = rules
 
 const script = `
 begin;
+${prelude}
 ${runnable}
 select json_build_object(
   'coreActionKeys', (select json_agg(a.key order by a.key) from app_private.authz_actions a),
   'personas', (select json_agg(json_build_object(
       'label', p.label, 'tenant', p.tenant, 'class', p.class, 'status', p.status,
-      'locs', p.locs, 'permissionsRemoved', p.permissions_removed, 'manages', p.manages) order by p.label) from persona p),
+      'locs', p.locs, 'permissionsRemoved', p.permissions_removed) order by p.label) from persona p),
   'targets', (select json_agg(json_build_object(
       'label', t.label, 'kind', t.kind, 'tenant', t.tenant, 'locs', t.locs,
       'class', t.class, 'holder', t.holder) order by t.label) from target t),
