@@ -185,8 +185,8 @@ describe("the Management and Owner refusals (BL-218)", () => {
     ],
     [
       "employee.management_primary",
-      "A Management job is primary by its department and is not marked primary",
-      "A Management job can't be marked primary. Choose a job from another department as primary, or leave it empty if they only work in Management.",
+      "The Owner job is never marked primary",
+      "The Owner job can't be marked primary. Choose another job as primary, or leave it empty if they only hold the Owner job.",
     ],
     [
       "employee.owner_locations",
@@ -209,8 +209,8 @@ describe("the Management and Owner refusals (BL-218)", () => {
     ],
     [
       "employee.primary_job_required",
-      "employee requires a primary job outside Management",
-      "Mark one of the jobs outside Management as primary.",
+      "employee requires a primary job unless remote or excluded from schedule",
+      "Mark one of the jobs as primary, or turn on Remote or Exclude from schedule.",
     ],
   ] as const;
 

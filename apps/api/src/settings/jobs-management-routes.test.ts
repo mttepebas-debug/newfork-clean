@@ -187,7 +187,7 @@ describe("jobs management HTTP boundary", () => {
   });
   it.each([
     ["employee.owner_job", "The owner keeps the Owner job"],
-    ["employee.management_primary", "A Management job is primary by its department and is not marked primary"],
+    ["employee.management_primary", "The Owner job is never marked primary"],
   ] as const)("answers an assignment change's %s refusal with 400, its key and a readable sentence (BL-218)", async (hint, raised) => {
     const { app, rpc } = setup();
     rpc.mockResolvedValue({ data: null, error: { code: "23514", message: raised, hint } });

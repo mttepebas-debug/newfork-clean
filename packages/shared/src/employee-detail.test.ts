@@ -22,6 +22,7 @@ describe("employee detail private contact", () => {
     primary_job_name: null,
     job_count: 0,
     role_name: "Owner",
+    is_workspace_owner: true,
     display_status: "active",
     archived_at: null,
     revision: 1,
@@ -121,6 +122,7 @@ describe("employee detail allowed actions", () => {
     primary_job_name: null,
     job_count: 0,
     role_name: "Employee",
+    is_workspace_owner: false,
     display_status: "active",
     archived_at: null,
     revision: 1,
@@ -160,6 +162,14 @@ describe("employee detail allowed actions", () => {
     const { allowed: _allowed, ...withoutAllowed } = base;
     expect(() => employeeDetailSchema.parse(withoutAllowed)).toThrow();
   });
+
+  // EMP-001 C (BL-421): whose record is the owner's is the server's answer,
+  // never read off a role name.
+  it("refuses a detail that does not say whether the record is the owner's", () => {
+    const { is_workspace_owner: _owner, ...withoutOwner } = base;
+    expect(() => employeeDetailSchema.parse(withoutOwner)).toThrow();
+    expect(base.is_workspace_owner).toBe(false);
+  });
 });
 
 // FB-6.2 .7b (KK-35): where the reader may take somebody off comes from the
@@ -185,6 +195,7 @@ describe("employee detail locations", () => {
     primary_job_name: null,
     job_count: 0,
     role_name: "Manager",
+    is_workspace_owner: false,
     display_status: "active",
     archived_at: null,
     revision: 1,

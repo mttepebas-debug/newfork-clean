@@ -1510,6 +1510,15 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
     ).toThrow();
   });
 
+  it("says only the Owner job is never primary, and asks for a primary job whatever its department", () => {
+    expect(managementAndOwnerRefusals["employee.management_primary"]).toBe(
+      "The Owner job can't be marked primary. Choose another job as primary, or leave it empty if they only hold the Owner job.",
+    );
+    expect(managementAndOwnerRefusals["employee.primary_job_required"]).toBe(
+      "Mark one of the jobs as primary, or turn on Remote or Exclude from schedule.",
+    );
+  });
+
   it("finds the jobs under Management by its system key, whatever it is called", () => {
     const departments = [
       { id: kitchenId, system_key: null },
@@ -1540,17 +1549,17 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
     expected_revision: null,
   };
 
-  it("leaves the primary job to the database and words what it still checks (.3b)", () => {
-    // Only Management, or Management and Cook with no primary: the database
-    // decides (employee.primary_job_required), the form does not guess.
+  // EMP-001 C (S2): any job can be primary, a Management job too.
+  it("takes a Management job as the primary, leaves a missing one to the database and words what it checks", () => {
+    const complete = { ...managerOnly, primary_job_id: managerJobId };
+    expect(employeeInputSchema.safeParse(complete).success).toBe(true);
+    // No primary marked: the database asks for it (employee.primary_job_required).
     expect(employeeInputSchema.safeParse(managerOnly).success).toBe(true);
-    expect(employeeInputSchema.safeParse({ ...managerOnly, job_ids: [managerJobId, cookJobId] }).success).toBe(true);
-    // A location, a primary location and a job stay required, in the same words the API uses.
-    const noLocation = employeeInputSchema.safeParse({ ...managerOnly, location_ids: [], primary_location_id: null });
+    const noLocation = employeeInputSchema.safeParse({ ...complete, location_ids: [], primary_location_id: null });
     expect(noLocation.error?.issues.map((issue) => issue.message)).toEqual([
       managementAndOwnerRefusals["employee.location_required"],
     ]);
-    expect(employeeInputSchema.safeParse({ ...managerOnly, primary_location_id: null }).error?.issues[0]?.message).toBe(
+    expect(employeeInputSchema.safeParse({ ...complete, primary_location_id: null }).error?.issues[0]?.message).toBe(
       managementAndOwnerRefusals["employee.location_required"],
     );
     expect(employeeInputSchema.safeParse({ ...managerOnly, job_ids: [] }).error?.issues[0]?.message).toBe(

@@ -111,12 +111,12 @@ describe("employee create service", () => {
     ).toBe("sent");
     expect(fetch).not.toHaveBeenCalled();
   });
-  it("keeps the Management primary refusal's key and sentence (BL-218)", async () => {
+  it("keeps the Owner job's primary refusal's key and sentence (BL-218, EMP-001 C)", async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: null,
       error: {
         code: "23514",
-        message: "A Management job is primary by its department and is not marked primary",
+        message: "The Owner job is never marked primary",
         hint: "employee.management_primary",
       },
     });
@@ -133,7 +133,7 @@ describe("employee create service", () => {
       data: null,
       error: {
         code: "22023",
-        message: "employee requires a primary job outside Management",
+        message: "employee requires a primary job unless remote or excluded from schedule",
         hint: "employee.primary_job_required",
       },
     });

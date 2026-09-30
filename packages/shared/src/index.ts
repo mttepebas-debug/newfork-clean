@@ -871,7 +871,7 @@ export const managementAndOwnerRefusals = {
   "employee.owner_job":
     "The workspace owner always holds the Owner job, so it can't be removed from them.",
   "employee.management_primary":
-    "A Management job can't be marked primary. Choose a job from another department as primary, or leave it empty if they only work in Management.",
+    "The Owner job can't be marked primary. Choose another job as primary, or leave it empty if they only hold the Owner job.",
   "employee.owner_locations":
     "The workspace owner works at every location, so a location can't be removed from them.",
   "employee.location_required":
@@ -881,7 +881,8 @@ export const managementAndOwnerRefusals = {
   // Remote is assigned somewhere, excluded from the schedule or not.
   "employee.manager_location_required":
     "A manager needs at least one location to manage. Choose a location, or turn on Remote.",
-  "employee.primary_job_required": "Mark one of the jobs outside Management as primary.",
+  // EMP-001 S2: any job can be primary, Manager too; only the Owner job never is.
+  "employee.primary_job_required": "Mark one of the jobs as primary, or turn on Remote or Exclude from schedule.",
 } as const;
 /** The sentence for one of those hints; undefined for any other hint. */
 export function managementAndOwnerSentence(hint: string | null | undefined): string | undefined {
@@ -891,8 +892,9 @@ export function managementAndOwnerSentence(hint: string | null | undefined): str
 
 /**
  * The jobs under Management (BL-218). Management can be renamed, so it is
- * found by its department's system key, never by name. A Management job is
- * primary by its department and is never the stored primary.
+ * found by its department's system key, never by name. They sort last in
+ * Schedule's Job/Position and do not count towards finishing setup; any of
+ * them but the Owner job can be somebody's primary (EMP-001 S2).
  */
 export function managementJobIds(
   departments: readonly { readonly id: string; readonly system_key: "management" | null }[],
@@ -2630,6 +2632,9 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
     completed_documents: z.coerce.number().int().nonnegative(),
   }),
   events: z.array(employeeEventSchema),
+  // Whether this is the workspace owner's own record (EMP-001 C, BL-421). The
+  // server says it for every reader; a role name never does.
+  is_workspace_owner: z.boolean(),
   // What the reader may do to this record, answered by the authorization core
   // (get_employee_detail_service). The drawer opens its buttons from this,
   // never from a role name.
@@ -2693,11 +2698,12 @@ export const employeeInputSchema = z
       value.is_excluded_from_schedule === true ||
       value.is_owner_record === true;
     if (assignmentOptional) return;
-    // Whether a primary job is needed depends on which jobs sit under
-    // Management; the database decides (employee.primary_job_required, BL-218).
-    // So does whether a location is needed after all because they are a
-    // manager (employee.manager_location_required, EMP-001 K4): the role is
-    // not in this payload. managerLocationRefusal() is that rule for a form.
+    // The primary job is the database's to ask for
+    // (employee.primary_job_required): a picker marks the first job ticked,
+    // so a form has nothing to say first. So is whether a location is needed
+    // after all because they are a manager (employee.manager_location_required,
+    // EMP-001 K4): the role is not in this payload. managerLocationRefusal()
+    // is that rule for a form.
     if (value.location_ids.length === 0 || value.primary_location_id === null) {
       issue.addIssue({
         code: "custom",
