@@ -192,7 +192,6 @@ insert into service_class values
   ('rename_schedule_template_service', 'schedule.templates'),
   ('renew_account_deletion_work_service', 'exempt:worker'),
   ('reorder_document_types_service', 'settings.documents.write'),
-  ('reorder_organization_entities_service', 'settings.jobs.write'),
   ('reorder_shift_labels_service', 'settings.jobs.write'),
   ('reorder_shift_types_service', 'settings.jobs.write'),
   ('request_account_deletion_v2_service', 'account.self'),

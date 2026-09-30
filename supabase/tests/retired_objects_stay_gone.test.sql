@@ -274,6 +274,14 @@ insert into retired (kind, name, step) values
   ('trigger', 'jobs.jobs_under_management_are_primary', 'EMP-001'),
   ('function', 'management_jobs_are_primary_by_department', 'EMP-001'),
   ('function', 'is_management_job', 'EMP-001');
+-- BL-475: departments and jobs go by name; nobody orders them by hand. The
+-- reorder command goes, and the checks that allowed any position give way to
+-- *_sort_order_unused (always 0).
+insert into retired (kind, name, step) values
+  ('function', 'reorder_organization_entities_service', 'BL-475'),
+  ('function', 'reorder_organization_entities', 'BL-475'),
+  ('constraint', 'jobs_sort_order_check', 'BL-475'),
+  ('constraint', 'departments_sort_order_check', 'BL-475');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

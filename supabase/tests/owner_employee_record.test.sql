@@ -84,7 +84,7 @@ insert into public.jobs (workspace_id, name, department_id)
 values (
   (select workspace_id from owner_record_target),
   'Server',
-  (select id from public.departments where workspace_id = (select workspace_id from owner_record_target) limit 1)
+  (select id from public.departments where workspace_id = (select workspace_id from owner_record_target) and name = 'Kitchen')
 );
 
 select public.update_owner_onboarding_service(
@@ -142,7 +142,7 @@ insert into public.jobs (workspace_id, name, department_id)
 values (
   (select workspace_id from owner_record_target),
   'Host',
-  (select id from public.departments where workspace_id = (select workspace_id from owner_record_target) limit 1)
+  (select id from public.departments where workspace_id = (select workspace_id from owner_record_target) and name = 'Kitchen')
 );
 
 select is(

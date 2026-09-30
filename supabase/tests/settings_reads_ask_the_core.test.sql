@@ -149,14 +149,14 @@ select is(
 select is(
   array(select (j ->> 'name') || coalesce(':' || (j ->> 'system_key'), '') from jsonb_array_elements(
     public.read_settings_jobs_service(tests.user('s:owner'), tests.id('s')) -> 'jobs') j),
-  array['Manager', 'Owner:owner', 'Cook', 'Server'],
-  'Settings > Jobs reads the jobs, the kept Owner job marked as the system''s'
+  array['Cook', 'Manager', 'Owner:owner', 'Server'],
+  'Settings > Jobs reads the jobs A to Z, the kept Owner job marked as the system''s'
 );
 select is(
   array(select (d ->> 'name') || coalesce(':' || (d ->> 'system_key'), '') from jsonb_array_elements(
     public.read_settings_jobs_service(tests.user('s:owner'), tests.id('s')) -> 'departments') d),
-  array['Management:management', 'Kitchen'],
-  'and the departments, in the same answer'
+  array['Kitchen', 'Management:management'],
+  'and the departments A to Z, in the same answer'
 );
 
 select is(

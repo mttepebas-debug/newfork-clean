@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(15);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -45,23 +45,6 @@ select set_config('request.jwt.claim.sub', '11000000-0000-4000-8000-000000000001
 select is((select count(*)::integer from public.locations), 3, 'owner sees locations in both memberships');
 select is((select count(*)::integer from public.departments), 3, 'owner sees departments in both memberships');
 select is((select count(*)::integer from public.jobs), 1, 'owner sees organization jobs');
-set local role service_role;
-select lives_ok(
-  $$select public.reorder_organization_entities_service(
-    '11000000-0000-4000-8000-000000000001',
-    '21000000-0000-4000-8000-000000000001',
-    'departments',
-    array['51000000-0000-4000-8000-000000000003', '51000000-0000-4000-8000-000000000001']::uuid[]
-  )$$,
-  'owner can reorder every active department'
-);
-set local role authenticated;
-select set_config('request.jwt.claim.sub', '11000000-0000-4000-8000-000000000001', true);
-select is(
-  (select sort_order from public.departments where id = '51000000-0000-4000-8000-000000000003'),
-  0,
-  'department order is persisted'
-);
 select lives_ok($$update public.workspaces set name = 'Organization One Renamed' where id = '21000000-0000-4000-8000-000000000001'$$, 'owner can update organization identity');
 select is((select count(*)::integer from public.audit_events where action = 'workspace.identity_updated'), 1, 'organization identity change is audited');
 

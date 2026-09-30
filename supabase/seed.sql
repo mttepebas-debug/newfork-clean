@@ -285,12 +285,12 @@ begin
 
   insert into public.departments (id, workspace_id, name, color, sort_order) values
     ('12000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Dining Room', '#3C7A68', 0),
-    ('12000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Kitchen', '#8A6240', 10);
+    ('12000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Kitchen', '#8A6240', 0);
 
   insert into public.jobs (id, workspace_id, department_id, name, color, sort_order) values
     ('13000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '12000000-0000-4000-8000-000000000001', 'Server', '#4478A8', 0),
-    ('13000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '12000000-0000-4000-8000-000000000001', 'Bartender', '#7A5DA8', 10),
-    ('13000000-0000-4000-8000-000000000003', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '12000000-0000-4000-8000-000000000002', 'Line Cook', '#A85D4A', 20);
+    ('13000000-0000-4000-8000-000000000002', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '12000000-0000-4000-8000-000000000001', 'Bartender', '#7A5DA8', 0),
+    ('13000000-0000-4000-8000-000000000003', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '12000000-0000-4000-8000-000000000002', 'Line Cook', '#A85D4A', 0);
 
   insert into public.shift_types (
     id, workspace_id, name, color, default_start_time, default_end_time, sort_order
