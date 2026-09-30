@@ -152,8 +152,10 @@ $$;
 -- A workspace as its owner leaves setup: two locations (K = Kadikoy,
 -- B = Besiktas), one department (Kitchen) with two jobs (cook, server), and
 -- the owner filed as an employee at both locations with the Owner job only
--- (setup also makes Management and Owner; cook and server are assigned by hand).
--- Labels: <w>:owner, <w>:K, <w>:B, <w>:job:cook, <w>:job:server, <w>:kitchen.
+-- (setup also makes Management with Owner and Manager under it; cook, server and
+-- manager are assigned by hand).
+-- Labels: <w>:owner, <w>:K, <w>:B, <w>:job:cook, <w>:job:server, <w>:kitchen,
+-- <w>:management, <w>:job:owner, <w>:job:manager.
 create or replace function tests.world(w text)
 returns uuid
 language plpgsql
@@ -173,6 +175,16 @@ begin
     (select o.revision from public.workspace_onboarding o where o.workspace_id = workspace),
     'Olcay', null, 'Owner'
   );
+
+  -- Setup's first save made Management with Owner and Manager under it.
+  insert into tests.ids (label, id)
+  select w || ':management', d.id from public.departments d
+  where d.workspace_id = workspace and d.system_key = 'management'
+  union all
+  select w || ':job:' || lower(j.name), j.id
+  from public.jobs j join public.departments d on d.id = j.department_id
+  where j.workspace_id = workspace and d.system_key = 'management'
+  on conflict (label) do update set id = excluded.id;
 
   perform tests.as_browser(owner_id, format(
     $sql$insert into public.locations (id, workspace_id, name, short_name, street_address, city, region, postal_code, timezone)

@@ -1,14 +1,14 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(33);
+select plan(34);
 
 -- BL-218 .3a. Management can be renamed, so the screens cannot find it by its
 -- name: the Schedule read and the Employees drawer's references say which
 -- department is Management and which job is Owner (system_key). The Schedule
 -- read's primary_job_id is the job a person was actually given as primary,
--- or null: a job under Management is primary by its department and never
--- stored as primary, so it never comes back here either. The team board an
--- employee reads (Employee Hub) follows the same rule.
+-- or null. Any job can be that job but Owner (EMP-001): a job under Management
+-- is a job like any other. The team board an employee reads (Employee Hub)
+-- follows the same rule.
 -- Example: the owner works Owner and Cook and chose no primary; Schedule reads
 -- no primary job for them, not whichever job id sorts first.
 
@@ -19,12 +19,11 @@ $$;
 create function pg_temp.owner_job() returns uuid language sql as $$
   select j.id from public.jobs j where j.workspace_id = tests.id('mk') and j.system_key = 'owner'
 $$;
--- A second Management job, a Kitchen job and a job with no department, as the
--- owner adds them in Settings > Jobs.
+-- Setup made Manager under Management (mk:job:manager). A Kitchen job and a job
+-- with no department, as the owner adds them in Settings > Jobs.
 select tests.as_browser(tests.user('mk:owner'), format(
   $sql$insert into public.jobs (id, workspace_id, name, department_id)
-       values (%L, %L, 'Manager', %L), (%L, %L, 'Host', %L), (%L, %L, 'Dishwasher', null)$sql$,
-  tests.remember('mk:job:manager', gen_random_uuid()), tests.id('mk'), pg_temp.management(),
+       values (%L, %L, 'Host', %L), (%L, %L, 'Dishwasher', null)$sql$,
   tests.remember('mk:job:host', gen_random_uuid()), tests.id('mk'), tests.id('mk:kitchen'),
   tests.remember('mk:job:dishwasher', gen_random_uuid()), tests.id('mk')));
 -- Another workspace with its own Kitchen, Management, Cook, Owner...
@@ -120,19 +119,19 @@ select is(pg_temp.primary_of('mk:bora'), tests.id('mk:job:cook'),
 select tests.person('mk', 'cemre', 'employee', array['K'], array['cook']);
 select pg_temp.assign('mk:cemre', 'manager', true);
 select pg_temp.assign('mk:cemre', 'cook', false);
-select is(pg_temp.primary_of('mk:cemre'), null::uuid,
-  'somebody who only manages has no primary job');
+select is(pg_temp.primary_of('mk:cemre'), tests.id('mk:job:manager'),
+  'somebody left with Manager alone has Manager as their primary job');
 -- Deniz hosts (primary) and cooks; then Host moves under Management.
 select tests.person('mk', 'deniz', 'employee', array['K'], array['host', 'cook']);
 select tests.as_browser(tests.user('mk:owner'), format(
   'update public.jobs set department_id = %L where id = %L', pg_temp.management(), tests.id('mk:job:host')));
-select is(pg_temp.primary_of('mk:deniz'), null::uuid,
-  'once their primary job moves under Management, they have no primary job, not Cook by id order');
+select is(pg_temp.primary_of('mk:deniz'), tests.id('mk:job:host'),
+  'a primary job moved under Management is still their primary job');
 select is(
   (select count(*)::integer from jsonb_array_elements(pg_temp.grid() -> 'employees') e
    join public.jobs j on j.id = (e ->> 'primary_job_id')::uuid
-   where j.department_id = pg_temp.management()),
-  0, 'no primary job the Schedule reads is a Management job');
+   where j.system_key = 'owner'),
+  0, 'no primary job the Schedule reads is the Owner job');
 
 -- The team board an employee reads (Employee Hub > Schedule) says the same.
 create function pg_temp.primaries(answer jsonb, among uuid[]) returns text[] language sql as $$
@@ -145,8 +144,8 @@ create temp table mk_board as
   select public.get_employee_schedule_board_service(tests.user('mk:bora'), tests.id('mk'), tests.week(0)) as answer;
 select is(
   pg_temp.primaries((select answer from mk_board), array[tests.id('mk:deniz'), tests.id('mk:cemre')]),
-  array['Cemre Person:none', 'Deniz Person:none'],
-  'on the team board Cemre and Deniz have no primary job either');
+  array['Cemre Person:Manager', 'Deniz Person:Host'],
+  'on the team board Cemre and Deniz have the same primary jobs');
 select is(
   pg_temp.primaries((select answer from mk_board),
     array(select (e ->> 'id')::uuid from mk_board, jsonb_array_elements(answer -> 'employees') e)),
@@ -171,24 +170,34 @@ select ok(
   'the grid and the team board read Management, Owner and the stored primary from one place');
 
 -- Employees > the list's Job column: the stored primary job; failing that the
--- first Management job in the catalog's order, then the first job (as the
--- Schedule places the row). Emre is Remote, cooks and chose no primary.
+-- Owner job (the owner's, never stored as primary), then the first job in the
+-- catalog's order, whatever its department (as the Schedule places the row).
+-- Emre is Remote, washes dishes and manages, and chose no primary.
 select tests.person('mk', 'emre', 'employee', null, null);
 select public.save_employee_service(
   tests.user('mk:owner'), tests.id('mk'), e.id, e.first_name, e.middle_name, e.last_name, e.preferred_name,
   e.invitation_email, e.start_date, e.internal_note, '{}'::uuid[], null,
-  array[tests.id('mk:job:cook')], null, true, false, e.revision)
+  array[tests.id('mk:job:dishwasher'), tests.id('mk:job:manager')], null, true, false, e.revision)
 from public.employee_profiles e where e.id = tests.id('mk:emre');
 create function pg_temp.listed_job(w text, person text) returns text language sql as $$
   select l.primary_job_name
   from public.list_employees_service(tests.user(w || ':owner'), tests.id(w), false, '', 'all', 200, 0) l
   where l.id = tests.id(person)
 $$;
-select is(pg_temp.listed_job('mk', 'mk:cemre'), 'Manager', 'the list shows Manager for somebody who only manages');
+select is(pg_temp.listed_job('mk', 'mk:cemre'), 'Manager', 'the list shows Manager for somebody whose primary job it is');
 select is(pg_temp.listed_job('mk', 'mk:bora'), 'Cook', 'and Cook for somebody who cooks (primary) and manages');
-select is(pg_temp.listed_job('mk', 'mk:deniz'), 'Host', 'and their Management job, Host, before Cook when nothing is primary');
-select is(pg_temp.listed_job('mk', 'mk:emre'), 'Cook', 'and Cook for a Remote cook with no primary job');
+select is(pg_temp.listed_job('mk', 'mk:deniz'), 'Host', 'and Host, her primary job, though it now sits under Management');
+select is(pg_temp.listed_job('mk', 'mk:emre'), 'Dishwasher',
+  'and the first job, Dishwasher, for somebody with no primary job: a Management job does not go first');
 select is(pg_temp.listed_job('mx', 'mx:owner'), 'Owner', 'and Owner for an owner who works only the Owner job');
+-- The other owner also cooks and chose no primary.
+select public.save_employee_service(
+  tests.user('mx:owner'), tests.id('mx'), e.id, e.first_name, e.middle_name, e.last_name, e.preferred_name,
+  e.invitation_email, e.start_date, e.internal_note, array[tests.id('mx:K'), tests.id('mx:B')], tests.id('mx:K'),
+  array[(select j.id from public.jobs j where j.workspace_id = tests.id('mx') and j.system_key = 'owner'), tests.id('mx:job:cook')],
+  null, e.is_remote, e.is_excluded_from_schedule, e.revision)
+from public.employee_profiles e where e.id = tests.id('mx:owner');
+select is(pg_temp.listed_job('mx', 'mx:owner'), 'Owner', 'and still Owner once they also cook without choosing a primary');
 
 -- 3. The drawer's references carry each job's department and the departments --------
 

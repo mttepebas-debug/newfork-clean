@@ -266,6 +266,14 @@ insert into retired (kind, name, step) values
   ('trigger', 'workspace_memberships.managed_locations_follow_role', 'EMP-001'),
   ('action', 'employee.set_managed_locations', 'EMP-001'),
   ('constraint', 'workspace_memberships_id_workspace_id_role_key', 'EMP-001');
+-- EMP-001 C: a job under Management is an ordinary job and can be primary;
+-- only the Owner job never is. The trigger that cleared the primary mark of a
+-- job moved under Management goes, with the helper that asked "is this a
+-- Management job".
+insert into retired (kind, name, step) values
+  ('trigger', 'jobs.jobs_under_management_are_primary', 'EMP-001'),
+  ('function', 'management_jobs_are_primary_by_department', 'EMP-001'),
+  ('function', 'is_management_job', 'EMP-001');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
