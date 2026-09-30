@@ -32,14 +32,33 @@ import {
   sameSignerName,
 } from "./document-rules";
 
-export function DocumentReviewDrawer(props: {
+// What a person typed into a draft's own fields. Nothing stores it before
+// Submit, so it is kept here against the one draft version it was typed for.
+type TypedDraftFields = {
+  draftId: string;
+  expiry: string;
+  metadata: Record<string, string | number | null>;
+};
+
+type DrawerProps = {
   audience: DocumentAudience;
   userId: string;
   requirementId: string;
   canReview: boolean;
   onClose: () => void;
   onNext?: () => void;
-}) {
+};
+
+// The list keeps one drawer open and moves it from document to document;
+// each document starts clean, so nothing typed for one returns on a way back.
+export function DocumentReviewDrawer(props: DrawerProps) {
+  return <DocumentDrawer key={props.requirementId} {...props} />;
+}
+
+function DocumentDrawer(props: DrawerProps) {
+  // Held above the content, which every revision rebuilds: uploading, removing
+  // a file and deferring all bump the revision while the draft stays the same.
+  const [typed, setTyped] = useState<TypedDraftFields | null>(null);
   const query = useQuery({
     queryKey: documentQueryKey(
       props.audience,
@@ -54,6 +73,8 @@ export function DocumentReviewDrawer(props: {
         key={`${query.data.obligation.id}:${query.data.obligation.revision}`}
         {...props}
         detail={query.data}
+        typed={typed}
+        onTyped={setTyped}
       />
     );
   return (
@@ -83,14 +104,10 @@ export function DocumentReviewDrawer(props: {
 function DocumentDetailContent({
   detail,
   ...props
-}: {
+}: DrawerProps & {
   detail: DocumentDetail;
-  audience: DocumentAudience;
-  userId: string;
-  requirementId: string;
-  canReview: boolean;
-  onClose: () => void;
-  onNext?: () => void;
+  typed: TypedDraftFields | null;
+  onTyped: (fields: TypedDraftFields) => void;
 }) {
   const cache = useQueryClient();
   const obligation = detail.obligation;
@@ -118,10 +135,13 @@ function DocumentDetailContent({
       note: f.note,
     })),
   );
-  const [expiry, setExpiry] = useState(draft?.expiry_date ?? "");
-  const [metadata, setMetadata] = useState<
-    Record<string, string | number | null>
-  >(draft?.metadata ?? {});
+  // Typed for another draft (a correction opened after a rejection) is not
+  // this draft's: the draft's own saved values show instead.
+  const kept = draft && props.typed?.draftId === draft.id ? props.typed : null;
+  const expiry = kept?.expiry ?? draft?.expiry_date ?? "";
+  const metadata = kept?.metadata ?? draft?.metadata ?? {};
+  const type = (fields: Partial<Omit<TypedDraftFields, "draftId">>) =>
+    props.onTyped({ draftId: draft!.id, expiry, metadata, ...fields });
   const [notice, setNotice] = useState("");
   const [exemptionLocked, setExemptionLocked] = useState(false);
   const [referenceTimezone, setReferenceTimezone] = useState(
@@ -639,7 +659,7 @@ function DocumentDetailContent({
                         type="date"
                         required={obligation.tracks_expiry}
                         value={expiry}
-                        onChange={(e) => setExpiry(e.target.value)}
+                        onChange={(e) => type({ expiry: e.target.value })}
                       />
                     </label>
                     {obligation.settings.extra_fields.map((field) => (
@@ -653,10 +673,12 @@ function DocumentDetailContent({
                           required={field.required}
                           value={String(metadata[field.key] ?? "")}
                           onChange={(e) =>
-                            setMetadata((v) => ({
-                              ...v,
-                              [field.key]: e.target.value,
-                            }))
+                            type({
+                              metadata: {
+                                ...metadata,
+                                [field.key]: e.target.value,
+                              },
+                            })
                           }
                         />
                       </label>

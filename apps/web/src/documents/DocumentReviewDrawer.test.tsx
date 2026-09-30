@@ -106,19 +106,22 @@ function page(selfOnly = false) {
   });
   // Every mutation ends in the same refresh; the spy is how a test pins it.
   const invalidate = vi.spyOn(cache, "invalidateQueries");
-  render(
+  const drawer = (requirementId: string) => (
     <QueryClientProvider client={cache}>
       <DocumentReviewDrawer
         audience={{ workspaceId: "workspace", selfOnly }}
         userId="user"
-        requirementId="requirement"
+        requirementId={requirementId}
         canReview={!selfOnly}
         onClose={onClose}
         onNext={onNext}
       />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
-  return { onClose, onNext, invalidate };
+  const { rerender } = render(drawer("requirement"));
+  // The list keeps one drawer mounted and only changes which document it shows.
+  const show = (requirementId: string) => rerender(drawer(requirementId));
+  return { onClose, onNext, invalidate, cache, show };
 }
 beforeEach(() => {
   vi.clearAllMocks();
@@ -743,4 +746,188 @@ describe("employee surface", () => {
       ).toBeTruthy();
     },
   );
+});
+
+// U59: the expiry date and the extra fields are stored nowhere until Submit,
+// and uploading, removing a file or deferring each bump the revision first.
+describe("typed draft fields", () => {
+  beforeEach(() => {
+    vi.mocked(deferInitialDocument).mockResolvedValue({});
+    vi.mocked(removeDocumentDraftFile).mockResolvedValue({});
+    vi.mocked(submitDocument).mockResolvedValue({});
+    vi.mocked(uploadDocument).mockResolvedValue({});
+  });
+  const back = {
+    ...detail().submissions[0]!.files[0]!,
+    id: "back",
+    filename: "back.pdf",
+  };
+  function licensed(revision = 1) {
+    const doc = withDraft();
+    doc.obligation.revision = revision;
+    doc.obligation.tracks_expiry = true;
+    doc.obligation.settings.extra_fields = [
+      { key: "license_number", label: "License number", kind: "text", required: true },
+    ];
+    doc.initial_deferral = { allowed: true, reason: null };
+    return doc;
+  }
+  // A correction draft opens with what the rejected version carried.
+  function correction(revision = 1) {
+    const doc = licensed(revision);
+    doc.submissions[0]!.id = "correction";
+    doc.submissions[0]!.expiry_date = "2026-12-31";
+    doc.submissions[0]!.metadata = { license_number: "B-9" };
+    return doc;
+  }
+  const fields = () => ({
+    expiry: (
+      screen.getByLabelText("Expiration date (required)") as HTMLInputElement
+    ).value,
+    license: (
+      screen.getByLabelText("License number (required)") as HTMLInputElement
+    ).value,
+  });
+  const typed = { expiry: "2027-03-31", license: "A-123" };
+  async function type() {
+    await screen.findByRole("button", { name: "Submit document" });
+    fireEvent.change(screen.getByLabelText("Expiration date (required)"), {
+      target: { value: typed.expiry },
+    });
+    fireEvent.change(screen.getByLabelText("License number (required)"), {
+      target: { value: typed.license },
+    });
+  }
+  const pick = () =>
+    fireEvent.change(screen.getByLabelText("Upload document"), {
+      target: {
+        files: [new File(["pdf"], "back.pdf", { type: "application/pdf" })],
+      },
+    });
+  const close = () =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close document details" }),
+    );
+
+  it("keeps them through a second upload and submits them with the new revision", async () => {
+    vi.mocked(getDocument).mockResolvedValue(licensed());
+    page(true);
+    await type();
+    const after = licensed(2);
+    after.submissions[0]!.files.push(back);
+    vi.mocked(getDocument).mockResolvedValue(after);
+    pick();
+    await screen.findByRole("button", { name: "back.pdf" });
+    expect(fields()).toEqual(typed);
+    fireEvent.click(screen.getByRole("button", { name: "Submit document" }));
+    await waitFor(() =>
+      expect(submitDocument).toHaveBeenCalledWith(employee, "requirement", {
+        revision: 2,
+        submission_id: "submission",
+        expiry_date: "2027-03-31",
+        metadata: { license_number: "A-123" },
+      }),
+    );
+  });
+  it("keeps them when a draft file is removed", async () => {
+    const before = licensed();
+    before.submissions[0]!.files.push(back);
+    vi.mocked(getDocument).mockResolvedValue(before);
+    page(true);
+    await type();
+    vi.mocked(getDocument).mockResolvedValue(licensed(2));
+    fireEvent.click(screen.getByRole("button", { name: "Remove back.pdf" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "back.pdf" })).toBeNull(),
+    );
+    expect(fields()).toEqual(typed);
+  });
+  it("keeps them when the deferral reason is saved", async () => {
+    vi.mocked(getDocument).mockResolvedValue(licensed());
+    page(true);
+    await type();
+    fireEvent.change(screen.getByLabelText("Reason"), {
+      target: { value: "Embassy appointment moved" },
+    });
+    const after = licensed(2);
+    after.initial_deferral = { allowed: true, reason: "Embassy appointment moved" };
+    vi.mocked(getDocument).mockResolvedValue(after);
+    fireEvent.click(screen.getByRole("button", { name: "Save reason" }));
+    // Save is off because the reason is now the saved one, while Submit is
+    // back on: only the rebuilt content shows both.
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Save reason" }),
+      ).toHaveProperty("disabled", true);
+      expect(
+        screen.getByRole("button", { name: "Submit document" }),
+      ).toHaveProperty("disabled", false);
+    });
+    expect(fields()).toEqual(typed);
+  });
+  it("still asks before closing once a command has gone through", async () => {
+    vi.mocked(getDocument).mockResolvedValue(licensed());
+    const { onClose } = page(true);
+    await type();
+    const after = licensed(2);
+    after.submissions[0]!.files.push(back);
+    vi.mocked(getDocument).mockResolvedValue(after);
+    pick();
+    await screen.findByRole("button", { name: "back.pdf" });
+    close();
+    expect(await screen.findByText("Discard unsaved changes?")).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+  it("keeps them when the upload fails", async () => {
+    vi.mocked(getDocument).mockResolvedValue(licensed());
+    vi.mocked(uploadDocument).mockRejectedValue(new Error("Upload unavailable"));
+    page(true);
+    await type();
+    pick();
+    await screen.findByText("Upload unavailable");
+    expect(fields()).toEqual(typed);
+  });
+  it("shows the draft's saved values while nothing is typed, across a command", async () => {
+    vi.mocked(getDocument).mockResolvedValue(correction());
+    const { onClose } = page(true);
+    await screen.findByRole("button", { name: "Submit document" });
+    const saved = { expiry: "2026-12-31", license: "B-9" };
+    expect(fields()).toEqual(saved);
+    const after = correction(2);
+    after.submissions[0]!.files.push(back);
+    vi.mocked(getDocument).mockResolvedValue(after);
+    pick();
+    await screen.findByRole("button", { name: "back.pdf" });
+    expect(fields()).toEqual(saved);
+    close();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+  it("drops them when the document comes back with another draft", async () => {
+    vi.mocked(getDocument).mockResolvedValue(licensed());
+    const { cache, onClose } = page(true);
+    await type();
+    // Submitted in another tab, rejected, reopened as a correction draft.
+    vi.mocked(getDocument).mockResolvedValue(correction(2));
+    await cache.invalidateQueries();
+    await waitFor(() =>
+      expect(fields()).toEqual({ expiry: "2026-12-31", license: "B-9" }),
+    );
+    close();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+  it("drops them when the drawer moves to another document and back", async () => {
+    const other = correction();
+    other.obligation.id = "other";
+    vi.mocked(getDocument).mockImplementation(async (_audience, id) =>
+      id === "other" ? other : licensed(),
+    );
+    const { show } = page(true);
+    await type();
+    show("other");
+    await waitFor(() =>
+      expect(fields()).toEqual({ expiry: "2026-12-31", license: "B-9" }),
+    );
+    show("requirement");
+    await waitFor(() => expect(fields()).toEqual({ expiry: "", license: "" }));
+  });
 });
