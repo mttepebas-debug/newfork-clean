@@ -47,6 +47,8 @@
   --theme-published-hover: #0b6f53;
   --theme-published-partial: #b45309;
   --theme-published-partial-hover: #92400e;
+  /* The edge every Schedule top bar control shares (G14); value unchanged. */
+  --theme-border-control: #aeb9b4;
   /* The dot of a location, or the chip of a person, that has no colour of its own. */
   --theme-swatch-fallback: #64748b;
   --theme-swatch-fallback-soft: #cbd5e1;
@@ -3514,7 +3516,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid #aeb9b4;
+  border: 1px solid var(--theme-border-control);
   border-radius: 5px;
   padding: 0 12px;
   background: var(--theme-surface);
@@ -7466,7 +7468,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-shift-type-picker button {
   min-height: 27px;
   max-width: 100%;
-  border: 1px solid #d6ded9;
+  border: 1px solid var(--theme-muted);
   border-radius: 6px;
   padding: 4px 10px;
   background: transparent;

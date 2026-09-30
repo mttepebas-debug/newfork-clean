@@ -1360,6 +1360,13 @@ describe("ShiftQuickEditor styles", () => {
     .map((match) => match[1]!.replace(/\s+/g, " "))
     .join("\n");
 
+  // BL-345 (WCAG 1.4.11): a resting chip's edge is the field-edge token, 5.1:1 on white.
+  it("draws a resting shift type chip with the field edge, not a faint one", () => {
+    const chip = bodyOf(".schedule-shift-type-picker button");
+    expect(chip).toContain("border: 1px solid var(--theme-muted)");
+    expect(chip).not.toContain("#d6ded9");
+  });
+
   // BL-293 (WCAG 2.1 2.4.7): one visible focus ring everywhere, never hover alone.
   it("never hides the focus ring on a control of the editor", () => {
     const editorControls = /\.schedule-(quick-select|break-options|count-stepper|dialog-actions|shift-type-picker|time-input)\b/;

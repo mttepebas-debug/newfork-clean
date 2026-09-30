@@ -190,6 +190,9 @@ describe("DraftDropdownMenu", () => {
     expect(rules.length).toBeGreaterThan(8);
     for (const rule of rules) expect(rule[2], rule[1]!.trim()).not.toMatch(rawColour);
     expect(styles).not.toContain("#a53636");
+    // The edge every top bar control shares.
+    expect(styles).toContain("border: 1px solid var(--theme-border-control)");
+    expect(styles.match(/#aeb9b4/g)).toHaveLength(1);
   });
 
   it("names the live draft and lists it last, after the other drafts", () => {
