@@ -16,6 +16,8 @@
 .nf-tooltip {
   position: fixed;
   z-index: 200;
+  /* Its own width, not what is left between `left` and the window's edge. */
+  width: max-content;
   max-width: 240px;
   transform: translate(-50%, -100%);
   border-radius: 6px;
