@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { LocationPublicationChipStatus } from "../lib/scheduleFilterModel";
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
+import { countLabel } from "./PublishPreflightPanel";
 
 export function UnpublishScheduleDialog({
   open,
@@ -143,7 +144,7 @@ export function UnpublishScheduleDialog({
                     </strong>
                     <small>
                       {typeof removedCount === "number"
-                        ? `${removedCount} live shifts will be removed`
+                        ? `${countLabel(removedCount, "live shift", "live shifts")} will be removed`
                         : "Live shifts will be removed"}
                     </small>
                   </span>
@@ -202,7 +203,7 @@ export function UnpublishScheduleDialog({
           >
             {busy ? <Loader2 size={15} aria-hidden /> : <EyeOff size={15} aria-hidden />}
             {hasLocationPicker
-              ? `Unpublish ${selectedLocationIds.length} locations`
+              ? `Unpublish ${countLabel(selectedLocationIds.length, "location", "locations")}`
               : "Unpublish"}
           </ConfirmButton>
         </footer>

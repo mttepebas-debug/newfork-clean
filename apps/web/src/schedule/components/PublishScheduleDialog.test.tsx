@@ -5,7 +5,7 @@ import type {
   ScheduleReadModel,
   SchedulePublicationPreview,
 } from "@newfork/shared/schedule";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ScheduleRequestError } from "../schedule-data";
@@ -168,8 +168,24 @@ describe("PublishScheduleDialog", () => {
     const panel = review.querySelector("[data-publish-preflight]");
     const diff = review.querySelector(".schedule-publication-diff");
     expect(panel && diff && panel.compareDocumentPosition(diff) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // One summary of the findings, not the dialog's and the panel's both.
-    expect(screen.getAllByText("1 risk")).toHaveLength(1);
+    // One summary of the findings in the body, not the dialog's and the panel's both.
+    expect(within(review).getAllByText("1 risk")).toHaveLength(1);
+  });
+
+  // BL-311: the footer counted "1 blockers · 1 risks".
+  it.each([
+    [1, "1 blocker · 1 risk"],
+    [2, "2 blockers · 2 risks"],
+  ])("counts %i blocker and risk in the footer in the right number", async (count, summary) => {
+    const findings = Array.from({ length: count }, (_unused, index) => [
+      publishFinding({ id: `blocker-finding-000${index}`, code: "double_booking", shift_ids: [`aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa${index}`] }),
+      publishFinding({ id: `risk-finding-000${index}`, code: "double_booking", tier: "risk", shift_ids: [`bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb${index}`] }),
+    ]).flat();
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue({ ...preview, status: "override_required", findings })} onPublish={vi.fn()} />);
+
+    await clickReadyNext();
+    await screen.findByTestId("schedule-publish-preview");
+    expect(document.querySelector(".schedule-publication-footer-summary")?.textContent).toBe(summary);
   });
 
   it("never labels another draft's counts with the newly chosen draft's name", async () => {
@@ -489,7 +505,7 @@ describe("PublishScheduleDialog", () => {
     expect(
       screen.getByRole("dialog", { name: "Select locations to publish" }),
     ).toBeTruthy();
-    expect(screen.getByText("1 of 1 locations selected")).toBeTruthy();
+    expect(screen.getByText("1 of 1 location selected")).toBeTruthy();
     await waitFor(() =>
       expect(onPreview).toHaveBeenCalledWith(draft.id, [location.id], {}),
     );
@@ -511,6 +527,7 @@ describe("PublishScheduleDialog", () => {
     ).toBeNull();
     await clickReadyNext();
     expect(screen.getByRole("dialog", { name: "Notify employees" })).toBeTruthy();
+    expect(screen.getByText("1 of 1 employee will be notified")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
     expect(screen.getByText("1 of 1 selected")).toBeTruthy();
@@ -867,7 +884,7 @@ describe("PublishScheduleDialog", () => {
         "Alex Rivera: 2026-08-17, 4:00 PM - 7:00 PM and 6:00 PM - 10:00 PM",
       ),
     ).toBeTruthy();
-    expect(screen.getByText("1 conflicts must be fixed")).toBeTruthy();
+    expect(screen.getByText("1 conflict must be fixed")).toBeTruthy();
   });
 
   it("opens document conflicts for review without clearing publish state", async () => {
@@ -935,7 +952,7 @@ describe("PublishScheduleDialog", () => {
         requirement_id: documentConflict.requirement_id,
       }),
     );
-    expect(screen.getByText("1 conflicts must be fixed")).toBeTruthy();
+    expect(screen.getByText("1 conflict must be fixed")).toBeTruthy();
 
     view.rerender(
       <PublishScheduleDialog
@@ -950,7 +967,7 @@ describe("PublishScheduleDialog", () => {
       />,
     );
     await waitFor(() =>
-      expect(screen.queryByText("1 conflicts must be fixed")).toBeNull(),
+      expect(screen.queryByText("1 conflict must be fixed")).toBeNull(),
     );
     expect(onPreview).toHaveBeenLastCalledWith(draft.id, [location.id], {});
   });
@@ -1012,5 +1029,15 @@ describe("PublishScheduleDialog", () => {
     expect(
       await screen.findByText("All 3 live shifts at this location will be removed."),
     ).toBeTruthy();
+  });
+
+  it("names a single live shift in the singular when it is the only one removed (BL-311)", async () => {
+    const onePreview: SchedulePublicationPreview = {
+      ...preview,
+      locations: [{ ...preview.locations[0]!, active_publication_id: "66666666-6666-4666-8666-666666666666", active_version: 2, current_shift_count: 1, next_shift_count: 0, added: 0, updated: 0, removed: 1, unchanged: 0, affected_employee_ids: [] }],
+    };
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(onePreview)} onPublish={vi.fn()} />);
+
+    expect(await screen.findByText("The only live shift at this location will be removed.")).toBeTruthy();
   });
 });

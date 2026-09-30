@@ -195,7 +195,7 @@ export function PublishScheduleDialog({
   const hasDrafts = drafts.length > 0;
   const hasDepartmentSelection =
     departments.length === 0 || selectedDepartmentKeys.length > 0;
-  const selectedLocationSummary = `${locationIds.length} of ${locations.length} locations selected`;
+  const selectedLocationSummary = `${locationIds.length} of ${countLabel(locations.length, "location", "locations")} selected`;
   const draftIdsKey = drafts.map((draft) => draft.id).join("|");
   const locationIdsKey = locations.map((location) => location.id).join("|");
   const initialLocationIdsKey = (initialLocationIds ?? []).join("|");
@@ -729,8 +729,9 @@ export function PublishScheduleDialog({
                       {selected && liveShiftCount > 0 && removed === liveShiftCount ? (
                         <span className="schedule-publication-location-warning">
                           <AlertTriangle size={13} aria-hidden />
-                          All {liveShiftCount} live shifts at this location will be
-                          removed.
+                          {liveShiftCount === 1
+                            ? "The only live shift at this location will be removed."
+                            : `All ${countLabel(liveShiftCount, "live shift", "live shifts")} at this location will be removed.`}
                         </span>
                       ) : null}
                       {selected && summary?.changed_since_start ? (
@@ -907,20 +908,20 @@ export function PublishScheduleDialog({
           <span className="schedule-publication-footer-summary">
             {wizardStep === 1
               ? scheduleConflicts.length
-                ? `${scheduleConflicts.length} conflicts must be fixed`
+                ? `${countLabel(scheduleConflicts.length, "conflict", "conflicts")} must be fixed`
                 : selectedLocationSummary
               : wizardStep === 2
                 ? [
                     hardFindings.length + softFindings.length
-                      ? `${hardFindings.length + softFindings.length} blockers`
+                      ? countLabel(hardFindings.length + softFindings.length, "blocker", "blockers")
                       : null,
-                    riskFindings.length ? `${riskFindings.length} risks` : null,
+                    riskFindings.length ? countLabel(riskFindings.length, "risk", "risks") : null,
                     newConflicts.length ? countLabel(newConflicts.length, "schedule conflict", "schedule conflicts") : null,
                     availabilityWarnings.length ? countLabel(availabilityWarnings.length, "availability warning", "availability warnings") : null,
                   ]
                     .filter(Boolean)
                     .join(" · ") || "No blockers or risks"
-                : `${notifyEmployeeIds.length} of ${affectedEmployeeIds.length} employees will be notified`}
+                : `${notifyEmployeeIds.length} of ${countLabel(affectedEmployeeIds.length, "employee", "employees")} will be notified`}
           </span>
           {wizardStep > 1 ? (
             <button

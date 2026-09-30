@@ -4597,7 +4597,11 @@ describe("App", () => {
     readModelMock.mockResolvedValue(scheduleFixture);
   });
 
-  it("returns to the live schedule after publishing a draft preview", async () => {
+  // BL-311: both toasts count in the singular ("1 location", "1 employee").
+  it.each([
+    [0, "1 location and 0 changes published."],
+    [1, "1 location, 0 changes, 1 employee notified."],
+  ])("returns to the live schedule after publishing a draft preview (%i notified)", async (notificationCount, toastText) => {
     const draft = {
       id: "99999999-9999-4999-8999-999999999997",
       workspace_id: scheduleFixture.workspace_id,
@@ -4678,7 +4682,7 @@ describe("App", () => {
       publication_ids: ["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbc"],
       published_shift_count: 0,
       published_at: "2026-08-17T12:05:00Z",
-      notification_count: 0,
+      notification_count: notificationCount,
     });
 
     window.history.pushState(
@@ -4709,7 +4713,7 @@ describe("App", () => {
     );
 
     expect(
-      await screen.findByText("1 locations and 0 changes published."),
+      await screen.findByText(toastText),
     ).toBeTruthy();
     await waitFor(() => expect(window.location.search).not.toContain("draft="));
   }, 15_000);
@@ -4795,7 +4799,7 @@ describe("App", () => {
     fireEvent.click(within(unpublishDialog).getByLabelText(/Main Dining/));
     fireEvent.click(
       within(unpublishDialog).getByRole("button", {
-        name: "Unpublish 1 locations",
+        name: "Unpublish 1 location",
       }),
     );
     // BL-306: the first click only arms the button.
@@ -4815,7 +4819,7 @@ describe("App", () => {
       ),
     );
     expect(
-      await screen.findByText("1 locations unpublished."),
+      await screen.findByText("1 location unpublished."),
     ).toBeTruthy();
     await waitFor(() =>
       expect(window.location.search).toContain(`draft=${draft.id}`),
@@ -5097,7 +5101,7 @@ describe("App", () => {
     fireEvent.click(within(unpublishDialog).getByLabelText(/Main Dining/));
     fireEvent.click(
       within(unpublishDialog).getByRole("button", {
-        name: "Unpublish 1 locations",
+        name: "Unpublish 1 location",
       }),
     );
     fireEvent.click(
@@ -5202,7 +5206,7 @@ describe("App", () => {
     // Risks are confirmed from the recap; there is no extra checkbox.
     expect(within(screen.getByRole("dialog")).queryByRole("checkbox")).toBeNull();
     await clickReadyButton(screen, "Next");
-    expect(screen.getByText("1 of 1 employees will be notified")).toBeTruthy();
+    expect(screen.getByText("1 of 1 employee will be notified")).toBeTruthy();
     const publishButton = screen.getByRole("button", {
       name: "Publish 1 location",
     });
@@ -5473,7 +5477,7 @@ describe("App", () => {
         ".schedule-publication-steps span[data-active='true']",
       )?.textContent,
     ).toContain("Locations");
-    expect(screen.getByText("1 conflicts must be fixed")).toBeTruthy();
+    expect(screen.getByText("1 conflict must be fixed")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Next" })).toHaveProperty(
       "disabled",
       true,

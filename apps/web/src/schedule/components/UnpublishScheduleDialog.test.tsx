@@ -119,7 +119,7 @@ describe("UnpublishScheduleDialog", () => {
     ).toHaveProperty("disabled", true);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     fireEvent.click(screen.getByLabelText(/Main Dining/));
-    fireEvent.click(screen.getByRole("button", { name: "Unpublish 1 locations" }));
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish 1 location" }));
     expect(onConfirm).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Confirm unpublish" }));
 
@@ -127,6 +127,29 @@ describe("UnpublishScheduleDialog", () => {
     await waitFor(() =>
       expect(onConfirm).toHaveBeenCalledWith([locations[0]!.id]),
     );
+  });
+
+  it("counts locations and live shifts in the singular and the plural (BL-311)", () => {
+    render(
+      <UnpublishScheduleDialog
+        open
+        weekLabel="Aug 17 - Aug 23, 2026"
+        locations={locations}
+        statuses={[
+          statuses[0]!,
+          { id: locations[2]!.id, status: "published" as const, published_shift_count: 1 },
+        ]}
+        onOpenChange={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("3 live shifts will be removed")).toBeTruthy();
+    expect(screen.getByText("1 live shift will be removed")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/Main Dining/));
+    expect(screen.getByRole("button", { name: "Unpublish 1 location" })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/Chef Counter/));
+    expect(screen.getByRole("button", { name: "Unpublish 2 locations" })).toBeTruthy();
   });
 
   it("stays open while an unpublish is sending (BL-301)", () => {

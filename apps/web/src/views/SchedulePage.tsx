@@ -92,6 +92,7 @@ import { createScheduleExportSnapshot, type SnapshotResult } from "../schedule/e
 import { usePreviewSource } from "../schedule/export-v2/usePreviewSource";
 import { ScheduleSaveRecoverySheet } from "../schedule/components/ScheduleSaveRecoverySheet";
 import { ExchangeScheduleRecovery } from "../employee-hub/shift-exchanges/ExchangeScheduleRecovery";
+import { countLabel } from "../schedule/components/PublishPreflightPanel";
 import { PublishScheduleDialog, type SchedulePublicationChoices } from "../schedule/components/PublishScheduleDialog";
 import { preflightReturnSearch, preflightReturnShift } from "../schedule/lib/schedulePreflightReturn";
 import { usePreflightShiftFocus } from "../schedule/hooks/usePreflightShiftFocus";
@@ -3142,11 +3143,11 @@ export function SchedulePage({
                   : result.notification_count
                     ? {
                         dedupeKey: "schedule-published",
-                        description: `${result.location_ids.length} locations, ${result.published_shift_count} changes, ${result.notification_count} employees notified.`,
+                        description: `${countLabel(result.location_ids.length, "location", "locations")}, ${countLabel(result.published_shift_count, "change", "changes")}, ${countLabel(result.notification_count, "employee", "employees")} notified.`,
                       }
                     : {
                         dedupeKey: "schedule-published",
-                        description: `${result.location_ids.length} locations and ${result.published_shift_count} changes published.`,
+                        description: `${countLabel(result.location_ids.length, "location", "locations")} and ${countLabel(result.published_shift_count, "change", "changes")} published.`,
                       },
               );
               setPublishOpen(false);
@@ -3209,7 +3210,7 @@ export function SchedulePage({
                 "Schedule unpublished",
                 {
                   dedupeKey: "schedule-unpublished",
-                  description: `${result.location_ids.length} locations unpublished.`,
+                  description: `${countLabel(result.location_ids.length, "location", "locations")} unpublished.`,
                 },
               );
               setUnpublishOpen(false);
