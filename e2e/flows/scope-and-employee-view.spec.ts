@@ -1,14 +1,15 @@
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
 import { signIn, type Person } from "../fixtures/world";
 
 // FOUNDATION-B FB-6.2.10: the scope half of flow 10 (FB-6.2 "Done when" 8),
 // the way into the employee view and back ("Done when" 7), and what the
 // Employees drawer says about somebody out of scope (BL-195).
-// EMP-001 "Done when" 27, second half: a manager assigned to a location and
-// marked "Exclude from schedule" still manages it, without a row in its grid.
+// EMP-001 "Done when" 27: the owner cannot take the Owner job or a location
+// off their own record; a manager assigned to a location and marked "Exclude
+// from schedule" still manages it, without a row in its grid.
 //
 // Ayse manages Kadikoy, Mehmet manages Besiktas, Zeynep is an admin.
 
@@ -31,6 +32,28 @@ async function openPage(browser: Browser, person: Person, path: string, phone = 
 }
 
 const employeeRow = (page: Page, name: string) => page.getByRole("row", { name: new RegExp(name) });
+
+// Somebody outside the six people global-setup gave a sign-in: by email.
+async function signedInAs(browser: Browser, email: string): Promise<Page> {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(world.password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).not.toHaveURL(/\/sign-in/);
+  return page;
+}
+
+// From the Employees list: the name opens the drawer, then its Employment section.
+async function openEmployment(page: Page, name: string): Promise<Locator> {
+  await employeeRow(page, name).getByText(name, { exact: true }).click();
+  const drawer = page.getByRole("dialog", { name });
+  await drawer
+    .getByRole("navigation", { name: "Employee sections" })
+    .getByRole("button", { name: "Employment", exact: true })
+    .click();
+  return drawer;
+}
 
 test("a manager sees a fellow manager at her own location and not the one at another", async ({ browser }) => {
   // A second Kadikoy manager, made for this test: the world has only Ayse there.
@@ -74,12 +97,7 @@ test("a manager excluded from the schedule still sees her location's people, and
 
   // The admin marks her in the Employees drawer; Kadikoy stays checked.
   await zeynep.goto("/app/employees");
-  await employeeRow(zeynep, name).getByText(name, { exact: true }).click();
-  const drawer = zeynep.getByRole("dialog", { name });
-  await drawer
-    .getByRole("navigation", { name: "Employee sections" })
-    .getByRole("button", { name: "Employment", exact: true })
-    .click();
+  const drawer = await openEmployment(zeynep, name);
   await drawer.getByLabel("Exclude from schedule").check();
   await drawer.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect
@@ -99,12 +117,7 @@ test("a manager excluded from the schedule still sees her location's people, and
 
   // She still manages Kadikoy: its people are on her Employees list, the
   // other location's are not.
-  const manager = await (await browser.newContext()).newPage();
-  await manager.goto("/sign-in");
-  await manager.getByLabel("Email").fill(email);
-  await manager.getByLabel("Password").fill(world.password);
-  await manager.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(manager).not.toHaveURL(/\/sign-in/);
+  const manager = await signedInAs(browser, email);
   await manager.goto("/app/employees");
   await expect(employeeRow(manager, "Emre Person")).toBeVisible();
   await expect(employeeRow(manager, "Mehmet Person")).toHaveCount(0);
@@ -115,6 +128,46 @@ test("a manager excluded from the schedule still sees her location's people, and
   await expect(manager.locator('[id^="schedule-loc-"]')).toContainText("Kadikoy");
   await expect(scheduleRow(manager, "Emre Person")).toHaveCount(1);
   await expect(scheduleRow(manager, name)).toHaveCount(0);
+});
+
+test("the owner's own drawer keeps the Owner job and every location locked", async ({ browser }) => {
+  // The world's owner (Olcay Owner, filed at both locations with the Owner
+  // job) has no sign-in until somebody gives them a password.
+  const owner = await signedInAs(browser, sql(`select tests.password('${run}:owner', '${world.password}');`));
+  await owner.goto("/app/employees");
+  const own = await openEmployment(owner, "Olcay Owner");
+
+  // The Owner job: held, not theirs to untick, and never the primary.
+  const jobs = own.getByRole("group", { name: /^Jobs/ });
+  const ownerJob = jobs.getByRole("checkbox", { name: "Owner", exact: true });
+  await expect(ownerJob).toBeChecked();
+  await expect(ownerJob).toBeDisabled();
+  const ownerJobRow = jobs
+    .locator('div[data-locked="true"]')
+    .filter({ has: owner.getByRole("checkbox", { name: "Owner", exact: true }) });
+  await expect(ownerJobRow).toHaveCount(1);
+  await expect(ownerJobRow.getByRole("radio")).toHaveCount(0);
+  // Manager, the other job under Management, is an ordinary one.
+  await expect(jobs.getByRole("checkbox", { name: "Manager", exact: true })).toBeEnabled();
+
+  // Every location: checked, locked, and none marked primary.
+  const locations = own.getByRole("group", { name: /^Locations/ });
+  for (const place of ["Kadikoy", "Besiktas"]) {
+    const location = locations.getByRole("checkbox", { name: place, exact: true });
+    await expect(location).toBeChecked();
+    await expect(location).toBeDisabled();
+  }
+  await expect(locations.getByRole("checkbox", { disabled: false })).toHaveCount(0);
+  await expect(locations.getByRole("checkbox", { checked: false })).toHaveCount(0);
+  await expect(locations.getByRole("radio")).toHaveCount(0);
+
+  // On anybody else's record the Owner job is off, and nobody's to tick.
+  await owner.goto("/app/employees");
+  const hers = (await openEmployment(owner, "Ayse Person"))
+    .getByRole("group", { name: /^Jobs/ })
+    .getByRole("checkbox", { name: "Owner", exact: true });
+  await expect(hers).not.toBeChecked();
+  await expect(hers).toBeDisabled();
 });
 
 test("the drawer of somebody out of scope says no access instead of a raw error", async ({ browser }) => {
