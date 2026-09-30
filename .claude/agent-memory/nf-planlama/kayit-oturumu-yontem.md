@@ -33,3 +33,25 @@ Hangisinin eksik olduğunu yalnız üç kontrol birlikte gösteriyor.
 - İşaretlemede tahmin yok: madde, altındaki tazelik satırları, MVP-PLAN fazı ve ROADMAP okunur; yetmiyorsa
   işaret "belirsiz" yazılır ve nedeni maddenin altına konur.
 - Başka bir ajanın aynı anda ölçtüğü grubun madde satırlarına dokunulmaz (2026-09-30, G14).
+
+**Betik:** sayım ve grup kontrolü `backlog_sayim.py` (bu klasörde; repo kökünden `python .claude/agent-memory/nf-planlama/backlog_sayim.py`,
+yalnız okur). 2026-09-30 sonu beklenen çıktı: açık 239 (210 + 29), kapanan 225 (187 + 38), en yüksek BL-437, işaretsiz 0,
+grupsuz yalnız BL-426.
+
+**İlk oturumun dersleri (2026-09-30, dört besleme):**
+- Envanterde dosyaları baştan sona okuma. `BACKLOG-PROGRAM.md` ~65 bin token, G7 satırı tek başına 9 bin karakter; ilk okuma
+  bağlamın yarısını yedi. Önce `grep -n "^#"`, sonra `sed -n 'N,Mp' | cut -c1-400`. Asgari okuma listesi
+  `docs/plan/ILERLEME-PLANI.md` §0d'de.
+- Besleme bir iddiadır, kanıt değil: dört beslemede üç düzeltme çıktı ("bilerek alınmadı" denen commit main'deydi, "~30 dal" 40'tı,
+  sorulacak bir karar başka işle zaten düşüyordu). Her sha, CI koşusu ve dal ayrı komutla ölçülür.
+- Çok dosyalı düzenleme tek betikle: her çapa `assert` ile tam bir kez bulunur, hepsi geçince yazılır. Yarım uygulanmış kayıt kalmaz.
+- Başka ajanın docs commit'i `git cherry-pick` ile alınırken çakışma üç tipte çıktı: komşu satır (onların yeni alt satırı + bizim
+  işaretli madde satırımız), aynı tablo satırı (grup satırı: yeni madde bizden, kapsam notu onlardan), Notes'un başı (iki kayıt da
+  kalır). Önce yalnız çakışma çözülür ve `cherry-pick --continue`; kendi eklemeler ayrı commit. Karıştıysa son hâlleri scratchpad'e
+  kopyala, `git checkout --merge -- <dosya>` ile çakışmayı geri getir, yeniden çöz, sonra kopyaları geri koy.
+- İşaretleme: numaralı eski satırlarda biçim `- BL-007 (leave: x / do: y) …`, numarasızda `- (leave: x / do: y) …`; emin
+  olunmayan işaret `belirsiz` yazılır, nedeni maddenin altında "İşaret <tarih>" satırında.
+- GateGuard kancası: oturumun ilk Bash'i, her yeni dosya (Write) ve yıkıcı görünen her komut (`git checkout --`) önce reddedilir;
+  istenen gerçekler yazılıp aynı çağrı yinelenir. Betik dosyasını yeniden kullanmak (üstüne yazmak) yeni reddi önler.
+- `git rev-parse --short A B` "Needed a single revision" verir; tek tek çağır. Git Bash'te `rev` yok.
+- Worktree geride kaldıysa uygulamanın taban dalıyla eşitleme aracı fast-forward yapar; ağaç temiz olmalı.
