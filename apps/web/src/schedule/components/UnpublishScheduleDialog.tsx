@@ -124,7 +124,7 @@ export function UnpublishScheduleDialog({
                 status?.color ??
                 (location as ScheduleLocation & { readonly color?: string | null })
                   .color ??
-                "#64748b";
+                "var(--theme-swatch-fallback)";
               return (
                 <label key={location.id} data-selected={selected}>
                   <input

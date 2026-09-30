@@ -84,13 +84,13 @@ function changedSinceStartText(
 }
 
 function locationColor(location: ScheduleLocation): string {
-  return (location as ScheduleLocation & { readonly color?: string | null }).color ?? "#64748b";
+  return (location as ScheduleLocation & { readonly color?: string | null }).color ?? "var(--theme-swatch-fallback)";
 }
 
 function employeeColor(employee: ScheduleEmployee): string {
   return (
     (employee as ScheduleEmployee & { readonly color?: string | null }).color ??
-    "#cbd5e1"
+    "var(--theme-swatch-fallback-soft)"
   );
 }
 

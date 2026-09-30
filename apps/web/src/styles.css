@@ -41,6 +41,15 @@
   --theme-danger-text: #653b36;
   --theme-danger-strong: #a43830;
   --theme-accent-focus: #236844;
+  /* Schedule publication state (BL-312): green when the whole week is live,
+     amber when only some locations are. Kept at their exact values. */
+  --theme-published: #087f5b;
+  --theme-published-hover: #0b6f53;
+  --theme-published-partial: #b45309;
+  --theme-published-partial-hover: #92400e;
+  /* The dot of a location, or the chip of a person, that has no colour of its own. */
+  --theme-swatch-fallback: #64748b;
+  --theme-swatch-fallback-soft: #cbd5e1;
   /* A manager's note on a Schedule shift (BL-199): its own ink, so a note
      never reads as a status, a warning or a selection. 7.6:1 on white. */
   --theme-note: #2f4fa3;
@@ -4237,7 +4246,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-action-menu summary {
   border-color: var(--schedule-action);
   background: var(--schedule-action);
-  color: #fff;
+  color: var(--theme-on-accent);
 }
 .schedule-action-button:hover,
 .schedule-action-menu summary:hover {
@@ -4247,9 +4256,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-publish-action,
 .schedule-published-menu summary,
 .schedule-published-indicator {
-  border-color: #087f5b;
-  background: #087f5b;
-  color: #fff;
+  border-color: var(--theme-published);
+  background: var(--theme-published);
+  color: var(--theme-on-accent);
 }
 .schedule-publish-action[data-schedule-top-action-trigger="publish"][data-publication-tone="none"],
 .schedule-published-indicator[data-schedule-top-action-trigger="published"][data-publication-tone="none"] {
@@ -4258,13 +4267,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-publish-action[data-schedule-top-action-trigger="publish"][data-publication-tone="partial"],
 .schedule-published-indicator[data-schedule-top-action-trigger="published"][data-publication-tone="partial"] {
-  border-color: #b45309;
-  background: #b45309;
+  border-color: var(--theme-published-partial);
+  background: var(--theme-published-partial);
 }
 .schedule-publish-action[data-schedule-top-action-trigger="publish"][data-publication-tone="complete"],
 .schedule-published-indicator[data-schedule-top-action-trigger="published"][data-publication-tone="complete"] {
-  border-color: #087f5b;
-  background: #087f5b;
+  border-color: var(--theme-published);
+  background: var(--theme-published);
 }
 .schedule-publish-action[data-schedule-top-action-trigger="publish"][data-publication-tone="none"]:hover,
 .schedule-published-indicator[data-schedule-top-action-trigger="published"][data-publication-tone="none"]:hover {
@@ -4273,13 +4282,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-publish-action[data-schedule-top-action-trigger="publish"][data-publication-tone="partial"]:hover,
 .schedule-published-indicator[data-schedule-top-action-trigger="published"][data-publication-tone="partial"]:hover {
-  border-color: #92400e;
-  background: #92400e;
+  border-color: var(--theme-published-partial-hover);
+  background: var(--theme-published-partial-hover);
 }
 .schedule-publish-action[data-schedule-top-action-trigger="publish"][data-publication-tone="complete"]:hover,
 .schedule-published-indicator[data-schedule-top-action-trigger="published"][data-publication-tone="complete"]:hover {
-  border-color: #0b6f53;
-  background: #0b6f53;
+  border-color: var(--theme-published-hover);
+  background: var(--theme-published-hover);
 }
 .schedule-published-indicator:disabled {
   cursor: default;
@@ -9395,8 +9404,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   opacity: 0.55;
 }
 .schedule-dialog-actions button.danger {
-  border-color: #a53636;
-  background: #a53636;
+  border-color: var(--theme-danger-strong);
+  background: var(--theme-danger-strong);
   color: var(--theme-on-accent);
 }
 .schedule-dialog-actions button:disabled {

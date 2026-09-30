@@ -491,7 +491,7 @@ function PublishedLocationBadges({
         <span key={status.id} title={status.name}>
           <span
             aria-hidden
-            style={{ backgroundColor: status.color ?? "#64748b" }}
+            style={{ backgroundColor: status.color ?? "var(--theme-swatch-fallback)" }}
           />
           <span>{status.name}</span>
         </span>

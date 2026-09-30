@@ -72,7 +72,7 @@ describe("UnpublishScheduleDialog", () => {
       .getByText("Main Dining")
       .querySelector(".schedule-unpublish-location-dot") as HTMLElement | null;
     expect(locationDot).toBeTruthy();
-    expect(locationDot?.style.backgroundColor).toBe("rgb(100, 116, 139)");
+    expect(locationDot?.style.backgroundColor).toBe("var(--theme-swatch-fallback)");
     expect(screen.getByText("3 live shifts will be removed")).toBeTruthy();
     expect(screen.queryByText("Patio")).toBeNull();
     expect(screen.queryByText("Chef Counter")).toBeNull();

@@ -174,6 +174,24 @@ describe("DraftDropdownMenu", () => {
     expect(rowTools).not.toContain("opacity");
   });
 
+  // BL-312: the publish surfaces take their colours from tokens. The Unpublish
+  // window's own stylesheet block waits for its restyle (BL-318).
+  it("keeps raw colour codes out of the publish surfaces", () => {
+    const rawColour = /#[0-9a-fA-F]{3,8}\b/;
+    for (const file of ["UnpublishScheduleDialog", "PublishScheduleDialog", "DraftDropdownMenu"]) {
+      expect(readFileSync(`src/schedule/components/${file}.tsx`, "utf8"), file).not.toMatch(rawColour);
+    }
+    const styles = readFileSync("src/styles.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const publishAction = /\.schedule-(action-button|action-menu|publish-action|published-menu|published-indicator)\b/;
+    // Rules that belong to the publish actions alone, not the base rule every top bar control shares.
+    const rules = [...styles.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((rule) =>
+      rule[1]!.split(",").every((selector) => publishAction.test(selector)),
+    );
+    expect(rules.length).toBeGreaterThan(8);
+    for (const rule of rules) expect(rule[2], rule[1]!.trim()).not.toMatch(rawColour);
+    expect(styles).not.toContain("#a53636");
+  });
+
   it("names the live draft and lists it last, after the other drafts", () => {
     const planB = { ...draftA, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Plan B" };
 
