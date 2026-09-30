@@ -1,5 +1,5 @@
 {
- "sourceSha256": "07a4147433a1fe349b8fe7345d9deb26827f6afe854b769ba11a6ca1a9834285",
+ "sourceSha256": "8108a499e6f0d424b99bbb3aea5cfb802a827b4928b23ba7c40b535177e3446c",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -28,6 +28,7 @@
   "employee.remove_from_location",
   "employee.request_preferred_name",
   "employee.save",
+  "employee.save_own_contact",
   "employee.terminate",
   "exchange.apply_own",
   "exchange.approve",
@@ -60,6 +61,7 @@
   "settings.notifications.write",
   "settings.organization.write",
   "settings.people",
+  "settings.people.read",
   "settings.roles.read",
   "settings.roles.write",
   "settings.scheduling.write",
@@ -531,14 +533,14 @@
    "holder": "ali"
   },
   {
-   "label": "pl:ayse@K",
+   "label": "pl:can@K",
    "kind": "placement",
    "tenant": "m",
    "locs": [
     "K"
    ],
    "class": "manager",
-   "holder": "ayse"
+   "holder": "can"
   },
   {
    "label": "pl:emre@K",
@@ -871,6 +873,13 @@
    "blank": "null"
   },
   {
+   "key": "employee.save_own_contact",
+   "targetKind": "person",
+   "permission": null,
+   "coreKey": "employee.save_own_contact",
+   "blank": "null"
+  },
+  {
    "key": "employee.terminate",
    "targetKind": "person",
    "permission": "employees.archive",
@@ -1064,6 +1073,20 @@
    "targetKind": "workspace",
    "permission": null,
    "coreKey": "settings.organization.write",
+   "blank": "null"
+  },
+  {
+   "key": "settings.people",
+   "targetKind": "workspace",
+   "permission": null,
+   "coreKey": "settings.people",
+   "blank": "null"
+  },
+  {
+   "key": "settings.people.read",
+   "targetKind": "workspace",
+   "permission": "employees.read",
+   "coreKey": "settings.people.read",
    "blank": "null"
   },
   {
@@ -13794,7 +13817,7 @@
   [
    "employee.remove_from_location",
    "ali",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -13836,7 +13859,7 @@
   [
    "employee.remove_from_location",
    "aydan",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -13878,7 +13901,7 @@
   [
    "employee.remove_from_location",
    "ayse",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -13920,7 +13943,7 @@
   [
    "employee.remove_from_location",
    "can",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -13962,7 +13985,7 @@
   [
    "employee.remove_from_location",
    "derya",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -14004,7 +14027,7 @@
   [
    "employee.remove_from_location",
    "emre",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -14046,7 +14069,7 @@
   [
    "employee.remove_from_location",
    "kaan",
-   "pl:ayse@K",
+   "pl:can@K",
    "allow"
   ],
   [
@@ -14088,7 +14111,7 @@
   [
    "employee.remove_from_location",
    "mehmet",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -14130,7 +14153,7 @@
   [
    "employee.remove_from_location",
    "nil",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -14172,7 +14195,7 @@
   [
    "employee.remove_from_location",
    "nur",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -14214,7 +14237,7 @@
   [
    "employee.remove_from_location",
    "olcay",
-   "pl:ayse@K",
+   "pl:can@K",
    "allow"
   ],
   [
@@ -14256,7 +14279,7 @@
   [
    "employee.remove_from_location",
    "pelin",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -14298,7 +14321,7 @@
   [
    "employee.remove_from_location",
    "remzi",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -14340,7 +14363,7 @@
   [
    "employee.remove_from_location",
    "sami",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -14382,7 +14405,7 @@
   [
    "employee.remove_from_location",
    "veli",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -14424,7 +14447,7 @@
   [
    "employee.remove_from_location",
    "xavier",
-   "pl:ayse@K",
+   "pl:can@K",
    "deny"
   ],
   [
@@ -14466,7 +14489,7 @@
   [
    "employee.remove_from_location",
    "zeynep",
-   "pl:ayse@K",
+   "pl:can@K",
    "allow"
   ],
   [
@@ -15514,6 +15537,1026 @@
    "allow"
   ],
   [
+   "employee.save_own_contact",
+   "ali",
+   "ali",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "ali",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ali",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ali",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ali",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ali",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ali",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "ali",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ali",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ali",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "aydan",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "aydan",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "aydan",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "aydan",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "aydan",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "aydan",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "aydan",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "aydan",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "aydan",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "aydan",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ayse",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ayse",
+   "ayse",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "ayse",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ayse",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ayse",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ayse",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ayse",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "ayse",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ayse",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "ayse",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "can",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "can",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "can",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "can",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "can",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "can",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "can",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "can",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "can",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "can",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "derya",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "derya",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "derya",
+   "derya",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "derya",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "derya",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "derya",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "derya",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "derya",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "derya",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "derya",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "emre",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "emre",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "emre",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "emre",
+   "emre",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "emre",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "emre",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "emre",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "emre",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "emre",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "emre",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "kaan",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "kaan",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "kaan",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "kaan",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "kaan",
+   "kaan",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "kaan",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "kaan",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "kaan",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "kaan",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "kaan",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "mehmet",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "mehmet",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "mehmet",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "mehmet",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "mehmet",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "mehmet",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "mehmet",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "mehmet",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "mehmet",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "mehmet",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nil",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nil",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nil",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nil",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nil",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nil",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nil",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "nil",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nil",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nil",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nur",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nur",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nur",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nur",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nur",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nur",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nur",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "nur",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nur",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "nur",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "olcay",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "olcay",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "olcay",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "olcay",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "olcay",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "olcay",
+   "olcay",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "olcay",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "olcay",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "olcay",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "olcay",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "pelin",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "pelin",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "pelin",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "pelin",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "pelin",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "pelin",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "pelin",
+   "self",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "pelin",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "pelin",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "pelin",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "remzi",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "remzi",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "remzi",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "remzi",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "remzi",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "remzi",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "remzi",
+   "self",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "remzi",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "remzi",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "remzi",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "sami",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "sami",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "sami",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "sami",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "sami",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "sami",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "sami",
+   "self",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "sami",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "sami",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "sami",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "veli",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "veli",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "veli",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "veli",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "veli",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "veli",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "veli",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "veli",
+   "veli",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "veli",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "veli",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "xavier",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "xavier",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "xavier",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "xavier",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "xavier",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "xavier",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "xavier",
+   "self",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "xavier",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "xavier",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "xavier",
+   "zeynep",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "zeynep",
+   "ali",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "zeynep",
+   "ayse",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "zeynep",
+   "derya",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "zeynep",
+   "emre",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "zeynep",
+   "kaan",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "zeynep",
+   "olcay",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "zeynep",
+   "self",
+   "allow"
+  ],
+  [
+   "employee.save_own_contact",
+   "zeynep",
+   "veli",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "zeynep",
+   "xena",
+   "deny"
+  ],
+  [
+   "employee.save_own_contact",
+   "zeynep",
+   "zeynep",
+   "allow"
+  ],
+  [
    "employee.terminate",
    "ali",
    "ali",
@@ -23669,6 +24712,210 @@
   ],
   [
    "settings.organization.write",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "ayse",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "can",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "derya",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "kaan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people",
+   "mehmet",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "nil",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people.read",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people.read",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people.read",
+   "ayse",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people.read",
+   "can",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people.read",
+   "derya",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people.read",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people.read",
+   "kaan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people.read",
+   "mehmet",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people.read",
+   "nil",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people.read",
+   "nur",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people.read",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "settings.people.read",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people.read",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people.read",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people.read",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people.read",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "settings.people.read",
    "zeynep",
    "workspace",
    "allow"

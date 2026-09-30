@@ -34,6 +34,7 @@ export const authzActionKeys = [
   "employee.remove_from_location",
   "employee.request_preferred_name",
   "employee.save",
+  "employee.save_own_contact",
   "employee.terminate",
   "exchange.apply_own",
   "exchange.approve",
@@ -66,6 +67,7 @@ export const authzActionKeys = [
   "settings.notifications.write",
   "settings.organization.write",
   "settings.people",
+  "settings.people.read",
   "settings.roles.read",
   "settings.roles.write",
   "settings.scheduling.write",
@@ -118,6 +120,7 @@ export const targetedAuthzActions = {
   "employee.remove_access": { person: true, permission: "employees.manage" },
   "employee.remove_from_location": { person: true, permission: "employees.manage" },
   "employee.save": { person: true, permission: "employees.manage" },
+  "employee.save_own_contact": { person: true, permission: null, own: true, restrictedOk: true },
   "employee.terminate": { person: true, permission: "employees.archive" },
   "exchange.approve": { person: true, permission: "schedule.shift_change_requests.manage" },
   "exchange.offer_own": { person: true, permission: null, own: true },
@@ -133,6 +136,8 @@ export const targetedAuthzActions = {
   "settings.jobs.write": { permission: "settings.jobs.manage" },
   "settings.locations.write": { permission: "settings.locations.manage" },
   "settings.organization.write": { permission: "settings.general.manage" },
+  "settings.people": { permission: "settings.general.manage" },
+  "settings.people.read": { permission: "employees.read" },
   "settings.roles.write": { permission: "roles.manage" },
   "settings.scheduling.write": { permission: "settings.schedule_rules.manage" },
   "settings.conflict_rules.write": { permission: "schedule.conflict_rules.manage" },
@@ -217,6 +222,8 @@ export function expected<A extends TargetedAuthzAction>(
   if (target?.workspaceId !== undefined && target.workspaceId !== actor.workspaceId) return false;
   // Whoever has a membership, in whatever state, can read their own row.
   if (action === "membership.read" && isSelf) return actor.status !== "invited";
+  // One's own action is never done on somebody else's, in whatever state.
+  if (rule.own && person !== undefined && !isSelf) return false;
   if (actor.status === "restricted" && rule.restrictedOk) return true;
   if (actor.status !== "active") return false;
   if (rule.own) return person === undefined || isSelf;
@@ -319,6 +326,7 @@ export function expected<A extends TargetedAuthzAction>(
     case "settings.roles.write":
     case "settings.scheduling.write":
     case "settings.conflict_rules.write":
+    case "settings.people":
     case "audit.read":
       // Managers read the catalog; they never write organization settings.
       return high;
@@ -341,6 +349,11 @@ export function expected<A extends TargetedAuthzAction>(
       // Roles are not shown to managers.
       return high;
 
+    case "settings.people.read":
+      // Whether a preferred name waits for an answer is about the workspace:
+      // whoever reads employees reads it (BL-443).
+      return true;
+
     case "workspace.close":
     case "workspace.transfer_ownership":
       return true; // owner only, checked above
@@ -357,6 +370,7 @@ export function expected<A extends TargetedAuthzAction>(
       if (isSelf) return false;
       return high || covers;
 
+    case "employee.save_own_contact":
     case "exchange.offer_own":
     case "notifications.read_own":
     case "time_off.request_own":
