@@ -73,6 +73,44 @@ Set-Location C:\Users\TheWe\Documents\Codex\newfork-clean
 git push origin --delete batch/t1 merge/account task/account-redesign task/batch-t1 task/batch-t1b task/batch-t2 task/batch-t3 task/batch-t4 task/batch-t4b task/batch-t5 task/batch-t5b task/batch-t5c task/fb62-10 task/fb62-7b-db task/fb62-7b-qa-db task/fb62-7b-qa-fixes task/fb62-9-red-files task/fb62-core-a task/fb62-core-a-t5b task/fb62-core-a-t5b-2 task/fb62-core-a-t5b-3 task/fb62-core-a-t5b-4 task/fb62-core-b-7a task/fb62-core-b-7b task/fix-g5-timing-test task/g1-error-states task/g1-schedule-dialogs task/g1-schedule-dialogs-rebased task/g13-test-stability task/g19-today-helper task/g2-quick-editor task/g22-tooltip-note-corner task/g3-stale-screens task/g6-notification-delivery task/g9-timeoff-exchange task/g9b-qa-fixes task/g4-scheduled-export task/g5-account-security task/g9b-shorten-time-off task/g12-pgtap-resilience
 ```
 
+### 0d. Kayıt oturumu çalışma notu (devir 2026-09-30; yeni oturum buradan başlar)
+İlk oturum bağlamının yarısını envanterde dosyaları baştan sona okuyarak harcadı. Tekrarlanmasın.
+
+**(a) Okunacak en az şey**
+- `.claude/agents/nf-planlama.md` (34 satır); `KARARLAR.md`'de yalnız OPS-04 satırı (`grep -n "^| OPS-04" docs/plan/KARARLAR.md`).
+- Bu dosyanın yalnız §0'ı (0a–0d). §1–§9 FOUNDATION-B puan tablosu; bir dilim main'e girmedikçe açılmaz.
+- `tasks/BACKLOG-PROGRAM.md` (~65 bin token, tamamı okunmaz): "Sayım"ın ilk maddesi, "Satırın anlamı" ve "Program dışı yürüyen iş" paragrafları, Notes / Result'ın ilk 5 kaydı. Başlıklar `grep -n "^#"`, sonra `sed -n 'N,Mp' <dosya> | cut -c1-400`. G7 satırı tek başına 9 bin karakter.
+- `BACKLOG.md` okunmaz; madde `grep -n "^- \*\*BL-NNN " docs/plan/BACKLOG.md` ile bulunur. `HANDOFF.md` koordinatörün.
+- Yürüyen işler: `tasks/EMP-001.md` ve `tasks/G14.md`'de yalnız Status, kararlar tablosu, Notes / Result.
+
+**(b) Bir BESLEME'yi işleme sırası**
+1. `git fetch origin`; ağaç temizken worktree `origin/main`'e getirilir (uygulamanın taban dalıyla eşitleme aracı).
+2. Her iddia ölçülür: commit `git merge-base --is-ancestor <sha> origin/main`; CI `gh run view <id> --json conclusion,headSha,jobs`; dal `git ls-remote --heads origin <dal>` ve `git worktree list`; en yüksek numara `git grep -ho "BL-4[0-9][0-9]" origin/main -- docs/plan | sort -u | tail -1`. Ölçülemeyen "ölçülmedi" yazılır; uyuşmazlık koordinatöre söylenir.
+3. Yazma sırası: `BACKLOG.md` (madde, kapanış, alt satır; yeni maddede "Program: Gxx") → `DONE.md` (iş bittiyse) → görev dosyası (Status, Notes) → `BACKLOG-PROGRAM.md` (grup satırı, Notes'un başına kayıt, gerekirse "Sayım") → `KARARLAR.md` (kullanıcı kararıysa) → `ROADMAP.md` ve `FOUNDATION-B.md` Notes (dilim main'e girdiyse) → en son bu dosyanın §0'ı.
+4. Sayım, repo kökünden: `MSYS_NO_PATHCONV=1 git show keep/nf-planlama-memory:.claude/agent-memory/nf-planlama/backlog_sayim.py > /tmp/backlog_sayim.py && python /tmp/backlog_sayim.py` (dal main'e alındıysa `python .claude/agent-memory/nf-planlama/backlog_sayim.py`). Beklenen (2026-09-30, `80767d88`): açık 239 (210 + 29), kapanan 225 (187 + 38), en yüksek BL-437, işaretsiz 0, "açık ama grupsuz" yalnız BL-426.
+5. Koordinatöre tek satır: commit sha + ne güncellendi + uyuşmazlık.
+
+**(c) Gönderim ve tuzaklar**
+- Gönderim: commit → `git fetch origin && git rebase origin/main` → `git diff --name-only origin/main..HEAD | grep -vc '^docs/'` 0 olmalı → `node scripts/lock.mjs take main "nf-planlama/kayit, docs push"` → `git push origin HEAD:main` → `node scripts/lock.mjs release main "nf-planlama/kayit"`. Docs gönderimi CI tetiklemez.
+- GateGuard kancası: oturumun ilk Bash'i, her yeni dosya ve yıkıcı görünen her komut (`git checkout --`, dal değiştirme içeren zincir) önce reddedilir; istenen gerçekler yazılıp aynı çağrı yinelenir. Var olan betik dosyasının üstüne yazmak yeni reddi önler.
+- Satır sonu: `docs/plan` çalışma kopyasında CRLF. Python'da `newline=""` ile oku, aynı satır sonuyla yaz. `sed -i` dosyayı LF'ye çevirir (zararsız, git uyarı verir).
+- Çok dosyalı düzenleme tek betikle: her çapa `assert` ile tam bir kez bulunur, hepsi geçince yazılır. §0c numaraları betikle yeniden verilir.
+- Başka ajanın docs commit'i `git cherry-pick <sha>` ile alınır. Çakışmada iki tarafın bilgisi kalır (madde satırındaki işaret bizden, yeni alt satır onlardan; grup satırında kapsam notu onlardan; Notes'ta iki kayıt da). Önce yalnız çakışma çözülür ve `git -c core.editor=true cherry-pick --continue`; kendi eklemeler ayrı commit; sonra sayım.
+- Numara çakışması: başka dalda açılmış yeni BL, main'deki en yüksek numarayla aynıysa yeniden numaralanır ve söylenir (2026-09-30'da çakışmadı).
+- Başka bir ajan bir grubu ölçerken o grubun madde satırlarına dokunulmaz.
+- Git Bash: `git rev-parse --short A B` hata verir, tek tek çağır; `<dal>:<yol>` biçimi `MSYS_NO_PATHCONV=1` ister; `rev` komutu yok.
+- Rol hafızası `docs/` dışında: `keep/nf-planlama-memory` dalına commit, sha koordinatöre; main'e o alır.
+
+**(d) Açık işler**
+- `keep/nf-planlama-memory` @`2fe1e1a8` (iki commit: rol hafızası, sayım betiği ve dersler): koordinatör bir sonraki kod gönderiminde alacak.
+- 13 "belirsiz" işaret (liste `BACKLOG-PROGRAM.md` "Sayım"): madde başlarken ya da karar gelince netleşir.
+- Birleştirme önerisi: "Genel seed/SQL replay" (U04) ile BL-083 aynı iş. Bayat görünen kısımlar: BL-057'de "Time Tracking gizlenir", OBS-001'de davet kısmı. Kapatılmadı; koordinatöre söylendi.
+- `CLAUDE.md` onay listesi (a–d) ve 40 uzak dalın silme komutu: §0c ve altındaki blok.
+- `task/g14-plan` dalı ve `agent-a4489d63f38f27eeb` worktree'si kapanabilir (içerik main'de `33bf0b2b`); silme koordinatörün ya da kullanıcının.
+- FB-6.2 `.11` kapanınca: §1 ve §3 puan tablosu, `.8` etiketli maddelerin tazeliği (BL-402, BL-403, BL-418, BL-422, BL-425), `ROADMAP.md` durum satırı.
+
+**(e) Envanter raporu:** `.claude/worktrees/youthful-montalcini-5c90e3/artifacts/nf-planlama/kayit/RAPOR.md` (gitignore'da; 2026-09-30, `bccdb4df`; o günden sonra kayıtların hepsi güncellendi, rapor tarihçe içindir).
+
 Hazırlayan: `nf-planlama` (`local_c67b8d60-…`). Koordinatör: "Koordinatör el değiştirmesi", `local_243f826b-1906-491b-b1fc-1a1bdbb4316d` (2026-09-29'dan; CLAUDE.md main `3fa8bc7f`).
 Ölçüm: `origin/main` `228ff3b7`, 2026-09-29 (BL-218.3 kapandı: `.3-i`, `.3a`, `.3b`, `.3-ii` main'de `be46cd22`, main CI run 36522159307 yeşil — e2e işi bir kez yeniden koşturuldu, `tasks/BL-218.md` → Notes; üstüne hedef dışı Schedule sağ üst pencereler `228ff3b7`, FOUNDATION-B tablosunu değiştirmez). Önceki ölçüm `de80eda6`, 2026-09-28 (BL-199 kapandı, main CI yeşil run 36501225426; `10c11be5`'ten bu yana main'e yalnız BL-199 ve plan commit'leri girdi, FOUNDATION-B tablosu değişmedi); önceki ölçüm `10c11be5` (SEC-003 kod kısmı `721ea41f`, main CI yeşil run 36445247470; hosted gönderim aynı gün, koordinatör); SEC-003 commit'leri `34fc2075`, `3eeb4c11` (`nf-db`), `6887fbbc` (`nf-backend`), `d0751603`, `0d03389e`, `74e2d363` (`nf-test`) — hepsi `git cat-file` ile doğrulandı; durumlar koordinatörün 2026-09-28 güncellemesiyle. Hesap betiği: satırlar, bağımlılıklar ve puanlar bu dosyadaki tablolardır; sayıları elle değil betikle ürettim, tablo değişince aynı yolla yeniden hesaplanır.
 
