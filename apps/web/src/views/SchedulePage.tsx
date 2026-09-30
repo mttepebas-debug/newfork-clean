@@ -183,6 +183,7 @@ import { parseRetroactiveEditError } from "../schedule/lib/retroactiveEditRecove
 import { publicationStateForShift } from "../schedule/lib/scheduleShiftMetadata";
 import { toScheduleShiftMutation } from "../schedule/lib/scheduleShiftMutation";
 import {
+  SCHEDULE_WINDOW_SELECTOR,
   isBlankScheduleDismissTarget,
   isMatchingScheduleLocationHeaderTarget,
   isScheduleEditFocusedShiftBlankDismissTarget,
@@ -495,7 +496,7 @@ export function SchedulePage({
     const blockOutsideTopActionClick = (event: globalThis.MouseEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
-      if (target.closest("[role='dialog'], [role='alertdialog']")) {
+      if (target.closest(SCHEDULE_WINDOW_SELECTOR)) {
         topActionBlockedClickTargetRef.current = null;
         return;
       }
@@ -2177,7 +2178,7 @@ export function SchedulePage({
   const consumeDismissedScheduleClick = (event: MouseEvent<HTMLElement>) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
-    if (target.closest("[role='dialog'], [role='alertdialog'], [data-schedule-export-v2]")) {
+    if (target.closest(`${SCHEDULE_WINDOW_SELECTOR}, [data-schedule-export-v2]`)) {
       suppressedScheduleClickTargetRef.current = null;
       return;
     }

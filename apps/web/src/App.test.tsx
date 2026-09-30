@@ -1852,6 +1852,50 @@ describe("App", () => {
     expect(screen.queryByText("Editing draft")).toBeNull();
   });
 
+  // BL-440, visual QA: with the mouse, the first press inside the sheet was
+  // taken by the page as a press on the blank schedule. It jumped back to this
+  // week behind the sheet and swallowed the click.
+  it("gives the first mouse press inside the save recovery sheet to the sheet", async () => {
+    vi.mocked(saveScheduleDraft).mockRejectedValueOnce(new Error("Network dropped"));
+    // A week ahead of today (the tests' clock reads 2026-08-17): a press on the
+    // blank schedule there sends the page back to this week.
+    const workingFixture = scheduleFixtureForWeek("2026-09-07");
+    vi.mocked(getScheduleReadModel).mockResolvedValue(workingFixture);
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...makeDefaultEditAcquireResult(),
+      session: {
+        ...makeDefaultEditAcquireResult().session,
+        week_start: workingFixture.week_start,
+        shifts: workingFixture.shifts.map((shift) => ({ ...shift, unpaid_break_minutes: 30, revision: 1 })),
+      },
+    });
+    window.history.pushState({}, "", "/app/schedule?date=2026-09-07");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save and publish" }));
+    const sheet = await screen.findByRole("dialog", { name: "Schedule save failed" });
+    const discard = within(sheet).getByRole("button", { name: "Discard" });
+    // The failed save closes the Publish menu; wait until the page has taken that in.
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-schedule-top-action-trigger='publish'], [data-schedule-top-action-trigger='save-draft']")?.getAttribute("aria-expanded"),
+      ).toBe("false"),
+    );
+
+    // A mouse press is a pointerdown first; the page listens for that.
+    const pressReachedTheButton = fireEvent.pointerDown(discard);
+    fireEvent.click(discard);
+
+    expect(pressReachedTheButton).toBe(true);
+    expect(within(sheet).getByRole("button", { name: "Confirm discard" })).toBeTruthy();
+    expect(window.location.search).toContain("date=2026-09-07");
+    expect(window.location.search).toContain("mode=edit");
+  });
+
   it("retries a failed save-and-publish as save-and-publish", async () => {
     const savedDraft = {
       id: "99999999-9999-4999-8999-999999999998",

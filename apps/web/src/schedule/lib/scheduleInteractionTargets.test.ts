@@ -22,6 +22,26 @@ describe("scheduleInteractionTargets", () => {
     expect(isBlankScheduleDismissTarget(target)).toBe(false);
     expect(isSchedulePreviewFocusedShiftBlankDismissTarget(target)).toBe(false);
   });
+  // Visual QA on G14: the save recovery sheet is a native <dialog> with no role
+  // attribute, and the confirmation windows are alertdialogs. A press inside any
+  // window belongs to that window; it must not run the page's dismissal cascade.
+  it("never treats a press inside a window as a press on the blank schedule", () => {
+    document.body.innerHTML = `
+      <section class="schedule-page">
+        <div id="blank"></div>
+        <dialog open><button id="native-button">Discard</button><p id="native-text">Your changes are still here.</p></dialog>
+        <div role="presentation"><section role="alertdialog"><button id="alert-button">Overwrite</button></section></div>
+        <div role="presentation"><section role="dialog"><button id="dialog-button">Cancel</button></section></div>
+      </section>`;
+    const blank = (id: string) => isBlankScheduleDismissTarget(document.getElementById(id)!);
+
+    expect(blank("blank")).toBe(true);
+    expect(blank("native-button")).toBe(false);
+    expect(blank("native-text")).toBe(false);
+    expect(blank("alert-button")).toBe(false);
+    expect(blank("dialog-button")).toBe(false);
+  });
+
   it("escapes attribute values used by badge measurement selectors", () => {
     expect(escapeAttributeValue('role"server')).toBe('role\\"server');
     expect(escapeAttributeValue("role\\server")).toBe("role\\\\server");

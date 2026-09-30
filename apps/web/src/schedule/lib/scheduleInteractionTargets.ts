@@ -1,3 +1,10 @@
+/**
+ * A window over the Schedule: a native <dialog> (it has the role without the
+ * attribute), or anything carrying the dialog or alertdialog role. A press or a
+ * click inside one belongs to that window, never to the page's blank-surface rules.
+ */
+export const SCHEDULE_WINDOW_SELECTOR = "dialog, [role='dialog'], [role='alertdialog']";
+
 export function escapeAttributeValue(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
@@ -36,7 +43,7 @@ export function isScheduleInteractionSurface(target: Element): boolean {
     target.closest("[data-schedule-conflict-toast-content]") ||
     target.closest("[role='menu']") ||
     target.closest("[role='toolbar']") ||
-    target.closest("[role='dialog']") ||
+    target.closest(SCHEDULE_WINDOW_SELECTOR) ||
     target.closest(".schedule-topbar") ||
     target.closest(".schedule-edit-banner") ||
     target.closest(".schedule-quick-editor") ||
@@ -71,7 +78,7 @@ export function isBlankScheduleDismissTarget(target: Element): boolean {
       "[data-schedule-location-filter-ids]",
       "[role='menu']",
       "[role='toolbar']",
-      "[role='dialog']",
+      SCHEDULE_WINDOW_SELECTOR,
       ".schedule-cell-paste",
       ".schedule-topbar",
       ".schedule-edit-banner",
@@ -169,8 +176,7 @@ export function isSchedulePreviewFocusedShiftBlankDismissTarget(
       "[data-schedule-filter-command-strip]",
       "[role='menu']",
       "[role='toolbar']",
-      "[role='dialog']",
-      "[role='alertdialog']",
+      SCHEDULE_WINDOW_SELECTOR,
       ".schedule-topbar",
       ".schedule-edit-banner",
       ".schedule-quick-editor",
