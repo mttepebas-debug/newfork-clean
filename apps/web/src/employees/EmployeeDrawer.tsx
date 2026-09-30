@@ -5,6 +5,7 @@ import {
 import { EmployeeDocumentPanel } from "../documents/EmployeeDocumentPanel";
 import {
   employeeInputSchema,
+  managerLocationRefusal,
   employeeSectionSchema,
   type EmployeeDetail,
   type EmployeeInput,
@@ -188,10 +189,14 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     references.data?.inviteRoles.find((role) => role.id === roleId)?.accessClass;
   const managerRecord =
     !props.creating && roleClass(detail.data?.role_id) === "manager";
-  const ruledDraft: EmployeeInput = managerRecord
-    ? { ...draft, is_manager_record: true }
-    : draft;
-  const readiness = employeeCreateReadiness(ruledDraft);
+  const managerRefusal = managerLocationRefusal(
+    managerRecord ? "manager" : null,
+    draft,
+  );
+  const draftReadiness = employeeCreateReadiness(draft);
+  const readiness = managerRefusal
+    ? { ...draftReadiness, employeeReady: false, assignmentBlocker: managerRefusal }
+    : draftReadiness;
   const allowedSections = sections.filter(
     ([key]) =>
       (key !== "availability" || can(context, "availability.team_read")) &&
@@ -768,17 +773,12 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     )
       return;
     // An invitation as a manager makes them one (K4).
-    if (invite && roleClass(inviteRoleId) === "manager") {
-      const asManager = employeeInputSchema.safeParse({
-        ...draft,
-        is_manager_record: true,
-      });
-      if (!asManager.success) {
-        setError(
-          asManager.error.issues[0]?.message ?? "Check the employee details",
-        );
-        return;
-      }
+    const invitedManagerRefusal = invite
+      ? managerLocationRefusal(roleClass(inviteRoleId), draft)
+      : undefined;
+    if (invitedManagerRefusal) {
+      setError(invitedManagerRefusal);
+      return;
     }
     const command: EmployeeCreateCommand = {
       request_id: crypto.randomUUID(),
@@ -803,7 +803,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       } else startCreate(false);
       return;
     }
-    const parsed = employeeInputSchema.safeParse(ruledDraft);
+    if (managerRefusal) {
+      setError(managerRefusal);
+      return;
+    }
+    const parsed = employeeInputSchema.safeParse(draft);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the employee details");
       return;

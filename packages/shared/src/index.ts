@@ -2685,28 +2685,20 @@ export const employeeInputSchema = z
      * form from refusing first.
      */
     is_owner_record: z.boolean().optional(),
-    /**
-     * A manager's record (EMP-001 K4). The form says so from the role it
-     * shows; the server reads the role for itself, so this too only keeps the
-     * form from sending what the database would refuse.
-     */
-    is_manager_record: z.boolean().optional(),
     expected_revision: z.number().int().positive().nullable(),
   })
   .superRefine((value, issue) => {
-    if (value.is_remote === true || value.is_owner_record === true) return;
-    const managerNowhere = value.is_manager_record === true && value.location_ids.length === 0;
-    if (managerNowhere) {
-      issue.addIssue({
-        code: "custom",
-        message: managementAndOwnerRefusals["employee.manager_location_required"],
-        path: ["location_ids"],
-      });
-    }
-    if (value.is_excluded_from_schedule === true) return;
+    const assignmentOptional =
+      value.is_remote === true ||
+      value.is_excluded_from_schedule === true ||
+      value.is_owner_record === true;
+    if (assignmentOptional) return;
     // Whether a primary job is needed depends on which jobs sit under
     // Management; the database decides (employee.primary_job_required, BL-218).
-    if (!managerNowhere && (value.location_ids.length === 0 || value.primary_location_id === null)) {
+    // So does whether a location is needed after all because they are a
+    // manager (employee.manager_location_required, EMP-001 K4): the role is
+    // not in this payload. managerLocationRefusal() is that rule for a form.
+    if (value.location_ids.length === 0 || value.primary_location_id === null) {
       issue.addIssue({
         code: "custom",
         message: managementAndOwnerRefusals["employee.location_required"],
@@ -2722,6 +2714,23 @@ export const employeeInputSchema = z
     }
   });
 export type EmployeeInput = z.infer<typeof employeeInputSchema>;
+
+/**
+ * EMP-001 K4: a manager manages where they are assigned, so a manager who is
+ * not Remote has at least one location, excluded from the schedule or not.
+ * The database decides (employee.manager_location_required on a save, a
+ * removal from a location, a role change and an invitation). This is the same
+ * rule for a form that knows the role the record holds or is about to be
+ * given: the sentence to show, or undefined when there is nothing to say.
+ */
+export function managerLocationRefusal(
+  roleClass: WorkspaceRole | null | undefined,
+  record: { readonly is_remote?: boolean; readonly location_ids: readonly string[] },
+): string | undefined {
+  return roleClass === "manager" && record.is_remote !== true && record.location_ids.length === 0
+    ? managementAndOwnerRefusals["employee.manager_location_required"]
+    : undefined;
+}
 
 export const employeeCreateCommandSchema = z
   .object({

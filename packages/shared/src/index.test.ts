@@ -21,6 +21,7 @@ import {
   locationInputSchema,
   managementAndOwnerRefusals,
   managementAndOwnerSentence,
+  managerLocationRefusal,
   managementJobIds,
   notificationInboxSchema,
   normalizeAccountPhone,
@@ -1558,13 +1559,13 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
   });
 
   // EMP-001 K4 (user decision 2026-09-30): a manager who is not Remote has at
-  // least one location, excluded from the schedule or not. The form says who is
-  // a manager (is_manager_record); the database decides for itself.
+  // least one location, excluded from the schedule or not. The role is not in
+  // the payload, so the rule stands beside the schema: the database decides
+  // (employee.manager_location_required), and a form that knows the role asks
+  // the same rule first.
   describe("a manager needs a location (K4)", () => {
-    const nowhere = { ...managerOnly, location_ids: [], primary_location_id: null, job_ids: [] };
     const sentence = managementAndOwnerRefusals["employee.manager_location_required"];
-    const messages = (value: object) =>
-      employeeInputSchema.safeParse(value).error?.issues.map((issue) => [issue.path.join("."), issue.message]);
+    const nowhere = { location_ids: [], is_remote: false, is_excluded_from_schedule: true };
 
     it("has a sentence a person reads, which sends nobody to Exclude from schedule", () => {
       expect(managementAndOwnerSentence("employee.manager_location_required")).toBe(sentence);
@@ -1572,34 +1573,26 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
       expect(sentence).not.toMatch(/Exclude from schedule/);
     });
 
-    it("refuses a manager excluded from the schedule with no location", () => {
-      expect(messages({ ...nowhere, is_excluded_from_schedule: true, is_manager_record: true })).toEqual([
-        ["location_ids", sentence],
-      ]);
+    it("refuses a manager with no location, excluded from the schedule or not", () => {
+      expect(managerLocationRefusal("manager", nowhere)).toBe(sentence);
+      const onTheSchedule = { ...nowhere, is_excluded_from_schedule: false };
+      expect(managerLocationRefusal("manager", onTheSchedule)).toBe(sentence);
     });
 
-    it("refuses a manager on the schedule with no location in the same words", () => {
-      expect(messages({ ...managerOnly, location_ids: [], primary_location_id: null, is_manager_record: true })).toEqual([
-        ["location_ids", sentence],
-      ]);
+    it("lets a Remote manager and a manager with a location through", () => {
+      expect(managerLocationRefusal("manager", { ...nowhere, is_remote: true })).toBeUndefined();
+      expect(managerLocationRefusal("manager", { ...nowhere, location_ids: [locationId] })).toBeUndefined();
     });
 
-    it("lets a Remote manager have no location", () => {
-      expect(employeeInputSchema.safeParse({ ...nowhere, is_remote: true, is_manager_record: true }).success).toBe(true);
+    it("asks nothing of an employee, an admin, the owner or somebody with no role yet", () => {
+      for (const role of ["employee", "admin", "owner", null, undefined] as const) {
+        expect(managerLocationRefusal(role, nowhere)).toBeUndefined();
+      }
     });
 
-    it("lets an excluded employee have no location, as before", () => {
-      expect(employeeInputSchema.safeParse({ ...nowhere, is_excluded_from_schedule: true }).success).toBe(true);
-      expect(
-        employeeInputSchema.safeParse({ ...nowhere, is_excluded_from_schedule: true, is_manager_record: false }).success,
-      ).toBe(true);
-    });
-
-    it("lets an excluded manager with a location save without a job", () => {
-      expect(
-        employeeInputSchema.safeParse({ ...managerOnly, job_ids: [], is_excluded_from_schedule: true, is_manager_record: true })
-          .success,
-      ).toBe(true);
+    it("stays out of the payload: the record parses the same whoever holds it", () => {
+      const record = { ...managerOnly, location_ids: [], primary_location_id: null, job_ids: [], is_excluded_from_schedule: true };
+      expect(employeeInputSchema.parse({ ...record, is_manager_record: true })).not.toHaveProperty("is_manager_record");
     });
   });
 });
