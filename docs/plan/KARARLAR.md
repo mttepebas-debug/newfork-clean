@@ -236,6 +236,12 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   York'taki müdür Los Angeles sütununda doğru günü işaretli görür, açılış
   haftası değişmez. Kalan dört yer G14 dilim a'da bu yardımcıya bağlanıyor
   (BL-353).
+- Kayıt kurtarma penceresi (kullanıcı kararı 2026-09-30, BL-440): "Schedule
+  save failed" penceresindeki "Discard" yıkıcıdır — iki tık kırmızı, ikinci
+  tıkta "Confirm discard". UI-09'un "Discard beyaz vazgeçme düğmesidir"
+  sınıfı burada geçmez: bu düğme kaydedilmemiş bütün değişiklikleri atar.
+  Ekranın öteki "Discard"ı (düzenleme modundan çıkış) onay penceresiyle
+  sorar ve beyaz kalır.
 
 ### Schedule → Requests
 - İzin verisi, izin okuyabilen herkese iki sekmede de yüklenir: "Time off"
