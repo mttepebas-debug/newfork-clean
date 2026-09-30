@@ -501,9 +501,14 @@ describe("ProfilePage", () => {
 
   // EMP-001 (BL-444): the core refuses one's own contact where access has
   // ended or the workspace is closed. Trying again changes nothing there.
-  it.each(["authz.not_active", "authz.workspace_closed"])(
+  // Access taken away while the form is open answers 404 authz.not_member.
+  it.each([
+    ["authz.not_active", 403],
+    ["authz.workspace_closed", 403],
+    ["authz.not_member", 404],
+  ])(
     "says an emergency contact can no longer be changed where the answer is %s",
-    async (reason) => {
+    async (reason, status) => {
       const second = "51000000-0000-4000-8000-000000000002";
       vi.mocked(listAccountWorkspaces).mockResolvedValue([
         workspace("employee"),
@@ -518,7 +523,7 @@ describe("ProfilePage", () => {
         contactRecord(second, { workspaceName: "Ridgeline" }),
       ]);
       vi.mocked(saveOwnEmploymentContact).mockImplementation(async (workspaceId) => {
-        if (workspaceId === second) throw new RequestError("Not allowed", reason, "employee.save_own_contact", 403);
+        if (workspaceId === second) throw new RequestError("Not allowed", reason, "employee.save_own_contact", status);
       });
       renderProfile();
       await screen.findByDisplayValue("Morgan");

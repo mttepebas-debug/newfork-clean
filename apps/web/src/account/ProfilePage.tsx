@@ -84,6 +84,20 @@ function leadingContact(records: readonly EmploymentContactRecord[]): Contact {
   };
 }
 
+/**
+ * Did the core refuse for good? Access ended there, access taken away while
+ * the form was open (no longer a member, a 404), or the workspace is closed.
+ * Trying again changes none of them.
+ */
+function accessEnded(cause: unknown): boolean {
+  return (
+    cause instanceof RequestError &&
+    (cause.reason === "authz.not_active" ||
+      cause.reason === "authz.not_member" ||
+      cause.reason === "authz.workspace_closed")
+  );
+}
+
 export default function ProfilePage() {
   const { account, updateAccount } = useAuth();
   const cache = useQueryClient();
@@ -331,9 +345,7 @@ export default function ProfilePage() {
           email: record.emergencyContactEmail,
         });
       } catch (cause: unknown) {
-        const reason = cause instanceof RequestError ? cause.reason : undefined;
-        const gone = reason === "authz.not_active" || reason === "authz.workspace_closed";
-        (gone ? ended : refused).push(record);
+        (accessEnded(cause) ? ended : refused).push(record);
       }
     }
     return { refused, ended };

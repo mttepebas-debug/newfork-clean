@@ -499,8 +499,8 @@ export async function saveOwnEmploymentContact(
     },
   );
   // The server's own sentence is not for the screen; its reason is, so the
-  // screen can tell "try again" from "not here any more" (authz.not_active,
-  // authz.workspace_closed).
+  // screen can tell "try again" from "not here any more" (which reasons:
+  // accessEnded in ProfilePage).
   if (!response.ok) {
     const refusal = requestFailure(await response.json().catch(() => null), response.status, "");
     throw new RequestError(
