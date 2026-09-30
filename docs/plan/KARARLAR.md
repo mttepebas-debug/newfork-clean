@@ -209,7 +209,7 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
 - Owner'ın kaydını sunucu söyler (koordinatör kararı KK-54, EMP-001 C1 + C2; BL-421): çekmece owner'ı rol adından değil okuma cevabındaki `is_workspace_owner`'dan tanır; rolün kilidi, Owner işinin ve lokasyonların kilidi buna bağlıdır.
 
 ### Schedule
-- "Job/Position" sıralaması (kullanıcı kararı K5, 2026-09-30, EMP-001 C2; `eb97ac27`): Management'ın iş grupları (Owner, Manager ve eklenenler) her zaman en altta; owner tek satır (iki grupta ayrı satır açmaz).
+- "Job/Position" sıralaması (EMP-001 In scope madde 13, `tasks/EMP-001.md:78`; owner tek satır kuralı kullanıcı kararı K5; 2026-09-30, EMP-001 C2; `eb97ac27`): Management'ın iş grupları (Owner, Manager ve eklenenler) her zaman en altta; owner tek satır (iki grupta ayrı satır açmaz). BL-475'ten sonra da böyle kalır (kullanıcı kararı 2026-09-30, aşağıda Settings → Jobs).
 - Silme ve üstüne yazma iki tık (UI-12): taslak/şablon silme, taslağın
   üstüne yazma, şablon penceresinde "Delete". Yayınlanmış taslağın satırında
   üstüne yazma düğmesi yok.
@@ -276,10 +276,12 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
 - Jobs: departmanlar ve her departmanın altındaki işler ada göre A→Z;
   Management departmanı ayrıcalıksız, ötekilerle A→Z. Elle sıralama
   ("Move up / Move down") ne işlerde ne departmanlarda var. İşlerin ve
-  departmanların sırasını okuyan Schedule ve seçiciler de A→Z. Örnek: "Bar,
-  Kitchen, Management, Service" (kullanıcı kararları 2026-09-30, BL-475: önce
-  yalnız işler, aynı gün departmanlara genişledi; kod `task/bl-475-db` ve
-  `task/bl-475`'te, main'e girmedi).
+  departmanların sırasını okuyan Schedule departman süzgeci ve öteki
+  seçiciler de A→Z. Örnek: "Bar, Kitchen, Management, Service". İki çalışma
+  ekranında Management en sonda kalır: Employees → çekmece → Employment →
+  Jobs seçicisi ve Schedule → "Job/Position" gruplaması (kullanıcı kararları
+  2026-09-30, BL-475: önce yalnız işler, aynı gün departmanlara genişledi,
+  sonra iki ekranın istisnası; kod `task/bl-475` @`7bce0322`, main'e girmedi).
 - Locations: lokasyon silme iki tık, panel yok. Jobs, Shift types ve Shift
   labels'ta silme etki listesi paneli açar; o panel bilerek kalıyor.
 - Roles: "Delete role" `ConfirmButton` değil, kendi iki tık kopyası
