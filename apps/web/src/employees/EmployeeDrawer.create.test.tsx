@@ -233,7 +233,9 @@ describe("employee create flow", () => {
     );
   });
 
-  it("keeps the drawer mounted when browser history leaves a dirty create route", async () => {
+  // EMP-001 K7 (i), user decision 2026-09-30: the drawer never asks before
+  // what was typed is dropped.
+  it("lets browser history leave a filled create form without asking", async () => {
     window.history.replaceState({ idx: 0 }, "", "/app/employees");
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -264,14 +266,53 @@ describe("employee create flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     fillNames();
     window.history.back();
-    expect(await screen.findByRole("alertdialog")).toBeTruthy();
-    expect(
-      (screen.getByLabelText("First name") as HTMLInputElement).value,
-    ).toBe("Ada");
-    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
-    await waitFor(() =>
-      expect(window.location.search).toContain("mode=create"),
+    expect(await screen.findByRole("button", { name: "Add" })).toBeTruthy();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(window.location.search).not.toContain("mode=create");
+    expect(createEmployee).not.toHaveBeenCalled();
+  });
+  // Not a warning: the request already left, and its answer needs the form.
+  it("holds the route while the create request is on its way, without asking", async () => {
+    window.history.replaceState({ idx: 0 }, "", "/app/employees");
+    vi.mocked(createEmployee).mockReturnValue(new Promise(() => {}));
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    function RouteHarness() {
+      const location = useLocation(),
+        navigate = useNavigate();
+      const [section, setSection] = useState<EmployeeSection>("profile");
+      return location.search.includes("mode=create") ? (
+        <EmployeeDrawer
+          employeeId={null}
+          creating
+          section={section}
+          onSectionChange={setSection}
+          onClose={() => navigate("/app/employees", { replace: true })}
+          onCreated={() => {}}
+        />
+      ) : (
+        <button onClick={() => navigate("?mode=create")}>Add</button>
+      );
+    }
+    render(
+      <QueryClientProvider client={client}>
+        <BrowserRouter>
+          <RouteHarness />
+        </BrowserRouter>
+      </QueryClientProvider>,
     );
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    fillNames();
+    next();
+    fireEvent.click(screen.getByLabelText("Remote"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(createEmployee).toHaveBeenCalledTimes(1));
+    window.history.back();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(window.location.search).toContain("mode=create");
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
   beforeEach(() => {
     vi.clearAllMocks();
@@ -480,21 +521,28 @@ describe("employee create flow", () => {
       vi.mocked(createEmployee).mock.calls[1]![1],
     );
   });
-  it("does not navigate from wheel events and confirms abandoning a dirty draft", async () => {
-    const { onClose } = setup();
+  it("does not navigate from wheel events", () => {
+    setup();
     fillNames();
     fireEvent.wheel(
       screen.getByLabelText("First name").closest(".employee-section-scroll")!,
       { deltaY: 160 },
     );
     expect(screen.getByRole("button", { name: "Next" })).toBeTruthy();
+  });
+  it("closes a filled form on Escape, a click outside and Cancel without asking", () => {
+    const { onClose } = setup();
+    fillNames();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Close employee details" })[0]!,
+    );
+    expect(onClose).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.getByRole("alertdialog")).toBeTruthy();
-    expect(onClose).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
-    expect(
-      (screen.getByLabelText("First name") as HTMLInputElement).value,
-    ).toBe("Ada");
+    expect(onClose).toHaveBeenCalledTimes(3);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(createEmployee).not.toHaveBeenCalled();
   });
   it("normalizes unsupported create sections", () => {
     setup("access");

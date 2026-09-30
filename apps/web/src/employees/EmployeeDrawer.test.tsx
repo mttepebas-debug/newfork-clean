@@ -224,6 +224,12 @@ let currentContext: ActiveWorkspaceContext = context;
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context: currentContext, refresh }),
 }));
+// The drawer's one toast: a removal that takes the person out of reach.
+const toast = vi.hoisted(() => ({ success: vi.fn() }));
+vi.mock("@newfork/ui", async (original) => ({
+  ...(await original<object>()),
+  useToast: () => toast,
+}));
 vi.mock("./onboarding-data", () => ({
   getEmployeeOnboardingReview: vi.fn(),
   reviewEmployeeOnboarding: vi.fn(),
@@ -748,29 +754,6 @@ describe("EmployeeDrawer", () => {
       "value",
       managerRoleId,
     );
-  });
-
-  it("updates the workspace role for a linked employee", async () => {
-    renderDrawer("access", {
-      ...detail,
-      role_id: employeeRoleId,
-      role_name: "Employee",
-      user_id: "16000000-0000-4000-8000-000000000005",
-      display_status: "active",
-    });
-
-    fireEvent.change(await screen.findByLabelText("Workspace role"), {
-      target: { value: managerRoleId },
-    });
-
-    await waitFor(() =>
-      expect(updateEmployeeRole).toHaveBeenCalledWith(
-        workspaceId,
-        employeeId,
-        managerRoleId,
-      ),
-    );
-    expect(refresh).toHaveBeenCalled();
   });
 
   it("keeps the linked owner role and lifecycle read-only", async () => {
@@ -2202,5 +2185,214 @@ describe("EmployeeDrawer EMP-001 look", () => {
     renderDrawer("employment");
     await employeeLoaded();
     expect(document.querySelector(".employee-assignment-group")).toBeNull();
+  });
+});
+
+// EMP-001 B4 (item 15, K7): the workspace role is picked in the form and
+// Save changes saves it, the record first. The drawer never asks before it
+// closes.
+describe("EmployeeDrawer saves the workspace role with Save changes", () => {
+  const linked = {
+    ...detail,
+    role_id: employeeRoleId,
+    role_name: "Employee",
+    user_id: "16000000-0000-4000-8000-000000000005",
+    display_status: "active" as const,
+  };
+  const asManager = { ...linked, role_id: managerRoleId, role_name: "Manager", revision: 2 };
+  // The file does not clear its mocks; these tests count calls.
+  beforeEach(() => {
+    vi.mocked(saveEmployee).mockClear();
+    vi.mocked(updateEmployeeRole).mockClear();
+    vi.mocked(getEmployeeDetail).mockClear();
+    refresh.mockClear();
+  });
+  const pickManager = async () => {
+    const role = (await screen.findByLabelText("Workspace role")) as HTMLSelectElement;
+    // The roles to pick from arrive after the record.
+    await waitFor(() => expect(within(role).getByRole("option", { name: "Manager" })).toBeTruthy());
+    fireEvent.change(role, { target: { value: managerRoleId } });
+    return role;
+  };
+  const firstName = async () => {
+    const input = (await screen.findByLabelText("First name")) as HTMLInputElement;
+    await waitFor(() => expect(input.value).toBe("Alex"));
+    return input;
+  };
+  const goTo = (section: EmployeeSection) =>
+    fireEvent.change(screen.getByLabelText("Employee section"), { target: { value: section } });
+  const save = () => screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
+  const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it("holds a picked role in the form and sends nothing", async () => {
+    renderDrawer("access", linked);
+    const role = await pickManager();
+    expect(role.value).toBe(managerRoleId);
+    expect(save().disabled).toBe(false);
+    await settled();
+    expect(updateEmployeeRole).not.toHaveBeenCalled();
+  });
+
+  it("sends the role alone when only the role changed, and stays on Access", async () => {
+    const { onSectionChange } = renderDrawer("access", linked);
+    await pickManager();
+    vi.mocked(getEmployeeDetail).mockResolvedValue(asManager);
+    fireEvent.click(save());
+    await screen.findByRole("button", { name: "Done" });
+    expect(updateEmployeeRole).toHaveBeenCalledTimes(1);
+    expect(updateEmployeeRole).toHaveBeenCalledWith(workspaceId, employeeId, managerRoleId);
+    expect(saveEmployee).not.toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalled();
+    expect(onSectionChange).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Workspace role")).toHaveProperty("value", managerRoleId);
+  });
+
+  it("sends the record, then the role, and returns to Profile", async () => {
+    const { onSectionChange } = renderDrawer("profile", linked);
+    fireEvent.change(await firstName(), { target: { value: "Alexa" } });
+    goTo("access");
+    await pickManager();
+    fireEvent.click(save());
+    await waitFor(() => expect(updateEmployeeRole).toHaveBeenCalledTimes(1));
+    expect(saveEmployee).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(saveEmployee).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(updateEmployeeRole).mock.invocationCallOrder[0]!,
+    );
+    await waitFor(() => expect(onSectionChange).toHaveBeenLastCalledWith("profile"));
+  });
+
+  it("keeps the picked role when it fails after the record landed; the retry sends the role alone", async () => {
+    renderDrawer("profile", linked);
+    fireEvent.change(await firstName(), { target: { value: "Alexa" } });
+    goTo("access");
+    await pickManager();
+    vi.mocked(updateEmployeeRole).mockRejectedValueOnce(new Error("The role could not be changed"));
+    vi.mocked(getEmployeeDetail).mockResolvedValue({ ...linked, first_name: "Alexa", revision: 2 });
+    fireEvent.click(save());
+    expect(await screen.findByText("The role could not be changed")).toBeTruthy();
+    expect(screen.getByLabelText("Workspace role")).toHaveProperty("value", managerRoleId);
+    await waitFor(() => expect(save().disabled).toBe(false));
+    fireEvent.click(save());
+    await waitFor(() => expect(updateEmployeeRole).toHaveBeenCalledTimes(2));
+    expect(saveEmployee).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends no role when the record is refused", async () => {
+    renderDrawer("profile", linked);
+    fireEvent.change(await firstName(), { target: { value: "Alexa" } });
+    goTo("access");
+    await pickManager();
+    vi.mocked(saveEmployee).mockRejectedValueOnce(new Error("The record could not be saved"));
+    fireEvent.click(save());
+    expect(await screen.findByText("The record could not be saved")).toBeTruthy();
+    expect(updateEmployeeRole).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Workspace role")).toHaveProperty("value", managerRoleId);
+  });
+
+  // BL-431: what is unsaved may be the role, not the profile.
+  it("holds Terminate while only the role is unsaved, and does not say profile", async () => {
+    renderDrawer("access", linked);
+    await pickManager();
+    const terminate = screen.getByRole("button", { name: "Terminate employee" }) as HTMLButtonElement;
+    expect(terminate.disabled).toBe(true);
+    expect(terminate.title).toBe("Save your changes before terminating the employee");
+  });
+
+  it("offers Save changes to a reader who may change the role and not the record", async () => {
+    renderDrawer("access", { ...linked, allowed: { ...detail.allowed, save: false } });
+    await pickManager();
+    vi.mocked(getEmployeeDetail).mockResolvedValue({ ...asManager, allowed: { ...detail.allowed, save: false } });
+    fireEvent.click(save());
+    await waitFor(() =>
+      expect(updateEmployeeRole).toHaveBeenCalledWith(workspaceId, employeeId, managerRoleId),
+    );
+    expect(saveEmployee).not.toHaveBeenCalled();
+  });
+
+  it("offers no Save changes to a reader who may change neither", async () => {
+    renderDrawer("access", { ...linked, allowed: { ...detail.allowed, save: false, change_role: false } });
+    expect(await screen.findByLabelText("Workspace role")).toHaveProperty("disabled", true);
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+  });
+
+  // The role service moves the record's revision on. A form touched and put
+  // back before the role was saved must still take the new one up.
+  it("saves a later name change on the revision the role save left", async () => {
+    renderDrawer("profile", linked);
+    const name = await firstName();
+    fireEvent.change(name, { target: { value: "Alexa" } });
+    fireEvent.change(name, { target: { value: "Alex" } });
+    goTo("access");
+    await pickManager();
+    vi.mocked(getEmployeeDetail).mockResolvedValue(asManager);
+    fireEvent.click(save());
+    await screen.findByRole("button", { name: "Done" });
+    goTo("profile");
+    fireEvent.change(await firstName(), { target: { value: "Alexa" } });
+    fireEvent.click(save());
+    await waitFor(() => expect(saveEmployee).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(saveEmployee).mock.calls[0]![1]).toMatchObject({
+      first_name: "Alexa",
+      expected_revision: 2,
+    });
+  });
+
+  // K7 (i), user decision 2026-09-30: leaving is never asked about.
+  it("closes on Escape and on a click outside without asking, and forgets the picked role", async () => {
+    const { onClose, unmount } = renderDrawer("access", linked);
+    await pickManager();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getAllByRole("button", { name: "Close employee details" })[0]!);
+    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await settled();
+    expect(updateEmployeeRole).not.toHaveBeenCalled();
+    unmount();
+    renderDrawer("access", linked);
+    expect(await screen.findByLabelText("Workspace role")).toHaveProperty("value", employeeRoleId);
+  });
+
+  // BL-432: Enter sends what Save changes would, and nothing when it is off.
+  it("sends nothing on Enter when nothing changed", async () => {
+    renderDrawer("profile", linked);
+    fireEvent.keyDown(await firstName(), { key: "Enter" });
+    await settled();
+    expect(saveEmployee).not.toHaveBeenCalled();
+    expect(updateEmployeeRole).not.toHaveBeenCalled();
+  });
+});
+
+// EMP-001 B4 (coordinator's addition, 2026-09-30): a removal that takes the
+// person out of the reader's reach closes the drawer and says what happened.
+describe("EmployeeDrawer after a removal from a location", () => {
+  const outOfReach = new RequestError("Not allowed", "authz.out_of_scope", "employee.read", 403);
+  beforeEach(() => {
+    toast.success.mockClear();
+    vi.mocked(getEmployeeDetail).mockClear();
+  });
+  const removeFromMainDining = async () => {
+    fireEvent.click(await screen.findByRole("button", { name: "Remove from Main Dining" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove from Main Dining" }));
+  };
+
+  it("closes and says so when the person can no longer be read", async () => {
+    vi.mocked(removeEmployeeFromLocation).mockResolvedValue({ releasedShiftCount: 0, locationsLeft: 1 });
+    const { onClose } = renderDrawer("employment");
+    await screen.findByRole("button", { name: "Remove from Main Dining" });
+    vi.mocked(getEmployeeDetail).mockRejectedValue(outOfReach);
+    await removeFromMainDining();
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(toast.success).toHaveBeenCalledWith("Removed from Main Dining");
+  });
+
+  it("stays open and reads the record again when the person is still in reach", async () => {
+    vi.mocked(removeEmployeeFromLocation).mockResolvedValue({ releasedShiftCount: 0, locationsLeft: 1 });
+    const { onClose } = renderDrawer("employment");
+    await removeFromMainDining();
+    await waitFor(() => expect(getEmployeeDetail).toHaveBeenCalledTimes(2));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 });

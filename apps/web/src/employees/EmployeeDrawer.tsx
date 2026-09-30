@@ -15,7 +15,7 @@ import {
   type EmployeeSection,
   type WorkspaceRole,
 } from "@newfork/shared";
-import { Button, ConfirmButton } from "@newfork/ui";
+import { Button, ConfirmButton, useToast } from "@newfork/ui";
 import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -134,6 +134,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const { context, refresh } = useAuth();
   const workspaceId = context?.workspace.id ?? "";
   const queryClient = useQueryClient();
+  const toast = useToast();
   const detail = useQuery({
     queryKey: ["employee-detail", workspaceId, props.employeeId],
     queryFn: () => getEmployeeDetail(workspaceId, props.employeeId ?? ""),
@@ -165,7 +166,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   );
   const [inviteRoleDirty, setInviteRoleDirty] = useState(false);
   const [inviteRoleAttempt, setInviteRoleAttempt] = useState(0);
-  const [discardOpen, setDiscardOpen] = useState(false);
+  // The workspace role (EMP-001 item 15): picked here, saved by Save changes
+  // with its own command. Untouched, it follows the record.
+  const [rolePicked, setRolePicked] = useState<string | null>(null);
   const [createResult, setCreateResult] = useState<EmployeeCreateResult | null>(
     null,
   );
@@ -179,8 +182,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const closeRef = useRef<() => void>(() => {});
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
   const openingFocusRef = useRef<HTMLElement | null>(null);
-  const pendingNavigationRef = useRef<(() => void) | null>(null);
-  const allowNavigationRef = useRef(false);
   const previousSectionRef = useRef(props.section);
   // EMP-001 K4: a manager who is not Remote has a location. The record says
   // its role by id; the class comes from the roles the reader may give, which
@@ -265,6 +266,18 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       Boolean(documentPreview.error));
   const baselineKey = JSON.stringify(baseline);
   const dirty = draftEditedRef.current && JSON.stringify(draft) !== baselineKey;
+  const roleSaved = detail.data?.role_id ?? "";
+  const roleNow = rolePicked ?? roleSaved;
+  // The role is picked only on a linked, active record the server lets the
+  // reader change it on.
+  const roleEditable =
+    !props.creating &&
+    Boolean(detail.data?.user_id) &&
+    !detail.data?.archived_at &&
+    (detail.data?.allowed.change_role ?? false);
+  const roleDirty = roleEditable && roleNow !== roleSaved;
+  // What Save changes has to send; Terminate and Invite wait for it too.
+  const anyDirty = dirty || roleDirty;
 
   useEffect(() => {
     const subjectChanged = lastDraftSubjectKeyRef.current !== draftSubjectKey;
@@ -287,7 +300,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         commandRef.current = null;
       }
       setUncertainCreate(false);
-      setDiscardOpen(false);
+      setRolePicked(null);
       setTerminationNotice(null);
     }
   }, [baselineKey, draftSubjectKey]);
@@ -344,6 +357,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     ? (allowed?.archive ?? false)
     : (allowed?.terminate ?? false);
   const readOnly = archived || !canSave;
+  // Save changes is there for whoever may save the record or, on a record
+  // they may not, change the role.
+  const canSubmit = !readOnly || roleEditable;
   // A manager who may take them off a location but not end their employment
   // still sees Terminate, switched off, with the reason (FB-6.2.8).
   const managerCannotTerminate =
@@ -382,20 +398,57 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     },
   });
   const saveMutation = useMutation({
-    mutationFn: () =>
-      saveEmployee(workspaceId, draft, props.employeeId ?? undefined),
-    onSuccess: async (savedId) => {
-      draftEditedRef.current = false;
-      allowNextDraftRefreshRef.current = true;
+    // The record, then the role: two commands, in that order, because the
+    // role service moves the record's revision on. The record that landed is
+    // no longer dirty, so when the role fails a retry sends the role alone.
+    mutationFn: async () => {
+      let savedId = props.employeeId ?? "";
+      const recordSent = dirty;
+      if (recordSent) {
+        savedId = await saveEmployee(
+          workspaceId,
+          draft,
+          props.employeeId ?? undefined,
+        );
+        draftEditedRef.current = false;
+        allowNextDraftRefreshRef.current = true;
+      }
+      if (roleDirty) {
+        try {
+          await updateEmployeeRole(workspaceId, savedId, roleNow);
+        } catch (cause) {
+          // The form takes up the record that did land before the error shows.
+          if (recordSent) await refreshRecord();
+          throw cause;
+        }
+        // A form touched and put back still takes up the new revision.
+        draftEditedRef.current = false;
+        allowNextDraftRefreshRef.current = true;
+      }
+      return { savedId, recordSent, roleSent: roleDirty };
+    },
+    onSuccess: async ({ savedId, recordSent, roleSent }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
         queryClient.invalidateQueries({
           queryKey: ["employee-detail", workspaceId, savedId],
         }),
+        // A new role moves which roles may be given, and the reader's own
+        // access when the record is theirs.
+        ...(roleSent
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: ["employee-reference-data", workspaceId],
+              }),
+              refresh(),
+            ]
+          : []),
       ]);
+      setRolePicked(null);
       setError(null);
       if (props.creating) props.onCreated(savedId);
-      else props.onSectionChange("profile");
+      // A role saved alone leaves the reader on Access (K7 (ii)).
+      else if (recordSent) props.onSectionChange("profile");
     },
     onError: (cause) => setError(errorMessage(cause)),
   });
@@ -526,27 +579,26 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const removeFromLocationMutation = useMutation({
     mutationFn: (locationId: string) =>
       removeEmployeeFromLocation(workspaceId, props.employeeId ?? "", locationId),
-    onSuccess: async () => {
+    onSuccess: async (_result, locationId) => {
       setError(null);
+      const name = detail.data?.locations.find(
+        (location) => location.id === locationId,
+      )?.name;
       await refreshRecord();
-    },
-    onError: (cause) => setError(errorMessage(cause)),
-  });
-  const roleMutation = useMutation({
-    mutationFn: (roleId: string) =>
-      updateEmployeeRole(workspaceId, props.employeeId ?? "", roleId),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
-        queryClient.invalidateQueries({
-          queryKey: ["employee-detail", workspaceId, props.employeeId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["employee-reference-data", workspaceId],
-        }),
-        refresh(),
-      ]);
-      setError(null);
+      // Off the one location the reader reached them through, the record is
+      // no longer theirs to read: the drawer closes and says what happened.
+      if (
+        isNoAccess(
+          queryClient.getQueryState([
+            "employee-detail",
+            workspaceId,
+            props.employeeId,
+          ])?.error,
+        )
+      ) {
+        toast.success(`Removed from ${name ?? "the location"}`);
+        props.onClose();
+      }
     },
     onError: (cause) => setError(errorMessage(cause)),
   });
@@ -597,7 +649,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     removeAccessMutation.isPending;
   const done =
     !props.creating &&
-    !dirty &&
+    !anyDirty &&
     (createResult !== null || saveMutation.isSuccess);
   // The server sends only the roles this person may invite with (BL-231).
   const inviteRoles = [...(references.data?.inviteRoles ?? [])]
@@ -649,15 +701,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       scrollRef.current?.scrollTo?.(0, 0);
     });
   }, [activeSection]);
+  // Closing never asks: what was typed or picked and not saved is dropped
+  // (K7 (i), user decision 2026-09-30). A request on its way holds it.
   const requestClose = () => {
-    if (busy) return;
-    if (discardOpen) {
-      pendingNavigationRef.current = null;
-      setDiscardOpen(false);
-      return;
-    }
-    if (props.creating && (dirty || inviteRoleDirty)) setDiscardOpen(true);
-    else props.onClose();
+    if (!busy) props.onClose();
   };
   closeRef.current = requestClose;
   useEffect(() => {
@@ -681,23 +728,14 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     if (props.creating && activeSection !== props.section)
       props.onSectionChange(activeSection);
   }, [activeSection, props.creating, props.section, props.onSectionChange]);
+  // While a create request is on its way the route stays, so the answer has a
+  // form to come back to. Nothing is asked and nothing typed is guarded.
   useEffect(() => {
-    if (!props.creating || !dirty) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      if (allowNavigationRef.current) return;
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [props.creating, dirty]);
-  useEffect(() => {
-    if (!props.creating || (!dirty && !busy)) return;
+    if (!props.creating || !busy) return;
     let index = Number(window.history.state?.idx ?? 0);
     let restoring = false;
     const path = window.location.pathname;
     const pop = (event: PopStateEvent) => {
-      if (allowNavigationRef.current) return;
       const nextIndex = Number(event.state?.idx ?? index);
       if (restoring) {
         restoring = false;
@@ -711,21 +749,13 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       }
       const delta = nextIndex - index;
       if (!delta) return;
-      // Restore the current entry before asking. The router must not unmount the draft.
+      // Restore the current entry. The router must not unmount the form.
       event.stopImmediatePropagation();
       restoring = true;
       window.history.go(-delta);
-      if (!busy) {
-        pendingNavigationRef.current = () => {
-          allowNavigationRef.current = true;
-          window.history.go(delta);
-        };
-        setDiscardOpen(true);
-      }
     };
     const follow = (event: MouseEvent) => {
       if (
-        allowNavigationRef.current ||
         event.ctrlKey ||
         event.metaKey ||
         event.shiftKey ||
@@ -743,13 +773,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (!busy) {
-        pendingNavigationRef.current = () => {
-          allowNavigationRef.current = true;
-          window.location.assign(anchor.href);
-        };
-        setDiscardOpen(true);
-      }
     };
     const unregisterHistoryGuard = registerEmployeeHistoryGuard(pop);
     document.addEventListener("click", follow, true);
@@ -757,7 +780,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       unregisterHistoryGuard();
       document.removeEventListener("click", follow, true);
     };
-  }, [props.creating, dirty, busy, activeSection]);
+  }, [props.creating, busy]);
   const startCreate = (invite: boolean) => {
     if (invite && !inviteRoles.some((role) => role.id === inviteRoleId)) {
       setInviteRoleAttempt((current) => current + 1);
@@ -792,7 +815,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (busy || uncertainCreate || readOnly) return;
+    if (busy || uncertainCreate || !canSubmit) return;
     if (done) {
       requestClose();
       return;
@@ -803,16 +826,22 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       } else startCreate(false);
       return;
     }
-    if (managerRefusal) {
-      setError(managerRefusal);
-      return;
+    // Enter sends what Save changes would: nothing when nothing changed.
+    if (!anyDirty) return;
+    if (dirty) {
+      if (managerRefusal) {
+        setError(managerRefusal);
+        return;
+      }
+      const parsed = employeeInputSchema.safeParse(draft);
+      if (!parsed.success) {
+        setError(
+          parsed.error.issues[0]?.message ?? "Check the employee details",
+        );
+        return;
+      }
+      if (documentPreviewBlocked) return;
     }
-    const parsed = employeeInputSchema.safeParse(draft);
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Check the employee details");
-      return;
-    }
-    if (documentPreviewBlocked) return;
     saveMutation.mutate();
   };
 
@@ -843,7 +872,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             !event.nativeEvent.isComposing &&
             !event.defaultPrevented &&
             !terminationOpen &&
-            !discardOpen &&
             (activeSection === "profile" || activeSection === "employment") &&
             (event.target instanceof HTMLHeadingElement ||
               (event.target instanceof HTMLInputElement &&
@@ -856,11 +884,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             return;
           }
           if (!props.creating || event.key !== "Tab") return;
-          const root = discardOpen
-            ? dialogRef.current?.querySelector("[data-discard-dialog]")
-            : dialogRef.current;
           const items = Array.from(
-            root?.querySelectorAll<HTMLElement>(
+            dialogRef.current?.querySelectorAll<HTMLElement>(
               "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]",
             ) ?? [],
           ).filter((item) => item.getClientRects().length > 0);
@@ -1085,8 +1110,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       removeAccessMutation.isPending,
                       context?.membership.role ?? "employee",
                       allowed,
-                      (roleId) => roleMutation.mutate(roleId),
-                      roleMutation.isPending,
+                      roleNow,
+                      setRolePicked,
+                      busy,
                       Boolean(
                         detail.data &&
                           context?.userId &&
@@ -1309,11 +1335,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     disabled={
                       archiveMutation.isPending ||
                       terminationMutation.isPending ||
-                      (!archived && dirty)
+                      (!archived && anyDirty)
                     }
                     title={
-                      !archived && dirty
-                        ? "Save profile changes before terminating the employee"
+                      !archived && anyDirty
+                        ? "Save your changes before terminating the employee"
                         : undefined
                     }
                     onClick={() => {
@@ -1385,7 +1411,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                         setInviteRoleAttempt((current) => current + 1);
                         return;
                       }
-                      if (dirty) {
+                      if (anyDirty) {
                         try {
                           await saveMutation.mutateAsync();
                         } catch {
@@ -1401,13 +1427,13 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       : "Invite"}
                   </Button>
                 ) : null}
-                {!readOnly ? (
+                {canSubmit ? (
                   <Button
                     type="submit"
                     disabled={
                       busy ||
                       documentPreviewBlocked ||
-                      (!dirty && !done) ||
+                      (!anyDirty && !done) ||
                       // Same gate the create flow already has. Without it,
                       // clearing the last location or job left Save enabled and
                       // the server refused it after the round trip.
@@ -1427,42 +1453,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             </footer>
           )}
         </DrawerForm>
-        {discardOpen ? (
-          <div className="employee-discard-overlay">
-            <div
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="employee-discard-title"
-              data-discard-dialog
-            >
-              <h2 id="employee-discard-title">Discard new employee?</h2>
-              <div>
-                <Button
-                  type="button"
-                  className="secondary-button"
-                  autoFocus
-                  onClick={() => {
-                    pendingNavigationRef.current = null;
-                    setDiscardOpen(false);
-                  }}
-                >
-                  Keep editing
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    allowNavigationRef.current = true;
-                    if (pendingNavigationRef.current)
-                      pendingNavigationRef.current();
-                    else props.onClose();
-                  }}
-                >
-                  Discard
-                </Button>
-              </div>
-            </div>
-          </div>
-        ) : null}
         {terminationOpen && detail.data ? (
           <EmployeeTerminationDialog
             employeeName={`${detail.data.first_name} ${detail.data.last_name}`}
@@ -1681,6 +1671,7 @@ function renderSection(
   removingAccess: boolean,
   actorRole: WorkspaceRole,
   allowed: EmployeeDetail["allowed"] | undefined,
+  roleId: string,
   onRoleChange: (roleId: string) => void,
   changingRole: boolean,
   /** The viewer is looking at their own record, and they own the workspace. */
@@ -1761,6 +1752,7 @@ function renderSection(
         onRemoveAccess={onRemoveAccess}
         removingAccess={removingAccess}
         actorRole={actorRole}
+        roleId={roleId}
         onRoleChange={onRoleChange}
         changingRole={changingRole}
       />
@@ -2302,6 +2294,7 @@ function AccessSection({
   onRemoveAccess,
   removingAccess,
   actorRole,
+  roleId,
   onRoleChange,
   changingRole,
   archived,
@@ -2324,6 +2317,8 @@ function AccessSection({
   onRemoveAccess: () => void;
   removingAccess: boolean;
   actorRole: WorkspaceRole;
+  /** The role picked in the form; Save changes saves it. */
+  roleId: string;
   onRoleChange: (roleId: string) => void;
   changingRole: boolean;
 }) {
@@ -2475,7 +2470,7 @@ function AccessSection({
               <select
                 aria-label="Workspace role"
                 aria-describedby={ownerRoleReason ? ownerRoleReasonId : undefined}
-                value={currentRoleId}
+                value={roleId}
                 disabled={
                   !canChangeRole || changingRole || assignableRoles.length === 0
                 }
