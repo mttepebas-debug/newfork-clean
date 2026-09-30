@@ -273,9 +273,12 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   hiç görünmez.
 
 ### Settings
-- Jobs: her departmanın altındaki işler ada göre A→Z; işlerde elle sıralama
-  ("Move up / Move down") yok, departmanlarda var. İşlerin sırasını okuyan
-  Schedule ve seçiciler de A→Z (kullanıcı kararı 2026-09-30, BL-475; kod
+- Jobs: departmanlar ve her departmanın altındaki işler ada göre A→Z;
+  Management departmanı ayrıcalıksız, ötekilerle A→Z. Elle sıralama
+  ("Move up / Move down") ne işlerde ne departmanlarda var. İşlerin ve
+  departmanların sırasını okuyan Schedule ve seçiciler de A→Z. Örnek: "Bar,
+  Kitchen, Management, Service" (kullanıcı kararları 2026-09-30, BL-475: önce
+  yalnız işler, aynı gün departmanlara genişledi; kod `task/bl-475-db` ve
   `task/bl-475`'te, main'e girmedi).
 - Locations: lokasyon silme iki tık, panel yok. Jobs, Shift types ve Shift
   labels'ta silme etki listesi paneli açar; o panel bilerek kalıyor.
