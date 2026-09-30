@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // COORD-CTRL: PreToolUse guard for Bash/PowerShell (CLAUDE.md §6, §7).
 // - A push to main needs a live main.lock (scripts/lock.mjs). Without one it is
-//   refused, unless the command carries NF_OVERRIDE="<reason>": then origin/main
-//   is first saved as refs/nf-backup/main/<stamp> and the bypass is logged.
+//   refused, unless the push itself is prefixed with NF_OVERRIDE="<reason>": then
+//   origin/main is first saved as refs/nf-backup/main/<stamp> and the bypass is logged.
 // - Deleting a branch or removing a worktree is allowed, but the tip is saved
 //   under refs/nf-backup/... first.
-// - Every decision lands in <inbox>/audit.log (one JSON object per line).
-// Fail-closed only for a push to main: if the guard itself breaks, that push
+// - Every decision lands in <inbox>/audit.log (one JSON object per line, secrets masked).
+// Fail-closed only for a push to main: if evaluate() itself breaks, that push
 // is refused (NF_OVERRIDE still passes). Everything else fails open.
 import fs from "node:fs";
 import path from "node:path";
@@ -37,13 +37,31 @@ const tryGit = (cwd, args, timeout) => {
 };
 const stamp = () => new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
 
-export function overrideReason(cmd) {
-  const m = cmd.match(/NF_OVERRIDE\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s;]+))/);
-  return m ? (m[1] ?? m[2] ?? m[3] ?? "").trim() || "(gerekçe yok)" : null;
+// Passwords and tokens never reach the audit log.
+export const redact = (s) =>
+  s
+    .replace(/(\/\/[^:\s/@]+:)[^@\s]+@/g, "$1***@")
+    .replace(/(--password[=\s]+|PGPASSWORD=|Bearer\s+|(?:api[_-]?key|token|secret)[=:]\s*)\S+/gi, "$1***");
+
+// The override counts only as an assignment in front of the push itself:
+// bash `NF_OVERRIDE="why" git push …`, or PowerShell `$env:NF_OVERRIDE='why'; git push …`
+// (the segment right before the push). Text anywhere else (a commit message) does not count.
+const REASON = String.raw`\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))`;
+export function overrideReason(segs, i) {
+  const pick = (m) => (m ? (m[1] ?? m[2] ?? m[3] ?? "").trim() || "(gerekçe yok)" : null);
+  return (
+    pick(segs[i].match(new RegExp(`^NF_OVERRIDE${REASON}\\s`))) ??
+    (i > 0 ? pick(segs[i - 1].match(new RegExp(`^\\$env:NF_OVERRIDE${REASON}\\s*$`, "i"))) : null)
+  );
 }
 
-// ponytail: shell-ish split on && || ; | newline; quoting inside a segment is not parsed
-const segments = (cmd) => cmd.split(/&&|\|\||[;|\n]/).map((s) => s.trim()).filter(Boolean);
+// ponytail: shell-ish split on && || ; | newline; quoting inside a segment is not parsed, and a
+// push wrapped in another shell (`bash -c "git push …"`, `pwsh -Command "…"`) is not seen.
+export const segments = (cmd) =>
+  cmd
+    .split(/&&|\|\||[;|\n]/)
+    .map((s) => s.trim().replace(/^\$?\(+\s*/, "").replace(/\s*\)+$/, ""))
+    .filter(Boolean);
 const words = (seg) => (seg.match(/"[^"]*"|'[^']*'|\S+/g) ?? []).map((w) => w.replace(/^["']|["']$/g, ""));
 
 // Arguments after the git subcommand, and the -C directory if one was given.
@@ -55,6 +73,7 @@ function gitCall(seg, sub) {
   let i = g + 1;
   while (i < w.length && w[i].startsWith("-")) {
     if (w[i] === "-C") cwd = w[++i];
+    else if (w[i] === "-c") i++; // -c key=value takes a value
     i++;
   }
   if (w[i] !== sub) return null;
@@ -65,9 +84,10 @@ export function pushesMain(seg, cwd) {
   const call = gitCall(seg, "push");
   if (!call) return false;
   const dir = call.cwd ? path.resolve(cwd, call.cwd) : cwd;
-  if (call.args.some((a) => a === "--all")) return true;
+  if (call.args.some((a) => a === "--all" || a === "--mirror")) return true;
   const plain = call.args.filter((a) => !a.startsWith("-"));
-  const refspecs = plain.slice(1);
+  // --repo=<remote> names the remote as an option, so every plain arg is a refspec
+  const refspecs = call.args.some((a) => a.startsWith("--repo")) ? plain : plain.slice(1);
   const current = () => tryGit(dir, ["branch", "--show-current"]);
   if (!refspecs.length) return current() === "main";
   return refspecs.some((spec) => {
@@ -79,7 +99,9 @@ export function pushesMain(seg, cwd) {
 
 function audit(entry) {
   fs.mkdirSync(INBOX_DIR, { recursive: true });
-  fs.appendFileSync(AUDIT(), `${JSON.stringify({ at: new Date().toISOString(), ...entry })}\n`);
+  const line = { at: new Date().toISOString(), ...entry };
+  if (line.command) line.command = redact(line.command);
+  fs.appendFileSync(AUDIT(), `${JSON.stringify(line)}\n`);
 }
 
 function backupMain(cwd) {
@@ -131,11 +153,13 @@ export function evaluate(input) {
   const cmd = input.tool_input?.command ?? "";
   const cwd = input.cwd ?? process.cwd();
   const base = { session_id: input.session_id ?? "", cwd, tool: input.tool_name ?? "", command: cmd };
-  const reason = overrideReason(cmd);
+  let segs = [];
   try {
     for (const re of DENIED) if (re.test(cmd)) audit({ ...base, event: "deny-pattern", pattern: String(re) });
 
-    for (const seg of segments(cmd)) {
+    segs = segments(cmd);
+    for (let i = 0; i < segs.length; i++) {
+      const seg = segs[i];
       for (const entry of backupBranches(seg, cwd, base)) audit(entry);
 
       if (!pushesMain(seg, cwd)) continue;
@@ -145,6 +169,7 @@ export function evaluate(input) {
         audit({ ...base, event: "push-main-locked", lock: lockInfo });
         continue;
       }
+      const reason = overrideReason(segs, i);
       if (reason) {
         const b = backupMain(cwd);
         audit({ ...base, event: "push-main-override", reason, lock: lockInfo, backup: b.ref, sha: b.sha, fetched: b.fetched });
@@ -156,12 +181,13 @@ export function evaluate(input) {
         message:
           `main'e gönderim reddedildi: main.lock ${lock.free ? "alınmamış" : `bayat (${lockInfo})`}. ` +
           `Önce: node scripts/lock.mjs take main "<rol/oturum>, <amaç>" (CLAUDE.md §6). ` +
-          `Bilinçli aşmak için komutun başına NF_OVERRIDE="<gerekçe>" koy; origin/main yedeklenir ve kayda düşer.`,
+          `Bilinçli aşmak için push komutunun başına NF_OVERRIDE="<gerekçe>" koy; origin/main yedeklenir ve kayda düşer.`,
       };
     }
     return { block: false };
   } catch (err) {
-    const risky = /\bpush\b/.test(cmd) && /\bmain\b/.test(cmd) && !reason;
+    const overridden = segs.some((_, i) => overrideReason(segs, i));
+    const risky = /\bpush\b/.test(cmd) && /\bmain\b/.test(cmd) && !overridden;
     try {
       audit({ ...base, event: "guard-error", error: String(err?.message ?? err), blocked: risky });
     } catch {}
