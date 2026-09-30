@@ -1,5 +1,5 @@
 # FB-6.2 Çalışanlar dilimini yetki çekirdeğine taşı (FOUNDATION-B Aşama 6)
-Status: ready (2026-09-27) — S1–S4 ve P1–P3 cevaplı; owner'ın Takvim gruplaması ve iş ataması BL-218'de (`docs/plan/tasks/BL-218.md`). Başlama şartı: FB-6.1 `.9` main'de (✓ `bee7713d`); `.4` BL-218 `.1`–`.3`'ten sonra.
+Status: active (2026-09-30: `.0`–`.10` main'de, son `9f1cc3b3`; kalan `.11` kapanış — koordinatör, EMP-001 dilim A bitince). Önceki satır: ready (2026-09-27) — S1–S4 ve P1–P3 cevaplı; owner'ın Takvim gruplaması ve iş ataması BL-218'de (`docs/plan/tasks/BL-218.md`). Başlama şartı: FB-6.1 `.9` main'de (✓ `bee7713d`); `.4` BL-218 `.1`–`.3`'ten sonra.
 Tazelik: FB-6.2.0b 2026-09-29 (`4490f8e3`) aşağıda; G7 (backlog programı) bu dilimin kendisi — ayrı görev dosyası yok (koordinatör 2026-09-29).
 Session: -   Branch: task/FB-6.2   Worktree: newfork-wt/FB-6.2   DB: lock (migration + test:db + e2e)
 

@@ -1,4 +1,75 @@
-# İlerleme planı — hesaplı (sürüm 6, 2026-09-29)
+# İlerleme planı — hesaplı (sürüm 7, 2026-09-30)
+
+## 0. Güncel durum (kayıt oturumu tutar; her beslemede güncellenir)
+Tutan: "Rol: nf-planlama (Kayıt ve ilerleme)" oturumu (KARARLAR OPS-04). Son güncelleme: 2026-09-30, `origin/main` `bccdb4df`, koordinatör beslemesi #1. Koordinatör bugün `local_460271c1-c51e-4537-bb02-a601c501bbbf` ("Koordinatör — devir 2026-09-30 sabah"; `HANDOFF.md`). İş sırasının kaynağı `tasks/BACKLOG-PROGRAM.md` (kullanıcı kararı 2026-09-29); bu bölüm onun ve görev dosyalarının özetidir. §1–§9 FOUNDATION-B'nin puan tablosudur; bu güncellemede yalnız §1 ve §3'ün FB-6.2 satırları yenilendi.
+
+### 0a. Durum ne (en çok 5 satır)
+1. **Ne bitti:** Employees ekranının yetki işi (FB-6.2) kapanışa geldi; son adım olan uçtan uca testler (`.10`) main'de. Yönetici yalnız kendi lokasyonundaki kişileri görüyor ve oraya davet gönderebiliyor; bu akışlar her gönderimde otomatik deneniyor.
+2. **Kanıt:** `9f1cc3b3` + `352faab7` main'de; main CI 36696339068 check + db + e2e yeşil (`gh run view`, 2026-09-30). Kilitler boş.
+3. **Neredeyiz:** FOUNDATION-B Aşama 6–7 %53,9 (124 / 230 puan, tahmin ağırlıklı). Backlog'da 239 açık madde: kritik yok, 4'ü "high" (BL-238, BL-101, BL-276, BL-426). Yürüyen iş: EMP-001 dilim A — Employees → çekmece → Profile sekmesinin sadeleşmesi (`nf-arayuz`).
+4. **Sıradaki:** EMP-001 A bitince FB-6.2 `.11` kapanışı (koordinatör) → EMP-001 B ("yalnız yönetir"in sökülmesi) ve C → G8a (arşivli lokasyon kuralı) → G8b. Yan yana ikinci iş için koordinatörün önerisi G14 (Schedule üst çubuğu ve menülerinin görsel düzeltmeleri).
+5. **Bekleyen karar:** ikinci işin seçimi (kullanıcı). Tam liste §0c.
+
+### 0b. Açık işler, önem sırasıyla
+Sayım: 2026-09-30, `bccdb4df`, betikle (`BACKLOG.md` açık bölümü; yöntem `BACKLOG-PROGRAM.md` "Sayım"). Toplam 239. "Şu an koşabilir mi" sütunu kayıt oturumunun değerlendirmesidir (grubun dokunduğu dosyalar ve yürüyen işler); her grup başlamadan önce tazeliği yeniden ölçülür.
+
+| Sıra | Grup | Tema | Bir cümleyle (örnek madde) | Açık | En yüksek işaret (leave / do) | Şu an koşabilir mi |
+|---|---|---|---|---|---|---|
+| yürüyor | EMP-001 | Employees çekmecesi yenilikleri (kullanıcı isteği, program dışı) | Employees → çekmecede Profile sadeleşir, "Manages without working there" kalkar, rol "Save changes" ile kaydedilir | görev dosyası, 3 dilim | R3 (B ve C) | A yürüyor (`nf-arayuz`); B ve C, FB-6.2 `.11` kapanınca |
+| 7 | G7 = FB-6.2 | Çalışanlarda yetki çekirdeği | Employees'te kimin kimi görüp düzenleyeceği tek yerden sorulur; kalanların en önemlisi eski yetki kapısını kullanan fonksiyonlar (BL-276) | 21 | high / risky | `.11` kapanışı EMP-001 A'yı bekliyor; maddeler `.11`'de tazelenir, dördü EMP-001 B ile kapanır (BL-424, BL-418, BL-387, BL-421) |
+| 8 | G8 | Silinmiş ve arşivli kayıtlar | Arşivlenmiş iş ya da vardiya tipindeki eski vardiyanın kartında ad yerine "Shift" yazıyor (BL-254) | 3 | medium / moderate | Hayır — G7 kapanışı ve EMP-001 B1'den sonra (kullanıcı 2026-09-30) |
+| 3 | G3 kalanı | Bayat ekranlar | Workspace hub'ında davet kabul edilince Account rozeti yenilenmiyor (BL-389) | 3 | low / moderate | Evet (`nf-backend` boşta) |
+| 4 | G4 kalanı | Zamanlanmış dışa aktarma | E-postayla zamanlanmış dışa aktarmanın kodu bitti; canlıda saatlik tetik ve e-posta denemesi bekliyor (BL-101) | 2 | high / moderate | Hayır — BL-426 (Vercel) kullanıcı kararı |
+| 5 | G5 ardı | Hesap güvenliği, düşük bulgular | Hesap silmede ilk kurtarma e-postası düşerse kişi 15 dakika yeniden gönderim alamıyor (BL-357) | 4 | low / safe | Evet |
+| 9 | G9 kalanı | İzin ve takas kuralları | Her takas onayı cevaptan önce bildirim dağıtımını 2 saniyeye kadar bekliyor (BL-200) | 5 | medium / moderate | Evet, önce ölçüm (BL-200) |
+| 10 | G10 | Schedule kayıt ve yayın kuralları | Her Pazar akşamı (Pacific) yönetici ekrandaki haftayı düzenleyemiyor (BL-238) | 14 | high / risky | `nf-db` işi, aynı migration ailesi: EMP-001 B/C ve G8 ile aynı anda değil, sırayla |
+| 11 | G11 kalanı | Hata sözleşmesi | Settings'e yazan rotaların kapısı yetki çekirdeğine çevrilmeli (BL-374) | 6 | medium / risky | Evet (`nf-backend`); BL-374 R3 |
+| 12 | G12 kalanı | Yerel veritabanına dayanıklı testler | İki veritabanı testi herkesin kullandığı örnek lokasyonu değiştiriyor (BL-217) | 12 | medium / moderate | Evet (`nf-test`, yalnız test); BL-105 kullanıcı onayı ister |
+| 13 | G13 kalanı | Test ve CI kararlılığı | Davetlinin yeni hesap açarak daveti kabul etmesi uçtan uca denenmiyor (BL-434) | 8 | medium / moderate | Evet (`nf-test`) |
+| 14 | G14 | Schedule üst çubuk, menüler, pencereler — görsel | Basılamayan Publish düğmesi basılabilir görünüyor ve nedenini söylemiyor (BL-308) | 18 | medium / safe | Evet — koordinatörün önerdiği ikinci iş; Schedule dosyaları, EMP-001 (Employees) ile çakışmıyor; `nf-arayuz` EMP-001 A'da |
+| 15 | G15 | Görsel tutarlılık | Ortak ikon düğmesi telefonda 44×44 dokunma hedefinin altında (BL-334) | 25 | medium / moderate | Kısmen — çok ekran; Employees çekmecesine değen kalemler (BL-259) EMP-001'den sonra |
+| 16 | G16 | Giriş öncesi, hesap ve workspace ekranları | Kurulumdan çıkan owner boş ızgarayla karşılaşıyor (BL-122) | 16 | medium / moderate | Evet; BL-355 (3) kullanıcı kararı |
+| 17 | G17 | Çalışanlar ve kişi kaydı | Telefonda Employees çekmecesinde "Terminate employee" hiç görünmüyor (BL-407) | 16 | medium / risky | Hayır — EMP-001 ile aynı dosyalar; BL-431 ve BL-432 EMP-001 B4 ile kapanır |
+| 18 | G18 | Belgeler | Menü "2 bekleyen" diyor, Documents sayfası "sizden bir şey istenmedi" diyor (BL-341) | 6 | medium / moderate | Evet |
+| 20 | G20 | Performans | Schedule ızgarası her çizimde bütün modeli yeniden kuruyor (BL-275) | 3 | medium / moderate | Evet |
+| 21 | G21 | Müsaitlik | Yöneticiler arası ortak müsaitlik notu (BL-135) | 3 | medium / safe | Evet |
+| 23 | G23 | Ölü kod ve ikiz yollar | SSN kalıntıları duruyor; ROADMAP "SSN yok" diyor (BL-382) | 12 | medium / moderate | Evet; BL-382 silme onayı kullanıcıda |
+| 24 | G24 | Geliştirme ortamı ve araçlar | 382 migration dosyası tek tabana sıkıştırılmalı (BL-377) | 16 | medium / risky | Evet (koordinatör + `nf-test`) |
+| — | GK | Karar bekleyen | Hesap düğmesi ile workspace değiştirici tek kontrol olsun mu (BL-073) | 1 | low | Kullanıcı kararı (varyantlar hazırlanacak) |
+| — | Hosted | Canlı yayın | Vercel projesi eski repoya bağlı; main'e giren hiçbir şey canlıya çıkmıyor (BL-426) | 1 | high / risky | Kullanıcı kararı: şimdilik dokunulmuyor |
+| — | GF | FOUNDATION-B dilimlerine bağlı | İlgili dilimle kapanır: FB-6.1b, FB-6.3 izin, FB-6.4 takas, FB-6.6 belgeler, FB-6.8 ayarlar | 9 | medium (üçü risky) | Dilim sırasıyla |
+| — | GY | Yol haritası fazları | MVP fazlarının işleri: onboarding yedi adım, Billing/Stripe, landing, Requests, bildirimler | 25 | 24'ü işaretsiz | Faz sırası kullanıcı kararı olmadan değişmez |
+| — | GS | MVP sonrası | Kiosk, time tracking, payroll | 10 | 6'sı işaretsiz | Kapsam dışı |
+
+Kayıt borcu: açık 239 maddenin 53'ünde iki işaret yok (çoğu GY ve GS; `BACKLOG-PROGRAM.md` "Sayım"). İşaretlemek ayrı bir kayıt işi; koordinatör isterse yapılır.
+
+### 0c. Kullanıcıda bekleyenler (karar, onay, komut)
+Soruların uzun metni (seçenekler, öneri) `tasks/BACKLOG-PROGRAM.md` "Kullanıcıya dönüşte" ve "Hosted bekleyen" bölümlerinde.
+
+| # | Tür | Ne bekliyor | Neyi durduruyor |
+|---|---|---|---|
+| 1 | karar | EMP-001 yürürken yan yana ikinci iş hangisi olsun. Koordinatörün önerisi G14 (Schedule üst çubuğu ve menülerinin görsel düzeltmeleri) | İkinci işin başlaması; `BACKLOG-PROGRAM`'daki "aynı anda tek grup" cümlesinin güncellenmesi |
+| 2 | onay | `CLAUDE.md` değişikliği, üç parça: (a) §3 ve §12'de koordinatör kimliği hâlâ `local_243f826b…`, bugünkü `local_460271c1…`; (b) yeni kural "ekran davranışı değişen işte push'tan önce o paketin bütün vitest'i koşulur"; (c) kayıt oturumu kuralı (KARARLAR OPS-04) | Rol oturumları raporu eski adrese gönderebilir; (b) olmadan odaklı test en az iki kez yetmedi |
+| 3 | karar | KK-29: lokasyonu yönetip orada çalışmayan yönetici, o lokasyonda kişilere eylem de yapar mı, yalnız görür mü. Not: EMP-001 B bu alanı söküyor; B main'e girince soru düşer (EMP-001 "KARARLAR'da değişecek satırlar") | Hiçbir şeyi; EMP-001 B'ye kadar bugünkü kural geçerli |
+| 4 | onay | Ultrareview (yalnız kullanıcı başlatır): FB-6.2 `.7b`, T5b, T5a, G9b, G11, G4–G6 için öneriler duruyor; EMP-001 B ve G8a başlarken yeniden önerilecek | Hiçbir şeyi; ek güvence |
+| 5 | karar | BL-426: Vercel'deki proje bu repoya bağlansın mı. Bugün main canlıya çıkmıyor; son canlı yayın 2026-08-05 | G4'ün kalanı (BL-101 saatlik tetik, e-posta denemesi); değişiklikleri canlıda görmek |
+| 6 | karar | BL-417: yönetici, kişinin çekmecesinde kendisinin ulaşamadığı lokasyonun adını görsün mü (öneri: görsün). EMP-001'den sonra madde yeniden yazılacak | Employees çekmecesi ve listesindeki lokasyon adları |
+| 7 | karar | BL-419: kurulumu bitmemiş workspace'te doğrudan API'den davet gönderilebiliyor (ekranda yol kapalı). Kabul mü, "kurulum bitmeden davet yok" kuralı mı (öneri: kabul) | — |
+| 8 | karar | BL-073: hesap düğmesi ile workspace değiştirici tek kontrol olsun mu (görsel; varyantlar gösterilecek) | G16'nın bir kalemi |
+| 9 | karar | BL-355 (3): Account → Profile'daki "To save, fill in …" satırı sayfa değişmeden de görünsün mü (öneri: bugünkü gibi kalsın) | G16'nın bir kalemi |
+| 10 | onay | BL-105: veritabanı test aracının (pgTAP) yerelde kalıcı kurulumu | G12'nin bir kalemi |
+| 11 | onay | BL-382: SSN kalıntılarının (tablo, tür, 410 dönen rota) silinmesi | G23'ün bir kalemi |
+| 12 | karar | BL-370: vardiyası olmayan yayın "yayında" sayılsın ve geri alınabilsin mi (öneri: evet) | G10'un bir kalemi |
+| 13 | onay | Sürüm atlamaları: vitest, vite, react-router, TypeScript ana sürümleri (yeni bağımlılık sayılır) | — |
+| 14 | komut | Uzak dal temizliği: içeriği main'de olan 40 dal (ölçüm 2026-09-30, `bccdb4df`). Komut aşağıda | Dal listesinin okunurluğu; bekledikçe liste büyür |
+| 15 | komut | BL-433: dört eski klasördeki kaydedilmemiş rol notları main'e taşındıktan sonra klasörlerin silinmesi (silme kullanıcı komutuyla) | Önce notların karşılaştırılması (koordinatör ya da `nf-test`) |
+| 16 | karar (sırası gelince) | K10: onaylı iznin iptalini kim onaylar (FB-6.3 başlamadan); K7: Schedule ekran turunun günü (FB-6.1 `.0`) | FB-6.3 ve FB-6.1 kapanışı (§5) |
+
+Uzak dal silme komutu (PowerShell; kullanıcı çalıştırır). 36 dalda main'de olmayan yama yok; son dört dalın (`g4`, `g5`, `g9b-shorten`, `g12`) içeriği main'de başka commit olarak var (`BACKLOG-PROGRAM.md` "Uzak dal silme listesi"). Yerel `keep/fb62-8-save-pattern` dalına dokunmaz.
+```powershell
+Set-Location C:\Users\TheWe\Documents\Codex\newfork-clean
+git push origin --delete batch/t1 merge/account task/account-redesign task/batch-t1 task/batch-t1b task/batch-t2 task/batch-t3 task/batch-t4 task/batch-t4b task/batch-t5 task/batch-t5b task/batch-t5c task/fb62-10 task/fb62-7b-db task/fb62-7b-qa-db task/fb62-7b-qa-fixes task/fb62-9-red-files task/fb62-core-a task/fb62-core-a-t5b task/fb62-core-a-t5b-2 task/fb62-core-a-t5b-3 task/fb62-core-a-t5b-4 task/fb62-core-b-7a task/fb62-core-b-7b task/fix-g5-timing-test task/g1-error-states task/g1-schedule-dialogs task/g1-schedule-dialogs-rebased task/g13-test-stability task/g19-today-helper task/g2-quick-editor task/g22-tooltip-note-corner task/g3-stale-screens task/g6-notification-delivery task/g9-timeoff-exchange task/g9b-qa-fixes task/g4-scheduled-export task/g5-account-security task/g9b-shorten-time-off task/g12-pgtap-resilience
+```
 
 Hazırlayan: `nf-planlama` (`local_c67b8d60-…`). Koordinatör: "Koordinatör el değiştirmesi", `local_243f826b-1906-491b-b1fc-1a1bdbb4316d` (2026-09-29'dan; CLAUDE.md main `3fa8bc7f`).
 Ölçüm: `origin/main` `228ff3b7`, 2026-09-29 (BL-218.3 kapandı: `.3-i`, `.3a`, `.3b`, `.3-ii` main'de `be46cd22`, main CI run 36522159307 yeşil — e2e işi bir kez yeniden koşturuldu, `tasks/BL-218.md` → Notes; üstüne hedef dışı Schedule sağ üst pencereler `228ff3b7`, FOUNDATION-B tablosunu değiştirmez). Önceki ölçüm `de80eda6`, 2026-09-28 (BL-199 kapandı, main CI yeşil run 36501225426; `10c11be5`'ten bu yana main'e yalnız BL-199 ve plan commit'leri girdi, FOUNDATION-B tablosu değişmedi); önceki ölçüm `10c11be5` (SEC-003 kod kısmı `721ea41f`, main CI yeşil run 36445247470; hosted gönderim aynı gün, koordinatör); SEC-003 commit'leri `34fc2075`, `3eeb4c11` (`nf-db`), `6887fbbc` (`nf-backend`), `d0751603`, `0d03389e`, `74e2d363` (`nf-test`) — hepsi `git cat-file` ile doğrulandı; durumlar koordinatörün 2026-09-28 güncellemesiyle. Hesap betiği: satırlar, bağımlılıklar ve puanlar bu dosyadaki tablolardır; sayıları elle değil betikle ürettim, tablo değişince aynı yolla yeniden hesaplanır.
@@ -23,8 +94,8 @@ Durum: bitti (main'de) · incelemede (commit var, ONAY ya da birleştirme bekliy
 | Hedef | Biten / toplam | Yüzde | Not |
 |---|---|---|---|
 | SEC-003 hesap güvenliği paketi | 26 / 26 | **%100 — bitti** (2026-09-28, `10c11be5` + hosted) | Hedef kapandı; yayın öncesi şartlar §8'de. |
-| **FOUNDATION-B — Aşama 6–7** (**aktif**, 2026-09-28'den) | 86 / 230 | **%37,4** (2026-09-29, `228ff3b7`; önceki %33,5 FB-6.2.0'ın 1 puanını saymıyordu, betik 78 buldu; BL-218.3 +8) | Bitenlerin 61 puanı FB-6.1'in 14 adımının geriye dönük puanı (tahmin). Açık dilimlerden FB-6.4–6.8 ve Aşama 7 görev dosyasız (tahmin, 44 puan). |
-| FOUNDATION-B — program geneli (bilgi) | 164 / 308 | %53,2 (tahmin, 2026-09-29) | Aşama 1–5 bitti; plandaki süre orta noktaları × 8 = 78 puan sayıldı. Eski "~%58" formülünün yerine geçer; ikisi farklı ölçü, karşılaştırılmaz. |
+| **FOUNDATION-B — Aşama 6–7** (**aktif**, 2026-09-28'den) | 124 / 230 | **%53,9** (2026-09-30, `bccdb4df`: FB-6.2 `.1`–`.10`'un 38 puanı main'de, `.11`'in 1 puanı açık; önceki 86 / 230 = %37,4, 2026-09-29, `228ff3b7`; önceki %33,5 FB-6.2.0'ın 1 puanını saymıyordu, betik 78 buldu; BL-218.3 +8) | Bitenlerin 61 puanı FB-6.1'in 14 adımının geriye dönük puanı (tahmin). Açık dilimlerden FB-6.4–6.8 ve Aşama 7 görev dosyasız (tahmin, 44 puan). |
+| FOUNDATION-B — program geneli (bilgi) | 202 / 308 | %65,6 (tahmin, 2026-09-30; önceki 164 / 308 = %53,2, 2026-09-29) | Aşama 1–5 bitti; plandaki süre orta noktaları × 8 = 78 puan sayıldı. Eski "~%58" formülünün yerine geçer; ikisi farklı ölçü, karşılaştırılmaz. |
 
 ## 2. İş tablosu — SEC-003 (bitti 2026-09-28; kayıt için)
 Kaynak: `tasks/SEC-003.md`, koordinatör girdisi 2026-09-28, dallar yukarıda.
@@ -56,24 +127,24 @@ Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-21
 | BL-218.3-ii | Takvim ve referans tipleri, API geçirme, Management'ı bulan saf yardımcı; yalnız Owner işi olan owner'da yeni vardiyanın varsayılan işi | BL-218.3a | Böl, aynı anda yürüt | 3 | bitti 2026-09-29 (`fc7ec76e`, `ef4f640c`, `be46cd22`) | `nf-backend` | `packages/shared`, `apps/api/src/schedule`, `apps/web/src/schedule/*-data`, `shiftEditorState.ts`, `apps/web/src/employees/*-data` |
 | BL-218.4 | Kurulum sihirbazında "en az 1" metni; Settings → Jobs'ta kilitli Owner satırı | BL-218.3-i | — | 3 | hazır | `nf-arayuz` | `OwnerOnboardingPage.tsx`, Settings → Jobs |
 | BL-218.5a | Employees çekmecesinin iş listesi için departman ve Owner bilgisi (okuma) | — | Böl, aynı anda yürüt | 0 | kapandı 2026-09-28: DB yarısı `.3a`'ya, `nf-backend` yarısı `.3-ii`'ye katıldı (3 puan oraya taşındı) | — | — |
-| BL-218.5b | Çekmecede iş listesi departmana göre gruplu, Owner kilitli (DEV varyantları) | BL-218.3-ii | — | 3 | hazır | `nf-arayuz` | `EmployeeDrawer.tsx` |
+| BL-218.5b | Çekmecede iş listesi departmana göre gruplu, Owner kilitli (DEV varyantları) | BL-218.3-ii | — | 3 | EMP-001'e taşındı 2026-09-30 (EMP-001 K6); puanı burada duruyor, EMP-001 ile kapanır | `nf-arayuz` | `EmployeeDrawer.tsx` |
 | BL-218.6 | Takvim'de "By department", Management grubu, iki satır, tek sayım | BL-218.3-ii | — | 5 | hazır | `nf-arayuz` (+ `nf-backend`) | `apps/web/src/schedule/**` |
 | BL-218.7 | e2e: kurulum → çekmece → By department | BL-218.4, .5b, .6 | — | 3 | bekliyor | `nf-test` | `e2e/flows/**` |
 | FB-6.1b.1 | Açık düzenleme tutmadığı lokasyona vardiya ekleyemez (BL-159) | — | — | 3 | hazır | `nf-db` | `supabase/migrations` (`apply_schedule_template_service`) |
 | FB-6.1b.2 | Boş yeni taslakta "yayınlanmışları soluk göster" anahtarı (DEV varyantları) | — | — | 3 | hazır | `nf-arayuz` | `SchedulePage.tsx`, schedule CSS |
 | FB-6.1b.3 | e2e iki senaryo | FB-6.1b.1, .2 | — | 3 | bekliyor | `nf-test` | `e2e/flows/**` |
 | FB-6.2.0 | Çalışanlar dilimi taze ölçüm (FB-6.1 işlevsel kısmı ve BL-139 main'de) | — | — | 1 | bitti 2026-09-28 (`756af40c` ölçüm; `nf-test` koşusu `2fed2144`: `employee_hub` 13/13, `roles_permissions_rls` 42/47) | `nf-planlama` (+ `nf-test` koşu) | `tasks/FB-6.2.md` |
-| FB-6.2.1 | Yetki matrisi: ikinci admin, "yalnız yönetir", lokasyondan çıkarma | FB-6.2.0 | — | 3 | hazır | `nf-db` | `supabase/tests/authorization_matrix.test.sql` |
-| FB-6.2.2 | Veri modeli: "yalnız yönetir", "kendi lokasyonundan çıkar" komutu | FB-6.2.1 | — | 5 | bekliyor | `nf-db` | `supabase/migrations` |
-| FB-6.2.3 | Çalışan okuma ve listesi çekirdeğe | FB-6.2.2 | — | 3 | bekliyor | `nf-db` | `supabase/migrations` |
-| FB-6.2.4 | Çalışan yazmaları çekirdeğe (kaydet, çıkar, arşiv, erişim, rol) | FB-6.2.3, BL-218.3 | — | 5 | bekliyor | `nf-db` | `supabase/migrations` |
-| FB-6.2.5 | Davet çekirdeğe | FB-6.2.4 | — | 3 | bekliyor | `nf-db` (+ API imza) | `supabase/migrations`, `invitation-service.ts` |
-| FB-6.2.6 | İş katalogu ve pano çağıranları çekirdeğe; BL-187 | FB-6.2.5 | — | 3 | bekliyor | `nf-db` | `supabase/migrations` |
-| FB-6.2.7 | API ve web veri: lokasyondan çıkarma ucu, `can()` geçişi, "Çalışan görünümüne geç" rotası | FB-6.2.6 | — | 5 | bekliyor | `nf-backend` | `employee-directory-routes.ts`, `App.tsx`, employees data |
-| FB-6.2.8 | Employees ekranı: "Kendi lokasyonundan çıkar", "Yalnız yönetir", etiketler (DEV varyantları) | FB-6.2.7 | — | 5 | bekliyor | `nf-arayuz` | `EmployeeDrawer.tsx`, `EmployeesPage.tsx` |
-| FB-6.2.9 | Kırmızı dosyalar yeşile (`roles_permissions_rls` #3, #7, #30, #35, #46) | FB-6.2.6 | — | 3 | bekliyor | `nf-test` | `supabase/tests/**`, `ci-green.txt` |
-| FB-6.2.10 | e2e: davet ve kapsam akışları | FB-6.2.7 | — | 3 | bekliyor | `nf-test` | `e2e/flows/invite.spec.ts` |
-| FB-6.2.11 | FB-6.2 kapanışı | FB-6.2.8, .9, .10 | — | 1 | bekliyor | koordinatör | `tasks/FB-6.2.md` |
+| FB-6.2.1 | Yetki matrisi: ikinci admin, "yalnız yönetir", lokasyondan çıkarma | FB-6.2.0 | — | 3 | bitti 2026-09-29 (T5a, main `b6c8d766`) | `nf-db` | `supabase/tests/authorization_matrix.test.sql` |
+| FB-6.2.2 | Veri modeli: "yalnız yönetir", "kendi lokasyonundan çıkar" komutu | FB-6.2.1 | — | 5 | bitti 2026-09-29 (T5a, main `b6c8d766`) | `nf-db` | `supabase/migrations` |
+| FB-6.2.3 | Çalışan okuma ve listesi çekirdeğe | FB-6.2.2 | — | 3 | bitti 2026-09-29 (T5a, main `b6c8d766`) | `nf-db` | `supabase/migrations` |
+| FB-6.2.4 | Çalışan yazmaları çekirdeğe (kaydet, çıkar, arşiv, erişim, rol) | FB-6.2.3, BL-218.3 | — | 5 | bitti 2026-09-30 (T5b, main `da8e3dc0`) | `nf-db` | `supabase/migrations` |
+| FB-6.2.5 | Davet çekirdeğe | FB-6.2.4 | — | 3 | bitti 2026-09-30 (T5b, main `da8e3dc0`) | `nf-db` (+ API imza) | `supabase/migrations`, `invitation-service.ts` |
+| FB-6.2.6 | İş katalogu ve pano çağıranları çekirdeğe; BL-187 | FB-6.2.5 | — | 3 | bitti 2026-09-30 (T5b, main `da8e3dc0`) | `nf-db` | `supabase/migrations` |
+| FB-6.2.7 | API ve web veri: lokasyondan çıkarma ucu, `can()` geçişi, "Çalışan görünümüne geç" rotası | FB-6.2.6 | — | 5 | bitti 2026-09-30 (`.7a` T5b `da8e3dc0`; `.7b` T5c `0806cc62`, QA düzeltmesi `809592bc`) | `nf-backend` | `employee-directory-routes.ts`, `App.tsx`, employees data |
+| FB-6.2.8 | Employees ekranı: "Kendi lokasyonundan çıkar", "Yalnız yönetir", etiketler (DEV varyantları) | FB-6.2.7 | — | 5 | bitti 2026-09-30 (`48a9d139`, `3f034462`; "yalnız yönetir" alanı EMP-001 B'de sökülecek) | `nf-arayuz` | `EmployeeDrawer.tsx`, `EmployeesPage.tsx` |
+| FB-6.2.9 | Kırmızı dosyalar yeşile (`roles_permissions_rls` #3, #7, #30, #35, #46) | FB-6.2.6 | — | 3 | bitti 2026-09-30 (`af2ef900`) | `nf-test` | `supabase/tests/**`, `ci-green.txt` |
+| FB-6.2.10 | e2e: davet ve kapsam akışları | FB-6.2.7 | — | 3 | bitti 2026-09-30 (`9f1cc3b3`; main CI 36696339068 yeşil) | `nf-test` | `e2e/flows/invite.spec.ts` |
+| FB-6.2.11 | FB-6.2 kapanışı | FB-6.2.8, .9, .10 | — | 1 | bekliyor (EMP-001 dilim A bitince; koordinatör) | koordinatör | `tasks/FB-6.2.md` |
 | FB-6.3.0 | İzin dilimi taze ölçüm | FB-6.2.11 | — | 1 | bekliyor | `nf-planlama` | `tasks/FB-6.3.md` |
 | FB-6.3.1 | Yetki matrisi: izin oylaması ve iptal | FB-6.3.0 | K10 | 3 | bekliyor | `nf-db` | `supabase/tests` |
 | FB-6.3.2 | İzin talebinden lokasyon kalkar (sözleşme) | FB-6.3.1 | — | 5 | bekliyor | `nf-db` | `supabase/migrations` |
@@ -92,6 +163,7 @@ Kaynak: `tasks/FOUNDATION-B.md` dilim tablosu, `FB-6.1.md`, `FB-6.1b.md`, `BL-21
 | A7 | Aşama 7: tek migration tabanı + hosted yeniden kurulum | FB-6.8, FB-6.1.14, FB-6.1b.3, BL-218.7 | — | 8 (tahmin) | bekliyor | `nf-db` + koordinatör + kullanıcı | `supabase/migrations`, hosted |
 
 ## 4. Sıradaki iş hesabı (yalnız "hazır" satırlar)
+**2026-09-30 notu:** aşağıdaki hesap 2026-09-29 sabahına aittir. FB-6.2 `.1`–`.10` bitti; sıra bugün §0'dan ve `tasks/BACKLOG-PROGRAM.md`'den okunur. Tablo FB-6.2 `.11` kapanınca yeniden hesaplanır.
 Sıralama: (i) arkasında bekleyen toplam puan (satırdan sonra zincir boyunca gelen bütün satırlar) → (ii) doğrudan açtığı satır sayısı → (iii) küçük puan.
 | Sıra | ID | Hedef | (i) arkasında (satır) | (ii) doğrudan açtığı | (iii) puan |
 |---|---|---|---|---|---|
@@ -145,3 +217,4 @@ FB-6.1.0 hazır sayılmaz: K7'yi (ekran turu günü) bekliyor.
 - **İlk iki grup (sırayla, T1 turu):** önce **G1** Schedule taslak ve yayın pencerelerinin davranış hataları (12 madde, en yüksek high / safe; BL-299 yanlış taslağı yayınlıyor, BL-300 klavyeyle çalışmıyor) ; sonra **G2** Schedule hızlı düzenleyicinin alanları ve klavye odağı (5 madde, high / safe; BL-293 WCAG 2.4.7). G1 ve G14 stil B mockup dalını (`task/schedule-dialog-mockups`, yalnız yerel DEV) beklemez: seçilen stil B zaten main'de (`228ff3b7`), sıra aynı (KK-4). Sonra G3 (bayat ekranlar, BL-271 gizlilik), ardından G4 (zamanlanmış dışa aktarma).
 - **Tazelik:** G1–G3'ün 22 maddesi 2026-09-29'da ölçüldü (`3a31d625`): 21 geçerli, 1 değişmiş (BL-303), bayat yok. Sonraki gruplar sırası gelince.
 - **FB-6.2.1 park (kullanıcı kararı 2026-09-29):** program sürerken FOUNDATION-B'nin FB-6.2.1 adımı bekler; §4 hesabı ve FOUNDATION-B yüzdesi (%33,5) program bitene kadar değişmez. Program G7 (yetki ailesi A) ayrı iş olarak açılmaz: sırası gelince FB-6.2.1'in görev dosyası açılır ve G7'nin 17 maddesi onun kapsamına girer (KK-5).
+  - **2026-09-30: geçersiz.** G7, FB-6.2 dilimi olarak yürüdü (KK-5, KK-12); `.1`–`.10` main'de, yüzdeler §1'de güncel.
