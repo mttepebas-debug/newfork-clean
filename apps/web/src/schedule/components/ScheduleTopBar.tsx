@@ -17,9 +17,10 @@ import {
   SlidersHorizontal,
   Snowflake,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
+import { useCloseOnEscape } from "../lib/useCloseOnEscape";
 import { MiniCalendar, type CalendarMarker } from "./MiniCalendar";
 import {
   ScheduleTopBarFilter,
@@ -201,31 +202,26 @@ export function ScheduleTopBar({
         event.stopImmediatePropagation();
       }
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      const activeElement = document.activeElement;
-      if (
-        activeElement instanceof HTMLElement &&
-        activeElement.closest(".schedule-topbar")
-      ) {
-        activeElement.blur();
-      }
-      setOpenDropdownId(null);
-    };
     window.addEventListener("pointerdown", closeOnOutsidePointerDown, true);
-    window.addEventListener("keydown", closeOnEscape, true);
     return () => {
       window.removeEventListener(
         "pointerdown",
         closeOnOutsidePointerDown,
         true,
       );
-      window.removeEventListener("keydown", closeOnEscape, true);
     };
   }, [openDropdownId]);
+  const closeDropdownOnEscape = useCallback(() => {
+    const activeElement = document.activeElement;
+    if (
+      activeElement instanceof HTMLElement &&
+      activeElement.closest(".schedule-topbar")
+    ) {
+      activeElement.blur();
+    }
+    setOpenDropdownId(null);
+  }, []);
+  useCloseOnEscape(openDropdownId ? closeDropdownOnEscape : null);
 
   return (
     <header className="schedule-topbar" data-schedule-top-bar>

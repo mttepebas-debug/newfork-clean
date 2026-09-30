@@ -198,6 +198,22 @@ describe("ScheduleTopBar", () => {
     expect(document.activeElement).not.toBe(jobsTrigger);
   });
 
+  // BL-372: the top bar shares the Schedule windows' Escape rule.
+  it("leaves Escape to an armed two-click button and keeps the dropdown open", () => {
+    renderTopBar();
+    const jobsDetails = document.querySelector<HTMLElement>('[data-filter-id="jobs"]');
+    fireEvent.click(jobsDetails!.querySelector<HTMLElement>("summary")!);
+    expect(jobsDetails?.hasAttribute("open")).toBe(true);
+    const armed = document.createElement("button");
+    armed.dataset.confirming = "true";
+    document.body.append(armed);
+
+    fireEvent.keyDown(armed, { key: "Escape" });
+    armed.remove();
+
+    expect(jobsDetails?.hasAttribute("open")).toBe(true);
+  });
+
   it("renders weekly period navigation and view mode before schedule filters", () => {
     const onPreviousViewPeriod = vi.fn();
     const onNextViewPeriod = vi.fn();

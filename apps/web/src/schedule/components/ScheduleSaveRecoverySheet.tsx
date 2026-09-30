@@ -1,5 +1,6 @@
-import { type JSX, type ReactNode, useEffect, useRef } from "react";
+import { type JSX, type ReactNode, useCallback, useEffect, useRef } from "react";
 import { AlertTriangle, RotateCcw, Save, XCircle } from "lucide-react";
+import { useCloseOnEscape } from "../lib/useCloseOnEscape";
 import "./schedule-save-recovery.css";
 
 interface ScheduleSaveRecoverySheetProps {
@@ -27,22 +28,15 @@ export function ScheduleSaveRecoverySheet({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const keepEditingRef = useRef(onKeepEditing);
   keepEditingRef.current = onKeepEditing;
+  const keepEditing = useCallback(() => keepEditingRef.current(), []);
+  useCloseOnEscape(open ? keepEditing : null);
   useEffect(() => {
     if (!open) return;
     const before = document.activeElement as HTMLElement | null;
     const dialog = dialogRef.current;
     dialog?.showModal?.();
     titleRef.current?.focus();
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      keepEditingRef.current();
-    };
-    window.addEventListener("keydown", closeOnEscape, true);
     return () => {
-      window.removeEventListener("keydown", closeOnEscape, true);
       dialog?.close?.();
       if (before?.isConnected && before !== document.body) before.focus();
       else document.querySelector<HTMLElement>('[data-schedule-top-action-trigger="publish"], [data-schedule-top-action-trigger="save-draft"]')?.focus();

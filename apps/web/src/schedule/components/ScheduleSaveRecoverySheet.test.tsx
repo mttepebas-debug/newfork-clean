@@ -80,6 +80,22 @@ describe("ScheduleSaveRecoverySheet", () => {
     expect(onKeepEditing).toHaveBeenCalledTimes(2);
   });
 
+  // BL-372: the sheet shares the Schedule windows' Escape rule.
+  it("keeps editing once per Escape, and leaves Escape to an armed two-click button", () => {
+    const onKeepEditing = vi.fn();
+    render(
+      <ScheduleSaveRecoverySheet open onRetry={vi.fn()} onKeepEditing={onKeepEditing} onDiscard={vi.fn()}>
+        <button type="button" data-confirming="true">Confirm discard</button>
+      </ScheduleSaveRecoverySheet>,
+    );
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "Confirm discard" }), { key: "Escape" });
+    expect(onKeepEditing).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "Retry save" }), { key: "Escape" });
+    expect(onKeepEditing).toHaveBeenCalledTimes(1);
+  });
+
   it("does not render while closed", () => {
     render(
       <ScheduleSaveRecoverySheet
