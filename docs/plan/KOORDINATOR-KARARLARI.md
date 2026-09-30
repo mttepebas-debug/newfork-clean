@@ -327,7 +327,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 
 ### KK-44 (2026-09-30) Kayıt yolunda lokasyonsuz müdüre veritabanı genel cümleyi verir
 - **Karar:** Remote ve "Exclude from schedule" kapalıyken lokasyonsuz kaydedilen kişide veritabanı önce genel "lokasyon zorunlu" cevabını verir; müdüre özel cümle Remove, rol ve davet yollarında (ve işaretli müdürün kaydında) çıkar.
-- **Uygulamada etkisi:** Employees → kişi → çekmece → Employment → Locations. Çekmece müdürü kendisi yakalıyor: lokasyonsuz müdürde Save kapalı ve alt çubuğun üstünde "A manager needs at least one location to manage. Choose a location, or turn on Remote." yazıyor (`apps/web/src/employees/EmployeeDrawer.tsx:192-198`, `:1194-1201`). Genel cümle "Choose at least one location and mark one as primary, or turn on Remote or Exclude from schedule." (`packages/shared/src/index.ts:877-878`) yalnız sunucu cevabında. Örnek: Beşiktaş müdürü Deniz'in tek lokasyonunun işareti kaldırılırsa Save basılamaz, müdür cümlesi görünür. Fark: besleme "çekmecede genel cümleyi görür" diyordu; kod çekmecede müdür cümlesini gösteriyor (alt ajan; ekranda denenmedi).
+- **Uygulamada etkisi:** Employees → kişi → çekmece → Employment → Locations. Çekmece müdürü kendisi yakalıyor: lokasyonsuz müdürde Save kapalı ve alt çubuğun üstünde "A manager needs at least one location to manage. Choose a location, or turn on Remote." yazıyor (`apps/web/src/employees/EmployeeDrawer.tsx:192-198`, `:1194-1201`). Genel cümle "Choose at least one location and mark one as primary, or turn on Remote or Exclude from schedule." (`packages/shared/src/index.ts:877-878`) yalnız sunucu cevabında. Örnek: Beşiktaş müdürü Deniz'in tek lokasyonunun işareti kaldırılırsa Save basılamaz, müdür cümlesi görünür. Fark: besleme "çekmecede genel cümleyi görür" diyordu; kod çekmecede müdür cümlesini gösteriyor (alt ajan; ekranda denenmedi). **Ek (besleme #12, alt ajan `ddb2e359`):** koordinatör kullanıcıya "çekmece lokasyonsuz müdüre müdür cümlesini gösterir, genel cümle yalnız sunucu cevabında" diye düzeltti. İkinci yarısı kodda tam böyle değil: genel cümle formda da üretiliyor (`packages/shared/src/index.ts:2701-2705`) ve form kaydın müdür olduğunu bilmediğinde çekmecede çıkar (`EmployeeDrawer.tsx:189-192`); sunucu ise müdüre müdür cümlesini yolluyor (`apps/api/src/http-error.ts:138-139`). Satırlar bugün: `EmployeeDrawer.tsx:193-199`, `:1224-1227`; `index.ts:878`, `:883`. Ekranda denenmedi.
 - **Dayanak:** kayıt yolunda eski genel kural zaten aynı durumu reddediyordu; iki ayrı ret yerine ilki cevaplıyor.
 - **Geri alma:** kolay.
 - **Durum:** main'de (`9aa200eb`).
@@ -337,21 +337,21 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** Account → Profile → "Emergency contact" (`apps/web/src/account/ProfilePage.tsx`). Kalıcı rette "Your emergency contact can no longer be changed in <workspace>: your access there has ended or the workspace is closed." (`:384`), öteki rette "Your emergency contact could not be saved in <workspace>. Try again." (`:380`). Örnek: kurulumu bitmemiş "Meyhouse" workspace'ine eklenmiş çalışan Ayşe acil durum kişisini değiştirir; kayıt reddedilir ve ilk cümleyi görür; owner Mert aynı ekranda kaydeder. Ölçüm notu (alt ajan, kod okuması): kapalı workspace ve erişimi alınmış üyede API çekirdeğe sormadan 404 veriyor; o durumda ekran "Try again." diyor olabilir, yeni cümle yalnız kurulumu bitmemiş workspace'te çıkıyor gibi. Ekranda denenmedi; görsel QA'da bakılmalı.
 - **Dayanak:** `CLAUDE.md` §9 (yazma, açık olmayan workspace'te reddedilir; ret okunur cümleyle).
 - **Geri alma:** kolay.
-- **Durum:** main'de (`9aa200eb`, `de5205d6`); ekran doğrulaması açık.
+- **Durum:** main'de (`9aa200eb`, `de5205d6`); ekran doğrulaması açık — erişimi alınmış ya da kapalı workspace'te ekranın ne dediği ölçülmedi, `nf-gorsel-qa`'da (koordinatör kullanıcıya böyle düzeltti; besleme #12).
 
 ### KK-46 (2026-09-30) Lokasyondan çıkarma sonrası çekmece kapanır (EMP-001 B4'e eklendi)
 - **Karar:** `nf-test`'in bulgusu B4 dilimine alındı: kişi, bakanın tek ortak lokasyonundan çıkarılınca çekmece kapanır.
 - **Uygulamada etkisi:** Employees → kişi → çekmece → Employment → Locations → "Remove from Kadikoy" (`apps/web/src/employees/EmployeeLocationParts.tsx:38`). Önce: Kadıköy müdürü Ayşe kişiyi çıkarınca çekmece "erişimin yok" kilidinde açık kalıyordu (koordinatörün aktardığı). Sonra: çekmece kapanır ve "Removed from Kadikoy" bildirimi çıkar (`task/emp-001-b4`, `EmployeeDrawer.tsx:599`; dalda ölçüldü).
 - **Dayanak:** kişi artık Ayşe'nin kapsamında değil; kilitli çekmece bir hata gibi okunuyor.
 - **Geri alma:** kolay.
-- **Durum:** dalda (`task/emp-001-b4` @`e48df45c`, main'in üstünde 3 commit).
+- **Durum:** main'de (`25fabe0a`; `EmployeeDrawer.tsx:599-600`, test `EmployeeDrawer.test.tsx:2379`; main CI 36724425552 yeşil; besleme #12'de ölçüldü).
 
 ### KK-47 (2026-09-30) Yeni kişi kaydı yoldayken geri tuşu tutulmaya devam eder (EMP-001 B4)
 - **Karar:** K7 çekmecedeki "kaydedilmemiş değişiklik" uyarılarını kaldırıyor; yeni kişi isteği sunucudayken sayfadan çıkışın tutulması uyarı sayılmadı, kalıyor.
 - **Uygulamada etkisi:** Employees → yeni kişi çekmecesi (koordinatörün aktardığı adıyla "Add employee"; düğme metni ölçülmedi). Save'e basıp hemen tarayıcının geri tuşuna basan kişi, istek cevaplanana kadar çekmecede kalır; cevap gelince çıkış serbest. Önce de böyleydi; değişen yalnız öteki uyarıların kalkması. Dalda test: `63f201d3`.
 - **Dayanak:** yarım kalan kayıt isteği kişiyi iki kez ekletebilir; bu bir veri koruması, soru değil.
 - **Geri alma:** kolay.
-- **Durum:** dalda (`task/emp-001-b4` @`e48df45c`).
+- **Durum:** main'de (`25fabe0a`, testi `69f9f642`; main CI 36724425552 yeşil). Hiç cevap gelmezse çekmece kilitli kalır: BL-465.
 
 ### KK-48 (2026-09-30) Access sekmesinde "Profile photo" grubunun iki açıklaması da kalkacak (BL-446)
 - **Karar:** BL-446 kullanıcıya sorulacaktı; A2 kararıyla tutarlılık için kullanıcı yokken karar verildi: iki açıklama da kalkar.
@@ -372,7 +372,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** dilim a — belge çekmecesi (Account → Documents, Employees → Documents, Employees çekmecesi → Documents): dosya yükleyince, dosya silince ya da erteleme kaydedince yazılan son kullanma tarihi ve ek alanlar silinmez; örnek: Ayşe ehliyetinin son kullanma tarihini yazar, ikinci dosyayı yükler, tarih yerinde kalır (önce siliniyordu). Dilim c — hesap menüsünde "Documents"ın yanındaki sayı belge olmayan adımları saymaz; bugün çalışan kaydı olan herkes en az 2 görüyor, bekleyen belgesi olmayan 0 görecek. Dilim b yalnız test.
 - **Dayanak:** kullanıcı 2026-09-30'da ikinci hattı açmıştı (EMP-001 yanında G14); G18 programda sıradaki hazır grup ve EMP-001 B4 ile dosyaları kesişmiyor (koordinatörün değerlendirmesi).
 - **Geri alma:** kolay (K1 sonradan yazılabilir).
-- **Durum:** yazılıyor: `task/g18-a` @`7430a99f` (2 commit), `task/g18-c` @`c8cac1e6` (1 commit); main'de değil.
+- **Durum:** main'de (`f71538ee`, `247947ee`, `2ca7559d`; main CI 36724425552 yeşil; besleme #12). U59, U60, BL-341 kapandı. Ölçüm notu: Documents sayısı belgelerin yanında onaylanacak politikaları da sayar; çekmecede yazılan, çekmece kapanınca düşer. Canlı veritabanına gönderim açık.
 
 ### KK-51 (2026-09-30) Haftalık kullanım sınırı %80'de; %90'da yeni iş başlatılmaz
 - **Karar:** uygulamanın kullanım kartı 2026-09-30 gecesi %80 gösterdi (koordinatörün aktardığı); %90'da yeni iş açılmayacak.
@@ -387,3 +387,45 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** bağlamı dolan oturum boş oturuma verilir, kart onayı beklenmez (bu dosyanın başı).
 - **Geri alma:** gerekmez.
 - **Durum:** yapıldı.
+
+### KK-53 (2026-09-30) Belge çekmecesi düzeltmesi tarayıcıda Meyhouse'ta değil atık bir e2e workspace'inde denendi
+- **Karar:** G18 dilim a'nın tarayıcı denemesi yerel Meyhouse workspace'inde yapılmadı; atık bir e2e workspace'i kullanıldı.
+- **Uygulamada etkisi:** Meyhouse'ta değişen yok. Yerel veritabanında "World e2e1790771412855" workspace'inde kalanlar: yayımlanmış belge tanımı "G18 check", 9 kişiye birer Optional zorunluluk, Emre Person'ın sürüm 1'i (pending review), depoda 3 küçük PNG (koordinatörün aktardığı; veritabanında ölçülmedi). O workspace'e yerelde bakan bunları görür; başka workspace etkilenmez.
+- **Dayanak:** Meyhouse'ta G14 QA verisi duruyor; üstüne belge verisi eklenmesin. E2e dünyasının owner'ına sihirli bağlantı alınamadığı için (BL-404) deneme öteki kişilerle yapıldı.
+- **Geri alma:** kolay (atık workspace; yerel veritabanı tek komutla yeniden kurulur).
+- **Durum:** yapıldı; veri duruyor.
+
+### KK-54 (2026-09-30) "Bu kayıt owner'ın mı" sunucudan gelir (EMP-001 C1; BL-421)
+- **Karar:** `get_employee_detail_service` cevabına `is_workspace_owner` eklenir; çekmece owner'ı rol adından tanımayı bırakır.
+- **Uygulamada etkisi:** Employees → owner'ın çekmecesi. Görünen fark yok. Bugün çekmece "Owner" rol adına bakıyor (`apps/web/src/employees/EmployeeDrawer.tsx:1120`, `:2337`, `:3116`; ölçüldü): rolün kilidi, kilidin ekran okuyucudaki nedeni ve owner'ın kendi acil durum kişisi alanı bu karşılaştırmaya bağlı. Örnek: Owner rolünün adı bir gün değişirse owner Mert kendi çekmecesinde acil durum kişisi alanını kaybederdi; C'den sonra kaybetmez.
+- **Dayanak:** `CLAUDE.md` §9 (karar rol adına değil sunucunun cevabına bakar); BL-421.
+- **Geri alma:** kolay (cevaba eklenen tek alan).
+- **Durum:** dalda (`task/emp-001-c1` @`4dd1f56b`, main'in üstünde 2 commit — ölçüldü; alan main'de yok).
+
+### KK-55 (2026-09-30) Var olan workspace'lere de "Manager" işi eklenir (EMP-001 C1)
+- **Karar:** S2 yalnız yeni kurulumu söylüyordu; C1 migration'ı var olan her workspace'in Management departmanına da "Manager" işini ekler. Silinirse geri gelmez.
+- **Uygulamada etkisi:** Settings → Jobs → "All" görünümünde "Management" departmanının altında "Owner"ın yanında "Manager" çıkar; "Jobs" sekmesinde de listelenir (`apps/web/src/settings/JobsSettingsPage.tsx:513-515`; yerel Meyhouse dahil). Employees çekmecesi → Employment → Jobs listesinde Management grubunda seçilebilir olur. Örnek: owner Mert Settings → Jobs'u açar, Management altında bugün yalnız "Owner" var (`supabase/migrations/20260927160000_management_and_owner_are_kept.sql:49-52`; ölçüldü), C1'den sonra "Manager" da görünür; silerse bir daha kendiliğinden gelmez.
+- **Dayanak:** S2 (Manager sıradan iştir); yeni ve eski workspace aynı görünsün. Canlı veri yok.
+- **Geri alma:** orta (migration eklediği işi geri almaz; iş elle silinir).
+- **Durum:** dalda (`task/emp-001-c1` @`4dd1f56b`; `0022b9cd`, migration `20261002000000_manager_is_an_ordinary_job.sql`; main'de değil — dal ölçüldü, migration'ın içeriği okunmadı).
+
+### KK-56 (2026-09-30) Employees listesindeki iş adının sırası: birincil, yoksa Owner işi, yoksa ilk iş (EMP-001 C1)
+- **Karar:** listede kişinin yanında görünen iş adı: kayıtlı birincil iş; yoksa Owner işi; yoksa ilk iş. Eskisi ikinci adımda "ilk Management işi"ydi.
+- **Uygulamada etkisi:** Employees → liste → kişinin satırındaki iş adı (`apps/web/src/employees/EmployeesPage.tsx:657`; iş yoksa "Unassigned"). Bugünkü sıra veritabanında: birincil → ilk Management işi → ilk iş (`supabase/migrations/20261001000000_a_manager_manages_where_they_are_assigned.sql:710-711`; ölçüldü). Örnek: birincil işi seçilmemiş, "Server" ve "Manager" işleri olan Ayşe bugün listede "Manager" görünür (Management işi öne geçiyor); C1'den sonra sıradaki ilk işi görünür. Owner Mert'in satırında "Owner" kalır.
+- **Dayanak:** S2: Manager artık sıradan iş, öne geçmez; Owner işi birincil sayılmadığı için owner'ın satırı boş kalmasın.
+- **Geri alma:** kolay.
+- **Durum:** dalda (`task/emp-001-c1` @`4dd1f56b`; `0022b9cd`, migration `20261002000000_manager_is_an_ordinary_job.sql`; main'de değil — dal ölçüldü, migration'ın içeriği okunmadı).
+
+### KK-57 (2026-09-30) Bu gece G18'den sonra yeni backlog grubu açılmıyor
+- **Karar:** haftalık kullanım %82 (koordinatörün aktardığı); kalan pay EMP-001 C'ye ve QA düzeltmelerine.
+- **Uygulamada etkisi:** yok. İkinci hat G18'le kapandı; yürüyen tek kod işi EMP-001 C.
+- **Dayanak:** KK-51 (%90'da yeni iş başlatılmaz); sabaha kullanıcıya pay kalsın.
+- **Geri alma:** gerekmez.
+- **Durum:** geçerli.
+
+### KK-58 (2026-09-30) Oturum yenilemeleri: `nf-db`, `nf-gorsel-qa`, kayıt oturumu, koordinatör
+- **Karar:** `nf-db` üçüncü oturum `local_8918dfd6-f929-4312-857e-58362641f3a4` (C1); `nf-gorsel-qa` yeni `local_2a24338f-ba49-4311-acbe-4f916b5ae06d`; kayıt oturumu `local_6fe24435-0391-4db7-bf3c-d448e03044da` (dördüncü; önceki `local_6c8429c0…` durdu) — koordinatörün aktardığı. Aynı gece koordinatör de devretti: yeni `local_c575161a-0a35-45af-ae96-d4e74880bc97`, önceki `local_2022ee49…` (`HANDOFF.md` `a98b0671`; ölçüldü).
+- **Uygulamada etkisi:** yok (çalışma düzeni).
+- **Dayanak:** bağlamı dolan oturum boş oturuma verilir, kart onayı beklenmez (bu dosyanın başı).
+- **Geri alma:** gerekmez.
+- **Durum:** yapıldı. Eski oturumların arşivi kullanıcıda (`ILERLEME-PLANI.md` §0c satır 20).

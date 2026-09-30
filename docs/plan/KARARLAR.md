@@ -149,6 +149,7 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   (kullanıcı kararı 2026-09-22).
 - Workspaces: çalışılan workspace'in satırı tonlu; ayrı "Current" rozeti yok
   (kullanıcı kararı).
+- Documents, belge çekmecesi (Account → Documents, Employees → Documents, Employees çekmecesi → Documents; koordinatör kararı KK-50, G18 dilim a; `f71538ee`): çekmecede yazılan son kullanma tarihi ve ek alanlar dosya yükleyince, taslak dosya silince ve erteleme kaydedince silinmez; taslak gönderilene kadar çekmecede durur. Yazılan, taslak sürümün kimliğine bağlıdır (başka taslak gelirse onun kayıtlı değeri görünür) ve sunucuda saklanmaz: çekmece kapanınca ya da sayfa yenilenince gider; kapatırken "Discard unsaved changes?" sorulur. Öteki yazılan alanlar (erteleme, uzatma ve ret nedeni, dosya kararları) bu kuralın dışında; kullanıcı sorusu BL-467.
 
 ### Employee Hub
 - Shift Hub telefondaki alt çubukta "Requests" adını taşır.
@@ -188,6 +189,10 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   verilen sırada, sonra "No department", en altta Management; hiçbir iş bir
   departmanda değilse başlıksız düz liste.
 - Access sekmesi (kullanıcı kararı 2026-09-30, EMP-001 A2; `a2ec3725`): "Account access" grup başlığının ve Workspace role seçicisinin altında açıklama yazısı yok. Owner'ın kilitli rolünün nedeni ("Owner access is managed separately.") yalnız ekran okuyucuya söylenir; başkasının kaydında seçici açıktır, neden yazılmaz. "Profile photo" grubunun iki açıklaması duruyor (BL-446; kullanıcıya soruldu).
+- Rol "Save changes" ile kaydedilir (kullanıcı kararı 2026-09-30, EMP-001 B4; `25fabe0a`): Access'te seçilen rol formda durur, hiçbir şey göndermez; "Save changes" önce kişi kaydını, sonra rolü gönderir. Yalnız rol değiştiyse kayıttan sonra Access'te kalınır. Kişi kaydı reddedilirse rol gönderilmez; rol düşerse seçim durur ve yeniden deneme yalnız rolü gönderir.
+- Çekmece kapanırken sormaz (kullanıcı kararı 2026-09-30, EMP-001 K7; `25fabe0a`): var olan kişide de yeni kişi eklerken de "kaydedilmemiş değişiklik" uyarısı yok; Esc ve dışarı tıklama yazılanları atar, tarayıcı uyarısı yok. Neden: hızlı çıkış; uyarı "düzeltilecek eksik" sanılmasın. Tek tutma: yeni kişi isteği sunucudayken çıkış, cevap gelene kadar tutulur (çift kaydı önler; koordinatör kararı KK-47).
+- Kişi bakanın kapsamından çıkınca çekmece kapanır (koordinatör kararı KK-46, EMP-001 B4; `25fabe0a`): lokasyondan çıkarma sonrası kayıt artık okunamıyorsa çekmece kapanır ve "Removed from <lokasyon>" bildirimi çıkar. Neden: "erişimin yok" kilidinde açık kalan çekmece hata gibi okunuyordu.
+- "Terminate employee" kaydedilmemiş değişiklik varken kapalıdır (EMP-001 B4; `25fabe0a`): fare ipucu "Save your changes before terminating the employee" — "profile" demez, çünkü değişiklik rol de olabilir.
 
 ### Schedule
 - Silme ve üstüne yazma iki tık (UI-12): taslak/şablon silme, taslağın
