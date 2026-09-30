@@ -20,7 +20,7 @@ insert into public.schedule_template_shifts (workspace_id, template_id, location
 select tests.id('dl'), tests.id('dl:template'), tests.id('dl:' || loc), tests.id('dl:job:cook'), 1, '09:00', '15:00', 'explicit', 'Europe/Istanbul',
   case loc when 'B' then 'Besiktas keys are in the safe' else '' end
 from unnest(array['K', 'B']) loc;
--- A location that is only archived (not deleted) still counts: "Old kitchen"
+-- An archived location counts nowhere too (G8a, KK-13): "Old kitchen"
 -- has shifts at Kadikoy and the archived Moda.
 insert into public.locations (workspace_id, name, short_name, street_address, city, region, postal_code, timezone)
 values (tests.id('dl'), 'Moda', 'MDA', '1 St', 'Istanbul', 'Istanbul', '34710', 'Europe/Istanbul');
@@ -63,7 +63,7 @@ create function pg_temp.revision() returns integer language sql as $$
 $$;
 
 -- 1. Besiktas exists: Ayse sees none of it (as today).
-select is(pg_temp.templates(), '{}'::text[], 'while Besiktas exists Ayse does not see the Kadikoy + Besiktas template');
+select is(pg_temp.templates(), array['Old kitchen'], 'while Besiktas exists Ayse does not see the Kadikoy + Besiktas template (only Old kitchen, whose Moda is archived)');
 select throws_ok(format($$select public.get_schedule_template_service(%L, %L, %L)$$,
   tests.user('dl:ayse'), tests.id('dl'), tests.id('dl:template')), 'P0002', null, 'nor open it');
 select throws_ok(format($$select public.rename_schedule_template_service(%L, %L, %L, 'Mine', %s)$$,
@@ -74,14 +74,14 @@ select is(pg_temp.recent_exports(), '{}'::text[], 'nor the recent export for bot
 -- 2. Besiktas is deleted.
 update public.locations set archived_at = now(), deleted_at = now() where id = tests.id('dl:B');
 
-select is(pg_temp.templates(), array['Standard week'], 'after Besiktas is deleted Ayse sees the template');
+select is(pg_temp.templates(), array['Old kitchen', 'Standard week'], 'after Besiktas is deleted Ayse sees the template');
 select is(public.get_schedule_template_service(tests.user('dl:ayse'), tests.id('dl'), tests.id('dl:template')) -> 'template' ->> 'name',
   'Standard week', 'and opens it');
 select is((select jsonb_agg(s ->> 'location_id') from jsonb_array_elements(pg_temp.opened('ayse') -> 'shifts') s),
   jsonb_build_array(tests.id('dl:K')), 'with only the Kadikoy shift: nothing of the deleted Besiktas, its note included');
 select is((select jsonb_agg(s ->> 'location_id') from jsonb_array_elements(pg_temp.opened('owner') -> 'shifts') s),
   jsonb_build_array(tests.id('dl:K')), 'the owner too opens it without the deleted Besiktas shift');
-select ok(not ('Old kitchen' = any (pg_temp.templates())), 'an archived (not deleted) Moda still counts: Ayse does not see Old kitchen');
+select ok('Old kitchen' = any (pg_temp.templates()), 'an archived Moda counts nowhere either (KK-13): Ayse sees Old kitchen');
 select is(public.rename_schedule_template_service(tests.user('dl:ayse'), tests.id('dl'), tests.id('dl:template'), 'Kadikoy week', pg_temp.revision())
   -> 'template' ->> 'name', 'Kadikoy week', 'renaming it keeps the new name');
 select is((select name from public.schedule_templates where id = tests.id('dl:template')), 'Kadikoy week', 'and it is saved');
@@ -103,7 +103,7 @@ select is(pg_temp.recent_exports(), array['both kitchens'], 'and sees the recent
 
 select lives_ok(format($$select public.delete_schedule_template_service(%L, %L, %L, %s)$$,
   tests.user('dl:ayse'), tests.id('dl'), tests.id('dl:template'), pg_temp.revision()), 'Ayse deletes the template');
-select is(pg_temp.templates(), '{}'::text[], 'and it is gone');
+select is(pg_temp.templates(), array['Old kitchen'], 'and it is gone');
 
 select * from finish();
 rollback;

@@ -142,3 +142,4 @@ supabase/tests/onboarding_review_on_the_core.test.sql
 supabase/tests/roles_permissions_rls.test.sql
 supabase/tests/a_manager_manages_where_they_are_assigned.test.sql
 supabase/tests/name_settings_and_own_contact_ask_the_core.test.sql
+supabase/tests/archived_location_counts_nowhere.test.sql
