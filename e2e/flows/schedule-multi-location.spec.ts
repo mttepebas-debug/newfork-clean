@@ -89,7 +89,7 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   await ayse.getByRole("button", { name: "Publish", exact: true }).click();
   const ayseDialog = ayse.getByRole("dialog");
   await expect(ayseDialog).toContainText("Select locations to publish");
-  await expect(ayseDialog.getByText("1 of 1 locations selected")).toBeVisible();
+  await expect(ayseDialog.getByText("1 of 1 location selected")).toBeVisible();
   await expect(ayseDialog.getByText("Besiktas")).toHaveCount(0);
   await ayseDialog.getByRole("button", { name: "Cancel", exact: true }).click();
 
