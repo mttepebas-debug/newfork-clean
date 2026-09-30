@@ -89,7 +89,6 @@ function renderRow(overrides: Partial<Parameters<typeof ScheduleRow>[0]> = {}) {
     activeInteractionShiftLocationId: null,
     days: ["2026-08-17"],
     jobs: [job],
-    departments: [],
     shiftTypes: [shiftType],
     closures: [],
     cellStateByKey: new Map(),
@@ -210,7 +209,6 @@ describe("ScheduleRow blank-cell interactions", () => {
           activeInteractionShiftLocationId={null}
           days={["2026-08-17"]}
           jobs={[job]}
-          departments={[]}
           shiftTypes={[shiftType]}
           closures={[]}
           cellStateByKey={new Map()}
@@ -299,7 +297,6 @@ describe("ScheduleRow blank-cell interactions", () => {
           activeInteractionShiftLocationId={null}
           days={["2026-08-17"]}
           jobs={[job]}
-          departments={[]}
           shiftTypes={[shiftType]}
           closures={[]}
           cellStateByKey={new Map()}

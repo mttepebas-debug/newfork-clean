@@ -108,7 +108,6 @@ export function ScheduleRow({
   readonly activeInteractionShiftLocationId: string | null;
   readonly days: readonly string[];
   readonly jobs: ScheduleReadModel["jobs"];
-  readonly departments: ScheduleReadModel["departments"];
   readonly shiftTypes: ScheduleReadModel["shift_types"];
   readonly closures: ScheduleReadModel["closures"];
   readonly cellStateByKey: ScheduleCellStateMap;

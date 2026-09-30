@@ -2200,7 +2200,9 @@ function EmploymentSection({
       </div>
       <AssignmentPicker
         label="Locations"
+        // Nothing is asked of the owner: every location is theirs already.
         required={
+          !detail?.is_workspace_owner &&
           !draft.is_remote &&
           (!draft.is_excluded_from_schedule || locationActions.managerRecord)
         }
@@ -3023,7 +3025,12 @@ function AssignmentPicker({
               Boolean(reason) ||
               (checked && (lockedIds?.has(option.id) ?? false));
             return (
-              <div key={option.id} data-locked={locked ? "true" : undefined}>
+              <div
+                key={option.id}
+                data-locked={locked ? "true" : undefined}
+                // Off for a reason, not for its own Remove: the name greys too.
+                data-locked-reason={reason ? "true" : undefined}
+              >
                 <label title={reason}>
                   <input
                     type="checkbox"

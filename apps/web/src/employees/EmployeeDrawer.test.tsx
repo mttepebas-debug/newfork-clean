@@ -1345,6 +1345,7 @@ describe("EmployeeDrawer", () => {
       expect(owner.checked).toBe(false);
       expect(owner.disabled).toBe(true);
       expect(jobRow("Owner").dataset.locked).toBe("true");
+      expect(jobRow("Owner").dataset.lockedReason).toBe("true");
       expect(lockReason(owner)).toBe("Only the workspace owner holds the Owner job.");
       expect(within(jobRow("Owner")).queryByLabelText("Primary")).toBeNull();
     });
@@ -1403,6 +1404,33 @@ describe("EmployeeDrawer", () => {
         expect(lockReason(box)).toBe("The workspace owner works at every location.");
       }
       expect(within(locations()).queryByLabelText("Primary")).toBeNull();
+    });
+
+    // Nothing is asked of the owner here, so the heading does not say Required.
+    it("does not mark the owner's Locations as Required", async () => {
+      renderDrawer("employment", ownersRecord);
+      await employeeLoaded();
+      expect(within(locations()).queryByText("Required")).toBeNull();
+    });
+
+    it("keeps Required on anybody else's Locations", async () => {
+      renderDrawer("employment", { ...ownersRecord, role_name: "Employee", is_workspace_owner: false, allowed: detail.allowed });
+      await employeeLoaded();
+      expect(within(locations()).getByText("Required")).toBeTruthy();
+    });
+
+    // The name is greyed only on a row switched off for a reason; a location
+    // with Remove on its row keeps its look.
+    it("marks the rows switched off for a reason, and not a location Remove takes off", async () => {
+      const view = renderDrawer("employment", ownersRecord);
+      await employeeLoaded();
+      expect(screen.getByLabelText("Patio").closest("div")!.dataset.lockedReason).toBe("true");
+      view.unmount();
+      renderDrawer("employment");
+      await screen.findByRole("button", { name: "Remove from Main Dining" });
+      const row = screen.getByLabelText("Main Dining").closest("div")!;
+      expect(row.dataset.locked).toBe("true");
+      expect(row.dataset.lockedReason).toBeUndefined();
     });
 
     it("saves the owner's primary location as it was read", async () => {
