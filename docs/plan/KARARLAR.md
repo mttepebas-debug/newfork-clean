@@ -269,6 +269,10 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   hiç görünmez.
 
 ### Settings
+- Jobs: her departmanın altındaki işler ada göre A→Z; işlerde elle sıralama
+  ("Move up / Move down") yok, departmanlarda var. İşlerin sırasını okuyan
+  Schedule ve seçiciler de A→Z (kullanıcı kararı 2026-09-30, BL-475; kod
+  `task/bl-475`'te, main'e girmedi).
 - Locations: lokasyon silme iki tık, panel yok. Jobs, Shift types ve Shift
   labels'ta silme etki listesi paneli açar; o panel bilerek kalıyor.
 - Roles: "Delete role" `ConfirmButton` değil, kendi iki tık kopyası
