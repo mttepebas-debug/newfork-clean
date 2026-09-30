@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(19);
 
 -- SEC-003 #9 (BL-274, user S2 (a)): an invitation is accepted only by an
 -- account whose email address is confirmed, through the emailed link (token)
@@ -102,6 +102,56 @@ select is(pg_temp.decline('cem'), 'allowed', 'and can decline one');
 select is(pg_temp.by_id('ali'), 'allowed', 'a confirmed account accepts from Account > Workspaces');
 select is(pg_temp.by_token('bora'), 'allowed', 'and through the emailed link');
 select ok(pg_temp.member('ali') and pg_temp.member('bora'), 'both joined');
+
+-- The other number on the account button (BL-341): documents still theirs to
+-- act on, which is what Account > Documents lists. The profile and availability
+-- steps of joining live in the same table and are not documents.
+select tests.world('dc');
+select tests.person('dc', 'emre', 'employee', array['K'], array['cook']);
+select tests.person('dc', 'veli', 'employee', array['K'], array['cook']);
+create function pg_temp.documents(person text) returns integer language sql as $$
+  select documents from public.count_account_attention_service(tests.user('dc:' || person))
+$$;
+
+select is(
+  (select array_agg(r.kind || ':' || r.status order by r.kind::text)
+   from public.employee_onboarding_requirements r where r.employee_id = tests.id('dc:emre')),
+  array['availability:not_started', 'profile:completed'],
+  'somebody who joined has a finished profile step, an availability step and no document');
+select is(pg_temp.documents('emre'), 0, 'neither step is counted as a document');
+
+-- A document everybody must hand in.
+create temporary table asked_document (id uuid, preview jsonb);
+insert into asked_document (id)
+select public.save_document_type_lifecycle_service(tests.user('dc:owner'), tests.id('dc'), null, null, jsonb_build_object(
+  'title', 'Food handler card', 'description', 'Card', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+update asked_document set preview = public.preview_document_publication_service(tests.user('dc:owner'), tests.id('dc'), id);
+select public.set_document_publication_service(tests.user('dc:owner'), tests.id('dc'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from asked_document;
+select tests.settle();
+select is(pg_temp.documents('emre'), 1, 'a document still to hand in is counted');
+
+-- ponytail: handed in by hand; the product's way goes through a file upload.
+insert into public.employee_document_submissions (id, workspace_id, employee_id, requirement_id, user_id, version, state, submitted_at)
+select gen_random_uuid(), r.workspace_id, r.employee_id, r.id, r.lifecycle_user_id, 1, 'pending_review', now()
+from public.employee_onboarding_requirements r
+where r.source_id = (select id from asked_document) and r.employee_id = tests.id('dc:emre');
+update public.employee_onboarding_requirements r
+set submitted_document_id = (select s.id from public.employee_document_submissions s where s.requirement_id = r.id)
+where r.source_id = (select id from asked_document) and r.employee_id = tests.id('dc:emre');
+select is(pg_temp.documents('emre'), 0, 'once handed in it waits for a reviewer and is no longer theirs to act on');
+
+-- ponytail: the kind is set by hand; a policy to acknowledge takes its own
+-- publish and apply, and the count only reads the kind.
+update public.employee_onboarding_requirements r set kind = 'acknowledgement'
+where r.source_id = (select id from asked_document) and r.employee_id = tests.id('dc:veli');
+select is(pg_temp.documents('veli'), 1, 'something to acknowledge is counted too');
 
 select * from finish();
 rollback;
