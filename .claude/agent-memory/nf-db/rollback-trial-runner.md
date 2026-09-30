@@ -49,6 +49,11 @@ Before a batch: run ONE file first, then prove nothing stayed, e.g. `select key 
 
 - A reusable per-file runner (FB-6.1.9, 2026-09-27): write it with the Write tool into `scratchpad/<task>/trial.sh`; per file `awk 'NR==1 && /^begin;/ {print; <cat migration>; next} {print}'` piped to one `psql -X -v ON_ERROR_STOP=1`, then count `^not ok` minus TODO, `ERROR:`, `^1\.\.`, and print workspaces/auth.users/authz_actions counts before and after. `lock.mjs take` wants the owner as `rol/oturum` (e.g. `nf-db/fb61-9-settings-db`).
 
+- BL-475 (2026-09-30): an UPDATE on `jobs` queues the deferred `document_assignment_changed` trigger, and a later `ALTER TABLE jobs` in the same migration fails "pending trigger events". Fire it first: `set constraints public.document_assignment_changed immediate;` ... ALTER ... `set constraints public.document_assignment_changed deferred;` (every trigger of that name is initially deferred).
+- Postgres regex has no `\b` (it is backspace): use `\y` or `strpos(lower(prosrc), 'x') > 0` when grepping `pg_proc.prosrc`.
+- `sed -i` in this Git Bash rewrites CRLF files (ci-green.txt) as LF: append to the list with `printf '...\r\n' >>` only.
+- A test fixture that picks a department with `limit 1` and no ORDER BY follows whichever index the planner takes; dropping an index flipped `owner_employee_record` onto Management. Pick by name.
+
 **Why:** 2026-09-25 the unquoted `echo begin;` from this note applied the FB-6.1 .2 migration to the shared DB for 8 minutes during review (undone).
 
 Related: [[core-call-cost]], [[sql-traps-core-translation]].
