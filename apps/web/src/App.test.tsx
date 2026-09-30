@@ -893,8 +893,14 @@ describe("App", () => {
     expect(sidebar().getByRole("link", { name: "Employees" })).toBeTruthy();
     const footerLinks = Array.from(
       container.querySelectorAll(".sidebar-footer .nav-item"),
-    ).map((item) => item.lastElementChild?.textContent);
-    expect(footerLinks).toEqual(["Settings", "Account", "Sign out"]);
+    ).map(
+      (item) =>
+        // FB-6.2.8: the Employee view row ends with a hint icon; read the label.
+        Array.from(item.children)
+          .filter((child) => child.tagName.toLowerCase() !== "svg")
+          .at(-1)?.textContent,
+    );
+    expect(footerLinks).toEqual(["Settings", "Employee view", "Account", "Sign out"]);
   }, 40000);
 
   // Each first visit to a lazy route transforms its module graph; under a
