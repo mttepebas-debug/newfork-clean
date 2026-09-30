@@ -4936,6 +4936,22 @@ describe("App", () => {
     consoleError.mockRestore();
   });
 
+  it("jumps back to this week from the error state with the middle button", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getScheduleReadModel).mockRejectedValueOnce(new Error("boom"));
+    window.history.pushState({}, "", "/app/schedule?date=2026-09-09");
+    testAuth.role = "owner";
+    render(<App />);
+    await screen.findByText("Schedule unavailable", {}, { timeout: 5000 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Weekly view" }));
+
+    const today = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    await waitFor(() => expect(window.location.search).toContain(`date=${today}`));
+    expect(window.location.search).toContain("view=week");
+    consoleError.mockRestore();
+  });
+
   it("says above the grid when a draft's shifts cannot load, and retries (BL-324)", async () => {
     const weekStart = "2026-11-16";
     const draft = {

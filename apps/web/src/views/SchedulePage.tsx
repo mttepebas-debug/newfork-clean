@@ -795,6 +795,12 @@ export function SchedulePage({
     next.set("view", view);
     setSearch(next);
   };
+  const jumpToCurrentPeriod = () => {
+    const next = new URLSearchParams(search);
+    next.set("date", today);
+    next.set("view", view);
+    setSearch(next);
+  };
   const selectScheduleDay = (
     date: string,
     locationIds: readonly string[] = [],
@@ -1860,12 +1866,7 @@ export function SchedulePage({
                   ? formatPeriod(selectedDate, selectedDate, "day")
                   : `Week of ${new Date(`${selectedDate}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`
               }
-              onToggleViewMode={() => {
-                const next = new URLSearchParams(search);
-                next.set("date", today);
-                next.set("view", view);
-                setSearch(next);
-              }}
+              onToggleViewMode={jumpToCurrentPeriod}
               onPrevious={() => changePeriod(view === "day" ? -1 : -7)}
               onNext={() => changePeriod(view === "day" ? 1 : 7)}
             />
@@ -2029,12 +2030,6 @@ export function SchedulePage({
     model.closures,
     model.important_dates,
   );
-  const jumpToCurrentPeriod = () => {
-    const next = new URLSearchParams(search);
-    next.set("date", today);
-    next.set("view", view);
-    setSearch(next);
-  };
   const toggleCurrentViewPeriod = () => {
     if (!isCurrentViewPeriod) {
       jumpToCurrentPeriod();
