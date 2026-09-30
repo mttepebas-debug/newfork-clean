@@ -22,6 +22,7 @@ import {
 import "./jobs-settings.css";
 
 import { isNoAccess } from "../lib/no-access";
+import { todayIn } from "../lib/today";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 const typeLabels: Record<ImportantDateType, string> = {
@@ -37,12 +38,8 @@ const typeOptions = Object.entries(typeLabels) as readonly [
 ][];
 type ImportantDateSortKey = "title" | "date" | "type" | "locations" | "impact";
 
-function todayIso(): string {
-  return new Date().toLocaleDateString("en-CA");
-}
-
 function newDraft(): ImportantDateInput {
-  const today = todayIso();
+  const today = todayIn();
   return {
     location_id: null,
     location_ids: [],

@@ -38,6 +38,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
+import { todayIn } from "../lib/today";
 import { NoAccessState } from "../shell/NoAccessState";
 import { EmployeeDrawer } from "../employees/EmployeeDrawer";
 import { ScheduleFilterCommandStrip } from "../schedule/components/ScheduleFilterCommandStrip";
@@ -262,7 +263,7 @@ export function SchedulePage({
   const navigate = useNavigate();
   const [search, setSearch] = useSearchParams();
   const { activeDraftId, isEditMode, setMode: setScheduleMode } = useScheduleMode();
-  const today = new Date().toLocaleDateString("en-CA");
+  const today = todayIn();
   const selectedDate = validDate(search.get("date")) ?? today;
   const view: ScheduleView = search.get("view") === "day" ? "day" : "week";
   const layout = search.get("layout") === "unified" ? "unified" : "separate";

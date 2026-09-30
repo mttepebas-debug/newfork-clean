@@ -1,6 +1,7 @@
 import type { ScheduleReadModel } from "@newfork/shared/schedule";
 import type { KeyboardEvent, MouseEvent } from "react";
 
+import { todayIn } from "../../lib/today";
 import { scheduleImportantDateCoversDate } from "../importantDateCoverage";
 import { scheduleClosureCoversDate } from "../lib/scheduleClosures";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
@@ -12,7 +13,7 @@ export function ScheduleDayHeaderCells({
   importantDates,
   locationGroups,
   selectedDate,
-  todayDate = new Date().toLocaleDateString("en-CA"),
+  todayDate,
   onDayHeaderClick,
 }: {
   readonly closures: ScheduleReadModel["closures"];
@@ -28,8 +29,10 @@ export function ScheduleDayHeaderCells({
 }) {
   return (
     <>
-      {locationGroups.flatMap((location, locationIndex) =>
-        days.map((day, dayIndex) => {
+      {locationGroups.flatMap((location, locationIndex) => {
+        // A group of several locations has no zone of its own: the device's calendar.
+        const today = todayDate ?? todayIn(location.timezone);
+        return days.map((day, dayIndex) => {
           const dayClosures = closures.filter(
             (item) =>
               location.sourceIds.includes(item.location_id) &&
@@ -57,7 +60,7 @@ export function ScheduleDayHeaderCells({
             <DayHeaderCell
               key={`${location.id}-${day}`}
               date={day}
-              isToday={day === todayDate}
+              isToday={day === today}
               viewed={day === selectedDate}
               locationBoundary={locationIndex > 0 && dayIndex === 0}
               locationIds={location.sourceIds}
@@ -75,8 +78,8 @@ export function ScheduleDayHeaderCells({
               importantDates={importantDateItems}
             />
           );
-        }),
-      )}
+        });
+      })}
     </>
   );
 }

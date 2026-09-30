@@ -39,9 +39,15 @@ describe("todayIn", () => {
     "src/settings/SignatureTemplatesSettingsPage.tsx",
     "src/employees/EmployeeOnboardingPage.tsx",
     "src/views/EmployeeHubPage.tsx",
+    // BL-353: these read the device's calendar by hand.
+    "src/schedule/components/ScheduleDayHeaderCells.tsx",
+    "src/schedule/components/MiniCalendar.tsx",
+    "src/settings/ImportantDatesSettingsPage.tsx",
+    "src/views/SchedulePage.tsx",
+    "src/dev/EmployeeOnboardingPreview.tsx",
   ])("%s takes today from todayIn", (file) => {
     const source = readFileSync(file, "utf8");
     expect(source).toContain("todayIn(");
-    expect(source).not.toMatch(/(new Date\(\)|\bnow)\.toISOString\(\)\.slice\(0, ?10\)|timeZone: \w+ \?\? "UTC"/);
+    expect(source).not.toMatch(/(new Date\(\)|\bnow)\.toISOString\(\)\.slice\(0, ?10\)|timeZone: \w+ \?\? "UTC"|new Date\(\)\.toLocaleDateString\("en-CA"\)|today\.getFullYear\(\)/);
   });
 });

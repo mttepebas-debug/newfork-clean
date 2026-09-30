@@ -155,4 +155,38 @@ describe("ScheduleDayHeaderCells", () => {
     fireEvent.click(partialClosed);
     expect(onDayHeaderClick).toHaveBeenCalledWith("2026-08-19", ["loc-1"]);
   });
+
+  // BL-353: Monday 1 am in New York is still Sunday 10 pm in Los Angeles. One
+  // location's column marks its own day; a group of several has no zone of its
+  // own and follows the device.
+  it("marks today in the location's own time zone, and the device's for a group", () => {
+    const resolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+    const device = vi
+      .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+      .mockImplementation(function (this: Intl.DateTimeFormat) {
+        return { ...resolvedOptions.call(this), timeZone: "America/New_York" };
+      });
+    vi.useFakeTimers({ now: new Date("2026-10-05T05:00:00Z"), toFake: ["Date"] });
+    try {
+      render(
+        <ScheduleDayHeaderCells
+          closures={[]}
+          days={["2026-10-04", "2026-10-05"]}
+          importantDates={[]}
+          locationGroups={locationGroups}
+          selectedDate="2026-10-05"
+          onDayHeaderClick={vi.fn()}
+        />,
+      );
+      const isToday = (name: string) =>
+        screen.getByRole("columnheader", { name }).getAttribute("data-today");
+      expect(isToday("View Sun Oct 4, Main Dining")).toBe("true");
+      expect(isToday("View Mon Oct 5, Main Dining")).toBe("false");
+      expect(isToday("View Sun Oct 4, Patio + Bar")).toBe("false");
+      expect(isToday("View Mon Oct 5, Patio + Bar")).toBe("true");
+    } finally {
+      vi.useRealTimers();
+      device.mockRestore();
+    }
+  });
 });

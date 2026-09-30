@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState, type KeyboardEvent } from "react";
 
+import { todayIn } from "../../lib/today";
+
 export interface CalendarMarker {
   readonly date: string;
   readonly endDate?: string | null;
@@ -148,10 +150,7 @@ export function MiniCalendar({
   onDayPick,
   onWeekJump,
 }: MiniCalendarProps) {
-  const today = new Date();
-  const todayUtc = new Date(
-    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate(), 12),
-  );
+  const todayUtc = fromIso(todayIn());
   const initialIso = selectedDate ?? weekStartDate ?? toIso(todayUtc);
   const [viewMonth, setViewMonth] = useState(
     () =>

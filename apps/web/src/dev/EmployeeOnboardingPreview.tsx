@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { todayIn } from "../lib/today";
 import "./employee-onboarding-preview.css";
 
 const steps = [
@@ -461,7 +462,7 @@ export default function EmployeeOnboardingPreview() {
                       <input
                         type="date"
                         required
-                        max={new Date().toLocaleDateString("en-CA")}
+                        max={todayIn()}
                         autoComplete="bday"
                         onInput={(e) => update("birthday", e.currentTarget.value)}
                         value={form.birthday}
