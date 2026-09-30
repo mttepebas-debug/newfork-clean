@@ -72,7 +72,9 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   await expect(ghost).toContainText("Cook");
   await expect(ghost).toContainText("On call");
   await expect(ghost).toContainText("9:00 AM - 5:00 PM");
-  await expect(ghost).not.toContainText("Besiktas");
+  // What the card shows, not every text under it: the pin's tooltip keeps the
+  // location in a hidden description for screen readers (G14).
+  await expect(ghost).not.toContainText("Besiktas", { useInnerText: true });
   await ghost.getByRole("button", { name: "Location", exact: true }).click();
   await expect(ayse.getByRole("tooltip")).toContainText("Besiktas");
 
