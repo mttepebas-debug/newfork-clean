@@ -39,7 +39,7 @@ function defaultJobIdForCreateState(
     : null;
   // The row's own job (BL-218): an owner who only works Owner starts on Owner.
   const employeeJobId = employee
-    ? primaryScheduleJobId(employee, model.jobs, model.departments)
+    ? primaryScheduleJobId(employee, model.jobs)
     : null;
 
   // Only the owner works Owner, so it is never the stand-in (BL-218).

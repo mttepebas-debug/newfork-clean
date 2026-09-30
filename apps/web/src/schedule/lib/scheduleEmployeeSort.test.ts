@@ -5,7 +5,6 @@ import {
   createSortedScheduleModel,
   groupScheduleEmployeesByJob,
   isExcludedEmployeeVisibleForWeek,
-  nonManagementPrimaryJobId,
   primaryScheduleJobId,
   sortScheduleEmployees,
 } from "./scheduleEmployeeSort";
@@ -295,7 +294,6 @@ describe("scheduleEmployeeSort", () => {
           job_ids: [jobs[1]!.id],
         }),
         jobs,
-        departments,
       ),
     ).toBe(jobs[1]!.id);
   });
@@ -327,52 +325,72 @@ describe("scheduleEmployeeSort", () => {
   });
 });
 
-describe("Management and the primary job outside it (BL-218)", () => {
+// EMP-001 C (item 13, K5): Management's job groups sit at the bottom of
+// Job/Position, under "Unassigned job". A Management job can be somebody's
+// primary; only the Owner job never is, so an owner with no other primary
+// sits under Owner. Everybody has one row.
+describe("Management's groups and the owner's row in Job/Position (EMP-001 C)", () => {
   const management = "d0000000-0000-4000-8000-000000000001";
   const kitchen = "d0000000-0000-4000-8000-000000000002";
-  const bl218Departments: ScheduleReadModel["departments"] = [
+  const c2Departments: ScheduleReadModel["departments"] = [
     { id: management, name: "Leadership", color: "#3C7A68", sort_order: 0, system_key: "management" },
     { id: kitchen, name: "Kitchen", color: "#3C7A68", sort_order: 1, system_key: null },
   ];
-  // The Schedule's job order puts Cook first and its id sorts first too, so
-  // neither a catalog-order nor a uuid-order pick lands on Management.
-  const cook = { id: "00000000-0000-4000-8000-00000000000c", name: "Cook", color: "#D39A36", sort_order: 0, department_id: kitchen, system_key: null };
-  const owner = { id: "0f000000-0000-4000-8000-000000000001", name: "Owner", color: "#4478A8", sort_order: 1, department_id: management, system_key: "owner" as const };
-  const manager = { id: "0f000000-0000-4000-8000-000000000002", name: "Manager", color: "#4478A8", sort_order: 2, department_id: management, system_key: null };
-  const assistant = { id: "0f000000-0000-4000-8000-000000000003", name: "Assistant Manager", color: "#4478A8", sort_order: 3, department_id: management, system_key: null };
-  const bl218Jobs: ScheduleReadModel["jobs"] = [cook, owner, manager, assistant];
+  // Management's jobs come first in the Schedule's own job order here, so only
+  // the rule can put them last.
+  const owner = { id: "0f000000-0000-4000-8000-000000000001", name: "Owner", color: "#4478A8", sort_order: 0, department_id: management, system_key: "owner" as const };
+  const manager = { id: "0f000000-0000-4000-8000-000000000002", name: "Manager", color: "#4478A8", sort_order: 1, department_id: management, system_key: null };
+  const cook = { id: "ff000000-0000-4000-8000-00000000000c", name: "Cook", color: "#D39A36", sort_order: 2, department_id: kitchen, system_key: null };
+  const c2Jobs: ScheduleReadModel["jobs"] = [owner, manager, cook];
 
-  const mixed = employee({ id: "e0000000-0000-4000-8000-000000000001", display_name: "Mia Mixed", job_ids: [cook.id, manager.id], primary_job_id: cook.id });
-  const ownerOnly = employee({ id: "e0000000-0000-4000-8000-000000000002", display_name: "Olcay Owner", job_ids: [owner.id], primary_job_id: null });
-  const twoManagement = employee({ id: "e0000000-0000-4000-8000-000000000003", display_name: "Tara Two", job_ids: [assistant.id, manager.id], primary_job_id: null });
-  const mixedNoPrimary = employee({ id: "e0000000-0000-4000-8000-000000000004", display_name: "Nia None", job_ids: [cook.id, manager.id], primary_job_id: null });
+  const person = (n: number, display_name: string, job_ids: string[], primary_job_id: string | null) =>
+    employee({ id: `e0000000-0000-4000-8000-00000000000${n}`, display_name, job_ids, primary_job_id });
+  const cookOnly = person(1, "Cem Cook", [cook.id], cook.id);
+  const managerPrimary = person(2, "Mia Manager", [manager.id, cook.id], manager.id);
+  const ownerOnly = person(3, "Olcay Owner", [owner.id], null);
+  const ownerWhoCooks = person(4, "Olcay Owner", [owner.id, cook.id], cook.id);
+  const noJob = person(5, "Nia None", [], null);
+  const remoteNoPrimary = person(6, "Rana Remote", [manager.id, cook.id], null);
 
-  it("gives the primary job outside Management, or nobody's", () => {
-    expect(nonManagementPrimaryJobId(mixed, bl218Jobs)).toBe(cook.id);
-    expect(nonManagementPrimaryJobId(ownerOnly, bl218Jobs)).toBeNull();
-    expect(nonManagementPrimaryJobId(twoManagement, bl218Jobs)).toBeNull();
-    expect(nonManagementPrimaryJobId(mixedNoPrimary, bl218Jobs)).toBeNull();
+  const groupsOf = (rows: readonly ScheduleEmployee[]) =>
+    groupScheduleEmployeesByJob(sortScheduleEmployees(rows, c2Jobs, c2Departments, "byJob"), c2Jobs, c2Departments).map(
+      (group) => [group.job?.name ?? "Unassigned job", group.employees.map((row) => row.display_name)],
+    );
+
+  it("takes the stored primary, a Management job too; then the Owner job; then the first job held", () => {
+    expect(primaryScheduleJobId(managerPrimary, c2Jobs)).toBe(manager.id);
+    expect(primaryScheduleJobId(ownerOnly, c2Jobs)).toBe(owner.id);
+    expect(primaryScheduleJobId(ownerWhoCooks, c2Jobs)).toBe(cook.id);
+    expect(primaryScheduleJobId(remoteNoPrimary, c2Jobs)).toBe(manager.id);
+    expect(primaryScheduleJobId(noJob, c2Jobs)).toBeNull();
   });
 
-  it("files the rest under their first Management job, never under a uuid-order pick", () => {
-    expect(primaryScheduleJobId(mixed, bl218Jobs, bl218Departments)).toBe(cook.id);
-    expect(primaryScheduleJobId(ownerOnly, bl218Jobs, bl218Departments)).toBe(owner.id);
-    expect(primaryScheduleJobId(twoManagement, bl218Jobs, bl218Departments)).toBe(manager.id);
-    expect(primaryScheduleJobId(mixedNoPrimary, bl218Jobs, bl218Departments)).toBe(manager.id);
-  });
-
-  it("groups and sorts Job/Position rows by that job, with nobody left as an unassigned job", () => {
-    const rows = sortScheduleEmployees([mixedNoPrimary, mixed, twoManagement, ownerOnly], bl218Jobs, bl218Departments, "byJob");
-    expect(rows.map((row) => row.display_name)).toEqual(["Mia Mixed", "Olcay Owner", "Nia None", "Tara Two"]);
-    expect(
-      groupScheduleEmployeesByJob(rows, bl218Jobs, bl218Departments).map((group) => [
-        group.job?.name ?? "Unassigned job",
-        group.employees.map((row) => row.display_name),
-      ]),
-    ).toEqual([
-      ["Cook", ["Mia Mixed"]],
+  it("files an owner who holds only the Owner job under Owner, at the bottom", () => {
+    expect(groupsOf([ownerOnly, cookOnly])).toEqual([
+      ["Cook", ["Cem Cook"]],
       ["Owner", ["Olcay Owner"]],
-      ["Manager", ["Nia None", "Tara Two"]],
+    ]);
+  });
+
+  it("files an owner whose primary is Cook under Cook, and nowhere else", () => {
+    expect(groupsOf([ownerWhoCooks, cookOnly])).toEqual([["Cook", ["Cem Cook", "Olcay Owner"]]]);
+  });
+
+  it("lists the other job groups, then Unassigned job, then Management's; nobody is in two", () => {
+    const everybody = [managerPrimary, noJob, ownerOnly, cookOnly, remoteNoPrimary];
+    expect(groupsOf(everybody)).toEqual([
+      ["Cook", ["Cem Cook"]],
+      ["Unassigned job", ["Nia None"]],
+      ["Owner", ["Olcay Owner"]],
+      ["Manager", ["Mia Manager", "Rana Remote"]],
+    ]);
+    // The flat Job/Position order is the same walk.
+    expect(sortScheduleEmployees(everybody, c2Jobs, c2Departments, "byJob").map((row) => row.display_name)).toEqual([
+      "Cem Cook",
+      "Nia None",
+      "Olcay Owner",
+      "Mia Manager",
+      "Rana Remote",
     ]);
   });
 });

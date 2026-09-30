@@ -308,6 +308,7 @@ describe("the job a new shift starts with (BL-218)", () => {
       person("e0000000-0000-4000-8000-000000000002", [cook.id, manager.id], null),
       person("e0000000-0000-4000-8000-000000000003", [archivedId, manager.id], null),
       person("e0000000-0000-4000-8000-000000000004", [cook.id, manager.id], cook.id),
+      person("e0000000-0000-4000-8000-000000000005", [cook.id, manager.id], manager.id),
     ],
   };
   const jobFor = (employeeId: string | null) =>
@@ -316,11 +317,14 @@ describe("the job a new shift starts with (BL-218)", () => {
       model: bl218,
     }).job_id;
 
-  it("is the row's job: the primary outside Management, else their first Management job", () => {
+  // EMP-001 C (S2): the primary can be a Management job; with none, the
+  // Owner job for the owner, else the first job held in the Schedule's order.
+  it("is the row's job: the primary they were given, else Owner, else the first job they hold", () => {
     expect(jobFor(bl218.employees[0]!.id)).toBe(ownerJob.id); // the owner who only works Owner
-    expect(jobFor(bl218.employees[1]!.id)).toBe(manager.id); // no primary: Management, not Cook
+    expect(jobFor(bl218.employees[1]!.id)).toBe(cook.id); // no primary: the first job held
     expect(jobFor(bl218.employees[2]!.id)).toBe(manager.id); // never an archived job
     expect(jobFor(bl218.employees[3]!.id)).toBe(cook.id);
+    expect(jobFor(bl218.employees[4]!.id)).toBe(manager.id); // a Management job as the primary
   });
 
   it("never starts the unassigned row on Owner, which only the owner works", () => {

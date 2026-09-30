@@ -67,7 +67,6 @@ export function ScheduleRow({
   activeInteractionShiftLocationId,
   days,
   jobs,
-  departments,
   shiftTypes,
   closures,
   cellStateByKey,
@@ -379,7 +378,7 @@ export function ScheduleRow({
                     locationId: interactionLocationId,
                     employeeId: employee?.id ?? null,
                     jobId: employee
-                      ? primaryScheduleJobId(employee, jobs, departments)
+                      ? primaryScheduleJobId(employee, jobs)
                       : null,
                     date: day,
                   },
