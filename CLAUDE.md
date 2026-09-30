@@ -79,6 +79,24 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
   onaylı işler sürer.
 - **Rol ajanları kullanıcıya yazmaz;** raporları koordinatöre gider. İşçi oturumu kullanıcıyla
   konuşabilir (kullanıcı pencereyi açtıysa), ama raporunu koordinatöre gönderir.
+- **Posta kutusu (COORD-CTRL, kullanıcı kararı 2026-09-30).** Rapor mesajla değil dosyayla gider:
+  `node scripts/inbox.mjs send "<rol/oturum>" "<iş-id>" <rapor.md>` (klasör
+  `C:/Users/TheWe/Documents/Codex/.newfork-inbox/`, git dışı). Adres koordinatörün kimliğine bağlı
+  değildir; devirde rapor kaybolmaz. Ardından koordinatöre tek satırlık `send_message` dürtmesi
+  gidebilir; ulaşmasa da rapor kaybolmaz. Koordinatör meşgulken yeni rapor bir sonraki araç
+  çağrısında hook ile bağlamına düşer; boştayken arka plandaki `inbox.mjs wait` onu uyandırır.
+  Oturum işini `node scripts/inbox.mjs status "<iş-id>" "<durum>"` ile panoya yazar.
+- **Koordinatörün el kitabı.**
+  - Oturum başında ve her devirde ilk iş `node scripts/inbox.mjs claim`, sonra arka planda
+    `node scripts/inbox.mjs wait` (çıkınca işler, yeniden başlatır). İşlenen rapor `inbox.mjs ack <ad>`.
+  - Yoklama `node scripts/inbox.mjs board` ile: her oturumun dalı, HEAD'i, kirli dosyası, son
+    hareketi; 20 dk'dan uzun sessiz "working" oturum `TAKILDI` işaretlidir.
+  - Boştaki oturuma iş, görev dosyasını gösteren `send_message` ile verilir; rolün modeli ve
+    effort'u `set_session_model` / `set_session_effort` ile ayarlanır.
+  - Takılan oturum: önce pano + `git -C <worktree> status/log`, sonra `stop_session`, sonra kayıt.
+    Arşivleme her seferinde kullanıcıya sorulur.
+  - `.newfork-inbox/audit.log` her iş sonunda okunur: `push-main-override`, `push-main-blocked`,
+    `deny-pattern` satırı kullanıcı raporunda adıyla söylenir.
 - **Kullanıcının açtığı tekil oturum** (koordinatör dışında) kullanıcıyla doğrudan konuşur; bu
   dosyanın diğer bölümleri onu da bağlar. Çıktısı bir işi etkiliyorsa koordinatöre de bildirilir.
 - Aynı dosyaya iki rol aynı anda konmaz. Aynı anda en çok iki ağır iş (tam test, e2e, build) koşar:
@@ -179,6 +197,12 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
     `node scripts/lock.mjs take <db|main> "<rol/oturum>, <amaç>"`; alamazsa (exit 1) iş başlamaz, beklenir.
     Bırakmak `node scripts/lock.mjs release <db|main> "<rol/oturum>"` (yalnız sahibi siler); durum
     `node scripts/lock.mjs status`. 2 saatten eski kilidi koordinatöre sormadan silme.
+  - Hook ile zorlanır (`scripts/guard.mjs`, `.claude/settings.json`): `main.lock` yoksa ya da
+    bayatsa main'e gönderim reddedilir. Bilinçli aşma yalnız `NF_OVERRIDE="<gerekçe>"` önekiyle;
+    o zaman `origin/main` önce `refs/nf-backup/main/<zaman>`'a yedeklenir ve
+    `.newfork-inbox/audit.log`'a yazılır. Dal silme (`branch -D`) ve `worktree remove` engellenmez
+    ama ucu önce `refs/nf-backup/branch|worktree/...`'e yedeklenir. Geri dönüş:
+    `git log <yedek-ref>` ile bakılır, o ref'ten dal açılıp normal yoldan main'e alınır.
 - `db.lock` varken uygulamada veri girme (okuma serbest).
 - Migration denemesi önce tek transaction + rollback. Bir branch'in migration'ı ortak yerel DB'ye
   kalıcı olarak yalnız main'e alınmadan hemen önce, `main.lock` ile aynı pencerede ve `nf-guvenlik`
@@ -334,8 +358,9 @@ Kısa yaz, ham araç çıktısı yapıştırma.
 - Açılış: koordinatör görev kartı çıkarır (başlık = görev kimliği ve kısa ad), kullanıcı tek tıkla
   açar. Kartın metni: "`.claude/agents/<rol>.md` dosyasını oku ve o rolün kurallarıyla çalış; görev
   dosyası `docs/plan/tasks/<ID>.md`; worktree `../newfork-wt/<id>`, branch `task/<id>`; bitince
-  bölüm 10'daki raporu `SendMessage` ile koordinatöre (kimliği: `docs/plan/HANDOFF.md`'nin başı)
-  gönder ve dur."
+  bölüm 10'daki raporu `node scripts/inbox.mjs send "<rol/oturum>" "<ID>" <rapor.md>` ile posta
+  kutusuna bırak, koordinatöre (kimliği: `docs/plan/HANDOFF.md`'nin başı) tek satır `send_message`
+  dürtmesi gönder ve dur. İş sürerken `inbox.mjs status "<ID>" "<durum>"` ile panoyu güncel tut."
 - Birden fazla rol gerektiren uzun işte oturum rolleri sırayla üstlenir ya da koordinatör işi
   rollere göre ayrı oturumlara böler; aynı dosyaya iki oturum aynı anda konmaz.
 - Kapanış: koordinatör doğrular (commit main'de, worktree ve branch silinmiş, arkada iş yok,
