@@ -14,6 +14,7 @@
 --   public.live_location_ids   which of a template's or export's locations count
 -- The publish preview's own archived-location refusal goes: the core answers
 -- it now, with the same 42501 authz.out_of_scope.
+-- save_employee_service leaves an assignment at an archived location as it is.
 -- Functions that still filter archived locations inline are BL-423.
 
 create function app_private.location_is_live(location public.locations)
@@ -599,5 +600,198 @@ begin
         when soft_count > 0 then 'override_required' else 'publish_ready' end,
       'fingerprint', preview_fingerprint
     ), actor_user_id, target_department_ids, include_no_department));
+end;
+$function$;
+
+-- A record with an assignment at an archived location still saves: that
+-- assignment is left as it is (nf-guvenlik G8a Y1; also the owner's own
+-- drawer, E1). "Remove from <location>" on an archived location stays refused
+-- by the core, as on a deleted one.
+
+CREATE OR REPLACE FUNCTION public.save_employee_service(actor_user_id uuid, target_workspace_id uuid, target_employee_id uuid, employee_first_name text, employee_middle_name text, employee_last_name text, employee_preferred_name text, employee_invitation_email text, employee_start_date date, employee_internal_note text, location_ids uuid[], primary_location_id uuid, job_ids uuid[], primary_job_id uuid, employee_is_remote boolean, employee_is_excluded_from_schedule boolean, expected_revision integer)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  saved_id uuid := target_employee_id;
+  reachable uuid[];
+  kept uuid[];
+  current_revision integer;
+  next_code bigint;
+  assignment_optional boolean := coalesce(employee_is_remote, false) or coalesce(employee_is_excluded_from_schedule, false);
+begin
+  -- A new record is asked where it will work (a manager only where they
+  -- manage, never nowhere); an existing one, whose it is.
+  if target_employee_id is null then
+    perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.create',
+      coalesce(location_ids, '{}'::uuid[]));
+  else
+    perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.save',
+      target_person => target_employee_id);
+  end if;
+
+  -- An assignment at a location that is not live (archived) is left as it is,
+  -- sent or not: that location counts nowhere, and the assignment is back when
+  -- the archive is undone (G8a, KK-13). Only live locations are added, kept or
+  -- taken away here; the primary mark still follows primary_location_id.
+  kept := coalesce((
+    select array_agg(existing.location_id)
+    from public.employee_location_assignments existing
+    join public.locations location on location.id = existing.location_id
+    where existing.employee_id = target_employee_id and existing.ended_at is null
+      and not app_private.location_is_live(location)
+  ), '{}');
+
+  if char_length(btrim(employee_first_name)) not between 1 and 80 or char_length(btrim(employee_last_name)) not between 1 and 80 then
+    raise exception 'employee first and last name are required' using errcode = '22023';
+  end if;
+  -- Somebody not Remote nor excluded from Schedule needs a location, a primary
+  -- location, a job and a primary job; any job can be the primary one, under
+  -- Management too (EMP-001 S2). The owner's record needs none of it: the owner
+  -- may work anywhere, and their Owner job is never primary.
+  if not assignment_optional and not app_private.employee_record_is_workspace_owner(target_workspace_id, target_employee_id) then
+    if cardinality(coalesce(location_ids, '{}'::uuid[]) || kept) = 0 or primary_location_id is null then
+      raise exception 'employee requires a location and job unless remote or excluded from schedule'
+        using errcode = '22023', hint = 'employee.location_required';
+    end if;
+    if cardinality(coalesce(job_ids, '{}'::uuid[])) = 0 then
+      raise exception 'employee requires a location and job unless remote or excluded from schedule'
+        using errcode = '22023', hint = 'employee.job_required';
+    end if;
+    if primary_job_id is null then
+      raise exception 'employee requires a primary job unless remote or excluded from schedule'
+        using errcode = '22023', hint = 'employee.primary_job_required';
+    end if;
+  end if;
+  if primary_location_id is not null and not primary_location_id = any(coalesce(location_ids, '{}'::uuid[]) || kept) then
+    raise exception 'primary location must be assigned' using errcode = '22023';
+  end if;
+  if primary_job_id is not null and not primary_job_id = any(coalesce(job_ids, '{}'::uuid[])) then
+    raise exception 'primary job must be assigned' using errcode = '22023';
+  end if;
+
+  -- A location added or taken away is one the actor reaches; an unknown or
+  -- archived one reads the same.
+  reachable := app_private.scope_set(actor_user_id, target_workspace_id, 'employee.save');
+  if exists (
+      select 1 from unnest(coalesce(location_ids, '{}'::uuid[])) selected(location_id)
+      left join public.locations location
+        on location.id = selected.location_id and location.workspace_id = target_workspace_id and location.archived_at is null
+      where not selected.location_id = any (kept)
+        and (location.id is null
+         or (not selected.location_id = any (reachable) and not exists (
+           select 1 from public.employee_location_assignments existing
+           where existing.employee_id = target_employee_id and existing.location_id = selected.location_id
+             and existing.ended_at is null)))
+    )
+    or exists (
+      select 1 from public.employee_location_assignments existing
+      where existing.employee_id = target_employee_id and existing.ended_at is null
+        and not existing.location_id = any (coalesce(location_ids, '{}'::uuid[]) || kept)
+        and not existing.location_id = any (reachable)
+    ) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'employee.save';
+  end if;
+  if exists (select 1 from unnest(coalesce(job_ids, '{}'::uuid[])) selected(job_id) left join public.jobs j on j.id = selected.job_id and j.workspace_id = target_workspace_id and j.archived_at is null where j.id is null) then
+    raise exception 'invalid employee job' using errcode = '22023';
+  end if;
+
+  if saved_id is null then
+    insert into public.workspace_employee_counters (workspace_id, next_value)
+    values (target_workspace_id, 1)
+    on conflict (workspace_id) do nothing;
+
+    update public.workspace_employee_counters counter
+    set next_value = greatest(
+      counter.next_value,
+      coalesce((
+        select max(substring(employee.employee_code from 3)::bigint) + 1
+        from public.employee_profiles employee
+        where employee.workspace_id = target_workspace_id
+          and employee.employee_code ~ '^E-[0-9]{4,}$'
+      ), 1)
+    ) + 1
+    where counter.workspace_id = target_workspace_id
+    returning counter.next_value - 1 into next_code;
+
+    insert into public.employee_profiles (
+      workspace_id, employee_code, first_name, middle_name, last_name, preferred_name,
+      invitation_email, start_date, internal_note, is_remote,
+      is_excluded_from_schedule, created_by
+    )
+    values (
+      target_workspace_id, 'E-' || lpad(next_code::text, 4, '0'),
+      btrim(employee_first_name), left(btrim(coalesce(employee_middle_name, '')), 80), btrim(employee_last_name),
+      '',
+      nullif(lower(btrim(employee_invitation_email)), ''),
+      employee_start_date, btrim(coalesce(employee_internal_note, '')),
+      coalesce(employee_is_remote, false),
+      coalesce(employee_is_excluded_from_schedule, false),
+      actor_user_id
+    )
+    returning id into saved_id;
+    insert into public.employee_events (workspace_id, employee_id, actor_user_id, action, summary)
+    values (target_workspace_id, saved_id, actor_user_id, 'employee.created', 'Employee record created');
+  else
+    select revision into current_revision from public.employee_profiles
+    where id = saved_id and workspace_id = target_workspace_id and archived_at is null
+    for update;
+    if current_revision is null then raise exception 'employee not found' using errcode = 'P0002'; end if;
+    if expected_revision is null or expected_revision <> current_revision then raise exception 'employee revision conflict' using errcode = '40001'; end if;
+    -- The preferred name is not the drawer's: it changes by request and answer.
+    update public.employee_profiles set
+      first_name = btrim(employee_first_name),
+      middle_name = left(btrim(coalesce(employee_middle_name, '')), 80),
+      last_name = btrim(employee_last_name),
+      invitation_email = nullif(lower(btrim(employee_invitation_email)), ''),
+      start_date = employee_start_date,
+      internal_note = btrim(coalesce(employee_internal_note, '')),
+      is_remote = coalesce(employee_is_remote, false),
+      is_excluded_from_schedule = coalesce(employee_is_excluded_from_schedule, false),
+      revision = revision + 1,
+      updated_at = now()
+    where id = saved_id;
+    insert into public.employee_events (workspace_id, employee_id, actor_user_id, action, summary)
+    values (target_workspace_id, saved_id, actor_user_id, 'employee.updated', 'Employee profile and assignments updated');
+  end if;
+
+  -- Only what changed is written (BL-218): a kept assignment keeps its row, so
+  -- the rules on the assignment tables (the owner stays at every location, the
+  -- Owner job stays the owner's) judge a real removal, not every save. The
+  -- primary flag is cleared before it is set, one row at a time for the index.
+  update public.employee_location_assignments set ended_at = now(), is_primary = false
+  where employee_id = saved_id and ended_at is null
+    and not location_id = any(coalesce(location_ids, '{}'::uuid[]) || kept);
+  update public.employee_location_assignments set is_primary = false
+  where employee_id = saved_id and ended_at is null and is_primary
+    and location_id is distinct from primary_location_id;
+  insert into public.employee_location_assignments (workspace_id, employee_id, location_id, is_primary, created_by)
+  select distinct target_workspace_id, saved_id, selected.location_id, false, actor_user_id
+  from unnest(coalesce(location_ids, '{}'::uuid[])) selected(location_id)
+  where not exists (select 1 from public.employee_location_assignments existing
+    where existing.employee_id = saved_id and existing.location_id = selected.location_id and existing.ended_at is null);
+  update public.employee_location_assignments set is_primary = true
+  where employee_id = saved_id and ended_at is null and not is_primary and location_id = primary_location_id;
+
+  update public.employee_job_assignments set ended_at = now(), is_primary = false
+  where employee_id = saved_id and ended_at is null
+    and not job_id = any(coalesce(job_ids, '{}'::uuid[]));
+  update public.employee_job_assignments set is_primary = false
+  where employee_id = saved_id and ended_at is null and is_primary
+    and job_id is distinct from primary_job_id;
+  insert into public.employee_job_assignments (workspace_id, employee_id, job_id, is_primary, created_by)
+  select distinct target_workspace_id, saved_id, selected.job_id, false, actor_user_id
+  from unnest(coalesce(job_ids, '{}'::uuid[])) selected(job_id)
+  where not exists (select 1 from public.employee_job_assignments existing
+    where existing.employee_id = saved_id and existing.job_id = selected.job_id and existing.ended_at is null);
+  update public.employee_job_assignments set is_primary = true
+  where employee_id = saved_id and ended_at is null and not is_primary and job_id = primary_job_id;
+
+  -- K4: excluded from the Schedule needs no location, except a manager, who
+  -- manages only where they are assigned.
+  perform app_private.keep_manager_at_a_location(target_workspace_id, saved_id);
+  return saved_id;
 end;
 $function$;

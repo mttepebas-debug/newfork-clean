@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(36);
 
 -- G8a / BL-132 (KK-13). An archived location counts in the authorization core
 -- as a deleted one does: nobody's scope holds it, no target on it is reached,
@@ -132,6 +132,56 @@ select is(
 select is(
   (select count(*)::integer from public.locations where deleted_at is not null and archived_at is null),
   0, 'no location is deleted without being archived');
+
+-- 5. A record at an archived location still saves (nf-guvenlik Y1, E1) --------------------
+-- The drawer's save leaves an assignment at an archived location as it is, sent
+-- or not; it adds, keeps and takes away live locations only. Deniz works at
+-- Kadikoy (primary) and Besiktas, Can at Besiktas (primary) and Kadikoy.
+
+select tests.person('ar', 'deniz', 'employee', array['K', 'B'], array['cook']);
+select tests.person('ar', 'can', 'employee', array['B', 'K'], array['cook']);
+select pg_temp.browser('owner', 'update public.locations set archived_at = now(), updated_at = now() where id = %L');
+-- Where somebody works now: location keys, * = primary.
+create function pg_temp.works(person text) returns text language sql as $$
+  select coalesce(string_agg(l.short_name || case when a.is_primary then '*' else '' end, ',' order by l.short_name), '-')
+  from public.employee_location_assignments a join public.locations l on l.id = a.location_id
+  where a.employee_id = tests.id('ar:' || person) and a.ended_at is null
+$$;
+-- A record saved from the drawer by somebody, with these locations and primary.
+create function pg_temp.save(actor text, person text, locs text[], primary_loc text) returns text language sql as $$
+  select pg_temp.refusal(format(
+    'select public.save_employee_service(%L, %L, %L, %L, %L, %L, %L, %L, %L, %L, %L, %L, %L, %L, %L, %L, %s)',
+    tests.user('ar:' || actor), tests.id('ar'), e.id, e.first_name, e.middle_name, e.last_name, e.preferred_name,
+    e.invitation_email, e.start_date, e.internal_note,
+    array(select tests.id('ar:' || l) from unnest(locs) l),
+    case when primary_loc is null then null else tests.id('ar:' || primary_loc) end,
+    array(select a.job_id from public.employee_job_assignments a where a.employee_id = e.id and a.ended_at is null),
+    (select a.job_id from public.employee_job_assignments a where a.employee_id = e.id and a.ended_at is null and a.is_primary),
+    e.is_remote, e.is_excluded_from_schedule, e.revision))
+  from public.employee_profiles e where e.id = tests.id('ar:' || person)
+$$;
+
+select is(pg_temp.save('owner', 'deniz', array['K'], 'K') || ' ' || pg_temp.works('deniz'), 'allowed BJK,KDK*',
+  'A: the owner saves Deniz without Besiktas; the Besiktas assignment stays as it is');
+select is(pg_temp.save('owner', 'deniz', array['K', 'B'], 'K') || ' ' || pg_temp.works('deniz'), 'allowed BJK,KDK*',
+  'B: saved as read, with Besiktas');
+select is(pg_temp.save('owner', 'owner', array['K'], null), 'allowed',
+  'D: the owner saves their own record without Besiktas');
+select is(pg_temp.save('owner', 'owner', array['K', 'B'], null) || ' ' || pg_temp.works('owner'), 'allowed BJK,KDK',
+  'E: and as read, with Besiktas, which they still hold (E1)');
+select is(pg_temp.save('kaan', 'deniz', array['K'], 'K') || ' ' || pg_temp.works('deniz'), 'allowed BJK,KDK*',
+  'F: Kaan, who manages Kadikoy, saves Deniz without Besiktas; it stays');
+select is(pg_temp.save('kaan', 'deniz', array['K', 'B'], 'K'), 'allowed', 'G: and as read');
+select is(pg_temp.save('owner', 'can', array['B', 'K'], 'B') || ' ' || pg_temp.works('can'), 'allowed BJK*,KDK',
+  'Can is saved as read; Besiktas stays his primary location');
+select is(pg_temp.save('owner', 'kaan', array['K', 'B'], 'K'), '42501',
+  'Besiktas is not given to somebody new while archived');
+select is(pg_temp.refusal(format('select public.remove_employee_from_location_service(%L, %L, %L, %L)',
+    tests.user('ar:owner'), tests.id('ar'), tests.id('ar:deniz'), tests.id('ar:B'))), '42501',
+  'C: "Remove from Besiktas" is refused while it is archived, as on a deleted location');
+select pg_temp.browser('owner', 'update public.locations set archived_at = null, updated_at = now() where id = %L');
+select is(pg_temp.works('deniz') || ' ' || pg_temp.works('can'), 'BJK,KDK* BJK*,KDK',
+  'once Besiktas is restored Deniz and Can work there again, their primary locations as before');
 
 select * from finish();
 rollback;
