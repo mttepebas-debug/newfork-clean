@@ -1,14 +1,14 @@
 # İlerleme planı — hesaplı (sürüm 7, 2026-09-30)
 
 ## 0. Güncel durum (kayıt oturumu tutar; her beslemede güncellenir)
-Tutan: "Rol: nf-planlama (Kayıt ve ilerleme)" oturumu (KARARLAR OPS-04). Son güncelleme: 2026-09-30, `origin/main` `bccdb4df`, koordinatör beslemesi #1. Koordinatör bugün `local_460271c1-c51e-4537-bb02-a601c501bbbf` ("Koordinatör — devir 2026-09-30 sabah"; `HANDOFF.md`). İş sırasının kaynağı `tasks/BACKLOG-PROGRAM.md` (kullanıcı kararı 2026-09-29); bu bölüm onun ve görev dosyalarının özetidir. §1–§9 FOUNDATION-B'nin puan tablosudur; bu güncellemede yalnız §1 ve §3'ün FB-6.2 satırları yenilendi.
+Tutan: "Rol: nf-planlama (Kayıt ve ilerleme)" oturumu (KARARLAR OPS-04). Son güncelleme: 2026-09-30, `origin/main` `81fd0dd3`, koordinatör beslemesi #2 (ölçümler besleme #1'den, `bccdb4df`). Koordinatör bugün `local_460271c1-c51e-4537-bb02-a601c501bbbf` ("Koordinatör — devir 2026-09-30 sabah"; `HANDOFF.md`). İş sırasının kaynağı `tasks/BACKLOG-PROGRAM.md` (kullanıcı kararı 2026-09-29); bu bölüm onun ve görev dosyalarının özetidir. §1–§9 FOUNDATION-B'nin puan tablosudur; bu güncellemede yalnız §1 ve §3'ün FB-6.2 satırları yenilendi.
 
 ### 0a. Durum ne (en çok 5 satır)
 1. **Ne bitti:** Employees ekranının yetki işi (FB-6.2) kapanışa geldi; son adım olan uçtan uca testler (`.10`) main'de. Yönetici yalnız kendi lokasyonundaki kişileri görüyor ve oraya davet gönderebiliyor; bu akışlar her gönderimde otomatik deneniyor.
 2. **Kanıt:** `9f1cc3b3` + `352faab7` main'de; main CI 36696339068 check + db + e2e yeşil (`gh run view`, 2026-09-30). Kilitler boş.
 3. **Neredeyiz:** FOUNDATION-B Aşama 6–7 %53,9 (124 / 230 puan, tahmin ağırlıklı). Backlog'da 239 açık madde: kritik yok, 4'ü "high" (BL-238, BL-101, BL-276, BL-426). Yürüyen iş: EMP-001 dilim A — Employees → çekmece → Profile sekmesinin sadeleşmesi (`nf-arayuz`).
-4. **Sıradaki:** EMP-001 A bitince FB-6.2 `.11` kapanışı (koordinatör) → EMP-001 B ("yalnız yönetir"in sökülmesi) ve C → G8a (arşivli lokasyon kuralı) → G8b. Yan yana ikinci iş için koordinatörün önerisi G14 (Schedule üst çubuğu ve menülerinin görsel düzeltmeleri).
-5. **Bekleyen karar:** ikinci işin seçimi (kullanıcı). Tam liste §0c.
+4. **Sıradaki:** EMP-001 A bitince FB-6.2 `.11` kapanışı (koordinatör) → EMP-001 B ("yalnız yönetir"in sökülmesi) ve C → G8a (arşivli lokasyon kuralı) → G8b. Yan yana ikinci iş seçildi: G14 — Schedule üst çubuğu, menüleri ve pencerelerinin görsel düzeltmeleri, yalnız masaüstü, 11 madde. Şu an maddelerin tazeliği ölçülüyor ve plan taslağı (`tasks/G14.md`) yazılıyor; kod başlamadı.
+5. **Bekleyen karar:** G14 planının onayı (ölçüm bitince sunulacak) ve BL-204 konuşması (Schedule hücresindeki müsaitlik uyarısı nasıl görünsün). Tam liste §0c.
 
 ### 0b. Açık işler, önem sırasıyla
 Sayım: 2026-09-30, `bccdb4df`, betikle (`BACKLOG.md` açık bölümü; yöntem `BACKLOG-PROGRAM.md` "Sayım"). Toplam 239. "Şu an koşabilir mi" sütunu kayıt oturumunun değerlendirmesidir (grubun dokunduğu dosyalar ve yürüyen işler); her grup başlamadan önce tazeliği yeniden ölçülür.
@@ -26,7 +26,7 @@ Sayım: 2026-09-30, `bccdb4df`, betikle (`BACKLOG.md` açık bölümü; yöntem 
 | 11 | G11 kalanı | Hata sözleşmesi | Settings'e yazan rotaların kapısı yetki çekirdeğine çevrilmeli (BL-374) | 6 | medium / risky | Evet (`nf-backend`); BL-374 R3 |
 | 12 | G12 kalanı | Yerel veritabanına dayanıklı testler | İki veritabanı testi herkesin kullandığı örnek lokasyonu değiştiriyor (BL-217) | 12 | medium / moderate | Evet (`nf-test`, yalnız test); BL-105 kullanıcı onayı ister |
 | 13 | G13 kalanı | Test ve CI kararlılığı | Davetlinin yeni hesap açarak daveti kabul etmesi uçtan uca denenmiyor (BL-434) | 8 | medium / moderate | Evet (`nf-test`) |
-| 14 | G14 | Schedule üst çubuk, menüler, pencereler — görsel | Basılamayan Publish düğmesi basılabilir görünüyor ve nedenini söylemiyor (BL-308) | 18 | medium / safe | Evet — koordinatörün önerdiği ikinci iş; Schedule dosyaları, EMP-001 (Employees) ile çakışmıyor; `nf-arayuz` EMP-001 A'da |
+| yürüyor (hazırlık) | G14 | Schedule üst çubuk, menüler, pencereler — görsel; bu planda yalnız masaüstü | Basılamayan Publish düğmesi basılabilir görünüyor ve nedenini söylemiyor (BL-308) | 18 (11'i bu planda) | medium / safe | Ölçülüyor — kullanıcı seçti (2026-09-30). İçeride 11: BL-305, BL-308, BL-392, BL-311, BL-312, BL-345, BL-347, U08, BL-372, BL-353, BL-204. Ertelenen 5: BL-233, BL-333, BL-319, BL-320 (telefon/tablet), BL-327. "Bir sonraki planda" 2: BL-318, BL-121. Plan kullanıcı onayını bekliyor; `nf-arayuz` EMP-001 A'da |
 | 15 | G15 | Görsel tutarlılık | Ortak ikon düğmesi telefonda 44×44 dokunma hedefinin altında (BL-334) | 25 | medium / moderate | Kısmen — çok ekran; Employees çekmecesine değen kalemler (BL-259) EMP-001'den sonra |
 | 16 | G16 | Giriş öncesi, hesap ve workspace ekranları | Kurulumdan çıkan owner boş ızgarayla karşılaşıyor (BL-122) | 16 | medium / moderate | Evet; BL-355 (3) kullanıcı kararı |
 | 17 | G17 | Çalışanlar ve kişi kaydı | Telefonda Employees çekmecesinde "Terminate employee" hiç görünmüyor (BL-407) | 16 | medium / risky | Hayır — EMP-001 ile aynı dosyalar; BL-431 ve BL-432 EMP-001 B4 ile kapanır |
@@ -48,22 +48,23 @@ Soruların uzun metni (seçenekler, öneri) `tasks/BACKLOG-PROGRAM.md` "Kullanı
 
 | # | Tür | Ne bekliyor | Neyi durduruyor |
 |---|---|---|---|
-| 1 | karar | EMP-001 yürürken yan yana ikinci iş hangisi olsun. Koordinatörün önerisi G14 (Schedule üst çubuğu ve menülerinin görsel düzeltmeleri) | İkinci işin başlaması; `BACKLOG-PROGRAM`'daki "aynı anda tek grup" cümlesinin güncellenmesi |
-| 2 | onay | `CLAUDE.md` değişikliği, üç parça: (a) §3 ve §12'de koordinatör kimliği hâlâ `local_243f826b…`, bugünkü `local_460271c1…`; (b) yeni kural "ekran davranışı değişen işte push'tan önce o paketin bütün vitest'i koşulur"; (c) kayıt oturumu kuralı (KARARLAR OPS-04) | Rol oturumları raporu eski adrese gönderebilir; (b) olmadan odaklı test en az iki kez yetmedi |
-| 3 | karar | KK-29: lokasyonu yönetip orada çalışmayan yönetici, o lokasyonda kişilere eylem de yapar mı, yalnız görür mü. Not: EMP-001 B bu alanı söküyor; B main'e girince soru düşer (EMP-001 "KARARLAR'da değişecek satırlar") | Hiçbir şeyi; EMP-001 B'ye kadar bugünkü kural geçerli |
-| 4 | onay | Ultrareview (yalnız kullanıcı başlatır): FB-6.2 `.7b`, T5b, T5a, G9b, G11, G4–G6 için öneriler duruyor; EMP-001 B ve G8a başlarken yeniden önerilecek | Hiçbir şeyi; ek güvence |
-| 5 | karar | BL-426: Vercel'deki proje bu repoya bağlansın mı. Bugün main canlıya çıkmıyor; son canlı yayın 2026-08-05 | G4'ün kalanı (BL-101 saatlik tetik, e-posta denemesi); değişiklikleri canlıda görmek |
-| 6 | karar | BL-417: yönetici, kişinin çekmecesinde kendisinin ulaşamadığı lokasyonun adını görsün mü (öneri: görsün). EMP-001'den sonra madde yeniden yazılacak | Employees çekmecesi ve listesindeki lokasyon adları |
-| 7 | karar | BL-419: kurulumu bitmemiş workspace'te doğrudan API'den davet gönderilebiliyor (ekranda yol kapalı). Kabul mü, "kurulum bitmeden davet yok" kuralı mı (öneri: kabul) | — |
-| 8 | karar | BL-073: hesap düğmesi ile workspace değiştirici tek kontrol olsun mu (görsel; varyantlar gösterilecek) | G16'nın bir kalemi |
-| 9 | karar | BL-355 (3): Account → Profile'daki "To save, fill in …" satırı sayfa değişmeden de görünsün mü (öneri: bugünkü gibi kalsın) | G16'nın bir kalemi |
-| 10 | onay | BL-105: veritabanı test aracının (pgTAP) yerelde kalıcı kurulumu | G12'nin bir kalemi |
-| 11 | onay | BL-382: SSN kalıntılarının (tablo, tür, 410 dönen rota) silinmesi | G23'ün bir kalemi |
-| 12 | karar | BL-370: vardiyası olmayan yayın "yayında" sayılsın ve geri alınabilsin mi (öneri: evet) | G10'un bir kalemi |
-| 13 | onay | Sürüm atlamaları: vitest, vite, react-router, TypeScript ana sürümleri (yeni bağımlılık sayılır) | — |
-| 14 | komut | Uzak dal temizliği: içeriği main'de olan 40 dal (ölçüm 2026-09-30, `bccdb4df`). Komut aşağıda | Dal listesinin okunurluğu; bekledikçe liste büyür |
-| 15 | komut | BL-433: dört eski klasördeki kaydedilmemiş rol notları main'e taşındıktan sonra klasörlerin silinmesi (silme kullanıcı komutuyla) | Önce notların karşılaştırılması (koordinatör ya da `nf-test`) |
-| 16 | karar (sırası gelince) | K10: onaylı iznin iptalini kim onaylar (FB-6.3 başlamadan); K7: Schedule ekran turunun günü (FB-6.1 `.0`) | FB-6.3 ve FB-6.1 kapanışı (§5) |
+| 1 | onay | G14 planı: Schedule üst çubuğu, menüleri ve pencerelerinin görsel düzeltmeleri, yalnız masaüstü, 11 madde. Ölçüm bitince koordinatör planı sunacak | G14'ün kod işinin başlaması |
+| 2 | konuşma | BL-204: Schedule hücresindeki müsaitlik uyarısı nasıl görünsün. İstenen sıra: önce bugünkü davranışın sözlü anlatımı, sonra ekran görüntüleri, sonra konuşma, sonra mockup | BL-204'ün varyantları (konuşmadan önce hazırlanmaz) |
+| 3 | onay | `CLAUDE.md` değişikliği, dört parça: (a) §3 ve §12'de koordinatör kimliği hâlâ `local_243f826b…`, bugünkü `local_460271c1…`; (b) yeni kural "ekran davranışı değişen işte push'tan önce o paketin bütün vitest'i koşulur"; (c) kayıt oturumu kuralı (KARARLAR OPS-04); (d) §11.4 "Tek hat" cümlesi yeni kurala göre: varsayılan tek grup, kullanıcı isterse dosyaları kesişmeyen ikinci iş | Rol oturumları raporu eski adrese gönderebilir; (b) olmadan odaklı test en az iki kez yetmedi |
+| 4 | karar | KK-29: lokasyonu yönetip orada çalışmayan yönetici, o lokasyonda kişilere eylem de yapar mı, yalnız görür mü. Not: EMP-001 B bu alanı söküyor; B main'e girince soru düşer (EMP-001 "KARARLAR'da değişecek satırlar") | Hiçbir şeyi; EMP-001 B'ye kadar bugünkü kural geçerli |
+| 5 | onay | Ultrareview (yalnız kullanıcı başlatır): FB-6.2 `.7b`, T5b, T5a, G9b, G11, G4–G6 için öneriler duruyor; EMP-001 B ve G8a başlarken yeniden önerilecek | Hiçbir şeyi; ek güvence |
+| 6 | karar | BL-426: Vercel'deki proje bu repoya bağlansın mı. Bugün main canlıya çıkmıyor; son canlı yayın 2026-08-05 | G4'ün kalanı (BL-101 saatlik tetik, e-posta denemesi); değişiklikleri canlıda görmek |
+| 7 | karar | BL-417: yönetici, kişinin çekmecesinde kendisinin ulaşamadığı lokasyonun adını görsün mü (öneri: görsün). EMP-001'den sonra madde yeniden yazılacak | Employees çekmecesi ve listesindeki lokasyon adları |
+| 8 | karar | BL-419: kurulumu bitmemiş workspace'te doğrudan API'den davet gönderilebiliyor (ekranda yol kapalı). Kabul mü, "kurulum bitmeden davet yok" kuralı mı (öneri: kabul) | — |
+| 9 | karar | BL-073: hesap düğmesi ile workspace değiştirici tek kontrol olsun mu (görsel; varyantlar gösterilecek) | G16'nın bir kalemi |
+| 10 | karar | BL-355 (3): Account → Profile'daki "To save, fill in …" satırı sayfa değişmeden de görünsün mü (öneri: bugünkü gibi kalsın) | G16'nın bir kalemi |
+| 11 | onay | BL-105: veritabanı test aracının (pgTAP) yerelde kalıcı kurulumu | G12'nin bir kalemi |
+| 12 | onay | BL-382: SSN kalıntılarının (tablo, tür, 410 dönen rota) silinmesi | G23'ün bir kalemi |
+| 13 | karar | BL-370: vardiyası olmayan yayın "yayında" sayılsın ve geri alınabilsin mi (öneri: evet) | G10'un bir kalemi |
+| 14 | onay | Sürüm atlamaları: vitest, vite, react-router, TypeScript ana sürümleri (yeni bağımlılık sayılır) | — |
+| 15 | komut | Uzak dal temizliği: içeriği main'de olan 40 dal (ölçüm 2026-09-30, `bccdb4df`). Komut aşağıda | Dal listesinin okunurluğu; bekledikçe liste büyür |
+| 16 | komut | BL-433: dört eski klasördeki kaydedilmemiş rol notları main'e taşındıktan sonra klasörlerin silinmesi (silme kullanıcı komutuyla) | Önce notların karşılaştırılması (koordinatör ya da `nf-test`) |
+| 17 | karar (sırası gelince) | K10: onaylı iznin iptalini kim onaylar (FB-6.3 başlamadan); K7: Schedule ekran turunun günü (FB-6.1 `.0`) | FB-6.3 ve FB-6.1 kapanışı (§5) |
 
 Uzak dal silme komutu (PowerShell; kullanıcı çalıştırır). 36 dalda main'de olmayan yama yok; son dört dalın (`g4`, `g5`, `g9b-shorten`, `g12`) içeriği main'de başka commit olarak var (`BACKLOG-PROGRAM.md` "Uzak dal silme listesi"). Yerel `keep/fb62-8-save-pattern` dalına dokunmaz.
 ```powershell
@@ -214,6 +215,7 @@ FB-6.1.0 hazır sayılmaz: K7'yi (ekran turu günü) bekliyor.
 - **Paralel işçiler (KK-15/16/18, kullanıcının isteğiyle; `KOORDINATOR-KARARLARI.md`):** Account turuyla aynı anda, dosya kümeleri ayrık işçi oturumlarında: G2 bitti (R1 onaylı, toplu tur bekliyor), G4 bitti (`nf-guvenlik` incelemesi sürüyor; saatlik cron kullanıcı kararı), G6 bitti (+ BL-342/BL-343, KK-17); G5 (G4'ün üstünde) ve G22 (G2'nin üstünde) başladı. Testler toplu turda (T1: G1 + G2).
 - **Önce Account yeniden tasarımı (koordinatör kararı KK-1, 2026-09-29; `KOORDINATOR-KARARLARI.md`):** şu an yürüyen tek iş Account yeniden tasarımı (Account → Profile, Security, Preferences, Notifications, Workspaces, Documents; `task/account-redesign`, `nf-arayuz`). Backlog gruplarının kod işleri o iş main'e girince başlar. **Etkisi:** G16 (giriş öncesi, hesap ve workspace ekranları) ile BL-335 (iki telefon), BL-072 (iki avatar), BL-149 (Workspaces listesi bayat), BL-287, BL-331 ve BL-147 Account ekranlarına dokunuyor; tasarım main'e girince bu maddelerin tazeliği yeniden ölçülür, bir kısmı tasarımla kapanmış olabilir.
 - **Ne:** kullanıcı kararıyla (2026-09-29, koordinatör aktardı) backlog önem sırasına ve yakınlığa göre gruplanıp sırayla düzeltiliyor; **aynı anda tek grup** (kullanıcı kararı 2026-09-29; önceki "en çok 2" geçersiz), testler art arda biten 1–2 grubun toplu turunda. Plan: `docs/plan/tasks/BACKLOG-PROGRAM.md` (290 açık madde, 24 iş grubu + kayıt bakımı G0 + karar bekleyen + programa girmeyen 3 grup).
+  - **2026-09-30: kural değişti.** Varsayılan tek grup; kullanıcı açıkça isterse dosyaları kesişmeyen ikinci bir iş yan yana yürür (kullanıcı kararı 2026-09-30; makine sınırı en çok iki ağır iş, CLAUDE.md §3). Güncel cümle `tasks/BACKLOG-PROGRAM.md` "Satırın anlamı"nda; ilk uygulama EMP-001 yanında G14.
 - **İlk iki grup (sırayla, T1 turu):** önce **G1** Schedule taslak ve yayın pencerelerinin davranış hataları (12 madde, en yüksek high / safe; BL-299 yanlış taslağı yayınlıyor, BL-300 klavyeyle çalışmıyor) ; sonra **G2** Schedule hızlı düzenleyicinin alanları ve klavye odağı (5 madde, high / safe; BL-293 WCAG 2.4.7). G1 ve G14 stil B mockup dalını (`task/schedule-dialog-mockups`, yalnız yerel DEV) beklemez: seçilen stil B zaten main'de (`228ff3b7`), sıra aynı (KK-4). Sonra G3 (bayat ekranlar, BL-271 gizlilik), ardından G4 (zamanlanmış dışa aktarma).
 - **Tazelik:** G1–G3'ün 22 maddesi 2026-09-29'da ölçüldü (`3a31d625`): 21 geçerli, 1 değişmiş (BL-303), bayat yok. Sonraki gruplar sırası gelince.
 - **FB-6.2.1 park (kullanıcı kararı 2026-09-29):** program sürerken FOUNDATION-B'nin FB-6.2.1 adımı bekler; §4 hesabı ve FOUNDATION-B yüzdesi (%33,5) program bitene kadar değişmez. Program G7 (yetki ailesi A) ayrı iş olarak açılmaz: sırası gelince FB-6.2.1'in görev dosyası açılır ve G7'nin 17 maddesi onun kapsamına girer (KK-5).
