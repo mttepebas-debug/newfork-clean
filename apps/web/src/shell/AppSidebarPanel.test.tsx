@@ -7,7 +7,7 @@ import { AppShell } from "./AppShell";
 import { AppSidebarPanel } from "./AppSidebarPanel";
 
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({
-  context: { workspace: { id: "w", name: "Workspace" }, userId: "u", membership: { role: "owner" }, permissions: ["schedule.read"] },
+  context: { workspace: { id: "w", name: "Workspace" }, userId: "u", membership: { role: "owner" }, permissions: ["schedule.read"], actions: [] },
   account: { userId: "u" }, signOut: vi.fn(),
 }) }));
 vi.mock("../lib/supabase", () => ({ supabaseClient: null }));

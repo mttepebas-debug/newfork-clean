@@ -77,15 +77,12 @@ import {
   firstJobOutsideManagement,
 } from "./employee-create-flow";
 import { registerEmployeeHistoryGuard } from "./employee-history-guard";
-import { v8 } from "../dev/fb628-variants";
 import {
-  FooterRemoveGroup,
-  ManagedLocationsVariant,
+  ManagedLocationsField,
   PassiveTerminate,
   RemoveFromLocationButton,
   TerminateNote,
-  WorkLocationCards,
-} from "./Fb628Variants";
+} from "./EmployeeLocationParts";
 import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 
 const sections = [
@@ -326,9 +323,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     ? (allowed?.archive ?? false)
     : (allowed?.terminate ?? false);
   const readOnly = archived || !canSave;
-  // FB-6.2.8 (DEV): a reader who may take them off a location but not end
-  // their employment still sees Terminate, switched off, with the reason.
+  // A manager who may take them off a location but not end their employment
+  // still sees Terminate, switched off, with the reason (FB-6.2.8).
   const managerCannotTerminate =
+    context?.membership.role === "manager" &&
     !props.creating &&
     !archived &&
     Boolean(detail.data) &&
@@ -1283,22 +1281,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
               </div>
             </footer>
           ) : activeSection === "availability" ? null : (
-            <footer
-              className={`employee-drawer-footer${v8() === "b" && managerCannotTerminate ? " v8-footer-b" : ""}`}
-            >
+            <footer className="employee-drawer-footer">
               <div>
-                {managerCannotTerminate && v8() === "a" ? <PassiveTerminate /> : null}
-                {managerCannotTerminate && v8() === "b" && detail.data ? (
-                  <FooterRemoveGroup
-                    detail={detail.data}
-                    removingLocationId={
-                      removeFromLocationMutation.isPending
-                        ? (removeFromLocationMutation.variables ?? null)
-                        : null
-                    }
-                    onRemove={(locationId) => removeFromLocationMutation.mutate(locationId)}
-                  />
-                ) : null}
+                {managerCannotTerminate ? <PassiveTerminate /> : null}
                 {!props.creating && canChangeLifecycle ? (
                   <button
                     type="button"
@@ -1723,6 +1708,7 @@ function renderSection(
         references={references}
         detail={creating ? undefined : detail}
         locationActions={locationActions}
+        explainTerminate={actorRole === "manager"}
       />
     );
   if (section === "availability")
@@ -2144,6 +2130,7 @@ function EmploymentSection({
   references,
   detail,
   locationActions,
+  explainTerminate,
 }: {
   creating?: boolean;
   draft: EmployeeInput;
@@ -2153,21 +2140,14 @@ function EmploymentSection({
   /** The saved record; none while creating one. */
   detail: EmployeeDetail | undefined;
   locationActions: EmployeeLocationActions;
+  /** A manager reads why Terminate is off for them. */
+  explainTerminate: boolean;
 }) {
   // Where the server lets this reader take them off (employee.remove_from_location).
   const removable = detail?.locations.filter((location) => location.removable) ?? [];
-  const variant = v8(); // FB-6.2.8 DEV variants
-  const terminateNoteId = useId();
   const removableIds = new Set(removable.map((location) => location.id));
   return (
     <div className="employee-form-stack">
-      {variant === "c" && detail && detail.locations.length > 0 ? (
-        <WorkLocationCards
-          detail={detail}
-          removingLocationId={locationActions.removingLocationId}
-          onRemove={locationActions.onRemove}
-        />
-      ) : null}
       {creating ? (
         <h3 className="employee-form-section-title">Work mode</h3>
       ) : null}
@@ -2221,65 +2201,27 @@ function EmploymentSection({
             primary_location_id: primary,
           }))
         }
-        // A: Remove lives on the location's own row and is the one way off it.
-        lockedIds={variant === "a" ? removableIds : undefined}
-        rowAction={
-          variant === "a"
-            ? (id) => {
-                const location = removable.find((item) => item.id === id);
-                return location ? (
-                  <RemoveFromLocationButton
-                    compact
-                    location={location}
-                    removing={locationActions.removingLocationId === id}
-                    disabled={locationActions.removingLocationId !== null}
-                    onRemove={locationActions.onRemove}
-                  />
-                ) : null;
-              }
-            : undefined
-        }
-      />
-      {variant === "a" && detail && !detail.allowed.terminate && !detail.archived_at ? (
-        <TerminateNote id={terminateNoteId} detail={detail} removable={removable} />
-      ) : null}
-      {variant === null && removable.length > 0 ? (
-        <div className="employee-location-removals">
-          {removable.map((location) => (
-            <ConfirmButton
-              key={location.id}
-              className="danger-button"
-              type="button"
+        // Remove lives on the location's own row and is the one way off it.
+        lockedIds={removableIds}
+        rowAction={(id) => {
+          const location = removable.find((item) => item.id === id);
+          return location ? (
+            <RemoveFromLocationButton
+              location={location}
+              removing={locationActions.removingLocationId === id}
               disabled={locationActions.removingLocationId !== null}
-              confirmLabel={`Confirm remove from ${location.name}`}
-              title="Their shifts there from now on are left open. The employee record stays."
-              onConfirm={() => locationActions.onRemove(location.id)}
-            >
-              {locationActions.removingLocationId === location.id
-                ? "Removing"
-                : `Remove from ${location.name}`}
-            </ConfirmButton>
-          ))}
-        </div>
+              onRemove={locationActions.onRemove}
+            />
+          ) : null;
+        }}
+      />
+      {explainTerminate && detail && !detail.allowed.terminate && !detail.archived_at ? (
+        <TerminateNote detail={detail} removable={removable} />
       ) : null}
       {detail &&
       (detail.allowed.set_managed_locations ||
         detail.managed_locations.length > 0) ? (
-        variant ? (
-          <ManagedLocationsVariant
-            key={detail.managed_locations.map((location) => location.id).join()}
-            variant={variant}
-            managed={detail.managed_locations}
-            options={(references?.locations ?? []).filter(
-              (option) =>
-                !detail.locations.some((location) => location.id === option.id),
-            )}
-            editable={detail.allowed.set_managed_locations}
-            saving={locationActions.savingManaged}
-            onSave={locationActions.onSaveManaged}
-          />
-        ) : (
-        <ManagedLocations
+        <ManagedLocationsField
           key={detail.managed_locations.map((location) => location.id).join()}
           managed={detail.managed_locations}
           // Where they work is never also where they only manage.
@@ -2291,7 +2233,6 @@ function EmploymentSection({
           saving={locationActions.savingManaged}
           onSave={locationActions.onSaveManaged}
         />
-        )
       ) : null}
       <AssignmentPicker
         label="Jobs"
@@ -2340,73 +2281,6 @@ function EmploymentSection({
  * A manager's locations managed without working there (FB-6.2 S2): no shifts,
  * no Schedule row there. The list is given whole; the server keeps it.
  */
-function ManagedLocations({
-  managed,
-  options,
-  editable,
-  saving,
-  onSave,
-}: {
-  readonly managed: EmployeeDetail["managed_locations"];
-  readonly options: readonly EmployeeOption[];
-  readonly editable: boolean;
-  readonly saving: boolean;
-  readonly onSave: (locationIds: readonly string[]) => void;
-}) {
-  const [picked, setPicked] = useState<readonly string[]>(() =>
-    managed.map((location) => location.id),
-  );
-  const labelId = useId();
-  return (
-    <div
-      className="employee-managed-locations"
-      role="group"
-      aria-labelledby={labelId}
-    >
-      <span id={labelId}>Manages without working there</span>
-      {editable ? (
-        <>
-          {options
-            .filter(
-              (option) =>
-                !option.archived || picked.includes(option.id),
-            )
-            .map((option) => (
-              <label key={option.id}>
-                <input
-                  type="checkbox"
-                  checked={picked.includes(option.id)}
-                  disabled={saving}
-                  onChange={(event) =>
-                    setPicked((current) =>
-                      event.target.checked
-                        ? [...current, option.id]
-                        : current.filter((id) => id !== option.id),
-                    )
-                  }
-                />
-                {option.name}
-              </label>
-            ))}
-          <Button
-            type="button"
-            disabled={saving}
-            onClick={() => onSave(picked)}
-          >
-            {saving ? "Saving" : "Save managed locations"}
-          </Button>
-        </>
-      ) : (
-        <ul>
-          {managed.map((location) => (
-            <li key={location.id}>{location.name}</li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function AccessSection({
   draft,
   detail,
@@ -3032,7 +2906,7 @@ function AssignmentPicker({
   lockedIds,
   rowAction,
 }: {
-  /** FB-6.2.8 A (DEV): rows only their own action takes off. */
+  /** Rows only their own action takes off (Remove from a location). */
   lockedIds?: ReadonlySet<string>;
   rowAction?: (optionId: string) => React.ReactNode;
   label: string;

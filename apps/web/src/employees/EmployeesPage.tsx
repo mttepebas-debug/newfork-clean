@@ -6,7 +6,6 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   Eye,
-  MapPin,
   Plus,
   RotateCcw,
   Search,
@@ -28,8 +27,7 @@ import { CatalogPageHeader } from "../views/CatalogPageHeader";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { EmployeeDrawer } from "./EmployeeDrawer";
 import { listEmployees } from "./employee-data";
-import { v8 } from "../dev/fb628-variants";
-import { IdentityManagedLine, LocationCellVariant } from "./Fb628Variants";
+import { EmployeeLocationCell, EmployeeLocationChips } from "./EmployeeLocationParts";
 import {
   employeeSectionSchema,
   type EmployeeDisplayStatus,
@@ -599,7 +597,6 @@ function renderEmployeeCell(
   key: EmployeeColumnKey,
   updateParams: (values: Record<string, string | null>) => void,
 ): ReactNode {
-  const variant = v8(); // FB-6.2.8 DEV variants
   if (key === "employee") {
     return (
       <td key={key}>
@@ -610,7 +607,7 @@ function renderEmployeeCell(
           <span>
             <strong>{employee.display_name}</strong>
             <small>{employee.employee_code}</small>
-            {variant ? <IdentityManagedLine variant={variant} employee={employee} /> : null}
+            <EmployeeLocationChips employee={employee} />
           </span>
         </span>
       </td>
@@ -638,17 +635,7 @@ function renderEmployeeCell(
           });
         }}
       >
-        {variant ? (
-          <LocationCellVariant variant={variant} employee={employee} />
-        ) : (
-        <span className="employee-cell-with-icon">
-          <MapPin size={15} aria-hidden />
-          {employee.primary_location_name ?? "Unassigned"}
-          {employee.location_count > 1 ? (
-            <small>+{employee.location_count - 1}</small>
-          ) : null}
-        </span>
-        )}
+        <EmployeeLocationCell employee={employee} />
       </td>
     );
   }

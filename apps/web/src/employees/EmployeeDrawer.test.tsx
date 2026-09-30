@@ -484,7 +484,8 @@ describe("EmployeeDrawer", () => {
   });
 
   it("holds Save when an edit clears the last location, unless remote or excluded", async () => {
-    renderDrawer("employment");
+    // A location the reader may not Remove is the one the form can untick (FB-6.2.8).
+    renderDrawer("employment", { ...detail, locations: [{ ...detail.locations[0]!, removable: false }] });
     await employeeLoaded();
     fireEvent.click(screen.getByLabelText("Main Dining"));
     const save = screen.getByRole("button", { name: "Save changes" });
@@ -1367,7 +1368,7 @@ describe("EmployeeDrawer", () => {
   });
 
   it("does not make the location just unticked a Remote person's primary", async () => {
-    const second = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false, removable: true };
+    const second = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false, removable: false };
     renderDrawer("employment", {
       ...detail,
       is_remote: true,
@@ -1843,6 +1844,48 @@ describe("EmployeeDrawer locations and access follow the server", () => {
     renderDrawer("employment", { ...detail, locations: [{ ...detail.locations[0]!, removable: false }] });
     await screen.findByText("Locations");
     expect(screen.queryByRole("button", { name: /Remove from/ })).toBeNull();
+  });
+
+  // FB-6.2.8 A: Remove sits on the location's row and is the one way off it.
+  it("lets only Remove take somebody off a location the server lets the reader remove", async () => {
+    renderDrawer("employment");
+    await screen.findByRole("button", { name: "Remove from Main Dining" });
+    expect((screen.getByRole("checkbox", { name: "Main Dining" }) as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it("shows a manager Terminate switched off, with the reason under Locations", async () => {
+    currentContext = { ...context, membership: { ...context.membership, role: "manager" } };
+    renderDrawer("employment", { ...detail, allowed: { ...detail.allowed, terminate: false } });
+    const terminate = (await screen.findByRole("button", { name: "Terminate employee" })) as HTMLButtonElement;
+    expect(terminate.disabled).toBe(true);
+    expect(terminate.title).toBe("Only an admin or the owner can terminate an employee.");
+    expect(
+      screen.getByText(/Only an admin or the owner can terminate an employee\. To take Alex off Main Dining, use Remove\./),
+    ).toBeTruthy();
+  });
+
+  it("shows an owner who may not terminate no switched-off Terminate and no note", async () => {
+    renderDrawer("employment", { ...detail, allowed: { ...detail.allowed, terminate: false } });
+    await screen.findByRole("button", { name: "Remove from Main Dining" });
+    expect(screen.queryByRole("button", { name: "Terminate employee" })).toBeNull();
+    expect(screen.queryByText(/Only an admin or the owner/)).toBeNull();
+  });
+
+  // FB-6.2.8 C: the field is shaped like Locations and saves only a change.
+  it("offers Save for managed locations only once something changed", async () => {
+    extraReferenceLocations = [{ id: patio.id, name: "Patio", archived: false }];
+    renderDrawer("employment", {
+      ...detail,
+      managed_locations: [],
+      allowed: { ...detail.allowed, set_managed_locations: true },
+    });
+    const group = await screen.findByRole("group", { name: "Manages without working there" });
+    await within(group).findByLabelText("Patio");
+    expect(within(group).queryByRole("button", { name: "Save managed locations" })).toBeNull();
+    fireEvent.click(within(group).getByLabelText("Patio"));
+    expect(within(group).getByRole("button", { name: "Save managed locations" })).toBeTruthy();
+    fireEvent.click(within(group).getByLabelText("Patio"));
+    expect(within(group).queryByRole("button", { name: "Save managed locations" })).toBeNull();
   });
 
   it("edits a manager's managed locations whole when the server lets the reader", async () => {

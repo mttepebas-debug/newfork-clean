@@ -151,6 +151,29 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
 ### Employee Hub
 - Shift Hub telefondaki alt çubukta "Requests" adını taşır.
 - Tanınmayan alt yol (eski `lineup` bağlantıları dahil) More sayfasını açar.
+- Çalışan görünümüne geçiş (kullanıcı kararı 2026-09-30, FB-6.2.8 varyant A):
+  kendi çalışan kaydı olan owner, admin ve manager kenar çubuğunda Account'un
+  üstünde "Employee view" satırını görür; telefonda yönetimin More menüsünde.
+  Çalışan görünümü çalışanın kendi çerçevesinde açılır (Employees, Settings
+  yok); dönüş aynı satırdan ("Management view") ve telefonda Hub'ın More
+  sayfasından. Neden: tek satır, iki yönde aynı yer; yönetim menüsü
+  kalabalıklaşmaz.
+
+### Employees
+- Lokasyondan çıkarma (kullanıcı kararı 2026-09-30, varyant A): "Remove"
+  lokasyonun kendi satırında, iki tık kırmızı; sunucunun çıkarmaya izin
+  verdiği lokasyonun kutucuğu kilitli, oradan çıkarmanın tek yolu Remove.
+  Yöneticide "Terminate employee" gizlenmez, kilitli ve soluk durur;
+  Locations'ın altında tek satır: "Only an admin or the owner can terminate
+  an employee. To take <ad> off <lokasyon>, use Remove." Neden: yönetici
+  çıkaramadığı kişiyi nereden alacağını ekranda görür.
+- "Manages without working there" (kullanıcı kararı 2026-09-30, varyant C):
+  Locations listesiyle aynı biçimde kutucuk listesi ve "Optional" etiketi,
+  altında tek satır açıklama; Save yalnız bir şey değişince çıkar. Düzenleme
+  izni olmayan okuyucu yalnız lokasyon adlarını görür, kutucuk görmez.
+- Liste, lokasyon sütunu (kullanıcı kararı 2026-09-30, varyant A): "No
+  location" (uyarı tonu) ve "Manages <lokasyon>" aynı çip biçiminde. Telefonda
+  lokasyon sütunu olmadığı için aynı çipler kişinin adının altında.
 
 ### Schedule
 - Silme ve üstüne yazma iki tık (UI-12): taslak/şablon silme, taslağın

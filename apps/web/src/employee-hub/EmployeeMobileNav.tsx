@@ -14,7 +14,7 @@ import {
 import { Link, NavLink, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { CurrentUserAvatar } from "../account/AccountAvatar";
-import { v8 } from "../dev/fb628-variants";
+import { workspaceLandingPathForRole } from "../auth/resolveLanding";
 import "./employee-dashboard.css";
 
 export function EmployeeMobileNav() {
@@ -54,13 +54,13 @@ export function EmployeeMobileNav() {
 export function EmployeeMorePage() {
   const { context, signOut } = useAuth();
   const links = [
-    // FB-6.2.8 A (DEV): the way back for owner, admin and manager.
+    // The way back for owner, admin and manager in the employee view (FB-6.2.8).
     {
       label: "Management view",
       detail: "Back to running the workspace",
-      to: "/app/workspace",
+      to: context ? workspaceLandingPathForRole(context.membership.role) : "/app/workspace",
       icon: LayoutDashboard,
-      enabled: v8() === "a" && context?.membership.role !== "employee",
+      enabled: Boolean(context) && context?.membership.role !== "employee",
     },
     {
       label: "My availability",

@@ -3,7 +3,6 @@ import type { Permission } from "@newfork/shared";
 import {
   Bell,
   CalendarCheck,
-  CalendarClock,
   CalendarDays,
   ChevronDown,
   FileText,
@@ -28,11 +27,8 @@ import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { CurrentUserAvatar } from "../account/AccountAvatar";
 import { can } from "../auth/can";
 import { workspaceLandingPathForRole } from "../auth/resolveLanding";
-import { v8 } from "../dev/fb628-variants";
 import {
   EmployeeViewSidebarLink,
-  EmployeeViewStrip,
-  EmployeeViewToggle,
   employeeViewMobileLink,
   isEmployeeViewPath,
 } from "./EmployeeViewSwitch";
@@ -256,14 +252,11 @@ export function AppShell() {
   }, [queryClient, workspaceId]);
   if (!context) return null;
   const isEmployee = context.membership.role === "employee";
-  // FB-6.2.8 (DEV variants): owner, admin and manager with an employee record
-  // of their own switch to the employee view. A and B open it in the
-  // employee's own frame; C keeps the management frame and adds a strip.
-  const variant = v8();
-  const canSwitchView =
-    !isEmployee && variant !== null && can(context, "employee_hub.read");
+  // Owner, admin and manager with an employee record of their own switch to
+  // the employee view, which opens in the employee's own frame (FB-6.2.8).
+  const canSwitchView = !isEmployee && can(context, "employee_hub.read");
   const inEmployeeView = canSwitchView && isEmployeeViewPath(location.pathname);
-  const employeeShell = isEmployee || (inEmployeeView && variant !== "c");
+  const employeeShell = isEmployee || inEmployeeView;
   const shellRole = employeeShell ? "employee" : context.membership.role;
   const managementHome = workspaceLandingPathForRole(context.membership.role);
   const visibleNavItems = navItems.filter(
@@ -317,13 +310,6 @@ export function AppShell() {
             collapsed={collapsed}
           />
         </div>
-        {canSwitchView && variant === "b" && !collapsed ? (
-          <EmployeeViewToggle
-            inEmployeeView={inEmployeeView}
-            backTo={managementHome}
-            placement="sidebar"
-          />
-        ) : null}
 
         <nav className="sidebar-nav" aria-label="Primary">
           {visibleSidebarItems.map((item, index) => {
@@ -419,25 +405,6 @@ export function AppShell() {
               </div>
             );
           })}
-          {canSwitchView && variant === "c" ? (
-            <div className="sidebar-nav-entry sidebar-nav-section-start">
-              <NavLink
-                className={({ isActive }) =>
-                  `nav-item${isActive ? " active" : ""}${collapsed ? " rail-peek-item" : ""}`
-                }
-                to={employeeViewMobileLink("c").to}
-                aria-label={collapsed ? "My shifts" : undefined}
-                data-rail-peek={collapsed ? "" : undefined}
-              >
-                <span className="nav-icon-frame">
-                  <CalendarClock size={18} aria-hidden />
-                </span>
-                <span className={collapsed ? "rail-flyout" : undefined}>
-                  My shifts
-                </span>
-              </NavLink>
-            </div>
-          ) : null}
         </nav>
 
         <div className="sidebar-footer">
@@ -466,7 +433,7 @@ export function AppShell() {
               </span>
             </NavLink>
           ) : null}
-          {canSwitchView && variant === "a" ? (
+          {canSwitchView ? (
             <EmployeeViewSidebarLink
               inEmployeeView={inEmployeeView}
               backTo={managementHome}
@@ -527,16 +494,6 @@ export function AppShell() {
         </>}
       </aside>
       <main className="app-main">
-        {canSwitchView && variant === "b" ? (
-          <EmployeeViewToggle
-            inEmployeeView={inEmployeeView}
-            backTo={managementHome}
-            placement="phone"
-          />
-        ) : null}
-        {inEmployeeView && variant === "c" ? (
-          <EmployeeViewStrip backTo={managementHome} />
-        ) : null}
         <Outlet />
       </main>
       {employeeShell && <EmployeeMobileNav />}
@@ -545,9 +502,7 @@ export function AppShell() {
           links={[
             ...visibleNavItems.filter((item) => item.section !== "employee"),
             ...(canViewSettings ? [settingsNavItem] : []),
-            ...(canSwitchView && variant !== null && variant !== "b"
-              ? [employeeViewMobileLink(variant)]
-              : []),
+            ...(canSwitchView ? [employeeViewMobileLink] : []),
           ]}
           onSignOut={signOutAfterAvailabilityCheck}
         />

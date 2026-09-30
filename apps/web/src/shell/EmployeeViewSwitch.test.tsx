@@ -5,8 +5,8 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "./AppShell";
 
-// FB-6.2.8 DEV variants of "Switch to employee view": only someone with an
-// employee record of their own (employee_hub.read) gets the switch.
+// "Switch to employee view": only someone with an employee record of their
+// own (employee_hub.read) gets the switch, and the way back is the same row.
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
@@ -47,8 +47,7 @@ vi.mock("../communications/communications-data", () => ({
 
 const sidebar = () => within(screen.getByRole("complementary", { name: "Application sidebar" }));
 
-function renderAt(path: string, variant: string | null) {
-  window.history.replaceState(null, "", variant ? `/?v8=${variant}` : "/?v8=off");
+function renderAt(path: string) {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter initialEntries={[path]}>
@@ -64,37 +63,38 @@ function renderAt(path: string, variant: string | null) {
 
 afterEach(() => {
   current = owner;
-  window.sessionStorage.clear();
 });
 
-describe("employee view switch (FB-6.2.8 variants)", () => {
-  it("is not there on main (no variant)", () => {
-    renderAt("/app/workspace", null);
-    expect(sidebar().queryByText("Employee view")).toBeNull();
-  });
-
+describe("employee view switch (FB-6.2.8)", () => {
   it("is not offered to someone without an employee record", () => {
     current = { ...owner, actions: [] };
-    renderAt("/app/workspace", "a");
+    renderAt("/app/workspace");
     expect(sidebar().queryByText("Employee view")).toBeNull();
   });
 
-  it("A: goes to the employee view and back from the sidebar", () => {
-    renderAt("/app/workspace", "a");
+  it("is not offered to an employee, whose only view is the employee view", () => {
+    current = { ...owner, membership: { ...owner.membership, role: "employee" } };
+    renderAt("/app/employee-hub");
+    expect(sidebar().queryByText("Employee view")).toBeNull();
+    expect(sidebar().queryByText("Management view")).toBeNull();
+  });
+
+  it("goes to the employee view from the sidebar", () => {
+    renderAt("/app/workspace");
     expect(sidebar().getByRole("link", { name: /Employee view/ }).getAttribute("href")).toBe("/app/employee-hub");
   });
 
-  it("A: in the employee view the sidebar is the employee's own and leads back", () => {
-    renderAt("/app/employee-hub", "a");
-    expect(sidebar().getByRole("link", { name: /Shift Hub/ })).toBeTruthy();
-    expect(sidebar().queryByRole("link", { name: /Employees/ })).toBeNull();
-    expect(sidebar().getByRole("link", { name: /Management view/ }).getAttribute("href")).toBe("/app/workspace");
+  it("offers it to a manager with an employee record too", () => {
+    current = { ...owner, membership: { ...owner.membership, role: "manager" } };
+    renderAt("/app/schedule");
+    expect(sidebar().getByRole("link", { name: /Employee view/ }).getAttribute("href")).toBe("/app/employee-hub");
   });
 
-  it("C: keeps the management frame and shows a strip with the way back", () => {
-    renderAt("/app/employee-hub", "c");
-    expect(sidebar().getByRole("link", { name: /Employees/ })).toBeTruthy();
-    const strip = screen.getByRole("region", { name: "Employee view" });
-    expect(within(strip).getByRole("link", { name: "Back to management" })).toBeTruthy();
+  it("in the employee view the sidebar is the employee's own and leads back", () => {
+    renderAt("/app/employee-hub");
+    expect(sidebar().getByRole("link", { name: /Shift Hub/ })).toBeTruthy();
+    expect(sidebar().queryByRole("link", { name: /Employees/ })).toBeNull();
+    expect(sidebar().queryByRole("link", { name: /Settings/ })).toBeNull();
+    expect(sidebar().getByRole("link", { name: /Management view/ }).getAttribute("href")).toBe("/app/workspace");
   });
 });

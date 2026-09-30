@@ -12,6 +12,7 @@ let context: {
   userId: string;
   membership: { role: string };
   permissions: string[];
+  actions: string[];
 };
 const signOut = vi.fn();
 
@@ -48,6 +49,7 @@ const owner = {
     "announcements.read",
     "notifications.read",
   ],
+  actions: [] as string[],
 };
 // A manager without the dashboard, documents or any settings permission.
 const manager = {
@@ -122,6 +124,12 @@ describe("ManagementMobileNav in the app shell", () => {
     mount();
     expect(names(bar())).toEqual(["Schedule", "Requests", "Employees", "Availability", "More"]);
     expect(names(morePages())).toEqual(["Notifications", "Account", "Sign out"]);
+  });
+
+  it("with an employee record of their own, More offers the employee view (FB-6.2.8)", () => {
+    context = { ...manager, actions: ["employee_hub.read"] };
+    mount();
+    expect(names(morePages())).toEqual(["Notifications", "Employee view", "Account", "Sign out"]);
   });
 
   it("employee: no management bar (the Employee Hub bar serves them)", () => {
