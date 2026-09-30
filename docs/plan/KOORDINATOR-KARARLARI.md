@@ -334,10 +334,10 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 
 ### KK-45 (2026-09-30) Açık olmayan workspace'te acil durum kişisi yazılamaz
 - **Karar:** kurulumu bitmemiş ya da kapanmış workspace'in çalışanı kendi acil durum kişisini kaydedemez; owner kurulum sırasında yazar.
-- **Uygulamada etkisi:** Account → Profile → "Emergency contact" (`apps/web/src/account/ProfilePage.tsx`). Kalıcı rette "Your emergency contact can no longer be changed in <workspace>: your access there has ended or the workspace is closed." (`:384`), öteki rette "Your emergency contact could not be saved in <workspace>. Try again." (`:380`). Örnek: kurulumu bitmemiş "Meyhouse" workspace'ine eklenmiş çalışan Ayşe acil durum kişisini değiştirir; kayıt reddedilir ve ilk cümleyi görür; owner Mert aynı ekranda kaydeder. Ölçüm notu (alt ajan, kod okuması): kapalı workspace ve erişimi alınmış üyede API çekirdeğe sormadan 404 veriyor; o durumda ekran "Try again." diyor olabilir, yeni cümle yalnız kurulumu bitmemiş workspace'te çıkıyor gibi. Ekranda denenmedi; görsel QA'da bakılmalı.
+- **Uygulamada etkisi:** Account → Profile → "Emergency contact" (`apps/web/src/account/ProfilePage.tsx`). Kalıcı rette "Your emergency contact can no longer be changed in <workspace>: your access there has ended or the workspace is closed." (`:384`), öteki rette "Your emergency contact could not be saved in <workspace>. Try again." (`:380`). Örnek: kurulumu bitmemiş "Meyhouse" workspace'ine eklenmiş çalışan Ayşe acil durum kişisini değiştirir; kayıt reddedilir ve ilk cümleyi görür; owner Mert aynı ekranda kaydeder. Ölçüm notu (alt ajan, kod okuması): kapalı workspace ve erişimi alınmış üyede API çekirdeğe sormadan 404 veriyor; o durumda ekran "Try again." diyor olabilir, yeni cümle yalnız kurulumu bitmemiş workspace'te çıkıyor gibi. Ekranda denenmedi; görsel QA'da bakılmalı. **Ek (besleme #13, `8b1b0cf0`; kodda ölçüldü):** ölçüm notundaki açık kapandı — form açıkken erişimi alınan kişide sunucu 404 `authz.not_member` verir; ekran bunu artık ayırıyor (`accessEnded`, `apps/web/src/account/ProfilePage.tsx:92`, `:348`) ve "can no longer be changed" cümlesini gösteriyor (`:396`); "Try again." yalnız öteki retlerde (`:392`). Örnek: Ayşe formu açmışken "Meyhouse"taki erişimi alınır, kaydetmeye basar; "Try again." yerine erişiminin bittiğini okur. Tercih edilen ad aynı durumda hâlâ "Try again." diyor: BL-471.
 - **Dayanak:** `CLAUDE.md` §9 (yazma, açık olmayan workspace'te reddedilir; ret okunur cümleyle).
 - **Geri alma:** kolay.
-- **Durum:** main'de (`9aa200eb`, `de5205d6`); ekran doğrulaması açık — erişimi alınmış ya da kapalı workspace'te ekranın ne dediği ölçülmedi, `nf-gorsel-qa`'da (koordinatör kullanıcıya böyle düzeltti; besleme #12).
+- **Durum:** main'de (`9aa200eb`, `de5205d6`; erişimi alınmış kişi için `8b1b0cf0`, main CI 36727438047 yeşil). Ekran doğrulaması `nf-gorsel-qa` turunda (B4 + A3 + acil durum mesajı, `45f8ddfe` üstünde; koordinatörün aktardığı).
 
 ### KK-46 (2026-09-30) Lokasyondan çıkarma sonrası çekmece kapanır (EMP-001 B4'e eklendi)
 - **Karar:** `nf-test`'in bulgusu B4 dilimine alındı: kişi, bakanın tek ortak lokasyonundan çıkarılınca çekmece kapanır.
@@ -358,7 +358,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** Employees → kişi → çekmece → Access → "Profile photo": "Remove the workspace profile photo shown for this employee in this workspace." ve "Remove only the photo shown for this workspace." yazıları kalkar (bugün `apps/web/src/employees/EmployeeDrawer.tsx`'te duruyor; ölçüldü); başlık ve fotoğrafı kaldırma düğmesi kalır (koordinatörün aktardığı).
 - **Dayanak:** kullanıcının A2 kararı (aynı sekmede "Account access" açıklamaları kalktı).
 - **Geri alma:** kolay (iki metin).
-- **Durum:** yapılmadı; EMP-001 B4'ten sonra. Kullanıcı düzeltebilir (§0c satır 2).
+- **Durum:** main'de (`c79620f2`, EMP-001 A3; main CI 36727438047 yeşil; besleme #13'te kodda ölçüldü: metin yalnız "Remove photo" düğmesinin ekran okuyucu açıklaması ve fare ipucu, `EmployeeDrawer.tsx:2605`, `:2663-2664`). Kullanıcı düzeltebilir (§0c satır 2).
 
 ### KK-49 (2026-09-30) Kurtarma penceresindeki fare hatası backlog'a atılmadı, aynı dalda düzeltildi
 - **Karar:** `nf-gorsel-qa`'nın G14 dilim b'de bulduğu hata main'de de vardı; ayrı madde açılmadı, dilim b'de düzeltildi.
@@ -429,3 +429,17 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** bağlamı dolan oturum boş oturuma verilir, kart onayı beklenmez (bu dosyanın başı).
 - **Geri alma:** gerekmez.
 - **Durum:** yapıldı. Eski oturumların arşivi kullanıcıda (`ILERLEME-PLANI.md` §0c satır 20).
+
+### KK-59 (2026-09-30) "Management'ın işleri" tek yardımcıdan okunur (EMP-001 C2)
+- **Karar:** C2'de `managementJobIds` tek "Management'ın işleri" yardımcısı olarak kalır; `firstJobOutsideManagement` ve `nonManagementPrimaryJobId` silinir, yerlerine yalnız Owner'a bakan tek yardımcı gelir.
+- **Uygulamada etkisi:** ekranda değişen yok. Schedule → "Job/Position" sıralaması, kurulum sihirbazının iş sayımı ve Employees çekmecesindeki iş gruplaması "hangi iş Management'ta" bilgisini tek yerden okur (koordinatörün aktardığı; kod dalda, ölçülmedi). Örnek: Management'a yeni bir iş eklenince üç ekran da onu aynı anda Management sayar; biri eski listeye bakıp ayrışmaz.
+- **Dayanak:** `CLAUDE.md` §9 "ikiz sistem yok". `tasks/EMP-001.md` Done when 26'nın ikinci `grep`'i buna göre yeniden yazıldı.
+- **Geri alma:** kolay.
+- **Durum:** yazılıyor (`task/emp-001-c2`, `nf-backend`; besleme #13'te dalda kendi commit'i yok — ölçüldü).
+
+### KK-60 (2026-09-30) EMP-001 C'nin güvenlik incelemesi dört dilim birleşince tek turda
+- **Karar:** `nf-guvenlik` incelemesi C1 bitince değil, C1 + C2 + C3 + C4 tek dalda birleşince yapılır (önceki koordinatörün düzeni sürüyor).
+- **Uygulamada etkisi:** yok. "Manager" işi ve owner çekmecesi değişiklikleri kullanıcıya tek seferde, incelenmiş olarak gelir; o güne kadar Settings → Jobs'ta ve Employees çekmecesinde bugünkü hâl görünür.
+- **Dayanak:** `DELEGASYON.md` §3 (R3: `nf-guvenlik` zorunlu; sınıf main'e girecek toplam değişikliğe göre) ve §6 (aynı diff'e iki inceleme yok).
+- **Geri alma:** C1'e ayrı inceleme istemek.
+- **Durum:** geçerli; C1 incelenmeden dalda bekliyor (`task/emp-001-c1` @`4dd1f56b`).
