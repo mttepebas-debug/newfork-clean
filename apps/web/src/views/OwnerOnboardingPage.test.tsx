@@ -927,6 +927,21 @@ describe("OwnerOnboardingPage", () => {
       expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
     });
 
+    // BL-480 (variant B): the list says what is missing, naming Management as it is called now.
+    const missingLine =
+      "Leadership comes with every workspace. Add a department for the jobs your team works.";
+
+    it("says under Management what is missing while it is all there is", async () => {
+      await jobsStep([management], [ownerJob, managerJob]);
+      const line = screen.getByText(missingLine);
+      expect(line.closest("[role='list']")).toBeTruthy();
+    });
+
+    it("drops that line once a department of their own is there", async () => {
+      await jobsStep([management, department], [ownerJob, managerJob, job]);
+      expect(screen.queryByText(missingLine)).toBeNull();
+    });
+
     it("keeps Continue off when the only job added sits under Management", async () => {
       const next = await jobsStep([management, department], [ownerJob, managerJob, { ...job, department_id: managementId }]);
       expect(next.disabled).toBe(true);

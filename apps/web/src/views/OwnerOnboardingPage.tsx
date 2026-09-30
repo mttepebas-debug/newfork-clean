@@ -1298,6 +1298,14 @@ export default function OwnerOnboardingPage() {
                     {jobPanel(looseJobs)}
                   </div>
                 ) : null}
+                {/* Management alone does not finish the step (EMP-001 K2):
+                    the list says what is missing (BL-480). */}
+                {management && ownDepartmentCount === 0 ? (
+                  <p className="ob-empty">
+                    {management.name} comes with every workspace. Add a
+                    department for the jobs your team works.
+                  </p>
+                ) : null}
               </div>
             </div>
 
