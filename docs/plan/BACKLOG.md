@@ -83,9 +83,10 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
   - **İşaret 2026-09-30 (kayıt oturumu; madde ve kaynakları okunarak):** 16 ayrı fikir (BL-010…BL-025) arşivde; tek tek okunmadı.
 
 ## Yeni bulgular (2026-09-16, RESCUE-001)
-- Schedule topbar dar pane'de (~936px) iki satıra sarıyor; taşma yok, polish (F5).
+- (leave: low / do: belirsiz) Schedule topbar dar pane'de (~936px) iki satıra sarıyor; taşma yok, polish (F5).
   - **Tazelik 2026-09-29 (`67c88bc0`, BACKLOG-PROGRAM G14): geçerli** — üst çubuk CSS'i 2026-09-16'dan beri yalnız `flex-shrink: 0` eklenerek değişti (`styles.css:3412`); `ScheduleTopBar.tsx`'e o tarihten sonra commit yok. Sarma ölçülmedi.
   - **Tazelik 2026-09-30 (`bccdb4df`): geçerli (kod); ekranda doğrulanacak** — sol grup `flex: 1 1 680px; flex-wrap: wrap` (`apps/web/src/styles.css:3429-3432`), içinde yedi denetim (`ScheduleTopBar.tsx:233-401`); sağ grup `flex: 0 0 auto` (`:3442-3445`); 721px üstünde kırılma kuralı yok (tek `@media` `:10765`, ≤720px). Sarmanın başladığı genişlik ve ikinci satırın görünümü okunarak bilinemez. Hedef görünüm kararı `tasks/G14.md` S2. Görev: G14 dilim b.
+  - **İşaret 2026-09-30 (kayıt oturumu; madde ve G14 tazeliği okunarak):** leave low: madde "taşma yok, polish" diyor. do belirsiz: hedef görünüm `tasks/G14.md` S2'de karara bağlı (iki satır kabul edilirse küçük hiza düzeltmesi ya da kapanış; tek satır istenirse mockup ve daha büyük iş); ekran görüntüsünden sonra netleşir.
 - (leave: low / do: moderate) Export PNG önizlemesi her sayfayı 2.5x ölçekte render ediyor; çok sayfalı haftalarda yavaş. Düşük ölçek değerlendir (EXP-002).
   - **Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G20): geçerli** — `schedule/export-v2/png.ts:25` hâlâ `getViewport({ scale: 2.5 })`; önizleme de aynı yoldan (`ExportController.tsx:76` → `files.ts:20-21`). Süre ölçülmedi. Ek: önizleme ve indirme aynı `renderExportFiles`'ı kullanıyor (`ExportController.tsx:76`, `:112`); ölçeği düşürmek indirilen PNG'yi de düşürür.
   - **İşaret 2026-09-30 (kayıt oturumu; madde ve kaynakları okunarak):** yavaşlık ölçülmedi. do moderate: önizleme ve indirme aynı `renderExportFiles`'ı kullanıyor; ölçeği düşürmek indirilen PNG'yi de düşürür (tazelik 2026-09-29).
