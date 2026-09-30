@@ -281,7 +281,7 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   ekranında Management en sonda kalır: Employees → çekmece → Employment →
   Jobs seçicisi ve Schedule → "Job/Position" gruplaması (kullanıcı kararları
   2026-09-30, BL-475: önce yalnız işler, aynı gün departmanlara genişledi,
-  sonra iki ekranın istisnası; kod `task/bl-475` @`7bce0322`, main'e girmedi).
+  sonra iki ekranın istisnası; main'de `1a608c01`, canlıda `20261003010000`).
 - Locations: lokasyon silme iki tık, panel yok. Jobs, Shift types ve Shift
   labels'ta silme etki listesi paneli açar; o panel bilerek kalıyor.
 - Roles: "Delete role" `ConfirmButton` değil, kendi iki tık kopyası
