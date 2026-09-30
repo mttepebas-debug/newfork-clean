@@ -1,3 +1,4 @@
+import { ConfirmButton } from "@newfork/ui";
 import { type JSX, type ReactNode, useCallback, useEffect, useRef } from "react";
 import { AlertTriangle, RotateCcw, Save, XCircle } from "lucide-react";
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
@@ -110,13 +111,28 @@ export function ScheduleSaveRecoverySheet({
             />
             Keep editing
           </button>
-          <button type="button" disabled={!canDiscard} onClick={onDiscard}>
+          {/* BL-440: discarding throws the edits away; it asks twice (UI-12). */}
+          <ConfirmButton
+            unstyled
+            disabled={!canDiscard}
+            confirmLabel={
+              <>
+                <RotateCcw
+                  aria-hidden
+                  className="schedule-save-recovery-action-icon"
+                />
+                Confirm discard
+              </>
+            }
+            confirmName="Confirm discard"
+            onConfirm={onDiscard}
+          >
             <RotateCcw
               aria-hidden
               className="schedule-save-recovery-action-icon"
             />
             Discard
-          </button>
+          </ConfirmButton>
           <button
             type="button"
             className="primary"

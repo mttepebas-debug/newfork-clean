@@ -92,6 +92,11 @@
   border-color: var(--recovery-accent);
   color: #fff;
 }
+.schedule-recovery-modal .schedule-save-recovery-sheet footer button[data-confirming="true"] {
+  background: var(--theme-danger);
+  border-color: var(--theme-danger);
+  color: var(--theme-on-accent);
+}
 .schedule-recovery-modal :is(button, [tabindex]):focus-visible {
   outline: 3px solid var(--recovery-accent);
   outline-offset: 3px;

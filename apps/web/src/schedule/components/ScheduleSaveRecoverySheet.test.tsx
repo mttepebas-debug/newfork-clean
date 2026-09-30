@@ -31,10 +31,13 @@ describe("ScheduleSaveRecoverySheet", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
     fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
-    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
-
     expect(onRetry).toHaveBeenCalledTimes(1);
     expect(onKeepEditing).toHaveBeenCalledTimes(1);
+
+    // BL-440: Discard throws the edits away, so it asks twice.
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(onDiscard).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm discard" }));
     expect(onDiscard).toHaveBeenCalledTimes(1);
   });
 
@@ -80,23 +83,23 @@ describe("ScheduleSaveRecoverySheet", () => {
     expect(onKeepEditing).toHaveBeenCalledTimes(2);
   });
 
-  // BL-372: the sheet shares the Schedule windows' Escape rule.
-  it("keeps editing once per Escape, and leaves Escape to an armed two-click button", () => {
+  // BL-372, BL-440: the sheet shares the Schedule windows' Escape rule. The
+  // first Escape on an armed Discard puts it down; the second closes the sheet.
+  it("disarms Discard on the first Escape and keeps editing on the second", () => {
     const onKeepEditing = vi.fn();
-    render(
-      <ScheduleSaveRecoverySheet open onRetry={vi.fn()} onKeepEditing={onKeepEditing} onDiscard={vi.fn()}>
-        <button type="button" data-confirming="true">Confirm discard</button>
-      </ScheduleSaveRecoverySheet>,
-    );
+    const onDiscard = vi.fn();
+    render(<ScheduleSaveRecoverySheet open onRetry={vi.fn()} onKeepEditing={onKeepEditing} onDiscard={onDiscard} />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
     // The key's default is taken too: left alone, the browser sends the native
     // dialog a cancel for the same Escape and the sheet closes anyway.
     const escapeLeftToBrowser = fireEvent.keyDown(screen.getByRole("button", { name: "Confirm discard" }), { key: "Escape" });
     expect(escapeLeftToBrowser).toBe(false);
     expect(onKeepEditing).not.toHaveBeenCalled();
 
-    fireEvent.keyDown(screen.getByRole("button", { name: "Retry save" }), { key: "Escape" });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Discard" }), { key: "Escape" });
     expect(onKeepEditing).toHaveBeenCalledTimes(1);
+    expect(onDiscard).not.toHaveBeenCalled();
   });
 
   it("does not render while closed", () => {
