@@ -11285,6 +11285,16 @@ button.workspace-switcher-item:hover:not(:disabled) {
   height: 18px !important;
   margin: 0 !important;
 }
+/* A choice nobody can change here (Employees drawer, setup's Add your team):
+   the box says not-allowed, and one switched off for a reason (the Owner job,
+   the owner's locations) greys its name too. A location with Remove on its
+   row is locked without a reason and keeps its look. */
+[data-locked="true"] input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+[data-locked-reason="true"] span {
+  color: var(--theme-muted-strong);
+}
 .form-success {
   color: var(--theme-accent-strong);
   font-size: 13px;

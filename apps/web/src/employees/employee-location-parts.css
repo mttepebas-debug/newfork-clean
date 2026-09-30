@@ -26,15 +26,6 @@
 .employee-assignment-picker > div[data-locked="true"] {
   grid-template-columns: minmax(0, 1fr) auto auto;
 }
-.employee-assignment-picker > div[data-locked="true"] input[type="checkbox"]:disabled {
-  cursor: not-allowed;
-}
-
-/* A row switched off for a reason (the Owner job, the owner's locations): the
-   name greys with the box. A location with Remove on its row keeps its look. */
-.employee-assignment-picker > div[data-locked-reason="true"] label > span {
-  color: var(--theme-muted-strong);
-}
 
 /* Terminate, switched off for a manager, and the reason under Locations. */
 .employee-lifecycle-button.employee-terminate-passive:disabled {

@@ -818,6 +818,34 @@ describe("OwnerOnboardingPage", () => {
       fireEvent.click(screen.getByRole("button", { name: /add employee/i }));
     }
 
+    // BL-489: as in the Employees drawer, the Owner job is nobody's to tick.
+    it("shows the Owner job switched off and unticked, and every other job open", async () => {
+      vi.mocked(listLocations).mockResolvedValue([location]);
+      vi.mocked(listDepartments).mockResolvedValue([
+        department,
+        { ...department, id: managementId, name: "Management", system_key: "management" },
+      ]);
+      vi.mocked(listJobs).mockResolvedValue([
+        job,
+        { ...job, id: managerJobId, name: "Manager", department_id: managementId },
+        { ...job, id: "13000000-0000-4000-8000-0000000000ab", name: "Owner", department_id: managementId, system_key: "owner" },
+      ]);
+      renderPage(4);
+      const owner = (await screen.findByRole("checkbox", { name: "Owner" })) as HTMLInputElement;
+      expect(owner.disabled).toBe(true);
+      expect(owner.checked).toBe(false);
+      expect(owner.closest("label")!.dataset.locked).toBe("true");
+      expect(owner.closest("label")!.dataset.lockedReason).toBe("true");
+      const note = document.getElementById(owner.getAttribute("aria-describedby") ?? "");
+      expect(note?.textContent).toBe("Only the workspace owner holds the Owner job.");
+      expect(note?.classList.contains("sr-only")).toBe(true);
+      for (const name of ["Server", "Manager"]) {
+        const box = screen.getByRole("checkbox", { name }) as HTMLInputElement;
+        expect(box.disabled).toBe(false);
+        expect(box.closest("label")!.dataset.lockedReason).toBeUndefined();
+      }
+    });
+
     it("makes the first job ticked primary, a Management job too", async () => {
       await addWithJobs(["Manager", "Server"]);
       await waitFor(() =>

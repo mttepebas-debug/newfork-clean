@@ -14,6 +14,9 @@ type Location = EmployeeDetail["locations"][number];
 
 const terminateOnlyAdmin = "Only an admin or the owner can terminate an employee.";
 
+/** Why the Owner job cannot be ticked: Employees drawer and setup's Add your team. */
+export const ownerJobReason = "Only the workspace owner holds the Owner job.";
+
 function personName(detail: EmployeeDetail): string {
   return detail.preferred_name || detail.first_name;
 }

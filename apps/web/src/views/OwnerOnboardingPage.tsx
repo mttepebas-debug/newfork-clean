@@ -24,7 +24,7 @@ import {
   Send,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -36,6 +36,7 @@ import {
 } from "../shell/prebiz/PreBiz";
 import { hubPath } from "../auth/resolveLanding";
 import { saveEmployee } from "../employees/employee-data";
+import { ownerJobReason } from "../employees/EmployeeLocationParts";
 import {
   employeeCreateReadiness,
   firstJobExceptOwner,
@@ -1717,33 +1718,55 @@ function AssignmentChecks({
   onChange,
 }: {
   readonly legend: string;
-  readonly options: readonly { readonly id: string; readonly name: string }[];
+  readonly options: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly system_key?: string | null;
+  }[];
   readonly selected: readonly string[];
   readonly required: boolean;
   readonly onChange: (ids: string[]) => void;
 }) {
+  const reasonId = useId();
+  const hasOwnerJob = options.some((option) => option.system_key === "owner");
   return (
     <fieldset className="owner-assignment-checks wide">
       <legend>
         {legend}
         {required ? <span> · required</span> : null}
       </legend>
-      {options.map((option) => (
-        <label key={option.id}>
-          <input
-            type="checkbox"
-            checked={selected.includes(option.id)}
-            onChange={(event) =>
-              onChange(
-                event.target.checked
-                  ? [...selected, option.id]
-                  : selected.filter((id) => id !== option.id),
-              )
-            }
-          />
-          <span>{option.name}</span>
-        </label>
-      ))}
+      {options.map((option) => {
+        // The Owner job is nobody's to tick, as in the Employees drawer (BL-489).
+        const owner = option.system_key === "owner";
+        return (
+          <label
+            key={option.id}
+            title={owner ? ownerJobReason : undefined}
+            data-locked={owner ? "true" : undefined}
+            data-locked-reason={owner ? "true" : undefined}
+          >
+            <input
+              type="checkbox"
+              checked={selected.includes(option.id)}
+              disabled={owner}
+              aria-describedby={owner ? reasonId : undefined}
+              onChange={(event) =>
+                onChange(
+                  event.target.checked
+                    ? [...selected, option.id]
+                    : selected.filter((id) => id !== option.id),
+                )
+              }
+            />
+            <span>{option.name}</span>
+          </label>
+        );
+      })}
+      {hasOwnerJob ? (
+        <span id={reasonId} className="sr-only">
+          {ownerJobReason}
+        </span>
+      ) : null}
     </fieldset>
   );
 }

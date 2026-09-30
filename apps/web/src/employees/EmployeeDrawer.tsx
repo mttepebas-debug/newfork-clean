@@ -87,6 +87,7 @@ import {
 import { registerEmployeeHistoryGuard } from "./employee-history-guard";
 import {
   PassiveTerminate,
+  ownerJobReason,
   RemoveFromLocationButton,
   TerminateNote,
 } from "./EmployeeLocationParts";
@@ -2938,7 +2939,6 @@ function Field({
   );
 }
 
-const ownerJobReason = "Only the workspace owner holds the Owner job.";
 const ownerLocationsReason = "The workspace owner works at every location.";
 
 function AssignmentPicker({
