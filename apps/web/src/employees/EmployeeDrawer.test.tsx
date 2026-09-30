@@ -163,6 +163,7 @@ const detail = {
   primary_job_name: "Server",
   job_count: 1,
   role_name: null,
+  is_workspace_owner: false,
   role_id: null,
   display_status: "not_invited",
   archived_at: null,
@@ -320,7 +321,6 @@ function renderDrawer(
       name: job.name,
       archived: job.archived,
       departmentId: null,
-      management: false,
       owner: false,
     })),
     inviteRoles: inviteRolesFixture,
@@ -761,6 +761,7 @@ describe("EmployeeDrawer", () => {
       ...detail,
       role_id: ownerRoleId,
       role_name: "Owner",
+      is_workspace_owner: true,
       user_id: context.userId,
       display_status: "active",
       allowed: ownRecordAllowed,
@@ -819,6 +820,7 @@ describe("EmployeeDrawer", () => {
       ...detail,
       user_id: context.userId,
       role_name: "Owner",
+      is_workspace_owner: true,
       private_contact: null,
     });
 
@@ -848,6 +850,7 @@ describe("EmployeeDrawer", () => {
       ...detail,
       user_id: context.userId,
       role_name: "Owner",
+      is_workspace_owner: true,
       private_contact: null,
     });
 
@@ -1234,115 +1237,84 @@ describe("EmployeeDrawer", () => {
     );
   });
 
-  describe("a Management job is primary by its department (BL-218 .3b)", () => {
-    // Deniz works Host and Cook; Host moved under Management, so the database
-    // cleared the primary.
-    const deniz = {
-      ...detail,
-      primary_job_id: null,
-      primary_job_name: null,
-      job_count: 2,
-      jobs: [
-        { id: "22000000-0000-4000-8000-0000000000b1", name: "Host", primary: false, archived: false },
-        { id: "22000000-0000-4000-8000-0000000000b2", name: "Cook", primary: false, archived: false },
-      ],
-    };
-    function denizReferences() {
-      vi.mocked(loadEmployeeReferenceData).mockResolvedValueOnce({
-        locations: deniz.locations.map((location) => ({ ...location, timezone: "America/Los_Angeles" })),
-        departments: [{ id: "dd000000-0000-4000-8000-000000000001", name: "Management", archived: false, management: true }],
-        jobs: [
-          { id: deniz.jobs[0]!.id, name: "Host", archived: false, departmentId: "dd000000-0000-4000-8000-000000000001", management: true, owner: false },
-          { id: deniz.jobs[1]!.id, name: "Cook", archived: false, departmentId: null, management: false, owner: false },
-        ],
-        inviteRoles: [],
-      });
-    }
-
-    it("does not make the job just unticked the primary", async () => {
-      denizReferences();
-      renderDrawer("employment", deniz);
-      await employeeLoaded();
-      fireEvent.click(screen.getByLabelText("Cook"));
-      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-      await waitFor(() =>
-        expect(saveEmployee).toHaveBeenCalledWith(
-          workspaceId,
-          expect.objectContaining({ job_ids: [deniz.jobs[0]!.id], primary_job_id: null }),
-          employeeId,
-        ),
-      );
-    });
-
-    it("saves Deniz and shows the database answer when a primary job is missing", async () => {
-      denizReferences();
-      vi.mocked(saveEmployee).mockRejectedValueOnce(
-        new RequestError("Mark one of the jobs outside Management as primary.", "employee.primary_job_required", undefined, 400),
-      );
-      renderDrawer("employment", deniz);
-      fireEvent.change(await screen.findByLabelText("Start date"), { target: { value: "2027-02-01" } });
-      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-      expect(await screen.findByText("Mark one of the jobs outside Management as primary.")).toBeTruthy();
-      expect(saveEmployee).toHaveBeenCalledWith(
-        workspaceId,
-        expect.objectContaining({ job_ids: deniz.jobs.map((job) => job.id), primary_job_id: null }),
-        employeeId,
-      );
-    });
-
+  // EMP-001 C (S2, items 12 and 23): any job can be primary, Manager too; only
+  // the Owner job never is. The first job ticked becomes the primary.
+  describe("the primary job (EMP-001 C)", () => {
     const serverJobId = detail.jobs[0]!.id;
     const managerJobId = "22000000-0000-4000-8000-0000000000aa";
-    function withManagementJob() {
+    const ownerJobId = "22000000-0000-4000-8000-0000000000ab";
+    const managementId = "dd000000-0000-4000-8000-000000000001";
+    function withManagementJobs() {
       vi.mocked(loadEmployeeReferenceData).mockResolvedValueOnce({
         locations: detail.locations.map((location) => ({ ...location, timezone: "America/Los_Angeles" })),
-        departments: [{ id: "dd000000-0000-4000-8000-000000000001", name: "Leadership", archived: false, management: true }],
+        departments: [{ id: managementId, name: "Leadership", archived: false, management: true }],
         jobs: [
-          { id: serverJobId, name: "Server", archived: false, departmentId: null, management: false, owner: false },
-          { id: managerJobId, name: "Floor Manager", archived: false, departmentId: "dd000000-0000-4000-8000-000000000001", management: true, owner: false },
+          { id: serverJobId, name: "Server", archived: false, departmentId: null, owner: false },
+          { id: managerJobId, name: "Floor Manager", archived: false, departmentId: managementId, owner: false },
+          { id: ownerJobId, name: "Owner", archived: false, departmentId: managementId, owner: true },
         ],
         inviteRoles: [],
       });
     }
     const jobRow = (name: string) => screen.getByLabelText(name).closest("div")!;
+    const primaryOf = (name: string) => within(jobRow(name)).getByLabelText("Primary") as HTMLInputElement;
+    // The file does not clear its mocks; these tests read what was saved.
+    beforeEach(() => vi.mocked(saveEmployee).mockClear());
+    const save = () => fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    const savedWith = (expected: object) =>
+      waitFor(() =>
+        expect(saveEmployee).toHaveBeenCalledWith(workspaceId, expect.objectContaining(expected), employeeId),
+      );
 
-    it("saves somebody who only manages at one location with no primary job", async () => {
-      withManagementJob();
+    it("makes the first job ticked the primary, a Management job too", async () => {
+      withManagementJobs();
+      renderDrawer("employment", { ...detail, primary_job_id: null, primary_job_name: null, job_count: 0, jobs: [] });
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Floor Manager"));
+      expect(primaryOf("Floor Manager").checked).toBe(true);
+      save();
+      await savedWith({ job_ids: [managerJobId], primary_job_id: managerJobId });
+    });
+
+    it("lets the primary be moved by hand once a second job is ticked", async () => {
+      withManagementJobs();
+      renderDrawer("employment");
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Floor Manager"));
+      expect(primaryOf("Server").checked).toBe(true);
+      fireEvent.click(primaryOf("Floor Manager"));
+      save();
+      await savedWith({ job_ids: [serverJobId, managerJobId], primary_job_id: managerJobId });
+    });
+
+    it("moves the primary to the first job left, never to the one just unticked", async () => {
+      withManagementJobs();
       renderDrawer("employment");
       await employeeLoaded();
       fireEvent.click(screen.getByLabelText("Floor Manager"));
       fireEvent.click(screen.getByLabelText("Server"));
-      // No primary to pick for a Management job.
-      expect(within(jobRow("Floor Manager")).queryByLabelText("Primary")).toBeNull();
-      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-      await waitFor(() =>
-        expect(saveEmployee).toHaveBeenCalledWith(
-          workspaceId,
-          expect.objectContaining({
-            location_ids: [detail.locations[0]!.id],
-            primary_location_id: detail.locations[0]!.id,
-            job_ids: [managerJobId],
-            primary_job_id: null,
-          }),
-          employeeId,
-        ),
-      );
+      expect(primaryOf("Floor Manager").checked).toBe(true);
+      save();
+      await savedWith({ job_ids: [managerJobId], primary_job_id: managerJobId });
     });
 
-    it("keeps the primary on the job outside Management for somebody who does both", async () => {
-      withManagementJob();
-      renderDrawer("employment");
+    it("never marks the Owner job primary: the next job the owner is given takes it", async () => {
+      withManagementJobs();
+      renderDrawer("employment", {
+        ...detail,
+        role_name: "Owner",
+        is_workspace_owner: true,
+        primary_job_id: null,
+        primary_job_name: null,
+        jobs: [{ id: ownerJobId, name: "Owner", primary: false, archived: false }],
+      });
       await employeeLoaded();
-      fireEvent.click(screen.getByLabelText("Floor Manager"));
-      expect(within(jobRow("Floor Manager")).queryByLabelText("Primary")).toBeNull();
-      expect((within(jobRow("Server")).getByLabelText("Primary") as HTMLInputElement).checked).toBe(true);
-      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-      await waitFor(() =>
-        expect(saveEmployee).toHaveBeenCalledWith(
-          workspaceId,
-          expect.objectContaining({ job_ids: [serverJobId, managerJobId], primary_job_id: serverJobId }),
-          employeeId,
-        ),
-      );
+      expect(within(jobRow("Owner")).queryByLabelText("Primary")).toBeNull();
+      fireEvent.click(screen.getByLabelText("Server"));
+      expect(primaryOf("Server").checked).toBe(true);
+      expect(within(jobRow("Owner")).queryByLabelText("Primary")).toBeNull();
+      save();
+      await savedWith({ job_ids: [ownerJobId, serverJobId], primary_job_id: serverJobId });
     });
   });
 
@@ -2098,6 +2070,7 @@ describe("EmployeeDrawer EMP-001 look", () => {
       ...detail,
       role_id: ownerRoleId,
       role_name: "Owner",
+      is_workspace_owner: true,
       user_id: context.userId,
       display_status: "active",
       allowed: ownRecordAllowed,
@@ -2144,12 +2117,11 @@ describe("EmployeeDrawer EMP-001 look", () => {
     const kitchen = "dd000000-0000-4000-8000-0000000000c1";
     const floor = "dd000000-0000-4000-8000-0000000000c2";
     const management = "dd000000-0000-4000-8000-0000000000c3";
-    const job = (id: string, name: string, departmentId: string | null, inManagement = false) => ({
+    const job = (id: string, name: string, departmentId: string | null) => ({
       id,
       name,
       archived: false,
       departmentId,
-      management: inManagement,
       owner: false,
     });
     vi.mocked(loadEmployeeReferenceData).mockResolvedValueOnce({
@@ -2161,7 +2133,7 @@ describe("EmployeeDrawer EMP-001 look", () => {
       ],
       jobs: [
         job("22000000-0000-4000-8000-0000000000d1", "Cook", kitchen),
-        job("22000000-0000-4000-8000-0000000000d2", "Floor Manager", management, true),
+        job("22000000-0000-4000-8000-0000000000d2", "Floor Manager", management),
         job(detail.jobs[0]!.id, "Server", floor),
         job("22000000-0000-4000-8000-0000000000d4", "Runner", null),
         job("22000000-0000-4000-8000-0000000000d5", "Dishwasher", kitchen),
@@ -2189,7 +2161,7 @@ describe("EmployeeDrawer EMP-001 look", () => {
     vi.mocked(loadEmployeeReferenceData).mockResolvedValueOnce({
       locations: detail.locations.map((location) => ({ ...location, timezone: "America/Los_Angeles" })),
       departments: [{ id: closed, name: "Patio", archived: true, management: false }],
-      jobs: [{ id: detail.jobs[0]!.id, name: "Server", archived: false, departmentId: closed, management: false, owner: false }],
+      jobs: [{ id: detail.jobs[0]!.id, name: "Server", archived: false, departmentId: closed, owner: false }],
       inviteRoles: [],
     });
     renderDrawer("employment");

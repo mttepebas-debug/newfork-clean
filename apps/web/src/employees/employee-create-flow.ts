@@ -27,12 +27,13 @@ export function employeeCreateReadiness(draft: EmployeeInput) {
 }
 
 /**
- * The primary job a picker falls back to: the first picked job outside
- * Management, which is primary by its department and never marked (BL-218).
+ * The primary job a picker falls back to: the first picked job that is not
+ * the Owner job. Any job can be primary, a Management job too; only the Owner
+ * job is never marked (EMP-001 S2).
  */
-export function firstJobOutsideManagement(
+export function firstJobExceptOwner(
   jobIds: readonly string[],
-  management: ReadonlySet<string>,
+  ownerJobId: string | null | undefined,
 ): string | null {
-  return jobIds.find((id) => !management.has(id)) ?? null;
+  return jobIds.find((id) => id !== ownerJobId) ?? null;
 }

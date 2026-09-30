@@ -1,5 +1,4 @@
 import {
-  managementJobIds,
   suggestLocationShortName,
   type Department,
   type EmployeeInput,
@@ -38,7 +37,7 @@ import { hubPath } from "../auth/resolveLanding";
 import { saveEmployee } from "../employees/employee-data";
 import {
   employeeCreateReadiness,
-  firstJobOutsideManagement,
+  firstJobExceptOwner,
 } from "../employees/employee-create-flow";
 import {
   listAccountWorkspaces,
@@ -205,10 +204,6 @@ export default function OwnerOnboardingPage() {
   const activeJobs = useMemo(
     () => jobs.filter((job) => !job.archived_at),
     [jobs],
-  );
-  const managementIds = useMemo(
-    () => managementJobIds(departments, jobs),
-    [departments, jobs],
   );
   // Saving bumps locationDraftEpoch, which remounts the fields and drops focus
   // on the body. The next location starts where the last one did.
@@ -712,11 +707,14 @@ export default function OwnerOnboardingPage() {
     setError(null);
     setSuccess(null);
     try {
-      // Same rule as the Employees drawer (BL-218), worked out now: a job
-      // can move under Management from Back: Jobs after it was ticked.
+      // Same rule as the Employees drawer (EMP-001 S2): the first job ticked
+      // is the primary, a Management job too, and never the Owner job.
       const employeeId = await saveEmployee(workspaceId, {
         ...employeeDraft,
-        primary_job_id: firstJobOutsideManagement(employeeDraft.job_ids, managementIds),
+        primary_job_id: firstJobExceptOwner(
+          employeeDraft.job_ids,
+          jobs.find((job) => job.system_key === "owner")?.id,
+        ),
       });
       if (inviteAfterSave && employeeDraft.invitation_email.trim()) {
         await queueOwnerOnboardingInvitationIntent(supabaseClient, {

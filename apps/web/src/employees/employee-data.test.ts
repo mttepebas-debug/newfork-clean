@@ -14,7 +14,7 @@ import {
 } from "./employee-data";
 import { isNoAccess } from "../lib/no-access";
 import { InvitationError } from "./invitation-error";
-import { firstJobOutsideManagement } from "./employee-create-flow";
+import { firstJobExceptOwner } from "./employee-create-flow";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
@@ -65,8 +65,8 @@ describe("Employees reference data (BL-231)", () => {
         { id: answer.departments[1]!.id, name: "Kitchen", archived: false, management: false },
       ],
       jobs: [
-        { id: answer.jobs[0]!.id, name: "Old", archived: true, departmentId: answer.departments[1]!.id, management: false, owner: false },
-        { id: answer.jobs[1]!.id, name: "Owner", archived: false, departmentId: answer.departments[0]!.id, management: true, owner: true },
+        { id: answer.jobs[0]!.id, name: "Old", archived: true, departmentId: answer.departments[1]!.id, owner: false },
+        { id: answer.jobs[1]!.id, name: "Owner", archived: false, departmentId: answer.departments[0]!.id, owner: true },
       ],
       inviteRoles: [{ id: answer.invite_roles[0]!.id, name: "lead", systemKey: null, accessClass: "manager" }],
     });
@@ -130,13 +130,14 @@ describe("Invitation answers (SEC-003 #9)", () => {
   });
 });
 
-describe("somebody who only works Management jobs (BL-218 .3b)", () => {
-  const management = new Set(["manager", "assistant"]);
-
-  it("makes the first picked job outside Management the primary", () => {
-    expect(firstJobOutsideManagement(["manager", "cook", "server"], management)).toBe("cook");
-    expect(firstJobOutsideManagement(["manager", "assistant"], management)).toBeNull();
-    expect(firstJobOutsideManagement([], management)).toBeNull();
+describe("the primary job a picker falls back to (EMP-001 C)", () => {
+  it("is the first picked job, a Management job too, and never the Owner job", () => {
+    expect(firstJobExceptOwner(["manager", "cook"], "owner")).toBe("manager");
+    expect(firstJobExceptOwner(["owner", "cook"], "owner")).toBe("cook");
+    expect(firstJobExceptOwner(["owner"], "owner")).toBeNull();
+    expect(firstJobExceptOwner([], "owner")).toBeNull();
+    // Locations, and a job list with no Owner job in it.
+    expect(firstJobExceptOwner(["cook"], undefined)).toBe("cook");
   });
 });
 

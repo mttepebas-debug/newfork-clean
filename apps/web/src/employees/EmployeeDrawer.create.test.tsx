@@ -124,6 +124,7 @@ describe("employee create flow", () => {
         primary_job_name: "Server",
         job_count: 1,
         role_name: null,
+        is_workspace_owner: false,
         private_contact: null,
         allowed: {
           save: true,
@@ -333,7 +334,7 @@ describe("employee create flow", () => {
     vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
       locations: [{ id: ids.location, name: "Downtown", archived: false }],
       departments: [],
-      jobs: [{ id: ids.job, name: "Server", archived: false, departmentId: null, management: false, owner: false }],
+      jobs: [{ id: ids.job, name: "Server", archived: false, departmentId: null, owner: false }],
       inviteRoles: roles,
     });
     vi.mocked(createEmployee).mockResolvedValue({

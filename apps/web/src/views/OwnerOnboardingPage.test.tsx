@@ -201,7 +201,7 @@ describe("OwnerOnboardingPage", () => {
     vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
       locations: [{ id: locationId, name: "Main Dining", archived: false }],
       departments: [],
-      jobs: [{ id: jobId, name: "Server", archived: false, departmentId: null, management: false, owner: false }],
+      jobs: [{ id: jobId, name: "Server", archived: false, departmentId: null, owner: false }],
       inviteRoles: [],
     });
   });
@@ -795,7 +795,8 @@ describe("OwnerOnboardingPage", () => {
     expect(queueOwnerOnboardingInvitationIntent).toHaveBeenCalledTimes(1);
   });
 
-  describe("a Management job is never a team member's primary (BL-218)", () => {
+  // EMP-001 C (S2): any job can be primary, a Management job too.
+  describe("the first job ticked is a team member's primary (EMP-001 C)", () => {
     const managementId = "12000000-0000-4000-8000-0000000000aa";
     const managerJobId = "13000000-0000-4000-8000-0000000000aa";
     async function addWithJobs(picks: string[]) {
@@ -817,17 +818,17 @@ describe("OwnerOnboardingPage", () => {
       fireEvent.click(screen.getByRole("button", { name: /add employee/i }));
     }
 
-    it("makes the first job outside Management primary, whatever was ticked first", async () => {
+    it("makes the first job ticked primary, a Management job too", async () => {
       await addWithJobs(["Manager", "Server"]);
       await waitFor(() =>
         expect(saveEmployee).toHaveBeenCalledWith(
           workspaceId,
-          expect.objectContaining({ job_ids: [managerJobId, jobId], primary_job_id: jobId }),
+          expect.objectContaining({ job_ids: [managerJobId, jobId], primary_job_id: managerJobId }),
         ),
       );
     });
 
-    it("works the primary out on Add, after the job moved under Management from Back: Jobs", async () => {
+    it("keeps a job primary after it moved under Management from Back: Jobs", async () => {
       vi.mocked(listLocations).mockResolvedValue([location]);
       vi.mocked(listDepartments).mockResolvedValue([
         department,
@@ -856,17 +857,17 @@ describe("OwnerOnboardingPage", () => {
       await waitFor(() =>
         expect(saveEmployee).toHaveBeenCalledWith(
           workspaceId,
-          expect.objectContaining({ job_ids: [jobId], primary_job_id: null }),
+          expect.objectContaining({ job_ids: [jobId], primary_job_id: jobId }),
         ),
       );
     });
 
-    it("adds somebody who only manages with no primary job", async () => {
+    it("adds somebody who only manages with Manager as the primary job", async () => {
       await addWithJobs(["Manager"]);
       await waitFor(() =>
         expect(saveEmployee).toHaveBeenCalledWith(
           workspaceId,
-          expect.objectContaining({ job_ids: [managerJobId], primary_job_id: null }),
+          expect.objectContaining({ job_ids: [managerJobId], primary_job_id: managerJobId }),
         ),
       );
     });

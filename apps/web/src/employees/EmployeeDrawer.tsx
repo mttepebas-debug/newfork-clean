@@ -82,7 +82,7 @@ import {
 } from "./onboarding-data";
 import {
   employeeCreateReadiness,
-  firstJobOutsideManagement,
+  firstJobExceptOwner,
 } from "./employee-create-flow";
 import { registerEmployeeHistoryGuard } from "./employee-history-guard";
 import {
@@ -2957,9 +2957,9 @@ function AssignmentPicker({
   /** Jobs are listed under these, Management last (BL-218 .5). */
   departments?: readonly EmployeeDepartmentOption[];
   label: string;
-  /** `management`: primary by its department, never marked primary (BL-218). */
+  /** `owner`: the Owner job, the one job never marked primary (EMP-001 S2). */
   options: readonly (EmployeeOption & {
-    readonly management?: boolean;
+    readonly owner?: boolean;
     readonly departmentId?: string | null;
   })[];
   selected: readonly string[];
@@ -2971,9 +2971,7 @@ function AssignmentPicker({
 }) {
   const [search, setSearch] = useState("");
   const groupId = useId();
-  const management = new Set(
-    options.filter((option) => option.management).map((option) => option.id),
-  );
+  const ownerJobId = options.find((option) => option.owner)?.id;
   const available = options.filter(
     (option) => !option.archived || selected.includes(option.id),
   );
@@ -3028,21 +3026,21 @@ function AssignmentPicker({
                         ? selected.filter((id) => id !== option.id)
                         : [...selected, option.id];
                       // Unticking moves the primary only off the one unticked;
-                      // ticking fills an empty primary unless it is Management.
+                      // ticking fills an empty primary unless it is the Owner job.
                       onChange(
                         ids,
                         checked
                           ? primary === option.id
-                            ? firstJobOutsideManagement(ids, management)
+                            ? firstJobExceptOwner(ids, ownerJobId)
                             : primary
-                          : (primary ?? (option.management ? null : option.id)),
+                          : (primary ?? (option.owner ? null : option.id)),
                       );
                     }}
                   />
                   <span>{option.name}</span>
                   {option.archived ? <small>Archived</small> : null}
                 </label>
-                {checked && !option.management ? (
+                {checked && !option.owner ? (
                   <label className="primary-choice">
                     <input
                       type="radio"

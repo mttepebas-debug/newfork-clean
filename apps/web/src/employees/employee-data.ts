@@ -14,7 +14,6 @@ import {
   employeeSummarySchema,
   invitationFailureCodeSchema,
   invitationPreviewSchema,
-  managementJobIds,
   pendingPreferredNameSchema,
   preferredNameApprovalSchema,
   preferredNameOutcomeSchema,
@@ -53,9 +52,10 @@ export interface EmployeeDepartmentOption extends EmployeeOption {
 /** A job in the drawer's Jobs picker, with where it sits (BL-218). */
 export interface EmployeeJobOption extends EmployeeOption {
   readonly departmentId: string | null;
-  /** Under Management: primary by its department, never marked primary. */
-  readonly management: boolean;
-  /** The Owner job: only the workspace owner works it, and keeps it. */
+  /**
+   * The Owner job: only the workspace owner works it, and keeps it. The one
+   * job never marked primary (EMP-001 S2).
+   */
   readonly owner: boolean;
 }
 
@@ -225,7 +225,6 @@ export async function loadEmployeeReferenceData(
   const answer = employeeReferenceDataSchema.parse(
     await request(workspaceId, "/reference-data"),
   );
-  const management = managementJobIds(answer.departments, answer.jobs);
   return {
     locations: answer.locations.map((row) => ({
       id: row.id,
@@ -244,7 +243,6 @@ export async function loadEmployeeReferenceData(
       name: row.name,
       archived: row.archived_at !== null,
       departmentId: row.department_id,
-      management: management.has(row.id),
       owner: row.system_key === "owner",
     })),
     inviteRoles: answer.invite_roles.map((role) => ({
