@@ -1117,7 +1117,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                         detail.data &&
                           context?.userId &&
                           detail.data.user_id === context.userId &&
-                          detail.data.role_name === "Owner",
+                          detail.data.is_workspace_owner,
                       ),
                       {
                         onRemove: (locationId) =>
@@ -1328,19 +1328,15 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             <footer className="employee-drawer-footer">
               <div>
                 {managerCannotTerminate ? <PassiveTerminate /> : null}
-                {!props.creating && canChangeLifecycle ? (
+                {!props.creating && canChangeLifecycle && !archived && anyDirty ? (
+                  // Held by a draft: switched off has one look (visual QA D1).
+                  <PassiveTerminate reason="Save your changes before terminating the employee" />
+                ) : !props.creating && canChangeLifecycle ? (
                   <button
                     type="button"
                     className={`employee-lifecycle-button${archived ? " restore" : ""}`}
                     disabled={
-                      archiveMutation.isPending ||
-                      terminationMutation.isPending ||
-                      (!archived && anyDirty)
-                    }
-                    title={
-                      !archived && anyDirty
-                        ? "Save your changes before terminating the employee"
-                        : undefined
+                      archiveMutation.isPending || terminationMutation.isPending
                     }
                     onClick={() => {
                       if (!archived) {
@@ -2219,6 +2215,8 @@ function EmploymentSection({
             primary_location_id: primary,
           }))
         }
+        // The owner works at every location: nothing to pick, no primary (S4).
+        fixedReason={detail?.is_workspace_owner ? ownerLocationsReason : undefined}
         // Remove lives on the location's own row and is the one way off it.
         lockedIds={removableIds}
         rowAction={(id) => {
@@ -2334,7 +2332,7 @@ function AccessSection({
   // Why the owner's role cannot be picked; read out, not printed under it.
   const ownerRoleReasonId = useId();
   const ownerRoleReason =
-    detail?.role_name === "Owner"
+    detail?.is_workspace_owner
       ? "Owner access is managed separately."
       : undefined;
   const inviteRoleName = assignableRoles.find(
@@ -2938,6 +2936,9 @@ function Field({
   );
 }
 
+const ownerJobReason = "Only the workspace owner holds the Owner job.";
+const ownerLocationsReason = "The workspace owner works at every location.";
+
 function AssignmentPicker({
   label,
   options,
@@ -2949,11 +2950,17 @@ function AssignmentPicker({
   searchable = true,
   lockedIds,
   rowAction,
+  fixedReason,
   departments,
 }: {
   /** Rows only their own action takes off (Remove from a location). */
   lockedIds?: ReadonlySet<string>;
   rowAction?: (optionId: string) => React.ReactNode;
+  /**
+   * Set when nothing here is the reader's to pick (the owner's locations):
+   * every row is switched off as it was read, with no Primary, for this reason.
+   */
+  fixedReason?: string;
   /** Jobs are listed under these, Management last (BL-218 .5). */
   departments?: readonly EmployeeDepartmentOption[];
   label: string;
@@ -3010,16 +3017,25 @@ function AssignmentPicker({
           ) : null}
           {group.options.map((option) => {
             const checked = selected.includes(option.id);
-            const locked = checked && (lockedIds?.has(option.id) ?? false);
+            // The Owner job is nobody's to tick or untick (EMP-001 C, item 9).
+            const reason = option.owner ? ownerJobReason : fixedReason;
+            const locked =
+              Boolean(reason) ||
+              (checked && (lockedIds?.has(option.id) ?? false));
             return (
               <div key={option.id} data-locked={locked ? "true" : undefined}>
-                <label>
+                <label title={reason}>
                   <input
                     type="checkbox"
                     checked={checked}
                     disabled={locked}
                     aria-describedby={
-                      group.name ? `${groupId}-${group.id}` : undefined
+                      [
+                        group.name ? `${groupId}-${group.id}` : null,
+                        reason ? `${groupId}-reason` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || undefined
                     }
                     onChange={() => {
                       const ids = checked
@@ -3040,7 +3056,7 @@ function AssignmentPicker({
                   <span>{option.name}</span>
                   {option.archived ? <small>Archived</small> : null}
                 </label>
-                {checked && !option.owner ? (
+                {checked && !reason ? (
                   <label className="primary-choice">
                     <input
                       type="radio"
@@ -3057,6 +3073,12 @@ function AssignmentPicker({
           })}
         </Fragment>
       ))}
+      {/* Why a row is switched off: read out, not printed (the drawer's rule). */}
+      {fixedReason || ownerJobId ? (
+        <span id={`${groupId}-reason`} className="sr-only">
+          {fixedReason ?? ownerJobReason}
+        </span>
+      ) : null}
       {available.length === 0 ? (
         <p>No active {label.toLowerCase()}.</p>
       ) : matching.length === 0 ? (
@@ -3116,7 +3138,7 @@ function toDraft(detail: EmployeeDetail): EmployeeInput {
     is_excluded_from_schedule: detail.is_excluded_from_schedule ?? false,
     // The owner holds every location and every job, so the form does not ask
     // which one is primary.
-    is_owner_record: detail.role_name === "Owner",
+    is_owner_record: detail.is_workspace_owner,
     expected_revision: detail.revision,
   };
 }

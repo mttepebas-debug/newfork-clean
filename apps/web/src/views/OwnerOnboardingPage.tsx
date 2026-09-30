@@ -1,4 +1,5 @@
 import {
+  managementJobIds,
   suggestLocationShortName,
   type Department,
   type EmployeeInput,
@@ -205,6 +206,16 @@ export default function OwnerOnboardingPage() {
     () => jobs.filter((job) => !job.archived_at),
     [jobs],
   );
+  // Management and its jobs come with the workspace and do not count towards
+  // finishing setup (EMP-001 K2); the server counts the same way.
+  const management = activeDepartments.find(
+    (department) => department.system_key === "management",
+  );
+  const managementIds = managementJobIds(departments, jobs);
+  const ownDepartmentCount = activeDepartments.length - (management ? 1 : 0);
+  const structureReady =
+    ownDepartmentCount > 0 &&
+    activeJobs.some((job) => !managementIds.has(job.id));
   // Saving bumps locationDraftEpoch, which remounts the fields and drops focus
   // on the body. The next location starts where the last one did.
   useEffect(() => {
@@ -228,8 +239,7 @@ export default function OwnerOnboardingPage() {
       ),
     [activeJobs, departments],
   );
-  const creatingDepartment =
-    addingDepartment || activeDepartments.length === 0;
+  const creatingDepartment = addingDepartment || ownDepartmentCount === 0;
   const editingLocationName =
     activeLocations.find((location) => location.id === editingLocationId)?.name ??
     null;
@@ -667,13 +677,7 @@ export default function OwnerOnboardingPage() {
   };
 
   const continueFromStructure = async (): Promise<void> => {
-    if (
-      !supabaseClient ||
-      !workspaceId ||
-      activeDepartments.length === 0 ||
-      activeJobs.length === 0
-    )
-      return;
+    if (!supabaseClient || !workspaceId || !structureReady) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -756,10 +760,10 @@ export default function OwnerOnboardingPage() {
       setError("Add at least one active location before finishing setup");
       return;
     }
-    if (activeDepartments.length === 0 || activeJobs.length === 0) {
+    if (!structureReady) {
       setStep(3);
       setError(
-        "Add at least one active department and job before finishing setup",
+        `Add at least one active department and job${management ? ` outside ${management.name}` : ""} before finishing setup`,
       );
       return;
     }
@@ -1362,7 +1366,7 @@ export default function OwnerOnboardingPage() {
               >
                 {creatingDepartment ? (
                   <>
-                    {activeDepartments.length > 0 ? (
+                    {ownDepartmentCount > 0 ? (
                       <button
                         type="button"
                         className="pb-btn pb-btn-secondary"
@@ -1407,11 +1411,7 @@ export default function OwnerOnboardingPage() {
                 <button
                   type="button"
                   className="pb-btn pb-btn-primary"
-                  disabled={
-                    submitting ||
-                    activeDepartments.length === 0 ||
-                    activeJobs.length === 0
-                  }
+                  disabled={submitting || !structureReady}
                   onClick={continueFromStructure}
                 >
                   Continue <ChevronRight size={16} aria-hidden />

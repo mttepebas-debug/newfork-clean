@@ -834,7 +834,9 @@ describe("OwnerOnboardingPage", () => {
         department,
         { ...department, id: managementId, name: "Management", system_key: "management" },
       ]);
-      vi.mocked(listJobs).mockResolvedValue([job]);
+      // A second job stays outside Management: Continue counts only those (K2).
+      const host = { ...job, id: "13000000-0000-4000-8000-0000000000ac", name: "Host" };
+      vi.mocked(listJobs).mockResolvedValue([job, host]);
       renderPage(4);
       await screen.findByRole("heading", { name: "Add your team" });
       fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Maya" } });
@@ -844,7 +846,7 @@ describe("OwnerOnboardingPage", () => {
       // The wizard bar's Back: Jobs.
       fireEvent.click(document.querySelector(".pb-bar .pb-btn-secondary")!);
       await screen.findByRole("heading", { name: "What jobs do people work?" });
-      vi.mocked(listJobs).mockResolvedValue([{ ...job, department_id: managementId }]);
+      vi.mocked(listJobs).mockResolvedValue([{ ...job, department_id: managementId }, host]);
       fireEvent.click(screen.getByRole("button", { name: "Server" }));
       fireEvent.change(screen.getByLabelText("Department", { selector: "#job-panel-department" }), {
         target: { value: managementId },
@@ -869,6 +871,58 @@ describe("OwnerOnboardingPage", () => {
           workspaceId,
           expect.objectContaining({ job_ids: [managerJobId], primary_job_id: managerJobId }),
         ),
+      );
+    });
+  });
+
+  // EMP-001 C3 (K2, Done when 19): Management and its jobs come with the
+  // workspace and do not count; the server counts the same way.
+  describe("what counts towards finishing the jobs step (EMP-001 C)", () => {
+    const managementId = "12000000-0000-4000-8000-0000000000aa";
+    const management = { ...department, id: managementId, name: "Leadership", system_key: "management" as const };
+    const ownerJob = { ...job, id: "13000000-0000-4000-8000-0000000000ab", name: "Owner", department_id: managementId, system_key: "owner" as const };
+    const managerJob = { ...job, id: "13000000-0000-4000-8000-0000000000aa", name: "Manager", department_id: managementId };
+    async function jobsStep(departments: Department[], jobs: Job[]) {
+      vi.mocked(listLocations).mockResolvedValue([location]);
+      vi.mocked(listDepartments).mockResolvedValue(departments);
+      vi.mocked(listJobs).mockResolvedValue(jobs);
+      renderPage(3);
+      await screen.findByRole("heading", { name: "What jobs do people work?" });
+      await screen.findByRole("button", { name: "Manager" });
+      return screen.getByRole("button", { name: /continue/i }) as HTMLButtonElement;
+    }
+
+    it("keeps Continue off while Management and its jobs are all there is, and asks for a department", async () => {
+      const next = await jobsStep([management], [ownerJob, managerJob]);
+      expect(next.disabled).toBe(true);
+      expect(screen.getByRole("heading", { name: "Add a department" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+    });
+
+    it("keeps Continue off when the only job added sits under Management", async () => {
+      const next = await jobsStep([management, department], [ownerJob, managerJob, { ...job, department_id: managementId }]);
+      expect(next.disabled).toBe(true);
+    });
+
+    it("turns Continue on with a department and a job outside Management", async () => {
+      const next = await jobsStep([management, department], [ownerJob, managerJob, job]);
+      expect(next.disabled).toBe(false);
+    });
+
+    it("does not finish setup on Management alone, and says what is missing", async () => {
+      vi.mocked(listLocations).mockResolvedValue([location]);
+      vi.mocked(listDepartments).mockResolvedValue([management]);
+      vi.mocked(listJobs).mockResolvedValue([ownerJob, managerJob]);
+      renderPage(4);
+      await screen.findByRole("heading", { name: "Add your team" });
+      await screen.findByRole("checkbox", { name: "Manager" });
+      fireEvent.click(screen.getByRole("button", { name: /finish setup/i }));
+      expect(
+        await screen.findByText("Add at least one active department and job outside Leadership before finishing setup"),
+      ).toBeTruthy();
+      expect(saveOwnerOnboarding).not.toHaveBeenCalledWith(
+        supabaseClient,
+        expect.objectContaining({ complete: true }),
       );
     });
   });

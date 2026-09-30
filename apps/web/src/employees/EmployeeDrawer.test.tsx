@@ -288,6 +288,16 @@ async function employeeLoaded() {
   });
 }
 
+/** The off-screen reason a switched-off control is described by. */
+function lockReason(control: HTMLElement): string | null {
+  return (
+    (control.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id) => document.getElementById(id))
+      .find((note) => note?.classList.contains("sr-only"))?.textContent ?? null
+  );
+}
+
 function renderDrawer(
   section: EmployeeSection = "access",
   detailFixture: EmployeeDetail = detail,
@@ -1316,6 +1326,149 @@ describe("EmployeeDrawer", () => {
       save();
       await savedWith({ job_ids: [ownerJobId, serverJobId], primary_job_id: serverJobId });
     });
+
+    // EMP-001 C3 (Done when 20): the Owner job is nobody's to tick or untick.
+    const ownersRecord = {
+      ...detail,
+      role_name: "Owner",
+      is_workspace_owner: true,
+      primary_job_id: null,
+      primary_job_name: null,
+      jobs: [{ id: ownerJobId, name: "Owner", primary: false, archived: false }],
+    };
+
+    it("shows the Owner job switched off and unticked on anybody else's record", async () => {
+      withManagementJobs();
+      renderDrawer("employment");
+      await employeeLoaded();
+      const owner = screen.getByLabelText("Owner") as HTMLInputElement;
+      expect(owner.checked).toBe(false);
+      expect(owner.disabled).toBe(true);
+      expect(jobRow("Owner").dataset.locked).toBe("true");
+      expect(lockReason(owner)).toBe("Only the workspace owner holds the Owner job.");
+      expect(within(jobRow("Owner")).queryByLabelText("Primary")).toBeNull();
+    });
+
+    it("shows the Owner job ticked and switched off on the owner's record", async () => {
+      withManagementJobs();
+      renderDrawer("employment", ownersRecord);
+      await employeeLoaded();
+      const owner = screen.getByLabelText("Owner") as HTMLInputElement;
+      expect(owner.checked).toBe(true);
+      expect(owner.disabled).toBe(true);
+      expect(jobRow("Owner").dataset.locked).toBe("true");
+      expect(lockReason(owner)).toBe("Only the workspace owner holds the Owner job.");
+      expect(within(jobRow("Owner")).queryByLabelText("Primary")).toBeNull();
+    });
+
+    it.each([
+      ["anybody else's", detail],
+      ["the owner's", ownersRecord],
+    ])("leaves the Manager job a plain job with Primary on %s record", async (_whose, record) => {
+      withManagementJobs();
+      renderDrawer("employment", record);
+      await employeeLoaded();
+      const manager = screen.getByLabelText("Floor Manager") as HTMLInputElement;
+      expect(manager.disabled).toBe(false);
+      expect(jobRow("Floor Manager").dataset.locked).toBeUndefined();
+      fireEvent.click(manager);
+      expect(primaryOf("Floor Manager")).toBeTruthy();
+    });
+  });
+
+  // EMP-001 C3 (Done when 21): the owner works at every location; there is
+  // nothing to pick and no primary to choose.
+  describe("the owner's locations (EMP-001 C)", () => {
+    const patio = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false, removable: false };
+    const ownersRecord = {
+      ...detail,
+      role_name: "Owner",
+      is_workspace_owner: true,
+      user_id: context.userId,
+      allowed: ownRecordAllowed,
+      location_count: 2,
+      locations: [{ ...detail.locations[0]!, removable: false }, patio],
+    };
+    const locations = () => screen.getByLabelText("Main Dining").closest("fieldset")!;
+    beforeEach(() => vi.mocked(saveEmployee).mockClear());
+
+    it("shows every location ticked and switched off, with no Primary", async () => {
+      renderDrawer("employment", ownersRecord);
+      await employeeLoaded();
+      for (const name of ["Main Dining", "Patio"]) {
+        const box = screen.getByLabelText(name) as HTMLInputElement;
+        expect(box.checked).toBe(true);
+        expect(box.disabled).toBe(true);
+        expect(box.closest("div")!.dataset.locked).toBe("true");
+        expect(lockReason(box)).toBe("The workspace owner works at every location.");
+      }
+      expect(within(locations()).queryByLabelText("Primary")).toBeNull();
+    });
+
+    it("saves the owner's primary location as it was read", async () => {
+      renderDrawer("employment", ownersRecord);
+      await employeeLoaded();
+      fireEvent.change(screen.getByLabelText("Internal note"), { target: { value: "Holds the keys" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() =>
+        expect(saveEmployee).toHaveBeenCalledWith(
+          workspaceId,
+          expect.objectContaining({
+            location_ids: [detail.locations[0]!.id, patio.id],
+            primary_location_id: detail.primary_location_id,
+            is_owner_record: true,
+          }),
+          employeeId,
+        ),
+      );
+    });
+
+    it("keeps Primary on anybody else's locations", async () => {
+      renderDrawer("employment", { ...ownersRecord, role_name: "Employee", is_workspace_owner: false, allowed: detail.allowed });
+      await employeeLoaded();
+      expect(within(locations()).getAllByLabelText("Primary")).toHaveLength(2);
+      expect((screen.getByLabelText("Patio") as HTMLInputElement).disabled).toBe(false);
+    });
+
+    // BL-421: the owner's record is known by the server's flag. A role can be
+    // renamed, and any role can be named Owner.
+    it("knows the owner's record by the flag when the role is named otherwise", async () => {
+      renderDrawer("employment", { ...ownersRecord, role_name: "Founder" });
+      await employeeLoaded();
+      expect((screen.getByLabelText("Patio") as HTMLInputElement).disabled).toBe(true);
+      fireEvent.change(screen.getByLabelText("Internal note"), { target: { value: "Holds the keys" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() =>
+        expect(saveEmployee).toHaveBeenCalledWith(
+          workspaceId,
+          expect.objectContaining({ is_owner_record: true }),
+          employeeId,
+        ),
+      );
+    });
+
+    it("does not take a role that is only named Owner for the owner's record", async () => {
+      renderDrawer("employment", { ...ownersRecord, is_workspace_owner: false, allowed: detail.allowed });
+      await employeeLoaded();
+      fireEvent.change(screen.getByLabelText("Internal note"), { target: { value: "Opens on Mondays" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() =>
+        expect(saveEmployee).toHaveBeenCalledWith(
+          workspaceId,
+          expect.objectContaining({ is_owner_record: false }),
+          employeeId,
+        ),
+      );
+    });
+
+    it("locks the role and opens the owner's own emergency contact by the flag", async () => {
+      const founder = { ...ownersRecord, role_id: ownerRoleId, role_name: "Founder", display_status: "active" as const, private_contact: null };
+      const view = renderDrawer("access", founder);
+      expect(lockReason(await screen.findByLabelText("Workspace role"))).toBe("Owner access is managed separately.");
+      view.unmount();
+      renderDrawer("profile", founder);
+      expect(await screen.findByLabelText("Emergency contact")).toBeTruthy();
+    });
   });
 
   it("does not make the location just unticked a Remote person's primary", async () => {
@@ -1809,6 +1962,7 @@ describe("EmployeeDrawer locations and access follow the server", () => {
     const terminate = (await screen.findByRole("button", { name: "Terminate employee" })) as HTMLButtonElement;
     expect(terminate.disabled).toBe(true);
     expect(terminate.title).toBe("Only an admin or the owner can terminate an employee.");
+    expect(lockReason(terminate)).toBe("Only an admin or the owner can terminate an employee.");
     expect(
       screen.getByText(/Only an admin or the owner can terminate an employee\. To take Alex off Main Dining, use Remove\./),
     ).toBeTruthy();
@@ -2286,6 +2440,18 @@ describe("EmployeeDrawer saves the workspace role with Save changes", () => {
     const terminate = screen.getByRole("button", { name: "Terminate employee" }) as HTMLButtonElement;
     expect(terminate.disabled).toBe(true);
     expect(terminate.title).toBe("Save your changes before terminating the employee");
+  });
+
+  // Visual QA D1: switched off has one look, the manager's, and says why.
+  it("draws Terminate held by a draft like the manager's, with the reason read out", async () => {
+    renderDrawer("access", linked);
+    const live = (await screen.findByRole("button", { name: "Terminate employee" })) as HTMLButtonElement;
+    expect(live.classList.contains("employee-terminate-passive")).toBe(false);
+    await pickManager();
+    const held = screen.getByRole("button", { name: "Terminate employee" }) as HTMLButtonElement;
+    expect(held.disabled).toBe(true);
+    expect(held.classList.contains("employee-terminate-passive")).toBe(true);
+    expect(lockReason(held)).toBe("Save your changes before terminating the employee");
   });
 
   it("offers Save changes to a reader who may change the role and not the record", async () => {
