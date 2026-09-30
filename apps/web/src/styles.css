@@ -4292,6 +4292,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-color: var(--theme-published-hover);
   background: var(--theme-published-hover);
 }
+/* An unavailable Publish takes the shared disabled look (.nf-button:disabled).
+   It is aria-disabled, not disabled, so it can still be reached and explain itself. */
+.schedule-publish-action:disabled,
+.schedule-publish-action[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 .schedule-published-indicator:disabled {
   cursor: default;
   opacity: 1;

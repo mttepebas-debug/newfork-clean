@@ -532,7 +532,9 @@ describe("GhostShiftCard", () => {
     expect(badge.getAttribute("data-has-markers")).toBe("true");
     expect(document.querySelector(".schedule-shift-color-dot")).toBeNull();
     // The place is behind the pin, not on its own line.
-    expect(screen.queryByText("Patio")).toBeNull();
+    // Not written on the card: the pin's bubble and its hidden description carry it.
+    expect(screen.queryByText("Patio", { ignore: "[hidden]" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Location", description: "Patio" })).toBeTruthy();
     expect(badge.querySelector("[data-shift-badge-location]")).toBeNull();
     expect(screen.getByRole("button", { name: "Location" })).toBeTruthy();
     expect(screen.getByText("5:00 PM - 10:30 PM")).toBeTruthy();

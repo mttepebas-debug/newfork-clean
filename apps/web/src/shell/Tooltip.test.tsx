@@ -88,6 +88,47 @@ describe("Tooltip", () => {
     expect(screen.getByRole("tooltip").textContent).toBe("Besiktas");
   });
 
+  // BL-308: a control that cannot be used says why, to everyone.
+  it("describes its trigger before the bubble opens, so a screen reader hears it on arrival", () => {
+    renderTooltip();
+
+    expect(screen.getByRole("button", { name: "Location", description: "Besiktas" })).toBeTruthy();
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("can wear another control's look and carry its attributes", () => {
+    render(
+      <Tooltip unstyled label="Publish" content="Save a draft first." className="publish" aria-disabled="true" data-tone="none">
+        Publish
+      </Tooltip>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Publish" });
+    expect(trigger.className).toBe("publish");
+    expect(trigger.getAttribute("aria-disabled")).toBe("true");
+    expect(trigger.getAttribute("data-tone")).toBe("none");
+  });
+
+  it("opens under a trigger at the top of the window and stays inside its sides", () => {
+    const trigger = renderTooltip();
+    const at = (rect: Partial<DOMRect>) => {
+      trigger.getBoundingClientRect = () => ({ top: 0, bottom: 0, left: 0, width: 0, ...rect }) as DOMRect;
+      fireEvent.mouseEnter(trigger);
+      return screen.getByRole("tooltip");
+    };
+
+    // Top bar, right edge of a 1024px window: no room above, none to the right.
+    const high = at({ top: 8, bottom: 42, left: 980, width: 40 });
+    expect(high.dataset.placement).toBe("below");
+    expect(high.style.top).toBe("48px");
+    expect(high.style.left).toBe(`${window.innerWidth - 128}px`);
+
+    const low = at({ top: 300, bottom: 320, left: 400, width: 20 });
+    expect(low.dataset.placement).toBe("above");
+    expect(low.style.top).toBe("294px");
+    expect(low.style.left).toBe("410px");
+  });
+
   it("opens on keyboard focus and closes on Escape", () => {
     const trigger = renderTooltip();
 

@@ -40,6 +40,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { todayIn } from "../lib/today";
 import { NoAccessState } from "../shell/NoAccessState";
+import { Tooltip } from "../shell/Tooltip";
 import { EmployeeDrawer } from "../employees/EmployeeDrawer";
 import { ScheduleFilterCommandStrip } from "../schedule/components/ScheduleFilterCommandStrip";
 import {
@@ -2416,13 +2417,30 @@ export function SchedulePage({
               </div>
             ) : null}
           </div>
+        ) : publishDisabledInBlankPreview ? (
+          // BL-308: no draft open and nothing live. The button stays reachable
+          // and says what to do first instead of going silent.
+          <Tooltip
+            unstyled
+            label="Publish"
+            content={
+              drafts.length
+                ? "Open a saved draft from New Schedule before publishing this week."
+                : "Save a named draft before publishing this week."
+            }
+            className={`schedule-publish-action ${SCHEDULE_ACTION_BUTTON_CLASS}`}
+            aria-disabled="true"
+            data-schedule-top-action-trigger="publish"
+            data-publication-tone={publishActionTone}
+          >
+            <Send size={15} aria-hidden /> Publish
+          </Tooltip>
         ) : (
           <button
             className={`schedule-publish-action ${SCHEDULE_ACTION_BUTTON_CLASS}`}
             data-schedule-top-action-trigger="publish"
             data-publication-tone={publishActionTone}
             type="button"
-            disabled={publishDisabledInBlankPreview}
             onClick={() => void openPublish()}
           >
             <Send size={15} aria-hidden /> Publish

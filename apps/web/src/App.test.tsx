@@ -1085,7 +1085,12 @@ describe("App", () => {
     expect(screen.queryByText(/authz\./)).toBeNull();
   });
 
-  it("disables publish from a blank preview when the week has no published schedule", async () => {
+  // BL-308: Publish cannot start with no draft open and nothing live. It looks
+  // unavailable, stays reachable, and says what to do first.
+  it.each([
+    ["no saved draft", 0, "Save a named draft before publishing this week."],
+    ["a saved draft not opened", 1, "Open a saved draft from New Schedule before publishing this week."],
+  ])("says why Publish is unavailable on a blank week with %s", async (_case, draftCount, reason) => {
     const weekStart = "2026-10-26";
     const unpublishedFixture = scheduleFixtureForWeek(weekStart);
     vi.mocked(getScheduleReadModel).mockResolvedValue({
@@ -1097,7 +1102,19 @@ describe("App", () => {
       })),
       shifts: [],
     });
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue({
+      drafts: Array.from({ length: draftCount }, () => ({
+        id: "99999999-9999-4999-8999-999999999991",
+        workspace_id: unpublishedFixture.workspace_id,
+        week_start: weekStart,
+        name: "Service week",
+        revision: 1,
+        created_by: "88888888-8888-4888-8888-888888888888",
+        updated_by: "88888888-8888-4888-8888-888888888888",
+        created_at: "2026-10-20T12:00:00Z",
+        updated_at: "2026-10-20T12:00:00Z",
+      })),
+    });
     vi.mocked(fetchSchedulePublicationStatus).mockResolvedValue({
       week_start: weekStart,
       week_end: "2026-11-01",
@@ -1133,7 +1150,14 @@ describe("App", () => {
       name: "Publish",
     });
     await waitFor(() =>
-      expect(publishButton).toHaveProperty("disabled", true),
+      expect(publishButton.getAttribute("aria-disabled")).toBe("true"),
+    );
+    // Reachable by keyboard, and described before any bubble opens.
+    expect(publishButton).toHaveProperty("disabled", false);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Publish", description: reason }),
+      ).toBe(publishButton),
     );
 
     fireEvent.click(publishButton);
@@ -1141,9 +1165,10 @@ describe("App", () => {
     expect(vi.mocked(listScheduleDrafts).mock.calls.length).toBe(
       draftLookupCount,
     );
-    expect(
-      screen.queryByText("Save a named draft before publishing this week."),
-    ).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.querySelector(".schedule-operation-error")).toBeNull();
+    // The click shows the reason instead of starting a publish.
+    expect(screen.getByRole("tooltip").textContent).toBe(reason);
   });
 
   it("honors per-shift hidden clock time badges from the reference model", async () => {
@@ -4700,9 +4725,11 @@ describe("App", () => {
       ),
     ).toBeTruthy();
     expect(window.location.search).toContain(`draft=${draft.id}`);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Publish" }, { timeout: 5000 }),
-    );
+    const publish = await screen.findByRole("button", { name: "Publish" }, { timeout: 5000 });
+    // BL-308: with a draft open Publish is a plain button with nothing to explain.
+    expect(publish.getAttribute("aria-disabled")).toBeNull();
+    expect(publish.getAttribute("aria-describedby")).toBeNull();
+    fireEvent.click(publish);
     const publishDialog = await screen.findByRole("dialog", {
       name: "Select locations to publish",
     });
