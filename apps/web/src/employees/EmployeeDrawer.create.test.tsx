@@ -272,9 +272,14 @@ describe("employee create flow", () => {
     expect(createEmployee).not.toHaveBeenCalled();
   });
   // Not a warning: the request already left, and its answer needs the form.
-  it("holds the route while the create request is on its way, without asking", async () => {
+  it("holds the route while the create request is on its way, without asking, and lets go once it is answered", async () => {
     window.history.replaceState({ idx: 0 }, "", "/app/employees");
-    vi.mocked(createEmployee).mockReturnValue(new Promise(() => {}));
+    let answer: (result: { id: string; invitation: null }) => void = () => {};
+    vi.mocked(createEmployee).mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -309,10 +314,19 @@ describe("employee create flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(createEmployee).toHaveBeenCalledTimes(1));
     window.history.back();
+    // The entry is left and restored; wait for the restore, not the moment between.
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(window.location.search).toContain("mode=create");
+    await waitFor(() =>
+      expect(window.location.search).toContain("mode=create"),
+    );
     expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
     expect(screen.queryByRole("alertdialog")).toBeNull();
+    answer({ id: ids.employee, invitation: null });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Saving..." })).toBeNull(),
+    );
+    window.history.back();
+    expect(await screen.findByRole("button", { name: "Add" })).toBeTruthy();
   });
   beforeEach(() => {
     vi.clearAllMocks();
