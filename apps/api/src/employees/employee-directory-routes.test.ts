@@ -690,6 +690,9 @@ describe("employee directory routes", () => {
       ["a preferred name", "request_employee_preferred_name_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/preferred-name`, { preferredName: "Ada" }, "published", 200],
       ["the pending preferred names", "list_pending_preferred_names_service", "GET", `/v1/workspaces/${workspaceId}/preferred-names/pending`, undefined, [], 200],
       ["a preferred name's answer", "decide_employee_preferred_name_service", "POST", `/v1/workspaces/${workspaceId}/preferred-names/${requestId}/decision`, { approve: true }, null, 204],
+      ["how preferred names are answered", "get_employee_name_settings_service", "GET", `/v1/workspaces/${workspaceId}/preferred-name-approval`, undefined, "manager", 200],
+      ["a change to how preferred names are answered", "set_employee_name_settings_service", "PUT", `/v1/workspaces/${workspaceId}/preferred-name-approval`, { approval: "auto" }, null, 204],
+      ["their own emergency contact", "save_own_employment_contact_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/emergency-contact`, { name: "Ayla Kim", phone: "555 010 2030" }, null, 204],
     ] as const;
     // No permission at all: the old gates stopped this person before the database was asked.
     const noPermissions = { ...context, permissions: [] as ActiveWorkspaceContext["permissions"] };

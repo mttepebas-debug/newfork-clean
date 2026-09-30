@@ -2,13 +2,11 @@ import {
   employeeInputSchema,
   employeeCreateCommandSchema,
   employeeRoleUpdateInputSchema,
-  type Permission,
 } from "@newfork/shared";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   resolveActor,
-  resolveWorkspaceAuthorization,
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
@@ -286,15 +284,12 @@ export function registerEmployeeDirectoryRoutes(
       const params = workspaceParams.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid workspace required" });
-      const context = await authorize(
+      // No gate here: the service asks the core (settings.people.read; BL-443).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.read",
         options.contextResolver,
-        reply,
-        "Employee access required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -319,15 +314,12 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(400)
           .send({ error: "A preferred name is either answered here or let through" });
-      const context = await authorize(
+      // No gate here: the service asks the core (settings.people; BL-443).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "settings.general.manage",
         options.contextResolver,
-        reply,
-        "Workspace settings access required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -431,8 +423,9 @@ export function registerEmployeeDirectoryRoutes(
   );
 
   // A person's own emergency contact and personal phone. Onboarding asks once
-  // and never comes back; the owner is never asked at all. The database checks
-  // the one rule that matters, which is that the record is the caller's own.
+  // and never comes back; the owner is never asked at all. No gate here: the
+  // service asks the core (employee.save_own_contact on the caller's own
+  // record; BL-443, BL-444).
   app.put(
     "/v1/workspaces/:workspaceId/employees/:employeeId/emergency-contact",
     async (request, reply) => {
@@ -442,15 +435,11 @@ export function registerEmployeeDirectoryRoutes(
         return reply
           .status(400)
           .send({ error: "An emergency contact needs a name and a phone number" });
-      const context = await authorize(
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "employees.read",
         options.contextResolver,
-        reply,
-        "Employee access required",
       );
-      if (!context) return;
       if (!options.service)
         return reply
           .status(503)
@@ -617,29 +606,4 @@ export function registerEmployeeDirectoryRoutes(
       );
     },
   );
-}
-
-async function authorize(
-  authorization: string | undefined,
-  workspaceId: string,
-  permission: Permission,
-  resolver: WorkspaceContextResolver | null,
-  reply: FastifyReply,
-  permissionMessage: string,
-  options: { readonly allowIncompleteOnboarding?: boolean } = {},
-) {
-  const result = await resolveWorkspaceAuthorization({
-    authorization,
-    workspaceId,
-    permission,
-    resolver,
-    allowIncompleteOnboarding: options.allowIncompleteOnboarding,
-  });
-  if (result.context) return result.context;
-  if (result.denied === "workspace_not_found") {
-    reply.status(404).send({ error: "Workspace not found" });
-    return null;
-  }
-  reply.status(403).send({ error: permissionMessage });
-  return null;
 }
