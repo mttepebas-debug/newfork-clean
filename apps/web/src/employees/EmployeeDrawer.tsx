@@ -2578,10 +2578,6 @@ function AccessSection({
         <header>
           <div>
             <h3>Profile photo</h3>
-            <p>
-              Remove the workspace profile photo shown for this employee in this
-              workspace.
-            </p>
           </div>
           <ImageOff size={18} aria-hidden />
         </header>
@@ -2605,6 +2601,8 @@ function EmployeeAvatarControl({
   readonly readOnly: boolean;
 }) {
   const queryClient = useQueryClient();
+  const scopeId = useId();
+  const photoScope = "Remove only the photo shown for this workspace.";
   const avatar = useQuery({
     queryKey: ["employee-avatar", workspaceId, employeeId],
     queryFn: () => getEmployeeAvatar(workspaceId, employeeId),
@@ -2651,7 +2649,6 @@ function EmployeeAvatarControl({
       )}
       <div>
         <strong>Profile photo removal</strong>
-        <span>Remove only the photo shown for this workspace.</span>
         {remove.error ? (
           <small role="alert">{errorMessage(remove.error)}</small>
         ) : null}
@@ -2662,11 +2659,19 @@ function EmployeeAvatarControl({
           type="button"
           disabled={!hasAvatar || remove.isPending}
           confirmLabel="Confirm remove"
+          // Which photo goes: read out and shown on hover, not printed.
+          aria-describedby={scopeId}
+          title={photoScope}
           onConfirm={() => remove.mutate()}
         >
           <ImageOff size={15} aria-hidden />
           {remove.isPending ? "Removing" : "Remove photo"}
         </ConfirmButton>
+      ) : null}
+      {!readOnly ? (
+        <span id={scopeId} className="sr-only">
+          {photoScope}
+        </span>
       ) : null}
     </div>
   );

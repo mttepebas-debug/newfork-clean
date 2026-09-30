@@ -2122,6 +2122,24 @@ describe("EmployeeDrawer EMP-001 look", () => {
     expect(screen.queryByText("Invitation, onboarding, and workspace role.")).toBeNull();
   });
 
+  it("prints no notes in the Profile photo group; the button says what it removes to a screen reader", async () => {
+    renderDrawer("access");
+    const remove = await screen.findByRole("button", { name: "Remove photo" });
+    expect(described(remove)).toEqual({
+      text: "Remove only the photo shown for this workspace.",
+      hidden: true,
+    });
+    expect(screen.queryByText(/Remove the workspace profile photo shown/)).toBeNull();
+    expect(screen.getByText("Profile photo removal")).toBeTruthy();
+  });
+
+  it("keeps no photo note for a reader who cannot remove the photo", async () => {
+    renderDrawer("access", { ...detail, allowed: { ...detail.allowed, save: false } });
+    await screen.findByText("Profile photo removal");
+    expect(screen.queryByRole("button", { name: "Remove photo" })).toBeNull();
+    expect(screen.queryByText("Remove only the photo shown for this workspace.")).toBeNull();
+  });
+
   it("lists jobs under their departments, Management last", async () => {
     const kitchen = "dd000000-0000-4000-8000-0000000000c1";
     const floor = "dd000000-0000-4000-8000-0000000000c2";
