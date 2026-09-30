@@ -1083,6 +1083,8 @@ describe("App", () => {
     ).toBe("/app/workspace");
     expect(screen.queryByText("Schedule unavailable")).toBeNull();
     expect(screen.queryByText(/authz\./)).toBeNull();
+    // BL-392: a refusal shows the card alone, no week navigation.
+    expect(screen.queryByRole("button", { name: "Previous week" })).toBeNull();
   });
 
   // BL-308: Publish cannot start with no draft open and nothing live. It looks
@@ -4889,6 +4891,40 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
+    expect(
+      await screen.findByRole(
+        "button",
+        { name: "Draft selector: New Schedule" },
+        { timeout: 5000 },
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("Schedule unavailable")).toBeNull();
+    consoleError.mockRestore();
+  });
+
+  // BL-392: a week that cannot be read must not trap the manager on it.
+  it("keeps week navigation when the schedule cannot be read, and opens the week it is sent to", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getScheduleReadModel).mockRejectedValueOnce(new Error("boom"));
+    window.history.pushState({}, "", "/app/schedule?date=2026-09-09");
+    testAuth.role = "owner";
+    render(<App />);
+
+    expect(
+      await screen.findByText("Schedule unavailable", {}, { timeout: 5000 }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Next week" })).toBeTruthy();
+    // The label comes from the address, not from the week that failed to load.
+    expect(screen.getByRole("button", { name: "Weekly view" }).textContent).toBe("Week of Sep 9, 2026");
+    const reads = vi.mocked(getScheduleReadModel).mock.calls.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
+
+    await waitFor(() => expect(window.location.search).toContain("date=2026-09-02"));
+    await waitFor(() =>
+      expect(vi.mocked(getScheduleReadModel).mock.calls.length).toBeGreaterThan(reads),
+    );
     expect(
       await screen.findByRole(
         "button",

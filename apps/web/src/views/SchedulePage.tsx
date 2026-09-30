@@ -50,7 +50,7 @@ import {
   type ShiftContextMenuTarget,
 } from "../schedule/components/ScheduleContextMenu";
 import { ScheduleGrid } from "../schedule/components/ScheduleGrid";
-import { ScheduleTopBar } from "../schedule/components/ScheduleTopBar";
+import { ScheduleTopBar, ScheduleViewModeControls } from "../schedule/components/ScheduleTopBar";
 import { ScheduleState } from "../schedule/components/ScheduleState";
 import { ShiftQuickEditor } from "../schedule/components/ShiftQuickEditor";
 import type { PresetCreateTarget } from "../schedule/components/SchedulePresetRows";
@@ -1847,12 +1847,37 @@ export function SchedulePage({
         homeHref={noAccessHomePath(context, scheduleBasePath)}
       />
     ) : (
-      <ScheduleState
-        title="Schedule unavailable"
-        detail="This week's schedule could not be loaded. Try again."
-        error
-        onRetry={() => void query.refetch()}
-      />
+      // BL-392: a week that cannot be read keeps its way out. The navigation
+      // works from the date in the address; nothing here needs the failed read.
+      <section className="schedule-page" aria-label="Schedule">
+        <header className="schedule-topbar" data-schedule-top-bar>
+          <div className="schedule-command-group">
+            <ScheduleViewModeControls
+              viewModeLabel={view === "day" ? "Daily view" : "Weekly view"}
+              viewModeTitle={view === "day" ? "Jump to today" : "Jump to this week"}
+              periodLabel={
+                view === "day"
+                  ? formatPeriod(selectedDate, selectedDate, "day")
+                  : `Week of ${new Date(`${selectedDate}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`
+              }
+              onToggleViewMode={() => {
+                const next = new URLSearchParams(search);
+                next.set("date", today);
+                next.set("view", view);
+                setSearch(next);
+              }}
+              onPrevious={() => changePeriod(view === "day" ? -1 : -7)}
+              onNext={() => changePeriod(view === "day" ? 1 : 7)}
+            />
+          </div>
+        </header>
+        <ScheduleState
+          title="Schedule unavailable"
+          detail="This week's schedule could not be loaded. Try again."
+          error
+          onRetry={() => void query.refetch()}
+        />
+      </section>
     );
 
   const model = { ...query.data, shifts: effectiveShifts };
