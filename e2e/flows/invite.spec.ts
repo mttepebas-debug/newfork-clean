@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { psql } from "../global-setup";
-import { emailOf, signIn, type Person } from "../fixtures/world";
+import { signIn, tokenOf, type Person } from "../fixtures/world";
 
 // FOUNDATION-B FB-6.2.10, flow 2 (FB-6.2 "Done when" 8): a manager invites
 // somebody who works at her own location, the invited person accepts through
@@ -47,18 +47,6 @@ function accountWithoutWorkspace(label: string): string {
     select tests.password('${run}:${label}', '${world.password}');`)
     .split(/\r?\n/)
     .at(-1)!;
-}
-
-/** An access token for a person of the world, straight from the auth server. */
-async function tokenOf(person: Person): Promise<string> {
-  const response = await fetch(`${process.env.E2E_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: { apikey: process.env.E2E_ANON_KEY ?? "", "Content-Type": "application/json" },
-    body: JSON.stringify({ email: emailOf(person), password: world.password }),
-  });
-  const body = (await response.json()) as { access_token?: string };
-  if (!response.ok || !body.access_token) throw new Error(`sign-in failed (${response.status})`);
-  return body.access_token;
 }
 
 const invitationsOf = (employeeId: string): string =>
