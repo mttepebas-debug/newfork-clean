@@ -1327,6 +1327,34 @@ describe("EmployeeDrawer", () => {
       await savedWith({ job_ids: [ownerJobId, serverJobId], primary_job_id: serverJobId });
     });
 
+    // Security review D1: a record read with a job and no primary (saved while
+    // Remote) goes out as it was read. The drawer makes up no primary; the
+    // database answers and its sentence is shown.
+    it("sends a job with no primary as it was read and shows the database answer", async () => {
+      const sentence = "Mark one of the jobs as primary, or turn on Remote or Exclude from schedule.";
+      vi.mocked(saveEmployee).mockRejectedValueOnce(
+        new RequestError(sentence, "employee.primary_job_required", undefined, 400),
+      );
+      renderDrawer("employment", {
+        ...detail,
+        first_name: "Emre",
+        display_name: "Emre Kim",
+        is_remote: true,
+        primary_job_id: null,
+        primary_job_name: null,
+        jobs: [{ ...detail.jobs[0]!, primary: false }],
+      });
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Remote"));
+      save();
+      expect(await screen.findByText(sentence)).toBeTruthy();
+      expect(saveEmployee).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({ is_remote: false, job_ids: [serverJobId], primary_job_id: null }),
+        employeeId,
+      );
+    });
+
     // EMP-001 C3 (Done when 20): the Owner job is nobody's to tick or untick.
     const ownersRecord = {
       ...detail,
