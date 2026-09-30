@@ -8,6 +8,7 @@ import {
   loadEmployeeReferenceData,
   prepareEmployeeInvitation,
   removeEmployeeFromLocation,
+  saveOwnEmploymentContact,
   retryEmployeeInvitation,
   revokeEmployeeInvitation,
 } from "./employee-data";
@@ -152,6 +153,25 @@ describe("Invitations the core refuses", () => {
     const failure = await call().catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(RequestError);
     expect(failure).toMatchObject({ reason: "authz.rank", detail: "employee.invite", status: 403 });
+    expect(isNoAccess(failure)).toBe(true);
+  });
+});
+
+// EMP-001 (BL-443, BL-444): the core answers for one own emergency contact.
+// The screen keeps its own sentence and learns why from the reason.
+describe("saving one own emergency contact", () => {
+  const employeeId = "15000000-0000-4000-8000-000000000001";
+  const contact = { name: "Ayla Kim", relationship: "Sister", phone: "555 010 2030", email: "" };
+
+  it("passes the refusal on with its reason and status, and not the server sentence", async () => {
+    respond(403, { error: "Not allowed", reason: "authz.not_active", detail: "employee.save_own_contact" });
+    const failure = await saveOwnEmploymentContact(workspaceId, employeeId, contact).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(RequestError);
+    expect(failure).toMatchObject({
+      message: "Emergency contact could not be saved",
+      reason: "authz.not_active",
+      status: 403,
+    });
     expect(isNoAccess(failure)).toBe(true);
   });
 });

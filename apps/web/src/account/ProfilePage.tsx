@@ -38,6 +38,7 @@ import { useAvailabilityNavigationGuard } from "../availability/availability-nav
 import { AvatarCropDialog } from "./AvatarCropDialog";
 import { validateAvatarFile } from "./avatar-crop";
 import { AccountAvatar } from "./AccountAvatar";
+import { RequestError } from "../lib/request-error";
 
 /**
  * What the page's one Save needs from each legal name form. The legal name is
@@ -309,9 +310,17 @@ export default function ProfilePage() {
     return { waiting, sent, refused };
   };
 
-  /** Writes the contact to each workspace that differs; returns the ones that refused. */
-  const saveContact = async (): Promise<EmploymentContactRecord[]> => {
+  /**
+   * Writes the contact to each workspace that differs; returns the ones that
+   * refused, apart from the ones where trying again changes nothing: access
+   * ended there or the workspace is closed (the core's reason, BL-444).
+   */
+  const saveContact = async (): Promise<{
+    refused: EmploymentContactRecord[];
+    ended: EmploymentContactRecord[];
+  }> => {
     const refused: EmploymentContactRecord[] = [];
+    const ended: EmploymentContactRecord[] = [];
     for (const record of contactBehind) {
       try {
         // personalPhone left out: the number a workspace has on file stays.
@@ -321,11 +330,13 @@ export default function ProfilePage() {
           phone: contact.phone,
           email: record.emergencyContactEmail,
         });
-      } catch {
-        refused.push(record);
+      } catch (cause: unknown) {
+        const reason = cause instanceof RequestError ? cause.reason : undefined;
+        const gone = reason === "authz.not_active" || reason === "authz.workspace_closed";
+        (gone ? ended : refused).push(record);
       }
     }
-    return refused;
+    return { refused, ended };
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -362,11 +373,15 @@ export default function ProfilePage() {
       }
     }
     if (contactDirty) {
-      const refused = await saveContact();
-      if (refused.length === 0) setContactDraft(null);
-      else
+      const { refused, ended } = await saveContact();
+      if (refused.length === 0 && ended.length === 0) setContactDraft(null);
+      if (refused.length > 0)
         failures.push(
           `Your emergency contact could not be saved in ${workspaceNames(refused)}. Try again.`,
+        );
+      if (ended.length > 0)
+        failures.push(
+          `Your emergency contact can no longer be changed in ${workspaceNames(ended)}: your access there has ended or the workspace is closed.`,
         );
     }
     if (contactDirty || preferredDirty)

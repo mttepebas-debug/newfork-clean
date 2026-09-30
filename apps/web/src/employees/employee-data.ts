@@ -1,4 +1,4 @@
-import { requestFailure } from "../lib/request-error";
+import { RequestError, requestFailure } from "../lib/request-error";
 import {
   accountPendingInvitationSchema,
   employeeDetailSchema,
@@ -498,8 +498,18 @@ export async function saveOwnEmploymentContact(
       body: JSON.stringify(contact),
     },
   );
-  // The server's own sentence is not for the screen.
-  if (!response.ok) throw new Error("Emergency contact could not be saved");
+  // The server's own sentence is not for the screen; its reason is, so the
+  // screen can tell "try again" from "not here any more" (authz.not_active,
+  // authz.workspace_closed).
+  if (!response.ok) {
+    const refusal = requestFailure(await response.json().catch(() => null), response.status, "");
+    throw new RequestError(
+      "Emergency contact could not be saved",
+      refusal.reason,
+      refusal.detail,
+      response.status,
+    );
+  }
 }
 
 /** The open invitation's own link, for an admin to pass along by hand. */

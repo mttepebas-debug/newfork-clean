@@ -499,6 +499,40 @@ describe("ProfilePage", () => {
     expect(requestPreferredName).toHaveBeenCalledWith(second, `emp-${second}`, "Ay");
   });
 
+  // EMP-001 (BL-444): the core refuses one's own contact where access has
+  // ended or the workspace is closed. Trying again changes nothing there.
+  it.each(["authz.not_active", "authz.workspace_closed"])(
+    "says an emergency contact can no longer be changed where the answer is %s",
+    async (reason) => {
+      const second = "51000000-0000-4000-8000-000000000002";
+      vi.mocked(listAccountWorkspaces).mockResolvedValue([
+        workspace("employee"),
+        { ...workspace("employee"), id: second, name: "Ridgeline" },
+      ]);
+      vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
+        contactRecord(ownedWorkspaceId, {
+          emergencyContactName: "Morgan",
+          emergencyContactRelationship: "Spouse",
+          emergencyContactPhone: "4155550199",
+        }),
+        contactRecord(second, { workspaceName: "Ridgeline" }),
+      ]);
+      vi.mocked(saveOwnEmploymentContact).mockImplementation(async (workspaceId) => {
+        if (workspaceId === second) throw new RequestError("Not allowed", reason, "employee.save_own_contact", 403);
+      });
+      renderProfile();
+      await screen.findByDisplayValue("Morgan");
+      fireEvent.change(screen.getByLabelText("Contact name"), { target: { value: "Sam" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toBe(
+        "Your emergency contact can no longer be changed in Ridgeline: your access there has ended or the workspace is closed.",
+      );
+      vi.mocked(saveOwnEmploymentContact).mockResolvedValue(undefined);
+    },
+  );
+
   it("asks an owner to finish setting up a workspace before its emergency contact", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([
       { ...workspace("owner"), onboarding: { status: "incomplete" as const, currentStep: 2 } },
