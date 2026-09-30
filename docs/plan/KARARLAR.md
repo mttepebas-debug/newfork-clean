@@ -175,6 +175,23 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
 - Liste, lokasyon sütunu (kullanıcı kararı 2026-09-30, varyant A): "No
   location" (uyarı tonu) ve "Manages <lokasyon>" aynı çip biçiminde. Telefonda
   lokasyon sütunu olmadığı için aynı çipler kişinin adının altında.
+- Çekmece başlığı (kullanıcı kararı 2026-09-30, EMP-001): sekme başlığının
+  altında açıklama satırı yok; yeni sekme de eklemez.
+- Profile alanları (kullanıcı kararı 2026-09-30, EMP-001): First, Middle, Last
+  tek satırda (Middle dar); Preferred name ile Date of birth aynı satırda.
+  Telefonda üç ad alt alta (kullanıcı, aynı gün; tek satırda "optional"
+  etiketi kırılıp hizayı bozuyordu). Alanın altında yardım yazısı olmaz; yalnız
+  doğrulama hatası alanın altında çıkar. Kilitli alanın nedeni ekrana
+  yazılmaz; ekran okuyucuya ve fare ipucuna kalır. Salt okunur her alan aynı
+  gri görünümdedir.
+- E-mail durumu alanın içinde (kullanıcı kararı 2026-09-30, EMP-001 S5): bağlı
+  hesapta yeşil onay ("Verified"), bekleyen davette saat ("Invitation
+  pending"); davet bekliyorken e-mail ve adlar kilitli görünür. Bilerek:
+  doğrulanmış e-mail de gri durur, çünkü hesap adresi çekmeceden değişmez.
+  Yanlış davet adresi Access → "Revoke invitation" ile açılır.
+- Jobs listesi departmana göre gruplu (EMP-001; BL-218 `.5`): departmanlar
+  verilen sırada, sonra "No department", en altta Management; hiçbir iş bir
+  departmanda değilse başlıksız düz liste.
 
 ### Schedule
 - Silme ve üstüne yazma iki tık (UI-12): taslak/şablon silme, taslağın
