@@ -85,6 +85,16 @@ describe("scheduleGridLayout", () => {
     ]);
   });
 
+  // S1 (G14): one location's column keeps its own time zone, merged or not; a
+  // group of several has none and follows the device.
+  it("gives a merged group of one location that location's time zone", () => {
+    const zoneOf = (sources: typeof locations) =>
+      createScheduleGridLocationGroups({ layout: "unified", locations: sources })[0]!.timezone;
+
+    expect(zoneOf([locations[0]!])).toBe("America/Los_Angeles");
+    expect(zoneOf(locations)).toBe("");
+  });
+
   it("resolves the reference interaction location for unified cells", () => {
     expect(
       resolveScheduleInteractionLocationId({

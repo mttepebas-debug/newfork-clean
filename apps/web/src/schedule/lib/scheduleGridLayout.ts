@@ -76,7 +76,8 @@ export function createScheduleGridLocationGroups({
       {
         id: "unified",
         name: locations.map((item) => item.name).join(" + "),
-        timezone: "",
+        // One location keeps its own zone; several have none of their own.
+        timezone: locations.length === 1 ? locations[0]!.timezone : "",
         sort_order: 0,
         publication_status: locations.every(
           (item) => item.publication_status === "published",
