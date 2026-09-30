@@ -305,6 +305,15 @@ describe("employee create flow", () => {
     expect(createEmployee).not.toHaveBeenCalled();
     expect(disabled("Save")).toBe(true);
   });
+  it("says a required name is missing under its field, tied to the field", () => {
+    setup();
+    const first = screen.getByLabelText("First name");
+    fireEvent.blur(first, { relatedTarget: screen.getByLabelText("Last name") });
+    expect(first.getAttribute("aria-invalid")).toBe("true");
+    const note = document.getElementById(first.getAttribute("aria-describedby") ?? "");
+    expect(note?.textContent).toBe("First name is required.");
+    expect(first.closest("label")!.contains(note)).toBe(true);
+  });
   it("allows Next with invalid email but prevents save and invite", async () => {
     setup();
     fillNames();

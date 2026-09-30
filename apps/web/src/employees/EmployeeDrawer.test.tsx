@@ -2041,13 +2041,19 @@ describe("EmployeeDrawer EMP-001 look", () => {
     };
   }
 
-  it("has no description line under a tab's title", async () => {
-    renderDrawer("profile");
-    await screen.findByLabelText("E-mail");
-    expect(screen.queryByText("Identity and manager-owned contact details.")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "History" }));
-    await screen.findByRole("heading", { name: "History" });
-    expect(screen.queryByText("Audited employee lifecycle changes.")).toBeNull();
+  it.each([
+    ["profile", "Profile"],
+    ["employment", "Employment"],
+    ["availability", "Availability"],
+    ["documents", "Documents"],
+    ["access", "Access"],
+    ["history", "History"],
+  ] as const)("has no description line under the %s tab's title", async (section, title) => {
+    vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
+    renderDrawer(section, detail, null);
+    const heading = await screen.findByRole("heading", { level: 2, name: title });
+    await waitFor(() => expect(screen.queryByText("Loading employee...")).toBeNull());
+    expect(heading.closest(".employee-section-header")!.querySelector("p")).toBeNull();
   });
 
   it("puts the three names on one row, and preferred name beside date of birth", async () => {
@@ -2148,6 +2154,21 @@ describe("EmployeeDrawer EMP-001 look", () => {
       "Management", "Floor Manager",
     ]);
     expect(described(within(jobs).getByLabelText("Cook")).text).toBe("Kitchen");
+  });
+
+  it("keeps a job they work under its archived department", async () => {
+    const closed = "dd000000-0000-4000-8000-0000000000c9";
+    vi.mocked(loadEmployeeReferenceData).mockResolvedValueOnce({
+      locations: detail.locations.map((location) => ({ ...location, timezone: "America/Los_Angeles" })),
+      departments: [{ id: closed, name: "Patio", archived: true, management: false }],
+      jobs: [{ id: detail.jobs[0]!.id, name: "Server", archived: false, departmentId: closed, management: false, owner: false }],
+      inviteRoles: [],
+    });
+    renderDrawer("employment");
+    await employeeLoaded();
+    const jobs = screen.getByRole("group", { name: /^Jobs/ });
+    expect(within(jobs).getByText("Patio")).toBeTruthy();
+    expect(within(jobs).getByLabelText("Server")).toHaveProperty("checked", true);
   });
 
   it("lists jobs plainly when none sits in a department", async () => {
