@@ -10,7 +10,7 @@ Yeni UI ya da akış yazmadan önce buradaki girdiye bak. Ölçü ve CSS değerl
 | UI-02 | Tablo kolon sıralama | `apps/web/src/views/CatalogSortButton.tsx` | İkon yalnızca hover veya focus halinde görünür. Sıralama mantığı bileşeni kullanan sayfadadır. |
 | UI-03 | Settings sayfa header'ı ve sağ üst CTA | `settings/GeneralSettingsPage.tsx` içinde `SettingsHeader`, `.settings-page` altındaki `--settings-header-*` token'ları | Sayfa CSS'inde header ya da action için offset/align override yazma. |
 | UI-04 | Account layout ve header | `account/AccountLayout.tsx`, `account/components.tsx` içinde `AccountPageHeader` | Her sayfaya ayrı offset ekleme. |
-| UI-05 | Tema: yalnızca light; renkler `--theme-*` token'larından | `styles.css` `:root` (THEME-002): page, surface(-soft/-muted), text(-body), muted, border(-subtle/-strong), accent(-strong), selected, focus, action(-hover), danger/warning/success(-soft), current. `--schedule-*` bunlara alias. `src/light-theme.test.ts` dark kuralını engeller. | Sabit hex yerine token kullan. Öneksiz `--surface/--border/--text` tanımlama (mevcut fallback'leri değiştirir). Dark kuralı yazma. Açık zeminde metin AA ≥4.5; ikincil metin için `--theme-muted`, renkli zeminde `--theme-muted-strong`. Accent/action/koyu zemin üstündeki beyaz metin için `--theme-on-accent`; uyarı metni için `--theme-warning`. **`--theme-border` (kutu kenarı) ile `--theme-border-subtle` (liste içi ayırıcı) ayrı basamaktır;** ayırıcı bilinçli olarak bir ton açık, birleştirilmez (kullanıcı kararı 2026-09-28, BL-216). BL-216'da silinen ikiz token'lar (`text-tertiary`, `text-soft`, `surface-group`, `surface-hover`, `divider`, `divider-soft`) yeniden tanımlanmaz. |
+| UI-05 | Tema: yalnızca light; renkler `--theme-*` token'larından | `styles.css` `:root` (THEME-002): page, surface(-soft/-muted), text(-body), muted, border(-subtle/-strong), accent(-strong), selected, focus, action(-hover), danger/warning/success(-soft), current. `--schedule-*` bunlara alias. `src/light-theme.test.ts` dark kuralını engeller. | Sabit hex yerine token kullan. Öneksiz `--surface/--border/--text` tanımlama (mevcut fallback'leri değiştirir). Dark kuralı yazma. Açık zeminde metin AA ≥4.5; ikincil metin için `--theme-muted`, renkli zeminde `--theme-muted-strong`. Accent/action/koyu zemin üstündeki beyaz metin için `--theme-on-accent`; uyarı metni için `--theme-warning`. **`--theme-border` (kutu kenarı) ile `--theme-border-subtle` (liste içi ayırıcı) ayrı basamaktır;** ayırıcı bilinçli olarak bir ton açık, birleştirilmez (kullanıcı kararı 2026-09-28, BL-216). BL-216'da silinen ikiz token'lar (`text-tertiary`, `text-soft`, `surface-group`, `surface-hover`, `divider`, `divider-soft`) yeniden tanımlanmaz. **Yayın tonları ve renk örneği yedeği (G14 dilim a, `9d0d2578`, 2026-09-30):** `--theme-published` `#087f5b` / `--theme-published-hover` `#0b6f53` (tam yayın) ve `--theme-published-partial` `#b45309` / `--theme-published-partial-hover` `#92400e` (kısmi yayın): Schedule üst çubuğundaki Publish / Published düğmesinin tonları (`styles.css:46-49`). `--theme-swatch-fallback` `#64748b` ve `--theme-swatch-fallback-soft` `#cbd5e1`: rengi olmayan lokasyon ya da durumun renk örneği (Publish ve Unpublish pencereleri, taslak menüsü; `styles.css:51-52`). Bu yüzeylerde ham hex yazılmaz. |
 | UI-06 | Schedule haftalık lokasyon genişliği | `schedule/lib/scheduleGridLayout.ts`, `hooks/useScheduleBadgeMeasurements.tsx` | Günlük görünümde minimum genişlik korunur. |
 | UI-07 | Gruplu checkbox filtre menüsü | `schedule/components/ScheduleTopBarFilter.tsx` + `schedule-topbar-filter.css` (rescue) | Diğer dropdown'ları kullanıcı kararı olmadan bu tasarıma geçirme. Documents hedeflemesinde gruplar AND ile birleşir. |
 | UI-08 | Documents yönlendirmeli editör | `settings/DocumentSettingsEditor.tsx`, `documents/DocumentLifecycleFields.tsx` (rescue) | Yalnızca final Save kalıcı yazar. Legacy OR/named kayıtları sessizce dönüştürülmez. |
@@ -192,6 +192,7 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
 - Jobs listesi departmana göre gruplu (EMP-001; BL-218 `.5`): departmanlar
   verilen sırada, sonra "No department", en altta Management; hiçbir iş bir
   departmanda değilse başlıksız düz liste.
+- Access sekmesi (kullanıcı kararı 2026-09-30, EMP-001 A2; `a2ec3725`): "Account access" grup başlığının ve Workspace role seçicisinin altında açıklama yazısı yok. Owner'ın kilitli rolünün nedeni ("Owner access is managed separately.") yalnız ekran okuyucuya söylenir; başkasının kaydında seçici açıktır, neden yazılmaz. "Profile photo" grubunun iki açıklaması duruyor (BL-446; kullanıcıya soruldu).
 
 ### Schedule
 - Silme ve üstüne yazma iki tık (UI-12): taslak/şablon silme, taslağın
@@ -234,14 +235,15 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   kullanır; hiçbiri UTC'yi kullanmaz. Tek yardımcı `apps/web/src/lib/today.ts`
   `todayIn`; lokasyon sütunu `ScheduleLocationHeader.tsx`'te. Neden: New
   York'taki müdür Los Angeles sütununda doğru günü işaretli görür, açılış
-  haftası değişmez. Kalan dört yer G14 dilim a'da bu yardımcıya bağlanıyor
-  (BL-353).
+  haftası değişmez. Kalan dört yer G14 dilim a ile bu yardımcıya bağlandı
+  (BL-353, `af43afc1`, 2026-09-30). Bilinen sonuç: gün dönümünde rozet lokasyonun gününde, sütunun yeşil tonu cihazın gününde kalır (BL-448).
 - Kayıt kurtarma penceresi (kullanıcı kararı 2026-09-30, BL-440): "Schedule
   save failed" penceresindeki "Discard" yıkıcıdır — iki tık kırmızı, ikinci
   tıkta "Confirm discard". UI-09'un "Discard beyaz vazgeçme düğmesidir"
   sınıfı burada geçmez: bu düğme kaydedilmemiş bütün değişiklikleri atar.
   Ekranın öteki "Discard"ı (düzenleme modundan çıkış) onay penceresiyle
   sorar ve beyaz kalır.
+- Escape, pencereler ve silahlı iki tık düğme (kural G1'den, `70784947`; G14 dilim a `715198b9`, 2026-09-30, BL-372): Schedule pencereleri Escape'i ortak `useCloseOnEscape` kancasıyla kapatır. Odak silahlı (ikinci tıkı bekleyen) iki tık düğmesindeyse Escape önce düğmeyi indirir, pencere açık kalır. 2026-09-30'dan beri üst çubuk menüleri ve kayıt kurtarma penceresi de bu kancayı kullanır; BL-372'nin saydığı iki ayrı kopya kalktı. Yeni Schedule penceresi kendi Escape işleyicisini yazmaz.
 
 ### Schedule → Requests
 - İzin verisi, izin okuyabilen herkese iki sekmede de yüklenir: "Time off"

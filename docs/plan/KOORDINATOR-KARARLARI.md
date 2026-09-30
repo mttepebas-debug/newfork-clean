@@ -7,7 +7,7 @@ lokasyonlu, çok rollü; çalışan birden fazla lokasyonda çalışabilir; yön
 lokasyonlar farklı saat dilimlerinde olabilir. Uygulamanın yönünü değiştiren kritik kararda önce alt
 ajanlarla tartışılır.
 
-Her madde: kimlik, tarih, karar, dayanak, geri almanın maliyeti, durum. Kullanıcı düzeltirse maddenin
+Her madde: kimlik, tarih, karar, uygulamada etkisi, dayanak, geri almanın maliyeti, durum. "Uygulamada etkisi" 2026-09-30 akşamından (KK-38) itibaren zorunludur (kullanıcı talimatı: "kararın sonucunu app'te hangi özellik nasıl çalıştı/değişti diye nokta atışı anlat"): ekran adı ve yolu; kim ne yapınca önce ne oluyordu, şimdi ne oluyor; isimli örnek; ekran adı koddan ölçülür. Kullanıcı düzeltirse maddenin
 altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların kendi karar dosyaları:
 `docs/plan/tasks/ACCOUNT-REDESIGN-kararlar.md` (Account yeniden tasarımı, K-P1…K-8; `task/account-redesign` dalında).
 
@@ -278,3 +278,38 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Karar (QA):** `.7b` + `.7b-db` main'e `nf-guvenlik` ONAY + dal CI yeşil ile girer; çekmecenin (Employment, Access, Profile) görsel QA'sı main'e girince yapılır. Neden: çekmece yeni migration'ın (`20260930180000`) alanlarını zorunlu okuyor; migration ortak yerel DB'ye yalnız main'e göndermeden hemen önce uygulanır (kullanıcı kararı 2026-09-26). Employee Hub kısmı migration'sız bakıldı. QA değişiklik isterse ayrı düzeltme dalı (KK-22 / G9b kalıbı).
 - **Durum (havuz):** "Bekle: … (N)" havuzunda yalnız (30) kaldı ve koordinatör devrine ayrıldı; bu oturumdan yeni oturum açılamıyor. `nf-planlama` %55'e kadar sürer, sonra alt ajanla. Kullanıcı dönüşünde havuzu yenilemeli.
 - **Geri alma:** kolay.
+
+### KK-38 (2026-09-30) Çalışanın kendi acil durum kişisini kaydetmesi yetki çekirdeğine sorar (BL-443 / BL-444)
+- **Karar:** kişinin kendi acil durum kişisini ve kişisel telefonunu kaydettiği uç (`save_own_employment_contact_service`) izin kararını yetki çekirdeğinden alır; yeni eylem `employee.save_own_contact` (`nf-db`'nin önerisi). Askıdaki ya da çıkarılmış kişinin bu kaydı yapamaması kabul edildi.
+- **Uygulamada etkisi:** iki ekran aynı ucu çağırıyor (koddan ölçüldü, `origin/main` `2eaf490b`): Account → Profile → "Emergency contact" grubu (`apps/web/src/account/ProfilePage.tsx:504`, kayıt `:318`) ve Employees → kişinin kendi kaydının çekmecesi (`apps/web/src/employees/EmployeeDrawer.tsx:3218`). Aktif çalışan için değişen yok: Ayşe Account → Profile'da acil durum kişisini "Mehmet, eşi, telefonu" diye yazar, kaydeder, kaydolur. Değişen: workspace'te askıya alınmış ya da çıkarılmış kişi. Önce bu kişi kendi acil durum kişisini değiştirebiliyordu; şimdi "erişim yok" cevabı alır, kayıt değişmez (bugünkü kodda reddedilen kayıt Account → Profile'da "Your emergency contact could not be saved in <workspace adı>. Try again." satırını gösteriyor, `ProfilePage.tsx:369`; dal main'e girince ekranda yeniden bakılır). Ayrıca başkasının kaydına ya da var olmayan bir kişiye yazma denemesi artık aynı cevabı alır; önce biri "bulunamadı", öteki "yetki yok" diyordu ve kimin var olduğu anlaşılıyordu.
+- **Dayanak:** `CLAUDE.md` §9 (fail-open kapatılır; bilinmeyen ve kapsam dışı hedef aynı cevabı alır).
+- **Geri alma:** kolay (tek eylem satırı).
+- **Durum:** dalda (`task/emp-001-b1-ek`); EMP-001 B ile main'e girince geçerli.
+
+### KK-39 (2026-09-30) Tercih edilen ad onay ayarı yetki çekirdeğine bağlanır (BL-443)
+- **Karar:** "Preferred names" onay ayarını okuma ve yazma çekirdeğe sorar; yeni okuma eylemi `settings.people.read` (izin `employees.read`), yazma var olan `settings.people`.
+- **Uygulamada etkisi:** Settings → General → "Preferred names" (`apps/web/src/settings/GeneralSettingsPage.tsx:237`; koddan ölçüldü). Görünürde değişen yok: owner Mert ayarı açar ya da kapatır, önceki gibi kaydolur; Employees çekmecesinde tercih edilen ad alanı aynı çalışır. Yetkisi olmayan kişi önce de reddediliyordu, şimdi de reddedilir; yalnız hata cevabı öteki ekranlarla aynı biçime gelir ("hayır" nedenini söyler).
+- **Dayanak:** `CLAUDE.md` §9 (route-yerel yetki kapısı kalkar; her uç yetki çekirdeği üzerinden).
+- **Geri alma:** kolay.
+- **Durum:** dalda (`task/emp-001-b1-ek` veritabanı tarafı, `task/emp-001-b2` rota tarafı); EMP-001 B ile main'e girince geçerli.
+
+### KK-40 (2026-09-30) Bağlamı dolan iki rol oturumu kart beklenmeden boş oturumlara devredildi
+- **Karar:** `nf-db` rol oturumu (bağlam %63) ve kayıt oturumu (%50) havuzdaki boş oturumlara devredildi; yenileri `local_75ba0d8c-210e-4971-808f-45d621e68993` (`nf-db`) ve `local_6c8429c0-01e9-4088-87de-3dc56a4c6eea` (kayıt).
+- **Uygulamada etkisi:** yok (çalışma düzeni; hiçbir ekran değişmedi).
+- **Dayanak:** kullanıcının çalışma biçimi kuralı (bu dosyanın başı): bağlamı dolan oturum boş oturuma verilir, kart onayı beklenmez.
+- **Geri alma:** gerekmez.
+- **Durum:** yapıldı; eski iki oturum "(eski)" adıyla duruyor, arşivi kullanıcıda.
+
+### KK-41 (2026-09-30) G14 dilim b: incelemenin iki orta bulgusu backlog'a atılmadı, main'den önce düzeltiliyor
+- **Karar:** bağımsız kod incelemesinin (alt ajan, `task/g14-b` @`c6a27136`, "değişiklik isteniyor") bulguları aynı turda işçiye verildi; dal düzeltilmeden main'e girmez.
+- **Uygulamada etkisi:** Schedule → üst çubuk → basılamayan Publish düğmesi. Dilim b bu düğmeye "neden basılamıyor" balonu ekliyor. Düzeltilmeseydi: balon açıkken Escape'e basan müdürde tuş sayfanın kendi kuralına da ulaşıyor, ekran bu haftaya sıçrıyor ya da süzgeç siliniyordu; şimdi Escape yalnız balonu kapatır. İkincisi: Pazar sütunundaki gri "başka lokasyonda" kartının konum balonu iğnesinden yaklaşık 50px sola kayıyordu; şimdi iğnesinin altında durur. İkisi de dalda yakalandı, main'e hiç girmedi; kullanıcı bu iki hatayı görmedi.
+- **Dayanak:** `DELEGASYON.md` §3 (R2: tek bağımsız inceleme main'den önce); bulgu yeni eklenen davranışın kendisinde.
+- **Geri alma:** kolay.
+- **Durum:** işçi yazıyor; dalda iki düzeltme commit'i görünüyor (`e873407a`, `993ee979`; `task/g14-b` @`993ee979`, ölçüldü). Yeniden inceleme ve görsel QA koordinatörde.
+
+### KK-42 (2026-09-30) Eski metni bekleyen e2e beklentisini koordinatör düzeltti (R0)
+- **Karar:** `e2e/flows/schedule-multi-location.spec.ts:92` yeni tekil metne çekildi ("1 of 1 location selected"; `d411d7a8`). İşçiye geri gönderilmedi.
+- **Uygulamada etkisi:** yok (yalnız test). Testin denediği ekran: Schedule → Publish → "Select locations to publish"; ekrandaki metni G14 dilim a değiştirmişti, test eskisini bekliyordu.
+- **Dayanak:** `DELEGASYON.md` §3 R0 (yalnız test dosyası; koordinatör yazar, inceleme yok).
+- **Geri alma:** kolay.
+- **Durum:** main'de (`d411d7a8`); dal CI 36711977574 ve main CI 36713156485 yeşil.
