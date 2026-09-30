@@ -380,17 +380,6 @@ export async function setJobArchived(
   message(error);
 }
 
-export async function reorderOrganizationEntities(
-  workspaceId: string,
-  entityType: "departments" | "jobs",
-  orderedIds: readonly string[],
-): Promise<void> {
-  await request(workspaceId, "/organization/entities/reorder", {
-    method: "POST",
-    body: JSON.stringify({ entityType, orderedIds: [...orderedIds] }),
-  });
-}
-
 export async function loadSchedulingSettings(
   workspaceId: string,
 ): Promise<SchedulingSettings> {

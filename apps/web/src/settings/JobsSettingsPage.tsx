@@ -19,7 +19,6 @@ import { useAuth } from "../auth/AuthContext";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
   loadDepartmentsAndJobs,
-  reorderOrganizationEntities,
   setDepartmentArchived,
   setJobArchived,
 } from "./organization-data";
@@ -90,7 +89,6 @@ export default function JobsSettingsPage() {
   const departmentCounts = new Map(
     counts.data?.departments.map((item) => [item.id, item.employee_count]),
   );
-  const activeDepartments = departments.filter((item) => !item.archived_at);
   const activeJobs = jobs.filter((item) => !item.archived_at);
   const selectedJob =
     jobs.find((item) => item.id === params.get("jobId")) ??
@@ -126,18 +124,14 @@ export default function JobsSettingsPage() {
   };
   const mutation = useMutation({
     mutationFn: async (
-      action:
-        | {
-            kind: "archive";
-            type: "departments" | "jobs";
-            item: Department | Job;
-          }
-        | { kind: "move"; type: "departments" | "jobs"; ids: string[] },
+      action: {
+        kind: "archive";
+        type: "departments" | "jobs";
+        item: Department | Job;
+      },
     ) => {
       if (!canEdit) throw new Error("Jobs edit access required");
-      if (action.kind === "move")
-        await reorderOrganizationEntities(workspaceId, action.type, action.ids);
-      else if (action.type === "departments")
+      if (action.type === "departments")
         await setDepartmentArchived(
           workspaceId,
           action.item.id,
@@ -177,26 +171,12 @@ export default function JobsSettingsPage() {
         ? "…"
         : (value ?? 0);
   }
-  function menu(
-    item: Job | Department,
-    type: "departments" | "jobs",
-    siblings?: Job[],
-  ) {
-    const canonical = type === "jobs" ? activeJobs : activeDepartments;
-    const ordered = siblings ?? canonical;
-    const index = ordered.findIndex((row) => row.id === item.id);
+  // Departments and jobs come A to Z from the server; nothing moves them by
+  // hand (BL-475).
+  function menu(item: Job | Department, type: "departments" | "jobs") {
     const jobCount = jobs.filter(
       (job) => job.department_id === item.id && !job.archived_at,
     ).length;
-    function move(offset: number) {
-      const other = ordered[index + offset];
-      if (!other) return;
-      const ids = canonical.map((row) => row.id);
-      const a = ids.indexOf(item.id),
-        b = ids.indexOf(other.id);
-      [ids[a], ids[b]] = [ids[b]!, ids[a]!];
-      mutation.mutate({ kind: "move", type, ids });
-    }
     return (
       <RowMenu name={item.name}>
         <button
@@ -210,34 +190,6 @@ export default function JobsSettingsPage() {
           <button type="button" onClick={() => openJob(item as Job)}>
             Manage employees
           </button>
-        )}
-        {!item.archived_at && (
-          <>
-            <button
-              type="button"
-              disabled={
-                !canEdit ||
-                Boolean(match || sortKey) ||
-                index <= 0 ||
-                mutation.isPending
-              }
-              onClick={() => move(-1)}
-            >
-              Move up
-            </button>
-            <button
-              type="button"
-              disabled={
-                !canEdit ||
-                Boolean(match || sortKey) ||
-                index === ordered.length - 1 ||
-                mutation.isPending
-              }
-              onClick={() => move(1)}
-            >
-              Move down
-            </button>
-          </>
         )}
         <button
           type="button"
@@ -318,15 +270,7 @@ export default function JobsSettingsPage() {
           <Users size={14} />
           {countText(jobCounts.get(job.id))}
         </button>
-        {menu(
-          job,
-          "jobs",
-          nested
-            ? activeJobs.filter(
-                (item) => item.department_id === job.department_id,
-              )
-            : undefined,
-        )}
+        {menu(job, "jobs")}
       </div>
     );
   }

@@ -17,12 +17,6 @@ export interface OrganizationSettingsService {
     readonly workspaceId: string;
     readonly settings: Partial<SchedulingSettingsInput>;
   }): Promise<SchedulingSettings>;
-  reorderEntities(input: {
-    readonly actorUserId: string;
-    readonly workspaceId: string;
-    readonly entityType: "departments" | "jobs";
-    readonly orderedIds: readonly string[];
-  }): Promise<void>;
   reorderShiftTypes(input: {
     readonly actorUserId: string;
     readonly workspaceId: string;
@@ -91,14 +85,6 @@ export function createOrganizationSettingsServiceWithClient(
       });
       if (error) throw rpcFailure(error);
       return schedulingSettingsSchema.parse(data);
-    },
-    async reorderEntities(input) {
-      await rpc("reorder_organization_entities_service", {
-        actor_user_id: input.actorUserId,
-        target_workspace_id: input.workspaceId,
-        entity_type: input.entityType,
-        ordered_ids: [...input.orderedIds],
-      });
     },
     async reorderShiftTypes(input) {
       await rpc("reorder_shift_types_service", {

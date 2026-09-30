@@ -741,12 +741,8 @@ function createJobGroups(
   jobs: ScheduleReadModel["jobs"],
   departments: ScheduleReadModel["departments"],
 ): ScheduleTopBarFilterGroup[] {
-  const sortedDepartments = [...departments].sort(
-    (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name),
-  );
-  const departmentIds = new Set(
-    sortedDepartments.map((department) => department.id),
-  );
+  // Departments come A to Z from the server (BL-475).
+  const departmentIds = new Set(departments.map((department) => department.id));
   const jobsByDepartment = new Map<string, ScheduleTopBarFilterItem[]>();
   const ungrouped: ScheduleTopBarFilterItem[] = [];
 
@@ -761,7 +757,7 @@ function createJobGroups(
     else jobsByDepartment.set(job.department_id, [item]);
   }
 
-  const groups = sortedDepartments
+  const groups = departments
     .map((department) => ({
       id: department.id,
       label: department.name,

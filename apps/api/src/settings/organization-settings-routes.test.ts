@@ -57,7 +57,6 @@ function organizationSettingsServiceMock(): OrganizationSettingsService {
   return {
     readSchedulingSettings: vi.fn(),
     updateSchedulingSettings: vi.fn(),
-    reorderEntities: vi.fn(),
     reorderShiftTypes: vi.fn(),
     reorderShiftLabels: vi.fn(),
   };
@@ -205,14 +204,12 @@ describe("organization settings routes", () => {
       workspace_id: workspaceId,
       ...schedulingSettings,
     }));
-    const reorderEntities = vi.fn(async () => undefined);
     const reorderShiftTypes = vi.fn(async () => undefined);
     const reorderShiftLabels = vi.fn(async () => undefined);
     const app = buildApp({
       contextResolver: { resolve: async () => context },
       organizationSettingsService: {
         updateSchedulingSettings,
-        reorderEntities,
         reorderShiftTypes,
         reorderShiftLabels,
       } as unknown as OrganizationSettingsService,
@@ -224,12 +221,6 @@ describe("organization settings routes", () => {
         url: `/v1/workspaces/${workspaceId}/scheduling-settings`,
         payload: { ...schedulingSettings, ...spoofedIdentity },
         expectedStatus: 200,
-      },
-      {
-        method: "POST",
-        url: `/v1/workspaces/${workspaceId}/organization/entities/reorder`,
-        payload: { ...spoofedIdentity, entityType: "departments", orderedIds },
-        expectedStatus: 204,
       },
       {
         method: "POST",
@@ -260,12 +251,6 @@ describe("organization settings routes", () => {
       workspaceId,
       settings: schedulingSettings,
     });
-    expect(reorderEntities).toHaveBeenCalledWith({
-      actorUserId: userId,
-      workspaceId,
-      entityType: "departments",
-      orderedIds,
-    });
     expect(reorderShiftTypes).toHaveBeenCalledWith({
       actorUserId: userId,
       workspaceId,
@@ -278,29 +263,21 @@ describe("organization settings routes", () => {
     });
   });
 
-  it("forwards department and job ordering through the API boundary", async () => {
-    const reorderEntities = vi.fn(async () => undefined);
+  // BL-475: departments and jobs go A to Z; there is no way to move them.
+  it("has no route that moves departments or jobs", async () => {
     const app = buildApp({
       contextResolver: { resolve: async () => context },
-      organizationSettingsService: {
-        reorderEntities,
-      } as unknown as OrganizationSettingsService,
+      organizationSettingsService: organizationSettingsServiceMock(),
     });
 
     const response = await app.inject({
       method: "POST",
       url: `/v1/workspaces/${workspaceId}/organization/entities/reorder`,
       headers: { authorization: "Bearer valid-token" },
-      payload: { entityType: "departments", orderedIds },
+      payload: { entityType: "jobs", orderedIds },
     });
 
-    expect(response.statusCode).toBe(204);
-    expect(reorderEntities).toHaveBeenCalledWith({
-      actorUserId: userId,
-      workspaceId,
-      entityType: "departments",
-      orderedIds,
-    });
+    expect(response.statusCode).toBe(404);
   });
 
   it("forwards shift type ordering through the API boundary", async () => {
@@ -352,25 +329,25 @@ describe("organization settings routes", () => {
   });
 
   it("requires workspace management permission before reordering", async () => {
-    const reorderEntities = vi.fn();
+    const reorderShiftTypes = vi.fn();
     const app = buildApp({
       contextResolver: {
         resolve: async () => ({ ...context, permissions: ["workspace.read"] }),
       },
       organizationSettingsService: {
-        reorderEntities,
+        reorderShiftTypes,
       } as unknown as OrganizationSettingsService,
     });
 
     const response = await app.inject({
       method: "POST",
-      url: `/v1/workspaces/${workspaceId}/organization/entities/reorder`,
+      url: `/v1/workspaces/${workspaceId}/shift-types/reorder`,
       headers: { authorization: "Bearer valid-token" },
-      payload: { entityType: "jobs", orderedIds },
+      payload: { orderedIds },
     });
 
     expect(response.statusCode).toBe(403);
-    expect(reorderEntities).not.toHaveBeenCalled();
+    expect(reorderShiftTypes).not.toHaveBeenCalled();
   });
 
   it("returns a generic not found for every route when the active workspace mismatches the path", async () => {
@@ -407,12 +384,6 @@ describe("organization settings routes", () => {
       },
       {
         method: "POST",
-        url: `/v1/workspaces/${workspaceId}/organization/entities/reorder`,
-        payload: { entityType: "jobs", orderedIds },
-        serviceMethod: "reorderEntities",
-      },
-      {
-        method: "POST",
         url: `/v1/workspaces/${workspaceId}/shift-types/reorder`,
         payload: { orderedIds },
         serviceMethod: "reorderShiftTypes",
@@ -444,7 +415,6 @@ describe("organization settings routes", () => {
   it.each([
     ["PUT", "scheduling-settings/conflicts"],
     ["PUT", "scheduling-settings"],
-    ["POST", "organization/entities/reorder"],
     ["POST", "shift-types/reorder"],
     ["POST", "shift-labels/reorder"],
   ])("refuses %s %s before reading a broken body", async (method, path) => {

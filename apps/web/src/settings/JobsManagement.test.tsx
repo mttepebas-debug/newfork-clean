@@ -42,7 +42,6 @@ vi.mock("./organization-data", () => {
   saveJob: vi.fn(),
   setJobArchived: vi.fn(),
   setDepartmentArchived: vi.fn(),
-  reorderOrganizationEntities: vi.fn(),
 };
 });
 vi.mock("../auth/AuthContext", () => ({
@@ -397,7 +396,7 @@ describe("job assignment drawer", () => {
 });
 
 describe("catalog navigation", () => {
-  it("sorts job names and employee counts both ways without changing the saved order", async () => {
+  it("sorts job names and employee counts both ways", async () => {
     const { container } = wrap(
       <>
         <JobsSettingsPage />
@@ -421,7 +420,26 @@ describe("catalog navigation", () => {
     expect(names()).toEqual(["Runner", "Server"]);
     fireEvent.click(screen.getByRole("button", { name: "Sort by Employees" }));
     expect(names()).toEqual(["Server", "Runner"]);
-    expect(organization.reorderOrganizationEntities).not.toHaveBeenCalled();
+  });
+
+  // BL-475: departments and jobs come A to Z from the server and nobody moves
+  // them by hand; the row menus keep Edit, Manage employees and Archive.
+  it("offers no Move up or Move down and lists jobs in the server's order", async () => {
+    vi.mocked(organization.listJobs).mockResolvedValue([
+      { ...job, id: "bartender", name: "Bartender" },
+      job,
+      { ...job, id: "other", name: "Runner", department_id: null },
+    ]);
+    wrap(<JobsSettingsPage />);
+    const service = await screen.findByRole("region", { name: "Service" });
+    expect(
+      within(service)
+        .getAllByRole("button", { name: /^(Bartender|Server)$/ })
+        .map((button) => button.textContent),
+    ).toEqual(["Bartender", "Server"]);
+    expect(screen.getByRole("button", { name: "Edit department" })).toBeTruthy();
+    expect(screen.queryByText("Move up")).toBeNull();
+    expect(screen.queryByText("Move down")).toBeNull();
   });
   function Url() {
     return <output data-testid="url">{useLocation().search}</output>;
