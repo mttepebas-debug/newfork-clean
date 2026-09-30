@@ -111,22 +111,60 @@ describe("Tooltip", () => {
 
   it("opens under a trigger at the top of the window and stays inside its sides", () => {
     const trigger = renderTooltip();
-    const at = (rect: Partial<DOMRect>) => {
+    // jsdom lays nothing out: the bubble's measured width comes from here.
+    let bubbleWidth = 240;
+    const offsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth")!;
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, get: () => bubbleWidth });
+    const at = (rect: Partial<DOMRect>, width = 240) => {
+      bubbleWidth = width;
+      fireEvent.mouseLeave(trigger);
+      act(() => vi.runOnlyPendingTimers());
       trigger.getBoundingClientRect = () => ({ top: 0, bottom: 0, left: 0, width: 0, ...rect }) as DOMRect;
       fireEvent.mouseEnter(trigger);
       return screen.getByRole("tooltip");
     };
+    vi.useFakeTimers();
+    try {
+      // Top bar, right edge of a 1024px window: no room above, none to the right.
+      const high = at({ top: 8, bottom: 42, left: 980, width: 40 });
+      expect(high.dataset.placement).toBe("below");
+      expect(high.style.top).toBe("48px");
+      expect(high.style.left).toBe(`${window.innerWidth - 128}px`);
 
-    // Top bar, right edge of a 1024px window: no room above, none to the right.
-    const high = at({ top: 8, bottom: 42, left: 980, width: 40 });
-    expect(high.dataset.placement).toBe("below");
-    expect(high.style.top).toBe("48px");
-    expect(high.style.left).toBe(`${window.innerWidth - 128}px`);
+      const low = at({ top: 300, bottom: 320, left: 400, width: 20 });
+      expect(low.dataset.placement).toBe("above");
+      expect(low.style.top).toBe("294px");
+      expect(low.style.left).toBe("410px");
 
-    const low = at({ top: 300, bottom: 320, left: 400, width: 20 });
-    expect(low.dataset.placement).toBe("above");
-    expect(low.style.top).toBe("294px");
-    expect(low.style.left).toBe("410px");
+      // A short bubble needs little room: it stays over its trigger near a side
+      // instead of being pulled in as if it were 240px wide.
+      const short = at({ top: 300, bottom: 320, left: 990, width: 20 }, 46);
+      expect(short.style.left).toBe(`${window.innerWidth - 31}px`);
+      const shortLeft = at({ top: 300, bottom: 320, left: 0, width: 20 }, 46);
+      expect(shortLeft.style.left).toBe("31px");
+    } finally {
+      Object.defineProperty(HTMLElement.prototype, "offsetWidth", offsetWidth);
+    }
+  });
+
+  // Review of G14 slice b: the page below has its own Escape rule (the
+  // Schedule jumps back to this week); one Escape must not do both.
+  it("keeps the Escape that closes the bubble from reaching the page", () => {
+    const trigger = renderTooltip();
+    const pageEscape = vi.fn();
+    window.addEventListener("keydown", pageEscape);
+    try {
+      fireEvent.focus(trigger);
+      fireEvent.keyDown(trigger, { key: "Escape" });
+      expect(screen.queryByRole("tooltip")).toBeNull();
+      expect(pageEscape).not.toHaveBeenCalled();
+
+      // Closed: Escape belongs to the page again.
+      fireEvent.keyDown(trigger, { key: "Escape" });
+      expect(pageEscape).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("keydown", pageEscape);
+    }
   });
 
   it("opens on keyboard focus and closes on Escape", () => {

@@ -1,12 +1,12 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import "./tooltip.css";
 import { useHoverBubble } from "./useHoverBubble";
 
-// Half of the bubble's 240px max width plus 8px of air: how close its middle may come to a side.
-const SIDE_ROOM = 128;
+// Air between the bubble and the window's side.
+const SIDE_GAP = 8;
 // Below this the bubble has no room above its trigger and opens under it.
 const ROOM_ABOVE = 64;
 
@@ -38,6 +38,10 @@ export function Tooltip({
   const id = useId();
   const descriptionId = useId();
   const trigger = useRef<HTMLButtonElement>(null);
+  const bubble = useRef<HTMLSpanElement>(null);
+  // Half the bubble's own width, measured once it is drawn: a short bubble
+  // stays over its trigger near a side, a wide one is pulled in further.
+  const [halfWidth, setHalfWidth] = useState(0);
   const pointerPressed = useRef(false);
   const { anchor, open, close, closeSoon, cancel } = useHoverBubble();
   const show = () => open(trigger.current?.getBoundingClientRect() ?? null);
@@ -47,10 +51,19 @@ export function Tooltip({
     pointerPressed.current = false;
   };
 
+  useLayoutEffect(() => {
+    if (anchor && bubble.current) setHalfWidth(bubble.current.offsetWidth / 2);
+  }, [anchor, content]);
+  const sideRoom = halfWidth + SIDE_GAP;
+
   useEffect(() => {
     if (!anchor) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key !== "Escape") return;
+      // This Escape is the bubble's. The page under it has its own Escape rule
+      // (the Schedule jumps back to this week) and must not run on the same press.
+      event.stopPropagation();
+      close();
     };
     document.addEventListener("keydown", onKey);
     window.addEventListener("scroll", close, true);
@@ -100,14 +113,15 @@ export function Tooltip({
       {anchor
         ? createPortal(
             <span
+              ref={bubble}
               id={id}
               role="tooltip"
               className="nf-tooltip"
               data-placement={anchor.top < ROOM_ABOVE ? "below" : "above"}
               style={{
                 left: Math.min(
-                  Math.max(anchor.left + anchor.width / 2, SIDE_ROOM),
-                  window.innerWidth - SIDE_ROOM,
+                  Math.max(anchor.left + anchor.width / 2, sideRoom),
+                  window.innerWidth - sideRoom,
                 ),
                 top: anchor.top < ROOM_ABOVE ? anchor.bottom + 6 : anchor.top - 6,
               }}
