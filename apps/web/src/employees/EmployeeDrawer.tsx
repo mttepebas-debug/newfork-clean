@@ -2884,7 +2884,7 @@ function Field({
           </small>
         ) : null}
       </span>
-      <span className="employee-field-control">
+      <span className="employee-field-control" title={mark?.label}>
         <input
           ref={inputRef}
           aria-label={label}
@@ -2910,7 +2910,6 @@ function Field({
             className={`employee-field-mark is-${mark.tone}`}
             role="img"
             aria-label={mark.label}
-            title={mark.label}
           >
             <MarkIcon size={16} aria-hidden />
           </span>
