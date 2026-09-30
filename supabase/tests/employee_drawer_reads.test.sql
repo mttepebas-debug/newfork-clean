@@ -42,11 +42,19 @@ select is(
   array(select k from jsonb_object_keys(pg_temp.detail('owner', 'selin')) k order by k),
   array['account_email', 'allowed', 'archived_at', 'display_name', 'display_status', 'employee_code',
     'events', 'first_name', 'id', 'internal_note', 'invitation', 'invitation_email',
-    'is_excluded_from_schedule', 'is_remote', 'job_count', 'jobs', 'last_name', 'location_count',
+    'is_excluded_from_schedule', 'is_remote', 'is_workspace_owner', 'job_count', 'jobs', 'last_name', 'location_count',
     'locations', 'onboarding', 'preferred_name', 'primary_job_id', 'primary_job_name',
     'primary_location_id', 'primary_location_name', 'private_contact', 'revision', 'role_id',
     'role_name', 'start_date', 'user_id', 'workspace_id'],
   'the detail answers exactly these keys');
+-- EMP-001 / BL-421: the drawer asks the server whose record is the owner's,
+-- not the role's name.
+select is(
+  array[pg_temp.detail('owner', 'owner') -> 'is_workspace_owner',
+    pg_temp.detail('owner', 'zeynep') -> 'is_workspace_owner',
+    pg_temp.detail('ayse', 'emre') -> 'is_workspace_owner'],
+  array['true', 'false', 'false']::jsonb[],
+  'only the owner''s record says it is the owner''s: not an admin''s, not an employee''s');
 select is(
   (select array(select k from jsonb_object_keys(to_jsonb(e)) k order by k)
    from public.list_employees_service(tests.user('d:owner'), tests.id('d'), false, '', 'all', 200, 0) e

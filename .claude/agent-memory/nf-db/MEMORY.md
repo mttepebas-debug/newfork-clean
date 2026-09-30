@@ -8,4 +8,4 @@
 - [Availability is a preference](availability-is-a-preference.md) — BL-186 contract: warn-only reasons, availability_fingerprint, publish availability finding + ack lookup
 - [New notification type](new-notification-type.md) — BL-183: catalog + producer registry + published template + reconcile; core-based recipients; outbox end-to-end in pgTAP
 - [Exchange survives publish](exchange-survives-publish.md) — BL-198: shift_exchange_draft_undoes is the one rule; case time vs current publication; one-transaction now() trap
-- [excluded-and-owner-traps](excluded-and-owner-traps.md) — excluded person already refused by assessment; owner location delete = BL-187; K4 every manager keeps a location (EMP-001); draft workspace closed to staff; void probe; takeover worktree
+- [excluded-and-owner-traps](excluded-and-owner-traps.md) — excluded person already refused by assessment; owner location delete = BL-187; K4 every manager keeps a location (EMP-001); draft workspace closed to staff; void probe; takeover worktree; EMP-001 C1: Manager is an ordinary job, only Owner is never primary; stub-first for new files (GateGuard)
