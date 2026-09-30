@@ -15,10 +15,13 @@ import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
 import {
   acknowledgeDocument,
   deferInitialDocument,
+  downloadDocument,
+  extendDocumentDeadline,
   getDocument,
   removeDocumentDraftFile,
   reviewDocument,
   setDocumentExemption,
+  setDocumentTimezone,
   submitDocument,
   uploadDocument,
   withdrawDocumentAcknowledgement,
@@ -929,5 +932,129 @@ describe("typed draft fields", () => {
     );
     show("requirement");
     await waitFor(() => expect(fields()).toEqual({ expiry: "", license: "" }));
+  });
+});
+
+// U60: the three commands no test reached. Two are the manager's alone.
+describe("download, document time zone and deadline extension", () => {
+  const manager = { workspaceId: "workspace", selfOnly: false };
+  it("downloads a file by its version and file, and refreshes nothing", async () => {
+    const doc = detail();
+    doc.submissions[0]!.files.push({
+      ...doc.submissions[0]!.files[0]!,
+      id: "discarded",
+      filename: "blurry.pdf",
+      decision: "discard",
+    });
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    vi.mocked(downloadDocument)
+      .mockRejectedValueOnce(new Error("Link unavailable"))
+      .mockResolvedValue(undefined);
+    const { invalidate } = page();
+    const file = await screen.findByRole("button", { name: "certificate.pdf" });
+    // A discarded file is listed but no longer handed out.
+    expect(screen.getByRole("button", { name: "blurry.pdf" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    fireEvent.click(file);
+    await screen.findByText("Link unavailable");
+    fireEvent.click(file);
+    await waitFor(() => expect(downloadDocument).toHaveBeenCalledTimes(2));
+    expect(downloadDocument).toHaveBeenLastCalledWith(
+      manager,
+      "requirement",
+      "submission",
+      "file",
+    );
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+  it("saves a changed document time zone against the employee's revision, then refreshes", async () => {
+    const doc = detail();
+    doc.timezone_settings = {
+      value: "America/Chicago",
+      configured_value: "America/Chicago",
+      employee_revision: 4,
+      can_manage: true,
+    };
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    vi.mocked(setDocumentTimezone).mockResolvedValue({});
+    const { invalidate } = page();
+    const save = await screen.findByRole("button", {
+      name: "Save document time zone",
+    });
+    expect(save).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), {
+      target: { value: "America/Denver" },
+    });
+    expect(save).toHaveProperty("disabled", false);
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(setDocumentTimezone).toHaveBeenCalledWith(manager, "requirement", {
+        employee_revision: 4,
+        timezone: "America/Denver",
+      }),
+    );
+    await waitFor(() => expectRefreshed(invalidate));
+  });
+  it("hides the document time zone from whoever cannot manage it", async () => {
+    const doc = detail();
+    doc.timezone_settings = {
+      value: null,
+      configured_value: null,
+      employee_revision: 4,
+      can_manage: false,
+    };
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    await screen.findByText("certificate.pdf");
+    expect(
+      screen.queryByRole("button", { name: "Save document time zone" }),
+    ).toBeNull();
+  });
+  it("extends the deadline with the days and reason typed, then refreshes", async () => {
+    const doc = missing();
+    doc.obligation.deadline_at = new Date(Date.now() + 86_400_000).toISOString();
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    vi.mocked(extendDocumentDeadline).mockResolvedValue({});
+    const { invalidate } = page();
+    const extend = await screen.findByRole("button", {
+      name: "Extend deadline",
+    });
+    // A reason is required; the days default to one.
+    expect(extend).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByLabelText("Additional days"), {
+      target: { value: "5" },
+    });
+    fireEvent.change(screen.getByLabelText("Extension reason"), {
+      target: { value: "Clinic closed this week" },
+    });
+    expect(extend).toHaveProperty("disabled", false);
+    fireEvent.click(extend);
+    await waitFor(() =>
+      expect(extendDocumentDeadline).toHaveBeenCalledWith(
+        manager,
+        "requirement",
+        { revision: 1, additional_days: 5, reason: "Clinic closed this week" },
+      ),
+    );
+    await waitFor(() => expectRefreshed(invalidate));
+  });
+  it.each<[string, (doc: DocumentDetail) => void, boolean]>([
+    ["the deadline has passed", (doc) => {
+      doc.obligation.deadline_at = "2020-01-01T00:00:00Z";
+    }, false],
+    ["the document is waiting for review", (doc) => {
+      doc.obligation.status = "pending_review";
+    }, false],
+    ["the viewer is the employee", () => undefined, true],
+  ])("offers no deadline extension when %s", async (_, change, selfOnly) => {
+    const doc = missing();
+    doc.obligation.deadline_at = new Date(Date.now() + 86_400_000).toISOString();
+    change(doc);
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page(selfOnly);
+    await screen.findByRole("heading", { name: "Safety certificate" });
+    expect(screen.queryByRole("button", { name: "Extend deadline" })).toBeNull();
   });
 });
