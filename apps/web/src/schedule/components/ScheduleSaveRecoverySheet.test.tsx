@@ -89,7 +89,10 @@ describe("ScheduleSaveRecoverySheet", () => {
       </ScheduleSaveRecoverySheet>,
     );
 
-    fireEvent.keyDown(screen.getByRole("button", { name: "Confirm discard" }), { key: "Escape" });
+    // The key's default is taken too: left alone, the browser sends the native
+    // dialog a cancel for the same Escape and the sheet closes anyway.
+    const escapeLeftToBrowser = fireEvent.keyDown(screen.getByRole("button", { name: "Confirm discard" }), { key: "Escape" });
+    expect(escapeLeftToBrowser).toBe(false);
     expect(onKeepEditing).not.toHaveBeenCalled();
 
     fireEvent.keyDown(screen.getByRole("button", { name: "Retry save" }), { key: "Escape" });

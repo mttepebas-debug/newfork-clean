@@ -10,10 +10,12 @@ export function useCloseOnEscape(onClose: (() => void) | null): void {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       // An armed two-click button takes Escape first: it disarms, the window stays.
+      // The default goes too, or a native <dialog> gets a cancel for the same key.
       if (
         event.target instanceof Element &&
         event.target.closest("[data-confirming='true']")
       ) {
+        event.preventDefault();
         return;
       }
       event.preventDefault();
