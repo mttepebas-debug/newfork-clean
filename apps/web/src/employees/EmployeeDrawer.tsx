@@ -37,7 +37,14 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import {
+  Fragment,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { noAccessHomePath } from "../auth/resolveLanding";
@@ -66,6 +73,7 @@ import {
   terminateEmployee,
   updateEmployeeRole,
   type EmployeeTerminationInput,
+  type EmployeeDepartmentOption,
   type EmployeeOption,
 } from "./employee-data";
 import {
@@ -1001,9 +1009,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   >
                     {sections.find(([key]) => key === activeSection)?.[1]}
                   </h2>
-                  {!props.creating ? (
-                    <p>{sectionDescription(props.section)}</p>
-                  ) : null}
                 </div>
                 <button
                   className="icon-button employee-drawer-close"
@@ -1946,9 +1951,12 @@ function ProfileSection({
         requirement.status !== "completed",
     );
   const identityReadOnly = readOnly || identityLocked;
-  const pendingInviteHint = invitePending
-    ? "Locked while invitation is pending"
-    : undefined;
+  // Why a name cannot be typed into; read out, not printed under the field.
+  const nameLockedReason = identityLocked
+    ? "Locked after activation"
+    : invitePending
+      ? "Locked while invitation is pending"
+      : undefined;
   const emailValue = linked
     ? (accountEmail ?? draft.invitation_email)
     : draft.invitation_email;
@@ -1956,45 +1964,41 @@ function ProfileSection({
     <div className="employee-profile-sections">
       <ProfileGroup title="Identity">
         <div className="employee-form-grid">
-          <Field
-            label="First name"
-            required={creating}
-            value={draft.first_name}
-            disabled={identityReadOnly}
-            readOnly={invitePending}
-            hint={
-              identityLocked ? "Locked after activation" : pendingInviteHint
-            }
-            onChange={(value) =>
-              setDraft((current) => ({ ...current, first_name: value }))
-            }
-          />
-          <Field
-            label="Middle name"
-            optional
-            value={draft.middle_name ?? ""}
-            disabled={identityReadOnly}
-            readOnly={invitePending}
-            hint={
-              identityLocked ? "Locked after activation" : pendingInviteHint
-            }
-            onChange={(value) =>
-              setDraft((current) => ({ ...current, middle_name: value }))
-            }
-          />
-          <Field
-            label="Last name"
-            required={creating}
-            value={draft.last_name}
-            disabled={identityReadOnly}
-            readOnly={invitePending}
-            hint={
-              identityLocked ? "Locked after activation" : pendingInviteHint
-            }
-            onChange={(value) =>
-              setDraft((current) => ({ ...current, last_name: value }))
-            }
-          />
+          <div className="employee-name-grid">
+            <Field
+              label="First name"
+              required={creating}
+              value={draft.first_name}
+              disabled={identityReadOnly}
+              readOnly={invitePending}
+              lockedReason={nameLockedReason}
+              onChange={(value) =>
+                setDraft((current) => ({ ...current, first_name: value }))
+              }
+            />
+            <Field
+              label="Middle name"
+              optional
+              value={draft.middle_name ?? ""}
+              disabled={identityReadOnly}
+              readOnly={invitePending}
+              lockedReason={nameLockedReason}
+              onChange={(value) =>
+                setDraft((current) => ({ ...current, middle_name: value }))
+              }
+            />
+            <Field
+              label="Last name"
+              required={creating}
+              value={draft.last_name}
+              disabled={identityReadOnly}
+              readOnly={invitePending}
+              lockedReason={nameLockedReason}
+              onChange={(value) =>
+                setDraft((current) => ({ ...current, last_name: value }))
+              }
+            />
+          </div>
           <Field
             label="Preferred name"
             value={draft.preferred_name}
@@ -2003,16 +2007,16 @@ function ProfileSection({
               setDraft((current) => ({ ...current, preferred_name: value }))
             }
           />
-          {!creating && pendingNameTarget ? (
-            <PendingPreferredNameRow
-              workspaceId={pendingNameTarget.workspaceId}
-              employeeId={pendingNameTarget.employeeId}
-            />
-          ) : null}
           {!creating && canReadPrivate ? (
             <ReadOnlyField
               label="Date of birth"
               value={privateContact?.date_of_birth ?? null}
+            />
+          ) : null}
+          {!creating && pendingNameTarget ? (
+            <PendingPreferredNameRow
+              workspaceId={pendingNameTarget.workspaceId}
+              employeeId={pendingNameTarget.employeeId}
             />
           ) : null}
         </div>
@@ -2027,7 +2031,13 @@ function ProfileSection({
             disabled={readOnly}
             readOnly={linked || invitePending}
             inputRef={emailInputRef}
-            hint={linked ? "Verified account e-mail" : pendingInviteHint}
+            mark={
+              linked
+                ? { label: "Verified", tone: "verified" }
+                : invitePending
+                  ? { label: "Invitation pending", tone: "pending" }
+                  : undefined
+            }
             onChange={(value) =>
               setDraft((current) => ({ ...current, invitation_email: value }))
             }
@@ -2238,6 +2248,7 @@ function EmploymentSection({
         label="Jobs"
         required={!draft.is_remote && !draft.is_excluded_from_schedule}
         options={references?.jobs ?? []}
+        departments={references?.departments}
         selected={draft.job_ids}
         primary={draft.primary_job_id}
         disabled={readOnly}
@@ -2818,7 +2829,8 @@ function Field({
   readOnly = false,
   inputRef,
   type = "text",
-  hint,
+  lockedReason,
+  mark,
   required = false,
   optional = false,
 }: {
@@ -2829,7 +2841,10 @@ function Field({
   readOnly?: boolean;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   type?: string;
-  hint?: string;
+  /** Why it cannot be typed into: read out and shown on hover, never printed. */
+  lockedReason?: string;
+  /** A state drawn inside the field, at its end, with its name. */
+  mark?: { label: string; tone: "verified" | "pending" };
   required?: boolean;
   /** Says so beside the label, rather than leaving it to be inferred. */
   optional?: boolean;
@@ -2844,11 +2859,18 @@ function Field({
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())));
   const validationMessage =
     type === "email" ? "Enter a valid email address." : `${label} is required.`;
-  const helperVisible = invalid || Boolean(hint) || required;
-  const helperText = invalid ? validationMessage : (hint ?? "");
+  const describedBy = [
+    invalid ? `${id}-error` : null,
+    lockedReason ? `${id}-reason` : null,
+    mark ? `${id}-mark` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const MarkIcon = mark?.tone === "verified" ? CheckCircle2 : Clock3;
   return (
     <label
       className={`employee-field${type === "email" ? " employee-email-field" : ""}`}
+      title={lockedReason}
     >
       <span>
         {label}
@@ -2862,33 +2884,50 @@ function Field({
           </small>
         ) : null}
       </span>
-      <input
-        ref={inputRef}
-        aria-label={label}
-        aria-required={required || undefined}
-        aria-invalid={invalid || undefined}
-        aria-describedby={helperVisible && helperText ? id : undefined}
-        onBlur={(event) => {
-          if (
-            event.relatedTarget instanceof Element &&
-            event.relatedTarget.closest(".employee-drawer")
-          )
-            setTouched(true);
-        }}
-        type={type}
-        value={value}
-        disabled={disabled}
-        readOnly={readOnly}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      {helperVisible ? (
+      <span className="employee-field-control">
+        <input
+          ref={inputRef}
+          aria-label={label}
+          aria-required={required || undefined}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy || undefined}
+          onBlur={(event) => {
+            if (
+              event.relatedTarget instanceof Element &&
+              event.relatedTarget.closest(".employee-drawer")
+            )
+              setTouched(true);
+          }}
+          type={type}
+          value={value}
+          disabled={disabled}
+          readOnly={readOnly}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {mark ? (
+          <span
+            id={`${id}-mark`}
+            className={`employee-field-mark is-${mark.tone}`}
+            role="img"
+            aria-label={mark.label}
+            title={mark.label}
+          >
+            <MarkIcon size={16} aria-hidden />
+          </span>
+        ) : null}
+      </span>
+      {invalid ? (
         <small
-          id={helperText ? id : undefined}
-          className={`employee-field-helper${invalid ? " employee-field-error" : ""}`}
-          aria-hidden={!helperText || undefined}
+          id={`${id}-error`}
+          className="employee-field-helper employee-field-error"
         >
-          {helperText}
+          {validationMessage}
         </small>
+      ) : null}
+      {lockedReason ? (
+        <span id={`${id}-reason`} className="sr-only">
+          {lockedReason}
+        </span>
       ) : null}
     </label>
   );
@@ -2905,13 +2944,19 @@ function AssignmentPicker({
   searchable = true,
   lockedIds,
   rowAction,
+  departments,
 }: {
   /** Rows only their own action takes off (Remove from a location). */
   lockedIds?: ReadonlySet<string>;
   rowAction?: (optionId: string) => React.ReactNode;
+  /** Jobs are listed under these, Management last (BL-218 .5). */
+  departments?: readonly EmployeeDepartmentOption[];
   label: string;
   /** `management`: primary by its department, never marked primary (BL-218). */
-  options: readonly (EmployeeOption & { readonly management?: boolean })[];
+  options: readonly (EmployeeOption & {
+    readonly management?: boolean;
+    readonly departmentId?: string | null;
+  })[];
   selected: readonly string[];
   primary: string | null;
   disabled: boolean;
@@ -2920,6 +2965,7 @@ function AssignmentPicker({
   searchable?: boolean;
 }) {
   const [search, setSearch] = useState("");
+  const groupId = useId();
   const management = new Set(
     options.filter((option) => option.management).map((option) => option.id),
   );
@@ -2949,50 +2995,65 @@ function AssignmentPicker({
           }}
         />
       ) : null}
-      {matching.map((option) => {
-        const checked = selected.includes(option.id);
-        const locked = checked && (lockedIds?.has(option.id) ?? false);
-        return (
-          <div key={option.id} data-locked={locked ? "true" : undefined}>
-            <label>
-              <input
-                type="checkbox"
-                checked={checked}
-                disabled={locked}
-                onChange={() => {
-                  const ids = checked
-                    ? selected.filter((id) => id !== option.id)
-                    : [...selected, option.id];
-                  // Unticking moves the primary only off the one unticked;
-                  // ticking fills an empty primary unless it is Management.
-                  onChange(
-                    ids,
-                    checked
-                      ? primary === option.id
-                        ? firstJobOutsideManagement(ids, management)
-                        : primary
-                      : (primary ?? (option.management ? null : option.id)),
-                  );
-                }}
-              />
-              <span>{option.name}</span>
-              {option.archived ? <small>Archived</small> : null}
-            </label>
-            {checked && !option.management ? (
-              <label className="primary-choice">
-                <input
-                  type="radio"
-                  name={`primary-${label}`}
-                  checked={primary === option.id}
-                  onChange={() => onChange([...selected], option.id)}
-                />
-                Primary
-              </label>
-            ) : null}
-            {checked ? rowAction?.(option.id) : null}
-          </div>
-        );
-      })}
+      {byDepartment(matching, departments ?? []).map((group) => (
+        <Fragment key={group.id}>
+          {group.name ? (
+            <strong
+              id={`${groupId}-${group.id}`}
+              className="employee-assignment-group"
+            >
+              {group.name}
+            </strong>
+          ) : null}
+          {group.options.map((option) => {
+            const checked = selected.includes(option.id);
+            const locked = checked && (lockedIds?.has(option.id) ?? false);
+            return (
+              <div key={option.id} data-locked={locked ? "true" : undefined}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={locked}
+                    aria-describedby={
+                      group.name ? `${groupId}-${group.id}` : undefined
+                    }
+                    onChange={() => {
+                      const ids = checked
+                        ? selected.filter((id) => id !== option.id)
+                        : [...selected, option.id];
+                      // Unticking moves the primary only off the one unticked;
+                      // ticking fills an empty primary unless it is Management.
+                      onChange(
+                        ids,
+                        checked
+                          ? primary === option.id
+                            ? firstJobOutsideManagement(ids, management)
+                            : primary
+                          : (primary ?? (option.management ? null : option.id)),
+                      );
+                    }}
+                  />
+                  <span>{option.name}</span>
+                  {option.archived ? <small>Archived</small> : null}
+                </label>
+                {checked && !option.management ? (
+                  <label className="primary-choice">
+                    <input
+                      type="radio"
+                      name={`primary-${label}`}
+                      checked={primary === option.id}
+                      onChange={() => onChange([...selected], option.id)}
+                    />
+                    Primary
+                  </label>
+                ) : null}
+                {checked ? rowAction?.(option.id) : null}
+              </div>
+            );
+          })}
+        </Fragment>
+      ))}
       {available.length === 0 ? (
         <p>No active {label.toLowerCase()}.</p>
       ) : matching.length === 0 ? (
@@ -3003,6 +3064,36 @@ function AssignmentPicker({
       ) : null}
     </fieldset>
   );
+}
+
+/**
+ * The picker's rows under their departments (BL-218 .5): departments as given,
+ * then jobs in none, Management last. With no job in any department the list
+ * stays plain, under no heading.
+ */
+function byDepartment<Option extends { readonly departmentId?: string | null }>(
+  options: readonly Option[],
+  departments: readonly EmployeeDepartmentOption[],
+): { id: string; name: string | null; options: readonly Option[] }[] {
+  const under = (department: EmployeeDepartmentOption) => ({
+    id: department.id,
+    name: department.name,
+    options: options.filter((option) => option.departmentId === department.id),
+  });
+  const groups = [
+    ...departments.filter((department) => !department.management).map(under),
+    {
+      id: "none",
+      name: "No department",
+      options: options.filter(
+        (option) => !departments.some((item) => item.id === option.departmentId),
+      ),
+    },
+    ...departments.filter((department) => department.management).map(under),
+  ].filter((group) => group.options.length > 0);
+  return groups.some((group) => group.id !== "none")
+    ? groups
+    : [{ id: "none", name: null, options }];
 }
 
 function toDraft(detail: EmployeeDetail): EmployeeInput {
@@ -3025,17 +3116,6 @@ function toDraft(detail: EmployeeDetail): EmployeeInput {
     is_owner_record: detail.role_name === "Owner",
     expected_revision: detail.revision,
   };
-}
-
-function sectionDescription(section: EmployeeSection): string {
-  return {
-    profile: "Identity and manager-owned contact details.",
-    employment: "Location, job, start date, and internal context.",
-    availability: "Employee preferences.",
-    documents: "Onboarding document requirement progress.",
-    access: "Invitation and workspace access state.",
-    history: "Audited employee lifecycle changes.",
-  }[section];
 }
 
 function statusLabel(status: string): string {
@@ -3166,8 +3246,7 @@ function OwnEmergencyContact({
         disabled={save.isPending}
         onChange={setPhone}
       />
-      <div className="employee-field">
-        <span />
+      <div className="employee-field employee-field-action">
         <Button
           type="button"
           disabled={!ready || save.isPending}

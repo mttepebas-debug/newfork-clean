@@ -1699,25 +1699,21 @@
   flex: 1;
   flex-direction: column;
 }
+/* The tab's title alone: no description line under it (EMP-001). */
 .employee-section-header {
   display: flex;
-  min-height: 82px;
-  flex: 0 0 82px;
+  min-height: 56px;
+  flex: 0 0 56px;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 15px 22px 14px 26px;
+  padding: 8px 22px 8px 26px;
   border-bottom: 1px solid #dce1de;
 }
 .employee-section-header h2 {
-  margin: 0 0 5px;
+  margin: 0;
   font-size: 19px;
   letter-spacing: 0;
-}
-.employee-section-header p {
-  margin: 0;
-  color: var(--theme-muted);
-  font-size: 12px;
 }
 .employee-section-scroll {
   min-height: 0;
@@ -1733,6 +1729,13 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+}
+/* First, middle and last name on one row; the middle one is the short one. */
+.employee-name-grid {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1fr);
+  gap: inherit;
 }
 .employee-profile-sections,
 .employee-access-sections {
@@ -1776,17 +1779,14 @@
   flex: 0 0 auto;
   color: #78827e;
 }
-.employee-readonly-field input[readonly] {
+/* Every field that only shows a value looks the same, whatever locks it. */
+.employee-field input[readonly] {
   background: #f2f5f3;
   color: #34403b;
   cursor: text;
 }
 .employee-readonly-field input[readonly]::placeholder {
   color: #8a938f;
-}
-.employee-contact-grid .employee-readonly-field::after {
-  content: "";
-  min-height: 15px;
 }
 .employee-address-grid .wide {
   grid-column: 1 / -1;
@@ -1840,10 +1840,38 @@
 }
 .employee-field {
   display: grid;
+  /* Fields on one row keep their inputs level when one grows a message. */
+  align-content: start;
   gap: 7px;
   color: #424d48;
   font-size: 12px;
   font-weight: 750;
+}
+/* A button in a field's place sits on the inputs' line, not the labels'. */
+.employee-field-action {
+  align-content: end;
+}
+/* A state drawn inside the field, at its end (verified, invitation pending). */
+.employee-field-control {
+  position: relative;
+  display: block;
+}
+.employee-field-control:has(.employee-field-mark) input {
+  padding-right: 36px;
+}
+.employee-field-mark {
+  position: absolute;
+  top: 0;
+  right: 11px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+}
+.employee-field-mark.is-verified {
+  color: var(--theme-success);
+}
+.employee-field-mark.is-pending {
+  color: var(--theme-warning);
 }
 .employee-field input,
 .employee-field textarea,
@@ -1946,6 +1974,17 @@
 }
 .employee-assignment-picker > div:last-of-type {
   border-bottom: 0;
+}
+/* The department a run of jobs sits under. */
+.employee-assignment-group {
+  display: block;
+  padding: 14px 7px 4px;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+.employee-assignment-picker legend + .employee-assignment-group {
+  padding-top: 4px;
 }
 .employee-assignment-picker label {
   display: flex;
@@ -2399,7 +2438,8 @@
   justify-content: flex-end;
 }
 @media (max-width: 640px) {
-  .employee-drawer-create .employee-form-grid {
+  .employee-drawer-create .employee-form-grid,
+  .employee-name-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   .employee-drawer-create .employee-field input,

@@ -2002,3 +2002,157 @@ describe("EmployeeDrawer .7b visual QA fixes", () => {
     expect(await screen.findByText("Date of birth")).toBeTruthy();
   });
 });
+
+// EMP-001 slice A: the drawer's Profile and Employment look.
+describe("EmployeeDrawer EMP-001 look", () => {
+  const noPrivateRecord = {
+    phone: null,
+    street_address: null,
+    city: null,
+    region: null,
+    postal_code: null,
+    country_code: null,
+    date_of_birth: null,
+    emergency_contact_name: null,
+    emergency_contact_relationship: null,
+    emergency_contact_phone: null,
+    emergency_contact_email: "",
+    share_phone_with_teammates: false,
+    share_email_with_teammates: false,
+  };
+  const pendingInvitation = {
+    id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+    email: "alex@example.test",
+    role_id: employeeRoleId,
+    status: "pending" as const,
+    expires_at: "2099-08-24T12:00:00.000Z",
+    sent_at: "2026-08-17T12:00:00.000Z",
+    delivery_status: "sent" as const,
+    delivery_attempted_at: "2026-08-17T12:01:00.000Z",
+    delivery_failed_at: null,
+    delivery_error: null,
+  };
+  /** The text a field is described by, and whether it is kept off screen. */
+  function described(input: HTMLElement) {
+    const note = document.getElementById(input.getAttribute("aria-describedby") ?? "");
+    return {
+      text: note?.getAttribute("aria-label") ?? note?.textContent ?? null,
+      hidden: note?.classList.contains("sr-only") ?? false,
+    };
+  }
+
+  it("has no description line under a tab's title", async () => {
+    renderDrawer("profile");
+    await screen.findByLabelText("E-mail");
+    expect(screen.queryByText("Identity and manager-owned contact details.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "History" }));
+    await screen.findByRole("heading", { name: "History" });
+    expect(screen.queryByText("Audited employee lifecycle changes.")).toBeNull();
+  });
+
+  it("puts the three names on one row, and preferred name beside date of birth", async () => {
+    renderDrawer("profile", { ...detail, private_contact: noPrivateRecord });
+    const names = (await screen.findByLabelText("First name")).closest<HTMLElement>(".employee-name-grid")!;
+    expect(within(names).getByLabelText("Middle name")).toBeTruthy();
+    expect(within(names).getByLabelText("Last name")).toBeTruthy();
+    expect(within(names).queryByLabelText("Preferred name")).toBeNull();
+    const second = screen.getByLabelText("Preferred name").closest<HTMLElement>(".employee-form-grid")!;
+    expect(within(second).getByLabelText("Date of birth")).toBeTruthy();
+  });
+
+  it("keeps why a name is locked for a screen reader only", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      user_id: "16000000-0000-4000-8000-000000000005",
+      display_status: "active",
+    });
+    const first = await screen.findByLabelText("First name");
+    expect(first).toHaveProperty("disabled", true);
+    expect(described(first)).toEqual({ text: "Locked after activation", hidden: true });
+    expect(document.querySelector(".employee-field-helper")).toBeNull();
+  });
+
+  it("marks a verified e-mail inside the field", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      user_id: "16000000-0000-4000-8000-000000000005",
+      account_email: "alex.account@example.test",
+      display_status: "active",
+    });
+    const email = await screen.findByLabelText("E-mail");
+    expect(within(email.closest("label")!).getByRole("img", { name: "Verified" })).toBeTruthy();
+    expect(screen.queryByText("Verified account e-mail")).toBeNull();
+    expect(described(email).text).toBe("Verified");
+  });
+
+  it("marks a waiting invitation inside the field and keeps the e-mail locked", async () => {
+    renderDrawer("profile", { ...detail, display_status: "invited", invitation: pendingInvitation });
+    const email = await screen.findByLabelText("E-mail");
+    const field = email.closest("label")!;
+    expect(within(field).getByRole("img", { name: "Invitation pending" })).toBeTruthy();
+    expect(within(field).queryByRole("img", { name: "Verified" })).toBeNull();
+    expect(email).toHaveProperty("readOnly", true);
+    expect(described(email).text).toBe("Invitation pending");
+    expect(described(screen.getByLabelText("First name"))).toEqual({
+      text: "Locked while invitation is pending",
+      hidden: true,
+    });
+  });
+
+  it("shows no mark on an e-mail that is neither verified nor invited", async () => {
+    renderDrawer("profile");
+    const email = await screen.findByLabelText("E-mail");
+    expect(within(email.closest("label")!).queryByRole("img")).toBeNull();
+    expect(email).toHaveProperty("readOnly", false);
+  });
+
+  it("lists jobs under their departments, Management last", async () => {
+    const kitchen = "dd000000-0000-4000-8000-0000000000c1";
+    const floor = "dd000000-0000-4000-8000-0000000000c2";
+    const management = "dd000000-0000-4000-8000-0000000000c3";
+    const job = (id: string, name: string, departmentId: string | null, inManagement = false) => ({
+      id,
+      name,
+      archived: false,
+      departmentId,
+      management: inManagement,
+      owner: false,
+    });
+    vi.mocked(loadEmployeeReferenceData).mockResolvedValueOnce({
+      locations: detail.locations.map((location) => ({ ...location, timezone: "America/Los_Angeles" })),
+      departments: [
+        { id: management, name: "Management", archived: false, management: true },
+        { id: kitchen, name: "Kitchen", archived: false, management: false },
+        { id: floor, name: "Floor", archived: false, management: false },
+      ],
+      jobs: [
+        job("22000000-0000-4000-8000-0000000000d1", "Cook", kitchen),
+        job("22000000-0000-4000-8000-0000000000d2", "Floor Manager", management, true),
+        job(detail.jobs[0]!.id, "Server", floor),
+        job("22000000-0000-4000-8000-0000000000d4", "Runner", null),
+        job("22000000-0000-4000-8000-0000000000d5", "Dishwasher", kitchen),
+      ],
+      inviteRoles: [],
+    });
+    renderDrawer("employment");
+    await employeeLoaded();
+    const jobs = screen.getByRole("group", { name: /^Jobs/ });
+    expect(
+      [...jobs.querySelectorAll(".employee-assignment-group, input[type=checkbox]")].map(
+        (node) => (node.closest("label") ?? node).textContent,
+      ),
+    ).toEqual([
+      "Kitchen", "Cook", "Dishwasher",
+      "Floor", "Server",
+      "No department", "Runner",
+      "Management", "Floor Manager",
+    ]);
+    expect(described(within(jobs).getByLabelText("Cook")).text).toBe("Kitchen");
+  });
+
+  it("lists jobs plainly when none sits in a department", async () => {
+    renderDrawer("employment");
+    await employeeLoaded();
+    expect(document.querySelector(".employee-assignment-group")).toBeNull();
+  });
+});
