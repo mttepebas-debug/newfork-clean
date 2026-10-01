@@ -399,6 +399,8 @@ select tests.world('tr');
 select tests.person('tr', 'hande', 'manager', array['K'], array['cook']);
 select tests.person('tr', 'bora', 'employee', array['K'], array['cook']);
 select tests.person('tr', 'cem', 'employee', array['K'], array['cook']);
+select tests.person('tr', 'nur', 'manager', array['B'], array['cook']);
+select tests.person('tr', 'dila', 'employee', array['K', 'B'], array['cook']);
 select tests.remember('tr:cem:1', tests.leave('tr', 'cem', 1));
 create temporary table required_document (id uuid, preview jsonb);
 insert into required_document (id)
@@ -481,6 +483,19 @@ select is(
    where o.workspace_id = tests.id('tr') and o.payload ->> 'request_id' = tests.id('tr:cem:3')::text
      and o.payload ->> 'audience_contract' = 'time_off_fallback_deciders'),
   'No manager can decide this now.', 'and their notice says nobody can decide it now');
+-- Both at once: Dila works at Kadikoy, where Hande is still held back, and at
+-- Besiktas, where Nur can vote. The reminder reaches Nur and those who can
+-- decide Kadikoy now, each once.
+select tests.remember('tr:dila:1', tests.leave('tr', 'dila', 4));
+update public.schedule_time_off_requests set decide_by = now() + interval '6 hours', created_at = now() - interval '2 days'
+where id = tests.id('tr:dila:1');
+select app_private.time_off_sweep();
+select is(
+  (select array(select jsonb_array_elements_text(o.payload -> 'recipient_user_ids')::uuid order by 1) from public.notification_outbox o
+   where o.workspace_id = tests.id('tr') and o.payload ->> 'request_id' = tests.id('tr:dila:1')::text
+     and o.payload ->> 'audience_contract' = 'time_off_deciders' and o.type_key = 'requests.time_off.reminder'),
+  array(select distinct u from unnest(app_private.time_off_alone_deciders(tests.id('tr'), tests.id('tr:dila')) || tests.user('tr:nur')) u order by 1),
+  'with one location held back and one not, the reminder reaches its manager and those who can decide the other, each once');
 
 -- 9. A closed workspace --------------------------------------------------------
 
