@@ -536,5 +536,23 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** Örnek: Beşiktaş müdürü Mehmet'in belgesi gecikmiş; Ali'nin talebinin son karar anına 12 saat kala hatırlatma admin/owner'a da gider ve bildirim "Beşiktaş'ta manager kalmadı" demez. Canlıya gönderimi kullanıcı onayı ister; kullanıcı dönene kadar park.
 - **Dayanak:** kullanıcının 2026-10-01 kuralı (KARARLAR "İzin" → "Belgesi gecikmiş manager": geçici kısıtta karar admin/owner'a gider) ve KARARLAR "Oylamanın ayrıntısı" (hatırlatma karar vermemiş lokasyonun karar verenlerine); `CLAUDE.md` §13.
 - **Geri alma:** ucuz — yalnız yeniden tanım migration'ı.
-- **Durum:** PARK — canlı gönderim kullanıcı onayı ister (kullanıcı yok kipi, 2026-10-01 ~10:30); `nf-db` `local_6b0b5907…`'e verilecek (HANDOFF `47bb6c17` §2 Sıradaki 1); dalda hazırlanıp park (besleme #45). Kayıt oturumu yazdı (koordinatörün isteğiyle; besleme #44).
+- **Durum:** PARK — canlı gönderim kullanıcı onayı ister (kullanıcı yok kipi, 2026-10-01 ~10:30); `nf-db` `local_6b0b5907…`'e verildi (2026-10-01; dal `task/fb-6.3`, worktree `xenodochial-knuth-943563`, kayıt anında uç `47bb6c17`, yeni commit yok — ölçüldü); incelemeden sonra dalda park (besleme #45). Kayıt oturumu yazdı (koordinatörün isteğiyle; besleme #44).
+- **Mert:** onaysız.
+
+### KK-73 (2026-10-01) FB-6.3.5'te eski izin uçları (API) kalır, `.7`'de silinir
+- **Karar:** `tasks/FB-6.3.md` `.5` satırı "eski uçlar kalkar" diyordu; uçlar `.5`'te kalır, `.7`'deki silmelerle gider.
+- **Neden:** main her gönderimde canlıya çıkıyor (KARARLAR OPS-03) ve bugünkü izin ekranları `.6` bitene kadar eski uçları kullanıyor; `.5`'te silmek canlı ekranı kırar.
+- **Uygulamada etkisi:** `.5` main'e girdiğinde Requests → Time off ve Employee hub'ın izin bölümü bugünkü gibi çalışır (örnek: Ali yine aynı pencereden izin ister, Ayşe aynı listeden görür); yeni oylama ekranları `.6`'da gelir.
+- **Dayanak:** HANDOFF `47bb6c17` §2 ("eski uçlar .7'ye kadar kalır"), KARARLAR OPS-03, `CLAUDE.md` §13 (süreç kararı).
+- **Geri alma:** ucuz.
+- **Durum:** yürürlükte; `tasks/FB-6.3.md` `.5` ve `.7` satırları düzeltildi (besleme #45). Kayıt oturumu yazdı (koordinatörün isteğiyle).
+- **Mert:** onaysız.
+
+### KK-74 (2026-10-01) FB-6.3.5 ayrı dalda (`task/fb-6.3.5`); `task/fb-6.3` `nf-db`'nin KK-72 ekine
+- **Karar:** `.5` `nf-backend`'in kendi dalında yürür; `task/fb-6.3` dalı `nf-db`'nin KK-72 ek migration'ına kalır.
+- **Neden:** iki rol aynı dalda ve aynı dosyada aynı anda çalışmaz (`CLAUDE.md` §3, §4). KK-69'daki "tek dal" notu `.1`–`.4` içindi; hepsi main'de (koordinatörün `git cherry` ölçümü).
+- **Uygulamada etkisi:** ekranda değişen yok.
+- **Dayanak:** `CLAUDE.md` §3, §4, §13 (süreç kararı).
+- **Geri alma:** ucuz.
+- **Durum:** yürürlükte; iki dal da `47bb6c17`'de açık (ölçüldü, besleme #45). Kayıt oturumu yazdı (koordinatörün isteğiyle).
 - **Mert:** onaysız.
