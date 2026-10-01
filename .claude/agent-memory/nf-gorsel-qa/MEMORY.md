@@ -6,3 +6,4 @@
 - [Playwright double-goto blanks mobile screenshot](playwright-double-goto-blanks-mobile.md) — retry with reload/click before reporting a mobile blank-page as a real bug
 - [Schedule quiet-dialog pattern](schedule-quiet-dialog-pattern.md) — shared attr for Publish/Templates; safe QA open paths
 - [Time-off QA login and dialogs](time-off-qa-login-and-dialogs.md) — owner-capable world e2e1790693406000, no pending time off (page.route), `.app-confirm-layer` for the confirm dialog
+- [Schedule tip QA data + traps](schedule-tip-qa-data-and-traps.md) — week 2026-09-21 data, manager_notes/card injection, focus-scroll closes bubble, no max-height
