@@ -128,8 +128,8 @@ select is((select employee_id from public.schedule_published_shifts where id = t
   'Ali works the shift');
 select ok(not (pg_temp.leave(tests.id('sto:ali:time_off')) && pg_temp.span('emre-wed')), 'his time off no longer covers those hours');
 select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed-late'), 'the rest of his day off stays');
-select is((select status::text from public.schedule_time_off_requests where id = tests.id('sto:ali:time_off')), 'partially_approved',
-  'the leave reads as partly given back');
+select is((select status::text from public.schedule_time_off_requests where id = tests.id('sto:ali:time_off')), 'approved',
+  'the leave stays approved; the hours given back read off it (FB-6.3)');
 select ok(public.weekly_exchange_candidate_check(tests.id('sto'), tests.id('sto:ali'),
     public.shift_exchange_shift(tests.id('sto'), tests.id('sto:shift:emre-wed-late'))) ->> 'status' = 'ineligible',
   'and still blocks the later shift he did not agree to');

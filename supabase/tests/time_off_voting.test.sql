@@ -246,7 +246,7 @@ insert into edit_session
 select (public.acquire_schedule_edit_session_service(tests.user('tv:owner'), tests.id('tv'), tests.week(10), 'blank', null) -> 'session' ->> 'id')::uuid;
 select tests.add_shift(tests.user('tv:owner'), 'tv', (select id from edit_session), 10,
   '{"person": "ali", "loc": "K", "job": "cook", "day": 2, "start": "06:00", "end": "08:00"}');
-select tests.remember('tv:draft:ali', (select s.id from public.schedule_edit_shifts s
+select tests.remember('tv:draft:ali', (select s.id from public.schedule_edit_session_shifts s
   where s.session_id = (select id from edit_session) and s.employee_id = tests.id('tv:ali')));
 select pg_temp.decide('ayse', tests.id('tv:ali:10'), 'approve');
 select is((pg_temp.decide('mehmet', tests.id('tv:ali:10'), 'approve') ->> 'status'), 'approved',
@@ -255,7 +255,7 @@ select is(
   (select array_agg(p.employee_id is null order by p.start_time) from public.schedule_published_shifts p
    where p.id in (tests.id('tv:shift:ali-k'), tests.id('tv:shift:ali-k2'), tests.id('tv:shift:ali-b'))),
   array[true, true, true], 'every published shift of the day is open now, at both locations');
-select is((select s.employee_id from public.schedule_edit_shifts s where s.id = tests.id('tv:draft:ali')), tests.id('tv:ali'),
+select is((select s.employee_id from public.schedule_edit_session_shifts s where s.id = tests.id('tv:draft:ali')), tests.id('tv:ali'),
   'a shift still being drafted is left alone');
 select is(pg_temp.told(tests.id('tv:ali:10'), 'schedule.time_off.shifts_opened'), pg_temp.users('ayse', 'can', 'derya'),
   'the managers of the locations whose shifts opened hear of it, but not the one who settled it');

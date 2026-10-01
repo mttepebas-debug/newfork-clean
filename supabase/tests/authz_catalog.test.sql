@@ -37,11 +37,12 @@ select cmp_ok(
 -- the core (59 -> 52); FB-6.2.5 the invitation's role rule and the owner's setup (52 -> 47);
 -- FB-6.2.6 Workspace home's counts and the Schedule's week list, BL-155 (47 -> 45), and
 -- can_access_employee's two copies (45 -> 43), can_manage_employee_record (43 -> 42),
--- the to-do list's own role reading (42 -> 41).
+-- the to-do list's own role reading (42 -> 41), FB-6.3.3 the time-off notice
+-- trigger's membership scopes (41 -> 40).
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 41, 'functions with their own scope or rank logic only go down'
+  '<=', 40, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
