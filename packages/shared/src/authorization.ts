@@ -74,7 +74,9 @@ export const authzActionKeys = [
   "settings.shift_catalog.read",
   "settings.signature_templates.read",
   "time_off.decide",
+  "time_off.decide_alone",
   "time_off.request_own",
+  "time_off.revoke",
   "workspace.accept_ownership",
   "workspace.close",
   "workspace.create",
@@ -127,6 +129,7 @@ export const targetedAuthzActions = {
   "important_date.write": { permission: "important_dates.manage" },
   "membership.read": { person: true, permission: null },
   "notifications.read_own": { permission: null, own: true, restrictedOk: true },
+  "requests.read": { person: true, permission: "schedule.time_off_requests.read" },
   "schedule.edit": { permission: "schedule.manage" },
   "schedule.export": { permission: "schedule.export" },
   "schedule.publish": { permission: "schedule.publish" },
@@ -149,7 +152,9 @@ export const targetedAuthzActions = {
   "settings.documents.read": { permission: "documents.read" },
   "settings.signature_templates.read": { permission: "signature_templates.read" },
   "time_off.decide": { person: true, permission: "schedule.time_off_requests.manage" },
+  "time_off.decide_alone": { person: true, permission: "schedule.time_off_requests.manage" },
   "time_off.request_own": { permission: null, own: true },
+  "time_off.revoke": { person: true, permission: "schedule.time_off_requests.manage" },
   "workspace.close": { permission: null, ownerOnly: true },
   "workspace.transfer_ownership": { permission: null, ownerOnly: true },
 } as const satisfies Partial<Record<AuthzAction, TargetedRule>>;
@@ -359,11 +364,25 @@ export function expected<A extends TargetedAuthzAction>(
       return true; // owner only, checked above
 
     case "time_off.decide":
-      // Requests go one rank up and nobody decides their own.
+    case "time_off.revoke":
+      // Requests go one rank up and nobody decides their own. The managers of
+      // every location the person works at vote; admin and owner decide alone
+      // (FB-6.3). The same people revoke approved time off, by the same rank.
       if (isSelf) return false;
       if (actor.role === "owner") return true;
       if (actor.role === "admin") return targetRank < rankOf.admin;
-      return person?.role === "employee" && covers;
+      return person?.role === "employee" && shares;
+
+    case "time_off.decide_alone":
+      // At once and final: an admin or the owner, one rank up.
+      if (isSelf) return false;
+      if (actor.role === "owner") return true;
+      return actor.role === "admin" && targetRank < rankOf.admin;
+
+    case "requests.read":
+      // The Requests queue: everybody's time off for admin and owner, whoever
+      // works at one of their locations for a manager (FB-6.3).
+      return high || shares;
 
     case "exchange.approve":
       // A pickup or cover is approved at the shift's location only.
