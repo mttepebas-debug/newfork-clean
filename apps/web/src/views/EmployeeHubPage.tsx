@@ -1,4 +1,5 @@
 import { todayIn } from "../lib/today";
+import { Button } from "@newfork/ui";
 import { timeOffSubmitInputSchema, type EmployeeHubReadModel } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, CalendarOff, RefreshCw } from "lucide-react";
@@ -389,9 +390,9 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
               placeholder="Optional context"
             />
           </label>
-          <button className="primary-button" disabled={timeOff.isPending || !validation.success || started || rangeTooLong}>
+          <Button type="submit" disabled={timeOff.isPending || !validation.success || started || rangeTooLong}>
             Submit request
-          </button>
+          </Button>
           </fieldset>
         </form>
         {sent ? <p className="time-off-sent" role="status">{sent}</p> : null}
