@@ -29,5 +29,18 @@ select ok(pg_temp.hub('lale') ? 'time_off_timezone' and pg_temp.hub('lale') -> '
   'somebody with no location gets none: the device decides');
 select is((pg_temp.hub('ali') -> 'settings' ->> 'time_off_lead_hours')::integer, 36, 'the form knows the decision lead time');
 
+-- Besiktas is archived: Kadikoy, Ali's next live location, keeps Denver time.
+update public.locations set timezone = 'America/Denver' where id = tests.id('th:K');
+update public.locations set archived_at = now() where id = tests.id('th:B');
+select is(pg_temp.hub('ali') ->> 'time_off_timezone', 'America/Denver', 'with the primary location archived, the next live one gives the time zone');
+select is(
+  (public.submit_time_off_service(tests.user('th:ali'), tests.id('th'),
+     jsonb_build_array(jsonb_build_object('segment_date', tests.week(2) + 2)), 'next zone',
+     pg_temp.hub('ali') ->> 'time_off_timezone', gen_random_uuid()) ->> 'status'),
+  'pending', 'and the send expects the same one');
+select throws_ok(format($$select public.submit_time_off_service(%L, %L, %L, 'old zone', 'America/Chicago', gen_random_uuid())$$,
+    tests.user('th:ali'), tests.id('th'), jsonb_build_array(jsonb_build_object('segment_date', tests.week(3) + 2))),
+  '40001', null, 'a time zone other than the hub''s is turned back');
+
 select * from finish();
 rollback;
