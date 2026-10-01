@@ -161,12 +161,9 @@ update public.employee_location_assignments set ended_at='2030-01-07T20:00:00Z' 
 select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 location assignment must cover the entire shift');
 update public.employee_location_assignments set ended_at=null where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
 update public.locations set timezone='America/New_York' where id='11000000-0000-4000-8000-000000000002';
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
-values('98050000-0000-4000-8000-000000000001',pg_temp.w(),pg_temp.emp(4),'11000000-0000-4000-8000-000000000002','approved',pg_temp.manager());
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
-values(pg_temp.w(),'98050000-0000-4000-8000-000000000001','2030-01-07','09:00','10:00','approved');
+select tests.approved_leave(pg_temp.w(),pg_temp.emp(4),pg_temp.manager(),'11000000-0000-4000-8000-000000000002','2030-01-07','09:00','10:00');
 select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','eligible','AT21 09:00 New York leave does not overlap 09:00 Los Angeles shift');
-update public.schedule_time_off_segments set start_time='12:00',end_time='13:00' where request_id='98050000-0000-4000-8000-000000000001';
+select tests.approved_leave(pg_temp.w(),pg_temp.emp(4),pg_temp.manager(),'11000000-0000-4000-8000-000000000002','2030-01-07','12:00','13:00');
 select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT21 12:00 New York leave overlaps 09:00 Los Angeles shift');
 -- A worker closes deadlines without an employee or manager screen being open.
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(2)),gen_random_uuid());

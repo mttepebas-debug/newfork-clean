@@ -61,10 +61,7 @@ select is(pg_temp.editor_assess()->>'has_availability_conflict','true','the edit
 select is(pg_temp.editor_assess('{"start_time":"12:00","end_time":"14:00"}')->>'has_availability_conflict','false','moving it to free hours clears the warning');
 select throws_ok($$select public.assess_weekly_schedule_assignment_service(manager,w,pg_temp.assignment(),gen_random_uuid(),(select id from editor_session)) from wp_fixture$$,'P0002',null,'deleted edit-session target cannot silently become a new assignment');
 select throws_ok($$select public.prepare_weekly_schedule_assignment(actor,w,pg_temp.assignment(),pg_temp.assignment()) from wp_fixture$$,'42501',null,'employee cannot reuse a manager acceptance');
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
- select 'ad421000-0000-4000-8000-000000000010',w,emp,loc,'approved',actor from wp_fixture;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'ad421000-0000-4000-8000-000000000010','2035-01-15','18:00','19:00','approved' from wp_fixture;
+select tests.approved_leave(w,emp,actor,loc,'2035-01-15','18:00','19:00','ad421000-0000-4000-8000-000000000010') from wp_fixture;
 select throws_ok($$select pg_temp.accept(jsonb_build_object('availability_assessment_fingerprint',pg_temp.preview()->>'fingerprint'))$$,'23514',null,'approved leave is not overrideable');
 select ok(not has_function_privilege('authenticated','public.prepare_weekly_schedule_assignment(uuid,uuid,jsonb,jsonb)','execute'),'clients cannot write acceptance evidence');
 select ok(not has_function_privilege('service_role','public.prepare_weekly_schedule_assignment(uuid,uuid,jsonb,jsonb)','execute'),'raw preparer is internal, not an impersonation RPC');

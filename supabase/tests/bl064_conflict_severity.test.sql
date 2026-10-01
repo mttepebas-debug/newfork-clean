@@ -84,10 +84,7 @@ select lives_ok($$select public.weekly_preference_settings_save_service(actor,w,
 -- assignment; there is no setting for it (REUSE "İzin"). The owner tries to
 -- soften it first, then the manager tries to confirm past it.
 update public.employee_profiles set is_excluded_from_schedule=false where workspace_id=(select w from f);
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
- select 'b1640000-0000-4000-8000-000000000030',w,emp,loc,'approved',actor from f;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'b1640000-0000-4000-8000-000000000030','2035-01-17','09:00','17:00','approved' from f;
+select tests.approved_leave(w,emp,actor,loc,'2035-01-17','09:00','17:00','b1640000-0000-4000-8000-000000000030') from f;
 select throws_ok($$select public.update_scheduling_settings_service(actor,w,jsonb_build_object('conflict_rules',jsonb_set(s.conflict_rules,'{approved_time_off}','"confirm"'),'conflict_rules_revision',s.conflict_rules_revision)) from f join public.workspace_scheduling_settings s on s.workspace_id=f.w$$,'23514',null,'approved leave cannot be softened to confirmation');
 select throws_ok($$update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{approved_time_off}','"warn"') where workspace_id=(select w from f)$$,'23514',null,'approved leave has no warn level');
 select is(pg_temp.assess('{"scheduled_date":"2035-01-17","_exclude_shift_id":"b1640000-0000-4000-8000-000000000007"}')->>'conflict_severity','block','approved leave is a hard block for the assignment');
@@ -130,10 +127,7 @@ select is((select public.preview_schedule_publication_service(actor,w,draft,arra
 -- FB-6.1.6 (T5): leave approved after the draft was saved blocks its publication.
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
  select 'b1640000-0000-4000-8000-000000000032',w,(select draft from pub),loc,emp,job,typ,'2035-01-18','09:00','17:00','explicit','America/Los_Angeles' from f;
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
- select 'b1640000-0000-4000-8000-000000000033',w,emp,loc,'approved',actor from f;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'b1640000-0000-4000-8000-000000000033','2035-01-18','12:00','13:00','approved' from f;
+select tests.approved_leave(w,emp,actor,loc,'2035-01-18','12:00','13:00','b1640000-0000-4000-8000-000000000033') from f;
 update pub set preview=(select public.preview_schedule_publication_service(actor,w,draft,array[loc,'b1640000-0000-4000-8000-000000000021'::uuid],null,true) from f);
 select is((select preview->>'status' from pub),'hard_blocked','a draft shift over approved leave is a hard block at publish');
 select throws_ok($$select public.publish_schedule_draft_service(actor,w,draft,array[loc,'b1640000-0000-4000-8000-000000000021'::uuid],null,true,d.revision,p.preview->>'fingerprint',

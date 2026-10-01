@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(15);
 
 -- BL-237: this file used to run against the real seeded Meyhouse workspace,
 -- with its time-off segments needing to overlap real seed shift
@@ -17,19 +17,10 @@ select tests.publish_week('sr', 1, '[
   {"label": "alex-mon", "person": "alex", "loc": "K", "job": "cook", "day": 0, "start": "09:00", "end": "17:00"}
 ]');
 
-select tests.remember('sr:request:alex', gen_random_uuid());
-select tests.remember('sr:request:deniz', gen_random_uuid());
-select tests.remember('sr:segment:alex-1', gen_random_uuid());
-select tests.remember('sr:segment:alex-2', gen_random_uuid());
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,reason,created_by) values
-(tests.id('sr:request:alex'),tests.id('sr'),tests.id('sr:alex'),tests.id('sr:K'),'Family appointment',tests.user('sr:alex')),
-(tests.id('sr:request:deniz'),tests.id('sr'),tests.id('sr:deniz'),tests.id('sr:B'),'Garden request',tests.user('sr:deniz'));
-insert into public.schedule_time_off_segments(id,workspace_id,request_id,segment_date) values
-(tests.id('sr:segment:alex-1'),tests.id('sr'),tests.id('sr:request:alex'),tests.week(1)),
-(tests.id('sr:segment:alex-2'),tests.id('sr'),tests.id('sr:request:alex'),tests.week(1)+1),
-(gen_random_uuid(),tests.id('sr'),tests.id('sr:request:deniz'),current_date);
-insert into public.schedule_time_off_events(workspace_id,request_id,action,actor_user_id,note) values
-(tests.id('sr'),tests.id('sr:request:alex'),'submitted',tests.user('sr:alex'),'Family appointment');
+-- FB-6.3.7: requests are sent the way Employee Hub sends them (no location,
+-- whole days from the Wednesday of week 1); Deniz works only at B.
+select tests.remember('sr:request:alex', tests.leave('sr', 'alex', 1, 2));
+select tests.leave('sr', 'deniz', 1);
 
 -- authenticated has no USAGE on the tests schema, so every id a role-switched
 -- statement needs is resolved here first, while still postgres.
@@ -55,27 +46,13 @@ select is(jsonb_array_length(model->'time_off_requests'->0->'segments'),2,'queue
 select throws_ok(format($$select public.get_schedule_requests_service(%L,%L,'needs_review',%L)$$,mgr,w,b),'42501','Not allowed','manager cannot query another location') from sr_ids;
 select throws_ok(format($$select public.get_schedule_requests_service(%L,%L)$$,alex,w),'42501','Not allowed','employee cannot read manager queues') from sr_ids;
 
-select is((public.mark_schedule_time_off_viewed_service(tests.user('sr:mgr'),tests.id('sr'),tests.id('sr:request:alex'))->>'status'),'viewed','opening request records viewed state');
-select is((select count(*)::integer from public.schedule_time_off_events where request_id=tests.id('sr:request:alex') and action='viewed'),1,'viewed audit is recorded once');
-select lives_ok(format($$select public.mark_schedule_time_off_viewed_service(%L,%L,%L)$$,tests.user('sr:mgr'),tests.id('sr'),tests.id('sr:request:alex')),'repeat viewing is idempotent');
-select is((select count(*)::integer from public.schedule_time_off_events where request_id=tests.id('sr:request:alex') and action='viewed'),1,'repeat viewing does not duplicate audit');
-
-do $$ declare actor uuid:=tests.user('sr:mgr'); w uuid:=tests.id('sr'); rid uuid:=tests.id('sr:request:alex');
-  seg1 uuid:=tests.id('sr:segment:alex-1'); seg2 uuid:=tests.id('sr:segment:alex-2');
-  decisions jsonb; preview jsonb; releases jsonb; begin
- decisions:=jsonb_build_array(jsonb_build_object('segment_id',seg1,'status','approved'),jsonb_build_object('segment_id',seg2,'status','denied'));
- preview:=public.preview_time_off_assignment_decision_service(actor,w,rid,1,'partial_approve',decisions);
- select coalesce(jsonb_agg(jsonb_build_object('shift_id',s->>'id','action','release_entire_shift')),'[]') into releases from jsonb_array_elements(preview->'affected_shifts') s;
- update phase6b_state set result=public.decide_time_off_with_assignments_service(actor,w,rid,1,'partial_approve','First day approved; release the overlapping shift to open coverage.',decisions,gen_random_uuid(),preview->>'fingerprint',releases);
-end $$;
-select is(result->>'status','partially_approved','mixed segment decisions create partial approval') from phase6b_state;
-select is((result->>'revision')::integer,2,'time off decision increments revision') from phase6b_state;
-select is((select count(*)::integer from public.schedule_time_off_segments where request_id=tests.id('sr:request:alex') and status='approved'),1,'partial approval persists approved segment');
-select is((select employee_id from public.schedule_published_shifts where id=tests.id('sr:shift:alex-mon')),null::uuid,'explicit leave disposition releases the overlapping shift');
-select throws_ok(format($$select public.resolve_schedule_time_off_request_service(%L,%L,%L,1,'revoke')$$,tests.user('sr:mgr'),tests.id('sr'),tests.id('sr:request:alex')),'40001','stale time off request','stale time off transition fails');
-select is((public.resolve_schedule_time_off_request_service(tests.user('sr:mgr'),tests.id('sr'),tests.id('sr:request:alex'),2,'return_to_pending')->>'status'),'pending','closed request returns to pending');
-select is((select count(*)::integer from public.schedule_time_off_segments where request_id=tests.id('sr:request:alex') and status='pending'),2,'return resets segment decisions');
-select is((select employee_id from public.schedule_published_shifts where id=tests.id('sr:shift:alex-mon')),null::uuid,'reopening a request does not silently restore a released assignment');
+-- FB-6.3.7: no "viewed" mark, no partial decision, no return to pending. Alex
+-- works only at K, so the manager of K decides alone.
+update phase6b_state set result=public.decide_time_off_service(tests.user('sr:mgr'),tests.id('sr'),tests.id('sr:request:alex'),'approve','',
+  app_private.time_off_impact(tests.id('sr'),tests.id('sr:request:alex'))->>'fingerprint');
+select is(result->>'status','approved','the manager of the only location decides the request') from phase6b_state;
+select is((public.get_schedule_requests_service(tests.user('sr:mgr'),tests.id('sr'))->>'time_off_pending_count')::integer,0,'a decided request leaves the pending count');
+select throws_ok(format($$select public.decide_time_off_service(%L,%L,%L,'deny','',null)$$,tests.user('sr:mgr'),tests.id('sr'),tests.id('sr:request:alex')),'40001',null,'a closed request takes no further vote');
 
 select * from finish();
 rollback;

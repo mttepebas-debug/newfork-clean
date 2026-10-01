@@ -69,10 +69,7 @@ update public.shift_types set default_start_time='19:00',default_end_time='21:00
 select is((pg_temp.project()->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-16 03:00Z'::timestamptz,'current default changes the next read');
 update public.shift_types set archived_at=now() where id=(select shift_type from ws);
 select is((pg_temp.project()->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-16 03:00Z'::timestamptz,'archived type retains last valid default');
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
- select 'ad425000-0000-4000-8000-000000000010',w,emp,loc,'approved',employee_user from ws;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'ad425000-0000-4000-8000-000000000010','2035-01-15','12:00','14:00','approved' from ws;
+select tests.approved_leave(w,emp,employee_user,loc,'2035-01-15','12:00','14:00','ad425000-0000-4000-8000-000000000010') from ws;
 select is(jsonb_array_length(pg_temp.project()->'leave_intervals'),1,'approved leave has separate blocking intervals');
 select is(jsonb_array_length(pg_temp.project()->'unavailable_intervals'),2,'leave does not become a preference interval in the eight-day projection');
 select is((select count(distinct x->>'offset_seconds') from jsonb_array_elements(pg_temp.project('2035-11-04')->'clock_segments') x),2::bigint,'fall-back week contains both clock offsets');

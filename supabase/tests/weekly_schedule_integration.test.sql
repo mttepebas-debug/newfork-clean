@@ -64,10 +64,7 @@ select throws_ok($$insert into public.schedule_edit_session_shifts(id,workspace_
 select throws_ok($$select pg_temp.mutate(payload||'{"time_basis":"unresolved","start_time":null,"end_time":null}','update') from ws$$,'22023',null,'assignment without hours or a named type is invalid');
 select is(public.schedule_availability_read_projection(manager,w,payload||jsonb_build_object('id',shift))->'availability_assessment'->>'has_availability_conflict','true','draft read shows the warning') from ws;
 select is(public.schedule_availability_read_projection(employee_user,w,payload||jsonb_build_object('id',shift))->'availability_assessment','null'::jsonb,'employee projection does not leak manager preferences') from ws;
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
- select 'ad423000-0000-4000-8000-000000000011',w,emp,loc,'approved',employee_user from ws;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'ad423000-0000-4000-8000-000000000011','2035-01-15','12:00','14:00','approved' from ws;
+select tests.approved_leave(w,emp,employee_user,loc,'2035-01-15','12:00','14:00','ad423000-0000-4000-8000-000000000011') from ws;
 select is(pg_temp.assess(payload||'{"start_time":"12:00","end_time":"14:00"}')->>'operation','blocked','approved leave remains a real assignment blocker') from ws;
 select throws_ok($$select pg_temp.mutate(payload||'{"start_time":"12:00","end_time":"14:00"}','update') from ws$$,'23514',null,'canonical manager mutation cannot override approved leave');
 -- Auto-fill has a separate automatic policy: it may not manufacture acceptance.
@@ -171,8 +168,7 @@ select throws_ok($$select public.preview_schedule_publication_service(manager,w,
 -- Leave is added after a valid draft assignment, so final publication must recheck.
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
  select 'ad423000-0000-4000-8000-000000000014',w,draft,loc,emp,job,'2035-01-17','18:00','20:00','explicit','America/Los_Angeles' from ws;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'ad423000-0000-4000-8000-000000000011','2035-01-17','18:00','20:00','approved' from ws;
+select tests.approved_leave(w,emp,employee_user,loc,'2035-01-17','18:00','20:00') from ws;
 update ws set preview=pg_temp.preflight();
 select is(preview->>'status','hard_blocked','approved leave added to draft still blocks canonical preflight') from ws;
 select throws_ok($$select pg_temp.publish()$$,'23514',null,'acknowledging never bypasses approved leave at final publish');

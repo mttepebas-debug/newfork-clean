@@ -89,10 +89,7 @@ insert into public.schedule_closures(id,workspace_id,location_id,closed_date,tit
  select 'ad426000-0000-4000-8000-000000000015',w,loc,'2035-01-15','Closed',owner_id from ws;
 select is(pg_temp.candidate()->>'status','ineligible','location closure is not an availability override');
 delete from public.schedule_closures where id='ad426000-0000-4000-8000-000000000015';
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
- select 'ad426000-0000-4000-8000-000000000016',w,emp,other_loc,'approved',employee_user from ws;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'ad426000-0000-4000-8000-000000000016','2035-01-15','21:00','22:00','approved' from ws;
+select tests.approved_leave(w,emp,employee_user,other_loc,'2035-01-15','21:00','22:00','ad426000-0000-4000-8000-000000000016') from ws;
 select is(pg_temp.candidate()->>'status','ineligible','approved leave remains a blocker even with preferences');
 select ok((pg_temp.candidate()->'reasons'->>0) like 'Approved time off%','leave blocker is explained separately');
 select is(pg_temp.candidate()->>'available_start',null::text,'blocked leave is not presented as shortened assignable hours');

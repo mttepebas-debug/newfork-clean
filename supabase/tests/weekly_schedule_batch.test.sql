@@ -66,10 +66,7 @@ select throws_ok($$select pg_temp.create_batch('[]')$$,'22023',null,'empty batch
 select throws_ok($$select pg_temp.create_batch('{}')$$,'22023',null,'non-array rejected');
 select throws_ok($$select pg_temp.create_batch('[null]')$$,'22023',null,'null item rejected');
 select throws_ok($$select pg_temp.create_batch((select jsonb_agg(payload) from ws,generate_series(1,201)))$$,'22023',null,'oversized batch rejected');
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
- select 'ad424000-0000-4000-8000-000000000010',w,emp,loc,'approved',employee_user from ws;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'ad424000-0000-4000-8000-000000000010','2035-01-16','12:00','14:00','approved' from ws;
+select tests.approved_leave(w,emp,employee_user,loc,'2035-01-16','12:00','14:00','ad424000-0000-4000-8000-000000000010') from ws;
 select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload,payload||'{"scheduled_date":"2035-01-16","start_time":"12:00","end_time":"14:00"}')) from ws$$,'23514',null,'later approved leave cannot be overridden by batch');
 select is((select count(*) from public.schedule_edit_session_shifts where workspace_id=(select w from ws)),0::bigint,'approved-leave failure also leaves no earlier assignment');
 select lives_ok($$select pg_temp.create_batch()$$,'valid warn batch commits all assignments once');

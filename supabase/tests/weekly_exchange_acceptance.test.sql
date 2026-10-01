@@ -80,10 +80,7 @@ update state set preview=(select public.shift_exchange_preview(manager,w,cid,aid
 select is(preview->>'allowed','true','manager finalization needs no second employee or reminder decision') from state;
 select ok(not (preview::text like '%manager_intervals%' or preview::text like '%employee_intervals%'),'manager exchange preview has no raw preference payload') from state;
 select throws_ok($$select public.require_weekly_exchange_employee_warning(first_user,w,second_emp,public.shift_exchange_shift(w,pg_temp.shift_id(1)),jsonb_build_object('availability_fingerprint',token)) from ws,state$$,'42501',null,'even private guard validates the actual employee actor');
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
- select 'ad427000-0000-4000-8000-000000000050',w,second_emp,loc,'approved',second_user from ws;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'ad427000-0000-4000-8000-000000000050',start_day,'18:00','20:00','approved' from ws;
+select tests.approved_leave(w,second_emp,second_user,loc,start_day,'18:00','20:00','ad427000-0000-4000-8000-000000000050') from ws;
 select is(public.shift_exchange_preview(manager,w,cid,aid)->>'allowed','false','accepted employee cannot override new approved leave') from ws,state;
 select throws_ok($$select pg_temp.command(manager,jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',result->>'revision','fingerprint',preview->>'fingerprint')) from ws,state$$,'PT409',null,'final write rechecks true blockers');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),0::bigint,'blocked transfer creates no acceptance evidence');

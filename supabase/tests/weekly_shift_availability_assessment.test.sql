@@ -97,10 +97,7 @@ select is((pg_temp.weekly_assess('{"scheduled_date":"2026-11-01","start_time":"0
 select is(pg_temp.weekly_assess('{"scheduled_date":"2026-11-01","start_time":"01:30","end_time":"02:30"}')->>'fold_resolution','post_transition_offset',
  'ambiguous shift endpoint reports deterministic choice');
 
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
- select 'ad419000-0000-4000-8000-000000000003',w,emp,other_loc,'approved',actor from wp_fixture;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'ad419000-0000-4000-8000-000000000003','2035-01-15','21:00','22:00','approved' from wp_fixture;
+select tests.approved_leave(w,emp,actor,other_loc,'2035-01-15','21:00','22:00','ad419000-0000-4000-8000-000000000003') from wp_fixture;
 select is(pg_temp.weekly_assess()->>'operation','blocked','approved leave stays blocking, availability mark or not');
 select is(pg_temp.weekly_assess()->'leave'->0->'intervals'->0->>'start_at','2035-01-16T02:00:00.000000Z','leave is evaluated in its own saved location timezone');
 select is((select count(*) from jsonb_array_elements(pg_temp.weekly_assess()->'reasons') x where x->>'code'='availability'),1::bigint,

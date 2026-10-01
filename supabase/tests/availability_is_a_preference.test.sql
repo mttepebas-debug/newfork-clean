@@ -230,11 +230,7 @@ select ok((select p -> 'candidates' @> jsonb_build_array(jsonb_build_object('emp
 
 -- 11. Approved time off still blocks every path (FB-6.1.6).
 create function pg_temp.leave(n integer, day integer, from_time time, to_time time) returns void language sql as $$
-  with request as (
-    insert into public.schedule_time_off_requests (id, workspace_id, employee_id, location_id, status, created_by)
-    values (gen_random_uuid(), tests.id('ap'), tests.id('ap:ali'), tests.id('ap:K'), 'approved', tests.user('ap:ali')) returning id)
-  insert into public.schedule_time_off_segments (workspace_id, request_id, segment_date, start_time, end_time, status)
-  select tests.id('ap'), id, tests.week(n) + day, from_time, to_time, 'approved' from request
+  select tests.approved_leave(tests.id('ap'), tests.id('ap:ali'), tests.user('ap:ali'), tests.id('ap:K'), tests.week(n) + day, from_time, to_time)
 $$;
 select pg_temp.session(5);
 select pg_temp.write(5, pg_temp.shift('emre', 5, 0));

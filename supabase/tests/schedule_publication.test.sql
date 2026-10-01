@@ -59,10 +59,7 @@ insert into public.schedule_draft_shifts (id, workspace_id, draft_id, location_i
 (tests.id('pub:shift:leave-conflict'), tests.id('pub'), tests.id('pub:draft:main'), tests.id('pub:K'), tests.id('pub:leaveemp'), tests.id('pub:job:cook'), null, tests.week(1) + 2, '11:00', '15:00', 'Overlaps an approved leave', 1),
 (tests.id('pub:shift:closure-conflict'), tests.id('pub'), tests.id('pub:draft:main'), tests.id('pub:B'), tests.id('pub:closureemp'), tests.id('pub:job:cook'), null, tests.week(1) + 5, '09:00', '17:00', 'Falls on a closure', 1);
 select tests.remember('pub:timeoff:leave', gen_random_uuid());
-insert into public.schedule_time_off_requests (id, workspace_id, employee_id, location_id, status, created_by)
-select tests.id('pub:timeoff:leave'), tests.id('pub'), tests.id('pub:leaveemp'), tests.id('pub:K'), 'approved', tests.user('pub:owner');
-insert into public.schedule_time_off_segments (workspace_id, request_id, segment_date, start_time, end_time, status)
-select tests.id('pub'), tests.id('pub:timeoff:leave'), tests.week(1) + 2, '10:00', '14:00', 'approved';
+select tests.approved_leave(tests.id('pub'), tests.id('pub:leaveemp'), tests.user('pub:owner'), tests.id('pub:K'), tests.week(1) + 2, '10:00', '14:00', tests.id('pub:timeoff:leave'));
 insert into public.schedule_closures (id, workspace_id, location_id, closed_date, title, is_all_day, created_by)
 select gen_random_uuid(), tests.id('pub'), tests.id('pub:B'), tests.week(1) + 5, 'Deep clean', true, tests.user('pub:owner');
 
