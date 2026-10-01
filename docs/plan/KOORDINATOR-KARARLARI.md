@@ -514,3 +514,11 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** ucuz — yalnız görev dosyasındaki adım ataması.
 - **Durum:** `tasks/FB-6.3.md` `.5`, `.7` ve Envanter → BL-496'ya yazıldı (kayıt oturumu, koordinatörün isteğiyle; besleme #33).
 - **Mert:** onaysız.
+
+### KK-70 (2026-10-01) Manager'ı kalmayan lokasyon düşünce kalan bütün lokasyonlar onaylıysa izin talebi onaylanır
+- **Karar:** Kalan bütün lokasyonlar onaylamışken karar verebilecek manager'ı kalmayan bir lokasyon düştüğünde bekleyen izin talebi onaylanmış sayılır. Süre işi (`time_off_sweep`) her turda `remaining = 0 and not fallback` olan bekleyen talebi `approved` olarak kesinleştirir; olayın işlemi yapanı boş (ekranda "System"), notu "All deciding locations approved".
+- **Uygulamada etkisi:** Örnek: Ali Kadıköy ve Beşiktaş'a atanmış; Kadıköy müdürü Ayşe onaylar; Beşiktaş'ın tek müdürü Mehmet işten çıkarılır, Beşiktaş düşer. Kararsız dalda talep son karar anına kadar "Pending" kalıp "Not decided in time" diye reddedilirdi (`nf-guvenlik` O3); bu kararla en geç beş dakika içinde onaylanır ve olay listesinde "System" onayı görünür.
+- **Dayanak:** KARARLAR "Ürün kuralları" → "İzin (time off)" → Onay (kullanıcı kararları 2026-09-30): "karar verebilecek manager'ı kalmayan lokasyon düşer" ve "çok lokasyonda her lokasyondan en az bir onay gerekir"; `CLAUDE.md` §13 (KARARLAR satırı durumu birebir kapsıyor).
+- **Geri alma:** ucuz — `.3`+`.4` main'e ve canlıya girmeden `nf-db`'nin düzeltmesinde; sonrası yeni migration.
+- **Durum:** `nf-db`'ye düzeltme olarak verildi (O1, O2, D1, D2 ile birlikte), ardından yeniden inceleme; `tasks/FB-6.3.md` Notes'a yazıldı (kayıt oturumu, koordinatörün isteğiyle; besleme #42).
+- **Mert:** onaysız.
