@@ -76,7 +76,7 @@ select is(pg_temp.refusal(format($$select public.update_scheduling_settings_serv
   '22023', 'at most 720 hours');
 select is(pg_temp.refusal(format($$select public.update_scheduling_settings_service(%L, %L, '{"time_off_lead_hours": 12}')$$,
     tests.user('td:ayse'), tests.id('td'))),
-  '42501 authz.out_of_scope', 'a manager does not set it');
+  '42501 authz.missing_permission', 'a manager does not set it');
 select public.update_scheduling_settings_service(tests.user('td:owner'), tests.id('td'), '{"time_off_lead_hours": 24}');
 
 -- 2. Not decided in time -----------------------------------------------------

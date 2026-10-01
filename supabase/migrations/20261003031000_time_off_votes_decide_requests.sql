@@ -978,8 +978,9 @@ begin
 
   -- The managers who could have decided it, but not who closed it; never for
   -- the owner's own time off.
+  -- No actor (the system's own decline) is never the owner's own.
   if new.action in ('approved', 'denied', 'revoked', 'expired', 'partially_approved')
-     and not public.time_off_is_the_owners_own(new.actor_user_id, new.workspace_id, new.request_id) then
+     and not coalesce(public.time_off_is_the_owners_own(new.actor_user_id, new.workspace_id, new.request_id), false) then
     select coalesce(array_agg(u order by u), '{}') into recipients
     from unnest(app_private.time_off_deciders(new.workspace_id, r.id, false)) u where u is distinct from new.actor_user_id;
     if cardinality(recipients) > 0 then
