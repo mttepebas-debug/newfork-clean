@@ -67,11 +67,16 @@ select public.save_employee_onboarding_profile_service(
     'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '4155550100'),
   (select c.revision from public.employee_onboarding_cases c where c.employee_id = tests.id('m:aydan')),
   tests.id('m'));
-select tests.time_off('m', 'emre');
-select tests.time_off('m', 'veli');
-select tests.time_off('m', 'ali');
-select tests.time_off('m', 'ayse');
-select tests.time_off('m', 'zeynep');
+-- Time off waiting for a decision (Wednesday of week 0), and approved time off
+-- in week 3 that a manager, an admin or the owner might revoke (FB-6.3).
+select tests.remember('m:' || h || ':leave', tests.leave('m', h))
+from unnest(array['emre', 'veli', 'ali', 'ayse', 'zeynep']) h;
+select tests.remember('m:lv:' || h, tests.leave('m', case h when 'olcay' then 'owner' else h end, 3))
+from unnest(array['emre', 'ali', 'ayse', 'zeynep', 'olcay']) h;
+select public.decide_time_off_service(tests.user('m:owner'), tests.id('m'), tests.id('m:lv:' || h), 'approve', '',
+  app_private.time_off_impact(tests.id('m'), tests.id('m:lv:' || h)) ->> 'fingerprint')
+from unnest(array['emre', 'ali', 'ayse', 'zeynep']) h;
+select tests.settle();
 -- A published week (no shift on Wednesday, the day of the time-off requests)
 -- and two cover requests Ali has applied to.
 select tests.publish_week('m', 0, '[
@@ -180,12 +185,12 @@ from persona p;
 
 create temporary table target (
   label text primary key,
-  kind text not null,          -- person | location | workspace | time_off
+  kind text not null,          -- person | location | workspace | time_off | leave
   tenant text not null,
   locs text[],                 -- person: where they work; location: itself (null: none);
-                               -- time_off: the requester's primary location
-  class text,                  -- person, time_off: the rank of the person it belongs to
-  holder text                  -- person, time_off: whose it is
+                               -- time_off, leave: where the person it belongs to works
+  class text,                  -- person, time_off, leave: the rank of the person it belongs to
+  holder text                  -- person, time_off, leave: whose it is
 );
 insert into target values
   ('emre',       'person',    'm', '{K}',   'employee', 'emre'),
@@ -220,13 +225,19 @@ insert into target values
   ('x:K',        'location',  'x', '{K}',   null,       null),
   ('none',       'location',  'm', null,    null,       null),
   ('workspace',  'workspace', 'm', null,    null,       null),
-  -- Nobody has a published shift on the day, so each request is decided at
-  -- the requester's primary location.
+  -- A request waiting for a decision: the managers of every location the
+  -- person works at vote (FB-6.3).
   ('to:emre',    'time_off',  'm', '{K}',   'employee', 'emre'),
   ('to:veli',    'time_off',  'm', '{B}',   'employee', 'veli'),
-  ('to:ali',     'time_off',  'm', '{K}',   'employee', 'ali'),
+  ('to:ali',     'time_off',  'm', '{K,B}', 'employee', 'ali'),
   ('to:ayse',    'time_off',  'm', '{K}',   'manager',  'ayse'),
   ('to:zeynep',  'time_off',  'm', '{K}',   'admin',    'zeynep'),
+  -- Approved time off, which can be revoked.
+  ('lv:emre',    'leave',     'm', '{K}',   'employee', 'emre'),
+  ('lv:ali',     'leave',     'm', '{K,B}', 'employee', 'ali'),
+  ('lv:ayse',    'leave',     'm', '{K}',   'manager',  'ayse'),
+  ('lv:zeynep',  'leave',     'm', '{K}',   'admin',    'zeynep'),
+  ('lv:olcay',   'leave',     'm', '{K,B}', 'owner',    'olcay'),
   ('site:K',     'site',      'm', '{K}',   null,       null),
   ('site:B',     'site',      'm', '{B}',   null,       null),
   ('sh:ali-k',   'shift',     'm', '{K}',   'employee', 'ali'),
@@ -251,7 +262,8 @@ select t.label,
     when t.label in ('K', 'B') then tests.id('m:' || t.label)
     when t.label = 'x:K' then tests.id('x:K')
     when t.label = 'workspace' then tests.id('m')
-    when t.kind = 'time_off' then tests.id('m:' || t.holder || ':time_off')
+    when t.kind = 'time_off' then tests.id('m:' || t.holder || ':leave')
+    when t.kind = 'leave' then tests.id('m:' || t.label)
     when t.kind = 'site' then tests.id('m:' || substr(t.label, 6))
     when t.kind = 'shift' then tests.id('m:shift:' || substr(t.label, 4))
     when t.kind = 'case' then tests.id('m:case:' || substr(t.label, 6))
@@ -361,8 +373,18 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('workspace.transfer_ownership', 'workspace', null, true, false,
    $$select public.initiate_workspace_ownership_transfer_service($1, $2, tests.user('m:zeynep')) is not null$$),
   ('time_off.decide', 'time_off', 'schedule.time_off_requests.manage', false, false,
-   $$select public.resolve_schedule_time_off_request_service($1, $2, $3,
-       (select r.revision from public.schedule_time_off_requests r where r.id = $3), 'approve', '') is not null$$),
+   $$select public.decide_time_off_service($1, $2, $3, 'approve', '',
+       app_private.time_off_impact($2, $3) ->> 'fingerprint') is not null$$),
+  -- deciding alone, at once: an admin or the owner; a manager's answer is a vote
+  ('time_off.decide_alone', 'time_off', 'schedule.time_off_requests.manage', false, true,
+   $$select (public.decide_time_off_service($1, $2, $3, 'approve', '',
+       app_private.time_off_impact($2, $3) ->> 'fingerprint') ->> 'alone')::boolean$$),
+  ('time_off.revoke', 'leave', 'schedule.time_off_requests.manage', false, false,
+   $$select public.revoke_time_off_service($1, $2, $3,
+       (select r.revision from public.schedule_time_off_requests r where r.id = $3), 'matrix probe') is not null$$),
+  ('requests.read', 'time_off', 'schedule.time_off_requests.read', false, true,
+   $$select exists (select 1 from jsonb_array_elements(public.get_schedule_requests_service($1, $2, 'needs_review')
+       -> 'time_off_requests') r where (r ->> 'id')::uuid = $3)$$),
   ('announcement.write', 'location', 'announcements.manage', false, false,
    $$select public.save_announcement_audience_service($1, $2, null, null, 'Probe', 'Body', 'general', array['employee'],
        coalesce(array_remove(array[$3], null), '{}'), null, null, null, '{}', '{}') is not null$$),
@@ -465,10 +487,8 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.shift_exchanges_command_service($1, $2,
        jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', $3), gen_random_uuid()) is not null$$, true, false),
   ('time_off.request_own', 'workspace', null, false, false,
-   $$select public.submit_employee_time_off_service($1, $2,
-       (select l.location_id from public.employee_location_assignments l join public.employee_profiles e on e.id = l.employee_id
-        where e.user_id = $1 and e.workspace_id = $2 and l.ended_at is null order by l.is_primary desc limit 1),
-       'probe', array[tests.week(1) + 3]) is not null$$, true, false),
+   $$select public.submit_time_off_service($1, $2, jsonb_build_array(jsonb_build_object('segment_date', tests.week(1) + 3)),
+       'probe', 'Europe/Istanbul', gen_random_uuid()) is not null$$, true, false),
   -- one's own emergency contact, on one's own record only (BL-443, BL-444)
   ('employee.save_own_contact', 'person', null, false, false,
    $$select true from (select public.save_own_employment_contact_service($1, $2, $3,
@@ -528,6 +548,9 @@ insert into core_action (key, core_key, blank) values
   ('workspace.close', 'workspace.close', 'null'),
   ('workspace.transfer_ownership', 'workspace.transfer_ownership', 'null'),
   ('time_off.decide', 'time_off.decide', 'null'),
+  ('time_off.decide_alone', 'time_off.decide_alone', 'null'),
+  ('time_off.revoke', 'time_off.revoke', 'null'),
+  ('requests.read', 'requests.read', 'null'),
   ('announcement.write', 'announcement.write', 'org'),
   ('important_date.write', 'important_date.write', 'org'),
   ('read.membership', 'membership.read', 'null'),
@@ -739,14 +762,29 @@ begin
   when 'workspace.close', 'workspace.transfer_ownership' then
     return 'allow';  -- owner only, checked above
 
-  when 'time_off.decide' then
-    -- Requests go one rank up and nobody decides their own. With no published
-    -- shift on the day, the manager of the primary location decides; admin and
-    -- owner can always decide alone.
+  when 'time_off.decide', 'time_off.revoke' then
+    -- Requests go one rank up and nobody decides their own. The managers of
+    -- every location the person works at vote; admin and owner decide alone
+    -- (FB-6.3, KARARLAR "İzin"). Any of those managers, or an admin or the
+    -- owner, revokes approved time off alone, by the same rank.
     if is_self then return 'deny'; end if;
     if p.class = 'owner' then return 'allow'; end if;
     if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
-    return case when t.class = 'employee' and covers then 'allow' else 'deny' end;
+    return case when t.class = 'employee' and shares then 'allow' else 'deny' end;
+
+  when 'time_off.decide_alone' then
+    -- At once and final: an admin or the owner, one rank up.
+    if is_self then return 'deny'; end if;
+    if p.class = 'owner' then return 'allow'; end if;
+    if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
+    return 'deny';
+
+  when 'requests.read' then
+    -- The Requests queue shows time off of the people the actor reaches:
+    -- everybody for admin and owner, whoever works at one of their locations
+    -- for a manager (FB-6.3).
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when shares then 'allow' else 'deny' end;
 
   when 'legacy.schedule_can_manage', 'legacy.schedule_capability', 'legacy.schedule_can_publish',
        'legacy.communication_capability' then
@@ -813,9 +851,7 @@ insert into known_gap values
    'somebody who has not finished onboarding cannot open their own notifications (stage 6, onboarding)'),
   ('legacy-blank-location', null,
    '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish,legacy.communication_capability}', '{none}',
-   'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2. 56 callers pass null for "anywhere"; each moves to scope_set() with its domain and the helpers go (stage 6)'),
-  ('time-off-needs-location', '{nur}', '{time_off.request_own}', null,
-   'asking for time off still needs a location, so a person with none cannot ask; time off belongs to the person (stage 6, time off)');
+   'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2. 56 callers pass null for "anywhere"; each moves to scope_set() with its domain and the helpers go (stage 6)');
 
 create temporary table known_hit (id text primary key);
 
@@ -895,9 +931,20 @@ begin
       else
         places := array[target_uuid];
       end if;
-    when 'time_off', 'shift', 'case', 'placement' then
+    when 'time_off', 'leave', 'shift', 'case', 'placement' then
       person := case t.holder when 'olcay' then tests.id('m:owner') else tests.id('m:' || t.holder) end;
       places := array(select tests.id('m:' || l) from unnest(t.locs) l);
+      -- A vote on time off is cast for one location at a time: any location
+      -- of the person where the actor may decide lets them vote (FB-6.3).
+      if t.kind = 'time_off' and (select a.scope_class from app_private.authz_actions a where a.key = m.core_key) = 'place' then
+        if exists (select 1 from unnest(places) place
+                   where app_private.authz_reason(user_id, tests.id('m'), m.core_key, array[place], person) is null) then
+          return 'allow';
+        end if;
+        select r into reason from unnest(places) place,
+          app_private.authz_reason(user_id, tests.id('m'), m.core_key, array[place], person) r limit 1;
+        return 'deny:' || reason;
+      end if;
     when 'name_request' then
       person := tests.id('m:' || t.holder);
     when 'draft', 'template' then

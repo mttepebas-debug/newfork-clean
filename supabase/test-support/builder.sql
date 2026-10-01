@@ -352,6 +352,39 @@ begin
 end;
 $$;
 
+-- A time-off request the person sends from Employee Hub the way it is sent
+-- since FB-6.3: no location, whole days from the Wednesday of tests.week(n)
+-- for `days` days in a row, in the person's primary location's time zone (or
+-- Istanbul for somebody with no location, as their device would say).
+-- Returns the request id; the caller remembers it under a label of its own.
+-- ponytail: tests.time_off keeps filing the old single-location request for
+-- the old services' tests; the two meet when those services go (FB-6.3.7).
+create or replace function tests.leave(w text, person_label text, n integer default 0, days integer default 1)
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  employee uuid := tests.id(w || ':' || person_label);
+  zone_name text := coalesce((
+    select l.timezone from public.employee_location_assignments a
+    join public.locations l on l.id = a.location_id
+    where a.employee_id = employee and a.ended_at is null
+    order by a.is_primary desc, a.assigned_at limit 1
+  ), 'Europe/Istanbul');
+  sent jsonb;
+begin
+  sent := public.submit_time_off_service(
+    tests.user(w || ':' || person_label), tests.id(w),
+    (select jsonb_agg(jsonb_build_object('segment_date', tests.week(n) + 2 + d) order by d)
+     from generate_series(0, days - 1) d),
+    'test world', zone_name, gen_random_uuid()
+  );
+  perform tests.settle();
+  return (sent ->> 'request_id')::uuid;
+end;
+$$;
+
 -- The employee's own "My availability" mark: unavailable on one weekday
 -- (0 = Sunday .. 6 = Saturday, matching extract(dow)) for a clock range
 -- (e.g. '18:00', '22:00'). Every other day is left available. BL-186 (a
