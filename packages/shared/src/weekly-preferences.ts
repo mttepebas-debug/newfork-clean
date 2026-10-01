@@ -166,7 +166,6 @@ export const weeklyPreferenceSaveSchema = z
     preference: weeklyPreferenceSchema,
     enabled: z.boolean().optional(),
     notes: z.array(z.string().trim().max(1000)).length(7).optional(),
-    confirm_clear: z.boolean().optional(),
     copy_employee_revision: z.number().int().positive().optional(),
     decisions: z.array(weeklyCommitmentDecisionSchema).optional(),
   })
