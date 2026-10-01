@@ -592,3 +592,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** ucuz (madde sırası gelince ya da kullanıcı isterse iş açılır).
 - **Durum:** yürürlükte. Kayıt oturumu yazdı (besleme #69; koordinatörün kararı). Ölçüldü: fonksiyonun tek tanımı `20260909019001_time_off_published_assignment_disposition.sql:165-172` (eski yardımcı `:172`), `.7` migration'ı onu `:905`'te çağırmaya devam ediyor (`task/fb-6.3.7-db2` @`f84e3667`).
 - **Mert:** onaysız.
+
+### KK-79 (2026-10-01) Hata notu: ölçülmemiş şart G14 mockup görevine kondu
+- **Karar:** koordinatör "onaylı izin kırmızısı vardiya çakışma çizgisiyle karışmasın" şartını ölçmeden `nf-arayuz` `local_ea341890…`'ın mockup görevine koydu (kayıt oturumunun önceki mesajından aldı). Mert şartı düşürdü: çakışan vardiya yazılamaz. Bundan sonra başka oturumdan aktarılan tasarım şartı, göreve konmadan önce kodda ölçülür.
+- **Neden:** kayıt kuralı `time_overlap` ayara bağlı değil, her zaman engel (`20261003040000_time_off_forgets_location_and_parts.sql:1342-1349`; yazar doğruladı, kayıt oturumu ölçtü). Var olmayan bir duruma göre tasarım istendi; varyant turu ve Mert'in zamanı harcandı.
+- **Uygulamada etkisi:** görünür değişiklik yok. Mockup'tan demo çakışma çizgisi çıkarıldı (`c9a46d08`, `task/g14-availability-mockup`). Çizginin kendisinin gerekip gerekmediği BL-522.
+- **Dayanak:** ILKELER D tablosu ("ortamı ve kodu ölçmeden soru kurmak"), P23 (bugün oluşamayan durum kodlanmaz).
+- **Geri alma:** gerekmez (hata kaydı).
+- **Durum:** yürürlükte. Kayıt oturumu yazdı (besleme #80; koordinatörün isteği).
+- **Mert:** bilgi (şartı kendisi düşürdü).
