@@ -114,6 +114,8 @@
 - Ultrareview (Mert, 2026-10-01): riskli işte (yetki, satır erişimi, migration, veri silme) ve
   ücretsiz hak varken önerilir. Hak bitince yalnız en riskli işte (yetki çekirdeği gibi), dolar
   tutarıyla önerilir (CLAUDE.md §5).
+- Kanıt (2026-10-01, ters seçim): FB-6.3.7 (veri silme) için ultrareview önerildi; Mert "hayır,
+  güvenlik onayı yeter" dedi — iki tur `nf-guvenlik` ONAY'ı olan işte gerekli görmedi.
 - Kanıt: 09-24 "$ cost bilgisi verir misin"; 07-12 "Leaflet + OpenStreetMap (ücretsiz)"; 09-16
   "vercel logları + sentry… ücretsiz olsun".
 
