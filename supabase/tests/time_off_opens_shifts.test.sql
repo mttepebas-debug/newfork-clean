@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(15);
 
 -- BL-183, FB-6.3.7: the owner's time off is recorded without review, so nobody is asked
 -- to review it. The managers of each location where it left a shift open hear
@@ -56,6 +56,15 @@ select is(
 select is(
   (select o.payload ->> 'action_url' from pg_temp.outbox(tests.id('ot:owner:time_off'), 'schedule.time_off.shifts_opened') o),
   '/app/schedule?date=' || (tests.week(1) + 2)::text, 'and opens that week''s Schedule');
+
+-- The record of the shifts an approval opened is kept as it was and is private.
+select throws_ok($$update public.time_off_assignment_releases set before_assignment = '{}' where request_id = tests.id('ot:owner:time_off')$$,
+  '55000', null, 'the record of an opened shift cannot be rewritten');
+select throws_ok($$delete from public.time_off_assignment_releases where request_id = tests.id('ot:owner:time_off')$$,
+  '55000', null, 'nor erased');
+set local role authenticated;
+select throws_ok($$select * from public.time_off_assignment_releases$$, '42501', null, 'and a signed-in browser cannot read it');
+reset role;
 
 -- The notice reaches Ayse's notification list.
 update public.notification_outbox set status = 'leased', lease_owner = 'bl183-test', lease_expires_at = now() + interval '1 minute'

@@ -134,6 +134,10 @@ select is(
   1, 'a manager excluded from the Schedule counts their location''s pending time off on Workspace home'
 );
 select is(
+  (public.get_workspace_dashboard_service(tests.user('m:ayse'), tests.id('m')) #>> '{metrics,pending_time_off_count}')::integer,
+  0, 'Ayse (manager, Kadikoy only) does not count Veli''s request: he works only at Besiktas'
+);
+select is(
   pg_temp.refusal(format('select public.get_workspace_dashboard_service(%L, %L)', tests.user('m:emre'), tests.id('m'))),
   '42501 authz.missing_permission', 'an employee opens no manager Workspace home'
 );

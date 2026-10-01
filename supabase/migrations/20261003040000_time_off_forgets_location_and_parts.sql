@@ -32,6 +32,13 @@ drop function app_private.record_owner_time_off(uuid, uuid, uuid);
 drop table public.time_off_decision_pieces;
 drop function public.guard_time_off_decision_piece();
 
+-- RESTRICT chain: what points at a recipient goes before the recipient.
+delete from public.notification_delivery_attempts where (recipient_projection_id, workspace_id) in
+  (select r.id, r.workspace_id from public.notification_recipients r join public.notification_events e
+    on e.id = r.event_id and e.workspace_id = r.workspace_id where e.type_key = 'schedule.owner_time_off.shifts_opened');
+delete from public.notification_inbox_items where (recipient_projection_id, workspace_id) in
+  (select r.id, r.workspace_id from public.notification_recipients r join public.notification_events e
+    on e.id = r.event_id and e.workspace_id = r.workspace_id where e.type_key = 'schedule.owner_time_off.shifts_opened');
 delete from public.notification_recipient_decisions where (event_id, workspace_id) in
   (select id, workspace_id from public.notification_events where type_key = 'schedule.owner_time_off.shifts_opened');
 delete from public.notification_recipients where (event_id, workspace_id) in

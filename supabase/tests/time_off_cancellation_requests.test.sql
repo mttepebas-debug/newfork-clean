@@ -22,6 +22,16 @@ insert into public.workspace_memberships(workspace_id,user_id,role,status,all_lo
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 select 'af9c0000-0000-4000-8000-000000000005',w,'af9c0000-0000-4000-8000-000000000004','E-994901','Other','Tester',manager from tc;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by) select w,'af9c0000-0000-4000-8000-000000000005',loc,manager from tc;
+-- What a call answers: 'allowed', or the error code and its authz hint.
+create function pg_temp.refusal(q text) returns text language plpgsql as $$
+declare h text;
+begin
+  execute q;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics h = pg_exception_hint;
+  return sqlstate || coalesce(' ' || nullif(h, ''), '');
+end $$;
 create function pg_temp.tc_new(d date,s text,e text) returns uuid language plpgsql as $$
 declare t tc%rowtype; result jsonb; begin select * into t from tc;
  result:=public.submit_time_off_service(t.actor,t.w,jsonb_build_array(jsonb_strip_nulls(jsonb_build_object('segment_date',d,'start_time',s,'end_time',e))),'Original leave',(select timezone from public.locations where id=t.loc),gen_random_uuid());
@@ -41,7 +51,7 @@ select throws_ok($$select public.employee_request_action_service(actor,w,parent,
 -- request lookup and answers P0002 like any employee naming somebody else's
 -- leave; the no-contract answer for that is 42501 + authz.out_of_scope.
 select throws_ok($$select public.request_time_off_cancellation_service(manager,w,parent,2,periods,'',op) from tc$$,'42501',null,'manager cannot submit a cancellation as another employee');
-select throws_ok($$select public.request_time_off_cancellation_service('af9c0000-0000-4000-8000-000000000004',w,parent,2,periods,'',op) from tc$$,'42501',null,'another employee cannot cancel somebody else''s leave');
+select is(pg_temp.refusal($$select public.request_time_off_cancellation_service('af9c0000-0000-4000-8000-000000000004',w,parent,2,periods,'',op) from tc$$),'42501 authz.out_of_scope','another employee cannot cancel somebody else''s leave');
 select throws_ok($$select public.request_time_off_cancellation_service(actor,gen_random_uuid(),parent,2,periods,'',op) from tc$$,'42501',null,'workspace ownership is enforced');
 select throws_ok($$select public.request_time_off_cancellation_service(actor,w,parent,1,periods,'',op) from tc$$,'40001',null,'cancellation requires current parent revision');
 select throws_ok($$select pg_temp.tc_cancel('[]')$$,'22023',null,'empty cancellation rejected');
@@ -94,7 +104,7 @@ select is(jsonb_array_length(public.assess_weekly_shift_availability(w,emp,jsonb
 savepoint later_request;
 select lives_ok($$select public.submit_time_off_service(actor,w,'[{"segment_date":"2035-01-15","start_time":"16:00","end_time":"18:00"}]','New request after cancellation','UTC',gen_random_uuid()) from tc$$,'cancelled hours can be requested again without resurrecting the old leave');
 rollback to savepoint later_request;
-select throws_ok($$select public.revoke_time_off_service(manager,w,cancellation,2,'Reverse it') from tc$$,'42501',null,'a completed cancellation is not leave that can be revoked');
+select is(pg_temp.refusal($$select public.revoke_time_off_service(manager,w,cancellation,2,'Reverse it') from tc$$),'42501 authz.out_of_scope','a completed cancellation is not leave that can be revoked');
 select throws_ok($$select public.revoke_time_off_service(manager,w,parent,2,'Stale screen') from tc$$,'40001',null,'stale parent manager decision rejected');
 select throws_ok($$update public.time_off_cancellation_links set parent_revision=1 where request_id=(select cancellation from tc)$$,'55000',null,'cancellation origin cannot be changed');
 select throws_ok($$delete from public.time_off_cancellation_periods where request_id=(select cancellation from tc)$$,'55000',null,'cancellation period history cannot be erased');
