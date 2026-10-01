@@ -1,10 +1,11 @@
 # Newfork karar ilkeleri
 
-> **Durum: TASLAK (2026-09-30), Mert'in onayını bekliyor (KARAR-001 mülakatı).** Mert'in 629
-> eski cevabından çıkarıldı; her ilke eski cevaplardaki karşı örneklerle sınandı (analiz:
-> `docs/plan/research/KARAR-001-analiz.md`). Onaylanan ilke "Onay: <tarih>" alır. Onaysız ilke
-> dayanak olarak kullanılabilir ama öyle yazılır: "Dayanak: ILKELER P09 (taslak)".
-> Bu dosya CLAUDE.md'den her oturuma yüklenir; kısa tutulur (en çok ~16 KB). Uzun gerekçe ve
+> **Onay: Mert, 2026-10-01 — P01-P26'nın hepsi ve A bölümü (KARAR-001 mülakatı).** Mert'in 629
+> eski cevabından çıkarıldı. Her ilke eski cevaplardaki karşı örneklerle sınandı ve mülakatta
+> düzeltildi (analiz: `docs/plan/research/KARAR-001-analiz.md`).
+> Sonradan eklenen ilke Mert onaylayana kadar "(taslak)" diye yazılır. Taslak ilkeye dayanarak
+> sorusuz ürün kararı verilmez.
+> Bu dosya CLAUDE.md'den her oturuma yüklenir; kısa tutulur (en çok ~20 KB). Uzun gerekçe ve
 > kanıt listesi analiz dosyasında kalır.
 
 ## Nasıl kullanılır
