@@ -583,3 +583,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** ucuz.
 - **Durum:** yürürlükte; uygulama `.6b` düzeltme turunda (`task/fb-6.3.6b`, yeni `nf-arayuz` `local_d16ba31f-57a1-4ae7-ba0f-1b338015ede8`). Kayıt oturumu yazdı (besleme #56; koordinatörün aktardığı).
 - **Mert:** onaysız.
+
+### KK-78 (2026-10-01) BL-179'un kalan parçası (`time_off_event_released_assignments`) FB-6.3.7'ye alınmaz
+- **Karar:** izin onayıyla serbest kalan vardiyaları okuyan `time_off_event_released_assignments`'in eski yetki yardımcısından (`schedule_actor_has_capability_service`) çekirdeğe taşınması FB-6.3.7'ye eklenmez; BL-179'da (GF) kalır, ayrı iş olarak sonra yapılır.
+- **Neden:** fail-open değil (`CLAUDE.md` §9'un "o iş içinde kapatılır" şartı tutmuyor); bir yetki fonksiyonunu çekirdeğe taşımak R3 yüzeyi ekler; `.7` zaten büyük bir silme farkı ve bir düzeltme turunda; tek hat yalnız doğrudan ilgili küçük bulguyu ekler, bu ayrı bir yetki taşıma işi.
+- **Uygulamada etkisi:** bugün görünür değişiklik yok. Requests ekranında izin onayıyla serbest kalan vardiyaların listesi eski yetki yardımcısıyla okunmaya devam eder; kim neyi görür değişmez. Örnek: Kadıköy müdürü Ayşe, Ali'nin onaylanan izniyle açılan Kadıköy vardiyalarını bugün nasıl görüyorsa öyle görür.
+- **Dayanak:** `CLAUDE.md` §9; ILKELER P17; `DELEGASYON.md` §3.
+- **Geri alma:** ucuz (madde sırası gelince ya da kullanıcı isterse iş açılır).
+- **Durum:** yürürlükte. Kayıt oturumu yazdı (besleme #69; koordinatörün kararı). Ölçüldü: fonksiyonun tek tanımı `20260909019001_time_off_published_assignment_disposition.sql:165-172` (eski yardımcı `:172`), `.7` migration'ı onu `:905`'te çağırmaya devam ediyor (`task/fb-6.3.7-db2` @`f84e3667`).
+- **Mert:** onaysız.
