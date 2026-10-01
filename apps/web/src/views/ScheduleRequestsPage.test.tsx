@@ -240,7 +240,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(within(row).getByTitle("Shifts that become open").textContent).toBe("1");
   });
 
-  it("shows who approved which location, what is left, the deadline and the shifts that open (variant a)", async () => {
+  it("shows who approved which location, what is left, the deadline and the shifts that open", async () => {
     renderPage();
     const drawer = await openTimeOffRequest();
     const panel = within(drawer).getByRole("region", { name: "Approval progress" });
@@ -250,28 +250,15 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(panel.textContent).toContain("Waiting");
     expect(panel.textContent).toContain("Mon, Jan 15 · 3:00 PM–11:00 PM · Server");
   });
-  it.each([
-    ["b", "Approved", "No shifts open here"],
-    ["c", "1/2 approved", "Server"],
-  ])("opens progress variant %s from the address in DEV", async (variant, first, second) => {
-    renderPage(`/app/schedule/requests?progressVariant=${variant}`);
-    const drawer = await openTimeOffRequest();
-    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
-    expect(panel.className).toContain(`tov-${variant}`);
-    expect(panel.textContent).toContain(first);
-    expect(panel.textContent).toContain(second);
-  });
-  it("writes who approved and when as text in variant c, not only in a hover tip", async () => {
+  it("draws one progress layout whatever the address asks for (P04: checklist)", async () => {
     renderPage("/app/schedule/requests?progressVariant=c");
     const drawer = await openTimeOffRequest();
     const panel = within(drawer).getByRole("region", { name: "Approval progress" });
-    const kadikoyPill = within(panel).getByText("Kadıköy").closest("li")!;
-    expect(kadikoyPill.textContent).toContain("Ayşe Yılmaz");
-    expect(kadikoyPill.textContent).toContain("Jan 10");
+    expect(panel.className).toBe("tov");
     expect(panel.querySelector("[title]")).toBeNull();
   });
-  it.each(["a", "c"])("titles the shifts that open like the drawer's other sections (variant %s)", async (variant) => {
-    renderPage(`/app/schedule/requests?progressVariant=${variant}`);
+  it("titles the shifts that open like the drawer's other sections", async () => {
+    renderPage();
     const drawer = await openTimeOffRequest();
     const panel = within(drawer).getByRole("region", { name: "Approval progress" });
     expect(within(panel).getByRole("heading", { name: "Shifts that become open" }).tagName).toBe("H2");
@@ -357,8 +344,11 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const drawer = await openTimeOffRequest();
     fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
     fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Approve" }));
-    // QA D1: the request is still pending, so the drawer stays open and says it.
-    expect((await within(drawer).findByRole("status")).textContent).toBe("This request changed. Review it again.");
+    // QA D1: the request is still pending, so the drawer stays open and says it,
+    // in the warning tone: nothing was saved.
+    const changed = await within(drawer).findByRole("status");
+    expect(changed.textContent).toBe("This request changed. Review it again.");
+    expect(changed.className).toBe("request-drawer-notice warning");
     expect(screen.getByRole("dialog", { name: "Review request" })).toBe(drawer);
     expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));

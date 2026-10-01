@@ -2,19 +2,12 @@ import type { TimeOffImpactShift, TimeOffProgress } from "@newfork/shared";
 import { Check, Circle, Clock3 } from "lucide-react";
 import { formatAvailabilityClock } from "../availability/AvailabilityClockInput";
 
-// FB-6.3.6: where a pending request stands (rules 10 and 14). Three layouts
-// wait for Mert's pick (P04), opened in DEV with ?progressVariant=a|b|c; the
-// two not chosen are deleted.
-export type ProgressVariant = "a" | "b" | "c";
-export function progressVariant(params: URLSearchParams): ProgressVariant {
-  const value = import.meta.env.DEV ? params.get("progressVariant") : null;
-  return value === "b" || value === "c" ? value : "a";
-}
-
+// Where a pending request stands (rules 10 and 14): a checklist of the
+// locations asked to approve, then the shifts that would open (P04, FB-6.3.6).
 type Place = { id: string; name: string; shifts: TimeOffImpactShift[] };
 
-export function TimeOffProgressPanel({ progress, timeFormat, variant }: {
-  progress: TimeOffProgress; timeFormat: "12h" | "24h"; variant: ProgressVariant;
+export function TimeOffProgressPanel({ progress, timeFormat }: {
+  progress: TimeOffProgress; timeFormat: "12h" | "24h";
 }) {
   const total = progress.locations.length;
   const approved = progress.locations.filter((place) => place.approved_by).length;
@@ -31,78 +24,8 @@ export function TimeOffProgressPanel({ progress, timeFormat, variant }: {
   const mine = progress.my_vote ? <p className="tov-mine">Your vote: {progress.my_vote === "approve" ? "Approved" : "Denied"}</p> : null;
   const hiddenNote = hidden ? <p className="tov-muted">{hidden} more shift{hidden === 1 ? "" : "s"} at locations you can't see</p> : null;
 
-  if (variant === "b")
-    return (
-      <section className="tov tov-b" aria-label="Approval progress">
-        <div className="tov-banner">
-          <strong>{status}</strong>
-          {deadline ? <span><Clock3 size={14} aria-hidden /> {deadline}</span> : null}
-        </div>
-        {mine}
-        <div className="tov-cards">
-          {progress.locations.map((place) => (
-            <article key={place.id} className={place.approved_by ? "approved" : ""}>
-              <header>
-                <h3>{place.name}</h3>
-                <span className="tov-badge">{place.approved_by ? "Approved" : "Waiting"}</span>
-              </header>
-              {place.approved_by ? <p className="tov-muted">{place.approved_by_name} · {formatInstant(place.approved_at!)}</p> : null}
-              <ShiftList shifts={impact[place.id]?.shifts ?? []} timeFormat={timeFormat} empty="No shifts open here" />
-            </article>
-          ))}
-          {places.filter((place) => !progress.locations.some((asked) => asked.id === place.id)).map((place) => (
-            <article key={place.id}>
-              <header><h3>{place.name}</h3><span className="tov-badge">No vote</span></header>
-              <ShiftList shifts={place.shifts} timeFormat={timeFormat} />
-            </article>
-          ))}
-        </div>
-        {hiddenNote}
-      </section>
-    );
-
-  if (variant === "c")
-    return (
-      <section className="tov tov-c" aria-label="Approval progress">
-        <div className="tov-meter-row">
-          <div className="tov-meter" role="meter" aria-label="Locations approved" aria-valuemin={0} aria-valuemax={total} aria-valuenow={approved}>
-            {progress.locations.map((place) => <span key={place.id} className={place.approved_by ? "filled" : ""} />)}
-          </div>
-          <strong>{progress.fallback ? "Admin or owner decides" : `${approved}/${total} approved`}</strong>
-          {deadline ? <span className="tov-chip"><Clock3 size={13} aria-hidden /> {deadline}</span> : null}
-        </div>
-        {mine}
-        <ul className="tov-pills">
-          {progress.locations.map((place) => (
-            <li key={place.id} className={place.approved_by ? "approved" : ""}>
-              {place.approved_by ? <Check size={13} aria-hidden /> : <Circle size={11} aria-hidden />}
-              {place.name}
-              {place.approved_by
-                ? <small>· <span className="sr-only">approved by </span>{place.approved_by_name} · {formatInstant(place.approved_at!)}</small>
-                : <span className="sr-only">waiting</span>}
-            </li>
-          ))}
-        </ul>
-        <h2>Shifts that become open</h2>
-        {places.length ? (
-          <table className="tov-table">
-            <thead><tr><th>Date</th><th>Time</th><th>Job</th><th>Location</th></tr></thead>
-            <tbody>
-              {places.flatMap((place) => place.shifts).map((shift) => (
-                <tr key={shift.id}>
-                  <td>{formatDay(shift.scheduled_date)}</td><td>{shiftHours(shift, timeFormat)}</td>
-                  <td>{shift.job_name}</td><td>{shift.location_name}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p className="tov-muted">No published shifts change.</p>}
-        {hiddenNote}
-      </section>
-    );
-
   return (
-    <section className="tov tov-a" aria-label="Approval progress">
+    <section className="tov" aria-label="Approval progress">
       <header className="tov-head">
         <h2>Approvals</h2>
         <span>{status}</span>
@@ -132,8 +55,7 @@ export function TimeOffProgressPanel({ progress, timeFormat, variant }: {
   );
 }
 
-function ShiftList({ shifts, timeFormat, empty }: { shifts: TimeOffImpactShift[]; timeFormat: "12h" | "24h"; empty?: string }) {
-  if (!shifts.length) return empty ? <p className="tov-muted">{empty}</p> : null;
+function ShiftList({ shifts, timeFormat }: { shifts: TimeOffImpactShift[]; timeFormat: "12h" | "24h" }) {
   return (
     <ul className="tov-shifts">
       {shifts.map((shift) => <li key={shift.id}>{formatDay(shift.scheduled_date)} · {shiftHours(shift, timeFormat)} · {shift.job_name}</li>)}

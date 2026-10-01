@@ -19,12 +19,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import { TimeOffShorten } from "./TimeOffShorten";
-import {
-  formatInstant,
-  progressVariant,
-  TimeOffProgressPanel,
-  type ProgressVariant,
-} from "./TimeOffProgressPanel";
+import { formatInstant, TimeOffProgressPanel } from "./TimeOffProgressPanel";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { Navigate, useSearchParams } from "react-router";
@@ -49,6 +44,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 type Tab = "time-off" | "shift-changes";
 type RequestSortKey = "employee" | "date" | "decide_by" | "status" | "review";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
+type DrawerNotice = { text: string; tone?: "warning" | "error" };
 
 export function ScheduleRequestsPage() {
   const [params] = useSearchParams();
@@ -90,7 +86,6 @@ function ScheduleRequestsPageContent() {
       : canReadTimeOff
         ? "time-off"
         : "shift-changes";
-  const variant = progressVariant(params);
   const [timeOffQueue, setTimeOffQueue] = useState<"needs_review" | "closed">(
     "needs_review",
   );
@@ -108,7 +103,7 @@ function ScheduleRequestsPageContent() {
   const toast = useToast();
   // Said inside the drawer while it stays open; the page behind it, the toast
   // included, is inert then (CatalogDrawer).
-  const [drawerNotice, setDrawerNotice] = useState<{ text: string; error?: boolean } | null>(null);
+  const [drawerNotice, setDrawerNotice] = useState<DrawerNotice | null>(null);
   const vote = useVoteOnTimeOff(workspaceId);
   const revoke = useRevokeTimeOff(workspaceId);
   // Also loaded under Shift changes, so the Time off tab keeps its count.
@@ -214,11 +209,11 @@ function ScheduleRequestsPageContent() {
     } catch (error) {
       if (isStaleTimeOff(error)) {
         setAct(null);
-        setDrawerNotice({ text: "This request changed. Review it again." });
+        setDrawerNotice({ text: "This request changed. Review it again.", tone: "warning" });
         return;
       }
       const message = error instanceof Error ? error.message : "Decision failed";
-      if (kind === "approve" && !act) setDrawerNotice({ text: message, error: true });
+      if (kind === "approve" && !act) setDrawerNotice({ text: message, tone: "error" });
       else setActError(message);
     }
   }
@@ -452,7 +447,6 @@ function ScheduleRequestsPageContent() {
             <TimeOffDetail
               request={selected}
               timeFormat={timeFormat}
-              variant={variant}
               notice={drawerNotice}
               busy={vote.isPending || revoke.isPending}
               // ponytail: "may they revoke somewhere"; the API asks per person.
@@ -663,7 +657,6 @@ function compareValues(left: string | number, right: string | number): number {
 function TimeOffDetail({
   request,
   timeFormat,
-  variant,
   notice,
   busy,
   canRevoke,
@@ -673,8 +666,7 @@ function TimeOffDetail({
 }: {
   request: TimeOffRequest;
   timeFormat: "12h" | "24h";
-  variant: ProgressVariant;
-  notice: { text: string; error?: boolean } | null;
+  notice: DrawerNotice | null;
   busy: boolean;
   canRevoke: boolean;
   onClose: () => void;
@@ -695,8 +687,8 @@ function TimeOffDetail({
       >
         {notice ? (
           <p
-            className={notice.error ? "request-drawer-notice error" : "request-drawer-notice"}
-            role={notice.error ? "alert" : "status"}
+            className={notice.tone ? `request-drawer-notice ${notice.tone}` : "request-drawer-notice"}
+            role={notice.tone === "error" ? "alert" : "status"}
           >
             {notice.text}
           </p>
@@ -721,7 +713,7 @@ function TimeOffDetail({
         <p>A cancellation request is waiting. The time off is still in effect.</p>
       ) : null}
       {progress ? (
-        <TimeOffProgressPanel progress={progress} timeFormat={timeFormat} variant={variant} />
+        <TimeOffProgressPanel progress={progress} timeFormat={timeFormat} />
       ) : null}
       {request.reason ? (
         <section>
