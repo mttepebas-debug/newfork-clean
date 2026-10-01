@@ -101,5 +101,45 @@ select ok(pg_temp.lists('ayse', tests.id('sd:ali:1:cancel')), 'Ayse reads Ali''s
 select ok(not pg_temp.lists('mehmet', tests.id('sd:ali:1:cancel')), 'the manager of another location does not');
 select is(pg_temp.home('ayse'), 1, 'Workspace home counts Ali''s cancellation for Ayse and not Hande''s');
 
+-- 4. Reading follows where the person works today; the vote does not --------------
+-- (user decision 2026-10-01 ~19:05Z, FB-6.3.8c review): Ali asks while he works
+-- at Kadikoy only, then also starts at Besiktas. Mehmet reads the request, as he
+-- would revoke Ali's approved time off, but cannot vote on it: the locations
+-- that decide were fixed when Ali sent it.
+
+select tests.remember('sd:ali:3', tests.leave('sd', 'ali', 3));
+select tests.works_at(
+  (select m.id from public.workspace_memberships m where m.workspace_id = tests.id('sd') and m.user_id = tests.user('sd:ali')),
+  tests.id('sd:B'));
+select ok(pg_temp.lists('mehmet', tests.id('sd:ali:3')),
+  'Mehmet reads the request of somebody who started at Besiktas after sending it');
+create function pg_temp.refusal(q text) returns text language plpgsql as $$
+begin
+  execute q;
+  return 'allowed';
+exception when others then
+  return sqlstate;
+end $$;
+select is(pg_temp.refusal(format('select pg_temp.decide(%L, %L, %L)', 'mehmet', tests.id('sd:ali:3'), 'approve')), '42501',
+  'but his vote is turned away: Besiktas was not one of the locations that decide it');
+
+-- 5. The owner's own time off is read on the Schedule, not in Requests -----------
+
+select tests.remember('sd:owner:1', tests.leave('sd', 'owner', 4));
+select is((select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('sd:owner:1')), 'approved',
+  'the owner''s own time off stands at once');
+select ok(not exists (
+    select 1 from unnest(array['owner', 'zeynep', 'kaan', 'ayse', 'hande']) who,
+      jsonb_array_elements(public.get_schedule_requests_service(tests.user('sd:' || who), tests.id('sd'), 'closed', null, '', null, 100)
+        -> 'time_off_requests') t
+    where (t ->> 'id')::uuid = tests.id('sd:owner:1')),
+  'nobody reads it in Requests: not the owner, not an admin''s closed list, not a manager''s');
+select ok(jsonb_path_exists(
+    public.get_schedule_read_model_service(tests.user('sd:zeynep'), tests.id('sd'), tests.week(4))
+      -> 'employees',
+    '$[*] ? (@.id == $who).weekly_availability[*].leave_intervals[*]',
+    jsonb_build_object('who', tests.id('sd:owner'))),
+  'and the admin sees it on the Schedule (M2)');
+
 select * from finish();
 rollback;
