@@ -194,6 +194,67 @@ select is(
      and o.payload ->> 'audience_contract' = 'time_off_fallback_deciders'),
   pg_temp.users('owner', 'zeynep'), 'it goes to them');
 
+-- 5a. Both in one pass: an admin and the owner get one line (user decision
+-- 2026-10-01, KARARLAR "İzin"). Hande, Kadikoy's only manager, is held back;
+-- Ali's time off is twelve hours from its deadline the first time the job sees it.
+
+select tests.world('tb');
+select tests.person('tb', 'zeynep', 'admin', array['K'], array['cook']);
+select tests.person('tb', 'hande', 'manager', array['K'], array['cook']);
+select tests.person('tb', 'mehmet', 'manager', array['B'], array['cook']);
+select tests.person('tb', 'ali', 'employee', array['K', 'B'], array['cook']);
+create function pg_temp.tb_rows(rid uuid) returns table(audience text, recipients uuid[], title text, body text) language sql as $$
+  select o.payload ->> 'audience_contract',
+    array(select x::uuid from jsonb_array_elements_text(o.payload -> 'recipient_user_ids') x order by 1),
+    o.payload ->> 'title', o.payload ->> 'body'
+  from public.notification_outbox o
+  where o.workspace_id = tests.id('tb') and o.type_key = 'requests.time_off.reminder' and o.payload ->> 'request_id' = rid::text
+$$;
+create function pg_temp.tb_users(variadic who text[]) returns uuid[] language sql as $$
+  select array(select tests.user('tb:' || x) from unnest(who) x order by 1)
+$$;
+
+select tests.remember('tb:ali:3', tests.leave('tb', 'ali', 3));
+-- Hande misses a document everybody must hand in (as in time_off_voting.test.sql, 8).
+create temporary table tb_document (id uuid, preview jsonb);
+insert into tb_document (id)
+select public.save_document_type_lifecycle_service(tests.user('tb:owner'), tests.id('tb'), null, null, jsonb_build_object(
+  'title', 'Food handler card', 'description', 'Card', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+update tb_document set preview = public.preview_document_publication_service(tests.user('tb:owner'), tests.id('tb'), id);
+select public.set_document_publication_service(tests.user('tb:owner'), tests.id('tb'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from tb_document;
+select tests.settle();
+update public.employee_onboarding_requirements
+set lifecycle_exempt = false, deadline_at = now() - interval '1 day'
+where source_id = (select id from tb_document) and lifecycle_user_id = tests.user('tb:hande');
+update public.schedule_time_off_requests set decide_by = now() + interval '6 hours', created_at = now() - interval '2 days'
+where id = tests.id('tb:ali:3');
+select app_private.time_off_sweep();
+select app_private.time_off_sweep();
+select is(
+  (select array_agg(u order by u) from pg_temp.tb_rows(tests.id('tb:ali:3')) t, unnest(t.recipients) u),
+  pg_temp.tb_users('mehmet', 'owner', 'zeynep'),
+  'the admin and the owner are told once, Mehmet at Bakirkoy is reminded as before');
+select is(
+  (select jsonb_agg(jsonb_build_object('audience', t.audience, 'to', t.recipients, 'title', t.title, 'body', t.body) order by t.audience)
+   from pg_temp.tb_rows(tests.id('tb:ali:3')) t),
+  jsonb_build_array(
+    jsonb_build_object('audience', 'time_off_deciders', 'to', pg_temp.tb_users('mehmet'),
+      'title', 'Time off waits for your decision', 'body', 'Decide before the deadline or it is declined.'),
+    jsonb_build_object('audience', 'time_off_fallback_deciders', 'to', pg_temp.tb_users('owner', 'zeynep'),
+      'title', 'Time off waits for an admin', 'body', 'No manager can decide this now. Decide before the deadline or it is declined.')),
+  'their one line says both: no manager can decide it, and the deadline is near');
+select is(
+  (select r.fallback_notified_at is not null and r.reminded_at is not null from public.schedule_time_off_requests r
+   where r.id = tests.id('tb:ali:3')),
+  true, 'both are marked sent, so neither comes again');
+
 -- 5b. Shortening and one request that cannot be settled -----------------------
 
 select tests.world('tz');
