@@ -611,3 +611,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — madde yeniden kapatılır.
 - **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725-b572-4ac9-9d12-8505df3e7816` yazdı (besleme #88 eki; koordinatör `local_b355d250…`'ın isteği).
 - **Mert:** bilgi.
+
+### KK-81 (2026-10-01) BL-088 FB-6.5'e değil FB-6.4'e alınır
+- **Karar:** BL-088 (müsaitlik modu dönüşümü bekleyen pickup/swap isteklerini işaretlemiyor) FB-6.4 Takas / Shift Hub dilimine taşınır. KK-10'un (a) kararı (dönüşüm bekleyen istekleri işaretler) geçerli; "kime / nerede gösterilir" ayrıntısı FB-6.4'te Mert'e teyit edilir.
+- **Neden:** bekleyen istekler FB-6.4'te `app_private.eligibility()` takas motoruyla yeniden yazılıyor; işaret orada bir kez tasarlanır. FB-6.5'te yazılsaydı FB-6.4'te yeniden yazılacaktı.
+- **Reddedilen:** BL-088 FB-6.5 içinde.
+- **Uygulamada etkisi:** bugün görünür değişiklik yok. Workspace müsaitlik modunu değiştirdiğinde (Settings → Scheduling → Availability) çevrilen hafta bekleyen bir istekle çakışırsa işaret FB-6.4'te gelecek. Örnek: Ali'nin perşembe akşamı pickup isteği bekliyor; mod "shift type"tan "time range"e geçince perşembesi değişir, bugün kimse uyarılmaz.
+- **Dayanak:** FOUNDATION-B FB-6.4'ün takas motoru kapsamı; ILKELER P17 (aynı işle ilgili bulgu aynı işte).
+- **Geri alma:** kolay — madde FB-6.5'e geri yazılır.
+- **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (besleme #89; koordinatör `local_b355d250…`'ın isteği).
+- **Mert:** bilgi (FB-6.4'te teyit sorusu gelecek).
