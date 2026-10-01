@@ -244,9 +244,9 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
   );
 }
 function TimeOffView({ model, refresh }: HubMutationProps) {
-  // The primary location's zone, which the server checks the request against.
-  // ponytail: first location until the database sends time_off_timezone (FB-6.3.5b).
-  const zone = model.time_off_timezone ?? model.locations[0]?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // The primary location's zone, which the server checks the request against;
+  // somebody who works nowhere has none and asks in the device's.
+  const zone = model.time_off_timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
@@ -290,12 +290,8 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
       if (!command.success) throw new Error(command.error.issues[0]?.message ?? "Check the requested dates and hours.");
       return submit.mutateAsync(command.data);
     },
-    onSuccess: (result) => {
-      // Sent inside the decision window: the decision is due when it starts (rule 16).
-      const first = periods[0];
-      const due = result.decide_by ? timeOffWallParts(result.decide_by, zone) : null;
-      const late = Boolean(first && due && due.date === first.segment_date && due.clock.slice(0, 5) === (first.start_time ?? "00:00").slice(0, 5));
-      setSent(late ? "Request sent. It starts soon, so talk to your manager directly if it's urgent." : "Request sent.");
+    onSuccess: () => {
+      setSent("Request sent.");
       setStart("");
       setEnd("");
       setReason("");

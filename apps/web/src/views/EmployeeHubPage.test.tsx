@@ -73,7 +73,8 @@ const ownShift = {
 };
 const fixture = {
   workspace_id: workspaceId,
-  settings: { time_format: "12h" },
+  settings: { time_format: "12h", time_off_lead_hours: 24 },
+  time_off_timezone: "America/Los_Angeles",
   employee: {
     id: "15000000-0000-4000-8000-000000000001",
     display_name: "Alex Kim",
@@ -756,13 +757,14 @@ describe("EmployeeHubPage", () => {
     await waitFor(() => expect(screen.getAllByText(/already started/).length).toBe(2));
     expect(submitTimeOff).not.toHaveBeenCalled();
   });
-  it("tells the employee to talk to their manager when the request lands inside the decision window (rule 16)", async () => {
+  it("says only that the request was sent: the starts-soon warning comes before sending (rule 16)", async () => {
     // Decide-by equal to the start: midnight Jan 15 in Los Angeles.
     vi.mocked(submitTimeOff).mockResolvedValueOnce({ status: "pending", request_id: "98300000-0000-4000-8000-000000000001", revision: 1, decide_by: "2035-01-15T08:00:00Z" });
     renderPage("/app/employee-hub/my-availability?section=time-off");
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
-    expect((await screen.findByRole("status")).textContent).toBe("Request sent. It starts soon, so talk to your manager directly if it's urgent.");
+    await waitFor(() => expect(screen.getByText(/^Request sent/)).toBeTruthy());
+    expect(screen.getByText(/^Request sent/).textContent).toBe("Request sent.");
   });
   it("asks in the primary location's zone the hub names", async () => {
     renderPageWithFixture({ ...fixture, time_off_timezone: "America/New_York" }, "/app/employee-hub/my-availability?section=time-off");
